@@ -3,7 +3,6 @@ import { openSelect, chooseOption } from "../../test/select";
 /**
  * @vitest-environment jsdom
  */
-import "@testing-library/jest-dom";
 import { render, screen, within } from "../../test/ui";
 import userEvent from "@testing-library/user-event";
 import { useReducer } from "react";
@@ -351,6 +350,54 @@ it("removes a processor", async () => {
   await userEvent.click(screen.getByRole("button", { name: /^remove$/i }));
   await respondToConfirmation("Remove action");
   expect(state()).toHaveLength(0);
+});
+
+// #2877: a catchment-routed form needs a mapped webhook or the API refuses it.
+// The editor warns but still lets the author remove it — Deploy is the gate.
+it("warns when a catchment-routed form loses its mapped webhook, and still allows Remove", async () => {
+  const initial: RecipeDraft = {
+    formId: "f",
+    title: "T",
+    steps: [],
+    catchmentRouting: {
+      coordinatesField: "about.coordinates",
+      parishField: "about.parish",
+    },
+    processors: [
+      {
+        id: "wh-1",
+        type: "webhook",
+        config: {
+          method: "POST",
+          signatureHeader: "X-Webhook-Signature",
+          timeoutMs: 10000,
+          mapping: {
+            programmeCode: "RESTAURANT_LICENCE",
+            applicant: {
+              name: "applicant.full-name",
+              email: "contact.email",
+              phone: "contact.phone",
+            },
+            excludeSteps: [],
+            groupByStep: false,
+          },
+        },
+      },
+    ],
+  };
+  render(<Harness initial={initial} />);
+  expect(screen.queryByText(/routes by catchment/i)).not.toBeInTheDocument();
+  await userEvent.click(screen.getByRole("button", { name: /^remove$/i }));
+  await respondToConfirmation("Remove action");
+  expect(state()).toHaveLength(0);
+  expect(screen.getByText(/routes by catchment/i)).toHaveTextContent(
+    /cannot be deployed/i,
+  );
+});
+
+it("does not show the catchment warning on a form without catchment routing", () => {
+  render(<Harness initial={emptyDraft} />);
+  expect(screen.queryByText(/routes by catchment/i)).not.toBeInTheDocument();
 });
 
 it("only clears the applicant warning after an applicant recipient is selected", async () => {

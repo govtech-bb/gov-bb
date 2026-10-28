@@ -5,6 +5,9 @@
       "path": "../../packages/database"
     },
     {
+      "path": "../../packages/form-builder"
+    },
+    {
       "path": "../../packages/form-types"
     },
     {
@@ -15,6 +18,9 @@
     },
     {
       "path": "../../packages/registry"
+    },
+    {
+      "path": "../../packages/submission-summary"
     }
   ],
   "include": ["src/**/*.ts"],

@@ -87,7 +87,7 @@ async function mountWorkspace(path = "/services/service/fees") {
 
       if (path === "/services/service") return Response.json(detail);
 
-      if (path === "/taxonomy") return Response.json({ categories: [] });
+      if (path === "/editor/categories") return Response.json({ categories: [] });
 
       if (path === "/version") return Response.json({ count: 1, latest: stamp });
       const page = pages.get(path.replace("/pages/", ""));

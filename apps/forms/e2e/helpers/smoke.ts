@@ -9,8 +9,10 @@
  * shape lives here so each spec carries only its form-specific body (field IDs,
  * step order, masks, repeatables, conditionals).
  *
- * These run ONLY via playwright.smoke.config.ts — never the mocked `test:e2e`
- * suite (see ADR 0027 / 0029).
+ * The smoke SPECS run ONLY via playwright.smoke.config.ts — never the mocked
+ * `test:e2e` suite (see ADR 0027 / 0029). The upload helpers below are also
+ * tested in that mocked suite (e2e/upload-helpers.spec.ts, #2423), so keep
+ * this file free of anything that needs a live environment to import.
  *
  * Field-ID scheme (confirmed against the running renderer):
  *   text/textarea : `${stepId}_${fieldId}`
@@ -18,7 +20,14 @@
  *   radio/checkbox: fieldset `${stepId}_${fieldId}`, then native option value
  *   file          : `${stepId}_${fieldId}`
  */
-import { expect, type Page, type Response } from "@playwright/test";
+import {
+  errors,
+  expect,
+  type Locator,
+  type Page,
+  type Request,
+  type Response,
+} from "@playwright/test";
 
 export const STEP_TIMEOUT = 15_000;
 const UPLOAD_TIMEOUT = 30_000;
@@ -236,6 +245,135 @@ export async function tickCheckbox(
 }
 
 /**
+ * Canned `/geocode` answers for the places the smoke specs type. Real Barbados
+ * coordinates, each checked against `polyclinic-catchments.geojson`, so
+ * catchment routing still resolves a real polyclinic — Gun Hill sits in the
+ * Frederick Miller polygon that eho-frederick-miller-local depends on.
+ */
+const MOCK_GEOCODE_PLACES: Record<
+  string,
+  {
+    label: string;
+    lat: string;
+    lon: string;
+    line1: string;
+    line2: string;
+    parish: string;
+  }
+> = {
+  "jemmotts lane": {
+    label: "Jemmotts Lane, Bridgetown, Saint Michael, Barbados",
+    lat: "13.0935",
+    lon: "-59.6050",
+    line1: "Jemmotts Lane",
+    line2: "Bridgetown",
+    parish: "st-michael",
+  },
+  "broad street": {
+    label: "Broad Street, Bridgetown, Saint Michael, Barbados",
+    lat: "13.0967",
+    lon: "-59.6142",
+    line1: "Broad Street",
+    line2: "Bridgetown",
+    parish: "st-michael",
+  },
+  speightstown: {
+    label: "Queen Street, Speightstown, Saint Peter, Barbados",
+    lat: "13.2510",
+    lon: "-59.6420",
+    line1: "Queen Street",
+    line2: "Speightstown",
+    parish: "st-peter",
+  },
+  holetown: {
+    label: "First Street, Holetown, Saint James, Barbados",
+    lat: "13.1870",
+    lon: "-59.6370",
+    line1: "First Street",
+    line2: "Holetown",
+    parish: "st-james",
+  },
+  oistins: {
+    label: "Oistins Main Road, Oistins, Christ Church, Barbados",
+    lat: "13.0660",
+    lon: "-59.5400",
+    line1: "Oistins Main Road",
+    line2: "Oistins",
+    parish: "christ-church",
+  },
+  "gun hill": {
+    label: "Gun Hill Signal Station, Gun Hill, Saint George, Barbados",
+    lat: "13.1390",
+    lon: "-59.5560",
+    line1: "Gun Hill Signal Station",
+    line2: "Gun Hill",
+    parish: "st-george",
+  },
+};
+
+/**
+ * Answer the address lookup from {@link MOCK_GEOCODE_PLACES} instead of the
+ * API's `/geocode` endpoints, which call a metered provider (Google) with a
+ * daily cap. The smoke suite must never spend money or fail on someone else's
+ * quota (#2679), so every spec with an address-lookup field registers this in
+ * a `beforeEach`. Covers every endpoint that reaches Google:
+ *
+ * - `/geocode?q=` — suggestions. An unknown place gets none, exactly as a real
+ *   lookup that finds nothing.
+ * - `/geocode/reverse` — the address at a placed pin. Answers with the nearest
+ *   mock place's parish (the locked parish must come from the pin) and no
+ *   street address, like a pin dropped on open ground.
+ * - `/geocode/place/:id` — a picked place's coordinate. The mock suggestions
+ *   carry their coordinate, so this is never needed; answer 404 so a stray
+ *   call fails visibly rather than reaching Google.
+ *
+ * `/geocode/polyclinic` is left live: it is our own catchment lookup, not a
+ * provider call, and worth exercising.
+ */
+export async function mockGeocoder(page: Page): Promise<void> {
+  await page.route(
+    (url) => url.pathname.endsWith("/geocode"),
+    (route) => {
+      const query = (
+        new URL(route.request().url()).searchParams.get("q") ?? ""
+      ).toLowerCase();
+      const match = Object.entries(MOCK_GEOCODE_PLACES).find(([place]) =>
+        query.includes(place),
+      );
+      return route.fulfill({ json: match ? [match[1]] : [] });
+    },
+  );
+  await page.route(
+    (url) => url.pathname.endsWith("/geocode/reverse"),
+    (route) => {
+      const params = new URL(route.request().url()).searchParams;
+      const lat = Number(params.get("lat"));
+      const lon = Number(params.get("lon"));
+      const nearest = Object.values(MOCK_GEOCODE_PLACES).reduce((a, b) =>
+        (Number(a.lat) - lat) ** 2 + (Number(a.lon) - lon) ** 2 <=
+        (Number(b.lat) - lat) ** 2 + (Number(b.lon) - lon) ** 2
+          ? a
+          : b,
+      );
+      return route.fulfill({
+        json: {
+          label: "",
+          lat: lat.toFixed(6),
+          lon: lon.toFixed(6),
+          line1: "",
+          line2: "",
+          parish: nearest.parish,
+        },
+      });
+    },
+  );
+  await page.route(
+    (url) => url.pathname.includes("/geocode/place/"),
+    (route) => route.fulfill({ status: 404, json: {} }),
+  );
+}
+
+/**
  * Fill an address-lookup (geocoder) field: type the query, wait for the
  * suggestion list, pick the first match, then assert the hidden coordinates
  * field filled — that value is what the catchment router resolves the serving
@@ -249,10 +387,10 @@ export async function tickCheckbox(
  * fires — a single `fill` sets the value without the keystrokes the lookup
  * listens for.
  *
- * Returns the resolved "lat,lng" string. Three of the four smoke specs that
- * predate this helper (hotel, hairdresser, hair & beauty) each carry their own
- * copy; they are left alone deliberately — this is for new specs. The swimming
- * pool spec was rewritten against the merged recipe in #2507 and uses this one.
+ * Returns the resolved "lat,lng" string. Two of the smoke specs that predate
+ * this helper (hairdresser, hair & beauty) each carry their own copy; they are
+ * left alone deliberately — this is for new specs. The swimming pool (#2507)
+ * and hotel (#2915) specs were rewritten against their recipes and use this one.
  */
 export async function fillGeocodedAddress(
   page: Page,
@@ -281,6 +419,135 @@ export async function fillGeocodedAddress(
   return (await coordinates.inputValue()).trim();
 }
 
+type UploadFile = { name: string; mimeType: string; buffer: Buffer };
+
+/**
+ * The upload's three requests, in the order the widget makes them
+ * (apps/forms/src/lib/api/files.ts `uploadFile`): presign, the PUT of the file
+ * to storage (S3, at a presigned URL), then confirm. `label` names each one in
+ * a failure message; the storage request is never named by its URL, which
+ * carries the presigned signature.
+ */
+const UPLOAD_STAGES = [
+  {
+    label: "POST /files/presign-upload",
+    matches: (req: Request) =>
+      req.method() === "POST" && req.url().includes("/files/presign-upload"),
+    showBody: true,
+    hintIfMissing:
+      " — the upload never started (was the file rejected before upload?)",
+  },
+  {
+    label: "Upload to file storage",
+    // The only PUT the upload widget makes is the file itself.
+    matches: (req: Request) => req.method() === "PUT",
+    // S3 error bodies can echo signing details; the status is enough.
+    showBody: false,
+    hintIfMissing: "",
+  },
+  {
+    label: "POST /files/confirm-upload",
+    matches: (req: Request) =>
+      req.method() === "POST" && req.url().includes("/files/confirm-upload"),
+    showBody: true,
+    hintIfMissing: "",
+  },
+] as const;
+
+type UploadStage = (typeof UPLOAD_STAGES)[number];
+
+/**
+ * Settles with the stage's response, or its network failure (connection
+ * refused, reset, …), whichever happens first. Rejects on timeout or if the
+ * page goes away.
+ */
+function watchStage(
+  page: Page,
+  stage: UploadStage,
+): Promise<{ response: Response } | { failure: string }> {
+  const response = page
+    .waitForResponse((res) => stage.matches(res.request()), {
+      timeout: UPLOAD_TIMEOUT,
+    })
+    .then((res) => ({ response: res }));
+  const failure = page
+    .waitForEvent("requestfailed", {
+      predicate: (req) => stage.matches(req),
+      timeout: UPLOAD_TIMEOUT,
+    })
+    .then((req) => ({ failure: req.failure()?.errorText ?? "request failed" }));
+  // The loser of the race (and any wait left unawaited when an earlier stage
+  // fails) must not surface later as an unhandled rejection.
+  response.catch(() => undefined);
+  failure.catch(() => undefined);
+  const outcome = Promise.race([response, failure]);
+  outcome.catch(() => undefined);
+  return outcome;
+}
+
+/** Throw a message naming the stage, the file and what went wrong. */
+async function expectStageOk(
+  pending: Promise<{ response: Response } | { failure: string }>,
+  stage: UploadStage,
+  fileName: string,
+): Promise<void> {
+  let outcome: { response: Response } | { failure: string };
+  try {
+    outcome = await pending;
+  } catch (err) {
+    if (err instanceof errors.TimeoutError) {
+      throw new Error(
+        // Every stage's clock starts when the file is selected.
+        `No ${stage.label} within ${UPLOAD_TIMEOUT / 1000}s of selecting ${fileName}${stage.hintIfMissing}`,
+      );
+    }
+    throw new Error(
+      `${stage.label} did not complete while uploading ${fileName}`,
+      {
+        cause: err,
+      },
+    );
+  }
+  if ("failure" in outcome) {
+    throw new Error(
+      `${stage.label} failed: ${outcome.failure} while uploading ${fileName}`,
+    );
+  }
+  const { response } = outcome;
+  if (response.ok()) return;
+  const body = stage.showBody
+    ? (await response.text().catch(() => "")).slice(0, 300)
+    : "";
+  throw new Error(
+    `${stage.label} failed with ${response.status()} while uploading ${fileName}` +
+      (body ? `: ${body}` : ""),
+  );
+}
+
+/**
+ * Set one file on an upload input and wait until it is CONFIRMED (#2423).
+ * Each of the upload's requests is watched before the file is set, so a
+ * throttled, rejected or dropped request fails at once naming the request and
+ * its status or network error (a 429 on confirm-upload, a 5xx on presign, a
+ * 403 from storage, a refused connection) instead of timing out on a
+ * "Remove {name}" button that never appears. That button is still the final
+ * check: it only renders once the value has committed (see uploadOne).
+ */
+async function uploadAndConfirm(
+  page: Page,
+  input: Locator,
+  file: UploadFile,
+): Promise<void> {
+  const watches = UPLOAD_STAGES.map((stage) => watchStage(page, stage));
+  await input.setInputFiles(file);
+  for (const [i, stage] of UPLOAD_STAGES.entries()) {
+    await expectStageOk(watches[i], stage, file.name);
+  }
+  await expect(
+    page.getByRole("button", { name: `Remove ${file.name}` }),
+  ).toBeVisible({ timeout: UPLOAD_TIMEOUT });
+}
+
 /**
  * Upload one file to a single-file upload field and wait until the upload is
  * CONFIRMED, not merely pending. The component renders a file's name for both
@@ -293,14 +560,13 @@ export async function uploadOne(
   page: Page,
   stepId: string,
   suffix: string,
-  file: { name: string; mimeType: string; buffer: Buffer },
+  file: UploadFile,
 ): Promise<void> {
-  await page
-    .locator(`input[type=file][id="${stepId}_${suffix}"]`)
-    .setInputFiles(file);
-  await expect(
-    page.getByRole("button", { name: `Remove ${file.name}` }),
-  ).toBeVisible({ timeout: UPLOAD_TIMEOUT });
+  await uploadAndConfirm(
+    page,
+    page.locator(`input[type=file][id="${stepId}_${suffix}"]`),
+    file,
+  );
 }
 
 /**
@@ -318,15 +584,11 @@ export async function uploadMany(
   page: Page,
   stepId: string,
   suffix: string,
-  files: { name: string; mimeType: string; buffer: Buffer }[],
+  files: UploadFile[],
 ): Promise<void> {
+  const input = page.locator(`input[type=file][id="${stepId}_${suffix}"]`);
   for (const file of files) {
-    await page
-      .locator(`input[type=file][id="${stepId}_${suffix}"]`)
-      .setInputFiles(file);
-    await expect(
-      page.getByRole("button", { name: `Remove ${file.name}` }),
-    ).toBeVisible({ timeout: UPLOAD_TIMEOUT });
+    await uploadAndConfirm(page, input, file);
   }
 }
 

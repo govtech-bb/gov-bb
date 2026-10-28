@@ -35,6 +35,7 @@ function render(overrides: Partial<Params> = {}) {
     useRecipeSave({
       draft: EMPTY_DRAFT,
       loadedFromId: null,
+      loadedSourceSha: null,
       forms: null,
       hasUnsavedChanges: false,
       setSavedDraft,
@@ -185,6 +186,50 @@ describe("useRecipeSave", () => {
       });
 
       expect(refetchForms).toHaveBeenCalledTimes(1);
+    });
+
+    it("sends the loaded source sha as expectedSourceSha so the server can refuse a stale base (#2489)", async () => {
+      publishRecipe.mockResolvedValue({
+        prUrl: "u",
+        prNumber: 1,
+        updatedExistingPR: false,
+      });
+      const sha = "3f786850e387550fdab836ed7e6dc881de23001b";
+      const { result } = render({
+        hasUnsavedChanges: false,
+        loadedSourceSha: sha,
+      });
+
+      await act(async () => {
+        await result.current.handlePublish("desc");
+      });
+
+      expect(publishRecipe).toHaveBeenCalledWith({
+        data: expect.objectContaining({ expectedSourceSha: sha }),
+      });
+    });
+
+    it("sends expectedSourceSha: null (not omitted) for a form with no committed copy", async () => {
+      // The server requires the key: a Deploy that cannot say what it loaded
+      // is refused, so a first publish must state "nothing" explicitly.
+      publishRecipe.mockResolvedValue({
+        prUrl: "u",
+        prNumber: 1,
+        updatedExistingPR: false,
+      });
+      const { result } = render({
+        hasUnsavedChanges: false,
+        loadedSourceSha: null,
+      });
+
+      await act(async () => {
+        await result.current.handlePublish("desc");
+      });
+
+      expect(publishRecipe.mock.calls[0][0].data).toHaveProperty(
+        "expectedSourceSha",
+        null,
+      );
     });
 
     it("does not refetch when the deploy fails", async () => {

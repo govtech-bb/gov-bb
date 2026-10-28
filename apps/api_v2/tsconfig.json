@@ -17,5 +17,12 @@
     "types": ["node"]
   },
   "include": ["src/**/*.ts", "src/**/*.json"],
-  "exclude": ["node_modules", "dist", "e2e", "**/*.test.ts", "src/test-db.ts"]
+  "exclude": [
+    "node_modules",
+    "dist",
+    "e2e",
+    "**/*.test.ts",
+    "src/test-db.ts",
+    "src/erd.ts"
+  ]
 }

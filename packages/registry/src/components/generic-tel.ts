@@ -3,16 +3,16 @@ import type { TelPrimitive } from "@govtech-bb/form-types";
 export const GenericTel: TelPrimitive = {
   fieldId: "generic-tel",
   htmlType: "tel",
-  label: "Telephone",
-  hint: "For example, 421-1234 for Barbados or +1 876 210 1234 for numbers outside Barbados",
+  label: "Telephone number",
+  hint: "For example, 421-1234 for a Barbados number or +1 876 210 1234 for a number outside Barbados.",
   validations: {
     required: {
       value: true,
-      error: "Enter a telephone number",
+      error: "Telephone number is required",
     },
     phone: {
       value: true,
-      error: "Please enter a valid phone number",
+      error: "Enter a valid telephone number",
     },
   },
 };

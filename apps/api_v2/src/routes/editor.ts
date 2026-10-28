@@ -1,23 +1,23 @@
 import type { FastifyRequest } from "fastify";
+import type { ICategoryEditing } from "../services/category-editing";
 import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
 import type { Employee } from "../modules/auth";
 import { Redacted } from "../modules/redacted";
 import type { EmployeeGate } from "../services/editor-access";
 import type { EditorIndex } from "../services/editor-index";
 import type { PageEditing } from "../services/page-editing";
-import { SCHEMAS } from "./contracts";
+import { editorCategoryRoutes } from "./categories";
+import { IF_UPDATED_AT, SCHEMAS } from "./contracts";
 import { EDITOR_READ, rejected, storageFailed } from "./responses";
-
-/** The editor sends the exact millisecond timestamp from its last read. */
-export const IF_UPDATED_AT = "if-updated-at";
 
 /** Authenticated editor operations, behind an employee session and the editor's Origin. */
 export const editorRoutes: FastifyPluginAsyncZod<{
   editing: PageEditing;
   index: EditorIndex;
+  categories: ICategoryEditing;
   access: EmployeeGate;
   editorOrigin: string;
-}> = async (editor, { editing, index, access, editorOrigin }) => {
+}> = async (editor, { editing, index, categories, access, editorOrigin }) => {
   editor.decorateRequest("employee", null);
   editor.addHook("onRequest", async (request, reply) => {
     reply.header("Cache-Control", EDITOR_READ);
@@ -105,17 +105,7 @@ export const editorRoutes: FastifyPluginAsyncZod<{
       );
     },
   });
-  editor.route({
-    method: "GET",
-    url: "/taxonomy",
-    schema: SCHEMAS.getTaxonomy,
-    handler: async (request, reply) => {
-      const categories = await index.taxonomy();
-      return categories.ok
-        ? { categories: categories.value }
-        : reply.status(500).send(storageFailed(request.log, categories.error));
-    },
-  });
+  await editor.register(editorCategoryRoutes, { categories, actor });
   editor.route({
     method: "GET",
     url: "/version",

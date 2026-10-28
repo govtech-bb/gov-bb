@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import matter from "gray-matter";
 import {
   serviceReadiness,
   serviceSnapshotSchema,
@@ -12,7 +13,7 @@ import {
   publishServiceVersion,
   retainServiceVersion,
 } from "./services";
-import { resolveStoredRecipe } from "./forms";
+import { resolveStoredRecipe, resolveCurrentRecipe } from "./forms";
 import { loadLandingContentPage } from "./content";
 
 vi.mock("./api-client", () => ({
@@ -31,8 +32,14 @@ vi.mock("./github", () => ({
 vi.mock("./publish", () => ({
   resolveBaseBranch: () => "main",
   carryUnauthoredFields: (_old: unknown, recipe: unknown) => recipe,
+  // The clock Deploy stamps `updatedAt` with (#2878); frozen here.
+  recipeWriteStamp: () => STAMPED_AT,
 }));
-vi.mock("./forms", () => ({ resolveStoredRecipe: vi.fn() }));
+const STAMPED_AT = "2026-10-04T12:00:00.000Z";
+vi.mock("./forms", () => ({
+  resolveStoredRecipe: vi.fn(),
+  resolveCurrentRecipe: vi.fn(),
+}));
 vi.mock("./content", () => ({ loadLandingContentPage: vi.fn() }));
 vi.mock("./auth/require-session", () => ({ requireSession: {} }));
 
@@ -44,7 +51,6 @@ const snapshot = serviceSnapshotSchema.parse({
     schemaVersion: 1,
     serviceId: "test-service",
     title: "Test service",
-    visibility: "preview",
     category: "health",
     formId: null,
     entryPoint: main,
@@ -145,7 +151,9 @@ it("retains all pages in one immutable Git commit without private configuration"
   );
   expect(tree.tree[1].content).toContain("Original main page");
   expect(tree.tree[2].content).toContain("Separate guidance");
-  expect(tree.tree[1].content).toContain("visibility: preview");
+  // The page keeps its own visibility; the manifest no longer carries one.
+  expect(tree.tree[1].content).toContain("visibility: public");
+  expect(JSON.parse(tree.tree[0].content)).not.toHaveProperty("visibility");
   expect(
     fetcher.mock.calls.filter(([url]) => url.endsWith("/git/commits")),
   ).toHaveLength(1);
@@ -186,6 +194,214 @@ it("reuses a matching retained tag and refuses a changed checkpoint", async () =
   expect(api.post).not.toHaveBeenCalled();
 });
 
+// #2878: the services publication is a recipe write like builder Deploy. The
+// committed `updatedAt` is what the builder compares a draft row against, so
+// a publication that changed the recipe's content stamps it at the write —
+// and one that did not (pages only) must leave the file untouched, or the
+// next open would re-sync a draft row over the author's unsaved builder edits.
+describe("recipe updatedAt on the services publish write (#2878)", () => {
+  const recipe = {
+    formId: "test-form",
+    title: "Application",
+    steps: [],
+    createdAt: "2026-01-01T00:00:00.000Z",
+    updatedAt: "2026-05-22T00:00:00.000Z",
+  };
+  const withForm = serviceSnapshotSchema.parse({
+    ...snapshot,
+    manifest: { ...snapshot.manifest, formId: "test-form" },
+    recipe,
+  });
+  const recipePath =
+    "apps/api/src/forms/form-definitions/recipes/test-form.json";
+  const BASE_SHA = "a".repeat(40);
+  const TAG_SHA = "b".repeat(40);
+  // The same content as `recipe`, as an earlier hand edit might have left it
+  // on main: compact, keys in another order, an older stamp.
+  const committedUnchanged = JSON.stringify({
+    updatedAt: "2026-03-01T00:00:00.000Z",
+    steps: [],
+    title: "Application",
+    createdAt: "2026-01-01T00:00:00.000Z",
+    formId: "test-form",
+  });
+  const blobSha = (content: string) => {
+    const buffer = Buffer.from(content);
+    return createHash("sha1")
+      .update(`blob ${buffer.length}\0`)
+      .update(buffer)
+      .digest("hex");
+  };
+  const contentsFile = (content: string) =>
+    json({
+      sha: blobSha(content),
+      content: Buffer.from(content).toString("base64"),
+    });
+  // What the checkpoint would hold for a non-recipe path.
+  const otherFile = (path: string) =>
+    checkpointFiles(withForm).find((f) => f.path === path)!.content;
+  const retain = () =>
+    (retainServiceVersion as unknown as (arg: unknown) => Promise<unknown>)({
+      data: { id, label: detail.label, snapshot: withForm },
+      context: { session: { login: "editor", accessToken: "test-token" } },
+    });
+  // The create path: no tag yet, then tree → commit → ref.
+  const createFetcher = () =>
+    vi.fn(async (url: string, init?: RequestInit) => {
+      if (url.includes("/git/ref/tags/")) return json({}, 404);
+      if (url.endsWith("/git/ref/heads/main"))
+        return json({ object: { sha: BASE_SHA } });
+      if (url.endsWith(`/git/commits/${BASE_SHA}`))
+        return json({ tree: { sha: "base-tree" } });
+      if (url.endsWith("/git/trees")) return json({ sha: "service-tree" });
+      if (url.endsWith("/git/commits")) return json({ sha: TAG_SHA });
+      if (url.endsWith("/git/refs")) return json({});
+      throw new Error(`Unexpected request: ${init?.method} ${url}`);
+    });
+  const writtenRecipe = (fetcher: ReturnType<typeof createFetcher>) =>
+    JSON.parse(
+      fetcher.mock.calls.find(([url]) => url.endsWith("/git/trees"))![1]!
+        .body as string,
+    ).tree.find((file: { path: string }) => file.path === recipePath)
+      .content as string;
+  // The tag exists; every file reads from it as given.
+  const existingTag = (
+    saved: (path: string) => Response | Promise<Response>,
+  ) => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => json({ object: { sha: TAG_SHA } })),
+    );
+    vi.mocked(getContents).mockImplementation(async (_token, path, ref) =>
+      ref === TAG_SHA ? saved(path) : json({}, 404),
+    );
+  };
+
+  it("writes the committed recipe untouched when only pages changed", async () => {
+    vi.mocked(getContents).mockImplementation(async (_token, path, ref) =>
+      path === recipePath && ref === BASE_SHA
+        ? contentsFile(committedUnchanged)
+        : json({}, 404),
+    );
+    const fetcher = createFetcher();
+    vi.stubGlobal("fetch", fetcher);
+
+    await retain();
+
+    // Byte-identical to main, so the publication does not touch the file and
+    // no stamp moves.
+    expect(writtenRecipe(fetcher)).toBe(committedUnchanged);
+  });
+
+  it("stamps updatedAt when the recipe's content changed against the committed copy", async () => {
+    vi.mocked(getContents).mockImplementation(async (_token, path, ref) =>
+      path === recipePath && ref === BASE_SHA
+        ? contentsFile(
+            JSON.stringify({ ...recipe, title: "Older application" }),
+          )
+        : json({}, 404),
+    );
+    const fetcher = createFetcher();
+    vi.stubGlobal("fetch", fetcher);
+
+    await retain();
+
+    expect(JSON.parse(writtenRecipe(fetcher))).toMatchObject({
+      title: "Application",
+      createdAt: "2026-01-01T00:00:00.000Z",
+      updatedAt: STAMPED_AT,
+    });
+  });
+
+  it("stamps updatedAt on a first publication, with nothing committed yet", async () => {
+    const fetcher = createFetcher();
+    vi.stubGlobal("fetch", fetcher);
+
+    await retain();
+
+    expect(JSON.parse(writtenRecipe(fetcher)).updatedAt).toBe(STAMPED_AT);
+  });
+
+  it("reports a failed read of the committed recipe rather than treating it as a change", async () => {
+    vi.mocked(getContents).mockImplementation(async (_token, path, ref) =>
+      path === recipePath && ref === BASE_SHA
+        ? json({ message: "boom" }, 502)
+        : json({}, 404),
+    );
+    vi.stubGlobal("fetch", createFetcher());
+
+    await expect(retain()).rejects.toThrow(/could not read/i);
+  });
+
+  it("matches a saved version by recipe content, whatever stamp it was written with, so publishing it later still works", async () => {
+    existingTag((path) =>
+      contentsFile(
+        path === recipePath
+          ? JSON.stringify({ ...recipe, updatedAt: "2026-09-30T08:15:00.000Z" })
+          : otherFile(path),
+      ),
+    );
+
+    await expect(retain()).resolves.toMatchObject({ gitSha: TAG_SHA });
+    // Only the tag ref was read: no new tree, commit or ref was written.
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("matches a saved version whose recipe carries no updatedAt when the content is equal", async () => {
+    const { updatedAt: _stamp, ...unstamped } = recipe;
+    existingTag((path) =>
+      contentsFile(
+        path === recipePath ? JSON.stringify(unstamped) : otherFile(path),
+      ),
+    );
+
+    await expect(retain()).resolves.toMatchObject({ gitSha: TAG_SHA });
+  });
+
+  it("still refuses a saved version whose recipe content differs", async () => {
+    existingTag((path) =>
+      contentsFile(
+        path === recipePath
+          ? JSON.stringify({ ...recipe, title: "Different application" })
+          : otherFile(path),
+      ),
+    );
+
+    await expect(retain()).rejects.toThrow("does not match");
+  });
+
+  it("reports a transient GitHub failure reading the saved version as such, not as a mismatch", async () => {
+    existingTag((path) =>
+      path === recipePath
+        ? contentsFile(JSON.stringify(recipe))
+        : json({ message: "rate limited" }, 503),
+    );
+
+    const error = (await retain().catch((e: unknown) => e)) as Error;
+    expect(error.message).toMatch(/could not read/i);
+    expect(error.message).not.toContain("does not match");
+  });
+});
+
+it("publishes the recipe's own status and each page's own visibility (#2683)", () => {
+  const withForm = serviceSnapshotSchema.parse({
+    ...snapshot,
+    manifest: { ...snapshot.manifest, formId: "test-form" },
+    recipe: {
+      formId: "test-form",
+      title: "Application",
+      steps: [],
+      meta: { visibility: "maintenance" },
+    },
+  });
+  const files = checkpointFiles(withForm);
+  expect(JSON.parse(files[0].content)).not.toHaveProperty("visibility");
+  expect(matter(files[1].content).data.visibility).toBe("public");
+  expect(JSON.parse(files[3].content).meta).toEqual({
+    visibility: "maintenance",
+  });
+});
+
 it("refuses publication when the source revision changes", async () => {
   vi.mocked(getContents).mockImplementation(async () =>
     json({ sha: "changed" }),
@@ -195,7 +411,7 @@ it("refuses publication when the source revision changes", async () => {
 });
 
 it("adopts a service even when its form cannot be fetched", async () => {
-  vi.mocked(resolveStoredRecipe).mockRejectedValue(
+  vi.mocked(resolveCurrentRecipe).mockRejectedValue(
     new Error("BUILDER_API_URL is not set"),
   );
   vi.mocked(api.get).mockRejectedValue(new Error("BUILDER_API_URL is not set"));
@@ -228,4 +444,94 @@ it("adopts a service even when its form cannot be fetched", async () => {
   expect(serviceReadiness(result).issues.map((issue) => issue.id)).toContain(
     "missing-form",
   );
+  expect(result.manifest.setup).toEqual({
+    step: "about",
+    delivery: "undecided",
+    applicantEmail: "undecided",
+  });
+});
+
+it("adopts a form through the same stale-draft re-sync getRecipe uses (#2897)", async () => {
+  // resolveCurrentRecipe hands back the committed recipe once the API has
+  // confirmed the draft row predated it (forms.spec covers that exchange).
+  // First adoption must store that copy — not the pre-fix row the save-path
+  // resolver (resolveStoredRecipe) would return — so adopting and the later
+  // getServiceDraft refresh (which goes through getRecipe) agree.
+  const committed = {
+    formId: "csec",
+    title: "CSEC Examination (fixed on main)",
+    steps: [{ stepId: "submission-confirmation", title: "Done", elements: [] }],
+  };
+  vi.mocked(resolveCurrentRecipe).mockResolvedValue(committed as never);
+  vi.mocked(resolveStoredRecipe).mockResolvedValue({
+    ...committed,
+    title: "CSEC Examination (stale row)",
+  } as never);
+  vi.mocked(api.get).mockResolvedValue({
+    mdaContactId: null,
+    processors: null,
+  });
+  const result = await (
+    loadServiceSource as unknown as (arg: unknown) => Promise<ServiceSnapshot>
+  )({
+    data: {
+      serviceId: "csec",
+      title: "CSEC Examination",
+      category: "education",
+      formId: "csec",
+      paths: [],
+    },
+    context: { session: { login: "editor", accessToken: "test-token" } },
+  });
+  expect(result.recipe?.title).toBe("CSEC Examination (fixed on main)");
+  expect(resolveCurrentRecipe).toHaveBeenCalledWith("csec", "test-token");
+  expect(resolveStoredRecipe).not.toHaveBeenCalled();
+});
+
+it("seeds the After submission decisions and public contact from the recipe (#2683)", async () => {
+  vi.mocked(resolveCurrentRecipe).mockResolvedValue({
+    formId: "csec",
+    title: "CSEC Examination",
+    steps: [
+      {
+        stepId: "your-details",
+        title: "Your details",
+        elements: [{ ref: "components/generic-text" }],
+      },
+      { stepId: "submission-confirmation", title: "Done", elements: [] },
+    ],
+    processors: [
+      {
+        type: "email",
+        config: { recipientField: "your-details.email" },
+      },
+    ],
+    contactDetails: { email: "exams@example.test" },
+  } as never);
+  vi.mocked(api.get).mockResolvedValue({
+    mdaContactId: null,
+    processors: null,
+  });
+  const result = await (
+    loadServiceSource as unknown as (arg: unknown) => Promise<ServiceSnapshot>
+  )({
+    data: {
+      serviceId: "csec",
+      title: "CSEC Examination",
+      category: "education",
+      formId: "csec",
+      paths: [],
+    },
+    context: { session: { login: "editor", accessToken: "test-token" } },
+  });
+  expect(result.manifest).not.toHaveProperty("visibility");
+  expect(result.manifest.contactDetails).toEqual({
+    email: "exams@example.test",
+  });
+  expect(result.manifest.setup).toEqual({
+    step: "about",
+    delivery: "none",
+    applicantEmail: "configured",
+  });
+  expect(serviceReadiness(result)).toEqual({ ready: true, issues: [] });
 });

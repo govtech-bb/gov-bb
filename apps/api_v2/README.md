@@ -45,39 +45,151 @@ Production requires HTTPS API/editor origins on the same site, such as separate 
 | Layer             | Directory                  | Owns                                                                                                                                                                               |
 | ----------------- | -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Domain            | `src/modules`              | Page shapes and write rules (placement, publication), what a viewer may see, categories and what they list, service grouping, search text, auth admission. Pure: no I/O, no clock. |
-| Application       | `src/services`             | One use case each (`PageResolution`, `SiteNavigation`, `PageEditing`, `EditorIndex`, `EditorAccess`), with the ports it needs declared beside it.                                  |
+| Application       | `src/services`             | One use case each (`PageResolution`, `SiteNavigation`, `PageEditing`, `CategoryEditing`, `EditorIndex`, `EditorAccess`), with the ports it needs declared beside it.               |
 | Outbound adapters | `src/adapters`             | `PostgresPages` (all content SQL, including the recursive hierarchy reads), BetterAuth, the local bypass.                                                                          |
 | Inbound adapters  | `src/routes`, `src/app.ts` | Zod request/response contracts, the HTTP mapping of each result.                                                                                                                   |
 
-Route plugins receive exactly the services they use as plugin options from `buildApp`; nothing is decorated onto the Fastify instance and nothing is autoloaded, so every dependency is visible where the app is composed. Expected failures are `Result` values that routes map to status codes; only defects throw. ESLint enforces the direction: domain and services cannot import Fastify, drizzle, pg, BetterAuth, adapters or routes, and routes cannot import infrastructure.
+Category HTTP handlers live in `src/routes/categories.ts`. Its editor plugin is registered inside `src/routes/editor.ts`, so employee, Origin and no-store checks apply before validation. Its public plugin is registered inside `src/routes/site.ts`, so preview admission, cache policy and ETags remain separate from employee access. Both reuse the parent scope's request identity reader; category rules and SQL stay in their existing domain, service and storage owners.
+
+Route plugins receive their services and request identity readers explicitly through plugin options; nothing is decorated onto the Fastify instance and nothing is autoloaded, so dependencies are visible at registration. Expected failures are `Result` values that routes map to status codes; only defects throw. ESLint enforces the direction: domain and services cannot import Fastify, drizzle, pg, BetterAuth, adapters or routes, and routes cannot import infrastructure.
 
 Better Auth verifies the GitHub email, and the API checks `GET /user/memberships/orgs/govtech-bb` using the sign-in token on both first and returning sign-ins. Only `state: active` membership in `govtech-bb` is admitted; pending invitations, missing membership, and failed checks deny access. Any verified email domain is allowed. Password login and client-supplied ID-token sign-in are disabled. Existing users can link GitHub through the same verified email only after passing the membership check; provider trust never bypasses email verification. OAuth tokens are discarded before account persistence. Sessions expire absolutely after eight hours; reads do not extend them. Session cookies are checked against PostgreSQL on every protected request, so revocation takes effect immediately. Organization membership changes are checked on the next GitHub sign-in; existing application sessions must be revoked when immediate removal is required.
 
 Migration `003_auth` adds BetterAuth's four core tables: `auth_user`, `auth_session`, `auth_account`, and `auth_verification`. It does not replace content tables or author data. BetterAuth reads and writes them through its Drizzle adapter, over the same tables defined in `schema.ts` (where `schema.test.ts` checks them column for column); migrations stay hand-written and replay-safe, never generated. The migration is checked against the installed BetterAuth schema in the PostgreSQL integration suite. Migration `004_github_sessions` revokes sessions without a linked GitHub account, forcing existing Google users through the new membership check. User IDs, accounts, content, audit history, and browser drafts are preserved. Use the same verified email on GitHub to retain an existing user ID.
 
+## Database
+
+Generated from the migrated database by `src/erd.ts`; do not edit it by hand. `src/erd.test.ts` fails when it no longer matches the migrations.
+
+<!-- ERD:START: generated by src/erd.test.ts, do not edit -->
+
+```mermaid
+erDiagram
+  auth_account {
+    text id PK
+    text accountId
+    text providerId
+    text userId FK
+    text accessToken "nullable"
+    text refreshToken "nullable"
+    text idToken "nullable"
+    timestamptz accessTokenExpiresAt "nullable"
+    timestamptz refreshTokenExpiresAt "nullable"
+    text scope "nullable"
+    text password "nullable"
+    timestamptz createdAt
+    timestamptz updatedAt
+  }
+  auth_session {
+    text id PK
+    timestamptz expiresAt
+    text token UK
+    timestamptz createdAt
+    timestamptz updatedAt
+    text ipAddress "nullable"
+    text userAgent "nullable"
+    text userId FK
+  }
+  auth_user {
+    text id PK
+    text name
+    text email UK
+    bool emailVerified
+    text image "nullable"
+    timestamptz createdAt
+    timestamptz updatedAt
+  }
+  auth_verification {
+    text id PK
+    text identifier
+    text value
+    timestamptz expiresAt
+    timestamptz createdAt
+    timestamptz updatedAt
+  }
+  categories {
+    uuid id PK
+    varchar(100) slug UK
+    varchar(200) title
+    text description "nullable"
+    timestamptz(3) created_at
+    timestamptz(3) updated_at
+    uuid parent_id FK "nullable"
+    int4 position
+  }
+  change_events {
+    uuid id PK
+    varchar(40) entity_kind "unique (entity_kind, entity_id, version_no)"
+    text entity_id
+    int4 version_no
+    change_action action
+    jsonb snapshot
+    text actor FK
+    timestamptz(3) occurred_at
+  }
+  content_pages {
+    uuid id PK "unique (id, category_id)"
+    varchar(512) url UK
+    varchar(200) slug
+    varchar(300) title
+    text description "nullable"
+    timestamptz(3) created_at
+    timestamptz(3) updated_at
+    uuid category_id FK "nullable"
+    page_visibility visibility
+    varchar(100) form_id "nullable"
+    text body_markdown
+    jsonb frontmatter
+    timestamptz(3) published_at "nullable"
+    uuid parent_id FK "nullable"
+  }
+  search_chunks {
+    uuid id PK
+    uuid page_id FK "unique (page_id, ordinal)"
+    int4 ordinal
+    text heading "nullable"
+    text body
+    tsvector tsv "generated"
+  }
+  auth_user ||--o{ auth_account : "userId -> id"
+  auth_user ||--o{ auth_session : "userId -> id"
+  categories |o--o{ categories : "parent_id -> id"
+  auth_user ||--o{ change_events : "actor -> id"
+  categories |o--o{ content_pages : "category_id -> id"
+  content_pages |o--o{ content_pages : "parent_id, category_id -> id, category_id"
+  content_pages |o--o{ content_pages : "parent_id -> id"
+  content_pages ||--o{ search_chunks : "page_id -> id"
+```
+
+<!-- ERD:END -->
+
 ## HTTP surface
 
-| Method   | Path                 | Access                                                             |
-| -------- | -------------------- | ------------------------------------------------------------------ |
-| GET      | `/pages?url=…`       | Site page resolution (public, or preview with the token)           |
-| GET      | `/categories`        | Site category tree                                                 |
-| GET      | `/categories/:slug`  | A category's subcategories and root pages                          |
-| GET      | `/categories/:c/:s`  | A subcategory's root pages                                         |
-| GET      | `/catalog`           | Every visible page (sitemap, service lists)                        |
-| GET      | `/search/documents`  | Every visible page with its search text in chunks                  |
-| GET      | `/docs`              | Public API reference (Scalar)                                      |
-| GET      | `/docs/openapi.json` | Public OpenAPI document                                            |
-| GET      | `/pages/:id`         | Employee; includes drafts and previews                             |
-| GET      | `/services`          | Employee service index, grouped by `parent_id`                     |
-| GET      | `/services/:id`      | Employee; one service's pages with their roles, entry first        |
-| GET      | `/taxonomy`          | Employee; every category with its id, for filing pages             |
-| GET      | `/version`           | Employee change token                                              |
-| POST     | `/pages`             | Employee create                                                    |
-| PUT      | `/pages/:id`         | Employee save; existing optional `if-updated-at` concurrency check |
-| DELETE   | `/pages/:id`         | Employee delete                                                    |
-| GET/POST | `/api/auth/*`        | BetterAuth's GitHub/session protocol                               |
+| Method   | Path                       | Access                                                                 |
+| -------- | -------------------------- | ---------------------------------------------------------------------- |
+| GET      | `/pages?url=…`             | Site page resolution (public, or preview with the token)               |
+| GET      | `/categories`              | Site category tree                                                     |
+| GET      | `/categories/:slug`        | A category's subcategories and root pages                              |
+| GET      | `/categories/:c/:s`        | A subcategory's root pages                                             |
+| GET      | `/catalog`                 | Every visible page (sitemap, service lists)                            |
+| GET      | `/search/documents`        | Every visible page with its search text in chunks                      |
+| GET      | `/docs`                    | Public API reference (Scalar)                                          |
+| GET      | `/docs/openapi.json`       | Public OpenAPI document                                                |
+| GET      | `/pages/:id`               | Employee; includes drafts and previews                                 |
+| GET      | `/services`                | Employee service index, grouped by `parent_id`                         |
+| GET      | `/services/:id`            | Employee; one service's pages with their roles, entry first            |
+| GET      | `/editor/categories`       | Employee; every shared category, counts, address protection and stamps |
+| POST     | `/editor/categories`       | Employee; append a category or subcategory                             |
+| PUT      | `/editor/categories/:id`   | Employee; edit with mandatory `if-updated-at`                          |
+| PUT      | `/editor/categories/order` | Employee; reorder a complete expected sibling snapshot                 |
+| DELETE   | `/editor/categories/:id`   | Employee; delete an empty category with `if-updated-at`                |
+| GET      | `/version`                 | Employee change token                                                  |
+| POST     | `/pages`                   | Employee create                                                        |
+| PUT      | `/pages/:id`               | Employee save; existing optional `if-updated-at` concurrency check     |
+| DELETE   | `/pages/:id`               | Employee delete                                                        |
+| GET/POST | `/api/auth/*`              | BetterAuth's GitHub/session protocol                                   |
 
-Missing, expired, or revoked sessions produce JSON 401 responses; disallowed employees or write origins produce 403; unavailable session verification produces 503. The API does not redirect protected content requests to GitHub—the editor handles navigation. Authenticated writes require `Origin: <EDITOR_ORIGIN>`. Auth/session/editor responses use `Cache-Control: no-store` and do not receive ETags. Create, save and delete audit rows record the authenticated user ID, never a caller-supplied actor, and commit with the write they record.
+Missing, expired, or revoked sessions produce JSON 401 responses; disallowed employees or write origins produce 403; unavailable session verification produces 503. The API does not redirect protected content requests to GitHub. The editor handles navigation. Authenticated writes require `Origin: <EDITOR_ORIGIN>`. Auth/session/editor responses use `Cache-Control: no-store` and do not receive ETags. Page and category write audit rows record the authenticated user ID, never a caller-supplied actor, and commit with the write they record.
 
 The database writes the history itself: a trigger (`record_change`, migration `007`) adds a `change_events` row for every insert, update and delete of a content table (`content_pages`, `categories`), including the sub-pages a parent's move carries with it. Its `actor` is the transaction's `app.user_id`, which the editor's writes set (transaction-local, so a pooled connection never carries it into the next request), or `system`, a user with no account, when nothing set it: the seed, the import, raw SQL. `actor` references `auth_user`, so a user with history cannot be deleted. An update that changes nothing but `updated_at` is not recorded; a page going public is `published` and one leaving public is `unpublished`. The snapshot is the row as stored. A new content table attaches `record_change` in the migration that creates it, or `migrate.test.ts` fails.
 
@@ -88,6 +200,51 @@ Preview: the site's server sends its `PREVIEW_SECRET` as `x-preview-token`, and 
 The hierarchy is `parent_id`, not the url. A page is served only when it and every page above it are visible; its breadcrumbs are its category (and parent category, for a subcategory), then the pages above it; a category lists only the pages at its root (`parent_id` null), so `start` steps and sub-pages never appear in a listing. A sub-page must share its parent's category (moving the parent moves its sub-pages), a page cannot sit beneath itself, and a page with sub-pages cannot be deleted: each is a field-specific 422.
 
 `GET /pages?url=` returns `{url, frontmatter, body_markdown, form_id, hide_start_links, breadcrumbs}`. `hide_start_links` is true when the page's `start` sub-page is hidden from the viewer. Whether a form is open is the forms API's to say: `form_id` is a name, and the site asks the forms API for the form's status. The API serves markdown as written; the site owns sanitization and rendering. Editor writes return field-specific 422s for invalid references or duplicates, 409 for a stale supplied version, and stamp `published_at` only on first publication. A save replaces the page, so it sends every field; only `parent_id` may be left out, which keeps the page's parent. Changing `url` moves that page alone: its sub-pages keep theirs, and nothing redirects from the old url. Each write still records an append-only audit snapshot (see above); page-history readers are no longer exposed. A request its route's schema refuses (a missing field, an id that is not a UUID, an `if-updated-at` that is not a timestamp, a url over 512 characters, a title over 300) is a 400; Fastify's own refusals keep their status (a body that is not JSON is a 415), and an unknown route is a JSON 404.
+
+### Category management
+
+The one shared list serves category management, every page picker and every content
+type. `GET /editor/categories` returns `{ categories: [...] }` with each parent
+followed by its ordered children. Rows contain `id`, `parent_id`, `title`, `slug`,
+nullable `description`, `url`, `position`, `services`, `reserved_route` and
+`updated_at`. Service counts match `/services` roots, including unpublished work.
+Public category reads expose none of the private counts or editor metadata.
+The former taxonomy endpoint is removed without an alias.
+
+Create/update send all four fields:
+`{ title, slug, parent_id, description }`. Unknown keys are refused. Titles and
+descriptions are trimmed; blank descriptions become null. Names need not be
+unique; slugs must be globally unique, lower-case hyphenated words of at most
+100 characters. Renaming a title never changes the slug. Empty categories may
+change slug/parent, but any assigned page, subcategory or reserved app-route
+anchor blocks address changes. Names and descriptions remain editable at anchors.
+
+Create and reparent append to the current destination under the shared content
+write lock. Update/delete require the original millisecond `if-updated-at`.
+Reorder sends `{ parent_id, expected: [{ id, updated_at }], ordered_ids }` for the
+complete sibling group and returns `{ categories: [...] }` in saved order.
+Missing/malformed fields or versions are 400; field rules are 422; stale writes
+are 409 `conflict`. Occupied deletion is 409 `category_in_use` with
+`blockers: { pages, subcategories, reserved_route }`. The page blocker counts
+all pages, not just services. No operation cascades deletion or moves page URLs.
+A missing category target is 404; successful deletion is 204.
+
+All category writes and page create/save/delete transactions take the same
+advisory lock before row locks. They check page/category URL collisions in both
+directions, including drafts and empty categories. Existing page operations
+otherwise retain their behavior. App-owned route/asset reservations and category
+anchors are explicit in `src/modules/category.ts`, with landing route coverage
+in its test. The complete contract is [ADR 0078](../../docs/decisions/0078-category-write-rules.md).
+
+Do not automatically retry a mutation whose response was lost or was a 5xx.
+The write may already have committed. Refresh and reconcile the saved slug/fields,
+sibling order or deleted ID first; a changed timestamp alone does not prove success.
+
+Category writes are recorded by the change history trigger against the
+signed-in employee and advance `/version`. A save that changes nothing keeps
+the category's `updated_at`, so other editors' copies stay current. #3171
+owns private last-editor reads. The editor's persisted category controls are
+tracked in #3178, landing integration in #3179, and sandbox acceptance in #3180.
 
 `search_chunks` holds each page's body split at its headings, as plain text, rewritten in the same transaction as every save. Rejoined, a page's chunks are exactly the text landing's search indexes today (`search-text.test.ts` checks every seeded page), so moving search onto the API does not move its ranking. The generated `tsv` column and its GIN index are there for server-side search and are not read yet.
 
@@ -151,7 +308,9 @@ Do sandbox first, then staging and prod once their api_v2 services exist.
 
 ### A database that already has content
 
-Sandbox holds the snapshot today, loaded by `SEED=true`. Run `--dry-run`: it refuses and shows the actor histogram. If it shows only `system` (older history by `seed`, `spike` or `import:…` became `system` in migration `007`), no editor has written, so replace with `--force "<reason>"`; the sandbox rehearsal is `--force "sandbox rehearsal: replace SEED=true content"`. If editors have written, do not replace: fix forward in the editor, or restore with RDS point-in-time recovery to a moment before the bad run. The same rule is the rollback rule after a bad import.
+#3095 contains the sandbox rehearsal and snapshot evidence; #3234 tracks the later refresh. The production `SEED` guard is implemented (#3052). An open issue is not a reason to repeat an import. Verify the target task definition and recorded source/actor evidence before any separately approved environment work.
+
+Run `--dry-run`: it refuses an occupied database and shows the actor histogram of every page and category event. If it shows only `system` (older history by `seed`, `spike` or `import:…` became `system` in migration `007`), no editor has written, so replace with `--force "<reason>"`; the sandbox rehearsal is `--force "sandbox rehearsal: replace SEED=true content"`. Category edits made before migration `007` left no events, so the histogram can't show them. If editors have written, do not replace: preserve editor-owned data; fix forward in the editor, or use an approved RDS point-in-time recovery to a moment before the bad import. The same rule is the rollback rule after a bad import.
 
 ### The markdown freeze
 
@@ -173,3 +332,5 @@ DB_HOST=localhost pnpm exec nx run api_v2:e2e
 Unit/integration tests run against PostgreSQL (`DB_HOST` etc., defaulting to `localhost:5432` as `postgres`/`postgres`): the global setup migrates one template database per run and each test clones it, dropping it afterwards. There is no skip; with no database the run fails and says so. CI's Test job provides a `postgres` service. PostgreSQL e2e creates and drops uniquely named scratch databases and exercises the compiled Node process, migrations, cookie sessions, session expiry/revocation, origin protection, audit identity, pool recovery and shutdown. Test sessions are created through the real BetterAuth internal adapter in test code; no production login bypass exists. The e2e suite skips when `DB_HOST` is unset. OAuth provider admission and the sign-in handshake are tested without live GitHub credentials; deployment still requires a real GitHub sign-in and TLS smoke check.
 
 `openapi.json` is a file snapshot of the document the running app generates from its route schemas (`src/routes/contracts.ts`), so `src/openapi.test.ts` fails when the two differ. It is served at `/docs/openapi.json`, with a browsable reference at `/docs`. Update it from this directory with `pnpm exec vitest run src/openapi.test.ts -u`.
+
+The diagram under "Database" is the same kind of snapshot, of the tables the migrations create, so `src/erd.test.ts` fails when a migration changes a table without it. Refresh it from this directory with `pnpm exec vitest run src/erd.test.ts -u`.

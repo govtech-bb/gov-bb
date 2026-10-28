@@ -8,7 +8,6 @@ import { openSelect, chooseOption } from "../../test/select";
  * Override action; overriding seeds an editable row from the base value;
  * resetting drops the override key so the recipe carries only genuine deltas.
  */
-import "@testing-library/jest-dom";
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { HtmlTypes, ValidationRule } from "@govtech-bb/form-types";

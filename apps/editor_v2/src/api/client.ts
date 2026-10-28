@@ -32,9 +32,9 @@ export type ServiceDetail = Json<paths["/services/{id}"]["get"]["responses"][200
 /** A page of an opened service. */
 export type ServicePage = ServiceDetail["pages"][number];
 
-/** A category a page can be filed under. */
-export type TaxonomyCategory = Json<
-  paths["/taxonomy"]["get"]["responses"][200]
+/** A category as the content API has it saved: what a page's `category_id` can name. */
+export type SavedCategory = Json<
+  paths["/editor/categories"]["get"]["responses"][200]
 >["categories"][number];
 
 /** The estate's change token. */
@@ -97,14 +97,15 @@ export function createEditorApi(apiOrigin: string, landingOrigin?: string) {
 
   const services = () => read<ServiceSummary[]>("/services");
 
-  const taxonomy = async () =>
-    (await read<{ categories: TaxonomyCategory[] }>("/taxonomy")).categories;
+  // Page pickers offer these; the preview starts from them, and its edits never reach them
+  const savedCategories = async () =>
+    (await read<{ categories: SavedCategory[] }>("/editor/categories")).categories;
 
   return {
     services,
     service: (id: string) => read<ServiceDetail>(`/services/${id}`),
-    taxonomy,
-    ...categoryShell(taxonomy, services),
+    savedCategories,
+    ...categoryShell(savedCategories, services),
     version: () => read<EstateVersion>("/version"),
     page: (id: string) => read<ApiPage>(`/pages/${id}`),
     createPage: async (page: CreatePageInput): Promise<ApiPage> =>
@@ -119,11 +120,11 @@ export function createEditorApi(apiOrigin: string, landingOrigin?: string) {
 }
 
 /**
- * Local category preview seeded from real taxonomy, with fresh service counts on each read.
- * Changes never reach page pickers or the API; the eventual backend contract is still undecided.
+ * Local category preview seeded from the saved categories, with fresh service counts on each read.
+ * Changes never reach page pickers or the API: the editor does not send category writes yet.
  */
 function categoryShell(
-  taxonomy: () => Promise<TaxonomyCategory[]>,
+  savedCategories: () => Promise<SavedCategory[]>,
   services: () => Promise<ServiceSummary[]>,
 ) {
   let kept: Category[] = [];
@@ -133,7 +134,7 @@ function categoryShell(
 
   // The first read loads the list; a failed one is asked again next time
   const load = async () => {
-    loading ??= taxonomy().then((entries) => {
+    loading ??= savedCategories().then((entries) => {
       ids = new Map(entries.map((entry) => [entry.slug, entry.id]));
       kept = categoriesFrom(entries);
     });

@@ -82,6 +82,10 @@ it("finds the editor's writes, so an empty route list cannot pass", () => {
       "POST /pages",
       "PUT /pages/:id",
       "DELETE /pages/:id",
+      "POST /editor/categories",
+      "PUT /editor/categories/:id",
+      "PUT /editor/categories/order",
+      "DELETE /editor/categories/:id",
     ]),
   );
 });
@@ -106,22 +110,78 @@ it("refuses every write without a session and leaves the database unchanged", as
   });
 });
 
+/** A signed-in request to a page route, about a page of the database's own. */
+async function pageWrite(
+  method: string,
+  url: string,
+  n: number,
+): Promise<InjectOptions> {
+  const id = randomUUID();
+  await db.execute(
+    sql`insert into content_pages (id, url, slug, title, body_markdown)
+        values (${id}, ${`/existing-${n}`}, 'existing', 'Existing', '')`,
+  );
+  return {
+    method: method as InjectOptions["method"],
+    url: url.replace(/:\w+/g, id),
+    payload: withDefaults(aPage({ url: `/written-${n}` })),
+    headers: TEST_HEADERS,
+  };
+}
+
+/** A signed-in request to a category route, about categories of the database's own. */
+async function categoryWrite(
+  method: string,
+  url: string,
+  n: number,
+): Promise<InjectOptions> {
+  // Two, so a reorder has something to move.
+  await db.execute(
+    sql`insert into categories (slug, title)
+        values (${`existing-${n}`}, 'Existing'), (${`other-${n}`}, 'Other')`,
+  );
+  const roots = (
+    await app.inject({ url: "/editor/categories", headers: TEST_HEADERS })
+  )
+    .json<{
+      categories: {
+        id: string;
+        slug: string;
+        parent_id: string | null;
+        updated_at: string;
+      }[];
+    }>()
+    .categories.filter((row) => row.parent_id === null);
+  const target = roots.find((row) => row.slug === `existing-${n}`)!;
+  const fields = { slug: target.slug, parent_id: null, description: null };
+  return {
+    method: method as InjectOptions["method"],
+    url: url.replace(/:\w+/g, target.id),
+    headers: { ...TEST_HEADERS, "if-updated-at": target.updated_at },
+    payload:
+      url === "/editor/categories/order"
+        ? {
+            parent_id: null,
+            expected: roots.map(({ id, updated_at }) => ({ id, updated_at })),
+            ordered_ids: roots.map((row) => row.id).reverse(),
+          }
+        : method === "POST"
+          ? { ...fields, slug: `written-${n}`, title: "Written" }
+          : method === "PUT"
+            ? { ...fields, title: "Renamed" }
+            : undefined,
+  };
+}
+
 it("records every signed-in write against the employee", async () => {
   for (const [n, { method, url }] of writes().entries()) {
-    // A page of the database's own for the route to act on, so only the
+    // Something of the database's own for the route to act on, so only the
     // route's change can carry the employee's id.
-    const id = randomUUID();
-    await db.execute(
-      sql`insert into content_pages (id, url, slug, title, body_markdown)
-          values (${id}, ${`/existing-${n}`}, 'existing', 'Existing', '')`,
-    );
+    const request = url.startsWith("/editor/categories")
+      ? await categoryWrite(method, url, n)
+      : await pageWrite(method, url, n);
     const before = new Set((await eventsSoFar()).map((event) => event.id));
-    const response = await app.inject({
-      method: method as InjectOptions["method"],
-      url: url.replace(/:\w+/g, id),
-      payload: withDefaults(aPage({ url: `/written-${n}` })),
-      headers: TEST_HEADERS,
-    });
+    const response = await app.inject(request);
     expect(response.statusCode, `${method} ${url}`).toBeLessThan(300);
 
     // Every change the route made, not just one of them, is the employee's.

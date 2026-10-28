@@ -93,8 +93,8 @@ describe("editor API client", () => {
     status = 200;
     response = JSON.stringify({ categories: [{ id: "c", slug: "money" }] });
 
-    expect(await createEditorApi(origin).taxonomy()).toEqual([{ id: "c", slug: "money" }]);
-    expect(requests.at(-1)).toMatchObject({ url: "/taxonomy", method: "GET" });
+    expect(await createEditorApi(origin).savedCategories()).toEqual([{ id: "c", slug: "money" }]);
+    expect(requests.at(-1)).toMatchObject({ url: "/editor/categories", method: "GET" });
   });
 
   it("turns refusals into failures carrying the status and any field errors", async () => {

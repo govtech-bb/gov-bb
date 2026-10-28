@@ -15,10 +15,18 @@ export interface IdFormat {
   error: string;
 }
 
+/**
+ * The one name for this document across forms and start pages (#2732).
+ * "Barbados" because some services are open to non-citizens and accept a
+ * passport instead, so the label says which ID it wants. The component label
+ * and the pattern error are both built from it, so they can't disagree.
+ */
+export const NATIONAL_ID_LABEL = "Barbados National Identification (ID) number";
+
 export const NATIONAL_ID_FORMAT: IdFormat = {
   pattern: "^\\d{6}-\\d{4}$",
   mask: "999999-9999",
-  error: "Enter a valid National ID number (for example, 850101-0001)",
+  error: `Enter a valid ${NATIONAL_ID_LABEL} (for example, 850101-0001)`,
 };
 
 export const NATIONAL_INSURANCE_FORMAT: IdFormat = {

@@ -158,13 +158,13 @@ export function deleteBlocker(category: Category, categories: readonly Category[
   return undefined;
 }
 
-/** The categories from the content API's taxonomy, each in the order the API lists it among its siblings. */
+/** The preview's categories from the saved ones, each in the order the API lists it among its siblings. */
 export function categoriesFrom(
-  taxonomy: readonly Pick<Category, "id" | "parent_id" | "slug" | "url" | "title">[],
+  saved: readonly Pick<Category, "id" | "parent_id" | "slug" | "url" | "title">[],
 ): Category[] {
   const places = new Map<string | null, number>();
 
-  return taxonomy.map((entry) => {
+  return saved.map((entry) => {
     const position = places.get(entry.parent_id) ?? 0;
 
     places.set(entry.parent_id, position + 1);

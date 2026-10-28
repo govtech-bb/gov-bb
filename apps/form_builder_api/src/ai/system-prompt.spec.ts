@@ -1,5 +1,11 @@
 import { getSystemPrompt } from "./system-prompt.js";
 import { getCatalog, getRegistryItem } from "@govtech-bb/form-builder";
+import {
+  contentVariantSchema,
+  optionGroupSchema,
+  type GeocodeTargets,
+} from "@govtech-bb/form-types";
+import { REGISTRY_PRIMITIVES } from "@govtech-bb/registry";
 
 // Guards the embedded AI system prompt against drift from the registry.
 // Every component/block ref the prompt tells the model to emit must resolve
@@ -35,18 +41,11 @@ const MIGRATED_SLASH_REFS = [
   "components/generic/show-hide",
 ];
 
-const GENERIC_PRIMITIVES = [
-  "components/generic-text",
-  "components/generic-textarea",
-  "components/generic-date",
-  "components/generic-email",
-  "components/generic-tel",
-  "components/generic-checkbox",
-  "components/generic-file",
-  "components/generic-select",
-  "components/generic-radio",
-  "components/generic-number",
-];
+// Every `components/generic-*` primitive the registry exposes — derived, not
+// listed, so a primitive added to the registry but not to the prompt fails
+// the guard below (#2885: a hard-coded list of 10 let generic-time and
+// generic-checkbox-accordion go undocumented).
+const GENERIC_PRIMITIVES = Object.keys(REGISTRY_PRIMITIVES);
 
 // The 8 composite blocks the registry exposes (the UI block palette). Since
 // the vestigial builtin catalog was retired (#515), getCatalog().blocks is
@@ -87,15 +86,100 @@ describe("AI system prompt", () => {
   });
 
   it("surfaces every generic primitive plus show-hide", () => {
+    // An empty registry list would pass vacuously.
+    expect(GENERIC_PRIMITIVES).not.toEqual([]);
     const missing = [...GENERIC_PRIMITIVES, "components/show-hide"].filter(
       (ref) => !prompt.includes(ref),
     );
     expect(missing).toEqual([]);
   });
 
+  // #2885: the five components the reference used to omit, each with the
+  // override keys its renderer honours. Key names and enum values are read
+  // from the form-types schemas so a rename there fails here, not in a form.
+  it("documents the content block with its variant, content and summary keys", () => {
+    expect(prompt).toContain("components/content");
+    for (const variant of contentVariantSchema.options) {
+      expect(prompt).toContain(`"${variant}"`);
+    }
+    // The key's own bullet, then every worked example carrying the shape —
+    // anchored so the word "content" elsewhere in the prompt cannot satisfy it.
+    expect(prompt).toMatch(/^ {2}- `"content"` — the markdown body/m);
+    const examples = prompt.match(/^\{"ref": "components\/content".*$/gm) ?? [];
+    expect(examples).not.toEqual([]);
+    for (const example of examples) {
+      expect(example).toContain('"variant"');
+      expect(example).toContain('"content"');
+    }
+    // summary is the details disclosure's clickable line, falling back to label.
+    expect(prompt).toMatch(/"summary".*details/);
+    expect(prompt).toContain("falls back to `label`");
+    expect(
+      examples.some(
+        (example) =>
+          example.includes('"variant": "details"') &&
+          example.includes('"summary"'),
+      ),
+    ).toBe(true);
+  });
+
+  it("documents address-lookup with its same-step geocodeTargets", () => {
+    expect(prompt).toContain("components/address-lookup");
+    expect(prompt).toContain('"geocodeTargets"');
+    // geocodeTargetsSchema is not exported from the form-types barrel (#2886
+    // adds that export — switch to it once merged), so the keys are listed
+    // here and must be kept in step with the schema by hand. The annotation is
+    // documentation only: nothing type-checks this spec (the api tsconfig
+    // excludes specs and vitest does not typecheck).
+    const targetKeys: (keyof GeocodeTargets)[] = [
+      "line2FieldId",
+      "parishFieldId",
+      "coordinatesFieldId",
+    ];
+    for (const key of targetKeys) {
+      expect(prompt).toContain(`"${key}"`);
+    }
+    expect(prompt).toMatch(/same[- ]step/i);
+  });
+
+  it("documents the checkbox accordion's groups shape", () => {
+    expect(prompt).toContain("components/generic-checkbox-accordion");
+    // Anchor on the worked example — the line the model copies — rather than
+    // on bare key names: "label" and "options" appear throughout the prompt.
+    const example = prompt.match(
+      /^\{"ref": "components\/generic-checkbox-accordion".*$/m,
+    )?.[0];
+    expect(example).toBeDefined();
+    expect(example).toContain('"groups"');
+    for (const key of Object.keys(optionGroupSchema.shape)) {
+      expect(example).toContain(`"${key}"`);
+    }
+  });
+
+  it("documents the step rule for generic-time and opening-hours", () => {
+    expect(prompt).toContain("components/generic-time");
+    expect(prompt).toContain("components/opening-hours");
+    expect(prompt).toContain('"step"');
+    // The prompt quotes generic-time's registry default so an override is only
+    // for a different increment — read from the registry, so retuning the
+    // default fails here instead of leaving a stale number in the prompt.
+    const defaultStep = REGISTRY_PRIMITIVES["components/generic-time"].step;
+    expect(defaultStep).toBeDefined();
+    expect(prompt).toContain(`registry default is ${defaultStep}`);
+    // opening-hours honours step only when it is a whole number of minutes.
+    expect(prompt).toContain("multiple of 60");
+  });
+
   it("surfaces every registry block", () => {
     const missing = REGISTRY_BLOCKS.filter((ref) => !prompt.includes(ref));
     expect(missing).toEqual([]);
+  });
+
+  it("steers the declaration step away from blocks/applicant-declaration (ADR 0077)", () => {
+    expect(prompt).not.toContain("Form has a declaration/agreement checkbox");
+    expect(prompt).toContain(
+      "blocks/applicant-declaration` | confirmation | Never for the declaration step",
+    );
   });
 
   it("uses the resolving contact-telephone ref, not contact-number", () => {
@@ -139,6 +223,14 @@ describe("AI system prompt", () => {
   it("guards the alternative-identity pattern (reveal toggle + optionalIf)", () => {
     expect(prompt).toContain(
       "Never leave the primary field unconditionally required next to a reveal toggle",
+    );
+  });
+
+  it("gates eligibility on the question, never on a disabled-field stop step", () => {
+    expect(prompt).toContain("## Eligibility Stops");
+    expect(prompt).toContain('"pattern": {"value": "^yes$"');
+    expect(prompt).toContain(
+      'NEVER build a separate "you are not eligible" step',
     );
   });
 
@@ -234,16 +326,30 @@ describe("AI system prompt", () => {
     expect(prompt).toContain('"fieldId": "end-year"');
   });
 
-  it("pins the declaration step to exactly one element: the declaration-confirmed checkbox", () => {
-    // Rule 17 + the Declaration Checkbox Pattern: one confirmation checkbox,
-    // fixed fieldId/label, required — and nothing else in the step.
+  it("pins the declaration step to the declaration-confirmed checkbox", () => {
+    // Rule 17 + the Declaration Checkbox Pattern: one standard confirmation
+    // checkbox with fixed fieldId/label/statement, required. Only a
+    // service-specific acknowledgement checkbox may sit beside it (#2957).
     expect(prompt).toContain(
-      "The declaration step contains EXACTLY ONE element",
+      "The declaration step contains the standard declaration checkbox",
     );
     expect(prompt).toContain('"fieldId": "declaration-confirmed"');
     expect(prompt).toContain('"label": "Declaration"');
     // No worked example may place an extra field inside the declaration step.
     expect(prompt).not.toContain('"fieldId": "declaration-date"');
+  });
+
+  it("gives the standard declaration statement verbatim, with no placeholder (#2957)", () => {
+    expect(prompt).not.toContain("Full declaration statement text");
+    const pattern = prompt.slice(
+      prompt.indexOf("## Declaration Checkbox Pattern"),
+    );
+    expect(pattern).toContain(
+      '"label": "I confirm that the information I have provided is true and correct to the best of my knowledge."',
+    );
+    // Existing forms carry service-specific acknowledgements beside the
+    // standard checkbox; an edit must keep them, never fold them into it.
+    expect(prompt).toMatch(/keep any existing acknowledgement/i);
   });
 
   it("documents minYear/maxYear with literal value or currentYear, never a reference", () => {

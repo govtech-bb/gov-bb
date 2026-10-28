@@ -1,10 +1,10 @@
 import { HorizontalRuleNode } from "@lexical/extension";
-import { LinkNode } from "@lexical/link";
+import { $isLinkNode, LinkNode } from "@lexical/link";
 import { ListItemNode, ListNode } from "@lexical/list";
 import { CodeNode } from "@lexical/code";
 import { HeadingNode, QuoteNode } from "@lexical/rich-text";
 import { TableCellNode, TableNode, TableRowNode } from "@lexical/table";
-import { createEditor } from "lexical";
+import { $getRoot, createEditor } from "lexical";
 import { describe, expect, it } from "vitest";
 import { LandingComponentNode, RawBreakNode, StartLinkNode } from "./nodes";
 import {
@@ -13,7 +13,7 @@ import {
   parseActionDirective,
 } from "./markdown";
 
-function roundTrip(markdown: string): string {
+function loadEditor(markdown: string) {
   const editor = createEditor({
     namespace: "body-editor-test",
     nodes: [
@@ -36,7 +36,25 @@ function roundTrip(markdown: string): string {
     },
   });
   editor.update(() => $loadMarkdown(markdown), { discrete: true });
-  return editor.getEditorState().read(() => $exportMarkdown());
+  return editor;
+}
+
+function roundTrip(markdown: string): string {
+  return loadEditor(markdown)
+    .getEditorState()
+    .read(() => $exportMarkdown());
+}
+
+function linkUrls(markdown: string): string[] {
+  return loadEditor(markdown)
+    .getEditorState()
+    .read(() =>
+      $getRoot()
+        .getAllTextNodes()
+        .map((node) => node.getParent())
+        .filter($isLinkNode)
+        .map((link) => link.getURL()),
+    );
 }
 
 describe("body editor Markdown conversion", () => {
@@ -71,6 +89,37 @@ describe("body editor Markdown conversion", () => {
     ].join("\n");
 
     expect(roundTrip(markdown)).toBe(markdown);
+  });
+
+  it("round-trips lists and re-nests 2-space sub-items on Lexical's 4-space grid", () => {
+    const flat = [
+      "- Passport",
+      "- Proof of address",
+      "",
+      "1. Apply",
+      "2. Pay",
+    ].join("\n");
+    expect(roundTrip(flat)).toBe(flat);
+    expect(
+      roundTrip("- Also called:\n  - NHC\n  - National Housing Corporation"),
+    ).toBe("- Also called:\n    - NHC\n    - National Housing Corporation");
+  });
+
+  it("round-trips links whose URL contains parentheses", () => {
+    const plain = "Read the [guidance](https://gov.bb/guidance) first.";
+    const url =
+      "https://oag.gov.bb/attachments/Health%20Services%20(Food%20Hygiene)%20Regulations,%201969%20Cap44'M.PDF";
+    const link = (href: string) =>
+      `Read the [Health Services (Food Hygiene) Regulations](${href}) for details.`;
+
+    const escaped =
+      "https://oag.gov.bb/attachments/Health%20Services%20\\(Food%20Hygiene\\)%20Regulations,%201969%20Cap44'M.PDF";
+
+    expect(linkUrls(link(escaped))).toEqual([url]);
+    expect(linkUrls(link(url))).toEqual([url]);
+    expect(roundTrip(plain)).toBe(plain);
+    expect(roundTrip(link(escaped))).toBe(link(escaped));
+    expect(roundTrip(link(url))).toBe(link(escaped));
   });
 
   it("keeps an indented start marker inside an ordered application list", () => {

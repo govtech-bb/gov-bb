@@ -987,9 +987,39 @@ describe("Review", () => {
     );
 
     const changeLink = screen.getByRole("link", { name: /Change/ });
+    // returnTo is in the href too, so open-in-new-tab and a refresh still
+    // bring the applicant back to the review after the change (#2812).
     expect(changeLink).toHaveAttribute(
       "href",
-      "/forms/my-form?step=step-personal",
+      "/forms/my-form?step=step-personal&returnTo=check-your-answers",
+    );
+  });
+
+  it("Change link keeps the preview and draft tokens, so a new tab opens the same version", () => {
+    const steps: ClientFormStep[] = [
+      makeStep({
+        stepId: "step-personal",
+        title: "Personal Details",
+        fields: [],
+      }),
+    ];
+
+    render(
+      <Review
+        formMeta={{ ...baseFormMeta, formId: "my-form" } as FormMeta}
+        form={makeMockForm() as never}
+        visibleSteps={steps}
+        previewToken="prev-1"
+        draftToken="draft-1"
+      />,
+    );
+
+    // The click handler keeps them (it spreads the current search), but the
+    // href is what a new tab, middle-click or copied link uses; without the
+    // tokens it would open the published form instead (#2937 review).
+    expect(screen.getByRole("link", { name: /Change/ })).toHaveAttribute(
+      "href",
+      "/forms/my-form?step=step-personal&returnTo=check-your-answers&preview=prev-1&draft=draft-1",
     );
   });
 
@@ -1093,12 +1123,17 @@ describe("Review", () => {
       }),
     );
 
-    // Invoke the search callback and verify it sets the correct step
+    // Invoke the search callback and verify it sets the correct step, plus
+    // the flag that brings Continue back to the review (#2812)
     const callArgs = mockNavigate.mock.calls[0][0] as {
       search: (prev: Record<string, unknown>) => Record<string, unknown>;
     };
     const result = callArgs.search({ existing: "value" });
-    expect(result).toEqual({ existing: "value", step: "step-personal" });
+    expect(result).toEqual({
+      existing: "value",
+      step: "step-personal",
+      returnTo: "check-your-answers",
+    });
   });
 
   // -------------------------------------------------------------------------

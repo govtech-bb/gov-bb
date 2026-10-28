@@ -120,7 +120,7 @@ applications:
             # and the script tag (rendered from VITE_UMAMI_WEBSITE_ID) never
             # executes — see issue #1364 follow-up.
             - key: "Content-Security-Policy"
-              value: "default-src 'self'; script-src 'self' https://cloud.umami.is; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self' https:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'; upgrade-insecure-requests"
+              value: "default-src 'self'; script-src 'self' https://cloud.umami.is; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://tile.openstreetmap.org; font-src 'self'; connect-src 'self' https:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'; upgrade-insecure-requests"
   - appRoot: apps/form_builder
     frontend:
       buildPath: /
@@ -154,9 +154,11 @@ applications:
             - key: "Permissions-Policy"
               value: "camera=(), microphone=(), geolocation=(), payment=()"
             # frame-src allows the /content editor's live preview iframe of the
-            # landing app's /preview-start-page route.
+            # landing app's /preview-start-page route. connect-src allows the
+            # browser's direct calls to BUILDER_API_URL/builder/ai/* (#3027);
+            # img-src blob: allows the AI attachment (PDF/image) thumbnails.
             - key: "Content-Security-Policy"
-              value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self' https://api.github.com https://github.com https://*.s3.ca-central-1.amazonaws.com; frame-src 'self' https://*.alpha.gov.bb; frame-ancestors 'none'; base-uri 'self'; form-action 'self' https://github.com; object-src 'none'; upgrade-insecure-requests"
+              value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://forms.api.sandbox.alpha.gov.bb https://api.github.com https://github.com https://*.s3.ca-central-1.amazonaws.com; frame-src 'self' https://*.alpha.gov.bb; frame-ancestors 'none'; base-uri 'self'; form-action 'self' https://github.com; object-src 'none'; upgrade-insecure-requests"
   - appRoot: apps/feature_flagging
     frontend:
       buildPath: /

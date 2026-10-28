@@ -9,7 +9,7 @@ import {
 import { act } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { createEditorApi, type ApiPage } from "../../src/api/client";
-import { pageQuery, taxonomyQuery } from "../../src/api/queries";
+import { pageQuery, savedCategoriesQuery } from "../../src/api/queries";
 import { govbbPageCodec } from "../../src/presets/govbb-page";
 import { Toaster } from "../../src/ui/toast";
 import { RemotePagePane } from "../../src/workspace/remote-page-pane";
@@ -53,7 +53,8 @@ async function mountPage(request: (url: string, init?: RequestInit) => Promise<R
   vi.stubGlobal(
     "fetch",
     vi.fn((url: string, init?: RequestInit) => {
-      if (url.endsWith("/taxonomy")) return Promise.resolve(Response.json({ categories: [] }));
+      if (url.endsWith("/editor/categories"))
+        return Promise.resolve(Response.json({ categories: [] }));
 
       if (url.endsWith("/services")) return Promise.resolve(Response.json([]));
 
@@ -195,7 +196,7 @@ test("a page preloaded just now, as its link was pointed at, opens without waiti
   const api = createEditorApi("http://localhost:3020");
   const client = new QueryClient();
   client.setQueryData(pageQuery(api, page.id).queryKey, page);
-  client.setQueryData(taxonomyQuery(api).queryKey, []);
+  client.setQueryData(savedCategoriesQuery(api).queryKey, []);
 
   await renderInPage(
     <RouterContextProvider router={router}>

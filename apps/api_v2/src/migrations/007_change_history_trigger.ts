@@ -16,12 +16,13 @@
  * - A page's update is `published` when it goes public and `unpublished`
  *   when it stops being public; a category has no visibility, so its updates
  *   are `updated`.
- * - `touch_updated_at()` keeps a page's `updated_at` in step with its
- *   content. A page changed without it (a sub-page carried to another
- *   category by `on update cascade`) gets a new one, so the editor's conflict
- *   check sees the change. A save that changes nothing else keeps the old
- *   one: no event is logged and `/version` doesn't move, so other editors
- *   would never learn of a new value and their next save would conflict.
+ * - `touch_updated_at()` keeps a page's or category's `updated_at` in step
+ *   with its content. A page changed without it (a sub-page carried to
+ *   another category by `on update cascade`) gets a new one, so the editor's
+ *   conflict check sees the change. A save that changes nothing else keeps
+ *   the old one: no event is logged and `/version` doesn't move, so other
+ *   editors would never learn of a new value and their next save would
+ *   conflict.
  *
  * A content table added later gets `record_change` in the migration that
  * creates it; `migrate.test.ts` fails until it does.
@@ -107,4 +108,9 @@ drop trigger if exists categories_record_change on categories;
 create trigger categories_record_change
   after insert or update or delete on categories
   for each row execute function record_change('category');
+
+drop trigger if exists categories_touch_updated_at on categories;
+create trigger categories_touch_updated_at
+  before update on categories
+  for each row execute function touch_updated_at();
 `;

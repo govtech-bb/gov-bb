@@ -66,7 +66,7 @@ await context.route("**/*", async (route) => {
   const request = route.request();
   const path = new URL(request.url()).pathname;
 
-  const paths = [`/services/${service.id}`, `/pages/${id}`, "/taxonomy", "/version"];
+  const paths = [`/services/${service.id}`, `/pages/${id}`, "/editor/categories", "/version"];
 
   if (!paths.includes(path) || request.resourceType() === "document") return route.fallback();
 
@@ -85,7 +85,7 @@ await context.route("**/*", async (route) => {
   if (path === `/services/${service.id}`)
     return reply({ service, pages: [{ ...current, role: "supporting" }] });
 
-  if (path === "/taxonomy") return reply({ categories: [] });
+  if (path === "/editor/categories") return reply({ categories: [] });
 
   if (path === "/version") return reply({ count: 1, latest: initial.updated_at });
 

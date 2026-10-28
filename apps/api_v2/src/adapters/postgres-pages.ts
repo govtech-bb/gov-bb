@@ -23,6 +23,16 @@ import type { Database } from "../db";
 import type { IndexedPage } from "../modules/estate-services";
 import type { CategoryRecord, ListablePage } from "../modules/navigation";
 import {
+  CategoryBlockers,
+  CategoryId,
+  CategoryRejected,
+  CategoryStamp,
+  EditorCategory,
+  isCategoryAnchor,
+  type CategoryValues,
+} from "../modules/category";
+import type { CategoryRecords } from "../services/category-editing";
+import {
   ContentStoreUnavailable,
   PageRejected,
   type FieldError,
@@ -48,6 +58,11 @@ import type {
 } from "../services/page-editing";
 import type { PublicPageReads } from "../services/page-resolution";
 import type { NavigationReads } from "../services/site-navigation";
+
+const categoryDatabaseRow = EditorCategory.omit({
+  updated_at: true,
+  reserved_route: true,
+}).extend({ updated_at: z.string().pipe(z.coerce.date()) });
 
 type PageRow = typeof contentPages.$inferSelect;
 
@@ -113,6 +128,26 @@ function rejectionOf(error: unknown): PageRejected | null {
   return refusal ? new PageRejected([refusal]) : null;
 }
 
+function categoryRejectionOf(error: unknown): CategoryRejected | null {
+  const broken = violation.safeParse(error);
+  if (!broken.success) return null;
+  switch (broken.data.cause.constraint) {
+    case "categories_slug_key":
+      return new CategoryRejected([
+        { field: "slug", message: "Another category already uses this slug." },
+      ]);
+    case "categories_parent_id_fkey":
+      return new CategoryRejected([
+        {
+          field: "parent_id",
+          message: "Choose an existing top-level category.",
+        },
+      ]);
+    default:
+      return null;
+  }
+}
+
 /** A delete is refused only by a sub-page still pointing at the page. */
 function refusedDelete(error: unknown): PageRejected | null {
   const broken = violation.safeParse(error);
@@ -155,24 +190,32 @@ export async function writeSearchChunks(
 
 /** Pages, categories, search text and the change log, in the content database. */
 export class PostgresPages
-  implements PublicPageReads, NavigationReads, PageRecords, IndexReads
+  implements
+    PublicPageReads,
+    NavigationReads,
+    PageRecords,
+    IndexReads,
+    CategoryRecords
 {
   /** The root supplies the drizzle database over its shared pool. */
   constructor(private readonly db: Database) {}
 
   /**
    * Run `work` in one transaction as `actorId`, whom the change-log trigger
-   * records; an error result rolls back everything it wrote. The setting is
-   * transaction-local, so a pooled connection never carries it into another
-   * request.
+   * records, after taking the shared content lock; an error result rolls back
+   * everything it wrote. The setting is transaction-local, so a pooled
+   * connection never carries it into another request.
    */
   async atomically<R extends Result<unknown, Error>>(
     actorId: string,
-    work: (records: PageRecords) => Promise<R>,
+    work: (records: PageRecords & CategoryRecords) => Promise<R>,
   ): Promise<R | Result<never, ContentStoreUnavailable>> {
     let refused: R | undefined;
     try {
       return await this.db.transaction(async (tx) => {
+        await tx.execute(
+          sql`select pg_advisory_xact_lock(hashtext('content_pages.parent_id'))`,
+        );
         await tx.execute(
           sql`select set_config('app.user_id', ${actorId}, true)`,
         );
@@ -253,6 +296,145 @@ export class PostgresPages
         .from(categories)
         .orderBy(categories.position, categories.title),
     );
+  }
+
+  /** Parsed category rows and direct-service counts, including unpublished roots. */
+  editorCategories(): Promise<
+    Result<EditorCategory[], ContentStoreUnavailable>
+  > {
+    return attempt("editorCategories", async () => {
+      const rows = await this.db.execute(sql`
+        select c.id, c.parent_id, c.slug, c.title, c.description, c.position, c.updated_at,
+          case when p.id is null then '/' || c.slug else '/' || p.slug || '/' || c.slug end as url,
+          (select count(*)::int from content_pages pages
+            where pages.category_id = c.id and pages.parent_id is null) as services
+        from categories c left join categories p on p.id = c.parent_id
+        order by c.position, c.title, c.id`);
+      return rows.rows.map((value) => {
+        const row = categoryDatabaseRow.parse(value);
+        return {
+          ...row,
+          updated_at: CategoryStamp.parse(row.updated_at.toISOString()),
+          reserved_route: isCategoryAnchor(row.url),
+        };
+      });
+    });
+  }
+
+  /** Count every assigned page and immediate child while the content lock is held. */
+  categoryBlockers(
+    id: CategoryId,
+  ): Promise<
+    Result<Omit<CategoryBlockers, "reserved_route">, ContentStoreUnavailable>
+  > {
+    return attempt("categoryBlockers", async () => {
+      const rows = await this.db.execute(sql`
+        select (select count(*)::int from content_pages where category_id = ${id}) as pages,
+          (select count(*)::int from categories where parent_id = ${id}) as subcategories`);
+      return CategoryBlockers.omit({ reserved_route: true }).parse(
+        rows.rows[0],
+      );
+    });
+  }
+
+  /** Exact page URL ownership includes drafts and supporting pages. */
+  pageOwnsCategoryUrl(
+    url: string,
+  ): Promise<Result<boolean, ContentStoreUnavailable>> {
+    return attempt("pageOwnsCategoryUrl", async () => {
+      const rows = await this.db
+        .select({ id: contentPages.id })
+        .from(contentPages)
+        .where(eq(contentPages.url, url))
+        .limit(1);
+      return rows.length > 0;
+    });
+  }
+
+  /** A page cannot newly claim a category URL, even when that category is empty. */
+  async checkPageUrl(
+    url: string,
+  ): Promise<Result<void, PageRejected | ContentStoreUnavailable>> {
+    const occupied = await attempt("checkPageUrl", async () => {
+      const rows = await this.db.execute(sql`
+        select c.id from categories c left join categories p on p.id = c.parent_id
+        where case when p.id is null then '/' || c.slug else '/' || p.slug || '/' || c.slug end = ${url}
+        limit 1`);
+      return rows.rows.length > 0;
+    });
+    if (!occupied.ok) return occupied;
+    return occupied.value
+      ? err(
+          new PageRejected([
+            { field: "url", message: "A category already uses this url." },
+          ]),
+        )
+      : ok(undefined);
+  }
+
+  /** Insert an appended category with its server-generated id and millisecond version. */
+  insertCategory(
+    fields: CategoryValues,
+    position: number,
+    stamp: CategoryStamp,
+  ): Promise<Result<CategoryId, CategoryRejected | ContentStoreUnavailable>> {
+    return attempt(
+      "insertCategory",
+      async () => {
+        const rows = await this.db
+          .insert(categories)
+          .values({
+            title: fields.title,
+            slug: fields.slug,
+            parentId: fields.parent_id,
+            description: fields.description,
+            position,
+            updatedAt: new Date(stamp),
+          })
+          .returning({ id: categories.id });
+        return CategoryId.parse(rows[0]?.id);
+      },
+      categoryRejectionOf,
+    );
+  }
+
+  /** Update one category without changing its siblings or any pages. */
+  replaceCategory(
+    id: CategoryId,
+    fields: CategoryValues,
+    position: number,
+    stamp: CategoryStamp,
+  ): Promise<
+    Result<CategoryStamp, CategoryRejected | ContentStoreUnavailable>
+  > {
+    return attempt(
+      "replaceCategory",
+      async () => {
+        const rows = await this.db
+          .update(categories)
+          .set({
+            title: fields.title,
+            slug: fields.slug,
+            parentId: fields.parent_id,
+            description: fields.description,
+            position,
+            updatedAt: new Date(stamp),
+          })
+          .where(eq(categories.id, id))
+          .returning({ updatedAt: categories.updatedAt });
+        return CategoryStamp.parse(rows[0]?.updatedAt.toISOString());
+      },
+      categoryRejectionOf,
+    );
+  }
+
+  /** Delete only after the workflow has checked occupancy and the opened version. */
+  removeCategory(
+    id: CategoryId,
+  ): Promise<Result<void, ContentStoreUnavailable>> {
+    return attempt("removeCategory", async () => {
+      await this.db.delete(categories).where(eq(categories.id, id));
+    });
   }
 
   /** The url of every page with this slug. */
@@ -404,16 +586,6 @@ export class PostgresPages
         .for("update"),
     );
     return rows.ok ? ok(firstDocument(rows.value)) : rows;
-  }
-
-  /** A transaction-scoped lock every hierarchy change takes before its loop check. */
-  async holdHierarchy(): Promise<Result<void, ContentStoreUnavailable>> {
-    const held = await attempt("holdHierarchy", () =>
-      this.db.execute(
-        sql`select pg_advisory_xact_lock(hashtext('content_pages.parent_id'))`,
-      ),
-    );
-    return held.ok ? ok(undefined) : held;
   }
 
   /** The ids of the pages above this one, the page itself included. */

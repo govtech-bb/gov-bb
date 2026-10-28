@@ -48,7 +48,7 @@
  *    the generic "Your submission has been saved" (omitted below).
  */
 import { faker } from "@faker-js/faker";
-import { test } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import {
   STEP_TIMEOUT,
   openSmokeForm,
@@ -175,5 +175,17 @@ test.describe("Community Sports Training Programme — Live Smoke", () => {
     await submitAndConfirm(page, {
       heading: "Application submitted",
     });
+
+    // The "What happens next" copy now renders from the step's `markdownContent`
+    // (#2442 — it was authored in `nextSteps`, which the serving path dropped,
+    // so nothing showed before).
+    await expect(
+      page.getByRole("heading", { name: "What happens next" }),
+    ).toBeVisible();
+    await expect(
+      page.getByText(
+        "We have received your submission. You will receive a confirmation email at the address you provided.",
+      ),
+    ).toBeVisible();
   });
 });

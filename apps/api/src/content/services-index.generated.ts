@@ -91,7 +91,7 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
   },
   {
     slug: "apply-for-funeral-embalmer-licence",
-    title: "Apply for an embalmer licence",
+    title: "Apply for an embalmers licence",
     category: "business-trade",
     formId: "apply-for-funeral-embalmer-licence",
     visibility: "preview",
@@ -126,14 +126,14 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
   },
   {
     slug: "apply-for-hotel-licence",
-    title: "Apply for a hotel licence",
+    title: "Apply to Environmental Health for a hotel licence",
     category: "business-trade",
     formId: "apply-for-hotel-licence",
     visibility: "preview",
   },
   {
     slug: "apply-for-lodging-barracks-licence",
-    title: "Apply for a barracks or lodging licence with Environmental Health",
+    title: "Register a lodging house or barracks with Environmental Health",
     category: "business-trade",
     formId: "apply-for-lodging-barracks-licence",
     visibility: "preview",
@@ -147,14 +147,16 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
   },
   {
     slug: "apply-for-offensive-matter-licence",
-    title: "Apply for an offensive matter licence with Environmental Health",
+    title:
+      "Apply to Environmental Health for an offensive matter licence to move sewage and other harmful waste",
     category: "business-trade",
     formId: "apply-for-offensive-matter-licence",
     visibility: "preview",
   },
   {
     slug: "apply-for-offensive-waste-licence",
-    title: "Apply for an offensive trade licence with Environmental Health",
+    title:
+      "Apply to Environmental Health for an offensive trade licence to do work that may cause fumes, smells or waste",
     category: "business-trade",
     formId: "apply-for-offensive-waste-licence",
     visibility: "preview",
@@ -175,7 +177,7 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
   },
   {
     slug: "apply-for-swimming-pool-licence",
-    title: "Apply for a swimming pool licence",
+    title: "Apply to Environmental Health for a swimming pool licence",
     category: "business-trade",
     formId: "apply-for-swimming-pool-licence",
     visibility: "preview",
@@ -245,7 +247,7 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
   },
   {
     slug: "apply-to-use-state-land",
-    title: "Apply to use state land",
+    title: "Apply to use land owned by the Government of Barbados",
     category: "housing",
     formId: "mohlm-application-use-state-land",
     visibility: "preview",
@@ -255,6 +257,12 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
     title: "Apply to volunteer at a sports camp",
     category: "work-employment",
     visibility: "public",
+  },
+  {
+    slug: "archaeological-history",
+    title: "Archaeological History",
+    category: "about-barbados",
+    visibility: "preview",
   },
   {
     slug: "bank-holiday-calendar",
@@ -296,6 +304,12 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
     visibility: "preview",
   },
   {
+    slug: "coat-of-arms",
+    title: "Coat of Arms",
+    category: "about-barbados",
+    visibility: "preview",
+  },
+  {
     slug: "crop-over-permits",
     title: "Find the permits you need for a Crop Over event",
     category: "business-trade",
@@ -307,6 +321,12 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
     category: "education",
     formId: "bssee-form-b-defer-examination",
     visibility: "draft",
+  },
+  {
+    slug: "flag-etiquette",
+    title: "Flag Etiquette",
+    category: "about-barbados",
+    visibility: "preview",
   },
   {
     slug: "get-a-document-notarised",
@@ -405,9 +425,27 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
     visibility: "preview",
   },
   {
+    slug: "national-anthem",
+    title: "The National Anthem",
+    category: "about-barbados",
+    visibility: "preview",
+  },
+  {
+    slug: "national-flower",
+    title: "National Flower",
+    category: "about-barbados",
+    visibility: "preview",
+  },
+  {
     slug: "national-insurance-for-self-employed-workers",
     title: "Learn how to pay National Insurance when you work for yourself",
     category: "money-financial-support",
+    visibility: "preview",
+  },
+  {
+    slug: "national-pledge",
+    title: "National Pledge",
+    category: "about-barbados",
     visibility: "preview",
   },
   {

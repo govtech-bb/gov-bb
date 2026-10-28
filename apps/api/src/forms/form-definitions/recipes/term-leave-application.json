@@ -20,7 +20,6 @@
           "overrides": {
             "label": "School",
             "fieldId": "school",
-            "fullWidth": true,
             "validations": {
               "required": {
                 "error": "School is required",
@@ -38,7 +37,6 @@
           "overrides": {
             "label": "First Name",
             "fieldId": "first-name",
-            "columnWidth": "50%",
             "validations": {
               "required": {
                 "error": "First Name is required",
@@ -56,7 +54,6 @@
           "overrides": {
             "label": "Last Name",
             "fieldId": "last-name",
-            "columnWidth": "50%",
             "validations": {
               "required": {
                 "error": "Last Name is required",
@@ -72,15 +69,7 @@
         {
           "ref": "components/telephone",
           "overrides": {
-            "label": "Contact No",
-            "fieldId": "contact-no",
-            "columnWidth": "50%",
-            "validations": {
-              "required": {
-                "error": "Contact No is required",
-                "value": true
-              }
-            }
+            "fieldId": "contact-no"
           }
         },
         {
@@ -88,7 +77,6 @@
           "overrides": {
             "label": "Email",
             "fieldId": "email",
-            "columnWidth": "50%",
             "validations": {
               "required": {
                 "error": "Email is required",
@@ -102,7 +90,6 @@
           "overrides": {
             "label": "Post",
             "fieldId": "post",
-            "columnWidth": "50%",
             "validations": {
               "required": {
                 "error": "Post is required",
@@ -118,12 +105,10 @@
         {
           "ref": "components/national-id-number",
           "overrides": {
-            "label": "ID Number",
             "fieldId": "id-number",
-            "columnWidth": "50%",
             "validations": {
               "required": {
-                "error": "ID Number is required",
+                "error": "Barbados National Identification (ID) number is required",
                 "value": true
               }
             }
@@ -242,10 +227,8 @@
         {
           "ref": "components/generic-textarea",
           "overrides": {
-            "rows": 4,
             "label": "Comments",
             "fieldId": "comments",
-            "fullWidth": true,
             "validations": {
               "required": {
                 "error": "Comments are required",
@@ -259,7 +242,7 @@
     },
     {
       "stepId": "declaration",
-      "title": "Declaration",
+      "title": "Confirm and submit your application",
       "elements": [
         {
           "ref": "components/confirmation",
@@ -268,13 +251,13 @@
             "label": "",
             "validations": {
               "required": {
-                "error": "You must confirm the declaration to continue",
+                "error": "You must confirm the declaration to continue.",
                 "value": true
               }
             },
             "options": [
               {
-                "label": "I confirm that my information is correct and I am happy for it to be verified. I understand that false details may lead to my application being rejected, and that the Government of Barbados will keep my information confidential.",
+                "label": "I confirm that the information I have provided is true and correct to the best of my knowledge.",
                 "value": "confirmed"
               }
             ]
@@ -293,5 +276,5 @@
     }
   ],
   "createdAt": "2026-06-03T00:00:00.000Z",
-  "updatedAt": "2026-06-05T00:00:00.000Z"
+  "updatedAt": "2026-10-21T16:52:59.000Z"
 }

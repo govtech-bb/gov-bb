@@ -381,7 +381,6 @@
         {
           "ref": "components/telephone",
           "overrides": {
-            "label": "What is your phone number?",
             "fieldId": "mentee-phone-number",
             "behaviours": [
               {
@@ -390,13 +389,7 @@
                 "operator": "equal",
                 "targetFieldId": "share-phone-number"
               }
-            ],
-            "validations": {
-              "required": {
-                "error": "Enter your phone number",
-                "value": true
-              }
-            }
+            ]
           }
         },
         {
@@ -576,14 +569,7 @@
         {
           "ref": "components/telephone",
           "overrides": {
-            "label": "Phone number",
-            "fieldId": "prof-ref-phone",
-            "validations": {
-              "required": {
-                "error": "Enter the referee phone number",
-                "value": true
-              }
-            }
+            "fieldId": "prof-ref-phone"
           }
         }
       ],
@@ -653,14 +639,7 @@
         {
           "ref": "components/telephone",
           "overrides": {
-            "label": "Phone number",
-            "fieldId": "pers-ref-phone",
-            "validations": {
-              "required": {
-                "error": "Enter the referee phone number",
-                "value": true
-              }
-            }
+            "fieldId": "pers-ref-phone"
           }
         }
       ],
@@ -675,7 +654,7 @@
     },
     {
       "stepId": "declaration",
-      "title": "Declaration",
+      "title": "Confirm and submit your application",
       "elements": [
         {
           "ref": "components/confirmation",
@@ -684,13 +663,13 @@
             "fieldId": "declaration-confirmed",
             "options": [
               {
-                "label": "I confirm that my information is correct and I am happy for it to be verified. I understand that false details may lead to my application being rejected, and that the Government of Barbados will keep my information confidential.",
+                "label": "I confirm that the information I have provided is true and correct to the best of my knowledge.",
                 "value": "confirmed"
               }
             ],
             "validations": {
               "required": {
-                "error": "You must confirm the declaration to continue",
+                "error": "You must confirm the declaration to continue.",
                 "value": true
               }
             }
@@ -708,5 +687,5 @@
     }
   ],
   "createdAt": "2026-06-12T19:15:51.819Z",
-  "updatedAt": "2026-08-10T15:40:20.555Z"
+  "updatedAt": "2026-10-08T21:50:00.000Z"
 }

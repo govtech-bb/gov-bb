@@ -1,4 +1,5 @@
 import { FormSubmissionResponse, SubmissionState } from "@forms/types";
+import type { SummarySection } from "@govtech-bb/submission-summary";
 
 type SubmissionEvent =
   | { name: "form-submit-success" }
@@ -20,6 +21,7 @@ export interface SubmissionOutcome {
 export function resolveSubmissionOutcome(
   response: FormSubmissionResponse,
   resolvedMarkdown?: string,
+  sections?: SummarySection[],
 ): SubmissionOutcome {
   const base = {
     // Prefer the human-readable referenceCode (e.g. "JPP-20260604-130732-9JZRZC")
@@ -44,6 +46,9 @@ export function resolveSubmissionOutcome(
     // Resolved by the caller while the answers are still in the form store —
     // submit success clears the draft, so it cannot be recomputed later.
     resolvedMarkdown,
+    // The answers as labelled sections for the printed copy (#2587), built by
+    // the caller for the same reason and at the same moment.
+    sections,
   };
 
   // Drive the UI off the SUBMISSION status (`data.status`: submitted /

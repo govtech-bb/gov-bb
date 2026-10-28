@@ -202,6 +202,70 @@ describe("the change history trigger", () => {
     await close();
   });
 
+  it("keeps a category's updated_at when a save changes nothing, so another editor's copy stays current", async () => {
+    const { db, close } = await createTestDb();
+    const { categories } = createTestServices(db);
+    const fields = {
+      title: "A",
+      slug: "a",
+      parent_id: null,
+      description: null,
+    };
+    const category = expectOk(await categories.create(fields, TEST_EMPLOYEE));
+
+    const again = expectOk(
+      await categories.update(
+        category.id,
+        fields,
+        category.updated_at,
+        TEST_EMPLOYEE,
+      ),
+    );
+    expect(again.updated_at).toBe(category.updated_at);
+
+    // A second editor who loaded the category before that save can still save.
+    expectOk(
+      await categories.update(
+        category.id,
+        { ...fields, title: "Renamed" },
+        category.updated_at,
+        TEST_EMPLOYEE,
+      ),
+    );
+    expect(await historyOf(db, category.id)).toEqual([
+      { action: "created", actor: TEST_EMPLOYEE.id },
+      { action: "updated", actor: TEST_EMPLOYEE.id },
+    ]);
+    await close();
+  });
+
+  it("returns the stamps a reorder stored, so each moved category can be saved again", async () => {
+    const { db, close } = await createTestDb();
+    const { categories } = createTestServices(db);
+    const create = async (slug: string) =>
+      expectOk(
+        await categories.create(
+          { title: slug, slug, parent_id: null, description: null },
+          TEST_EMPLOYEE,
+        ),
+      );
+    const siblings = [await create("a"), await create("b")];
+
+    const reordered = expectOk(
+      await categories.reorder(
+        {
+          parent_id: null,
+          expected: siblings.map(({ id, updated_at }) => ({ id, updated_at })),
+          ordered_ids: siblings.map((row) => row.id).reverse(),
+        },
+        TEST_EMPLOYEE,
+      ),
+    );
+
+    expect(reordered).toEqual(expectOk(await categories.list()));
+    await close();
+  });
+
   it("records each sub-page a parent's move carries, and moves its updated_at", async () => {
     const { db, close } = await createTestDb();
     const { editing } = createTestServices(db);

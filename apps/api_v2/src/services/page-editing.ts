@@ -40,8 +40,8 @@ export interface PageRevision {
 export interface PageRecords {
   /**
    * Run `work` as one transaction on behalf of `actorId`, whom storage
-   * records against every change it makes; an error result rolls back
-   * everything it wrote.
+   * records against every change it makes, after taking the shared content
+   * advisory lock; an error result rolls back everything it wrote.
    */
   atomically<R extends Result<unknown, Error>>(
     actorId: string,
@@ -55,8 +55,10 @@ export interface PageRecords {
   lock(
     id: PageId,
   ): Promise<Result<PageDocument | null, ContentStoreUnavailable>>;
-  /** Hold every other hierarchy change until the transaction ends, so two moves cannot close one loop. */
-  holdHierarchy(): Promise<Result<void, ContentStoreUnavailable>>;
+  /** Refuse a new page URL owned by a category, including an empty category. */
+  checkPageUrl(
+    url: string,
+  ): Promise<Result<void, PageRejected | ContentStoreUnavailable>>;
   /** The ids of the pages above this one; a loop in the data ends rather than repeating. */
   ancestorIds(
     pageId: PageId,
@@ -113,6 +115,8 @@ export class PageEditing {
     actor: Employee,
   ): Promise<Result<PageDocument, PageRejected | ContentStoreUnavailable>> {
     return this.records.atomically(actor.id, async (records) => {
+      const available = await records.checkPageUrl(page.url);
+      if (!available.ok) return available;
       const placed = await place(records, page.id, withDefaults(page));
       if (!placed.ok) return placed;
       const created = await records.insert(
@@ -153,6 +157,11 @@ export class PageEditing {
         current.updated_at !== expectedUpdatedAt.toISOString()
       )
         return err(new PageConflict(id));
+
+      if (fields.url !== current.url) {
+        const available = await records.checkPageUrl(fields.url);
+        if (!available.ok) return available;
+      }
 
       // Null moves the page to its category's root; only leaving it out keeps the parent.
       const placed = await place(records, id, {
@@ -205,8 +214,6 @@ async function place(
   fields: PageFields,
 ): Promise<Result<PageFields, PageRejected | ContentStoreUnavailable>> {
   if (fields.parent_id === null) return ok(fields);
-  const held = await records.holdHierarchy();
-  if (!held.ok) return held;
   if (id !== undefined) {
     const above = await records.ancestorIds(fields.parent_id);
     if (!above.ok) return above;

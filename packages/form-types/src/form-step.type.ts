@@ -20,8 +20,7 @@ export const formStepSchema = z.object({
   behaviours: z.array(behaviourSchema).optional(),
   // Raw markdown rendered on the submission-confirmation page (parsed by the
   // forms client). Lets a recipe drive form-specific confirmation content
-  // (e.g. a "What you need to know" section) without code changes. Distinct
-  // from `nextSteps`, which renders structured title/content/items blocks.
+  // (e.g. a "What you need to know" section) without code changes.
   markdownContent: z.string().optional(),
   // Per-answer passages within `markdownContent` (#2068). Each entry fills one
   // `{token}` the markdown carries inline, so several passages of one
@@ -33,14 +32,17 @@ export const formStepSchema = z.object({
   // an anonymous form (e.g. the exit survey) that issues no meaningful
   // reference, the design shows no ID. Omitted ⇒ the ID is shown as before.
   hideReferenceNumber: z.boolean().optional(),
+  // Retired (#2442): confirmation copy lives in `markdownContent`, which the
+  // serving path renders; `nextSteps` was silently dropped. Reject the dead key
+  // at the schema — not just the file-scan invariant — so DB state, AI drafts
+  // and preview payloads fail loudly instead of quietly losing the copy. The
+  // builder's load path folds any legacy `nextSteps` into `markdownContent`
+  // before this ever parses (see `deserializeRecipe`).
   nextSteps: z
-    .array(
-      z.object({
-        title: z.string(),
-        content: z.string().optional(),
-        items: z.array(z.string()).optional(),
-      }),
-    )
+    .never({
+      error:
+        "nextSteps was retired (#2442): put confirmation copy in markdownContent",
+    })
     .optional(),
 });
 export type FormStep = z.infer<typeof formStepSchema>;

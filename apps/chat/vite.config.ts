@@ -75,7 +75,7 @@ export default defineConfig(({ mode }) => {
       nitro({
         preset: "aws_amplify",
         awsAmplify: {
-          // @ts-ignore — Lambda supports nodejs24.x; nitro types lag.
+          // @ts-expect-error — Lambda supports nodejs24.x; nitro types lag.
           runtime: "nodejs24.x",
         },
       }),

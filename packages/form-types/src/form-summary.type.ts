@@ -62,10 +62,14 @@ export interface BuilderFormSummary {
   publishedVersion?: string;
   isDisabled?: boolean;
   /**
-   * The form's launch-gate visibility (#1835), carried through from the
-   * authoring published index. Non-public values (`preview`/`draft`/
-   * `maintenance`) drive the picker's visibility badge so an operator can see
-   * why a published form isn't on the public site. Absent means `public`.
+   * The form's *effective* launch status as apps/api reports it (#1835,
+   * #2875): a `service_status` row wins, the recipe's `meta.visibility` is the
+   * fallback when there is no row. Carried through from the authoring
+   * published index and the only status the builder shows — it never derives
+   * one from the recipe itself. Absent on a published form means the
+   * authoring list was unavailable (no `RECIPE_PREVIEW_TOKEN`), so the
+   * builder shows "Status unavailable" rather than assuming `public`; absent
+   * on an unpublished form just means there is no live status yet.
    */
   visibility?: RecipeVisibility;
   /**

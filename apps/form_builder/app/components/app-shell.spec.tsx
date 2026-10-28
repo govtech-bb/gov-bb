@@ -1,5 +1,4 @@
 /** @vitest-environment jsdom */
-import "@testing-library/jest-dom";
 import {
   createMemoryHistory,
   createRootRoute,
@@ -151,6 +150,25 @@ it("opens a service form directly and distinguishes its public pages", async () 
   const { router } = renderWorkspace(() => false, "/services", service);
   await screen.findByRole("heading", { name: "services workspace" });
   const nav = screen.getByRole("navigation", { name: "Workspace" });
+  const serviceLinks = [
+    "Overview",
+    "Pages",
+    "Application form",
+    "Journey map",
+    "After submission",
+    "Details",
+    "Publish",
+    "Entry page",
+    "Start page",
+  ];
+  const named = new Map(
+    serviceLinks.map((name) => [within(nav).getByRole("link", { name }), name]),
+  );
+  expect(
+    within(nav)
+      .getAllByRole("link")
+      .flatMap((link) => named.get(link) ?? []),
+  ).toEqual(serviceLinks);
   expect(
     within(nav).getByRole("link", { name: "Entry page" }),
   ).toHaveAttribute("href", expect.stringContaining("index.md"));

@@ -256,7 +256,7 @@ export function CategoriesScreen({ api }: { api: EditorApi }) {
         />
         <div ref={card} className="@container min-w-0 rounded-sm bg-white shadow-sheet">
           <Banner tone="info" layout="strip">
-            Preview only: the content API can’t save categories yet, so changes here last until you
+            Preview only: this screen doesn’t save categories yet, so changes here last until you
             reload.
           </Banner>
           <p role="status" className="sr-only">

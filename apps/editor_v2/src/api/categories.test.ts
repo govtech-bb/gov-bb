@@ -10,26 +10,39 @@ import {
   type Category,
   type CategoryFields,
 } from "./categories";
-import { ApiFailure, createEditorApi } from "./client";
+import { ApiFailure, createEditorApi, type SavedCategory } from "./client";
 
-const taxonomy = [
-  { id: "education", parent_id: null, slug: "education", url: "/education", title: "Education" },
-  { id: "health", parent_id: null, slug: "health", url: "/health", title: "Health" },
-  {
-    id: "youth",
-    parent_id: null,
-    slug: "youth-and-community",
-    url: "/youth-and-community",
-    title: "Youth and community",
-  },
-  {
-    id: "sport",
-    parent_id: "youth",
-    slug: "sport",
-    url: "/youth-and-community/sport",
-    title: "Sport",
-  },
-  { id: "arts", parent_id: "youth", slug: "arts", url: "/youth-and-community/arts", title: "Arts" },
+/** A category as `GET /editor/categories` answers; a subcategory's address starts with its parent's. */
+const savedCategory = (
+  id: string,
+  slug: string,
+  title: string,
+  { position, services }: Pick<SavedCategory, "position" | "services">,
+  parent?: SavedCategory,
+): SavedCategory => ({
+  id,
+  parent_id: parent?.id ?? null,
+  slug,
+  title,
+  description: null,
+  url: parent ? `${parent.url}/${slug}` : `/${slug}`,
+  position,
+  services,
+  reserved_route: false,
+  updated_at: "2026-10-26T12:00:00.000Z",
+});
+
+const youth = savedCategory("youth", "youth-and-community", "Youth and community", {
+  position: 2,
+  services: 0,
+});
+
+const saved = [
+  savedCategory("education", "education", "Education", { position: 0, services: 2 }),
+  savedCategory("health", "health", "Health", { position: 1, services: 0 }),
+  youth,
+  savedCategory("sport", "sport", "Sport", { position: 0, services: 1 }, youth),
+  savedCategory("arts", "arts", "Arts", { position: 1, services: 0 }, youth),
 ];
 
 const services = [
@@ -38,9 +51,9 @@ const services = [
   { category: { slug: "sport", title: "Sport" } },
 ];
 
-const slugs = new Map(taxonomy.map((entry) => [entry.slug, entry.id]));
+const slugs = new Map(saved.map((entry) => [entry.slug, entry.id]));
 
-const categories = withServiceCounts(categoriesFrom(taxonomy), services, slugs);
+const categories = withServiceCounts(categoriesFrom(saved), services, slugs);
 
 const fields = (changes: Partial<CategoryFields> = {}): CategoryFields => ({
   title: "Housing",
@@ -128,10 +141,10 @@ describe("category rules", () => {
   });
 });
 
-describe("categories kept in memory until the content API can change them", () => {
+describe("categories kept in memory until the editor sends category writes", () => {
   const fetches = vi.fn<(path: string) => Response>((path) =>
-    path === "/taxonomy"
-      ? Response.json({ categories: taxonomy })
+    path === "/editor/categories"
+      ? Response.json({ categories: saved })
       : path === "/services"
         ? Response.json(services)
         : new Response(null, { status: 404 }),
@@ -164,12 +177,12 @@ describe("categories kept in memory until the content API can change them", () =
     return undefined;
   }
 
-  it("reads the taxonomy once, and counts the services filed now on every read", async () => {
+  it("reads the saved categories once, and counts the services filed now on every read", async () => {
     const api = editorApi();
     const count = async (id: string) => byId(await api.categories(), id)?.services;
 
     expect((await api.categories()).map((item) => item.slug)).toEqual(
-      taxonomy.map((item) => item.slug),
+      saved.map((item) => item.slug),
     );
     expect(await count("health")).toBe(0);
 
@@ -177,11 +190,11 @@ describe("categories kept in memory until the content API can change them", () =
     const filed = [...services, { category: { slug: "health", title: "Health" } }];
 
     fetches.mockImplementation((path) =>
-      path === "/taxonomy" ? Response.json({ categories: taxonomy }) : Response.json(filed),
+      path === "/editor/categories" ? Response.json({ categories: saved }) : Response.json(filed),
     );
     expect(await count("health")).toBe(1);
     expect((await failureOf(api.deleteCategory("health")))?.status).toBe(409);
-    expect(fetches.mock.calls.filter(([path]) => path === "/taxonomy")).toHaveLength(1);
+    expect(fetches.mock.calls.filter(([path]) => path === "/editor/categories")).toHaveLength(1);
 
     // A new slug keeps the services filed under the old one
     await api.updateCategory("education", fields({ title: "Schools", slug: "schools" }));
@@ -195,7 +208,7 @@ describe("categories kept in memory until the content API can change them", () =
     vi.stubGlobal("fetch", async (input: RequestInfo | URL) => {
       const path = new URL(input instanceof Request ? input.url : input).pathname;
 
-      if (path === "/taxonomy") return Response.json({ categories: taxonomy });
+      if (path === "/editor/categories") return Response.json({ categories: saved });
       started.resolve();
       await pending.promise;
 
@@ -289,14 +302,24 @@ describe("categories kept in memory until the content API can change them", () =
     ]);
   });
 
-  it("keeps preview categories out of real taxonomy and resets them on a fresh page load", async () => {
+  it("keeps preview changes out of the saved categories, and drops them on a fresh page load", async () => {
     const api = editorApi();
 
     await api.createCategory(fields());
-    expect((await api.categories()).some((category) => category.slug === "housing")).toBe(true);
-    expect((await api.taxonomy()).some((category) => category.slug === "housing")).toBe(false);
-    expect((await editorApi().categories()).some((category) => category.slug === "housing")).toBe(
-      false,
+    await api.updateCategory("education", fields({ title: "Schools", slug: "schools" }));
+    await api.moveCategory("arts", -1);
+    await api.deleteCategory("health");
+    expect(categoryRows(await api.categories()).map((row) => row.slug)).toEqual([
+      "schools",
+      "youth-and-community",
+      "arts",
+      "sport",
+      "housing",
+    ]);
+    // What page pickers offer
+    expect(await api.savedCategories()).toEqual(saved);
+    expect((await editorApi().categories()).map((category) => category.slug)).toEqual(
+      saved.map((category) => category.slug),
     );
   });
 

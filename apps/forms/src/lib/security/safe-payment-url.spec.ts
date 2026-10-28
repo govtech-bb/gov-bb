@@ -9,14 +9,35 @@ describe("isSafePaymentUrl", () => {
     vi.stubEnv("VITE_PAYMENT_ALLOWED_ORIGINS", value);
   }
 
-  describe("default allowlist (ezpay.gov.bb)", () => {
-    beforeEach(() => setAllowed(undefined));
+  // #1366: there is no baked-in default. An unset/blank allowlist fails closed
+  // — every payment URL is rejected rather than trusting a hardcoded host.
+  describe("fail closed when the allowlist is unset", () => {
+    it("rejects an otherwise-valid host when the env var is unset", () => {
+      setAllowed(undefined);
+      expect(isSafePaymentUrl("https://ezpay.gov.bb/pay?token=abc")).toBe(
+        false,
+      );
+    });
 
-    it("accepts an https URL on the default host", () => {
+    it("rejects when the env var is an empty string", () => {
+      setAllowed("");
+      expect(isSafePaymentUrl("https://ezpay.gov.bb/")).toBe(false);
+    });
+
+    it("rejects when the env var is whitespace only", () => {
+      setAllowed("   ");
+      expect(isSafePaymentUrl("https://ezpay.gov.bb/")).toBe(false);
+    });
+  });
+
+  describe("configured allowlist", () => {
+    beforeEach(() => setAllowed("ezpay.gov.bb"));
+
+    it("accepts an https URL on an allowed host", () => {
       expect(isSafePaymentUrl("https://ezpay.gov.bb/pay?token=abc")).toBe(true);
     });
 
-    it("accepts a subdomain of the default host", () => {
+    it("accepts a subdomain of an allowed host", () => {
       expect(isSafePaymentUrl("https://test.ezpay.gov.bb/pay")).toBe(true);
     });
 
@@ -36,7 +57,9 @@ describe("isSafePaymentUrl", () => {
   });
 
   describe("dangerous schemes", () => {
-    beforeEach(() => setAllowed(undefined));
+    // A real allowlist is set so these prove the scheme/format checks reject
+    // the URL, not merely an empty allowlist.
+    beforeEach(() => setAllowed("ezpay.gov.bb"));
 
     it.each([
       "javascript:alert(1)",
@@ -53,6 +76,8 @@ describe("isSafePaymentUrl", () => {
   });
 
   describe("malformed input", () => {
+    beforeEach(() => setAllowed("ezpay.gov.bb"));
+
     it.each([undefined, null, "", "   ", "not a url", "https://"])(
       "rejects %p",
       (input) => {
@@ -77,11 +102,6 @@ describe("isSafePaymentUrl", () => {
     it("rejects hosts not in the custom allowlist", () => {
       setAllowed("pay.example.com");
       expect(isSafePaymentUrl("https://ezpay.gov.bb/")).toBe(false);
-    });
-
-    it("falls back to defaults when env is whitespace only", () => {
-      setAllowed("   ");
-      expect(isSafePaymentUrl("https://ezpay.gov.bb/")).toBe(true);
     });
 
     it("matches case-insensitively on host", () => {

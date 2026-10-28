@@ -132,7 +132,7 @@ Each element references a registry component and applies overrides:
 | `components/address`                   | text      | Single address line (use twice with different fieldIds for line 1 + line 2)                                                      |
 | `components/town`                      | text      | Town/city name                                                                                                                   |
 | `components/postcode`                  | text      | Postcode/zip (default width: short)                                                                                              |
-| `components/national-id-number`        | text      | National ID number                                                                                                               |
+| `components/national-id-number`        | text      | Barbados National Identification (ID) number                                                                                     |
 | `components/national-insurance-number` | text      | NIS number                                                                                                                       |
 | `components/passport-number`           | text      | Passport number                                                                                                                  |
 | `components/tamis-number`              | text      | TAMIS number                                                                                                                     |
@@ -811,7 +811,7 @@ Most government forms start with personal information:
 ```json
 {
   "stepId": "declaration",
-  "title": "Declaration",
+  "title": "Confirm and submit your application",
   "elements": [
     {
       "ref": "components/confirmation",
@@ -820,14 +820,14 @@ Most government forms start with personal information:
         "label": "Declaration",
         "options": [
           {
-            "label": "I confirm that my information is correct and I am happy for it to be verified. I understand that false details may lead to my application being rejected, and that the Government of Barbados will keep my information confidential.",
+            "label": "I confirm that the information I have provided is true and correct to the best of my knowledge.",
             "value": "confirmed"
           }
         ],
         "validations": {
           "required": {
             "value": true,
-            "error": "You must confirm the declaration to continue"
+            "error": "You must confirm the declaration to continue."
           }
         }
       }
@@ -838,6 +838,33 @@ Most government forms start with personal information:
 
 **Important:** The `label` field becomes the heading above the checkbox. The `options[0].label` is the text shown NEXT TO the checkbox. Put the full declaration statement in `options[0].label`, not in `label`. The renderer will auto-display the applicant name and date above the checkbox.
 
+Do not change the title, the checkbox text or the error. If the service has a legal or operational need for one more point, add a separate `components/confirmation` on the same step. Give it its own `fieldId` and `ui.hideLabel`. Do not add a general consent to verification. Do not add a general warning about false information. Refer to ADR 0077.
+
+For example, an acknowledgement added after the declaration element:
+
+```json
+{
+  "ref": "components/confirmation",
+  "overrides": {
+    "fieldId": "authority-confirmed",
+    "label": "Authority to apply",
+    "options": [
+      {
+        "label": "I confirm that I am authorised to submit this application.",
+        "value": "confirmed"
+      }
+    ],
+    "validations": {
+      "required": {
+        "value": true,
+        "error": "You must confirm you are authorised to submit this application."
+      }
+    },
+    "ui": { "hideLabel": true }
+  }
+}
+```
+
 ### Pattern: Submission Confirmation Step (REQUIRED)
 
 Every form MUST include this as the **last step** in the `steps` array. The frontend navigates here after submission and renders a dedicated confirmation component. Without it, the user sees no feedback after submitting.
@@ -847,12 +874,7 @@ Every form MUST include this as the **last step** in the `steps` array. The fron
   "stepId": "submission-confirmation",
   "title": "Application submitted",
   "elements": [],
-  "nextSteps": [
-    {
-      "title": "What happens next",
-      "content": "We have received your submission. You will receive a confirmation email at the address you provided."
-    }
-  ]
+  "markdownContent": "## What happens next\n\nWe have received your submission. You will receive a confirmation email at the address you provided."
 }
 ```
 
@@ -860,7 +882,7 @@ Every form MUST include this as the **last step** in the `steps` array. The fron
 
 - `stepId` MUST be exactly `"submission-confirmation"` — the renderer checks this literal string
 - `elements` MUST be an empty array `[]` — the renderer uses a dedicated component, not field rendering
-- `nextSteps` is optional but recommended — array of `{title, content?, items?}` shown after the success message
+- `markdownContent` is optional but recommended — a markdown string shown after the success message (use `## What happens next` as the heading; bullet lists with `-`)
 - This step goes AFTER the declaration step (it is always the last step)
 - For payment forms, the renderer automatically shows payment status — no extra config needed here
 
@@ -1136,16 +1158,16 @@ VALUES (
       },
       {
         "stepId": "declaration",
-        "title": "Declaration",
+        "title": "Confirm and submit your application",
         "elements": [
-          {"ref": "components/confirmation", "overrides": {"fieldId": "declaration-confirm", "label": "Declaration", "options": [{"label": "I declare that the information provided in this application is true and correct to the best of my knowledge.", "value": "confirmed"}], "validations": {"required": {"value": true, "error": "You must confirm the declaration to proceed"}}}}
+          {"ref": "components/confirmation", "overrides": {"fieldId": "declaration-confirmed", "label": "Declaration", "options": [{"label": "I confirm that the information I have provided is true and correct to the best of my knowledge.", "value": "confirmed"}], "validations": {"required": {"value": true, "error": "You must confirm the declaration to continue."}}}}
         ]
       },
       {
         "stepId": "submission-confirmation",
         "title": "Application submitted",
         "elements": [],
-        "nextSteps": [{"title": "What happens next", "content": "We have received your application. You will receive a confirmation email at the address you provided."}]
+        "markdownContent": "## What happens next\n\nWe have received your application. You will receive a confirmation email at the address you provided."
       }
     ],
     "processors": []
@@ -1258,7 +1280,7 @@ Before finalizing the SQL, verify:
 - [ ] Date fields use `components/date-of-birth` with appropriate fieldId + label overrides
 - [ ] Age fields use `components/generic/number` (not radio or select)
 - [ ] Free-text relationship fields use `components/name`, not `components/relationship`
-- [ ] The last step is `{"stepId": "submission-confirmation", "title": "Application submitted", "elements": [], "nextSteps": [...]}`
+- [ ] The last step is `{"stepId": "submission-confirmation", "title": "Application submitted", "elements": [], "markdownContent": "## What happens next\n\n..."}`
 - [ ] No hidden fields have `required` validation (`isHidden: true` + `required: true` blocks submission)
 - [ ] No step has more than 10 fields
 - [ ] The SQL uses dollar-quoting (`$recipe$...$recipe$`) to avoid quote escaping issues

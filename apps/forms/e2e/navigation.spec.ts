@@ -10,6 +10,7 @@
  *  - Previous button hidden on step 1
  *  - Entering an unknown step ID redirects gracefully
  *  - Check-Your-Answers Change link returns to the correct step
+ *  - Continue after a Change returns to check-your-answers (#2812)
  */
 import { test, expect } from "./helpers/api-mock";
 import { FormPage } from "./helpers/form-page";
@@ -145,36 +146,39 @@ test.describe("Forward & Back navigation", () => {
   });
 });
 
+/** Complete every step of the master form up to check-your-answers. */
+async function fillToCheckYourAnswers(form: FormPage): Promise<void> {
+  await form.goto();
+  await form.fillStep1();
+  await form.clickContinue();
+  await form.waitForStep("step-2-contact-information");
+  await form.fillStep2();
+  await form.clickContinue();
+  await form.waitForStep("random-step");
+  await form.clickContinue();
+  await form.waitForStep("step-3-address-employment");
+  await form.fillStep3();
+  await form.clickContinue();
+  await form.waitForStep("step-4-documents-uploads");
+  await form.fillStep4(TEST_PNG, [TEST_PNG_2, TEST_PNG_3]);
+  await form.clickContinue();
+  await form.waitForStep("step-5-financial-information");
+  await form.fillStep5Source();
+  await form.clickContinue();
+  await form.waitForStep("step-5-financial-information~1");
+  await form.fillStep5Repeat("step-5-financial-information~1", {
+    addAnotherAnswer: "No",
+  });
+  await form.clickContinue();
+  await form.waitForStep("check-your-answers");
+}
+
 test.describe("Check-Your-Answers Change links", () => {
   test("Change link on Personal Details navigates back to step 1", async ({
     page,
   }) => {
     const form = new FormPage(page);
-    await form.goto();
-
-    // Navigate all the way to CYA
-    await form.fillStep1();
-    await form.clickContinue();
-    await form.waitForStep("step-2-contact-information");
-    await form.fillStep2();
-    await form.clickContinue();
-    await form.waitForStep("random-step");
-    await form.clickContinue();
-    await form.waitForStep("step-3-address-employment");
-    await form.fillStep3();
-    await form.clickContinue();
-    await form.waitForStep("step-4-documents-uploads");
-    await form.fillStep4(TEST_PNG, [TEST_PNG_2, TEST_PNG_3]);
-    await form.clickContinue();
-    await form.waitForStep("step-5-financial-information");
-    await form.fillStep5Source();
-    await form.clickContinue();
-    await form.waitForStep("step-5-financial-information~1");
-    await form.fillStep5Repeat("step-5-financial-information~1", {
-      addAnotherAnswer: "No",
-    });
-    await form.clickContinue();
-    await form.waitForStep("check-your-answers");
+    await fillToCheckYourAnswers(form);
 
     // Click the "Change" link that navigates back to Personal Details (step 1)
     const changeLinks = page.locator('a[href*="step-1-personal-details"]', {
@@ -185,6 +189,25 @@ test.describe("Check-Your-Answers Change links", () => {
     // Should land on step 1
     await form.waitForStep("step-1-personal-details");
     await form.expectStepHeading("Personal Details");
+  });
+
+  test("Continue after a Change returns to check-your-answers, not the next step (#2812)", async ({
+    page,
+  }) => {
+    const form = new FormPage(page);
+    await fillToCheckYourAnswers(form);
+
+    await page
+      .locator('a[href*="step-1-personal-details"]', { hasText: "Change" })
+      .first()
+      .click();
+    await form.waitForStep("step-1-personal-details");
+    await form.clickContinue();
+
+    // Straight back to the review — not step 2 and the five steps after it —
+    // and the change journey is over, so the flag is gone from the URL.
+    await form.waitForStep("check-your-answers");
+    expect(new URL(page.url()).searchParams.get("returnTo")).toBeNull();
   });
 });
 

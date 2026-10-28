@@ -10,6 +10,8 @@ import {
   saveServicePage,
   saveServiceForm,
   getServiceDraft,
+  listServiceDrafts,
+  listServiceCheckpoints,
   attachServiceForm,
 } from "./service-drafts";
 vi.mock("../server/forms", () => ({
@@ -141,6 +143,324 @@ it("connects one existing form, keeps repeated loads stable, and saves edits thr
       },
     }),
   ).rejects.toThrow("already has an application");
+});
+// A service published with content pages only: `save()` seeds a manifest
+// while `baseManifestSha` is null, so attaching a form later must carry the
+// recipe's contact details over itself (#2894).
+const publishedPagesOnly = {
+  ...snapshot,
+  baseManifestSha: "0123456789abcdef0123456789abcdef01234567",
+};
+const withContact = draftRecipeSchema.parse({
+  title: "Application",
+  formId: "test-form",
+  steps: [],
+  contactDetails: { email: "health@gov.bb", telephoneNumber: "246-555-0100" },
+});
+const withoutContact = draftRecipeSchema.parse({
+  title: "Application",
+  formId: "test-form",
+  steps: [],
+});
+it("attaching a form to a published service inherits the recipe's contact details (#2894)", async () => {
+  vi.mocked(getRecipe).mockResolvedValue(withContact as never);
+  const published = await saveServiceDraft({
+    data: { snapshot: publishedPagesOnly, expectedRevision: 0 },
+  });
+  expect(published.manifest.contactDetails).toBeUndefined();
+  const connected = await attachServiceForm({
+    data: {
+      serviceId: "test-service",
+      expectedRevision: published.revision,
+      formId: "test-form",
+    },
+  });
+  expect(connected.manifest.contactDetails).toEqual(withContact.contactDetails);
+  expect(
+    (await getServiceDraft({ data: { serviceId: "test-service" } })).manifest
+      .contactDetails,
+  ).toEqual(withContact.contactDetails);
+});
+it("keeps the manifest's own contact details when attaching a form that has its own", async () => {
+  vi.mocked(getRecipe).mockResolvedValue(withContact as never);
+  const own = { email: "registry@gov.bb" };
+  const published = await saveServiceDraft({
+    data: {
+      snapshot: {
+        ...publishedPagesOnly,
+        manifest: { ...publishedPagesOnly.manifest, contactDetails: own },
+      },
+      expectedRevision: 0,
+    },
+  });
+  const connected = await attachServiceForm({
+    data: {
+      serviceId: "test-service",
+      expectedRevision: published.revision,
+      formId: "test-form",
+    },
+  });
+  expect(connected.manifest.contactDetails).toEqual(own);
+});
+it("leaves contactDetails off the manifest when neither it nor the recipe has one", async () => {
+  // Same shape seedServiceManifest writes: no key, not `undefined`.
+  vi.mocked(getRecipe).mockResolvedValue(withoutContact as never);
+  const published = await saveServiceDraft({
+    data: { snapshot: publishedPagesOnly, expectedRevision: 0 },
+  });
+  const connected = await attachServiceForm({
+    data: {
+      serviceId: "test-service",
+      expectedRevision: published.revision,
+      formId: "test-form",
+    },
+  });
+  expect(connected.manifest).not.toHaveProperty("contactDetails");
+});
+const applicantEmailOnly = draftRecipeSchema.parse({
+  formId: "test-form",
+  title: "Application",
+  steps: [],
+  processors: [
+    { type: "email", config: { recipientField: "your-details.email" } },
+  ],
+});
+// What the earlier seed stored for a form whose only action is the applicant
+// confirmation email: readiness rejected it as "Add a delivery action".
+const staleSetup = {
+  step: "about",
+  delivery: "configured",
+  applicantEmail: "undecided",
+} as const;
+it("re-seeds a draft adopted before #2683 on refresh until the author decides", async () => {
+  // Stored by the earlier seed: the retired visibility key and a delivery it
+  // decided alone.
+  localStorage.setItem(
+    "service-workspace:v1:editor:test-service",
+    JSON.stringify({
+      ...snapshot,
+      recipe: applicantEmailOnly,
+      manifest: {
+        ...snapshot.manifest,
+        visibility: "draft",
+        formId: "test-form",
+        setup: staleSetup,
+      },
+      revision: 4,
+      updatedAt: "2026-09-14T00:00:00.000Z",
+      updatedBy: "editor",
+    }),
+  );
+  vi.mocked(getRecipe).mockResolvedValue(applicantEmailOnly as never);
+  const refreshed = await getServiceDraft({
+    data: { serviceId: "test-service" },
+  });
+  expect(refreshed.revision).toBe(5);
+  expect(refreshed.manifest).not.toHaveProperty("visibility");
+  expect(refreshed.manifest.setup).toEqual({
+    step: "about",
+    delivery: "none",
+    applicantEmail: "configured",
+  });
+  expect(
+    (await getServiceDraft({ data: { serviceId: "test-service" } })).revision,
+  ).toBe(5);
+  const decided = await saveServiceDraft({
+    data: {
+      snapshot: {
+        ...refreshed,
+        manifest: {
+          ...refreshed.manifest,
+          setup: { ...refreshed.manifest.setup, applicantEmail: "none" },
+        },
+      },
+      expectedRevision: 5,
+    },
+  });
+  const kept = await getServiceDraft({ data: { serviceId: "test-service" } });
+  expect(kept.revision).toBe(decided.revision);
+  expect(kept.manifest.setup.applicantEmail).toBe("none");
+});
+it("reads a browser draft saved before the nextSteps migration without throwing, folding it into markdownContent (#2442)", async () => {
+  // A pre-migration draft row: `nextSteps`, no `markdownContent`. Stored raw, so
+  // it carries the retired key `draftRecipeSchema` now rejects (z.never).
+  localStorage.setItem(
+    "service-workspace:v1:editor:test-service",
+    JSON.stringify({
+      ...snapshot,
+      recipe: {
+        title: "Application",
+        formId: "test-form",
+        steps: [
+          {
+            stepId: "submission-confirmation",
+            title: "Application submitted",
+            elements: [],
+            nextSteps: [
+              { title: "What happens next", content: "We will be in touch." },
+            ],
+          },
+        ],
+        createdAt: "2026-09-10T00:00:00.000Z",
+        updatedAt: "2026-09-10T00:00:00.000Z",
+      },
+      manifest: { ...snapshot.manifest, formId: "test-form" },
+      revision: 2,
+      updatedAt: "2026-09-14T00:00:00.000Z",
+      updatedBy: "editor",
+    }),
+  );
+
+  // localDrafts() maps read() over every key — one stale draft must not throw
+  // for the whole library.
+  const drafts = await listServiceDrafts();
+  expect(drafts).toHaveLength(1);
+  const step = drafts[0].recipe!.steps[0] as {
+    markdownContent?: string;
+    nextSteps?: unknown;
+  };
+  expect(step.markdownContent).toBe(
+    "## What happens next\n\nWe will be in touch.",
+  );
+  expect(step).not.toHaveProperty("nextSteps");
+});
+it("folds a browser version saved before the migration when listing checkpoints (#2442)", async () => {
+  // A pre-migration snapshot stored under the versions key: `nextSteps`, no
+  // `markdownContent`. Restore / retry / publish all read through
+  // listServiceCheckpoints, then parse `serviceSnapshotSchema` (which now rejects
+  // the retired key), so folding here is what stops them throwing on an old
+  // version.
+  localStorage.setItem(
+    "service-workspace:v1:editor:test-service:versions",
+    JSON.stringify([
+      {
+        id: "v1",
+        serviceId: "test-service",
+        revision: 2,
+        label: "Before the migration",
+        createdAt: "2026-09-12T00:00:00.000Z",
+        createdBy: "editor",
+        gitSha: null,
+        gitRef: null,
+        prNumber: null,
+        prUrl: null,
+        snapshot: {
+          ...snapshot,
+          recipe: {
+            title: "Application",
+            formId: "test-form",
+            steps: [
+              {
+                stepId: "submission-confirmation",
+                title: "Application submitted",
+                elements: [],
+                nextSteps: [
+                  {
+                    title: "What happens next",
+                    content: "We will be in touch.",
+                  },
+                ],
+              },
+            ],
+            createdAt: "2026-09-10T00:00:00.000Z",
+            updatedAt: "2026-09-10T00:00:00.000Z",
+          },
+        },
+      },
+    ]),
+  );
+
+  const [version] = await listServiceCheckpoints({
+    data: { serviceId: "test-service" },
+  });
+  const step = version.snapshot.recipe!.steps[0] as {
+    markdownContent?: string;
+    nextSteps?: unknown;
+  };
+  expect(step.markdownContent).toBe(
+    "## What happens next\n\nWe will be in touch.",
+  );
+  expect(step).not.toHaveProperty("nextSteps");
+});
+it("seeds a never-published manifest on save so a refresh never bumps the revision", async () => {
+  vi.mocked(getRecipe).mockResolvedValue(applicantEmailOnly as never);
+  const saved = await saveServiceDraft({
+    data: {
+      snapshot: {
+        ...snapshot,
+        recipe: applicantEmailOnly,
+        manifest: {
+          ...snapshot.manifest,
+          formId: "test-form",
+          setup: staleSetup,
+        },
+      },
+      expectedRevision: 0,
+    },
+  });
+  expect(saved.manifest.setup).toEqual({
+    step: "about",
+    delivery: "none",
+    applicantEmail: "configured",
+  });
+  const refreshed = await getServiceDraft({
+    data: { serviceId: "test-service" },
+  });
+  expect(refreshed.revision).toBe(saved.revision);
+});
+it("keeps a decided pair that disagrees with the recipe's actions (ADR 0073)", async () => {
+  // Decided through the Details page or the assistant; readiness, not the
+  // seed, is what asks the author to reconcile it with the actions.
+  const decided = {
+    step: "about",
+    delivery: "configured",
+    applicantEmail: "none",
+  } as const;
+  vi.mocked(getRecipe).mockResolvedValue(applicantEmailOnly as never);
+  const saved = await saveServiceDraft({
+    data: {
+      snapshot: {
+        ...snapshot,
+        recipe: applicantEmailOnly,
+        manifest: {
+          ...snapshot.manifest,
+          formId: "test-form",
+          setup: decided,
+        },
+      },
+      expectedRevision: 0,
+    },
+  });
+  expect(saved.manifest.setup).toEqual(decided);
+  const refreshed = await getServiceDraft({
+    data: { serviceId: "test-service" },
+  });
+  expect(refreshed.revision).toBe(saved.revision);
+  expect(refreshed.manifest.setup).toEqual(decided);
+});
+it("leaves a published manifest as the author saved it", async () => {
+  vi.mocked(getRecipe).mockResolvedValue(applicantEmailOnly as never);
+  const published = await saveServiceDraft({
+    data: {
+      snapshot: {
+        ...snapshot,
+        recipe: applicantEmailOnly,
+        baseManifestSha: "0123456789abcdef0123456789abcdef01234567",
+        manifest: {
+          ...snapshot.manifest,
+          formId: "test-form",
+          setup: staleSetup,
+        },
+      },
+      expectedRevision: 0,
+    },
+  });
+  expect(published.manifest.setup).toEqual(staleSetup);
+  const refreshed = await getServiceDraft({
+    data: { serviceId: "test-service" },
+  });
+  expect(refreshed.revision).toBe(published.revision);
+  expect(refreshed.manifest.setup).toEqual(staleSetup);
 });
 it("retains newer page edits when an older recipe refresh finishes", async () => {
   const recipe = draftRecipeSchema.parse({

@@ -13,7 +13,7 @@ import { sql } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { FastifyInstance, InjectOptions } from "fastify";
 import pino from "pino";
-import { IF_UPDATED_AT } from "./routes/pages";
+import { IF_UPDATED_AT } from "./routes/contracts";
 import { PUBLIC_READ } from "./routes/responses";
 import type { Database } from "./db";
 import { withDefaults, type Visibility } from "./modules/page";
@@ -431,7 +431,7 @@ describe("GET /services/:id", () => {
   });
 });
 
-describe("GET /taxonomy", () => {
+describe("GET /editor/categories", () => {
   it("lists every category with its id, each before its subcategories, whether or not it lists anything", async () => {
     const [money, youth] = await db
       .insert(categories)
@@ -459,11 +459,11 @@ describe("GET /taxonomy", () => {
       .returning();
     if (!arts) throw new Error("The subcategory was not inserted");
 
-    const response = await inject({ url: "/taxonomy" });
+    const response = await inject({ url: "/editor/categories" });
 
     expect(response.statusCode).toBe(200);
     expect(response.headers["cache-control"]).toBe("no-store");
-    expect(response.json().categories).toEqual([
+    expect(response.json().categories).toMatchObject([
       {
         id: money.id,
         parent_id: null,
@@ -1118,7 +1118,12 @@ describe("employee access", () => {
     ["HEAD", "/pages/not-a-uuid"],
     ["GET", "/services"],
     ["GET", "/services/not-a-uuid"],
-    ["GET", "/taxonomy"],
+    ["GET", "/editor/categories"],
+    ["HEAD", "/editor/categories"],
+    ["POST", "/editor/categories"],
+    ["PUT", "/editor/categories/order"],
+    ["PUT", "/editor/categories/not-a-uuid"],
+    ["DELETE", "/editor/categories/not-a-uuid"],
     ["GET", "/version"],
     ["POST", "/pages"],
     ["PUT", "/pages/not-a-uuid"],

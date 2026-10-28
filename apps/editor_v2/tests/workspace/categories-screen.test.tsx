@@ -10,27 +10,41 @@ import {
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { createEditorApi } from "../../src/api/client";
+import { createEditorApi, type SavedCategory } from "../../src/api/client";
 import { CategoriesScreen } from "../../src/workspace/categories-screen";
+import { CreateRemoteServiceDialog } from "../../src/workspace/remote-page-dialogs";
 
-const taxonomy = [
-  { id: "education", parent_id: null, slug: "education", url: "/education", title: "Education" },
-  { id: "health", parent_id: null, slug: "health", url: "/health", title: "Health" },
-  {
-    id: "youth",
-    parent_id: null,
-    slug: "youth-and-community",
-    url: "/youth-and-community",
-    title: "Youth and community",
-  },
-  {
-    id: "sport",
-    parent_id: "youth",
-    slug: "sport",
-    url: "/youth-and-community/sport",
-    title: "Sport",
-  },
-  { id: "arts", parent_id: "youth", slug: "arts", url: "/youth-and-community/arts", title: "Arts" },
+/** A category as `GET /editor/categories` answers; a subcategory's address starts with its parent's. */
+const savedCategory = (
+  id: string,
+  slug: string,
+  title: string,
+  { position, services }: Pick<SavedCategory, "position" | "services">,
+  parent?: SavedCategory,
+): SavedCategory => ({
+  id,
+  parent_id: parent?.id ?? null,
+  slug,
+  title,
+  description: null,
+  url: parent ? `${parent.url}/${slug}` : `/${slug}`,
+  position,
+  services,
+  reserved_route: false,
+  updated_at: "2026-10-26T12:00:00.000Z",
+});
+
+const youth = savedCategory("youth", "youth-and-community", "Youth and community", {
+  position: 2,
+  services: 0,
+});
+
+const saved = [
+  savedCategory("education", "education", "Education", { position: 0, services: 2 }),
+  savedCategory("health", "health", "Health", { position: 1, services: 0 }),
+  youth,
+  savedCategory("sport", "sport", "Sport", { position: 0, services: 1 }, youth),
+  savedCategory("arts", "arts", "Arts", { position: 1, services: 0 }, youth),
 ];
 
 const services = [
@@ -70,8 +84,8 @@ beforeEach(() => {
         return new Response(null, { status: 503 });
       }
 
-      return path === "/taxonomy"
-        ? Response.json({ categories: taxonomy })
+      return path === "/editor/categories"
+        ? Response.json({ categories: saved })
         : Response.json(services);
     }),
   );
@@ -117,7 +131,7 @@ const tinted = () =>
 
 const until = (ready: () => void) => act(async () => vi.waitFor(ready));
 
-const loaded = () => until(() => expect(names()).toHaveLength(taxonomy.length));
+const loaded = () => until(() => expect(names()).toHaveLength(saved.length));
 
 const button = (name: string) =>
   [...document.querySelectorAll<HTMLButtonElement>("button")].find(
@@ -337,6 +351,50 @@ test("a renamed category links to the services under its real API name", async (
   expect(dialog()?.querySelector("a")?.getAttribute("href")).toBe("/services?category=Education");
 });
 
+test("Create service offers only the saved categories, whatever the preview changes", async () => {
+  const api = createEditorApi("https://api.example.test");
+
+  // One API and one query cache for the screen and the picker, as in the workspace
+  const show = (picker: boolean) =>
+    act(async () =>
+      root.render(
+        <RouterContextProvider router={router}>
+          <QueryClientProvider client={client}>
+            <CategoriesScreen api={api} />
+            {picker && <CreateRemoteServiceDialog api={api} close={() => {}} done={() => {}} />}
+          </QueryClientProvider>
+        </RouterContextProvider>,
+      ),
+    );
+
+  const choices = () => [...document.querySelectorAll<HTMLOptionElement>('[role="dialog"] option')];
+
+  const preview = ["Schools", "Health", "Youth and community", "Sport", "Arts", "Housing"];
+
+  await show(false);
+  await loaded();
+  await press("Add category");
+  await enter("Name", "Housing");
+  await submit();
+  await closed();
+  await press("Edit Education");
+  await enter("Name", "Schools");
+  await submit();
+  await closed();
+  await until(() => expect(names()).toEqual(preview));
+
+  await show(true);
+  await until(() =>
+    expect(choices().map((choice) => choice.value)).toEqual([
+      "",
+      ...saved.map((category) => category.id),
+    ]),
+  );
+  expect(choices().find((choice) => choice.value === "education")?.textContent).toBe("Education");
+  // Nor does the picker's read replace the preview
+  expect(names()).toEqual(preview);
+});
+
 test("keeps the list with a warning when a refresh fails, and retries", async () => {
   await render();
   await loaded();
@@ -344,7 +402,7 @@ test("keeps the list with a warning when a refresh fails, and retries", async ()
   unavailable = 1;
   await act(async () => client.invalidateQueries({ queryKey: ["content", "categories"] }));
 
-  expect(names()).toHaveLength(taxonomy.length);
+  expect(names()).toHaveLength(saved.length);
   await until(() =>
     expect(host.textContent).toContain(
       "We could not refresh categories. Showing the last loaded list.",
@@ -353,7 +411,7 @@ test("keeps the list with a warning when a refresh fails, and retries", async ()
 
   await press("Try again");
   await until(() => expect(host.textContent).not.toContain("We could not refresh categories"));
-  expect(names()).toHaveLength(taxonomy.length);
+  expect(names()).toHaveLength(saved.length);
 });
 
 test.each([
