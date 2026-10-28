@@ -1505,6 +1505,140 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/revisions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List the changes waiting for review
+         * @description Any signed-in employee, as for other reads: editors see what waits, and approvers, who may hold no other role, what to review. Every revision submitted for review and not yet published or rejected, the longest-waiting first, with its page and who submitted it. Read one with `GET /pages/{id}/revision` to compare it with the live page.
+         */
+        get: {
+            parameters: {
+                query: {
+                    /** @description Which revisions: only `submitted` is listed. */
+                    status: "submitted";
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Default Response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            revisions: {
+                                /** Format: uuid */
+                                id: string;
+                                /** Format: uuid */
+                                page_id: string;
+                                /** @description The page's title as the change would make it. */
+                                title: string;
+                                /** @description The page's url as the change would make it. */
+                                url: string;
+                                /** @description The user id of whoever submitted it. */
+                                submitted_by: string;
+                                /** @description Their name, or null when their account is gone. */
+                                submitted_by_name: string | null;
+                                /** Format: date-time */
+                                submitted_at: string;
+                                /**
+                                 * Format: date-time
+                                 * @description The revision's version, as `GET /pages/{id}/revision` has it.
+                                 */
+                                updated_at: string;
+                            }[];
+                        };
+                    };
+                };
+                /** @description Default Response */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/services": {
         parameters: {
             query?: never;

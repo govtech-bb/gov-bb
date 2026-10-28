@@ -1355,3 +1355,70 @@ describe("making a page public (#3201)", () => {
     });
   });
 });
+
+describe("the review queue (#3202)", () => {
+  const queue = (employee: Employee) =>
+    as(employee, { url: "/revisions?status=submitted" });
+
+  it("lists each change waiting for review, the longest-waiting first, with its page and submitter", async () => {
+    const { page: first, version } = await submitted();
+    const second = await seedPage({ url: "/money-financial-support/other" });
+    expect(
+      (await save(TEST_EMPLOYEE, second, { url: second.url, title: "Other" }))
+        .statusCode,
+    ).toBe(200);
+    expect((await review(TEST_EMPLOYEE, second.id, "submit")).statusCode).toBe(
+      200,
+    );
+
+    const response = await queue(TEST_EDITOR);
+
+    expect(response.statusCode).toBe(200);
+    const listed = response.json().revisions;
+    expect(listed).toEqual([
+      {
+        id: expect.any(String),
+        page_id: first.id,
+        title: "Severance pay",
+        url: first.url,
+        submitted_by: TEST_EDITOR.id,
+        submitted_by_name: TEST_EDITOR.name,
+        submitted_at: expect.any(String),
+        updated_at: version,
+      },
+      expect.objectContaining({
+        page_id: second.id,
+        title: "Other",
+        submitted_by: TEST_EMPLOYEE.id,
+        submitted_by_name: TEST_EMPLOYEE.name,
+      }),
+    ]);
+    expect(Date.parse(listed[0].submitted_at)).toBeLessThanOrEqual(
+      Date.parse(listed[1].submitted_at),
+    );
+  });
+
+  it("leaves out drafts and changes already rejected or published", async () => {
+    await drafted();
+    for (const [slug, decision] of [
+      ["rejected", "reject"],
+      ["published", "publish"],
+    ] as const) {
+      const page = await seedPage({ url: `/money-financial-support/${slug}` });
+      expect(
+        (await save(TEST_EDITOR, page, { url: page.url, title: slug }))
+          .statusCode,
+      ).toBe(200);
+      expect((await review(TEST_EDITOR, page.id, "submit")).statusCode).toBe(
+        200,
+      );
+      expect((await review(APPROVER, page.id, decision)).statusCode).toBe(200);
+    }
+
+    expect((await queue(APPROVER)).json()).toEqual({ revisions: [] });
+  });
+
+  it("needs a status to list", async () => {
+    expect((await as(TEST_EDITOR, { url: "/revisions" })).statusCode).toBe(400);
+  });
+});
