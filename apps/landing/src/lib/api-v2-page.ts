@@ -13,7 +13,7 @@ import type { Frontmatter } from './frontmatter'
 
 export const API_V2_TIMEOUT_MS = 5_000
 
-/** Copied from apps/api_v2/src/store.ts (`PageResponse`) and schema.ts (`Frontmatter`). */
+/** Copied from apps/api_v2/src/modules/page-visibility.ts (`PublicPage`). */
 export interface PageResponse {
   url: string
   frontmatter: {
@@ -39,6 +39,10 @@ export interface PageResponse {
   /** The page's last save — also bumped by a visibility-only change, so not
    * used for "Last updated". */
   updated_at: string
+  /** The slug of the category the page is filed under; null when unfiled. */
+  category: string | null
+  /** The slug of its subcategory, or null. */
+  subcategory: string | null
 }
 
 /** A `ContentPage` that can cross the server-function boundary. */
@@ -156,7 +160,8 @@ export async function fromApiV2(body: PageResponse): Promise<ApiV2Page> {
     }),
     // Rendered as a link, and DB content is unreviewed: http(s) only.
     ...(source_url && /^https?:\/\//i.test(source_url) && { source_url }),
-    categories: [segments[0]],
+    categories: body.category ? [body.category] : [],
+    ...(body.subcategory && { subcategory: body.subcategory }),
     visibility: 'public',
     ...(body.form_id && { form_id: body.form_id }),
     // "Last updated" is first publication, as in static frontmatter.

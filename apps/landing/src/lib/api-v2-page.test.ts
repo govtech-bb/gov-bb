@@ -21,6 +21,8 @@ function pageBody(overrides: Partial<PageResponse> = {}): PageResponse {
     breadcrumbs: [],
     published_at: null,
     updated_at: '2026-01-01T00:00:00.000Z',
+    category: 'family-birth-relationships',
+    subcategory: null,
     ...overrides,
   }
 }
@@ -303,6 +305,33 @@ describe('fromApiV2', () => {
       visibility: 'public',
       form_id: 'register-birth',
     })
+  })
+
+  it('maps a subcategory page to its category and subcategory', async () => {
+    const page = await fromApiV2(
+      pageBody({
+        url: '/youth-and-community/arts-culture/community-canvas',
+        category: 'youth-and-community',
+        subcategory: 'arts-culture',
+      }),
+    )
+    expect(page.frontmatter.categories).toEqual(['youth-and-community'])
+    expect(page.frontmatter.subcategory).toBe('arts-culture')
+  })
+
+  it('gives an unfiled page no categories and no subcategory', async () => {
+    const page = await fromApiV2(
+      pageBody({ url: '/terms-conditions', category: null }),
+    )
+    expect(page.frontmatter.categories).toEqual([])
+    expect(page.frontmatter).not.toHaveProperty('subcategory')
+  })
+
+  it('takes categories from the response, not the url', async () => {
+    const page = await fromApiV2(
+      pageBody({ url: '/old-place/register-a-birth', category: 'new-place' }),
+    )
+    expect(page.frontmatter.categories).toEqual(['new-place'])
   })
 
   it('drops enum values landing does not know', async () => {
