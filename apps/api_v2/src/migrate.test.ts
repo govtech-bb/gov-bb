@@ -422,7 +422,8 @@ describe("migrate", () => {
   it("records the history of every content table", async () => {
     // A content table added without `record_change` would change with no
     // history at all; this names it until its migration attaches the trigger.
-    // A page's revisions record their review steps with `record_review`.
+    // A page's revisions record their review steps with `record_review`
+    // instead; every other content table needs `record_change`.
     const { db, exec, close } = await freshDb();
     await migrate(db, exec);
 
@@ -433,7 +434,9 @@ describe("migrate", () => {
            and not exists (
              select 1 from pg_trigger t join pg_proc p on p.oid = t.tgfoid
                where t.tgrelid = c.oid
-                 and p.proname in ('record_change', 'record_review'))
+                 and p.proname = case c.relname
+                   when 'page_revisions' then 'record_review'
+                   else 'record_change' end)
          order by 1`,
     );
     expect(

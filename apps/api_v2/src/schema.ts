@@ -251,6 +251,12 @@ export const searchChunks = pgTable(
  * (`record_review`, see `013_review_history_trigger`), which is what a
  * live-update feed would read from. `actor` is the user whose transaction
  * made the change, or `system`.
+ *
+ * The snapshot is the row that changed, so its shape follows the action, not
+ * just `entity_kind`: a page's `submitted`, `rejected` and `approved` events
+ * hold a `page_revisions` row (its `id` is the revision's; `page_id` is the
+ * page), while its other events hold a `content_pages` row. Rebuilding a
+ * page's state means filtering on action.
  */
 export const changeEvents = pgTable(
   "change_events",
