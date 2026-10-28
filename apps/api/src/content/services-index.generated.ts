@@ -323,12 +323,6 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
     visibility: "preview",
   },
   {
-    slug: "flag-etiquette",
-    title: "Flag Etiquette",
-    category: "about-barbados",
-    visibility: "preview",
-  },
-  {
     slug: "freedom-and-independence",
     title: "Barbados' struggle for freedom and independence",
     category: "about-barbados",
