@@ -101,6 +101,54 @@ export const PageDocument = PageFields.extend({
 /** A page as the editor reads it. */
 export type PageDocument = z.infer<typeof PageDocument>;
 
+/** Where a pending revision stands; #3199 adds the review statuses after `draft`. */
+export const REVISION_STATUSES = ["draft"] as const;
+
+/** Parses where a pending revision stands. */
+export const RevisionStatus = z.enum(REVISION_STATUSES);
+
+/**
+ * A change to a public page, saved apart from the live page, which citizens
+ * keep seeing until an approver publishes the change.
+ */
+export const PendingRevision = z.object({
+  id: z.guid(),
+  page_id: PageId,
+  status: RevisionStatus,
+  fields: PageFields.describe("The page as the change would make it."),
+  live_updated_at: z.iso
+    .datetime()
+    .describe(
+      "The live page's `updated_at` this revision was last saved over.",
+    ),
+  created_by: z.string().describe("The user id of whoever started it."),
+  contributors: z
+    .array(z.string())
+    .describe(
+      "The user id of everyone who saved to it, none of whom may approve it.",
+    ),
+  created_at: z.iso.datetime(),
+  updated_at: z.iso.datetime(),
+});
+
+/** A change to a public page, waiting for an approver. */
+export type PendingRevision = z.infer<typeof PendingRevision>;
+
+/** A page as the editor opens and saves it: the live page with its pending revision, if any, laid over it. */
+export const EditorPage = PageDocument.extend({
+  pending_revision: z
+    .object({ status: RevisionStatus })
+    .nullable()
+    .describe(
+      "Set when the page is public and has a change waiting for an approver. " +
+        "The fields and `updated_at` are then the revision's, and citizens " +
+        "still see the live page.",
+    ),
+});
+
+/** A page as the editor opens and saves it. */
+export type EditorPage = z.infer<typeof EditorPage>;
+
 /**
  * Parses what a save sends: every field, since a save replaces the page and
  * defaults none, except `parent_id`. Leaving that out keeps the page's parent,
@@ -232,6 +280,49 @@ export function revisionOf(
       current.published_at === null && publishedAt !== null
         ? ("published" as const)
         : ("updated" as const),
+  };
+}
+
+/** What the editor works on: the live page, or its pending revision laid over it. */
+export function workingCopy(
+  live: PageDocument,
+  revision: PendingRevision | null,
+): EditorPage {
+  if (revision === null) return { ...live, pending_revision: null };
+  return {
+    ...live,
+    ...revision.fields,
+    slug: segmentsOf(revision.fields.url).at(-1) ?? "",
+    updated_at: revision.updated_at,
+    pending_revision: { status: revision.status },
+  };
+}
+
+/**
+ * What saving `fields` into a public page's pending revision writes. Its
+ * version moves strictly past both the live page's and the revision's, so a
+ * client holding either one conflicts rather than overwriting the other.
+ */
+export function pendingRevisionOf(
+  live: PageDocument,
+  revision: PendingRevision | null,
+  fields: PageFields,
+  actorId: string,
+  now: Date,
+) {
+  const versions = [live.updated_at, revision?.updated_at ?? live.updated_at];
+  const updatedAt = new Date(
+    Math.max(now.getTime(), ...versions.map((at) => Date.parse(at) + 1)),
+  );
+  const contributors = revision?.contributors ?? [];
+  return {
+    fields,
+    liveUpdatedAt: new Date(live.updated_at),
+    updatedAt,
+    createdBy: revision?.created_by ?? actorId,
+    contributors: contributors.includes(actorId)
+      ? contributors
+      : [...contributors, actorId],
   };
 }
 

@@ -146,8 +146,9 @@ export type ImportReport = {
  * around `seed()`, so a failure leaves nothing behind. Refuses when
  * `content_pages` already has rows, because `seed()` is additive and would
  * bring back deleted pages without updating changed ones. `force` replaces
- * instead: the three content tables are always truncated first, in the same
- * transaction, and the stated reason lands in every history entry. History
+ * instead: the content tables, pending revisions included, are always
+ * truncated first, in the same transaction, and the stated reason lands in
+ * every history entry. History
  * (`change_events`) is never truncated; it is append-only and the record of
  * what happened. `dryRun` does the real work and rolls it back.
  */
@@ -182,7 +183,7 @@ export async function importEstate(
       }
       if (options.force) {
         await tx.execute(
-          sql`truncate search_chunks, content_pages, categories`,
+          sql`truncate search_chunks, page_revisions, content_pages, categories`,
         );
       }
       const actor = options.force

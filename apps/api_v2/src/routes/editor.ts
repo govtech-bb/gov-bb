@@ -106,7 +106,7 @@ export const editorRoutes: FastifyPluginAsyncZod<{
     url: "/pages/:id",
     schema: SCHEMAS.getPage,
     handler: async (request, reply) => {
-      const found = await editing.get(request.params.id);
+      const found = await editing.open(request.params.id);
       if (!found.ok)
         return reply.status(500).send(storageFailed(request.log, found.error));
       return (
@@ -114,6 +114,23 @@ export const editorRoutes: FastifyPluginAsyncZod<{
         reply.status(404).send({
           error: "not_found",
           message: `No page with id ${request.params.id}`,
+        })
+      );
+    },
+  });
+  editor.route({
+    method: "GET",
+    url: "/pages/:id/revision",
+    schema: SCHEMAS.getRevision,
+    handler: async (request, reply) => {
+      const found = await editing.revision(request.params.id);
+      if (!found.ok)
+        return reply.status(500).send(storageFailed(request.log, found.error));
+      return (
+        found.value ??
+        reply.status(404).send({
+          error: "not_found",
+          message: `No pending revision for page ${request.params.id}`,
         })
       );
     },
@@ -175,7 +192,11 @@ export const editorRoutes: FastifyPluginAsyncZod<{
     config: { role: "editor" },
     handler: async (request, reply) => {
       const created = await editing.create(request.body, actor(request));
-      if (created.ok) return reply.status(201).send(created.value);
+      // A new page has no pending revision.
+      if (created.ok)
+        return reply
+          .status(201)
+          .send({ ...created.value, pending_revision: null });
       switch (created.error._tag) {
         case "PageRejected":
           return reply.status(422).send(rejected(created.error));

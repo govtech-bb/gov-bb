@@ -70,6 +70,19 @@ const seedCategory = async () => {
 const read = (url: string) =>
   inject({ url: `/pages?url=${encodeURIComponent(url)}` });
 
+/** The site's read with the preview token, so preview pages are served too. */
+const readPreview = async (url: string) => {
+  const reviewer = await createTestApp(db, {
+    previewSecret: new Redacted("secret"),
+  });
+  const response = await reviewer.inject({
+    url: `/pages?url=${encodeURIComponent(url)}`,
+    headers: { "x-preview-token": "secret" },
+  });
+  await reviewer.close();
+  return response;
+};
+
 const ENTRY = "/money-financial-support/calculate-severance-pay";
 const START = `${ENTRY}/start`;
 
@@ -588,6 +601,8 @@ describe("POST /pages", () => {
   });
 });
 
+// A save to a public page goes into its pending revision (revisions.test.ts),
+// so the tests of what a save writes use a page that is not public.
 describe("PUT /pages/:id", () => {
   it("saves and returns the new updated_at", async () => {
     const created = await seedPage();
@@ -604,7 +619,7 @@ describe("PUT /pages/:id", () => {
   });
 
   it("409s on a stale if-updated-at and leaves the row untouched", async () => {
-    const created = await seedPage();
+    const created = await seedPage({ visibility: "preview" });
     await inject({
       method: "PUT",
       url: `/pages/${created.id}`,
@@ -731,7 +746,7 @@ describe("PUT /pages/:id", () => {
   });
 
   it("moves only the page when its url changes, and its old url 404s", async () => {
-    const parent = await seedPage();
+    const parent = await seedPage({ visibility: "preview" });
     await seedPage({
       url: START,
       parent_id: parent.id,
@@ -747,8 +762,8 @@ describe("PUT /pages/:id", () => {
 
     expect(response.statusCode).toBe(200);
     expect(response.json().slug).toBe("severance-pay");
-    expect((await read(ENTRY)).statusCode).toBe(404);
-    expect((await read(START)).json().breadcrumbs).toEqual([
+    expect((await readPreview(ENTRY)).statusCode).toBe(404);
+    expect((await readPreview(START)).json().breadcrumbs).toEqual([
       { name: parent.title, url: moved },
       { name: "Before you start", url: START },
     ]);
@@ -788,7 +803,10 @@ describe("PUT /pages/:id", () => {
       .values({ slug: "work-employment", title: "Work" })
       .returning();
     if (!to) throw new Error("The category was not inserted");
-    const parent = await seedPage({ category_id: from.id });
+    const parent = await seedPage({
+      category_id: from.id,
+      visibility: "preview",
+    });
     const start = await seedPage({ url: START, parent_id: parent.id });
     const below = await seedPage({ url: `${START}/more`, parent_id: start.id });
 
@@ -811,7 +829,7 @@ describe("PUT /pages/:id", () => {
     // The composite key skips rows whose category is null, so this case is
     // the store's to carry, not the cascade's.
     const category = await seedCategory();
-    const parent = await seedPage();
+    const parent = await seedPage({ visibility: "preview" });
     const start = await seedPage({ url: START, parent_id: parent.id });
     const below = await seedPage({ url: `${START}/more`, parent_id: start.id });
 
@@ -827,14 +845,17 @@ describe("PUT /pages/:id", () => {
     expect(expectOk(await services.editing.get(below.id))?.category_id).toBe(
       category.id,
     );
-    expect((await read(START)).json().breadcrumbs[0]).toEqual({
+    expect((await readPreview(START)).json().breadcrumbs[0]).toEqual({
       name: "Money and financial support",
       url: "/money-financial-support",
     });
   });
 
   it("re-cuts the page's search chunks from the saved body", async () => {
-    const created = await seedPage({ body_markdown: "Old text" });
+    const created = await seedPage({
+      body_markdown: "Old text",
+      visibility: "preview",
+    });
     await inject({
       method: "PUT",
       url: `/pages/${created.id}`,
@@ -1198,13 +1219,13 @@ describe("employee access", () => {
     const created = await inject({
       method: "POST",
       url: "/pages",
-      payload: aPage(),
+      payload: aPage({ visibility: "preview" }),
     });
     expect(created.statusCode).toBe(201);
     const saved = await inject({
       method: "PUT",
       url: `/pages/${created.json().id}`,
-      payload: withDefaults(aPage({ title: "Updated" })),
+      payload: withDefaults(aPage({ title: "Updated", visibility: "preview" })),
     });
     expect(saved.statusCode).toBe(200);
     const events = await db

@@ -146,6 +146,7 @@ it("refuses every write to an employee with no role and leaves the database unch
       await db.execute(sql`
         select (select json_agg(p order by p.id) from content_pages p) as pages,
                (select json_agg(c order by c.id) from categories c) as categories,
+               (select json_agg(r order by r.id) from page_revisions r) as revisions,
                (select count(*)::int from change_events) as events,
                (select json_agg(r order by r.user_id, r.role) from user_roles r) as roles`)
     ).rows;

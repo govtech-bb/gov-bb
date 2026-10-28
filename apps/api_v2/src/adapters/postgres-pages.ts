@@ -16,6 +16,7 @@ import {
   isNull,
   max,
   sql,
+  TransactionRollbackError,
   type SQL,
 } from "drizzle-orm";
 import { z } from "zod";
@@ -39,6 +40,7 @@ import {
   type Frontmatter,
   type PageDocument,
   type PageId,
+  type PendingRevision,
   type Visibility,
 } from "../modules/page";
 import type { Ancestor, ResolvablePage } from "../modules/page-visibility";
@@ -48,6 +50,7 @@ import {
   categories,
   changeEvents,
   contentPages,
+  pageRevisions,
   searchChunks,
 } from "../schema";
 import type { EstateVersion, IndexReads } from "../services/editor-index";
@@ -56,6 +59,7 @@ import type {
   PageChange,
   PageRecords,
   PageRevision,
+  PendingRevisionRecord,
 } from "../services/page-editing";
 import type { PublicPageReads } from "../services/page-resolution";
 import type { NavigationReads } from "../services/site-navigation";
@@ -80,6 +84,20 @@ export const toDocument = (row: PageRow): PageDocument => ({
   body_markdown: row.bodyMarkdown,
   frontmatter: row.frontmatter,
   published_at: row.publishedAt?.toISOString() ?? null,
+  created_at: row.createdAt.toISOString(),
+  updated_at: row.updatedAt.toISOString(),
+});
+
+type RevisionRow = typeof pageRevisions.$inferSelect;
+
+const toRevision = (row: RevisionRow): PendingRevision => ({
+  id: row.id,
+  page_id: row.pageId,
+  status: row.status,
+  fields: row.fields,
+  live_updated_at: row.liveUpdatedAt.toISOString(),
+  created_by: row.createdBy,
+  contributors: row.contributors,
   created_at: row.createdAt.toISOString(),
   updated_at: row.updatedAt.toISOString(),
 });
@@ -674,6 +692,34 @@ export class PostgresPages
     return rows.ok ? ok(onlyDocument(rows.value)) : rows;
   }
 
+  /** Refuse what `replace` would: it writes in a savepoint and rolls it back. */
+  checkReplace(
+    id: PageId,
+    page: PageRevision,
+  ): Promise<Result<void, PageRejected | ContentStoreUnavailable>> {
+    return attempt(
+      "checkReplace",
+      async () => {
+        try {
+          await this.db.transaction(async (savepoint) => {
+            await savepoint
+              .update(contentPages)
+              .set({
+                ...page.values,
+                updatedAt: page.updatedAt,
+                publishedAt: page.publishedAt,
+              })
+              .where(eq(contentPages.id, id));
+            savepoint.rollback();
+          });
+        } catch (error) {
+          if (!(error instanceof TransactionRollbackError)) throw error;
+        }
+      },
+      rejectionOf,
+    );
+  }
+
   /**
    * File a page's uncategorised sub-pages, all the way down, under its
    * category. `on update cascade` moves sub-pages that had the parent's old
@@ -696,6 +742,75 @@ export class PostgresPages
             and id in (select id from below where not is_cycle)`),
     );
     return filed.ok ? ok(undefined) : filed;
+  }
+
+  /** A page's open revision, or null. */
+  async openRevision(
+    pageId: PageId,
+  ): Promise<Result<PendingRevision | null, ContentStoreUnavailable>> {
+    const rows = await attempt("openRevision", () =>
+      this.db
+        .select()
+        .from(pageRevisions)
+        .where(
+          and(
+            eq(pageRevisions.pageId, pageId),
+            eq(pageRevisions.status, "draft"),
+          ),
+        ),
+    );
+    if (!rows.ok) return rows;
+    const [row] = rows.value;
+    return ok(row ? toRevision(row) : null);
+  }
+
+  /** Start a page's open revision, or overwrite it, keeping who started it. */
+  async writeRevision(
+    pageId: PageId,
+    revision: PendingRevisionRecord,
+  ): Promise<Result<PendingRevision, ContentStoreUnavailable>> {
+    const rows = await attempt("writeRevision", () =>
+      this.db
+        .insert(pageRevisions)
+        .values({
+          pageId,
+          fields: revision.fields,
+          liveUpdatedAt: revision.liveUpdatedAt,
+          createdBy: revision.createdBy,
+          contributors: [...revision.contributors],
+          createdAt: revision.updatedAt,
+          updatedAt: revision.updatedAt,
+        })
+        .onConflictDoUpdate({
+          target: pageRevisions.pageId,
+          targetWhere: sql`status = 'draft'`,
+          set: {
+            fields: revision.fields,
+            liveUpdatedAt: revision.liveUpdatedAt,
+            contributors: [...revision.contributors],
+            updatedAt: revision.updatedAt,
+          },
+        })
+        .returning(),
+    );
+    if (!rows.ok) return rows;
+    const [row] = rows.value;
+    if (!row) throw new Error("Postgres returned no row for a write");
+    return ok(toRevision(row));
+  }
+
+  /** Discard a page's open revision, if it has one. */
+  dropRevision(pageId: PageId): Promise<Result<void, ContentStoreUnavailable>> {
+    return attempt("dropRevision", async () => {
+      await this.db
+        .delete(pageRevisions)
+        .where(
+          and(
+            eq(pageRevisions.pageId, pageId),
+            eq(pageRevisions.status, "draft"),
+          ),
+        );
+    });
   }
 
   /** Replace a page's search chunks. */

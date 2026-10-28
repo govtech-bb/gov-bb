@@ -29,6 +29,7 @@ const ALL = [
   "005_hierarchy_and_search",
   "008_user_roles",
   "009_default_editor_role",
+  "010_page_revisions",
 ];
 
 const freshDb = async () => {
@@ -62,6 +63,7 @@ describe("migrate", () => {
       "categories",
       "change_events",
       "content_pages",
+      "page_revisions",
       "schema_migrations",
       "search_chunks",
       "user_roles",
@@ -113,6 +115,7 @@ describe("migrate", () => {
       "005_hierarchy_and_search",
       "008_user_roles",
       "009_default_editor_role",
+      "010_page_revisions",
     ]);
     const pages = await exec("select count(*)::int as n from content_pages");
     expect(pages.rows).toEqual([{ n: 0 }]);
@@ -141,6 +144,7 @@ describe("migrate", () => {
       "005_hierarchy_and_search",
       "008_user_roles",
       "009_default_editor_role",
+      "010_page_revisions",
     ]);
     await exec(
       `insert into categories (slug, title) values ('c', 'C');

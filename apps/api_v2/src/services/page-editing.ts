@@ -4,16 +4,20 @@ import {
   cycleOf,
   PageConflict,
   PageNotFound,
+  pendingRevisionOf,
   placedUnder,
   revisionOf,
   withDefaults,
+  workingCopy,
   type ContentStoreUnavailable,
+  type EditorPage,
   type NewPage,
   type PageDocument,
   type PageFields,
   type PageId,
   type PageRejected,
   type PageValues,
+  type PendingRevision,
   type SaveFields,
 } from "../modules/page";
 import { err, ok, type Result } from "../modules/result";
@@ -34,6 +38,15 @@ export interface PageRevision {
   readonly values: PageValues;
   readonly updatedAt: Date;
   readonly publishedAt: Date | null;
+}
+
+/** A public page's pending revision as a save writes it. */
+export interface PendingRevisionRecord {
+  readonly fields: PageFields;
+  readonly liveUpdatedAt: Date;
+  readonly updatedAt: Date;
+  readonly createdBy: string;
+  readonly contributors: readonly string[];
 }
 
 /** An audit entry: what happened to a page, who did it, and the page as it then stood. */
@@ -78,11 +91,27 @@ export interface PageRecords {
     id: PageId,
     page: PageRevision,
   ): Promise<Result<PageDocument, PageRejected | ContentStoreUnavailable>>;
+  /** Refuse what `replace` would, without keeping the write. */
+  checkReplace(
+    id: PageId,
+    page: PageRevision,
+  ): Promise<Result<void, PageRejected | ContentStoreUnavailable>>;
   /** File a page's uncategorised sub-pages, all the way down, under its category. */
   fileUncategorisedBelow(
     id: PageId,
     categoryId: string,
   ): Promise<Result<void, ContentStoreUnavailable>>;
+  /** A page's open revision, or null. */
+  openRevision(
+    pageId: PageId,
+  ): Promise<Result<PendingRevision | null, ContentStoreUnavailable>>;
+  /** Start a page's open revision, or overwrite it, keeping who started it. */
+  writeRevision(
+    pageId: PageId,
+    revision: PendingRevisionRecord,
+  ): Promise<Result<PendingRevision, ContentStoreUnavailable>>;
+  /** Discard a page's open revision, if it has one. */
+  dropRevision(pageId: PageId): Promise<Result<void, ContentStoreUnavailable>>;
   /** Replace a page's search chunks. */
   replaceSearchChunks(
     pageId: PageId,
@@ -104,7 +133,9 @@ export interface PageRecords {
  * The editor's page operations: reads of any visibility, and writes that
  * commit with their search text and audit entry or not at all. Only an
  * approver changes what citizens see: sets a page's visibility, creates one
- * public, or deletes a public one.
+ * public, or deletes a public one. A save to a public page that keeps it
+ * public, whoever makes it, goes into the page's pending revision and leaves
+ * the live page as it is (#3198).
  */
 export class PageEditing {
   /** The root supplies content storage and the clock. */
@@ -118,6 +149,30 @@ export class PageEditing {
     id: PageId,
   ): Promise<Result<PageDocument | null, ContentStoreUnavailable>> {
     return this.records.find(id);
+  }
+
+  /**
+   * The page with this id as the editor works on it: with its pending
+   * revision laid over it. Two reads rather than one snapshot: a save between
+   * them leaves this with a version no save matches, so the next save is a
+   * conflict, never a lost write.
+   */
+  async open(
+    id: PageId,
+  ): Promise<Result<EditorPage | null, ContentStoreUnavailable>> {
+    const live = await this.records.find(id);
+    if (!live.ok) return live;
+    if (live.value === null) return ok(null);
+    const revision = await this.records.openRevision(id);
+    if (!revision.ok) return revision;
+    return ok(workingCopy(live.value, revision.value));
+  }
+
+  /** The page's pending revision, or null when it has none. */
+  revision(
+    id: PageId,
+  ): Promise<Result<PendingRevision | null, ContentStoreUnavailable>> {
+    return this.records.openRevision(id);
   }
 
   /** Create a page where it belongs, stamping publication when it starts public, and index and audit it. */
@@ -153,9 +208,17 @@ export class PageEditing {
   }
 
   /**
-   * Replace a page's fields. With `expectedUpdatedAt`, a page that has moved
-   * on since the caller read it is refused rather than silently discarding
-   * whoever wrote first; without it the caller accepts whatever is stored.
+   * Replace a page's fields, and return the page as the editor now works on
+   * it. With `expectedUpdatedAt`, a page that has moved on since the caller
+   * read it is refused rather than silently discarding whoever wrote first;
+   * without it the caller accepts whatever is stored. A public page's version
+   * is its pending revision's, when it has one.
+   *
+   * A save that keeps a public page public goes into its pending revision.
+   * Any other save writes the page, as it always has: one to a page that is
+   * not public, and an approver's that takes a page out of public view. That
+   * one sends the whole working copy, so it closes the pending revision
+   * rather than leaving it over a page citizens no longer see.
    */
   save(
     id: PageId,
@@ -164,7 +227,7 @@ export class PageEditing {
     actor: Employee,
   ): Promise<
     Result<
-      PageDocument,
+      EditorPage,
       | PageRejected
       | PageNotFound
       | PageConflict
@@ -177,9 +240,12 @@ export class PageEditing {
       if (!locked.ok) return locked;
       const current = locked.value;
       if (current === null) return err(new PageNotFound(id));
+      const pending = await records.openRevision(id);
+      if (!pending.ok) return pending;
       if (
         expectedUpdatedAt !== null &&
-        current.updated_at !== expectedUpdatedAt.toISOString()
+        (pending.value ?? current).updated_at !==
+          expectedUpdatedAt.toISOString()
       )
         return err(new PageConflict(id));
       if (
@@ -197,9 +263,32 @@ export class PageEditing {
       const placed = await place(records, id, {
         ...fields,
         parent_id:
-          fields.parent_id === undefined ? current.parent_id : fields.parent_id,
+          fields.parent_id === undefined
+            ? (pending.value?.fields ?? current).parent_id
+            : fields.parent_id,
       });
       if (!placed.ok) return placed;
+      if (current.visibility === "public" && fields.visibility === "public") {
+        // Refused now for what publishing it would be refused for today.
+        const valid = await records.checkReplace(
+          id,
+          revisionOf(current, placed.value, this.clock()),
+        );
+        if (!valid.ok) return valid;
+        const proposed = await records.writeRevision(
+          id,
+          pendingRevisionOf(
+            current,
+            pending.value,
+            placed.value,
+            actor.id,
+            this.clock(),
+          ),
+        );
+        return proposed.ok
+          ? ok(workingCopy(current, proposed.value))
+          : proposed;
+      }
       const revision = revisionOf(current, placed.value, this.clock());
       const saved = await records.replace(id, revision);
       if (!saved.ok) return saved;
@@ -215,12 +304,16 @@ export class PageEditing {
         chunkMarkdown(saved.value.body_markdown),
       );
       if (!indexed.ok) return indexed;
+      if (pending.value !== null) {
+        const dropped = await records.dropRevision(id);
+        if (!dropped.ok) return dropped;
+      }
       const logged = await records.appendChange({
         page: saved.value,
         action: revision.action,
         actorId: actor.id,
       });
-      return logged.ok ? saved : logged;
+      return logged.ok ? ok(workingCopy(saved.value, null)) : logged;
     });
   }
 

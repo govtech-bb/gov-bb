@@ -16,7 +16,13 @@ import {
   SearchDocument,
 } from "../modules/navigation";
 import { EmployeeView, Role } from "../modules/auth";
-import { NewPage, PageDocument, PageId, SaveFields } from "../modules/page";
+import {
+  EditorPage,
+  NewPage,
+  PageId,
+  PendingRevision,
+  SaveFields,
+} from "../modules/page";
 import {
   CategoryBlockers,
   CategoryFields,
@@ -188,12 +194,14 @@ export const SCHEMAS = {
 
   getPage: {
     summary: "Get a page by id",
-    description: "The editor's read: any visibility, markdown included.",
+    description:
+      "The editor's read: any visibility, markdown included. A public page " +
+      "with a pending revision is read with the revision laid over it.",
     tags: ["pages"],
     params: idParams,
     security: editorSecurity,
     response: {
-      200: PageDocument,
+      200: EditorPage,
       400: error,
       404: error,
       500: error,
@@ -211,7 +219,7 @@ export const SCHEMAS = {
     body: NewPage,
     security: editorSecurity,
     response: {
-      201: PageDocument,
+      201: EditorPage,
       422: validationFailed,
       500: error,
       ...authErrors,
@@ -226,11 +234,17 @@ export const SCHEMAS = {
       "Send every field: a save replaces the page and defaults none, except " +
       "that leaving `parent_id` out keeps the page's parent. " +
       "Send the `updated_at` you last read in the `if-updated-at` header. " +
-      "If the stored row has moved on since, the save is refused with a 409 " +
-      "rather than silently discarding whoever wrote first. Changing `url` " +
+      "If the stored row, or the page's pending revision, has moved on since, " +
+      "the save is refused with a 409 rather than silently discarding " +
+      "whoever wrote first. Changing `url` " +
       "moves this page alone: its sub-pages keep their urls and stay beneath " +
       "it by `parent_id`, and nothing redirects from the old url. " +
-      "Changing `visibility` needs the approver role (403 otherwise).",
+      "Changing `visibility` needs the approver role (403 otherwise). " +
+      "A save that keeps a `public` page public, whoever sends it, goes into " +
+      "the page's pending revision: citizens keep seeing the live page until " +
+      "an approver publishes it. An approver's save that takes a `public` " +
+      "page out of public view writes the whole page and closes its pending " +
+      "revision. Returns the page as the editor now works on it.",
     tags: ["pages"],
     params: idParams,
     headers: z.object({
@@ -246,11 +260,28 @@ export const SCHEMAS = {
     body: SaveFields,
     security: editorSecurity,
     response: {
-      200: PageDocument,
+      200: EditorPage,
       400: error,
       404: error,
       409: conflict,
       422: validationFailed,
+      500: error,
+      ...authErrors,
+    },
+  },
+
+  getRevision: {
+    summary: "Get a page's pending revision",
+    description:
+      "The change to a `public` page that is waiting for an approver. 404 " +
+      "when the page has none.",
+    tags: ["pages"],
+    params: idParams,
+    security: editorSecurity,
+    response: {
+      200: PendingRevision,
+      400: error,
+      404: error,
       500: error,
       ...authErrors,
     },
@@ -262,7 +293,8 @@ export const SCHEMAS = {
       "Requires an employee session, the editor's Origin header and the " +
       "editor role (403 otherwise). A page with sub-pages is refused (422) " +
       "until they are moved or deleted. " +
-      "Deleting a `public` page needs the approver role (403 otherwise).",
+      "Deleting a `public` page needs the approver role (403 otherwise). " +
+      "Its pending revision goes with it.",
     tags: ["pages"],
     params: idParams,
     security: editorSecurity,

@@ -281,7 +281,9 @@ describe("seed", () => {
   it("force also clears categories left behind without pages", async () => {
     const { db, close } = await createTestDb();
     await seed(db);
-    await db.execute(sql`truncate search_chunks, content_pages`);
+    await db.execute(
+      sql`truncate search_chunks, page_revisions, content_pages`,
+    );
 
     const report = await importEstate(db, {
       dryRun: false,

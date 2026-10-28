@@ -70,6 +70,14 @@ A refusal is a 403 `{error: "forbidden", message}` and the database is unchanged
 
 Under `AUTH_BYPASS` the local developer holds every role. `GET /editor/me` returns the signed-in employee and their roles, which the editor uses to hide what they cannot do.
 
+### Pending revisions
+
+A save that keeps a `public` page public, whoever sends it, approvers included, goes into the page's pending revision in `page_revisions` (migration `010_page_revisions`, #3198). The live row, its search chunks and every site read stay as they were until an approver publishes the revision (#3199). A page has at most one open revision, and a later save updates it. The revision keeps the fields as the save sent them, the live `updated_at` it was saved over, who started it, and everyone who saved to it, since none of them may approve it (ADR 0079). It is refused with the same field-level 422s as a live save, and it goes when its page is deleted.
+
+The editor reads and saves the working copy: `GET /pages/:id` and the save's response lay the revision over the live page, set `pending_revision`, and give the revision's `updated_at`, which is what the next save sends in `if-updated-at`. `GET /pages/:id/revision` returns the revision itself, or 404 when there is none.
+
+A save to a page that is not public writes the page as before. Changing `visibility` stays a direct approver action (ADR 0079): an approver's save that takes a public page out of public view writes the whole working copy to the page, which citizens no longer see, and closes the revision. A revision save writes no `change_events` entry, because the live page did not change; #3200 records revisions in the audit trail.
+
 ## Database
 
 Generated from the migrated database by `src/erd.ts`; do not edit it by hand. `src/erd.test.ts` fails when it no longer matches the migrations.
@@ -156,6 +164,17 @@ erDiagram
     timestamptz(3) published_at "nullable"
     uuid parent_id FK "nullable"
   }
+  page_revisions {
+    uuid id PK
+    uuid page_id FK
+    text status
+    jsonb fields
+    timestamptz(3) live_updated_at
+    text created_by
+    text[] contributors
+    timestamptz(3) created_at
+    timestamptz(3) updated_at
+  }
   search_chunks {
     uuid id PK
     uuid page_id FK "unique (page_id, ordinal)"
@@ -176,6 +195,7 @@ erDiagram
   categories |o--o{ content_pages : "category_id -> id"
   content_pages |o--o{ content_pages : "parent_id, category_id -> id, category_id"
   content_pages |o--o{ content_pages : "parent_id -> id"
+  content_pages ||--o{ page_revisions : "page_id -> id"
   content_pages ||--o{ search_chunks : "page_id -> id"
   auth_user ||--o{ user_roles : "user_id -> id"
 ```
@@ -194,7 +214,8 @@ erDiagram
 | GET      | `/search/documents`                 | Every visible page with its search text in chunks                      |
 | GET      | `/docs`                             | Public API reference (Scalar)                                          |
 | GET      | `/docs/openapi.json`                | Public OpenAPI document                                                |
-| GET      | `/pages/:id`                        | Employee; includes drafts and previews                                 |
+| GET      | `/pages/:id`                        | Employee; includes drafts and previews, with any pending revision      |
+| GET      | `/pages/:id/revision`               | Employee; a public page's pending revision                             |
 | GET      | `/services`                         | Employee service index, grouped by `parent_id`                         |
 | GET      | `/services/:id`                     | Employee; one service's pages with their roles, entry first            |
 | GET      | `/editor/categories`                | Employee; every shared category, counts, address protection and stamps |
@@ -204,7 +225,7 @@ erDiagram
 | DELETE   | `/editor/categories/:id`            | Employee; delete an empty category with `if-updated-at`                |
 | GET      | `/version`                          | Employee change token                                                  |
 | POST     | `/pages`                            | Employee create; as `public`, approver only                            |
-| PUT      | `/pages/:id`                        | Employee save, optional `if-updated-at`; `visibility`, approver only   |
+| PUT      | `/pages/:id`                        | Editor save, optional `if-updated-at`; public pages save to a revision |
 | DELETE   | `/pages/:id`                        | Employee delete; a `public` page, approver only                        |
 | GET      | `/editor/me`                        | Employee; who is signed in, with their roles                           |
 | GET      | `/editor/employees`                 | Admin; everyone who has signed in, with their roles                    |
