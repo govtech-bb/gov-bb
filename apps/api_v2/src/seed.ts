@@ -138,10 +138,10 @@ export type ImportReport = {
  * around `seed()`, so a failure leaves nothing behind. Refuses when
  * `content_pages` already has rows, because `seed()` is additive and would
  * bring back deleted pages without updating changed ones. `force` replaces
- * instead: the three content tables are always emptied first, in the same
- * transaction, so history records each replaced page and category as
- * deleted, and the stated reason goes in the report. History
- * (`change_events`) is never emptied; it is append-only and the record of
+ * instead: the content tables, pending revisions included, are always
+ * emptied first, in the same transaction, so history records each replaced
+ * page and category as deleted, and the stated reason goes in the report.
+ * History (`change_events`) is never emptied; it is append-only and the record of
  * what happened. `dryRun` does the real work and rolls it back.
  */
 export async function importEstate(
@@ -177,6 +177,7 @@ export async function importEstate(
         // `delete`, not `truncate`: truncate fires no row triggers, so the
         // replaced pages and categories would vanish from the history.
         await tx.execute(sql`delete from search_chunks`);
+        await tx.execute(sql`delete from page_revisions`);
         await tx.execute(sql`delete from content_pages`);
         await tx.execute(sql`delete from categories`);
       }

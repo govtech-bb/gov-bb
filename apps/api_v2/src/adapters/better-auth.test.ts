@@ -138,6 +138,34 @@ describe("GitHub provider boundary", () => {
   });
 });
 
+describe("a new user", () => {
+  it("is made an editor when created, and only then, so a revocation outlasts later sign-ins", async () => {
+    const { db, close } = await createTestDb();
+    try {
+      const auth = authWith(authConfig, db);
+      const { databaseHooks } = auth.options;
+      // Creating a user runs this hook; a returning sign-in creates none.
+      expect(Object.keys(databaseHooks)).toEqual(["user", "account"]);
+      expect(Object.keys(databaseHooks.user)).toEqual(["create"]);
+      expect(Object.keys(databaseHooks.user.create)).toEqual(["after"]);
+      const context = await auth.$context;
+
+      // BetterAuth runs the hook once the user and account have committed.
+      const { user } = await context.internalAdapter.createOAuthUser(
+        { email: "new@govtech.bb", name: "New", emailVerified: true },
+        { accountId: "12345", providerId: "github" },
+      );
+
+      const { rows } = await db.execute(
+        sql`select role, granted_by from user_roles where user_id = ${user.id}`,
+      );
+      expect(rows).toEqual([{ role: "editor", granted_by: null }]);
+    } finally {
+      await close();
+    }
+  });
+});
+
 describe("first sign-in", () => {
   it("leaves no user behind when the account cannot be created", async () => {
     const { db, close } = await createTestDb();

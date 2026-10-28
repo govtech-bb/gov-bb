@@ -20,6 +20,7 @@ const page: ApiPage = {
   published_at: null,
   created_at: "2026-10-07T12:00:00.000Z",
   updated_at: "2026-10-07T12:00:00.000Z",
+  pending_revision: null,
 };
 
 const newer: ApiPage = {
@@ -104,6 +105,10 @@ describe("saving a page", () => {
       { kind: "invalid", errors: [{ field: "url", message: "Taken" }] },
     ],
     [new ApiFailure(409), { kind: "conflict" }],
+    [
+      new ApiFailure(409, [], "This change is waiting for review.", "under_review"),
+      { kind: "under-review", message: "This change is waiting for review." },
+    ],
     [new ApiFailure(404), { kind: "missing" }],
     [new ApiFailure(401), { kind: "signed-out" }],
     [

@@ -4,13 +4,13 @@ import { err, ok, type Result } from "./result";
 /** Only active members of this GitHub organization can provision editor sessions. */
 export const GITHUB_ORGANIZATION = "govtech-bb";
 
-/** What an employee may do beyond editing, as `user_roles` stores it. */
+/** What an employee may do, as `user_roles` stores it. */
 export const ROLES = ["editor", "approver", "admin"] as const;
 
 /** Parses a role. */
 export const Role = z.enum(ROLES);
 
-/** A role: `approver` changes what citizens see, `admin` grants and revokes roles. */
+/** A role: `editor` writes content, `approver` changes what citizens see, `admin` grants and revokes roles. */
 export type Role = z.infer<typeof Role>;
 
 /**
@@ -75,6 +75,18 @@ export class NotApprover extends Error {
   /** Say who can make the change. */
   constructor() {
     super("Only approvers can change who can see a page.");
+  }
+}
+
+/** An approver deciding on a revision they changed or submitted (ADR 0079). */
+export class SelfApproval extends Error {
+  /** Stable protocol-projection discriminator. */
+  readonly _tag = "SelfApproval";
+  /** Say who can decide instead. */
+  constructor() {
+    super(
+      "You can't approve or reject a change you made or submitted. Ask another approver.",
+    );
   }
 }
 

@@ -21,6 +21,7 @@ import {
   categories,
   changeEvents,
   contentPages,
+  pageRevisions,
   searchChunks,
   userRoles,
 } from "./schema";
@@ -55,6 +56,7 @@ const TABLES = {
   change_events: changeEvents,
   search_chunks: searchChunks,
   user_roles: userRoles,
+  page_revisions: pageRevisions,
 };
 
 describe("the Drizzle schema and the migration", () => {

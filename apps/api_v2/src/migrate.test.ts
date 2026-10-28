@@ -19,6 +19,7 @@ import { SQL as AUTH_SQL } from "./migrations/003_auth";
 import { SQL as GITHUB_SESSIONS_SQL } from "./migrations/004_github_sessions";
 import { SQL as HIERARCHY_SQL } from "./migrations/005_hierarchy_and_search";
 import { SQL as UNPUBLISHED_SQL } from "./migrations/006_change_action_unpublished";
+import { SQL as DEFAULT_EDITOR_SQL } from "./migrations/009_default_editor_role";
 import type { Database } from "./db";
 import { createEmptyDb } from "./test-db";
 
@@ -31,11 +32,17 @@ const ALL = [
   "006_change_action_unpublished",
   "007_change_history_trigger",
   "008_user_roles",
+  "009_default_editor_role",
+  "010_page_revisions",
+  "011_revision_review",
 ];
 
 /** Tables whose rows are not content, so the history does not record them. */
 const UNAUDITED = new Set([
   "change_events",
+  // A pending revision is not live content; #3200 decides how its events
+  // are recorded.
+  "page_revisions",
   "schema_migrations",
   "search_chunks",
   "user_roles",
@@ -72,6 +79,7 @@ describe("migrate", () => {
       "categories",
       "change_events",
       "content_pages",
+      "page_revisions",
       "schema_migrations",
       "search_chunks",
       "user_roles",
@@ -124,6 +132,9 @@ describe("migrate", () => {
       "006_change_action_unpublished",
       "007_change_history_trigger",
       "008_user_roles",
+      "009_default_editor_role",
+      "010_page_revisions",
+      "011_revision_review",
     ]);
     const pages = await exec("select count(*)::int as n from content_pages");
     expect(pages.rows).toEqual([{ n: 0 }]);
@@ -153,6 +164,9 @@ describe("migrate", () => {
       "006_change_action_unpublished",
       "007_change_history_trigger",
       "008_user_roles",
+      "009_default_editor_role",
+      "010_page_revisions",
+      "011_revision_review",
     ]);
     await exec(
       `insert into categories (slug, title) values ('c', 'C');
@@ -227,6 +241,96 @@ describe("migrate", () => {
     await close();
   });
 
+  it("makes everyone who has signed in an editor, once, so a revocation sticks", async () => {
+    const { db, exec, close } = await freshDb();
+    await migrate(db, exec);
+    await exec(`
+      delete from schema_migrations where name = '009_default_editor_role';
+      insert into auth_user (id, name, email, "emailVerified") values
+        ('editor', 'Editor already', 'editor@govtech.bb', true),
+        ('approver', 'Approver only', 'approver@govtech.bb', true),
+        ('nobody', 'No role yet', 'nobody@govtech.bb', true);
+      insert into user_roles (user_id, role, granted_by) values
+        ('editor', 'editor', 'admin'),
+        ('approver', 'approver', 'admin');
+    `);
+    const editors = async () =>
+      (
+        await exec(
+          "select user_id, granted_by from user_roles where role = 'editor' order by user_id",
+        )
+      ).rows;
+
+    expect(await migrate(db, exec)).toEqual(["009_default_editor_role"]);
+    expect(await editors()).toEqual([
+      { user_id: "approver", granted_by: null },
+      { user_id: "editor", granted_by: "admin" },
+      { user_id: "nobody", granted_by: null },
+    ]);
+
+    await exec("delete from user_roles where user_id = 'nobody'");
+    expect(await migrate(db, exec)).toEqual([]);
+    expect(await editors()).toEqual([
+      { user_id: "approver", granted_by: null },
+      { user_id: "editor", granted_by: "admin" },
+    ]);
+    await close();
+  });
+
+  it("does not give a revoked editor role back when 009 is replayed", async () => {
+    const { db, exec, close } = await freshDb();
+    await migrate(db, exec);
+    await exec(`
+      insert into auth_user (id, name, email, "emailVerified") values
+        ('revoked', 'Revoked editor', 'revoked@govtech.bb', true);
+    `);
+
+    await exec(DEFAULT_EDITOR_SQL);
+
+    expect(
+      (await exec("select user_id from user_roles where user_id = 'revoked'"))
+        .rows,
+    ).toEqual([]);
+    await close();
+  });
+
+  it("keeps revisions, and one open revision a page, draft or submitted, when 010 and 011 are replayed", async () => {
+    const { db, exec, close } = await freshDb();
+    await migrate(db, exec);
+    await exec(`
+      insert into content_pages (id, url, slug, title, body_markdown)
+        values ('11111111-1111-4111-8111-111111111111', '/p', 'p', 'P', '');
+      insert into page_revisions (page_id, status, fields, live_updated_at, created_by, contributors, comment)
+        select id, 'rejected', '{}', updated_at, 'a', '{a}', 'No' from content_pages;
+      insert into page_revisions (page_id, status, fields, live_updated_at, created_by, contributors)
+        select id, 'submitted', '{}', updated_at, 'a', '{a}' from content_pages;
+      delete from schema_migrations where name in ('010_page_revisions', '011_revision_review');
+    `);
+
+    expect(await migrate(db, exec)).toEqual([
+      "010_page_revisions",
+      "011_revision_review",
+    ]);
+    expect(
+      (await exec("select status, comment from page_revisions order by status"))
+        .rows,
+    ).toEqual([
+      { status: "rejected", comment: "No" },
+      { status: "submitted", comment: null },
+    ]);
+    const another = (status: string) =>
+      exec(`insert into page_revisions (page_id, status, fields, live_updated_at, created_by, contributors)
+              select id, '${status}', '{}', updated_at, 'b', '{b}' from content_pages`);
+    await expect(another("draft")).rejects.toThrow(
+      /page_revisions_open_page_id_key/,
+    );
+    await expect(another("approved")).rejects.toThrow(
+      /page_revisions_status_check/,
+    );
+    await expect(another("published")).resolves.toBeDefined();
+    await close();
+  });
+
   it("hands history written before the trigger to system, and replays", async () => {
     const { db, exec, close } = await freshDb();
     for (const script of [
@@ -255,10 +359,7 @@ describe("migrate", () => {
                 ('content_page', 'a', 4, 'updated', '{}', 'editor');`,
     );
 
-    expect(await migrate(db, exec)).toEqual([
-      "007_change_history_trigger",
-      "008_user_roles",
-    ]);
+    expect(await migrate(db, exec)).toEqual(ALL.slice(6));
     await db.execute(
       sql`delete from schema_migrations where name = '007_change_history_trigger'`,
     );

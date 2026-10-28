@@ -50,6 +50,8 @@ type Direction = -1 | 1;
 type RowActions = {
   move: (row: CategoryRow, by: Direction, from: "button" | "menu") => void;
   moving: (row: CategoryRow) => boolean;
+  /** Nothing can be moved, for someone who can't make changes. */
+  readOnly: boolean;
   edit: (row: CategoryRow) => void;
   remove: (row: CategoryRow) => void;
 };
@@ -57,6 +59,7 @@ type RowActions = {
 const Actions = createContext<RowActions>({
   move: () => {},
   moving: () => false,
+  readOnly: false,
   edit: () => {},
   remove: () => {},
 });
@@ -119,7 +122,7 @@ const CategoryActions = memo(function CategoryActions({ row }: { row: CategoryRo
             aria-label={`Move ${row.title} up`}
             data-move={row.id}
             data-by={-1}
-            disabled={first}
+            disabled={first || actions.readOnly}
             aria-disabled={waiting || undefined}
             onClick={() => actions.move(row, -1, "button")}
           />
@@ -130,7 +133,7 @@ const CategoryActions = memo(function CategoryActions({ row }: { row: CategoryRo
             aria-label={`Move ${row.title} down`}
             data-move={row.id}
             data-by={1}
-            disabled={last}
+            disabled={last || actions.readOnly}
             aria-disabled={waiting || undefined}
             onClick={() => actions.move(row, 1, "button")}
           />
@@ -164,14 +167,14 @@ const CategoryActions = memo(function CategoryActions({ row }: { row: CategoryRo
         <Menu.Content aria-label={`Actions for ${row.title}`} align="end">
           <Menu.Item
             icon={<CaretUp />}
-            disabled={first || waiting}
+            disabled={first || waiting || actions.readOnly}
             onClick={() => actions.move(row, -1, "menu")}
           >
             Move up
           </Menu.Item>
           <Menu.Item
             icon={<CaretDown />}
-            disabled={last || waiting}
+            disabled={last || waiting || actions.readOnly}
             onClick={() => actions.move(row, 1, "menu")}
           >
             Move down
@@ -221,7 +224,14 @@ const columns = column.columns([
  * The one shared category list, from the content API: add, edit, move among siblings and delete. A move is saved with
  * every sibling's version, one at a time in each sibling group; a dialog keeps the category as it opened with it.
  */
-export function CategoriesScreen({ api }: { api: EditorApi }) {
+export function CategoriesScreen({
+  api,
+  readOnly = false,
+}: {
+  api: EditorApi;
+  /** Categories can't be moved, for someone who can't make changes; the workspace says why. */
+  readOnly?: boolean;
+}) {
   const client = useQueryClient();
   const categories = useQuery(categoriesQuery(api));
   const status = categories.error instanceof ApiFailure ? categories.error.status : undefined;
@@ -378,8 +388,11 @@ export function CategoriesScreen({ api }: { api: EditorApi }) {
           settle(group);
           setMoved("");
           toast(
-            result.error._tag === "CategoryAccessDenied" && result.error.status === 401
-              ? "Your session has ended. Sign in again, then move the category."
+            result.error._tag === "CategoryAccessDenied"
+              ? result.error.status === 401
+                ? "Your session has ended. Sign in again, then move the category."
+                : // A refusal, such as no editor role: the API's reason, since trying again won't help
+                  result.error.message
               : "The category could not be moved. Try again.",
             { tone: "error" },
           );
@@ -393,10 +406,11 @@ export function CategoriesScreen({ api }: { api: EditorApi }) {
     () => ({
       move: (row, by, from) => void move(row, by, from),
       moving: (row) => moving.get(groupOf(row)) === "saving",
+      readOnly,
       edit: (row) => setDialog({ kind: "edit", category: row }),
       remove: (row) => setDialog({ kind: "delete", category: row }),
     }),
-    [move, moving],
+    [move, moving, readOnly],
   );
 
   useEffect(() => () => clearTimeout(unmark.current), []);

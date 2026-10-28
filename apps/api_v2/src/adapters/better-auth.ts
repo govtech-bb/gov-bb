@@ -20,6 +20,7 @@ import {
   authSession,
   authUser,
   authVerification,
+  userRoles,
 } from "../schema";
 import type { SessionReader } from "../services/editor-access";
 
@@ -125,6 +126,31 @@ export function betterAuthOptions(
       accountLinking: { enabled: true, trustedProviders: [] },
     },
     databaseHooks: {
+      user: {
+        create: {
+          // Every employee is an editor by default (ADR 0079). The grant is
+          // made once, when the user is created, so a revocation outlasts
+          // their next sign-in. BetterAuth runs it after the sign-in's
+          // transaction commits, so it writes through `db`; if it
+          // fails, sign-in still succeeds without the role, which an admin
+          // can grant.
+          after: async (user) => {
+            try {
+              await db
+                .insert(userRoles)
+                .values({ userId: user.id, role: "editor" })
+                .onConflictDoNothing();
+            } catch {
+              // The driver's message can carry SQL parameters. The user id
+              // tells an operator whom to grant `editor` to.
+              logger.error(
+                { failure: "default_role_grant_failed", userId: user.id },
+                "could not make a new user an editor",
+              );
+            }
+          },
+        },
+      },
       account: {
         create: { before: discardOAuthTokens },
         update: { before: discardOAuthTokens },

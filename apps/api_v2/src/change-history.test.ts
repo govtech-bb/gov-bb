@@ -40,6 +40,10 @@ const versionOf = async (db: Database) =>
 
 const newPage = () => creationOf(undefined, withDefaults(aPage()), new Date());
 
+/** A page whose saves go live; a public page's wait in a revision (#3198). */
+const aLivePage = (overrides: Parameters<typeof aPage>[0] = {}) =>
+  aPage({ visibility: "draft", ...overrides });
+
 describe("the change history trigger", () => {
   it("names what happened to a page, as system when no user is set", async () => {
     const { db, close } = await createTestDb();
@@ -162,8 +166,8 @@ describe("the change history trigger", () => {
   it("records one event when the same content is saved twice", async () => {
     const { db, close } = await createTestDb();
     const { editing } = createTestServices(db);
-    const page = expectOk(await editing.create(aPage(), TEST_EMPLOYEE));
-    const fields = { ...withDefaults(aPage()), title: "Renamed" };
+    const page = expectOk(await editing.create(aLivePage(), TEST_EMPLOYEE));
+    const fields = { ...withDefaults(aLivePage()), title: "Renamed" };
 
     expectOk(await editing.save(page.id, fields, null, TEST_EMPLOYEE));
     expectOk(await editing.save(page.id, fields, null, TEST_EMPLOYEE));
@@ -178,8 +182,8 @@ describe("the change history trigger", () => {
   it("keeps updated_at when a save changes nothing, so another editor's copy stays current", async () => {
     const { db, close } = await createTestDb();
     const { editing } = createTestServices(db);
-    const page = expectOk(await editing.create(aPage(), TEST_EMPLOYEE));
-    const fields = withDefaults(aPage());
+    const page = expectOk(await editing.create(aLivePage(), TEST_EMPLOYEE));
+    const fields = withDefaults(aLivePage());
 
     const again = expectOk(
       await editing.save(
@@ -276,13 +280,13 @@ describe("the change history trigger", () => {
     );
     const parent = expectOk(
       await editing.create(
-        aPage({ url: "/a/parent", category_id: CATEGORY_A }),
+        aLivePage({ url: "/a/parent", category_id: CATEGORY_A }),
         TEST_EMPLOYEE,
       ),
     );
     const child = expectOk(
       await editing.create(
-        aPage({ url: "/a/parent/start", parent_id: parent.id }),
+        aLivePage({ url: "/a/parent/start", parent_id: parent.id }),
         TEST_EMPLOYEE,
       ),
     );
@@ -297,7 +301,7 @@ describe("the change history trigger", () => {
       ),
     );
 
-    const moved = expectOk(await editing.get(child.id));
+    const moved = expectOk(await new PostgresPages(db).find(child.id));
     expect(moved?.category_id).toBe(CATEGORY_B);
     expect(moved?.updated_at).not.toBe(child.updated_at);
     expect(await historyOf(db, child.id)).toEqual([

@@ -1,5 +1,5 @@
 /**
- * The Drizzle schema, matching migrations `001_init` to `008_user_roles`
+ * The Drizzle schema, matching migrations `001_init` to `011_revision_review`
  * applied in order, table for table and column for column. BetterAuth reads
  * and writes its four `auth_*` tables through these definitions; their
  * property keys are BetterAuth's field names.
@@ -20,6 +20,7 @@ import {
   customType,
   index,
   integer,
+  uniqueIndex,
   foreignKey,
   jsonb,
   pgEnum,
@@ -33,7 +34,13 @@ import {
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { ROLES } from "./modules/auth";
-import { VISIBILITIES, type Frontmatter, type PageId } from "./modules/page";
+import {
+  REVISION_STATUSES,
+  VISIBILITIES,
+  type Frontmatter,
+  type PageFields,
+  type PageId,
+} from "./modules/page";
 
 export const pageVisibility = pgEnum("page_visibility", VISIBILITIES);
 
@@ -277,7 +284,8 @@ export const userRoles = pgTable(
   {
     userId: text("user_id").notNull(),
     role: text("role", { enum: ROLES }).notNull(),
-    // The admin who granted it; null when it came from API_V2_ADMIN_EMAILS.
+    // The admin who granted it; null when api_v2 granted it itself: the
+    // default editor role, or admin from API_V2_ADMIN_EMAILS.
     grantedBy: text("granted_by"),
     grantedAt: timestamp("granted_at", { withTimezone: true, precision: 3 })
       .notNull()
@@ -289,5 +297,55 @@ export const userRoles = pgTable(
       "user_roles_role_check",
       sql`${table.role} in ('editor', 'approver', 'admin')`,
     ),
+  ],
+);
+
+/**
+ * A change to a public page waiting for an approver; the live row is
+ * unchanged until it is published. A page has at most one open revision, a
+ * draft or a submitted one; rejected and published revisions are kept.
+ */
+export const pageRevisions = pgTable(
+  "page_revisions",
+  {
+    id: uuid("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    pageId: uuid("page_id")
+      .notNull()
+      .references(() => contentPages.id, { onDelete: "cascade" })
+      .$type<PageId>(),
+    status: text("status", { enum: REVISION_STATUSES })
+      .notNull()
+      .default("draft"),
+    fields: jsonb("fields").$type<PageFields>().notNull(),
+    // The live page's version this revision was last saved over.
+    liveUpdatedAt: timestamp("live_updated_at", {
+      withTimezone: true,
+      precision: 3,
+    }).notNull(),
+    createdBy: text("created_by").notNull(),
+    // Everyone who saved to it; none of them may approve it (ADR 0079).
+    contributors: text("contributors").array().notNull(),
+    submittedBy: text("submitted_by"),
+    submittedAt: timestamp("submitted_at", {
+      withTimezone: true,
+      precision: 3,
+    }),
+    // Who rejected or published it, and when.
+    decidedBy: text("decided_by"),
+    decidedAt: timestamp("decided_at", { withTimezone: true, precision: 3 }),
+    // Why it was rejected.
+    comment: text("comment"),
+    ...timestamps,
+  },
+  (table) => [
+    check(
+      "page_revisions_status_check",
+      sql`${table.status} in ('draft', 'submitted', 'rejected', 'published')`,
+    ),
+    uniqueIndex("page_revisions_open_page_id_key")
+      .on(table.pageId)
+      .where(sql`status in ('draft', 'submitted')`),
   ],
 );

@@ -23,6 +23,9 @@ import { SQL as HIERARCHY_SQL } from "./migrations/005_hierarchy_and_search";
 import { SQL as UNPUBLISHED_SQL } from "./migrations/006_change_action_unpublished";
 import { SQL as CHANGE_HISTORY_SQL } from "./migrations/007_change_history_trigger";
 import { SQL as USER_ROLES_SQL } from "./migrations/008_user_roles";
+import { SQL as DEFAULT_EDITOR_SQL } from "./migrations/009_default_editor_role";
+import { SQL as PAGE_REVISIONS_SQL } from "./migrations/010_page_revisions";
+import { SQL as REVISION_REVIEW_SQL } from "./migrations/011_revision_review";
 import type { Database } from "./db";
 
 /** The migrations, in the order they apply. Each is idempotent by rule. */
@@ -35,6 +38,9 @@ const MIGRATIONS = [
   ["006_change_action_unpublished", UNPUBLISHED_SQL],
   ["007_change_history_trigger", CHANGE_HISTORY_SQL],
   ["008_user_roles", USER_ROLES_SQL],
+  ["009_default_editor_role", DEFAULT_EDITOR_SQL],
+  ["010_page_revisions", PAGE_REVISIONS_SQL],
+  ["011_revision_review", REVISION_REVIEW_SQL],
 ] as const;
 
 /** Serialises instances that boot together; released when its transaction ends. */
