@@ -170,18 +170,24 @@ describe('fetchApiV2Page', () => {
     const result = await fetchApiV2Page(
       BASE,
       '/x',
-      stubFetch(new TypeError('fetch failed')),
+      stubFetch(
+        new TypeError('fetch failed', {
+          cause: new Error('connect ECONNREFUSED', {
+            cause: 'socket closed',
+          }),
+        }),
+      ),
     )
     expect(result).toEqual({ kind: 'miss', reason: 'network' })
     expect(logged(error)).toEqual({
       event: 'api_v2_fallback',
       reason: 'network',
       url: '/x',
-      error: 'fetch failed',
+      error: 'fetch failed: connect ECONNREFUSED: socket closed',
     })
   })
 
-  it('treats a 4xx as a silent rejected miss (api_v2 answering, not failing)', async () => {
+  it('treats a 4xx as a rejected miss (api_v2 answering) and warns', async () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
     const error = vi.spyOn(console, 'error').mockImplementation(() => {})
     const result = await fetchApiV2Page(
@@ -194,7 +200,12 @@ describe('fetchApiV2Page', () => {
       reason: 'rejected',
       cacheControl: null,
     })
-    expect(warn).not.toHaveBeenCalled()
+    expect(logged(warn)).toEqual({
+      event: 'api_v2_fallback',
+      reason: 'rejected',
+      url: '/x',
+      status: 400,
+    })
     expect(error).not.toHaveBeenCalled()
   })
 
@@ -266,15 +277,15 @@ describe('fetchApiV2Page', () => {
     expect(await pending).toEqual({ kind: 'miss', reason: 'timeout' })
   })
 
-  it('treats an unparseable 200 body as a miss and warns', async () => {
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+  it('treats an unparseable 200 body as a miss and logs an error', async () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
     const result = await fetchApiV2Page(
       BASE,
       '/x',
       stubFetch(new Response('<html>', { status: 200 })),
     )
     expect(result).toEqual({ kind: 'miss', reason: 'malformed' })
-    expect(logged(warn)).toEqual({
+    expect(logged(error)).toEqual({
       event: 'api_v2_fallback',
       reason: 'malformed',
       url: '/x',
@@ -282,7 +293,7 @@ describe('fetchApiV2Page', () => {
   })
 
   it('treats a malformed 200 body as a miss', async () => {
-    vi.spyOn(console, 'warn').mockImplementation(() => {})
+    vi.spyOn(console, 'error').mockImplementation(() => {})
     const result = await fetchApiV2Page(
       BASE,
       '/x',
@@ -292,7 +303,7 @@ describe('fetchApiV2Page', () => {
   })
 
   it('treats a 200 without a boolean hide_start_links as a miss', async () => {
-    vi.spyOn(console, 'warn').mockImplementation(() => {})
+    vi.spyOn(console, 'error').mockImplementation(() => {})
     const { hide_start_links: _, ...body } = pageBody()
     const result = await fetchApiV2Page(
       BASE,
@@ -332,15 +343,15 @@ describe('fetchApiV2Page', () => {
     expect(result).toEqual({ kind: 'redirect', to: '/new', cacheControl: null })
   })
 
-  it('treats a 301 with no target as a no_target failure and warns', async () => {
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+  it('treats a 301 with no target as a no_target failure and logs an error', async () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
     const result = await fetchApiV2Page(
       BASE,
       '/old',
       stubFetch(jsonResponse(301, {})),
     )
     expect(result).toEqual({ kind: 'miss', reason: 'no_target' })
-    expect(logged(warn)).toEqual({
+    expect(logged(error)).toEqual({
       event: 'api_v2_fallback',
       reason: 'no_target',
       url: '/old',
@@ -579,6 +590,13 @@ describe('contentSource', () => {
     expect(contentSource({ kind: 'page', page, cacheControl: null })).toBe(
       'api_v2',
     )
+  })
+
+  it('is api_v2-stale for a kept page the cache served after a failure', async () => {
+    const page = await fromApiV2(pageBody())
+    expect(
+      contentSource({ kind: 'page', page, cacheControl: null, stale: true }),
+    ).toBe('api_v2-stale')
   })
 
   it.each<[ApiV2MissReason, string]>([

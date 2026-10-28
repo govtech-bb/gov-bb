@@ -431,7 +431,12 @@ describe('$ route api_v2 pages (#2944)', () => {
 
   it('sends x-content-source on every response with loader data', () => {
     const headers = Route.options.headers as (a: unknown) => unknown
-    for (const source of ['api_v2', 'static', 'static-fallback'])
+    for (const source of [
+      'api_v2',
+      'api_v2-stale',
+      'static',
+      'static-fallback',
+    ])
       expect(headers({ loaderData: { kind: 'page', source } })).toEqual({
         'x-content-source': source,
       })

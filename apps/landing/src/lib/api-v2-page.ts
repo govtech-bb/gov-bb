@@ -2,7 +2,8 @@ import { createServerFn } from '@tanstack/react-start'
 import { useRuntimeConfig } from 'nitro/runtime-config'
 import type { ContentPage } from '../content/registry'
 import { bakeStartLinkFormId } from '../utils/markdown/plugins'
-import { createApiV2Cache, logFallback } from './api-v2-cache'
+import { createApiV2Cache } from './api-v2-cache'
+import { REASONS, logFallback } from './api-v2-log'
 import type { Frontmatter } from './frontmatter'
 
 /**
@@ -11,14 +12,20 @@ import type { Frontmatter } from './frontmatter'
  * unset, landing serves static content only. Unlike the forms API, a missing
  * URL is not an error. A 301 is followed only to a same-site path.
  *
- * Contract for the #3140 smoke and #3364 metric filter. Every `$` page response
- * carries `x-content-source`: `api_v2` (served by api_v2, cached or not),
- * `static` (static markdown, api_v2 unset, skipped or answered "no page"), or
- * `static-fallback` (static markdown because api_v2 failed). A failure logs one
- * JSON line `{event: "api_v2_fallback", reason, url, status?, error?}` —
- * `console.error` for outages (`status`, `timeout`, `network`, and a breaker
- * trip as `circuit_open`), `console.warn` for bad content (`malformed`,
- * `no_target`, `bad_redirect`, `compile`).
+ * Contract for the #3140 smoke and #3364 metric filter. Every `$` response
+ * that renders a page carries `x-content-source` (redirects and 404s do not):
+ * `api_v2` (served by api_v2, fresh or within stale-while-revalidate),
+ * `api_v2-stale` (a kept api_v2 copy, because api_v2 failed or the breaker is
+ * open), `static` (static markdown, api_v2 unset, skipped or answered "no
+ * page"), or `static-fallback` (static markdown because api_v2 failed or sent
+ * bad content). Each failed fetch logs one JSON line `{event:
+ * "api_v2_fallback", reason, url, status?, error?}`, whichever header follows
+ * — `console.error` for api_v2 failures (`status`, `timeout`, `network`,
+ * `malformed`, `no_target`: these count toward the breaker), `console.warn`
+ * for answers landing can't use (`rejected` — a 4xx other than 404 —
+ * `bad_redirect`, `compile`). A 404 isn't logged. A breaker trip logs one
+ * `{event: "api_v2_circuit_open", url}` at `console.error`; requests it turns
+ * away aren't logged. `REASONS` in api-v2-log.ts holds the classification.
  */
 
 export const API_V2_TIMEOUT_MS = 750
@@ -64,7 +71,7 @@ export type ApiV2Page = SerializedContentPage & { hideStartLinks: boolean }
  * `bad_redirect` and `compile` are answers (cached for their
  * `Cache-Control`); `no_target`, `status` (a 5xx, 408 or 429),
  * `malformed`, `timeout` and `network` are api_v2 failures (never cached,
- * counted by the breaker in api-v2-cache.ts).
+ * counted by the breaker in api-v2-cache.ts). See `REASONS` in api-v2-log.ts.
  */
 export type ApiV2MissReason =
   | 'unconfigured'
@@ -117,8 +124,12 @@ function isSitePath(to: string): boolean {
   return /^\/(?!\/)[^\\\s]*$/.test(to)
 }
 
-const message = (error: unknown) =>
-  error instanceof Error ? error.message : String(error)
+const message = (error: unknown): string =>
+  error instanceof Error
+    ? error.cause
+      ? `${error.message}: ${message(error.cause)}`
+      : error.message
+    : String(error)
 
 /**
  * `GET /pages?url=` without following redirects. A 404 is a silent miss;
@@ -161,13 +172,9 @@ export async function fetchApiV2Page(
       if (to && isSitePath(to)) return { kind: 'redirect', to, cacheControl }
       if (controller.signal.aborted)
         throw new Error('timed out reading the body')
-      logFallback(
-        'warn',
-        to ? 'bad_redirect' : 'no_target',
-        url,
-        to ? { to } : {},
-      )
-      // A bad target is content, not an api_v2 failure: cache it, no breaker.
+      logFallback(to ? 'bad_redirect' : 'no_target', url, to ? { to } : {})
+      // An off-site target is content: cached, no breaker. No target at all
+      // is an api_v2 failure.
       return to
         ? { kind: 'miss', reason: 'bad_redirect', cacheControl }
         : { kind: 'miss', reason: 'no_target' }
@@ -181,19 +188,21 @@ export async function fetchApiV2Page(
         response.status < 500 &&
         response.status !== 408 &&
         response.status !== 429
-      )
+      ) {
+        logFallback('rejected', url, { status: response.status })
         return { kind: 'miss', reason: 'rejected', cacheControl }
-      logFallback('error', 'status', url, { status: response.status })
+      }
+      logFallback('status', url, { status: response.status })
       return { kind: 'miss', reason: 'status' }
     }
     const body: unknown = await response.json().catch(() => null)
     if (isPageResponse(body)) return { kind: 'page', body, cacheControl }
     if (controller.signal.aborted) throw new Error('timed out reading the body')
-    logFallback('warn', 'malformed', url)
+    logFallback('malformed', url)
     return { kind: 'miss', reason: 'malformed' }
   } catch (error) {
     const reason = controller.signal.aborted ? 'timeout' : 'network'
-    logFallback('error', reason, url, { error: message(error) })
+    logFallback(reason, url, { error: message(error) })
     return { kind: 'miss', reason }
   } finally {
     clearTimeout(timer)
@@ -240,7 +249,13 @@ export async function fromApiV2(body: PageResponse): Promise<ApiV2Page> {
 }
 
 export type ApiV2Result =
-  | { kind: 'page'; page: ApiV2Page; cacheControl: string | null }
+  | {
+      kind: 'page'
+      page: ApiV2Page
+      cacheControl: string | null
+      /** Kept by the cache after a failure (api-v2-cache.ts). */
+      stale?: true
+    }
   | { kind: 'redirect'; to: string; cacheControl: string | null }
   | ApiV2Miss
 
@@ -261,21 +276,21 @@ export async function resolveApiV2Page(
   try {
     return { kind: 'page', page: await fromApiV2(result.body), cacheControl }
   } catch (error) {
-    logFallback('warn', 'compile', url, { error: message(error) })
+    logFallback('compile', url, { error: message(error) })
     return { kind: 'miss', reason: 'compile', cacheControl }
   }
 }
 
-export type ContentSource = 'api_v2' | 'static' | 'static-fallback'
+export type ContentSource =
+  | 'api_v2'
+  | 'api_v2-stale'
+  | 'static'
+  | 'static-fallback'
 
 /** The `x-content-source` value for an api_v2 result (see the top of file). */
 export function contentSource(result: ApiV2Result): ContentSource {
-  if (result.kind !== 'miss') return 'api_v2'
-  return ['unconfigured', 'skipped', 'not_found', 'rejected'].includes(
-    result.reason,
-  )
-    ? 'static'
-    : 'static-fallback'
+  if (result.kind === 'miss') return REASONS[result.reason].source
+  return result.kind === 'page' && result.stale ? 'api_v2-stale' : 'api_v2'
 }
 
 // Pure, so the client build (where the handler is stripped) drops the cache.
