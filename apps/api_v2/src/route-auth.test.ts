@@ -12,8 +12,9 @@
  */
 
 import { randomUUID } from "node:crypto";
+import diagnostics from "node:diagnostics_channel";
 import { sql } from "drizzle-orm";
-import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, expect, it } from "vitest";
 import type { FastifyInstance, InjectOptions } from "fastify";
 import type { Database } from "./db";
 import type { Employee } from "./modules/auth";
@@ -31,25 +32,19 @@ import {
   TEST_HTTP_CONFIG,
 } from "./test-db";
 
-const registered = vi.hoisted(
-  () => [] as { method: string; url: string; tags: string[] }[],
-);
+const registered: { method: string; url: string; tags: string[] }[] = [];
 
-// buildApp has added its routes by the time it returns, so the onRoute hook
-// goes on the instance the moment it is created.
-vi.mock("fastify", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("fastify")>();
-  const fastify = ((options?: object) => {
-    const app = actual.default(options);
-    app.addHook("onRoute", (route) => {
+// Fastify announces each instance on this channel as it is created, before
+// buildApp adds a route, so every route the app registers is seen.
+const recordRoutes = (message: unknown) =>
+  (message as { fastify: FastifyInstance }).fastify.addHook(
+    "onRoute",
+    (route) => {
       const tags = (route.schema as { tags?: string[] } | undefined)?.tags;
       for (const method of [route.method].flat())
         registered.push({ method, url: route.url, tags: tags ?? [] });
-    });
-    return app;
-  }) as typeof actual.default;
-  return { ...actual, default: fastify };
-});
+    },
+  );
 
 /** Writes that must work signed out, and why. */
 const PUBLIC_WRITES = new Set([
@@ -77,12 +72,14 @@ const eventsSoFar = async () =>
 
 beforeEach(async () => {
   registered.length = 0;
+  diagnostics.subscribe("fastify.initialization", recordRoutes);
   ({ db, close } = await createTestDb());
   app = await createTestApp(db);
   await app.ready();
 });
 
 afterEach(async () => {
+  diagnostics.unsubscribe("fastify.initialization", recordRoutes);
   await app.close();
   await close();
 });
