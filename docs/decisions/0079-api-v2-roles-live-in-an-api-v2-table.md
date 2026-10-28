@@ -65,10 +65,12 @@ loaded.
 **Changing visibility is a direct approver action for now.** Until #3201
 runs new pages, unpublishing and deleting through review, an approver who
 changes a page's visibility does so straight away, and the self-approval rule
-doesn't apply. Taking a public page out of public view while a change waits
-for review discards that change, and the page's history records the discard
-(#3203); the change's content never reaches the live page. So, in the meantime, an approver can still publish a page
+doesn't apply. So, in the meantime, an approver can still publish a page
 they wrote. #3201 closes this gap.
+
+Taking a public page out of public view while a change waits for review
+discards that change, and the page's history records the discard (#3203).
+The change's content never reaches the live page.
 
 **Roles are enforced in api_v2**, not only in editor_v2. editor_v2 hides or
 disables what a user's roles don't allow, but the API answers 403 and leaves

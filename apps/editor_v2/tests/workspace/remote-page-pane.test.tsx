@@ -534,7 +534,7 @@ const PENDING = "Your changes are saved but not live. Submit them for review whe
 const WAITING =
   "Waiting for review. Citizens will see these changes once an approver publishes them.";
 
-const KEEP_EDITING = "You can keep editing: changes you save are added to this review.";
+const KEEP_EDITING = "You can keep editing";
 
 const live: ApiPage = { ...page, visibility: "public", published_at: "2026-10-01T12:00:00.000Z" };
 
@@ -719,7 +719,7 @@ test("a change waiting for review can still be saved, and keeps waiting", async 
   });
 
   await vi.waitFor(() => expect(document.body.textContent).toContain(WAITING));
-  expect(document.body.textContent).toContain(KEEP_EDITING);
+  await vi.waitFor(() => expect(document.body.textContent).toContain(KEEP_EDITING));
   const source = h.session().store.getSnapshot().source + "\n\nOne more thing";
   await applySource(h.session(), source);
   await savePage();
@@ -734,6 +734,32 @@ test("a change waiting for review can still be saved, and keeps waiting", async 
   expect(pageHasUnsavedChanges(h.session())).toBe(false);
 });
 
+test("an editor who approves is warned that saving to a change waiting for review stops them deciding on it", async () => {
+  await mountPage(async () =>
+    Response.json({ ...live, pending_revision: { status: "submitted", comment: null } }),
+  );
+
+  await vi.waitFor(() =>
+    expect(document.body.textContent).toContain(
+      "if you save changes you can't approve or reject this review",
+    ),
+  );
+});
+
+test("an editor who isn't an approver is told saved changes are added to the review", async () => {
+  await mountPage(
+    async () =>
+      Response.json({ ...live, pending_revision: { status: "submitted", comment: null } }),
+    ["editor"],
+  );
+
+  await vi.waitFor(() =>
+    expect(document.body.textContent).toContain(
+      "You can keep editing: changes you save are added to this review.",
+    ),
+  );
+});
+
 test("someone without the editor role isn't told they can keep editing a change waiting for review", async () => {
   await mountPage(
     async () =>
@@ -742,7 +768,9 @@ test("someone without the editor role isn't told they can keep editing a change 
   );
 
   await vi.waitFor(() => expect(document.body.textContent).toContain(WAITING));
-  await vi.waitFor(() => expect(document.body.textContent).not.toContain(KEEP_EDITING));
+  // The workspace says why they can't save once the roles have loaded
+  await vi.waitFor(() => expect(document.body.textContent).toContain(LOCKED));
+  expect(document.body.textContent).not.toContain(KEEP_EDITING);
 });
 
 test("making a page public is offered as publishing, and its edit is unpublished until then", async () => {

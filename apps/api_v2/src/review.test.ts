@@ -910,6 +910,27 @@ describe("saving a page whose revision is waiting for review (#3203)", () => {
     expect(await revisions()).toEqual(before);
   });
 
+  it("is refused with a 428 without the version the editor read, and nothing changes", async () => {
+    const { page } = await submitted();
+    const before = await revisions();
+
+    const response = await as(TEST_EDITOR, {
+      method: "PUT",
+      url: `/pages/${page.id}`,
+      payload: withDefaults(
+        aPage({ category_id: page.category_id, title: "Blind save" }),
+      ),
+    });
+
+    expect(response.statusCode).toBe(428);
+    expect(response.json()).toEqual({
+      error: "precondition_required",
+      message:
+        "This change is waiting for review. Send the updated_at you last read in the if-updated-at header.",
+    });
+    expect(await revisions()).toEqual(before);
+  });
+
   it.each(["publish", "reject"] as const)(
     "409s an approver who would %s the version they read before it, and nothing changes",
     async (step) => {
@@ -1023,17 +1044,25 @@ describe("unpublishing a page whose revision is waiting for review (#3203)", () 
       )
     ).json();
 
-    // The page is not public now, so the save writes the live page itself.
+    // Sent with only the visibility changed, as the editor sends it.
     const shown = await save(TEST_EMPLOYEE, hidden, {
-      body_markdown: page.body_markdown,
+      title: hidden.title,
+      body_markdown: hidden.body_markdown,
     });
 
     expect(shown.statusCode).toBe(200);
     expect(shown.json()).toMatchObject({
+      title: page.title,
       body_markdown: page.body_markdown,
       visibility: "public",
       pending_revision: null,
     });
+    const site = await app.inject({ url: `/pages?url=${ENTRY}` });
+    expect(site.statusCode).toBe(200);
+    expect(JSON.stringify(site.json())).not.toContain("Twenty dollars");
+    expect((await stored(page.id))?.body_markdown).not.toContain(
+      "Twenty dollars",
+    );
     expect(
       (await as(TEST_EDITOR, { url: `/pages/${page.id}/revision` })).statusCode,
     ).toBe(404);

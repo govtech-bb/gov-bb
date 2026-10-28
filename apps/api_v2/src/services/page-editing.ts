@@ -10,6 +10,7 @@ import {
   cycleOf,
   PageConflict,
   PageNotFound,
+  PageVersionRequired,
   pendingRevisionOf,
   fieldsOf,
   inheritedFrom,
@@ -246,7 +247,7 @@ export class PageEditing {
    * A save to a page that is not public writes the page, as it always has.
    *
    * A save to a revision waiting for review updates it in place and it stays
-   * submitted (#3203). The saver joins its contributors, so can't approve
+   * submitted (#3203). It must name the version it was made against. The saver joins its contributors, so can't approve
    * it, and its version moves, so an approver holding the earlier one gets a
    * conflict rather than publishing a version they haven't seen.
    *
@@ -270,6 +271,7 @@ export class PageEditing {
       | PageRejected
       | PageNotFound
       | PageConflict
+      | PageVersionRequired
       | NotApprover
       | ContentStoreUnavailable
     >
@@ -281,6 +283,8 @@ export class PageEditing {
       if (current === null) return err(new PageNotFound(id));
       const pending = await records.currentRevision(id);
       if (!pending.ok) return pending;
+      if (expectedUpdatedAt === null && pending.value?.status === "submitted")
+        return err(new PageVersionRequired());
       if (
         expectedUpdatedAt !== null &&
         (pending.value ?? current).updated_at !==
@@ -319,6 +323,8 @@ export class PageEditing {
           now,
         );
         if (!hidden.ok) return hidden;
+        if (pending.value?.status !== "draft")
+          return ok(workingCopy(hidden.value, null));
         const dropped = await records.dropRevision(id);
         return dropped.ok ? ok(workingCopy(hidden.value, null)) : dropped;
       }

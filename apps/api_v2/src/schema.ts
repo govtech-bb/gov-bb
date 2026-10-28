@@ -354,7 +354,7 @@ export const pageRevisions = pgTable(
   (table) => [
     check(
       "page_revisions_status_check",
-      sql`${table.status} in ('draft', 'submitted', 'rejected', 'published')`,
+      sql`${table.status} in ('draft', 'submitted', 'rejected', 'published', 'discarded')`,
     ),
     uniqueIndex("page_revisions_open_page_id_key")
       .on(table.pageId)

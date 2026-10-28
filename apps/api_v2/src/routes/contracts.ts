@@ -284,7 +284,8 @@ export const SCHEMAS = {
       "closed as `discarded`, which the page's history records. A save to " +
       "a page whose revision is waiting for review updates that revision, " +
       "which stays waiting; the saver joins its `contributors`, so may not " +
-      "approve it. Returns the page as the editor now works on it.",
+      "approve it. Such a save needs `if-updated-at` (428 without it). " +
+      "Returns the page as the editor now works on it.",
     tags: ["pages"],
     params: idParams,
     headers: ifUpdatedAt(""),
@@ -296,6 +297,7 @@ export const SCHEMAS = {
       404: error,
       409: conflict,
       422: validationFailed,
+      428: error,
       500: error,
       ...authErrors,
     },

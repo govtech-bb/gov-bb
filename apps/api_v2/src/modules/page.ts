@@ -473,6 +473,17 @@ export class PageConflict extends Error {
   }
 }
 
+/** A save to a revision waiting for review named no version, so it could overwrite another editor's change unseen. */
+export class PageVersionRequired extends Error {
+  /** Stable protocol-projection discriminator. */
+  readonly _tag = "PageVersionRequired" as const;
+  constructor() {
+    super(
+      "This change is waiting for review. Send the updated_at you last read in the if-updated-at header.",
+    );
+  }
+}
+
 /** There is no revision in the state the operation acts on. */
 export class RevisionNotFound extends Error {
   /** Stable protocol-projection discriminator. */

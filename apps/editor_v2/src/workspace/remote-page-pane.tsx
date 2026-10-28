@@ -433,7 +433,10 @@ function RemotePageEditor({
   ) : server.pending_revision?.status === "submitted" ? (
     <Banner tone="info" layout="strip">
       Waiting for review. Citizens will see these changes once an approver publishes them.
-      {!readOnly && " You can keep editing: changes you save are added to this review."}
+      {roles?.includes("editor") &&
+        (approver
+          ? " You can keep editing, but if you save changes you can't approve or reject this review."
+          : " You can keep editing: changes you save are added to this review.")}
     </Banner>
   ) : server.pending_revision?.status === "rejected" ? (
     <Banner
