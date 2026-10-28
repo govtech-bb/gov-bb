@@ -7,9 +7,9 @@ import { ApiFailure, type EditorApi, type ServiceSummary } from "../api/client";
 import { categoriesQuery, servicesQuery } from "../api/queries";
 import { visibilityLabels, visibilityTones } from "../pages";
 import { Badge } from "../ui/badge";
-import { Banner } from "../ui/banner";
 import { Button } from "../ui/button";
-import { ScreenHeader } from "../ui/screen-header";
+import { ListScreen } from "../ui/list-screen";
+import { RefreshFailure } from "../ui/refresh-failure";
 import { Select, type SelectItem } from "../ui/select";
 import { StatusDot } from "../ui/status-dot";
 import { NameCell } from "../ui/table/cell-components";
@@ -312,7 +312,7 @@ export function ServicesList({
   return (
     <table.AppTable>
       {/* A line under the title, as Categories has, so moving between the two leaves the table where it was */}
-      <ScreenHeader
+      <ListScreen
         title="Services"
         lead="Each service has an entry page, an optional start page and supporting pages."
         action={
@@ -320,55 +320,47 @@ export function ServicesList({
             Create service
           </Button>
         }
-      />
-      <div className="@container min-w-0 rounded-sm bg-white shadow-sheet ring-1 ring-grey-40">
-        <ServiceFilters categories={categories} />
-        <p role="status" className="sr-only">
-          {services.isPending ? "Loading services…" : null}
-        </p>
-        {refreshFailed && (
-          <Banner
-            tone="warning"
-            layout="strip"
-            actions={
-              <Button
-                variant="secondary"
-                pending={services.isFetching}
-                pendingLabel="Refreshing services…"
-                onClick={() => void services.refetch()}
-              >
-                Try again
+        filters={<ServiceFilters categories={categories} />}
+        status={services.isPending ? "Loading services…" : null}
+        refreshFailure={
+          refreshFailed && (
+            <RefreshFailure
+              inset="card"
+              pending={services.isFetching}
+              pendingLabel="Refreshing services…"
+              onRetry={() => void services.refetch()}
+            >
+              We could not refresh services. Showing the last loaded list.
+            </RefreshFailure>
+          )
+        }
+        failure={
+          blocked && (
+            <LoadFailure
+              noun="services"
+              error={services.error}
+              retrying={services.isFetching}
+              retry={() => void services.refetch()}
+            />
+          )
+        }
+      >
+        <table.DataTable
+          caption="Services"
+          loading={services.isPending}
+          rowLink
+          empty={{
+            title: "No services yet",
+            description: "Create a service to start adding its pages.",
+            actions: (
+              <Button variant="secondary" disabled={readOnly} onClick={onCreate}>
+                Create service
               </Button>
-            }
-          >
-            We could not refresh services. Showing the last loaded list.
-          </Banner>
-        )}
-        {blocked ? (
-          <LoadFailure
-            noun="services"
-            error={services.error}
-            retrying={services.isFetching}
-            retry={() => void services.refetch()}
-          />
-        ) : (
-          <table.DataTable
-            caption="Services"
-            loading={services.isPending}
-            rowLink
-            empty={{
-              title: "No services yet",
-              description: "Create a service to start adding its pages.",
-              actions: (
-                <Button variant="secondary" disabled={readOnly} onClick={onCreate}>
-                  Create service
-                </Button>
-              ),
-            }}
-          />
-        )}
-        {!blocked && <table.Pagination name={["service", "services"]} />}
-      </div>
+            ),
+          }}
+        />
+        <table.Pagination name={["service", "services"]} />
+      </ListScreen>
     </table.AppTable>
   );
 }

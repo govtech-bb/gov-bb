@@ -36,6 +36,7 @@ import {
 import { belowBar, Popover } from "../../../ui/popover";
 import { Button } from "../../../ui/button";
 import { LinkForm } from "../../../ui/link-picker";
+import { Toolbar as Controls } from "../../../ui/toolbar";
 import { Tip } from "../../../ui/tooltip";
 import { TurnIntoMenu } from "../../../ui/turn-into";
 import { useLatched } from "../../../ui/use-latched";
@@ -168,6 +169,19 @@ export function Toolbar({
       editor.registerCommand(
         KEY_DOWN_COMMAND,
         (event) => {
+          // Alt+F10 takes the keyboard into the toolbar over the selection; Esc there comes back to the text
+          if (event.altKey && event.key === "F10" && openRef.current) {
+            const control = document.querySelector<HTMLElement>(
+              '[role="toolbar"][aria-label="Text formatting"] [tabindex="0"]',
+            );
+
+            if (!control) return false;
+            event.preventDefault();
+            control.focus();
+
+            return true;
+          }
+
           if (
             !editor.isEditable() ||
             composing(event) ||
@@ -265,7 +279,16 @@ export function Toolbar({
   };
 
   return (
-    <Popover.Root open={!!current} onOpenChange={(next) => !next && setOpen(false)}>
+    <Popover.Root
+      open={!!current}
+      onOpenChange={(next, { reason }) => {
+        if (next) return;
+        setOpen(false);
+
+        // From the toolbar's own controls, Esc goes back to the selected text
+        if (reason === "escape-key") editor.focus();
+      }}
+    >
       {/* Above the selection, so it never covers the line being read next, unless the document's bar is in the way.
           It only fades, as it comes and goes with every selection */}
       <Popover.Content
@@ -277,80 +300,92 @@ export function Toolbar({
         collisionPadding={belowBar()}
         initialFocus={false}
         finalFocus={false}
-        className="flex items-center gap-0.5 overflow-visible p-0 px-1 motion-safe:starting:scale-100 motion-safe:data-starting-style:scale-100 motion-safe:data-ending-style:scale-100"
+        className="overflow-visible p-0 px-1 motion-safe:starting:scale-100 motion-safe:data-starting-style:scale-100 motion-safe:data-ending-style:scale-100"
       >
-        {state.turnInto && (
-          <>
-            <TurnIntoMenu
-              value={state.turnInto.value}
-              options={turnIntoOptions(state.turnInto)}
-              onValueChange={turn}
-              // Back to the text, with its selection, rather than the button
-              finalFocus={() => editor.focus()}
-              trigger={
-                <Button
-                  iconEnd={<CaretDown />}
-                  onMouseDown={keepSelection}
-                  className="my-1 font-normal text-ink"
-                >
-                  <span className="sr-only">Turn into: </span>
-                  {state.turnInto.choices.find((choice) => choice.value === state.turnInto?.value)
-                    ?.label ?? "Turn into"}
-                </Button>
-              }
-            />
-            <Divider />
-          </>
-        )}
-        <Action tip="Bold" active={state.bold} icon={<TextB />} onClick={format("bold")} />
-        <Action
-          tip="Italic"
-          active={state.italic}
-          icon={<TextItalic />}
-          onClick={format("italic")}
-        />
-        <Action tip="Clear formatting" icon={<TextTSlash />} onClick={clear} />
-        {linksEnabled && (
-          <>
-            <Divider />
-            {/* Closing the field without a link (Esc) puts the focus back on the selected text */}
-            <Popover.Root
-              open={linking}
-              onOpenChange={(next) => (setLinking(next), !next && editor.focus())}
-            >
-              <Action
-                tip={state.link ? "Edit link" : "Add link"}
-                active={!!state.link}
-                icon={<LinkSimple />}
-                render={(button) => <Popover.Trigger render={button} />}
+        <Controls.Root
+          label="Text formatting"
+          className="flex items-center gap-0.5"
+          // Esc from its controls goes back to the selected text, which keeps its selection
+          onKeyDown={(event) => {
+            if (event.key !== "Escape") return;
+            event.preventDefault();
+            setOpen(false);
+            editor.focus();
+          }}
+        >
+          {state.turnInto && (
+            <>
+              <TurnIntoMenu
+                value={state.turnInto.value}
+                options={turnIntoOptions(state.turnInto)}
+                onValueChange={turn}
+                // Back to the text, with its selection, rather than the button
+                finalFocus={() => editor.focus()}
+                trigger={
+                  <Button
+                    iconEnd={<CaretDown />}
+                    onMouseDown={keepSelection}
+                    className="my-1 font-normal text-ink"
+                  >
+                    <span className="sr-only">Turn into: </span>
+                    {state.turnInto.choices.find((choice) => choice.value === state.turnInto?.value)
+                      ?.label ?? "Turn into"}
+                  </Button>
+                }
               />
-              {/* Under the selected words, not over them, which the address being typed is for */}
-              <Popover.Content
-                aria-label={state.link ? "Edit link" : "Add link"}
-                anchor={anchor}
-                side="bottom"
-                align="start"
-                sideOffset={5}
-                collisionPadding={belowBar()}
-                finalFocus={false}
-                className="p-0"
+              <Controls.Separator />
+            </>
+          )}
+          <Action tip="Bold" active={state.bold} icon={<TextB />} onClick={format("bold")} />
+          <Action
+            tip="Italic"
+            active={state.italic}
+            icon={<TextItalic />}
+            onClick={format("italic")}
+          />
+          <Action tip="Clear formatting" icon={<TextTSlash />} onClick={clear} />
+          {linksEnabled && (
+            <>
+              <Controls.Separator />
+              {/* Closing the field without a link (Esc) puts the focus back on the selected text */}
+              <Popover.Root
+                open={linking}
+                onOpenChange={(next) => (setLinking(next), !next && editor.focus())}
               >
-                <LinkForm
-                  url={state.link ?? ""}
-                  pages={pages}
-                  toAddress={(typed) => linkAddress(typed, isValidLink)}
-                  onApply={(url) => {
-                    link(url);
-                    setLinking(false);
-                  }}
+                <Action
+                  tip={state.link ? "Edit link" : "Add link"}
+                  active={!!state.link}
+                  icon={<LinkSimple />}
+                  render={(button) => <Popover.Trigger render={button} />}
                 />
-              </Popover.Content>
-            </Popover.Root>
-            {state.link && (
-              <Action tip="Remove link" icon={<LinkBreak />} onClick={() => link(null)} />
-            )}
-          </>
-        )}
+                {/* Under the selected words, not over them, which the address being typed is for */}
+                <Popover.Content
+                  aria-label={state.link ? "Edit link" : "Add link"}
+                  anchor={anchor}
+                  side="bottom"
+                  align="start"
+                  sideOffset={5}
+                  collisionPadding={belowBar()}
+                  finalFocus={false}
+                  className="p-0"
+                >
+                  <LinkForm
+                    url={state.link ?? ""}
+                    pages={pages}
+                    toAddress={(typed) => linkAddress(typed, isValidLink)}
+                    onApply={(url) => {
+                      link(url);
+                      setLinking(false);
+                    }}
+                  />
+                </Popover.Content>
+              </Popover.Root>
+              {state.link && (
+                <Action tip="Remove link" icon={<LinkBreak />} onClick={() => link(null)} />
+              )}
+            </>
+          )}
+        </Controls.Root>
       </Popover.Content>
     </Popover.Root>
   );
@@ -358,8 +393,6 @@ export function Toolbar({
 
 // Buttons keep the editor's focus, and with it the selection
 const keepSelection = (e: MouseEvent) => e.preventDefault();
-
-const Divider = () => <div className="mx-1 h-9 w-px bg-line" />;
 
 function Action({
   tip,

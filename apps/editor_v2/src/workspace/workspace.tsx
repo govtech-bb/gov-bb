@@ -1,4 +1,3 @@
-import logo from "@govtech-bb/frontend/assets/images/govbb-logo.svg?raw";
 import { Files, List } from "@phosphor-icons/react";
 import {
   Link,
@@ -24,7 +23,7 @@ import { listedServiceRows, remoteServiceRows } from "./service-pages";
 import { ServiceNav } from "./service-nav";
 import { workspaceLink } from "./navigation";
 import { Banner } from "../ui/banner";
-import { Bar } from "../ui/bar";
+import { Bar, type Crumb } from "../ui/bar";
 import { Button } from "../ui/button";
 import { EmptyState } from "../ui/empty-state";
 import { LoadingState } from "../ui/loading-state";
@@ -34,6 +33,7 @@ import { useLatched } from "../ui/use-latched";
 import { useScreenPlace } from "./screen-place";
 import { ScreenTitle } from "./screen-title";
 import { DocumentSessions, keptViews } from "./document-views";
+import { GovbbLogo } from "./govbb-logo";
 import { ServicesList } from "./services-list";
 import type { ServicesSearch } from "./services-search";
 import type { WorkspaceLocation } from "./model";
@@ -47,10 +47,6 @@ type Account = {
 };
 
 const SIDEBAR_KEY = "govbb-editor:sidebar-collapsed";
-
-// The bar's trail of links, light on dark
-const crumb =
-  "rounded-sm px-2 py-2 underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-focus";
 
 /** What someone without the editor role is told, on every screen. */
 const READ_ONLY =
@@ -236,6 +232,15 @@ export function ServiceWorkspace({ api, email, onSignOut, notice }: Account & { 
     }
   };
 
+  const crumbs: Crumb[] = [
+    onCategories
+      ? { label: "Categories", render: <Link to="/categories" /> }
+      : { label: "Services", render: <Link to="/services" search={servicesSearch} /> },
+  ];
+
+  if (serviceName)
+    crumbs.push({ label: <span className="block max-w-100 truncate">{serviceName}</span> });
+
   const leave = usePageLeaveGuard({
     getPages,
     activeId: documentId,
@@ -271,31 +276,12 @@ export function ServiceWorkspace({ api, email, onSignOut, notice }: Account & { 
               Menu
             </Sidebar.Toggle>
           )}
-          <span
-            className="h-6 shrink-0 [&>svg]:h-full [&>svg]:w-auto"
-            aria-label="GovBB"
-            dangerouslySetInnerHTML={{ __html: logo }}
-          />
-          {/* Where the trail starts: always the same link, so it keeps the focus as it changes screens */}
-          {onCategories ? (
-            <Link to="/categories" className={crumb}>
-              Categories
-            </Link>
-          ) : (
-            <Link to="/services" search={servicesSearch} className={crumb}>
-              Services
-            </Link>
-          )}
-          {serviceName && (
-            <>
-              <span aria-hidden="true" className="text-blue-20">
-                /
-              </span>
-              <span className="min-w-0 max-w-100 truncate">{serviceName}</span>
-            </>
-          )}
+          <GovbbLogo fit="height" className="h-6 shrink-0" />
+          {/* Where the trail starts is always the same link, so it keeps the focus as it changes screens */}
+          <Bar.Crumbs crumbs={crumbs} />
           <Bar.Actions>
-            <Bar.Status className="max-w-64 truncate font-normal" title={email}>
+            {/* Under a laptop's width it gives way, so the bar keeps to one row */}
+            <Bar.Status className="max-w-64 truncate font-normal max-lg:hidden" title={email}>
               {email}
             </Bar.Status>
             {/* Pending while it signs out, so it keeps the focus and its colour if signing out fails */}
@@ -397,12 +383,12 @@ export function ServiceWorkspace({ api, email, onSignOut, notice }: Account & { 
             />
           )}
           {!location && onCategories && (
-            <section className="mx-auto w-full max-w-300 px-6 py-10">
+            <section>
               <CategoriesScreen api={api} readOnly={readOnly} />
             </section>
           )}
           {!location && !onCategories && (
-            <section className="mx-auto w-full max-w-300 px-6 py-10">
+            <section>
               <ServicesList
                 api={api}
                 search={listSearch ?? {}}

@@ -669,14 +669,14 @@ try {
     );
     const nestedStart = body.locator('ol > li:nth-child(2) [data-page-component="start"]');
     await body.getByText(caret, { exact: true }).click();
-    await hoverNestedMenu(nestedStart);
-    const destination = page.getByRole("textbox", { name: "Button destination", exact: true });
+    // A button's destination is edited in one place: the card at the caret in its words
+    await nestedStart.click();
+    await button("Change destination").click();
+    const destination = page.getByRole("textbox", { name: "Link", exact: true });
     await destination.waitFor({ timeout: 5000 });
     assert.equal(await destination.inputValue(), "/second");
-    // A destination applies on Enter, or as its field is left
     await destination.fill("/edited");
     await destination.press("Enter");
-    await page.keyboard.press("Escape");
     assert.equal(await nestedStart.getAttribute("data-destination"), "/edited");
     assert.equal(
       await body

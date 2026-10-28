@@ -32,10 +32,10 @@ import { categoriesQuery } from "../api/queries";
 import { Banner } from "../ui/banner";
 import { Button } from "../ui/button";
 import { Menu } from "../ui/menu";
-import { ScreenHeader } from "../ui/screen-header";
+import { ListScreen } from "../ui/list-screen";
+import { RefreshFailure } from "../ui/refresh-failure";
 import { NameCell } from "../ui/table/cell-components";
 import { createAppColumnHelper, useAppTable } from "../ui/table/table-hooks";
-import { toast } from "../ui/toast";
 import { Tip } from "../ui/tooltip";
 import { useLatched } from "../ui/use-latched";
 import { CategoryDialog, DeleteCategoryDialog } from "./category-dialogs";
@@ -266,6 +266,8 @@ export function CategoriesScreen({
   }, []);
 
   const [moved, setMoved] = useState("");
+  // What went wrong with a move, in the card over the rows until the next one: a toast would leave while its buttons stay
+  const [problem, setProblem] = useState<{ tone: "error" | "warning"; text: string } | null>(null);
   // The row that last moved, tinted while moves go on, so a pointer can follow it to its new place
   const [marked, setMarked] = useState<string>();
   const unmark = useRef<ReturnType<typeof setTimeout>>(undefined);
@@ -304,6 +306,8 @@ export function CategoriesScreen({
 
       const row = categoryRows(list).find((item) => item.id === id);
 
+      setProblem(null);
+
       if (row)
         setMoved(`${row.title} moved ${by < 0 ? "up" : "down"}: ${row.place} of ${row.siblings}`);
     },
@@ -320,12 +324,10 @@ export function CategoriesScreen({
       if (!result.ok) {
         settle(group, order);
         setMoved("");
-        toast(
-          "We couldn’t tell whether the category moved. Check your connection, then try again.",
-          {
-            tone: "error",
-          },
-        );
+        setProblem({
+          tone: "error",
+          text: "We couldn’t tell whether the category moved. Check your connection, then try again.",
+        });
 
         return undefined;
       }
@@ -351,12 +353,14 @@ export function CategoriesScreen({
         setPressed({ group, id: row.id, by });
         const list = await checkMove(group, unsettled);
 
-        if (list)
-          setMoved(
-            inOrder(list, unsettled)
-              ? "The last move was saved."
-              : "We couldn’t find the last move in the list yet. Check the order before moving it again.",
-          );
+        if (list && inOrder(list, unsettled)) setMoved("The last move was saved.");
+        else if (list) {
+          setMoved("");
+          setProblem({
+            tone: "warning",
+            text: "We couldn’t find the last move in the list yet. Check the order before moving it again.",
+          });
+        }
 
         return;
       }
@@ -388,10 +392,13 @@ export function CategoriesScreen({
           const list = await checkMove(group, order);
 
           if (list && inOrder(list, order)) showMoved(list, row.id, by, from);
-          else if (list)
-            setMoved(
-              "We couldn’t find that move in the list yet. Check the order before moving it again.",
-            );
+          else if (list) {
+            setMoved("");
+            setProblem({
+              tone: "warning",
+              text: "We couldn’t find that move in the list yet. Check the order before moving it again.",
+            });
+          }
 
           return;
         }
@@ -399,27 +406,26 @@ export function CategoriesScreen({
         case "CategoryConflict":
           settle(group);
           setMoved("");
-          toast(
-            "Someone changed these categories first. The list now shows their changes: move it again.",
-            {
-              tone: "error",
-            },
-          );
+          setProblem({
+            tone: "error",
+            text: "Someone changed these categories first. The list now shows their changes: move it again.",
+          });
           void client.invalidateQueries({ queryKey: ["content"] });
 
           return;
         default:
           settle(group);
           setMoved("");
-          toast(
-            result.error._tag === "CategoryAccessDenied"
-              ? result.error.status === 401
-                ? "Your session has ended. Sign in again, then move the category."
-                : // A refusal, such as no editor role: the API's reason, since trying again won't help
-                  result.error.message
-              : "The category could not be moved. Try again.",
-            { tone: "error" },
-          );
+          setProblem({
+            tone: "error",
+            text:
+              result.error._tag === "CategoryAccessDenied"
+                ? result.error.status === 401
+                  ? "Your session has ended. Sign in again, then move the category."
+                  : // A refusal, such as no editor role: the API's reason, since trying again won't help
+                    result.error.message
+                : "The category could not be moved. Try again.",
+          });
       }
     },
     [api, categories.data, checkMove, client, settle, showMoved],
@@ -471,7 +477,8 @@ export function CategoriesScreen({
   return (
     <Actions value={actions}>
       <table.AppTable>
-        <ScreenHeader
+        <ListScreen
+          ref={card}
           title="Categories"
           lead="People browse these to find services on the site."
           action={
@@ -484,57 +491,53 @@ export function CategoriesScreen({
               Add category
             </Button>
           }
-        />
-        <div
-          ref={card}
-          className="@container min-w-0 rounded-sm bg-white shadow-sheet ring-1 ring-grey-40"
-        >
-          <p role="status" className="sr-only">
-            {categories.isPending ? "Loading categories…" : null}
-          </p>
-          {refreshFailed && (
-            <Banner
-              tone="warning"
-              layout="strip"
-              actions={
-                <Button
-                  variant="secondary"
+          status={categories.isPending ? "Loading categories…" : null}
+          refreshFailure={
+            <>
+              {refreshFailed && (
+                <RefreshFailure
+                  inset="card"
                   pending={categories.isFetching}
                   pendingLabel="Refreshing categories…"
-                  onClick={() => void categories.refetch()}
+                  onRetry={() => void categories.refetch()}
                 >
-                  Try again
+                  We could not refresh categories. Showing the last loaded list.
+                </RefreshFailure>
+              )}
+              {problem && (
+                <Banner tone={problem.tone} layout="strip" inset="card">
+                  {problem.text}
+                </Banner>
+              )}
+            </>
+          }
+          failure={
+            blocked && (
+              <LoadFailure
+                noun="categories"
+                error={categories.error}
+                retrying={categories.isFetching}
+                retry={() => void categories.refetch()}
+              />
+            )
+          }
+        >
+          <table.DataTable
+            caption="Categories"
+            loading={categories.isPending}
+            marked={marked}
+            empty={{
+              title: "No categories yet",
+              description: "Add one, so services can be filed under it.",
+              // The header holds the teal Add category, so this one is grey
+              actions: (
+                <Button variant="secondary" onClick={() => openDialog({ kind: "add" })}>
+                  Add category
                 </Button>
-              }
-            >
-              We could not refresh categories. Showing the last loaded list.
-            </Banner>
-          )}
-          {blocked ? (
-            <LoadFailure
-              noun="categories"
-              error={categories.error}
-              retrying={categories.isFetching}
-              retry={() => void categories.refetch()}
-            />
-          ) : (
-            <table.DataTable
-              caption="Categories"
-              loading={categories.isPending}
-              marked={marked}
-              empty={{
-                title: "No categories yet",
-                description: "Add one, so services can be filed under it.",
-                // The header holds the teal Add category, so this one is grey
-                actions: (
-                  <Button variant="secondary" onClick={() => openDialog({ kind: "add" })}>
-                    Add category
-                  </Button>
-                ),
-              }}
-            />
-          )}
-        </div>
+              ),
+            }}
+          />
+        </ListScreen>
         <p role="status" className="sr-only">
           {moved}
         </p>

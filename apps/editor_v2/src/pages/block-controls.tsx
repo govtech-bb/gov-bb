@@ -68,7 +68,7 @@ import {
   useBlockDrag,
   useRailTarget,
 } from "../editor/react/block-rail";
-import { useEditorDefinition, useLinkPages } from "../editor/react/composer";
+import { useEditorDefinition } from "../editor/react/composer";
 import { $validPoint, roomierSide, useCaretReturn } from "../editor/react/editor-popup";
 import { cn } from "../cn";
 import { altKey } from "../editor/react/shortcut";
@@ -77,7 +77,6 @@ import { Button } from "../ui/button";
 import { Field } from "../ui/field";
 import { Input } from "../ui/input";
 import { Kbd } from "../ui/kbd";
-import { LinkPicker } from "../ui/link-picker";
 import { Menu } from "../ui/menu";
 import { NativeSelect } from "../ui/native-select";
 import { belowBar, Popover } from "../ui/popover";
@@ -93,8 +92,6 @@ import { startWriting } from "./slash-menu";
 import { PageMetadataNode } from "./metadata";
 import { PageComponentNode } from "./nodes";
 import { $nearestPageList, $setPageListType } from "./modules/lists";
-import { normalizeLinkUrl } from "../editor/modules/links/url";
-import { safePageUrl } from "./modules/text";
 import { $dropPageBlock, $pageDropAt, PAGE_BLOCK_DRAG } from "./block-drag";
 
 function $blockSelection(selection: BaseSelection | null, block: LexicalNode) {
@@ -898,8 +895,9 @@ function BlockMenuRows({ menu, onDone }: { menu: BlockMenu; onDone: () => void }
 }
 
 /**
- * A component's settings, at the top of its menu. Each applies as it's made, as the page settings do: a summary or a
- * destination when you leave its field or press Enter, a page as soon as it's picked, a style as it's chosen.
+ * A component's settings, at the top of its menu, each applied as it's made, as the page settings are: a Details
+ * block's summary as you leave its field or press Enter, a button's style as it's chosen. Where a button goes is
+ * edited in one place, the card at the caret in its words (PageButtonLink), with one set of rules.
  */
 function ComponentSettings({
   component,
@@ -908,16 +906,14 @@ function ComponentSettings({
   component: {
     key: string;
     kind: string;
-    attributes: { summary?: string; href?: string; variant?: string };
+    attributes: { summary?: string; variant?: string };
   };
-  onChange: (patch: { summary?: string; href?: string; variant?: string }) => void;
+  onChange: (patch: { summary?: string; variant?: string }) => void;
 }) {
   const [summary, setSummary] = useState(component.attributes.summary ?? "");
-  const [href, setHref] = useState(component.attributes.href ?? "");
   const [error, setError] = useState<string>();
-  const pages = useLinkPages();
 
-  if (!["details", "start", "action"].includes(component.kind)) return null;
+  if (component.kind !== "details" && component.kind !== "action") return null;
 
   const keepSummary = () => {
     if (!summary.trim()) {
@@ -929,26 +925,6 @@ function ComponentSettings({
     setError(undefined);
 
     if (summary !== component.attributes.summary) onChange({ summary });
-  };
-
-  const keepDestination = (value: string) => {
-    const destination = normalizeLinkUrl(value);
-
-    if (!safePageUrl(destination)) {
-      setError("Enter a relative link, or an http, https, email or telephone link.");
-
-      return;
-    }
-
-    setError(undefined);
-    setHref(destination);
-    const next = destination || (component.kind === "start" ? undefined : "#");
-
-    if (next !== component.attributes.href) onChange({ href: next });
-  };
-
-  const onEnter = (keep: () => void) => (event: { key: string; defaultPrevented: boolean }) => {
-    if (event.key === "Enter" && !event.defaultPrevented) keep();
   };
 
   return (
@@ -964,36 +940,22 @@ function ComponentSettings({
             value={summary}
             onChange={(event) => setSummary(event.target.value)}
             onBlur={keepSummary}
-            onKeyDown={onEnter(keepSummary)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") keepSummary();
+            }}
           />
         </Field>
       ) : (
-        <>
-          <Field size="sm" label="Button destination" error={error}>
-            <LinkPicker
-              size="sm"
-              value={href}
-              pages={pages}
-              placeholder={component.kind === "start" ? "Use linked form" : undefined}
-              onValueChange={setHref}
-              onPick={(page) => keepDestination(page.url)}
-              onBlur={() => keepDestination(href)}
-              onKeyDown={onEnter(() => keepDestination(href))}
-            />
-          </Field>
-          {component.kind === "action" && (
-            <Field size="sm" label="Button style">
-              <NativeSelect
-                size="sm"
-                value={component.attributes.variant ?? "primary"}
-                onChange={(event) => onChange({ variant: event.target.value })}
-              >
-                <option value="primary">Primary</option>
-                <option value="secondary">Secondary</option>
-              </NativeSelect>
-            </Field>
-          )}
-        </>
+        <Field size="sm" label="Button style">
+          <NativeSelect
+            size="sm"
+            value={component.attributes.variant ?? "primary"}
+            onChange={(event) => onChange({ variant: event.target.value })}
+          >
+            <option value="primary">Primary</option>
+            <option value="secondary">Secondary</option>
+          </NativeSelect>
+        </Field>
       )}
     </div>
   );

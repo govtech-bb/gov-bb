@@ -505,7 +505,9 @@ export function useBlockDrag<At extends { line: Line }>(anchor: HTMLElement, rul
     session.current = { key, element, from: at, to: at, strayed: false };
     event.dataTransfer.setData(rules.type, key);
     event.dataTransfer.effectAllowed = "move";
-    event.dataTransfer.setDragImage(element, 0, 0);
+    // Held where it was grabbed: the grip sits beside the block, so the picture keeps that offset
+    const box = element.getBoundingClientRect();
+    event.dataTransfer.setDragImage(element, event.clientX - box.left, event.clientY - box.top);
     // Once the browser has its full-opacity picture of the block: hiding the grip in dragstart itself would end the drag
     feedback.current = setTimeout(() => {
       if (session.current?.key !== key) return;

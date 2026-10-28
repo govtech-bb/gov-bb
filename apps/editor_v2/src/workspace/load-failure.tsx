@@ -2,7 +2,6 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import { ApiFailure } from "../api/client";
 import { Button } from "../ui/button";
 import { EmptyState } from "../ui/empty-state";
-import { TextLink } from "../ui/text-link";
 
 /**
  * A list the content API didn't give: why, for the reason it gave, and the way on. An ended session signs in again and
@@ -39,13 +38,14 @@ export function LoadFailure({
       }
       actions={
         status === 401 ? (
-          <TextLink
+          <Button
+            variant="secondary"
             render={
               <Link to="/auth" search={{ state: "sign-in", returnTo: href, reason: "provider" }} />
             }
           >
             Sign in again
-          </TextLink>
+          </Button>
         ) : (
           <Button variant="secondary" pending={retrying} onClick={retry}>
             Try again

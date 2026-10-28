@@ -23,6 +23,8 @@
 .cms-inline-field:focus-visible {
   outline: 1px solid var(--govbb-grey-60);
   outline-offset: 6px;
+  /* One frame: not the global focus edge as well */
+  box-shadow: none;
 }
 @media (hover: hover) {
   .cms-inline-field:hover:not(:focus-visible, :read-only) {
