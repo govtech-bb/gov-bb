@@ -814,7 +814,7 @@ test("making a page public is offered as publishing, and its edit is unpublished
   expect(document.body.textContent).toContain("Unpublished changes");
 });
 
-test("taking a public page with a waiting change out of view shows its live content, saying the change was discarded", async () => {
+test("taking a public page with an unpublished change out of view shows its live content, saying the change was discarded", async () => {
   const waiting: ApiPage = {
     ...live,
     body_markdown: "Unreviewed rewrite.",
@@ -841,6 +841,7 @@ test("taking a public page with a waiting change out of view shows its live cont
     );
   });
 
+  expect(document.body.textContent).toContain("Its unpublished changes were discarded.");
   expect(h.session().store.getSnapshot().committed).toContain(live.body_markdown);
   expect(h.session().store.getSnapshot().committed).not.toContain("Unreviewed rewrite.");
   expect(pageHasUnsavedChanges(h.session())).toBe(false);

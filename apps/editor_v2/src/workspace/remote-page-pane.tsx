@@ -199,8 +199,8 @@ function RemotePageEditor({
         if (outcome.discarded)
           toast("The page is no longer public", {
             description: typed
-              ? "Its changes that were waiting for review were discarded, but your open copy still contains them. Check it before you save."
-              : "Its changes that were waiting for review were discarded. It shows its last published content.",
+              ? "Its unpublished changes were discarded, but your open copy still contains them. Check it before you save."
+              : "Its unpublished changes were discarded. It shows its last published content.",
           });
 
         rebase(outcome.base);
