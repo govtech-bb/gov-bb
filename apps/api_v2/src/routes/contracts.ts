@@ -15,6 +15,7 @@ import {
   CategoryNode,
   SearchDocument,
 } from "../modules/navigation";
+import { EmployeeView, Role } from "../modules/auth";
 import { NewPage, PageDocument, PageId, SaveFields } from "../modules/page";
 import {
   CategoryBlockers,
@@ -80,6 +81,8 @@ const categoryInUse = z.object({
   message: z.string(),
   blockers: CategoryBlockers,
 });
+const roleParams = z.object({ id: z.string().min(1), role: Role });
+
 const categoryHeaders = z.object({ "if-updated-at": CategoryStamp });
 const categoryParams = z.object({ id: CategoryId });
 const categoryErrors = {
@@ -200,7 +203,9 @@ export const SCHEMAS = {
 
   createPage: {
     summary: "Create a page",
-    description: "Requires an employee session and the editor's Origin header.",
+    description:
+      "Requires an employee session and the editor's Origin header. " +
+      "Creating a page as `public` needs the approver role (403 otherwise).",
     tags: ["pages"],
     body: NewPage,
     security: editorSecurity,
@@ -222,7 +227,8 @@ export const SCHEMAS = {
       "If the stored row has moved on since, the save is refused with a 409 " +
       "rather than silently discarding whoever wrote first. Changing `url` " +
       "moves this page alone: its sub-pages keep their urls and stay beneath " +
-      "it by `parent_id`, and nothing redirects from the old url.",
+      "it by `parent_id`, and nothing redirects from the old url. " +
+      "Changing `visibility` needs the approver role (403 otherwise).",
     tags: ["pages"],
     params: idParams,
     headers: z.object({
@@ -252,7 +258,8 @@ export const SCHEMAS = {
     summary: "Delete a page",
     description:
       "Requires an employee session and the editor's Origin header. A page " +
-      "with sub-pages is refused (422) until they are moved or deleted.",
+      "with sub-pages is refused (422) until they are moved or deleted. " +
+      "Deleting a `public` page needs the approver role (403 otherwise).",
     tags: ["pages"],
     params: idParams,
     security: editorSecurity,
@@ -350,6 +357,52 @@ export const SCHEMAS = {
       500: error,
       ...authErrors,
     },
+  },
+
+  me: {
+    summary: "The signed-in employee and their roles",
+    tags: ["auth"],
+    security: editorSecurity,
+    response: { 200: EmployeeView, ...authErrors },
+  },
+
+  listEmployees: {
+    summary: "Everyone who has signed in, with their roles",
+    description: "Needs the admin role (403 otherwise).",
+    tags: ["admin"],
+    security: editorSecurity,
+    response: {
+      200: z.object({ employees: z.array(EmployeeView) }),
+      500: error,
+      ...authErrors,
+    },
+  },
+  grantRole: {
+    summary: "Grant an employee a role",
+    description:
+      "Needs the admin role (403 otherwise). Records the admin as the " +
+      "grantor; a role already held is left as it was. 404 for someone " +
+      "who has never signed in.",
+    tags: ["admin"],
+    security: editorSecurity,
+    params: roleParams,
+    response: {
+      204: z.undefined(),
+      400: error,
+      404: error,
+      500: error,
+      ...authErrors,
+    },
+  },
+  revokeRole: {
+    summary: "Revoke an employee's role",
+    description:
+      "Needs the admin role (403 otherwise). It applies to their next " +
+      "request. A role they do not hold is not an error.",
+    tags: ["admin"],
+    security: editorSecurity,
+    params: roleParams,
+    response: { 204: z.undefined(), 400: error, 500: error, ...authErrors },
   },
 
   version: {

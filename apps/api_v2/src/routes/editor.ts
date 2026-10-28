@@ -3,12 +3,13 @@ import type { ICategoryEditing } from "../services/category-editing";
 import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
 import type { Employee } from "../modules/auth";
 import { Redacted } from "../modules/redacted";
-import type { EmployeeGate } from "../services/editor-access";
+import type { EmployeeGate, RoleRecords } from "../services/editor-access";
 import type { EditorIndex } from "../services/editor-index";
 import type { PageEditing } from "../services/page-editing";
 import { editorCategoryRoutes } from "./categories";
 import { IF_UPDATED_AT, SCHEMAS } from "./contracts";
 import { EDITOR_READ, rejected, storageFailed } from "./responses";
+import { editorRoleRoutes } from "./roles";
 
 /** Authenticated editor operations, behind an employee session and the editor's Origin. */
 export const editorRoutes: FastifyPluginAsyncZod<{
@@ -16,8 +17,12 @@ export const editorRoutes: FastifyPluginAsyncZod<{
   index: EditorIndex;
   categories: ICategoryEditing;
   access: EmployeeGate;
+  roles: RoleRecords;
   editorOrigin: string;
-}> = async (editor, { editing, index, categories, access, editorOrigin }) => {
+}> = async (
+  editor,
+  { editing, index, categories, access, roles, editorOrigin },
+) => {
   editor.decorateRequest("employee", null);
   editor.addHook("onRequest", async (request, reply) => {
     reply.header("Cache-Control", EDITOR_READ);
@@ -32,8 +37,14 @@ export const editorRoutes: FastifyPluginAsyncZod<{
         case "Forbidden":
           return reply.status(403).send({ error: "forbidden" });
         case "AuthUnavailable":
+          // Which lookup failed, never the driver's message: it can carry SQL parameters.
           request.log.error(
-            { failure: "auth_unavailable" },
+            employee.error.failure.lookup === "roles"
+              ? {
+                  failure: "role_store_unavailable",
+                  operation: employee.error.failure.operation,
+                }
+              : { failure: "auth_unavailable" },
             "session lookup failed",
           );
           return reply.status(503).send({ error: "auth_unavailable" });
@@ -106,6 +117,16 @@ export const editorRoutes: FastifyPluginAsyncZod<{
     },
   });
   await editor.register(editorCategoryRoutes, { categories, actor });
+  await editor.register(editorRoleRoutes, { roles, actor });
+  editor.route({
+    method: "GET",
+    url: "/editor/me",
+    schema: SCHEMAS.me,
+    handler: async (request) => {
+      const { roles: held, ...employee } = actor(request);
+      return { ...employee, roles: [...held] };
+    },
+  });
   editor.route({
     method: "GET",
     url: "/version",
@@ -127,6 +148,10 @@ export const editorRoutes: FastifyPluginAsyncZod<{
       switch (created.error._tag) {
         case "PageRejected":
           return reply.status(422).send(rejected(created.error));
+        case "NotApprover":
+          return reply
+            .status(403)
+            .send({ error: "forbidden", message: created.error.message });
         case "ContentStoreUnavailable":
           return reply
             .status(500)
@@ -157,6 +182,10 @@ export const editorRoutes: FastifyPluginAsyncZod<{
           return reply
             .status(404)
             .send({ error: "not_found", message: saved.error.message });
+        case "NotApprover":
+          return reply
+            .status(403)
+            .send({ error: "forbidden", message: saved.error.message });
         case "PageConflict":
           return reply.status(409).send({
             error: "conflict",
@@ -184,6 +213,10 @@ export const editorRoutes: FastifyPluginAsyncZod<{
       switch (deleted.error._tag) {
         case "PageRejected":
           return reply.status(422).send(rejected(deleted.error));
+        case "NotApprover":
+          return reply
+            .status(403)
+            .send({ error: "forbidden", message: deleted.error.message });
         case "ContentStoreUnavailable":
           return reply
             .status(500)

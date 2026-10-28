@@ -33,6 +33,27 @@ export function BreadcrumbRegion({ children }: { children: ReactNode }) {
       return undefined
     },
   })
+
+  // The root's category tree (ADR 0078), read once per QueryClient; absent
+  // only outside the app's root route, where the static taxonomy applies.
+  const categoryTree = useMatches({
+    select: (matches) => matches[0]?.context.categoryTree,
+  })
+
+  // An api_v2 page's own trail, when the deepest loaded route carries one.
+  const trail = useMatches({
+    select: (matches) => {
+      const match = matches.at(-1)
+
+      if (mode !== 'location' || match?.routeId !== '/$') return undefined
+
+      const data = match.loaderData
+
+      return data?.kind === 'page' || data?.kind === 'api-category'
+        ? data.breadcrumbs
+        : undefined
+    },
+  })
   const pathname = mode === 'preview' ? previewPath : undefined
   const showBreadcrumbs =
     mode === 'location' || (mode === 'preview' && previewPath !== undefined)
@@ -41,7 +62,11 @@ export function BreadcrumbRegion({ children }: { children: ReactNode }) {
     <PreviewBreadcrumbPathContext.Provider value={setPreviewPath}>
       {showBreadcrumbs ? (
         <div className="govbb-width-container pt-4 print:hidden lg:pt-6">
-          <Breadcrumbs pathname={pathname} />
+          <Breadcrumbs
+            pathname={pathname}
+            categoryTree={categoryTree}
+            trail={trail}
+          />
         </div>
       ) : null}
       {children}

@@ -22,6 +22,7 @@ import { SQL as GITHUB_SESSIONS_SQL } from "./migrations/004_github_sessions";
 import { SQL as HIERARCHY_SQL } from "./migrations/005_hierarchy_and_search";
 import { SQL as UNPUBLISHED_SQL } from "./migrations/006_change_action_unpublished";
 import { SQL as CHANGE_HISTORY_SQL } from "./migrations/007_change_history_trigger";
+import { SQL as USER_ROLES_SQL } from "./migrations/008_user_roles";
 import type { Database } from "./db";
 
 /** The migrations, in the order they apply. Each is idempotent by rule. */
@@ -33,6 +34,7 @@ const MIGRATIONS = [
   ["005_hierarchy_and_search", HIERARCHY_SQL],
   ["006_change_action_unpublished", UNPUBLISHED_SQL],
   ["007_change_history_trigger", CHANGE_HISTORY_SQL],
+  ["008_user_roles", USER_ROLES_SQL],
 ] as const;
 
 /** Serialises instances that boot together; released when its transaction ends. */

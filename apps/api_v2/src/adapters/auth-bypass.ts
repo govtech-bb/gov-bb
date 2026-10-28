@@ -1,15 +1,16 @@
 import type { Database } from "../db";
-import type { Employee } from "../modules/auth";
+import { ROLES, type Employee } from "../modules/auth";
 import { ok } from "../modules/result";
 import type { AuthHandler } from "../routes/auth";
 import { authUser } from "../schema";
 import type { EmployeeGate } from "../services/editor-access";
 
-/** Who every editor request runs as while AUTH_BYPASS is on. */
+/** Who every editor request runs as while AUTH_BYPASS is on: every role, so one developer can try every flow. */
 export const BYPASS_EMPLOYEE: Employee = {
   id: "local-developer",
   email: "developer@localhost",
   name: "Local developer",
+  roles: ROLES,
 };
 
 /**
@@ -36,6 +37,11 @@ export const authBypass: {
 export async function registerBypassEmployee(db: Database): Promise<void> {
   await db
     .insert(authUser)
-    .values({ ...BYPASS_EMPLOYEE, emailVerified: true })
+    .values({
+      id: BYPASS_EMPLOYEE.id,
+      email: BYPASS_EMPLOYEE.email,
+      name: BYPASS_EMPLOYEE.name,
+      emailVerified: true,
+    })
     .onConflictDoNothing({ target: authUser.id });
 }

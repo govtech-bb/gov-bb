@@ -9,7 +9,7 @@ import {
 import { act } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { createEditorApi, type ApiPage } from "../../src/api/client";
-import { pageQuery, savedCategoriesQuery } from "../../src/api/queries";
+import { categoriesQuery, pageQuery } from "../../src/api/queries";
 import { govbbPageCodec } from "../../src/presets/govbb-page";
 import { Toaster } from "../../src/ui/toast";
 import { RemotePagePane } from "../../src/workspace/remote-page-pane";
@@ -49,10 +49,18 @@ beforeEach(() => {
   }));
 });
 
-async function mountPage(request: (url: string, init?: RequestInit) => Promise<Response>) {
+async function mountPage(
+  request: (url: string, init?: RequestInit) => Promise<Response>,
+  roles = ["editor", "approver"],
+) {
   vi.stubGlobal(
     "fetch",
     vi.fn((url: string, init?: RequestInit) => {
+      if (url.endsWith("/editor/me"))
+        return Promise.resolve(
+          Response.json({ id: "me", email: "me@govtech.bb", name: "Me", roles }),
+        );
+
       if (url.endsWith("/editor/categories"))
         return Promise.resolve(Response.json({ categories: [] }));
 
@@ -101,6 +109,28 @@ async function savePage() {
   expect(button.disabled).toBe(false);
   await act(async () => button.click());
 }
+
+// The visibility control is the select offering the visibilities
+const visibilitySelect = () =>
+  [...document.querySelectorAll("select")].find((select) =>
+    select.textContent?.includes("Preview link only"),
+  );
+
+const LOCKED = "Only approvers can change who can see this page.";
+
+test("an approver is offered the page's visibility", async () => {
+  await mountPage(async () => Response.json(page));
+
+  await vi.waitFor(() => expect(visibilitySelect()).toBeDefined());
+  expect(document.body.textContent).not.toContain(LOCKED);
+});
+
+test("someone who isn't an approver sees the page's visibility, and why they can't change it", async () => {
+  await mountPage(async () => Response.json(page), ["editor"]);
+
+  await vi.waitFor(() => expect(document.body.textContent).toContain(LOCKED));
+  expect(visibilitySelect()).toBeUndefined();
+});
 
 test("a visual page stays editable without history controls or requests", async () => {
   const h = await mountPage(async () => Response.json(page));
@@ -196,7 +226,7 @@ test("a page preloaded just now, as its link was pointed at, opens without waiti
   const api = createEditorApi("http://localhost:3020");
   const client = new QueryClient();
   client.setQueryData(pageQuery(api, page.id).queryKey, page);
-  client.setQueryData(savedCategoriesQuery(api).queryKey, []);
+  client.setQueryData(categoriesQuery(api).queryKey, []);
 
   await renderInPage(
     <RouterContextProvider router={router}>
@@ -356,3 +386,29 @@ test.each([401, 404, 409, 422, 503, 0])(
     expect(pageHasUnsavedChanges(h.session())).toBe(true);
   },
 );
+
+test("a save the API refuses (403) says why and offers no retry, keeping the working copy", async () => {
+  const h = await mountPage(async (_url, init) =>
+    init?.method === "PUT"
+      ? Response.json(
+          { error: "forbidden", message: "Only approvers can change who can see a page." },
+          { status: 403 },
+        )
+      : Response.json(page),
+  );
+
+  const source = h.session().store.getSnapshot().source + "\n\nKeep this";
+  await applySource(h.session(), source);
+  await savePage();
+  await act(async () => {
+    await vi.waitFor(() =>
+      expect(document.querySelector('[role="alert"]')?.textContent).toContain(
+        "Only approvers can change who can see a page.",
+      ),
+    );
+  });
+  const names = [...document.querySelectorAll("button")].map((button) => button.textContent);
+  expect(names).not.toContain("Retry");
+  expect(document.body.textContent).not.toContain("We could not save this page");
+  expect(pageHasUnsavedChanges(h.session())).toBe(true);
+});

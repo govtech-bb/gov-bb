@@ -30,6 +30,7 @@ const ALL = [
   "005_hierarchy_and_search",
   "006_change_action_unpublished",
   "007_change_history_trigger",
+  "008_user_roles",
 ];
 
 /** Tables whose rows are not content, so the history does not record them. */
@@ -37,6 +38,7 @@ const UNAUDITED = new Set([
   "change_events",
   "schema_migrations",
   "search_chunks",
+  "user_roles",
 ]);
 
 const freshDb = async () => {
@@ -72,6 +74,7 @@ describe("migrate", () => {
       "content_pages",
       "schema_migrations",
       "search_chunks",
+      "user_roles",
     ]);
     await close();
   });
@@ -120,6 +123,7 @@ describe("migrate", () => {
       "005_hierarchy_and_search",
       "006_change_action_unpublished",
       "007_change_history_trigger",
+      "008_user_roles",
     ]);
     const pages = await exec("select count(*)::int as n from content_pages");
     expect(pages.rows).toEqual([{ n: 0 }]);
@@ -148,6 +152,7 @@ describe("migrate", () => {
       "005_hierarchy_and_search",
       "006_change_action_unpublished",
       "007_change_history_trigger",
+      "008_user_roles",
     ]);
     await exec(
       `insert into categories (slug, title) values ('c', 'C');
@@ -250,7 +255,10 @@ describe("migrate", () => {
                 ('content_page', 'a', 4, 'updated', '{}', 'editor');`,
     );
 
-    expect(await migrate(db, exec)).toEqual(["007_change_history_trigger"]);
+    expect(await migrate(db, exec)).toEqual([
+      "007_change_history_trigger",
+      "008_user_roles",
+    ]);
     await db.execute(
       sql`delete from schema_migrations where name = '007_change_history_trigger'`,
     );

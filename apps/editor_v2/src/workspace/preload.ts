@@ -4,7 +4,6 @@ import {
   PRELOAD_FRESH,
   categoriesQuery,
   pageQuery,
-  savedCategoriesQuery,
   serviceQuery,
   servicesQuery,
 } from "../api/queries";
@@ -34,7 +33,7 @@ export function primePage(client: QueryClient, api: EditorApi, serviceId: string
 
   if (!page) return;
   void client.prefetchQuery({ ...pageQuery(api, pageId), staleTime: PRELOAD_FRESH });
-  void client.prefetchQuery({ ...savedCategoriesQuery(api), staleTime: PRELOAD_FRESH });
+  void client.prefetchQuery({ ...categoriesQuery(api), staleTime: PRELOAD_FRESH });
 }
 
 /** Starts loading the categories before their screen opens. */

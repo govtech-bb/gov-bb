@@ -29,6 +29,18 @@ describe("booting without a database", () => {
     expect(output).not.toContain("Cannot reach Postgres");
   });
 
+  it("refuses to start with no admin, saying why", async () => {
+    const { code, output } = await runToExit({
+      API_V2_ADMIN_EMAILS: "",
+      DB_HOST: "127.0.0.1",
+      DB_PORT: "1",
+    });
+    expect(code).toBe(1);
+    expect(output).toContain("API_V2_ADMIN_EMAILS");
+    expect(output).toContain("ADR 0079");
+    expect(output).not.toContain("Cannot reach Postgres");
+  });
+
   it("does not echo supplied secret values when configuration is invalid", async () => {
     const { code, output } = await runToExit({
       BETTER_AUTH_SECRET: "do-not-print-this",
