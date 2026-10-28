@@ -17,7 +17,7 @@ import { Client, Pool } from "pg";
 import { inject } from "vitest";
 import { PostgresPages } from "./adapters/postgres-pages";
 import { buildApp, type AppOptions } from "./app";
-import type { Database } from "./db";
+import { ping, type Database } from "./db";
 import { type Employee } from "./modules/auth";
 import { ok, type Result } from "./modules/result";
 import { EditorAccess, type SessionReader } from "./services/editor-access";
@@ -141,7 +141,7 @@ export const TEST_HEADERS = {
 export function createTestApp(
   db: Database,
   options: Partial<
-    Pick<AppOptions, "auth" | "config" | "logger" | "previewSecret">
+    Pick<AppOptions, "auth" | "config" | "logger" | "previewSecret" | "ready">
   > & {
     sessions?: SessionReader;
   } = {},
@@ -158,6 +158,7 @@ export function createTestApp(
     config: options.config ?? TEST_HTTP_CONFIG,
     ...(options.logger ? { logger: options.logger } : {}),
     ...(options.previewSecret ? { previewSecret: options.previewSecret } : {}),
+    ready: options.ready ?? (() => ping(db)),
   });
 }
 

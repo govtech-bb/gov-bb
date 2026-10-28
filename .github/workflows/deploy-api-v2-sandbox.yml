@@ -147,11 +147,12 @@ jobs:
             exit 1
           fi
 
-      # The ALB health check uses /docs/openapi.json; /categories proves the
-      # database answers (it reads the seeded categories).
+      # /health proves the database answers (#3128). The ALB target group
+      # checks /docs/openapi.json until alpha-infra points it at /health;
+      # /categories proves the seeded categories read.
       - name: Smoke test
         run: |
-          for path in /docs/openapi.json /categories; do
+          for path in /health /docs/openapi.json /categories; do
             status=$(curl -s -o /dev/null -w '%{http_code}' --max-time 15 "$API_URL$path")
             echo "$path -> $status"
             if [ "$status" != "200" ]; then

@@ -6,7 +6,7 @@ import { buildApp } from "./app";
 import { createBetterAuth } from "./adapters/better-auth";
 import { PostgresPages } from "./adapters/postgres-pages";
 import { parseConfig } from "./config";
-import { connect, createPool, type DatabaseFailure } from "./db";
+import { connect, createPool, ping, type DatabaseFailure } from "./db";
 import { migrate } from "./migrate";
 import { authBypass } from "./adapters/auth-bypass";
 import type { AuthHandler } from "./routes/auth";
@@ -111,6 +111,7 @@ async function main(): Promise<void> {
       },
       ...(config.previewSecret ? { previewSecret: config.previewSecret } : {}),
       logger,
+      ready: () => ping(db),
     });
     if (shutdown.signal.aborted) return;
     await app.listen({ port: config.port, host: "0.0.0.0" });

@@ -1,7 +1,7 @@
 import pino from "pino";
 import { describe, expect, it } from "vitest";
 import type { DatabaseConfig } from "./config";
-import { connect, createPool } from "./db";
+import { connect, createPool, ping, type Database } from "./db";
 import { Redacted } from "./modules/redacted";
 import type { Result } from "./modules/result";
 
@@ -85,5 +85,10 @@ describe("database setup", () => {
       throw new Error("Expected CA failure");
     }
     expect(result.error.operation).toBe("configure");
+  });
+
+  it("reports a database that does not answer within the cap", async () => {
+    const db = { execute: () => new Promise(() => {}) } as unknown as Database;
+    expect(await ping(db, 10)).toBe(false);
   });
 });

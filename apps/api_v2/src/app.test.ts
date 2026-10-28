@@ -80,6 +80,25 @@ const ENTRY_MARKDOWN = [
   "- apply by post",
 ].join("\n");
 
+describe("GET /health", () => {
+  it("answers ok when the database does", async () => {
+    const response = await app.inject({ url: "/health" });
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({ status: "ok" });
+  });
+
+  it("answers 503 when the database does not", async () => {
+    const unready = await createTestApp(db, { ready: async () => false });
+    try {
+      const response = await unready.inject({ url: "/health" });
+      expect(response.statusCode).toBe(503);
+      expect(response.json()).toEqual({ error: "database_unavailable" });
+    } finally {
+      await unready.close();
+    }
+  });
+});
+
 describe("GET /pages?url=", () => {
   it("400s when url is missing", async () => {
     const response = await inject({ url: "/pages" });
