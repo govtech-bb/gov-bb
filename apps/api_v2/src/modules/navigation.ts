@@ -129,15 +129,23 @@ function refOf(
   };
 }
 
-/** A page's category crumbs: the parent category first, for a subcategory. */
-export function categoryCrumbs(
+/** A page's category, its parent first for a subcategory; empty when it has none. */
+export function categoryChain(
   categoryId: string | null,
   categories: readonly CategoryRecord[],
-): Breadcrumb[] {
+): CategoryRecord[] {
   const category = categories.find((row) => row.id === categoryId);
   if (!category) return [];
   const parent = categories.find((row) => row.id === category.parentId);
-  return [...(parent ? [parent] : []), category].map((row) => ({
+  return [...(parent ? [parent] : []), category];
+}
+
+/** A page's category crumbs: the parent category first, for a subcategory. */
+export function categoryCrumbs(
+  chain: readonly CategoryRecord[],
+  categories: readonly CategoryRecord[],
+): Breadcrumb[] {
+  return chain.map((row) => ({
     name: row.title,
     url: urlOf(row, categories),
   }));

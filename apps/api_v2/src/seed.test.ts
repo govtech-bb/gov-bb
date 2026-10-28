@@ -67,6 +67,8 @@ describe("seed", () => {
     expect(resolved).toMatchObject({
       kind: "page",
       page: {
+        category: "money-financial-support",
+        subcategory: null,
         breadcrumbs: [
           {
             name: "Money and financial support",
@@ -78,6 +80,25 @@ describe("seed", () => {
           },
         ],
       },
+    });
+
+    await close();
+  }, 60_000);
+
+  it("serves a seeded subcategory page with its category and subcategory", async () => {
+    const { db, close } = await createTestDb();
+    await seed(db);
+
+    const resolved = expectOk(
+      await createTestServices(db).resolution.resolve(
+        "/youth-and-community/arts-culture/community-canvas",
+        "preview",
+      ),
+    );
+
+    expect(resolved).toMatchObject({
+      kind: "page",
+      page: { category: "youth-and-community", subcategory: "arts-culture" },
     });
 
     await close();

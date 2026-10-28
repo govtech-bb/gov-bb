@@ -55,6 +55,10 @@ export interface paths {
                                 name: string;
                                 url: string;
                             }[];
+                            /** @description The slug of the category the page is filed under, or null for a page outside the taxonomy. */
+                            category: string | null;
+                            /** @description The slug of its subcategory, or null. */
+                            subcategory: string | null;
                             /**
                              * Format: date-time
                              * @description When the page first went public (seeded from landing's `publish_date`); null until it has.

@@ -125,8 +125,19 @@ describe("GET /pages?url=", () => {
           url: ENTRY,
         },
       ],
+      category: "money-financial-support",
+      subcategory: null,
       published_at: created.published_at,
       updated_at: created.updated_at,
+    });
+  });
+
+  it("serves a page outside the taxonomy with a null category and subcategory", async () => {
+    await seedPage();
+
+    expect((await read(ENTRY)).json()).toMatchObject({
+      category: null,
+      subcategory: null,
     });
   });
 
@@ -180,11 +191,16 @@ describe("GET /pages?url=", () => {
     const url = "/money-financial-support/arts-culture/canvas";
     await seedPage({ url, title: "Canvas", category_id: sub.id });
 
-    expect((await read(url)).json().breadcrumbs).toEqual([
+    const page = (await read(url)).json();
+    expect(page.breadcrumbs).toEqual([
       { name: "Money and financial support", url: "/money-financial-support" },
       { name: "Arts", url: "/money-financial-support/arts-culture" },
       { name: "Canvas", url },
     ]);
+    expect(page).toMatchObject({
+      category: "money-financial-support",
+      subcategory: "arts-culture",
+    });
   });
 
   it("301s a bare slug to the one public page it names", async () => {
