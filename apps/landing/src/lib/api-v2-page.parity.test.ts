@@ -81,8 +81,10 @@ describe('api_v2 / static parity', () => {
         // file names two categories (calculate-severance-pay); the API stores
         // one. #3242 removes the slice.
         categories:
-          seed.parent && twin.frontmatter.categories.length === 0
-            ? [category]
+          seed.parent &&
+          seed.url.endsWith('/start') &&
+          twin.frontmatter.categories.length === 0
+            ? findPage(seed.parent)?.frontmatter.categories.slice(0, 1)
             : twin.frontmatter.categories.slice(0, 1),
         // Three /start pages carry description: ''; the API omits a falsy
         // description and landing renders '' and undefined alike.
