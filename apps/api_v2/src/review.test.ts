@@ -20,6 +20,7 @@ import {
   createTestApp,
   createTestDb,
   createTestServices,
+  SELF_APPROVAL,
   expectOk,
   TEST_EDITOR,
   TEST_EMPLOYEE,
@@ -42,7 +43,9 @@ let services: ReturnType<typeof createTestServices>;
 
 beforeEach(async () => {
   ({ db, close } = await createTestDb());
-  services = createTestServices(db);
+  // Fixtures are set up as AUTH_BYPASS would, so only the app under test
+  // holds an approver to the self-approval rule.
+  services = createTestServices(db, SELF_APPROVAL);
   await db.execute(
     sql`insert into auth_user (id, name, email, "emailVerified")
         values (${APPROVER.id}, ${APPROVER.name}, ${APPROVER.email}, true)`,
@@ -895,5 +898,200 @@ describe("the revision's changes", () => {
     expect(response.json().changes).toEqual([
       { field: "frontmatter", live: {}, proposed: { lede: "New lede" } },
     ]);
+  });
+});
+
+describe("making a page public (#3201)", () => {
+  // Both approvers here edit too, so either can write what the other reviews.
+  beforeEach(async () => {
+    await db.execute(
+      sql`insert into user_roles (user_id, role) values (${APPROVER.id}, 'editor')`,
+    );
+  });
+
+  /** Save the page as `employee` reads it, with `changes` over its fields. */
+  const edit = async (
+    employee: Employee,
+    pageId: string,
+    changes: Record<string, unknown>,
+  ) => {
+    const page = (await as(employee, { url: `/pages/${pageId}` })).json();
+    return as(employee, {
+      method: "PUT",
+      url: `/pages/${pageId}`,
+      headers: { [IF_UPDATED_AT]: page.updated_at },
+      payload: {
+        url: page.url,
+        category_id: page.category_id,
+        parent_id: page.parent_id,
+        title: page.title,
+        description: page.description,
+        visibility: page.visibility,
+        form_id: page.form_id,
+        body_markdown: page.body_markdown,
+        frontmatter: page.frontmatter,
+        ...changes,
+      },
+    });
+  };
+  const CHANGED_SINCE_PUBLIC = {
+    error: "forbidden",
+    message:
+      "You changed this page since it was last public, so another approver needs to make it public.",
+  };
+  const lastEvent = async (pageId: string) =>
+    (
+      await db
+        .select({ action: changeEvents.action, actor: changeEvents.actor })
+        .from(changeEvents)
+        .where(eq(changeEvents.entityId, pageId))
+        .orderBy(changeEvents.versionNo)
+    ).at(-1);
+
+  it("refuses an approver who took it out of public view and edited it, so another approver reviews it", async () => {
+    const page = await seedPage();
+    expect(
+      (await edit(APPROVER, page.id, { visibility: "draft" })).statusCode,
+    ).toBe(200);
+    expect(
+      (await edit(APPROVER, page.id, { title: "Unreviewed" })).statusCode,
+    ).toBe(200);
+    const before = await stored(page.id);
+
+    const refused = await edit(APPROVER, page.id, { visibility: "public" });
+
+    expect(refused.statusCode).toBe(403);
+    expect(refused.json()).toEqual(CHANGED_SINCE_PUBLIC);
+    expect(await stored(page.id)).toEqual(before);
+
+    const reviewed = await edit(TEST_EMPLOYEE, page.id, {
+      visibility: "public",
+    });
+    expect(reviewed.statusCode).toBe(200);
+    expect(reviewed.json()).toMatchObject({
+      visibility: "public",
+      title: "Unreviewed",
+    });
+    expect(await lastEvent(page.id)).toEqual({
+      action: "published",
+      actor: TEST_EMPLOYEE.id,
+    });
+  });
+
+  it("refuses content changed in the save that makes it public, and writes nothing", async () => {
+    const page = expectOk(
+      await services.editing.create(
+        aPage({ visibility: "preview" }),
+        TEST_EDITOR,
+      ),
+    );
+
+    const refused = await edit(APPROVER, page.id, {
+      visibility: "public",
+      title: "Slipped in",
+    });
+
+    expect(refused.statusCode).toBe(403);
+    expect(refused.json()).toEqual(CHANGED_SINCE_PUBLIC);
+    expect(await stored(page.id)).toEqual(page);
+    expect(
+      (await edit(APPROVER, page.id, { visibility: "public" })).json(),
+    ).toMatchObject({ visibility: "public", title: page.title });
+  });
+
+  it("lets an approver make public what someone else changed, though they changed its visibility", async () => {
+    const page = await seedPage();
+    await edit(APPROVER, page.id, { visibility: "draft" });
+    await edit(TEST_EDITOR, page.id, { title: "The editor's" });
+    await edit(APPROVER, page.id, { visibility: "preview" });
+
+    const response = await edit(APPROVER, page.id, { visibility: "public" });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      visibility: "public",
+      title: "The editor's",
+    });
+  });
+
+  it("counts only changes since the page was last public", async () => {
+    const page = expectOk(
+      await services.editing.create(aPage({ visibility: "draft" }), APPROVER),
+    );
+    // They wrote it, and it has never been public.
+    expect(
+      (await edit(APPROVER, page.id, { visibility: "public" })).statusCode,
+    ).toBe(403);
+    expect(
+      (await edit(TEST_EMPLOYEE, page.id, { visibility: "public" })).statusCode,
+    ).toBe(200);
+    await edit(APPROVER, page.id, { visibility: "draft" });
+
+    // What they wrote was approved when it went public.
+    const response = await edit(APPROVER, page.id, { visibility: "public" });
+
+    expect(response.statusCode).toBe(200);
+  });
+
+  it("refuses an approver who creates a page as public, so another approver makes it public", async () => {
+    const payload = withDefaults(aPage({ category_id: null }));
+
+    const refused = await as(APPROVER, {
+      method: "POST",
+      url: "/pages",
+      payload,
+    });
+
+    expect(refused.statusCode).toBe(403);
+    expect(refused.json()).toEqual({
+      error: "forbidden",
+      message:
+        "Another approver needs to make a page you wrote public. Create it as Preview or Draft.",
+    });
+    expect(await db.select().from(categories)).toEqual([]);
+    expect(expectOk(await services.index.version())).toMatchObject({
+      count: 0,
+    });
+
+    const created = await as(APPROVER, {
+      method: "POST",
+      url: "/pages",
+      payload: { ...payload, visibility: "preview" },
+    });
+    expect(created.statusCode).toBe(201);
+    expect(
+      (await edit(TEST_EMPLOYEE, created.json().id, { visibility: "public" }))
+        .statusCode,
+    ).toBe(200);
+  });
+
+  it("is allowed under AUTH_BYPASS, for one local developer", async () => {
+    const bypassed = new PageEditing(new PostgresPages(db), () => new Date(), {
+      allowSelfApproval: true,
+    });
+    const page = expectOk(
+      await bypassed.create(withDefaults(aPage()), TEST_EMPLOYEE),
+    );
+    const hidden = expectOk(
+      await bypassed.save(
+        page.id,
+        withDefaults(aPage({ visibility: "draft", title: "Mine" })),
+        null,
+        TEST_EMPLOYEE,
+      ),
+    );
+    expect(hidden.visibility).toBe("draft");
+
+    const shown = await bypassed.save(
+      page.id,
+      withDefaults(aPage({ title: "Mine again" })),
+      null,
+      TEST_EMPLOYEE,
+    );
+
+    expect(expectOk(shown)).toMatchObject({
+      visibility: "public",
+      title: "Mine again",
+    });
   });
 });

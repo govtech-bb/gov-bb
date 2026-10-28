@@ -152,7 +152,8 @@ export function ServiceWorkspace({ api, email, onSignOut, notice }: Account & { 
   );
 
   const roles = useQuery(rolesQuery(api)).data;
-  // Until the roles load, deleting a public page waits rather than offering what the API may refuse
+  // Until the roles load, deleting a public page and changing categories wait rather than offering what the API may
+  // refuse
   const approver = roles?.includes("approver") ?? false;
   // Without the editor role everything still reads, but nothing can be changed. Until the roles load everyone is
   // offered the changes, since nearly everyone is an editor; the API refuses anyone who isn't
@@ -366,7 +367,15 @@ export function ServiceWorkspace({ api, email, onSignOut, notice }: Account & { 
           )}
           {!location && onCategories && (
             <section className="mx-auto w-full max-w-300 px-6 py-10">
-              <CategoriesScreen api={api} readOnly={readOnly} />
+              <CategoriesScreen
+                api={api}
+                readOnly={!approver}
+                why={
+                  roles && !approver
+                    ? "Only approvers can add, change, move or delete categories."
+                    : undefined
+                }
+              />
             </section>
           )}
           {!location && !onCategories && (

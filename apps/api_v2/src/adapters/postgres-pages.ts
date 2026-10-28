@@ -883,6 +883,34 @@ export class PostgresPages
     return rows.ok ? ok(firstDocument(rows.value)) : rows;
   }
 
+  /**
+   * Who changed a page's content since it was last public, or ever when it
+   * never was, from its history: the actors of each create or update whose
+   * row differs from the one before it in more than visibility and stamps.
+   * Review events are left out, since their snapshot is a revision row.
+   */
+  async changedSincePublic(
+    id: PageId,
+  ): Promise<Result<string[], ContentStoreUnavailable>> {
+    const rows = await attempt("changedSincePublic", () =>
+      this.db.execute<{ actor: string }>(sql`
+        with history as (
+          select version_no, actor,
+                 snapshot->>'visibility' = 'public' as public,
+                 snapshot - array['visibility', 'published_at', 'updated_at', 'created_at'] as content,
+                 lag(snapshot - array['visibility', 'published_at', 'updated_at', 'created_at'])
+                   over (order by version_no) as before
+            from change_events
+           where entity_kind = 'content_page' and entity_id = ${id}
+             and action in ('created', 'updated', 'published', 'unpublished')
+        )
+        select distinct actor from history
+         where version_no > coalesce((select max(version_no) from history where public), 0)
+           and content is distinct from before`),
+    );
+    return rows.ok ? ok(rows.value.rows.map((row) => row.actor)) : rows;
+  }
+
   /** Every page with its category, for the service index. */
   async indexedPages(): Promise<
     Result<IndexedPage[], ContentStoreUnavailable>

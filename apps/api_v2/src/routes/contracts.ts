@@ -249,7 +249,9 @@ export const SCHEMAS = {
     description:
       "Requires an employee session, the editor's Origin header and the " +
       "editor role (403 otherwise). " +
-      "Creating a page as `public` needs the approver role (403 otherwise).",
+      "Creating a page as `public` needs the approver role, and an approver " +
+      "can't make a page they wrote public (403): create it as `preview` or " +
+      "`draft`, and another approver makes it public.",
     tags: ["pages"],
     body: NewPage,
     security: editorSecurity,
@@ -275,6 +277,9 @@ export const SCHEMAS = {
       "moves this page alone: its sub-pages keep their urls and stay beneath " +
       "it by `parent_id`, and nothing redirects from the old url. " +
       "Changing `visibility` needs the approver role (403 otherwise). " +
+      "Making a page public is refused (403) to an approver who changed its " +
+      "content since it was last public, in this save or before: another " +
+      "approver makes it public. " +
       "A save that keeps a `public` page public, whoever sends it, goes into " +
       "the page's pending revision: citizens keep seeing the live page until " +
       "an approver publishes it. An approver's save that takes a `public` page out of " +
@@ -464,7 +469,9 @@ export const SCHEMAS = {
   },
   createCategory: {
     summary: "Append a category or subcategory",
-    description: "Needs the editor role (403 otherwise).",
+    description:
+      "Needs the approver role (403 otherwise), so landing shows only " +
+      "category changes an approver made.",
     tags: ["categories"],
     security: editorSecurity,
     body: CategoryFields,
@@ -472,7 +479,9 @@ export const SCHEMAS = {
   },
   updateCategory: {
     summary: "Edit a category using its last-read version",
-    description: "Needs the editor role (403 otherwise).",
+    description:
+      "Needs the approver role (403 otherwise), so landing shows only " +
+      "category changes an approver made.",
     tags: ["categories"],
     security: editorSecurity,
     params: categoryParams,
@@ -487,7 +496,9 @@ export const SCHEMAS = {
   },
   orderCategories: {
     summary: "Atomically reorder a complete, versioned sibling snapshot",
-    description: "Needs the editor role (403 otherwise).",
+    description:
+      "Needs the approver role (403 otherwise), so landing shows only " +
+      "category changes an approver made.",
     tags: ["categories"],
     security: editorSecurity,
     body: CategoryOrder,
@@ -499,7 +510,9 @@ export const SCHEMAS = {
   },
   deleteCategory: {
     summary: "Delete an empty, unanchored category using its last-read version",
-    description: "Needs the editor role (403 otherwise).",
+    description:
+      "Needs the approver role (403 otherwise), so landing shows only " +
+      "category changes an approver made.",
     tags: ["categories"],
     security: editorSecurity,
     params: categoryParams,
