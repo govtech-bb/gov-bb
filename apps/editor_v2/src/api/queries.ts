@@ -27,6 +27,14 @@ export const serviceQuery = (api: EditorApi, id: string) =>
 export const pageQuery = (api: EditorApi, id: string) =>
   queryOptions({ queryKey: ["content", "page", id], queryFn: () => api.page(id) });
 
+/** The changes waiting for an approver. */
+export const reviewQueueQuery = (api: Pick<EditorApi, "reviewQueue">) =>
+  queryOptions({ queryKey: ["content", "review-queue"], queryFn: () => api.reviewQueue() });
+
+/** A page's current change with what it changes against the live page; a 404 when it has none. */
+export const revisionQuery = (api: Pick<EditorApi, "revision">, id: string) =>
+  queryOptions({ queryKey: ["content", "revision", id], queryFn: () => api.revision(id) });
+
 /**
  * The one shared category list for Categories, Services filters, page settings and Create service. A failed read
  * is thrown here, where React Query keeps it as the query's error for the screen to show.

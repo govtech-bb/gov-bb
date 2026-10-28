@@ -577,6 +577,26 @@ test("a public page opened with a change waiting for an approver says so", async
   await vi.waitFor(() => expect(document.body.textContent).toContain(PENDING));
 });
 
+test.each([
+  [["editor", "approver"], true],
+  [["editor"], false],
+])("a change waiting for review links an approver to its review (%j)", async (roles, offered) => {
+  await mountPage(
+    async () =>
+      Response.json({ ...live, pending_revision: { status: "submitted", comment: null } }),
+    roles,
+  );
+
+  await vi.waitFor(() => expect(document.body.textContent).toContain("Waiting for review"));
+  await vi.waitFor(() =>
+    expect(
+      [...document.querySelectorAll("a")]
+        .find((item) => item.textContent === "Review this change")
+        ?.getAttribute("href") ?? null,
+    ).toBe(offered ? `/reviews/${live.id}` : null),
+  );
+});
+
 const button = (name: string) =>
   [...document.querySelectorAll("button")].find((item) => item.textContent === name);
 

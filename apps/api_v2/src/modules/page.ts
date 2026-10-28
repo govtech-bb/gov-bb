@@ -189,6 +189,26 @@ export const RevisionView = PendingRevision.extend({
 /** A pending revision, with what it changes. */
 export type RevisionView = z.infer<typeof RevisionView>;
 
+/** A revision waiting for review, as the review queue lists it (#3202). */
+export const ReviewQueueEntry = z.object({
+  id: z.guid(),
+  page_id: PageId,
+  title: z.string().describe("The page's title as the change would make it."),
+  url: z.string().describe("The page's url as the change would make it."),
+  submitted_by: z.string().describe("The user id of whoever submitted it."),
+  submitted_by_name: z
+    .string()
+    .nullable()
+    .describe("Their name, or null when their account is gone."),
+  submitted_at: z.iso.datetime(),
+  updated_at: z.iso
+    .datetime()
+    .describe("The revision's version, as `GET /pages/{id}/revision` has it."),
+});
+
+/** A revision waiting for review. */
+export type ReviewQueueEntry = z.infer<typeof ReviewQueueEntry>;
+
 /** A page as the editor opens and saves it: the live page with its pending revision, if any, laid over it. */
 export const EditorPage = PageDocument.extend({
   pending_revision: z

@@ -94,6 +94,8 @@ Publish and reject are a 404 when nothing waits for review, and a 409 `not_submi
 
 `GET /pages/:id/revision`, and the submit and reject responses, carry `changes`: `{ field, live, proposed }` for each page field whose proposed value differs from the live page's, in field order. Publish returns the page as it now stands.
 
+`GET /revisions?status=submitted` is the review queue (#3202): every revision waiting for review, the longest-waiting first, each with its `page_id`, its proposed `title` and `url`, `submitted_by` and the submitter's name, `submitted_at` and its `updated_at`. Like every read it is open to any signed-in employee, so an approver who holds no other role sees what to review.
+
 ## Database
 
 Generated from the migrated database by `src/erd.ts`; do not edit it by hand. `src/erd.test.ts` fails when it no longer matches the migrations.
@@ -238,6 +240,7 @@ erDiagram
 | GET      | `/docs/openapi.json`                | Public OpenAPI document                                                |
 | GET      | `/pages/:id`                        | Employee; includes drafts and previews, with any pending revision      |
 | GET      | `/pages/:id/revision`               | Employee; a public page's pending revision, with its `changes`         |
+| GET      | `/revisions?status=submitted`       | Employee; the review queue: revisions waiting for an approver          |
 | GET      | `/services`                         | Employee service index, grouped by `parent_id`                         |
 | GET      | `/services/:id`                     | Employee; one service's pages with their roles, entry first            |
 | GET      | `/editor/categories`                | Employee; every shared category, counts, address protection and stamps |

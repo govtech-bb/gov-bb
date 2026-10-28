@@ -20,6 +20,7 @@ import {
 import { RemotePagePane } from "./remote-page-pane";
 import { AppNav } from "./app-nav";
 import { CategoriesScreen } from "./categories-screen";
+import { ReviewQueueScreen, ReviewScreen } from "./review-screens";
 import { listedServiceRows, remoteServiceRows } from "./service-pages";
 import { ServiceNav } from "./service-nav";
 import { workspaceLink } from "./navigation";
@@ -62,6 +63,8 @@ export function ServiceWorkspace({ api, email, onSignOut, notice }: Account & { 
   const routerNavigate = useNavigate();
   const listSearch = useSearch({ from: "/_workspace/services", shouldThrow: false });
   const onCategories = !!useMatch({ from: "/_workspace/categories", shouldThrow: false });
+  const onReviews = !!useMatch({ from: "/_workspace/reviews", shouldThrow: false });
+  const reviewing = params.pageId;
   const [servicesSearch, setServicesSearch] = useState<ServicesSearch>({});
 
   const location = params.serviceId
@@ -224,7 +227,11 @@ export function ServiceWorkspace({ api, email, onSignOut, notice }: Account & { 
             ? ["Document not found"]
             : location
               ? [place.document, serviceName]
-              : [onCategories ? "Categories" : "Services"]
+              : onReviews
+                ? reviewing
+                  ? ["Review change", "Review queue"]
+                  : ["Review queue"]
+                : [onCategories ? "Categories" : "Services"]
         }
       />
       <a
@@ -253,6 +260,10 @@ export function ServiceWorkspace({ api, email, onSignOut, notice }: Account & { 
           {onCategories ? (
             <Link to="/categories" className={crumb}>
               Categories
+            </Link>
+          ) : onReviews ? (
+            <Link to="/reviews" className={crumb}>
+              Review queue
             </Link>
           ) : (
             <Link to="/services" search={servicesSearch} className={crumb}>
@@ -369,7 +380,16 @@ export function ServiceWorkspace({ api, email, onSignOut, notice }: Account & { 
               <CategoriesScreen api={api} readOnly={readOnly} />
             </section>
           )}
-          {!location && !onCategories && (
+          {!location && onReviews && (
+            <section className="mx-auto w-full max-w-300 px-6 py-10">
+              {reviewing ? (
+                <ReviewScreen key={reviewing} api={api} pageId={reviewing} />
+              ) : (
+                <ReviewQueueScreen api={api} />
+              )}
+            </section>
+          )}
+          {!location && !onCategories && !onReviews && (
             <section className="mx-auto w-full max-w-300 px-6 py-10">
               <ServicesList
                 api={api}

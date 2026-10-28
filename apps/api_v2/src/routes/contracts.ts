@@ -20,6 +20,7 @@ import {
   EditorPage,
   NewPage,
   PageId,
+  ReviewQueueEntry,
   RevisionComment,
   RevisionView,
   SaveFields,
@@ -314,6 +315,30 @@ export const SCHEMAS = {
       200: RevisionView,
       400: error,
       404: error,
+      500: error,
+      ...authErrors,
+    },
+  },
+
+  listRevisions: {
+    summary: "List the changes waiting for review",
+    description:
+      "Any signed-in employee, as for other reads: editors see what waits, " +
+      "and approvers, who may hold no other role, what to review. Every " +
+      "revision submitted for " +
+      "review and not yet published or rejected, the longest-waiting first, " +
+      "with its page and who submitted it. Read one with " +
+      "`GET /pages/{id}/revision` to compare it with the live page.",
+    tags: ["pages"],
+    querystring: z.object({
+      status: z
+        .enum(["submitted"])
+        .describe("Which revisions: only `submitted` is listed."),
+    }),
+    security: editorSecurity,
+    response: {
+      200: z.object({ revisions: z.array(ReviewQueueEntry) }),
+      400: error,
       500: error,
       ...authErrors,
     },
