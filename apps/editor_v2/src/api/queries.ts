@@ -43,9 +43,19 @@ export const categoriesQuery = (api: EditorApi) =>
     },
   });
 
-/** The signed-in employee and their roles, which decide what the editor offers them. */
-export const meQuery = (api: Pick<EditorApi, "me">) =>
-  queryOptions({ queryKey: ["me"], queryFn: () => api.me() });
+/**
+ * The signed-in employee's roles, which decide what the editor offers them. An answer without a list of roles holds
+ * none, so the editor offers less rather than more; the API enforces roles either way.
+ */
+export const rolesQuery = (api: Pick<EditorApi, "me">) =>
+  queryOptions({
+    queryKey: ["me"],
+    queryFn: async (): Promise<readonly string[]> => {
+      const me: unknown = await api.me();
+
+      return me instanceof Object && "roles" in me && Array.isArray(me.roles) ? me.roles : [];
+    },
+  });
 
 const VERSION_KEY = ["version"];
 

@@ -386,3 +386,29 @@ test.each([401, 404, 409, 422, 503, 0])(
     expect(pageHasUnsavedChanges(h.session())).toBe(true);
   },
 );
+
+test("a save the API refuses (403) says why and offers no retry, keeping the working copy", async () => {
+  const h = await mountPage(async (_url, init) =>
+    init?.method === "PUT"
+      ? Response.json(
+          { error: "forbidden", message: "Only approvers can change who can see a page." },
+          { status: 403 },
+        )
+      : Response.json(page),
+  );
+
+  const source = h.session().store.getSnapshot().source + "\n\nKeep this";
+  await applySource(h.session(), source);
+  await savePage();
+  await act(async () => {
+    await vi.waitFor(() =>
+      expect(document.querySelector('[role="alert"]')?.textContent).toContain(
+        "Only approvers can change who can see a page.",
+      ),
+    );
+  });
+  const names = [...document.querySelectorAll("button")].map((button) => button.textContent);
+  expect(names).not.toContain("Retry");
+  expect(document.body.textContent).not.toContain("We could not save this page");
+  expect(pageHasUnsavedChanges(h.session())).toBe(true);
+});

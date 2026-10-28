@@ -67,5 +67,21 @@ test("deleting a page asks in an alert dialog, which can't be closed while the p
     ),
   );
   expect(button("Delete page").getAttribute("aria-disabled")).toBeNull();
+
+  // Refused: the API's own reason, since trying again won't help
+  await act(async () => button("Delete page").click());
+  await act(async () =>
+    respond(
+      Response.json(
+        { error: "forbidden", message: "Only approvers can change who can see a page." },
+        { status: 403 },
+      ),
+    ),
+  );
+  await vi.waitFor(() =>
+    expect(dialog.querySelector('[role="alert"]')?.textContent).toBe(
+      "Only approvers can change who can see a page.",
+    ),
+  );
   await act(async () => root.unmount());
 });
