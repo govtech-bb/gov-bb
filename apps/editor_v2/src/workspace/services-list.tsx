@@ -322,7 +322,7 @@ export function ServicesList({
         }
         filters={<ServiceFilters categories={categories} />}
         status={services.isPending ? "Loading services…" : null}
-        refreshFailure={
+        notices={
           refreshFailed && (
             <RefreshFailure
               inset="card"

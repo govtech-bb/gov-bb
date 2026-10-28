@@ -58,7 +58,7 @@ describe("response schemas", () => {
     const created = await app.inject({
       method: "POST",
       url: "/pages",
-      payload: aPage({ description: null }),
+      payload: aPage({ description: null, visibility: "draft" }),
       headers: TEST_HEADERS,
     });
 

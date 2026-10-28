@@ -35,14 +35,14 @@ const ALL = [
   "009_default_editor_role",
   "010_page_revisions",
   "011_revision_review",
+  "012_change_action_review",
+  "013_review_history_trigger",
+  "015_revision_discarded",
 ];
 
 /** Tables whose rows are not content, so the history does not record them. */
 const UNAUDITED = new Set([
   "change_events",
-  // A pending revision is not live content; #3200 decides how its events
-  // are recorded.
-  "page_revisions",
   "schema_migrations",
   "search_chunks",
   "user_roles",
@@ -135,6 +135,9 @@ describe("migrate", () => {
       "009_default_editor_role",
       "010_page_revisions",
       "011_revision_review",
+      "012_change_action_review",
+      "013_review_history_trigger",
+      "015_revision_discarded",
     ]);
     const pages = await exec("select count(*)::int as n from content_pages");
     expect(pages.rows).toEqual([{ n: 0 }]);
@@ -167,6 +170,9 @@ describe("migrate", () => {
       "009_default_editor_role",
       "010_page_revisions",
       "011_revision_review",
+      "012_change_action_review",
+      "013_review_history_trigger",
+      "015_revision_discarded",
     ]);
     await exec(
       `insert into categories (slug, title) values ('c', 'C');
@@ -331,6 +337,69 @@ describe("migrate", () => {
     await close();
   });
 
+  it("records a review step once, numbered after the page's history, when 012 and 013 are replayed", async () => {
+    const { db, exec, close } = await freshDb();
+    await migrate(db, exec);
+    await exec(`
+      insert into content_pages (id, url, slug, title, body_markdown)
+        values ('11111111-1111-4111-8111-111111111111', '/p', 'p', 'P', '');
+      insert into page_revisions (page_id, fields, live_updated_at, created_by, contributors)
+        select id, '{}', updated_at, 'a', '{a}' from content_pages;
+      delete from schema_migrations
+        where name in ('012_change_action_review', '013_review_history_trigger');
+    `);
+
+    expect(await migrate(db, exec)).toEqual([
+      "012_change_action_review",
+      "013_review_history_trigger",
+    ]);
+    await exec("update page_revisions set status = 'submitted'");
+
+    expect(
+      (
+        await exec(
+          "select version_no, action, actor from change_events order by version_no",
+        )
+      ).rows,
+    ).toEqual([
+      { version_no: 1, action: "created", actor: "system" },
+      { version_no: 2, action: "submitted", actor: "system" },
+    ]);
+    await close();
+  });
+
+  it("closes a revision as discarded, logged once in its page's history, when 015 is replayed", async () => {
+    const { db, exec, close } = await freshDb();
+    await migrate(db, exec);
+    await exec(`
+      insert into content_pages (id, url, slug, title, body_markdown)
+        values ('11111111-1111-4111-8111-111111111111', '/p', 'p', 'P', '');
+      insert into page_revisions (page_id, status, fields, live_updated_at, created_by, contributors)
+        select id, 'submitted', '{}', updated_at, 'a', '{a}' from content_pages;
+      delete from schema_migrations where name = '015_revision_discarded';
+    `);
+
+    expect(await migrate(db, exec)).toEqual(["015_revision_discarded"]);
+    await exec("update page_revisions set status = 'discarded'");
+
+    expect(
+      (
+        await exec(
+          "select version_no, action, snapshot->>'status' as status from change_events order by version_no",
+        )
+      ).rows,
+    ).toEqual([
+      { version_no: 1, action: "created", status: null },
+      { version_no: 2, action: "discarded", status: "discarded" },
+    ]);
+    // A discarded revision is closed, so the page can start another.
+    await expect(
+      exec(`insert into page_revisions (page_id, fields, live_updated_at, created_by, contributors)
+              select id, '{}', updated_at, 'b', '{b}' from content_pages`),
+    ).resolves.toBeDefined();
+    await close();
+  });
+
   it("hands history written before the trigger to system, and replays", async () => {
     const { db, exec, close } = await freshDb();
     for (const script of [
@@ -388,6 +457,8 @@ describe("migrate", () => {
   it("records the history of every content table", async () => {
     // A content table added without `record_change` would change with no
     // history at all; this names it until its migration attaches the trigger.
+    // A page's revisions record their review steps with `record_review`
+    // instead; every other content table needs `record_change`.
     const { db, exec, close } = await freshDb();
     await migrate(db, exec);
 
@@ -397,7 +468,10 @@ describe("migrate", () => {
            and c.relkind = 'r'
            and not exists (
              select 1 from pg_trigger t join pg_proc p on p.oid = t.tgfoid
-               where t.tgrelid = c.oid and p.proname = 'record_change')
+               where t.tgrelid = c.oid
+                 and p.proname = case c.relname
+                   when 'page_revisions' then 'record_review'
+                   else 'record_change' end)
          order by 1`,
     );
     expect(

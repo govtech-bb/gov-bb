@@ -1090,7 +1090,7 @@ function ComponentsPreview() {
         <Section id="badge" title="Badge" lead="A short label for a status or a property.">
           <Specimen title="Tones" note="The words carry the meaning; the tone backs them up.">
             <div className="flex flex-wrap justify-center gap-2">
-              <Badge>Draft link only</Badge>
+              <Badge>Draft (hidden)</Badge>
               <Badge tone="info">Imported</Badge>
               <Badge tone="success">Public</Badge>
               <Badge tone="warning">Preview link only</Badge>
@@ -1651,7 +1651,6 @@ function SidePanelDemo() {
               <NativeSelect icon={<StatusDot tone="success" />} defaultValue="public">
                 <option value="public">Public</option>
                 <option value="preview">Preview link only</option>
-                <option value="draft">Draft link only</option>
               </NativeSelect>
             </Field>
             <FieldText label="Publication date">12 Oct 2026</FieldText>
@@ -1678,7 +1677,7 @@ function VisibilityDemo() {
       onChange={(event) => setVisibility(event.target.value)}
       aria-label="Visibility"
     >
-      {["public", "preview", "draft"].map((value) => (
+      {["public", "preview"].map((value) => (
         <option key={value} value={value}>
           {visibilityLabels.get(value)}
         </option>
@@ -2181,7 +2180,7 @@ function ServicesDemo({ stale = false }: { stale?: boolean }) {
             <table.Search label="Search title or URL" placeholder="Search title or URL" />
           </div>
         }
-        refreshFailure={
+        notices={
           stale && (
             <RefreshFailure
               inset="card"
@@ -2536,7 +2535,7 @@ function CreateServiceDialog() {
         open={open}
         onOpenChange={setOpen}
         title="Create a service"
-        description="It starts as a draft entry page. You can add a start page and a form later."
+        description="The service starts in Preview. Add its start page and supporting pages once it exists."
         pending={pending}
         onSubmit={() => {
           setPending(true);
@@ -2641,7 +2640,7 @@ const roles: SelectItem[] = [
 ];
 
 const statuses: SelectItem[] = [
-  { value: "draft", label: "Draft" },
+  { value: "draft", label: "Draft (hidden)" },
   { value: "review", label: "In review" },
   { value: "published", label: "Published" },
   { value: "archived", label: "Archived", disabled: true },
@@ -2650,7 +2649,7 @@ const statuses: SelectItem[] = [
 const statusRows = [
   ["Apply for a hotel licence", "Preview link only", "warning"],
   ["Get a copy of a birth certificate", "Public", "success"],
-  ["What prescription colours mean", "Draft link only", "neutral"],
+  ["What prescription colours mean", "Draft (hidden)", "neutral"],
 ] as const;
 
 const typeSteps = [

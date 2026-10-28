@@ -11,7 +11,9 @@
  * signed-in employee who is not an approver change what citizens see, and
  * no admin route answers someone who is not an admin. A route that changes
  * what citizens see declares the approver role, unless it is one of the page
- * writes whose approver check is in PageEditing (#3199).
+ * writes whose approver check is in PageEditing (#3199). Every category write
+ * declares the approver role, so landing shows only what an approver changed
+ * (#3201).
  */
 
 import { randomUUID } from "node:crypto";
@@ -29,6 +31,7 @@ import {
   createTestDb,
   createTestServices,
   expectOk,
+  SELF_APPROVAL,
   TEST_EDITOR,
   TEST_EMPLOYEE,
   TEST_HEADERS,
@@ -91,7 +94,9 @@ beforeEach(async () => {
   registered.length = 0;
   diagnostics.subscribe("fastify.initialization", recordRoutes);
   ({ db, close } = await createTestDb());
-  app = await createTestApp(db);
+  // Which routes write, and as whom, not review: an approver's page goes
+  // public as they write it (review.test.ts holds them to the rule).
+  app = await createTestApp(db, SELF_APPROVAL);
   await app.ready();
 });
 
@@ -202,20 +207,26 @@ async function pageWrite(
     sql`insert into content_pages (id, url, slug, title, body_markdown)
         values (${id}, ${`/existing-${n}`}, 'existing', 'Existing', '')`,
   );
-  // Publishing needs a submitted revision, by someone else, to publish.
-  if (url.endsWith("/revision/publish"))
-    await db.execute(
-      sql`insert into page_revisions
-            (page_id, status, fields, live_updated_at, created_by, contributors, submitted_by)
-          select id, 'submitted', ${JSON.stringify(fields)}::jsonb, updated_at,
-                 'other-author', '{other-author}', 'other-author'
-          from content_pages where id = ${id}`,
-    );
+  // Publishing needs a submitted revision, by someone else, and the version reviewed.
+  const reviewed = url.endsWith("/revision/publish")
+    ? (
+        await db.execute<{ version: string }>(
+          sql`insert into page_revisions
+                (page_id, status, fields, live_updated_at, created_by, contributors, submitted_by)
+              select id, 'submitted', ${JSON.stringify(fields)}::jsonb, updated_at,
+                     'other-author', '{other-author}', 'other-author'
+              from content_pages where id = ${id}
+              returning to_json(updated_at)#>>'{}' as version`,
+        )
+      ).rows[0]?.version
+    : undefined;
   return {
     method: method as InjectOptions["method"],
     url: url.replace(/:\w+/g, id),
     payload: fields,
-    headers: TEST_HEADERS,
+    headers: reviewed
+      ? { ...TEST_HEADERS, "if-updated-at": reviewed }
+      : TEST_HEADERS,
   };
 }
 
@@ -355,8 +366,11 @@ const NOT_SEEN = new Set<string | undefined>([
 async function routesChangingWhatCitizensSee(employee: Employee) {
   // Before the app below registers its own copies of the routes.
   const routes = writes();
+  // Self-approval allowed, so the probe finds every route that can change
+  // what citizens see, not only those an approver may use on their own work.
   const signedIn = await createTestApp(db, {
     sessions: { findSession: async () => ok(employee) },
+    ...SELF_APPROVAL,
   });
   const changed = new Set<string>();
   const refused = new Set<string>();
@@ -373,21 +387,28 @@ async function routesChangingWhatCitizensSee(employee: Employee) {
           sql`insert into content_pages (id, url, slug, title, visibility, body_markdown)
               values (${target}, ${`/existing-${n}`}, 'existing', 'Existing', ${from}, '')`,
         );
-        if (url.includes("/revision/"))
-          await db.execute(
-            sql`insert into page_revisions
-                  (page_id, status, fields, live_updated_at, created_by, contributors, submitted_by)
-                select id, ${url.endsWith("/submit") ? "draft" : "submitted"},
-                       ${JSON.stringify(fields)}::jsonb, updated_at,
-                       'probe-author', '{probe-author}', 'probe-author'
-                from content_pages where id = ${target}`,
-          );
+        // A decision names the version reviewed, so the probe sends the revision's.
+        const reviewed = url.includes("/revision/")
+          ? (
+              await db.execute<{ version: string }>(
+                sql`insert into page_revisions
+                      (page_id, status, fields, live_updated_at, created_by, contributors, submitted_by)
+                    select id, ${url.endsWith("/submit") ? "draft" : "submitted"},
+                           ${JSON.stringify(fields)}::jsonb, updated_at,
+                           'probe-author', '{probe-author}', 'probe-author'
+                    from content_pages where id = ${target}
+                    returning to_json(updated_at)#>>'{}' as version`,
+              )
+            ).rows[0]?.version
+          : undefined;
         const before = await citizenView();
         const response = await signedIn.inject({
           method: method as InjectOptions["method"],
           url: url.replace(/:\w+/g, target).replace("*", "x"),
           payload: { ...fields, comment: "Probed" },
-          headers: TEST_HEADERS,
+          headers: reviewed
+            ? { ...TEST_HEADERS, "if-updated-at": reviewed }
+            : TEST_HEADERS,
         });
         const route = `${method} ${url}`;
         if (response.statusCode >= 300 && !(route in NOT_PAGE_VISIBILITY))
@@ -451,6 +472,45 @@ it("needs the approver role to publish or reject a revision (#3199)", () => {
   expect(declared("POST /pages/:id/revision/reject")).toBe("approver");
 });
 
+it("needs the approver role for every category write, so landing shows only an approver's changes (#3201)", async () => {
+  const categoryWrites = writes().filter(({ url }) =>
+    url.startsWith("/editor/categories"),
+  );
+  expect(categoryWrites.length).toBeGreaterThan(0);
+  expect(
+    categoryWrites
+      .filter(({ role }) => role !== "approver")
+      .map(({ method, url }) => `${method} ${url}`),
+  ).toEqual([]);
+
+  const snapshot = async () =>
+    (
+      await db.execute(
+        sql`select json_agg(c order by c.id) as categories,
+                   (select count(*)::int from change_events) as events
+            from categories c`,
+      )
+    ).rows;
+  const signedIn = await createTestApp(db, {
+    sessions: { findSession: async () => ok(TEST_EDITOR) },
+  });
+  for (const [n, { method, url }] of categoryWrites.entries()) {
+    const request = await categoryWrite(method, url, n);
+    const before = await snapshot();
+    const response = await signedIn.inject({
+      ...request,
+      headers: { ...request.headers, cookie: "test-session=editor" },
+    });
+    expect(response.statusCode, `${method} ${url}`).toBe(403);
+    expect(response.json(), `${method} ${url}`).toEqual({
+      error: "forbidden",
+      message: "You need the approver role to do this.",
+    });
+    expect(await snapshot(), `${method} ${url}`).toEqual(before);
+  }
+  await signedIn.close();
+});
+
 it("refuses every admin route to a non-admin", async () => {
   const admin = registered.filter(({ tags }) => tags.includes("admin"));
   expect(admin.length).toBeGreaterThan(0);
@@ -473,4 +533,21 @@ it("refuses every admin route to a non-admin", async () => {
       )
     ).rows,
   ).toEqual([]);
+});
+
+it("lists the review queue for any signed-in employee, an approver without the editor role included (#3202)", async () => {
+  const signedOut = await app.inject({ url: "/revisions?status=submitted" });
+  expect(signedOut.statusCode).toBe(401);
+  expect(signedOut.json()).toEqual({ error: "unauthenticated" });
+  const approverOnly: Employee = { ...NO_ROLES, roles: ["approver"] };
+  const signedIn = await createTestApp(db, {
+    sessions: { findSession: async () => ok(approverOnly) },
+  });
+  const listed = await signedIn.inject({
+    url: "/revisions?status=submitted",
+    headers: TEST_HEADERS,
+  });
+  await signedIn.close();
+  expect(listed.statusCode).toBe(200);
+  expect(listed.json()).toEqual({ revisions: [] });
 });

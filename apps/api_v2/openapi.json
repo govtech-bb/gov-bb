@@ -275,7 +275,7 @@
         "tags": [
           "pages"
         ],
-        "description": "Requires an employee session, the editor's Origin header and the editor role (403 otherwise). Creating a page as `public` needs the approver role (403 otherwise).",
+        "description": "Requires an employee session, the editor's Origin header and the editor role (403 otherwise). Creating a page as `public` needs the approver role, and an approver can't make a page they wrote public (403): create it as `preview` or `draft`, and another approver makes it public.",
         "requestBody": {
           "required": true,
           "content": {
@@ -1830,7 +1830,7 @@
         "tags": [
           "pages"
         ],
-        "description": "Requires an employee session, the editor's Origin header and the editor role (403 otherwise). Send every field: a save replaces the page and defaults none, except that leaving `parent_id` out keeps the page's parent. Send the `updated_at` you last read in the `if-updated-at` header. If the stored row, or the page's pending revision, has moved on since, the save is refused with a 409 rather than silently discarding whoever wrote first. Changing `url` moves this page alone: its sub-pages keep their urls and stay beneath it by `parent_id`, and nothing redirects from the old url. Changing `visibility` needs the approver role (403 otherwise). A save that keeps a `public` page public, whoever sends it, goes into the page's pending revision: citizens keep seeing the live page until an approver publishes it. An approver's save that takes a `public` page out of public view writes the whole page and closes its pending revision. Returns the page as the editor now works on it. A save to a page whose revision is waiting for review is refused (409 `under_review`) until an approver publishes or rejects it.",
+        "description": "Requires an employee session, the editor's Origin header and the editor role (403 otherwise). Send every field: a save replaces the page and defaults none, except that leaving `parent_id` out keeps the page's parent. Send the `updated_at` you last read in the `if-updated-at` header. If the stored row, or the page's pending revision, has moved on since, the save is refused with a 409 rather than silently discarding whoever wrote first. Changing `url` moves this page alone: its sub-pages keep their urls and stay beneath it by `parent_id`, and nothing redirects from the old url. Changing `visibility` needs the approver role (403 otherwise). Making a page public is refused (403) to an approver who changed its content since it was last public, in this save or before: another approver makes it public. A save that keeps a `public` page public, whoever sends it, goes into the page's pending revision: citizens keep seeing the live page until an approver publishes it. An approver's save that takes a `public` page out of public view changes only its `visibility`: the other fields sent are ignored, the live content stays, and the page's open revision is discarded: a draft is dropped, and one waiting for review is closed as `discarded`, which the page's history records. A save to a page whose revision is waiting for review updates that revision, which stays waiting; the saver joins its `contributors`, so may not approve it. Such a save needs `if-updated-at` (428 without it). Returns the page as the editor now works on it.",
         "requestBody": {
           "required": true,
           "content": {
@@ -2204,53 +2204,29 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "anyOf": [
-                    {
-                      "type": "object",
-                      "properties": {
-                        "error": {
-                          "type": "string",
-                          "enum": [
-                            "conflict"
-                          ]
-                        },
-                        "message": {
-                          "type": "string"
-                        },
-                        "documentId": {
-                          "type": "string",
-                          "format": "uuid",
-                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$"
-                        }
-                      },
-                      "required": [
-                        "error",
-                        "message",
-                        "documentId"
-                      ],
-                      "additionalProperties": {}
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "enum": [
+                        "conflict"
+                      ]
                     },
-                    {
-                      "type": "object",
-                      "properties": {
-                        "error": {
-                          "type": "string",
-                          "enum": [
-                            "under_review",
-                            "not_submitted"
-                          ]
-                        },
-                        "message": {
-                          "type": "string"
-                        }
-                      },
-                      "required": [
-                        "error",
-                        "message"
-                      ],
-                      "additionalProperties": false
+                    "message": {
+                      "type": "string"
+                    },
+                    "documentId": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$"
                     }
-                  ]
+                  },
+                  "required": [
+                    "error",
+                    "message",
+                    "documentId"
+                  ],
+                  "additionalProperties": {}
                 }
               }
             }
@@ -2294,6 +2270,28 @@
                   "required": [
                     "error",
                     "errors"
+                  ],
+                  "additionalProperties": {}
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
                   ],
                   "additionalProperties": {}
                 }
@@ -2579,7 +2577,8 @@
                         "draft",
                         "submitted",
                         "rejected",
-                        "published"
+                        "published",
+                        "discarded"
                       ]
                     },
                     "fields": {
@@ -2689,7 +2688,7 @@
                       "items": {
                         "type": "string"
                       },
-                      "description": "The user id of everyone who saved to it, none of whom may approve it."
+                      "description": "The user id of everyone who saved to it, and of whoever submitted an earlier, rejected round of it; none of them may approve it."
                     },
                     "submitted_by": {
                       "nullable": true,
@@ -2850,6 +2849,219 @@
             }
           },
           "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": {}
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": {}
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": {}
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/revisions": {
+      "get": {
+        "summary": "List the changes waiting for review",
+        "tags": [
+          "pages"
+        ],
+        "description": "Any signed-in employee, as for other reads: editors see what waits, and approvers, who may hold no other role, what to review. Every revision submitted for review and not yet published or rejected, the longest-waiting first, with its page and who submitted it. Read one with `GET /pages/{id}/revision` to compare it with the live page.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "submitted"
+              ]
+            },
+            "in": "query",
+            "name": "status",
+            "required": true,
+            "description": "Which revisions: only `submitted` is listed."
+          }
+        ],
+        "security": [
+          {
+            "editorSession": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "revisions": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$"
+                          },
+                          "page_id": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$"
+                          },
+                          "title": {
+                            "type": "string",
+                            "description": "The page's title as the change would make it."
+                          },
+                          "url": {
+                            "type": "string",
+                            "description": "The page's url as the change would make it."
+                          },
+                          "submitted_by": {
+                            "type": "string",
+                            "description": "The user id of whoever submitted it."
+                          },
+                          "submitted_by_name": {
+                            "nullable": true,
+                            "description": "Their name, or null when their account is gone.",
+                            "type": "string"
+                          },
+                          "submitted_at": {
+                            "type": "string",
+                            "format": "date-time",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
+                          },
+                          "updated_at": {
+                            "type": "string",
+                            "format": "date-time",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+                            "description": "The revision's version, as `GET /pages/{id}/revision` has it."
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "page_id",
+                          "title",
+                          "url",
+                          "submitted_by",
+                          "submitted_by_name",
+                          "submitted_at",
+                          "updated_at"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "revisions"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": {}
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": {}
+                }
+              }
+            }
+          },
+          "403": {
             "description": "Default Response",
             "content": {
               "application/json": {
@@ -3611,7 +3823,7 @@
         "tags": [
           "categories"
         ],
-        "description": "Needs the editor role (403 otherwise).",
+        "description": "Needs the approver role (403 otherwise), so landing shows only category changes an approver made.",
         "requestBody": {
           "required": true,
           "content": {
@@ -3889,7 +4101,7 @@
         "tags": [
           "categories"
         ],
-        "description": "Needs the editor role (403 otherwise).",
+        "description": "Needs the approver role (403 otherwise), so landing shows only category changes an approver made.",
         "requestBody": {
           "required": true,
           "content": {
@@ -4235,7 +4447,7 @@
         "tags": [
           "categories"
         ],
-        "description": "Needs the editor role (403 otherwise).",
+        "description": "Needs the approver role (403 otherwise), so landing shows only category changes an approver made.",
         "parameters": [
           {
             "schema": {
@@ -4482,7 +4694,7 @@
         "tags": [
           "categories"
         ],
-        "description": "Needs the editor role (403 otherwise).",
+        "description": "Needs the approver role (403 otherwise), so landing shows only category changes an approver made.",
         "requestBody": {
           "required": true,
           "content": {
@@ -5419,7 +5631,7 @@
         "tags": [
           "meta"
         ],
-        "description": "`change_events` records every page and category change. Its count and newest timestamp identify those changes without reading the content.",
+        "description": "`change_events` records every page and category change, and each review step of a page's revision. Its count and newest timestamp identify those changes without reading the content.",
         "security": [
           {
             "editorSession": []
@@ -5551,7 +5763,7 @@
         "tags": [
           "pages"
         ],
-        "description": "Needs the editor role (403 otherwise). Records the submitter, who may not then approve it. 404 when the page has no draft revision; 409 `under_review` when it is already submitted, or `conflict` when the draft has been saved since `if-updated-at`. Saving the page is refused while it waits.",
+        "description": "Needs the editor role (403 otherwise). Records the submitter, who may not then approve it. 404 when the page has no draft revision; 409 `under_review` when it is already submitted, or `conflict` when the draft has been saved since `if-updated-at`. Saves made while it waits update it, and it keeps waiting. A rejected revision can be submitted again as it is: it is copied into a new submitted revision with the same `updated_at`, and the rejected one keeps its comment. The copy's `contributors` gain the rejected round's submitter, who may not approve it either.",
         "parameters": [
           {
             "schema": {
@@ -5604,7 +5816,8 @@
                         "draft",
                         "submitted",
                         "rejected",
-                        "published"
+                        "published",
+                        "discarded"
                       ]
                     },
                     "fields": {
@@ -5714,7 +5927,7 @@
                       "items": {
                         "type": "string"
                       },
-                      "description": "The user id of everyone who saved to it, none of whom may approve it."
+                      "description": "The user id of everyone who saved to it, and of whoever submitted an earlier, rejected round of it; none of them may approve it."
                     },
                     "submitted_by": {
                       "nullable": true,
@@ -6005,7 +6218,7 @@
         "tags": [
           "pages"
         ],
-        "description": "Needs the approver role, and the approver must not have changed or submitted the revision (403 otherwise). The live page is unchanged; the revision is kept with the comment, and the next save starts a new draft from it. 404 when nothing is waiting for review; 409 `not_submitted` for a draft, or `conflict` when the revision has been saved since `if-updated-at`.",
+        "description": "Needs the approver role, and the approver must not have changed or submitted the revision (403 otherwise). The live page is unchanged; the revision is kept with the comment, and the next save starts a new draft from it. Rejecting moves the revision's `updated_at`, so an editor holding the earlier one reloads and sees why. `if-updated-at` is required (428 without it). 404 when nothing is waiting for review; 409 `not_submitted` for a draft, or `conflict` when the revision is no longer the version in `if-updated-at`.",
         "requestBody": {
           "required": true,
           "content": {
@@ -6047,7 +6260,7 @@
             "in": "header",
             "name": "if-updated-at",
             "required": false,
-            "description": "The `updated_at` this client last read for the revision. Omit to accept whatever is stored."
+            "description": "Required: the revision's `updated_at` the approver reviewed. Without it the decision is refused with a 428."
           }
         ],
         "security": [
@@ -6079,7 +6292,8 @@
                         "draft",
                         "submitted",
                         "rejected",
-                        "published"
+                        "published",
+                        "discarded"
                       ]
                     },
                     "fields": {
@@ -6189,7 +6403,7 @@
                       "items": {
                         "type": "string"
                       },
-                      "description": "The user id of everyone who saved to it, none of whom may approve it."
+                      "description": "The user id of everyone who saved to it, and of whoever submitted an earlier, rejected round of it; none of them may approve it."
                     },
                     "submitted_by": {
                       "nullable": true,
@@ -6427,6 +6641,28 @@
               }
             }
           },
+          "428": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": {}
+                }
+              }
+            }
+          },
           "500": {
             "description": "Default Response",
             "content": {
@@ -6480,7 +6716,7 @@
         "tags": [
           "pages"
         ],
-        "description": "Needs the approver role, and the approver must not have changed or submitted the revision (403 otherwise). Writes the revision to the live page as a save would, re-indexes it and records the approver in `change_events`, all in one transaction. A revision that has gone stale while it waited (its parent or category gone, or its url taken) is refused with a 422 naming the field, and nothing changes. 404 when nothing is waiting for review; 409 `not_submitted` for a draft, or `conflict` when the revision has been saved since `if-updated-at`. Returns the page as it now stands.",
+        "description": "Needs the approver role, and the approver must not have changed or submitted the revision (403 otherwise). Writes the revision to the live page as a save would, re-indexes it and records the approver in `change_events`, all in one transaction. A revision that has gone stale while it waited (its parent or category gone, or its url taken) is refused with a 422 naming the field, and nothing changes. `if-updated-at` is required (428 without it). 404 when nothing is waiting for review; 409 `not_submitted` for a draft, or `conflict` when the revision is no longer the version in `if-updated-at`. Returns the page as it now stands.",
         "parameters": [
           {
             "schema": {
@@ -6501,7 +6737,7 @@
             "in": "header",
             "name": "if-updated-at",
             "required": false,
-            "description": "The `updated_at` this client last read for the revision. Omit to accept whatever is stored."
+            "description": "Required: the revision's `updated_at` the approver reviewed. Without it the decision is refused with a 428."
           }
         ],
         "security": [
@@ -6849,6 +7085,28 @@
                   "required": [
                     "error",
                     "errors"
+                  ],
+                  "additionalProperties": {}
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
                   ],
                   "additionalProperties": {}
                 }

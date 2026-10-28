@@ -380,12 +380,16 @@ afterEach(async () => {
 });
 
 /** The screen on a fresh cache, as the workspace shows it. */
-const render = (readOnly = false) =>
+const render = (readOnly = false, why?: string) =>
   act(async () =>
     root.render(
       <RouterContextProvider router={router}>
         <QueryClientProvider client={client}>
-          <CategoriesScreen api={createEditorApi("https://api.example.test")} readOnly={readOnly} />
+          <CategoriesScreen
+            api={createEditorApi("https://api.example.test")}
+            readOnly={readOnly}
+            why={why}
+          />
           <Toaster />
         </QueryClientProvider>
       </RouterContextProvider>,
@@ -857,12 +861,29 @@ test("a move someone else got to first is refused, and the list shows their chan
   expect(names()).toEqual(["Schools", "Health", "Youth and community", "Sport", "Arts"]);
 });
 
-test("someone who can't make changes can't move a category", async () => {
+test("someone who isn't an approver can't add, move, edit or delete a category, and is told why", async () => {
+  await render(true, "Only approvers can add, change, move or delete categories.");
+  await loaded();
+
+  for (const name of [
+    "Add category",
+    "Move Health up",
+    "Move Health down",
+    "Edit Health",
+    "Delete Health",
+  ])
+    expect(button(name).disabled, name).toBe(true);
+  expect(document.body.textContent).toContain(
+    "Only approvers can add, change, move or delete categories.",
+  );
+});
+
+test("while roles load, changes wait without saying why", async () => {
   await render(true);
   await loaded();
 
-  expect(button("Move Health up").disabled).toBe(true);
-  expect(button("Move Health down").disabled).toBe(true);
+  expect(button("Add category").disabled).toBe(true);
+  expect(document.body.textContent).not.toContain("Only approvers");
 });
 
 test("a move the API refuses (403) says why, not to try again", async () => {

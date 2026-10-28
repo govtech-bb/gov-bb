@@ -434,6 +434,31 @@ test("the toolbar's filters narrow the list at once, and Clear filters shows eve
   });
 });
 
+test("legacy drafts keep their hidden label, filter value and status sort order", async () => {
+  const onSearch = vi.fn();
+  await show(
+    listed(
+      [service(2), service(3), { ...service(1), visibility: "draft" }],
+      { sort: "visibility", order: "asc" },
+      { onSearch },
+    ),
+  );
+  expect(titles()).toEqual(["Service 01", "Service 03", "Service 02"]);
+  expect(host.textContent).toContain("Draft (hidden)");
+  expect(host.textContent).not.toContain("Draft link only");
+
+  await choose("Status", "Draft (hidden)");
+  expect(titles()).toEqual(["Service 01"]);
+  expect(filter("Status").textContent).toBe("Draft (hidden)");
+  expect(onSearch).toHaveBeenLastCalledWith({
+    sort: "visibility",
+    order: "asc",
+    page: undefined,
+    category: undefined,
+    status: ["draft"],
+  });
+});
+
 test("an address past the last page shows the last page", async () => {
   const onSearch = vi.fn();
 

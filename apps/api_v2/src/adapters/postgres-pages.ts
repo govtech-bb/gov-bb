@@ -45,12 +45,14 @@ import {
   type PageDocument,
   type PageId,
   type PendingRevision,
+  type ReviewQueueEntry,
   type Visibility,
 } from "../modules/page";
 import type { Ancestor, ResolvablePage } from "../modules/page-visibility";
 import { err, ok, type Result } from "../modules/result";
 import type { SearchChunk } from "../modules/search-text";
 import {
+  authUser,
   categories,
   changeEvents,
   contentPages,
@@ -823,7 +825,7 @@ export class PostgresPages
     });
   }
 
-  /** Move a revision to a review status, recording who moved it. Its version stays. */
+  /** Move a revision to a review status, recording who moved it; a rejection moves its version to its time, and a discard closes it. */
   async markRevision(
     revisionId: string,
     mark: RevisionMark,
@@ -838,12 +840,16 @@ export class PostgresPages
                 submittedBy: mark.by,
                 submittedAt: mark.at,
               }
-            : {
-                status: mark.status,
-                decidedBy: mark.by,
-                decidedAt: mark.at,
-                comment: mark.status === "rejected" ? mark.comment : null,
-              },
+            : mark.status === "rejected"
+              ? {
+                  status: mark.status,
+                  decidedBy: mark.by,
+                  decidedAt: mark.at,
+                  comment: mark.comment,
+                  // So an editor holding the earlier version reloads and sees why.
+                  updatedAt: mark.at,
+                }
+              : { status: mark.status, decidedBy: mark.by, decidedAt: mark.at },
         )
         .where(eq(pageRevisions.id, revisionId))
         .returning(),
@@ -877,6 +883,39 @@ export class PostgresPages
       refusedDelete,
     );
     return rows.ok ? ok(firstDocument(rows.value)) : rows;
+  }
+
+  /**
+   * Who changed a page's content since it was last public, or ever when it
+   * never was, from its history: the actors of each created, updated,
+   * published or unpublished entry whose row differs from the one before it
+   * in more than visibility and stamps. A sub-page's category is left out
+   * too: it follows its parent's, so a write above it that carries it along
+   * changes nothing of its own. Review events are left out, since their
+   * snapshot is a revision row.
+   */
+  async changedSincePublic(
+    id: PageId,
+  ): Promise<Result<string[], ContentStoreUnavailable>> {
+    const rows = await attempt("changedSincePublic", () =>
+      this.db.execute<{ actor: string }>(sql`
+        with entries as (
+          select version_no, actor,
+                 snapshot->>'visibility' = 'public' as public,
+                 snapshot - array['visibility', 'published_at', 'updated_at', 'created_at']
+                   - case when snapshot->>'parent_id' is null then '' else 'category_id' end
+                   as content
+            from change_events
+           where entity_kind = 'content_page' and entity_id = ${id}
+             and action in ('created', 'updated', 'published', 'unpublished')
+        ), history as (
+          select *, lag(content) over (order by version_no) as before from entries
+        )
+        select distinct actor from history
+         where version_no > coalesce((select max(version_no) from history where public), 0)
+           and content is distinct from before`),
+    );
+    return rows.ok ? ok(rows.value.rows.map((row) => row.actor)) : rows;
   }
 
   /** Every page with its category, for the service index. */
@@ -923,6 +962,36 @@ export class PostgresPages
         latest: row?.latest?.toISOString() ?? null,
       };
     });
+  }
+
+  /** Every revision waiting for review, with its submitter's name, the longest-waiting first. */
+  async submittedRevisions(): Promise<
+    Result<ReviewQueueEntry[], ContentStoreUnavailable>
+  > {
+    const rows = await attempt("submittedRevisions", () =>
+      this.db
+        .select({ revision: pageRevisions, name: authUser.name })
+        .from(pageRevisions)
+        .leftJoin(authUser, eq(authUser.id, pageRevisions.submittedBy))
+        .where(eq(pageRevisions.status, "submitted"))
+        .orderBy(pageRevisions.submittedAt, pageRevisions.id),
+    );
+    if (!rows.ok) return rows;
+    return ok(
+      rows.value.map(({ revision, name }) => ({
+        id: revision.id,
+        page_id: revision.pageId,
+        title: revision.fields.title,
+        url: revision.fields.url,
+        // A submitted revision always records who submitted it, and when.
+        submitted_by: revision.submittedBy ?? "",
+        submitted_by_name: name,
+        submitted_at: (
+          revision.submittedAt ?? revision.updatedAt
+        ).toISOString(),
+        updated_at: revision.updatedAt.toISOString(),
+      })),
+    );
   }
 }
 

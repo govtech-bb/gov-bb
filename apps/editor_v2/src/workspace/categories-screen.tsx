@@ -53,7 +53,7 @@ type RowActions = {
   move: (row: CategoryRow, by: Direction, from: "button" | "menu") => void;
   moving: (row: CategoryRow) => boolean;
   pressed: (row: CategoryRow, by: Direction) => boolean;
-  /** Nothing can be moved, for someone who can't make changes. */
+  /** Nothing can be moved, edited or deleted, for someone who can’t change categories. */
   readOnly: boolean;
   edit: (row: CategoryRow) => void;
   remove: (row: CategoryRow) => void;
@@ -152,6 +152,7 @@ const CategoryActions = memo(function CategoryActions({ row }: { row: CategoryRo
           <Button
             icon={<PencilSimple />}
             aria-label={`Edit ${row.title}`}
+            disabled={actions.readOnly}
             onClick={() => actions.edit(row)}
           />
         </Tip>
@@ -159,6 +160,7 @@ const CategoryActions = memo(function CategoryActions({ row }: { row: CategoryRo
           <Button
             icon={<Trash />}
             aria-label={`Delete ${row.title}`}
+            disabled={actions.readOnly}
             onClick={() => actions.remove(row)}
           />
         </Tip>
@@ -189,10 +191,19 @@ const CategoryActions = memo(function CategoryActions({ row }: { row: CategoryRo
           >
             Move down
           </Menu.Item>
-          <Menu.Item icon={<PencilSimple />} onClick={() => actions.edit(row)}>
+          <Menu.Item
+            icon={<PencilSimple />}
+            disabled={actions.readOnly}
+            onClick={() => actions.edit(row)}
+          >
             Edit
           </Menu.Item>
-          <Menu.Item icon={<Trash />} variant="danger" onClick={() => actions.remove(row)}>
+          <Menu.Item
+            icon={<Trash />}
+            variant="danger"
+            disabled={actions.readOnly}
+            onClick={() => actions.remove(row)}
+          >
             Delete
           </Menu.Item>
         </Menu.Content>
@@ -239,10 +250,13 @@ const columns = column.columns([
 export function CategoriesScreen({
   api,
   readOnly = false,
+  why,
 }: {
   api: EditorApi;
-  /** Categories can't be moved, for someone who can't make changes; the workspace says why. */
+  /** Categories can't be added, moved, edited or deleted, for someone who isn't an approver (#3201). */
   readOnly?: boolean;
+  /** Why they can't, once that is known. */
+  why?: string;
 }) {
   const client = useQueryClient();
   const categories = useQuery(categoriesQuery(api));
@@ -486,14 +500,20 @@ export function CategoriesScreen({
               ref={add}
               variant="accent"
               size="md"
+              disabled={readOnly}
               onClick={() => openDialog({ kind: "add" })}
             >
               Add category
             </Button>
           }
           status={categories.isPending ? "Loading categories…" : null}
-          refreshFailure={
+          notices={
             <>
+              {readOnly && why && (
+                <Banner tone="info" layout="strip" inset="card">
+                  {why}
+                </Banner>
+              )}
               {refreshFailed && (
                 <RefreshFailure
                   inset="card"
@@ -531,7 +551,11 @@ export function CategoriesScreen({
               description: "Add one, so services can be filed under it.",
               // The header holds the teal Add category, so this one is grey
               actions: (
-                <Button variant="secondary" onClick={() => openDialog({ kind: "add" })}>
+                <Button
+                  variant="secondary"
+                  disabled={readOnly}
+                  onClick={() => openDialog({ kind: "add" })}
+                >
                   Add category
                 </Button>
               ),

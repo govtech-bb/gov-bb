@@ -61,7 +61,7 @@ test("an old list shows under a strip that offers to try again; one that never c
   await render(
     <ListScreen
       title="Categories"
-      refreshFailure={
+      notices={
         <RefreshFailure inset="card" pending={false} onRetry={retry}>
           We could not refresh categories. Showing the last loaded list.
         </RefreshFailure>

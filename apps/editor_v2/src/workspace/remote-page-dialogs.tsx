@@ -15,7 +15,7 @@ import { toast } from "../ui/toast";
 import { ApiProblems, ApiProblemText } from "./api-problems";
 import { documentLabel, type PageDocument } from "./model";
 
-/** Create a page as a draft, then hand its id over once the API has it. */
+/** Create a page in Preview, then hand its id over once the API has it. */
 function useCreatePage(api: EditorApi, onDone: (id: string) => void) {
   const client = useQueryClient();
 
@@ -52,8 +52,8 @@ function PathField({
 }
 
 /**
- * A new service in the content API: a draft entry page filed under a category. Once it's sent, only its answer closes
- * the dialog, so a service can't be made after the author has let it go.
+ * A new service in the content API: a preview-only entry page filed under a category. Once it’s sent, only its answer
+ * closes the dialog, so a service can’t be made after the author has let it go.
  */
 export function CreateRemoteServiceDialog({
   api,
@@ -83,7 +83,7 @@ export function CreateRemoteServiceDialog({
         if (!next) onClose();
       }}
       title="Create a service"
-      description="The service starts as a draft entry page. Add its start page and supporting pages once it exists."
+      description="The service starts in Preview. Add its start page and supporting pages once it exists."
       pending={create.isPending}
       onSubmit={() => {
         const badPath = urlProblem(path);
@@ -101,7 +101,7 @@ export function CreateRemoteServiceDialog({
             url: path,
             title: title.trim(),
             category_id: category.id,
-            visibility: "draft",
+            visibility: "preview",
             body_markdown: "",
           });
       }}
@@ -148,8 +148,8 @@ export function CreateRemoteServiceDialog({
 }
 
 /**
- * A new draft page beneath a service's entry page: its start page or a supporting page. Once it's sent, only its
- * answer closes the dialog.
+ * A new preview-only page beneath a service’s entry page: its start page or a supporting page. Once it’s sent, only
+ * its answer closes the dialog.
  */
 export function CreateRemotePageDialog({
   api,
@@ -183,7 +183,7 @@ export function CreateRemotePageDialog({
         if (!next) onClose();
       }}
       title="Add a page"
-      description="The page starts as a draft beneath this service’s entry page."
+      description="The page starts in Preview beneath this service’s entry page."
       pending={create.isPending}
       onSubmit={() => {
         const badPath = urlProblem(path);
@@ -196,7 +196,7 @@ export function CreateRemotePageDialog({
             url: path,
             title: name,
             parent_id: entry.id,
-            visibility: "draft",
+            visibility: "preview",
             body_markdown: "",
           });
       }}

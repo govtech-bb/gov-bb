@@ -104,13 +104,15 @@ export type PageDocument = z.infer<typeof PageDocument>;
 
 /**
  * Where a pending revision stands: an editor submits a `draft`, and an
- * approver rejects or publishes a `submitted` one (#3199).
+ * approver rejects or publishes a `submitted` one (#3199). Taking the page
+ * out of public view while it waits closes it as `discarded` (#3203).
  */
 export const REVISION_STATUSES = [
   "draft",
   "submitted",
   "rejected",
   "published",
+  "discarded",
 ] as const;
 
 /** The statuses of a page's one open revision. */
@@ -137,7 +139,8 @@ export const PendingRevision = z.object({
   contributors: z
     .array(z.string())
     .describe(
-      "The user id of everyone who saved to it, none of whom may approve it.",
+      "The user id of everyone who saved to it, and of whoever submitted " +
+        "an earlier, rejected round of it; none of them may approve it.",
     ),
   submitted_by: z
     .string()
@@ -188,11 +191,31 @@ export const RevisionView = PendingRevision.extend({
 /** A pending revision, with what it changes. */
 export type RevisionView = z.infer<typeof RevisionView>;
 
+/** A revision waiting for review, as the review queue lists it (#3202). */
+export const ReviewQueueEntry = z.object({
+  id: z.guid(),
+  page_id: PageId,
+  title: z.string().describe("The page's title as the change would make it."),
+  url: z.string().describe("The page's url as the change would make it."),
+  submitted_by: z.string().describe("The user id of whoever submitted it."),
+  submitted_by_name: z
+    .string()
+    .nullable()
+    .describe("Their name, or null when their account is gone."),
+  submitted_at: z.iso.datetime(),
+  updated_at: z.iso
+    .datetime()
+    .describe("The revision's version, as `GET /pages/{id}/revision` has it."),
+});
+
+/** A revision waiting for review. */
+export type ReviewQueueEntry = z.infer<typeof ReviewQueueEntry>;
+
 /** A page as the editor opens and saves it: the live page with its pending revision, if any, laid over it. */
 export const EditorPage = PageDocument.extend({
   pending_revision: z
     .object({
-      status: RevisionStatus.exclude(["published"]),
+      status: RevisionStatus.exclude(["published", "discarded"]),
       comment: z
         .string()
         .nullable()
@@ -338,13 +361,18 @@ export function revisionOf(
 
 /**
  * What the editor works on: the live page, or its current revision laid over
- * it. A published revision is the live page, so it is never laid over.
+ * it. A published revision is the live page, and a discarded one is gone, so
+ * neither is laid over.
  */
 export function workingCopy(
   live: PageDocument,
   revision: PendingRevision | null,
 ): EditorPage {
-  if (revision === null || revision.status === "published")
+  if (
+    revision === null ||
+    revision.status === "published" ||
+    revision.status === "discarded"
+  )
     return { ...live, pending_revision: null };
   return {
     ...live,
@@ -355,11 +383,23 @@ export function workingCopy(
   };
 }
 
+/** A page's own fields, without what storage records. */
+export function fieldsOf(page: PageDocument): PageFields {
+  return {
+    url: page.url,
+    category_id: page.category_id,
+    parent_id: page.parent_id,
+    title: page.title,
+    description: page.description,
+    visibility: page.visibility,
+    form_id: page.form_id,
+    body_markdown: page.body_markdown,
+    frontmatter: page.frontmatter,
+  };
+}
+
 /** The fields a revision changes against the live page, in field order. */
-export function changesOf(
-  live: PageDocument,
-  fields: PageFields,
-): FieldChange[] {
+export function changesOf(live: PageFields, fields: PageFields): FieldChange[] {
   return PageFields.keyof()
     .options.filter((field) => !isDeepStrictEqual(live[field], fields[field]))
     .map((field) => ({ field, live: live[field], proposed: fields[field] }));
@@ -370,7 +410,8 @@ export function changesOf(
  * version moves strictly past both the live page's and the revision's, so a
  * client holding either one conflicts rather than overwriting the other. A
  * save over a rejected revision starts a new draft by the saver, which keeps
- * the rejected one's contributors: it starts from their content.
+ * the rejected one's contributors, and its submitter, as `inheritedFrom`
+ * says: it starts from their content.
  */
 export function pendingRevisionOf(
   live: PageDocument,
@@ -383,7 +424,10 @@ export function pendingRevisionOf(
   const updatedAt = new Date(
     Math.max(now.getTime(), ...versions.map((at) => Date.parse(at) + 1)),
   );
-  const contributors = revision?.contributors ?? [];
+  const contributors =
+    revision?.status === "rejected"
+      ? inheritedFrom(revision)
+      : (revision?.contributors ?? []);
   return {
     fields,
     liveUpdatedAt: new Date(live.updated_at),
@@ -396,6 +440,19 @@ export function pendingRevisionOf(
       ? contributors
       : [...contributors, actorId],
   };
+}
+
+/**
+ * Who a revision started from a rejected one counts as having changed it:
+ * the rejected one's contributors and its submitter. None of them may
+ * approve the new round (ADR 0079), so resubmitting it under someone else's
+ * name can't let its earlier submitter approve it.
+ */
+export function inheritedFrom(rejected: PendingRevision): string[] {
+  const { contributors, submitted_by: submitter } = rejected;
+  return submitter === null || contributors.includes(submitter)
+    ? [...contributors]
+    : [...contributors, submitter];
 }
 
 /** One field a write cannot have as sent. */
@@ -436,6 +493,17 @@ export class PageConflict extends Error {
   }
 }
 
+/** A save to a revision waiting for review named no version, so it could overwrite another editor's change unseen. */
+export class PageVersionRequired extends Error {
+  /** Stable protocol-projection discriminator. */
+  readonly _tag = "PageVersionRequired" as const;
+  constructor() {
+    super(
+      "This change is waiting for review. Send the updated_at you last read in the if-updated-at header.",
+    );
+  }
+}
+
 /** There is no revision in the state the operation acts on. */
 export class RevisionNotFound extends Error {
   /** Stable protocol-projection discriminator. */
@@ -443,8 +511,8 @@ export class RevisionNotFound extends Error {
 }
 
 /**
- * A revision is not in the state the operation needs: a save or submit of
- * one already waiting for review, or a decision on one never submitted.
+ * A revision is not in the state the operation needs: a submission of one
+ * already waiting for review, or a decision on one never submitted.
  */
 export class RevisionStateConflict extends Error {
   /** Stable protocol-projection discriminator. */
