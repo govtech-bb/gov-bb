@@ -3,6 +3,8 @@ import type { EditorApi } from "../api/client";
 import {
   PRELOAD_FRESH,
   categoriesQuery,
+  collectionQuery,
+  collectionsQuery,
   pageQuery,
   serviceQuery,
   servicesQuery,
@@ -39,4 +41,14 @@ export function primePage(client: QueryClient, api: EditorApi, serviceId: string
 /** Starts loading the categories before their screen opens. */
 export function primeCategories(client: QueryClient, api: EditorApi) {
   void client.prefetchQuery({ ...categoriesQuery(api), staleTime: PRELOAD_FRESH });
+}
+
+/** Starts loading the collections before their screen opens. */
+export function primeCollections(client: QueryClient, api: EditorApi) {
+  void client.prefetchQuery({ ...collectionsQuery(api), staleTime: PRELOAD_FRESH });
+}
+
+/** Starts loading a collection's records before its screen opens. */
+export function primeCollection(client: QueryClient, api: EditorApi, key: string) {
+  void client.prefetchQuery({ ...collectionQuery(api, key), staleTime: PRELOAD_FRESH });
 }

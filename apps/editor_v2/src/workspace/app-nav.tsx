@@ -1,4 +1,4 @@
-import { Files, Folders } from "@phosphor-icons/react";
+import { Database, Files, Folders } from "@phosphor-icons/react";
 import { Link, useRouterState } from "@tanstack/react-router";
 import type { DrawerPanel } from "../ui/drawer";
 import { Sidebar } from "../ui/sidebar";
@@ -37,6 +37,13 @@ export function AppNav({
             render={<Link to="/categories" />}
           >
             Categories
+          </Sidebar.Item>
+          <Sidebar.Item
+            icon={<Database />}
+            current={path === "/collections" || path.startsWith("/collections/")}
+            render={<Link to="/collections" />}
+          >
+            Collections
           </Sidebar.Item>
         </Sidebar.Group>
       </Sidebar.Content>

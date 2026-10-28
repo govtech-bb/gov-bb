@@ -8,7 +8,7 @@ Authors can write service pages, save or publish them to the content API, and pr
 
 The editor opens on api_v2's Services list, with search, category/status filters, sorting and pagination. A title opens the service at its entry page; its path opens landing. The sidebar lists API pages beneath their parents and shows visibility. Pages toggles the sidebar, whose preference is remembered; narrow screens use a drawer. Create service creates a preview-only API entry page under a category. Add document creates a preview-only start or supporting page. Delete page removes the selected API page after its children are gone; it retains no browser draft.
 
-The side menu names the editor's screens: Content holds Services, and Manage holds Categories. Inside a service it folds to a rail of icons beside the service's pages; narrow screens open it as a drawer from Menu. Categories lists the shared api_v2 records in order, each subcategory under its parent, with its address and directly filed services, including unpublished work. Categories, Services filters, Create service and page settings all use that same list.
+The side menu names the editor's screens: Content holds Services, and Manage holds Categories and Collections. Inside a service it folds to a rail of icons beside the service's pages; narrow screens open it as a drawer from Menu. Categories lists the shared api_v2 records in order, each subcategory under its parent, with its address and directly filed services, including unpublished work. Categories, Services filters, Create service and page settings all use that same list.
 
 The editor owns content authoring and conversion, including common page metadata. Saving a public page publishes its changes. Reusable form authoring remains available to embedding hosts, but has no replacement server integration in this workspace. Form-wide settings panels, form-check dashboards, submissions, scheduling and respondent execution remain outside scope.
 
@@ -21,6 +21,12 @@ Editing a name never changes its address automatically. A category's slug or par
 A stale edit, deletion or reorder is refused rather than overwriting another author's change. Dialogs retain their typed input through refreshes and failures. An unanswered save may already have succeeded, so the editor checks the saved state before offering a retry.
 
 Landing integration is tracked in #3179, category change events in #3169, private last-editor attribution in #3171 and sandbox acceptance in #3180.
+
+## Collections
+
+Collections hold facts many pages repeat, such as a department's contact details, as records in api_v2. Developers set each collection's fields; every value is text. Collections lists each one with its record count, and a collection's screen shows its records in a table, a column per field. A record is added, changed or deleted in a dialog, one field per entry in the field list under its label. Saving is explicit and replaces the whole record; a blank field is left out. A record keeps the key it was added with. `/collections/<key>?record=<record key>` opens that record's dialog, so a page's block can link to the record it shows.
+
+A field api_v2 refuses shows its reason under the field, and the dialog keeps what was typed. A save over a version someone else replaced offers the same choice as a page: keep this version, load the saved one or download this one. A deletion is asked first and refused if the record has changed since it was read.
 
 ## Page authoring
 

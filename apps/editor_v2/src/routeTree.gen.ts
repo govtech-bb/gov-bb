@@ -13,10 +13,13 @@ import { Route as WorkspaceRouteImport } from './routes/_workspace'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as WorkspaceIndexRouteImport } from './routes/_workspace.index'
 import { Route as WorkspaceCategoriesRouteImport } from './routes/_workspace.categories'
+import { Route as WorkspaceCollectionsRouteImport } from './routes/_workspace.collections'
 import { Route as WorkspaceServicesRouteImport } from './routes/_workspace.services'
 import { Route as PrototypesComponentsRouteImport } from './routes/prototypes.components'
 import { Route as PrototypesTridentLoaderRouteImport } from './routes/prototypes.trident-loader'
+import { Route as WorkspaceCollectionsKeyRouteImport } from './routes/_workspace.collections.$key'
 import { Route as WorkspaceServicesServiceIdRouteImport } from './routes/_workspace.services.$serviceId'
+import { Route as WorkspaceCollectionsKeyRecordKeyRouteImport } from './routes/_workspace.collections.$key.$recordKey'
 import { Route as WorkspaceServicesServiceIdDocumentIdRouteImport } from './routes/_workspace.services.$serviceId.$documentId'
 
 const WorkspaceRoute = WorkspaceRouteImport.update({
@@ -38,6 +41,11 @@ const WorkspaceCategoriesRoute = WorkspaceCategoriesRouteImport.update({
   path: '/categories',
   getParentRoute: () => WorkspaceRoute,
 } as any)
+const WorkspaceCollectionsRoute = WorkspaceCollectionsRouteImport.update({
+  id: '/collections',
+  path: '/collections',
+  getParentRoute: () => WorkspaceRoute,
+} as any)
 const WorkspaceServicesRoute = WorkspaceServicesRouteImport.update({
   id: '/services',
   path: '/services',
@@ -53,11 +61,22 @@ const PrototypesTridentLoaderRoute = PrototypesTridentLoaderRouteImport.update({
   path: '/prototypes/trident-loader',
   getParentRoute: () => rootRouteImport,
 } as any)
+const WorkspaceCollectionsKeyRoute = WorkspaceCollectionsKeyRouteImport.update({
+  id: '/$key',
+  path: '/$key',
+  getParentRoute: () => WorkspaceCollectionsRoute,
+} as any)
 const WorkspaceServicesServiceIdRoute =
   WorkspaceServicesServiceIdRouteImport.update({
     id: '/$serviceId',
     path: '/$serviceId',
     getParentRoute: () => WorkspaceServicesRoute,
+  } as any)
+const WorkspaceCollectionsKeyRecordKeyRoute =
+  WorkspaceCollectionsKeyRecordKeyRouteImport.update({
+    id: '/$recordKey',
+    path: '/$recordKey',
+    getParentRoute: () => WorkspaceCollectionsKeyRoute,
   } as any)
 const WorkspaceServicesServiceIdDocumentIdRoute =
   WorkspaceServicesServiceIdDocumentIdRouteImport.update({
@@ -70,20 +89,26 @@ export interface FileRoutesByFullPath {
   '/': typeof WorkspaceIndexRoute
   '/auth': typeof AuthRoute
   '/categories': typeof WorkspaceCategoriesRoute
+  '/collections': typeof WorkspaceCollectionsRouteWithChildren
   '/services': typeof WorkspaceServicesRouteWithChildren
   '/prototypes/components': typeof PrototypesComponentsRoute
   '/prototypes/trident-loader': typeof PrototypesTridentLoaderRoute
+  '/collections/$key': typeof WorkspaceCollectionsKeyRouteWithChildren
   '/services/$serviceId': typeof WorkspaceServicesServiceIdRouteWithChildren
+  '/collections/$key/$recordKey': typeof WorkspaceCollectionsKeyRecordKeyRoute
   '/services/$serviceId/$documentId': typeof WorkspaceServicesServiceIdDocumentIdRoute
 }
 export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/categories': typeof WorkspaceCategoriesRoute
+  '/collections': typeof WorkspaceCollectionsRouteWithChildren
   '/services': typeof WorkspaceServicesRouteWithChildren
   '/prototypes/components': typeof PrototypesComponentsRoute
   '/prototypes/trident-loader': typeof PrototypesTridentLoaderRoute
   '/': typeof WorkspaceIndexRoute
+  '/collections/$key': typeof WorkspaceCollectionsKeyRouteWithChildren
   '/services/$serviceId': typeof WorkspaceServicesServiceIdRouteWithChildren
+  '/collections/$key/$recordKey': typeof WorkspaceCollectionsKeyRecordKeyRoute
   '/services/$serviceId/$documentId': typeof WorkspaceServicesServiceIdDocumentIdRoute
 }
 export interface FileRoutesById {
@@ -91,11 +116,14 @@ export interface FileRoutesById {
   '/_workspace': typeof WorkspaceRouteWithChildren
   '/auth': typeof AuthRoute
   '/_workspace/categories': typeof WorkspaceCategoriesRoute
+  '/_workspace/collections': typeof WorkspaceCollectionsRouteWithChildren
   '/_workspace/services': typeof WorkspaceServicesRouteWithChildren
   '/prototypes/components': typeof PrototypesComponentsRoute
   '/prototypes/trident-loader': typeof PrototypesTridentLoaderRoute
   '/_workspace/': typeof WorkspaceIndexRoute
+  '/_workspace/collections/$key': typeof WorkspaceCollectionsKeyRouteWithChildren
   '/_workspace/services/$serviceId': typeof WorkspaceServicesServiceIdRouteWithChildren
+  '/_workspace/collections/$key/$recordKey': typeof WorkspaceCollectionsKeyRecordKeyRoute
   '/_workspace/services/$serviceId/$documentId': typeof WorkspaceServicesServiceIdDocumentIdRoute
 }
 export interface FileRouteTypes {
@@ -104,31 +132,40 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/categories'
+    | '/collections'
     | '/services'
     | '/prototypes/components'
     | '/prototypes/trident-loader'
+    | '/collections/$key'
     | '/services/$serviceId'
+    | '/collections/$key/$recordKey'
     | '/services/$serviceId/$documentId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/auth'
     | '/categories'
+    | '/collections'
     | '/services'
     | '/prototypes/components'
     | '/prototypes/trident-loader'
     | '/'
+    | '/collections/$key'
     | '/services/$serviceId'
+    | '/collections/$key/$recordKey'
     | '/services/$serviceId/$documentId'
   id:
     | '__root__'
     | '/_workspace'
     | '/auth'
     | '/_workspace/categories'
+    | '/_workspace/collections'
     | '/_workspace/services'
     | '/prototypes/components'
     | '/prototypes/trident-loader'
     | '/_workspace/'
+    | '/_workspace/collections/$key'
     | '/_workspace/services/$serviceId'
+    | '/_workspace/collections/$key/$recordKey'
     | '/_workspace/services/$serviceId/$documentId'
   fileRoutesById: FileRoutesById
 }
@@ -169,6 +206,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WorkspaceCategoriesRouteImport
       parentRoute: typeof WorkspaceRoute
     }
+    '/_workspace/collections': {
+      id: '/_workspace/collections'
+      path: '/collections'
+      fullPath: '/collections'
+      preLoaderRoute: typeof WorkspaceCollectionsRouteImport
+      parentRoute: typeof WorkspaceRoute
+    }
     '/_workspace/services': {
       id: '/_workspace/services'
       path: '/services'
@@ -190,12 +234,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PrototypesTridentLoaderRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_workspace/collections/$key': {
+      id: '/_workspace/collections/$key'
+      path: '/$key'
+      fullPath: '/collections/$key'
+      preLoaderRoute: typeof WorkspaceCollectionsKeyRouteImport
+      parentRoute: typeof WorkspaceCollectionsRoute
+    }
     '/_workspace/services/$serviceId': {
       id: '/_workspace/services/$serviceId'
       path: '/$serviceId'
       fullPath: '/services/$serviceId'
       preLoaderRoute: typeof WorkspaceServicesServiceIdRouteImport
       parentRoute: typeof WorkspaceServicesRoute
+    }
+    '/_workspace/collections/$key/$recordKey': {
+      id: '/_workspace/collections/$key/$recordKey'
+      path: '/$recordKey'
+      fullPath: '/collections/$key/$recordKey'
+      preLoaderRoute: typeof WorkspaceCollectionsKeyRecordKeyRouteImport
+      parentRoute: typeof WorkspaceCollectionsKeyRoute
     }
     '/_workspace/services/$serviceId/$documentId': {
       id: '/_workspace/services/$serviceId/$documentId'
@@ -206,6 +264,32 @@ declare module '@tanstack/react-router' {
     }
   }
 }
+
+interface WorkspaceCollectionsKeyRouteChildren {
+  WorkspaceCollectionsKeyRecordKeyRoute: typeof WorkspaceCollectionsKeyRecordKeyRoute
+}
+
+const WorkspaceCollectionsKeyRouteChildren: WorkspaceCollectionsKeyRouteChildren =
+  {
+    WorkspaceCollectionsKeyRecordKeyRoute:
+      WorkspaceCollectionsKeyRecordKeyRoute,
+  }
+
+const WorkspaceCollectionsKeyRouteWithChildren =
+  WorkspaceCollectionsKeyRoute._addFileChildren(
+    WorkspaceCollectionsKeyRouteChildren,
+  )
+
+interface WorkspaceCollectionsRouteChildren {
+  WorkspaceCollectionsKeyRoute: typeof WorkspaceCollectionsKeyRouteWithChildren
+}
+
+const WorkspaceCollectionsRouteChildren: WorkspaceCollectionsRouteChildren = {
+  WorkspaceCollectionsKeyRoute: WorkspaceCollectionsKeyRouteWithChildren,
+}
+
+const WorkspaceCollectionsRouteWithChildren =
+  WorkspaceCollectionsRoute._addFileChildren(WorkspaceCollectionsRouteChildren)
 
 interface WorkspaceServicesServiceIdRouteChildren {
   WorkspaceServicesServiceIdDocumentIdRoute: typeof WorkspaceServicesServiceIdDocumentIdRoute
@@ -235,12 +319,14 @@ const WorkspaceServicesRouteWithChildren =
 
 interface WorkspaceRouteChildren {
   WorkspaceCategoriesRoute: typeof WorkspaceCategoriesRoute
+  WorkspaceCollectionsRoute: typeof WorkspaceCollectionsRouteWithChildren
   WorkspaceServicesRoute: typeof WorkspaceServicesRouteWithChildren
   WorkspaceIndexRoute: typeof WorkspaceIndexRoute
 }
 
 const WorkspaceRouteChildren: WorkspaceRouteChildren = {
   WorkspaceCategoriesRoute: WorkspaceCategoriesRoute,
+  WorkspaceCollectionsRoute: WorkspaceCollectionsRouteWithChildren,
   WorkspaceServicesRoute: WorkspaceServicesRouteWithChildren,
   WorkspaceIndexRoute: WorkspaceIndexRoute,
 }

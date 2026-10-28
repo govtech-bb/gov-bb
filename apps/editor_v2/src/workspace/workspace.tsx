@@ -19,6 +19,7 @@ import {
 } from "./remote-page-dialogs";
 import { RemotePagePane } from "./remote-page-pane";
 import { AppNav } from "./app-nav";
+import { CollectionScreen, CollectionsScreen } from "./collections";
 import { CategoriesScreen } from "./categories-screen";
 import { listedServiceRows, remoteServiceRows } from "./service-pages";
 import { ServiceNav } from "./service-nav";
@@ -62,6 +63,14 @@ export function ServiceWorkspace({ api, email, onSignOut, notice }: Account & { 
   const routerNavigate = useNavigate();
   const listSearch = useSearch({ from: "/_workspace/services", shouldThrow: false });
   const onCategories = !!useMatch({ from: "/_workspace/categories", shouldThrow: false });
+  const onCollections = !!useMatch({ from: "/_workspace/collections", shouldThrow: false });
+
+  const collectionSearch = useSearch({
+    from: "/_workspace/collections/$key",
+    shouldThrow: false,
+  });
+
+  const collectionKey = onCollections ? params.key : undefined;
   const [servicesSearch, setServicesSearch] = useState<ServicesSearch>({});
 
   const location = params.serviceId
@@ -194,6 +203,20 @@ export function ServiceWorkspace({ api, email, onSignOut, notice }: Account & { 
       </Button>
     );
 
+  // A record's dialog lives in the collection's address, so a page's block can link straight to it
+  const openRecord = useCallback(
+    (record: string | undefined) => {
+      if (collectionKey)
+        void routerNavigate({
+          to: "/collections/$key",
+          params: { key: collectionKey },
+          search: record ? { record } : {},
+          replace: true,
+        });
+    },
+    [collectionKey, routerNavigate],
+  );
+
   const navigate = (next: WorkspaceLocation) =>
     routerNavigate(next ? workspaceLink(next) : { to: "/services", search: servicesSearch });
 
@@ -224,7 +247,7 @@ export function ServiceWorkspace({ api, email, onSignOut, notice }: Account & { 
             ? ["Document not found"]
             : location
               ? [place.document, serviceName]
-              : [onCategories ? "Categories" : "Services"]
+              : [onCategories ? "Categories" : onCollections ? "Collections" : "Services"]
         }
       />
       <a
@@ -253,6 +276,10 @@ export function ServiceWorkspace({ api, email, onSignOut, notice }: Account & { 
           {onCategories ? (
             <Link to="/categories" className={crumb}>
               Categories
+            </Link>
+          ) : onCollections ? (
+            <Link to="/collections" className={crumb}>
+              Collections
             </Link>
           ) : (
             <Link to="/services" search={servicesSearch} className={crumb}>
@@ -369,7 +396,22 @@ export function ServiceWorkspace({ api, email, onSignOut, notice }: Account & { 
               <CategoriesScreen api={api} readOnly={readOnly} />
             </section>
           )}
-          {!location && !onCategories && (
+          {!location && onCollections && (
+            <section className="mx-auto w-full max-w-300 px-6 py-10">
+              {collectionKey ? (
+                <CollectionScreen
+                  api={api}
+                  collectionKey={collectionKey}
+                  record={collectionSearch?.record}
+                  onRecord={openRecord}
+                  readOnly={readOnly}
+                />
+              ) : (
+                <CollectionsScreen api={api} />
+              )}
+            </section>
+          )}
+          {!location && !onCategories && !onCollections && (
             <section className="mx-auto w-full max-w-300 px-6 py-10">
               <ServicesList
                 api={api}
