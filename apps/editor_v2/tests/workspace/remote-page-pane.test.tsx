@@ -31,6 +31,7 @@ const page: ApiPage = {
   published_at: null,
   created_at: "2026-10-07T12:00:00.000Z",
   updated_at: "2026-10-07T12:00:00.000Z",
+  pending_revision: null,
 };
 
 const router = createRouter({
@@ -424,4 +425,44 @@ test("a save the API refuses (403) says why and offers no retry, keeping the wor
   expect(names).not.toContain("Retry");
   expect(document.body.textContent).not.toContain("We could not save this page");
   expect(pageHasUnsavedChanges(h.session())).toBe(true);
+});
+
+const PENDING = "Your changes are saved but not live. An approver needs to publish them.";
+
+const live: ApiPage = { ...page, visibility: "public", published_at: "2026-10-01T12:00:00.000Z" };
+
+test("a change saved to a public page waits for an approver: the editor keeps it and says it isn't live", async () => {
+  let current = live;
+
+  const h = await mountPage(async (_url, init) => {
+    // The API answers with the working copy: the revision laid over the live page
+    if (init?.method === "PUT")
+      current = {
+        ...live,
+        ...JSON.parse(String(init.body)),
+        updated_at: "2026-10-07T13:00:00.000Z",
+        pending_revision: { status: "draft" },
+      };
+
+    return Response.json(current);
+  });
+
+  expect(document.body.textContent).not.toContain(PENDING);
+  const source = h.session().store.getSnapshot().source + "\n\nWaiting for review";
+  await applySource(h.session(), source);
+  // A public page's save doesn't publish, so it isn't offered as publishing
+  await savePage();
+  await act(async () => {
+    await vi.waitFor(() => expect(document.body.textContent).toContain(PENDING));
+  });
+  expect(h.session().getBaseline().page.updated_at).toBe("2026-10-07T13:00:00.000Z");
+  expect(h.session().store.getSnapshot().committed).toBe(source);
+  expect(pageHasUnsavedChanges(h.session())).toBe(false);
+  expect(document.body.textContent).not.toContain("A newer version");
+});
+
+test("a public page opened with a change waiting for an approver says so", async () => {
+  await mountPage(async () => Response.json({ ...live, pending_revision: { status: "draft" } }));
+
+  await vi.waitFor(() => expect(document.body.textContent).toContain(PENDING));
 });

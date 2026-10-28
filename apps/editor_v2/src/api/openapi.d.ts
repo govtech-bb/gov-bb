@@ -229,6 +229,11 @@ export interface paths {
                              * @description Millisecond precision, and exactly the value to send back in `if-updated-at` on the next save.
                              */
                             updated_at: string;
+                            /** @description Set when the page is public and has a change waiting for an approver. The fields and `updated_at` are then the revision's, and citizens still see the live page. */
+                            pending_revision: {
+                                /** @enum {string} */
+                                status: "draft";
+                            } | null;
                         };
                     };
                 };
@@ -791,7 +796,7 @@ export interface paths {
         };
         /**
          * Get a page by id
-         * @description The editor's read: any visibility, markdown included.
+         * @description The editor's read: any visibility, markdown included. A public page with a pending revision is read with the revision laid over it.
          */
         get: {
             parameters: {
@@ -851,6 +856,11 @@ export interface paths {
                              * @description Millisecond precision, and exactly the value to send back in `if-updated-at` on the next save.
                              */
                             updated_at: string;
+                            /** @description Set when the page is public and has a change waiting for an approver. The fields and `updated_at` are then the revision's, and citizens still see the live page. */
+                            pending_revision: {
+                                /** @enum {string} */
+                                status: "draft";
+                            } | null;
                         };
                     };
                 };
@@ -942,7 +952,7 @@ export interface paths {
         };
         /**
          * Save a page
-         * @description Requires an employee session, the editor's Origin header and the editor role (403 otherwise). Send every field: a save replaces the page and defaults none, except that leaving `parent_id` out keeps the page's parent. Send the `updated_at` you last read in the `if-updated-at` header. If the stored row has moved on since, the save is refused with a 409 rather than silently discarding whoever wrote first. Changing `url` moves this page alone: its sub-pages keep their urls and stay beneath it by `parent_id`, and nothing redirects from the old url. Changing `visibility` needs the approver role (403 otherwise).
+         * @description Requires an employee session, the editor's Origin header and the editor role (403 otherwise). Send every field: a save replaces the page and defaults none, except that leaving `parent_id` out keeps the page's parent. Send the `updated_at` you last read in the `if-updated-at` header. If the stored row, or the page's pending revision, has moved on since, the save is refused with a 409 rather than silently discarding whoever wrote first. Changing `url` moves this page alone: its sub-pages keep their urls and stay beneath it by `parent_id`, and nothing redirects from the old url. Changing `visibility` needs the approver role (403 otherwise). A save that keeps a `public` page public, whoever sends it, goes into the page's pending revision: citizens keep seeing the live page until an approver publishes it. An approver's save that takes a `public` page out of public view writes the whole page and closes its pending revision. Returns the page as the editor now works on it.
          */
         put: {
             parameters: {
@@ -1034,6 +1044,11 @@ export interface paths {
                              * @description Millisecond precision, and exactly the value to send back in `if-updated-at` on the next save.
                              */
                             updated_at: string;
+                            /** @description Set when the page is public and has a change waiting for an approver. The fields and `updated_at` are then the revision's, and citizens still see the live page. */
+                            pending_revision: {
+                                /** @enum {string} */
+                                status: "draft";
+                            } | null;
                         };
                     };
                 };
@@ -1162,7 +1177,7 @@ export interface paths {
         post?: never;
         /**
          * Delete a page
-         * @description Requires an employee session, the editor's Origin header and the editor role (403 otherwise). A page with sub-pages is refused (422) until they are moved or deleted. Deleting a `public` page needs the approver role (403 otherwise).
+         * @description Requires an employee session, the editor's Origin header and the editor role (403 otherwise). A page with sub-pages is refused (422) until they are moved or deleted. Deleting a `public` page needs the approver role (403 otherwise). Its pending revision goes with it.
          */
         delete: {
             parameters: {
@@ -1273,6 +1288,178 @@ export interface paths {
                 };
             };
         };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pages/{id}/revision": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get a page's pending revision
+         * @description The change to a `public` page that is waiting for an approver. 404 when the page has none.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Default Response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** Format: uuid */
+                            id: string;
+                            /** Format: uuid */
+                            page_id: string;
+                            /** @enum {string} */
+                            status: "draft";
+                            /** @description The page as the change would make it. */
+                            fields: {
+                                /** @description The site's routing key. */
+                                url: string;
+                                /** Format: uuid */
+                                category_id: string | null;
+                                /**
+                                 * Format: uuid
+                                 * @description The page this one sits beneath, in the same category; null for a page at the root of its category, which is what the category lists.
+                                 */
+                                parent_id: string | null;
+                                title: string;
+                                description: string | null;
+                                /** @enum {string} */
+                                visibility: "public" | "preview" | "draft";
+                                form_id: string | null;
+                                body_markdown: string;
+                                frontmatter: {
+                                    lede?: string;
+                                    stage?: string;
+                                    featured?: boolean;
+                                    section?: string;
+                                    service_type?: string;
+                                    keywords?: string[];
+                                    source_url?: string;
+                                };
+                            };
+                            /**
+                             * Format: date-time
+                             * @description The live page's `updated_at` this revision was last saved over.
+                             */
+                            live_updated_at: string;
+                            /** @description The user id of whoever started it. */
+                            created_by: string;
+                            /** @description The user id of everyone who saved to it, none of whom may approve it. */
+                            contributors: string[];
+                            /** Format: date-time */
+                            created_at: string;
+                            /** Format: date-time */
+                            updated_at: string;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;

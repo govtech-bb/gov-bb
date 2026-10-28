@@ -276,7 +276,8 @@ function RemotePageEditor({
         onDownload: downloadMine,
       };
 
-    const live = visibility === "public";
+    // A public page's saves wait for an approver, so a saved change isn't published
+    const live = visibility === "public" && !server.pending_revision;
 
     return {
       status: unsaved ? (live ? "unpublished" : "unsaved") : live ? "published" : "saved",
@@ -374,6 +375,10 @@ function RemotePageEditor({
       Your session has ended. Download your changes before signing in again; unsaved work will be
       lost when you leave.
     </Banner>
+  ) : server.pending_revision ? (
+    <Banner tone="info" layout="strip">
+      Your changes are saved but not live. An approver needs to publish them.
+    </Banner>
   ) : undefined;
 
   return (
@@ -394,7 +399,8 @@ function RemotePageEditor({
           }
           onClick={saveDraft}
         >
-          {visibility === "public" ? "Publish changes" : "Save"}
+          {/* Only making a page public goes live at once; a public page's changes wait for review */}
+          {visibility === "public" && server.visibility !== "public" ? "Publish changes" : "Save"}
         </Button>
       }
       notice={

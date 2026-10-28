@@ -28,6 +28,7 @@ const pages = new Map(
       published_at: null,
       created_at: stamp,
       updated_at: stamp,
+      pending_revision: null,
     } satisfies ApiPage,
   ]),
 );
