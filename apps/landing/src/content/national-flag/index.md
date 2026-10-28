@@ -35,7 +35,7 @@ His design was chosen from 1,029 entries in a national competition. Prescod late
 
 The national flag must be displayed and used with care. Certain uses, including selling goods bearing the flag or using it for business, require a government licence.
 
-[How to display and use the Barbados flag](/about-barbados/national-symbols/national-flag/flag-etiquette)
+[How to display and use the Barbados flag](https://www.gov.bb/Visit-Barbados/flag-etiquette)
 
 ## Related pages
 
