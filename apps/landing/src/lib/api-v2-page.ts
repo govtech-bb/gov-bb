@@ -62,7 +62,7 @@ export type ApiV2Page = SerializedContentPage & { hideStartLinks: boolean }
 /**
  * Why there is no api_v2 page. `not_found`, `rejected` (a 4xx),
  * `bad_redirect` and `compile` are answers (cached for their
- * `Cache-Control`); `no_target`, `status` (a 5xx),
+ * `Cache-Control`); `no_target`, `status` (a 5xx, 408 or 429),
  * `malformed`, `timeout` and `network` are api_v2 failures (never cached,
  * counted by the breaker in api-v2-cache.ts).
  */
@@ -176,7 +176,12 @@ export async function fetchApiV2Page(
       await response.body?.cancel()
       // A 4xx is api_v2 answering (e.g. a url over its 512-char limit), so a
       // visitor can't trip the breaker with junk urls; a 5xx is a failure.
-      if (response.status < 500)
+      // 408/429 say api_v2 (or a proxy) is busy, not anything about the url.
+      if (
+        response.status < 500 &&
+        response.status !== 408 &&
+        response.status !== 429
+      )
         return { kind: 'miss', reason: 'rejected', cacheControl }
       logFallback('error', 'status', url, { status: response.status })
       return { kind: 'miss', reason: 'status' }

@@ -17,7 +17,7 @@ branch.
 ## What we did
 
 - `apps/landing/src/lib/api-v2-cache.ts`: `createApiV2Cache().get(url, resolve, now)`
-  — per-URL entries holding the *compiled* result, TTLs parsed from the
+  — per-URL entries holding the _compiled_ result, TTLs parsed from the
   stored `Cache-Control`, stale-while-revalidate with one in-flight refetch
   per URL, last-known-good on failure, a global breaker, a cap of 500.
 - `api-v2-page.ts`: timeout 750 ms; results carry `cacheControl`; every miss
@@ -45,10 +45,11 @@ markdown per hit), doesn't coalesce revalidations and needed the #2850 leak
 fix. Nitro's `defineCachedFunction` has a fixed `maxAge`, an unbounded store
 under visitor-controlled keys, and vitest doesn't boot nitro.
 
-**`reason` splits answers from failures.** `not_found`, `rejected` (any 4xx),
-`bad_redirect` and `compile` are api_v2 *answering* — cached for their
-header's TTL, reset the failure count. `no_target`, `status` (a 5xx),
-`malformed`, `timeout`, `network` are api_v2 *failing* — never cached,
+**`reason` splits answers from failures.** `not_found`, `rejected` (a 4xx
+other than 408/429), `bad_redirect` and `compile` are api_v2 _answering_ —
+cached for their header's TTL, reset the failure count. `no_target`, `status`
+(a 5xx, 408 or 429),
+`malformed`, `timeout`, `network` are api_v2 _failing_ — never cached,
 counted by the breaker. `unconfigured`, `skipped`, `circuit_open` are
 landing's own. A compile error is cached so an editor's typo isn't
 recompiled per view.
@@ -60,6 +61,11 @@ api_v2 off site-wide for 30 s, repeatable every window. `malformed` and
 `no_target` stay failures even though one bad URL could produce them: api_v2
 validates its own 200 and 301 bodies against a schema, so either one points
 at a proxy or a broken API rather than a single record.
+
+**Except 408 and 429 (a user decision, from review).** They say api_v2 (or a
+proxy in front of it) is busy, not anything about the URL, so they are
+`status` failures: the breaker backs off a busy api_v2, and the cache keeps
+the last good page instead of dropping it for a header-less answer.
 
 **Failures that land after the breaker opened are ignored.** Concurrent
 requests already in flight when the third failure tripped it used to keep
@@ -102,6 +108,6 @@ Same caching outcome, but #3134 will log the label.
   verified; watch for spurious breaker trips in sandbox logs.
 - The landing build wasn't run locally, so the `/* @__PURE__ */` marker that
   keeps the cache out of the client bundle is unverified (`grep -rl
-  circuit_open apps/landing/.amplify-hosting/static` after a build).
+circuit_open apps/landing/.amplify-hosting/static` after a build).
 - The cache key is the URL alone, safe only while landing never forwards
   `x-preview-token`; the module comment says so.

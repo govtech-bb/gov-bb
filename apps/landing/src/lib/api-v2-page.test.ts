@@ -146,21 +146,24 @@ describe('fetchApiV2Page', () => {
     expect(cancel).toHaveBeenCalled()
   })
 
-  it('treats a 500 as a miss and logs an error', async () => {
-    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
-    const result = await fetchApiV2Page(
-      BASE,
-      '/x',
-      stubFetch(jsonResponse(500, {})),
-    )
-    expect(result).toEqual({ kind: 'miss', reason: 'status' })
-    expect(logged(error)).toEqual({
-      event: 'api_v2_fallback',
-      reason: 'status',
-      url: '/x',
-      status: 500,
-    })
-  })
+  it.each([500, 408, 429])(
+    'treats a %i as a status miss and logs an error',
+    async (status) => {
+      const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+      const result = await fetchApiV2Page(
+        BASE,
+        '/x',
+        stubFetch(jsonResponse(status, {})),
+      )
+      expect(result).toEqual({ kind: 'miss', reason: 'status' })
+      expect(logged(error)).toEqual({
+        event: 'api_v2_fallback',
+        reason: 'status',
+        url: '/x',
+        status,
+      })
+    },
+  )
 
   it('treats a network error as a miss and logs an error', async () => {
     const error = vi.spyOn(console, 'error').mockImplementation(() => {})
