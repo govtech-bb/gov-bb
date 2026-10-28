@@ -57,12 +57,12 @@ try {
 
   const detailRead = Promise.withResolvers();
   const pageRead = Promise.withResolvers();
-  const taxonomyRead = Promise.withResolvers();
+  const categoriesRead = Promise.withResolvers();
 
   for (const [path, held] of [
     [`/services/${service.id}`, detailRead],
     [`/pages/${service.id}`, pageRead],
-    ["/taxonomy", taxonomyRead],
+    ["/editor/categories", categoriesRead],
   ]) {
     await context.route(`**${path}`, async (route) => {
       if (route.request().resourceType() !== "document" && route.request().method() === "GET")
@@ -96,9 +96,9 @@ try {
   assert.equal(
     await title.count(),
     0,
-    "taxonomy required for the initial document has not arrived",
+    "the categories the initial document needs have not arrived",
   );
-  taxonomyRead.resolve();
+  categoriesRead.resolve();
   await title.waitFor();
   assert.equal(await title.inputValue(), service.title);
   assert.equal(await header.evaluate((element) => element.isConnected), true);
@@ -113,7 +113,9 @@ try {
   await button("Create service").click();
   const create = page.getByRole("dialog", { name: "Create a service", exact: true });
   await create.getByLabel("Service name", { exact: true }).fill("API workspace checks");
-  await create.getByLabel("Category", { exact: true }).selectOption("category-1");
+  await create
+    .getByLabel("Category", { exact: true })
+    .selectOption({ label: service.category.title });
   await create.getByRole("button", { name: "Create service", exact: true }).click();
   await title.waitFor();
   assert.equal(await title.inputValue(), "API workspace checks");

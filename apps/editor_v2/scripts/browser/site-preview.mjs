@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { parse } from "yaml";
 import { authenticatedContext, servicesFixture } from "./auth-fixture.mjs";
+import { fixtureCategory } from "./page-api-fixture.mjs";
 import { chromium } from "./playwright.mjs";
 
 const markdown = await readFile(
@@ -24,13 +25,12 @@ const service = {
   visibility: "public",
 };
 
-const category = {
-  id: "55555555-5555-4555-8555-555555555555",
-  parent_id: null,
-  slug: "work-employment",
-  url: "/work-employment",
-  title: "Work and employment",
-};
+const category = fixtureCategory(
+  "55555555-5555-4555-8555-555555555555",
+  "work-employment",
+  "Work and employment",
+  { services: 1 },
+);
 
 let current = {
   id: service.id,
@@ -75,7 +75,7 @@ await context.route("**/*", async (route) => {
     "/services": [service],
     [`/services/${service.id}`]: { service, pages: [{ ...current, role: "entry" }] },
     [`/pages/${service.id}`]: current,
-    "/taxonomy": { categories: [category] },
+    "/editor/categories": { categories: [category] },
     "/version": { count: 1, latest: current.updated_at },
   };
 

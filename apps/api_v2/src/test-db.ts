@@ -22,6 +22,7 @@ import { type Employee } from "./modules/auth";
 import { ok, type Result } from "./modules/result";
 import { EditorAccess, type SessionReader } from "./services/editor-access";
 import { EditorIndex } from "./services/editor-index";
+import { CategoryEditing } from "./services/category-editing";
 import { PageEditing } from "./services/page-editing";
 import { PageResolution } from "./services/page-resolution";
 import { SiteNavigation } from "./services/site-navigation";
@@ -111,6 +112,7 @@ export function createTestServices(db: Database) {
     navigation: new SiteNavigation(pages),
     editing: new PageEditing(pages, () => new Date()),
     index: new EditorIndex(pages),
+    categories: new CategoryEditing(pages, () => new Date()),
   };
 }
 

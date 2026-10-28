@@ -14,11 +14,21 @@ import {
   CategoryListing,
   CategoryNode,
   SearchDocument,
-  TaxonomyEntry,
 } from "../modules/navigation";
 import { NewPage, PageDocument, PageId, SaveFields } from "../modules/page";
+import {
+  CategoryBlockers,
+  CategoryFields,
+  CategoryId,
+  CategoryOrder,
+  CategoryStamp,
+  EditorCategory,
+} from "../modules/category";
 import { PublicPage } from "../modules/page-visibility";
 import { EstateVersion } from "../services/editor-index";
+
+/** The editor sends the exact millisecond timestamp from its last read. */
+export const IF_UPDATED_AT = "if-updated-at";
 
 /** No credentials, or the preview token. */
 const previewSecurity: Array<Record<string, string[]>> = [
@@ -61,6 +71,23 @@ const idParams = z.object({ id: PageId });
 
 const editorSecurity = [{ editorSession: [] }];
 const authErrors = { 401: error, 403: error, 503: error };
+const categoryConflict = z.object({
+  error: z.literal("conflict"),
+  message: z.string(),
+});
+const categoryInUse = z.object({
+  error: z.literal("category_in_use"),
+  message: z.string(),
+  blockers: CategoryBlockers,
+});
+const categoryHeaders = z.object({ "if-updated-at": CategoryStamp });
+const categoryParams = z.object({ id: CategoryId });
+const categoryErrors = {
+  400: error,
+  422: validationFailed.extend({ message: z.string() }),
+  500: error,
+  ...authErrors,
+};
 
 /** Request and response contracts shared by serving and documentation. */
 export const SCHEMAS = {
@@ -266,26 +293,71 @@ export const SCHEMAS = {
     },
   },
 
-  getTaxonomy: {
-    summary: "Every category a page can be filed under",
-    description:
-      "Each category with its id, followed by its subcategories, whether or " +
-      "not it lists anything yet: what a page's `category_id` can name.",
+  editorCategories: {
+    summary:
+      "Every shared category, including empty categories and private service counts",
     tags: ["categories"],
     security: editorSecurity,
     response: {
-      200: z.object({ categories: z.array(TaxonomyEntry) }),
+      200: z.object({ categories: z.array(EditorCategory) }),
+      500: error,
+      ...authErrors,
+    },
+  },
+  createCategory: {
+    summary: "Append a category or subcategory",
+    tags: ["categories"],
+    security: editorSecurity,
+    body: CategoryFields,
+    response: { 201: EditorCategory, ...categoryErrors },
+  },
+  updateCategory: {
+    summary: "Edit a category using its last-read version",
+    tags: ["categories"],
+    security: editorSecurity,
+    params: categoryParams,
+    headers: categoryHeaders,
+    body: CategoryFields,
+    response: {
+      200: EditorCategory,
+      404: error,
+      409: categoryConflict,
+      ...categoryErrors,
+    },
+  },
+  orderCategories: {
+    summary: "Atomically reorder a complete, versioned sibling snapshot",
+    tags: ["categories"],
+    security: editorSecurity,
+    body: CategoryOrder,
+    response: {
+      200: z.object({ categories: z.array(EditorCategory) }),
+      409: categoryConflict,
+      ...categoryErrors,
+    },
+  },
+  deleteCategory: {
+    summary: "Delete an empty, unanchored category using its last-read version",
+    tags: ["categories"],
+    security: editorSecurity,
+    params: categoryParams,
+    headers: categoryHeaders,
+    response: {
+      204: z.undefined(),
+      400: error,
+      404: error,
+      409: z.union([categoryConflict, categoryInUse]),
       500: error,
       ...authErrors,
     },
   },
 
   version: {
-    summary: "A version token for the whole estate",
+    summary: "A version token for recorded page changes",
     description:
-      "`change_events` is append-only and gets a row on every write, so its " +
-      "count and newest timestamp identify the state of everything without " +
-      "reading any of it. Clients poll this and refetch only when it moves.",
+      "`change_events` currently records page writes only. Its count and " +
+      "newest timestamp identify those changes without reading the pages. " +
+      "Category changes do not advance this token until trigger-based events land.",
     tags: ["meta"],
     security: editorSecurity,
     response: {

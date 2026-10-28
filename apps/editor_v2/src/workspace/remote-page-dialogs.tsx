@@ -3,7 +3,7 @@ import { useState } from "react";
 import type { EditorApi, CreatePageInput, ServiceDetail } from "../api/client";
 import { apiFailureMessages } from "../api/failure-messages";
 import { suggestedUrl, urlProblem, pageFieldLabel } from "../api/page-markdown";
-import { pageQuery, taxonomyQuery } from "../api/queries";
+import { pageQuery, savedCategoriesQuery } from "../api/queries";
 import { Button } from "../ui/button";
 import { ConfirmDialog } from "../ui/confirm-dialog";
 import { Field } from "../ui/field";
@@ -60,7 +60,7 @@ export function CreateRemoteServiceDialog({
   close: () => void;
   done: (id: string) => void;
 }) {
-  const categories = useQuery(taxonomyQuery(api)).data ?? [];
+  const categories = useQuery(savedCategoriesQuery(api)).data ?? [];
   const [title, setTitle] = useState("");
   const [categoryId, setCategoryId] = useState("");
   const [edited, setEdited] = useState<string>();

@@ -18,9 +18,11 @@ export const serviceQuery = (api: EditorApi, id: string) =>
 export const pageQuery = (api: EditorApi, id: string) =>
   queryOptions({ queryKey: ["content", "page", id], queryFn: () => api.page(id) });
 
-export const taxonomyQuery = (api: EditorApi) =>
-  queryOptions({ queryKey: ["content", "taxonomy"], queryFn: () => api.taxonomy() });
+/** The categories saved in the content API, which page pickers offer; the preview's edits never appear here. */
+export const savedCategoriesQuery = (api: EditorApi) =>
+  queryOptions({ queryKey: ["content", "saved-categories"], queryFn: () => api.savedCategories() });
 
+/** The Categories screen's local preview, which page pickers never read. */
 export const categoriesQuery = (api: EditorApi) =>
   queryOptions({ queryKey: ["content", "categories"], queryFn: () => api.categories() });
 

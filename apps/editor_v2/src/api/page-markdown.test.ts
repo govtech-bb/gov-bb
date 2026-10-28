@@ -3,19 +3,24 @@ import estate from "../../../api_v2/src/seed-data/estate.json";
 import { createHeadlessEditor } from "../editor/core/create-editor";
 import { $setPageMetadata } from "../pages/metadata";
 import { govbbPageCodec, govbbPageEditor } from "../presets/govbb-page";
-import type { ApiPage, TaxonomyCategory } from "./client";
+import type { ApiPage, SavedCategory } from "./client";
 import { markdownToPageSaveInput, pageToMarkdown, suggestedUrl } from "./page-markdown";
 
 const VISIBILITIES = ["public", "preview", "draft"] as const;
 
 const idOf = (key: string) => `id:${key}`;
 
-const categories: TaxonomyCategory[] = estate.categories.map((category) => ({
+const categories: SavedCategory[] = estate.categories.map((category) => ({
   id: idOf(category.slug),
   parent_id: category.parent ? idOf(category.parent) : null,
   slug: category.slug,
   url: category.parent ? `/${category.parent}/${category.slug}` : `/${category.slug}`,
   title: category.title,
+  description: category.description,
+  position: category.position,
+  services: 0,
+  reserved_route: false,
+  updated_at: "2026-10-07T12:00:00.000Z",
 }));
 
 const pages: ApiPage[] = estate.pages.map((page) => ({
