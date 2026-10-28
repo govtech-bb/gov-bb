@@ -642,6 +642,70 @@ describe("a revision that went stale while it waited", () => {
   });
 });
 
+describe("a rejected revision submitted again", () => {
+  /** E drafts it (plus `contributor`, if any), `submitter` submits it, APPROVER rejects it, `resubmitter` sends it back. */
+  const resubmitted = async (
+    submitter: Employee,
+    resubmitter: Employee,
+    contributor?: Employee,
+  ) => {
+    const { page, version } = await drafted();
+    if (contributor)
+      await save(
+        contributor,
+        { ...page, updated_at: version },
+        { title: "Severance pay", body_markdown: "Contributed" },
+      );
+    await review(submitter, page.id, "submit");
+    await review(APPROVER, page.id, "reject");
+    const again = await review(resubmitter, page.id, "submit", {
+      version: await currentVersion(page.id),
+    });
+    expect(again.statusCode).toBe(200);
+    return page;
+  };
+
+  /** Publishing and rejecting are both refused to `employee`, and nothing changes. */
+  const refusedTo = async (employee: Employee, pageId: PageId) => {
+    const before = { page: await stored(pageId), revisions: await revisions() };
+    for (const step of ["publish", "reject"] as const) {
+      const response = await review(employee, pageId, step);
+      expect(response.statusCode, step).toBe(403);
+      expect(response.json().message, step).toMatch(/you made or submitted/);
+    }
+    expect({
+      page: await stored(pageId),
+      revisions: await revisions(),
+    }).toEqual(before);
+  };
+
+  it("is refused to a contributor", async () => {
+    const page = await resubmitted(TEST_EDITOR, TEST_EDITOR, TEST_EMPLOYEE);
+
+    await refusedTo(TEST_EMPLOYEE, page.id);
+  });
+
+  it("is refused to whoever submitted it again", async () => {
+    const page = await resubmitted(TEST_EDITOR, TEST_EMPLOYEE);
+
+    await refusedTo(TEST_EMPLOYEE, page.id);
+  });
+
+  it("is refused to whoever submitted the rejected round, though someone else submitted it again", async () => {
+    // Approver S submits E's draft; A2 rejects it; E sends it back unchanged.
+    const page = await resubmitted(TEST_EMPLOYEE, TEST_EDITOR);
+    expect((await revisions()).at(-1)).toMatchObject({
+      status: "submitted",
+      submittedBy: TEST_EDITOR.id,
+      contributors: [TEST_EDITOR.id, TEST_EMPLOYEE.id],
+    });
+
+    await refusedTo(TEST_EMPLOYEE, page.id);
+    // Someone who neither changed nor submitted any round of it can.
+    expect((await review(APPROVER, page.id, "publish")).statusCode).toBe(200);
+  });
+});
+
 describe("a decision without the version reviewed", () => {
   it.each(["publish", "reject"] as const)(
     "is refused to %s with a 428, and nothing changes",

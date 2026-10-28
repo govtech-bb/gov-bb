@@ -1372,7 +1372,7 @@ export interface paths {
                             live_updated_at: string;
                             /** @description The user id of whoever started it. */
                             created_by: string;
-                            /** @description The user id of everyone who saved to it, none of whom may approve it. */
+                            /** @description The user id of everyone who saved to it, and of whoever submitted an earlier, rejected round of it; none of them may approve it. */
                             contributors: string[];
                             /** @description The user id of whoever submitted it for review. */
                             submitted_by: string | null;
@@ -3024,7 +3024,7 @@ export interface paths {
         put?: never;
         /**
          * Submit a page's draft revision for review
-         * @description Needs the editor role (403 otherwise). Records the submitter, who may not then approve it. 404 when the page has no draft revision; 409 `under_review` when it is already submitted, or `conflict` when the draft has been saved since `if-updated-at`. Saving the page is refused while it waits. A rejected revision can be submitted again as it is: it is copied into a new submitted revision with the same contributors and `updated_at`, and the rejected one keeps its comment.
+         * @description Needs the editor role (403 otherwise). Records the submitter, who may not then approve it. 404 when the page has no draft revision; 409 `under_review` when it is already submitted, or `conflict` when the draft has been saved since `if-updated-at`. Saving the page is refused while it waits. A rejected revision can be submitted again as it is: it is copied into a new submitted revision with the same `updated_at`, and the rejected one keeps its comment. The copy's `contributors` gain the rejected round's submitter, who may not approve it either.
          */
         post: {
             parameters: {
@@ -3087,7 +3087,7 @@ export interface paths {
                             live_updated_at: string;
                             /** @description The user id of whoever started it. */
                             created_by: string;
-                            /** @description The user id of everyone who saved to it, none of whom may approve it. */
+                            /** @description The user id of everyone who saved to it, and of whoever submitted an earlier, rejected round of it; none of them may approve it. */
                             contributors: string[];
                             /** @description The user id of whoever submitted it for review. */
                             submitted_by: string | null;
@@ -3310,7 +3310,7 @@ export interface paths {
                             live_updated_at: string;
                             /** @description The user id of whoever started it. */
                             created_by: string;
-                            /** @description The user id of everyone who saved to it, none of whom may approve it. */
+                            /** @description The user id of everyone who saved to it, and of whoever submitted an earlier, rejected round of it; none of them may approve it. */
                             contributors: string[];
                             /** @description The user id of whoever submitted it for review. */
                             submitted_by: string | null;

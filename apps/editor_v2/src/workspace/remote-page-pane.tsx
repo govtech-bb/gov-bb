@@ -186,16 +186,21 @@ function RemotePageEditor({
       savePageDraft(api, current.base, current.markdown, categories),
     onSuccess: (outcome, sent) => {
       if (outcome.kind === "saved") {
-        // Show what's now stored, unless more was typed during the save
-        if (outcome.discarded && store.getSnapshot().committed === sent.markdown) {
+        // Show what api_v2 stored when it differs from what was sent, unless more was typed during the save
+        const typed = store.getSnapshot().committed !== sent.markdown;
+
+        if (outcome.base.markdown !== sent.markdown && !typed) {
           store.edit(outcome.base.markdown);
 
           if (!store.apply()) store.discard();
-          toast("The page is no longer public", {
-            description:
-              "Its changes that were waiting for review were discarded. It shows its last published content.",
-          });
         }
+
+        if (outcome.discarded)
+          toast("The page is no longer public", {
+            description: typed
+              ? "Its changes that were waiting for review were discarded, but your open copy still contains them. Check it before you save."
+              : "Its changes that were waiting for review were discarded. It shows its last published content.",
+          });
 
         rebase(outcome.base);
         client.setQueryData(pageQuery(api, server.id).queryKey, outcome.base.page);
@@ -208,7 +213,6 @@ function RemotePageEditor({
     },
   });
 
-  // Sends the saved draft for review; the page's version doesn't move, only its review state
   // Sends the saved draft, or a rejected change as it is, for review; its version doesn't move
   const submit = useMutation({
     mutationFn: () => api.submitRevision(server.id, server.updated_at),
