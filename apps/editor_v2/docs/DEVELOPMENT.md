@@ -90,9 +90,28 @@ Avoid editing source while checking undo and document switching: a development r
 
 The page-writer fixture builds its own bundle, so pass `VITE_SITE_PREVIEW_URL` to the browser-test process as well as the dev server. Keep the normal landing reference available while running these suites. Real deployment headers, sign-in, assistive technology and phone IME still need manual checks; synthetic composition and narrow viewports are not substitutes.
 
+The existing TypeScript configuration does not enable `exactOptionalPropertyTypes`. A strictness probe still fails across legacy converters, form controls and test fixtures (for example, `sourceKey: undefined` in `form-markdown-to-lexical.ts` and `config: undefined` in `check-native-form-coverage.ts`). Migrating those contracts is separate from page editing; the required project typecheck remains the verification gate.
+
+## Real-API concurrent editing check
+
+`concurrent-page-editing.mjs` runs two employees and same-user tabs against real Fastify and isolated PostgreSQL, rather than HTTP fixtures. It covers takeover, stale writes, ordinary heartbeat loss detection, idle response/expiry, auth-expiry exports and guarded deletion of unsupported content. `apps/api_v2/browser/page-edit-locks.test.ts` owns the temporary API and database and tears both down; its test-only clock controls are not production routes.
+
+Start the editor with `VITE_API_ORIGIN=http://127.0.0.1:3038`, auth bypass off, and a working site preview. Start landing at `127.0.0.1:3048` and set `VITE_SITE_PREVIEW_URL=http://127.0.0.1:3048/cms-preview/`. Then run from the repo root, with an isolated PostgreSQL server and installed Playwright Chromium:
+
+```sh
+DB_HOST=127.0.0.1 DB_PORT=55438 \
+PLAYWRIGHT_MODULE_PATH="$PWD/node_modules/.pnpm/node_modules/playwright" \
+pnpm --dir apps/editor_v2 exec node scripts/browser/run.mjs \
+  http://127.0.0.1:3018/ concurrent-page-editing.mjs
+```
+
+The runner forwards the editor URL and starts the API at port 3038. Do not point this scenario at a deployed database. Keep running `remote-page-editing.mjs`, `routing.mjs` and `service-workspace.mjs` alongside it. If the full editor Vitest run exhausts local workers, `pnpm exec nx run editor_v2:test -- --maxWorkers=4` limits concurrency without skipping tests.
+
 ## Persistence and recovery
 
-Unsaved edits exist only in memory. Save/Publish validates and sends the applied snapshot with the baseline's `updated_at` as `if-updated-at`. Failed requests preserve work for retry or download. HTTP 409 requires an explicit conflict choice; background reads never silently advance the write token.
+Unsaved edits exist only in memory. Save/Publish validates and sends the applied snapshot with the baseline's numeric `version` and the acquisition's `X-Page-Edit-Lock-Token`. A successful response acknowledges only the submitted snapshot, not edits made while waiting. Background reads never silently advance the baseline. Version conflicts require an explicit choice of local or saved content; lock refusals require ownership reconciliation.
+
+Network/auth failures and lock loss retain the same store, including unapplied or invalid source and failed canvas serialization. An uncertain write also retains its submitted snapshot and blocks resubmission until the author checks the saved page and chooses which copy to keep. Loading saved content validates it before replacing local work. No autosave, durable drafts, crash/reload recovery or automatic merge is provided.
 
 Apply is not Save. Invalid/unapplied source and serialization errors also count as unsaved work. Cancelled navigation/sign-out retains edits and undo. Pending saves block departure. A crash, refresh, closed tab or confirmed departure loses unsaved work; unload warnings are best-effort, not recovery.
 
@@ -110,7 +129,7 @@ Paths below are relative to `src`. Symbols not listed as renamed keep their name
 
 | Previous source | Current source |
 | --- | --- |
-| `workspace/api-pages.ts` synchronization | `workspace/page-sync.ts`: `ServerPageBaseline`, `PageSaveOutcome`, `savePageDraft`; browser baseline storage/seeding helpers removed |
+| `workspace/api-pages.ts` synchronization | `workspace/page-sync.ts`: `PageEditBaseline`, `PageSaveOutcome`, `savePageChanges`; browser baseline storage/seeding helpers removed |
 | `workspace/api-pages.ts` service mapping | `workspace/service-pages.ts`: `apiPageDocument` → `pageDocumentFromApi`, `roleOf` → `inferServicePageRole`; local `serviceDocuments` joins removed |
 | `workspace/api-pages.ts` Markdown helpers | `api/page-markdown.ts`: `fieldLabel` → `pageFieldLabel`; `restoredMarkdown` removed with saved-page history |
 | `workspace/api-page.tsx` | `workspace/remote-page-pane.tsx`: `RemotePagePane`, private `RemotePageEditor`; baseline state is in memory |
@@ -132,7 +151,7 @@ Paths below are relative to `src`. Symbols not listed as renamed keep their name
 | `host/form-schema-ui.tsx` | `host/form-json-dialog.tsx`: `FormSchemaEditor` → `FormJsonDialog` |
 | `ui/table/hook.ts` | `ui/table/table-hooks.ts`; exports unchanged |
 
-Old browser draft/workspace/baseline/journal records are intentionally ignored, never migrated or cleaned up. Routes, API/schema contracts and app/package/Nx names remain unchanged. Locking, webhooks, server autosave and publication architecture are deferred.
+Old browser draft/workspace/baseline/journal records are intentionally ignored, never migrated or cleaned up. App/package/Nx names remain unchanged. The page API now requires numeric versions and edit-lock credentials; see [API concurrency and rollout](../../api_v2/README.md#concurrent-editing). Deploy enforcing API instances and drain old ones before the editor. Old tabs must export unsaved work before refreshing. An editor rollback must not relax backend enforcement. Webhooks, server autosave and publication redesign remain out of scope.
 
 Historical probes such as `rb4.mjs`, `step3-ui.mjs`, `step5-ui.mjs` and other numbered browser scripts are deferred pending confirmation of their use. They and legacy fixtures are not renamed or counted as passing regression checks.
 

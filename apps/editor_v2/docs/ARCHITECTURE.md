@@ -92,7 +92,13 @@ A `DraftStore` receives explicit source and a codec: `new DraftStore(source, cod
 
 ## Service pages and workspace
 
-`workspace/page-sync.ts` compares a working copy with an in-memory `ServerPageBaseline` and saves explicitly using its `updated_at` token. A response acknowledges the submitted snapshot, never later edits. Background refresh does not overwrite the working copy or silently advance its write token. `workspace/service-pages.ts` maps only API pages into sidebar rows. `api/page-markdown.ts` owns page/save conversion.
+`workspace/page-sync.ts` compares a working copy with an in-memory `PageEditBaseline`. `savePageChanges` submits its numeric `page.version` and the active acquisition's credential. A response acknowledges the submitted snapshot, never later edits. Background refresh does not overwrite the working copy or silently advance its version. Delete confirmation captures the active session's reviewed version and credential, not sidebar metadata. `workspace/service-pages.ts` maps only API pages into sidebar rows. `api/page-markdown.ts` owns page/save conversion.
+
+`api/page-schemas.ts` parses page, lock and failure responses. Content versions, public lock generations, activity sequences and private credentials have distinct types. Page/edit-lock operations return typed results; only the page-query adapter rejects for TanStack Query. An interrupted write has an unknown outcome, not an assumed rollback, and is never retried automatically.
+
+`workspace/page-edit-lock-session.ts` owns acquisition, takeover, renewal, idle deadlines and late-response cleanup behind injected API, clock, scheduler and token capabilities. Construction has no effects. Only the active authorized page owns a session; retained inactive panes and prefetches do not acquire or renew. React subscribes to its explicit states and gates canvas, metadata, source application, undo/redo and inline preview editing. Ownership uncertainty makes these surfaces read-only without replacing the `DraftStore`; copy, downloads and preview remain available.
+
+Server deadlines govern the ten-minute idle prompt and two-minute response grace. Heartbeats every 30 seconds do not count as activity. Resuming a hidden/suspended tab requires a status read before editing. Confirmed departure releases the exact token; cancelled navigation does not. A late successful abandoned acquisition receives its own release and cannot release a replacement. `page-edit-lock-notice.tsx` uses existing dialogs and banners for takeover, idle response, lock loss and unavailable ownership.
 
 `PageDocument` contains API navigation metadata, not content or storage keys. `ServicePageRole` describes entry/start/supporting content; the reusable form schema's `PageRole` describes questions/review/declaration/confirmation/result pages.
 

@@ -24,8 +24,30 @@ export const servicesQuery = (api: EditorApi) =>
 export const serviceQuery = (api: EditorApi, id: string) =>
   queryOptions({ queryKey: ["content", "service", id], queryFn: () => api.service(id) });
 
+/** Only the query adapter turns a typed page-read failure into TanStack Query rejection. */
 export const pageQuery = (api: EditorApi, id: string) =>
-  queryOptions({ queryKey: ["content", "page", id], queryFn: () => api.page(id) });
+  queryOptions({
+    queryKey: ["content", "page", id],
+    queryFn: async () => {
+      const result = await api.page(id);
+
+      if (result.ok) return result.value;
+      const failure = result.error;
+
+      const status =
+        failure.kind === "signed-out"
+          ? 401
+          : failure.kind === "forbidden"
+            ? 403
+            : failure.kind === "missing"
+              ? 404
+              : failure.kind === "invalid"
+                ? 400
+                : 0;
+
+      throw new ApiFailure(status, failure.kind === "invalid" ? failure.errors : []);
+    },
+  });
 
 /**
  * The one shared category list for Categories, Services filters, page settings and Create service. A failed read

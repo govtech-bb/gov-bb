@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "api_v2",
-    "description": "Requests for apps/api_v2. Full reference: {{baseUrl}}/docs (spec at {{baseUrl}}/docs/openapi.json).\n\nPublic and Navigation requests work with no setup. Preview requests send the `previewToken` variable as `x-preview-token`; it must equal the API's PREVIEW_SECRET (`local-preview-secret` in the README's local run). Editor requests need an employee session. Locally, run the API with `AUTH_BYPASS=true` and they work with no sign-in. Otherwise sign in to the editor with GitHub as a govtech-bb organization member, then copy the `better-auth.session_token` cookie value into the `sessionToken` collection variable. Writes also send `Origin: {{editorOrigin}}`, which must match the API's EDITOR_ORIGIN.\n\nRun the Editor folder top to bottom: Create stores `pageId`, `pageUrl` and `updatedAt`; Create a sub-page stores `subPageId`; the deletes clean both up.",
+    "description": "Requests for apps/api_v2. Full reference: {{baseUrl}}/docs (spec at {{baseUrl}}/docs/openapi.json).\n\nPublic and Navigation requests work with no setup. Preview requests send the `previewToken` variable as `x-preview-token`; it must equal the API's PREVIEW_SECRET (`local-preview-secret` in the README's local run). Editor requests need an employee session. Locally, run the API with `AUTH_BYPASS=true` and they work with no sign-in. Otherwise sign in to the editor with GitHub as a govtech-bb organization member, then copy the `better-auth.session_token` cookie value into the `sessionToken` collection variable. Writes also send `Origin: {{editorOrigin}}`, which must match the API's EDITOR_ORIGIN.\n\nRun the Editor folder top to bottom: Create stores `pageId`, `pageUrl` and `pageVersion`; Create a sub-page stores its ID and version. Acquire each new page's edit lock before writing. The acquisition requests use generation 0 because these pages were just created; restart the folder with fresh pages after a lock conflict or a two-minute expiry. Tokens are credentials, kept in headers only. The deletes clean both pages up.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -30,7 +30,7 @@
       "value": ""
     },
     {
-      "key": "updatedAt",
+      "key": "pageVersion",
       "value": ""
     },
     {
@@ -587,7 +587,7 @@
                   "const page = pm.response.json();",
                   "pm.collectionVariables.set('pageId', page.id);",
                   "pm.collectionVariables.set('pageUrl', page.url);",
-                  "pm.collectionVariables.set('updatedAt', page.updated_at);"
+                  "pm.collectionVariables.set('pageVersion', page.version);"
                 ]
               }
             }
@@ -626,7 +626,8 @@
                   "  pm.response.to.have.status(201);",
                   "  pm.expect(pm.response.json().parent_id).to.eql(pm.collectionVariables.get('pageId'));",
                   "});",
-                  "pm.collectionVariables.set('subPageId', pm.response.json().id);"
+                  "pm.collectionVariables.set('subPageId', pm.response.json().id);",
+                  "pm.collectionVariables.set('subPageVersion', pm.response.json().version);"
                 ]
               }
             }
@@ -650,7 +651,57 @@
               "script": {
                 "exec": [
                   "pm.test('200', () => pm.response.to.have.status(200));",
-                  "pm.collectionVariables.set('updatedAt', pm.response.json().updated_at);"
+                  "pm.collectionVariables.set('pageVersion', pm.response.json().version);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Acquire the new page's edit lock",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Cookie",
+                "value": "better-auth.session_token={{sessionToken}}"
+              },
+              {
+                "key": "Origin",
+                "value": "{{editorOrigin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Page-Edit-Lock-Token",
+                "value": "{{pageEditLockToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/pages/{{pageId}}/lock",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"action\": \"acquire\",\n  \"expectedLockGeneration\": 0\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "pm.collectionVariables.set('pageEditLockToken', pm.variables.replaceIn('{{$guid}}'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 owned', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json().ownedByCaller).to.eql(true);",
+                  "});"
                 ]
               }
             }
@@ -674,14 +725,14 @@
                 "value": "application/json"
               },
               {
-                "key": "if-updated-at",
-                "value": "{{updatedAt}}"
+                "key": "X-Page-Edit-Lock-Token",
+                "value": "{{pageEditLockToken}}"
               }
             ],
             "url": "{{baseUrl}}/pages/{{pageId}}",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"url\": \"{{pageUrl}}\",\n  \"category_id\": null,\n  \"title\": \"Postman test page (edited)\",\n  \"description\": null,\n  \"visibility\": \"draft\",\n  \"form_id\": null,\n  \"body_markdown\": \"Edited from Postman.\",\n  \"frontmatter\": {}\n}"
+              "raw": "{\n  \"version\": {{pageVersion}},\n  \"url\": \"{{pageUrl}}\",\n  \"category_id\": null,\n  \"title\": \"Postman test page (edited)\",\n  \"description\": null,\n  \"visibility\": \"draft\",\n  \"form_id\": null,\n  \"body_markdown\": \"Edited from Postman.\",\n  \"frontmatter\": {}\n}"
             }
           },
           "event": [
@@ -690,14 +741,14 @@
               "script": {
                 "exec": [
                   "pm.test('200 saved', () => pm.response.to.have.status(200));",
-                  "pm.collectionVariables.set('updatedAt', pm.response.json().updated_at);"
+                  "pm.collectionVariables.set('pageVersion', pm.response.json().version);"
                 ]
               }
             }
           ]
         },
         {
-          "name": "Save with a stale if-updated-at (409)",
+          "name": "Save with a stale version (409)",
           "request": {
             "method": "PUT",
             "header": [
@@ -714,14 +765,14 @@
                 "value": "application/json"
               },
               {
-                "key": "if-updated-at",
-                "value": "2000-01-01T00:00:00.000Z"
+                "key": "X-Page-Edit-Lock-Token",
+                "value": "{{pageEditLockToken}}"
               }
             ],
             "url": "{{baseUrl}}/pages/{{pageId}}",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"url\": \"{{pageUrl}}\",\n  \"category_id\": null,\n  \"title\": \"Stale write\",\n  \"description\": null,\n  \"visibility\": \"draft\",\n  \"form_id\": null,\n  \"body_markdown\": \"Should be refused.\",\n  \"frontmatter\": {}\n}"
+              "raw": "{\n  \"version\": 1,\n  \"url\": \"{{pageUrl}}\",\n  \"category_id\": null,\n  \"title\": \"Stale write\",\n  \"description\": null,\n  \"visibility\": \"draft\",\n  \"form_id\": null,\n  \"body_markdown\": \"Should be refused.\",\n  \"frontmatter\": {}\n}"
             }
           },
           "event": [
@@ -731,7 +782,7 @@
                 "exec": [
                   "pm.test('409 conflict', () => {",
                   "  pm.response.to.have.status(409);",
-                  "  pm.expect(pm.response.json().error).to.eql('conflict');",
+                  "  pm.expect(pm.response.json().error).to.eql('page_version_conflict');",
                   "});"
                 ]
               }
@@ -781,9 +832,13 @@
               {
                 "key": "Origin",
                 "value": "{{editorOrigin}}"
+              },
+              {
+                "key": "X-Page-Edit-Lock-Token",
+                "value": "{{pageEditLockToken}}"
               }
             ],
-            "url": "{{baseUrl}}/pages/{{pageId}}"
+            "url": "{{baseUrl}}/pages/{{pageId}}?version={{pageVersion}}"
           },
           "event": [
             {
@@ -793,6 +848,56 @@
                   "pm.test('422 on id', () => {",
                   "  pm.response.to.have.status(422);",
                   "  pm.expect(pm.response.json().errors[0].field).to.eql('id');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Acquire the new sub-page's edit lock",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Cookie",
+                "value": "better-auth.session_token={{sessionToken}}"
+              },
+              {
+                "key": "Origin",
+                "value": "{{editorOrigin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Page-Edit-Lock-Token",
+                "value": "{{subPageEditLockToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/pages/{{subPageId}}/lock",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"action\": \"acquire\",\n  \"expectedLockGeneration\": 0\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "pm.collectionVariables.set('subPageEditLockToken', pm.variables.replaceIn('{{$guid}}'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 owned', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json().ownedByCaller).to.eql(true);",
                   "});"
                 ]
               }
@@ -811,9 +916,13 @@
               {
                 "key": "Origin",
                 "value": "{{editorOrigin}}"
+              },
+              {
+                "key": "X-Page-Edit-Lock-Token",
+                "value": "{{subPageEditLockToken}}"
               }
             ],
-            "url": "{{baseUrl}}/pages/{{subPageId}}"
+            "url": "{{baseUrl}}/pages/{{subPageId}}?version={{subPageVersion}}"
           },
           "event": [
             {
@@ -838,9 +947,13 @@
               {
                 "key": "Origin",
                 "value": "{{editorOrigin}}"
+              },
+              {
+                "key": "X-Page-Edit-Lock-Token",
+                "value": "{{pageEditLockToken}}"
               }
             ],
-            "url": "{{baseUrl}}/pages/{{pageId}}"
+            "url": "{{baseUrl}}/pages/{{pageId}}?version={{pageVersion}}"
           },
           "event": [
             {

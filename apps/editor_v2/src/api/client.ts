@@ -1,5 +1,16 @@
 import type { Category, CategoryBlockers, CategoryFields, CategoryOrder } from "./categories";
+import { z } from "zod";
 import type { paths } from "./openapi";
+import {
+  apiPageSchema,
+  pageEditLockStatusSchema,
+  type PageApiFailure,
+  type PageApiResult,
+  type PageContentVersion,
+  type PageEditLockApi,
+  type PageEditLockToken,
+  type PageEditActivitySequence,
+} from "./page-schemas";
 
 type Json<Content> = Content extends { content: { "application/json": infer Body } } ? Body : never;
 
@@ -16,14 +27,16 @@ type ApiCategoryBlockers = Extract<
   { error: "category_in_use" }
 >["blockers"];
 
-/** A page as the editor reads and saves it. */
-export type ApiPage = Json<paths["/pages/{id}"]["get"]["responses"][200]>;
+/** Parsed page content and its reviewed version; navigation rows cannot substitute for it. */
+export type ApiPage = z.infer<typeof apiPageSchema>;
 
 /** What creating a page sends. */
 export type CreatePageInput = Json<paths["/pages"]["post"]["requestBody"]>;
 
-/** What saving a page sends: every field, with `parent_id` left out to keep the parent. */
-export type SavePageInput = Json<paths["/pages/{id}"]["put"]["requestBody"]>;
+/** Replacement fields carry the reviewed content version, never a proposed next version. */
+export type SavePageInput = Omit<Json<paths["/pages/{id}"]["put"]["requestBody"]>, "version"> & {
+  version: PageContentVersion;
+};
 
 /** One row of the services list. */
 export type ServiceSummary = Json<paths["/services"]["get"]["responses"][200]>[number];
@@ -264,10 +277,110 @@ const isCategoryBlockers = (value: unknown): value is ApiCategoryBlockers =>
 // The body of an answer, or undefined when it isn't JSON or was cut off
 const bodyOf = async (response: Response) => response.json().catch(() => undefined);
 
-export type EditorApi = ReturnType<typeof createEditorApi>;
+/** Editor network capabilities; page writes require reviewed content and acquisition evidence. */
+export interface EditorApi extends PageEditLockApi {
+  /** Read the existing navigation listing. */
+  services(): Promise<ServiceSummary[]>;
+  /** Read a service's navigation-only page metadata. */
+  service(id: string): Promise<ServiceDetail>;
+  /** Read the shared, persisted category list used by page pickers. */
+  categories(): Promise<
+    CategoryResult<
+      Category[],
+      CategoryUnreachable | CategoryAccessDenied | CategoryRefused | CategoryAnswerMalformed
+    >
+  >;
+  /** Append a category to the end of its destination siblings. */
+  createCategory(
+    fields: CategoryFields,
+  ): Promise<
+    CategoryResult<
+      Category,
+      CategoryAccessDenied | CategoryRejected | CategoryRefused | CategoryOutcomeUnknown
+    >
+  >;
+  /** Save category fields using the reviewed timestamp, not a page content version. */
+  updateCategory(
+    id: string,
+    fields: CategoryFields,
+    ifUpdatedAt: string,
+  ): Promise<
+    CategoryResult<
+      Category,
+      | CategoryAccessDenied
+      | CategoryNotFound
+      | CategoryRejected
+      | CategoryConflict
+      | CategoryRefused
+      | CategoryOutcomeUnknown
+    >
+  >;
+  /** Reorder the reviewed sibling snapshot. */
+  orderCategories(
+    order: CategoryOrder,
+  ): Promise<
+    CategoryResult<
+      Category[],
+      | CategoryAccessDenied
+      | CategoryRejected
+      | CategoryConflict
+      | CategoryRefused
+      | CategoryOutcomeUnknown
+    >
+  >;
+  /** Delete an unused category at its reviewed timestamp. */
+  deleteCategory(
+    id: string,
+    ifUpdatedAt: string,
+  ): Promise<
+    CategoryResult<
+      void,
+      | CategoryAccessDenied
+      | CategoryNotFound
+      | CategoryConflict
+      | CategoryInUse
+      | CategoryRefused
+      | CategoryOutcomeUnknown
+    >
+  >;
+  /** Read the existing estate polling token. */
+  version(): Promise<EstateVersion>;
+  /** Parse a full page before it becomes a local editing baseline. */
+  page(id: string): Promise<PageApiResult<ApiPage>>;
+  /** Create explicitly; an uncertain response must not cause an automatic duplicate request. */
+  createPage(page: CreatePageInput): Promise<PageApiResult<ApiPage>>;
+  /** Replace only the page version represented by these fields. */
+  savePage(
+    id: string,
+    fields: SavePageInput,
+    editLockToken: PageEditLockToken,
+  ): Promise<PageApiResult<ApiPage>>;
+  /** Delete the version reviewed at confirmation, never a freshly fetched substitute. */
+  deletePage(
+    id: string,
+    expectedVersion: PageContentVersion,
+    editLockToken: PageEditLockToken,
+  ): Promise<PageApiResult<void>>;
+  /** Construct a public-site preview URL without changing content. */
+  landingUrl(path: string): string | undefined;
+}
+
+const fieldErrorsSchema = z.object({
+  errors: z.array(z.object({ field: z.string(), message: z.string() })),
+});
+
+const conflictSchema = z.object({
+  error: z.enum([
+    "page_version_conflict",
+    "page_edit_lock_required",
+    "page_edit_lock_lost",
+    "page_edit_lock_conflict",
+  ]),
+  pageId: z.guid(),
+});
 
 /** api_v2's editor routes, sent with the employee session cookie. */
-export function createEditorApi(apiOrigin: string, landingOrigin?: string) {
+export function createEditorApi(apiOrigin: string, landingOrigin?: string): EditorApi {
   const landing = landingOrigin ? new URL(landingOrigin).origin : undefined;
 
   // Any answer the API gives; only a request that got none fails
@@ -379,6 +492,74 @@ export function createEditorApi(apiOrigin: string, landingOrigin?: string) {
 
   const read = async <Body>(path: string): Promise<Body> => (await send("GET", path)).json();
 
+  async function pageRequest<T>(
+    method: "GET" | "POST" | "PUT" | "DELETE",
+    path: string,
+    schema: z.ZodType<T>,
+    body?:
+      | CreatePageInput
+      | SavePageInput
+      | Parameters<PageEditLockApi["acquirePageEditLock"]>[2]
+      | { activitySequence: PageEditActivitySequence },
+    token?: PageEditLockToken,
+  ): Promise<PageApiResult<T>> {
+    const headers = new Headers();
+
+    const init: RequestInit = {
+      method,
+      headers,
+      credentials: "include",
+      cache: "no-store",
+      keepalive: method === "DELETE" && path.endsWith("/lock"),
+    };
+
+    if (body !== undefined) {
+      headers.set("content-type", "application/json");
+      init.body = JSON.stringify(body);
+    }
+
+    if (token) headers.set("x-page-edit-lock-token", token.reveal());
+
+    let response: Response;
+
+    try {
+      response = await fetch(`${apiOrigin}${path}`, init);
+    } catch {
+      return { ok: false, error: { kind: method === "GET" ? "unavailable" : "outcome-unknown" } };
+    }
+
+    if (response.status === 401) return { ok: false, error: { kind: "signed-out" } };
+
+    if (response.status === 403) return { ok: false, error: { kind: "forbidden" } };
+
+    if (response.status === 404) return { ok: false, error: { kind: "missing" } };
+
+    if (response.status >= 500)
+      return { ok: false, error: { kind: method === "GET" ? "unavailable" : "outcome-unknown" } };
+
+    let value: unknown;
+
+    if (response.status !== 204) {
+      try {
+        value = await response.json();
+      } catch {
+        return {
+          ok: false,
+          error: { kind: method !== "GET" && response.ok ? "outcome-unknown" : "invalid-response" },
+        };
+      }
+    }
+
+    if (!response.ok) return { ok: false, error: parsePageFailure(response.status, value) };
+    const parsed = schema.safeParse(value);
+
+    return parsed.success
+      ? { ok: true, value: parsed.data }
+      : { ok: false, error: { kind: method === "GET" ? "invalid-response" : "outcome-unknown" } };
+  }
+
+  const pagePath = (id: string) => `/pages/${encodeURIComponent(id)}`;
+
   const services = () => read<ServiceSummary[]>("/services");
 
   return {
@@ -469,14 +650,74 @@ export function createEditorApi(apiOrigin: string, landingOrigin?: string) {
       return written.ok ? ok(undefined) : written;
     },
     version: () => read<EstateVersion>("/version"),
-    page: (id: string) => read<ApiPage>(`/pages/${id}`),
-    createPage: async (page: CreatePageInput): Promise<ApiPage> =>
-      (await send("POST", "/pages", page)).json(),
-    savePage: async (id: string, fields: SavePageInput, ifUpdatedAt: string): Promise<ApiPage> =>
-      (await send("PUT", `/pages/${id}`, fields, ifUpdatedAt)).json(),
-    deletePage: async (id: string) => {
-      await send("DELETE", `/pages/${id}`);
+    page: (id) => pageRequest("GET", pagePath(id), apiPageSchema),
+    createPage: (page) => pageRequest("POST", "/pages", apiPageSchema, page),
+    savePage: (id, fields, token) => pageRequest("PUT", pagePath(id), apiPageSchema, fields, token),
+    deletePage: (id, expectedVersion, token) =>
+      pageRequest(
+        "DELETE",
+        `${pagePath(id)}?version=${expectedVersion}`,
+        z.undefined(),
+        undefined,
+        token,
+      ),
+    readPageEditLock: (id, token) =>
+      pageRequest("GET", `${pagePath(id)}/lock`, pageEditLockStatusSchema, undefined, token),
+    acquirePageEditLock: (id, token, command) =>
+      pageRequest("POST", `${pagePath(id)}/lock`, pageEditLockStatusSchema, command, token),
+    renewPageEditLock: (id, token, activitySequence) =>
+      pageRequest(
+        "PUT",
+        `${pagePath(id)}/lock`,
+        pageEditLockStatusSchema,
+        { activitySequence },
+        token,
+      ),
+    releasePageEditLock: async (id, token) => {
+      const released = await pageRequest(
+        "DELETE",
+        `${pagePath(id)}/lock`,
+        pageEditLockStatusSchema,
+        undefined,
+        token,
+      );
+
+      return released.ok ? { ok: true, value: undefined } : released;
     },
     landingUrl: (path: string) => (landing ? `${landing}${path}` : undefined),
   };
+}
+
+/** Distinguish content conflicts from ownership refusals, never forwarding unparsed response messages. */
+function parsePageFailure(
+  status: number,
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- This HTTP boundary parses untrusted failure JSON into PageApiFailure.
+  value: unknown,
+): PageApiFailure {
+  if (status === 400) return { kind: "invalid", errors: [] };
+
+  if (status === 422) {
+    const parsed = fieldErrorsSchema.safeParse(value);
+
+    return parsed.success
+      ? { kind: "invalid", errors: parsed.data.errors }
+      : { kind: "invalid-response" };
+  }
+
+  if (status === 409) {
+    const parsed = conflictSchema.safeParse(value);
+
+    if (!parsed.success) return { kind: "invalid-response" };
+
+    const codes = {
+      page_version_conflict: "version-conflict",
+      page_edit_lock_required: "lock-required",
+      page_edit_lock_lost: "lock-lost",
+      page_edit_lock_conflict: "lock-conflict",
+    } as const;
+
+    return { kind: codes[parsed.data.error], pageId: parsed.data.pageId };
+  }
+
+  return { kind: "invalid-response" };
 }

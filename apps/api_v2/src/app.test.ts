@@ -13,7 +13,12 @@ import { sql } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { FastifyInstance, InjectOptions } from "fastify";
 import pino from "pino";
-import { IF_UPDATED_AT } from "./routes/contracts";
+import { randomUUID } from "node:crypto";
+import { PAGE_EDIT_LOCK_HEADER } from "./routes/contracts";
+import {
+  PageEditLockGeneration,
+  PageEditLockToken,
+} from "./modules/page-edit-lock";
 import { PUBLIC_READ } from "./routes/responses";
 import type { Database } from "./db";
 import { withDefaults, type Visibility } from "./modules/page";
@@ -36,8 +41,10 @@ let app: FastifyInstance;
 let db: Database;
 let close: () => Promise<void>;
 let services: ReturnType<typeof createTestServices>;
+const editTokens = new Map<string, string>();
 
 beforeEach(async () => {
+  editTokens.clear();
   ({ db, close } = await createTestDb());
   services = createTestServices(db);
   app = await createTestApp(db);
@@ -49,11 +56,40 @@ afterEach(async () => {
   await close();
 });
 
-const inject = (options: InjectOptions) =>
-  app.inject({ ...options, headers: { ...TEST_HEADERS, ...options.headers } });
+const inject = (options: InjectOptions) => {
+  const path =
+    typeof options.url === "string" ? options.url : options.url?.pathname;
+  const pageId = path?.split("?")[0]?.split("/")[2] ?? "";
+  return app.inject({
+    ...options,
+    headers: {
+      ...TEST_HEADERS,
+      [PAGE_EDIT_LOCK_HEADER]: editTokens.get(pageId) ?? randomUUID(),
+      ...options.headers,
+    },
+  });
+};
 
-const seedPage = async (overrides: Record<string, unknown> = {}) =>
-  expectOk(await services.editing.create(aPage(overrides), TEST_EMPLOYEE));
+// These content-behavior fixtures own their editing sessions; ownership refusal tests use raw HTTP requests.
+const seedPage = async (overrides: Record<string, unknown> = {}) => {
+  const page = expectOk(
+    await services.editing.create(aPage(overrides), TEST_EMPLOYEE),
+  );
+  const token = randomUUID();
+  expectOk(
+    await services.editing.acquirePageEditLock(
+      page.id,
+      TEST_EMPLOYEE,
+      PageEditLockToken.parse(token),
+      {
+        action: "acquire",
+        expectedLockGeneration: PageEditLockGeneration.parse(0),
+      },
+    ),
+  );
+  editTokens.set(page.id, token);
+  return page;
+};
 
 const seedCategory = async () => {
   const [category] = await db
@@ -594,7 +630,6 @@ describe("PUT /pages/:id", () => {
     const response = await inject({
       method: "PUT",
       url: `/pages/${created.id}`,
-      headers: { [IF_UPDATED_AT]: created.updated_at },
       payload: { ...created, title: "Severance pay" },
     });
 
@@ -603,19 +638,17 @@ describe("PUT /pages/:id", () => {
     expect(response.json().updated_at).not.toBe(created.updated_at);
   });
 
-  it("409s on a stale if-updated-at and leaves the row untouched", async () => {
+  it("409s on a stale content version and leaves the row untouched", async () => {
     const created = await seedPage();
     await inject({
       method: "PUT",
       url: `/pages/${created.id}`,
-      headers: { [IF_UPDATED_AT]: created.updated_at },
       payload: { ...created, title: "First writer wins" },
     });
 
     const response = await inject({
       method: "PUT",
       url: `/pages/${created.id}`,
-      headers: { [IF_UPDATED_AT]: created.updated_at },
       payload: { ...created, title: "Second writer clobbers" },
     });
 
@@ -641,13 +674,12 @@ describe("PUT /pages/:id", () => {
     );
   });
 
-  it("400s an if-updated-at that is not a timestamp, rather than saving unconditionally", async () => {
+  it("400s a version that is not an integer, rather than saving unconditionally", async () => {
     const created = await seedPage();
     const response = await inject({
       method: "PUT",
       url: `/pages/${created.id}`,
-      headers: { [IF_UPDATED_AT]: "yesterday" },
-      payload: { ...created, title: "Saved by accident" },
+      payload: { ...created, version: "yesterday", title: "Saved by accident" },
     });
 
     expect(response.statusCode).toBe(400);
@@ -660,7 +692,7 @@ describe("PUT /pages/:id", () => {
     const response = await inject({
       method: "PUT",
       url: "/pages/22222222-2222-4222-8222-222222222222",
-      payload: withDefaults(aPage()),
+      payload: { ...withDefaults(aPage()), version: 1 },
     });
     expect(response.statusCode).toBe(404);
   });
@@ -870,7 +902,7 @@ describe("DELETE /pages/:id", () => {
     const created = await seedPage();
     const response = await inject({
       method: "DELETE",
-      url: `/pages/${created.id}`,
+      url: `/pages/${created.id}?version=${created.version}`,
     });
 
     expect(response.statusCode).toBe(204);
@@ -879,7 +911,10 @@ describe("DELETE /pages/:id", () => {
 
   it("records who deleted the page, which moves the version", async () => {
     const created = await seedPage();
-    await inject({ method: "DELETE", url: `/pages/${created.id}` });
+    await inject({
+      method: "DELETE",
+      url: `/pages/${created.id}?version=${created.version}`,
+    });
 
     const events = await db
       .select({ action: changeEvents.action, actor: changeEvents.actor })
@@ -898,7 +933,7 @@ describe("DELETE /pages/:id", () => {
 
     const response = await inject({
       method: "DELETE",
-      url: `/pages/${parent.id}`,
+      url: `/pages/${parent.id}?version=${parent.version}`,
     });
 
     expect(response.statusCode).toBe(422);
@@ -1024,12 +1059,7 @@ describe("Cache-Control", () => {
 });
 
 describe("timestamp precision", () => {
-  /**
-   * `updated_at` has to survive the round trip through JSON exactly, or
-   * optimistic concurrency rejects every save. Postgres stores microseconds
-   * and `toISOString()` emits milliseconds, so the column is `timestamptz(3)`
-   * — this asserts the agreement rather than trusting it.
-   */
+  // Timestamp precision remains stable for readers; concurrency uses the separate content counter.
   it("round-trips updated_at through JSON without losing precision", async () => {
     const created = await seedPage();
     const fetched = (await inject({ url: `/pages/${created.id}` })).json();
@@ -1038,7 +1068,7 @@ describe("timestamp precision", () => {
     expect(fetched.updated_at).toMatch(/\.\d{3}Z$/);
   });
 
-  it("accepts the updated_at it just handed out, twice in a row", async () => {
+  it("accepts the content version it just handed out, twice in a row", async () => {
     const created = await seedPage();
 
     let current = created;
@@ -1046,7 +1076,6 @@ describe("timestamp precision", () => {
       const response = await inject({
         method: "PUT",
         url: `/pages/${current.id}`,
-        headers: { [IF_UPDATED_AT]: current.updated_at },
         payload: { ...current, title },
       });
       expect(response.statusCode).toBe(200);
@@ -1065,6 +1094,8 @@ describe("CORS", () => {
       headers: {
         origin: "http://localhost:3010",
         "access-control-request-method": "PUT",
+        "access-control-request-headers":
+          "content-type, x-page-edit-lock-token, if-updated-at",
       },
     });
 
@@ -1074,6 +1105,11 @@ describe("CORS", () => {
     expect(String(response.headers["access-control-allow-methods"])).toContain(
       "DELETE",
     );
+    const allowedHeaders = String(
+      response.headers["access-control-allow-headers"],
+    ).toLowerCase();
+    expect(allowedHeaders).toContain(PAGE_EDIT_LOCK_HEADER.toLowerCase());
+    expect(allowedHeaders).toContain("if-updated-at");
   });
 
   it("refuses a site's origin, since sites fetch from their own server", async () => {
@@ -1201,10 +1237,23 @@ describe("employee access", () => {
       payload: aPage(),
     });
     expect(created.statusCode).toBe(201);
+    const page = created.json();
+    const token = randomUUID();
+    const acquisition = await inject({
+      method: "POST",
+      url: `/pages/${page.id}/lock`,
+      headers: { [PAGE_EDIT_LOCK_HEADER]: token },
+      payload: { action: "acquire", expectedLockGeneration: 0 },
+    });
+    expect(acquisition.statusCode).toBe(200);
     const saved = await inject({
       method: "PUT",
-      url: `/pages/${created.json().id}`,
-      payload: withDefaults(aPage({ title: "Updated" })),
+      url: `/pages/${page.id}`,
+      headers: { [PAGE_EDIT_LOCK_HEADER]: token },
+      payload: {
+        ...withDefaults(aPage({ title: "Updated" })),
+        version: page.version,
+      },
     });
     expect(saved.statusCode).toBe(200);
     const events = await db

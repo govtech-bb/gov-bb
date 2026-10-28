@@ -174,6 +174,7 @@ export function markdownToPageSaveInput(
   return {
     ok: true,
     value: {
+      version: base.version,
       url,
       category_id: categoryId,
       title,

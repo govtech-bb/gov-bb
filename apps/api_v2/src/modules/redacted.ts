@@ -12,6 +12,11 @@ export class Redacted<T> {
     return this.#value;
   }
 
+  /** Compare credentials without revealing either value to the caller. */
+  equals(other: Redacted<T>): boolean {
+    return this.#value === other.#value;
+  }
+
   /** Safe representation for interpolated diagnostics. */
   toString(): string {
     return "[REDACTED]";

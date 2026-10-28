@@ -17,13 +17,13 @@ import {
 import { OPENAPI_DOCUMENT } from "./openapi";
 import type { Redacted } from "./modules/redacted";
 import { authRoutes, type AuthHandler } from "./routes/auth";
-import { IF_UPDATED_AT } from "./routes/contracts";
 import { editorRoutes } from "./routes/editor";
+import { IF_UPDATED_AT, PAGE_EDIT_LOCK_HEADER } from "./routes/contracts";
 import { siteRoutes } from "./routes/site";
 import type { EmployeeGate } from "./services/editor-access";
 import type { ICategoryEditing } from "./services/category-editing";
 import type { EditorIndex } from "./services/editor-index";
-import type { PageEditing } from "./services/page-editing";
+import type { IPageEditing } from "./services/page-editing";
 import type { PageResolution } from "./services/page-resolution";
 import type { SiteNavigation } from "./services/site-navigation";
 
@@ -53,7 +53,7 @@ const DOCS_HTML = `<!doctype html>
 export interface AppOptions {
   readonly resolution: PageResolution;
   readonly navigation: SiteNavigation;
-  readonly editing: PageEditing;
+  readonly editing: IPageEditing;
   readonly index: EditorIndex;
   readonly categories: ICategoryEditing;
   readonly access: EmployeeGate;
@@ -106,7 +106,12 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
       callback(null, !origin || origin === config.editorOrigin),
     credentials: true,
     methods: ["GET", "HEAD", "POST", "PUT", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", IF_UPDATED_AT, "If-None-Match"],
+    allowedHeaders: [
+      "Content-Type",
+      IF_UPDATED_AT,
+      PAGE_EDIT_LOCK_HEADER,
+      "If-None-Match",
+    ],
   });
   // Swagger must load before routes so its onRoute hook sees their schemas.
   await app.register(swagger, {

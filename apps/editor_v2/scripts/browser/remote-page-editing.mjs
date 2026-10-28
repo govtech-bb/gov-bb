@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { authenticatedContext, servicesFixture } from "./auth-fixture.mjs";
 import { chromium } from "./playwright.mjs";
+import { installPageEditLocks } from "./page-edit-lock-fixture.mjs";
 
 const browser = await chromium.launch();
 
@@ -36,6 +37,7 @@ await page.addInitScript((id) => {
 
 const initial = {
   id,
+  version: 1,
   parent_id: service.id,
   category_id: null,
   url: `${service.url}/supporting`,
@@ -74,7 +76,7 @@ await context.route("**/*", async (route) => {
     "access-control-allow-origin": request.headers().origin ?? new URL(page.url()).origin,
     "access-control-allow-credentials": "true",
     "access-control-allow-methods": "GET, PUT, OPTIONS",
-    "access-control-allow-headers": "content-type, if-updated-at",
+    "access-control-allow-headers": "content-type, x-page-edit-lock-token",
     "cache-control": "no-store",
   };
 
@@ -93,18 +95,21 @@ await context.route("**/*", async (route) => {
 
   assert.equal(request.method(), "PUT");
   const fields = request.postDataJSON();
-  const ifUpdatedAt = request.headers()["if-updated-at"];
-  writes.push({ fields, ifUpdatedAt });
+  writes.push({ fields });
 
-  if (ifUpdatedAt !== current.updated_at) return reply({ error: "conflict" }, 409);
+  if (fields.version !== current.version)
+    return reply({ error: "page_version_conflict", pageId: id }, 409);
   current = {
     ...current,
     ...fields,
+    version: current.version + 1,
     updated_at: new Date(Date.parse(current.updated_at) + 1000).toISOString(),
   };
 
   return reply(current);
 });
+
+await installPageEditLocks(context);
 
 const button = (name) => page.getByRole("button", { name, exact: true });
 
@@ -154,19 +159,20 @@ try {
   await button("Save").click();
   await waitForSavedTitle("Edited remote title");
   assert.equal(writes.length, 1);
-  assert.equal(writes[0].ifUpdatedAt, initial.updated_at);
+  assert.equal(writes[0].fields.version, initial.version);
   assert.equal(writes[0].fields.body_markdown, "Edited remote body");
   assert.equal(writes[0].fields.url, initial.url);
   assert.equal(writes[0].fields.visibility, "draft");
   assert.equal(Object.hasOwn(writes[0].fields, "parent_id"), false);
 
-  const savedVersion = current.updated_at;
+  const savedVersion = current.version;
   current = {
     ...current,
     title: "Changed by another employee",
+    version: current.version + 1,
     updated_at: "2026-10-07T13:00:00.000Z",
   };
-  const otherVersion = current.updated_at;
+  const otherVersion = current.version;
   await title.fill("My conflicting title");
   await button("Save").click();
   // Shown under the bar, and read out by the page's save state
@@ -175,13 +181,13 @@ try {
     .first()
     .waitFor();
   assert.equal(writes.length, 2);
-  assert.equal(writes[1].ifUpdatedAt, savedVersion);
+  assert.equal(writes[1].fields.version, savedVersion);
   assert.equal(await title.inputValue(), "My conflicting title");
   await button("Keep my version").click();
   await button("Save").click();
   await waitForSavedTitle("My conflicting title");
   assert.equal(writes.length, 3);
-  assert.equal(writes[2].ifUpdatedAt, otherVersion);
+  assert.equal(writes[2].fields.version, otherVersion);
 
   assert.deepEqual(await page.evaluate(() => window.draftStorageCalls), []);
   await page.reload();

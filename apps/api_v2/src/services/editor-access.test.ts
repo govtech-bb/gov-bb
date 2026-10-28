@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { AuthUnavailable, Forbidden, Unauthenticated } from "../modules/auth";
+import {
+  AuthUnavailable,
+  EmployeeId,
+  Forbidden,
+  Unauthenticated,
+} from "../modules/auth";
 import { Redacted } from "../modules/redacted";
 import { err, ok } from "../modules/result";
 import { EditorAccess } from "./editor-access";
@@ -37,7 +42,7 @@ describe("editor access", () => {
   });
   it("returns the verified employee from the injected session capability", async () => {
     const employee = {
-      id: "employee-id",
+      id: EmployeeId.parse("employee-id"),
       email: "employee@govtech.bb",
       name: "Employee",
     };

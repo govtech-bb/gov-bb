@@ -1,7 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { PageId, revisionOf, type PageDocument } from "./page";
+import {
+  PageContentVersion,
+  PageId,
+  revisionOf,
+  type PageDocument,
+} from "./page";
 
 const saved: PageDocument = {
+  version: PageContentVersion.parse(1),
   id: PageId.parse("11111111-1111-4111-8111-111111111111"),
   url: "/money-financial-support/calculate-severance-pay",
   slug: "calculate-severance-pay",
@@ -22,12 +28,9 @@ describe("revisionOf", () => {
   it.each([
     ["in the same millisecond", "2026-10-07T12:00:00.000Z"],
     ["by a clock that has gone back", "2026-10-07T11:59:59.000Z"],
-  ])(
-    "moves updated_at forward when saved %s, so a stale read still conflicts",
-    (_when, now) => {
-      expect(
-        revisionOf(saved, saved, new Date(now)).updatedAt.toISOString(),
-      ).toBe("2026-10-07T12:00:00.001Z");
-    },
-  );
+  ])("moves updated_at forward when saved %s", (_when, now) => {
+    expect(
+      revisionOf(saved, saved, new Date(now)).updatedAt.toISOString(),
+    ).toBe("2026-10-07T12:00:00.001Z");
+  });
 });

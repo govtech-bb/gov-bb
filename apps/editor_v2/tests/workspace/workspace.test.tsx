@@ -4,21 +4,30 @@ import { createMemoryHistory, createRouter, RouterProvider } from "@tanstack/rea
 import { act, type ReactNode } from "react";
 import { afterEach, expect, test, vi } from "vitest";
 import { createEditorApi, type ApiPage, type ServiceDetail } from "../../src/api/client";
+import { pageContentVersionSchema } from "../../src/api/page-schemas";
 import { AuthFailure, type EditorAuth } from "../../src/auth/session";
 import { routeTree } from "../../src/routeTree.gen";
 import { renderInPage } from "../helpers/page-editor";
+import { withInMemoryPageEditLocks } from "../helpers/page-edit-locks";
 
 const stamp = "2026-10-07T12:00:00.000Z";
 
+const pageIds = {
+  service: "11111111-1111-4111-8111-111111111111",
+  fees: "44444444-4444-4444-8444-444444444444",
+  other: "55555555-5555-4555-8555-555555555555",
+  fourth: "66666666-6666-4666-8666-666666666666",
+} as const;
+
 const pages = new Map(
-  ["service", "fees", "other", "fourth"].map((id) => [
+  (["service", "fees", "other", "fourth"] as const).map((id) => [
     id,
     {
-      id,
+      id: pageIds[id],
       title: id,
       url: `/family/service/${id}`,
       slug: id,
-      parent_id: id === "service" ? null : "service",
+      parent_id: id === "service" ? null : pageIds.service,
       category_id: null,
       visibility: "draft",
       form_id: null,
@@ -28,13 +37,14 @@ const pages = new Map(
       published_at: null,
       created_at: stamp,
       updated_at: stamp,
+      version: pageContentVersionSchema.parse(1),
     } satisfies ApiPage,
   ]),
 );
 
 const detail: ServiceDetail = {
   service: {
-    id: "service",
+    id: pageIds.service,
     title: "API service",
     url: "/family/service",
     category: { slug: "family", title: "Family" },
@@ -46,7 +56,7 @@ const detail: ServiceDetail = {
   },
   pages: [...pages.values()].map((page) => ({
     ...page,
-    role: page.id === "service" ? "entry" : "supporting",
+    role: page.id === pageIds.service ? "entry" : "supporting",
   })),
 };
 
@@ -56,7 +66,7 @@ afterEach(() => {
   clients.splice(0).forEach((client) => client.clear());
 });
 
-async function mountWorkspace(path = "/services/service/fees") {
+async function mountWorkspace(path = `/services/${pageIds.service}/${pageIds.fees}`) {
   vi.stubGlobal("matchMedia", (query: string) => ({
     matches: true,
     media: query,
@@ -85,12 +95,12 @@ async function mountWorkspace(path = "/services/service/fees") {
 
       if (path === "/services") return Response.json([detail.service]);
 
-      if (path === "/services/service") return Response.json(detail);
+      if (path === `/services/${pageIds.service}`) return Response.json(detail);
 
       if (path === "/editor/categories") return Response.json({ categories: [] });
 
       if (path === "/version") return Response.json({ count: 1, latest: stamp });
-      const page = pages.get(path.replace("/pages/", ""));
+      const page = [...pages.values()].find((page) => page.id === path.replace("/pages/", ""));
 
       if (page && init?.method === "PUT") {
         writes.push(init);
@@ -98,6 +108,7 @@ async function mountWorkspace(path = "/services/service/fees") {
         return Response.json({
           ...page,
           ...JSON.parse(String(init.body)),
+          version: pageContentVersionSchema.parse(page.version + 1),
           updated_at: "2026-10-07T13:00:00.000Z",
         });
       }
@@ -112,9 +123,13 @@ async function mountWorkspace(path = "/services/service/fees") {
     shellComponent: ({ children }: { children: ReactNode }) => <>{children}</>,
   });
 
+  const { api, locks } = withInMemoryPageEditLocks(createEditorApi("http://localhost:3020"), {
+    nowMs: Date.now,
+  });
+
   const router = createRouter({
     routeTree,
-    context: { auth, api: createEditorApi("http://localhost:3020"), queryClient: client },
+    context: { auth, api, queryClient: client },
     history: createMemoryHistory({ initialEntries: [path] }),
     Wrap: ({ children }) => <QueryClientProvider client={client}>{children}</QueryClientProvider>,
   });
@@ -127,7 +142,7 @@ async function mountWorkspace(path = "/services/service/fees") {
     );
   });
 
-  return { router, auth, writes, client };
+  return { router, auth, writes, client, locks };
 }
 
 const until = (ready: () => void) =>
@@ -143,7 +158,7 @@ test.each([0, 503, 401, 403, 404])(
     const header = document.querySelector("header");
     const currentFetch = vi.mocked(fetch).getMockImplementation()!;
     vi.mocked(fetch).mockImplementation(async (url, init) => {
-      if (String(url).endsWith("/services/service")) {
+      if (String(url).endsWith(`/services/${pageIds.service}`)) {
         if (status === 0) throw new TypeError("Offline");
 
         return Response.json({}, { status });
@@ -152,10 +167,10 @@ test.each([0, 503, 401, 403, 404])(
       return currentFetch(url, init);
     });
     await act(async () => {
-      await h.client.refetchQueries({ queryKey: ["content", "service", "service"] });
+      await h.client.refetchQueries({ queryKey: ["content", "service", pageIds.service] });
     });
     await until(() =>
-      expect(h.client.getQueryState(["content", "service", "service"])?.status).toBe("error"),
+      expect(h.client.getQueryState(["content", "service", pageIds.service])?.status).toBe("error"),
     );
     expect(document.querySelector("header")).toBe(header);
     expect(document.body.textContent).not.toContain("We could not load this service");
@@ -184,7 +199,7 @@ test.each([0, 503, 401, 403, 404])(
 
     vi.mocked(fetch).mockImplementation(currentFetch);
     await act(async () => {
-      await h.client.refetchQueries({ queryKey: ["content", "service", "service"] });
+      await h.client.refetchQueries({ queryKey: ["content", "service", pageIds.service] });
     });
     await until(() => expect(activeTitle().value).toBe("Keep during refresh"));
   },
@@ -257,15 +272,21 @@ const click = (label: string, scope: ParentNode = document) =>
 test("Cancel preserves route, edited title and focus; confirmed Leave cannot resurrect discarded edits or undo", async () => {
   const h = await mountWorkspace();
   await editTitle("Unsaved title");
+  const ownership = h.locks.get(pageIds.fees)?.claim?.token;
+  expect(ownership).toBeDefined();
   await act(async () => {
     void h.router.navigate({ to: "/services" });
   });
   await until(() => expect(question()?.textContent).toContain("Leave without saving?"));
-  expect(h.router.state.location.pathname).toBe("/services/service/fees");
+  expect(h.router.state.location.pathname).toBe(`/services/${pageIds.service}/${pageIds.fees}`);
   await until(() => expect(document.activeElement).toBe(control("Cancel", question())));
   await click("Cancel", question());
   await until(() => expect(question()).toBeNull());
   expect(activeTitle().value).toBe("Unsaved title");
+  expect(h.locks.get(pageIds.fees)?.claim?.token).toBe(ownership);
+  expect(h.locks.get(pageIds.fees)?.requests.some((request) => request.method === "release")).toBe(
+    false,
+  );
   expect(h.writes).toHaveLength(0);
   await act(async () => {
     void h.router.navigate({ to: "/services" });
@@ -276,7 +297,7 @@ test("Cancel preserves route, edited title and focus; confirmed Leave cannot res
   await act(async () =>
     h.router.navigate({
       to: "/services/$serviceId/$documentId",
-      params: { serviceId: "service", documentId: "fees" },
+      params: { serviceId: pageIds.service, documentId: pageIds.fees },
     }),
   );
   await until(() => expect(activeTitle()?.value).toBe("fees"));
@@ -311,7 +332,7 @@ test("failed sign-out and a cancelled session-expiry redirect keep the working c
   await act(async () => window.dispatchEvent(new Event("focus")));
   await until(() => expect(question()).not.toBeNull());
   await click("Cancel", question());
-  expect(h.router.state.location.pathname).toBe("/services/service/fees");
+  expect(h.router.state.location.pathname).toBe(`/services/${pageIds.service}/${pageIds.fees}`);
   expect(activeTitle().value).toBe("Keep on auth failure");
   expect(h.auth.signIn).not.toHaveBeenCalled();
 });
@@ -337,12 +358,13 @@ test("pending saves block departure but the navigation question can still be can
   expect(control("Leave without saving", question()).disabled).toBe(true);
   expect(control("Cancel", question()).disabled).toBe(false);
   await click("Cancel", question());
-  expect(h.router.state.location.pathname).toBe("/services/service/fees");
+  expect(h.router.state.location.pathname).toBe(`/services/${pageIds.service}/${pageIds.fees}`);
   await act(async () => {
     complete(
       Response.json({
         ...pages.get("fees"),
         title: "Saving title",
+        version: 2,
         updated_at: "2026-10-07T13:00:00.000Z",
       }),
     );
@@ -353,14 +375,21 @@ test("pending saves block departure but the navigation question can still be can
 test("clean navigation keeps at most three page views and retains API navigation", async () => {
   const h = await mountWorkspace();
 
-  for (const documentId of ["other", "fourth", "service"]) {
+  for (const documentId of ["other", "fourth", "service"] as const) {
     await act(async () =>
       h.router.navigate({
         to: "/services/$serviceId/$documentId",
-        params: { serviceId: "service", documentId },
+        params: { serviceId: pageIds.service, documentId: pageIds[documentId] },
       }),
     );
     await until(() => expect(activeTitle()?.value).toBe(documentId));
+    await until(() => expect(activeTitle().readOnly).toBe(false));
+
+    for (const [id, lock] of h.locks) {
+      if (id !== pageIds[documentId]) expect(lock.claim).toBeUndefined();
+    }
+
+    expect(document.querySelector('section[hidden] [contenteditable="true"]')).toBeNull();
     expect(question()).toBeNull();
   }
 
@@ -368,7 +397,7 @@ test("clean navigation keeps at most three page views and retains API navigation
   await act(async () =>
     h.router.navigate({
       to: "/services/$serviceId/$documentId",
-      params: { serviceId: "service", documentId: "fees" },
+      params: { serviceId: pageIds.service, documentId: pageIds.fees },
     }),
   );
   await until(() => expect(activeTitle()?.value).toBe("fees"));

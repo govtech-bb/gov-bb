@@ -11,6 +11,7 @@ import {
   pickerCategories,
   suggestedUrl,
 } from "./page-markdown";
+import { pageContentVersionSchema } from "./page-schemas";
 
 const VISIBILITIES = ["public", "preview", "draft"] as const;
 
@@ -30,6 +31,7 @@ const categories: Category[] = estate.categories.map((category, position) => ({
 }));
 
 const pages: ApiPage[] = estate.pages.map((page) => ({
+  version: pageContentVersionSchema.parse(1),
   id: idOf(page.url),
   url: page.url,
   slug: page.url.split("/").at(-1) ?? "",
@@ -73,6 +75,7 @@ describe("page markdown", () => {
       expect(saved, page.url).toEqual({
         ok: true,
         value: {
+          version: page.version,
           url: page.url,
           category_id: page.parent_id === null ? page.category_id : null,
           title: page.title,

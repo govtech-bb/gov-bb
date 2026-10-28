@@ -29,6 +29,8 @@ const shell = "flex min-h-[calc(100dvh-var(--bar-height))] flex-col bg-white";
 
 /** What a host adds to a page draft's frame: the page's settings, where it stands there, and its slots in the bar. */
 type PageHost = {
+  /** Host editing authority; changing it never replaces the editor or working copy. */
+  readOnly?: boolean;
   settings?: PageSettingsOptions;
   /** Where the page stands against the host's last server save. */
   server?: SaveStateProps;
@@ -40,13 +42,14 @@ type PageHost = {
   previewContext?: SitePreviewContext;
 };
 
+/** Bind the existing working copy; losing host authority disables mutations without replacing it. */
 export function PageDraftEditor({
   store,
   active = true,
   ...host
-}: { store: DraftStore; active?: boolean } & PageHost) {
+}: { store: DraftStore; active?: boolean } & PageHost): ReactNode {
   return (
-    <DraftProvider store={store}>
+    <DraftProvider store={store} readOnly={host.readOnly || !active}>
       <PageDraft active={active} {...host} />
     </DraftProvider>
   );
@@ -54,6 +57,7 @@ export function PageDraftEditor({
 
 function PageDraft({
   active,
+  readOnly = false,
   settings,
   server,
   publish,
@@ -133,7 +137,7 @@ function PageDraft({
     <EditorComposer
       definition={govbbPageEditor}
       initialState={draft.state}
-      readOnly={!active || (preview && !inlineEditing)}
+      readOnly={!active || readOnly || (preview && !inlineEditing)}
       linkPages={linkPages}
     >
       <DraftEditorBinding />
@@ -151,7 +155,7 @@ function PageDraft({
             </div>
           </div>
           {active && !preview && (
-            <SidePanel.Root panel={panel} label="Page settings" inert={paused}>
+            <SidePanel.Root panel={panel} label="Page settings" inert={paused || readOnly}>
               <PageSettings {...settings} />
             </SidePanel.Root>
           )}
@@ -161,8 +165,8 @@ function PageDraft({
         <SitePreview
           source={draft.committed}
           context={previewContext}
-          editing={inlineEditing}
-          paused={paused}
+          editing={inlineEditing && !readOnly}
+          paused={paused || readOnly}
           onEditingChange={setInlineEditing}
           controls={controls}
           writerScrollY={writerScrollY.current}

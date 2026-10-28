@@ -10,13 +10,16 @@ import { act } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { createEditorApi, type ApiPage } from "../../src/api/client";
 import { categoriesQuery, pageQuery } from "../../src/api/queries";
+import { pageContentVersionSchema } from "../../src/api/page-schemas";
 import { govbbPageCodec } from "../../src/presets/govbb-page";
 import { Toaster } from "../../src/ui/toast";
 import { RemotePagePane } from "../../src/workspace/remote-page-pane";
 import { pageHasUnsavedChanges, type PageSession } from "../../src/workspace/page-sync";
 import { renderInPage } from "../helpers/page-editor";
+import { withInMemoryPageEditLocks } from "../helpers/page-edit-locks";
 
 const page: ApiPage = {
+  version: pageContentVersionSchema.parse(1),
   id: "44444444-4444-4444-8444-444444444444",
   url: "/family/birth-certificate/fees",
   slug: "fees",
@@ -61,7 +64,11 @@ async function mountPage(request: (url: string, init?: RequestInit) => Promise<R
       return request(url, init);
     }),
   );
-  const api = createEditorApi("http://localhost:3020");
+
+  const { api, locks } = withInMemoryPageEditLocks(createEditorApi("http://localhost:3020"), {
+    nowMs: Date.now,
+  });
+
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   let session: PageSession | undefined;
   await renderInPage(
@@ -80,10 +87,10 @@ async function mountPage(request: (url: string, init?: RequestInit) => Promise<R
     </RouterContextProvider>,
   );
   await act(async () => {
-    await vi.waitFor(() => expect(session).toBeDefined());
+    await vi.waitFor(() => expect(session?.getEditLockToken()).toBeDefined());
   });
 
-  return { client, api, session: () => session! };
+  return { client, api, locks, session: () => session! };
 }
 
 async function applySource(session: PageSession, source: string) {
@@ -144,6 +151,7 @@ test("a rejected saved version leaves the working copy editable and its baseline
     h.client.setQueryData(pageQuery(h.api, page.id).queryKey, {
       ...page,
       title: "Saved elsewhere",
+      version: pageContentVersionSchema.parse(2),
       updated_at: "2026-10-07T14:00:00.000Z",
     });
     await vi.waitFor(() => expect(document.body.textContent).toContain("A newer version"));
@@ -179,6 +187,26 @@ test("a rejected saved version leaves the working copy editable and its baseline
   await act(async () =>
     document.querySelector<HTMLButtonElement>('[aria-label="Dismiss"]')!.click(),
   );
+});
+
+test("a background version change with the same timestamp cannot rebase invalid source", async () => {
+  const h = await mountPage(async () => Response.json(page));
+  const baseline = h.session().getBaseline();
+  const store = h.session().store;
+  await act(async () => store.edit("---\ntitle: [unfinished\n---\nKeep this source"));
+  const workingCopy = store.getSnapshot();
+  await act(async () => {
+    h.client.setQueryData(pageQuery(h.api, page.id).queryKey, {
+      ...page,
+      version: pageContentVersionSchema.parse(2),
+      title: "Inherited change",
+    });
+    await vi.waitFor(() => expect(document.body.textContent).toContain("A newer version"));
+  });
+  expect(h.session().store).toBe(store);
+  expect(store.getSnapshot()).toBe(workingCopy);
+  expect(h.session().getBaseline()).toBe(baseline);
+  expect(h.session().getBaseline().page.version).toBe(1);
 });
 
 test("a page preloaded just now, as its link was pointed at, opens without waiting on the content API", async () => {
@@ -271,7 +299,12 @@ test("a slow save acknowledges only its submitted snapshot; refetch cannot overw
   const second = first + "\n\nTyped during save";
   await applySource(h.session(), second);
   const fields = JSON.parse(String(sent!.body));
-  current = { ...page, ...fields, updated_at: "2026-10-07T13:00:00.000Z" };
+  current = {
+    ...page,
+    ...fields,
+    version: pageContentVersionSchema.parse(2),
+    updated_at: "2026-10-07T13:00:00.000Z",
+  };
   await act(async () => {
     answer(Response.json(current));
     await vi.waitFor(() => expect(h.session().isSaving()).toBe(false));
@@ -279,20 +312,75 @@ test("a slow save acknowledges only its submitted snapshot; refetch cannot overw
   expect(h.session().getBaseline()).toEqual({ page: current, markdown: first });
   expect(h.session().store.getSnapshot().committed).toBe(second);
   expect(pageHasUnsavedChanges(h.session())).toBe(true);
-  expect(new Headers(sent!.headers).get("if-updated-at")).toBe(page.updated_at);
+  expect(fields.version).toBe(page.version);
+  expect(new Headers(sent!.headers).get("x-page-edit-lock-token")).toBeDefined();
 
   await act(async () => {
     h.client.setQueryData(pageQuery(h.api, page.id).queryKey, {
       ...current,
+      version: pageContentVersionSchema.parse(3),
       updated_at: "2026-10-07T14:00:00.000Z",
       title: "Someone else's edit",
     });
   });
-  expect(h.session().getBaseline().page.updated_at).toBe(current.updated_at);
+  expect(h.session().getBaseline().page.version).toBe(current.version);
   expect(h.session().store.getSnapshot().committed).toBe(second);
   await act(async () => {
     await vi.waitFor(() => expect(document.body.textContent).toContain("A newer version"));
   });
+});
+
+test("an uncertain save retains its submitted snapshot and newer raw edits until an explicit review decision", async () => {
+  let current = page;
+  let writes = 0;
+  const response = Promise.withResolvers<Response>();
+
+  const h = await mountPage(async (_url, init) => {
+    if (init?.method === "PUT") {
+      writes++;
+
+      return response.promise;
+    }
+
+    return Response.json(current);
+  });
+
+  const store = h.session().store;
+  const submitted = store.getSnapshot().committed + "\n\nSubmitted content";
+  await applySource(h.session(), submitted);
+  await savePage();
+  await act(async () => store.edit("---\ntitle: [unfinished\n---\nNew raw source"));
+  const raw = store.getSnapshot();
+  current = {
+    ...page,
+    version: pageContentVersionSchema.parse(2),
+    body_markdown: "What it costs.\n\nSubmitted content",
+  };
+  await act(async () => {
+    response.resolve(Response.json({}, { status: 503 }));
+  });
+  await vi.waitFor(() => expect(document.body.textContent).toContain("Save outcome unknown"));
+  expect(h.session().getBaseline().page.version).toBe(1);
+  expect(store.getSnapshot()).toBe(raw);
+  expect(h.session().getEditLockToken()).toBeUndefined();
+
+  const click = async (label: string) => {
+    const control = [...document.querySelectorAll("button")].find(
+      (button) => button.textContent === label,
+    );
+
+    if (!control) throw new Error(`Missing recovery control: ${label}`);
+    await act(async () => control.click());
+  };
+
+  await click("Check saved version");
+  await vi.waitFor(() => expect(document.body.textContent).toContain("Review saved version 2"));
+  expect(h.session().getBaseline().page.version).toBe(1);
+  expect(store.getSnapshot()).toBe(raw);
+  await click("Keep my working copy");
+  expect(h.session().getBaseline().page.version).toBe(2);
+  expect(store.getSnapshot()).toBe(raw);
+  expect(writes).toBe(1);
 });
 
 test.each([0, 503, 401, 403, 404])(

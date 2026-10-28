@@ -120,7 +120,7 @@ export function ServiceWorkspace({ api, email, onSignOut, notice }: Account & { 
     for (const id of panes.filter((id) => !kept.includes(id))) {
       const page = pageSessions.get(id);
 
-      if (page) sessions.close(id, page.getBaseline().page.updated_at);
+      if (page) sessions.close(id, String(page.getBaseline().page.version));
     }
 
     setPanes(kept);
@@ -149,6 +149,7 @@ export function ServiceWorkspace({ api, email, onSignOut, notice }: Account & { 
 
   const rows = useMemo(() => (remote.data ? remoteServiceRows(remote.data) : []), [remote.data]);
   const selected = rows.find((row) => row.document.id === documentId)?.document;
+  const selectedSession = selected ? pageSessions.get(selected.id) : undefined;
 
   const missing =
     !!location &&
@@ -294,7 +295,9 @@ export function ServiceWorkspace({ api, email, onSignOut, notice }: Account & { 
             deleteBlocked={
               selected && remote.data?.pages.some((page) => page.parent_id === selected.id)
                 ? "Delete or move the pages under this page first."
-                : undefined
+                : !selectedSession?.getEditLockToken() || selectedSession.isSaving()
+                  ? "Confirm editing ownership and finish any pending save before deleting."
+                  : undefined
             }
           />
         )}
@@ -417,10 +420,12 @@ export function ServiceWorkspace({ api, email, onSignOut, notice }: Account & { 
           }}
         />
       )}
-      {dialog === "delete" && selected && location && (
+      {dialog === "delete" && selected && selectedSession && location && (
         <DeleteRemotePageDialog
+          key={selected.id}
           api={api}
           page={selected}
+          session={selectedSession}
           close={() => setDialog(undefined)}
           done={() => {
             const deleted = selected.id;

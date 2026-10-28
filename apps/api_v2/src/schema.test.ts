@@ -13,7 +13,13 @@
 import { getTableColumns } from "drizzle-orm";
 import { sql } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
-import { categories, changeEvents, contentPages, searchChunks } from "./schema";
+import {
+  categories,
+  changeEvents,
+  contentPages,
+  pageEditLocks,
+  searchChunks,
+} from "./schema";
 import { createTestDb } from "./test-db";
 import type { Database } from "./db";
 
@@ -38,6 +44,7 @@ const rowsOf = async (db: Database) => {
 const TABLES = {
   categories,
   content_pages: contentPages,
+  page_edit_locks: pageEditLocks,
   change_events: changeEvents,
   search_chunks: searchChunks,
 };

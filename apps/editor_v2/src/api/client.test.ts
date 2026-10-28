@@ -1,5 +1,5 @@
 import { createServer, type IncomingHttpHeaders } from "node:http";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import type { Category, CategoryFields } from "./categories";
 import {
   ApiFailure,
@@ -10,6 +10,14 @@ import {
   createEditorApi,
   type SavePageInput,
 } from "./client";
+import { QueryClient } from "@tanstack/react-query";
+import {
+  PageEditLockToken,
+  pageContentVersionSchema,
+  pageEditLockGenerationSchema,
+  pageEditActivitySequenceSchema,
+} from "./page-schemas";
+import { pageQuery } from "./queries";
 
 let origin: string;
 
@@ -48,7 +56,22 @@ afterAll(async () => {
   );
 });
 
+beforeEach(() => {
+  requests.length = 0;
+  status = 200;
+  response = JSON.stringify(page);
+});
+
+const id = "11111111-1111-4111-8111-111111111111";
+
+const credential = "22222222-2222-4222-8222-222222222222";
+
+const token = PageEditLockToken.parse(credential);
+
+if (!token) throw new Error("Invalid test credential");
+
 const fields: SavePageInput = {
+  version: pageContentVersionSchema.parse(1),
   url: "/money-financial-support/calculate-severance-pay",
   category_id: null,
   title: "Calculate severance pay",
@@ -59,15 +82,29 @@ const fields: SavePageInput = {
   frontmatter: {},
 };
 
-async function failureOf<Value>(promise: Promise<Value>) {
-  try {
-    await promise;
-  } catch (error) {
-    if (error instanceof ApiFailure) return error;
-  }
+const page = {
+  ...fields,
+  id,
+  parent_id: null,
+  slug: "calculate-severance-pay",
+  published_at: null,
+  created_at: "2026-10-07T12:00:00.000Z",
+  updated_at: "2026-10-07T12:00:00.000Z",
+  version: 2,
+};
 
-  return undefined;
-}
+const lock = {
+  state: "held",
+  lockGeneration: 1,
+  serverTime: "2026-10-07T12:00:00.000Z",
+  holderName: "Editor",
+  ownedByCaller: true,
+  lockExpiresAt: "2026-10-07T12:02:00.000Z",
+  lastActivityAt: "2026-10-07T12:00:00.000Z",
+  idlePromptAt: "2026-10-07T12:10:00.000Z",
+  idleExpiresAt: "2026-10-07T12:12:00.000Z",
+  activitySequence: 0,
+};
 
 const health: Category = {
   id: "6f1c1a52-2d0a-4f6e-9a57-8e0c2d1b3a01",
@@ -101,33 +138,34 @@ const categoryFields: CategoryFields = {
   description: null,
 };
 
-describe("editor API client", () => {
-  it("saves with the page's last updated_at, as JSON", async () => {
-    status = 200;
-    response = JSON.stringify({ ...fields, id: "page-1" });
-    const api = createEditorApi(origin);
-
-    expect(await api.savePage("page-1", fields, "2026-10-07T12:00:00.000Z")).toMatchObject({
-      id: "page-1",
-    });
+describe("page API contracts", () => {
+  it("sends the reviewed numeric version in JSON and ownership in its own header", async () => {
+    const result = await createEditorApi(origin).savePage(id, fields, token);
+    expect(result).toMatchObject({ ok: true, value: { id, version: 2 } });
     expect(requests.at(-1)).toMatchObject({
-      url: "/pages/page-1",
+      url: `/pages/${id}`,
       method: "PUT",
-      headers: {
-        "content-type": "application/json",
-        "if-updated-at": "2026-10-07T12:00:00.000Z",
-      },
+      headers: { "content-type": "application/json", "x-page-edit-lock-token": credential },
     });
+    expect(requests.at(-1)?.headers["if-match"]).toBeUndefined();
+    expect(requests.at(-1)?.headers["if-updated-at"]).toBeUndefined();
     expect(JSON.parse(requests.at(-1)?.body ?? "null")).toEqual(fields);
   });
 
-  it("sends no content type with a request that has no body", async () => {
+  it("deletes the confirmed query version without a body or a credential in the URL", async () => {
     status = 204;
     response = "";
-    await createEditorApi(origin).deletePage("page-1");
-
-    expect(requests.at(-1)).toMatchObject({ url: "/pages/page-1", method: "DELETE" });
+    expect(await createEditorApi(origin).deletePage(id, fields.version, token)).toEqual({
+      ok: true,
+      value: undefined,
+    });
+    expect(requests.at(-1)).toMatchObject({
+      url: `/pages/${id}?version=1`,
+      method: "DELETE",
+      body: "",
+    });
     expect(requests.at(-1)?.headers["content-type"]).toBeUndefined();
+    expect(requests.at(-1)?.url).not.toContain(credential);
   });
 
   it("reads the shared category list from /editor/categories", async () => {
@@ -376,34 +414,138 @@ describe("editor API client", () => {
     ).toMatchObject({ ok: false, error: { _tag: "CategoryOutcomeUnknown", operation: "order" } });
   });
 
-  it("turns refusals into failures carrying the status and any field errors", async () => {
-    const api = createEditorApi(origin);
+  it("requires valid response fields before exposing a page baseline", async () => {
+    const { version: _version, ...oldPage } = page;
+    response = JSON.stringify(oldPage);
+    expect(await createEditorApi(origin).page(id)).toEqual({
+      ok: false,
+      error: { kind: "invalid-response" },
+    });
+    response = JSON.stringify({ ...page, version: "2" });
+    expect(await createEditorApi(origin).page(id)).toEqual({
+      ok: false,
+      error: { kind: "invalid-response" },
+    });
+  });
+
+  it.each([
+    ["page_version_conflict", "version-conflict"],
+    ["page_edit_lock_lost", "lock-lost"],
+    ["page_edit_lock_required", "lock-required"],
+    ["page_edit_lock_conflict", "lock-conflict"],
+  ])("preserves the distinct 409 code %s", async (code, kind) => {
+    status = 409;
+    response = JSON.stringify({ error: code, pageId: id });
+    expect(await createEditorApi(origin).savePage(id, fields, token)).toEqual({
+      ok: false,
+      error: { kind, pageId: id },
+    });
+  });
+
+  it("does not mistake an old or unknown 409 envelope for a content conflict", async () => {
+    status = 409;
+    response = JSON.stringify({ error: "conflict", documentId: id });
+    expect(await createEditorApi(origin).savePage(id, fields, token)).toEqual({
+      ok: false,
+      error: { kind: "invalid-response" },
+    });
+  });
+
+  it("returns field refusals as values without exposing arbitrary response messages", async () => {
     status = 422;
     response = JSON.stringify({
       error: "validation_failed",
-      errors: [{ field: "url", message: "Another page already has this url." }],
+      errors: [{ field: "url", message: "Taken" }],
     });
-    const rejected = await failureOf(api.createPage(fields));
-    expect(rejected?.status).toBe(422);
-    expect(rejected?.errors).toEqual([
-      { field: "url", message: "Another page already has this url." },
-    ]);
-
-    for (const refused of [401, 404, 409]) {
-      status = refused;
-      response = JSON.stringify({ error: "refused", message: "No." });
-      const failure = await failureOf(api.page("page-1"));
-      expect(failure?.status).toBe(refused);
-      expect(failure?.message).toBe("No.");
-    }
-
-    status = 500;
-    response = "not json";
-    expect(await failureOf(api.version())).toMatchObject({ status: 500, errors: [] });
+    expect(await createEditorApi(origin).createPage(fields)).toEqual({
+      ok: false,
+      error: { kind: "invalid", errors: [{ field: "url", message: "Taken" }] },
+    });
   });
 
-  it("reports an API it could not reach as status 0", async () => {
-    const failure = await failureOf(createEditorApi("http://127.0.0.1:1").services());
-    expect(failure?.status).toBe(0);
+  it.each([
+    [401, "signed-out"],
+    [403, "forbidden"],
+    [404, "missing"],
+    [503, "unavailable"],
+  ])("classifies page-read status %s", async (code, kind) => {
+    status = Number(code);
+    response = "not json";
+    expect(await createEditorApi(origin).page(id)).toEqual({ ok: false, error: { kind } });
+  });
+
+  it("treats an unreadable success after a write as uncertain and does not retry it", async () => {
+    response = "not json";
+    expect(await createEditorApi(origin).savePage(id, fields, token)).toEqual({
+      ok: false,
+      error: { kind: "outcome-unknown" },
+    });
+    expect(requests).toHaveLength(1);
+  });
+
+  it("distinguishes failed reads from uncertain writes on a network failure", async () => {
+    const api = createEditorApi("http://127.0.0.1:1");
+    expect(await api.page(id)).toEqual({ ok: false, error: { kind: "unavailable" } });
+    expect(await api.savePage(id, fields, token)).toEqual({
+      ok: false,
+      error: { kind: "outcome-unknown" },
+    });
+  });
+
+  it("converts page-read failures to rejection only at the query adapter", async () => {
+    status = 401;
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+
+    try {
+      await expect(client.fetchQuery(pageQuery(createEditorApi(origin), id))).rejects.toMatchObject(
+        { status: 401 },
+      );
+    } finally {
+      client.clear();
+    }
+  });
+
+  it("uses separate acquire, renew and release commands and validates presence", async () => {
+    response = JSON.stringify(lock);
+    const api = createEditorApi(origin);
+
+    const command = {
+      action: "takeover" as const,
+      expectedLockGeneration: pageEditLockGenerationSchema.parse(0),
+    };
+
+    expect((await api.acquirePageEditLock(id, token, command)).ok).toBe(true);
+    expect(JSON.parse(requests.at(-1)?.body ?? "null")).toEqual(command);
+    expect(
+      (await api.renewPageEditLock(id, token, pageEditActivitySequenceSchema.parse(7))).ok,
+    ).toBe(true);
+    expect(requests.at(-1)?.method).toBe("PUT");
+    expect(JSON.parse(requests.at(-1)?.body ?? "null")).toEqual({ activitySequence: 7 });
+    expect(await api.releasePageEditLock(id, token)).toEqual({ ok: true, value: undefined });
+    expect(requests.at(-1)?.url).toBe(`/pages/${id}/lock`);
+    response = JSON.stringify({ ...lock, lockExpiresAt: "tomorrow" });
+    expect(await api.readPageEditLock(id, token)).toEqual({
+      ok: false,
+      error: { kind: "invalid-response" },
+    });
+    expect(JSON.stringify(token)).not.toContain(credential);
+  });
+});
+
+describe("unchanged navigation reads", () => {
+  it("keeps service listing responses unwrapped", async () => {
+    response = JSON.stringify([{ id, title: "Fees" }]);
+    expect(await createEditorApi(origin).services()).toEqual([{ id, title: "Fees" }]);
+  });
+  it("keeps the existing rejection contract for list failures", async () => {
+    status = 500;
+    response = "not json";
+    await expect(createEditorApi(origin).version()).rejects.toMatchObject({
+      status: 500,
+      errors: [],
+    });
+    await expect(createEditorApi("http://127.0.0.1:1").services()).rejects.toBeInstanceOf(
+      ApiFailure,
+    );
   });
 });

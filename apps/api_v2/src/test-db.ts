@@ -14,11 +14,13 @@
 import { randomUUID } from "node:crypto";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Client, Pool } from "pg";
-import { inject } from "vitest";
+import { expect, inject } from "vitest";
+import type { FastifyInstance } from "fastify";
+import { PAGE_EDIT_LOCK_HEADER } from "./routes/contracts";
 import { PostgresPages } from "./adapters/postgres-pages";
 import { buildApp, type AppOptions } from "./app";
 import type { Database } from "./db";
-import { type Employee } from "./modules/auth";
+import { EmployeeId, type Employee } from "./modules/auth";
 import { ok, type Result } from "./modules/result";
 import { EditorAccess, type SessionReader } from "./services/editor-access";
 import { EditorIndex } from "./services/editor-index";
@@ -124,7 +126,7 @@ export function expectOk<T>(result: Result<T, Error>): T {
 
 /** An employee fixture, never accepted by the production session adapter. */
 export const TEST_EMPLOYEE: Employee = {
-  id: "employee-test",
+  id: EmployeeId.parse("employee-test"),
   email: "editor@govtech.bb",
   name: "Test editor",
 };
@@ -138,6 +140,22 @@ export const TEST_HEADERS = {
   cookie: "test-session=employee",
   origin: TEST_HTTP_CONFIG.editorOrigin,
 };
+
+/** Acquire editing ownership of a newly created fixture page before testing guarded writes. */
+export async function acquireTestPageEditLock(
+  app: FastifyInstance,
+  pageId: string,
+): Promise<string> {
+  const token = randomUUID();
+  const response = await app.inject({
+    method: "POST",
+    url: `/pages/${pageId}/lock`,
+    headers: { ...TEST_HEADERS, [PAGE_EDIT_LOCK_HEADER]: token },
+    payload: { action: "acquire", expectedLockGeneration: 0 },
+  });
+  expect(response.statusCode, response.body).toBe(200);
+  return token;
+}
 
 /** Compose the production HTTP adapter with an explicit session test double. */
 export function createTestApp(

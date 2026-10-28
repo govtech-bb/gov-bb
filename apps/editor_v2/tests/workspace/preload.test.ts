@@ -50,7 +50,16 @@ const answer = (path: string) =>
     ? { categories: [] }
     : path.startsWith("/services/")
       ? detail
-      : { id: path };
+      : {
+          ...servicePage(path.replace("/pages/", ""), summary.id, "Fees"),
+          version: 1,
+          category_id: null,
+          description: null,
+          body_markdown: "Fees",
+          frontmatter: {},
+          published_at: null,
+          created_at: summary.updated_at,
+        };
 
 afterEach(() => {
   asked.length = 0;
@@ -115,5 +124,8 @@ test("a page of a loaded service starts loading, unless it was fetched just now"
   primePage(client, api, summary.id, fees);
   await settled();
   expect(asked).toEqual([`/pages/${fees}`, "/editor/categories"]);
-  expect(client.getQueryData(pageQuery(api, fees).queryKey)).toEqual({ id: `/pages/${fees}` });
+  expect(client.getQueryData(pageQuery(api, fees).queryKey)).toMatchObject({
+    id: fees,
+    version: 1,
+  });
 });

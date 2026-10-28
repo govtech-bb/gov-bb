@@ -1,11 +1,11 @@
-import type { Employee } from "../modules/auth";
+import { EmployeeId, type Employee } from "../modules/auth";
 import { ok } from "../modules/result";
 import type { AuthHandler } from "../routes/auth";
 import type { EmployeeGate } from "../services/editor-access";
 
 /** Who every editor request runs as while AUTH_BYPASS is on. */
 export const BYPASS_EMPLOYEE: Employee = {
-  id: "local-developer",
+  id: EmployeeId.parse("local-developer"),
   email: "developer@localhost",
   name: "Local developer",
 };

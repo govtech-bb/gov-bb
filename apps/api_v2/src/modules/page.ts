@@ -38,6 +38,16 @@ export const PageId = z.guid().brand<"PageId">();
 /** A parsed content page id. */
 export type PageId = z.infer<typeof PageId>;
 
+/** Database-owned content counter; clients submit the version they read, never the next value. */
+export const PageContentVersion = z
+  .number()
+  .int()
+  .positive()
+  .max(2_147_483_647)
+  .brand<"PageContentVersion">();
+/** A parsed content version, not an audit revision or edit-lock generation. */
+export type PageContentVersion = z.infer<typeof PageContentVersion>;
+
 /** Parses a page's url: a path with no trailing slash, query or fragment. */
 export const PageUrl = z
   .string()
@@ -92,10 +102,10 @@ export const PageDocument = PageFields.extend({
   created_at: z.iso.datetime(),
   updated_at: z.iso
     .datetime()
-    .describe(
-      "Millisecond precision, and exactly the value to send back in " +
-        "`if-updated-at` on the next save.",
-    ),
+    .describe("When the page was last directly saved."),
+  version: PageContentVersion.describe(
+    "The content version to submit on the next save or delete.",
+  ),
 });
 
 /** A page as the editor reads it. */
@@ -205,8 +215,8 @@ export function creationOf(
 }
 
 /**
- * What saving `fields` over the stored page writes. The version moves
- * strictly forward, so two saves in one millisecond still differ, and
+ * What saving `fields` over the stored page writes. The timestamp moves
+ * strictly forward; the database separately advances the content version, and
  * publication is stamped the first time the page goes public and never moves
  * after that.
  */
@@ -262,11 +272,11 @@ export class PageNotFound extends Error {
 }
 
 /** A save lost to a write its caller had not read. */
-export class PageConflict extends Error {
+export class PageVersionConflict extends Error {
   /** Stable protocol-projection discriminator. */
-  readonly _tag = "PageConflict" as const;
+  readonly _tag = "PageVersionConflict" as const;
   /** The page that changed underneath the caller. */
-  constructor(readonly documentId: PageId) {
+  constructor(readonly pageId: PageId) {
     super(
       "This page was changed somewhere else since you opened it. Reload to see the current version.",
     );

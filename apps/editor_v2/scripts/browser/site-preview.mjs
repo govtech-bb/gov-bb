@@ -4,6 +4,7 @@ import { parse } from "yaml";
 import { authenticatedContext, servicesFixture } from "./auth-fixture.mjs";
 import { fixtureCategory } from "./page-api-fixture.mjs";
 import { chromium } from "./playwright.mjs";
+import { installPageEditLocks } from "./page-edit-lock-fixture.mjs";
 
 const markdown = await readFile(
   new URL(
@@ -34,6 +35,7 @@ const category = fixtureCategory(
 
 let current = {
   id: service.id,
+  version: 1,
   parent_id: null,
   category_id: category.id,
   url: service.url,
@@ -85,7 +87,7 @@ await context.route("**/*", async (route) => {
     "access-control-allow-origin": request.headers().origin ?? "*",
     "access-control-allow-credentials": "true",
     "access-control-allow-methods": "GET, PUT, OPTIONS",
-    "access-control-allow-headers": "content-type, if-updated-at",
+    "access-control-allow-headers": "content-type, x-page-edit-lock-token",
   };
 
   if (request.method() === "OPTIONS") return route.fulfill({ status: 204, headers });
@@ -94,8 +96,12 @@ await context.route("**/*", async (route) => {
     const fields = request.postDataJSON();
     writes.push(fields);
 
-    if (request.headers()["if-updated-at"] !== current.updated_at)
-      return route.fulfill({ status: 409, json: { error: "conflict" }, headers });
+    if (fields.version !== current.version)
+      return route.fulfill({
+        status: 409,
+        json: { error: "page_version_conflict", pageId: current.id },
+        headers,
+      });
 
     if (holdSave)
       await new Promise((resolve) => {
@@ -104,6 +110,7 @@ await context.route("**/*", async (route) => {
     current = {
       ...current,
       ...fields,
+      version: current.version + 1,
       updated_at: new Date(Date.parse(current.updated_at) + 1000).toISOString(),
     };
 
@@ -112,6 +119,8 @@ await context.route("**/*", async (route) => {
 
   return route.fulfill({ json: values[path], headers });
 });
+
+await installPageEditLocks(context);
 
 const page = await context.newPage();
 
@@ -502,6 +511,7 @@ try {
   current = {
     ...current,
     title: "Another employee's version",
+    version: current.version + 1,
     updated_at: new Date(Date.parse(current.updated_at) + 1000).toISOString(),
   };
   await button("Publish changes").click();

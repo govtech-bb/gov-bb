@@ -1,18 +1,29 @@
-import type { FastifyRequest } from "fastify";
+import type { FastifyReply, FastifyRequest } from "fastify";
 import type { ICategoryEditing } from "../services/category-editing";
 import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
 import type { Employee } from "../modules/auth";
 import { Redacted } from "../modules/redacted";
 import type { EmployeeGate } from "../services/editor-access";
 import type { EditorIndex } from "../services/editor-index";
-import type { PageEditing } from "../services/page-editing";
 import { editorCategoryRoutes } from "./categories";
-import { IF_UPDATED_AT, SCHEMAS } from "./contracts";
+import type { IPageEditing } from "../services/page-editing";
+import { PAGE_EDIT_LOCK_HEADER, SCHEMAS } from "./contracts";
+import {
+  PageEditLockRequired,
+  type PageEditLockLost,
+  type PageEditLockConflict,
+} from "../modules/page-edit-lock";
+import type {
+  PageNotFound,
+  PageRejected,
+  PageVersionConflict,
+  ContentStoreUnavailable,
+} from "../modules/page";
 import { EDITOR_READ, rejected, storageFailed } from "./responses";
 
 /** Authenticated editor operations, behind an employee session and the editor's Origin. */
 export const editorRoutes: FastifyPluginAsyncZod<{
-  editing: PageEditing;
+  editing: IPageEditing;
   index: EditorIndex;
   categories: ICategoryEditing;
   access: EmployeeGate;
@@ -143,35 +154,23 @@ export const editorRoutes: FastifyPluginAsyncZod<{
     url: "/pages/:id",
     schema: SCHEMAS.savePage,
     handler: async (request, reply) => {
+      const token = request.headers[PAGE_EDIT_LOCK_HEADER];
+      if (!token)
+        return sendPageFailure(
+          request,
+          reply,
+          new PageEditLockRequired(request.params.id),
+        );
       const saved = await editing.save(
         request.params.id,
         request.body,
-        request.headers[IF_UPDATED_AT] ?? null,
+        request.body.version,
+        token,
         actor(request),
       );
-      if (saved.ok) return saved.value;
-      switch (saved.error._tag) {
-        case "PageRejected":
-          return reply.status(422).send(rejected(saved.error));
-        case "PageNotFound":
-          return reply
-            .status(404)
-            .send({ error: "not_found", message: saved.error.message });
-        case "PageConflict":
-          return reply.status(409).send({
-            error: "conflict",
-            message: saved.error.message,
-            documentId: saved.error.documentId,
-          });
-        case "ContentStoreUnavailable":
-          return reply
-            .status(500)
-            .send(storageFailed(request.log, saved.error));
-        default: {
-          const unexpected: never = saved.error;
-          throw unexpected;
-        }
-      }
+      return saved.ok
+        ? saved.value
+        : sendPageFailure(request, reply, saved.error);
     },
   });
   editor.route({
@@ -179,20 +178,133 @@ export const editorRoutes: FastifyPluginAsyncZod<{
     url: "/pages/:id",
     schema: SCHEMAS.deletePage,
     handler: async (request, reply) => {
-      const deleted = await editing.delete(request.params.id, actor(request));
-      if (deleted.ok) return reply.status(204).send();
-      switch (deleted.error._tag) {
-        case "PageRejected":
-          return reply.status(422).send(rejected(deleted.error));
-        case "ContentStoreUnavailable":
-          return reply
-            .status(500)
-            .send(storageFailed(request.log, deleted.error));
-        default: {
-          const unexpected: never = deleted.error;
-          throw unexpected;
-        }
-      }
+      const token = request.headers[PAGE_EDIT_LOCK_HEADER];
+      if (!token)
+        return sendPageFailure(
+          request,
+          reply,
+          new PageEditLockRequired(request.params.id),
+        );
+      const deleted = await editing.delete(
+        request.params.id,
+        request.query.version,
+        token,
+        actor(request),
+      );
+      return deleted.ok
+        ? reply.status(204).send()
+        : sendPageFailure(request, reply, deleted.error);
     },
   });
+  editor.get(
+    "/pages/:id/lock",
+    { schema: SCHEMAS.readPageEditLock },
+    async (request, reply) => {
+      const status = await editing.readPageEditLock(
+        request.params.id,
+        actor(request),
+        request.headers[PAGE_EDIT_LOCK_HEADER],
+      );
+      return status.ok
+        ? status.value
+        : sendPageFailure(request, reply, status.error);
+    },
+  );
+  editor.post(
+    "/pages/:id/lock",
+    { schema: SCHEMAS.acquirePageEditLock },
+    async (request, reply) => {
+      const acquired = await editing.acquirePageEditLock(
+        request.params.id,
+        actor(request),
+        request.headers[PAGE_EDIT_LOCK_HEADER],
+        request.body,
+      );
+      return acquired.ok
+        ? acquired.value
+        : sendPageFailure(request, reply, acquired.error);
+    },
+  );
+  editor.put(
+    "/pages/:id/lock",
+    { schema: SCHEMAS.renewPageEditLock },
+    async (request, reply) => {
+      const renewed = await editing.renewPageEditLock(
+        request.params.id,
+        actor(request),
+        request.headers[PAGE_EDIT_LOCK_HEADER],
+        request.body,
+      );
+      return renewed.ok
+        ? renewed.value
+        : sendPageFailure(request, reply, renewed.error);
+    },
+  );
+  editor.delete(
+    "/pages/:id/lock",
+    { schema: SCHEMAS.releasePageEditLock },
+    async (request, reply) => {
+      const released = await editing.releasePageEditLock(
+        request.params.id,
+        actor(request),
+        request.headers[PAGE_EDIT_LOCK_HEADER],
+      );
+      return released.ok
+        ? released.value
+        : sendPageFailure(request, reply, released.error);
+    },
+  );
 };
+
+/** Project expected failures without leaking database causes or editing credentials. */
+function sendPageFailure(
+  request: FastifyRequest,
+  reply: FastifyReply,
+  failure:
+    | PageRejected
+    | PageNotFound
+    | PageVersionConflict
+    | PageEditLockRequired
+    | PageEditLockLost
+    | PageEditLockConflict
+    | ContentStoreUnavailable,
+) {
+  switch (failure._tag) {
+    case "PageRejected":
+      return reply.status(422).send(rejected(failure));
+    case "PageNotFound":
+      return reply
+        .status(404)
+        .send({ error: "not_found", message: failure.message });
+    case "ContentStoreUnavailable":
+      return reply.status(500).send(storageFailed(request.log, failure));
+    case "PageVersionConflict":
+      return reply.status(409).send({
+        error: "page_version_conflict",
+        message: failure.message,
+        pageId: failure.pageId,
+      });
+    case "PageEditLockRequired":
+      return reply.status(409).send({
+        error: "page_edit_lock_required",
+        message: failure.message,
+        pageId: failure.pageId,
+      });
+    case "PageEditLockLost":
+      return reply.status(409).send({
+        error: "page_edit_lock_lost",
+        message: failure.message,
+        pageId: failure.pageId,
+      });
+    case "PageEditLockConflict":
+      return reply.status(409).send({
+        error: "page_edit_lock_conflict",
+        message: failure.message,
+        pageId: failure.pageId,
+      });
+    default: {
+      const unexpected: never = failure;
+      throw unexpected;
+    }
+  }
+}

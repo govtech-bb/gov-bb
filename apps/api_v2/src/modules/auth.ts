@@ -4,9 +4,14 @@ import { err, ok, type Result } from "./result";
 /** Only active members of this GitHub organization can provision editor sessions. */
 export const GITHUB_ORGANIZATION = "govtech-bb";
 
+/** Provider-owned employee identity; the existing authentication parser establishes this evidence. */
+export const EmployeeId = z.string().min(1).brand<"EmployeeId">();
+/** An employee identifier is not a page ID or editing-session token. */
+export type EmployeeId = z.infer<typeof EmployeeId>;
+
 /** An admitted employee, without session or provider tokens. */
 export interface Employee {
-  readonly id: string;
+  readonly id: EmployeeId;
   readonly email: string;
   readonly name: string;
 }
@@ -45,7 +50,7 @@ export class AuthUnavailable extends Error {
 
 const employeeEmail = z.email().transform((email) => email.toLowerCase());
 const employeeSchema = z.object({
-  id: z.string().min(1),
+  id: EmployeeId,
   email: employeeEmail,
   name: z.string(),
   emailVerified: z.literal(true),

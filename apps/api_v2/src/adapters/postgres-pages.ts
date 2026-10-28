@@ -35,6 +35,7 @@ import type { CategoryRecords } from "../services/category-editing";
 import {
   ContentStoreUnavailable,
   PageRejected,
+  PageContentVersion,
   type FieldError,
   type Frontmatter,
   type PageDocument,
@@ -43,11 +44,19 @@ import {
 } from "../modules/page";
 import type { Ancestor, ResolvablePage } from "../modules/page-visibility";
 import { err, ok, type Result } from "../modules/result";
+import { EmployeeId } from "../modules/auth";
+import {
+  PageEditActivitySequence,
+  PageEditLockGeneration,
+  PageEditLockToken,
+  type PageEditLockRecord,
+} from "../modules/page-edit-lock";
 import type { SearchChunk } from "../modules/search-text";
 import {
   categories,
   changeEvents,
   contentPages,
+  pageEditLocks,
   searchChunks,
 } from "../schema";
 import type { EstateVersion, IndexReads } from "../services/editor-index";
@@ -82,6 +91,7 @@ export const toDocument = (row: PageRow): PageDocument => ({
   published_at: row.publishedAt?.toISOString() ?? null,
   created_at: row.createdAt.toISOString(),
   updated_at: row.updatedAt.toISOString(),
+  version: PageContentVersion.parse(row.version),
 });
 
 /** The constraints a write can break, as the field an editor can fix. */
@@ -589,10 +599,10 @@ export class PostgresPages
   }
 
   /** The page with this id, its row locked until the transaction ends, or null. */
-  async lock(
+  async lockPageRow(
     id: PageId,
   ): Promise<Result<PageDocument | null, ContentStoreUnavailable>> {
-    const rows = await attempt("lock", () =>
+    const rows = await attempt("lockPageRow", () =>
       this.db
         .select()
         .from(contentPages)
@@ -600,6 +610,70 @@ export class PostgresPages
         .for("update"),
     );
     return rows.ok ? ok(firstDocument(rows.value)) : rows;
+  }
+
+  /** Read ownership and database time only after acquiring the page row lock. */
+  readPageEditLock(
+    id: PageId,
+  ): Promise<
+    Result<{ record: PageEditLockRecord; now: Date }, ContentStoreUnavailable>
+  > {
+    return attempt("readPageEditLock", async () => {
+      const [row] = await this.db
+        .select()
+        .from(pageEditLocks)
+        .where(eq(pageEditLocks.pageId, id));
+      const time = await this.db.execute(sql`select clock_timestamp() as now`);
+      const [{ now }] = z
+        .tuple([z.object({ now: z.string().pipe(z.coerce.date()) })])
+        .parse(time.rows);
+      return {
+        now,
+        record: {
+          lockGeneration: PageEditLockGeneration.parse(
+            row?.lockGeneration ?? 0,
+          ),
+          claim:
+            row && row.token !== null
+              ? {
+                  employeeId: EmployeeId.parse(row.employeeId),
+                  holderName: z.string().parse(row.holderName),
+                  token: PageEditLockToken.parse(row.token),
+                  acquiredAt: z.date().parse(row.acquiredAt),
+                  lockExpiresAt: z.date().parse(row.lockExpiresAt),
+                  lastActivityAt: z.date().parse(row.lastActivityAt),
+                  activitySequence: PageEditActivitySequence.parse(
+                    row.activitySequence,
+                  ),
+                }
+              : null,
+        },
+      };
+    });
+  }
+
+  /** Persist the whole claim under the page row lock; release retains its generation. */
+  writePageEditLock(
+    id: PageId,
+    record: PageEditLockRecord,
+  ): Promise<Result<void, ContentStoreUnavailable>> {
+    return attempt("writePageEditLock", async () => {
+      const claim = record.claim;
+      const values = {
+        lockGeneration: record.lockGeneration,
+        employeeId: claim?.employeeId ?? null,
+        holderName: claim?.holderName ?? null,
+        token: claim?.token.reveal() ?? null,
+        acquiredAt: claim?.acquiredAt ?? null,
+        lockExpiresAt: claim?.lockExpiresAt ?? null,
+        lastActivityAt: claim?.lastActivityAt ?? null,
+        activitySequence: claim?.activitySequence ?? null,
+      };
+      await this.db
+        .insert(pageEditLocks)
+        .values({ pageId: id, ...values })
+        .onConflictDoUpdate({ target: pageEditLocks.pageId, set: values });
+    });
   }
 
   /** The ids of the pages above this one, the page itself included. */

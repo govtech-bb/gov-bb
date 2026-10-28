@@ -1,6 +1,6 @@
 /**
  * The Drizzle schema, matching migrations `001_init` to
- * `005_hierarchy_and_search` applied in order, table for table and column for
+ * `006_page_edit_locks` applied in order, table for table and column for
  * column.
  *
  * The DDL in `migrations/` stays the source of truth and this file is the
@@ -15,6 +15,7 @@
 import {
   type AnyPgColumn,
   customType,
+  bigint,
   index,
   integer,
   foreignKey,
@@ -84,6 +85,7 @@ export const contentPages = pgTable(
         onDelete: "restrict",
       })
       .$type<PageId>(),
+    version: integer("version").notNull().default(1),
     title: varchar("title", { length: 300 }).notNull(),
     description: text("description"),
     visibility: pageVisibility("visibility").notNull().default("draft"),
@@ -114,6 +116,28 @@ export const contentPages = pgTable(
     index("content_pages_category_id_idx").on(table.categoryId),
   ],
 );
+
+/** Editing ownership changes independently from content and survives release as a public generation. */
+export const pageEditLocks = pgTable("page_edit_locks", {
+  pageId: uuid("page_id")
+    .primaryKey()
+    .references(() => contentPages.id, { onDelete: "cascade" })
+    .$type<PageId>(),
+  lockGeneration: integer("lock_generation").notNull(),
+  employeeId: text("employee_id"),
+  holderName: text("holder_name"),
+  token: uuid("token"),
+  acquiredAt: timestamp("acquired_at", { withTimezone: true, precision: 3 }),
+  lockExpiresAt: timestamp("lock_expires_at", {
+    withTimezone: true,
+    precision: 3,
+  }),
+  lastActivityAt: timestamp("last_activity_at", {
+    withTimezone: true,
+    precision: 3,
+  }),
+  activitySequence: bigint("activity_sequence", { mode: "number" }),
+});
 
 const tsvector = customType<{ data: string }>({
   dataType: () => "tsvector",

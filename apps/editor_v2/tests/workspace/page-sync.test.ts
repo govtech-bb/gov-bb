@@ -1,16 +1,27 @@
 import { describe, expect, it } from "vitest";
-import { ApiFailure, type ApiPage, type SavePageInput } from "../../src/api/client";
+import type { ApiPage, SavePageInput } from "../../src/api/client";
+import {
+  PageEditLockToken,
+  pageContentVersionSchema,
+  type PageApiFailure,
+  type PageApiResult,
+} from "../../src/api/page-schemas";
 import { pageToMarkdown } from "../../src/api/page-markdown";
-import { savePageDraft, pageHasUnsavedChanges } from "../../src/workspace/page-sync";
+import { savePageChanges, pageHasUnsavedChanges } from "../../src/workspace/page-sync";
 import { DraftStore } from "../../src/persistence/draft-store";
 import { govbbPageCodec } from "../../src/presets/govbb-page";
 
+const token = PageEditLockToken.parse("33333333-3333-4333-8333-333333333333");
+
+if (!token) throw new Error("Invalid test credential");
+
 const page: ApiPage = {
-  id: "page-1",
+  version: pageContentVersionSchema.parse(1),
+  id: "11111111-1111-4111-8111-111111111111",
   url: "/money-financial-support/severance/how-it-is-worked-out",
   slug: "how-it-is-worked-out",
   category_id: null,
-  parent_id: "entry-1",
+  parent_id: "22222222-2222-4222-8222-222222222222",
   title: "How severance is worked out",
   description: null,
   visibility: "public",
@@ -24,15 +35,16 @@ const page: ApiPage = {
 
 const newer: ApiPage = {
   ...page,
+  version: pageContentVersionSchema.parse(2),
   title: "How severance pay is worked out",
   updated_at: "2026-10-07T13:00:00.000Z",
 };
 
 const markdown = pageToMarkdown(page, []);
 
-it("counts both applied changes and unapplied source against an in-memory server baseline", () => {
+it("counts applied changes and unapplied source against the editing baseline", () => {
   const store = new DraftStore(markdown, govbbPageCodec);
-  const session = { store, getBaseline: () => ({ page, markdown }), isSaving: () => false };
+  const session = { store, getBaseline: () => ({ page, markdown }) };
   expect(pageHasUnsavedChanges(session)).toBe(false);
   store.edit("invalid source");
   expect(pageHasUnsavedChanges(session)).toBe(true);
@@ -43,31 +55,28 @@ it("counts both applied changes and unapplied source against an in-memory server
   expect(pageHasUnsavedChanges(session)).toBe(true);
 });
 
-describe("saving a page", () => {
+describe("explicit page saving", () => {
   const base = { page, markdown };
-
-  it("saves the draft over the version it was edited from", async () => {
-    const sent: { fields: SavePageInput; ifUpdatedAt: string }[] = [];
+  it("sends the version of the submitted baseline and its exact editing credential", async () => {
+    const sent: { fields: SavePageInput; token: PageEditLockToken }[] = [];
     const edited = markdown.replace("Hello", "Hello again");
 
-    const outcome = await savePageDraft(
+    const outcome = await savePageChanges(
       {
-        savePage: async (_id, fields, ifUpdatedAt) => {
-          sent.push({ fields, ifUpdatedAt });
+        savePage: async (_id, fields, token) => {
+          sent.push({ fields, token });
 
-          return { ...newer, body_markdown: fields.body_markdown };
+          return { ok: true, value: { ...newer, body_markdown: fields.body_markdown } };
         },
       },
       base,
       edited,
       [],
+      token,
     );
 
     expect(sent).toEqual([
-      {
-        fields: expect.objectContaining({ body_markdown: "Hello again" }),
-        ifUpdatedAt: page.updated_at,
-      },
+      { fields: expect.objectContaining({ body_markdown: "Hello again", version: 1 }), token },
     ]);
     expect(outcome).toEqual({
       kind: "saved",
@@ -75,51 +84,69 @@ describe("saving a page", () => {
     });
   });
 
-  it("sends nothing when the draft cannot be saved", async () => {
-    let called = false;
-
-    const outcome = await savePageDraft(
+  it("sends nothing when source validation fails", async () => {
+    const outcome = await savePageChanges(
       {
         savePage: async () => {
-          called = true;
-
-          return page;
+          throw new Error("Invalid source reached the API");
         },
       },
       base,
       markdown.replace(/^title: .*$/m, 'title: ""'),
       [],
+      token,
     );
 
-    expect(called).toBe(false);
     expect(outcome).toEqual({
       kind: "invalid",
       errors: [{ field: "title", message: "Enter a title" }],
     });
   });
 
-  it.each([
-    [
-      new ApiFailure(422, [{ field: "url", message: "Taken" }]),
-      { kind: "invalid", errors: [{ field: "url", message: "Taken" }] },
-    ],
-    [new ApiFailure(409), { kind: "conflict" }],
-    [new ApiFailure(404), { kind: "missing" }],
-    [new ApiFailure(401), { kind: "signed-out" }],
-    [new ApiFailure(503), { kind: "failed" }],
-    [new ApiFailure(0), { kind: "failed" }],
-  ])("turns a %s refusal into what the editor does about it", async (failure, expected) => {
-    const outcome = await savePageDraft(
-      {
-        savePage: async () => {
-          throw failure;
-        },
-      },
+  it.each<{ failure: PageApiFailure; outcome: string }>([
+    { failure: { kind: "version-conflict", pageId: page.id }, outcome: "conflict" },
+    { failure: { kind: "lock-lost", pageId: page.id }, outcome: "lock-lost" },
+    { failure: { kind: "lock-required", pageId: page.id }, outcome: "lock-lost" },
+    { failure: { kind: "missing" }, outcome: "missing" },
+    { failure: { kind: "signed-out" }, outcome: "signed-out" },
+    { failure: { kind: "forbidden" }, outcome: "forbidden" },
+    { failure: { kind: "outcome-unknown" }, outcome: "outcome-unknown" },
+    { failure: { kind: "unavailable" }, outcome: "failed" },
+  ])("retains the original version after $failure.kind", async ({ failure, outcome }) => {
+    expect(
+      await savePageChanges(
+        { savePage: async () => ({ ok: false, error: failure }) },
+        base,
+        markdown,
+        [],
+        token,
+      ),
+    ).toEqual({ kind: outcome });
+    expect(base.page.version).toBe(1);
+    expect(base.markdown).toBe(markdown);
+  });
+
+  it("acknowledges the submitted snapshot without consuming source edits made while waiting", async () => {
+    const store = new DraftStore(markdown, govbbPageCodec);
+    const response = Promise.withResolvers<PageApiResult<ApiPage>>();
+
+    const pending = savePageChanges(
+      { savePage: () => response.promise },
       base,
       markdown,
       [],
+      token,
     );
 
-    expect(outcome).toEqual(expected);
+    store.edit("Unapplied source typed while saving");
+    const edited = store.getSnapshot();
+    response.resolve({ ok: true, value: newer });
+    const outcome = await pending;
+
+    if (outcome.kind !== "saved") throw new Error("Expected save acknowledgement");
+    expect(outcome.base.markdown).toBe(markdown);
+    expect(outcome.base.page.version).toBe(2);
+    expect(store.getSnapshot()).toBe(edited);
+    expect(pageHasUnsavedChanges({ store, getBaseline: () => outcome.base })).toBe(true);
   });
 });

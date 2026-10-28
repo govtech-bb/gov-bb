@@ -142,6 +142,18 @@ erDiagram
     jsonb frontmatter
     timestamptz(3) published_at "nullable"
     uuid parent_id FK "nullable"
+    int4 version
+  }
+  page_edit_locks {
+    uuid page_id PK, FK
+    int4 lock_generation
+    text employee_id "nullable"
+    text holder_name "nullable"
+    uuid token "nullable"
+    timestamptz(3) acquired_at "nullable"
+    timestamptz(3) lock_expires_at "nullable"
+    timestamptz(3) last_activity_at "nullable"
+    int8 activity_sequence "nullable"
   }
   search_chunks {
     uuid id PK
@@ -157,6 +169,7 @@ erDiagram
   categories |o--o{ content_pages : "category_id -> id"
   content_pages |o--o{ content_pages : "parent_id, category_id -> id, category_id"
   content_pages |o--o{ content_pages : "parent_id -> id"
+  content_pages ||--o{ page_edit_locks : "page_id -> id"
   content_pages ||--o{ search_chunks : "page_id -> id"
 ```
 
@@ -164,29 +177,30 @@ erDiagram
 
 ## HTTP surface
 
-| Method   | Path                       | Access                                                                 |
-| -------- | -------------------------- | ---------------------------------------------------------------------- |
-| GET      | `/pages?url=…`             | Site page resolution (public, or preview with the token)               |
-| GET      | `/categories`              | Site category tree                                                     |
-| GET      | `/categories/:slug`        | A category's subcategories and root pages                              |
-| GET      | `/categories/:c/:s`        | A subcategory's root pages                                             |
-| GET      | `/catalog`                 | Every visible page (sitemap, service lists)                            |
-| GET      | `/search/documents`        | Every visible page with its search text in chunks                      |
-| GET      | `/docs`                    | Public API reference (Scalar)                                          |
-| GET      | `/docs/openapi.json`       | Public OpenAPI document                                                |
-| GET      | `/pages/:id`               | Employee; includes drafts and previews                                 |
-| GET      | `/services`                | Employee service index, grouped by `parent_id`                         |
-| GET      | `/services/:id`            | Employee; one service's pages with their roles, entry first            |
-| GET      | `/editor/categories`       | Employee; every shared category, counts, address protection and stamps |
-| POST     | `/editor/categories`       | Employee; append a category or subcategory                             |
-| PUT      | `/editor/categories/:id`   | Employee; edit with mandatory `if-updated-at`                          |
-| PUT      | `/editor/categories/order` | Employee; reorder a complete expected sibling snapshot                 |
-| DELETE   | `/editor/categories/:id`   | Employee; delete an empty category with `if-updated-at`                |
-| GET      | `/version`                 | Employee change token                                                  |
-| POST     | `/pages`                   | Employee create                                                        |
-| PUT      | `/pages/:id`               | Employee save; existing optional `if-updated-at` concurrency check     |
-| DELETE   | `/pages/:id`               | Employee delete                                                        |
-| GET/POST | `/api/auth/*`              | BetterAuth's GitHub/session protocol                                   |
+| Method              | Path                       | Access                                                                 |
+| ------------------- | -------------------------- | ---------------------------------------------------------------------- |
+| GET                 | `/pages?url=…`             | Site page resolution (public, or preview with the token)               |
+| GET                 | `/categories`              | Site category tree                                                     |
+| GET                 | `/categories/:slug`        | A category's subcategories and root pages                              |
+| GET                 | `/categories/:c/:s`        | A subcategory's root pages                                             |
+| GET                 | `/catalog`                 | Every visible page (sitemap, service lists)                            |
+| GET                 | `/search/documents`        | Every visible page with its search text in chunks                      |
+| GET                 | `/docs`                    | Public API reference (Scalar)                                          |
+| GET                 | `/docs/openapi.json`       | Public OpenAPI document                                                |
+| GET                 | `/pages/:id`               | Employee; includes drafts and previews                                 |
+| GET                 | `/services`                | Employee service index, grouped by `parent_id`                         |
+| GET                 | `/services/:id`            | Employee; one service's pages with their roles, entry first            |
+| GET                 | `/editor/categories`       | Employee; every shared category, counts, address protection and stamps |
+| POST                | `/editor/categories`       | Employee; append a category or subcategory                             |
+| PUT                 | `/editor/categories/:id`   | Employee; edit with mandatory `if-updated-at`                          |
+| PUT                 | `/editor/categories/order` | Employee; reorder a complete expected sibling snapshot                 |
+| DELETE              | `/editor/categories/:id`   | Employee; delete an empty category with `if-updated-at`                |
+| GET                 | `/version`                 | Employee change token                                                  |
+| POST                | `/pages`                   | Employee create                                                        |
+| PUT                 | `/pages/:id`               | Employee save; required JSON `version` and edit-lock token             |
+| DELETE              | `/pages/:id`               | Employee delete; required query `version` and edit-lock token          |
+| GET/POST/PUT/DELETE | `/pages/:id/lock`          | Employee edit-lock status, acquisition/takeover, renewal and release   |
+| GET/POST            | `/api/auth/*`              | BetterAuth's GitHub/session protocol                                   |
 
 Missing, expired, or revoked sessions produce JSON 401 responses; disallowed employees or write origins produce 403; unavailable session verification produces 503. The API does not redirect protected content requests to GitHub. The editor handles navigation. Authenticated writes require `Origin: <EDITOR_ORIGIN>`. Auth/session/editor responses use `Cache-Control: no-store` and do not receive ETags. Page create, save and delete audit rows record the authenticated user ID, never a caller-supplied actor, and commit with the write they record. Category writes do not yet emit events or attributed history; see the release dependency below.
 
@@ -196,7 +210,7 @@ Preview: the site's server sends its `PREVIEW_SECRET` as `x-preview-token`, and 
 
 The hierarchy is `parent_id`, not the url. A page is served only when it and every page above it are visible; its breadcrumbs are its category (and parent category, for a subcategory), then the pages above it; a category lists only the pages at its root (`parent_id` null), so `start` steps and sub-pages never appear in a listing. A sub-page must share its parent's category (moving the parent moves its sub-pages), a page cannot sit beneath itself, and a page with sub-pages cannot be deleted: each is a field-specific 422.
 
-`GET /pages?url=` returns `{url, frontmatter, body_markdown, form_id, hide_start_links, breadcrumbs}`. `hide_start_links` is true when the page's `start` sub-page is hidden from the viewer. Whether a form is open is the forms API's to say: `form_id` is a name, and the site asks the forms API for the form's status. The API serves markdown as written; the site owns sanitization and rendering. Editor writes return field-specific 422s for invalid references or duplicates, 409 for a stale supplied version, and stamp `published_at` only on first publication. A save replaces the page, so it sends every field; only `parent_id` may be left out, which keeps the page's parent. Changing `url` moves that page alone: its sub-pages keep theirs, and nothing redirects from the old url. Each write still records an append-only audit snapshot; page-history readers are no longer exposed. A request its route's schema refuses (a missing field, an id that is not a UUID, an `if-updated-at` that is not a timestamp, a url over 512 characters, a title over 300) is a 400; Fastify's own refusals keep their status (a body that is not JSON is a 415), and an unknown route is a JSON 404.
+`GET /pages?url=` returns `{url, frontmatter, body_markdown, form_id, hide_start_links, breadcrumbs}`. `hide_start_links` is true when the page's `start` sub-page is hidden from the viewer. Whether a form is open is the forms API's to say: `form_id` is a name, and the site asks the forms API for the form's status. The API serves markdown as written; the site owns sanitization and rendering. Editor writes return field-specific 422s for invalid references or duplicates, 409 for a stale supplied version, and stamp `published_at` only on first publication. A save replaces the page, so it sends every field; only `parent_id` may be left out, which keeps the page's parent. Changing `url` moves that page alone: its sub-pages keep theirs, and nothing redirects from the old url. Each write still records an append-only audit snapshot; page-history readers are no longer exposed. A request its route's schema refuses (a missing field, an id that is not a UUID, a missing or invalid `version`, a url over 512 characters, a title over 300) is a 400; Fastify's own refusals keep their status (a body that is not JSON is a 415), and an unknown route is a JSON 404.
 
 ### Category management
 
@@ -246,6 +260,26 @@ polling workaround. The editor's persisted category controls are tracked in
 `search_chunks` holds each page's body split at its headings, as plain text, rewritten in the same transaction as every save. Rejoined, a page's chunks are exactly the text landing's search indexes today (`search-text.test.ts` checks every seeded page), so moving search onto the API does not move its ranking. The generated `tsv` column and its GIN index are there for server-side search and are not read yet.
 
 The seed is a committed snapshot of legacy markdown and the category taxonomy, subcategories included, with each sub-page's parent. Inserts are additive and idempotent and never replace authored changes. It runs only with `SEED=true`, because an additive insert also brings back a page an editor deleted. Each page it adds records a `created` entry by `seed` for the audit log and editor's change token. Regenerate it with `pnpm seed-data` when intentionally updating the snapshot. `pnpm seed-data` also records `source`, the last commit that touched `apps/landing/src/content`, and the one-time import names it in every history entry it writes (see "Importing the estate" below).
+
+## Concurrent editing
+
+Every editor page read, create and save returns a positive integer `version`. PUT submits the reviewed version in its JSON body; DELETE submits exactly one `?version=<integer>`. Missing, repeated, non-integer or out-of-range versions return 400. Stale versions return 409 `page_version_conflict`. Timestamp headers and `If-Match` are not substitutes.
+
+Both writes also require `X-Page-Edit-Lock-Token`, bound to the authenticated employee and that acquisition. Same-user tabs have different credentials. Missing ownership returns 409 `page_edit_lock_required`; expired or replaced ownership returns `page_edit_lock_lost`. On otherwise valid writes, the version check precedes the ownership check. Content, version, search and audit changes commit together.
+
+Migration `006_page_edit_locks` adds versions starting at 1 without changing existing content or timestamps. Its database trigger advances the version on every page-row update, including inherited category changes. Replay preserves advanced versions. Locks have separate rows and do not change content versions or audit history. Guarded writes take the existing hierarchy lock before the page row lock; lock operations serialize on that same page row.
+
+All `/pages/:id/lock` responses are `no-store`. GET returns the public `lockGeneration`, server time and, when held, holder display name and deadlines. An optional token header lets callers check their own claim; responses never reveal credentials or employee identifiers. The other methods require the token header and the existing authenticated write Origin:
+
+- POST `{ action: "acquire" | "takeover", expectedLockGeneration }` compares the observed generation. Acquire cannot displace a live holder. A stale generation or competing claim returns 409 `page_edit_lock_conflict`.
+- PUT `{ activitySequence }` renews only the exact live employee/token. It cannot revive expired ownership. Only a larger activity sequence advances author activity; duplicate requests and ordinary heartbeats do not.
+- DELETE releases only the matching employee/token. Repeated or superseded releases are harmless. The unheld generation remains to fence delayed acquisitions.
+
+PostgreSQL owns time. A grant lasts at most two minutes and renewal cannot extend it past twelve minutes since the last activity. The editor checks every 30 seconds, prompts after ten idle minutes and gives two minutes to respond. Actual edits and "I'm still editing" count as activity; presence reads, focus and mouse movement do not. Browser sleep or failed release cannot prevent server expiry.
+
+### Rollout and rollback
+
+Deploy this API to **all instances and drain old versions before releasing the editor**. Old API instances do not enforce the new evidence. Old editor tabs fail closed with 400 when their writes omit `version`; ask authors to export unsaved work before refreshing. Keep backend enforcement if reverting the editor. Do not deploy intermediate implementation steps as a completed feature or restore optional timestamp checks as a fallback.
 
 ## Importing the estate (one-time)
 

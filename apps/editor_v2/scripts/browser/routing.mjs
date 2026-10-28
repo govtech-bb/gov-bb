@@ -18,7 +18,12 @@ const base = new URL(process.argv[2] ?? "http://localhost:3000/");
 
 const service = { ...servicesFixture[0], title: "Routing service" };
 
-const ids = [service.id, "fees", "contact", "fourth"];
+const ids = [
+  service.id,
+  "44444444-4444-4444-8444-444444444444",
+  "55555555-5555-4555-8555-555555555555",
+  "66666666-6666-4666-8666-666666666666",
+];
 
 await installPageApi(
   context,
@@ -31,7 +36,13 @@ await installPageApi(
   ),
 );
 
-const path = (id) => `/services/${service.id}/${encodeURIComponent(id)}`;
+const aliases = new Map([
+  ["fees", ids[1]],
+  ["contact", ids[2]],
+  ["fourth", ids[3]],
+]);
+
+const path = (id) => `/services/${service.id}/${encodeURIComponent(aliases.get(id) ?? id)}`;
 
 const url = (id) => new URL(path(id), base).href;
 

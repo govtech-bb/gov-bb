@@ -226,9 +226,11 @@ export interface paths {
                             created_at: string;
                             /**
                              * Format: date-time
-                             * @description Millisecond precision, and exactly the value to send back in `if-updated-at` on the next save.
+                             * @description When the page was last directly saved.
                              */
                             updated_at: string;
+                            /** @description The content version to submit on the next save or delete. */
+                            version: number;
                         };
                     };
                 };
@@ -848,9 +850,11 @@ export interface paths {
                             created_at: string;
                             /**
                              * Format: date-time
-                             * @description Millisecond precision, and exactly the value to send back in `if-updated-at` on the next save.
+                             * @description When the page was last directly saved.
                              */
                             updated_at: string;
+                            /** @description The content version to submit on the next save or delete. */
+                            version: number;
                         };
                     };
                 };
@@ -942,14 +946,13 @@ export interface paths {
         };
         /**
          * Save a page
-         * @description Requires an employee session and the editor's Origin header. Send every field: a save replaces the page and defaults none, except that leaving `parent_id` out keeps the page's parent. Send the `updated_at` you last read in the `if-updated-at` header. If the stored row has moved on since, the save is refused with a 409 rather than silently discarding whoever wrote first. Changing `url` moves this page alone: its sub-pages keep their urls and stay beneath it by `parent_id`, and nothing redirects from the old url.
+         * @description Requires an employee session and the editor's Origin header. Send every field: a save replaces the page and defaults none, except that leaving `parent_id` out keeps the page's parent. Send the reviewed numeric `version` in the body and the live edit-lock token in `X-Page-Edit-Lock-Token`. If the stored row has moved on since, the save is refused with a 409 rather than silently discarding whoever wrote first. Changing `url` moves this page alone: its sub-pages keep their urls and stay beneath it by `parent_id`, and nothing redirects from the old url.
          */
         put: {
             parameters: {
                 query?: never;
                 header?: {
-                    /** @description The `updated_at` this client last read. Omit to accept whatever is stored. */
-                    "if-updated-at"?: string;
+                    "x-page-edit-lock-token"?: string;
                 };
                 path: {
                     id: string;
@@ -983,6 +986,7 @@ export interface paths {
                             keywords?: string[];
                             source_url?: string;
                         };
+                        version: number;
                     };
                 };
             };
@@ -1031,9 +1035,11 @@ export interface paths {
                             created_at: string;
                             /**
                              * Format: date-time
-                             * @description Millisecond precision, and exactly the value to send back in `if-updated-at` on the next save.
+                             * @description When the page was last directly saved.
                              */
                             updated_at: string;
+                            /** @description The content version to submit on the next save or delete. */
+                            version: number;
                         };
                     };
                 };
@@ -1101,12 +1107,10 @@ export interface paths {
                     content: {
                         "application/json": {
                             /** @enum {string} */
-                            error: "conflict";
+                            error: "page_version_conflict" | "page_edit_lock_required" | "page_edit_lock_lost" | "page_edit_lock_conflict";
                             message: string;
                             /** Format: uuid */
-                            documentId: string;
-                        } & {
-                            [key: string]: unknown;
+                            pageId: string;
                         };
                     };
                 };
@@ -1162,12 +1166,16 @@ export interface paths {
         post?: never;
         /**
          * Delete a page
-         * @description Requires an employee session and the editor's Origin header. A page with sub-pages is refused (422) until they are moved or deleted.
+         * @description Requires an employee session and the editor's Origin header. A page with sub-pages is refused (422) until they are moved or deleted. Requires the reviewed `version` query parameter and live edit-lock token header.
          */
         delete: {
             parameters: {
-                query?: never;
-                header?: never;
+                query: {
+                    version: string;
+                };
+                header?: {
+                    "x-page-edit-lock-token"?: string;
+                };
                 path: {
                     id: string;
                 };
@@ -1221,6 +1229,35 @@ export interface paths {
                             message?: string;
                         } & {
                             [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @enum {string} */
+                            error: "page_version_conflict" | "page_edit_lock_required" | "page_edit_lock_lost" | "page_edit_lock_conflict";
+                            message: string;
+                            /** Format: uuid */
+                            pageId: string;
                         };
                     };
                 };
@@ -2376,6 +2413,590 @@ export interface paths {
         put?: never;
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pages/{id}/lock": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read page editing ownership without renewing it */
+        get: {
+            parameters: {
+                query?: never;
+                header?: {
+                    "x-page-edit-lock-token"?: string;
+                };
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Default Response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            lockGeneration: number;
+                            /** Format: date-time */
+                            serverTime: string;
+                            /** @enum {string} */
+                            state: "unheld";
+                        } | {
+                            lockGeneration: number;
+                            /** Format: date-time */
+                            serverTime: string;
+                            /** @enum {string} */
+                            state: "held";
+                            holderName: string;
+                            ownedByCaller: boolean;
+                            /** Format: date-time */
+                            lockExpiresAt: string;
+                            /** Format: date-time */
+                            lastActivityAt: string;
+                            /** Format: date-time */
+                            idlePromptAt: string;
+                            /** Format: date-time */
+                            idleExpiresAt: string;
+                            activitySequence: number;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+        };
+        /** Renew a live acquisition without reviving expired ownership */
+        put: {
+            parameters: {
+                query?: never;
+                header: {
+                    "x-page-edit-lock-token": string;
+                };
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        activitySequence: number;
+                    };
+                };
+            };
+            responses: {
+                /** @description Default Response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            lockGeneration: number;
+                            /** Format: date-time */
+                            serverTime: string;
+                            /** @enum {string} */
+                            state: "unheld";
+                        } | {
+                            lockGeneration: number;
+                            /** Format: date-time */
+                            serverTime: string;
+                            /** @enum {string} */
+                            state: "held";
+                            holderName: string;
+                            ownedByCaller: boolean;
+                            /** Format: date-time */
+                            lockExpiresAt: string;
+                            /** Format: date-time */
+                            lastActivityAt: string;
+                            /** Format: date-time */
+                            idlePromptAt: string;
+                            /** Format: date-time */
+                            idleExpiresAt: string;
+                            activitySequence: number;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @enum {string} */
+                            error: "page_version_conflict" | "page_edit_lock_required" | "page_edit_lock_lost" | "page_edit_lock_conflict";
+                            message: string;
+                            /** Format: uuid */
+                            pageId: string;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+        };
+        /** Acquire or explicitly take over an observed edit-lock generation */
+        post: {
+            parameters: {
+                query?: never;
+                header: {
+                    "x-page-edit-lock-token": string;
+                };
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        /** @enum {string} */
+                        action: "acquire" | "takeover";
+                        expectedLockGeneration: number;
+                    };
+                };
+            };
+            responses: {
+                /** @description Default Response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            lockGeneration: number;
+                            /** Format: date-time */
+                            serverTime: string;
+                            /** @enum {string} */
+                            state: "unheld";
+                        } | {
+                            lockGeneration: number;
+                            /** Format: date-time */
+                            serverTime: string;
+                            /** @enum {string} */
+                            state: "held";
+                            holderName: string;
+                            ownedByCaller: boolean;
+                            /** Format: date-time */
+                            lockExpiresAt: string;
+                            /** Format: date-time */
+                            lastActivityAt: string;
+                            /** Format: date-time */
+                            idlePromptAt: string;
+                            /** Format: date-time */
+                            idleExpiresAt: string;
+                            activitySequence: number;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @enum {string} */
+                            error: "page_version_conflict" | "page_edit_lock_required" | "page_edit_lock_lost" | "page_edit_lock_conflict";
+                            message: string;
+                            /** Format: uuid */
+                            pageId: string;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+        };
+        /** Release this acquisition, leaving a later owner's claim unchanged */
+        delete: {
+            parameters: {
+                query?: never;
+                header: {
+                    "x-page-edit-lock-token": string;
+                };
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Default Response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            lockGeneration: number;
+                            /** Format: date-time */
+                            serverTime: string;
+                            /** @enum {string} */
+                            state: "unheld";
+                        } | {
+                            lockGeneration: number;
+                            /** Format: date-time */
+                            serverTime: string;
+                            /** @enum {string} */
+                            state: "held";
+                            holderName: string;
+                            ownedByCaller: boolean;
+                            /** Format: date-time */
+                            lockExpiresAt: string;
+                            /** Format: date-time */
+                            lastActivityAt: string;
+                            /** Format: date-time */
+                            idlePromptAt: string;
+                            /** Format: date-time */
+                            idleExpiresAt: string;
+                            activitySequence: number;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+        };
         options?: never;
         head?: never;
         patch?: never;

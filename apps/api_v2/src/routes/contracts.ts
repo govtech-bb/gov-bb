@@ -15,7 +15,6 @@ import {
   CategoryNode,
   SearchDocument,
 } from "../modules/navigation";
-import { NewPage, PageDocument, PageId, SaveFields } from "../modules/page";
 import {
   CategoryBlockers,
   CategoryFields,
@@ -24,10 +23,26 @@ import {
   CategoryStamp,
   EditorCategory,
 } from "../modules/category";
+import {
+  NewPage,
+  PageDocument,
+  PageId,
+  PageContentVersion,
+  SaveFields,
+} from "../modules/page";
+import {
+  AcquirePageEditLock,
+  PageEditLockStatus,
+  PageEditLockToken,
+  RenewPageEditLock,
+} from "../modules/page-edit-lock";
+
+/** Editing ownership is a header credential, never a URL parameter or content version. */
+export const PAGE_EDIT_LOCK_HEADER = "x-page-edit-lock-token";
 import { PublicPage } from "../modules/page-visibility";
 import { EstateVersion } from "../services/editor-index";
 
-/** The editor sends the exact millisecond timestamp from its last read. */
+/** Category writes retain timestamp preconditions; page writes use content versions. */
 export const IF_UPDATED_AT = "if-updated-at";
 
 /** No credentials, or the preview token. */
@@ -61,10 +76,21 @@ const validationFailed = z.looseObject({
   errors: z.array(z.object({ field: z.string(), message: z.string() })),
 });
 
-const conflict = z.looseObject({
-  error: z.literal("conflict"),
+const conflict = z.object({
+  error: z.enum([
+    "page_version_conflict",
+    "page_edit_lock_required",
+    "page_edit_lock_lost",
+    "page_edit_lock_conflict",
+  ]),
   message: z.string(),
-  documentId: z.guid(),
+  pageId: PageId,
+});
+const optionalLockHeaders = z.object({
+  [PAGE_EDIT_LOCK_HEADER]: PageEditLockToken.optional(),
+});
+const requiredLockHeaders = z.object({
+  [PAGE_EDIT_LOCK_HEADER]: PageEditLockToken,
 });
 
 const idParams = z.object({ id: PageId });
@@ -85,6 +111,13 @@ const categoryParams = z.object({ id: CategoryId });
 const categoryErrors = {
   400: error,
   422: validationFailed.extend({ message: z.string() }),
+  500: error,
+  ...authErrors,
+};
+const lockResponse = {
+  200: PageEditLockStatus,
+  400: error,
+  404: error,
   500: error,
   ...authErrors,
 };
@@ -218,24 +251,15 @@ export const SCHEMAS = {
       "Requires an employee session and the editor's Origin header. " +
       "Send every field: a save replaces the page and defaults none, except " +
       "that leaving `parent_id` out keeps the page's parent. " +
-      "Send the `updated_at` you last read in the `if-updated-at` header. " +
+      "Send the reviewed numeric `version` in the body and the live edit-lock token in `X-Page-Edit-Lock-Token`. " +
       "If the stored row has moved on since, the save is refused with a 409 " +
       "rather than silently discarding whoever wrote first. Changing `url` " +
       "moves this page alone: its sub-pages keep their urls and stay beneath " +
       "it by `parent_id`, and nothing redirects from the old url.",
     tags: ["pages"],
     params: idParams,
-    headers: z.object({
-      "if-updated-at": z.iso
-        .datetime({ offset: true })
-        .transform((value) => new Date(value))
-        .optional()
-        .describe(
-          "The `updated_at` this client last read. Omit to accept " +
-            "whatever is stored.",
-        ),
-    }),
-    body: SaveFields,
+    headers: optionalLockHeaders,
+    body: SaveFields.extend({ version: PageContentVersion }),
     security: editorSecurity,
     response: {
       200: PageDocument,
@@ -252,17 +276,64 @@ export const SCHEMAS = {
     summary: "Delete a page",
     description:
       "Requires an employee session and the editor's Origin header. A page " +
-      "with sub-pages is refused (422) until they are moved or deleted.",
+      "with sub-pages is refused (422) until they are moved or deleted. " +
+      "Requires the reviewed `version` query parameter and live edit-lock token header.",
     tags: ["pages"],
     params: idParams,
+    headers: optionalLockHeaders,
+    querystring: z.object({
+      version: z
+        .string()
+        .regex(/^\d+$/)
+        .transform(Number)
+        .pipe(PageContentVersion),
+    }),
     security: editorSecurity,
     response: {
       204: z.undefined(),
       400: error,
+      404: error,
+      409: conflict,
       422: validationFailed,
       500: error,
       ...authErrors,
     },
+  },
+
+  readPageEditLock: {
+    summary: "Read page editing ownership without renewing it",
+    tags: ["pages"],
+    params: idParams,
+    headers: optionalLockHeaders,
+    security: editorSecurity,
+    response: lockResponse,
+  },
+  acquirePageEditLock: {
+    summary: "Acquire or explicitly take over an observed edit-lock generation",
+    tags: ["pages"],
+    params: idParams,
+    headers: requiredLockHeaders,
+    body: AcquirePageEditLock,
+    security: editorSecurity,
+    response: { ...lockResponse, 409: conflict },
+  },
+  renewPageEditLock: {
+    summary: "Renew a live acquisition without reviving expired ownership",
+    tags: ["pages"],
+    params: idParams,
+    headers: requiredLockHeaders,
+    body: RenewPageEditLock,
+    security: editorSecurity,
+    response: { ...lockResponse, 409: conflict },
+  },
+  releasePageEditLock: {
+    summary:
+      "Release this acquisition, leaving a later owner's claim unchanged",
+    tags: ["pages"],
+    params: idParams,
+    headers: requiredLockHeaders,
+    security: editorSecurity,
+    response: lockResponse,
   },
 
   listServices: {
