@@ -1,4 +1,5 @@
 import { betterAuth } from "better-auth";
+import { sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 import pino from "pino";
@@ -12,13 +13,14 @@ import {
   vi,
 } from "vitest";
 import { parseConfig, type AuthConfig } from "../config";
+import type { Database } from "../db";
+import { createTestDb } from "../test-db";
 import { betterAuthOptions } from "./better-auth";
 
 const pool = new Pool();
-const authWith = (config: AuthConfig) =>
-  betterAuth(
-    betterAuthOptions(drizzle(pool), config, pino({ enabled: false })),
-  );
+const authWith = (config: AuthConfig, db: Database = drizzle(pool)) =>
+  betterAuth(betterAuthOptions(db, config, pino({ enabled: false })));
+let authConfig: AuthConfig;
 let auth: ReturnType<typeof authWith>;
 
 beforeAll(() => {
@@ -31,7 +33,8 @@ beforeAll(() => {
     API_V2_ADMIN_EMAILS: "admin@govtech.bb",
   });
   if (!config.ok) throw config.error;
-  auth = authWith(config.value.auth);
+  authConfig = config.value.auth;
+  auth = authWith(authConfig);
 });
 afterEach(() => vi.unstubAllGlobals());
 afterAll(() => pool.end());
@@ -132,5 +135,29 @@ describe("GitHub provider boundary", () => {
     expect(context.socialProviders.map((provider) => provider.id)).toEqual([
       "github",
     ]);
+  });
+});
+
+describe("first sign-in", () => {
+  it("leaves no user behind when the account cannot be created", async () => {
+    const { db, close } = await createTestDb();
+    try {
+      const context = await authWith(authConfig, db).$context;
+
+      await expect(
+        context.internalAdapter.createOAuthUser(
+          { email: "new@govtech.bb", name: "New", emailVerified: true },
+          // auth_account.accountId is not null, so the second insert fails.
+          { accountId: null as unknown as string, providerId: "github" },
+        ),
+      ).rejects.toThrow();
+
+      const { rows } = await db.execute(
+        sql`select 1 from auth_user where email = 'new@govtech.bb'`,
+      );
+      expect(rows).toEqual([]);
+    } finally {
+      await close();
+    }
   });
 });

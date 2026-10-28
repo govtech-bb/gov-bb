@@ -59,7 +59,13 @@ export function betterAuthOptions(
     baseURL: config.apiOrigin,
     basePath: "/api/auth",
     secret: config.secret.reveal(),
-    database: drizzleAdapter(db, { provider: "pg", schema: AUTH_SCHEMA }),
+    // The adapter defaults to no transactions; a first sign-in must insert its
+    // user and account together or not at all.
+    database: drizzleAdapter(db, {
+      provider: "pg",
+      schema: AUTH_SCHEMA,
+      transaction: true,
+    }),
     trustedOrigins: [config.editorOrigin],
     emailAndPassword: { enabled: false },
     socialProviders: {
