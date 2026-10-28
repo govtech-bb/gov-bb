@@ -24,6 +24,14 @@ export const servicesQuery = (api: EditorApi) =>
 export const serviceQuery = (api: EditorApi, id: string) =>
   queryOptions({ queryKey: ["content", "service", id], queryFn: () => api.service(id) });
 
+/** A collection and its records, such as the contacts a page's contact blocks show. */
+export const collectionRecordsQuery = (api: Pick<EditorApi, "collectionRecords">, key: string) =>
+  queryOptions({
+    queryKey: ["content", "collection", key],
+    queryFn: () => api.collectionRecords(key),
+    staleTime: PRELOAD_FRESH,
+  });
+
 export const pageQuery = (api: EditorApi, id: string) =>
   queryOptions({ queryKey: ["content", "page", id], queryFn: () => api.page(id) });
 

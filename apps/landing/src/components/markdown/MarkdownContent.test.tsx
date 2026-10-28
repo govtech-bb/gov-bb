@@ -4,6 +4,7 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { processMarkdown } from '../../utils/markdown/processor'
 import { bakeStartLinkFormId } from '../../utils/markdown/plugins'
 import { MarkdownBody } from './MarkdownContent'
+import type { ContactRecords } from '../../lib/api-v2-collections'
 
 // StartLink reads useLocation for analytics; stub it so form CTAs render
 // without a router context.
@@ -123,5 +124,71 @@ describe('MarkdownBody', () => {
     const html = await renderBody(md, { hideStartLink: true })
     expect(html).toContain('is 1 way')
     expect(html).not.toContain('online form')
+  })
+})
+
+describe('::contact (a record’s contact details, #3185)', () => {
+  const md =
+    '::contact{collection="contacts" record="barbados-drug-service" fields="phone,email,website,hours"}'
+  const contacts = {
+    collection: {
+      key: 'contacts',
+      schema: {
+        fields: [
+          { key: 'phone', label: 'Telephone' },
+          { key: 'email', label: 'Email' },
+          { key: 'website', label: 'Website' },
+          { key: 'hours', label: 'Opening hours' },
+        ],
+      },
+    },
+    records: {
+      'barbados-drug-service': {
+        phone: '(246) 535-0021',
+        email: 'drugservice@health.gov.bb',
+        website: 'httpjavascript:alert(1)',
+        hours: '8:30am to 4:30pm',
+      },
+    },
+  }
+
+  async function render(records: ContactRecords = {}) {
+    const { hast } = await processMarkdown(md)
+    return renderToStaticMarkup(
+      <MarkdownBody hast={hast} contactRecords={records} />,
+    )
+  }
+
+  it('shows the chosen details as <contacts> tiles, labelled by the collection', async () => {
+    const html = await render({ contacts })
+    // The `<contacts>` grid and its teal tile
+    expect(html).toContain('class="grid grid-cols-1 gap-s md:grid-cols-3"')
+    expect(html).toContain(
+      '<a href="tel:2465350021" class="flex flex-col gap-xxs border-teal-80 border-l-4 bg-teal-10 p-s text-current no-underline',
+    )
+    expect(html).toContain('<span class="font-bold">Telephone</span>')
+    expect(html).toContain('href="mailto:drugservice@health.gov.bb"')
+    expect(html).toContain('Opening hours')
+  })
+
+  it('links only an address that passes the safe-address check', async () => {
+    const html = await render({ contacts })
+    expect(html).toContain('httpjavascript:alert(1)')
+    expect(html).not.toContain('href="httpjavascript')
+  })
+
+  it('shows nothing when the record is missing or couldn’t be read', async () => {
+    expect(await render({})).toBe('<div class="govbb-prose"></div>')
+    expect(await render({ contacts: { ...contacts, records: {} } })).toBe(
+      '<div class="govbb-prose"></div>',
+    )
+  })
+
+  it('refuses an attribute it doesn’t know', async () => {
+    await expect(
+      processMarkdown(
+        '::contact{collection="contacts" record="x" onclick="y"}',
+      ),
+    ).rejects.toThrow('does not support the “onclick” attribute')
   })
 })

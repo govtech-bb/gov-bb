@@ -16,6 +16,7 @@
 
 export * from "./types";
 export * from "./href";
+export * from "./contact";
 export * from "./schema";
 export * from "./validate";
 export * from "./dates";

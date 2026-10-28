@@ -47,6 +47,14 @@ const v2Mocks = vi.hoisted(() => ({
 }))
 vi.mock('../lib/api-v2-page', () => v2Mocks)
 
+const contactMocks = vi.hoisted(() => ({
+  getContactRecords: vi.fn(),
+}))
+vi.mock('../lib/api-v2-collections', async (importOriginal) => ({
+  ...(await importOriginal<object>()),
+  ...contactMocks,
+}))
+
 const categoryMocks = vi.hoisted(() => ({
   getApiV2CategoryListing:
     vi.fn<typeof CategoryApiModule.getApiV2CategoryListing>(),
@@ -240,9 +248,45 @@ describe('$ route loader gating', () => {
       applicationClosed: false,
       level: 'public',
       startSubPageVisible: true,
+      contactRecords: {},
     })
     expect((data as { page?: unknown }).page).toBeUndefined()
     expect(mocks.isVisible).toHaveBeenCalledWith(fakePage, 'draft', new Map())
+    // No `::contact` block, so no collection is read
+    expect(contactMocks.getContactRecords).not.toHaveBeenCalled()
+  })
+
+  it('reads the records its contact blocks name at request time (#3185)', async () => {
+    const records = { contacts: { collection: {}, records: {} } }
+    contactMocks.getContactRecords.mockResolvedValue(records)
+    mocks.findPage.mockReturnValue({
+      ...fakePage,
+      hast: {
+        type: 'root',
+        children: [
+          {
+            type: 'element',
+            tagName: 'contact-record',
+            properties: {
+              collection: 'contacts',
+              record: 'barbados-drug-service',
+            },
+            children: [],
+          },
+        ],
+      },
+    })
+    mocks.isVisible.mockReturnValue(true)
+
+    const loader = Route.options.loader as (a: unknown) => Promise<unknown>
+    const data = await loader({
+      params: { _splat: 'secret-service' },
+      context: { level: 'public', serviceStatuses: [], categoryTree: STATIC },
+    })
+    expect(contactMocks.getContactRecords).toHaveBeenCalledWith({
+      data: [{ collection: 'contacts', record: 'barbados-drug-service' }],
+    })
+    expect(data).toMatchObject({ kind: 'page', contactRecords: records })
   })
 
   it('flags a page whose form is under maintenance', async () => {

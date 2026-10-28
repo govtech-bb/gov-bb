@@ -29,6 +29,8 @@ import { shouldHideStartLink } from '../lib/hide-start-link'
 import { checkFormAccessible } from '../lib/preview-form-access'
 import { getApiV2Page } from '../lib/api-v2-page'
 import type { SerializedContentPage } from '../lib/api-v2-page'
+import { contactRefs, getContactRecords } from '../lib/api-v2-collections'
+import type { ContactRecords } from '../lib/api-v2-collections'
 import {
   getApiV2CategoryListing,
   resolveCategoryAddress,
@@ -81,6 +83,9 @@ type LoaderData =
       /** api_v2 mode only: the whole trail, this page last and Home left out,
        * shared by the visible breadcrumbs and their JSON-LD. */
       breadcrumbs?: Crumb[]
+      /** The records the page's `::contact` blocks name (#3185), read now so
+       * a changed record shows with no page edit and no deploy. */
+      contactRecords: ContactRecords
     }
   | {
       // api_v2 mode (ADR 0078): a category's own pages and its subcategories,
@@ -233,12 +238,16 @@ export const Route = createFileRoute('/$')({
       const underMaintenance =
         formDisabledByStatus ||
         (formId ? (await getMaintenanceForms()).includes(formId) : false)
+      const refs = contactRefs(page.hast)
+      const contactRecords =
+        refs.length > 0 ? await getContactRecords({ data: refs }) : {}
       return {
         kind: 'page',
         url: page.url,
         availableForms,
         underMaintenance,
         applicationClosed,
+        contactRecords,
         level: v2Page ? 'public' : pageLevel(page, overlay),
         startSubPageVisible: v2Page
           ? !v2Page.hideStartLinks
@@ -378,6 +387,7 @@ function ContentRoute() {
         startSubPageVisible={data.startSubPageVisible}
         underMaintenance={data.underMaintenance}
         applicationClosed={data.applicationClosed}
+        contactRecords={data.contactRecords}
       />
     )
   }
@@ -442,6 +452,7 @@ function PageView({
   startSubPageVisible,
   underMaintenance,
   applicationClosed,
+  contactRecords,
 }: {
   page: ContentPage
   availableForms: string[]
@@ -451,6 +462,7 @@ function PageView({
   startSubPageVisible: boolean
   underMaintenance: boolean
   applicationClosed: boolean
+  contactRecords: ContactRecords
 }) {
   // A visitor whose level can't see this page's `/start` sub-page (because it's
   // gated above them) sees the online-application method stripped and the
@@ -495,6 +507,7 @@ function PageView({
           frontmatter={page.frontmatter}
           availableForms={new Set(availableForms)}
           hideStartLink={hideStartLink}
+          contactRecords={contactRecords}
         />
       )}
     </Shell>

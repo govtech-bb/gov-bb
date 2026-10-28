@@ -6,6 +6,7 @@ import { ApiFailure, type ApiPage, type EditorApi } from "../api/client";
 import { apiMessage } from "../api/failure-messages";
 import { pageToMarkdown, pickerCategories, pageFieldLabel } from "../api/page-markdown";
 import {
+  collectionRecordsQuery,
   PRELOAD_FRESH,
   categoriesQuery,
   rolesQuery,
@@ -16,6 +17,7 @@ import {
 import { PageDraftEditor } from "../host/page-editor";
 import { download } from "../host/source-ui";
 import { readPageMetadata } from "../pages";
+import { PageCollectionsProvider, type PageCollections } from "../pages/modules/contact";
 import { DraftStore } from "../persistence/draft-store";
 import { govbbPageCodec } from "../presets/govbb-page";
 import { Banner } from "../ui/banner";
@@ -175,6 +177,18 @@ function RemotePageEditor({
 
     return { breadcrumbs, publishedAt: server.published_at };
   }, [draft.committed, server.url, server.published_at, categories, service, servicePages]);
+
+  // Contact blocks show their records' current details, and open a record on the collection's screen (#3184)
+  const collections = useMemo<PageCollections>(
+    () => ({
+      read: (key) => client.fetchQuery(collectionRecordsQuery(api, key)),
+      openRecord: (collection, record) =>
+        void navigate({
+          href: `/collections/${encodeURIComponent(collection)}?record=${encodeURIComponent(record)}`,
+        }),
+    }),
+    [api, client, navigate],
+  );
 
   const linkPages = useMemo(
     () => services?.map((service) => ({ title: service.title, url: service.url })),
@@ -451,48 +465,50 @@ function RemotePageEditor({
   ) : undefined;
 
   return (
-    <PageDraftEditor
-      store={store}
-      active={active}
-      server={standing()}
-      publish={
-        <Button
-          variant="accent"
-          disabled={
-            !unsaved ||
-            stale ||
-            blocked ||
-            readOnly ||
-            save.isPending ||
-            outcome?.kind === "missing"
-          }
-          onClick={saveDraft}
-        >
-          {publishes ? "Publish changes" : "Save"}
-        </Button>
-      }
-      notice={
-        readNotice ? (
-          <>
-            {readNotice}
-            {notice}
-          </>
-        ) : (
-          notice
-        )
-      }
-      linkPages={linkPages}
-      previewContext={previewContext}
-      settings={{
-        ...(server.parent_id === null && {
-          categories: pickerCategories(categories),
-          single: true,
-        }),
-        publishedAt: server.published_at,
-        savedVisibility: base.page.visibility,
-        visibilityLocked: !approver,
-        errors: Object.fromEntries(errors.map((error) => [error.field, error.message])),
-      }}
-    />
+    <PageCollectionsProvider collections={collections}>
+      <PageDraftEditor
+        store={store}
+        active={active}
+        server={standing()}
+        publish={
+          <Button
+            variant="accent"
+            disabled={
+              !unsaved ||
+              stale ||
+              blocked ||
+              readOnly ||
+              save.isPending ||
+              outcome?.kind === "missing"
+            }
+            onClick={saveDraft}
+          >
+            {publishes ? "Publish changes" : "Save"}
+          </Button>
+        }
+        notice={
+          readNotice ? (
+            <>
+              {readNotice}
+              {notice}
+            </>
+          ) : (
+            notice
+          )
+        }
+        linkPages={linkPages}
+        previewContext={previewContext}
+        settings={{
+          ...(server.parent_id === null && {
+            categories: pickerCategories(categories),
+            single: true,
+          }),
+          publishedAt: server.published_at,
+          savedVisibility: base.page.visibility,
+          visibilityLocked: !approver,
+          errors: Object.fromEntries(errors.map((error) => [error.field, error.message])),
+        }}
+      />
+    </PageCollectionsProvider>
   );
 }

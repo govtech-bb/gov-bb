@@ -78,6 +78,7 @@ import { actionList, PageActionList, PageMenuRow } from "./action-menu";
 import { $writeAtEnd } from "./block-exit";
 import { $blockLines, $pageChoices, $turnPageLines } from "./turn-into";
 import { $rootBlock, type PagePlace } from "./insertion";
+import { $isPageContactNode, ContactBlockSettings } from "./modules/contact";
 import { startWriting } from "./slash-menu";
 import { PageMetadataNode } from "./metadata";
 import { PageComponentNode } from "./nodes";
@@ -509,6 +510,7 @@ function PageBlockMenu({ menu, onClose }: { menu: OpenMenu; onClose: () => void 
           !!block.getPreviousSibling() && !(block.getPreviousSibling() instanceof PageMetadataNode),
         down: !!block.getNextSibling(),
         turnInto: lines?.length ? $pageChoices(lines) : null,
+        contact: $isPageContactNode(block) ? block.getSettings() : null,
         component: component
           ? {
               key: component.getKey(),
@@ -581,6 +583,16 @@ function PageBlockMenu({ menu, onClose }: { menu: OpenMenu; onClose: () => void 
           <p className="m-2 text-error" role="alert">
             {error}
           </p>
+        )}
+        {model.contact && (
+          <ContactBlockSettings
+            settings={model.contact}
+            onChange={(patch) =>
+              change((block) => {
+                if ($isPageContactNode(block)) block.setSettings(patch);
+              }, false)
+            }
+          />
         )}
         {model.component && (
           <ComponentSettings

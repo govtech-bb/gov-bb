@@ -170,3 +170,42 @@
     font-size: 1rem;
   }
 }
+
+/* Contact details (#3185): the record's details as landing's teal contact tiles */
+.page-body .page-contact {
+  margin-block: 1rem;
+}
+.page-body .page-contacts {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
+  gap: 1rem;
+}
+.page-body .page-contact-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 1rem;
+  border-inline-start: 0.25rem solid var(--page-teal, #00654a);
+  background: color-mix(in srgb, var(--page-teal, #00654a) 8%, white);
+  color: inherit;
+  text-decoration: none;
+}
+.page-body .page-contact-tile span {
+  font-weight: 700;
+}
+.page-body .page-contact-tile strong {
+  color: var(--page-teal, #00654a);
+}
+.page-body .page-contact:not(.page-contacts) {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+  padding: 0.75rem 1rem;
+  border: 1px dashed var(--page-line);
+  color: var(--page-muted, inherit);
+}
+.page-body .page-contact-warning {
+  border: 1px solid #b45309;
+  background: #fffbeb;
+  color: #78350f;
+}
