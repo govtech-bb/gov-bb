@@ -25,6 +25,11 @@ concurrency:
 jobs:
   journey-7:
     name: Journey 7 (forms analytics → Umami → dashboard)
+    # The nightly run stays off until the sandbox Umami setup is done (#3360):
+    # set the repo variable E2E_ANALYTICS_ENABLED=true to turn it on. Until
+    # then it would fail closed every night and train people to ignore the
+    # alert. A manual run always goes ahead.
+    if: github.event_name == 'workflow_dispatch' || vars.E2E_ANALYTICS_ENABLED == 'true'
     runs-on: ubuntu-latest
     # The spec waits up to 15 min for Umami + the dashboard cache.
     timeout-minutes: 30

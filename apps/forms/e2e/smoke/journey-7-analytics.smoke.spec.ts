@@ -31,7 +31,6 @@ import type { Page } from "@playwright/test";
 import {
   STEP_TIMEOUT,
   advance,
-  currentStep,
   expectStep,
   fillField,
   openSmokeForm,
@@ -159,9 +158,9 @@ test.describe("Journey 7 — forms analytics reach Umami and the dashboard", () 
       await fillField(page, step, "first-name", "Journey");
       await advance(page, step);
 
-      if (currentStep(page).includes("check-your-answers")) {
-        await advance(page, "check-your-answers");
-      }
+      // buildForm always injects this step, and form-review fires on leaving it.
+      step = expectStep(page, "check-your-answers", { exact: true });
+      await advance(page, step);
 
       step = expectStep(page, "declaration", { exact: true });
       await page
@@ -187,22 +186,17 @@ test.describe("Journey 7 — forms analytics reach Umami and the dashboard", () 
     });
 
     await test.step("the dashboard shows the new events", async () => {
-      await expect
-        .poll(
-          async () => {
-            const now = await readFunnel(dashboard, dashboardUrl);
-            return FUNNEL_STAGES.filter((s) => now[s] <= before[s]);
-          },
-          {
-            message:
-              "dashboard funnel stages that never went up (baseline " +
-              JSON.stringify(before) +
-              ") — is the dashboard reading sandbox's Umami website?",
-            timeout: DASHBOARD_TIMEOUT,
-            intervals: [DASHBOARD_POLL],
-          },
-        )
-        .toEqual([]);
+      // toPass, not expect.poll: poll stops on the first throw, so one failed
+      // dashboard load would end the whole wait. toPass retries any failure.
+      await expect(async () => {
+        const now = await readFunnel(dashboard, dashboardUrl);
+        expect(
+          FUNNEL_STAGES.filter((s) => now[s] <= before[s]),
+          "dashboard funnel stages that never went up (baseline " +
+            JSON.stringify(before) +
+            ") — is the dashboard reading sandbox's Umami website?",
+        ).toEqual([]);
+      }).toPass({ timeout: DASHBOARD_TIMEOUT, intervals: [DASHBOARD_POLL] });
     });
   });
 });
