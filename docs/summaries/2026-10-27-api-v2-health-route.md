@@ -1,4 +1,4 @@
-# api_v2 gets a `/health` route that checks the database (#3128)
+# api_v2 gets a `/health` route for the load balancer (#3128)
 
 ## Context
 
@@ -15,24 +15,27 @@ so the gap was only what happens after boot.
 - Tests first: two `app.inject` cases, a `ping` timeout unit case, and `/health` 503-then-200
   assertions inside the existing closed-database e2e in `e2e/pool.spec.ts`.
 - The sandbox deploy smoke step now hits `/health` first; README row added.
+- Review (sajclarke) reversed the single DB-backed check: `/health` now answers 200
+  `{status:"ok"}` without touching the database, and the DB check moved to a hidden
+  `/health/db` (200 / 503 `database_unavailable`) that the ALB must not use. `createPool` now
+  sets `connectionTimeoutMillis: 2000` (#2845).
 
 ## Why we did it that way
 
-- **One DB-backed route, no separate liveness route.** The only consumer is the ALB, and ALB
-  health both gates routing and makes ECS replace the task. The risk weighed was a Postgres blip
-  killing every task. Walking it through: during a blip the app already answers 500, so pulling
-  it from rotation costs visitors nothing (landing falls back either way, #3134); if the blip
-  outlasts the threshold ECS churns replacements that can't boot until Postgres returns, which is
-  churn, not a worse outage. What the DB check buys is replacing a task whose pool is wedged
-  while the database is fine. A DB-less check can never do that. Blip tolerance belongs in the
-  target group's `interval × unhealthy_threshold`, not in a weaker check. Nothing would probe a
-  liveness route (no Kubernetes, no Dockerfile `HEALTHCHECK`), so v1's `/health` + `/health/ready`
-  split was not copied.
-- **The 2 s cap lives in `ping`, not on the pool.** The pool has no `connectionTimeoutMillis` or
-  `query_timeout`, so a black-holed database hangs a query indefinitely. A pool-wide timeout
-  would fix that for every route but would also 500 a slow legitimate visitor query — a different
-  risk, left to #2845. The cap is v1's `READINESS_TIMEOUT_MS`: answer a clean 503 before the
-  ALB's own timeout fires. The losing query is left to settle; probes come every ~30 s.
+- **The ALB checks the process only; the DB check is a separate path (reversed in review).**
+  The first version had one DB-backed `/health` for the ALB, arguing that ECS churning
+  replacements during an outage was churn, not a worse outage. Review showed it is worse: when
+  Postgres stops, every task fails the check at once, ECS stops them all, and the replacements
+  cannot start because `connect()` refuses to boot without the database. A database outage
+  becomes a restart loop for the whole API, and a restart repairs nothing: `pool.spec.ts` shows
+  the same process answering 200 again once the database reopens. So `/health` never touches the
+  database, and `/health/db` stays available as a signal for alarms.
+- **The 2 s cap lives in `ping`, plus a 2 s `connectionTimeoutMillis` on the pool.** The `ping`
+  timer only stops the wait, not the query: against a black-holed host each probe would hold a
+  pool slot until the OS gave up on the TCP connect (~2 min), and probes from several ALB nodes
+  could fill the pool (`max` 10). `connectionTimeoutMillis` (#2845) releases the slot at the pool
+  and also bounds `connect()` at startup. It matches the `ping` cap (v1's `READINESS_TIMEOUT_MS`).
+  `query_timeout` / keepalive are still left to #2845.
 - **The check arrives as a `buildApp` option.** ESLint forbids `app.ts` and `routes/**` from
   importing `./db`, so `main.ts` composes `ping(db)` and the test harness can swap in
   `async () => false`. `ping` takes the drizzle `Database` rather than the `Pool` because
@@ -45,12 +48,12 @@ so the gap was only what happens after boot.
 ## Open questions
 
 - **alpha-infra still points the target group at `/docs/openapi.json`.** After this deploys and
-  the smoke step shows `/health` → 200, `api-v2-ecs.tf` needs `path = "/health"`,
-  `matcher = "200"`, `timeout` ≥ 5, `interval = 30`, `unhealthy_threshold = 3`,
-  `healthy_threshold = 2`. Order matters: flipping the path before the route is live marks the task
+  the smoke step shows `/health` → 200, `api-v2-ecs.tf` needs `path = "/health"` and
+  `matcher = "200"`; the timings no longer depend on the database, so the defaults serve.
+  Order matters: flipping the path before the route is live marks the task
   unhealthy and ECS replaces it with one that fails the same check. #3128 closes after that change,
   not on this merge.
-- **#3129 (rate limiting)** must exempt `/health` (`config: { rateLimit: false }`, or keep the
+- **#3129 (rate limiting)** must exempt `/health` and `/health/db` (`config: { rateLimit: false }`, or keep the
   limiter inside the site plugin) and add a test that repeated probes all return 200.
 - `api_v2:lint` is red on `src/import-estate.ts:24` (env read outside the composition root). The
   file and the ESLint config are unchanged from the base `e7eb18fc3`, so the error predates this

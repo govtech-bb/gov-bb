@@ -87,6 +87,15 @@ describe("database setup", () => {
     expect(result.error.operation).toBe("configure");
   });
 
+  it("limits how long a connection may take", async () => {
+    const pool = value(createPool(config, pino({ enabled: false })));
+    try {
+      expect(pool.options.connectionTimeoutMillis).toBe(2000);
+    } finally {
+      await pool.end();
+    }
+  });
+
   it("reports a database that does not answer within the cap", async () => {
     const db = { execute: () => new Promise(() => {}) } as unknown as Database;
     expect(await ping(db, 10)).toBe(false);

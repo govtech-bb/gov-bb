@@ -51,6 +51,7 @@ export function createPool(
       password: config.password.reveal(),
       database: config.database,
       ssl: sslConfig(config),
+      connectionTimeoutMillis: 2000,
     });
     // This text is an operational alarm marker. The driver error carries its
     // client, so forwarding the whole error would expose connection credentials.
@@ -92,7 +93,7 @@ export async function connect(
   return ok(drizzle(pool));
 }
 
-/** Whether the database answers within the cap; `/health` reports it. */
+/** Whether the database answers within the cap; `/health/db` reports it. */
 export async function ping(db: Database, timeoutMs = 2000): Promise<boolean> {
   let timer: ReturnType<typeof setTimeout> | undefined;
   const timeout = new Promise<never>((_, reject) => {

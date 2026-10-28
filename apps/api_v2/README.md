@@ -174,7 +174,8 @@ erDiagram
 | GET      | `/search/documents`        | Every visible page with its search text in chunks                      |
 | GET      | `/docs`                    | Public API reference (Scalar)                                          |
 | GET      | `/docs/openapi.json`       | Public OpenAPI document                                                |
-| GET      | `/health`                  | Load balancer check: 200 if the database answers in 2 s, else 503      |
+| GET      | `/health`                  | Load balancer check: 200 while the process serves; never hits the DB   |
+| GET      | `/health/db`               | 200 if the database answers in 2 s, else 503; not for the ALB          |
 | GET      | `/pages/:id`               | Employee; includes drafts and previews                                 |
 | GET      | `/services`                | Employee service index, grouped by `parent_id`                         |
 | GET      | `/services/:id`            | Employee; one service's pages with their roles, entry first            |

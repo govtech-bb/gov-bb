@@ -147,9 +147,9 @@ jobs:
             exit 1
           fi
 
-      # /health proves the database answers (#3128). The ALB target group
-      # checks /docs/openapi.json until alpha-infra points it at /health;
-      # /categories proves the seeded categories read.
+      # /health proves the route the ALB will check is live (#3128). The ALB
+      # target group checks /docs/openapi.json until alpha-infra points it at
+      # /health; /categories proves the database answers and categories read.
       - name: Smoke test
         run: |
           for path in /health /docs/openapi.json /categories; do
