@@ -24,8 +24,11 @@ can hold any of three roles:
 
 - `editor` can create and edit content, submit changes for review, and manage
   categories (ADR 0078's "people who can edit pages" are editors).
-- `approver` can change a page's visibility, delete a public page, and
-  approve, reject and publish changes to live content.
+- `approver` can change an existing page's visibility, create a page as
+  Public, delete a public page, and approve, reject and publish changes to
+  live content. An editor can still create a page as Preview or Draft, so
+  the Preview default from #3191 works for editors (decided in #3187 on
+  25 Oct 2026).
 - `admin` can grant and revoke roles.
 
 Sign-in itself doesn't change: GitHub org membership still decides who can
@@ -87,8 +90,10 @@ can try the whole flow.
 
 ## Consequences
 
-- An environment with no `API_V2_ADMIN_EMAILS` has no admin, so nobody can
-  grant `approver`. Every deployed environment must set it.
+- An environment with no `API_V2_ADMIN_EMAILS` would have no admin, so
+  nobody could grant `approver`. api_v2 therefore refuses to start when the
+  list is empty, unless it runs under `AUTH_BYPASS` for local development
+  (fail closed at boot, as ADR 0057 and ADR 0074 do for other settings).
 - An approver's own changes need a second approver to publish them. An
   environment with only one approver can publish only changes that other
   people submitted.
