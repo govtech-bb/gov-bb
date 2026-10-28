@@ -127,10 +127,11 @@ export class CollectionEditing {
     actor: Employee,
   ): Promise<Result<CollectionRecord, RecordWriteFailure>> {
     return this.store.atomically(actor.id, async (store) => {
-      const parsed = await checked(store, key, recordKey, data);
-      if (!parsed.ok) return parsed;
+      // The record first, so a save to a missing record is a 404 whatever it sends.
       const current = await unchanged(store, key, recordKey, expectedUpdatedAt);
       if (!current.ok) return current;
+      const parsed = await checked(store, key, recordKey, data);
+      if (!parsed.ok) return parsed;
       return store.updateRecord(key, recordKey, parsed.value);
     });
   }

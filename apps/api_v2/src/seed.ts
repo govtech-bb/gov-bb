@@ -138,6 +138,9 @@ export async function seed(db: Database): Promise<{
       .onConflictDoNothing()
       .returning({ id: dataCollections.id });
     counts.collections += inserted.length;
+    // Records only with a new collection, so a reseed never brings back a
+    // record an editor deleted.
+    if (inserted.length === 0) continue;
     for (const data of collection.records) {
       const record = await db
         .insert(collectionRecords)

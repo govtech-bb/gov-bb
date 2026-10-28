@@ -28,7 +28,8 @@ const toView = (row: CollectionRow): CollectionView => ({
   key: row.key,
   title: row.title,
   record_key: row.recordKey,
-  // A field list a developer got wrong fails here, not in a client.
+  // A field list a developer got wrong fails the read, inside `attempt`,
+  // rather than reaching a client.
   schema: CollectionSchema.parse(row.schema),
   schema_version: row.schemaVersion,
   updated_at: row.updatedAt.toISOString(),
@@ -85,42 +86,37 @@ export class PostgresCollections implements CollectionStore {
   async collections(): Promise<
     Result<CollectionSummary[], ContentStoreUnavailable>
   > {
-    const rows = await attempt("collections", () =>
-      this.db
-        .select({
-          collection: dataCollections,
-          records: count(collectionRecords.id),
-        })
-        .from(dataCollections)
-        .leftJoin(
-          collectionRecords,
-          eq(collectionRecords.collectionKey, dataCollections.key),
-        )
-        .groupBy(dataCollections.id)
-        .orderBy(asc(dataCollections.key)),
+    return attempt("collections", async () =>
+      (
+        await this.db
+          .select({
+            collection: dataCollections,
+            records: count(collectionRecords.id),
+          })
+          .from(dataCollections)
+          .leftJoin(
+            collectionRecords,
+            eq(collectionRecords.collectionKey, dataCollections.key),
+          )
+          .groupBy(dataCollections.id)
+          .orderBy(asc(dataCollections.key))
+      ).map((row) => ({
+        ...toView(row.collection),
+        record_count: row.records,
+      })),
     );
-    return rows.ok
-      ? ok(
-          rows.value.map((row) => ({
-            ...toView(row.collection),
-            record_count: row.records,
-          })),
-        )
-      : rows;
   }
 
   async collection(
     key: string,
   ): Promise<Result<CollectionView | null, ContentStoreUnavailable>> {
-    const rows = await attempt("collection", () =>
-      this.db
+    return attempt("collection", async () => {
+      const [row] = await this.db
         .select()
         .from(dataCollections)
-        .where(eq(dataCollections.key, key)),
-    );
-    if (!rows.ok) return rows;
-    const [row] = rows.value;
-    return ok(row ? toView(row) : null);
+        .where(eq(dataCollections.key, key));
+      return row ? toView(row) : null;
+    });
   }
 
   async records(

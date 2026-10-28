@@ -288,7 +288,7 @@ describe("seed", () => {
       actors: { system: SEEDED_EVENTS },
       categories: ESTATE.categories.length,
       documents: ESTATE.pages.length,
-      // Records are not content an import replaces: editors' changes stay.
+      // Collections are not content an import replaces: editors' records stay.
       collections: 0,
       records: 0,
     });

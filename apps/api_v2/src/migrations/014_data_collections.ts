@@ -6,7 +6,9 @@
  * - `data_collections.schema` is the collection's field list,
  *   `{ "fields": [{ "key", "label", "type" }] }`, the shape of block-kit's
  *   `CollectionDefinition`. A developer sets it, in a migration or the seed;
- *   editors change records, not field lists.
+ *   editors change records, not field lists. Records are not migrated with
+ *   it: a change that removes or renames a field must rewrite
+ *   `collection_records.data` too, or those records can't be saved as they are.
  * - `collection_records.data` is one record, checked against that field list
  *   by the API on every write. A record belongs to its collection by
  *   `collection_key`, and a collection with records cannot be deleted.

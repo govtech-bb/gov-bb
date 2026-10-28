@@ -1,6 +1,7 @@
 import type { FastifyReply, FastifyRequest } from "fastify";
 import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
 import type { Employee } from "../modules/auth";
+import { CollectionNotFound } from "../modules/collection";
 import type { Viewer } from "../modules/page-visibility";
 import type {
   CollectionEditing,
@@ -136,7 +137,10 @@ export const publicCollectionRoutes: FastifyPluginAsyncZod<{
         return reply
           .header("Cache-Control", siteNotFoundCache(viewer))
           .status(404)
-          .send({ error: "not_found", message: `No collection ${key}.` });
+          .send({
+            error: "not_found",
+            message: new CollectionNotFound(key).message,
+          });
       reply.header("Cache-Control", siteReadCache(viewer));
       return read.value;
     },
