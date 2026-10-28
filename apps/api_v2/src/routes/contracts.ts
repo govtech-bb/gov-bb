@@ -406,11 +406,10 @@ export const SCHEMAS = {
   },
 
   version: {
-    summary: "A version token for recorded page changes",
+    summary: "A version token for recorded content changes",
     description:
-      "`change_events` currently records page writes only. Its count and " +
-      "newest timestamp identify those changes without reading the pages. " +
-      "Category changes do not advance this token until trigger-based events land.",
+      "`change_events` records every page and category change. Its count " +
+      "and newest timestamp identify those changes without reading the content.",
     tags: ["meta"],
     security: editorSecurity,
     response: {

@@ -126,9 +126,10 @@ describe.skipIf(!HAS_DATABASE)("category management over HTTP", () => {
     expect(
       (await fetch(server.url + "/categories/socket-a/socket-child")).status,
     ).toBe(404);
+    // Three creates, a save, two reordered rows and a delete.
     expect(await (await send("GET", "/version")).json()).toEqual({
-      count: 0,
-      latest: null,
+      count: 7,
+      latest: expect.any(String),
     });
   });
 

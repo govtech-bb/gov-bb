@@ -1,4 +1,4 @@
-import { NotApprover, type Employee } from "../modules/auth";
+import { NotApprover, type Employee, type UserId } from "../modules/auth";
 import {
   creationOf,
   cycleOf,
@@ -36,17 +36,15 @@ export interface PageRevision {
   readonly publishedAt: Date | null;
 }
 
-/** An audit entry: what happened to a page, who did it, and the page as it then stood. */
-export interface PageChange {
-  readonly page: PageDocument;
-  readonly action: "created" | "updated" | "published" | "deleted";
-  readonly actorId: string;
-}
-
 /** The persistence the editor's page operations need. */
 export interface PageRecords {
-  /** Take the shared content advisory lock first; an error Result rolls back everything written. */
+  /**
+   * Run `work` as one transaction on behalf of `actorId`, whom storage
+   * records against every change it makes, after taking the shared content
+   * advisory lock; an error result rolls back everything it wrote.
+   */
   atomically<R extends Result<unknown, Error>>(
+    actorId: UserId,
     work: (records: PageRecords) => Promise<R>,
   ): Promise<R | Result<never, ContentStoreUnavailable>>;
   /** The page with this id, or null. */
@@ -94,17 +92,13 @@ export interface PageRecords {
   ): Promise<
     Result<PageDocument | null, PageRejected | ContentStoreUnavailable>
   >;
-  /** Append an entry to the append-only change log. */
-  appendChange(
-    change: PageChange,
-  ): Promise<Result<void, ContentStoreUnavailable>>;
 }
 
 /**
  * The editor's page operations: reads of any visibility, and writes that
- * commit with their search text and audit entry or not at all. Only an
- * approver changes what citizens see: sets a page's visibility, creates one
- * public, or deletes a public one.
+ * commit with their search text or not at all, recorded against the
+ * employee. Only an approver changes what citizens see: sets a page's
+ * visibility, creates one public, or deletes a public one.
  */
 export class PageEditing {
   /** The root supplies content storage and the clock. */
@@ -120,14 +114,14 @@ export class PageEditing {
     return this.records.find(id);
   }
 
-  /** Create a page where it belongs, stamping publication when it starts public, and index and audit it. */
+  /** Create a page where it belongs, stamping publication when it starts public, and index it. */
   create(
     page: NewPage,
     actor: Employee,
   ): Promise<
     Result<PageDocument, PageRejected | NotApprover | ContentStoreUnavailable>
   > {
-    return this.records.atomically(async (records) => {
+    return this.records.atomically(actor.id, async (records) => {
       if (page.visibility === "public" && !actor.roles.includes("approver"))
         return err(new NotApprover());
       const available = await records.checkPageUrl(page.url);
@@ -142,13 +136,7 @@ export class PageEditing {
         created.value.id,
         chunkMarkdown(created.value.body_markdown),
       );
-      if (!indexed.ok) return indexed;
-      const logged = await records.appendChange({
-        page: created.value,
-        action: "created",
-        actorId: actor.id,
-      });
-      return logged.ok ? created : logged;
+      return indexed.ok ? created : indexed;
     });
   }
 
@@ -172,7 +160,7 @@ export class PageEditing {
       | ContentStoreUnavailable
     >
   > {
-    return this.records.atomically(async (records) => {
+    return this.records.atomically(actor.id, async (records) => {
       const locked = await records.lock(id);
       if (!locked.ok) return locked;
       const current = locked.value;
@@ -200,8 +188,10 @@ export class PageEditing {
           fields.parent_id === undefined ? current.parent_id : fields.parent_id,
       });
       if (!placed.ok) return placed;
-      const revision = revisionOf(current, placed.value, this.clock());
-      const saved = await records.replace(id, revision);
+      const saved = await records.replace(
+        id,
+        revisionOf(current, placed.value, this.clock()),
+      );
       if (!saved.ok) return saved;
       if (saved.value.category_id !== null) {
         const filed = await records.fileUncategorisedBelow(
@@ -214,24 +204,18 @@ export class PageEditing {
         id,
         chunkMarkdown(saved.value.body_markdown),
       );
-      if (!indexed.ok) return indexed;
-      const logged = await records.appendChange({
-        page: saved.value,
-        action: revision.action,
-        actorId: actor.id,
-      });
-      return logged.ok ? saved : logged;
+      return indexed.ok ? saved : indexed;
     });
   }
 
-  /** Delete a page and audit it; one with sub-pages is refused, and one already gone is not an error. */
+  /** Delete a page; one with sub-pages is refused, and one already gone is not an error. */
   delete(
     id: PageId,
     actor: Employee,
   ): Promise<
     Result<void, PageRejected | NotApprover | ContentStoreUnavailable>
   > {
-    return this.records.atomically(async (records) => {
+    return this.records.atomically(actor.id, async (records) => {
       const locked = await records.lock(id);
       if (!locked.ok) return locked;
       if (
@@ -240,14 +224,7 @@ export class PageEditing {
       )
         return err(new NotApprover());
       const removed = await records.remove(id);
-      if (!removed.ok) return removed;
-      if (removed.value === null) return ok(undefined);
-      const logged = await records.appendChange({
-        page: removed.value,
-        action: "deleted",
-        actorId: actor.id,
-      });
-      return logged.ok ? ok(undefined) : logged;
+      return removed.ok ? ok(undefined) : removed;
     });
   }
 }

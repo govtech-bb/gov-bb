@@ -1,8 +1,9 @@
 import { betterAuth, type BetterAuthOptions } from "better-auth";
+import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { github } from "better-auth/social-providers";
-import type { Pool } from "pg";
 import type { Logger } from "pino";
 import type { AuthConfig } from "../config";
+import type { Database } from "../db";
 import {
   admitGitHubIdentity,
   AuthUnavailable,
@@ -14,11 +15,25 @@ import {
 import type { Redacted } from "../modules/redacted";
 import { err, ok, type Result } from "../modules/result";
 import type { AuthHandler } from "../routes/auth";
+import {
+  authAccount,
+  authSession,
+  authUser,
+  authVerification,
+} from "../schema";
 import type { SessionReader } from "../services/editor-access";
 
-/** BetterAuth's configuration: GitHub sign-in admitted by organization membership, sessions in Postgres. */
+/** The Drizzle tables BetterAuth reads and writes, keyed by each model's `modelName`. */
+const AUTH_SCHEMA = {
+  auth_user: authUser,
+  auth_session: authSession,
+  auth_account: authAccount,
+  auth_verification: authVerification,
+};
+
+/** BetterAuth's configuration: GitHub sign-in admitted by organization membership, sessions in Postgres through Drizzle. */
 export function betterAuthOptions(
-  pool: Pool,
+  db: Database,
   config: AuthConfig,
   logger: Pick<Logger, "error" | "warn">,
 ) {
@@ -44,7 +59,13 @@ export function betterAuthOptions(
     baseURL: config.apiOrigin,
     basePath: "/api/auth",
     secret: config.secret.reveal(),
-    database: pool,
+    // The adapter defaults to no transactions; a first sign-in must insert its
+    // user and account together or not at all.
+    database: drizzleAdapter(db, {
+      provider: "pg",
+      schema: AUTH_SCHEMA,
+      transaction: true,
+    }),
     trustedOrigins: [config.editorOrigin],
     emailAndPassword: { enabled: false },
     socialProviders: {
@@ -135,13 +156,13 @@ export function betterAuthOptions(
   } satisfies BetterAuthOptions;
 }
 
-/** Build the provider boundary once, using the process's existing Postgres pool. */
+/** Build the provider boundary once, over the process's existing database handle. */
 export async function createBetterAuth(
-  pool: Pool,
+  db: Database,
   config: AuthConfig,
   logger: Pick<Logger, "error" | "warn">,
 ): Promise<AuthHandler & SessionReader> {
-  const instance = betterAuth(betterAuthOptions(pool, config, logger));
+  const instance = betterAuth(betterAuthOptions(db, config, logger));
   await instance.$context;
   return {
     /** Delegate the auth protocol without exposing unexpected provider failures. */

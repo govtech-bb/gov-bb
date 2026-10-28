@@ -51,8 +51,7 @@ export class EditorIndex {
 
   /**
    * A cheap token for "has anything changed". `change_events` is append-only
-   * and currently gets a row on page writes only. Category event coverage
-   * waits for the shared trigger/actor work; this token does not track it.
+   * and gets a row on every page and category change.
    * Clients poll this and refetch only when it moves.
    */
   version(): Promise<Result<EstateVersion, ContentStoreUnavailable>> {

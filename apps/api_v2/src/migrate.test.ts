@@ -17,6 +17,8 @@ import { SQL as INIT_SQL } from "./migrations/001_init";
 import { SQL as MARKDOWN_PAGES_SQL } from "./migrations/002_markdown_pages";
 import { SQL as AUTH_SQL } from "./migrations/003_auth";
 import { SQL as GITHUB_SESSIONS_SQL } from "./migrations/004_github_sessions";
+import { SQL as HIERARCHY_SQL } from "./migrations/005_hierarchy_and_search";
+import { SQL as UNPUBLISHED_SQL } from "./migrations/006_change_action_unpublished";
 import type { Database } from "./db";
 import { createEmptyDb } from "./test-db";
 
@@ -26,8 +28,18 @@ const ALL = [
   "003_auth",
   "004_github_sessions",
   "005_hierarchy_and_search",
+  "006_change_action_unpublished",
+  "007_change_history_trigger",
   "008_user_roles",
 ];
+
+/** Tables whose rows are not content, so the history does not record them. */
+const UNAUDITED = new Set([
+  "change_events",
+  "schema_migrations",
+  "search_chunks",
+  "user_roles",
+]);
 
 const freshDb = async () => {
   const test = await createEmptyDb();
@@ -109,6 +121,8 @@ describe("migrate", () => {
       "003_auth",
       "004_github_sessions",
       "005_hierarchy_and_search",
+      "006_change_action_unpublished",
+      "007_change_history_trigger",
       "008_user_roles",
     ]);
     const pages = await exec("select count(*)::int as n from content_pages");
@@ -136,6 +150,8 @@ describe("migrate", () => {
 
     await expect(migrate(db, exec)).resolves.toEqual([
       "005_hierarchy_and_search",
+      "006_change_action_unpublished",
+      "007_change_history_trigger",
       "008_user_roles",
     ]);
     await exec(
@@ -199,11 +215,95 @@ describe("migrate", () => {
       { id: "member-session" },
     ]);
     expect(
-      (await exec("select count(*)::int as count from auth_user")).rows,
+      (
+        await exec(
+          "select count(*)::int as count from auth_user where id <> 'system'",
+        )
+      ).rows,
     ).toEqual([{ count: 2 }]);
     expect(
       (await exec("select count(*)::int as count from auth_account")).rows,
     ).toEqual([{ count: 2 }]);
+    await close();
+  });
+
+  it("hands history written before the trigger to system, and replays", async () => {
+    const { db, exec, close } = await freshDb();
+    for (const script of [
+      INIT_SQL,
+      MARKDOWN_PAGES_SQL,
+      AUTH_SQL,
+      GITHUB_SESSIONS_SQL,
+      HIERARCHY_SQL,
+      UNPUBLISHED_SQL,
+    ])
+      await exec(script);
+    await exec(
+      `create table schema_migrations (name text primary key, applied_at timestamptz not null default now());
+       insert into schema_migrations (name) select unnest(array[${ALL.slice(
+         0,
+         6,
+       )
+         .map((name) => `'${name}'`)
+         .join(", ")}]);
+       insert into auth_user (id, name, email, "emailVerified")
+         values ('editor', 'Editor', 'editor@govtech.bb', true);
+       insert into change_events (entity_kind, entity_id, version_no, action, snapshot, actor)
+         values ('content_page', 'a', 1, 'created', '{}', 'spike'),
+                ('content_page', 'a', 2, 'updated', '{}', 'seed'),
+                ('content_page', 'a', 3, 'updated', '{}', 'import:abc force: why'),
+                ('content_page', 'a', 4, 'updated', '{}', 'editor');`,
+    );
+
+    expect(await migrate(db, exec)).toEqual([
+      "007_change_history_trigger",
+      "008_user_roles",
+    ]);
+    await db.execute(
+      sql`delete from schema_migrations where name = '007_change_history_trigger'`,
+    );
+    expect(await migrate(db, exec)).toEqual(["007_change_history_trigger"]);
+
+    const { rows } = await exec(
+      "select actor from change_events order by version_no",
+    );
+    expect(rows).toEqual([
+      { actor: "system" },
+      { actor: "system" },
+      { actor: "system" },
+      { actor: "editor" },
+    ]);
+    const orphans = await exec(
+      `select count(*)::int as n from change_events
+         where actor not in (select id from auth_user)`,
+    );
+    expect(orphans.rows).toEqual([{ n: 0 }]);
+    expect(
+      (await exec("select email from auth_user where id = 'system'")).rows,
+    ).toEqual([{ email: "system@api-v2.invalid" }]);
+    await close();
+  });
+
+  it("records the history of every content table", async () => {
+    // A content table added without `record_change` would change with no
+    // history at all; this names it until its migration attaches the trigger.
+    const { db, exec, close } = await freshDb();
+    await migrate(db, exec);
+
+    const { rows } = await exec(
+      `select c.relname as table from pg_class c
+         where c.relnamespace = current_schema()::regnamespace
+           and c.relkind = 'r'
+           and not exists (
+             select 1 from pg_trigger t join pg_proc p on p.oid = t.tgfoid
+               where t.tgrelid = c.oid and p.proname = 'record_change')
+         order by 1`,
+    );
+    expect(
+      rows
+        .map((row: { table: string }) => row.table)
+        .filter((table) => !UNAUDITED.has(table) && !table.startsWith("auth_")),
+    ).toEqual([]);
     await close();
   });
 });

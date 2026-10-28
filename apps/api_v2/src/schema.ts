@@ -1,7 +1,8 @@
 /**
  * The Drizzle schema, matching migrations `001_init` to `008_user_roles`
- * applied in order, table for table and column for column. BetterAuth's
- * `auth_*` tables are its own and are not mapped here.
+ * applied in order, table for table and column for column. BetterAuth reads
+ * and writes its four `auth_*` tables through these definitions; their
+ * property keys are BetterAuth's field names.
  *
  * The DDL in `migrations/` stays the source of truth and this file is the
  * typed view of it that queries are written against. `schema.test.ts` asserts
@@ -14,6 +15,7 @@
 
 import {
   type AnyPgColumn,
+  boolean,
   check,
   customType,
   index,
@@ -41,6 +43,7 @@ export const changeAction = pgEnum("change_action", [
   "published",
   "reverted",
   "deleted",
+  "unpublished",
 ]);
 
 const timestamps = {
@@ -118,6 +121,89 @@ export const contentPages = pgTable(
   ],
 );
 
+/**
+ * BetterAuth's tables, as `003_auth` creates them: quoted camelCase columns
+ * and BetterAuth's own timestamp precision. `system` is the user with no
+ * account.
+ */
+export const authUser = pgTable("auth_user", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  email: text("email").notNull().unique(),
+  emailVerified: boolean("emailVerified").notNull(),
+  image: text("image"),
+  createdAt: timestamp("createdAt", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
+export const authSession = pgTable(
+  "auth_session",
+  {
+    id: text("id").primaryKey(),
+    expiresAt: timestamp("expiresAt", { withTimezone: true }).notNull(),
+    token: text("token").notNull().unique(),
+    createdAt: timestamp("createdAt", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updatedAt", { withTimezone: true }).notNull(),
+    ipAddress: text("ipAddress"),
+    userAgent: text("userAgent"),
+    userId: text("userId")
+      .notNull()
+      .references(() => authUser.id, { onDelete: "cascade" }),
+  },
+  (table) => [index("auth_session_userId_idx").on(table.userId)],
+);
+
+export const authAccount = pgTable(
+  "auth_account",
+  {
+    id: text("id").primaryKey(),
+    accountId: text("accountId").notNull(),
+    providerId: text("providerId").notNull(),
+    userId: text("userId")
+      .notNull()
+      .references(() => authUser.id, { onDelete: "cascade" }),
+    accessToken: text("accessToken"),
+    refreshToken: text("refreshToken"),
+    idToken: text("idToken"),
+    accessTokenExpiresAt: timestamp("accessTokenExpiresAt", {
+      withTimezone: true,
+    }),
+    refreshTokenExpiresAt: timestamp("refreshTokenExpiresAt", {
+      withTimezone: true,
+    }),
+    scope: text("scope"),
+    password: text("password"),
+    createdAt: timestamp("createdAt", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updatedAt", { withTimezone: true }).notNull(),
+  },
+  (table) => [index("auth_account_userId_idx").on(table.userId)],
+);
+
+export const authVerification = pgTable(
+  "auth_verification",
+  {
+    id: text("id").primaryKey(),
+    identifier: text("identifier").notNull(),
+    value: text("value").notNull(),
+    expiresAt: timestamp("expiresAt", { withTimezone: true }).notNull(),
+    createdAt: timestamp("createdAt", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updatedAt", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [index("auth_verification_identifier_idx").on(table.identifier)],
+);
+
 const tsvector = customType<{ data: string }>({
   dataType: () => "tsvector",
 });
@@ -149,10 +235,10 @@ export const searchChunks = pgTable(
 );
 
 /**
- * Append-only, enforced by a trigger rather than by convention. A row is
- * written on every save, which is what makes the trigger something the tests
- * exercise rather than only declare — and what a live-update feed would read
- * from.
+ * Append-only, enforced by a trigger rather than by convention. The database
+ * writes a row on every change to a content table (`record_change`, see
+ * `007_change_history_trigger`), which is what a live-update feed would read
+ * from. `actor` is the user whose transaction made the change, or `system`.
  */
 export const changeEvents = pgTable(
   "change_events",
@@ -165,7 +251,10 @@ export const changeEvents = pgTable(
     versionNo: integer("version_no").notNull(),
     action: changeAction("action").notNull(),
     snapshot: jsonb("snapshot").notNull(),
-    actor: text("actor").notNull().default("spike"),
+    actor: text("actor")
+      .notNull()
+      .default("system")
+      .references(() => authUser.id, { onDelete: "restrict" }),
     occurredAt: timestamp("occurred_at", { withTimezone: true, precision: 3 })
       .notNull()
       .defaultNow(),
