@@ -103,12 +103,15 @@ describe("the change history trigger", () => {
     await revise("submitted");
     await revise("rejected");
     await revise("published");
+    await revise("discarded");
 
     expect(await historyOf(db, PAGE)).toEqual(
-      ["created", "submitted", "rejected", "approved"].map((action) => ({
-        action,
-        actor: "system",
-      })),
+      ["created", "submitted", "rejected", "approved", "discarded"].map(
+        (action) => ({
+          action,
+          actor: "system",
+        }),
+      ),
     );
     await close();
   });
