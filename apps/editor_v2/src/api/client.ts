@@ -210,7 +210,7 @@ const ok = <Value>(value: Value) => ({ ok: true, value }) as const;
 const failed = <Failure extends Error>(error: Failure) => ({ ok: false, error }) as const;
 
 // JSON's text: any other JSON value, even a number, reads as something different
-const isText = (value: unknown): value is string => String(value) === value;
+export const isText = (value: unknown): value is string => String(value) === value;
 
 const isFlag = (value: unknown): value is boolean => value === true || value === false;
 

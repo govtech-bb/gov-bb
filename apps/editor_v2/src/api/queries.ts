@@ -1,5 +1,11 @@
 import { queryOptions, type QueryClient } from "@tanstack/react-query";
-import { ApiFailure, CategoryAnswerMalformed, type EditorApi, type EstateVersion } from "./client";
+import {
+  ApiFailure,
+  CategoryAnswerMalformed,
+  isText,
+  type EditorApi,
+  type EstateVersion,
+} from "./client";
 
 // Every content read sits under "content", so one invalidation refreshes them all.
 
@@ -72,7 +78,7 @@ export const employeeIdQuery = (api: Pick<EditorApi, "me">) =>
     queryFn: async (): Promise<string | null> => {
       const me: unknown = await api.me();
 
-      return me instanceof Object && "id" in me && String(me.id) === me.id ? me.id : null;
+      return me instanceof Object && "id" in me && isText(me.id) ? me.id : null;
     },
   });
 

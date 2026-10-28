@@ -3,7 +3,7 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { categoryLabel } from "../api/categories";
-import { ApiFailure, type ApiRevision, type EditorApi } from "../api/client";
+import { ApiFailure, isText, type ApiRevision, type EditorApi } from "../api/client";
 import { apiMessage } from "../api/failure-messages";
 import { pageFieldLabel } from "../api/page-markdown";
 import {
@@ -101,9 +101,9 @@ function valueText(
 ) {
   if (value === null || value === undefined || value === "") return "None";
 
-  if (field === "category_id" && String(value) === value) return categoryName(value) ?? value;
+  if (field === "category_id" && isText(value)) return categoryName(value) ?? value;
 
-  return String(value) === value ? value : JSON.stringify(value, null, 2);
+  return isText(value) ? value : JSON.stringify(value, null, 2);
 }
 
 /** The page's content, line by line: what the change removes struck through, what it adds marked, in words too. */
