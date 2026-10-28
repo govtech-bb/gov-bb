@@ -25,3 +25,9 @@ export { RULE_REGISTRY } from "./rules";
 
 // File-type policy shared by the browser pre-check and the API presign gate.
 export { fileTypesRunner, UNVERIFIED_CONTENT_TYPE } from "./rules/file";
+
+// Scan-verdict wording shared by the upload page and the API submit check.
+export {
+  INFECTED_FILE_MESSAGE,
+  UNSCANNABLE_FILE_MESSAGE,
+} from "./file-scan-messages";
