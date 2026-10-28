@@ -68,3 +68,65 @@ describe('Breadcrumbs', () => {
     ])
   })
 })
+
+describe('Breadcrumbs in api_v2 mode', () => {
+  it("shows a page's own trail, the current page left unlinked", () => {
+    render(
+      <Breadcrumbs
+        pathname="/renamed/register-a-birth"
+        trail={[
+          { name: 'Family (renamed)', url: '/renamed' },
+          { name: 'Register a birth', url: '/renamed/register-a-birth' },
+        ]}
+      />,
+    )
+    const links = screen.getAllByRole('link')
+    expect(links.map((link) => link.textContent)).toEqual([
+      'Home',
+      'Family (renamed)',
+    ])
+    expect(links.map((link) => link.getAttribute('href'))).toEqual([
+      '/',
+      '/renamed',
+    ])
+  })
+
+  it("labels an app route's category from the tree, and omits it when hidden", () => {
+    const pathname = '/health-and-emergency-services/water-outages/confirm'
+
+    const { rerender } = render(
+      <Breadcrumbs
+        pathname={pathname}
+        categoryTree={{
+          kind: 'found',
+          categories: [
+            {
+              slug: 'health-and-emergency-services',
+              url: '/health-and-emergency-services',
+              title: 'Health (api_v2)',
+              description: null,
+              subcategories: [],
+            },
+          ],
+        }}
+      />,
+    )
+
+    expect(screen.getAllByRole('link').map((l) => l.textContent)).toEqual([
+      'Home',
+      'Health (api_v2)',
+      'Check for water outages in your area',
+    ])
+
+    rerender(
+      <Breadcrumbs
+        pathname={pathname}
+        categoryTree={{ kind: 'unavailable' }}
+      />,
+    )
+    expect(screen.getAllByRole('link').map((l) => l.textContent)).toEqual([
+      'Home',
+      'Check for water outages in your area',
+    ])
+  })
+})
