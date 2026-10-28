@@ -19,8 +19,8 @@ export default defineConfig({
   retries: 0,
   workers: 1,
   // The journey polls past landing's 60s status cache across two flips; the
-  // spec sets its own ~3.5m per-test budget, this is the backstop.
-  timeout: 240_000,
+  // spec sets its own ~4m per-test budget, this is the backstop above it.
+  timeout: 300_000,
   reporter: [["line"]],
   use: {
     trace: "retain-on-failure",

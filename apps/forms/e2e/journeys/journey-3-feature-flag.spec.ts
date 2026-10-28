@@ -31,7 +31,7 @@
  * without a production cache-bypass, which was dropped as unsafe (an unsigned
  * cookie would let any client force uncached reads and throttle the API, the very
  * #2029 failure this guards). The budget is sized to the real worst case
- * (~3.5 min); the "<2 min" AC is being relaxed with the issue owner.
+ * (~4 min), the relaxed "<2 min" target the issue owner agreed on #3010.
  *
  * Required env:
  *   E2E_API_BASE_URL         feature-flag API base (PUT /service_status)
@@ -58,8 +58,11 @@ const LANDING_MAINTENANCE_TEXT =
   "This form is currently being upgraded to serve you better";
 const FORMS_NOT_FOUND_TEXT = "Form not found";
 
-// Each reload must out-wait landing's 60s status cache, so the window is > TTL.
-const PROPAGATION_TIMEOUT = 75_000;
+// Each reload must out-wait landing's 60s status cache with margin: a worst-case
+// attempt that starts just before the window expires still needs room to retry,
+// so the budget sits comfortably above 60s and polls on a fixed short interval.
+const PROPAGATION_TIMEOUT = 90_000;
+const POLL_INTERVAL = 5_000;
 // Per-load wait for the SPA (forms) / SSR (landing) to actually render before the
 // check decides — a one-off isVisible() would race the client-rendered forms app.
 const RENDER_TIMEOUT = 8_000;
@@ -84,7 +87,7 @@ async function reloadUntil(
         await page.goto(url, { waitUntil: "domcontentloaded" });
         return check();
       },
-      { timeout: PROPAGATION_TIMEOUT, intervals: [2_000, 5_000, 10_000] },
+      { timeout: PROPAGATION_TIMEOUT, intervals: [POLL_INTERVAL] },
     )
     .toBe(true);
 }
@@ -93,7 +96,7 @@ test.describe("Journey 3 — feature-flag maintenance reaches landing + forms", 
   test("flips a test service to maintenance and back, across both apps", async ({
     browser,
   }) => {
-    test.setTimeout(210_000); // ~3.5 min — two flips past landing's 60s cache
+    test.setTimeout(240_000); // ~4 min — two flips past landing's 60s cache (#3010 AC, agreed with the issue owner)
 
     const api = required("E2E_API_BASE_URL");
     const landingUrl = required("E2E_LANDING_URL");
@@ -118,6 +121,7 @@ test.describe("Journey 3 — feature-flag maintenance reaches landing + forms", 
       page.getByRole("heading", { name: "Your details" });
     const formNotFound = () => page.getByText(FORMS_NOT_FOUND_TEXT);
 
+    let bodyError: unknown;
     try {
       // ─── 1. Maintenance ──────────────────────────────────────────────────
       await setServiceStatus(api, token, SERVICE, "form_disabled");
@@ -146,13 +150,28 @@ test.describe("Journey 3 — feature-flag maintenance reaches landing + forms", 
           .catch(() => false));
         return loaded && noError;
       });
-    } finally {
-      // Reset to the seeded `disabled` (→ preview) state so the test service is
-      // never left citizen-visible. Log, don't swallow, so a stuck service shows.
-      await setServiceStatus(api, token, SERVICE, "disabled").catch((err) => {
-        console.warn(`J3: could not reset ${SERVICE} to disabled: ${err}`);
-      });
-      await context.close();
+    } catch (err) {
+      bodyError = err;
+    }
+
+    // Always attempt to reset to the seeded `disabled` (→ preview) state so the
+    // test service is never left citizen-visible.
+    let resetError: unknown;
+    try {
+      await setServiceStatus(api, token, SERVICE, "disabled");
+    } catch (err) {
+      resetError = err;
+    }
+    await context.close();
+
+    // Surface the original failure first — it's the most informative. But a reset
+    // failure on an otherwise-green run must still go RED: a test service left
+    // `enabled` is publicly listed, so a silent warning is not enough.
+    if (bodyError) throw bodyError;
+    if (resetError) {
+      throw new Error(
+        `J3 could not reset ${SERVICE} to disabled — it may be left enabled (public): ${resetError}`,
+      );
     }
   });
 });
