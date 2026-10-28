@@ -3,6 +3,8 @@ import {
   confirmUpload,
   putFileToS3,
   uploadFile,
+  sendFile,
+  checkFile,
   FileUploadError,
   UPLOAD_PROBLEM_MESSAGE,
 } from "./files";
@@ -467,5 +469,108 @@ describe("files API client", () => {
       }),
     ).rejects.toMatchObject({ stage: "presign" });
     expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("sendFile presigns and PUTs, and returns the key without confirming", async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse(presignOk));
+    const onProgress = vi.fn();
+    FakeXhr.respond = (xhr) => {
+      xhr.progress(1, 2);
+      xhr.finish(200);
+    };
+
+    const key = await sendFile({
+      file: new File(["x"], "a.pdf", { type: "application/pdf" }),
+      formId: "f",
+      stepId: "s",
+      fieldId: "fld",
+      onProgress,
+    });
+
+    expect(key).toBe("uploads/k");
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(onProgress).toHaveBeenCalledWith(0.5);
+  });
+
+  describe("checkFile", () => {
+    const ref = { key: "uploads/k", formId: "f", stepId: "s", fieldId: "fld" };
+    const confirmed = (scanStatus?: string) =>
+      jsonResponse({
+        key: "uploads/k",
+        name: "a.pdf",
+        size: 1,
+        type: "x",
+        scanStatus,
+      });
+
+    beforeEach(() => {
+      vi.useFakeTimers({ toFake: ["setTimeout", "Date"] });
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it.each(["clean", "infected", "unscannable"])(
+      "returns a %s verdict from the first confirm",
+      async (verdict) => {
+        fetchMock.mockResolvedValue(confirmed(verdict));
+
+        await expect(checkFile(ref)).resolves.toMatchObject({
+          scanStatus: verdict,
+        });
+        expect(fetchMock).toHaveBeenCalledTimes(1);
+      },
+    );
+
+    // An API older than #3333 sends no verdict; the widget treats it as clean.
+    it("returns at once when confirm sends no verdict", async () => {
+      fetchMock.mockResolvedValue(confirmed());
+
+      const result = await checkFile(ref);
+
+      expect(result).toMatchObject({ key: "uploads/k" });
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+    });
+
+    it("asks again every 3s while the scan is pending", async () => {
+      fetchMock
+        .mockResolvedValueOnce(confirmed("pending"))
+        .mockResolvedValueOnce(confirmed("pending"))
+        .mockResolvedValueOnce(confirmed("clean"));
+
+      const result = checkFile(ref);
+      await vi.advanceTimersByTimeAsync(2999);
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      await vi.advanceTimersByTimeAsync(1);
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+      await vi.advanceTimersByTimeAsync(3000);
+
+      await expect(result).resolves.toMatchObject({ scanStatus: "clean" });
+      expect(fetchMock).toHaveBeenCalledTimes(3);
+    });
+
+    // Pending must never spin forever: after 20s the widget shows "took too
+    // long" with Retry. Asks at 0, 3, 6 ... 18s; the next would pass 20s.
+    it("gives up with timeout once 20s would pass", async () => {
+      fetchMock.mockResolvedValue(confirmed("pending"));
+
+      const result = checkFile(ref);
+      await vi.advanceTimersByTimeAsync(20_000);
+
+      await expect(result).resolves.toBe("timeout");
+      expect(fetchMock).toHaveBeenCalledTimes(7);
+    });
+
+    it("stops and throws when a re-check fails", async () => {
+      fetchMock
+        .mockResolvedValueOnce(confirmed("pending"))
+        .mockResolvedValueOnce(jsonResponse({}, false, 429));
+
+      const result = checkFile(ref).catch((e: unknown) => e);
+      await vi.advanceTimersByTimeAsync(3000);
+
+      await expect(result).resolves.toMatchObject({ stage: "confirm" });
+    });
   });
 });

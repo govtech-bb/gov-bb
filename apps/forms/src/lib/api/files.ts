@@ -187,11 +187,11 @@ export interface UploadFileParams {
 }
 
 /**
- * Runs the full upload flow for a single file:
- *   presign → PUT to S3 → confirm.
- * Returns the confirmed reference to store in form state / the submission.
+ * Sends one file to storage: presign → PUT to S3. Returns the object key,
+ * which `checkFile` then confirms. Kept apart from the check so Retry after a
+ * scan that took too long only re-checks, without uploading again.
  */
-export const uploadFile = async ({
+export const sendFile = async ({
   file,
   formId,
   stepId,
@@ -199,7 +199,7 @@ export const uploadFile = async ({
   previewToken,
   draftToken,
   onProgress,
-}: UploadFileParams): Promise<UploadedFile> => {
+}: UploadFileParams): Promise<string> => {
   const presign = await presignUpload(
     {
       formId,
@@ -214,14 +214,63 @@ export const uploadFile = async ({
   );
 
   await putFileToS3(presign.uploadUrl, file, onProgress);
+  return presign.key;
+};
 
+/** How long to wait between asking again about a file still being scanned. */
+export const SCAN_RECHECK_INTERVAL_MS = 3_000;
+/**
+ * How long a file may stay `pending` before the widget says checking took too
+ * long. Matches CaMS (#2940). Each confirm-upload call itself waits up to 4s
+ * for the tag, so this is about three calls against a live API.
+ */
+export const SCAN_RECHECK_BUDGET_MS = 20_000;
+
+export type CheckFileParams = Omit<UploadFileParams, "file" | "onProgress"> & {
+  key: string;
+};
+
+const wait = (ms: number) =>
+  new Promise<void>((resolve) => setTimeout(resolve, ms));
+
+/**
+ * Confirms an uploaded file and returns it with its scan verdict. While the
+ * verdict is `pending` it asks again every SCAN_RECHECK_INTERVAL_MS, and
+ * returns "timeout" rather than ask past SCAN_RECHECK_BUDGET_MS.
+ */
+export const checkFile = async ({
+  key,
+  formId,
+  stepId,
+  fieldId,
+  previewToken,
+  draftToken,
+}: CheckFileParams): Promise<UploadedFile | "timeout"> => {
+  const deadline = Date.now() + SCAN_RECHECK_BUDGET_MS;
+  for (;;) {
+    const file = await confirmUpload(
+      { key, formId, stepId, fieldId },
+      previewToken,
+      draftToken,
+    );
+    if (file.scanStatus !== "pending") return file;
+    if (Date.now() + SCAN_RECHECK_INTERVAL_MS > deadline) return "timeout";
+    await wait(SCAN_RECHECK_INTERVAL_MS);
+  }
+};
+
+/**
+ * Runs the full upload flow for a single file:
+ *   presign → PUT to S3 → confirm.
+ * Returns the confirmed reference to store in form state / the submission.
+ */
+export const uploadFile = async (
+  params: UploadFileParams,
+): Promise<UploadedFile> => {
+  const key = await sendFile(params);
+  const { previewToken, draftToken, formId, stepId, fieldId } = params;
   return confirmUpload(
-    {
-      key: presign.key,
-      formId,
-      stepId,
-      fieldId,
-    },
+    { key, formId, stepId, fieldId },
     previewToken,
     draftToken,
   );
