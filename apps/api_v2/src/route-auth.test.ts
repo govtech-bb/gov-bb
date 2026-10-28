@@ -528,3 +528,20 @@ it("refuses every admin route to a non-admin", async () => {
     ).rows,
   ).toEqual([]);
 });
+
+it("lists the review queue for any signed-in employee, an approver without the editor role included (#3202)", async () => {
+  const signedOut = await app.inject({ url: "/revisions?status=submitted" });
+  expect(signedOut.statusCode).toBe(401);
+  expect(signedOut.json()).toEqual({ error: "unauthenticated" });
+  const approverOnly: Employee = { ...NO_ROLES, roles: ["approver"] };
+  const signedIn = await createTestApp(db, {
+    sessions: { findSession: async () => ok(approverOnly) },
+  });
+  const listed = await signedIn.inject({
+    url: "/revisions?status=submitted",
+    headers: TEST_HEADERS,
+  });
+  await signedIn.close();
+  expect(listed.statusCode).toBe(200);
+  expect(listed.json()).toEqual({ revisions: [] });
+});

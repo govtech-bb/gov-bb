@@ -45,12 +45,14 @@ import {
   type PageDocument,
   type PageId,
   type PendingRevision,
+  type ReviewQueueEntry,
   type Visibility,
 } from "../modules/page";
 import type { Ancestor, ResolvablePage } from "../modules/page-visibility";
 import { err, ok, type Result } from "../modules/result";
 import type { SearchChunk } from "../modules/search-text";
 import {
+  authUser,
   categories,
   changeEvents,
   contentPages,
@@ -927,6 +929,36 @@ export class PostgresPages
         latest: row?.latest?.toISOString() ?? null,
       };
     });
+  }
+
+  /** Every revision waiting for review, with its submitter's name, the longest-waiting first. */
+  async submittedRevisions(): Promise<
+    Result<ReviewQueueEntry[], ContentStoreUnavailable>
+  > {
+    const rows = await attempt("submittedRevisions", () =>
+      this.db
+        .select({ revision: pageRevisions, name: authUser.name })
+        .from(pageRevisions)
+        .leftJoin(authUser, eq(authUser.id, pageRevisions.submittedBy))
+        .where(eq(pageRevisions.status, "submitted"))
+        .orderBy(pageRevisions.submittedAt, pageRevisions.id),
+    );
+    if (!rows.ok) return rows;
+    return ok(
+      rows.value.map(({ revision, name }) => ({
+        id: revision.id,
+        page_id: revision.pageId,
+        title: revision.fields.title,
+        url: revision.fields.url,
+        // A submitted revision always records who submitted it, and when.
+        submitted_by: revision.submittedBy ?? "",
+        submitted_by_name: name,
+        submitted_at: (
+          revision.submittedAt ?? revision.updatedAt
+        ).toISOString(),
+        updated_at: revision.updatedAt.toISOString(),
+      })),
+    );
   }
 }
 
