@@ -16,10 +16,21 @@
  *   a page has one `category_id`.
  * - categories: `CATEGORY_TAXONOMY` in its order, each subcategory a
  *   category with a parent.
- * - source: the last commit that touched the markdown, so imported history can name it.
+ * - source: the git tree id of the markdown directory as it is on disk, so
+ *   imported history can name the content. A commit sha would differ between
+ *   a PR branch and its squash merge, so CI's drift check (#3136) would fail
+ *   every content merge; the tree id depends only on the content.
  */
 
-import { readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import {
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from "node:fs";
+import { tmpdir } from "node:os";
 import { join, relative } from "node:path";
 import { execFileSync } from "node:child_process";
 import matter from "gray-matter";
@@ -166,12 +177,29 @@ for (const page of pages) {
   if (parent) page.category = parent.category;
 }
 
+/**
+ * `git rev-parse HEAD:apps/landing/src/content` once committed, but read from
+ * the working tree through a throwaway index, so regenerating before the
+ * content commit already records the right id.
+ */
+function contentTreeId(): string {
+  const scratch = mkdtempSync(join(tmpdir(), "seed-data-"));
+  const git = (...args: string[]) =>
+    execFileSync("git", args, {
+      cwd: root,
+      encoding: "utf8",
+      env: { ...process.env, GIT_INDEX_FILE: join(scratch, "index") },
+    }).trim();
+  try {
+    git("add", "--", "apps/landing/src/content");
+    return git("write-tree", "--prefix=apps/landing/src/content/");
+  } finally {
+    rmSync(scratch, { recursive: true, force: true });
+  }
+}
+
 const estate: SeedEstate = {
-  source: execFileSync(
-    "git",
-    ["log", "-1", "--format=%H", "--", "apps/landing/src/content"],
-    { cwd: root, encoding: "utf8" },
-  ).trim(),
+  source: contentTreeId(),
   categories: CATEGORY_TAXONOMY.flatMap((category, position) => [
     {
       slug: category.slug,
