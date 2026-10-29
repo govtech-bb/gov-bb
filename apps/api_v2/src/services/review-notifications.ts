@@ -146,7 +146,7 @@ export class ReviewNotifications implements ReviewNotifier {
       if (!to.ok) return failed("recipients_unavailable", to.error);
       if (to.value.length === 0) return;
       const link = await this.linkFor(event);
-      if (!link.ok) return failed("recipients_unavailable", link.error);
+      if (!link.ok) return failed("link_unavailable", link.error);
       const email = reviewEmail(event, link.value);
       const sent = await Promise.allSettled(
         to.value.map((address) => this.mailer.send({ ...email, to: address })),
