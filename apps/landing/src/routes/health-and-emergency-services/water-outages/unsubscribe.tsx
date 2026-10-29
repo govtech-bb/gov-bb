@@ -1,4 +1,6 @@
+import { Button, ButtonGroup, Heading, Text } from '@govtech-bb/react'
 import { createFileRoute } from '@tanstack/react-router'
+import { useState, useTransition } from 'react'
 import { pageHead } from '../../../lib/page-head'
 import { unsubscribeSubscription } from './-lib/water-alerts'
 import type { TokenOutcome } from './-lib/water-alerts'
@@ -10,8 +12,6 @@ export const Route = createFileRoute(
   validateSearch: (search: Record<string, unknown>) => ({
     token: typeof search.token === 'string' ? search.token : '',
   }),
-  loaderDeps: ({ search }) => ({ token: search.token }),
-  loader: ({ deps }) => unsubscribeSubscription({ data: deps.token }),
   head: () =>
     pageHead(
       'Unsubscribe from water alerts',
@@ -47,8 +47,44 @@ const MESSAGES: Record<
   },
 }
 
+// Unsubscribing waits for a click: mail scanners open every link in an email,
+// and a page-load unsubscribe would silently stop the resident's alerts.
 function UnsubscribePage() {
-  const outcome = Route.useLoaderData()
-  const m = MESSAGES[outcome] ?? MESSAGES.invalid
-  return <ResultNotice body={m.body} title={m.title} tone={m.tone} />
+  const { token } = Route.useSearch()
+  const [outcome, setOutcome] = useState<TokenOutcome | null>(null)
+  const [isPending, startTransition] = useTransition()
+
+  if (outcome) {
+    const m = MESSAGES[outcome] ?? MESSAGES.invalid
+    return <ResultNotice body={m.body} title={m.title} tone={m.tone} />
+  }
+
+  return (
+    <div className="water-outages-page">
+      <div className="govbb-status-banner govbb-status-banner--rounded water-outages-result">
+        <Heading as="h1">Unsubscribe from water alerts</Heading>
+        <Text as="p">
+          You will stop getting emails about water notices for this area.
+        </Text>
+        <ButtonGroup>
+          <Button
+            disabled={isPending}
+            onClick={() =>
+              startTransition(async () => {
+                try {
+                  setOutcome(await unsubscribeSubscription({ data: token }))
+                } catch {
+                  setOutcome('unavailable')
+                }
+              })
+            }
+            type="button"
+            variant="primary"
+          >
+            {isPending ? 'Unsubscribing…' : 'Unsubscribe'}
+          </Button>
+        </ButtonGroup>
+      </div>
+    </div>
+  )
 }

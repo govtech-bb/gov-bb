@@ -160,6 +160,8 @@ export class SubscriptionService {
     const confirmUrl = `${landingOrigin()}${WATER_OUTAGES_PATH}/confirm?token=${confirmToken}`;
     // In the confirm email too, so a resident can stop alerts before the first
     // one arrives (and the nightly E2E journey can clean up after itself).
+    // Safe against mail scanners that pre-open links: the landing unsubscribe
+    // page only acts on a button click.
     const unsubscribeUrl = `${landingOrigin()}${WATER_OUTAGES_PATH}/unsubscribe?token=${unsubscribeToken}`;
     const { subject, html, text } = buildConfirmEmail(
       areaLabelFor(area),

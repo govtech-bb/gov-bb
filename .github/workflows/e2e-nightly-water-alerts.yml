@@ -7,8 +7,8 @@ name: E2E Nightly Water Alerts
 
 on:
   schedule:
-    # 09:30 UTC = 05:30 in Barbados, clear of the J7 run at 09:00.
-    - cron: "30 9 * * *"
+    # 10:00 UTC = 06:00 in Barbados, after the J7 run (09:00, 30 min max).
+    - cron: "0 10 * * *"
   workflow_dispatch:
 
 permissions:
