@@ -87,6 +87,9 @@ export async function createDatabase(
       : `create database ${name}`,
   );
   const pool = new Pool({ ...TEST_SERVER, database: name });
+  // pool.end() resolves before its idle clients disconnect, so close()'s
+  // forced drop can terminate them (57P01); unheard, that is an uncaught error.
+  pool.on("error", () => {});
   return {
     db: drizzle(pool),
     pool,

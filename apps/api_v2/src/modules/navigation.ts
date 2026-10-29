@@ -129,18 +129,34 @@ function refOf(
   };
 }
 
-/** A page's category crumbs: the parent category first, for a subcategory. */
-export function categoryCrumbs(
+/**
+ * A page's taxonomy and category crumbs (the parent first, for a
+ * subcategory). The union keeps a subcategory from existing without its
+ * category. Categories nest one level deep (category-editing.ts).
+ */
+export function pageCategory(
   categoryId: string | null,
   categories: readonly CategoryRecord[],
-): Breadcrumb[] {
-  const category = categories.find((row) => row.id === categoryId);
-  if (!category) return [];
-  const parent = categories.find((row) => row.id === category.parentId);
-  return [...(parent ? [parent] : []), category].map((row) => ({
-    name: row.title,
-    url: urlOf(row, categories),
-  }));
+):
+  | { category: null; subcategory: null; crumbs: readonly [] }
+  | { category: string; subcategory: string | null; crumbs: Breadcrumb[] } {
+  const row = categories.find((category) => category.id === categoryId);
+  if (!row) return { category: null, subcategory: null, crumbs: [] };
+  const parent = categories.find((category) => category.id === row.parentId);
+  if (!parent)
+    return {
+      category: row.slug,
+      subcategory: null,
+      crumbs: [{ name: row.title, url: `/${row.slug}` }],
+    };
+  return {
+    category: parent.slug,
+    subcategory: row.slug,
+    crumbs: [
+      { name: parent.title, url: `/${parent.slug}` },
+      { name: row.title, url: `/${parent.slug}/${row.slug}` },
+    ],
+  };
 }
 
 /**

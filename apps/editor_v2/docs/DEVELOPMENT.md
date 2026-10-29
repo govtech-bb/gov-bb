@@ -61,6 +61,8 @@ App UI suites supply employee/API responses at the HTTP boundary. `authenticatio
 
 `categories.mjs` answers `/editor/categories` with a versioned fixture at the HTTP boundary. It checks loading, versioned keyboard moves with focus and announcements, app-route and in-use locks, refused slugs, renamed-category service links by slug, unmatched bookmark filters, the shared Create service and page settings pickers, a failed load and Try again, long names, and the 390px drawer and row menu. Touch contexts check 44px targets; fine-pointer geometry is not evidence of touch size.
 
+`collections.mjs` answers api_v2's `/collections` routes with a versioned fixture at the HTTP boundary. It reaches Collections from the menu by keyboard, opens a collection's table and a record's dialog from its row, checks `?record=` in the address, a field refused by `validation_failed`, the stale-save choices, keyboard add and delete with focus returned, visible focus at each stop, and the table at 390px. Screenshots go to `/tmp/c3184-collections-*.png`.
+
 `categories-live.mjs` is opt-in and never in the default list. It writes to a real api_v2 over a disposable database, with nothing intercepted. Follow the [API local setup](../../api_v2/README.md#run-locally), using that database, `SEED=false`, `AUTH_BYPASS=true`, `PORT=43107`, `BETTER_AUTH_URL=http://127.0.0.1:43107` and `EDITOR_ORIGIN=http://localhost:43108`. Start the editor in a separate terminal, then run the suite from this directory:
 
 ```sh

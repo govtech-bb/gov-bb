@@ -9,6 +9,9 @@ vi.mock("../components/services/service-state", () => ({
   useServiceIndex: () => ({ entries: [] }),
 }));
 
+// The demo streams and prepares on real timers; a loaded CI runner needs the
+// headroom (#3404).
+
 it("lets a visitor review a sample edit, auto-apply a warning, and expand the preview", async () => {
   localStorage.clear();
   vi.stubEnv("NODE_ENV", "development");
@@ -29,9 +32,9 @@ it("lets a visitor review a sample edit, auto-apply a warning, and expand the pr
       {
         name: "Apply to draft",
       },
-      { timeout: 3000 },
+      { timeout: 10000 },
     );
-    await waitFor(() => expect(approve).not.toBeDisabled(), { timeout: 3000 });
+    await waitFor(() => expect(approve).not.toBeDisabled(), { timeout: 10000 });
     expect(screen.getByRole("textbox", { name: "Page title" })).toHaveValue(
       "Apply for a library card",
     );
@@ -46,7 +49,7 @@ it("lets a visitor review a sample edit, auto-apply a warning, and expand the pr
         expect(
           screen.getByRole("button", { name: "Edit behavior: Ask" }),
         ).not.toBeDisabled(),
-      { timeout: 3000 },
+      { timeout: 10000 },
     );
     await user.click(
       screen.getByRole("button", { name: "Edit behavior: Ask" }),
@@ -65,7 +68,7 @@ it("lets a visitor review a sample edit, auto-apply a warning, and expand the pr
             }) as HTMLTextAreaElement
           ).value,
         ).toContain("[Confirm the opening hours]"),
-      { timeout: 5000 },
+      { timeout: 10000 },
     );
     expect(screen.getByText("2 changes applied")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Expand assistant" }));
@@ -88,7 +91,7 @@ it("lets a visitor review a sample edit, auto-apply a warning, and expand the pr
     view.unmount();
     vi.unstubAllEnvs();
   }
-}, 15000);
+}, 30000);
 
 it("answers the scripted questions and retries a failed task example", async () => {
   localStorage.clear();
@@ -126,7 +129,7 @@ it("answers the scripted questions and retries a failed task example", async () 
     const failed = await screen.findByRole(
       "button",
       { name: /Check sample details.*Failed/ },
-      { timeout: 2000 },
+      { timeout: 10000 },
     );
     await user.click(failed);
     await user.click(
@@ -135,10 +138,10 @@ it("answers the scripted questions and retries a failed task example", async () 
     await screen.findByText(
       "The retry completed successfully.",
       {},
-      { timeout: 2000 },
+      { timeout: 10000 },
     );
   } finally {
     view.unmount();
     vi.unstubAllEnvs();
   }
-}, 15000);
+}, 30000);

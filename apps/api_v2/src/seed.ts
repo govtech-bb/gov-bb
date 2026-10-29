@@ -22,7 +22,7 @@ import {
   contentPages,
   dataCollections,
 } from "./schema";
-import { ESTATE } from "./seed-data";
+import { ESTATE, ESTATE_SOURCE } from "./seed-data";
 import { COLLECTIONS } from "./seed-data/collections";
 
 export async function seed(db: Database): Promise<{
@@ -160,7 +160,7 @@ export async function seed(db: Database): Promise<{
 
 /** What a one-shot import wrote, or would have written on a dry run. */
 export type ImportReport = {
-  /** The markdown commit the estate snapshot was taken from. */
+  /** sha1 of the estate snapshot it imported (`ESTATE_SOURCE`). */
   source: string;
   /** Why existing content was replaced, or null when it was not. */
   reason: string | null;
@@ -224,7 +224,7 @@ export async function importEstate(
       }
       const counts = await seed(tx);
       report = {
-        source: ESTATE.source,
+        source: ESTATE_SOURCE,
         reason: options.force ?? null,
         existing,
         actors,

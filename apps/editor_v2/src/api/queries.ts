@@ -107,3 +107,11 @@ export const estateVersionQuery = (api: Pick<EditorApi, "version">, client: Quer
     },
     refetchInterval: 30_000,
   });
+
+/** The data collections, with their record counts, for the Collections screen. */
+export const collectionsQuery = (api: EditorApi) =>
+  queryOptions({ queryKey: ["content", "collections"], queryFn: () => api.collections() });
+
+/** One collection and its records, shared by its screen and the record dialogs over it. */
+export const collectionQuery = (api: EditorApi, key: string) =>
+  queryOptions({ queryKey: ["content", "collection", key], queryFn: () => api.collection(key) });

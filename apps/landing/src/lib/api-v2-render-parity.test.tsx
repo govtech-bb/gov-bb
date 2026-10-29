@@ -1,12 +1,11 @@
-import { readFileSync } from 'node:fs'
-import { fileURLToPath } from 'node:url'
 import { describe, expect, it, vi } from 'vitest'
 import type * as ReactRouter from '@tanstack/react-router'
 import { renderToStaticMarkup } from 'react-dom/server'
+import estate from '@api-v2-seed/estate.json'
 import { MarkdownContent } from '../components/markdown'
 import { findPage } from '../content/registry'
 import type { ContentPage } from '../content/registry'
-import { fromApiV2 } from './api-v2-page'
+import { resolveApiV2Page } from './api-v2-page'
 import type { PageResponse } from './api-v2-page'
 import type { Frontmatter } from './frontmatter'
 
@@ -14,7 +13,8 @@ import type { Frontmatter } from './frontmatter'
  * Every page api_v2 is seeded with must build the same page through
  * `fromApiV2` as landing's static registry builds from its markdown (#3135):
  * the same rendered HTML and the same frontmatter fields. No network: the
- * api_v2 response is built from the seed snapshot.
+ * api_v2 response is built from the seed snapshot and read through
+ * `resolveApiV2Page`, so the response schema parses every seeded page.
  *
  * Not covered: hidden Start links. Every response here has
  * `hide_start_links: false` and every seeded `/start` page is public, so
@@ -31,6 +31,8 @@ vi.mock('@tanstack/react-router', async (orig) => ({
 /** One page of the seed (`SeedPage` in apps/api_v2/src/seed-data/index.ts). */
 interface SeedPage {
   url: string
+  /** The page's own category row's slug; `served` turns it into the pair. */
+  category: string | null
   visibility: string
   title: string
   description: string | null
@@ -41,23 +43,28 @@ interface SeedPage {
   frontmatter: Omit<PageResponse['frontmatter'], 'title' | 'description'>
 }
 
-// Read rather than imported: the snapshot belongs to another app.
-const ESTATE: { pages: SeedPage[] } = JSON.parse(
-  readFileSync(
-    fileURLToPath(
-      new URL('../../../api_v2/src/seed-data/estate.json', import.meta.url),
-    ),
-    'utf8',
-  ),
-)
+// api_v2's committed snapshot; landing's project.json makes api_v2 an
+// implicit dependency, so a change to it makes landing:test nx-affected.
+const ESTATE: {
+  categories: Array<{ slug: string; parent: string | null }>
+  pages: SeedPage[]
+} = estate
 
 /**
  * The page as `GET /pages` returns it (`toPublicPage` in
  * apps/api_v2/src/modules/page-visibility.ts) after seeding: apps/api_v2/
  * src/seed.ts stores `published_at` for a public page only, so a non-public
- * page has none until it goes public.
+ * page has none until it goes public. `category`/`subcategory` restate
+ * `categoryChain` in apps/api_v2/src/modules/navigation.ts; api_v2's
+ * seed.test.ts checks the real mapping against the same snapshot.
  */
 function served(page: SeedPage): PageResponse {
+  const row = ESTATE.categories.find((c) => c.slug === page.category)
+  const [category, subcategory] = row
+    ? row.parent
+      ? [row.parent, row.slug]
+      : [row.slug, null]
+    : [null, null]
   return {
     url: page.url,
     frontmatter: {
@@ -71,6 +78,8 @@ function served(page: SeedPage): PageResponse {
     breadcrumbs: [],
     published_at: page.visibility === 'public' ? page.published_at : null,
     updated_at: '2026-01-01T00:00:00.000Z',
+    category,
+    subcategory,
   }
 }
 
@@ -94,41 +103,9 @@ type Field = (typeof FIELDS)[number]
  */
 const KNOWN: Array<{ why: string; field: Field; urls: string[] }> = [
   {
-    // #3133: fromApiV2 sets `categories` to the url's first segment.
-    why: '#3133',
-    field: 'categories',
-    urls: ['terms-conditions', 'what-we-mean-by-alpha', 'whats-changing'],
-  },
-  {
-    // #3133: fromApiV2 never sets `subcategory`.
-    why: '#3133',
-    field: 'subcategory',
-    urls: [
-      'youth-and-community/arts-culture/community-canvas',
-      'youth-and-community/arts-culture/yar',
-      'youth-and-community/children-families-community/barbados-blooming-libraries',
-      'youth-and-community/children-families-community/ceep',
-      'youth-and-community/children-families-community/centre-access',
-      'youth-and-community/children-families-community/cmc',
-      'youth-and-community/children-families-community/mission-barbados',
-      'youth-and-community/children-families-community/national-summer-camp',
-      'youth-and-community/entrepreneurship-business/yes',
-      'youth-and-community/skills-trades-vocational-training/btu',
-      'youth-and-community/skills-trades-vocational-training/cap',
-      'youth-and-community/skills-trades-vocational-training/cip',
-      'youth-and-community/skills-trades-vocational-training/cyber-security-training',
-      'youth-and-community/skills-trades-vocational-training/web-design-entrepreneurs',
-      'youth-and-community/youth-development-leadership/bright-sparks-2',
-      'youth-and-community/youth-development-leadership/byac',
-      'youth-and-community/youth-development-leadership/pathways',
-      'youth-and-community/youth-development-leadership/ydp',
-    ],
-  },
-  {
     // A `/start` sub-page names no category, so the static page has `[]` and
-    // analytics reports it as 'uncategorised'. fromApiV2 gives it the url's
-    // first segment, and api_v2 files it under its parent's category (the
-    // database requires one), so #3133's fix keeps the difference.
+    // analytics reports it as 'uncategorised'. api_v2 files it under its
+    // parent's category (the database requires one).
     why: '/start sub-pages: parent category vs none',
     field: 'categories',
     urls: [
@@ -178,18 +155,11 @@ const KNOWN: Array<{ why: string; field: Field; urls: string[] }> = [
 ]
 
 /**
- * Seeded pages with no static page: the snapshot predates the About Barbados
- * restructure (#3361). Regenerating it (`pnpm --filter @govtech-bb/api-v2
- * seed-data`, #3136) removes them.
+ * Seeded pages with no static page. Empty while the snapshot is regenerated
+ * from landing content (#3136); add a url here only for a page seeded on purpose
+ * without a static twin.
  */
-const NO_STATIC_PAGE = [
-  'about-barbados/archaeological-history',
-  'about-barbados/coat-of-arms',
-  'about-barbados/flag-etiquette',
-  'about-barbados/national-anthem',
-  'about-barbados/national-flower',
-  'about-barbados/national-pledge',
-]
+const NO_STATIC_PAGE: string[] = []
 
 /** The page's body and chrome as the catch-all route renders it. */
 function render(page: ContentPage): string {
@@ -237,7 +207,14 @@ describe('api_v2 render parity', () => {
       ).toBeDefined()
       if (!twin) return
 
-      const api = await fromApiV2(served(seed))
+      const result = await resolveApiV2Page(
+        'http://api.example',
+        `/${url}`,
+        async () => Response.json(served(seed)),
+      )
+      if (result.kind !== 'page')
+        throw new Error(`no page for ${url}: ${JSON.stringify(result)}`)
+      const api = result.page
       const known = KNOWN.filter((entry) => entry.urls.includes(url))
       // The HTML must match apart from the known differences: render the twin
       // with those fields as api_v2 has them.

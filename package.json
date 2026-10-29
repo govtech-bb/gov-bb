@@ -25,6 +25,7 @@
     "generate:architecture-diagram": "tsx scripts/generate-architecture-diagram.ts",
     "generate:form-categories": "tsx scripts/generate-form-categories.ts",
     "generate:services-index": "tsx scripts/generate-services-index.ts",
+    "generate:seed-data": "pnpm --filter @govtech-bb/api-v2 seed-data",
     "generate:service-status-seed": "tsx scripts/generate-service-status-seed.ts",
     "seed:service-status": "tsx scripts/seed-service-status-from-content.ts",
     "validate-recipes": "tsx scripts/validate-recipes.ts",

@@ -3,6 +3,7 @@
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
   "sourceRoot": "apps/landing/src",
   "projectType": "application",
+  "implicitDependencies": ["api_v2"],
   "namedInputs": {
     "default": ["{projectRoot}/**/*", "sharedGlobals"]
   },
@@ -72,22 +73,25 @@
         "cwd": "apps/landing"
       }
     },
+    "size": {
+      "executor": "nx:run-commands",
+      "dependsOn": ["build"],
+      "options": {
+        "command": "pnpm run size",
+        "cwd": "apps/landing"
+      }
+    },
     "test": {
       "executor": "nx:run-commands",
       "inputs": [
         "default",
         "^production",
-        "{workspaceRoot}/apps/api_v2/src/seed-data/estate.json"
+        "{workspaceRoot}/apps/api_v2/openapi.json"
       ],
       "options": {
         "command": "npm run test",
         "cwd": "apps/landing"
-      },
-      "inputs": [
-        "default",
-        "^production",
-        "{workspaceRoot}/apps/api_v2/openapi.json"
-      ]
+      }
     },
     "typecheck": {
       "executor": "nx:run-commands",
