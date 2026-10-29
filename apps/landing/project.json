@@ -82,7 +82,12 @@
       "options": {
         "command": "npm run test",
         "cwd": "apps/landing"
-      }
+      },
+      "inputs": [
+        "default",
+        "^production",
+        "{workspaceRoot}/apps/api_v2/openapi.json"
+      ]
     },
     "typecheck": {
       "executor": "nx:run-commands",
