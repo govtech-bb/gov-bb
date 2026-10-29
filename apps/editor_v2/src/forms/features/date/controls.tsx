@@ -3,7 +3,7 @@ import { CaretDown, X } from "@phosphor-icons/react";
 import { useState } from "react";
 import { addToRange } from "react-day-picker";
 import { cn } from "../../../cn";
-import { Calendar, type CalendarProps } from "../../../ui/calendar";
+import { Calendar, type DateRange } from "../../../ui/calendar";
 import { Input, input } from "../../../ui/input";
 import { formatDay, parseDay, shortDate } from "../../core/dates";
 import { Menu } from "../../../ui/menu";
@@ -116,7 +116,7 @@ function DateItem({
 }: {
   label: string;
   dates: (Setting | undefined)[];
-  selected: CalendarProps["selected"];
+  selected: DateRange;
   month?: Date;
   closeOnSelect?: boolean;
   onDay: (day: string) => void;
@@ -141,10 +141,10 @@ function DateItem({
       <div onKeyDown={(e) => e.key !== "Escape" && e.stopPropagation()} className="py-1.5">
         <Calendar
           mode="range"
-          selected={selected}
-          month={month}
+          value={selected}
+          defaultMonth={month}
           weekStartsOn={1}
-          onDayClick={(day) => {
+          onValueChange={(_, day) => {
             if (closeOnSelect) setOpen(false);
             onDay(formatDay(day));
           }}

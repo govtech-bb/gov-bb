@@ -14,10 +14,9 @@ import {
   type NodeKey,
 } from "lexical";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { createPortal } from "react-dom";
-import { cn } from "../../cn";
 import { RowContent } from "../../ui/menu";
-import { group, groupLabel, listEmpty, listFooter, row, surface } from "../../ui/surface";
+import { belowBar, Popover } from "../../ui/popover";
+import { group, groupLabel, listEmpty, listFooter, row } from "../../ui/surface";
 import {
   $availableActions,
   $executeAction,
@@ -28,6 +27,7 @@ import {
 import { $turnLineInto } from "../core/turn-into";
 import { $caretLine, registerLineHint } from "./block-dom";
 import { useEditorDefinition } from "./composer";
+import { roomierSide } from "./editor-popup";
 import { useSlashTrigger } from "./slash-trigger";
 
 // The top-level block holding the caret, where a chosen block goes
@@ -54,6 +54,8 @@ export function SlashMenu() {
   const [editor] = useLexicalComposerContext();
   const definition = useEditorDefinition();
   const [query, setQuery] = useState<string | null>(null);
+  // Picked as the menu opens and kept, so it shrinks towards the caret as you type instead of flipping over it
+  const [side, setSide] = useState<"top" | "bottom">("bottom");
   const [error, setError] = useState<string>();
 
   // Where "/" opens this menu, the caret's empty line says so
@@ -123,6 +125,7 @@ export function SlashMenu() {
     <LexicalTypeaheadMenuPlugin<BlockOption>
       options={options}
       triggerFn={trigger}
+      onOpen={(resolution) => setSide(roomierSide(resolution.getRect()))}
       onQueryChange={(next) => {
         setQuery(next);
         setError(undefined);
@@ -131,7 +134,7 @@ export function SlashMenu() {
         setQuery(null);
         setError(undefined);
       }}
-      anchorClassName="z-50"
+      anchorClassName="z-popup"
       // Above the editor's own arrow/Enter handling (COMMAND_PRIORITY_LOW), so an open menu always gets the keys
       commandPriority={COMMAND_PRIORITY_NORMAL}
       onSelectOption={(option, query, closeMenu) => {
@@ -189,18 +192,33 @@ export function SlashMenu() {
         const highlighted = selectedIndex === null ? undefined : options[selectedIndex]?.entry;
 
         return (
-          anchor.current &&
-          createPortal(
-            <>
-              {/* Lexical points aria-activedescendant at the highlighted typeahead-item-N; this also says it aloud */}
-              <p role="status" className="sr-only">
-                {highlighted?.title}
-              </p>
-              <div className={cn(surface, "flex max-h-131 w-75 flex-col")}>
+          anchor.current && (
+            // Placed by the popover rather than where Lexical puts its anchor, so it stays on screen and clear of the
+            // bar. The caret keeps the focus: typing and the arrow keys stay the editor's
+            <Popover.Root open>
+              <Popover.Content
+                aria-label="Insert block"
+                anchor={anchor.current}
+                // Inside Lexical's anchor, which reads its options from there
+                container={anchor.current}
+                role="presentation"
+                side={side}
+                align="start"
+                sideOffset={4}
+                collisionPadding={belowBar()}
+                collisionAvoidance={{ side: "none", align: "shift", fallbackAxisSide: "none" }}
+                initialFocus={false}
+                finalFocus={false}
+                className="flex max-h-[min(32.75rem,var(--available-height))] w-75 flex-col overflow-hidden p-0"
+              >
+                {/* Lexical points aria-activedescendant at the highlighted typeahead-item-N; this also says it aloud */}
+                <p role="status" className="sr-only">
+                  {highlighted?.title}
+                </p>
                 <div
                   role="listbox"
                   aria-label="Insert block"
-                  className="group/popup min-h-0 overflow-y-auto py-1"
+                  className="group/popup min-h-0 overflow-y-auto overscroll-contain py-1"
                 >
                   {error && (
                     <div role="alert" className="px-3.5 py-1.5 text-14 text-error">
@@ -223,9 +241,8 @@ export function SlashMenu() {
                     {highlighted.description}
                   </p>
                 )}
-              </div>
-            </>,
-            anchor.current,
+              </Popover.Content>
+            </Popover.Root>
           )
         );
       }}

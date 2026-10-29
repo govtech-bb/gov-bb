@@ -175,10 +175,10 @@ describe("category rules", () => {
     expect(addressLock(byId(categories, "health")!, categories)).toBeUndefined();
     expect(
       addressLock({ ...byId(categories, "health")!, reserved_route: true }, categories),
-    ).toMatch(/site's own/);
+    ).toMatch(/site’s own/);
     expect(
       deleteBlocker({ ...byId(categories, "health")!, reserved_route: true }, categories),
-    ).toMatch(/site's own is at \/health/);
+    ).toMatch(/site’s own is at \/health/);
   });
 
   it("refuses to delete a category while services or subcategories are filed under it", () => {

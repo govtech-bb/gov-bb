@@ -7,6 +7,7 @@ import { createEditorApi, type ApiPage, type ServiceDetail } from "../../src/api
 import { AuthFailure, type EditorAuth } from "../../src/auth/session";
 import { routeTree } from "../../src/routeTree.gen";
 import { renderInPage } from "../helpers/page-editor";
+import { shownText } from "../helpers/shown-text";
 
 const stamp = "2026-10-07T12:00:00.000Z";
 
@@ -233,7 +234,7 @@ test("someone without the editor role is told why, and can't add, delete or crea
   const button = (name: string) =>
     [...document.querySelectorAll("button")].find((item) => item.textContent === name)!;
 
-  await until(() => expect(document.body.textContent).toContain("you don't have the editor role"));
+  await until(() => expect(document.body.textContent).toContain("you don’t have the editor role"));
   await until(() => expect(button("Delete page").disabled).toBe(true));
   expect(button("Add document").disabled).toBe(true);
   const reason = button("Add document").getAttribute("aria-describedby");
@@ -256,7 +257,7 @@ test("an editor is offered adding and creating, with no read-only notice", async
 
   await until(() => expect(button("Delete page").disabled).toBe(false));
   expect(button("Add document").disabled).toBe(false);
-  expect(document.body.textContent).not.toContain("you don't have the editor role");
+  expect(document.body.textContent).not.toContain("you don’t have the editor role");
 });
 
 test("malformed old workspaces and drafts cannot shadow API pages or create browser-only flows", async () => {
@@ -293,7 +294,7 @@ test("old local URLs use normal API not-found behavior", async () => {
 
 const control = (label: string, scope: ParentNode = document) => {
   const button = [...scope.querySelectorAll("button")].find(
-    (item) => item.textContent === label || item.getAttribute("aria-label") === label,
+    (item) => shownText(item) === label || item.getAttribute("aria-label") === label,
   );
 
   if (!button) throw Error("Missing button: " + label);
@@ -371,10 +372,16 @@ test("sign-out asks before revoking auth and does not show a second route prompt
 test("failed sign-out and a cancelled session-expiry redirect keep the working copy", async () => {
   const h = await mountWorkspace();
   await editTitle("Keep on auth failure");
-  vi.mocked(h.auth.signOut).mockResolvedValue({ ok: false, error: new AuthFailure("unavailable") });
+  const answer = Promise.withResolvers<Awaited<ReturnType<EditorAuth["signOut"]>>>();
+  vi.mocked(h.auth.signOut).mockReturnValue(answer.promise);
   await click("Sign out");
   await click("Sign out", question());
+  // While it works it keeps its colour and its place for the keyboard, rather than greying out
+  await until(() => expect(control("Signing out…").hasAttribute("data-pending")).toBe(true));
+  expect(control("Signing out…").disabled).toBe(false);
+  await act(async () => answer.resolve({ ok: false, error: new AuthFailure("unavailable") }));
   await until(() => expect(document.body.textContent).toContain("We could not sign you out"));
+  expect(control("Sign out").hasAttribute("data-pending")).toBe(false);
   expect(activeTitle().value).toBe("Keep on auth failure");
   vi.mocked(h.auth.session).mockResolvedValue({ ok: true, value: null });
   await act(async () => window.dispatchEvent(new Event("focus")));
@@ -416,7 +423,8 @@ test("pending saves block departure but the navigation question can still be can
       }),
     );
   });
-  await until(() => expect(control("Save").disabled).toBe(true));
+  // Nothing left to save: unusable, though it keeps its place for the keyboard
+  await until(() => expect(control("Save").getAttribute("aria-disabled")).toBe("true"));
 });
 
 test("clean navigation keeps at most three page views and retains API navigation", async () => {

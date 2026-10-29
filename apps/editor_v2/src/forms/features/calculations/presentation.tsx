@@ -3,7 +3,7 @@ import { $getNodeByKey } from "lexical";
 import { Plus, Sigma, Trash } from "@phosphor-icons/react";
 import { useMemo } from "react";
 import { Button } from "../../../ui/button";
-import { PillInput, pill, pillIcon } from "../../../ui/pill";
+import { Pill, pill, pillIcon } from "../../../ui/pill";
 import { type Setting } from "../../editor/nodes";
 import { useSetSettings, type WidgetProps } from "../../react/widget-settings";
 import { $fields } from "../logic/queries";
@@ -69,10 +69,10 @@ function LegacyCalculatedFields({ nodeKey, settings }: WidgetProps) {
                 <span className={pillIcon}>
                   <Sigma />
                 </span>
-                <PillInput
+                <Pill.Input
                   placeholder="Field name"
                   value={f.name ?? ""}
-                  onChange={(name) => update(i, { name })}
+                  onValueChange={(name) => update(i, { name })}
                 />
               </span>
               <Pick

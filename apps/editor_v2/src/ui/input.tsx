@@ -1,5 +1,6 @@
 import { Input as BaseInput } from "@base-ui/react/input";
 import { cn } from "../cn";
+import { useFieldSize } from "./field";
 
 // A hairline that darkens on hover and becomes the focus ring. An error edges it in red, but focus still shows over it.
 // 44px on a touch screen, like a menu's rows, and 16px text on phones, so iOS doesn't zoom in on focus
@@ -20,7 +21,9 @@ export const input = (size: Size = "md") => cn(fieldFrame, "w-full", sizes[size]
 
 type InputProps = Omit<BaseInput.Props, "size" | "className"> & { size?: Size; className?: string };
 
-/** A line of text. In a Field, it takes the field's label, hint and error. */
+/** A line of text. In a Field, it takes the field's label, hint, error and size. */
 export function Input({ size, className, ...props }: InputProps) {
-  return <BaseInput className={cn(input(size), className)} {...props} />;
+  const fieldSize = useFieldSize();
+
+  return <BaseInput className={cn(input(size ?? fieldSize), className)} {...props} />;
 }
