@@ -1,8 +1,10 @@
 name: CI
 
 on:
+  # v2-rewrite is a long-lived integration branch; its PRs get the same gates
+  # (and its merges the same post-merge run) as main's until it merges in.
   pull_request:
-    branches: [main]
+    branches: [main, v2-rewrite]
   # Re-validate the trunk after every merge. CI otherwise runs only on
   # pull_request, so a break that emerges from the COMBINATION of two
   # independently-green PRs (e.g. #1875's recipes + #1970's new lint, incident
@@ -10,7 +12,7 @@ on:
   # `main` flags a red trunk immediately. `validate-recipes` matters most here:
   # it validates ALL recipes, not just nx-affected ones.
   push:
-    branches: [main]
+    branches: [main, v2-rewrite]
   workflow_dispatch:
 
 permissions:
