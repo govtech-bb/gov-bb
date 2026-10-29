@@ -1,8 +1,8 @@
 name: CI
 
 on:
-  # v2-rewrite is a long-lived integration branch; its PRs get the same gates
-  # (and its merges the same post-merge run) as main's until it merges in.
+  # v2-rewrite is a long-lived integration branch; its PRs and merges run the
+  # same checks as main's until it merges in.
   pull_request:
     branches: [main, v2-rewrite]
   # Re-validate the trunk after every merge. CI otherwise runs only on
