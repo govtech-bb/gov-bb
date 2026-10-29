@@ -49,6 +49,7 @@ const sourceOnly = new Set([
   "coat-of-arms/index.md",
   "flag-etiquette/index.md",
   "national-anthem/index.md",
+  "national-flag/index.md",
   "national-flower/index.md",
   "national-pledge/index.md",
 ]);
