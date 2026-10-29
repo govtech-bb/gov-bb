@@ -23,6 +23,7 @@ import {
   $setSelection,
   COMMAND_PRIORITY_LOW,
   HISTORY_PUSH_TAG,
+  SKIP_SELECTION_FOCUS_TAG,
   INDENT_CONTENT_COMMAND,
   KEY_DOWN_COMMAND,
   OUTDENT_CONTENT_COMMAND,
@@ -88,6 +89,8 @@ import { actionList, PageActionList } from "./action-menu";
 import { $writeAtEnd } from "./block-exit";
 import { $blockLines, $pageChoices, $turnPageLines } from "./turn-into";
 import { $rootBlock, type PagePlace } from "./insertion";
+import { OPEN_BLOCK_OPTIONS_COMMAND } from "./block-options";
+import { $isPageContactNode, ContactBlockSettings } from "./modules/contact";
 import { startWriting } from "./slash-menu";
 import { PageMetadataNode } from "./metadata";
 import { PageComponentNode } from "./nodes";
@@ -264,6 +267,26 @@ function EditablePageControls({ anchor, hintId }: { anchor: HTMLElement; hintId:
 
           if (!key || !grip.current) return false;
           event.preventDefault();
+          byKeyboard.current = true;
+          pin(key);
+          openBlockMenu(key);
+
+          return true;
+        },
+        COMMAND_PRIORITY_LOW,
+      ),
+    // openBlockMenu reads only refs and state setters
+    [editor, pin],
+  );
+
+  // A block that still needs setting up opens its own Block options, such as a contact block once it's inserted
+  useEffect(
+    () =>
+      editor.registerCommand(
+        OPEN_BLOCK_OPTIONS_COMMAND,
+        (key) => {
+          if (!editor.isEditable() || !grip.current) return false;
+          // Pinned, the menu stays on its block; closing it lets the pointer lead the rail again
           byKeyboard.current = true;
           pin(key);
           openBlockMenu(key);
@@ -622,6 +645,7 @@ function BlockMenuRows({ menu, onDone }: { menu: BlockMenu; onDone: () => void }
           !!block.getPreviousSibling() && !(block.getPreviousSibling() instanceof PageMetadataNode),
         down: !!block.getNextSibling(),
         turnInto: lines?.length ? $pageChoices(lines) : null,
+        contact: $isPageContactNode(block) ? block.getSettings() : null,
         component: component
           ? {
               key: component.getKey(),
@@ -652,7 +676,11 @@ function BlockMenuRows({ menu, onDone }: { menu: BlockMenu; onDone: () => void }
           else if ($isElementNode(block)) block.selectStart();
           apply(block);
         },
-        { tag: HISTORY_PUSH_TAG, discrete: true },
+        // Kept open, the menu's own control keeps the focus while the block changes
+        {
+          tag: close ? HISTORY_PUSH_TAG : [HISTORY_PUSH_TAG, SKIP_SELECTION_FOCUS_TAG],
+          discrete: true,
+        },
       );
 
       if (close) {
@@ -688,6 +716,19 @@ function BlockMenuRows({ menu, onDone }: { menu: BlockMenu; onDone: () => void }
         <p className="px-3.5 py-1.5 text-14 text-error" role="alert">
           {error}
         </p>
+      )}
+      {model.contact && (
+        // Keep its fields' keys out of menu navigation; Escape still dismisses it.
+        <div onKeyDown={(event) => event.key !== "Escape" && event.stopPropagation()}>
+          <ContactBlockSettings
+            settings={model.contact}
+            onChange={(patch) =>
+              change((block) => {
+                if ($isPageContactNode(block)) block.setSettings(patch);
+              }, false)
+            }
+          />
+        </div>
       )}
       {(model.component || model.turnInto) && (
         <Menu.Group>

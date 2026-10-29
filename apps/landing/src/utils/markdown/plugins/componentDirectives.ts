@@ -109,6 +109,19 @@ function transformDirective(
     return
   }
 
+  // A record's contact details (#3185), read at request time — see
+  // lib/api-v2-collections.ts. Distinct from the hand-written `<contact>` tile.
+  if (node.name === 'contact' && node.type === 'leafDirective') {
+    const {
+      collection = '',
+      record = '',
+      fields = '',
+    } = assertAttributes(node, new Set(['collection', 'record', 'fields']))
+    node.data.hName = 'contact-record'
+    node.data.hProperties = { collection, record, fields }
+    return
+  }
+
   throw new Error(`[markdown] Unsupported component directive ::${node.name}`)
 }
 

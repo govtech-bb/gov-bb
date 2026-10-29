@@ -8,15 +8,20 @@ import { hideStartLinks } from '../../utils/markdown/plugins'
 import { markdownComponents } from './MdComponents'
 import { formatPublishDate } from '../../lib/format-date'
 import { AvailableFormsContext } from './StartLink'
+import { ContactRecordsContext } from '../content/ContactRecord'
+import type { ContactRecords } from '../../lib/api-v2-collections'
 
 export function MarkdownBody({
   hast,
   availableForms = new Set(),
   hideStartLink = false,
+  contactRecords = {},
 }: {
   hast: Root
   availableForms?: ReadonlySet<string>
   hideStartLink?: boolean
+  /** The records the page's `::contact` blocks name; none shows nothing. */
+  contactRecords?: ContactRecords
 }) {
   // Clone: these passes mutate, and hast is shared across renders.
   // toJsxRuntime options below match react-markdown@9.
@@ -25,17 +30,19 @@ export function MarkdownBody({
 
   return (
     <AvailableFormsContext.Provider value={availableForms}>
-      <div className="govbb-prose">
-        {toJsxRuntime(tree, {
-          Fragment,
-          jsx,
-          jsxs,
-          components: markdownComponents,
-          ignoreInvalidStyle: true,
-          passKeys: true,
-          passNode: true,
-        })}
-      </div>
+      <ContactRecordsContext.Provider value={contactRecords}>
+        <div className="govbb-prose">
+          {toJsxRuntime(tree, {
+            Fragment,
+            jsx,
+            jsxs,
+            components: markdownComponents,
+            ignoreInvalidStyle: true,
+            passKeys: true,
+            passNode: true,
+          })}
+        </div>
+      </ContactRecordsContext.Provider>
     </AvailableFormsContext.Provider>
   )
 }
@@ -46,6 +53,7 @@ type MarkdownContentProps = {
   hast?: Root
   availableForms?: ReadonlySet<string>
   hideStartLink?: boolean
+  contactRecords?: ContactRecords
   /** The CMS owns these editing surfaces; ordinary public pages supply none. */
   editableRegions?: { title: ReactNode; lede: ReactNode; body: ReactNode }
 }
@@ -55,6 +63,7 @@ export function MarkdownContent({
   hast,
   availableForms,
   hideStartLink = false,
+  contactRecords,
   editableRegions,
 }: MarkdownContentProps) {
   return (
@@ -101,13 +110,15 @@ export function MarkdownContent({
             </div>
           ) : null}
         </div>
-        {editableRegions?.body ?? (hast ? (
-          <MarkdownBody
-            hast={hast}
-            availableForms={availableForms}
-            hideStartLink={hideStartLink}
-          />
-        ) : null)}
+        {editableRegions?.body ??
+          (hast ? (
+            <MarkdownBody
+              hast={hast}
+              availableForms={availableForms}
+              hideStartLink={hideStartLink}
+              contactRecords={contactRecords}
+            />
+          ) : null)}
       </div>
     </div>
   )

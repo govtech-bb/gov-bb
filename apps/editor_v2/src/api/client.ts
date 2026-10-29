@@ -45,6 +45,9 @@ export type ServiceDetail = Json<paths["/services/{id}"]["get"]["responses"][200
 /** A page of an opened service. */
 export type ServicePage = ServiceDetail["pages"][number];
 
+/** A data collection and its records, from the public route the site reads too. */
+export type CollectionRecords = Json<paths["/collections/{key}/records"]["get"]["responses"][200]>;
+
 /** The signed-in employee and their roles. */
 export type Me = Json<paths["/editor/me"]["get"]["responses"][200]>;
 
@@ -487,6 +490,16 @@ export function createEditorApi(apiOrigin: string, landingOrigin?: string) {
     version: () => read<EstateVersion>("/version"),
     me: () => read<Me>("/editor/me"),
     page: (id: string) => read<ApiPage>(`/pages/${id}`),
+    /** A collection and its records; null when there's no such collection. */
+    collectionRecords: async (key: string): Promise<CollectionRecords | null> => {
+      const response = await request("GET", `/collections/${encodeURIComponent(key)}/records`);
+
+      if (response.status === 404) return null;
+
+      if (!response.ok) throw refused(response.status, await bodyOf(response));
+
+      return response.json();
+    },
     createPage: async (page: CreatePageInput): Promise<ApiPage> =>
       (await send("POST", "/pages", page)).json(),
     savePage: async (id: string, fields: SavePageInput, ifUpdatedAt: string): Promise<ApiPage> =>

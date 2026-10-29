@@ -15,6 +15,15 @@ export default defineConfig(({ mode }) => ({
     'import.meta.env.DEV': JSON.stringify(mode !== 'production'),
   },
   plugins: [react(), tailwindcss()],
+  // Source, as tsconfig's `paths` maps it for the app build, so this entry
+  // needs no prior block-kit build either.
+  resolve: {
+    alias: {
+      '@govtech-bb/block-kit/contact': fileURLToPath(
+        new URL('../../packages/block-kit/src/contact.ts', import.meta.url),
+      ),
+    },
+  },
   build: {
     outDir: 'public/cms-preview',
     emptyOutDir: true,

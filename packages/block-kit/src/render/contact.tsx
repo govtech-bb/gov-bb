@@ -14,28 +14,8 @@
  */
 
 import type { ContactBlock } from "../types";
-import { hrefAttr } from "../href";
+import { contactDetails } from "../contact";
 import { Spans, type RenderContext } from "./spans";
-
-/**
- * A detail that is really a link. Phone numbers and email addresses are
- * actionable on a phone, and a citizen reading this on one should be able to
- * tap rather than transcribe.
- *
- * Derived from the field name rather than stored, because the alternative is
- * asking an author to declare that `phone` is a telephone number — which they
- * would get wrong exactly as often as the naming convention would.
- */
-function linkFor(field: string, value: string): string | null {
-  if (field.includes("phone") || field.includes("telephone")) {
-    return `tel:${value.replace(/[^\d+]/g, "")}`;
-  }
-  if (field.includes("email")) return `mailto:${value}`;
-  if (field.includes("website") || field.includes("url")) {
-    return value.startsWith("http") ? value : `https://${value}`;
-  }
-  return null;
-}
 
 export function Contact({
   block,
@@ -73,22 +53,12 @@ export function Contact({
         </p>
       ) : (
         <dl className="bk-contact-details">
-          {block.fields.map(({ field, label }) => {
-            const value = record[field];
-            if (value === undefined || value === null || value === "") {
-              return null;
-            }
-            const text = String(value);
-            const href = linkFor(field, text);
-            return (
-              <div className="bk-contact-row" key={field}>
-                <dt>{label}</dt>
-                <dd>
-                  {href ? <a {...hrefAttr(href)}>{text}</a> : text}
-                </dd>
-              </div>
-            );
-          })}
+          {contactDetails(block, record).map(({ field, label, text, href }) => (
+            <div className="bk-contact-row" key={field}>
+              <dt>{label}</dt>
+              <dd>{href ? <a href={href}>{text}</a> : text}</dd>
+            </div>
+          ))}
         </dl>
       )}
     </section>

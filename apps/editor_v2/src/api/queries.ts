@@ -30,6 +30,14 @@ export const servicesQuery = (api: EditorApi) =>
 export const serviceQuery = (api: EditorApi, id: string) =>
   queryOptions({ queryKey: ["content", "service", id], queryFn: () => api.service(id) });
 
+/** A collection and its records, such as the contacts a page's contact blocks show. */
+export const collectionRecordsQuery = (api: Pick<EditorApi, "collectionRecords">, key: string) =>
+  queryOptions({
+    // Not #3184's ["content", "collection", key]: that one throws on a 404, where this one answers null
+    queryKey: ["content", "contact-collection", key],
+    queryFn: () => api.collectionRecords(key),
+  });
+
 export const pageQuery = (api: EditorApi, id: string) =>
   queryOptions({ queryKey: ["content", "page", id], queryFn: () => api.page(id) });
 

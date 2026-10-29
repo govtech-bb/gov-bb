@@ -11,6 +11,7 @@ import { MarkdownLink } from './MarkdownLink'
 import { Notice } from '../content/Notice'
 import { Highlights, Highlight } from '../content/Highlights'
 import { Contacts, Contact } from '../content/Contacts'
+import { ContactRecord } from '../content/ContactRecord'
 import { Muted } from '../content/Muted'
 
 const PHONE_SLASH_RE = /^\((\d{3})\)\s*(\d{3})-(\d{4})\s*\/\s*(\d{4})$/
@@ -116,6 +117,7 @@ export const markdownComponents: Partial<Components> = {
   highlight: Highlight,
   contacts: Contacts,
   contact: Contact,
+  'contact-record': ContactRecord,
   muted: Muted,
   'show-hide': ({
     node: _node,

@@ -22,6 +22,7 @@
   "dependencies": {
     "@datadog/browser-rum": "^7.8.0",
     "@govtech-bb/analytics": "workspace:*",
+    "@govtech-bb/block-kit": "workspace:*",
     "@govtech-bb/content": "workspace:*",
     "@govtech-bb/frontend": "1.0.0-alpha.29",
     "@govtech-bb/react": "1.0.0-alpha.29",
