@@ -1,0 +1,40 @@
+{
+  "name": "govbbmarkd",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "packages/govbbmarkd/src",
+  "projectType": "library",
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "packages/govbbmarkd/dist",
+        "tsConfig": "packages/govbbmarkd/tsconfig.json",
+        "main": "packages/govbbmarkd/src/index.ts"
+      }
+    },
+    "typecheck": {
+      "executor": "nx:run-commands",
+      "cache": true,
+      "options": {
+        "command": "tsc -p tsconfig.spec.json",
+        "cwd": "packages/govbbmarkd"
+      }
+    },
+    "test": {
+      "executor": "nx:run-commands",
+      "dependsOn": ["typecheck"],
+      "options": {
+        "command": "vitest run",
+        "cwd": "packages/govbbmarkd"
+      }
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint",
+      "options": {
+        "lintFilePatterns": ["packages/govbbmarkd/**/*.{ts,tsx}"]
+      }
+    }
+  },
+  "tags": []
+}

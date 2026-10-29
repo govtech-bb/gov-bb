@@ -1,10 +1,9 @@
 import { Heading, Link, StatusBanner, Text } from '@govtech-bb/react'
-import { toJsxRuntime } from 'hast-util-to-jsx-runtime'
-import { Fragment, jsx, jsxs } from 'react/jsx-runtime'
 import type { Root } from 'hast'
 import type { ReactNode } from 'react'
 import type { Frontmatter } from '../../lib/frontmatter'
 import { hideStartLinks } from '../../utils/markdown/plugins'
+import { renderMarkdownNodes } from '@govtech-bb/govbbmarkd/react'
 import { markdownComponents } from './MdComponents'
 import { formatPublishDate } from '../../lib/format-date'
 import { AvailableFormsContext } from './StartLink'
@@ -13,28 +12,22 @@ export function MarkdownBody({
   hast,
   availableForms = new Set(),
   hideStartLink = false,
+  formId,
 }: {
   hast: Root
   availableForms?: ReadonlySet<string>
   hideStartLink?: boolean
+  formId?: string
 }) {
   // Clone: these passes mutate, and hast is shared across renders.
   // toJsxRuntime options below match react-markdown@9.
   const tree = structuredClone(hast)
-  hideStartLinks({ hideStartLink })(tree)
+  hideStartLinks({ hideStartLink, linkedFormId: formId ?? null })(tree)
 
   return (
     <AvailableFormsContext.Provider value={availableForms}>
       <div className="govbb-prose">
-        {toJsxRuntime(tree, {
-          Fragment,
-          jsx,
-          jsxs,
-          components: markdownComponents,
-          ignoreInvalidStyle: true,
-          passKeys: true,
-          passNode: true,
-        })}
+        {renderMarkdownNodes(tree.children, markdownComponents)}
       </div>
     </AvailableFormsContext.Provider>
   )
@@ -101,13 +94,15 @@ export function MarkdownContent({
             </div>
           ) : null}
         </div>
-        {editableRegions?.body ?? (hast ? (
-          <MarkdownBody
-            hast={hast}
-            availableForms={availableForms}
-            hideStartLink={hideStartLink}
-          />
-        ) : null)}
+        {editableRegions?.body ??
+          (hast ? (
+            <MarkdownBody
+              hast={hast}
+              availableForms={availableForms}
+              hideStartLink={hideStartLink}
+              formId={frontmatter.form_id}
+            />
+          ) : null)}
       </div>
     </div>
   )

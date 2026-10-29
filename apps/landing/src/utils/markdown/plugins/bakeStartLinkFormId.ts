@@ -1,5 +1,6 @@
 import type { Root, RootContent } from 'hast'
 
+/** Binds the page’s linked form without replacing an explicit URL or form target. */
 export function bakeStartLinkFormId(
   tree: Root,
   formId: string | undefined,
@@ -11,8 +12,9 @@ export function bakeStartLinkFormId(
       if (
         node.tagName === 'a' &&
         node.properties.dataStartLink !== undefined &&
-        // An authored href wins over form_id, so leave those nodes alone.
-        node.properties.href === undefined
+        // Authored destinations win over the page’s form_id.
+        node.properties.href === undefined &&
+        node.properties.dataFormId === undefined
       ) {
         node.properties.dataFormId = formId
       }

@@ -2,6 +2,7 @@
 /* GovBB's tokens (colour ramp, type, spacing) as --govbb-* custom properties. Only the tokens: govbb.css's global
    body, heading and link rules would fight Tailwind and the editor's own DOM. */
 @import "@govtech-bb/frontend/tokens.css";
+@source "../../packages/govbbmarkd/src";
 
 /* Figtree, the GovBB face, from the design system's package: variable 400–700, latin and latin-ext */
 @font-face {
@@ -48,6 +49,8 @@
 @theme {
   --font-sans: var(--govbb-font-sans);
   --font-mono: var(--govbb-font-mono);
+  --spacing-s: var(--govbb-space-s);
+  --spacing-xm: var(--govbb-space-xm);
 
   --color-*: initial;
   --color-white: #fff;

@@ -25,18 +25,26 @@ import {
   type HeadingTagType,
 } from "@lexical/rich-text";
 import { $createLinkNode, $isLinkNode } from "@lexical/link";
-import { createElement } from "react";
 import { TextModule } from "../../editor/modules/text/module";
 import { lineHint } from "../../editor/react/block-dom";
-import { isSupportedLinkUrl as safePageUrl } from "../../editor/modules/links/url";
+import { isSafeContentUrl } from "@govtech-bb/govbbmarkd/content-url";
 import type { MarkdownNode, PageHandler, PageModule } from "../definition";
 import { blocks, phrasing, UnsupportedPageContent } from "../markdown";
 import { registerPageBlockExit } from "../block-exit";
 import { pageInsertAction } from "../insertion";
 import { pageTurnInto } from "../turn-into";
-import { PageRuleNode } from "../nodes";
+import { PageComponentNode, PageRuleNode } from "../nodes";
 
-export { isSupportedLinkUrl as safePageUrl } from "../../editor/modules/links/url";
+/** Visual editing additionally excludes whitespace and scheme-relative destinations; empty links remain editable. */
+export function safePageUrl(value: string): boolean {
+  return (
+    (value === "" || isSafeContentUrl(value)) &&
+    !value.startsWith("//") &&
+    ![...value].some(
+      (character) => character.charCodeAt(0) <= 32 || character.charCodeAt(0) === 127,
+    )
+  );
+}
 
 const formats = { strong: "bold", emphasis: "italic", delete: "strikethrough" } satisfies Partial<
   Record<MarkdownNode["type"], TextFormatType>
@@ -159,7 +167,12 @@ const text: PageHandler = {
       return [result];
     }
 
-    if ($isLineBreakNode(node)) return [{ type: "html", value: "<br>" }];
+    if ($isLineBreakNode(node))
+      return node
+        .getParents()
+        .some((parent) => parent instanceof PageComponentNode && parent.getKind() === "action")
+        ? [{ type: "break" }]
+        : [{ type: "html", value: "<br>" }];
 
     if (node instanceof PageRuleNode) return [{ type: "thematicBreak" }];
 
@@ -208,54 +221,6 @@ const text: PageHandler = {
     }
 
     throw new Error(`Unsupported text node ${node.getType()}`);
-  },
-  render(node, context, key) {
-    if (node.type === "text") return node.value;
-
-    if (node.type === "inlineCode") return <code key={key}>{node.value}</code>;
-
-    if (node.type === "break") return <br key={key} />;
-
-    if (node.type === "thematicBreak") return <hr key={key} />;
-
-    if (node.type === "link")
-      return (
-        <a
-          key={key}
-          href={safePageUrl(node.url) ? node.url : undefined}
-          title={node.title ?? undefined}
-        >
-          {node.children.map((child, index) => context.render(child, `${key}/${index}`))}
-        </a>
-      );
-
-    if (
-      node.type === "strong" ||
-      node.type === "emphasis" ||
-      node.type === "delete" ||
-      node.type === "paragraph" ||
-      node.type === "heading" ||
-      node.type === "blockquote"
-    ) {
-      const tag =
-        node.type === "heading"
-          ? `h${node.depth}`
-          : {
-              strong: "strong",
-              emphasis: "em",
-              delete: "del",
-              paragraph: "p",
-              blockquote: "blockquote",
-            }[node.type];
-
-      return createElement(
-        tag,
-        { key },
-        node.children.map((child, index) => context.render(child, `${key}/${index}`)),
-      );
-    }
-
-    throw new UnsupportedPageContent(node);
   },
 };
 

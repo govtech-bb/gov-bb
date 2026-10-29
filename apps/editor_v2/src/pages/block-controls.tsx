@@ -5,9 +5,7 @@ import {
   $isTableSelection,
   $isTableNode,
   $insertTableRowAtSelection,
-  $insertTableColumnAtSelection,
   $deleteTableRowAtSelection,
-  $deleteTableColumnAtSelection,
 } from "@lexical/table";
 import {
   $createParagraphNode,
@@ -80,8 +78,9 @@ import { $blockLines, $pageChoices, $turnPageLines } from "./turn-into";
 import { $rootBlock, type PagePlace } from "./insertion";
 import { startWriting } from "./slash-menu";
 import { PageMetadataNode } from "./metadata";
-import { PageComponentNode } from "./nodes";
+import { PageComponentNode, type PageComponentAttributes } from "./nodes";
 import { $nearestPageList, $setPageListType } from "./modules/lists";
+import { $changePageTableColumns } from "./modules/tables";
 import { normalizeLinkUrl } from "../editor/modules/links/url";
 import { safePageUrl } from "./modules/text";
 import { $dropPageBlock, $pageDropAt, PAGE_BLOCK_DRAG } from "./block-drag";
@@ -106,8 +105,11 @@ function $blockSelection(selection: BaseSelection | null, block: LexicalNode) {
   )
     return null;
 
-  if ($isTableSelection(selection))
-    return selection.tableKey === block.getKey() && $isTableNode(block) ? selection : null;
+  if ($isTableSelection(selection)) {
+    const table = $getNodeByKey(selection.tableKey);
+
+    return $isTableNode(table) && $rootBlock(table)?.is(block) ? selection : null;
+  }
 
   const anchor = $getNodeByKey(selection.anchor.key);
 
@@ -158,7 +160,11 @@ function EditablePageControls({ anchor, hintId }: { anchor: HTMLElement; hintId:
     // The caret's block, kept while the selection is somewhere else for a moment
     $caretBlock: () => {
       const selection = $getSelection();
-      const block = $isRangeSelection(selection) ? $rootBlock(selection.anchor.getNode()) : null;
+
+      const block =
+        $isRangeSelection(selection) || $isTableSelection(selection)
+          ? $rootBlock(selection.anchor.getNode())
+          : null;
 
       if (block) caret.current = block.getKey();
 
@@ -487,7 +493,9 @@ function PageBlockMenu({ menu, onClose }: { menu: OpenMenu; onClose: () => void 
 
       let node: LexicalNode | null =
         $pageBlockDescendant(menu.contextKey, block) ??
-        ($isRangeSelection(selection) ? $getNodeByKey(selection.anchor.key) : block);
+        ($isRangeSelection(selection) || $isTableSelection(selection)
+          ? $getNodeByKey(selection.anchor.key)
+          : block);
 
       let component: PageComponentNode | null = null;
       const list = $nearestPageList(node);
@@ -551,21 +559,6 @@ function PageBlockMenu({ menu, onClose }: { menu: OpenMenu; onClose: () => void 
     }
   };
 
-  const table = (apply: () => void) =>
-    change((block) => {
-      const selection = $getSelection();
-
-      if (
-        !($isTableSelection(selection) && selection.tableKey === block.getKey()) &&
-        (!$isRangeSelection(selection) ||
-          $rootBlock(selection.anchor.getNode())?.getKey() !== block.getKey())
-      ) {
-        if ($isElementNode(block)) block.selectStart();
-      }
-
-      apply();
-    });
-
   return (
     <Popover.Root open onOpenChange={(value) => !value && onClose()}>
       <Popover.Content
@@ -619,6 +612,30 @@ function PageBlockMenu({ menu, onClose }: { menu: OpenMenu; onClose: () => void 
               Add another button
             </PageMenuRow>
           )}
+        {model.component &&
+          (model.component.kind === "summary-list" || model.component.kind === "summary-item") && (
+            <PageMenuRow
+              icon={<Plus />}
+              onClick={() =>
+                change((block) => {
+                  if (!model.component) return;
+                  const node = $pageBlockDescendant(model.component.key, block);
+
+                  if (!(node instanceof PageComponentNode)) return;
+
+                  const item = new PageComponentNode("summary-item", { summaryKey: "Key" }).append(
+                    $createParagraphNode(),
+                  );
+
+                  if (node.getKind() === "summary-list") node.append(item);
+                  else node.insertAfter(item);
+                  item.selectStart();
+                })
+              }
+            >
+              Add summary item
+            </PageMenuRow>
+          )}
         {model.turnInto && (
           <div className={group}>
             <TurnIntoMenu
@@ -639,7 +656,7 @@ function PageBlockMenu({ menu, onClose }: { menu: OpenMenu; onClose: () => void 
             <PageMenuRow
               icon={<Table />}
               onClick={() =>
-                table(() => {
+                change(() => {
                   $insertTableRowAtSelection(true);
                 })
               }
@@ -648,16 +665,12 @@ function PageBlockMenu({ menu, onClose }: { menu: OpenMenu; onClose: () => void 
             </PageMenuRow>
             <PageMenuRow
               icon={<Table />}
-              onClick={() =>
-                table(() => {
-                  $insertTableColumnAtSelection(true);
-                })
-              }
+              onClick={() => change(() => $changePageTableColumns("insert"))}
             >
               Add column
             </PageMenuRow>
-            <PageMenuRow onClick={() => table($deleteTableRowAtSelection)}>Delete row</PageMenuRow>
-            <PageMenuRow onClick={() => table($deleteTableColumnAtSelection)}>
+            <PageMenuRow onClick={() => change($deleteTableRowAtSelection)}>Delete row</PageMenuRow>
+            <PageMenuRow onClick={() => change(() => $changePageTableColumns("delete"))}>
               Delete column
             </PageMenuRow>
           </div>
@@ -781,17 +794,33 @@ function ComponentSettings({
   component: {
     key: string;
     kind: string;
-    attributes: { summary?: string; href?: string; variant?: string };
+    attributes: PageComponentAttributes;
   };
-  onChange: (patch: { summary?: string; href?: string; variant?: string }) => void;
+  onChange: (patch: PageComponentAttributes) => void;
 }) {
-  const [summary, setSummary] = useState(component.attributes.summary ?? "");
-  const [href, setHref] = useState(component.attributes.href ?? "");
-  const [variant, setVariant] = useState(component.attributes.variant ?? "primary");
+  const data = component.attributes;
+  const [label, setLabel] = useState(data.summary ?? data.caption ?? data.summaryKey ?? "");
+  const [href, setHref] = useState(data.href ?? "");
+  const [form, setForm] = useState(data.form ?? "");
+
+  const [target, setTarget] = useState<"url" | "form" | "linked-form">(
+    data.form !== undefined ? "form" : data.href !== undefined ? "url" : "linked-form",
+  );
+
+  const [variant, setVariant] = useState(data.variant ?? "primary");
   const [error, setError] = useState<string>();
   const pages = useLinkPages();
 
-  if (!["details", "start", "action"].includes(component.kind)) return null;
+  const labelName =
+    component.kind === "details"
+      ? "Details summary"
+      : component.kind === "table"
+        ? "Table caption"
+        : component.kind === "summary-item"
+          ? "Summary key"
+          : undefined;
+
+  if (!labelName && component.kind !== "start" && component.kind !== "action") return null;
 
   return (
     <form
@@ -799,47 +828,83 @@ function ComponentSettings({
       onSubmit={(event) => {
         event.preventDefault();
 
-        const destination = normalizeLinkUrl(href);
+        if (labelName) {
+          if (!label.trim()) {
+            setError(`Enter a ${labelName.toLowerCase()}.`);
 
-        if (!safePageUrl(destination)) {
-          setError("Enter a relative link, or an http, https, email or telephone link.");
+            return;
+          }
 
-          return;
+          onChange(
+            component.kind === "details"
+              ? { summary: label }
+              : component.kind === "table"
+                ? { caption: label }
+                : { summaryKey: label },
+          );
+        } else {
+          const destination = normalizeLinkUrl(href);
+
+          if (target === "url" && (!destination || !safePageUrl(destination))) {
+            setError("Enter a relative link, or an http, https, email or telephone link.");
+
+            return;
+          }
+
+          onChange({
+            href: target === "url" ? destination : undefined,
+            form: target === "form" ? form : undefined,
+            target: target === "linked-form" ? "form" : undefined,
+            variant: component.kind === "action" ? variant : undefined,
+          });
+          setHref(destination);
         }
 
-        if (component.kind === "details" && !summary.trim()) {
-          setError("Enter a details summary.");
-
-          return;
-        }
-
-        onChange(
-          component.kind === "details"
-            ? { summary }
-            : {
-                href: destination || (component.kind === "start" ? undefined : "#"),
-                ...(component.kind === "action" && { variant }),
-              },
-        );
-        setHref(destination);
         setError(undefined);
       }}
     >
-      {component.kind === "details" ? (
-        <Field size="sm" label="Details summary">
-          <Input size="sm" value={summary} onChange={(event) => setSummary(event.target.value)} />
+      {labelName ? (
+        <Field size="sm" label={labelName}>
+          <Input size="sm" value={label} onChange={(event) => setLabel(event.target.value)} />
         </Field>
       ) : (
         <>
-          <Field size="sm" label="Button destination">
-            <LinkPicker
+          <Field size="sm" label="Destination type">
+            <NativeSelect
               size="sm"
-              value={href}
-              pages={pages}
-              placeholder={component.kind === "start" ? "Use linked form" : undefined}
-              onValueChange={setHref}
-            />
+              value={target}
+              onChange={(event) => {
+                const value = event.target.value;
+
+                if (value === "url" || value === "form" || value === "linked-form")
+                  setTarget(value);
+              }}
+            >
+              <option value="url">Link</option>
+              <option value="linked-form">Page's linked form</option>
+              {component.kind === "action" && <option value="form">Registered form</option>}
+            </NativeSelect>
           </Field>
+          {target === "url" && (
+            <Field size="sm" label="Button destination">
+              <LinkPicker size="sm" value={href} pages={pages} onValueChange={setHref} />
+            </Field>
+          )}
+          {target === "form" && (
+            <Field size="sm" label="Form identifier">
+              <Input
+                size="sm"
+                value={form}
+                autoComplete="off"
+                autoCapitalize="none"
+                spellCheck={false}
+                required
+                pattern="[a-zA-Z0-9][a-zA-Z0-9_-]*"
+                title="Use letters, numbers, hyphens or underscores; start with a letter or number."
+                onChange={(event) => setForm(event.target.value)}
+              />
+            </Field>
+          )}
           {component.kind === "action" && (
             <Field size="sm" label="Button style">
               <NativeSelect

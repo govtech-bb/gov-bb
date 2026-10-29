@@ -204,17 +204,16 @@ function permitted(from: string, to: string, typeOnly: boolean) {
         "react",
         "react-dom",
         "@phosphor-icons/react",
-        "unified",
-        "remark-parse",
-        "mdast-util-to-markdown",
-        "remark-gfm",
-        "remark-directive",
-        "remark-frontmatter",
+        "@govtech-bb/govbbmarkd",
+        "@govtech-bb/govbbmarkd/content-url",
+        "@govtech-bb/govbbmarkd/legacy",
+        "@govtech-bb/govbbmarkd/react",
+        "@govtech-bb/react",
         "yaml",
-        "entities",
       ].includes(to) ||
       to.startsWith("@lexical/") ||
       to.startsWith("@base-ui/") ||
+      (from === "src/pages/preview.tsx" && to === "@govtech-bb/frontend/css?inline") ||
       (typeOnly && ["mdast", "mdast-util-directive", "unist"].includes(to))
     );
 

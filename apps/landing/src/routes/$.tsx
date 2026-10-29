@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import type { RootContent } from 'hast'
 import { createFileRoute, notFound, redirect } from '@tanstack/react-router'
 import { Heading, StatusBanner, Text } from '@govtech-bb/react'
 import { HelpfulBox } from '../components/HelpfulBox'
@@ -183,38 +184,51 @@ export const Route = createFileRoute('/$')({
       // Only content pages render Start now buttons, so the forms list is
       // resolved here (server-side, cached) and nowhere else.
       let availableForms = await getAvailableForms()
-      // A reviewer (preview/draft) on a not-yet-public page: its form is hidden
-      // from the public list, so confirm the form is reachable under the preview
-      // token and, if so, allow its Start button. Append to a FRESH array, never
-      // pushing into the shared public-forms cache (#1646 Phase 3).
+      // Reviewers may reach linked or explicitly referenced non-public forms.
+      // Confirm each missing target under the preview token without mutating
+      // the shared public-forms cache (#1646 Phase 3).
       const formId = page.frontmatter.form_id
-      if (level !== 'public' && formId && !availableForms.includes(formId)) {
-        if (await checkFormAccessible({ data: formId })) {
-          availableForms = [...availableForms, formId]
+      if (level !== 'public') {
+        const targets = new Set(formId ? [formId] : [])
+        const collectTargets = (nodes: RootContent[]) => {
+          for (const node of nodes) {
+            if (node.type !== 'element') continue
+            if (
+              node.tagName === 'a' &&
+              node.properties.dataStartLink !== undefined &&
+              node.properties.href === undefined &&
+              typeof node.properties.dataFormId === 'string'
+            )
+              targets.add(node.properties.dataFormId)
+            collectTargets(node.children)
+          }
+        }
+        collectTargets(page.hast.children)
+        for (const target of targets) {
+          if (
+            !availableForms.includes(target) &&
+            (await checkFormAccessible({ data: target }))
+          )
+            availableForms = [...availableForms, target]
         }
       }
       // A `form_disabled` service_status forces the service's form into the
       // maintenance path: for the public its Start button is hidden and its
       // `/start` step 404s (removed from the available list); a reviewer keeps
-      // the token-accessible form added above. Status rows are keyed by the
-      // canonical service key — the `form_id` for a form-backed service — so the
-      // form-disabled set is a set of form ids, matched directly against this
-      // page's `form_id` (which the `/start` sub-page shares).
+      // token-accessible forms added above. Status rows use canonical form ids;
+      // filter every target, not just this page's linked form.
       const disabledFormIds = deriveFormDisabledSlugs(serviceStatuses)
       const formDisabledByStatus =
         formId !== undefined && disabledFormIds.has(formId)
-      if (formDisabledByStatus && level === 'public') {
-        availableForms = availableForms.filter((f) => f !== formId)
+      if (level === 'public') {
+        availableForms = availableForms.filter((id) => !disabledFormIds.has(id))
       }
       // A closed form (#1936) stays public, so — unlike maintenance — it IS in
-      // availableForms; strip its formId here so its Start CTA is hidden and its
-      // `/start` sub-page 404s by direct URL (the check below), and flag it so
-      // PageView renders the closed notice. Computed before the `/start` gate.
-      const applicationClosed =
-        formId !== undefined && (await getClosedForms()).includes(formId)
-      if (applicationClosed) {
-        availableForms = availableForms.filter((f) => f !== formId)
-      }
+      // availableForms; strip every closed target before the `/start` gate.
+      // Only the page’s own form determines its closed notice.
+      const closedForms = new Set(await getClosedForms())
+      const applicationClosed = formId !== undefined && closedForms.has(formId)
+      availableForms = availableForms.filter((id) => !closedForms.has(id))
       // The `/start` sub-page IS the online-application step. When its form is
       // non-public (preview/maintenance/status-disabled) it is hidden the same
       // way its Start button is — a reviewer keeps access (the form was added to

@@ -9,11 +9,13 @@
     "e2e": "vitest run --config vitest.e2e.config.ts",
     "typecheck": "tsc -p tsconfig.check.json --noEmit",
     "seed-data": "tsx scripts/build-seed-data.ts",
-    "import-estate": "tsx --env-file-if-exists=.env src/import-estate.ts"
+    "import-estate": "tsx --env-file-if-exists=.env src/import-estate.ts",
+    "reindex-search": "tsx --env-file-if-exists=.env src/reindex-search.ts"
   },
   "dependencies": {
     "@fastify/cors": "^11.1.0",
     "@fastify/swagger": "^9.5.1",
+    "@govtech-bb/govbbmarkd": "workspace:*",
     "better-auth": "1.7.7",
     "drizzle-orm": "^0.45.2",
     "fastify": "^5.6.1",

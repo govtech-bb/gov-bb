@@ -508,7 +508,7 @@ test("notices, nested details, action groups and Start labels round-trip safely"
       <PagePreview source={encoded} definition={govbbPageEditor} />,
     );
 
-    expect(preview).toContain("<summary>What you need</summary>");
+    expect(preview).toContain('<summary class="govbb-show-hide__summary">What you need</summary>');
     expect(preview).toContain('href="/help"');
   } finally {
     editor.dispose();

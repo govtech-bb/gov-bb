@@ -4,6 +4,7 @@ import { Text } from '@govtech-bb/react'
 /**
  * A muted (grey) paragraph. `caption` (a bare tag flag) renders it at the
  * smaller body-sm size — e.g. a footnote under a call to action.
+ * @deprecated Retains existing muted HTML; use ordinary paragraphs or Markdown footnotes for new content.
  */
 export function Muted({
   caption,

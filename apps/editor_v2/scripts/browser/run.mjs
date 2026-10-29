@@ -37,6 +37,7 @@ const suites = requested.length
       "routing.mjs",
       "categories.mjs",
       "page-writer.mjs",
+      "page-preview.mjs",
       "site-preview.mjs",
     ];
 

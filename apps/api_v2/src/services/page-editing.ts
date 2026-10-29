@@ -1,3 +1,4 @@
+import { parseContentMarkdown } from "@govtech-bb/govbbmarkd";
 import { NotApprover, type Employee } from "../modules/auth";
 import {
   creationOf,
@@ -12,7 +13,7 @@ import {
   type PageDocument,
   type PageFields,
   type PageId,
-  type PageRejected,
+  PageRejected,
   type PageValues,
   type SaveFields,
 } from "../modules/page";
@@ -130,9 +131,12 @@ export class PageEditing {
     return this.records.atomically(async (records) => {
       if (page.visibility === "public" && !actor.roles.includes("approver"))
         return err(new NotApprover());
+      const fields = withDefaults(page);
+      const invalidContent = markdownRejection(fields);
+      if (invalidContent) return err(invalidContent);
       const available = await records.checkPageUrl(page.url);
       if (!available.ok) return available;
-      const placed = await place(records, page.id, withDefaults(page));
+      const placed = await place(records, page.id, fields);
       if (!placed.ok) return placed;
       const created = await records.insert(
         creationOf(page.id, placed.value, this.clock()),
@@ -187,6 +191,9 @@ export class PageEditing {
         !actor.roles.includes("approver")
       )
         return err(new NotApprover());
+
+      const invalidContent = markdownRejection(fields);
+      if (invalidContent) return err(invalidContent);
 
       if (fields.url !== current.url) {
         const available = await records.checkPageUrl(fields.url);
@@ -250,6 +257,22 @@ export class PageEditing {
       return logged.ok ? ok(undefined) : logged;
     });
   }
+}
+
+function markdownRejection(fields: SaveFields): PageRejected | null {
+  // Drafts retain incomplete or unsupported source; public and preview pages must compile.
+  if (fields.visibility === "draft") return null;
+  const { errors } = parseContentMarkdown(fields.body_markdown, {
+    frontmatter: false,
+  });
+  return errors.length
+    ? new PageRejected(
+        errors.map((error) => ({
+          field: "body_markdown",
+          message: `Line ${error.line}, column ${error.column}: ${error.message}`,
+        })),
+      )
+    : null;
 }
 
 /**

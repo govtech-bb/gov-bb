@@ -146,30 +146,6 @@ const lists: PageHandler = {
 
     throw new Error("Unsupported list node");
   },
-  render(node, context, key) {
-    if (node.type === "listItem")
-      return (
-        <li key={key}>
-          {node.children.map((child, index) => context.render(child, `${key}/${index}`))}
-        </li>
-      );
-
-    if (node.type === "list") {
-      const children = node.children.map((child, index) =>
-        context.render(child, `${key}/${index}`),
-      );
-
-      return node.ordered ? (
-        <ol key={key} start={node.start ?? undefined}>
-          {children}
-        </ol>
-      ) : (
-        <ul key={key}>{children}</ul>
-      );
-    }
-
-    throw new UnsupportedPageContent(node);
-  },
 };
 
 export function PageListsModule(): PageModule {
