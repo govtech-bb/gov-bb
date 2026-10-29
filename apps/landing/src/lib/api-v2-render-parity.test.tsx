@@ -15,6 +15,10 @@ import type { Frontmatter } from './frontmatter'
  * `fromApiV2` as landing's static registry builds from its markdown (#3135):
  * the same rendered HTML and the same frontmatter fields. No network: the
  * api_v2 response is built from the seed snapshot.
+ *
+ * Not covered: hidden Start links. Every response here has
+ * `hide_start_links: false` and every seeded `/start` page is public, so
+ * both sides render the Start links in full.
  */
 
 // StartLink reads useLocation for analytics; stub it so form CTAs render
@@ -27,12 +31,14 @@ vi.mock('@tanstack/react-router', async (orig) => ({
 /** One page of the seed (`SeedPage` in apps/api_v2/src/seed-data/index.ts). */
 interface SeedPage {
   url: string
+  visibility: string
   title: string
   description: string | null
   form_id: string | null
   published_at: string | null
   body_markdown: string
-  frontmatter: PageResponse['frontmatter']
+  /** Title and description are columns of their own. */
+  frontmatter: Omit<PageResponse['frontmatter'], 'title' | 'description'>
 }
 
 // Read rather than imported: the snapshot belongs to another app.
@@ -47,8 +53,9 @@ const ESTATE: { pages: SeedPage[] } = JSON.parse(
 
 /**
  * The page as `GET /pages` returns it (`toPublicPage` in
- * apps/api_v2/src/modules/page-visibility.ts). `published_at` is the
- * snapshot's `publish_date`, which is what the seed stores for a public page.
+ * apps/api_v2/src/modules/page-visibility.ts) after seeding: apps/api_v2/
+ * src/seed.ts stores `published_at` for a public page only, so a non-public
+ * page has none until it goes public.
  */
 function served(page: SeedPage): PageResponse {
   return {
@@ -62,7 +69,7 @@ function served(page: SeedPage): PageResponse {
     form_id: page.form_id,
     hide_start_links: false,
     breadcrumbs: [],
-    published_at: page.published_at,
+    published_at: page.visibility === 'public' ? page.published_at : null,
     updated_at: '2026-01-01T00:00:00.000Z',
   }
 }
@@ -156,6 +163,18 @@ const KNOWN: Array<{ why: string; field: Field; urls: string[] }> = [
       'travel-id-citizenship/post-office-redirection-individual/start',
     ],
   },
+  {
+    // The seed stores `published_at` for public pages only, so a preview or
+    // draft page loses its `publish_date` ("Last updated") until it is
+    // published, and then gets the publication time instead. Nobody sees this
+    // until landing sends the preview token (#2961). Derived rather than
+    // listed: it is every non-public seed page with a date.
+    why: 'seed drops publish_date for non-public pages',
+    field: 'publish_date',
+    urls: ESTATE.pages
+      .filter((page) => page.visibility !== 'public' && page.published_at)
+      .map((page) => page.url.replace(/^\//, '')),
+  },
 ]
 
 /**
@@ -192,6 +211,15 @@ describe('api_v2 render parity', () => {
     expect(listed.filter((url) => !seeded.includes(url))).toEqual([])
   })
 
+  it('lists each difference once and never for a page with no static twin', () => {
+    const pairs = KNOWN.flatMap((known) =>
+      known.urls.map((url) => `${known.field} ${url}`),
+    )
+    expect(pairs.length).toBe(new Set(pairs).size)
+    const urls = KNOWN.flatMap((known) => known.urls)
+    expect(urls.filter((url) => NO_STATIC_PAGE.includes(url))).toEqual([])
+  })
+
   it.each(ESTATE.pages.map((page, i) => [seeded[i], page] as const))(
     '%s',
     async (url, seed) => {
@@ -210,15 +238,20 @@ describe('api_v2 render parity', () => {
       if (!twin) return
 
       const api = await fromApiV2(served(seed))
-      expect(render(api)).toBe(render(twin))
+      const known = KNOWN.filter((entry) => entry.urls.includes(url))
+      // The HTML must match apart from the known differences: render the twin
+      // with those fields as api_v2 has them.
+      const expected = { ...twin.frontmatter }
+      for (const { field } of known) {
+        Object.assign(expected, { [field]: api.frontmatter[field] })
+      }
+      expect(render(api)).toBe(render({ ...twin, frontmatter: expected }))
       for (const field of FIELDS) {
-        const known = KNOWN.find(
-          (entry) => entry.field === field && entry.urls.includes(url),
-        )
-        if (known) {
+        const differs = known.find((entry) => entry.field === field)
+        if (differs) {
           expect(
             api.frontmatter[field],
-            `${field} now matches (${known.why}): remove ${url} from KNOWN`,
+            `${field} now matches (${differs.why}): remove ${url} from KNOWN`,
           ).not.toEqual(twin.frontmatter[field])
         } else {
           expect(api.frontmatter[field], field).toEqual(twin.frontmatter[field])
