@@ -86,6 +86,70 @@ describe("SubmissionConfirmation — printed answers (#2587)", () => {
     ).not.toBeInTheDocument();
   });
 
+  // Page 1 of the printed copy is the confirmation; the answers follow on
+  // their own page, so the block must come after every confirmation block
+  // (#3041). Both variants share the same trailing sections.
+  it.each([
+    ["no-payment", { ...baseState, sections }],
+    [
+      "payment-success",
+      { ...baseState, sections, hasPayment: true, paymentSuccess: true },
+    ],
+  ])(
+    "renders the answers after the confirmation content (%s)",
+    (_variant, submissionState) => {
+      const { container } = render(
+        <SubmissionConfirmation
+          serviceTitle="Passport"
+          stepTitle="Submitted"
+          markdownContent="## What happens next"
+          contactDetails={{ title: "Passport Office" }}
+          submissionState={submissionState}
+        />,
+      );
+      const answers = container.querySelector(".form-page__printed-answers")!;
+      for (const selector of [
+        ".form-page__reference",
+        ".form-page__markdown-content",
+        ".form-page__contact",
+      ]) {
+        expect(
+          container.querySelector(selector)!.compareDocumentPosition(answers) &
+            Node.DOCUMENT_POSITION_FOLLOWING,
+        ).toBeTruthy();
+      }
+    },
+  );
+
+  it("names the service and submission ID above the answers, so a separated page still makes sense", () => {
+    const { container } = render(
+      <SubmissionConfirmation
+        serviceTitle="Passport"
+        stepTitle="Submitted"
+        submissionState={{ ...baseState, sections }}
+      />,
+    );
+    const answers = container.querySelector<HTMLElement>(
+      ".form-page__printed-answers",
+    )!;
+    expect(answers).toHaveTextContent("Passport");
+    expect(answers).toHaveTextContent("REF-001");
+  });
+
+  it("leaves the submission ID off the answers page when the form hides it", () => {
+    const { container } = render(
+      <SubmissionConfirmation
+        serviceTitle="Passport"
+        stepTitle="Submitted"
+        hideReferenceNumber
+        submissionState={{ ...baseState, sections }}
+      />,
+    );
+    expect(
+      container.querySelector(".form-page__printed-answers"),
+    ).not.toHaveTextContent("REF-001");
+  });
+
   it("adds no answers block when the list came back empty", () => {
     const { container } = render(
       <SubmissionConfirmation

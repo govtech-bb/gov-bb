@@ -353,7 +353,6 @@
   /* One consistent gap between every confirmation block, both variants. */
   .form-page__reference,
   .govbb-payment,
-  .form-page__printed-answers,
   .form-page__markdown-content,
   .form-page__contact {
     margin-top: var(--govbb-space-m) !important;
@@ -372,6 +371,13 @@
   .govbb-payment__row,
   .form-page__printed-answers-section {
     break-inside: avoid;
+  }
+
+  /* The answers follow the confirmation on their own page (#3041), so page 1
+     is the whole receipt. Their parent, form-page__confirmation, is flattened
+     to block flow above — Chrome ignores this on a flex child. */
+  .form-page__printed-answers {
+    break-before: page;
   }
 }
 

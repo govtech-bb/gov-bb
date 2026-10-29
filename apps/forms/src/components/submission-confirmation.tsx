@@ -107,37 +107,11 @@ export default function SubmissionConfirmation({
     ({ value }) => value !== undefined && value !== null && value !== "",
   );
 
-  // Trailing sections (markdown, printed answers, contact, feedback) are shared
+  // Trailing sections (markdown, contact, feedback, printed answers) are shared
   // by every successful state — payment or not — and rendered below the lead
   // panel.
   const trailingSections = (
     <>
-      {/* The applicant's answers, for the printed copy only (#2587). Built at
-          submit time from the same shared builder the MDA email uses, so the
-          paper copy reads exactly like the email the MDA received — the same
-          question text, the same order, the same dates, and nothing the
-          applicant was never asked. Hidden on screen: the confirmation page
-          itself is a receipt, not a review screen. */}
-      {sections && sections.length > 0 && (
-        <div className="form-page__printed-answers hidden print:block">
-          <Heading as="h2">Your answers</Heading>
-          {sections.map((section, index) => (
-            <div
-              key={`${section.stepId}-${index}`}
-              className="form-page__printed-answers-section"
-            >
-              <Heading as="h3">{section.title}</Heading>
-              <SummaryList
-                rows={section.fields.map((field) => ({
-                  key: field.label,
-                  value: summaryValueToText(field.value),
-                }))}
-              />
-            </div>
-          ))}
-        </div>
-      )}
-
       {resolvedMarkdown && (
         <div className="form-page__markdown-content govbb-prose wrap-anywhere">
           {/* Recipe-authored copy (e.g. "What you need to know"). react-markdown
@@ -223,6 +197,43 @@ export default function SubmissionConfirmation({
             This will take about 30 seconds. Your responses are anonymous.
           </Text>
         </section>
+      )}
+
+      {/* The applicant's answers, for the printed copy only (#2587). Built at
+          submit time from the same shared builder the MDA email uses, so the
+          paper copy reads exactly like the email the MDA received — the same
+          question text, the same order, the same dates, and nothing the
+          applicant was never asked. Hidden on screen: the confirmation page
+          itself is a receipt, not a review screen. Rendered last and started
+          on a new printed page (govtech.css), so page 1 is the whole
+          confirmation; the service and submission ID are repeated so the
+          answers still make sense if the pages are separated (#3041). */}
+      {sections && sections.length > 0 && (
+        <div className="form-page__printed-answers hidden print:block">
+          <Heading as="h2">Your answers</Heading>
+          <SummaryList
+            rows={[
+              { key: "Service", value: serviceTitle },
+              ...(referenceNumber && !hideReferenceNumber
+                ? [{ key: "Submission ID", value: referenceNumber }]
+                : []),
+            ]}
+          />
+          {sections.map((section, index) => (
+            <div
+              key={`${section.stepId}-${index}`}
+              className="form-page__printed-answers-section"
+            >
+              <Heading as="h3">{section.title}</Heading>
+              <SummaryList
+                rows={section.fields.map((field) => ({
+                  key: field.label,
+                  value: summaryValueToText(field.value),
+                }))}
+              />
+            </div>
+          ))}
+        </div>
       )}
     </>
   );
