@@ -522,9 +522,107 @@ jobs:
           EXPECT_CODES: "200,302,307"
         run: bash .github/scripts/smoke-test-url.sh
 
+  # Journey 5 (#3012): pay for a certificate through the EZ Pay test host on
+  # staging and check the confirmation (and, once the test inbox exists, the
+  # confirmation email). Runs after the API + forms deploys — and on every run,
+  # even when neither changed, because Deploy Production requires it to have
+  # passed for the commit it ships.
+  #
+  # OFF until the repo variable E2E_PAYMENTS_ENABLED=true (needs the EZ Pay
+  # test card secrets and EZ Pay set in staging's form_config). While off this
+  # job is skipped, the staging run stays green, and the prod gate is off too.
+  # The email check also needs the test inbox (vars.E2E_INBOX_BUCKET); without
+  # it the journey stops at the confirmation page.
+  #
+  # No X-Smoke-Submission header: that token drops the payment, so every
+  # processor fires: a green run leaves one real, paid test submission on
+  # staging AND sends the MDA notification to staging's form_config mdaEmail
+  # for get-death-certificate — make sure that is a test inbox before enabling.
+  journey-5-payments:
+    # Deploy Production's guard finds this job by its name starting with
+    # "Journey 5" — keep that prefix if you rename it.
+    name: Journey 5 (EZ Pay payment → confirmation)
+    needs: [setup, deploy-api, amplify-forms]
+    if: |
+      always() &&
+      vars.E2E_PAYMENTS_ENABLED == 'true' &&
+      needs.setup.result == 'success' &&
+      !contains(needs.*.result, 'failure') &&
+      !contains(needs.*.result, 'cancelled')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      # The spec skips itself without a card, so a missing secret must fail
+      # here rather than pass the gate with nothing tested.
+      - name: Require the EZ Pay test card
+        env:
+          CARD_NUMBER: ${{ secrets.E2E_EZPAY_CARD_NUMBER }}
+          CARD_EXPIRY: ${{ secrets.E2E_EZPAY_CARD_EXPIRY }}
+          CARD_CVV: ${{ secrets.E2E_EZPAY_CARD_CVV }}
+        run: |
+          if [ -z "$CARD_NUMBER" ] || [ -z "$CARD_EXPIRY" ] || [ -z "$CARD_CVV" ]; then
+            echo "::error::Set the E2E_EZPAY_CARD_NUMBER / _EXPIRY / _CVV secrets (the EZ Pay test-host card)."
+            exit 1
+          fi
+      - name: Checkout
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version-file: ".nvmrc"
+          cache: "pnpm"
+      - run: pnpm install --frozen-lockfile
+      - name: Resolve Playwright version
+        id: playwright-version
+        run: |
+          version="$(pnpm --filter @govtech-bb/forms exec playwright --version | awk '{print $2}')"
+          test -n "$version" || { echo "could not resolve playwright version"; exit 1; }
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+      - name: Cache Playwright browsers
+        id: playwright-cache
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-chromium-${{ runner.os }}-${{ steps.playwright-version.outputs.version }}
+      - name: Install Playwright chromium
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        timeout-minutes: 10
+        run: pnpm --filter @govtech-bb/forms exec playwright install chromium
+      - name: Configure AWS credentials (test inbox, read-only)
+        if: vars.E2E_INBOX_BUCKET != ''
+        uses: aws-actions/configure-aws-credentials@254c19bd240aabef8777f48595e9d2d7b972184b # v6.2.1
+        with:
+          role-to-assume: ${{ secrets.E2E_INBOX_ROLE_ARN }}
+          aws-region: ${{ vars.E2E_INBOX_REGION }}
+      - name: Run journey 5
+        env:
+          SMOKE_BASE_URL: ${{ env.AMPLIFY_FORMS_URL }}
+          # The workflow-level AWS_REGION (ca-central-1) would otherwise win over
+          # the inbox region configure-aws-credentials sets.
+          AWS_REGION: ${{ vars.E2E_INBOX_REGION || env.AWS_REGION }}
+          E2E_EZPAY_CARD_NUMBER: ${{ secrets.E2E_EZPAY_CARD_NUMBER }}
+          E2E_EZPAY_CARD_EXPIRY: ${{ secrets.E2E_EZPAY_CARD_EXPIRY }}
+          E2E_EZPAY_CARD_CVV: ${{ secrets.E2E_EZPAY_CARD_CVV }}
+          E2E_INBOX_DOMAIN: ${{ vars.E2E_INBOX_DOMAIN }}
+          E2E_INBOX_BUCKET: ${{ vars.E2E_INBOX_BUCKET }}
+          E2E_INBOX_PREFIX: ${{ vars.E2E_INBOX_PREFIX }}
+        run: >
+          pnpm --filter @govtech-bb/forms exec playwright test
+          --config playwright.smoke.config.ts
+          journey-5-ezpay.smoke.spec.ts
+      - name: Upload Playwright trace on failure
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: journey-5-ezpay-trace
+          path: apps/forms/test-results/
+          retention-days: 7
+
   summary:
     name: Deployment summary
-    needs: [setup, deploy-api, ssr-smoke, amplify-forms, amplify-landing, amplify-feature-flagging]
+    needs: [setup, deploy-api, ssr-smoke, amplify-forms, amplify-landing, amplify-feature-flagging, journey-5-payments]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -553,6 +651,7 @@ jobs:
             row "Amplify forms"        "${{ needs.amplify-forms.result }}"
             row "Amplify landing"      "${{ needs.amplify-landing.result }}"
             row "Amplify feature-flagging" "${{ needs.amplify-feature-flagging.result }}"
+            row "Journey 5 (EZ Pay)"   "${{ needs.journey-5-payments.result }}"
             echo ""
             echo "**URLs (ALB / amplifyapp.com until DNS lands):**"
             echo "- API: ${{ env.API_SMOKE_URL }}"

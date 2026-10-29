@@ -36,8 +36,8 @@
  *  - `declaration` is the explicit final step; its single-option confirmation
  *    checkbox input is `declaration_declaration-confirmed`.
  *  - The `submission-confirmation` step title is "Application submitted" and the
- *    recipe sets no processing message, so the subheading falls back to the
- *    helper default ("Your submission has been saved") and is omitted here.
+ *    subheading is "Your submission has been saved" when the smoke token drops
+ *    the payment, else "Complete your payment" (the form is EZ Pay-gated).
  */
 import { faker } from "@faker-js/faker";
 import { test } from "@playwright/test";
@@ -57,17 +57,7 @@ import {
 const FORM_ID = "get-marriage-certificate";
 
 test.describe("Get a Marriage Certificate — Live Smoke", () => {
-  // PARKED (test.fixme) — and intentionally NOT wired into deploy-sandbox.yml.
-  //
-  // Like get-birth-certificate / get-death-certificate, the deployed form is a
-  // payment form (EZ Pay). The submission SUCCEEDS (`POST /submissions` → 200,
-  // referenceCode, `status: pending_payment`, EZ Pay paymentUrl) but the
-  // deployed `submission-confirmation` screen renders the generic error state
-  // ("Something went wrong — We could not process your submission…") instead of
-  // the EZ Pay redirect / success heading. Same deployed-app
-  // payment-confirmation bug, tracked in #919 (not a spec defect). Un-fixme
-  // this and re-add its smoke-test job once the flow is fixed.
-  test.fixme("submits the real form end-to-end and reaches the confirmation screen", async ({
+  test("submits the real form end-to-end and reaches the confirmation screen", async ({
     page,
   }) => {
     await openSmokeForm(page, FORM_ID);
@@ -150,8 +140,11 @@ test.describe("Get a Marriage Certificate — Live Smoke", () => {
       .check();
 
     // ─── Submit + Submission Confirmation ────────────────────────────────────
+    // With SMOKE_SUBMISSION_TOKEN the API drops the EZ Pay payment and the page
+    // reads "saved"; without it the form is payment-gated and offers EZ Pay.
     await submitAndConfirm(page, {
       heading: "Application submitted",
+      subheading: /Your submission has been saved|Complete your payment/,
     });
   });
 });
