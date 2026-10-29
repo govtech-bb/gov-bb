@@ -149,8 +149,6 @@ function EditablePageControls({ anchor, hintId }: { anchor: HTMLElement; hintId:
   // Add content opens the insert menu at the page's end; the rail's Insert, at its block
   const addContent = useId();
   const insertOpen = menu?.kind === "insert" && menu.anchor.id !== addContent;
-  // The block menu came from ⌘/: closing it lets the pointer lead the rail again
-  const byKeyboard = useRef(false);
 
   const { target, pin, release } = useRailTarget(anchor, {
     // Over the gutter or the rail, the rail stays with its block
@@ -168,6 +166,8 @@ function EditablePageControls({ anchor, hintId }: { anchor: HTMLElement; hintId:
       return caret.current && $getNodeByKey(caret.current)?.isAttached() ? caret.current : null;
     },
     $place: (key) => firstLineMiddle(editor, anchor, key),
+    // While a menu is open the rail stays on its block, so the menu stays put as the pointer crosses other blocks
+    held: menu !== null,
   });
 
   const drag = useBlockDrag(anchor, {
@@ -211,6 +211,9 @@ function EditablePageControls({ anchor, hintId }: { anchor: HTMLElement; hintId:
     place: PagePlace = "below",
   ) => {
     if (!editor.isEditable()) return;
+
+    // Pinned, the rail keeps the menu's anchor on the page while the pointer crosses the gaps between blocks
+    if (key) pin(key);
     setMenu({
       kind,
       anchor: element,
@@ -238,8 +241,6 @@ function EditablePageControls({ anchor, hintId }: { anchor: HTMLElement; hintId:
 
           if (!key || !grip.current) return false;
           event.preventDefault();
-          byKeyboard.current = true;
-          pin(key);
           open("block", grip.current, key);
 
           return true;
@@ -250,16 +251,13 @@ function EditablePageControls({ anchor, hintId }: { anchor: HTMLElement; hintId:
     [editor, pin],
   );
 
-  // A block that still needs setting up opens its own Block options, such as a contact block once it's inserted.
-  // As from ⌘/, closing them lets the pointer lead the rail again
+  // A block that still needs setting up opens its own Block options, such as a contact block once it's inserted
   useEffect(
     () =>
       editor.registerCommand(
         OPEN_BLOCK_OPTIONS_COMMAND,
         (key) => {
           if (!editor.isEditable() || !grip.current) return false;
-          byKeyboard.current = true;
-          pin(key);
           open("block", grip.current, key);
 
           return true;
@@ -270,11 +268,9 @@ function EditablePageControls({ anchor, hintId }: { anchor: HTMLElement; hintId:
     [editor, pin],
   );
 
+  // Closed, the pointer and the caret lead the rail again
   const close = () => {
     setMenu(null);
-
-    if (!byKeyboard.current) return;
-    byKeyboard.current = false;
     release();
   };
 
