@@ -605,6 +605,10 @@ jobs:
 
       - name: Build affected packages
         id: build
+        env:
+          # editor_v2 refuses a production build without an HTTPS API origin;
+          # Amplify supplies the real one, CI only needs the shell to prerender.
+          VITE_API_ORIGIN: https://api.example.invalid
         run: |
           pnpm exec nx affected -t build --nxBail=false 2>&1 | tee build-output.txt
           exit ${PIPESTATUS[0]}
