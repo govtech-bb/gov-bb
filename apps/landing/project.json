@@ -3,6 +3,7 @@
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
   "sourceRoot": "apps/landing/src",
   "projectType": "application",
+  "implicitDependencies": ["api_v2"],
   "namedInputs": {
     "default": ["{projectRoot}/**/*", "sharedGlobals"]
   },
@@ -77,8 +78,7 @@
       "inputs": [
         "default",
         "^production",
-        "{workspaceRoot}/apps/api_v2/openapi.json",
-        "{workspaceRoot}/apps/api_v2/src/seed-data/estate.json"
+        "{workspaceRoot}/apps/api_v2/openapi.json"
       ],
       "options": {
         "command": "npm run test",
