@@ -19,6 +19,7 @@ import {
   useLayoutEffect,
   useRef,
   useSyncExternalStore,
+  type ChangeEvent,
   type KeyboardEvent,
 } from "react";
 import { parseDocument } from "yaml";
@@ -177,10 +178,10 @@ function enter(field: HTMLTextAreaElement | null) {
 }
 
 /**
- * The page's title and introduction, which run into its body as one piece of writing: Enter, or ArrowDown at the end
- * of a field, goes on to the next, and ArrowUp at the start of one, or on the body's first line, goes back.
+ * Shares title and introduction editing between the canvas and site preview.
+ * Enter and boundary arrow keys move between these fields and the body, preserving editor history.
  */
-export function PageTitleField({ error }: { error?: string }) {
+export function useHeadingFields() {
   const { editor, metadata, editable, update, historyKeys } = useMetadataUpdate();
   const title = useAutoHeight(metadata.title);
   const lede = useAutoHeight(metadata.lede);
@@ -201,7 +202,6 @@ export function PageTitleField({ error }: { error?: string }) {
     [editor, lede],
   );
 
-  // To the body's start
   // Into the body, at its start: focused first, so the browser's own caret doesn't land after
   const toBody = () => {
     editor.focus();
@@ -215,63 +215,79 @@ export function PageTitleField({ error }: { error?: string }) {
     );
   };
 
+  const titleProps = {
+    ref: title,
+    "aria-label": "Page title",
+    rows: 1,
+    value: metadata.title ?? "",
+    readOnly: !editable,
+    placeholder: "Untitled page",
+    onChange: (event: ChangeEvent<HTMLTextAreaElement>) => update({ title: event.target.value }),
+    ...historyKeys,
+    onKeyDown: (event: KeyboardEvent<HTMLTextAreaElement>) => {
+      if (composing(event)) return;
+
+      if (
+        event.key === "Enter" ||
+        (event.key === "ArrowDown" && plain(event) && atEnd(event.currentTarget))
+      ) {
+        event.preventDefault();
+
+        if (plain(event) || event.key === "ArrowDown") enter(lede.current);
+      } else historyKeys.onKeyDown(event);
+    },
+  };
+
+  const ledeProps = {
+    ref: lede,
+    "aria-label": "Introduction",
+    rows: 1,
+    value: metadata.lede ?? "",
+    readOnly: !editable,
+    placeholder: "Add an introduction (optional)",
+    onChange: (event: ChangeEvent<HTMLTextAreaElement>) =>
+      update({ lede: event.target.value || undefined }),
+    ...historyKeys,
+    onKeyDown: (event: KeyboardEvent<HTMLTextAreaElement>) => {
+      const field = event.currentTarget;
+
+      if (composing(event) || !plain(event)) historyKeys.onKeyDown(event);
+      else if (event.key === "Enter" || (event.key === "ArrowDown" && atEnd(field))) {
+        event.preventDefault();
+        toBody();
+      } else if (
+        event.key === "ArrowUp" &&
+        field.selectionStart === 0 &&
+        field.selectionEnd === 0
+      ) {
+        event.preventDefault();
+        enter(title.current);
+      }
+    },
+  };
+
+  return { titleProps, ledeProps };
+}
+
+/** Editable page headings with keyboard navigation into the body and shared undo history. */
+export function PageTitleField({ error }: { error?: string }) {
+  const { titleProps, ledeProps } = useHeadingFields();
+
   return (
     <div className="mb-9">
       <label className="block">
         <span className="sr-only">Page title</span>
+        {/* Balanced only while it isn't being typed in, so its lines don't shift with every key */}
         <textarea
-          ref={title}
-          aria-label="Page title"
-          rows={1}
-          className="block min-h-[1.2em] w-full resize-none overflow-hidden rounded-sm text-[clamp(1.875rem,3vw,2.5rem)] leading-[1.2] font-bold tracking-tight text-balance text-ink outline-none placeholder:text-subtle"
-          value={metadata.title ?? ""}
-          readOnly={!editable}
-          placeholder="Untitled page"
-          onChange={(event) => update({ title: event.target.value })}
-          {...historyKeys}
-          onKeyDown={(event) => {
-            if (composing(event)) return;
-
-            if (
-              event.key === "Enter" ||
-              (event.key === "ArrowDown" && plain(event) && atEnd(event.currentTarget))
-            ) {
-              // A title is one line: Enter goes on to the introduction
-              event.preventDefault();
-
-              if (plain(event) || event.key === "ArrowDown") enter(lede.current);
-            } else historyKeys.onKeyDown(event);
-          }}
+          {...titleProps}
+          className="block min-h-[1.2em] w-full resize-none overflow-hidden rounded-sm text-[clamp(1.875rem,3vw,2.5rem)] leading-[1.2] font-bold tracking-tight text-ink outline-none not-focus:text-balance placeholder:text-subtle"
           aria-invalid={error ? true : undefined}
         />
       </label>
       {error && <p className="text-14 text-error">{error}</p>}
       <textarea
-        ref={lede}
-        aria-label="Introduction"
-        rows={1}
+        {...ledeProps}
         className="mt-5 block w-full resize-none overflow-hidden rounded-sm text-20 leading-[1.6] text-muted outline-none placeholder:text-subtle"
-        value={metadata.lede ?? ""}
-        readOnly={!editable}
-        placeholder="Add an introduction (optional)"
-        onChange={(event) => update({ lede: event.target.value || undefined })}
-        {...historyKeys}
-        onKeyDown={(event) => {
-          const field = event.currentTarget;
-
-          if (composing(event) || !plain(event)) historyKeys.onKeyDown(event);
-          else if (event.key === "Enter" || (event.key === "ArrowDown" && atEnd(field))) {
-            event.preventDefault();
-            toBody();
-          } else if (
-            event.key === "ArrowUp" &&
-            field.selectionStart === 0 &&
-            field.selectionEnd === 0
-          ) {
-            event.preventDefault();
-            enter(title.current);
-          }
-        }}
       />
     </div>
   );

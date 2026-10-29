@@ -20,6 +20,7 @@ import {
   EditorPage,
   NewPage,
   PageId,
+  ReviewQueueEntry,
   RevisionComment,
   RevisionView,
   SaveFields,
@@ -270,7 +271,9 @@ export const SCHEMAS = {
     description:
       "Requires an employee session, the editor's Origin header and the " +
       "editor role (403 otherwise). " +
-      "Creating a page as `public` needs the approver role (403 otherwise).",
+      "Creating a page as `public` needs the approver role, and an approver " +
+      "can't make a page they wrote public (403): create it as `preview` or " +
+      "`draft`, and another approver makes it public.",
     tags: ["pages"],
     body: NewPage,
     security: editorSecurity,
@@ -296,14 +299,20 @@ export const SCHEMAS = {
       "moves this page alone: its sub-pages keep their urls and stay beneath " +
       "it by `parent_id`, and nothing redirects from the old url. " +
       "Changing `visibility` needs the approver role (403 otherwise). " +
+      "Making a page public is refused (403) to an approver who changed its " +
+      "content since it was last public, in this save or before: another " +
+      "approver makes it public. " +
       "A save that keeps a `public` page public, whoever sends it, goes into " +
       "the page's pending revision: citizens keep seeing the live page until " +
       "an approver publishes it. An approver's save that takes a `public` page out of " +
       "public view changes only its `visibility`: the other fields sent " +
-      "are ignored, the live content stays, and a draft revision is " +
-      "discarded. Returns the page as the editor now works on it. " +
-      "A save to a page whose revision is waiting for review is refused " +
-      "(409 `under_review`) until an approver publishes or rejects it.",
+      "are ignored, the live content stays, and the page's open revision " +
+      "is discarded: a draft is dropped, and one waiting for review is " +
+      "closed as `discarded`, which the page's history records. A save to " +
+      "a page whose revision is waiting for review updates that revision, " +
+      "which stays waiting; the saver joins its `contributors`, so may not " +
+      "approve it. Such a save needs `if-updated-at` (428 without it). " +
+      "Returns the page as the editor now works on it.",
     tags: ["pages"],
     params: idParams,
     headers: ifUpdatedAt(""),
@@ -313,8 +322,9 @@ export const SCHEMAS = {
       200: EditorPage,
       400: error,
       404: error,
-      409: z.union([conflict, revisionState]),
+      409: conflict,
       422: validationFailed,
+      428: error,
       500: error,
       ...authErrors,
     },
@@ -340,14 +350,38 @@ export const SCHEMAS = {
     },
   },
 
+  listRevisions: {
+    summary: "List the changes waiting for review",
+    description:
+      "Any signed-in employee, as for other reads: editors see what waits, " +
+      "and approvers, who may hold no other role, what to review. Every " +
+      "revision submitted for " +
+      "review and not yet published or rejected, the longest-waiting first, " +
+      "with its page and who submitted it. Read one with " +
+      "`GET /pages/{id}/revision` to compare it with the live page.",
+    tags: ["pages"],
+    querystring: z.object({
+      status: z
+        .enum(["submitted"])
+        .describe("Which revisions: only `submitted` is listed."),
+    }),
+    security: editorSecurity,
+    response: {
+      200: z.object({ revisions: z.array(ReviewQueueEntry) }),
+      400: error,
+      500: error,
+      ...authErrors,
+    },
+  },
+
   submitRevision: {
     summary: "Submit a page's draft revision for review",
     description:
       "Needs the editor role (403 otherwise). Records the submitter, who " +
       "may not then approve it. 404 when the page has no draft revision; " +
       "409 `under_review` when it is already submitted, or `conflict` when " +
-      "the draft has been saved since `if-updated-at`. Saving the page is " +
-      "refused while it waits. A rejected revision can be submitted again " +
+      "the draft has been saved since `if-updated-at`. Saves made while it " +
+      "waits update it, and it keeps waiting. A rejected revision can be submitted again " +
       "as it is: it is copied into a new submitted revision with the same " +
       "`updated_at`, and the rejected one keeps its comment. The copy's " +
       "`contributors` gain the rejected round's submitter, who may not " +
@@ -485,7 +519,9 @@ export const SCHEMAS = {
   },
   createCategory: {
     summary: "Append a category or subcategory",
-    description: "Needs the editor role (403 otherwise).",
+    description:
+      "Needs the approver role (403 otherwise), so landing shows only " +
+      "category changes an approver made.",
     tags: ["categories"],
     security: editorSecurity,
     body: CategoryFields,
@@ -493,7 +529,9 @@ export const SCHEMAS = {
   },
   updateCategory: {
     summary: "Edit a category using its last-read version",
-    description: "Needs the editor role (403 otherwise).",
+    description:
+      "Needs the approver role (403 otherwise), so landing shows only " +
+      "category changes an approver made.",
     tags: ["categories"],
     security: editorSecurity,
     params: categoryParams,
@@ -508,7 +546,9 @@ export const SCHEMAS = {
   },
   orderCategories: {
     summary: "Atomically reorder a complete, versioned sibling snapshot",
-    description: "Needs the editor role (403 otherwise).",
+    description:
+      "Needs the approver role (403 otherwise), so landing shows only " +
+      "category changes an approver made.",
     tags: ["categories"],
     security: editorSecurity,
     body: CategoryOrder,
@@ -520,7 +560,9 @@ export const SCHEMAS = {
   },
   deleteCategory: {
     summary: "Delete an empty, unanchored category using its last-read version",
-    description: "Needs the editor role (403 otherwise).",
+    description:
+      "Needs the approver role (403 otherwise), so landing shows only " +
+      "category changes an approver made.",
     tags: ["categories"],
     security: editorSecurity,
     params: categoryParams,

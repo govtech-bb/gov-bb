@@ -363,10 +363,12 @@ export function DeleteRecordDialog({
   return (
     <ConfirmDialog
       open={open}
-      onClose={close}
+      onOpenChange={(next) => {
+        if (!next) close();
+      }}
       title={`Delete ${record.record_key}?`}
       description={`It's removed from ${collection.title}, and from every page that shows it. This can't be undone.`}
-      confirm="Delete record"
+      confirmLabel="Delete record"
       pendingLabel="Deleting record…"
       pending={remove.isPending}
       // Cancelled, the focus goes back to the row's Delete; deleted, that row has gone

@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useNavigate, useRouterState } from "@tanstack/react-router";
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import type { Category } from "../api/categories";
 import { ApiFailure, type ApiPage, type EditorApi } from "../api/client";
 import { apiMessage } from "../api/failure-messages";
@@ -19,9 +19,11 @@ import { readPageMetadata } from "../pages";
 import { DraftStore } from "../persistence/draft-store";
 import { govbbPageCodec } from "../presets/govbb-page";
 import { Banner } from "../ui/banner";
+import { Bar } from "../ui/bar";
 import { Button } from "../ui/button";
 import { EmptyState } from "../ui/empty-state";
 import { LoadingState } from "../ui/loading-state";
+import { TextLink } from "../ui/text-link";
 import type { SaveStateProps } from "../ui/save-state";
 import { toast } from "../ui/toast";
 import { EditorSessionProvider } from "../editor/react/composer";
@@ -37,12 +39,15 @@ export function RemotePagePane({
   active,
   onSession,
   sessions,
+  nav,
 }: {
   api: EditorApi;
   id: string;
   active: boolean;
   onSession: SessionListener;
   sessions?: DocumentSessions;
+  /** What shows the service's pages while they're hidden: at the start of the page's bar. */
+  nav?: ReactNode;
 }) {
   const opened = useRef(false);
   const page = useQuery({ ...pageQuery(api, id), staleTime: PRELOAD_FRESH });
@@ -50,23 +55,26 @@ export function RemotePagePane({
 
   if (!opened.current && (page.isError || categories.isError))
     return active ? (
-      <EmptyState
-        kind="failed"
-        size="page"
-        title="We could not load this page"
-        description="Check you are still signed in, then try again."
-        actions={
-          <Button
-            variant="secondary"
-            onClick={() => {
-              void page.refetch();
-              void categories.refetch();
-            }}
-          >
-            Try again
-          </Button>
-        }
-      />
+      <>
+        {nav && <Bar.Root>{nav}</Bar.Root>}
+        <EmptyState
+          tone="error"
+          size="page"
+          title="We could not load this page"
+          description="Check you are still signed in, then try again."
+          actions={
+            <Button
+              variant="secondary"
+              onClick={() => {
+                void page.refetch();
+                void categories.refetch();
+              }}
+            >
+              Try again
+            </Button>
+          }
+        />
+      </>
     ) : null;
 
   if (!page.data || !categories.data || (!opened.current && page.isFetching && page.isStale))
@@ -82,6 +90,7 @@ export function RemotePagePane({
       categories={categories.data}
       active={active}
       onSession={onSession}
+      nav={nav}
       readError={page.error ?? categories.error}
       reading={page.isFetching || categories.isFetching}
       retryRead={() => {
@@ -103,6 +112,7 @@ function RemotePageEditor({
   categories,
   active,
   onSession,
+  nav,
   readError,
   reading,
   retryRead,
@@ -112,6 +122,7 @@ function RemotePageEditor({
   categories: readonly Category[];
   active: boolean;
   onSession: SessionListener;
+  nav?: ReactNode;
   readError: Error | null;
   reading: boolean;
   retryRead: () => void;
@@ -198,14 +209,14 @@ function RemotePageEditor({
         if (outcome.discarded)
           toast("The page is no longer public", {
             description: typed
-              ? "Its changes that were waiting for review were discarded, but your open copy still contains them. Check it before you save."
-              : "Its changes that were waiting for review were discarded. It shows its last published content.",
+              ? "Its unpublished changes were discarded, but your open copy still contains them. Check it before you save."
+              : "Its unpublished changes were discarded. It shows its last published content.",
           });
 
         rebase(outcome.base);
         client.setQueryData(pageQuery(api, server.id).queryKey, outcome.base.page);
         void client.invalidateQueries({ queryKey: ["content"] });
-      } else if (outcome.kind === "conflict" || outcome.kind === "under-review")
+      } else if (outcome.kind === "conflict")
         void client.invalidateQueries({ queryKey: pageQuery(api, server.id).queryKey });
     },
     onSettled: () => {
@@ -227,7 +238,7 @@ function RemotePageEditor({
       // The change moved on or went elsewhere: read the page again, as a refused save does
       if (error instanceof ApiFailure && (error.status === 409 || error.status === 404))
         void client.invalidateQueries({ queryKey: pageQuery(api, server.id).queryKey });
-      toast("This change couldn't be submitted for review", {
+      toast("This change couldn’t be submitted for review", {
         tone: "error",
         description:
           (error instanceof ApiFailure && apiMessage(error)) ||
@@ -241,7 +252,7 @@ function RemotePageEditor({
       <Button
         variant="secondary"
         pending={submit.isPending}
-        disabled={unsaved || stale || submit.isPending}
+        disabled={unsaved || stale}
         onClick={() => submit.mutate()}
       >
         {label}
@@ -296,7 +307,7 @@ function RemotePageEditor({
     else {
       // Discard the rejected source so the existing working copy remains editable.
       store.discard();
-      toast("The saved version couldn't be opened", {
+      toast("The saved version couldn’t be opened", {
         tone: "error",
         description: "Your open copy is unchanged.",
       });
@@ -316,7 +327,7 @@ function RemotePageEditor({
       return {
         status: "failed",
         error:
-          "This page has been deleted, so your changes can't be saved. Download a copy to keep them.",
+          "This page has been deleted, so your changes can’t be saved. Download a copy to keep them.",
         conflict,
         onDownload: downloadMine,
       };
@@ -366,8 +377,13 @@ function RemotePageEditor({
           {readStatus === 401 ? (
             signInAction
           ) : (
-            <Button variant="secondary" pending={reading} onClick={retryRead}>
-              {reading ? "Refreshing page…" : "Try again"}
+            <Button
+              variant="secondary"
+              pending={reading}
+              pendingLabel="Refreshing page…"
+              onClick={retryRead}
+            >
+              Try again
             </Button>
           )}
           {readRefused && <Button onClick={downloadMine}>Download my version</Button>}
@@ -420,7 +436,7 @@ function RemotePageEditor({
         ))}
       </ul>
     </Banner>
-  ) : outcome?.kind === "forbidden" || outcome?.kind === "under-review" ? (
+  ) : outcome?.kind === "forbidden" ? (
     // A refusal, not a failure: saving again won't change the answer, so nothing offers a retry
     <Banner tone="error" layout="strip" role="alert">
       {outcome.message}
@@ -431,8 +447,22 @@ function RemotePageEditor({
       lost when you leave.
     </Banner>
   ) : server.pending_revision?.status === "submitted" ? (
-    <Banner tone="info" layout="strip">
+    <Banner
+      tone="info"
+      layout="strip"
+      actions={
+        approver && (
+          <TextLink render={<Link to="/reviews/$pageId" params={{ pageId: server.id }} />}>
+            Review this change
+          </TextLink>
+        )
+      }
+    >
       Waiting for review. Citizens will see these changes once an approver publishes them.
+      {roles?.includes("editor") &&
+        (approver
+          ? " You can keep editing, but if you save changes you can't approve or reject this review."
+          : " You can keep editing: changes you save are added to this review.")}
     </Banner>
   ) : server.pending_revision?.status === "rejected" ? (
     <Banner
@@ -446,7 +476,7 @@ function RemotePageEditor({
     </Banner>
   ) : server.pending_revision ? (
     <Banner tone="info" layout="strip" actions={submitAction("Submit for review")}>
-      Your changes are saved but not live. Submit them for review when they're ready.
+      Your changes are saved but not live. Submit them for review when they’re ready.
     </Banner>
   ) : undefined;
 
@@ -454,17 +484,15 @@ function RemotePageEditor({
     <PageDraftEditor
       store={store}
       active={active}
+      nav={nav}
       server={standing()}
       publish={
+        // Keep focus when a completed save leaves nothing to save, or a newer version blocks editing.
         <Button
           variant="accent"
-          disabled={
-            !unsaved ||
-            stale ||
-            blocked ||
-            readOnly ||
-            save.isPending ||
-            outcome?.kind === "missing"
+          pending={save.isPending}
+          aria-disabled={
+            !unsaved || stale || blocked || readOnly || outcome?.kind === "missing" || undefined
           }
           onClick={saveDraft}
         >

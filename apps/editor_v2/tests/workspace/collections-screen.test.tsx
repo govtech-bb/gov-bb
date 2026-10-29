@@ -232,9 +232,18 @@ const cells = (row: Element) => [...row.querySelectorAll("td")].map((cell) => ce
 const loaded = (count = 2) =>
   until(() => expect(rows().filter((row) => row.querySelector("button"))).toHaveLength(count));
 
+// A button's words, without the hidden pending label it keeps for its width
+const spoken = (item: Element) => {
+  const copy = item.cloneNode(true) as Element;
+
+  copy.querySelectorAll('[aria-hidden="true"]').forEach((hidden) => hidden.remove());
+
+  return copy.textContent;
+};
+
 const button = (name: string) =>
   [...document.querySelectorAll<HTMLButtonElement>("button")].find(
-    (item) => item.getAttribute("aria-label") === name || item.textContent === name,
+    (item) => item.getAttribute("aria-label") === name || spoken(item) === name,
   )!;
 
 const press = (name: string) => act(async () => button(name).click());

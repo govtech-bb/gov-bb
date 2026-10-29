@@ -145,7 +145,7 @@ export function FoldActions({ anchor, hovered }: { anchor: HTMLElement; hovered:
       >
         <Tip
           hint
-          left
+          align="start"
           content={
             <>
               <em>{label}</em>

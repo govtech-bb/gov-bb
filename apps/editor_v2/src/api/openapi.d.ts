@@ -140,7 +140,7 @@ export interface paths {
         put?: never;
         /**
          * Create a page
-         * @description Requires an employee session, the editor's Origin header and the editor role (403 otherwise). Creating a page as `public` needs the approver role (403 otherwise).
+         * @description Requires an employee session, the editor's Origin header and the editor role (403 otherwise). Creating a page as `public` needs the approver role, and an approver can't make a page they wrote public (403): create it as `preview` or `draft`, and another approver makes it public.
          */
         post: {
             parameters: {
@@ -1082,7 +1082,7 @@ export interface paths {
         };
         /**
          * Save a page
-         * @description Requires an employee session, the editor's Origin header and the editor role (403 otherwise). Send every field: a save replaces the page and defaults none, except that leaving `parent_id` out keeps the page's parent. Send the `updated_at` you last read in the `if-updated-at` header. If the stored row, or the page's pending revision, has moved on since, the save is refused with a 409 rather than silently discarding whoever wrote first. Changing `url` moves this page alone: its sub-pages keep their urls and stay beneath it by `parent_id`, and nothing redirects from the old url. Changing `visibility` needs the approver role (403 otherwise). A save that keeps a `public` page public, whoever sends it, goes into the page's pending revision: citizens keep seeing the live page until an approver publishes it. An approver's save that takes a `public` page out of public view changes only its `visibility`: the other fields sent are ignored, the live content stays, and a draft revision is discarded. Returns the page as the editor now works on it. A save to a page whose revision is waiting for review is refused (409 `under_review`) until an approver publishes or rejects it.
+         * @description Requires an employee session, the editor's Origin header and the editor role (403 otherwise). Send every field: a save replaces the page and defaults none, except that leaving `parent_id` out keeps the page's parent. Send the `updated_at` you last read in the `if-updated-at` header. If the stored row, or the page's pending revision, has moved on since, the save is refused with a 409 rather than silently discarding whoever wrote first. Changing `url` moves this page alone: its sub-pages keep their urls and stay beneath it by `parent_id`, and nothing redirects from the old url. Changing `visibility` needs the approver role (403 otherwise). Making a page public is refused (403) to an approver who changed its content since it was last public, in this save or before: another approver makes it public. A save that keeps a `public` page public, whoever sends it, goes into the page's pending revision: citizens keep seeing the live page until an approver publishes it. An approver's save that takes a `public` page out of public view changes only its `visibility`: the other fields sent are ignored, the live content stays, and the page's open revision is discarded: a draft is dropped, and one waiting for review is closed as `discarded`, which the page's history records. A save to a page whose revision is waiting for review updates that revision, which stays waiting; the saver joins its `contributors`, so may not approve it. Such a save needs `if-updated-at` (428 without it). Returns the page as the editor now works on it.
          */
         put: {
             parameters: {
@@ -1246,7 +1246,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": ({
+                        "application/json": {
                             /** @enum {string} */
                             error: "conflict";
                             message: string;
@@ -1254,10 +1254,6 @@ export interface paths {
                             documentId: string;
                         } & {
                             [key: string]: unknown;
-                        }) | {
-                            /** @enum {string} */
-                            error: "under_review" | "not_submitted";
-                            message: string;
                         };
                     };
                 };
@@ -1275,6 +1271,20 @@ export interface paths {
                                 field: string;
                                 message: string;
                             }[];
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                428: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
                         } & {
                             [key: string]: unknown;
                         };
@@ -1463,7 +1473,7 @@ export interface paths {
                             /** Format: uuid */
                             page_id: string;
                             /** @enum {string} */
-                            status: "draft" | "submitted" | "rejected" | "published";
+                            status: "draft" | "submitted" | "rejected" | "published" | "discarded";
                             /** @description The page as the change would make it. */
                             fields: {
                                 /** @description The site's routing key. */
@@ -1571,6 +1581,140 @@ export interface paths {
                 };
                 /** @description Default Response */
                 404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/revisions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List the changes waiting for review
+         * @description Any signed-in employee, as for other reads: editors see what waits, and approvers, who may hold no other role, what to review. Every revision submitted for review and not yet published or rejected, the longest-waiting first, with its page and who submitted it. Read one with `GET /pages/{id}/revision` to compare it with the live page.
+         */
+        get: {
+            parameters: {
+                query: {
+                    /** @description Which revisions: only `submitted` is listed. */
+                    status: "submitted";
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Default Response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            revisions: {
+                                /** Format: uuid */
+                                id: string;
+                                /** Format: uuid */
+                                page_id: string;
+                                /** @description The page's title as the change would make it. */
+                                title: string;
+                                /** @description The page's url as the change would make it. */
+                                url: string;
+                                /** @description The user id of whoever submitted it. */
+                                submitted_by: string;
+                                /** @description Their name, or null when their account is gone. */
+                                submitted_by_name: string | null;
+                                /** Format: date-time */
+                                submitted_at: string;
+                                /**
+                                 * Format: date-time
+                                 * @description The revision's version, as `GET /pages/{id}/revision` has it.
+                                 */
+                                updated_at: string;
+                            }[];
+                        };
+                    };
+                };
+                /** @description Default Response */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                403: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -2011,7 +2155,7 @@ export interface paths {
         put?: never;
         /**
          * Append a category or subcategory
-         * @description Needs the editor role (403 otherwise).
+         * @description Needs the approver role (403 otherwise), so landing shows only category changes an approver made.
          */
         post: {
             parameters: {
@@ -2162,7 +2306,7 @@ export interface paths {
         get?: never;
         /**
          * Edit a category using its last-read version
-         * @description Needs the editor role (403 otherwise).
+         * @description Needs the approver role (403 otherwise), so landing shows only category changes an approver made.
          */
         put: {
             parameters: {
@@ -2331,7 +2475,7 @@ export interface paths {
         post?: never;
         /**
          * Delete an empty, unanchored category using its last-read version
-         * @description Needs the editor role (403 otherwise).
+         * @description Needs the approver role (403 otherwise), so landing shows only category changes an approver made.
          */
         delete: {
             parameters: {
@@ -2476,7 +2620,7 @@ export interface paths {
         get?: never;
         /**
          * Atomically reorder a complete, versioned sibling snapshot
-         * @description Needs the editor role (403 otherwise).
+         * @description Needs the approver role (403 otherwise), so landing shows only category changes an approver made.
          */
         put: {
             parameters: {
@@ -3721,7 +3865,7 @@ export interface paths {
         put?: never;
         /**
          * Submit a page's draft revision for review
-         * @description Needs the editor role (403 otherwise). Records the submitter, who may not then approve it. 404 when the page has no draft revision; 409 `under_review` when it is already submitted, or `conflict` when the draft has been saved since `if-updated-at`. Saving the page is refused while it waits. A rejected revision can be submitted again as it is: it is copied into a new submitted revision with the same `updated_at`, and the rejected one keeps its comment. The copy's `contributors` gain the rejected round's submitter, who may not approve it either.
+         * @description Needs the editor role (403 otherwise). Records the submitter, who may not then approve it. 404 when the page has no draft revision; 409 `under_review` when it is already submitted, or `conflict` when the draft has been saved since `if-updated-at`. Saves made while it waits update it, and it keeps waiting. A rejected revision can be submitted again as it is: it is copied into a new submitted revision with the same `updated_at`, and the rejected one keeps its comment. The copy's `contributors` gain the rejected round's submitter, who may not approve it either.
          */
         post: {
             parameters: {
@@ -3749,7 +3893,7 @@ export interface paths {
                             /** Format: uuid */
                             page_id: string;
                             /** @enum {string} */
-                            status: "draft" | "submitted" | "rejected" | "published";
+                            status: "draft" | "submitted" | "rejected" | "published" | "discarded";
                             /** @description The page as the change would make it. */
                             fields: {
                                 /** @description The site's routing key. */
@@ -3972,7 +4116,7 @@ export interface paths {
                             /** Format: uuid */
                             page_id: string;
                             /** @enum {string} */
-                            status: "draft" | "submitted" | "rejected" | "published";
+                            status: "draft" | "submitted" | "rejected" | "published" | "discarded";
                             /** @description The page as the change would make it. */
                             fields: {
                                 /** @description The site's routing key. */

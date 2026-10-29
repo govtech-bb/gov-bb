@@ -66,7 +66,7 @@ export const editorCategoryRoutes: FastifyPluginAsyncZod<{
     method: "POST",
     url: "/editor/categories",
     schema: SCHEMAS.createCategory,
-    config: { role: "editor" },
+    config: { role: "approver" },
     handler: async (request, reply) => {
       const result = await categories.create(request.body, actor(request));
       return result.ok
@@ -78,7 +78,7 @@ export const editorCategoryRoutes: FastifyPluginAsyncZod<{
     method: "PUT",
     url: "/editor/categories/:id",
     schema: SCHEMAS.updateCategory,
-    config: { role: "editor" },
+    config: { role: "approver" },
     handler: async (request, reply) => {
       const result = await categories.update(
         request.params.id,
@@ -95,7 +95,7 @@ export const editorCategoryRoutes: FastifyPluginAsyncZod<{
     method: "PUT",
     url: "/editor/categories/order",
     schema: SCHEMAS.orderCategories,
-    config: { role: "editor" },
+    config: { role: "approver" },
     handler: async (request, reply) => {
       const result = await categories.reorder(request.body, actor(request));
       return result.ok
@@ -107,7 +107,7 @@ export const editorCategoryRoutes: FastifyPluginAsyncZod<{
     method: "DELETE",
     url: "/editor/categories/:id",
     schema: SCHEMAS.deleteCategory,
-    config: { role: "editor" },
+    config: { role: "approver" },
     handler: async (request, reply) => {
       const result = await categories.delete(
         request.params.id,

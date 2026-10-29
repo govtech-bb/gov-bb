@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { TipProvider } from "./ui/tooltip";
 import { ServiceWorkspace } from "./workspace/workspace";
 import type { EditorApi } from "./api/client";
+import { authBypassed } from "./auth/bypass";
 import { localReturnPath, type EditorAuth, type EmployeeSession } from "./auth/session";
 
 const icons = { weight: "bold" as const };
@@ -87,7 +88,13 @@ export function App({
   return (
     <IconContext.Provider value={icons}>
       <TipProvider delay={300}>
-        <ServiceWorkspace api={api} email={employee.email} onSignOut={signOut} notice={notice} />
+        <ServiceWorkspace
+          api={api}
+          email={employee.email}
+          selfApproval={authBypassed}
+          onSignOut={signOut}
+          notice={notice}
+        />
       </TipProvider>
     </IconContext.Provider>
   );

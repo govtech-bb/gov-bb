@@ -1,8 +1,9 @@
 import { useId, useState, type ComponentProps } from "react";
 import { Button } from "./button";
 import { Input } from "./input";
+import { ListBox, useListNavigation } from "./list-box";
 import { cn } from "../cn";
-import { row, rowLabel } from "./surface";
+import { rowLabel } from "./surface";
 
 /** A page a link can go to, as the host knows it: its title, and its address on the site. */
 export type LinkPage = { readonly title: string; readonly url: string };
@@ -63,77 +64,53 @@ export function LinkPicker({
   listClassName,
   ...props
 }: LinkPickerProps) {
-  const id = useId();
   const found = findPages(pages, value);
   // The first page is ready for Enter, unless what's typed reads as an address
   const first = (text: string) => (domain.test(text.trim()) ? -1 : 0);
-  const [highlight, setHighlight] = useState(() => first(value));
-  const active = Math.min(highlight, found.length - 1);
-  const chosen = found[active];
+
+  const list = useListNavigation(found.length, {
+    initial: first(value),
+    onPick: (index) => onPick(found[index]!),
+  });
 
   // The field and the list are the parent's to lay out, so the list can take a row of its own
   return (
     <>
       <Input
         {...props}
-        role={pages.length ? "combobox" : undefined}
-        aria-autocomplete={pages.length ? "list" : undefined}
-        aria-expanded={pages.length ? found.length > 0 : undefined}
-        aria-controls={found.length ? `${id}-pages` : undefined}
-        aria-activedescendant={chosen ? `${id}-${active}` : undefined}
+        {...(pages.length ? list.comboboxProps : undefined)}
         placeholder={placeholder}
         value={value}
         onChange={(event) => {
           onValueChange(event.target.value);
-          setHighlight(first(event.target.value));
+          list.setIndex(first(event.target.value));
         }}
         onKeyDown={(event) => {
-          if ((event.key === "ArrowDown" || event.key === "ArrowUp") && found.length) {
-            event.preventDefault();
-            const step = event.key === "ArrowDown" ? 1 : -1;
-
-            setHighlight(Math.max(Math.min(active + step, found.length - 1), first(value)));
-          } else if (event.key === "Enter" && chosen) {
-            event.preventDefault();
-            onPick(chosen);
-          }
-
+          list.onKeyDown(event);
           onKeyDown?.(event);
         }}
       />
       {found.length > 0 && (
-        <div
-          id={`${id}-pages`}
-          role="listbox"
+        <ListBox.Root
+          {...list.listProps}
           aria-label="Pages"
-          className={cn(
-            "group/popup -mx-1 mt-1 max-h-64 overflow-y-auto overscroll-contain",
-            listClassName,
-          )}
+          className={cn("-mx-1 mt-1 max-h-64 py-0", listClassName)}
         >
           {found.map((page, index) => (
-            <div
+            <ListBox.Option
               key={page.url}
-              id={`${id}-${index}`}
-              role="option"
-              aria-selected={index === active}
-              data-highlighted={index === active ? "" : undefined}
-              className={row}
-              // Only a pointer that moves: one resting where the list opens leaves Enter's choice alone
-              onMouseMove={() => setHighlight(index)}
-              // The field keeps the focus
-              onMouseDown={(event) => event.preventDefault()}
+              {...list.optionProps(index)}
               onClick={() => onPick(page)}
             >
-              <span className="flex min-w-0 flex-1 flex-col">
+              <span className="flex min-w-0 flex-col">
                 <span className={rowLabel}>{page.title}</span>
                 <span className="truncate text-12 leading-4 text-muted group-data-highlighted/row:text-white/75">
                   {page.url}
                 </span>
               </span>
-            </div>
+            </ListBox.Option>
           ))}
-        </div>
+        </ListBox.Root>
       )}
     </>
   );

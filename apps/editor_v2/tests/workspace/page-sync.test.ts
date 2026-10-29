@@ -215,10 +215,6 @@ describe("saving a page", () => {
       { kind: "invalid", errors: [{ field: "url", message: "Taken" }] },
     ],
     [new ApiFailure(409), { kind: "conflict" }],
-    [
-      new ApiFailure(409, [], "This change is waiting for review.", "under_review"),
-      { kind: "under-review", message: "This change is waiting for review." },
-    ],
     [new ApiFailure(404), { kind: "missing" }],
     [new ApiFailure(401), { kind: "signed-out" }],
     [
@@ -227,7 +223,7 @@ describe("saving a page", () => {
     ],
     [
       new ApiFailure(403),
-      { kind: "forbidden", message: "You don't have permission to save this change." },
+      { kind: "forbidden", message: "You don’t have permission to save this change." },
     ],
     [new ApiFailure(503), { kind: "failed" }],
     [new ApiFailure(0), { kind: "failed" }],

@@ -20,6 +20,7 @@ import {
   createTestApp,
   createTestDb,
   createTestServices,
+  SELF_APPROVAL,
   expectOk,
   TEST_EDITOR,
   TEST_EMPLOYEE,
@@ -42,7 +43,9 @@ let services: ReturnType<typeof createTestServices>;
 
 beforeEach(async () => {
   ({ db, close } = await createTestDb());
-  services = createTestServices(db);
+  // Fixtures are set up as AUTH_BYPASS would, so only the app under test
+  // holds an approver to the self-approval rule.
+  services = createTestServices(db, SELF_APPROVAL);
   await db.execute(
     sql`insert into auth_user (id, name, email, "emailVerified")
         values (${READER.id}, ${READER.name}, ${READER.email}, true)`,

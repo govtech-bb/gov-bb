@@ -37,8 +37,8 @@ test.each(
     const menu = pageControl(".page-block-menu");
     expect(menu.textContent).not.toContain(`Change to ${hidden} list`);
 
-    const conversion = [...menu.querySelectorAll("button")].find(
-      (button) => button.textContent === `Change to ${action} list`,
+    const conversion = [...menu.querySelectorAll<HTMLElement>('[role="menuitem"]')].find(
+      (item) => item.textContent === `Change to ${action} list`,
     );
 
     expect(conversion).toBeDefined();

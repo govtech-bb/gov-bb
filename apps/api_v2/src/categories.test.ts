@@ -5,6 +5,7 @@ import { z } from "zod";
 import {
   createTestApp,
   createTestDb,
+  SELF_APPROVAL,
   TEST_HEADERS,
   type TestDb,
 } from "./test-db";
@@ -30,7 +31,8 @@ let app: FastifyInstance;
 
 beforeEach(async () => {
   test = await createTestDb();
-  app = await createTestApp(test.db);
+  // Pages here go public as an approver writes them; review.test.ts covers review.
+  app = await createTestApp(test.db, SELF_APPROVAL);
 });
 afterEach(async () => {
   await app.close();

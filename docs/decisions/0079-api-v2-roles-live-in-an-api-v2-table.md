@@ -22,11 +22,13 @@ that the self-approval rule governs comes in #3198, #3199 and #3201.
 **Roles are rows in an api_v2 table**, not GitHub team memberships. A user
 can hold any of three roles:
 
-- `editor` can create and edit content, submit changes for review, and manage
-  categories (ADR 0078's "people who can edit pages" are editors).
-- `approver` can change an existing page's visibility, create a page as
-  Public, delete a public page, and approve, reject and publish changes to
-  live content. An editor can still create a page as Preview or Draft, so
+- `editor` can create and edit content and submit changes for review (ADR
+  0078's "people who can edit pages" are editors).
+- `approver` can change an existing page's visibility (making it public
+  only when someone else changed its content, below), delete a public page,
+  approve, reject and publish changes to live content, and create, edit,
+  reorder and delete categories (#3201), so landing shows only category
+  changes an approver made. An editor can still create a page as Preview or Draft, so
   the Preview default from #3191 works for editors (decided in #3187 on
   25 Oct 2026).
 - `admin` can grant and revoke roles.
@@ -56,13 +58,29 @@ so a revocation takes effect on the user's next request.
 
 **An approver can't approve their own change.** The person who approves or
 publishes a revision must be someone other than anyone who submitted it or
-changed its content.
+changed its content. That includes saves made while it waits for review:
+they update the waiting revision and add the saver to its contributors
+(#3203). Each save moves the revision's version, and an approver must name
+the version they reviewed, so they can only publish the version they last
+loaded.
 
-**Changing visibility is a direct approver action for now.** Until #3201
-runs new pages, unpublishing and deleting through review, an approver who
-changes a page's visibility does so straight away, and the self-approval rule
-doesn't apply. So, in the meantime, an approver can still publish a page
-they wrote. #3201 closes this gap.
+**Changing visibility, deleting a public page and changing categories are
+direct approver actions** (#3201). There is no request that waits for a
+second approver: an approver who unpublishes a page, deletes a public page
+or changes a category does so straight away. Deleting a Preview or Draft
+page needs only the editor role (#3187).
+
+**Making a page public is self-approval too.** It approves the page's
+content, so an approver can't make public a page whose content they changed
+since it was last public, or ever when it never was, and can't create a
+page as Public. Another approver makes it public. api_v2 works out who
+changed the content from the page's `change_events`, not from a new table.
+This closes the gap this ADR first accepted, where an approver could take a
+public page private, edit it and make it public again without review.
+
+Taking a public page out of public view while a change waits for review
+discards that change, and the page's history records the discard (#3203).
+The change's content never reaches the live page.
 
 **Roles are enforced in api_v2**, not only in editor_v2. editor_v2 hides or
 disables what a user's roles don't allow, but the API answers 403 and leaves
@@ -101,8 +119,9 @@ can try the whole flow.
   hours. Someone who leaves `govtech-bb` keeps their access until their
   session ends, and their role rows come back if they rejoin. Offboarding
   someone means revoking their roles as well as removing them from the org.
-- Until #3198 and #3199 land, an editor's save to a public page still
-  changes what citizens see straight away. Only visibility changes and
-  deleting a public page need an approver in the meantime.
+- An approver who writes a new page needs a second approver to make it
+  public, as they do for a change to a public page.
+- An editor who isn't an approver can no longer change categories. They ask
+  an approver.
 - Roles in feature_flagging and the v1 form builder are unchanged (out of
   scope for #3166).
