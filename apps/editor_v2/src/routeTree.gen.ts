@@ -15,7 +15,6 @@ import { Route as WorkspaceIndexRouteImport } from './routes/_workspace.index'
 import { Route as WorkspaceCategoriesRouteImport } from './routes/_workspace.categories'
 import { Route as WorkspaceReviewsRouteImport } from './routes/_workspace.reviews'
 import { Route as WorkspaceServicesRouteImport } from './routes/_workspace.services'
-import { Route as PrototypesComponentsRouteImport } from './routes/prototypes.components'
 import { Route as PrototypesTridentLoaderRouteImport } from './routes/prototypes.trident-loader'
 import { Route as WorkspaceReviewsPageIdRouteImport } from './routes/_workspace.reviews.$pageId'
 import { Route as WorkspaceServicesServiceIdRouteImport } from './routes/_workspace.services.$serviceId'
@@ -50,11 +49,6 @@ const WorkspaceServicesRoute = WorkspaceServicesRouteImport.update({
   path: '/services',
   getParentRoute: () => WorkspaceRoute,
 } as any)
-const PrototypesComponentsRoute = PrototypesComponentsRouteImport.update({
-  id: '/prototypes/components',
-  path: '/prototypes/components',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const PrototypesTridentLoaderRoute = PrototypesTridentLoaderRouteImport.update({
   id: '/prototypes/trident-loader',
   path: '/prototypes/trident-loader',
@@ -84,7 +78,6 @@ export interface FileRoutesByFullPath {
   '/categories': typeof WorkspaceCategoriesRoute
   '/reviews': typeof WorkspaceReviewsRouteWithChildren
   '/services': typeof WorkspaceServicesRouteWithChildren
-  '/prototypes/components': typeof PrototypesComponentsRoute
   '/prototypes/trident-loader': typeof PrototypesTridentLoaderRoute
   '/reviews/$pageId': typeof WorkspaceReviewsPageIdRoute
   '/services/$serviceId': typeof WorkspaceServicesServiceIdRouteWithChildren
@@ -95,7 +88,6 @@ export interface FileRoutesByTo {
   '/categories': typeof WorkspaceCategoriesRoute
   '/reviews': typeof WorkspaceReviewsRouteWithChildren
   '/services': typeof WorkspaceServicesRouteWithChildren
-  '/prototypes/components': typeof PrototypesComponentsRoute
   '/prototypes/trident-loader': typeof PrototypesTridentLoaderRoute
   '/': typeof WorkspaceIndexRoute
   '/reviews/$pageId': typeof WorkspaceReviewsPageIdRoute
@@ -109,7 +101,6 @@ export interface FileRoutesById {
   '/_workspace/categories': typeof WorkspaceCategoriesRoute
   '/_workspace/reviews': typeof WorkspaceReviewsRouteWithChildren
   '/_workspace/services': typeof WorkspaceServicesRouteWithChildren
-  '/prototypes/components': typeof PrototypesComponentsRoute
   '/prototypes/trident-loader': typeof PrototypesTridentLoaderRoute
   '/_workspace/': typeof WorkspaceIndexRoute
   '/_workspace/reviews/$pageId': typeof WorkspaceReviewsPageIdRoute
@@ -124,7 +115,6 @@ export interface FileRouteTypes {
     | '/categories'
     | '/reviews'
     | '/services'
-    | '/prototypes/components'
     | '/prototypes/trident-loader'
     | '/reviews/$pageId'
     | '/services/$serviceId'
@@ -135,7 +125,6 @@ export interface FileRouteTypes {
     | '/categories'
     | '/reviews'
     | '/services'
-    | '/prototypes/components'
     | '/prototypes/trident-loader'
     | '/'
     | '/reviews/$pageId'
@@ -148,7 +137,6 @@ export interface FileRouteTypes {
     | '/_workspace/categories'
     | '/_workspace/reviews'
     | '/_workspace/services'
-    | '/prototypes/components'
     | '/prototypes/trident-loader'
     | '/_workspace/'
     | '/_workspace/reviews/$pageId'
@@ -159,7 +147,6 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   WorkspaceRoute: typeof WorkspaceRouteWithChildren
   AuthRoute: typeof AuthRoute
-  PrototypesComponentsRoute: typeof PrototypesComponentsRoute
   PrototypesTridentLoaderRoute: typeof PrototypesTridentLoaderRoute
 }
 
@@ -206,13 +193,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/services'
       preLoaderRoute: typeof WorkspaceServicesRouteImport
       parentRoute: typeof WorkspaceRoute
-    }
-    '/prototypes/components': {
-      id: '/prototypes/components'
-      path: '/prototypes/components'
-      fullPath: '/prototypes/components'
-      preLoaderRoute: typeof PrototypesComponentsRouteImport
-      parentRoute: typeof rootRouteImport
     }
     '/prototypes/trident-loader': {
       id: '/prototypes/trident-loader'
@@ -303,7 +283,6 @@ const WorkspaceRouteWithChildren = WorkspaceRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   WorkspaceRoute: WorkspaceRouteWithChildren,
   AuthRoute: AuthRoute,
-  PrototypesComponentsRoute: PrototypesComponentsRoute,
   PrototypesTridentLoaderRoute: PrototypesTridentLoaderRoute,
 }
 export const routeTree = rootRouteImport

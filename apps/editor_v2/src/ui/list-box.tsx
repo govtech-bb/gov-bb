@@ -9,8 +9,7 @@ import {
 } from "react";
 import { cn } from "../cn";
 import { RowContent } from "./menu";
-import { Popover } from "./popover";
-import { group, groupLabel, listEmpty, listFooter, row, type PopupName } from "./surface";
+import { row, type PopupName } from "./surface";
 
 /**
  * Arrow and Enter navigation without moving focus out of the input: Home and End stay with its caret, and the arrows
@@ -98,20 +97,6 @@ function ListBoxRoot({ className, ...props }: Omit<ComponentProps<"div">, "role"
   );
 }
 
-/** Rows that belong together, under a heading that names them, ruled off from the next group. */
-function ListBoxGroup({ label, children }: { label: ReactNode; children: ReactNode }) {
-  const id = useId();
-
-  return (
-    <div role="group" aria-labelledby={id} className={group}>
-      <div id={id} className={groupLabel}>
-        {label}
-      </div>
-      {children}
-    </div>
-  );
-}
-
 type OptionProps = Omit<ComponentProps<"div">, "children" | "role" | "onMouseMove"> & {
   /** The row Enter picks: navy, as a menu's highlighted row, and the field's active descendant. */
   highlighted: boolean;
@@ -163,48 +148,10 @@ function ListBoxOption({
 }
 
 /**
- * What a search that finds nothing says, such as “No blocks match”, beside the list rather than in it. Keep it on the
- * page, empty while there are rows: it takes no room then, and its words are read out as they arrive.
- */
-function ListBoxEmpty({ children }: { children?: ReactNode }) {
-  return (
-    <p role="status" className={listEmpty}>
-      {children}
-    </p>
-  );
-}
-
-/**
- * Under the list, what its highlighted row does, changing as the highlight moves. Only for the eye: a screen reader
- * hears the row itself.
- */
-function ListBoxFooter({ children }: { children?: ReactNode }) {
-  return children ? (
-    <p aria-hidden="true" className={listFooter}>
-      {children}
-    </p>
-  ) : null;
-}
-
-/**
- * A popover that holds a list: no padding of its own, its SearchRow, list and Footer stacked, and only the list scrolling
- * between them.
- */
-function ListBoxPopover({ className, ...props }: ComponentProps<typeof Popover.Content>) {
-  return (
-    <Popover.Content {...props} className={cn("flex flex-col overflow-hidden p-0", className)} />
-  );
-}
-
-/**
  * Listbox parts for choices that keep focus in an input, including Lexical typeaheads.
  * Pair with useListNavigation for keyboard handling, or provide the editor's own navigation.
  */
 export const ListBox = {
-  Popover: ListBoxPopover,
   Root: ListBoxRoot,
-  Group: ListBoxGroup,
   Option: ListBoxOption,
-  Empty: ListBoxEmpty,
-  Footer: ListBoxFooter,
 };

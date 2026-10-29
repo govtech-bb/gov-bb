@@ -1,9 +1,7 @@
 import { Menu as BaseMenu } from "@base-ui/react/menu";
 import { CaretRight, Check } from "@phosphor-icons/react";
-import type { ComponentProps, ReactNode } from "react";
+import type { ReactNode } from "react";
 import { cn } from "../cn";
-import { Field } from "./field";
-import { Input } from "./input";
 import {
   group,
   groupLabel,
@@ -16,7 +14,6 @@ import {
   separator,
   type PopupName,
 } from "./surface";
-import { switchThumb, switchTrack } from "./switch";
 
 type ContentProps = Pick<
   BaseMenu.Positioner.Props,
@@ -166,62 +163,6 @@ function MenuRadioItem({ icon, detail, className, children, ...props }: RadioIte
   );
 }
 
-type SwitchItemProps = Omit<BaseMenu.CheckboxItem.Props, "className" | "children"> &
-  Omit<RowParts, "detail"> & { className?: string };
-
-/**
- * A setting that takes effect as its row is pressed, as a Switch does, and the menu stays open for the next one. Its
- * switch slides as the kit's does, and turns white on the highlighted row's navy.
- */
-function MenuSwitchItem({ icon, className, children, ...props }: SwitchItemProps) {
-  return (
-    <BaseMenu.CheckboxItem {...props} className={cn(row, className)}>
-      <RowContent icon={icon}>{children}</RowContent>
-      <BaseMenu.CheckboxItemIndicator
-        keepMounted
-        className={cn(
-          switchTrack,
-          "group-data-highlighted/row:bg-white/40 group-data-highlighted/row:data-checked:bg-white",
-        )}
-      >
-        <span
-          className={cn(
-            switchThumb,
-            "group-data-highlighted/row:group-data-checked/switch:bg-blue-80",
-          )}
-        />
-      </BaseMenu.CheckboxItemIndicator>
-    </BaseMenu.CheckboxItem>
-  );
-}
-
-type FieldProps = Omit<ComponentProps<typeof Input>, "size"> & {
-  label: ReactNode;
-  /** What to enter, or what the setting changes. */
-  hint?: ReactNode;
-  /** Why the value can't be used. It marks the field invalid. */
-  error?: ReactNode;
-};
-
-/**
- * A labelled field in a menu, such as a setting's value, level with the rows' text. Its keys are its own, where the
- * menu would take letters for typeahead and arrows for moving; Esc still closes the menu. Its props go to its input.
- */
-function MenuField({ label, hint, error, onKeyDown, ...props }: FieldProps) {
-  return (
-    <Field size="sm" label={label} hint={hint} error={error} className="px-3.5 py-1.5">
-      <Input
-        {...props}
-        size="sm"
-        onKeyDown={(event) => {
-          if (event.key !== "Escape") event.stopPropagation();
-          onKeyDown?.(event);
-        }}
-      />
-    </Field>
-  );
-}
-
 type SubTriggerProps = Omit<BaseMenu.SubmenuTrigger.Props, "className" | "children"> &
   RowParts & { className?: string };
 
@@ -279,8 +220,6 @@ export const Menu = {
   Group: MenuGroup,
   Item: MenuItem,
   CheckboxItem: MenuCheckboxItem,
-  SwitchItem: MenuSwitchItem,
-  Field: MenuField,
   RadioGroup: BaseMenu.RadioGroup,
   RadioItem: MenuRadioItem,
   Separator: MenuSeparator,

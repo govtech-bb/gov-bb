@@ -2,7 +2,7 @@
 import { act, type ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { Switch, switchThumb, switchTrack } from "./switch";
+import { Switch } from "./switch";
 
 let host: HTMLDivElement;
 
@@ -61,12 +61,4 @@ test("className styles the switch and labelClassName its row, 44px under a coars
   expect(label.className).toContain("justify-between");
   expect(label.className).not.toContain("ms-auto");
   expect(label.className).toContain("pointer-coarse:min-h-11");
-});
-
-test("its thumb slides on its own track, whose classes a menu's switch shares", async () => {
-  await render(<Switch aria-label="Confirmation page" defaultChecked />);
-
-  expect(control().className).toContain(switchTrack.split(" ")[0]);
-  expect(control().firstElementChild!.className).toBe(switchThumb);
-  expect(control().hasAttribute("data-checked")).toBe(true);
 });

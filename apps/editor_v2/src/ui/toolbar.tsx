@@ -71,11 +71,6 @@ function ToolbarButton(
   );
 }
 
-/** Controls that belong together, such as undo and redo, named for screen readers by an `aria-label`. */
-function ToolbarGroup({ className, ...props }: BaseToolbar.Group.Props & { className?: string }) {
-  return <BaseToolbar.Group {...props} className={cn("flex items-center gap-1", className)} />;
-}
-
 /** Rules off one group of controls from the next, as a screen reader hears too. */
 function ToolbarSeparator({ className }: { className?: string }) {
   return <BaseToolbar.Separator className={cn(toolbarRule, className)} />;
@@ -85,6 +80,5 @@ function ToolbarSeparator({ className }: { className?: string }) {
 export const Toolbar = {
   Root: ToolbarRoot,
   Button: ToolbarButton,
-  Group: ToolbarGroup,
   Separator: ToolbarSeparator,
 };

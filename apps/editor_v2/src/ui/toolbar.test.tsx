@@ -43,10 +43,8 @@ const focused = () => document.activeElement && shownText(document.activeElement
 test("its buttons are one Tab stop, and the arrow keys, Home and End move between them", async () => {
   await render(
     <Toolbar.Root label="Page tools">
-      <Toolbar.Group aria-label="History">
-        <Button icon={<svg />} aria-label="Undo" disabled />
-        <Button>Redo</Button>
-      </Toolbar.Group>
+      <Button icon={<svg />} aria-label="Undo" disabled />
+      <Button>Redo</Button>
       <Toolbar.Separator />
       <Button>Preview</Button>
       <Button pending pendingLabel="Saving…">

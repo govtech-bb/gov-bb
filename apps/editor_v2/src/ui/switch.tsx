@@ -3,12 +3,12 @@ import type { ReactNode } from "react";
 import { cn } from "../cn";
 import { touchTarget } from "./surface";
 
-/** The switch's track, which takes the action colour while on (data-checked). Menu.SwitchItem draws one too. */
-export const switchTrack =
+/** The switch's track, which takes the action colour while on (data-checked). */
+const switchTrack =
   "group/switch relative inline-flex h-4.5 w-7.5 shrink-0 rounded-full bg-grey-60 transition-colors data-checked:bg-interactive";
 
 /** The thumb inside a track, sliding across as its track turns on. */
-export const switchThumb =
+const switchThumb =
   "absolute top-0.5 left-0.5 size-3.5 rounded-full bg-white transition-transform ease-out-quint group-data-checked/switch:translate-x-3 motion-reduce:transition-none";
 
 type SwitchProps = Omit<BaseSwitch.Root.Props, "className" | "children" | "render"> & {
