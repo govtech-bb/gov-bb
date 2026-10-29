@@ -73,7 +73,7 @@ Submission semantics:
 
 | Method | Path | Description |
 |---|---|---|
-| `POST` | `/payments/ezpay/webhook` | EzPay server-to-server callback. Verified by HMAC signature (`X-EzPay-Signature` header) when `EZPAY_WEBHOOK_VERIFY_SIGNATURE=true`. Always returns `200 { acknowledged: true }` to avoid EzPay retry storms; failure modes are logged. The route is exempt from rate limiting because throttling EzPay's retries would drop legitimate callbacks. |
+| `POST` | `/payments/ezpay/webhook` | EzPay server-to-server callback. Verified by HMAC signature (`X-EzPay-Signature` header, over the raw request body) when `EZPAY_WEBHOOK_VERIFY_SIGNATURE=true`: a missing or wrong signature is refused with `403` and never reaches payment confirmation. Otherwise always returns `200 { acknowledged: true }` to avoid EzPay retry storms; failure modes are logged. The route is exempt from rate limiting because throttling EzPay's retries would drop legitimate callbacks. |
 | `GET` | `/payments/ezpay/redirect` | EzPay post-payment **return redirect** (browser GET, configured merchant-side as the return URL). EzPay appends `rid` (our payment reference), `tx` (transaction number) and `payment_status`. Confirms the payment via the same verify-and-finalise core as the webhook — so a return alone is enough to finalise and send emails even if the webhook isn't configured — then `302`-redirects the citizen to the form's confirmation page (`${FORMS_BASE_URL}/forms/<formId>/?step=submission-confirmation&payment=success\|failed`). Confirmation is idempotent with the webhook; errors never block the citizen (logged, redirect proceeds). Exempt from rate limiting. |
 
 ---
