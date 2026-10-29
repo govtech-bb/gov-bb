@@ -160,7 +160,7 @@ export async function seed(db: Database): Promise<{
 
 /** What a one-shot import wrote, or would have written on a dry run. */
 export type ImportReport = {
-  /** The git tree id of the markdown the estate snapshot was taken from. */
+  /** sha1 of the markdown the estate snapshot was taken from. */
   source: string;
   /** Why existing content was replaced, or null when it was not. */
   reason: string | null;
