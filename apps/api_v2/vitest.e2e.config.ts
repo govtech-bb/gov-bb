@@ -9,11 +9,8 @@ import { defineConfig } from "vitest/config";
  * under a 60-second timeout and call the result "e2e".
  *
  * It is a different bargain from the unit suite, which goes through
- * `app.inject`. This one proves what that cannot — that
- * the DDL runs on a real server, that `timestamptz(3)` round-trips through
- * the node-postgres driver rather than through WASM that happens to round the
- * same way, and that the process boots and serves over HTTP rather than only
- * through `app.inject`.
+ * `app.inject`. This one proves what that cannot — that the built server
+ * runs the DDL, boots, and serves over HTTP on a real socket.
  *
  * The parts that need a database skip themselves when `DB_HOST` is unset, so
  * `nx run api_v2:e2e` is honest on a laptop with no Postgres running instead

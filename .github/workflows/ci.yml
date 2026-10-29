@@ -593,15 +593,19 @@ jobs:
           # Captured first so an nx failure fails the step (bash -e) rather
           # than reading as "not affected" and passing with nothing run.
           affected=$(pnpm exec nx show projects --affected --withTarget e2e --json)
-          if ! jq -e 'index("api_v2") != null' <<<"$affected" > /dev/null; then
+          # jq -e exits 1 only for "false"; any other non-zero (5 = not JSON)
+          # is an error, not "not affected".
+          found=0
+          jq -e 'index("api_v2") != null' <<<"$affected" > /dev/null || found=$?
+          if [ "$found" -eq 1 ]; then
             echo "api_v2 is not affected; skipping its e2e specs."
             exit 0
           fi
+          [ "$found" -eq 0 ] || exit "$found"
           echo "ran=true" >> "$GITHUB_OUTPUT"
           pnpm exec nx run api_v2:e2e -- --reporter=default --reporter=json \
             --outputFile.json="$PWD/api-v2-e2e.json" 2>&1 | tee e2e-output.txt
           exit ${PIPESTATUS[0]}
-        continue-on-error: true
 
       - name: Report api_v2 e2e results
         if: ${{ !cancelled() && steps.e2e.outputs.ran == 'true' }}
