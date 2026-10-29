@@ -37,14 +37,20 @@
 import { createCipheriv, randomBytes } from "node:crypto";
 import { isDeepStrictEqual } from "node:util";
 import { expect, test } from "@playwright/test";
+import {
+  deployBranchLabel,
+  deployBranchPrefix,
+  formIdFromDeployBranch,
+} from "@govtech-bb/form-types";
 import { STEP_TIMEOUT, expectStep, openSmokeForm } from "../helpers/smoke";
 
 const FORM_ID = "e2e-j2-publish-check";
 const REPO = "govtech-bb/gov-bb";
 const RECIPE_PATH = `apps/api/src/forms/form-definitions/recipes/${FORM_ID}.json`;
-// The builder's Deploy branches for this form (deployBranchName in
-// @govtech-bb/form-types): `form-builder/<formId>-<timestamp>`.
-const DEPLOY_BRANCH = new RegExp(`^form-builder/${FORM_ID}-\\d+$`);
+// One of the builder's Deploy branches for this form. Joined by label, never
+// by raw form id: a long id is truncated and hashed in the branch (#2488).
+const isDeployBranch = (branch: string) =>
+  formIdFromDeployBranch(branch) === deployBranchLabel(FORM_ID);
 
 // The publish makes several GitHub calls server-side.
 const PUBLISH_TIMEOUT = 60_000;
@@ -126,11 +132,11 @@ async function recipeAt(ref: string): Promise<Recipe> {
 async function sweepDeployBranches(): Promise<void> {
   const [owner] = REPO.split("/");
   const refs = await github<{ ref: string }[]>(
-    `/repos/${REPO}/git/matching-refs/heads/form-builder/${FORM_ID}-`,
+    `/repos/${REPO}/git/matching-refs/heads/${deployBranchPrefix(FORM_ID)}`,
   );
   for (const { ref } of refs) {
     const branch = ref.replace(/^refs\/heads\//, "");
-    if (!DEPLOY_BRANCH.test(branch)) continue;
+    if (!isDeployBranch(branch)) continue;
     const prs = await github<{ number: number }[]>(
       `/repos/${REPO}/pulls?state=open&head=${owner}:${encodeURIComponent(branch)}`,
     );
@@ -189,13 +195,21 @@ test.describe("Journey 2 — form builder publish keeps processors", () => {
     });
 
     const actions = page.getByRole("group", { name: "Form actions" });
+    const titleInput = page
+      .locator("header")
+      .getByLabel("Title", { exact: true });
 
     await test.step("change the title and save the draft", async () => {
+      // Let the page hydrate and claim the editing lock first: a save before
+      // the claim lands is refused (409). The claim re-syncs only every 30s,
+      // so the network goes idle once it is in.
+      await page.waitForLoadState("networkidle");
       await page.getByRole("button", { name: /Form settings/ }).click();
-      await page
-        .locator("header")
-        .getByLabel("Title", { exact: true })
-        .fill(title);
+      await expect(
+        titleInput,
+        "the builder is read-only — someone else holds the test form's editing lock (it lapses 15 min after they leave)",
+      ).toBeEditable();
+      await titleInput.fill(title);
       await actions.getByRole("button", { name: "Save draft" }).click();
       const dialog = page.getByRole("dialog", { name: "Save draft" });
       await dialog.getByRole("button", { name: "Save draft" }).click();
@@ -215,7 +229,15 @@ test.describe("Journey 2 — form builder publish keeps processors", () => {
         );
       await dialog.getByRole("button", { name: "Send for review" }).click();
       const link = dialog.getByRole("link", { name: /^Open review #\d+$/ });
-      await expect(link).toBeVisible({ timeout: PUBLISH_TIMEOUT });
+      await expect(link)
+        .toBeVisible({ timeout: PUBLISH_TIMEOUT })
+        .catch(async (err: unknown) => {
+          // Surface the dialog's error banner instead of a bare timeout.
+          throw new Error(
+            `No PR opened. The publish dialog says:\n${await dialog.innerText()}`,
+            { cause: err },
+          );
+        });
       // A fresh PR, not a push onto one left open (the sweep closed those).
       await expect(dialog).toContainText("opened on");
       return Number((await link.innerText()).replace(/\D/g, ""));
@@ -226,7 +248,10 @@ test.describe("Journey 2 — form builder publish keeps processors", () => {
         head: { ref: string; sha: string };
         base: { ref: string };
       }>(`/repos/${REPO}/pulls/${prNumber}`);
-      expect(pr.head.ref, "the PR's head branch").toMatch(DEPLOY_BRANCH);
+      expect(
+        isDeployBranch(pr.head.ref),
+        `${pr.head.ref} is a Deploy branch for ${FORM_ID}`,
+      ).toBe(true);
 
       const files = await github<{ filename: string }[]>(
         `/repos/${REPO}/pulls/${prNumber}/files`,
@@ -248,9 +273,15 @@ test.describe("Journey 2 — form builder publish keeps processors", () => {
       expect(lost, "processors the publish dropped or changed (#2409)").toEqual(
         [],
       );
+      // Every other field must come through unchanged, not just present: a
+      // stale draft can revert steps or meta as silently as processors.
       expect(
-        Object.keys(committed).filter((key) => !(key in published)),
-        "top-level recipe fields the publish dropped (#2409)",
+        Object.keys(committed).filter(
+          (key) =>
+            !["title", "updatedAt"].includes(key) &&
+            !isDeepStrictEqual(committed[key], published[key]),
+        ),
+        "top-level recipe fields the publish dropped or changed (#2409)",
       ).toEqual([]);
     });
   });

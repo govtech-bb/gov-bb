@@ -115,5 +115,5 @@ jobs:
           webhook-type: incoming-webhook
           payload: |
             {
-              "text": ":x: *Nightly E2E J2 failed* — form builder publish on sandbox dropped a recipe processor, or the test form is not live / listed\n<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View failed run>"
+              "text": ":x: *Nightly E2E J2 failed* — form builder publish → Deploy PR → form live → listed, on sandbox. The run says which step failed.\n<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View failed run>"
             }

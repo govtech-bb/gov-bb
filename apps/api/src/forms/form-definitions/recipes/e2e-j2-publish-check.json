@@ -1,8 +1,8 @@
 {
   "steps": [
     {
-      "title": "Your details",
       "stepId": "details",
+      "title": "Your details",
       "elements": [
         {
           "ref": "components/first-name",
@@ -34,7 +34,8 @@
             "fieldId": "phone"
           }
         }
-      ]
+      ],
+      "behaviours": []
     },
     {
       "stepId": "declaration",
@@ -63,16 +64,17 @@
       "behaviours": []
     },
     {
-      "title": "Application submitted",
       "stepId": "submission-confirmation",
+      "title": "Application submitted",
       "elements": [],
+      "behaviours": [],
       "markdownContent": "## What happens next\n\nThis is an automated end-to-end test service (#3009). No action is needed."
     }
   ],
   "title": "E2E publish check (test service)",
   "formId": "e2e-j2-publish-check",
   "createdAt": "2026-10-29T00:00:00.000Z",
-  "updatedAt": "2026-10-29T00:00:00.000Z",
+  "updatedAt": "2026-10-29T06:10:00.000Z",
   "processors": [
     {
       "type": "email",
@@ -87,15 +89,22 @@
         "mapping": {
           "programmeCode": "E2E_PUBLISH_CHECK",
           "applicant": {
-            "name": ["details.first-name"],
+            "name": [
+              "details.first-name"
+            ],
             "email": "details.email",
             "phone": "details.phone"
           },
-          "excludeSteps": ["declaration", "submission-confirmation"]
+          "excludeSteps": [
+            "declaration",
+            "submission-confirmation"
+          ]
         }
       }
     }
   ],
   "description": "Internal end-to-end test service for the nightly form builder publish journey (#3009). Not a real government service. Its processors are hand-edited on purpose: the nightly run publishes it from the form builder and fails if the publish drops any of them (#2409). Kept non-public (preview) so it never appears in any citizen-facing listing.",
-  "meta": { "visibility": "preview" }
+  "meta": {
+    "visibility": "preview"
+  }
 }
