@@ -632,6 +632,11 @@ jobs:
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
           exit 1
 
+      # Client bundle budgets (apps/landing/.size-limit.js, #3139). Runs only
+      # when landing is affected, and reuses the build above from the nx cache.
+      - name: Check bundle size budgets
+        run: pnpm exec nx affected -t size
+
   validate-recipes:
     name: Validate Recipes
     runs-on: ubuntu-latest

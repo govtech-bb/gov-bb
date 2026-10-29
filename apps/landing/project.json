@@ -73,6 +73,14 @@
         "cwd": "apps/landing"
       }
     },
+    "size": {
+      "executor": "nx:run-commands",
+      "dependsOn": ["build"],
+      "options": {
+        "command": "pnpm run size",
+        "cwd": "apps/landing"
+      }
+    },
     "test": {
       "executor": "nx:run-commands",
       "inputs": [
