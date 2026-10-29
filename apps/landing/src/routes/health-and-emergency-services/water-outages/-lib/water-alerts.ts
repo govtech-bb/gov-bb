@@ -142,7 +142,9 @@ export const confirmSubscription = createServerFn({ method: 'GET' })
       callTokenEndpoint('confirm', data, { apiBase: formsApiBase() }),
   )
 
-export const unsubscribeSubscription = createServerFn({ method: 'GET' })
+// POST from a button, not a page-load GET: mail scanners that pre-open every
+// link in an email must not unsubscribe the resident.
+export const unsubscribeSubscription = createServerFn({ method: 'POST' })
   .validator((raw: unknown) => (typeof raw === 'string' ? raw : ''))
   .handler(
     async ({ data }): Promise<TokenOutcome> =>

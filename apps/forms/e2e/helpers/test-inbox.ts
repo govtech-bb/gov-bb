@@ -92,15 +92,21 @@ export async function waitForEmail(opts: {
           const key = object.Key;
           if (!key || seen.has(key)) continue;
           if ((object.LastModified?.getTime() ?? 0) < after) continue;
+          let email: Awaited<ReturnType<typeof PostalMime.parse>>;
+          try {
+            const body = await s3.send(
+              new GetObjectCommand({ Bucket: bucket, Key: key }),
+            );
+            if (!body.Body) continue;
+            email = await PostalMime.parse(
+              await body.Body.transformToByteArray(),
+            );
+          } catch (error) {
+            // Transient S3 error or an unreadable message: try it next poll.
+            console.warn(`test inbox: could not read ${key}: ${error}`);
+            continue;
+          }
           seen.add(key);
-
-          const body = await s3.send(
-            new GetObjectCommand({ Bucket: bucket, Key: key }),
-          );
-          if (!body.Body) continue;
-          const email = await PostalMime.parse(
-            await body.Body.transformToByteArray(),
-          );
           const recipients = (email.to ?? [])
             .flatMap((a) => a.group ?? [a])
             .map((a) => a.address.toLowerCase());
