@@ -107,6 +107,39 @@ describe("SubscriptionService.subscribe", () => {
     expect(mailerSend).toHaveBeenCalled();
   });
 
+  it("puts the subscriber's unsubscribe link in the confirm email", async () => {
+    vi.stubEnv("LANDING_BASE_URL", "");
+    const repo = makeRepo();
+    const { service, mailerSend } = makeService(repo);
+
+    await service.subscribe("a@b.com", "all");
+
+    const { unsubscribeToken } = repo.save.mock.calls[0][0];
+    const { html, text } = mailerSend.mock.calls[0][0];
+    const url = `https://alpha.gov.bb/health-and-emergency-services/water-outages/unsubscribe?token=${unsubscribeToken}`;
+    expect(text).toContain(url);
+    // Handlebars escapes "=" in the href.
+    expect(html).toContain(url.replace("=", "&#x3D;"));
+  });
+
+  it("keeps an existing subscriber's unsubscribe token in a re-sent confirm email", async () => {
+    const repo = makeRepo({
+      findOne: vi.fn().mockResolvedValue({
+        id: "id-3",
+        status: WaterSubscriberStatus.UNSUBSCRIBED,
+        confirmToken: "old",
+        unsubscribeToken: "unsub-3",
+      }),
+    });
+    const { service, mailerSend } = makeService(repo);
+
+    await service.subscribe("a@b.com", "all");
+
+    expect(mailerSend.mock.calls[0][0].text).toContain(
+      "/unsubscribe?token=unsub-3",
+    );
+  });
+
   it("re-sends for a pending subscriber without creating a row", async () => {
     const repo = makeRepo({
       findOne: vi.fn().mockResolvedValue({

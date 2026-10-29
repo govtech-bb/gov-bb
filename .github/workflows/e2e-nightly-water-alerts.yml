@@ -1,0 +1,117 @@
+name: E2E Nightly Water Alerts
+
+# Journey 6 (#3013): sign up for water alerts on sandbox landing with a
+# test-inbox address, read the confirmation email from the test inbox (SES
+# inbound → S3), then confirm and unsubscribe through the emailed links.
+# Nightly and off the deploy path. A failure alerts Slack.
+
+on:
+  schedule:
+    # 09:30 UTC = 05:30 in Barbados, clear of the J7 run at 09:00.
+    - cron: "30 9 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: e2e-nightly-water-alerts
+  cancel-in-progress: false
+
+jobs:
+  journey-6:
+    name: Journey 6 (water alerts subscribe → email → confirm → unsubscribe)
+    # The nightly run stays off until the test inbox exists (alpha-infra):
+    # set the repo variable E2E_WATER_ALERTS_ENABLED=true to turn it on. Until
+    # then it would fail closed every night and train people to ignore the
+    # alert. A manual run always goes ahead.
+    if: github.event_name == 'workflow_dispatch' || vars.E2E_WATER_ALERTS_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    # Read the test inbox through a read-only role (OIDC).
+    permissions:
+      contents: read
+      id-token: write
+    timeout-minutes: 20
+    steps:
+      - name: Require the test inbox settings
+        env:
+          ROLE_ARN: ${{ secrets.E2E_INBOX_ROLE_ARN }}
+          INBOX_REGION: ${{ vars.E2E_INBOX_REGION }}
+          INBOX_DOMAIN: ${{ vars.E2E_INBOX_DOMAIN }}
+          INBOX_BUCKET: ${{ vars.E2E_INBOX_BUCKET }}
+        run: |
+          missing=""
+          [ -n "$ROLE_ARN" ] || missing="$missing secret:E2E_INBOX_ROLE_ARN"
+          [ -n "$INBOX_REGION" ] || missing="$missing var:E2E_INBOX_REGION"
+          [ -n "$INBOX_DOMAIN" ] || missing="$missing var:E2E_INBOX_DOMAIN"
+          [ -n "$INBOX_BUCKET" ] || missing="$missing var:E2E_INBOX_BUCKET"
+          if [ -n "$missing" ]; then
+            echo "::error::The test inbox is not configured — missing:$missing"
+            exit 1
+          fi
+      - name: Checkout
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version-file: ".nvmrc"
+          cache: "pnpm"
+      - run: pnpm install --frozen-lockfile
+      - name: Resolve Playwright version
+        id: playwright-version
+        run: |
+          version="$(pnpm --filter @govtech-bb/forms exec playwright --version | awk '{print $2}')"
+          test -n "$version" || { echo "could not resolve playwright version"; exit 1; }
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+      - name: Cache Playwright browsers
+        id: playwright-cache
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-chromium-${{ runner.os }}-${{ steps.playwright-version.outputs.version }}
+      - name: Install Playwright chromium
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        timeout-minutes: 10
+        run: pnpm --filter @govtech-bb/forms exec playwright install chromium
+      - name: Configure AWS credentials (test inbox, read-only)
+        uses: aws-actions/configure-aws-credentials@254c19bd240aabef8777f48595e9d2d7b972184b # v6.2.1
+        with:
+          role-to-assume: ${{ secrets.E2E_INBOX_ROLE_ARN }}
+          aws-region: ${{ vars.E2E_INBOX_REGION }}
+      - name: Run journey 6
+        env:
+          # Required by the smoke config; journey 6 drives landing instead.
+          SMOKE_BASE_URL: https://forms.sandbox.alpha.gov.bb
+          E2E_LANDING_URL: https://landing.sandbox.alpha.gov.bb
+          E2E_INBOX_DOMAIN: ${{ vars.E2E_INBOX_DOMAIN }}
+          E2E_INBOX_BUCKET: ${{ vars.E2E_INBOX_BUCKET }}
+          E2E_INBOX_PREFIX: ${{ vars.E2E_INBOX_PREFIX }}
+        run: >
+          pnpm --filter @govtech-bb/forms exec playwright test
+          --config playwright.smoke.config.ts
+          journey-6-water-alerts.smoke.spec.ts
+      - name: Upload Playwright trace on failure
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: journey-6-water-alerts-trace
+          path: apps/forms/test-results/
+          retention-days: 7
+
+  notify-failure:
+    name: Notify Slack on failure
+    needs: [journey-6]
+    if: always() && needs.journey-6.result == 'failure'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send Slack notification
+        uses: slackapi/slack-github-action@91efab103c0de0a537f72a35f6b8cda0ee76bf0a # v2.1.1
+        with:
+          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
+          webhook-type: incoming-webhook
+          payload: |
+            {
+              "text": ":x: *Nightly E2E J6 failed* — water alerts subscribe → email → confirm → unsubscribe did not complete on sandbox\n<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View failed run>"
+            }

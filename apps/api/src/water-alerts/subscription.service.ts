@@ -54,6 +54,7 @@ export class SubscriptionService {
     const normArea = !area || area === "" ? "all" : area;
 
     let confirmToken: string;
+    let unsubscribeToken: string;
     try {
       const existing = await this.subscribers.findOne({
         where: { email: normEmail, area: normArea },
@@ -67,6 +68,7 @@ export class SubscriptionService {
       if (existing?.status === WaterSubscriberStatus.UNSUBSCRIBED) {
         // They left before; let them back in with a fresh confirm code.
         confirmToken = randomUUID();
+        unsubscribeToken = existing.unsubscribeToken;
         await this.subscribers.update(existing.id, {
           status: WaterSubscriberStatus.PENDING,
           confirmToken,
@@ -75,15 +77,17 @@ export class SubscriptionService {
       } else if (existing) {
         // status === pending: reuse the existing code and re-send the email.
         confirmToken = existing.confirmToken;
+        unsubscribeToken = existing.unsubscribeToken;
       } else {
         // Brand new sign-up.
         confirmToken = randomUUID();
+        unsubscribeToken = randomUUID();
         await this.subscribers.save(
           this.subscribers.create({
             email: normEmail,
             area: normArea,
             confirmToken,
-            unsubscribeToken: randomUUID(),
+            unsubscribeToken,
           } as Partial<WaterSubscriberEntity>),
         );
       }
@@ -97,7 +101,12 @@ export class SubscriptionService {
       throw err;
     }
 
-    const emailSent = await this.sendConfirm(normEmail, normArea, confirmToken);
+    const emailSent = await this.sendConfirm(
+      normEmail,
+      normArea,
+      confirmToken,
+      unsubscribeToken,
+    );
     if (!emailSent) {
       throw new ServiceUnavailableException(
         "We couldn't send your confirmation email. Please try signing up again.",
@@ -146,11 +155,16 @@ export class SubscriptionService {
     to: string,
     area: string,
     confirmToken: string,
+    unsubscribeToken: string,
   ): Promise<boolean> {
     const confirmUrl = `${landingOrigin()}${WATER_OUTAGES_PATH}/confirm?token=${confirmToken}`;
+    // In the confirm email too, so a resident can stop alerts before the first
+    // one arrives (and the nightly E2E journey can clean up after itself).
+    const unsubscribeUrl = `${landingOrigin()}${WATER_OUTAGES_PATH}/unsubscribe?token=${unsubscribeToken}`;
     const { subject, html, text } = buildConfirmEmail(
       areaLabelFor(area),
       confirmUrl,
+      unsubscribeUrl,
     );
     try {
       await this.mailer.sendSimple({ to, subject, html, text });
