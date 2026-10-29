@@ -8,8 +8,8 @@ import { defineConfig } from "vitest/config";
  * replaced rather than appended to — merging would run every unit test again
  * under a 60-second timeout and call the result "e2e".
  *
- * It is a different bargain from the unit suite. That one runs anywhere and
- * gates CI; this one needs a database and proves what PGlite cannot — that
+ * It is a different bargain from the unit suite. That one runs anywhere; this
+ * one needs a database and proves what PGlite cannot — that
  * the DDL runs on a real server, that `timestamptz(3)` round-trips through
  * the node-postgres driver rather than through WASM that happens to round the
  * same way, and that the process boots and serves over HTTP rather than only
@@ -17,7 +17,8 @@ import { defineConfig } from "vitest/config";
  *
  * The parts that need a database skip themselves when `DB_HOST` is unset, so
  * `nx run api_v2:e2e` is honest on a laptop with no Postgres running instead
- * of failing on infrastructure.
+ * of failing on infrastructure. CI's Test job runs it against its Postgres
+ * service and fails on any skipped test (#3137), so a skip never passes there.
  */
 export default defineConfig({
   test: {
