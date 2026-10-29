@@ -22,6 +22,7 @@ import {
   createTestApp,
   createTestDb,
   createTestServices,
+  SELF_APPROVAL,
   expectOk,
   TEST_EDITOR,
   TEST_EMPLOYEE,
@@ -37,7 +38,9 @@ let services: ReturnType<typeof createTestServices>;
 
 beforeEach(async () => {
   ({ db, close } = await createTestDb());
-  services = createTestServices(db);
+  // Fixtures are set up as AUTH_BYPASS would, so only the app under test
+  // holds an approver to the self-approval rule.
+  services = createTestServices(db, SELF_APPROVAL);
   // The cookie names the fixture; its roles come from the database.
   app = await createTestApp(db, {
     sessions: {
@@ -111,7 +114,13 @@ describe("a page's visibility", () => {
   });
 
   it("is changed by an approver, and the change is recorded against them", async () => {
-    const page = await seedPage({ visibility: "preview" });
+    // Written by someone else, so making it public is the approver's review.
+    const page = expectOk(
+      await services.editing.create(
+        aPage({ visibility: "preview" }),
+        TEST_EDITOR,
+      ),
+    );
 
     const response = await as(TEST_EMPLOYEE, {
       method: "PUT",

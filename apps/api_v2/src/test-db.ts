@@ -20,7 +20,7 @@ import { PostgresCollections } from "./adapters/postgres-collections";
 import { PostgresPages } from "./adapters/postgres-pages";
 import { PostgresRoles } from "./adapters/postgres-roles";
 import { buildApp, type AppOptions } from "./app";
-import type { Database } from "./db";
+import { ping, type Database } from "./db";
 import { ROLES, UserId, type Employee } from "./modules/auth";
 import { ok, type Result } from "./modules/result";
 import { EditorAccess, type SessionReader } from "./services/editor-access";
@@ -29,6 +29,7 @@ import { CategoryEditing } from "./services/category-editing";
 import { CollectionEditing } from "./services/collection-editing";
 import { PageEditing } from "./services/page-editing";
 import { PageResolution } from "./services/page-resolution";
+import type { ReviewNotifier } from "./services/review-notifications";
 import { SiteNavigation } from "./services/site-navigation";
 
 declare module "vitest" {
@@ -108,15 +109,26 @@ export async function createEmptyDb(): Promise<TestDb> {
   return createDatabase(inject("templateDatabase").replace(/template$/, ""));
 }
 
+/**
+ * Content services that let an approver make public what they wrote, as
+ * AUTH_BYPASS does: for setting up fixtures, and for tests about something
+ * other than review (ADR 0079).
+ */
+export const SELF_APPROVAL = { allowSelfApproval: true } as const;
+
 /** Compose the content services over a test database, as main.ts does over its pool. */
-export function createTestServices(db: Database) {
+export function createTestServices(
+  db: Database,
+  review: ConstructorParameters<typeof PageEditing>[2] = {
+    allowSelfApproval: false,
+  },
+  notifier?: ReviewNotifier,
+) {
   const pages = new PostgresPages(db);
   return {
     resolution: new PageResolution(pages),
     navigation: new SiteNavigation(pages),
-    editing: new PageEditing(pages, () => new Date(), {
-      allowSelfApproval: false,
-    }),
+    editing: new PageEditing(pages, () => new Date(), review, notifier),
     index: new EditorIndex(pages),
     categories: new CategoryEditing(pages, () => new Date()),
     collections: new CollectionEditing(new PostgresCollections(db)),
@@ -177,15 +189,23 @@ export const TEST_HEADERS = {
 export async function createTestApp(
   db: Database,
   options: Partial<
-    Pick<AppOptions, "auth" | "config" | "logger" | "previewSecret">
+    Pick<AppOptions, "auth" | "config" | "logger" | "previewSecret" | "ready">
   > & {
     sessions?: SessionReader;
+    /** Let an approver make public what they changed, as AUTH_BYPASS does. */
+    allowSelfApproval?: boolean;
+    /** Who hears of review steps; nobody by default, as with notifications off. */
+    notifier?: ReviewNotifier;
   } = {},
 ) {
   await registerTestEmployees(db);
   const roles = new PostgresRoles(db);
   return buildApp({
-    ...createTestServices(db),
+    ...createTestServices(
+      db,
+      { allowSelfApproval: options.allowSelfApproval ?? false },
+      options.notifier,
+    ),
     access: new EditorAccess(
       options.sessions ?? { findSession: async () => ok(TEST_EMPLOYEE) },
       roles,
@@ -198,6 +218,7 @@ export async function createTestApp(
     config: options.config ?? TEST_HTTP_CONFIG,
     ...(options.logger ? { logger: options.logger } : {}),
     ...(options.previewSecret ? { previewSecret: options.previewSecret } : {}),
+    ready: options.ready ?? (() => ping(db)),
   });
 }
 

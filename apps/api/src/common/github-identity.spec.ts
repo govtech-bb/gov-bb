@@ -176,4 +176,30 @@ describe("authorizeGitHubToken", () => {
       /permission check failed/,
     );
   });
+
+  it("gives every GitHub call a timeout so a stalled GitHub can't hang the request (#2902)", async () => {
+    process.env.NODE_ENV = "production";
+    process.env.GITHUB_ORG = "govtech-bb";
+    process.env.GITHUB_TEAM_SLUG = "flag-admins";
+    const fetchMock = vi.fn((url: string, _init?: RequestInit) => {
+      const body = url.endsWith("/user")
+        ? { login: "octocat" }
+        : { permission: "write" };
+      const status = url.includes("/memberships/") ? 404 : 200;
+      return Promise.resolve({
+        ok: status === 200,
+        status,
+        json: () => Promise.resolve(body),
+      } as Response);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    expect(await authorizeGitHubToken("good")).toBe("octocat");
+
+    // /user, team membership, repo permission.
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    for (const [, init] of fetchMock.mock.calls) {
+      expect(init?.signal).toBeInstanceOf(AbortSignal);
+    }
+  });
 });

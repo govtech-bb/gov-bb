@@ -78,15 +78,18 @@ export class NotApprover extends Error {
   }
 }
 
-/** An approver deciding on a revision they changed or submitted (ADR 0079). */
+/**
+ * An approver deciding on a revision they changed or submitted, or making
+ * public content they changed since the page was last public (ADR 0079).
+ */
 export class SelfApproval extends Error {
   /** Stable protocol-projection discriminator. */
   readonly _tag = "SelfApproval";
   /** Say who can decide instead. */
-  constructor() {
-    super(
-      "You can't approve or reject a change you made or submitted. Ask another approver.",
-    );
+  constructor(
+    message = "You can't approve or reject a change you made or submitted. Ask another approver.",
+  ) {
+    super(message);
   }
 }
 

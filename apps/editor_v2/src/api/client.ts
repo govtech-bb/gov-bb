@@ -28,6 +28,14 @@ export type SavePageInput = Json<paths["/pages/{id}"]["put"]["requestBody"]>;
 /** A public page's change waiting for an approver, with what it changes. */
 export type ApiRevision = Json<paths["/pages/{id}/revision"]["get"]["responses"][200]>;
 
+/** A change waiting for an approver, as the review queue lists it. */
+export type ReviewQueueEntry = Json<
+  paths["/revisions"]["get"]["responses"][200]
+>["revisions"][number];
+
+/** What rejecting a change sends: why, for the editor. */
+type RejectRevisionInput = Json<paths["/pages/{id}/revision/reject"]["post"]["requestBody"]>;
+
 /** One row of the services list. */
 export type ServiceSummary = Json<paths["/services"]["get"]["responses"][200]>[number];
 
@@ -205,7 +213,7 @@ const ok = <Value>(value: Value) => ({ ok: true, value }) as const;
 const failed = <Failure extends Error>(error: Failure) => ({ ok: false, error }) as const;
 
 // JSON's text: any other JSON value, even a number, reads as something different
-const isText = (value: unknown): value is string => String(value) === value;
+export const isText = (value: unknown): value is string => String(value) === value;
 
 const isFlag = (value: unknown): value is boolean => value === true || value === false;
 
@@ -285,7 +293,7 @@ export function createEditorApi(apiOrigin: string, landingOrigin?: string) {
   async function request(
     method: "GET" | "POST" | "PUT" | "DELETE",
     path: string,
-    body?: CreatePageInput | SavePageInput | CategoryFields | CategoryOrder,
+    body?: CreatePageInput | SavePageInput | CategoryFields | CategoryOrder | RejectRevisionInput,
     ifUpdatedAt?: string,
   ) {
     const headers = new Headers();
@@ -498,6 +506,20 @@ export function createEditorApi(apiOrigin: string, landingOrigin?: string) {
       (await send("PUT", `/pages/${id}`, fields, ifUpdatedAt)).json(),
     submitRevision: async (id: string, ifUpdatedAt: string): Promise<ApiRevision> =>
       (await send("POST", `/pages/${id}/revision/submit`, undefined, ifUpdatedAt)).json(),
+    /** The changes waiting for an approver, the longest-waiting first. */
+    reviewQueue: async () =>
+      (await read<{ revisions: ReviewQueueEntry[] }>("/revisions?status=submitted")).revisions,
+    revision: (id: string) => read<ApiRevision>(`/pages/${id}/revision`),
+    /** Publishes the change at the version the approver reviewed, `ifUpdatedAt`. */
+    publishRevision: async (id: string, ifUpdatedAt: string): Promise<ApiPage> =>
+      (await send("POST", `/pages/${id}/revision/publish`, undefined, ifUpdatedAt)).json(),
+    /** Rejects the change at the version the approver reviewed, `ifUpdatedAt`, telling the editor why. */
+    rejectRevision: async (
+      id: string,
+      comment: string,
+      ifUpdatedAt: string,
+    ): Promise<ApiRevision> =>
+      (await send("POST", `/pages/${id}/revision/reject`, { comment }, ifUpdatedAt)).json(),
     deletePage: async (id: string) => {
       await send("DELETE", `/pages/${id}`);
     },

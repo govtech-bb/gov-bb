@@ -76,3 +76,69 @@ test("leaves the close button off an alert dialog, which waits for an answer", a
   expect(document.querySelector('[role="alertdialog"]')).not.toBeNull();
   expect(document.querySelector('[aria-label="Close"]')).toBeNull();
 });
+
+test("while its work is pending, Esc, a click outside and its close button wait for it", async () => {
+  const onOpenChange = vi.fn();
+
+  const dialog = (pending: boolean) => (
+    <Dialog.Root defaultOpen onOpenChange={onOpenChange}>
+      <Dialog.Content pending={pending} closeLabel="Close create a service">
+        <Dialog.Header>
+          <Dialog.Title>Create a service</Dialog.Title>
+        </Dialog.Header>
+        <Dialog.Body>
+          <input aria-label="Name" />
+        </Dialog.Body>
+      </Dialog.Content>
+    </Dialog.Root>
+  );
+
+  const escape = () =>
+    act(async () => {
+      document
+        .querySelector('[role="dialog"]')!
+        .dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    });
+
+  // A press on the dimmed page, as a pointer makes it
+  const outside = () =>
+    act(async () => {
+      const backdrop = document.querySelector<HTMLElement>('[role="presentation"]')!;
+
+      for (const type of ["pointerdown", "mousedown", "pointerup", "mouseup", "click"])
+        backdrop.dispatchEvent(
+          new MouseEvent(type, { bubbles: true, cancelable: true, button: 0 }),
+        );
+    });
+
+  await render(dialog(true));
+  expect(
+    document.querySelector<HTMLButtonElement>('[aria-label="Close create a service"]')!.disabled,
+  ).toBe(true);
+  await escape();
+  await outside();
+  expect(onOpenChange).not.toHaveBeenCalled();
+  expect(document.querySelector('[role="dialog"]')).not.toBeNull();
+
+  // Done, it closes as any dialog does
+  await render(dialog(false));
+  await outside();
+  expect(onOpenChange).toHaveBeenCalledWith(false, expect.anything());
+});
+
+test("its body stacks fields 16px apart, the foundations' field to field", async () => {
+  await render(
+    <Dialog.Root defaultOpen>
+      <Dialog.Content>
+        <Dialog.Body>
+          <input aria-label="Name" />
+        </Dialog.Body>
+      </Dialog.Content>
+    </Dialog.Root>,
+  );
+
+  const body = document.querySelector('[aria-label="Name"]')!.parentElement!;
+
+  expect(body.classList).toContain("flex-col");
+  expect(body.classList).toContain("gap-4");
+});

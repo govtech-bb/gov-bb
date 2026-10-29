@@ -6,7 +6,11 @@ import {
   type ServiceDetail,
   type ServiceSummary,
 } from "../modules/estate-services";
-import type { ContentStoreUnavailable, PageId } from "../modules/page";
+import type {
+  ContentStoreUnavailable,
+  PageId,
+  ReviewQueueEntry,
+} from "../modules/page";
 import { ok, type Result } from "../modules/result";
 
 /** The change log's size and newest timestamp. */
@@ -26,6 +30,10 @@ export interface IndexReads {
   >;
   /** The change log's size and newest timestamp. */
   changeLogVersion(): Promise<Result<EstateVersion, ContentStoreUnavailable>>;
+  /** Every revision waiting for review, the longest-waiting first. */
+  submittedRevisions(): Promise<
+    Result<ReviewQueueEntry[], ContentStoreUnavailable>
+  >;
 }
 
 /** What the editor's index lists, and the token it polls to know when to refetch. */
@@ -56,5 +64,10 @@ export class EditorIndex {
    */
   version(): Promise<Result<EstateVersion, ContentStoreUnavailable>> {
     return this.reads.changeLogVersion();
+  }
+
+  /** The changes waiting for an approver, the longest-waiting first. */
+  reviewQueue(): Promise<Result<ReviewQueueEntry[], ContentStoreUnavailable>> {
+    return this.reads.submittedRevisions();
   }
 }

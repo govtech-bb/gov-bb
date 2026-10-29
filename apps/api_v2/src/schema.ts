@@ -1,5 +1,5 @@
 /**
- * The Drizzle schema, matching migrations `001_init` to `014_data_collections`
+ * The Drizzle schema, matching migrations `001_init` to `015_revision_discarded`
  * applied in order, table for table and column for column. BetterAuth reads
  * and writes its four `auth_*` tables through these definitions; their
  * property keys are BetterAuth's field names.
@@ -55,6 +55,7 @@ export const changeAction = pgEnum("change_action", [
   "submitted",
   "rejected",
   "approved",
+  "discarded",
 ]);
 
 const timestamps = {
@@ -354,7 +355,7 @@ export const pageRevisions = pgTable(
   (table) => [
     check(
       "page_revisions_status_check",
-      sql`${table.status} in ('draft', 'submitted', 'rejected', 'published')`,
+      sql`${table.status} in ('draft', 'submitted', 'rejected', 'published', 'discarded')`,
     ),
     uniqueIndex("page_revisions_open_page_id_key")
       .on(table.pageId)

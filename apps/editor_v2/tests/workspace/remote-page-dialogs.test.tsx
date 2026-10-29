@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, expect, test, vi } from "vitest";
+import type { Category } from "../../src/api/categories";
 import { createEditorApi, type ServiceDetail } from "../../src/api/client";
 import { categoriesQuery } from "../../src/api/queries";
 import type { PageDocument } from "../../src/workspace/model";
@@ -11,6 +12,7 @@ import {
   CreateRemoteServiceDialog,
   DeleteRemotePageDialog,
 } from "../../src/workspace/remote-page-dialogs";
+import { shownText } from "../helpers/shown-text";
 
 afterEach(() => {
   document.body.replaceChildren();
@@ -73,13 +75,14 @@ test.each(["service", "start", "supporting"] as const)(
       root.render(
         <QueryClientProvider client={client}>
           {kind === "service" ? (
-            <CreateRemoteServiceDialog api={api} close={() => {}} done={done} />
+            <CreateRemoteServiceDialog api={api} open onClose={() => {}} onDone={done} />
           ) : (
             <CreateRemotePageDialog
               api={api}
               detail={{ service, pages: [] }}
-              close={() => {}}
-              done={done}
+              open
+              onClose={() => {}}
+              onDone={done}
             />
           )}
         </QueryClientProvider>,
@@ -140,9 +143,10 @@ test("deleting a page asks in an alert dialog, which can't be closed while the p
       <QueryClientProvider client={new QueryClient()}>
         <DeleteRemotePageDialog
           api={createEditorApi("https://api.example.invalid")}
+          open
           page={page}
-          close={close}
-          done={() => {}}
+          onClose={close}
+          onDone={() => {}}
         />
       </QueryClientProvider>,
     ),
@@ -151,7 +155,7 @@ test("deleting a page asks in an alert dialog, which can't be closed while the p
   const dialog = document.querySelector<HTMLElement>('[role="alertdialog"]')!;
 
   const button = (name: string) =>
-    [...dialog.querySelectorAll("button")].find((item) => item.textContent === name)!;
+    [...dialog.querySelectorAll("button")].find((item) => shownText(item) === name)!;
 
   expect(dialog.textContent).toContain("Delete this page?");
   await act(async () => button("Delete page").click());
@@ -228,9 +232,10 @@ test("adding a page the API refuses (403) shows the API's reason", async () => {
       <QueryClientProvider client={new QueryClient()}>
         <CreateRemotePageDialog
           api={createEditorApi("https://api.example.invalid")}
+          open
           detail={detail}
-          close={() => {}}
-          done={() => {}}
+          onClose={() => {}}
+          onDone={() => {}}
         />
       </QueryClientProvider>,
     ),
@@ -238,7 +243,7 @@ test("adding a page the API refuses (403) shows the API's reason", async () => {
 
   // A start page needs no title, so the dialog can be sent as it opens
   const add = [...document.querySelectorAll("button")].find(
-    (item) => item.textContent === "Add page",
+    (item) => shownText(item) === "Add page",
   )!;
 
   await act(async () => add.click());
@@ -248,5 +253,90 @@ test("adding a page the API refuses (403) shows the API's reason", async () => {
     ),
   );
   expect(document.body.textContent).not.toContain("The page could not be created");
+  await act(async () => root.unmount());
+});
+
+test("a service on its way can't be cancelled, so none is made after the author has let it go", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+
+  const family: Category = {
+    id: "00000000-0000-4000-8000-000000000099",
+    parent_id: null,
+    slug: "family",
+    title: "Family",
+    description: null,
+    url: "/family",
+    position: 0,
+    services: 0,
+    reserved_route: false,
+    updated_at: "2026-10-28T12:00:00.000Z",
+  };
+
+  const created = Promise.withResolvers<Response>();
+
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (url: string, init?: RequestInit) =>
+      init?.method === "POST" ? created.promise : Response.json({ categories: [family] }),
+    ),
+  );
+
+  const close = vi.fn();
+  const done = vi.fn();
+  const root = createRoot(document.body.appendChild(document.createElement("div")));
+
+  await act(async () =>
+    root.render(
+      <QueryClientProvider client={new QueryClient()}>
+        <CreateRemoteServiceDialog
+          api={createEditorApi("https://api.example.invalid")}
+          open
+          onClose={close}
+          onDone={done}
+        />
+      </QueryClientProvider>,
+    ),
+  );
+
+  const dialog = document.querySelector<HTMLElement>('[role="dialog"]')!;
+
+  const button = (name: string) =>
+    [...dialog.querySelectorAll("button")].find(
+      (item) => shownText(item) === name || item.getAttribute("aria-label") === name,
+    )!;
+
+  // Types or chooses as a browser would: React reads the new value from the event
+  const enter = (field: HTMLInputElement | HTMLSelectElement, value: string) =>
+    act(async () => {
+      const prototype = field instanceof HTMLSelectElement ? HTMLSelectElement : HTMLInputElement;
+
+      Object.getOwnPropertyDescriptor(prototype.prototype, "value")!.set!.call(field, value);
+      field.dispatchEvent(
+        new Event(field instanceof HTMLSelectElement ? "change" : "input", { bubbles: true }),
+      );
+    });
+
+  const submit = dialog.querySelector<HTMLButtonElement>('button[type="submit"]')!;
+
+  await vi.waitFor(() =>
+    expect(dialog.querySelector("option[value]:not([value=''])")).not.toBeNull(),
+  );
+  await enter(dialog.querySelector("input")!, "Register a birth");
+  await enter(dialog.querySelector("select")!, family.id);
+  expect(shownText(submit)).toBe("Create service");
+  await act(async () => submit.click());
+  await vi.waitFor(() => expect(shownText(submit)).toBe("Creating service…"));
+
+  // Cancel, the close button and Esc all wait for the answer
+  expect(button("Cancel").disabled).toBe(true);
+  expect(button("Close").disabled).toBe(true);
+  await act(async () => {
+    dialog.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+  });
+  expect(close).not.toHaveBeenCalled();
+
+  await act(async () => created.resolve(Response.json({ id: "register-a-birth" })));
+  await vi.waitFor(() => expect(done).toHaveBeenCalledWith("register-a-birth"));
+  expect(close).not.toHaveBeenCalled();
   await act(async () => root.unmount());
 });

@@ -20,6 +20,7 @@ import {
   createTestApp,
   createTestDb,
   createTestServices,
+  SELF_APPROVAL,
   expectOk,
   TEST_EDITOR,
   TEST_EMPLOYEE,
@@ -42,7 +43,9 @@ let services: ReturnType<typeof createTestServices>;
 
 beforeEach(async () => {
   ({ db, close } = await createTestDb());
-  services = createTestServices(db);
+  // Fixtures are set up as AUTH_BYPASS would, so only the app under test
+  // holds an approver to the self-approval rule.
+  services = createTestServices(db, SELF_APPROVAL);
   await db.execute(
     sql`insert into auth_user (id, name, email, "emailVerified")
         values (${APPROVER.id}, ${APPROVER.name}, ${APPROVER.email}, true)`,
@@ -859,24 +862,230 @@ describe("a revision changed after the approver read it", () => {
   );
 });
 
-describe("saving a page whose revision is waiting for review", () => {
-  it("409s with a plain message, and the revision is unchanged", async () => {
+describe("saving a page whose revision is waiting for review (#3203)", () => {
+  it("updates that revision in place: it stays submitted, and the saver joins its contributors", async () => {
     const { page, version } = await submitted();
+    const [before] = await revisions();
+
+    const response = await save(
+      TEST_EMPLOYEE,
+      { ...page, updated_at: version },
+      { title: "One more thing" },
+    );
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      title: "One more thing",
+      pending_revision: { status: "submitted", comment: null },
+    });
+    expect(response.json().updated_at > version).toBe(true);
+    const after = await revisions();
+    expect(after).toHaveLength(1);
+    expect(after[0]).toMatchObject({
+      id: before?.id,
+      status: "submitted",
+      submittedBy: TEST_EDITOR.id,
+      createdBy: TEST_EDITOR.id,
+      contributors: [TEST_EDITOR.id, TEST_EMPLOYEE.id],
+      fields: { title: "One more thing" },
+    });
+    // Saving to it is not a review step, and the live page is unchanged.
+    expect(await events()).toEqual([
+      { action: "created", actor: TEST_EMPLOYEE.id },
+      { action: "submitted", actor: TEST_EDITOR.id },
+    ]);
+    expect(await stored(page.id)).toEqual(page);
+  });
+
+  it("is refused when the revision has moved on since the editor read it", async () => {
+    const { page, version } = await submitted();
+    await save(TEST_EDITOR, { ...page, updated_at: version }, { title: "1" });
     const before = await revisions();
 
     const response = await save(
       TEST_EDITOR,
       { ...page, updated_at: version },
-      { title: "One more thing" },
+      { title: "Lost?" },
     );
 
     expect(response.statusCode).toBe(409);
+    expect(response.json().error).toBe("conflict");
+    expect(await revisions()).toEqual(before);
+  });
+
+  it("is refused with a 428 without the version the editor read, and nothing changes", async () => {
+    const { page } = await submitted();
+    const before = await revisions();
+
+    const response = await as(TEST_EDITOR, {
+      method: "PUT",
+      url: `/pages/${page.id}`,
+      payload: withDefaults(
+        aPage({ category_id: page.category_id, title: "Blind save" }),
+      ),
+    });
+
+    expect(response.statusCode).toBe(428);
     expect(response.json()).toEqual({
-      error: "under_review",
+      error: "precondition_required",
       message:
-        "This change is waiting for review. You can save more changes once an approver publishes or rejects it.",
+        "This change is waiting for review. Send the updated_at you last read in the if-updated-at header.",
     });
     expect(await revisions()).toEqual(before);
+  });
+
+  it.each(["publish", "reject"] as const)(
+    "409s an approver who would %s the version they read before it, and nothing changes",
+    async (step) => {
+      const { page, version: read } = await submitted();
+      await save(
+        TEST_EDITOR,
+        { ...page, updated_at: read },
+        { title: "Changed while waiting" },
+      );
+      const before = await revisions();
+
+      const response = await review(APPROVER, page.id, step, {
+        version: read,
+      });
+
+      expect(response.statusCode).toBe(409);
+      expect(response.json().error).toBe("conflict");
+      expect(await revisions()).toEqual(before);
+      expect(await stored(page.id)).toEqual(page);
+    },
+  );
+
+  it("lets an approver publish the latest version once they have loaded it", async () => {
+    const { page, version } = await submitted();
+    await save(
+      TEST_EDITOR,
+      { ...page, updated_at: version },
+      { title: "Changed while waiting" },
+    );
+
+    const response = await review(APPROVER, page.id, "publish");
+
+    expect(response.statusCode).toBe(200);
+    expect((await stored(page.id))?.title).toBe("Changed while waiting");
+  });
+
+  it.each(["publish", "reject"] as const)(
+    "refuses to let an approver who saved to it %s it",
+    async (step) => {
+      const { page, version } = await submitted();
+      // An approver who also edits, saving after the editor submitted.
+      await save(
+        TEST_EMPLOYEE,
+        { ...page, updated_at: version },
+        { title: "Approver's fix" },
+      );
+
+      const response = await review(TEST_EMPLOYEE, page.id, step);
+
+      expect(response.statusCode).toBe(403);
+      expect(response.json().message).toMatch(/you made or submitted/);
+      expect((await revisions())[0]?.status).toBe("submitted");
+    },
+  );
+});
+
+describe("unpublishing a page whose revision is waiting for review (#3203)", () => {
+  it("changes only its visibility, and discards the revision, recording that in its history", async () => {
+    const { page, version } = await submitted();
+
+    const response = await save(
+      TEST_EMPLOYEE,
+      { ...page, updated_at: version },
+      {
+        visibility: "preview",
+        title: "Severance pay",
+        body_markdown: "Rewritten\n\n## Costs\n\nTwenty dollars",
+      },
+    );
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      title: page.title,
+      body_markdown: page.body_markdown,
+      visibility: "preview",
+      pending_revision: null,
+    });
+    expect(await stored(page.id)).toEqual({
+      ...page,
+      visibility: "preview",
+      updated_at: response.json().updated_at,
+    });
+    expect(await revisions()).toMatchObject([
+      {
+        status: "discarded",
+        submittedBy: TEST_EDITOR.id,
+        decidedBy: TEST_EMPLOYEE.id,
+      },
+    ]);
+    expect(
+      (await as(TEST_EDITOR, { url: `/pages/${page.id}/revision` })).statusCode,
+    ).toBe(404);
+    expect((await app.inject({ url: `/pages?url=${ENTRY}` })).statusCode).toBe(
+      404,
+    );
+    expect(await events()).toEqual([
+      { action: "created", actor: TEST_EMPLOYEE.id },
+      { action: "submitted", actor: TEST_EDITOR.id },
+      { action: "discarded", actor: TEST_EMPLOYEE.id },
+      { action: "unpublished", actor: TEST_EMPLOYEE.id },
+    ]);
+  });
+
+  it("can't put the discarded content live by making the page public again", async () => {
+    const { page, version } = await submitted();
+    const hidden = (
+      await save(
+        TEST_EMPLOYEE,
+        { ...page, updated_at: version },
+        { visibility: "preview" },
+      )
+    ).json();
+
+    // Sent with only the visibility changed, as the editor sends it.
+    const shown = await save(TEST_EMPLOYEE, hidden, {
+      title: hidden.title,
+      body_markdown: hidden.body_markdown,
+    });
+
+    expect(shown.statusCode).toBe(200);
+    expect(shown.json()).toMatchObject({
+      title: page.title,
+      body_markdown: page.body_markdown,
+      visibility: "public",
+      pending_revision: null,
+    });
+    const site = await app.inject({ url: `/pages?url=${ENTRY}` });
+    expect(site.statusCode).toBe(200);
+    expect(JSON.stringify(site.json())).not.toContain("Twenty dollars");
+    expect((await stored(page.id))?.body_markdown).not.toContain(
+      "Twenty dollars",
+    );
+    expect(
+      (await as(TEST_EDITOR, { url: `/pages/${page.id}/revision` })).statusCode,
+    ).toBe(404);
+    expect((await revisions()).map(({ status }) => status)).toEqual([
+      "discarded",
+    ]);
+  });
+
+  it("is refused to an editor, and the revision still waits", async () => {
+    const { page, version } = await submitted();
+
+    const response = await save(
+      TEST_EDITOR,
+      { ...page, updated_at: version },
+      { visibility: "preview" },
+    );
+
+    expect(response.statusCode).toBe(403);
+    expect(await stored(page.id)).toEqual(page);
+    expect((await revisions())[0]?.status).toBe("submitted");
   });
 });
 
@@ -895,5 +1104,321 @@ describe("the revision's changes", () => {
     expect(response.json().changes).toEqual([
       { field: "frontmatter", live: {}, proposed: { lede: "New lede" } },
     ]);
+  });
+});
+
+describe("making a page public (#3201)", () => {
+  // Both approvers here edit too, so either can write what the other reviews.
+  beforeEach(async () => {
+    await db.execute(
+      sql`insert into user_roles (user_id, role) values (${APPROVER.id}, 'editor')`,
+    );
+  });
+
+  /** Save the page as `employee` reads it, with `changes` over its fields. */
+  const edit = async (
+    employee: Employee,
+    pageId: string,
+    changes: Record<string, unknown>,
+  ) => {
+    const page = (await as(employee, { url: `/pages/${pageId}` })).json();
+    return as(employee, {
+      method: "PUT",
+      url: `/pages/${pageId}`,
+      headers: { [IF_UPDATED_AT]: page.updated_at },
+      payload: {
+        url: page.url,
+        category_id: page.category_id,
+        parent_id: page.parent_id,
+        title: page.title,
+        description: page.description,
+        visibility: page.visibility,
+        form_id: page.form_id,
+        body_markdown: page.body_markdown,
+        frontmatter: page.frontmatter,
+        ...changes,
+      },
+    });
+  };
+  const CHANGED_SINCE_PUBLIC = {
+    error: "forbidden",
+    message:
+      "You changed this page since it was last public, so another approver needs to make it public.",
+  };
+  const lastEvent = async (pageId: string) =>
+    (
+      await db
+        .select({ action: changeEvents.action, actor: changeEvents.actor })
+        .from(changeEvents)
+        .where(eq(changeEvents.entityId, pageId))
+        .orderBy(changeEvents.versionNo)
+    ).at(-1);
+
+  it("refuses an approver who took it out of public view and edited it, so another approver reviews it", async () => {
+    const page = await seedPage();
+    expect(
+      (await edit(APPROVER, page.id, { visibility: "draft" })).statusCode,
+    ).toBe(200);
+    expect(
+      (await edit(APPROVER, page.id, { title: "Unreviewed" })).statusCode,
+    ).toBe(200);
+    const before = await stored(page.id);
+
+    const refused = await edit(APPROVER, page.id, { visibility: "public" });
+
+    expect(refused.statusCode).toBe(403);
+    expect(refused.json()).toEqual(CHANGED_SINCE_PUBLIC);
+    expect(await stored(page.id)).toEqual(before);
+
+    const reviewed = await edit(TEST_EMPLOYEE, page.id, {
+      visibility: "public",
+    });
+    expect(reviewed.statusCode).toBe(200);
+    expect(reviewed.json()).toMatchObject({
+      visibility: "public",
+      title: "Unreviewed",
+    });
+    expect(await lastEvent(page.id)).toEqual({
+      action: "published",
+      actor: TEST_EMPLOYEE.id,
+    });
+  });
+
+  it("refuses content changed in the save that makes it public, and writes nothing", async () => {
+    const page = expectOk(
+      await services.editing.create(
+        aPage({ visibility: "preview" }),
+        TEST_EDITOR,
+      ),
+    );
+
+    const refused = await edit(APPROVER, page.id, {
+      visibility: "public",
+      title: "Slipped in",
+    });
+
+    expect(refused.statusCode).toBe(403);
+    expect(refused.json()).toEqual(CHANGED_SINCE_PUBLIC);
+    expect(await stored(page.id)).toEqual(page);
+    expect(
+      (await edit(APPROVER, page.id, { visibility: "public" })).json(),
+    ).toMatchObject({ visibility: "public", title: page.title });
+  });
+
+  it("lets an approver make public what someone else changed, though they changed its visibility", async () => {
+    const page = await seedPage();
+    await edit(APPROVER, page.id, { visibility: "draft" });
+    await edit(TEST_EDITOR, page.id, { title: "The editor's" });
+    await edit(APPROVER, page.id, { visibility: "preview" });
+
+    const response = await edit(APPROVER, page.id, { visibility: "public" });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      visibility: "public",
+      title: "The editor's",
+    });
+  });
+
+  it("counts only changes since the page was last public", async () => {
+    const page = expectOk(
+      await services.editing.create(aPage({ visibility: "draft" }), APPROVER),
+    );
+    // They wrote it, and it has never been public.
+    expect(
+      (await edit(APPROVER, page.id, { visibility: "public" })).statusCode,
+    ).toBe(403);
+    expect(
+      (await edit(TEST_EMPLOYEE, page.id, { visibility: "public" })).statusCode,
+    ).toBe(200);
+    await edit(APPROVER, page.id, { visibility: "draft" });
+
+    // What they wrote was approved when it went public.
+    const response = await edit(APPROVER, page.id, { visibility: "public" });
+
+    expect(response.statusCode).toBe(200);
+  });
+
+  it("doesn't count review steps, a discarded revision's included, as changes", async () => {
+    const { page } = await submitted();
+    // Taking it down discards the waiting revision (#3203); its content never went live.
+    expect(
+      (await edit(APPROVER, page.id, { visibility: "draft" })).statusCode,
+    ).toBe(200);
+    expect(
+      (
+        await db
+          .select({ action: changeEvents.action })
+          .from(changeEvents)
+          .where(eq(changeEvents.action, "discarded"))
+      ).length,
+    ).toBe(1);
+
+    const response = await edit(APPROVER, page.id, { visibility: "public" });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json().title).toBe(page.title);
+  });
+
+  it("doesn't count a sub-page's category carried along by a write above it", async () => {
+    const [category] = await db
+      .insert(categories)
+      .values({ slug: "money-financial-support", title: "Money" })
+      .returning();
+    const parent = expectOk(
+      await services.editing.create(
+        aPage({ url: "/parent", visibility: "draft", category_id: null }),
+        TEST_EDITOR,
+      ),
+    );
+    const sub = expectOk(
+      await services.editing.create(
+        aPage({
+          url: "/parent/sub",
+          visibility: "draft",
+          category_id: null,
+          parent_id: parent.id,
+        }),
+        TEST_EDITOR,
+      ),
+    );
+    expect(
+      (await edit(APPROVER, parent.id, { category_id: category?.id }))
+        .statusCode,
+    ).toBe(200);
+    expect((await stored(sub.id))?.category_id).toBe(category?.id);
+
+    const response = await edit(APPROVER, sub.id, { visibility: "public" });
+
+    expect(response.statusCode).toBe(200);
+  });
+
+  it("refuses an approver who creates a page as public, so another approver makes it public", async () => {
+    const payload = withDefaults(aPage({ category_id: null }));
+
+    const refused = await as(APPROVER, {
+      method: "POST",
+      url: "/pages",
+      payload,
+    });
+
+    expect(refused.statusCode).toBe(403);
+    expect(refused.json()).toEqual({
+      error: "forbidden",
+      message:
+        "Another approver needs to make a page you wrote public. Create it as Preview or Draft.",
+    });
+    expect(await db.select().from(categories)).toEqual([]);
+    expect(expectOk(await services.index.version())).toMatchObject({
+      count: 0,
+    });
+
+    const created = await as(APPROVER, {
+      method: "POST",
+      url: "/pages",
+      payload: { ...payload, visibility: "preview" },
+    });
+    expect(created.statusCode).toBe(201);
+    expect(
+      (await edit(TEST_EMPLOYEE, created.json().id, { visibility: "public" }))
+        .statusCode,
+    ).toBe(200);
+  });
+
+  it("is allowed under AUTH_BYPASS, for one local developer", async () => {
+    const bypassed = new PageEditing(new PostgresPages(db), () => new Date(), {
+      allowSelfApproval: true,
+    });
+    const page = expectOk(
+      await bypassed.create(withDefaults(aPage()), TEST_EMPLOYEE),
+    );
+    const hidden = expectOk(
+      await bypassed.save(
+        page.id,
+        withDefaults(aPage({ visibility: "draft", title: "Mine" })),
+        null,
+        TEST_EMPLOYEE,
+      ),
+    );
+    expect(hidden.visibility).toBe("draft");
+
+    const shown = await bypassed.save(
+      page.id,
+      withDefaults(aPage({ title: "Mine again" })),
+      null,
+      TEST_EMPLOYEE,
+    );
+
+    expect(expectOk(shown)).toMatchObject({
+      visibility: "public",
+      title: "Mine again",
+    });
+  });
+});
+
+describe("the review queue (#3202)", () => {
+  const queue = (employee: Employee) =>
+    as(employee, { url: "/revisions?status=submitted" });
+
+  it("lists each change waiting for review, the longest-waiting first, with its page and submitter", async () => {
+    const { page: first, version } = await submitted();
+    const second = await seedPage({ url: "/money-financial-support/other" });
+    expect(
+      (await save(TEST_EMPLOYEE, second, { url: second.url, title: "Other" }))
+        .statusCode,
+    ).toBe(200);
+    expect((await review(TEST_EMPLOYEE, second.id, "submit")).statusCode).toBe(
+      200,
+    );
+
+    const response = await queue(TEST_EDITOR);
+
+    expect(response.statusCode).toBe(200);
+    const listed = response.json().revisions;
+    expect(listed).toEqual([
+      {
+        id: expect.any(String),
+        page_id: first.id,
+        title: "Severance pay",
+        url: first.url,
+        submitted_by: TEST_EDITOR.id,
+        submitted_by_name: TEST_EDITOR.name,
+        submitted_at: expect.any(String),
+        updated_at: version,
+      },
+      expect.objectContaining({
+        page_id: second.id,
+        title: "Other",
+        submitted_by: TEST_EMPLOYEE.id,
+        submitted_by_name: TEST_EMPLOYEE.name,
+      }),
+    ]);
+    expect(Date.parse(listed[0].submitted_at)).toBeLessThanOrEqual(
+      Date.parse(listed[1].submitted_at),
+    );
+  });
+
+  it("leaves out drafts and changes already rejected or published", async () => {
+    await drafted();
+    for (const [slug, decision] of [
+      ["rejected", "reject"],
+      ["published", "publish"],
+    ] as const) {
+      const page = await seedPage({ url: `/money-financial-support/${slug}` });
+      expect(
+        (await save(TEST_EDITOR, page, { url: page.url, title: slug }))
+          .statusCode,
+      ).toBe(200);
+      expect((await review(TEST_EDITOR, page.id, "submit")).statusCode).toBe(
+        200,
+      );
+      expect((await review(APPROVER, page.id, decision)).statusCode).toBe(200);
+    }
+
+    expect((await queue(APPROVER)).json()).toEqual({ revisions: [] });
+  });
+
+  it("needs a status to list", async () => {
+    expect((await as(TEST_EDITOR, { url: "/revisions" })).statusCode).toBe(400);
   });
 });

@@ -43,18 +43,43 @@ const sameTarget = (a: RailTarget | null, b: RailTarget | null) =>
   a?.pointed === b?.pointed &&
   a?.context === b?.context;
 
-/** The middle of an element's first line of text, in the anchor's coordinates. */
+/** The box of the first line of text drawn inside an element, or null where it has none on screen. */
+function firstTextLine(element: HTMLElement) {
+  const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT, {
+    acceptNode: (node) =>
+      node.textContent?.trim() ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_SKIP,
+  });
+
+  const text = walker.nextNode();
+
+  if (!text) return null;
+  const range = document.createRange();
+  range.selectNodeContents(text);
+
+  // A line, not a visually hidden word
+  return [...range.getClientRects()].find((rect) => rect.height >= 8) ?? null;
+}
+
+/**
+ * Returns the first line's midpoint in anchor coordinates, including nested table or button text.
+ * Uses line height for generated content such as a Details summary.
+ */
 export function firstLineMiddle(editor: LexicalEditor, anchor: HTMLElement, key: NodeKey) {
   const element = editor.getElementByKey(key);
 
   if (!element?.getClientRects().length) return null;
+  const top = anchor.getBoundingClientRect().top;
+  const drawn = getComputedStyle(element, "::before").content;
+  const line = drawn === "none" || drawn === "normal" ? firstTextLine(element) : null;
+
+  if (line) return { top: line.top + line.height / 2 - top, left: 0 };
   const style = getComputedStyle(element);
   const lineHeight = parseFloat(style.lineHeight) || parseFloat(style.fontSize) * 1.2;
 
   return {
     top:
       element.getBoundingClientRect().top -
-      anchor.getBoundingClientRect().top +
+      top +
       parseFloat(style.borderTopWidth) +
       parseFloat(style.paddingTop) +
       lineHeight / 2,
@@ -107,7 +132,21 @@ export function useRailTarget(anchor: HTMLElement, rules: TargetRules) {
   useEffect(() => {
     if (held) return;
 
+    // Pointer listeners were paused while held, so a leave event may have been missed.
+    if (pointer.current && !anchor.matches(":hover")) {
+      pointer.current = null;
+      measure();
+    }
+
+    // Native drag sends pointercancel then pointerleave without actually leaving the block.
+    let cancelled = false;
+
+    const onCancel = () => {
+      cancelled = true;
+    };
+
     const onMove = (event: PointerEvent) => {
+      cancelled = false;
       const element = event.target;
 
       // On the rail itself, the rail stays with its block
@@ -146,15 +185,18 @@ export function useRailTarget(anchor: HTMLElement, rules: TargetRules) {
     };
 
     const onLeave = () => {
+      if (cancelled) return;
       pointer.current = null;
       measure();
     };
 
     anchor.addEventListener("pointermove", onMove);
+    anchor.addEventListener("pointercancel", onCancel);
     anchor.addEventListener("pointerleave", onLeave);
 
     return () => {
       anchor.removeEventListener("pointermove", onMove);
+      anchor.removeEventListener("pointercancel", onCancel);
       anchor.removeEventListener("pointerleave", onLeave);
     };
   }, [anchor, editor, held, measure]);
@@ -263,9 +305,16 @@ type DragRules<At extends { line: Line }> = {
   /** Where the block would land at a point on screen, and the line that shows it; null where it can't. */
   $at: (key: NodeKey, point: Point) => At | null;
   $drop: (key: NodeKey, at: At) => void;
-  /** After every drag, dropped or not. */
+  /** After every drag, dropped or not, except a nudge that onNudge takes. */
   onEnd?: () => void;
+  /** Treats a short, uncommitted drag as a click on the grip. */
+  onNudge?: (key: NodeKey) => void;
 };
+
+/** Maximum distance in pixels for treating an uncommitted drag as a click. */
+const NUDGE = 10;
+
+type DragSession = { key: NodeKey; element: HTMLElement; from: Point; to: Point; strayed: boolean };
 
 /**
  * Moves a block dragged by its rail's grip. While the drag lasts the anchor carries `data-dragging`, which hides the
@@ -274,7 +323,7 @@ type DragRules<At extends { line: Line }> = {
 export function useBlockDrag<At extends { line: Line }>(anchor: HTMLElement, rules: DragRules<At>) {
   const [editor] = useLexicalComposerContext();
   const [hit, setHit] = useState<At | null>(null);
-  const session = useRef<{ key: NodeKey; element: HTMLElement } | null>(null);
+  const session = useRef<DragSession | null>(null);
   const point = useRef<Point | null>(null);
   const feedback = useRef<ReturnType<typeof setTimeout> | null>(null);
   const latest = useRef(rules);
@@ -283,19 +332,31 @@ export function useBlockDrag<At extends { line: Line }>(anchor: HTMLElement, rul
     latest.current = rules;
   });
 
-  const finish = useCallback(() => {
-    if (feedback.current !== null) clearTimeout(feedback.current);
-    feedback.current = null;
-    const ended = session.current;
+  // Only a native drag end can become a click; explicit cancellation must not open the menu.
+  const finish = useCallback(
+    (how: "dropped" | "ended" | "stopped" = "stopped") => {
+      if (feedback.current !== null) clearTimeout(feedback.current);
+      feedback.current = null;
+      const ended = session.current;
 
-    ended?.element.removeAttribute("data-dragged");
-    anchor.removeAttribute("data-dragging");
-    session.current = null;
-    point.current = null;
-    setHit(null);
+      ended?.element.removeAttribute("data-dragged");
+      anchor.removeAttribute("data-dragging");
+      session.current = null;
+      point.current = null;
+      setHit(null);
 
-    if (ended) latest.current.onEnd?.();
-  }, [anchor]);
+      if (!ended) return;
+
+      const nudged =
+        how === "ended" &&
+        !ended.strayed &&
+        Math.hypot(ended.to.x - ended.from.x, ended.to.y - ended.from.y) < NUDGE;
+
+      if (nudged && latest.current.onNudge) latest.current.onNudge(ended.key);
+      else latest.current.onEnd?.();
+    },
+    [anchor],
+  );
 
   useEffect(() => {
     const ours = (event: DragEvent) => !!event.dataTransfer?.types.includes(latest.current.type);
@@ -343,6 +404,7 @@ export function useBlockDrag<At extends { line: Line }>(anchor: HTMLElement, rul
       }
 
       point.current = { x: event.clientX, y: event.clientY };
+      session.current.to = point.current;
       update();
 
       if (event.dataTransfer) event.dataTransfer.dropEffect = "move";
@@ -353,30 +415,39 @@ export function useBlockDrag<At extends { line: Line }>(anchor: HTMLElement, rul
       event.preventDefault();
       event.stopPropagation();
       const current = session.current;
+      let landed = false;
 
       if (
         editor.isEditable() &&
         current &&
         event.dataTransfer?.getData(latest.current.type) === current.key
-      )
+      ) {
+        current.to = { x: event.clientX, y: event.clientY };
         editor.update(
           () => {
-            const at = latest.current.$at(current.key, { x: event.clientX, y: event.clientY });
+            const at = latest.current.$at(current.key, current.to);
 
-            if (at) latest.current.$drop(current.key, at);
+            if (!at) return;
+            latest.current.$drop(current.key, at);
+            landed = true;
           },
           { discrete: true },
         );
+      }
 
-      finish();
+      finish(landed ? "dropped" : "ended");
     };
 
     const leave = (event: DragEvent) => {
       if (!(event.relatedTarget instanceof Node) || !anchor.contains(event.relatedTarget)) {
         point.current = null;
         setHit(null);
+
+        if (session.current) session.current.strayed = true;
       }
     };
+
+    const endedByBrowser = () => finish("ended");
 
     const cancel = (event: KeyboardEvent) => {
       if (event.key === "Escape") finish();
@@ -385,7 +456,7 @@ export function useBlockDrag<At extends { line: Line }>(anchor: HTMLElement, rul
     anchor.addEventListener("dragover", over, true);
     anchor.addEventListener("drop", drop, true);
     anchor.addEventListener("dragleave", leave, true);
-    document.addEventListener("dragend", finish, true);
+    document.addEventListener("dragend", endedByBrowser, true);
     document.addEventListener("keydown", cancel, true);
     window.addEventListener("scroll", update, true);
     window.addEventListener("resize", update);
@@ -402,7 +473,7 @@ export function useBlockDrag<At extends { line: Line }>(anchor: HTMLElement, rul
       anchor.removeEventListener("dragover", over, true);
       anchor.removeEventListener("drop", drop, true);
       anchor.removeEventListener("dragleave", leave, true);
-      document.removeEventListener("dragend", finish, true);
+      document.removeEventListener("dragend", endedByBrowser, true);
       document.removeEventListener("keydown", cancel, true);
       window.removeEventListener("scroll", update, true);
       window.removeEventListener("resize", update);
@@ -423,10 +494,13 @@ export function useBlockDrag<At extends { line: Line }>(anchor: HTMLElement, rul
       return;
     }
 
-    session.current = { key, element };
+    const at = { x: event.clientX, y: event.clientY };
+    session.current = { key, element, from: at, to: at, strayed: false };
     event.dataTransfer.setData(rules.type, key);
     event.dataTransfer.effectAllowed = "move";
-    event.dataTransfer.setDragImage(element, 0, 0);
+    // Preserve the pointer's offset from the block in the drag image.
+    const box = element.getBoundingClientRect();
+    event.dataTransfer.setDragImage(element, event.clientX - box.left, event.clientY - box.top);
     // Once the browser has its full-opacity picture of the block: hiding the grip in dragstart itself would end the drag
     feedback.current = setTimeout(() => {
       if (session.current?.key !== key) return;

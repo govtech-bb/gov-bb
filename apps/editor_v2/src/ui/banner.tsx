@@ -2,19 +2,33 @@ import { CheckCircle, Info, Warning, WarningCircle } from "@phosphor-icons/react
 import type { ComponentProps, ReactNode } from "react";
 import { cn } from "../cn";
 
-// A GovBB tint behind ink text, and an icon in the tone's own colour so the tone isn't told by colour alone
+/** Each tone's icon, in its own colour, so a message's tone isn't told by colour alone. Toasts carry them too. */
+export const toneIcons = {
+  info: <Info className="text-blue-80" />,
+  success: <CheckCircle className="text-green-80" />,
+  warning: <Warning />,
+  error: <WarningCircle className="text-error" />,
+};
+
+// A GovBB tint behind ink text
 const tones = {
-  info: { frame: "bg-blue-10", icon: <Info className="text-blue-80" /> },
-  success: { frame: "bg-green-10", icon: <CheckCircle className="text-green-80" /> },
-  warning: { frame: "bg-yellow-20", icon: <Warning /> },
-  error: { frame: "bg-red-10", icon: <WarningCircle className="text-error" /> },
+  info: "bg-blue-10",
+  success: "bg-green-10",
+  warning: "bg-yellow-20",
+  error: "bg-red-10",
 };
 
 const layouts = {
   // Edge to edge across a pane, under its toolbar, with its buttons beside the message
-  strip: "flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-line px-4 py-3 sm:px-6",
+  strip: "flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-line py-3",
   // Inside a dialog, a panel or a page, with its buttons under the message
   box: "rounded-sm px-3.5 py-3",
+};
+
+// A strip's sides: in line with the bars over it, or with the rows of the card it's in
+const insets = {
+  bar: "px-4 sm:px-6",
+  card: "px-4",
 };
 
 export type BannerTone = keyof typeof tones;
@@ -22,6 +36,8 @@ export type BannerTone = keyof typeof tones;
 type BannerProps = Omit<ComponentProps<"div">, "title"> & {
   tone: BannerTone;
   layout?: keyof typeof layouts;
+  /** A strip's sides: the bars' (`bar`), or a card's (`card`) for one inside a card, such as over a list's rows. */
+  inset?: keyof typeof insets;
   title?: ReactNode;
   /** What the author can do about it. */
   actions?: ReactNode;
@@ -42,6 +58,7 @@ type BannerProps = Omit<ComponentProps<"div">, "title"> & {
 export function Banner({
   tone,
   layout = "box",
+  inset = "bar",
   title,
   actions,
   className,
@@ -54,12 +71,18 @@ export function Banner({
     <div
       role={tone === "error" ? "alert" : "status"}
       {...props}
-      className={cn("text-14 leading-5 text-ink", tones[tone].frame, layouts[layout], className)}
+      className={cn(
+        "text-14 leading-5 text-ink",
+        tones[tone],
+        layouts[layout],
+        strip && insets[inset],
+        className,
+      )}
     >
       {/* At least 15rem, so in a narrow strip its buttons wrap below the message rather than squeezing it */}
       <div className="flex min-w-0 grow basis-60 gap-2.5">
         <span aria-hidden="true" className="mt-0.5 flex shrink-0 [&>svg]:size-4">
-          {tones[tone].icon}
+          {toneIcons[tone]}
         </span>
         <div className="min-w-0 flex-1">
           {title && <p className="font-semibold">{title}</p>}

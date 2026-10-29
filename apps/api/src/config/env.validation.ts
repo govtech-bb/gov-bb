@@ -203,6 +203,10 @@ const baseSchema = z
       .int()
       .min(60)
       .default(604800),
+    // Upload-time GuardDuty verdict at confirm-upload (#2938). Off by default:
+    // it needs s3:GetObjectTagging on the task role, granted per environment.
+    // The submit-time check (#2939) is NOT behind this switch.
+    UPLOAD_MALWARE_SCAN_ENABLED: boolFromEnv(false),
   })
   // allowUnknown: true — config factories read unknown-but-valid vars straight
   // from process.env (AWS_REGION, AWS_DEFAULT_REGION, SES_ENDPOINT,

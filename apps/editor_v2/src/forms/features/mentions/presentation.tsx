@@ -130,7 +130,7 @@ export function MentionMenu() {
       options={options}
       triggerFn={trigger}
       onQueryChange={onQueryChange}
-      anchorClassName="z-50"
+      anchorClassName="z-popup"
       commandPriority={COMMAND_PRIORITY_NORMAL}
       onSelectOption={(option, query, closeMenu) => {
         update(() => {
