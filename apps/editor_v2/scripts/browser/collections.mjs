@@ -167,7 +167,8 @@ const tabTo = async (locator, limit = 60) => {
   throw new Error("The keyboard never reached it");
 };
 
-const dialog = page.getByRole("dialog");
+// A toast is a dialog too, marked with its type
+const dialog = page.locator('[role="dialog"]:not([data-type])');
 
 try {
   // The menu leads to Collections, which lists each one with its record count
@@ -254,7 +255,7 @@ try {
   await page.keyboard.press("Enter");
   // Its notice goes, and the focus moves into the form rather than to the page behind
   await page.waitForFunction(() =>
-    document.querySelector('[role="dialog"]')?.contains(document.activeElement),
+    document.querySelector('[role="dialog"]:not([data-type])')?.contains(document.activeElement),
   );
   assert.equal(await focused(dialog.getByLabel("Key", { exact: true })), true);
   await dialog.getByRole("button", { name: "Save changes" }).click();

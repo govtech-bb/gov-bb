@@ -234,6 +234,7 @@ const loaded = (count = 2) =>
 
 // A button's words, without the hidden pending label it keeps for its width
 const spoken = (item: Element) => {
+  // SAFETY: A deep clone of an Element is an Element.
   const copy = item.cloneNode(true) as Element;
 
   copy.querySelectorAll('[aria-hidden="true"]').forEach((hidden) => hidden.remove());
@@ -455,6 +456,49 @@ test("a field api_v2 refuses shows its reason next to it, and the input is kept"
   expect(control("Email (optional)").value).toBe("not an email");
   // One the dialog has no field for is told in the dialog
   expect(dialog()?.textContent).toContain("fax is not a field of contacts.");
+});
+
+test("while a save is out, Esc, Cancel and the close button wait, so a refusal still has its dialog", async () => {
+  // The save's answer is held until the test lets it through
+  const answer = Promise.withResolvers<void>();
+
+  vi.stubGlobal("fetch", async (input: RequestInfo | URL, init?: RequestInit) => {
+    if (init?.method === "PUT") await answer.promise;
+
+    return server.fetch(input, init);
+  });
+  await renderCollection({ record: "nis" }).ready;
+  await until(() => expect(dialog()).not.toBeNull());
+  await enter("Email (optional)", "not an email");
+  server.refuse(400, {
+    error: "validation_failed",
+    message: "Not saved.",
+    errors: [{ field: "email", message: "Enter an email address." }],
+  });
+  await submit();
+  await until(() => expect(button("Cancel").disabled).toBe(true));
+
+  expect(button("Close").disabled).toBe(true);
+  await act(async () => {
+    dialog()!.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+  });
+  await press("Cancel");
+  expect(dialog()).not.toBeNull();
+
+  await act(async () => answer.resolve());
+  await until(() => expect(errorOf("Email (optional)")).toBe("Enter an email address."));
+  expect(control("Email (optional)").value).toBe("not an email");
+});
+
+test("Add record after an edit opens an empty record, not the one just edited", async () => {
+  await renderCollection({ record: "barbados-drug-service" }).ready;
+  await until(() => expect(dialog()).not.toBeNull());
+  await submit();
+  await closed();
+  await press("Add record");
+  await until(() => expect(dialog()?.textContent).toContain("Add a record"));
+
+  expect(control("Name (optional)").value).toBe("");
 });
 
 test("a 400 that isn't validation_failed is no field's fault", async () => {

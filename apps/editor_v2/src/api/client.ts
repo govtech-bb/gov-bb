@@ -309,7 +309,13 @@ export function createEditorApi(apiOrigin: string, landingOrigin?: string) {
   async function request(
     method: "GET" | "POST" | "PUT" | "DELETE",
     path: string,
-    body?: CreatePageInput | SavePageInput | CategoryFields | CategoryOrder | RejectRevisionInput | RecordInput,
+    body?:
+      | CreatePageInput
+      | SavePageInput
+      | CategoryFields
+      | CategoryOrder
+      | RejectRevisionInput
+      | RecordInput,
     ifUpdatedAt?: string,
   ) {
     const headers = new Headers();

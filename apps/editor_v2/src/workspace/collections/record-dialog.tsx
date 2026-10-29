@@ -13,10 +13,10 @@ import { Banner } from "../../ui/banner";
 import { Button } from "../../ui/button";
 import { ConfirmDialog } from "../../ui/confirm-dialog";
 import { Field } from "../../ui/field";
+import { FormDialog } from "../../ui/form-dialog";
 import { Input } from "../../ui/input";
 import { toast } from "../../ui/toast";
 import { ApiProblems, ApiProblemText } from "../api-problems";
-import { WorkspaceDialog } from "../workspace-dialog";
 import {
   droppedFields,
   keyProblem,
@@ -56,7 +56,7 @@ export function RecordDialog({
   /** Kept on the page once closed, it fades out showing what it showed open; each opening is a new dialog. */
   open?: boolean;
   /** Where the focus goes once it closes, such as the record's row when nothing on the page opened it. */
-  finalFocus?: Parameters<typeof WorkspaceDialog>[0]["finalFocus"];
+  finalFocus?: Parameters<typeof FormDialog>[0]["finalFocus"];
   api: EditorApi;
   collection: Collection;
   /** The record as it was read when the dialog opened; none to add one. */
@@ -214,98 +214,97 @@ export function RecordDialog({
   );
 
   return (
-    <WorkspaceDialog
+    <FormDialog
       open={open}
+      onOpenChange={(next) => {
+        if (!next) close();
+      }}
       finalFocus={finalFocus}
       title={base ? `Edit ${base.record_key}` : "Add a record"}
       description={`${collection.title}. Saving changes every page that shows this record.`}
-      close={close}
+      // While a save is out, the dialog stays: its answer, and what was typed, still need it
+      pending={save.isPending}
+      cancelLabel={readOnly ? "Close" : undefined}
       onSubmit={submit}
-      body={
-        <div ref={body} className="flex flex-col gap-4">
-          {gone ? (
+      actions={
+        !readOnly && (
+          // Unusable but still focusable once a save is refused, so the focus stays here while the notice is read
+          // out; submit() won't send it
+          <Button
+            type="submit"
+            variant="accent"
+            size="md"
+            pending={save.isPending}
+            aria-disabled={stale || gone || undefined}
+            className={stale || gone ? "pointer-events-none opacity-40" : undefined}
+          >
+            {save.isPending ? "Saving…" : base ? "Save changes" : "Add record"}
+          </Button>
+        )
+      }
+    >
+      <div ref={body} className="flex flex-col gap-4">
+        {gone ? (
+          <Banner
+            tone="error"
+            role="alert"
+            actions={<Button onClick={downloadMine}>Download my version</Button>}
+          >
+            {GONE}
+          </Banner>
+        ) : (
+          stale && (
             <Banner
-              tone="error"
+              tone="warning"
               role="alert"
-              actions={<Button onClick={downloadMine}>Download my version</Button>}
-            >
-              {GONE}
-            </Banner>
-          ) : (
-            stale && (
-              <Banner
-                tone="warning"
-                role="alert"
-                actions={
-                  <>
-                    {unsaved && !readOnly && (
-                      <Button
-                        variant="secondary"
-                        disabled={!latest || current.isFetching}
-                        onClick={keepMine}
-                      >
-                        Keep my version
-                      </Button>
-                    )}
+              actions={
+                <>
+                  {unsaved && !readOnly && (
                     <Button
                       variant="secondary"
                       disabled={!latest || current.isFetching}
-                      onClick={loadSaved}
+                      onClick={keepMine}
                     >
-                      Load saved version
+                      Keep my version
                     </Button>
-                    {unsaved && !readOnly && (
-                      <Button onClick={downloadMine}>Download my version</Button>
-                    )}
-                  </>
-                }
-              >
-                {NEWER}
-              </Banner>
-            )
-          )}
-          {dropped.length > 0 && !readOnly && (
-            <Banner tone="info">
-              Saving removes values for fields this collection no longer has: {dropped.join(", ")}.
-            </Banner>
-          )}
-          {!keyListed && input(collection.record_key, "Key", "slug", keyHint, keyError ?? taken)}
-          {fields.map((field) => {
-            const isKey = field.key === collection.record_key;
-
-            return input(
-              field.key,
-              isKey ? field.label : `${field.label} (optional)`,
-              field.type,
-              isKey ? keyHint : undefined,
-              (isKey ? (keyError ?? taken) : undefined) ?? fieldErrors.get(field.key),
-            );
-          })}
-          <ApiProblems messages={[...unshown, ...otherProblems]} />
-        </div>
-      }
-      footer={
-        <>
-          <Button size="md" onClick={close}>
-            {readOnly ? "Close" : "Cancel"}
-          </Button>
-          {!readOnly && (
-            // Unusable but still focusable once a save is refused, so the focus stays here while the notice is read
-            // out; submit() won't send it
-            <Button
-              type="submit"
-              variant="accent"
-              size="md"
-              pending={save.isPending}
-              aria-disabled={stale || gone || undefined}
-              className={stale || gone ? "pointer-events-none opacity-40" : undefined}
+                  )}
+                  <Button
+                    variant="secondary"
+                    disabled={!latest || current.isFetching}
+                    onClick={loadSaved}
+                  >
+                    Load saved version
+                  </Button>
+                  {unsaved && !readOnly && (
+                    <Button onClick={downloadMine}>Download my version</Button>
+                  )}
+                </>
+              }
             >
-              {save.isPending ? "Saving…" : base ? "Save changes" : "Add record"}
-            </Button>
-          )}
-        </>
-      }
-    />
+              {NEWER}
+            </Banner>
+          )
+        )}
+        {dropped.length > 0 && !readOnly && (
+          <Banner tone="info">
+            Saving removes values for fields this collection no longer has: {dropped.join(", ")}.
+          </Banner>
+        )}
+        {!keyListed && input(collection.record_key, "Key", "slug", keyHint, keyError ?? taken)}
+        {fields.map((field) => {
+          const isKey = field.key === collection.record_key;
+
+          return input(
+            field.key,
+            isKey ? field.label : `${field.label} (optional)`,
+            field.type,
+            isKey ? keyHint : undefined,
+            (isKey ? (keyError ?? taken) : undefined) ?? fieldErrors.get(field.key),
+          );
+        })}
+        <ApiProblems messages={[...unshown, ...otherProblems]} />
+      </div>
+    </FormDialog>
   );
 }
 

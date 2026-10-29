@@ -434,7 +434,7 @@ export function ServiceWorkspace({
             </section>
           )}
           {!location && onCollections && (
-            <section className="mx-auto w-full max-w-300 px-6 py-10">
+            <section>
               {collectionKey ? (
                 <CollectionScreen
                   key={collectionKey}

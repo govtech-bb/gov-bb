@@ -2,9 +2,8 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { ApiFailure, type CollectionSummary, type EditorApi } from "../../api/client";
 import { collectionsQuery } from "../../api/queries";
-import { Banner } from "../../ui/banner";
-import { Button } from "../../ui/button";
-import { ScreenHeader } from "../../ui/screen-header";
+import { ListScreen } from "../../ui/list-screen";
+import { RefreshFailure } from "../../ui/refresh-failure";
 import { NameCell } from "../../ui/table/cell-components";
 import { createAppColumnHelper, useAppTable } from "../../ui/table/table-hooks";
 import { TextLink } from "../../ui/text-link";
@@ -68,50 +67,43 @@ export function CollectionsScreen({ api }: { api: EditorApi }) {
 
   return (
     <table.AppTable>
-      <ScreenHeader
+      <ListScreen
         title="Collections"
         lead="Facts many pages show, kept once. Change a record here and every page showing it changes."
-      />
-      <div className="@container min-w-0 rounded-sm bg-white shadow-sheet ring-1 ring-grey-40">
-        <p role="status" className="sr-only">
-          {collections.isPending ? "Loading collections…" : null}
-        </p>
-        {refreshFailed && (
-          <Banner
-            tone="warning"
-            layout="strip"
-            actions={
-              <Button
-                variant="secondary"
-                pending={collections.isFetching}
-                onClick={() => void collections.refetch()}
-              >
-                {collections.isFetching ? "Refreshing collections…" : "Try again"}
-              </Button>
-            }
-          >
-            We could not refresh collections. Showing the last loaded list.
-          </Banner>
-        )}
-        {blocked ? (
-          <LoadFailure
-            noun="collections"
-            error={collections.error}
-            retrying={collections.isFetching}
-            retry={() => void collections.refetch()}
-          />
-        ) : (
-          <table.DataTable
-            caption="Collections"
-            loading={collections.isPending}
-            empty={{
-              title: "No collections yet",
-              description:
-                "Developers add collections. Once one exists, you can change its records here.",
-            }}
-          />
-        )}
-      </div>
+        status={collections.isPending ? "Loading collections…" : null}
+        notices={
+          refreshFailed && (
+            <RefreshFailure
+              inset="card"
+              pending={collections.isFetching}
+              pendingLabel="Refreshing collections…"
+              onRetry={() => void collections.refetch()}
+            >
+              We could not refresh collections. Showing the last loaded list.
+            </RefreshFailure>
+          )
+        }
+        failure={
+          blocked && (
+            <LoadFailure
+              noun="collections"
+              error={collections.error}
+              retrying={collections.isFetching}
+              retry={() => void collections.refetch()}
+            />
+          )
+        }
+      >
+        <table.DataTable
+          caption="Collections"
+          loading={collections.isPending}
+          empty={{
+            title: "No collections yet",
+            description:
+              "Developers add collections. Once one exists, you can change its records here.",
+          }}
+        />
+      </ListScreen>
     </table.AppTable>
   );
 }

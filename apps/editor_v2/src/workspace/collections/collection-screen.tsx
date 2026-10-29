@@ -12,7 +12,8 @@ import { collectionQuery } from "../../api/queries";
 import { Banner } from "../../ui/banner";
 import { Button } from "../../ui/button";
 import { EmptyState } from "../../ui/empty-state";
-import { ScreenHeader } from "../../ui/screen-header";
+import { ListScreen } from "../../ui/list-screen";
+import { RefreshFailure } from "../../ui/refresh-failure";
 import { createAppColumnHelper, useAppTable } from "../../ui/table/table-hooks";
 import { TextLink } from "../../ui/text-link";
 import { LoadFailure } from "../load-failure";
@@ -125,7 +126,7 @@ export function CollectionScreen({
   const [adding, setAdding] = useState(false);
   const [deleting, setDeleting] = useState<CollectionRecord>();
   // Each dialog stays on the page once closed, so it fades out showing what it showed open. Counting the openings
-  // makes each one a new dialog
+  // makes each one a new dialog; its kind in the key keeps an Add from taking over an Edit with the same count
   const [additions, setAdditions] = useState(0);
   const [deletion, setDeletion] = useState<{ record: CollectionRecord; opening: number }>();
   const [shown, setShown] = useState<{ record: CollectionRecord; opening: number }>();
@@ -196,7 +197,8 @@ export function CollectionScreen({
 
   return (
     <table.AppTable>
-      <ScreenHeader
+      <ListScreen
+        ref={card}
         title={collection?.title ?? "Collection"}
         lead="Each record is one entry pages can show, such as a department's contact details."
         action={
@@ -210,63 +212,55 @@ export function CollectionScreen({
             Add record
           </Button>
         }
-      />
-      {wanted && detail.data && !found && !opened && (
-        <Banner tone="warning" className="mb-4">
-          There is no record “{wanted}” in this collection. It may have been deleted.
-        </Banner>
-      )}
-      <div
-        ref={card}
-        className="@container min-w-0 rounded-sm bg-white shadow-sheet ring-1 ring-grey-40"
-      >
-        <p role="status" className="sr-only">
-          {detail.isPending ? "Loading records…" : null}
-        </p>
-        {refreshFailed && (
-          <Banner
-            tone="warning"
-            layout="strip"
-            actions={
-              <Button
-                variant="secondary"
+        status={detail.isPending ? "Loading records…" : null}
+        notices={
+          <>
+            {wanted && detail.data && !found && !opened && (
+              <Banner tone="warning" layout="strip" inset="card">
+                There is no record “{wanted}” in this collection. It may have been deleted.
+              </Banner>
+            )}
+            {refreshFailed && (
+              <RefreshFailure
+                inset="card"
                 pending={detail.isFetching}
-                onClick={() => void detail.refetch()}
+                pendingLabel="Refreshing records…"
+                onRetry={() => void detail.refetch()}
               >
-                {detail.isFetching ? "Refreshing records…" : "Try again"}
+                We could not refresh these records. Showing the last loaded list.
+              </RefreshFailure>
+            )}
+          </>
+        }
+        failure={
+          blocked && (
+            <LoadFailure
+              noun="records"
+              error={detail.error}
+              retrying={detail.isFetching}
+              retry={() => void detail.refetch()}
+            />
+          )
+        }
+      >
+        <table.DataTable
+          caption={collection ? `${collection.title} records` : "Records"}
+          loading={detail.isPending}
+          empty={{
+            title: "No records yet",
+            description: "Add one, and pages can show it.",
+            actions: !readOnly && (
+              <Button variant="secondary" onClick={startAdding}>
+                Add record
               </Button>
-            }
-          >
-            We could not refresh these records. Showing the last loaded list.
-          </Banner>
-        )}
-        {blocked ? (
-          <LoadFailure
-            noun="records"
-            error={detail.error}
-            retrying={detail.isFetching}
-            retry={() => void detail.refetch()}
-          />
-        ) : (
-          <table.DataTable
-            caption={collection ? `${collection.title} records` : "Records"}
-            loading={detail.isPending}
-            empty={{
-              title: "No records yet",
-              description: "Add one, and pages can show it.",
-              actions: !readOnly && (
-                <Button variant="secondary" onClick={startAdding}>
-                  Add record
-                </Button>
-              ),
-            }}
-          />
-        )}
-        {!blocked && <table.Pagination name={["record", "records"]} />}
-      </div>
+            ),
+          }}
+        />
+        <table.Pagination name={["record", "records"]} />
+      </ListScreen>
       {collection && additions > 0 && (
         <RecordDialog
-          key={additions}
+          key={`add-${additions}`}
           open={adding}
           api={api}
           collection={collection}
@@ -276,7 +270,7 @@ export function CollectionScreen({
       )}
       {collection && shown && (
         <RecordDialog
-          key={shown.opening}
+          key={`edit-${shown.opening}`}
           open={!!opened}
           api={api}
           collection={collection}
@@ -293,7 +287,7 @@ export function CollectionScreen({
       )}
       {collection && deletion && (
         <DeleteRecordDialog
-          key={deletion.opening}
+          key={`delete-${deletion.opening}`}
           open={!!deleting}
           api={api}
           collection={collection}
