@@ -12,6 +12,10 @@ type FormDialogProps = {
   onSubmit: () => void;
   /** Blocks dismissal until the request finishes, preserving the form and its result. */
   pending?: boolean;
+  /** The words on Cancel, such as “Close” when there's nothing to send. */
+  cancelLabel?: string;
+  /** Where the focus goes once it closes, when the button that opened it isn't the place. */
+  finalFocus?: Parameters<typeof Dialog.Content>[0]["finalFocus"];
   /** Render the submit action last, after any recovery actions. Cancel is supplied by the dialog. */
   actions: ReactNode;
   /** Its fields, 16px apart, and what came of sending them. */
@@ -23,19 +27,20 @@ type FormDialogProps = {
  * Keep mounted and control `open` so the closing transition retains the form's last state.
  */
 export function FormDialog(props: FormDialogProps) {
-  const { open, onOpenChange, onSubmit } = props;
+  const { open, onOpenChange, finalFocus, onSubmit } = props;
 
   const {
     title,
     description,
     pending = false,
+    cancelLabel,
     actions,
     children,
   } = useLatched(open ? props : null) ?? props;
 
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
-      <Dialog.Content pending={pending}>
+      <Dialog.Content pending={pending} finalFocus={finalFocus}>
         <Dialog.Header>
           <Dialog.Title>{title}</Dialog.Title>
           <Dialog.Description>{description}</Dialog.Description>
@@ -49,7 +54,7 @@ export function FormDialog(props: FormDialogProps) {
         >
           <Dialog.Body>{children}</Dialog.Body>
           <Dialog.Actions>
-            <Dialog.Cancel />
+            <Dialog.Cancel>{cancelLabel}</Dialog.Cancel>
             {actions}
           </Dialog.Actions>
         </form>
