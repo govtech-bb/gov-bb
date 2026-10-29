@@ -1,8 +1,7 @@
-import { readFileSync } from 'node:fs'
-import { fileURLToPath } from 'node:url'
 import { describe, expect, it, vi } from 'vitest'
 import type * as ReactRouter from '@tanstack/react-router'
 import { renderToStaticMarkup } from 'react-dom/server'
+import estate from '@api-v2-seed/estate.json'
 import { MarkdownContent } from '../components/markdown'
 import { findPage } from '../content/registry'
 import type { ContentPage } from '../content/registry'
@@ -44,18 +43,12 @@ interface SeedPage {
   frontmatter: Omit<PageResponse['frontmatter'], 'title' | 'description'>
 }
 
-// Read rather than imported: the snapshot belongs to another app.
+// api_v2's committed snapshot; landing's project.json makes api_v2 an
+// implicit dependency, so a change to it makes landing:test nx-affected.
 const ESTATE: {
   categories: Array<{ slug: string; parent: string | null }>
   pages: SeedPage[]
-} = JSON.parse(
-  readFileSync(
-    fileURLToPath(
-      new URL('../../../api_v2/src/seed-data/estate.json', import.meta.url),
-    ),
-    'utf8',
-  ),
-)
+} = estate
 
 /**
  * The page as `GET /pages` returns it (`toPublicPage` in
