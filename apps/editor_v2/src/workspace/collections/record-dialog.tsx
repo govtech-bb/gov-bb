@@ -279,15 +279,18 @@ export function RecordDialog({
       footer={
         <>
           <Button size="md" onClick={close}>
-            Cancel
+            {readOnly ? "Close" : "Cancel"}
           </Button>
           {!readOnly && (
+            // Unusable but still focusable once a save is refused, so the focus stays here while the notice is read
+            // out; submit() won't send it
             <Button
               type="submit"
               variant="accent"
               size="md"
               pending={save.isPending}
-              disabled={stale || gone}
+              aria-disabled={stale || gone || undefined}
+              className={stale || gone ? "pointer-events-none opacity-40" : undefined}
             >
               {save.isPending ? "Saving…" : base ? "Save changes" : "Add record"}
             </Button>

@@ -125,6 +125,7 @@ export function CollectionScreen({
   const [adding, setAdding] = useState(false);
   const [deleting, setDeleting] = useState<CollectionRecord>();
   const add = useRef<HTMLButtonElement>(null);
+  const card = useRef<HTMLDivElement>(null);
   const collection = detail.data?.collection;
   const status = detail.error instanceof ApiFailure ? detail.error.status : undefined;
 
@@ -190,7 +191,10 @@ export function CollectionScreen({
           There is no record “{wanted}” in this collection. It may have been deleted.
         </Banner>
       )}
-      <div className="@container min-w-0 rounded-sm bg-white shadow-sheet ring-1 ring-grey-40">
+      <div
+        ref={card}
+        className="@container min-w-0 rounded-sm bg-white shadow-sheet ring-1 ring-grey-40"
+      >
         <p role="status" className="sr-only">
           {detail.isPending ? "Loading records…" : null}
         </p>
@@ -250,7 +254,17 @@ export function CollectionScreen({
           collection={collection}
           record={opened}
           readOnly={readOnly}
-          close={() => onRecord(undefined)}
+          close={() => {
+            onRecord(undefined);
+            // Opened from the address, it has no button to give the focus back to, so its row's Edit takes it
+            setTimeout(() => {
+              if (document.activeElement !== document.body) return;
+
+              [...(card.current?.querySelectorAll<HTMLElement>("[data-edit]") ?? [])]
+                .find((button) => button.dataset.edit === opened.record_key)
+                ?.focus();
+            });
+          }}
         />
       )}
       {collection && deleting && (

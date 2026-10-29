@@ -460,6 +460,16 @@ test("a 400 that isn't validation_failed is no field's fault", async () => {
   expect(errorOf("Name (optional)")).toBeUndefined();
 });
 
+test("closing a record opened from the address gives the focus to its row's Edit", async () => {
+  await renderCollection({ record: "nis" }).ready;
+  await until(() => expect(dialog()).not.toBeNull());
+  await press("Cancel");
+  await closed();
+
+  // Nothing opened it, so there's no button to go back to: the record's own row takes the focus
+  await until(() => expect(document.activeElement?.getAttribute("data-edit")).toBe("nis"));
+});
+
 test("a stale save offers to keep mine, load the saved version or download mine", async () => {
   await renderCollection({ record: "nis" }).ready;
   await until(() => expect(dialog()).not.toBeNull());
@@ -474,8 +484,15 @@ test("a stale save offers to keep mine, load the saved version or download mine"
   await until(() => expect(button("Load saved version").disabled).toBe(false));
 
   expect(button("Download my version")).toBeDefined();
-  // Nothing is overwritten until the author chooses
-  expect(dialog()!.querySelector<HTMLButtonElement>('button[type="submit"]')!.disabled).toBe(true);
+  // Nothing is overwritten until the author chooses. Save can't be used, but stays focusable, so a refused save
+  // leaves the focus on it
+  const save = dialog()!.querySelector<HTMLButtonElement>('button[type="submit"]')!;
+  const sent = server.writes.length;
+
+  expect(save.getAttribute("aria-disabled")).toBe("true");
+  expect(save.disabled).toBe(false);
+  await submit();
+  expect(server.writes).toHaveLength(sent);
   expect(control("Name (optional)").value).toBe("Mine");
 
   await press("Keep my version");
