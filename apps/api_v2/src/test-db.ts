@@ -95,19 +95,7 @@ export async function createDatabase(
     pool,
     name,
     close: async () => {
-      // `pool.end()` resolves once each client is asked to close, not once its
-      // socket has. A forced drop in that gap terminates a closing backend, and
-      // pg raises the FATAL (57P01) as an uncaught error, so wait for every
-      // client to be removed first.
-      let open = pool.totalCount;
-      const removed = new Promise<void>((resolve) => {
-        if (open === 0) resolve();
-        pool.on("remove", () => {
-          if (--open === 0) resolve();
-        });
-      });
       await pool.end();
-      await removed;
       await adminQuery(`drop database if exists ${name} with (force)`);
     },
   };
