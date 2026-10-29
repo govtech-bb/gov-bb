@@ -687,8 +687,8 @@ jobs:
           # homeschooling, statement-of-travelling, csec, cape and
           # barbados-secondary were dropped when that default flipped — they now
           # 404 to the public. Re-add each once it returns to `public` (or once a
-          # preview-token bypass is wired into the smoke). The four below are in
-          # the public-10 allowlist.
+          # preview-token bypass is wired into the smoke). The first four below
+          # are in the public-10 allowlist.
           - spec: project-protege-mentor.smoke.spec.ts
             artifact_name: project-protege-mentor-smoke-trace
           - spec: sports-training-programme-form-schema.smoke.spec.ts

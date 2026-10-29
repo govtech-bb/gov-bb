@@ -21,6 +21,10 @@
  * Run by deploy-staging.yml after a deploy, gated by E2E_PAYMENTS_ENABLED.
  * It must NOT send X-Smoke-Submission: that token drops the payment.
  *
+ * Assumes "Continue to payment" goes straight to the EZ Pay test host, and
+ * that the API's FORMS_BASE_URL (or first CORS_ORIGIN) is SMOKE_BASE_URL, so
+ * EZ Pay's return lands back on the same forms origin.
+ *
  * Required env:
  *   SMOKE_BASE_URL          forms base URL (shared smoke convention)
  *   E2E_EZPAY_CARD_NUMBER   EZ Pay test-host card (never a real card)
@@ -47,6 +51,12 @@ test.describe("Journey 5 — EZ Pay payment → confirmation (+ email)", () => {
   test("pays for a death certificate and gets the confirmation", async ({
     page,
   }) => {
+    // It pays for real, so it never runs by accident in a whole-folder smoke
+    // run. deploy-staging.yml fails before this if the card secrets are unset.
+    test.skip(
+      !process.env.E2E_EZPAY_CARD_NUMBER,
+      "Journey 5 runs only with the EZ Pay test card set",
+    );
     test.setTimeout(PAYMENT_TIMEOUT + EMAIL_TIMEOUT + 120_000);
 
     const card = {
@@ -102,7 +112,10 @@ test.describe("Journey 5 — EZ Pay payment → confirmation (+ email)", () => {
         url.searchParams.get("step") === "submission-confirmation",
       { timeout: PAYMENT_TIMEOUT },
     );
-    expect(new URL(page.url()).searchParams.get("payment")).toBe("success");
+    expect(
+      new URL(page.url()).searchParams.get("payment"),
+      "EZ Pay's check_api did not report Success on return (failed or still pending)",
+    ).toBe("success");
     await expect(
       page.getByRole("heading", { name: "Your payment was successful" }),
     ).toBeVisible();

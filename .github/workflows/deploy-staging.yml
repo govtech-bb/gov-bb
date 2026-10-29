@@ -534,9 +534,13 @@ jobs:
   # The email check also needs the test inbox (vars.E2E_INBOX_BUCKET); without
   # it the journey stops at the confirmation page.
   #
-  # No X-Smoke-Submission header: that token drops the payment. A green run
-  # leaves one real, paid test submission on staging.
+  # No X-Smoke-Submission header: that token drops the payment, so every
+  # processor fires: a green run leaves one real, paid test submission on
+  # staging AND sends the MDA notification to staging's form_config mdaEmail
+  # for get-death-certificate — make sure that is a test inbox before enabling.
   journey-5-payments:
+    # Deploy Production's guard finds this job by its name starting with
+    # "Journey 5" — keep that prefix if you rename it.
     name: Journey 5 (EZ Pay payment → confirmation)
     needs: [setup, deploy-api, amplify-forms]
     if: |
@@ -548,6 +552,18 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
+      # The spec skips itself without a card, so a missing secret must fail
+      # here rather than pass the gate with nothing tested.
+      - name: Require the EZ Pay test card
+        env:
+          CARD_NUMBER: ${{ secrets.E2E_EZPAY_CARD_NUMBER }}
+          CARD_EXPIRY: ${{ secrets.E2E_EZPAY_CARD_EXPIRY }}
+          CARD_CVV: ${{ secrets.E2E_EZPAY_CARD_CVV }}
+        run: |
+          if [ -z "$CARD_NUMBER" ] || [ -z "$CARD_EXPIRY" ] || [ -z "$CARD_CVV" ]; then
+            echo "::error::Set the E2E_EZPAY_CARD_NUMBER / _EXPIRY / _CVV secrets (the EZ Pay test-host card)."
+            exit 1
+          fi
       - name: Checkout
         uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
         with:
@@ -583,6 +599,9 @@ jobs:
       - name: Run journey 5
         env:
           SMOKE_BASE_URL: ${{ env.AMPLIFY_FORMS_URL }}
+          # The workflow-level AWS_REGION (ca-central-1) would otherwise win over
+          # the inbox region configure-aws-credentials sets.
+          AWS_REGION: ${{ vars.E2E_INBOX_REGION || env.AWS_REGION }}
           E2E_EZPAY_CARD_NUMBER: ${{ secrets.E2E_EZPAY_CARD_NUMBER }}
           E2E_EZPAY_CARD_EXPIRY: ${{ secrets.E2E_EZPAY_CARD_EXPIRY }}
           E2E_EZPAY_CARD_CVV: ${{ secrets.E2E_EZPAY_CARD_CVV }}

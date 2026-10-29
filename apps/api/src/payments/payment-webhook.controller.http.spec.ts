@@ -36,12 +36,10 @@ const sign = (raw: string) =>
 describe("POST /payments/ezpay/webhook — signature verification over HTTP", () => {
   let app: NestExpressApplication;
   const handleEzpayCallback = vi.fn();
+  // Read per request by the controller, so a test can switch verification off.
+  const env: Record<string, string> = {};
 
   beforeAll(async () => {
-    const env: Record<string, string> = {
-      EZPAY_WEBHOOK_VERIFY_SIGNATURE: "true",
-      EZPAY_WEBHOOK_SECRET: SECRET,
-    };
     const module = await Test.createTestingModule({
       controllers: [PaymentWebhookController],
       providers: [
@@ -58,6 +56,8 @@ describe("POST /payments/ezpay/webhook — signature verification over HTTP", ()
   });
 
   beforeEach(() => {
+    env.EZPAY_WEBHOOK_VERIFY_SIGNATURE = "true";
+    env.EZPAY_WEBHOOK_SECRET = SECRET;
     handleEzpayCallback.mockReset();
     handleEzpayCallback.mockResolvedValue({ acknowledged: true });
   });
@@ -111,5 +111,20 @@ describe("POST /payments/ezpay/webhook — signature verification over HTTP", ()
     expect(res.status).toBe(200);
     expect(res.body).toEqual({ acknowledged: true });
     expect(handleEzpayCallback).toHaveBeenCalledWith(callback);
+  });
+
+  // Express 4's express.json (registered here before #3012) always left
+  // req.body as {}; Nest's own parsers leave it undefined for a body they
+  // don't parse. useBodyParsers keeps {} so the webhook still acknowledges.
+  it("acknowledges an unparsed body when verification is off", async () => {
+    env.EZPAY_WEBHOOK_VERIFY_SIGNATURE = "false";
+
+    const res = await request(app.getHttpServer())
+      .post("/payments/ezpay/webhook")
+      .set("Content-Type", "text/plain")
+      .send("not json");
+
+    expect(res.status).toBe(200);
+    expect(handleEzpayCallback).toHaveBeenCalledWith({});
   });
 });

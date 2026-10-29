@@ -133,7 +133,7 @@ jobs:
               exit 0
             fi
           done
-          echo "::error title=Journey 5 not passed::No Deploy Staging run for $SHA has a passing Journey 5 (EZ Pay) job. Fix or re-run it on staging before deploying to prod."
+          echo "::error title=Journey 5 not passed::No Deploy Staging run for $SHA has a passing Journey 5 (EZ Pay) job (failed, skipped or still running). Fix or re-run it on staging before deploying to prod."
           exit 1
 
       # Read BEFORE the fast-forward below moves the ref — this is the SHA
