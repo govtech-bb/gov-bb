@@ -26,7 +26,7 @@ mountCmsPreview(container, document, assetBase): Promise<{
 
 `update` compiles asynchronously, ignores stale results and does not reset scroll. The host does not update reader content under a live editable root. It removes its portals before restoring reader regions or disposing the renderer. A memory router supplies public components' URL context without changing the browser location.
 
-The CMS supplies taxonomy/service breadcrumbs and the server publication date. Missing dates remain missing. The current CMS has no live form-availability query, so reading mode hides conditional start actions. Editing shows source content, including conditional actions drawn as the writer draws its buttons, so it cannot silently discard it. Reader-generated phone links and heading decorations are only display output. Custom source blocks retain their editable structure; turning off Edit content shows their full public rendering.
+The CMS supplies category/service breadcrumbs and the server publication date. Missing dates remain missing. The current CMS has no live form-availability query, so reading mode hides conditional start actions. Editing shows source content, including conditional actions drawn as the writer draws its buttons, so it cannot silently discard it. Reader-generated phone links and heading decorations are only display output. Custom source blocks retain their editable structure; turning off Edit content shows their full public rendering.
 
 ## Styles and cleanup
 

@@ -13,16 +13,18 @@ import { sql } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { FastifyInstance, InjectOptions } from "fastify";
 import pino from "pino";
-import { IF_UPDATED_AT } from "./routes/pages";
+import { IF_UPDATED_AT } from "./routes/contracts";
 import { PUBLIC_READ } from "./routes/responses";
 import type { Database } from "./db";
-import { withDefaults, type Visibility } from "./modules/page";
+import { PostgresPages } from "./adapters/postgres-pages";
+import { withDefaults, type PageId, type Visibility } from "./modules/page";
 import { categories, changeEvents, searchChunks } from "./schema";
 import {
   aPage,
   createTestApp,
   createTestDb,
   createTestServices,
+  SELF_APPROVAL,
   expectOk,
   TEST_EMPLOYEE,
   TEST_HEADERS,
@@ -39,8 +41,10 @@ let services: ReturnType<typeof createTestServices>;
 
 beforeEach(async () => {
   ({ db, close } = await createTestDb());
-  services = createTestServices(db);
-  app = await createTestApp(db);
+  // Review has tests of its own (review.test.ts); here an approver's page
+  // goes public as they write it.
+  services = createTestServices(db, SELF_APPROVAL);
+  app = await createTestApp(db, SELF_APPROVAL);
   await app.ready();
 });
 
@@ -67,8 +71,24 @@ const seedCategory = async () => {
   return category;
 };
 
+/** The live row, as storage holds it. */
+const live = (id: PageId) => new PostgresPages(db).find(id);
+
 const read = (url: string) =>
   inject({ url: `/pages?url=${encodeURIComponent(url)}` });
+
+/** The site's read with the preview token, so preview pages are served too. */
+const readPreview = async (url: string) => {
+  const reviewer = await createTestApp(db, {
+    previewSecret: new Redacted("secret"),
+  });
+  const response = await reviewer.inject({
+    url: `/pages?url=${encodeURIComponent(url)}`,
+    headers: { "x-preview-token": "secret" },
+  });
+  await reviewer.close();
+  return response;
+};
 
 const ENTRY = "/money-financial-support/calculate-severance-pay";
 const START = `${ENTRY}/start`;
@@ -431,7 +451,7 @@ describe("GET /services/:id", () => {
   });
 });
 
-describe("GET /taxonomy", () => {
+describe("GET /editor/categories", () => {
   it("lists every category with its id, each before its subcategories, whether or not it lists anything", async () => {
     const [money, youth] = await db
       .insert(categories)
@@ -459,11 +479,11 @@ describe("GET /taxonomy", () => {
       .returning();
     if (!arts) throw new Error("The subcategory was not inserted");
 
-    const response = await inject({ url: "/taxonomy" });
+    const response = await inject({ url: "/editor/categories" });
 
     expect(response.statusCode).toBe(200);
     expect(response.headers["cache-control"]).toBe("no-store");
-    expect(response.json().categories).toEqual([
+    expect(response.json().categories).toMatchObject([
       {
         id: money.id,
         parent_id: null,
@@ -588,6 +608,8 @@ describe("POST /pages", () => {
   });
 });
 
+// A save to a public page goes into its pending revision (revisions.test.ts),
+// so the tests of what a save writes use a page that is not public.
 describe("PUT /pages/:id", () => {
   it("saves and returns the new updated_at", async () => {
     const created = await seedPage();
@@ -604,7 +626,7 @@ describe("PUT /pages/:id", () => {
   });
 
   it("409s on a stale if-updated-at and leaves the row untouched", async () => {
-    const created = await seedPage();
+    const created = await seedPage({ visibility: "preview" });
     await inject({
       method: "PUT",
       url: `/pages/${created.id}`,
@@ -620,9 +642,7 @@ describe("PUT /pages/:id", () => {
     });
 
     expect(response.statusCode).toBe(409);
-    expect(expectOk(await services.editing.get(created.id))?.title).toBe(
-      "First writer wins",
-    );
+    expect(expectOk(await live(created.id))?.title).toBe("First writer wins");
   });
 
   it("400s a save that leaves a field out, rather than resetting it", async () => {
@@ -636,7 +656,7 @@ describe("PUT /pages/:id", () => {
     });
 
     expect(response.statusCode).toBe(400);
-    expect(expectOk(await services.editing.get(created.id))?.form_id).toBe(
+    expect(expectOk(await live(created.id))?.form_id).toBe(
       "severance-calculator",
     );
   });
@@ -651,9 +671,7 @@ describe("PUT /pages/:id", () => {
     });
 
     expect(response.statusCode).toBe(400);
-    expect(expectOk(await services.editing.get(created.id))?.title).toBe(
-      created.title,
-    );
+    expect(expectOk(await live(created.id))?.title).toBe(created.title);
   });
 
   it("404s a page that is not there", async () => {
@@ -691,8 +709,8 @@ describe("PUT /pages/:id", () => {
     expect(rows.map((row) => row.action)).toEqual([
       "created",
       "published",
-      "updated",
-      "updated",
+      "unpublished",
+      "published",
     ]);
   });
 
@@ -731,7 +749,7 @@ describe("PUT /pages/:id", () => {
   });
 
   it("moves only the page when its url changes, and its old url 404s", async () => {
-    const parent = await seedPage();
+    const parent = await seedPage({ visibility: "preview" });
     await seedPage({
       url: START,
       parent_id: parent.id,
@@ -747,8 +765,8 @@ describe("PUT /pages/:id", () => {
 
     expect(response.statusCode).toBe(200);
     expect(response.json().slug).toBe("severance-pay");
-    expect((await read(ENTRY)).statusCode).toBe(404);
-    expect((await read(START)).json().breadcrumbs).toEqual([
+    expect((await readPreview(ENTRY)).statusCode).toBe(404);
+    expect((await readPreview(START)).json().breadcrumbs).toEqual([
       { name: parent.title, url: moved },
       { name: "Before you start", url: START },
     ]);
@@ -788,7 +806,10 @@ describe("PUT /pages/:id", () => {
       .values({ slug: "work-employment", title: "Work" })
       .returning();
     if (!to) throw new Error("The category was not inserted");
-    const parent = await seedPage({ category_id: from.id });
+    const parent = await seedPage({
+      category_id: from.id,
+      visibility: "preview",
+    });
     const start = await seedPage({ url: START, parent_id: parent.id });
     const below = await seedPage({ url: `${START}/more`, parent_id: start.id });
 
@@ -799,19 +820,15 @@ describe("PUT /pages/:id", () => {
     });
 
     expect(response.statusCode).toBe(200);
-    expect(expectOk(await services.editing.get(start.id))?.category_id).toBe(
-      to.id,
-    );
-    expect(expectOk(await services.editing.get(below.id))?.category_id).toBe(
-      to.id,
-    );
+    expect(expectOk(await live(start.id))?.category_id).toBe(to.id);
+    expect(expectOk(await live(below.id))?.category_id).toBe(to.id);
   });
 
   it("files an uncategorised parent's sub-pages when it gets a category", async () => {
     // The composite key skips rows whose category is null, so this case is
     // the store's to carry, not the cascade's.
     const category = await seedCategory();
-    const parent = await seedPage();
+    const parent = await seedPage({ visibility: "preview" });
     const start = await seedPage({ url: START, parent_id: parent.id });
     const below = await seedPage({ url: `${START}/more`, parent_id: start.id });
 
@@ -821,20 +838,19 @@ describe("PUT /pages/:id", () => {
       payload: { ...parent, category_id: category.id },
     });
 
-    expect(expectOk(await services.editing.get(start.id))?.category_id).toBe(
-      category.id,
-    );
-    expect(expectOk(await services.editing.get(below.id))?.category_id).toBe(
-      category.id,
-    );
-    expect((await read(START)).json().breadcrumbs[0]).toEqual({
+    expect(expectOk(await live(start.id))?.category_id).toBe(category.id);
+    expect(expectOk(await live(below.id))?.category_id).toBe(category.id);
+    expect((await readPreview(START)).json().breadcrumbs[0]).toEqual({
       name: "Money and financial support",
       url: "/money-financial-support",
     });
   });
 
   it("re-cuts the page's search chunks from the saved body", async () => {
-    const created = await seedPage({ body_markdown: "Old text" });
+    const created = await seedPage({
+      body_markdown: "Old text",
+      visibility: "preview",
+    });
     await inject({
       method: "PUT",
       url: `/pages/${created.id}`,
@@ -874,7 +890,7 @@ describe("DELETE /pages/:id", () => {
     });
 
     expect(response.statusCode).toBe(204);
-    expect(expectOk(await services.editing.get(created.id))).toBeNull();
+    expect(expectOk(await live(created.id))).toBeNull();
   });
 
   it("records who deleted the page, which moves the version", async () => {
@@ -903,7 +919,7 @@ describe("DELETE /pages/:id", () => {
 
     expect(response.statusCode).toBe(422);
     expect(response.json().errors[0].field).toBe("id");
-    expect(expectOk(await services.editing.get(parent.id))).not.toBeNull();
+    expect(expectOk(await live(parent.id))).not.toBeNull();
   });
 });
 
@@ -1118,7 +1134,12 @@ describe("employee access", () => {
     ["HEAD", "/pages/not-a-uuid"],
     ["GET", "/services"],
     ["GET", "/services/not-a-uuid"],
-    ["GET", "/taxonomy"],
+    ["GET", "/editor/categories"],
+    ["HEAD", "/editor/categories"],
+    ["POST", "/editor/categories"],
+    ["PUT", "/editor/categories/order"],
+    ["PUT", "/editor/categories/not-a-uuid"],
+    ["DELETE", "/editor/categories/not-a-uuid"],
     ["GET", "/version"],
     ["POST", "/pages"],
     ["PUT", "/pages/not-a-uuid"],
@@ -1193,13 +1214,13 @@ describe("employee access", () => {
     const created = await inject({
       method: "POST",
       url: "/pages",
-      payload: aPage(),
+      payload: aPage({ visibility: "preview" }),
     });
     expect(created.statusCode).toBe(201);
     const saved = await inject({
       method: "PUT",
       url: `/pages/${created.json().id}`,
-      payload: withDefaults(aPage({ title: "Updated" })),
+      payload: withDefaults(aPage({ title: "Updated", visibility: "preview" })),
     });
     expect(saved.statusCode).toBe(200);
     const events = await db

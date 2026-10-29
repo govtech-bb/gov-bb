@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { parse } from "yaml";
 import { authenticatedContext, servicesFixture } from "./auth-fixture.mjs";
+import { fixtureCategory } from "./page-api-fixture.mjs";
 import { chromium } from "./playwright.mjs";
 
 const markdown = await readFile(
@@ -24,13 +25,24 @@ const service = {
   visibility: "public",
 };
 
-const category = {
-  id: "55555555-5555-4555-8555-555555555555",
-  parent_id: null,
-  slug: "work-employment",
-  url: "/work-employment",
-  title: "Work and employment",
-};
+const category = fixtureCategory(
+  "55555555-5555-4555-8555-555555555555",
+  "work-employment",
+  "Work and employment",
+  { services: 1 },
+);
+
+// The lede leads the frontmatter when the page has one, as api_v2 stores it
+const frontmatter = {};
+
+if (metadata.lede) frontmatter.lede = metadata.lede;
+
+Object.assign(frontmatter, {
+  source_url: "",
+  stage: "beta",
+  service_type: "other",
+  keywords: [""],
+});
 
 let current = {
   id: service.id,
@@ -43,16 +55,11 @@ let current = {
   visibility: "public",
   form_id: metadata.form_id ?? null,
   body_markdown: bodyMarkdown,
-  frontmatter: {
-    ...(metadata.lede ? { lede: metadata.lede } : {}),
-    source_url: "",
-    stage: "beta",
-    service_type: "other",
-    keywords: [""],
-  },
+  frontmatter,
   published_at: "2026-01-13T12:00:00.000Z",
   created_at: "2026-01-13T12:00:00.000Z",
   updated_at: "2026-10-07T12:00:00.000Z",
+  pending_revision: null,
 };
 
 const writes = [];
@@ -75,8 +82,16 @@ await context.route("**/*", async (route) => {
     "/services": [service],
     [`/services/${service.id}`]: { service, pages: [{ ...current, role: "entry" }] },
     [`/pages/${service.id}`]: current,
-    "/taxonomy": { categories: [category] },
+    [`/pages/${service.id}/revision/submit`]: undefined,
+    "/editor/categories": { categories: [category] },
     "/version": { count: 1, latest: current.updated_at },
+    // An approver, so the page's visibility can be changed
+    "/editor/me": {
+      id: "test-user",
+      email: "employee@govtech.bb",
+      name: "Test employee",
+      roles: ["editor", "approver"],
+    },
   };
 
   if (!(path in values)) return route.fallback();
@@ -84,11 +99,18 @@ await context.route("**/*", async (route) => {
   const headers = {
     "access-control-allow-origin": request.headers().origin ?? "*",
     "access-control-allow-credentials": "true",
-    "access-control-allow-methods": "GET, PUT, OPTIONS",
+    "access-control-allow-methods": "GET, POST, PUT, OPTIONS",
     "access-control-allow-headers": "content-type, if-updated-at",
   };
 
   if (request.method() === "OPTIONS") return route.fulfill({ status: 204, headers });
+
+  // As api_v2 does: submitting sends the draft for review without moving the page's version
+  if (path.endsWith("/revision/submit")) {
+    current = { ...current, pending_revision: { status: "submitted", comment: null } };
+
+    return route.fulfill({ json: { status: "submitted", comment: null, changes: [] }, headers });
+  }
 
   if (request.method() !== "GET") {
     const fields = request.postDataJSON();
@@ -101,10 +123,13 @@ await context.route("**/*", async (route) => {
       await new Promise((resolve) => {
         releaseSave = resolve;
       });
+    // As api_v2 does: a save that keeps a public page public waits for an approver as a revision
+    const reviewed = current.visibility === "public" && fields.visibility === "public";
     current = {
       ...current,
       ...fields,
       updated_at: new Date(Date.parse(current.updated_at) + 1000).toISOString(),
+      pending_revision: reviewed ? { status: "draft", comment: null } : null,
     };
 
     return route.fulfill({ json: current, headers });
@@ -206,7 +231,7 @@ try {
   await button("About this preview").click();
   await page
     .getByRole("dialog", { name: "About this preview", exact: true })
-    .getByText("Links, buttons and the feedback form don't work here.", { exact: true })
+    .getByText("Links, buttons and the feedback form don’t work here.", { exact: true })
     .waitFor();
   await page.keyboard.press("Escape");
   assert.equal(await page.locator('[contenteditable="true"]').count(), 0);
@@ -332,10 +357,19 @@ try {
     .waitFor();
   assert.equal(await page.locator('[contenteditable="true"]').count(), 0);
   assert.deepEqual(writes, []);
-  await button("Publish changes").click();
+  // A public page's save waits for an approver rather than publishing
+  await button("Save").click();
+  await page.locator("[data-document-bar]:visible").getByText("Saved", { exact: true }).waitFor();
   await page
-    .locator("[data-document-bar]:visible")
-    .getByText("Published", { exact: true })
+    .getByText("Your changes are saved but not live. Submit them for review when they’re ready.")
+    .first()
+    .waitFor();
+  await button("Submit for review").click();
+  await page
+    .getByText(
+      "Waiting for review. Citizens will see these changes once an approver publishes them.",
+    )
+    .first()
     .waitFor();
   assert.equal(writes.length, 1);
   assert.equal(writes[0].title, "Explicitly published from preview");
@@ -481,10 +515,10 @@ try {
   await title.fill("Submitted inline title");
   holdSave = true;
   const submitted = page.waitForRequest((request) => request.method() === "PUT");
-  await button("Publish changes").click();
+  await button("Save").click();
   await submitted;
   await page.locator("[data-document-bar]:visible").getByText("Saving…", { exact: true }).waitFor();
-  assert.equal(await button("Publish changes").isDisabled(), true);
+  assert.equal(await button("Save").isDisabled(), true);
   await title.fill("Typed during publication");
   await page.evaluate(() => history.back());
   await question.getByRole("heading", { name: "A save is in progress", exact: true }).waitFor();
@@ -493,7 +527,7 @@ try {
   releaseSave();
   await page
     .locator("[data-document-bar]:visible")
-    .getByText("Unpublished changes", { exact: true })
+    .getByText("Unsaved changes", { exact: true })
     .waitFor();
   assert.equal(writes.length, 2);
   assert.equal(writes[1].title, "Submitted inline title");
@@ -504,7 +538,7 @@ try {
     title: "Another employee's version",
     updated_at: new Date(Date.parse(current.updated_at) + 1000).toISOString(),
   };
-  await button("Publish changes").click();
+  await button("Save").click();
   await page
     .getByText("A newer version of this page has been saved since you opened it.")
     .first()
@@ -537,9 +571,30 @@ try {
   await page.waitForURL(new URL("/services", url).href);
   assert.equal(await page.locator("style[data-cms-preview-styles]").count(), 0);
   assert.equal(await page.locator("[data-cms-preview-host]").count(), 0);
+
+  // Making a page public is what still publishes at once
+  current = {
+    ...current,
+    visibility: "preview",
+    pending_revision: null,
+    updated_at: new Date(Date.parse(current.updated_at) + 1000).toISOString(),
+  };
+  await page.goto(url.href);
+  await title.waitFor();
+
+  if ((await button("Page settings").getAttribute("aria-expanded")) !== "true")
+    await button("Page settings").click();
+  await page.getByLabel("Visibility", { exact: true }).selectOption({ label: "Public" });
+  await button("Publish changes").click();
+  await page
+    .locator("[data-document-bar]:visible")
+    .getByText("Published", { exact: true })
+    .waitFor();
+  assert.equal(writes.at(-1).visibility, "public");
+  assert.equal(current.pending_revision, null);
   assert.deepEqual(errors, []);
   console.log(
-    "CMS/public parity; inline/undo; failure cleanup; menus; leave guard; pending save/conflict; narrow reflow: passed",
+    "CMS/public parity; inline/undo; failure cleanup; menus; leave guard; pending save/conflict; narrow reflow; publishing: passed",
   );
 } catch (error) {
   console.error("Browser errors:", errors);

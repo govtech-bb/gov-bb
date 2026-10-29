@@ -18,6 +18,23 @@ import { breadcrumbPaths } from './breadcrumb-hierarchy'
  * repeating the object.
  */
 
+/**
+ * JSON-LD as the text of an inline `<script>`. The router renders a script's
+ * `children` as raw HTML, and page and category names are editor-typed, so
+ * `<`, `>`, `&` and the JS line separators are written as `\uXXXX` JSON
+ * escapes; the parsed JSON is unchanged.
+ */
+export function ldJsonScriptText(
+  ld:
+    | ReturnType<typeof buildGovernmentServiceLd>
+    | ReturnType<typeof buildBreadcrumbLd>,
+): string {
+  return JSON.stringify(ld).replace(
+    /[<>&\u2028\u2029]/g,
+    (char) => `\\u${char.charCodeAt(0).toString(16).padStart(4, '0')}`,
+  )
+}
+
 const ORG_NAME = 'Government of Barbados'
 const ORG_ID = `${SITE_URL}/#organization`
 
@@ -76,9 +93,25 @@ function titleForSegment(seg: string, previousSegment?: string): string {
   return getCategoryTitle(seg) ?? subTitle ?? getPageTitle(seg) ?? fallback
 }
 
-export function buildBreadcrumbLd(page: ContentPage) {
-  const paths = breadcrumbPaths(page.url)
-  const items = [{ name: 'Home', url: SITE_URL }]
+/**
+ * The page's BreadcrumbList. `trail` is the one the visible breadcrumbs show
+ * in api_v2 mode (current page last, Home left out), so the two always agree;
+ * without it the trail is rebuilt from the static registry as before.
+ */
+export function buildBreadcrumbLd(
+  page: ContentPage,
+  trail?: ReadonlyArray<{ name: string; url: string }>,
+) {
+  const paths = trail ? [] : breadcrumbPaths(page.url)
+
+  const items = [
+    { name: 'Home', url: SITE_URL },
+    ...(trail ?? []).map((crumb) => ({
+      name: crumb.name,
+      url: `${SITE_URL}${crumb.url}`,
+    })),
+  ]
+
   paths.forEach((path, i) => {
     const segments = path.split('/')
     const segment = segments.at(-1) ?? ''

@@ -17,9 +17,11 @@ import {
 import { OPENAPI_DOCUMENT } from "./openapi";
 import type { Redacted } from "./modules/redacted";
 import { authRoutes, type AuthHandler } from "./routes/auth";
-import { editorRoutes, IF_UPDATED_AT } from "./routes/pages";
+import { IF_UPDATED_AT } from "./routes/contracts";
+import { editorRoutes } from "./routes/editor";
 import { siteRoutes } from "./routes/site";
-import type { EmployeeGate } from "./services/editor-access";
+import type { EmployeeGate, RoleRecords } from "./services/editor-access";
+import type { ICategoryEditing } from "./services/category-editing";
 import type { EditorIndex } from "./services/editor-index";
 import type { PageEditing } from "./services/page-editing";
 import type { PageResolution } from "./services/page-resolution";
@@ -53,7 +55,10 @@ export interface AppOptions {
   readonly navigation: SiteNavigation;
   readonly editing: PageEditing;
   readonly index: EditorIndex;
+  readonly categories: ICategoryEditing;
   readonly access: EmployeeGate;
+  /** Who holds which role, for the admin routes. */
+  readonly roles: RoleRecords;
   readonly auth: AuthHandler;
   readonly config: {
     readonly apiOrigin: string;
@@ -156,7 +161,9 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
   await app.register(editorRoutes, {
     editing: options.editing,
     index: options.index,
+    categories: options.categories,
     access: options.access,
+    roles: options.roles,
     editorOrigin: config.editorOrigin,
   });
   await app.register(authRoutes, {

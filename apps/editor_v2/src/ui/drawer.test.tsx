@@ -73,3 +73,16 @@ test("its content can be put out of reach while the title row stays usable", asy
   expect(dialog()?.querySelector('[aria-label="Visibility"]')?.closest("[inert]")).not.toBeNull();
   expect(dialog()?.querySelector('[aria-label="Close"]')?.closest("[inert]")).toBeNull();
 });
+
+test("its close button takes the name it's given", async () => {
+  await act(async () =>
+    root.render(
+      <Drawer open onOpenChange={() => {}} side="start" label="Menu" closeLabel="Close menu">
+        <p>Services</p>
+      </Drawer>,
+    ),
+  );
+
+  expect(dialog()?.querySelector('[aria-label="Close menu"]')).not.toBeNull();
+  expect(dialog()?.querySelector('[aria-label="Close"]')).toBeNull();
+});

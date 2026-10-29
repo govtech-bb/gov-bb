@@ -6,6 +6,8 @@ import { HelpfulBox } from '../components/HelpfulBox'
 import { ServiceSearch } from '../components/ServiceSearch'
 import { CATEGORIES } from '../content/categories'
 import { isCategoryVisible } from '../content/registry'
+import type { CategoryTreeResult } from '../lib/api-v2-categories'
+import type { ViewLevel } from '../lib/frontmatter'
 import { publicChatSuggestions } from '../lib/chat-suggestions'
 import { pageHead } from '../lib/page-head'
 import { deriveVisibilityOverlay } from '../lib/service-status'
@@ -20,13 +22,47 @@ export const Route = createFileRoute('/')({
   component: Home,
 })
 
+interface HomeCategory {
+  href: string
+  title: string
+  description?: string | null
+}
+
+/**
+ * The categories the home page lists: api_v2's when it is configured, else the
+ * static taxonomy. Null when api_v2 can't say. The static list
+ * would bring back categories an editor removed.
+ */
+function homeCategories(
+  tree: CategoryTreeResult,
+  level: ViewLevel,
+  overlay: ReturnType<typeof deriveVisibilityOverlay>,
+): HomeCategory[] | null {
+  switch (tree.kind) {
+    case 'disabled':
+      return CATEGORIES.filter((cat) =>
+        isCategoryVisible(cat, level, overlay),
+      ).map((cat) => ({
+        href: `/${cat.slug}`,
+        title: cat.title,
+        description: cat.description,
+      }))
+    case 'found':
+      return tree.categories.map((cat) => ({
+        href: cat.url,
+        title: cat.title,
+        description: cat.description,
+      }))
+    default:
+      return null
+  }
+}
+
 function Home() {
-  const { level, serviceStatuses } = Route.useRouteContext()
+  const { level, serviceStatuses, categoryTree } = Route.useRouteContext()
   const overlay = deriveVisibilityOverlay(serviceStatuses)
   const questions = publicChatSuggestions(overlay)
-  const categories = CATEGORIES.filter((cat) =>
-    isCategoryVisible(cat, level, overlay),
-  )
+  const categories = homeCategories(categoryTree, level, overlay)
 
   return (
     <>
@@ -81,26 +117,36 @@ function Home() {
           <div className="py-m lg:grid lg:grid-cols-[2fr_1fr] lg:gap-x-l lg:py-l xl:gap-x-xl">
             <div className="space-y-m">
               <Heading as="h2">All government services</Heading>
-              <ul className="m-0 flex list-none flex-col p-0">
-                {categories.map((cat) => (
-                  <li
-                    key={cat.slug}
-                    className="border-neutral border-b-2 py-s lg:py-xm [--govbb-link-color:var(--govbb-color-tertiary)]"
-                  >
-                    <a
-                      href={`/${cat.slug}`}
-                      className="govbb-link govbb-text-body-lg govbb-text-bold"
+              {categories === null ? (
+                <Text as="p">
+                  We can't show the service categories right now.{' '}
+                  <a href="/services" className="govbb-link">
+                    Browse all services A to Z
+                  </a>
+                  .
+                </Text>
+              ) : (
+                <ul className="m-0 flex list-none flex-col p-0">
+                  {categories.map((cat) => (
+                    <li
+                      key={cat.href}
+                      className="border-neutral border-b-2 py-s lg:py-xm [--govbb-link-color:var(--govbb-color-tertiary)]"
                     >
-                      {cat.title}
-                    </a>
-                    {cat.description ? (
-                      <Text as="p" className="mt-xxs">
-                        {cat.description}
-                      </Text>
-                    ) : null}
-                  </li>
-                ))}
-              </ul>
+                      <a
+                        href={cat.href}
+                        className="govbb-link govbb-text-body-lg govbb-text-bold"
+                      >
+                        {cat.title}
+                      </a>
+                      {cat.description ? (
+                        <Text as="p" className="mt-xxs">
+                          {cat.description}
+                        </Text>
+                      ) : null}
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
 
             <div className="mt-l lg:mt-0">

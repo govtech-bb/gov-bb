@@ -6,11 +6,13 @@ import type { Viewer } from "../modules/page-visibility";
 import type { Redacted } from "../modules/redacted";
 import type { PageResolution } from "../services/page-resolution";
 import type { SiteNavigation } from "../services/site-navigation";
+import { publicCategoryRoutes } from "./categories";
 import { SCHEMAS } from "./contracts";
 import {
   EDITOR_READ,
-  NOT_FOUND_READ,
   PUBLIC_READ,
+  siteNotFoundCache,
+  siteReadCache,
   storageFailed,
 } from "./responses";
 
@@ -55,12 +57,6 @@ function matches(ifNoneMatch: string | undefined, etag: string): boolean {
     .map((tag) => tag.trim().replace(/^W\//, ""))
     .some((tag) => tag === "*" || tag === etag);
 }
-
-/** The public's reads are shared-cacheable; a reviewer's are never stored. */
-const found = (viewer: Viewer) =>
-  viewer === "preview" ? EDITOR_READ : PUBLIC_READ;
-const missing = (viewer: Viewer) =>
-  viewer === "preview" ? EDITOR_READ : NOT_FOUND_READ;
 
 /** What the site reads: pages by url, categories, the catalog and search text. */
 export const siteRoutes: FastifyPluginAsyncZod<{
@@ -136,11 +132,11 @@ export const siteRoutes: FastifyPluginAsyncZod<{
       const outcome = resolved.value;
       if (outcome.kind === "not_found") {
         return reply
-          .header("Cache-Control", missing(viewer))
+          .header("Cache-Control", siteNotFoundCache(viewer))
           .status(404)
           .send({ error: "not_found", message: `No page at ${url}` });
       }
-      reply.header("Cache-Control", found(viewer));
+      reply.header("Cache-Control", siteReadCache(viewer));
       if (outcome.kind === "redirect")
         return reply
           .status(301)
@@ -150,73 +146,7 @@ export const siteRoutes: FastifyPluginAsyncZod<{
     },
   });
 
-  site.route({
-    method: "GET",
-    url: "/categories",
-    schema: SCHEMAS.getCategories,
-    handler: async (request, reply) => {
-      const viewer = viewerFor(request);
-      const categories = await navigation.categories(viewer);
-      if (!categories.ok)
-        return reply
-          .status(500)
-          .send(storageFailed(request.log, categories.error));
-      reply.header("Cache-Control", found(viewer));
-      return { categories: categories.value };
-    },
-  });
-
-  site.route({
-    method: "GET",
-    url: "/categories/:slug",
-    schema: SCHEMAS.getCategory,
-    handler: async (request, reply) => {
-      const viewer = viewerFor(request);
-      const { slug } = request.params;
-      const listing = await navigation.categoryListing([slug], viewer);
-      if (!listing.ok)
-        return reply
-          .status(500)
-          .send(storageFailed(request.log, listing.error));
-      if (listing.value === null) {
-        return reply
-          .header("Cache-Control", missing(viewer))
-          .status(404)
-          .send({ error: "not_found", message: `No category at /${slug}` });
-      }
-      reply.header("Cache-Control", found(viewer));
-      return listing.value;
-    },
-  });
-
-  site.route({
-    method: "GET",
-    url: "/categories/:category/:slug",
-    schema: SCHEMAS.getSubcategory,
-    handler: async (request, reply) => {
-      const viewer = viewerFor(request);
-      const { category, slug } = request.params;
-      const listing = await navigation.categoryListing(
-        [category, slug],
-        viewer,
-      );
-      if (!listing.ok)
-        return reply
-          .status(500)
-          .send(storageFailed(request.log, listing.error));
-      if (listing.value === null) {
-        return reply
-          .header("Cache-Control", missing(viewer))
-          .status(404)
-          .send({
-            error: "not_found",
-            message: `No category at /${category}/${slug}`,
-          });
-      }
-      reply.header("Cache-Control", found(viewer));
-      return listing.value;
-    },
-  });
+  await site.register(publicCategoryRoutes, { navigation, viewerFor });
 
   site.route({
     method: "GET",
@@ -227,7 +157,7 @@ export const siteRoutes: FastifyPluginAsyncZod<{
       const pages = await navigation.catalog(viewer);
       if (!pages.ok)
         return reply.status(500).send(storageFailed(request.log, pages.error));
-      reply.header("Cache-Control", found(viewer));
+      reply.header("Cache-Control", siteReadCache(viewer));
       return { pages: pages.value };
     },
   });
@@ -243,7 +173,7 @@ export const siteRoutes: FastifyPluginAsyncZod<{
         return reply
           .status(500)
           .send(storageFailed(request.log, documents.error));
-      reply.header("Cache-Control", found(viewer));
+      reply.header("Cache-Control", siteReadCache(viewer));
       return { documents: documents.value };
     },
   });

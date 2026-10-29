@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { buildSitemapXml, collectSitemapEntries } from './sitemap'
+import { CATEGORIES } from '../content/categories'
+import type { CategoryTreeResult } from './api-v2-categories'
 
 describe('collectSitemapEntries', () => {
   const entries = collectSitemapEntries()
@@ -45,4 +47,61 @@ describe('buildSitemapXml', () => {
     )
     expect(xml).toContain('<loc>https://alpha.gov.bb/a&amp;b</loc>')
   })
+})
+
+describe('collectSitemapEntries in api_v2 mode', () => {
+  const legacy = collectSitemapEntries()
+  const staticCategory = '/health-and-emergency-services'
+
+  it('lists api_v2 categories and subcategories instead of the static ones', () => {
+    const paths = collectSitemapEntries(undefined, {
+      kind: 'found',
+      categories: [
+        {
+          slug: 'new-category',
+          url: '/new-category',
+          title: 'New',
+          description: null,
+          subcategories: [
+            {
+              slug: 'child',
+              url: '/new-category/child',
+              title: 'Child',
+              description: null,
+            },
+          ],
+        },
+      ],
+    }).map((e) => e.path)
+
+    expect(paths).toContain('/new-category')
+    expect(paths).toContain('/new-category/child')
+  })
+
+  it.each([
+    ['unavailable', { kind: 'unavailable' }],
+    ['malformed', { kind: 'malformed' }],
+    ['empty', { kind: 'found', categories: [] }],
+  ] satisfies Array<[string, CategoryTreeResult]>)(
+    'drops only the category entries when the tree is %s',
+    (_, tree) => {
+      const entries = collectSitemapEntries(undefined, tree)
+      const paths = entries.map((e) => e.path)
+      // No static category resurrected…
+      expect(legacy.map((e) => e.path)).toContain(staticCategory)
+      expect(paths).not.toContain(staticCategory)
+      // …while home, services, every page and app route stay: only the
+      // static category addresses are gone.
+      const categoryPaths = new Set(
+        CATEGORIES.flatMap((cat) => [
+          `/${cat.slug}`,
+          ...(cat.subcategories ?? []).map((sub) => `/${cat.slug}/${sub.slug}`),
+        ]),
+      )
+
+      expect(paths).toEqual(
+        legacy.map((e) => e.path).filter((path) => !categoryPaths.has(path)),
+      )
+    },
+  )
 })

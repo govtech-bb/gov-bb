@@ -48,11 +48,20 @@ beforeEach(() => {
 
 describe('root beforeLoad context resolution', () => {
   it('resolves the level and service statuses on first navigation', async () => {
+    // A fresh category tree in the shared query is reused, not reread.
+    const queryClient = freshClient()
+    queryClient.setQueryData(['root', 'category-tree'], { kind: 'disabled' })
+
     const result = await beforeLoad({
-      context: { queryClient: freshClient() },
+      context: { queryClient },
       location: { search: {} },
     })
-    expect(result).toEqual({ level: 'public', serviceStatuses: [] })
+
+    expect(result).toEqual({
+      level: 'public',
+      serviceStatuses: [],
+      categoryTree: { kind: 'disabled' },
+    })
     expect(previewMocks.resolveViewLevel).toHaveBeenCalledTimes(1)
     expect(statusMocks.getServiceStatuses).toHaveBeenCalledTimes(1)
   })

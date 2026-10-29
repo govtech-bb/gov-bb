@@ -14,6 +14,7 @@ import {
   createTestApp,
   createTestDb,
   createTestServices,
+  SELF_APPROVAL,
   expectOk,
   TEST_EMPLOYEE,
   TEST_HTTP_CONFIG,
@@ -37,7 +38,7 @@ const get = (url: string, token?: string) =>
  */
 beforeAll(async () => {
   test = await createTestDb();
-  const { editing } = createTestServices(test.db);
+  const { editing } = createTestServices(test.db, SELF_APPROVAL);
   const page = async (overrides: Record<string, unknown>) =>
     expectOk(await editing.create(aPage(overrides), TEST_EMPLOYEE));
 
@@ -138,6 +139,48 @@ describe("GET /categories", () => {
       ],
     });
   });
+});
+
+describe("category cache boundaries", () => {
+  it.each(["/categories", "/categories/money", "/categories/youth/arts"])(
+    "validates public reads but never caches preview reads at %s",
+    async (url) => {
+      const response = await get(url);
+      expect(response.statusCode).toBe(200);
+      expect(response.headers["cache-control"]).toBe(PUBLIC_READ);
+      expect(response.headers.vary).toContain("x-preview-token");
+      const etag = response.headers.etag;
+      expect(etag).toEqual(expect.any(String));
+
+      const unchanged = await app.inject({
+        url,
+        headers: { "if-none-match": etag },
+      });
+      expect(unchanged.statusCode).toBe(304);
+      expect(unchanged.body).toBe("");
+      expect(unchanged.headers.etag).toBe(etag);
+      expect(unchanged.headers["cache-control"]).toBe(PUBLIC_READ);
+
+      const preview = await app.inject({
+        url,
+        headers: { "if-none-match": etag, "x-preview-token": SECRET },
+      });
+      expect(preview.statusCode).toBe(200);
+      expect(preview.headers["cache-control"]).toBe(EDITOR_READ);
+      expect(preview.headers.etag).toBeUndefined();
+      expect(preview.headers.vary).toContain("x-preview-token");
+    },
+  );
+
+  it.each(["/categories/nope", "/categories/youth/nope"])(
+    "does not cache a missing preview category at %s",
+    async (url) => {
+      const response = await get(url, SECRET);
+      expect(response.statusCode).toBe(404);
+      expect(response.headers["cache-control"]).toBe(EDITOR_READ);
+      expect(response.headers.etag).toBeUndefined();
+    },
+  );
 });
 
 describe("Vary", () => {
@@ -329,6 +372,7 @@ describe("the preview token", () => {
   it.each([
     "/categories",
     "/categories/money",
+    "/categories/youth/arts",
     "/catalog",
     "/search/documents",
     "/pages?url=/money/apply",

@@ -538,7 +538,7 @@
                 "value": "better-auth.session_token={{sessionToken}}"
               }
             ],
-            "url": "{{baseUrl}}/taxonomy"
+            "url": "{{baseUrl}}/editor/categories"
           },
           "event": [
             {

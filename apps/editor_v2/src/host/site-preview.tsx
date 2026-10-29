@@ -185,7 +185,7 @@ export function SitePreview({
             Changes stay in your working copy until you save or publish them. Closing the preview or
             turning off editing saves nothing.
           </li>
-          <li>Links, buttons and the feedback form don't work here.</li>
+          <li>Links, buttons and the feedback form don’t work here.</li>
         </ul>
       </Popover.Content>
     </Popover.Root>
@@ -198,7 +198,7 @@ export function SitePreview({
         <Banner
           tone="error"
           layout="strip"
-          title="The preview can't be shown"
+          title="The preview can’t be shown"
           actions={
             <Button
               variant="secondary"

@@ -40,7 +40,7 @@ Start generates `src/routeTree.gen.ts` during development and builds. Keep that 
 
 `getRouter` composes the Better Auth client from the public API origin. The workspace layout checks the API session before rendering. `/auth` stays outside that layout so failed sign-ins and sign-out cannot create redirect loops. The client includes cookies on API calls; its origin is configured with `VITE_API_ORIGIN`, which must be HTTPS in production. Building the static shell does not contact the API or GitHub.
 
-Category management is a frontend shell until api_v2 can change categories. `createEditorApi` seeds the preview from `/taxonomy` once and reads `/services` on each category refresh for current counts. Add, edit and move update the in-memory list; delete rechecks service counts first. A read uses the latest local list after its network requests finish. Moves update the query cache without a remote-save queue. The original API category name is retained for Services filters, and page settings/Create service still use real taxonomy. Preview changes survive internal navigation, but reload resets them. The backend brief is [plans/categories-backend.md](../../../plans/categories-backend.md); these local methods do not define its HTTP or concurrency contract.
+Categories follow [ADR 0078](../../../docs/decisions/0078-category-write-rules.md). One `categoriesQuery` reads `GET /editor/categories` for the Categories screen, Services filters, page settings and Create service. Filters use current category labels even when no services are filed under them, with service-derived labels while the category read is unavailable. The address keeps category slugs, not titles. `createEditorApi`'s category methods return a `CategoryResult` instead of throwing, with a tagged failure for each refusal and `CategoryOutcomeUnknown` for a write whose answer was lost or was a 5xx. Edits and deletions send the version their dialog opened with; a move sends its whole sibling group's versions, one move at a time per group. A dialog keeps its category and typed input through refreshes, conflicts and deletion; a lost answer is checked against an independent API read before anything is sent again. These checks do not join, retry or pause with the shared query, and another sibling group's write cannot cancel them. Confirmed writes invalidate `["content"]`. Category writes don't move `/version` until trigger-based change events land, so another session sees them on its next read.
 
 Only the sign-in button starts OAuth. Initial admission and callback checks use contextual entry pending views; content preloads remain non-blocking, and the router has no blanket full-page loading component. `LoadingState` shows its label visibly and announces it once. Lists and page panes handle their own first-load and refresh states: transient network/5xx failures retain usable data, while session/access/deletion failures remain explicit without silently discarding open drafts. Unexpected route failures offer an app-owned retry, not a document reload.
 
@@ -57,9 +57,24 @@ The runner resolves an existing `playwright` or `playwright-core` installation, 
 
 App UI suites supply employee/API responses at the HTTP boundary. `authentication.mjs` covers explicit sign-in, duplicate activation, delayed session/callback checks, deep-link return paths, outages, sign-out and cancelled expiry without revoking auth prematurely. It also captures transient framework-error screens and uncaught errors. Reusable form and page-canvas suites use `buildBrowserFixture` and `tests/browser/editor-host.tsx`, intercepted only by Playwright—not a production route. `openDemoForm` and `seedFormSource` supply explicit source; `reloadEditorFromSource` explicitly exports and reopens it to test conversion. A normal reload restores only fixture input. No production draft-storage seeding is needed. Real GitHub consent/cookies still require a deployment smoke test.
 
-`remote-page-editing.mjs` checks explicit saves, version conflicts, undo/redo, safe preview links, the absence of history controls/requests and API reloads; `service-workspace.mjs` checks API creation/deletion and holds list/service/page/taxonomy responses to verify contextual loading without remounting the header. Run the auth and service-workspace suites against both development and production-built `dist/client` served with the documented `/_shell.html` rewrite; keep auth bypass off for these checks. `routing.mjs` checks cancelled links/Back/Forward, reload/tab-close warnings and clean-view eviction. `persistence-isolation.mjs` seeds malformed old keys and proves editing/lifecycle events neither read nor write them.
+`remote-page-editing.mjs` checks explicit saves, version conflicts, undo/redo, safe preview links, the absence of history controls/requests and API reloads; `service-workspace.mjs` checks API creation/deletion and holds list/service/page/category responses to verify contextual loading without remounting the header. Run the auth and service-workspace suites against both development and production-built `dist/client` served with the documented `/_shell.html` rewrite; keep auth bypass off for these checks. `routing.mjs` checks cancelled links/Back/Forward, reload/tab-close warnings and clean-view eviction. `persistence-isolation.mjs` seeds malformed old keys and proves editing/lifecycle events neither read nor write them.
 
-`categories.mjs` checks the desktop menu/rail and mobile drawer/row menu, keyboard move focus, local add/edit/delete, validation, renamed-category service links, reload reset, and isolation from the real service/page category pickers. It also checks the component gallery's mobile menu trigger.
+`categories.mjs` answers `/editor/categories` with a versioned fixture at the HTTP boundary. It checks loading, versioned keyboard moves with focus and announcements, app-route and in-use locks, refused slugs, renamed-category service links by slug, unmatched bookmark filters, the shared Create service and page settings pickers, a failed load and Try again, long names, and the 390px drawer and row menu. Touch contexts check 44px targets; fine-pointer geometry is not evidence of touch size.
+
+`categories-live.mjs` is opt-in and never in the default list. It writes to a real api_v2 over a disposable database, with nothing intercepted. Follow the [API local setup](../../api_v2/README.md#run-locally), using that database, `SEED=false`, `AUTH_BYPASS=true`, `PORT=43107`, `BETTER_AUTH_URL=http://127.0.0.1:43107` and `EDITOR_ORIGIN=http://localhost:43108`. Start the editor in a separate terminal, then run the suite from this directory:
+
+```sh
+VITE_AUTH_BYPASS=true VITE_API_ORIGIN=http://127.0.0.1:43107 \
+  pnpm exec vite dev --port 43108 --host localhost
+
+# In another terminal, using an existing Playwright/Chromium installation:
+PLAYWRIGHT_MODULE_PATH=/path/to/playwright-core \
+  pnpm exec node scripts/browser/run.mjs http://localhost:43108 categories-live.mjs
+```
+
+Two browser contexts add, rename and order categories, reload, make a stale save, file a real service so a deletion is refused, and delete an empty category. They are two clients of the same bypass identity, not distinct authenticated employees. Screenshots go to `/tmp/c3107-categories-live-*.png`; uniquely named categories and draft services remain in the disposable database. Run mutation suites serially. Keep fixture and auth suites on a separate dev server with bypass off.
+
+The live editor suite does not publish a page or prove landing propagation: landing integration is tracked in #3179 and sandbox acceptance in #3180.
 
 Pass suite names after the URL to run a subset:
 
@@ -101,7 +116,7 @@ Paths below are relative to `src`. Symbols not listed as renamed keep their name
 | `workspace/api-page.tsx` | `workspace/remote-page-pane.tsx`: `RemotePagePane`, private `RemotePageEditor`; baseline state is in memory |
 | `workspace/api-service.tsx` | `workspace/service-nav.tsx`: `ServiceNav`, listing API pages only |
 | `workspace/api-dialogs.tsx` | `workspace/remote-page-dialogs.tsx`: `ApiServiceDialog` → `CreateRemoteServiceDialog`, `ApiPageDialog` → `CreateRemotePageDialog`, `DeletePageDialog` → `DeleteRemotePageDialog` |
-| `workspace/dialogs.tsx` | Local dialogs removed; shared shell remains in `workspace/workspace-dialog.tsx` |
+| `workspace/dialogs.tsx` | Local dialogs removed; API dialogs use `ui/form-dialog.tsx` and `ui/confirm-dialog.tsx` |
 | Workspace model types only | `PageDocument` and `ServicePageRole`; local service/form models removed, reusable form schema unchanged |
 | `api/client.ts` input types | `NewPage` → `CreatePageInput`, `SaveFields` → `SavePageInput`; transport method `EditorApi.savePage` unchanged |
 | `api/page-markdown.ts` save conversion | `SaveFieldsResult` → `PageSaveInputResult`, `markdownToSaveFields` → `markdownToPageSaveInput` |

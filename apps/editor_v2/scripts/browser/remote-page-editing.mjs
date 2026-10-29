@@ -66,7 +66,7 @@ await context.route("**/*", async (route) => {
   const request = route.request();
   const path = new URL(request.url()).pathname;
 
-  const paths = [`/services/${service.id}`, `/pages/${id}`, "/taxonomy", "/version"];
+  const paths = [`/services/${service.id}`, `/pages/${id}`, "/editor/categories", "/version"];
 
   if (!paths.includes(path) || request.resourceType() === "document") return route.fallback();
 
@@ -85,7 +85,7 @@ await context.route("**/*", async (route) => {
   if (path === `/services/${service.id}`)
     return reply({ service, pages: [{ ...current, role: "supporting" }] });
 
-  if (path === "/taxonomy") return reply({ categories: [] });
+  if (path === "/editor/categories") return reply({ categories: [] });
 
   if (path === "/version") return reply({ count: 1, latest: initial.updated_at });
 
@@ -111,6 +111,8 @@ const button = (name) => page.getByRole("button", { name, exact: true });
 const title = page.getByRole("textbox", { name: "Page title", exact: true });
 
 const body = page.getByRole("textbox", { name: "Page content", exact: true });
+
+const visibility = page.getByRole("combobox", { name: "Visibility", exact: true });
 
 const waitForSavedTitle = async (expected) => {
   await page.locator("[data-document-bar]:visible").getByText("Saved", { exact: true }).waitFor();
@@ -150,12 +152,42 @@ try {
   await button("Redo").click();
   assert.equal(await title.inputValue(), "Edited remote title");
   assert.equal(writes.length, 0);
-  await body.fill("Edited remote body");
+  const settingsToggle = button("Page settings");
+
+  if ((await settingsToggle.getAttribute("aria-expanded")) !== "true") await settingsToggle.click();
+  assert.equal(await visibility.inputValue(), "draft");
+  assert.equal(await visibility.locator('option[value="draft"]').isDisabled(), true);
+
+  for (const value of ["", "preview"]) {
+    await visibility.selectOption(value);
+    assert.equal(await visibility.locator('option[value="draft"]').isEnabled(), true);
+    const laterTitle = `Edited remote title (${value || "public"})`;
+    const laterBody = `Edited remote body (${value || "public"})`;
+    await title.fill(laterTitle);
+    await body.fill(laterBody);
+    await visibility.focus();
+    await visibility.press("d");
+    assert.equal(await visibility.inputValue(), "draft");
+    assert.equal(await title.inputValue(), laterTitle);
+    assert.equal(await body.innerText(), laterBody);
+    await button("Undo").click();
+    assert.equal(await visibility.inputValue(), value);
+    assert.equal(await title.inputValue(), laterTitle);
+    assert.equal(await body.innerText(), laterBody);
+    await button("Redo").click();
+    assert.equal(await visibility.inputValue(), "draft");
+    assert.equal(writes.length, 0);
+    assert.equal(current.visibility, "draft");
+    assert.equal(current.title, initial.title);
+  }
+
+  const savedTitle = await title.inputValue();
+  const savedBody = await body.innerText();
   await button("Save").click();
-  await waitForSavedTitle("Edited remote title");
+  await waitForSavedTitle(savedTitle);
   assert.equal(writes.length, 1);
   assert.equal(writes[0].ifUpdatedAt, initial.updated_at);
-  assert.equal(writes[0].fields.body_markdown, "Edited remote body");
+  assert.equal(writes[0].fields.body_markdown, savedBody);
   assert.equal(writes[0].fields.url, initial.url);
   assert.equal(writes[0].fields.visibility, "draft");
   assert.equal(Object.hasOwn(writes[0].fields, "parent_id"), false);
@@ -187,7 +219,7 @@ try {
   await page.reload();
   await title.waitFor();
   assert.equal(await title.inputValue(), "My conflicting title");
-  assert.equal(await body.innerText(), "Edited remote body");
+  assert.equal(await body.innerText(), savedBody);
   assert.deepEqual(await page.evaluate(() => window.draftStorageCalls), []);
   assert.equal(
     await page.evaluate((id) => localStorage[`govbb-editor:documents:${id}:markdown`], id),
@@ -195,11 +227,32 @@ try {
   );
   assert.equal(new URL(page.url()).pathname, url.pathname);
   assert.equal(writes.length, 3);
+
+  if ((await settingsToggle.getAttribute("aria-expanded")) !== "true") await settingsToggle.click();
+  await visibility.selectOption("");
+  assert.equal(await visibility.locator('option[value="draft"]').isEnabled(), true);
+  assert.equal(writes.length, 3);
+  await button("Publish changes").click();
+  await page
+    .locator("[data-document-bar]:visible")
+    .getByText("Published", { exact: true })
+    .waitFor();
+  assert.equal(writes.length, 4);
+  assert.equal(writes[3].fields.visibility, "public");
+  assert.equal(current.visibility, "public");
+  assert.equal(await visibility.locator('option[value="draft"]').count(), 0);
+  await button("Undo").click();
+  assert.equal(await visibility.inputValue(), "draft");
+  assert.equal(await visibility.locator('option[value="draft"]').isDisabled(), true);
+  await button("Redo").click();
+  assert.equal(await visibility.inputValue(), "");
+  assert.equal(await visibility.locator('option[value="draft"]').count(), 0);
+  assert.equal(writes.length, 4);
   assert.equal(await button("History").count(), 0);
   assert.deepEqual(historyRequests, []);
   assert.deepEqual(errors, []);
   console.log(
-    "PASS remote page save, conflict, undo/redo, safe preview, no history, inert old drafts and API reload",
+    "PASS remote page save, legacy Draft restoration, explicit publication, conflict, undo/redo, safe preview, no history, inert old drafts and API reload",
   );
 } finally {
   await context.close();

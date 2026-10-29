@@ -25,3 +25,15 @@ test("a screen's trident is larger than a dialog's, and fills the height under t
   expect(style(section)).toContain("height:48px");
   expect(page.className).toContain("min-h-[calc(100dvh-var(--bar-height))]");
 });
+
+test("in a line of a list, the turning circle leads its words, which are read out once", () => {
+  const line = state(
+    renderToStaticMarkup(<LoadingState size="inline" label="Loading pages…" className="px-3" />),
+  );
+
+  expect(line.getAttribute("role")).toBe("status");
+  expect(line.textContent).toBe("Loading pages…");
+  expect(line.querySelector(".trident-loader")).toBeNull();
+  expect(line.querySelector("svg")?.getAttribute("aria-hidden")).toBe("true");
+  expect(line.className).toContain("px-3");
+});
