@@ -287,25 +287,140 @@ describe('fetchApiV2Page', () => {
   })
 
   it.each([
-    { category: 42 },
-    { category: ['family-birth-relationships'] },
-    { subcategory: { slug: 'arts-culture' } },
-  ])('rejects invalid taxonomy field types %j', async (categories) => {
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    { category: null, subcategory: 'arts-culture' },
+    { subcategory: 'arts-culture' },
+  ])(
+    'rejects a subcategory without a category %j',
+    async ({ subcategory, ...taxonomy }) => {
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+      const { category: _, ...body } = pageBody()
+
+      const result = await fetchApiV2Page(BASE, '/x', async () =>
+        jsonResponse(200, { ...body, ...taxonomy, subcategory }),
+      )
+
+      expect(result).toEqual({ kind: 'miss', reason: 'malformed' })
+      expect(warn).toHaveBeenCalledWith('[api-v2] malformed page for /x')
+    },
+  )
+
+  it('accepts a response without form_id, published_at or updated_at', async () => {
+    const {
+      form_id: _f,
+      published_at: _p,
+      updated_at: _u,
+      ...body
+    } = pageBody()
 
     const result = await fetchApiV2Page(BASE, '/x', async () =>
-      jsonResponse(200, { ...pageBody(), ...categories }),
+      jsonResponse(200, body),
     )
 
-    expect(result).toEqual({ kind: 'miss', reason: 'malformed' })
-    expect(warn).toHaveBeenCalledWith('[api-v2] malformed page for /x')
+    expect(result).toMatchObject({
+      kind: 'page',
+      body: { form_id: null, published_at: null },
+    })
   })
+
+  it('reads a timestamp with a +00:00 offset', async () => {
+    const published_at = '2026-01-01T00:00:00+00:00'
+
+    const result = await fetchApiV2Page(BASE, '/x', async () =>
+      jsonResponse(200, {
+        ...pageBody(),
+        published_at,
+        updated_at: published_at,
+      }),
+    )
+
+    expect(result).toMatchObject({
+      kind: 'page',
+      body: { published_at, updated_at: published_at },
+    })
+  })
+
+  it('nulls a form_id or published_at of the wrong type', async () => {
+    const result = await fetchApiV2Page(BASE, '/x', async () =>
+      jsonResponse(200, {
+        ...pageBody(),
+        form_id: 42,
+        published_at: 'yesterday',
+        updated_at: 7,
+      }),
+    )
+
+    expect(result).toMatchObject({
+      kind: 'page',
+      body: { form_id: null, published_at: null },
+    })
+    if (result.kind === 'page') expect(result.body.updated_at).toBeUndefined()
+  })
+
+  it.each([
+    ['stage', { stage: null }],
+    ['keywords', { keywords: ['baby', 1] }],
+    ['featured', { featured: 'yes' }],
+  ])(
+    'drops a frontmatter %s of the wrong type, keeping the page',
+    async (key, field) => {
+      const result = await fetchApiV2Page(BASE, '/x', async () =>
+        jsonResponse(200, {
+          ...pageBody(),
+          frontmatter: { title: 'T', lede: 'L', ...field },
+        }),
+      )
+
+      expect(result.kind).toBe('page')
+      if (result.kind !== 'page') return
+      expect(result.body.frontmatter[key]).toBeUndefined()
+      expect(result.body.frontmatter.lede).toBe('L')
+    },
+  )
+
+  it('keeps frontmatter keys landing does not know', async () => {
+    const result = await fetchApiV2Page(BASE, '/x', async () =>
+      jsonResponse(200, {
+        ...pageBody(),
+        frontmatter: { title: 'T', added_later: 'x' },
+      }),
+    )
+
+    expect(result).toMatchObject({
+      kind: 'page',
+      body: { frontmatter: { title: 'T', added_later: 'x' } },
+    })
+  })
+
+  it.each([
+    [{ category: 42 }, ['family-birth-relationships'], undefined],
+    [
+      { category: ['housing'], subcategory: null },
+      ['family-birth-relationships'],
+      undefined,
+    ],
+    [
+      { subcategory: { slug: 'arts-culture' } },
+      ['family-birth-relationships'],
+      undefined,
+    ],
+  ])(
+    'ignores a taxonomy field of the wrong type %j',
+    async (taxonomy, categories, subcategory) => {
+      const result = await resolveApiV2Page(BASE, '/x', async () =>
+        jsonResponse(200, { ...pageBody(), ...taxonomy }),
+      )
+
+      expect(result.kind).toBe('page')
+      if (result.kind !== 'page') return
+      expect(result.page.frontmatter.categories).toEqual(categories)
+      expect(result.page.frontmatter.subcategory).toBe(subcategory)
+    },
+  )
 
   it.each([
     { category: 'health.services', subcategory: 'arts_culture' },
     { category: 'a'.repeat(101), subcategory: 'b'.repeat(101) },
     { category: '', subcategory: '' },
-    { category: null, subcategory: 'arts-culture' },
   ])(
     'reads taxonomy without reapplying API authoring rules %j',
     async (taxonomy) => {
@@ -619,30 +734,34 @@ describe('resolveApiV2Page', () => {
     })
   })
 
-  it('serves an older API response with no taxonomy fields as an unfiled page', async () => {
+  it('files an older API response with no category key under its first url segment', async () => {
     const {
       category: _category,
       subcategory: _subcategory,
       ...body
-    } = pageBody()
-
-    const fetched = await fetchApiV2Page(BASE, '/x', async () =>
-      jsonResponse(200, body),
-    )
-    expect(fetched).toEqual({
-      kind: 'page',
-      body: { ...body, category: null, subcategory: null },
-      cacheControl: null,
-    })
+    } = pageBody({ url: '/family-birth-relationships/register-a-birth' })
 
     const resolved = await resolveApiV2Page(BASE, '/x', async () =>
       jsonResponse(200, body),
     )
+
     expect(resolved.kind).toBe('page')
     if (resolved.kind !== 'page')
       throw new Error('The legacy page did not resolve')
-    expect(resolved.page.frontmatter.categories).toEqual([])
+    expect(resolved.page.frontmatter.categories).toEqual([
+      'family-birth-relationships',
+    ])
     expect(resolved.page.frontmatter).not.toHaveProperty('subcategory')
+  })
+
+  it('leaves a page with category: null unfiled', async () => {
+    const resolved = await resolveApiV2Page(BASE, '/x', async () =>
+      jsonResponse(200, pageBody({ url: '/terms-conditions', category: null })),
+    )
+
+    expect(resolved.kind).toBe('page')
+    if (resolved.kind !== 'page') throw new Error('The page did not resolve')
+    expect(resolved.page.frontmatter.categories).toEqual([])
   })
 
   it('falls back (a cacheable compile miss) when the markdown fails to compile', async () => {

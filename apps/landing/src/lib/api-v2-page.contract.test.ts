@@ -69,10 +69,11 @@ const optStr = { type: 'string', optional: true } as const
 
 // Mapped over `keyof`, so a field added to `PageResponse` without a line here
 // fails landing's typecheck.
+// The frontmatter is loose: its index signature is no field of its own.
 const FRONTMATTER: {
-  [K in keyof PageResponse['frontmatter']]-?: FieldOf<
-    PageResponse['frontmatter'][K]
-  >
+  [K in keyof PageResponse['frontmatter'] as string extends K
+    ? never
+    : K]-?: FieldOf<PageResponse['frontmatter'][K]>
 } = {
   lede: optStr,
   stage: optStr,
@@ -96,9 +97,9 @@ const PAGE: { [K in keyof PageResponse]-?: FieldOf<PageResponse[K]> } = {
     items: { type: 'object', properties: { name: str, url: str } },
   },
   published_at: { type: 'string', nullable: true },
-  updated_at: str,
-  category: { type: 'string', nullable: true },
-  subcategory: { type: 'string', nullable: true },
+  updated_at: optStr,
+  category: { type: 'string', optional: true, nullable: true },
+  subcategory: { type: 'string', optional: true, nullable: true },
 }
 
 /** Every way `schema` fails to give landing what `field` expects. */

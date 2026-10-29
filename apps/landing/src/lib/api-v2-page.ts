@@ -15,36 +15,54 @@ import type { Frontmatter } from './frontmatter'
 
 export const API_V2_TIMEOUT_MS = 750
 
-/** PublicPage from api_v2's modules/page-visibility.ts, with legacy taxonomy defaults. */
-const PageResponse = z.object({
-  url: z.string(),
-  frontmatter: z.object({
-    lede: z.string().optional(),
-    stage: z.string().optional(),
-    featured: z.boolean().optional(),
-    section: z.string().optional(),
-    service_type: z.string().optional(),
-    keywords: z.array(z.string()).optional(),
-    source_url: z.string().optional(),
-    title: z.string(),
-    description: z.string().optional(),
-  }),
-  body_markdown: z.string(),
-  /** The form a href-less Start link in the markdown opens. */
-  form_id: z.string().nullable(),
-  /** True when the start sub-page is hidden; form status comes from the forms API. */
-  hide_start_links: z.boolean(),
-  breadcrumbs: z.array(z.object({ name: z.string(), url: z.string() })),
-  /** First publication, not the last save. */
-  published_at: z.iso.datetime().nullable(),
-  updated_at: z.iso.datetime(),
-  // The API owns slug syntax and taxonomy relationships.
-  // Older deployments omit these fields.
-  category: z.string().nullable().default(null),
-  subcategory: z.string().nullable().default(null),
-})
+/** An optional field that is dropped, not fatal, when it has the wrong type. */
+const lenient = <T extends z.ZodType>(schema: T) =>
+  schema.optional().catch(undefined)
 
-/** Parsed public page response, with omitted legacy taxonomy fields set to null. */
+/**
+ * PublicPage from api_v2's modules/page-visibility.ts. Only `url`, the title,
+ * `body_markdown`, `hide_start_links` and `breadcrumbs` can reject a page;
+ * every other field falls back on its own, so a field landing doesn't need
+ * never takes a page down.
+ */
+const PageResponse = z
+  .object({
+    url: z.string(),
+    frontmatter: z
+      .object({
+        lede: lenient(z.string()),
+        stage: lenient(z.string()),
+        featured: lenient(z.boolean()),
+        section: lenient(z.string()),
+        service_type: lenient(z.string()),
+        keywords: lenient(z.array(z.string())),
+        source_url: lenient(z.string()),
+        title: z.string(),
+        description: lenient(z.string()),
+      })
+      // Keys api_v2 adds later pass through, as the old `...rest` did.
+      .loose(),
+    body_markdown: z.string(),
+    /** The form a href-less Start link in the markdown opens. */
+    form_id: z.string().nullable().catch(null),
+    /** True when the start sub-page is hidden; form status comes from the forms API. */
+    hide_start_links: z.boolean(),
+    breadcrumbs: z.array(z.object({ name: z.string(), url: z.string() })),
+    /** First publication, not the last save. */
+    published_at: z.iso.datetime({ offset: true }).nullable().catch(null),
+    /** The last save; landing doesn't read it. */
+    updated_at: lenient(z.iso.datetime({ offset: true })),
+    // The API owns slug syntax and taxonomy relationships. Absent (an API
+    // older than #3133) is not null (unfiled): `fromApiV2` falls back to the
+    // url for absent.
+    category: lenient(z.string().nullable()),
+    subcategory: z.string().nullable().catch(null).optional(),
+  })
+  .refine((page) => page.subcategory == null || page.category != null, {
+    message: 'a subcategory needs its category',
+  })
+
+/** A parsed public page response; `category` is undefined from an older API. */
 export type PageResponse = z.infer<typeof PageResponse>
 
 /** A `ContentPage` that can cross the server-function boundary. */
@@ -201,7 +219,13 @@ export async function fromApiV2(body: PageResponse): Promise<ApiV2Page> {
     }),
     // Rendered as a link, and DB content is unreviewed: http(s) only.
     ...(source_url && /^https?:\/\//i.test(source_url) && { source_url }),
-    categories: body.category ? [body.category] : [],
+    // An older API sends no category: file the page under its first segment.
+    categories:
+      body.category === undefined
+        ? [segments[0]]
+        : body.category
+          ? [body.category]
+          : [],
     ...(body.subcategory && { subcategory: body.subcategory }),
     visibility: 'public',
     ...(body.form_id && { form_id: body.form_id }),
