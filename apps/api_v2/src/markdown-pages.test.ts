@@ -12,7 +12,7 @@ let database: TestDb;
 
 beforeEach(async () => {
   database = await createTestDb();
-  app = await createTestApp(database.db);
+  app = await createTestApp(database.db, { allowSelfApproval: true });
   await app.ready();
 });
 

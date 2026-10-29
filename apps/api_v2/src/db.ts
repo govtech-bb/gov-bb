@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { sql } from "drizzle-orm";
 import { drizzle, type NodePgQueryResultHKT } from "drizzle-orm/node-postgres";
 import type { PgDatabase } from "drizzle-orm/pg-core";
 import { Pool } from "pg";
@@ -50,6 +51,7 @@ export function createPool(
       password: config.password.reveal(),
       database: config.database,
       ssl: sslConfig(config),
+      connectionTimeoutMillis: 2000,
     });
     // This text is an operational alarm marker. The driver error carries its
     // client, so forwarding the whole error would expose connection credentials.
@@ -89,4 +91,20 @@ export async function connect(
     );
   }
   return ok(drizzle(pool));
+}
+
+/** Whether the database answers within the cap; `/health/db` reports it. */
+export async function ping(db: Database, timeoutMs = 2000): Promise<boolean> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error("ping timed out")), timeoutMs);
+  });
+  try {
+    await Promise.race([db.execute(sql`select 1`), timeout]);
+    return true;
+  } catch {
+    return false;
+  } finally {
+    clearTimeout(timer);
+  }
 }

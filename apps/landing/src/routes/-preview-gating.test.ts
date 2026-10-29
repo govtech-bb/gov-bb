@@ -91,6 +91,8 @@ beforeEach(() => {
   categoryMocks.getApiV2CategoryListing.mockResolvedValue({
     kind: 'unavailable',
   })
+  // The loader asks api_v2 only when it is configured (#3127).
+  vi.stubEnv('VITE_API_V2_URL', 'http://api.example')
 })
 
 // Load the route once. Pulling the route + content graph through Vite's
@@ -466,6 +468,19 @@ describe('$ route api_v2 pages (#2944)', () => {
     })
     // api_v2 already enforced visibility.
     expect(mocks.isVisible).not.toHaveBeenCalled()
+  })
+
+  it('never asks api_v2 when VITE_API_V2_URL is unset, serving the registry page (#3127)', async () => {
+    vi.stubEnv('VITE_API_V2_URL', '')
+    mocks.findPage.mockReturnValue(fakePage)
+    mocks.isVisible.mockReturnValue(true)
+    const loader = Route.options.loader as (a: unknown) => Promise<unknown>
+    const data = (await loader({
+      params: { _splat: fakePage.url },
+      context: { level: 'public', serviceStatuses: [], categoryTree: STATIC },
+    })) as Record<string, unknown>
+    expect(v2Mocks.getApiV2Page).not.toHaveBeenCalled()
+    expect(data).toMatchObject({ kind: 'page', url: fakePage.url })
   })
 
   it('301-redirects to the api_v2 redirect target', async () => {

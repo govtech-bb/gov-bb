@@ -5,10 +5,11 @@
  */
 
 import { sql } from "drizzle-orm";
-import { describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { Database } from "./db";
 import { importEstate, seed } from "./seed";
 import { ESTATE } from "./seed-data";
+import { COLLECTIONS } from "./seed-data/collections";
 import { Redacted } from "./modules/redacted";
 import { PREVIEW_TOKEN } from "./routes/site";
 import {
@@ -17,6 +18,18 @@ import {
   createTestServices,
   expectOk,
 } from "./test-db";
+
+/** What the seed adds besides the estate: its collections and their records. */
+const SEEDED = {
+  collections: COLLECTIONS.length,
+  records: COLLECTIONS.reduce((n, c) => n + c.records.length, 0),
+};
+/** The history the seed writes, an event per row. */
+const SEEDED_EVENTS =
+  ESTATE.pages.length +
+  ESTATE.categories.length +
+  SEEDED.collections +
+  SEEDED.records;
 
 describe("seed", () => {
   it("records the markdown commit the snapshot came from", () => {
@@ -43,11 +56,17 @@ describe("seed", () => {
     expect(await seed(db)).toEqual({
       categories: ESTATE.categories.length,
       documents: ESTATE.pages.length,
+      ...SEEDED,
     });
-    expect(await seed(db)).toEqual({ categories: 0, documents: 0 });
-    // Each page's history starts where the seed left it, and only once.
+    expect(await seed(db)).toEqual({
+      categories: 0,
+      documents: 0,
+      collections: 0,
+      records: 0,
+    });
+    // Each seeded row's history starts where the seed left it, and only once.
     expect(expectOk(await createTestServices(db).index.version()).count).toBe(
-      ESTATE.pages.length,
+      SEEDED_EVENTS,
     );
 
     await close();
@@ -67,6 +86,8 @@ describe("seed", () => {
     expect(resolved).toMatchObject({
       kind: "page",
       page: {
+        category: "money-financial-support",
+        subcategory: null,
         breadcrumbs: [
           {
             name: "Money and financial support",
@@ -81,6 +102,32 @@ describe("seed", () => {
     });
 
     await close();
+  }, 60_000);
+
+  it("serves a seeded subcategory page only in preview with its taxonomy", async ({
+    onTestFinished,
+  }) => {
+    const { db, close } = await createTestDb();
+    onTestFinished(close);
+    await seed(db);
+    const app = await createTestApp(db, {
+      previewSecret: new Redacted("preview"),
+    });
+    onTestFinished(() => app.close());
+    const url =
+      "/pages?url=%2Fyouth-and-community%2Farts-culture%2Fcommunity-canvas";
+
+    expect((await app.inject({ url })).statusCode).toBe(404);
+    const response = await app.inject({
+      url,
+      headers: { [PREVIEW_TOKEN]: "preview" },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      category: "youth-and-community",
+      subcategory: "arts-culture",
+    });
   }, 60_000);
 
   it("files subcategories, sub-pages and the pages landing nests by hand", async () => {
@@ -181,21 +228,24 @@ describe("seed", () => {
     await close();
   }, 60_000);
 
-  it("imports the estate once, naming the markdown commit as the actor", async () => {
+  it("imports the estate once as system, naming the markdown commit in its report", async () => {
     const { db, close } = await createTestDb();
 
     const report = await importEstate(db, { dryRun: false });
 
     expect(report).toEqual({
+      source: ESTATE.source,
+      reason: null,
       existing: 0,
       actors: {},
       categories: ESTATE.categories.length,
       documents: ESTATE.pages.length,
+      ...SEEDED,
     });
     const { rows } = await db.execute<{ actor: string }>(
       sql`select distinct actor from change_events`,
     );
-    expect(rows.map((row) => row.actor)).toEqual([`import:${ESTATE.source}`]);
+    expect(rows.map((row) => row.actor)).toEqual(["system"]);
 
     await close();
   }, 60_000);
@@ -207,7 +257,7 @@ describe("seed", () => {
 
     const refusal = importEstate(db, { dryRun: false });
     await expect(refusal).rejects.toThrow(/refusing/);
-    await expect(refusal).rejects.toThrow(`seed=${ESTATE.pages.length}`);
+    await expect(refusal).rejects.toThrow(`system=${SEEDED_EVENTS}`);
     expect(await countOf(db, "content_pages")).toBe(ESTATE.pages.length);
     expect(await countOf(db, "change_events")).toBe(history);
 
@@ -218,10 +268,13 @@ describe("seed", () => {
     const { db, close } = await createTestDb();
 
     expect(await importEstate(db, { dryRun: true })).toEqual({
+      source: ESTATE.source,
+      reason: null,
       existing: 0,
       actors: {},
       categories: ESTATE.categories.length,
       documents: ESTATE.pages.length,
+      ...SEEDED,
     });
     expect(await countOf(db, "content_pages")).toBe(0);
     expect(await countOf(db, "categories")).toBe(0);
@@ -243,15 +296,11 @@ describe("seed", () => {
     expect(await countOf(db, "content_pages")).toBe(ESTATE.pages.length);
     expect(await countOf(db, "categories")).toBe(ESTATE.categories.length);
     expect(await countOf(db, "change_events")).toBe(history);
-    const { rows } = await db.execute<{ actor: string }>(
-      sql`select distinct actor from change_events order by actor`,
-    );
-    expect(rows.map((row) => row.actor)).toEqual(["seed"]);
 
     await close();
   }, 60_000);
 
-  it("force replaces existing content in one transaction and records the reason", async () => {
+  it("force replaces existing content in one transaction and reports the reason", async () => {
     const { db, close } = await createTestDb();
     await seed(db);
 
@@ -261,19 +310,44 @@ describe("seed", () => {
     });
 
     expect(report).toEqual({
+      source: ESTATE.source,
+      reason: "test replace",
       existing: ESTATE.pages.length,
-      actors: { seed: ESTATE.pages.length },
+      actors: { system: SEEDED_EVENTS },
       categories: ESTATE.categories.length,
       documents: ESTATE.pages.length,
+      // Collections are not content an import replaces: editors' records stay.
+      collections: 0,
+      records: 0,
     });
     expect(await countOf(db, "content_pages")).toBe(ESTATE.pages.length);
-    const { rows } = await db.execute<{ actor: string }>(
-      sql`select distinct actor from change_events order by actor`,
+
+    await close();
+  }, 60_000);
+
+  it("force records the replaced pages and categories as deleted", async () => {
+    const { db, close } = await createTestDb();
+    await seed(db);
+    const { rows: replaced } = await db.execute<{ id: string }>(
+      sql`select id from content_pages union all select id from categories`,
     );
-    expect(rows.map((row) => row.actor)).toEqual([
-      `import:${ESTATE.source} force: test replace`,
-      "seed",
-    ]);
+
+    await importEstate(db, { dryRun: false, force: "test history" });
+
+    const { rows: latest } = await db.execute<{
+      entity_id: string;
+      action: string;
+      actor: string;
+    }>(
+      sql`select distinct on (entity_id) entity_id, action, actor
+            from change_events order by entity_id, version_no desc`,
+    );
+    const ids = new Set(replaced.map((row) => row.id));
+    const last = latest.filter((row) => ids.has(row.entity_id));
+    expect(last).toHaveLength(replaced.length);
+    expect(new Set(last.map((row) => `${row.action}:${row.actor}`))).toEqual(
+      new Set(["deleted:system"]),
+    );
 
     await close();
   }, 60_000);
@@ -281,7 +355,9 @@ describe("seed", () => {
   it("force also clears categories left behind without pages", async () => {
     const { db, close } = await createTestDb();
     await seed(db);
-    await db.execute(sql`truncate search_chunks, content_pages`);
+    await db.execute(
+      sql`truncate search_chunks, page_revisions, content_pages`,
+    );
 
     const report = await importEstate(db, {
       dryRun: false,
@@ -308,6 +384,56 @@ describe("seed", () => {
 
     await close();
   }, 60_000);
+});
+
+/**
+ * Every seeded page's `category`/`subcategory` as `GET /pages` serves them,
+ * against what the snapshot's category rows imply. This is the test of the
+ * API mapping; landing's render-parity test restates the mapping to build its
+ * input from the same snapshot and tests only landing's side.
+ */
+describe("GET /pages taxonomy for every seeded page", () => {
+  const expected = (slug: string | null) => {
+    const row = ESTATE.categories.find((category) => category.slug === slug);
+    if (!row) return { category: null, subcategory: null };
+    return row.parent
+      ? { category: row.parent, subcategory: row.slug }
+      : { category: row.slug, subcategory: null };
+  };
+  let app: Awaited<ReturnType<typeof createTestApp>>;
+  let close: () => Promise<void>;
+
+  beforeAll(async () => {
+    const test = await createTestDb();
+    close = test.close;
+    await seed(test.db);
+    // Drafts are visible to nobody; the mapping doesn't depend on visibility.
+    await test.db.execute(
+      sql`update content_pages set visibility = 'preview' where visibility = 'draft'`,
+    );
+    app = await createTestApp(test.db, {
+      previewSecret: new Redacted("preview"),
+    });
+  }, 60_000);
+
+  afterAll(async () => {
+    await app?.close();
+    await close?.();
+  });
+
+  it.each(ESTATE.pages.map((page) => [page.url, page.category] as const))(
+    "%s",
+    async (url, category) => {
+      const response = await app.inject({
+        url: `/pages?url=${encodeURIComponent(url)}`,
+        headers: { [PREVIEW_TOKEN]: "preview" },
+      });
+
+      expect(response.statusCode).toBe(200);
+      const { category: served, subcategory } = response.json();
+      expect({ category: served, subcategory }).toEqual(expected(category));
+    },
+  );
 });
 
 async function countOf(db: Database, table: string) {

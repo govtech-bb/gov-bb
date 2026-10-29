@@ -3,6 +3,7 @@ import { useRuntimeConfig } from 'nitro/runtime-config'
 import { z } from 'zod'
 import type { ContentPage } from '../content/registry'
 import { bakeStartLinkFormId } from '../utils/markdown/plugins'
+import { createApiV2Cache } from './api-v2-cache'
 import type { Frontmatter } from './frontmatter'
 
 /**
@@ -12,38 +13,57 @@ import type { Frontmatter } from './frontmatter'
  * URL is not an error. A 301 is followed only to a same-site path.
  */
 
-export const API_V2_TIMEOUT_MS = 5_000
+export const API_V2_TIMEOUT_MS = 750
 
-/** Copied from apps/api_v2/src/modules/page-visibility.ts (`breadcrumbs`). */
-const PageBreadcrumbs = z.array(z.object({ name: z.string(), url: z.string() }))
+/** An optional field that is dropped, not fatal, when it has the wrong type. */
+const lenient = <T extends z.ZodType>(schema: T) =>
+  schema.optional().catch(undefined)
 
-/** Copied from apps/api_v2/src/store.ts (`PageResponse`) and schema.ts (`Frontmatter`). */
-export interface PageResponse {
-  url: string
-  frontmatter: {
-    lede?: string
-    stage?: string
-    featured?: boolean
-    section?: string
-    service_type?: string
-    keywords?: Array<string>
-    source_url?: string
-    title: string
-    description?: string
-  }
-  body_markdown: string
-  /** The form a href-less Start link in the markdown opens. */
-  form_id: string | null
-  /** True when the `/start` sub-page is hidden from this viewer; the form's
-   * own state still comes from the forms API. */
-  hide_start_links: boolean
-  breadcrumbs: z.infer<typeof PageBreadcrumbs>
-  /** When the page first went public; null until it has. */
-  published_at: string | null
-  /** The page's last save — also bumped by a visibility-only change, so not
-   * used for "Last updated". */
-  updated_at: string
-}
+/**
+ * PublicPage from api_v2's modules/page-visibility.ts. Only `url`, the title,
+ * `body_markdown`, `hide_start_links` and `breadcrumbs` can reject a page;
+ * every other field falls back on its own, so a field landing doesn't need
+ * never takes a page down.
+ */
+const PageResponse = z
+  .object({
+    url: z.string(),
+    frontmatter: z
+      .object({
+        lede: lenient(z.string()),
+        stage: lenient(z.string()),
+        featured: lenient(z.boolean()),
+        section: lenient(z.string()),
+        service_type: lenient(z.string()),
+        keywords: lenient(z.array(z.string())),
+        source_url: lenient(z.string()),
+        title: z.string(),
+        description: lenient(z.string()),
+      })
+      // Keys api_v2 adds later pass through, as the old `...rest` did.
+      .loose(),
+    body_markdown: z.string(),
+    /** The form a href-less Start link in the markdown opens. */
+    form_id: z.string().nullable().catch(null),
+    /** True when the start sub-page is hidden; form status comes from the forms API. */
+    hide_start_links: z.boolean(),
+    breadcrumbs: z.array(z.object({ name: z.string(), url: z.string() })),
+    /** First publication, not the last save. */
+    published_at: z.iso.datetime({ offset: true }).nullable().catch(null),
+    /** The last save; landing doesn't read it. */
+    updated_at: lenient(z.iso.datetime({ offset: true })),
+    // The API owns slug syntax and taxonomy relationships. Absent (an API
+    // older than #3133) is not null (unfiled): `fromApiV2` falls back to the
+    // url for absent.
+    category: lenient(z.string().nullable()),
+    subcategory: z.string().nullable().catch(null).optional(),
+  })
+  .refine((page) => page.subcategory == null || page.category != null, {
+    message: 'a subcategory needs its category',
+  })
+
+/** A parsed public page response; `category` is undefined from an older API. */
+export type PageResponse = z.infer<typeof PageResponse>
 
 /** A `ContentPage` that can cross the server-function boundary. */
 export type SerializedContentPage = Omit<
@@ -55,6 +75,33 @@ export type ApiV2Page = SerializedContentPage & {
   hideStartLinks: boolean
   /** api_v2's trail, current page last, Home not (ADR 0078). */
   breadcrumbs: PageResponse['breadcrumbs']
+}
+
+/**
+ * Why there is no api_v2 page. `not_found`, `rejected` (a 4xx),
+ * `bad_redirect` and `compile` are answers (cached for their
+ * `Cache-Control`); `no_target`, `status` (a 5xx, 408 or 429),
+ * `malformed`, `timeout` and `network` are api_v2 failures (never cached,
+ * counted by the breaker in api-v2-cache.ts).
+ */
+export type ApiV2MissReason =
+  | 'unconfigured'
+  | 'skipped'
+  | 'not_found'
+  | 'rejected'
+  | 'bad_redirect'
+  | 'compile'
+  | 'no_target'
+  | 'status'
+  | 'malformed'
+  | 'timeout'
+  | 'network'
+  | 'circuit_open'
+
+export type ApiV2Miss = {
+  kind: 'miss'
+  reason: ApiV2MissReason
+  cacheControl?: string | null
 }
 
 /** First non-empty source, trailing slashes trimmed; null when neither is set. */
@@ -70,17 +117,6 @@ export function resolveApiV2Base(
 export function apiV2Base(): string | null {
   const config = useRuntimeConfig() as { apiV2Url?: string }
   return resolveApiV2Base(config.apiV2Url, process.env.VITE_API_V2_URL)
-}
-
-function isPageResponse(body: unknown): body is PageResponse {
-  const page = body as PageResponse | null
-  return (
-    typeof page?.url === 'string' &&
-    typeof page.frontmatter?.title === 'string' &&
-    typeof page.body_markdown === 'string' &&
-    PageBreadcrumbs.safeParse(page.breadcrumbs).success &&
-    typeof page.hide_start_links === 'boolean'
-  )
 }
 
 /** `/…` only: not `//`, no backslash, no whitespace — the three ways a
@@ -99,9 +135,9 @@ export async function fetchApiV2Page(
   url: string,
   fetchImpl: typeof fetch = fetch,
 ): Promise<
-  | { kind: 'page'; body: PageResponse }
-  | { kind: 'redirect'; to: string }
-  | { kind: 'miss' }
+  | { kind: 'page'; body: PageResponse; cacheControl: string | null }
+  | { kind: 'redirect'; to: string; cacheControl: string | null }
+  | ApiV2Miss
 > {
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), API_V2_TIMEOUT_MS)
@@ -110,10 +146,11 @@ export async function fetchApiV2Page(
       `${base}/pages?url=${encodeURIComponent(url)}`,
       { redirect: 'manual', signal: controller.signal },
     )
+    const cacheControl = response.headers.get('cache-control')
     if (response.status === 404) {
       // Release the socket: an unread body pins a keep-alive connection.
       await response.body?.cancel()
-      return { kind: 'miss' }
+      return { kind: 'miss', reason: 'not_found', cacheControl }
     }
     if (response.status === 301) {
       const body = (await response.json().catch(() => null)) as {
@@ -126,22 +163,39 @@ export async function fetchApiV2Page(
       // Same-site paths only (#3126): a 301 here may come from a proxy, not
       // api_v2, and the browser caches it, so an off-site target would outlive
       // the misconfiguration that produced it.
-      if (to && isSitePath(to)) return { kind: 'redirect', to }
+      if (to && isSitePath(to)) return { kind: 'redirect', to, cacheControl }
+      if (controller.signal.aborted)
+        throw new Error('timed out reading the body')
       console.warn(`[api-v2] 301 for ${url} with no same-site target: ${to}`)
-      return { kind: 'miss' }
+      // A bad target is content, not an api_v2 failure: cache it, no breaker.
+      return to
+        ? { kind: 'miss', reason: 'bad_redirect', cacheControl }
+        : { kind: 'miss', reason: 'no_target' }
     }
     if (response.status !== 200) {
       console.warn(`[api-v2] ${response.status} for ${url}`)
       await response.body?.cancel()
-      return { kind: 'miss' }
+      // A 4xx is api_v2 answering (e.g. a url over its 512-char limit), so a
+      // visitor can't trip the breaker with junk urls; a 5xx is a failure.
+      // 408/429 say api_v2 (or a proxy) is busy, not anything about the url.
+      return response.status < 500 &&
+        response.status !== 408 &&
+        response.status !== 429
+        ? { kind: 'miss', reason: 'rejected', cacheControl }
+        : { kind: 'miss', reason: 'status' }
     }
-    const body: unknown = await response.json()
-    if (isPageResponse(body)) return { kind: 'page', body }
+    const body: unknown = await response.json().catch(() => null)
+    const parsed = PageResponse.safeParse(body)
+    if (parsed.success) return { kind: 'page', body: parsed.data, cacheControl }
+    if (controller.signal.aborted) throw new Error('timed out reading the body')
     console.warn(`[api-v2] malformed page for ${url}`)
-    return { kind: 'miss' }
+    return { kind: 'miss', reason: 'malformed' }
   } catch (error) {
     console.warn(`[api-v2] request for ${url} failed:`, error)
-    return { kind: 'miss' }
+    return {
+      kind: 'miss',
+      reason: controller.signal.aborted ? 'timeout' : 'network',
+    }
   } finally {
     clearTimeout(timer)
   }
@@ -165,7 +219,14 @@ export async function fromApiV2(body: PageResponse): Promise<ApiV2Page> {
     }),
     // Rendered as a link, and DB content is unreviewed: http(s) only.
     ...(source_url && /^https?:\/\//i.test(source_url) && { source_url }),
-    categories: [segments[0]],
+    // An older API sends no category: file the page under its first segment.
+    categories:
+      body.category === undefined
+        ? [segments[0]]
+        : body.category
+          ? [body.category]
+          : [],
+    ...(body.subcategory && { subcategory: body.subcategory }),
     visibility: 'public',
     ...(body.form_id && { form_id: body.form_id }),
     // "Last updated" is first publication, as in static frontmatter.
@@ -188,9 +249,9 @@ export async function fromApiV2(body: PageResponse): Promise<ApiV2Page> {
 }
 
 export type ApiV2Result =
-  | { kind: 'page'; page: ApiV2Page }
-  | { kind: 'redirect'; to: string }
-  | { kind: 'miss' }
+  | { kind: 'page'; page: ApiV2Page; cacheControl: string | null }
+  | { kind: 'redirect'; to: string; cacheControl: string | null }
+  | ApiV2Miss
 
 /**
  * The api_v2 page at `url`. A miss when api_v2 is unset, or when its markdown
@@ -202,18 +263,24 @@ export async function resolveApiV2Page(
   url: string,
   fetchImpl: typeof fetch = fetch,
 ): Promise<ApiV2Result> {
-  if (!base) return { kind: 'miss' }
+  if (!base) return { kind: 'miss', reason: 'unconfigured' }
   const result = await fetchApiV2Page(base, url, fetchImpl)
   if (result.kind !== 'page') return result
+  const { cacheControl } = result
   try {
-    return { kind: 'page', page: await fromApiV2(result.body) }
+    return { kind: 'page', page: await fromApiV2(result.body), cacheControl }
   } catch (error) {
     console.warn(`[api-v2] compile failed for ${url}:`, error)
-    return { kind: 'miss' }
+    return { kind: 'miss', reason: 'compile', cacheControl }
   }
 }
 
-/** Server function: `resolveApiV2Page` against the configured api_v2. */
+// Pure, so the client build (where the handler is stripped) drops the cache.
+const apiV2Cache = /* @__PURE__ */ createApiV2Cache()
+
+/** Server function: `resolveApiV2Page` against the configured api_v2, cached. */
 export const getApiV2Page = createServerFn()
   .validator((url: string) => url)
-  .handler(({ data: url }) => resolveApiV2Page(apiV2Base(), url))
+  .handler(({ data: url }) =>
+    apiV2Cache.get(url, () => resolveApiV2Page(apiV2Base(), url)),
+  )

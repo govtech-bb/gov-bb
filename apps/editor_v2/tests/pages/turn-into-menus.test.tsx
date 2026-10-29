@@ -17,9 +17,9 @@ test("Turn into in the block's menu turns the whole block, ticking what it is no
   await selectPageText("Fees");
   await act(async () => pageControl<HTMLButtonElement>('[aria-label="Block options"]').click());
 
-  const row = [...pageControl(".page-block-menu").querySelectorAll("button")].find((button) =>
-    button.textContent?.startsWith("Turn into"),
-  )!;
+  const row = [
+    ...pageControl(".page-block-menu").querySelectorAll<HTMLElement>('[role="menuitem"]'),
+  ].find((item) => item.textContent?.startsWith("Turn into"))!;
 
   expect(row.textContent).toBe("Turn intoBulleted list");
   await act(async () => row.click());

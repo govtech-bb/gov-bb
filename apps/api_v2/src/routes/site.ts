@@ -4,8 +4,10 @@ import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
 import type { Viewer } from "../modules/page-visibility";
 import type { Redacted } from "../modules/redacted";
 import type { PageResolution } from "../services/page-resolution";
+import type { CollectionEditing } from "../services/collection-editing";
 import type { SiteNavigation } from "../services/site-navigation";
 import { publicCategoryRoutes } from "./categories";
+import { publicCollectionRoutes } from "./collections";
 import { SCHEMAS } from "./contracts";
 import {
   EDITOR_READ,
@@ -47,12 +49,13 @@ function matches(ifNoneMatch: string | undefined, etag: string): boolean {
     .some((tag) => tag === "*" || tag === etag);
 }
 
-/** What the site reads: pages by url, categories, the catalog and search text. */
+/** What the site reads: pages by url, categories, collections, the catalog and search text. */
 export const siteRoutes: FastifyPluginAsyncZod<{
   resolution: PageResolution;
   navigation: SiteNavigation;
+  collections: CollectionEditing;
   previewSecret: Redacted<string> | undefined;
-}> = async (site, { resolution, navigation, previewSecret }) => {
+}> = async (site, { resolution, navigation, collections, previewSecret }) => {
   site.decorateRequest("viewer", null);
   site.addHook("onRequest", async (request, reply) => {
     // Public and preview reads share a url, so a cache must key on the token.
@@ -123,6 +126,7 @@ export const siteRoutes: FastifyPluginAsyncZod<{
   });
 
   await site.register(publicCategoryRoutes, { navigation, viewerFor });
+  await site.register(publicCollectionRoutes, { collections, viewerFor });
 
   site.route({
     method: "GET",

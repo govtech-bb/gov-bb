@@ -165,7 +165,7 @@ export function RepeatSettings({
         checked={!!value}
         onCheckedChange={(on) => onChange(on ? { ...DEFAULT_REPEATABLE } : undefined)}
         aria-describedby={`${id}-hint`}
-        className="h-8 justify-between leading-5 font-semibold"
+        labelClassName="h-8 justify-between leading-5 font-semibold"
       />
       <p id={`${id}-hint`} className="mt-1.5 text-12 leading-4 text-muted">
         People fill in this page more than once, such as once for each child.

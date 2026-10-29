@@ -36,9 +36,9 @@ async function selectColumns(editor: LexicalEditor, from: number, to: number) {
 }
 
 async function choose(action: string) {
-  const button = [...pageControl(".page-block-menu").querySelectorAll("button")].find(
-    (candidate) => candidate.textContent === action,
-  );
+  const button = [
+    ...pageControl(".page-block-menu").querySelectorAll<HTMLElement>('[role="menuitem"]'),
+  ].find((candidate) => candidate.textContent === action);
 
   if (!button) throw new Error(`Missing table operation: ${action}`);
   await act(async () => button.click());

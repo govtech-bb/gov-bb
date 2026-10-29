@@ -16,7 +16,15 @@ import {
   SearchDocument,
 } from "../modules/navigation";
 import { EmployeeView, Role } from "../modules/auth";
-import { NewPage, PageDocument, PageId, SaveFields } from "../modules/page";
+import {
+  EditorPage,
+  NewPage,
+  PageId,
+  ReviewQueueEntry,
+  RevisionComment,
+  RevisionView,
+  SaveFields,
+} from "../modules/page";
 import {
   CategoryBlockers,
   CategoryFields,
@@ -25,6 +33,14 @@ import {
   CategoryStamp,
   EditorCategory,
 } from "../modules/category";
+import {
+  CollectionKey,
+  CollectionRecord,
+  CollectionSummary,
+  CollectionView,
+  RecordBody,
+  RecordKey,
+} from "../modules/collection";
 import { PublicPage } from "../modules/page-visibility";
 import { EstateVersion } from "../services/editor-index";
 
@@ -68,7 +84,41 @@ const conflict = z.looseObject({
   documentId: z.guid(),
 });
 
+/** A review step refused because the revision is not in the state it needs. */
+const revisionState = z.object({
+  error: z.enum(["under_review", "not_submitted"]),
+  message: z.string(),
+});
+
 const idParams = z.object({ id: PageId });
+
+/** The version a write was made against; a 409 when it has moved on. */
+const ifUpdatedAt = (read: string) =>
+  z.object({
+    "if-updated-at": z.iso
+      .datetime({ offset: true })
+      .transform((value) => new Date(value))
+      .optional()
+      .describe(
+        `The \`updated_at\` this client last read${read}. Omit to accept ` +
+          "whatever is stored.",
+      ),
+  });
+
+/**
+ * The revision version an approver reviewed. Optional in the schema only so
+ * that leaving it out is a 428, as the route answers, rather than a 400.
+ */
+const reviewedVersion = z.object({
+  "if-updated-at": z.iso
+    .datetime({ offset: true })
+    .transform((value) => new Date(value))
+    .optional()
+    .describe(
+      "Required: the revision's `updated_at` the approver reviewed. " +
+        "Without it the decision is refused with a 428.",
+    ),
+});
 
 const editorSecurity = [{ editorSession: [] }];
 const authErrors = { 401: error, 403: error, 503: error };
@@ -88,6 +138,19 @@ const categoryParams = z.object({ id: CategoryId });
 const categoryErrors = {
   400: error,
   422: validationFailed.extend({ message: z.string() }),
+  500: error,
+  ...authErrors,
+};
+
+const collectionParams = z.object({ key: CollectionKey });
+const recordParams = z.object({ key: CollectionKey, recordKey: RecordKey });
+const recordConflict = z.object({
+  error: z.enum(["conflict", "record_exists"]),
+  message: z.string(),
+});
+const recordErrors = {
+  400: z.union([validationFailed.extend({ message: z.string() }), error]),
+  404: error,
   500: error,
   ...authErrors,
 };
@@ -188,12 +251,14 @@ export const SCHEMAS = {
 
   getPage: {
     summary: "Get a page by id",
-    description: "The editor's read: any visibility, markdown included.",
+    description:
+      "The editor's read: any visibility, markdown included. A public page " +
+      "with a pending revision is read with the revision laid over it.",
     tags: ["pages"],
     params: idParams,
     security: editorSecurity,
     response: {
-      200: PageDocument,
+      200: EditorPage,
       400: error,
       404: error,
       500: error,
@@ -204,13 +269,16 @@ export const SCHEMAS = {
   createPage: {
     summary: "Create a page",
     description:
-      "Requires an employee session and the editor's Origin header. " +
-      "Creating a page as `public` needs the approver role (403 otherwise).",
+      "Requires an employee session, the editor's Origin header and the " +
+      "editor role (403 otherwise). " +
+      "Creating a page as `public` needs the approver role, and an approver " +
+      "can't make a page they wrote public (403): create it as `preview` or " +
+      "`draft`, and another approver makes it public.",
     tags: ["pages"],
     body: NewPage,
     security: editorSecurity,
     response: {
-      201: PageDocument,
+      201: EditorPage,
       422: validationFailed,
       500: error,
       ...authErrors,
@@ -220,34 +288,170 @@ export const SCHEMAS = {
   savePage: {
     summary: "Save a page",
     description:
-      "Requires an employee session and the editor's Origin header. " +
+      "Requires an employee session, the editor's Origin header and the " +
+      "editor role (403 otherwise). " +
       "Send every field: a save replaces the page and defaults none, except " +
       "that leaving `parent_id` out keeps the page's parent. " +
       "Send the `updated_at` you last read in the `if-updated-at` header. " +
-      "If the stored row has moved on since, the save is refused with a 409 " +
-      "rather than silently discarding whoever wrote first. Changing `url` " +
+      "If the stored row, or the page's pending revision, has moved on since, " +
+      "the save is refused with a 409 rather than silently discarding " +
+      "whoever wrote first. Changing `url` " +
       "moves this page alone: its sub-pages keep their urls and stay beneath " +
       "it by `parent_id`, and nothing redirects from the old url. " +
-      "Changing `visibility` needs the approver role (403 otherwise).",
+      "Changing `visibility` needs the approver role (403 otherwise). " +
+      "Making a page public is refused (403) to an approver who changed its " +
+      "content since it was last public, in this save or before: another " +
+      "approver makes it public. " +
+      "A save that keeps a `public` page public, whoever sends it, goes into " +
+      "the page's pending revision: citizens keep seeing the live page until " +
+      "an approver publishes it. An approver's save that takes a `public` page out of " +
+      "public view changes only its `visibility`: the other fields sent " +
+      "are ignored, the live content stays, and the page's open revision " +
+      "is discarded: a draft is dropped, and one waiting for review is " +
+      "closed as `discarded`, which the page's history records. A save to " +
+      "a page whose revision is waiting for review updates that revision, " +
+      "which stays waiting; the saver joins its `contributors`, so may not " +
+      "approve it. Such a save needs `if-updated-at` (428 without it). " +
+      "Returns the page as the editor now works on it.",
     tags: ["pages"],
     params: idParams,
-    headers: z.object({
-      "if-updated-at": z.iso
-        .datetime({ offset: true })
-        .transform((value) => new Date(value))
-        .optional()
-        .describe(
-          "The `updated_at` this client last read. Omit to accept " +
-            "whatever is stored.",
-        ),
-    }),
+    headers: ifUpdatedAt(""),
     body: SaveFields,
     security: editorSecurity,
     response: {
-      200: PageDocument,
+      200: EditorPage,
       400: error,
       404: error,
       409: conflict,
+      422: validationFailed,
+      428: error,
+      500: error,
+      ...authErrors,
+    },
+  },
+
+  getRevision: {
+    summary: "Get a page's pending revision",
+    description:
+      "The change to a `public` page that is waiting for an approver: a " +
+      "draft, or one submitted for review. A rejected one is returned " +
+      "until a save starts a new draft, or the live page changes. " +
+      "`changes` lists the fields it changes against the live page. 404 " +
+      "when the page has none.",
+    tags: ["pages"],
+    params: idParams,
+    security: editorSecurity,
+    response: {
+      200: RevisionView,
+      400: error,
+      404: error,
+      500: error,
+      ...authErrors,
+    },
+  },
+
+  listRevisions: {
+    summary: "List the changes waiting for review",
+    description:
+      "Any signed-in employee, as for other reads: editors see what waits, " +
+      "and approvers, who may hold no other role, what to review. Every " +
+      "revision submitted for " +
+      "review and not yet published or rejected, the longest-waiting first, " +
+      "with its page and who submitted it. Read one with " +
+      "`GET /pages/{id}/revision` to compare it with the live page.",
+    tags: ["pages"],
+    querystring: z.object({
+      status: z
+        .enum(["submitted"])
+        .describe("Which revisions: only `submitted` is listed."),
+    }),
+    security: editorSecurity,
+    response: {
+      200: z.object({ revisions: z.array(ReviewQueueEntry) }),
+      400: error,
+      500: error,
+      ...authErrors,
+    },
+  },
+
+  submitRevision: {
+    summary: "Submit a page's draft revision for review",
+    description:
+      "Needs the editor role (403 otherwise). Records the submitter, who " +
+      "may not then approve it. 404 when the page has no draft revision; " +
+      "409 `under_review` when it is already submitted, or `conflict` when " +
+      "the draft has been saved since `if-updated-at`. Saves made while it " +
+      "waits update it, and it keeps waiting. A rejected revision can be submitted again " +
+      "as it is: it is copied into a new submitted revision with the same " +
+      "`updated_at`, and the rejected one keeps its comment. The copy's " +
+      "`contributors` gain the rejected round's submitter, who may not " +
+      "approve it either.",
+    tags: ["pages"],
+    params: idParams,
+    headers: ifUpdatedAt(" for the revision"),
+    security: editorSecurity,
+    response: {
+      200: RevisionView,
+      400: error,
+      404: error,
+      409: z.union([conflict, revisionState]),
+      500: error,
+      ...authErrors,
+    },
+  },
+
+  rejectRevision: {
+    summary: "Reject a submitted revision with a comment",
+    description:
+      "Needs the approver role, and the approver must not have changed or " +
+      "submitted the revision (403 otherwise). The live page is unchanged; " +
+      "the revision is kept with the comment, and the next save starts a " +
+      "new draft from it. Rejecting moves the revision's `updated_at`, so " +
+      "an editor holding the earlier one reloads and sees why. " +
+      "`if-updated-at` is required (428 without it). 404 when nothing is " +
+      "waiting for review; 409 `not_submitted` for a draft, or `conflict` " +
+      "when the revision is no longer the version in `if-updated-at`.",
+    tags: ["pages"],
+    params: idParams,
+    headers: reviewedVersion,
+    body: z.object({
+      comment: RevisionComment.describe("Why, for the editor."),
+    }),
+    security: editorSecurity,
+    response: {
+      200: RevisionView,
+      400: error,
+      404: error,
+      409: z.union([conflict, revisionState]),
+      428: error,
+      500: error,
+      ...authErrors,
+    },
+  },
+
+  publishRevision: {
+    summary: "Approve a submitted revision and publish it",
+    description:
+      "Needs the approver role, and the approver must not have changed or " +
+      "submitted the revision (403 otherwise). Writes the revision to the " +
+      "live page as a save would, re-indexes it and records the approver " +
+      "in `change_events`, all in one transaction. A revision that has gone " +
+      "stale while it waited (its parent or category gone, or its url " +
+      "taken) is refused with a 422 naming the field, and nothing changes. " +
+      "`if-updated-at` is required (428 without it). 404 when nothing is " +
+      "waiting for review; 409 `not_submitted` for a draft, or `conflict` " +
+      "when the revision is no longer the version in `if-updated-at`. " +
+      "Returns the page as it now stands.",
+    tags: ["pages"],
+    params: idParams,
+    headers: reviewedVersion,
+    security: editorSecurity,
+    response: {
+      200: EditorPage,
+      400: error,
+      404: error,
+      409: z.union([conflict, revisionState]),
+      428: error,
       422: validationFailed,
       500: error,
       ...authErrors,
@@ -257,9 +461,11 @@ export const SCHEMAS = {
   deletePage: {
     summary: "Delete a page",
     description:
-      "Requires an employee session and the editor's Origin header. A page " +
-      "with sub-pages is refused (422) until they are moved or deleted. " +
-      "Deleting a `public` page needs the approver role (403 otherwise).",
+      "Requires an employee session, the editor's Origin header and the " +
+      "editor role (403 otherwise). A page with sub-pages is refused (422) " +
+      "until they are moved or deleted. " +
+      "Deleting a `public` page needs the approver role (403 otherwise). " +
+      "Its pending revision goes with it.",
     tags: ["pages"],
     params: idParams,
     security: editorSecurity,
@@ -313,6 +519,9 @@ export const SCHEMAS = {
   },
   createCategory: {
     summary: "Append a category or subcategory",
+    description:
+      "Needs the approver role (403 otherwise), so landing shows only " +
+      "category changes an approver made.",
     tags: ["categories"],
     security: editorSecurity,
     body: CategoryFields,
@@ -320,6 +529,9 @@ export const SCHEMAS = {
   },
   updateCategory: {
     summary: "Edit a category using its last-read version",
+    description:
+      "Needs the approver role (403 otherwise), so landing shows only " +
+      "category changes an approver made.",
     tags: ["categories"],
     security: editorSecurity,
     params: categoryParams,
@@ -334,6 +546,9 @@ export const SCHEMAS = {
   },
   orderCategories: {
     summary: "Atomically reorder a complete, versioned sibling snapshot",
+    description:
+      "Needs the approver role (403 otherwise), so landing shows only " +
+      "category changes an approver made.",
     tags: ["categories"],
     security: editorSecurity,
     body: CategoryOrder,
@@ -345,6 +560,9 @@ export const SCHEMAS = {
   },
   deleteCategory: {
     summary: "Delete an empty, unanchored category using its last-read version",
+    description:
+      "Needs the approver role (403 otherwise), so landing shows only " +
+      "category changes an approver made.",
     tags: ["categories"],
     security: editorSecurity,
     params: categoryParams,
@@ -356,6 +574,89 @@ export const SCHEMAS = {
       409: z.union([categoryConflict, categoryInUse]),
       500: error,
       ...authErrors,
+    },
+  },
+
+  listCollections: {
+    summary: "Every data collection, with its field list and record count",
+    description:
+      "A collection keeps facts many pages repeat, such as a department's " +
+      "phone number, as records. `schema.fields` is what a record may hold. " +
+      "Field lists are set by developers; editors change records.",
+    tags: ["collections"],
+    security: editorSecurity,
+    response: {
+      200: z.object({ collections: z.array(CollectionSummary) }),
+      500: error,
+      ...authErrors,
+    },
+  },
+
+  getCollectionRecords: {
+    summary: "A data collection and its records",
+    description:
+      "Public: the site and the editor both read it. Records are ordered by " +
+      "`record_key`. 404 when there is no such collection.",
+    tags: ["collections"],
+    ...siteRead,
+    params: collectionParams,
+    response: {
+      200: z.object({
+        collection: CollectionView,
+        records: z.array(CollectionRecord),
+      }),
+      400: error,
+      401: error,
+      404: error,
+      500: error,
+    },
+  },
+
+  createRecord: {
+    summary: "Add a record to a collection",
+    description:
+      "Needs the editor role (403 otherwise). `data` is checked against the " +
+      "collection's field list: a field it does not have, or a value of the " +
+      "wrong kind, is a 400 `validation_failed` naming the field. 404 when " +
+      "there is no such collection; 409 `record_exists` when the record key " +
+      "is taken.",
+    tags: ["collections"],
+    security: editorSecurity,
+    params: recordParams,
+    body: RecordBody,
+    response: { 201: CollectionRecord, 409: recordConflict, ...recordErrors },
+  },
+
+  saveRecord: {
+    summary: "Replace a record's data",
+    description:
+      "Needs the editor role (403 otherwise). Send every field to keep: " +
+      "the record becomes `data`. Checked as a create is. Send the " +
+      "`updated_at` you last read in `if-updated-at`; if the record has " +
+      "changed since, the save is refused with a 409 `conflict`. 404 when " +
+      "there is no such collection or record.",
+    tags: ["collections"],
+    security: editorSecurity,
+    params: recordParams,
+    headers: ifUpdatedAt(""),
+    body: RecordBody,
+    response: { 200: CollectionRecord, 409: recordConflict, ...recordErrors },
+  },
+
+  deleteRecord: {
+    summary: "Delete a record",
+    description:
+      "Needs the editor role (403 otherwise). With `if-updated-at`, a " +
+      "record that has changed since is refused with a 409 `conflict`. 404 " +
+      "when there is no such collection or record.",
+    tags: ["collections"],
+    security: editorSecurity,
+    params: recordParams,
+    headers: ifUpdatedAt(""),
+    response: {
+      204: z.undefined(),
+      409: recordConflict,
+      ...recordErrors,
     },
   },
 
@@ -406,11 +707,12 @@ export const SCHEMAS = {
   },
 
   version: {
-    summary: "A version token for recorded page changes",
+    summary: "A version token for recorded content changes",
     description:
-      "`change_events` currently records page writes only. Its count and " +
-      "newest timestamp identify those changes without reading the pages. " +
-      "Category changes do not advance this token until trigger-based events land.",
+      "`change_events` records every page, category and collection record " +
+      "change, and each " +
+      "review step of a page's revision. Its count " +
+      "and newest timestamp identify those changes without reading the content.",
     tags: ["meta"],
     security: editorSecurity,
     response: {

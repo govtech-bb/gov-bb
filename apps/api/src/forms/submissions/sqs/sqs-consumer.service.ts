@@ -406,6 +406,8 @@ export class SqsConsumerService
       processors: msg.processors,
       processorIndex: msg.processorIndex,
       resolvedCatchment: msg.resolvedCatchment,
+      ...(msg.isSmokeSubmission ? { isSmokeSubmission: true } : {}),
+      ...(msg.payment ? { payment: msg.payment } : {}),
     };
   }
 

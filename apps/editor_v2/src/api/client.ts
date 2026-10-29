@@ -25,6 +25,17 @@ export type CreatePageInput = Json<paths["/pages"]["post"]["requestBody"]>;
 /** What saving a page sends: every field, with `parent_id` left out to keep the parent. */
 export type SavePageInput = Json<paths["/pages/{id}"]["put"]["requestBody"]>;
 
+/** A public page's change waiting for an approver, with what it changes. */
+export type ApiRevision = Json<paths["/pages/{id}/revision"]["get"]["responses"][200]>;
+
+/** A change waiting for an approver, as the review queue lists it. */
+export type ReviewQueueEntry = Json<
+  paths["/revisions"]["get"]["responses"][200]
+>["revisions"][number];
+
+/** What rejecting a change sends: why, for the editor. */
+type RejectRevisionInput = Json<paths["/pages/{id}/revision/reject"]["post"]["requestBody"]>;
+
 /** One row of the services list. */
 export type ServiceSummary = Json<paths["/services"]["get"]["responses"][200]>[number];
 
@@ -37,13 +48,32 @@ export type ServicePage = ServiceDetail["pages"][number];
 /** The signed-in employee and their roles. */
 export type Me = Json<paths["/editor/me"]["get"]["responses"][200]>;
 
+/** A data collection in the editor's list: its field list and how many records it holds. */
+export type CollectionSummary = Json<
+  paths["/collections"]["get"]["responses"][200]
+>["collections"][number];
+
+/** A data collection and its records, ordered by record key. */
+export type CollectionDetail = Json<paths["/collections/{key}/records"]["get"]["responses"][200]>;
+
+/** A collection's definition: its key, title, record key field and field list. */
+export type Collection = CollectionDetail["collection"];
+
+/** One record of a collection: a value for some or all of its fields, every one a string. */
+export type CollectionRecord = CollectionDetail["records"][number];
+
+/** What saving a record sends: every value to keep, by field key. */
+export type RecordInput = Json<
+  paths["/collections/{key}/records/{recordKey}"]["put"]["requestBody"]
+>;
+
 /** The estate's change token. */
 export type EstateVersion = Json<paths["/version"]["get"]["responses"][200]>;
 
 /** A field the API refused, and what the editor can do about it. */
 export type FieldError = Json<paths["/pages"]["post"]["responses"][422]>["errors"][number];
 
-type FailureBody = { message?: string; errors?: FieldError[] };
+type FailureBody = { error?: string; message?: string; errors?: FieldError[] };
 
 /** A request the API refused or never answered: status 0 means it was not reached. */
 export class ApiFailure extends Error {
@@ -51,6 +81,8 @@ export class ApiFailure extends Error {
     readonly status: number,
     readonly errors: readonly FieldError[] = [],
     message = status === 0 ? "The content API could not be reached" : `HTTP ${status}`,
+    /** The API's `error`, which tells refusals with one status apart. */
+    readonly code?: string,
   ) {
     super(message);
   }
@@ -197,7 +229,7 @@ const ok = <Value>(value: Value) => ({ ok: true, value }) as const;
 const failed = <Failure extends Error>(error: Failure) => ({ ok: false, error }) as const;
 
 // JSON's text: any other JSON value, even a number, reads as something different
-const isText = (value: unknown): value is string => String(value) === value;
+export const isText = (value: unknown): value is string => String(value) === value;
 
 const isFlag = (value: unknown): value is boolean => value === true || value === false;
 
@@ -277,7 +309,13 @@ export function createEditorApi(apiOrigin: string, landingOrigin?: string) {
   async function request(
     method: "GET" | "POST" | "PUT" | "DELETE",
     path: string,
-    body?: CreatePageInput | SavePageInput | CategoryFields | CategoryOrder,
+    body?:
+      | CreatePageInput
+      | SavePageInput
+      | CategoryFields
+      | CategoryOrder
+      | RejectRevisionInput
+      | RecordInput,
     ifUpdatedAt?: string,
   ) {
     const headers = new Headers();
@@ -300,7 +338,7 @@ export function createEditorApi(apiOrigin: string, landingOrigin?: string) {
   }
 
   const refused = (status: number, failure: FailureBody | null | undefined) =>
-    new ApiFailure(status, failure?.errors, failure?.message);
+    new ApiFailure(status, failure?.errors, failure?.message, failure?.error);
 
   async function send(...args: Parameters<typeof request>) {
     const response = await request(...args);
@@ -383,6 +421,9 @@ export function createEditorApi(apiOrigin: string, landingOrigin?: string) {
   const read = async <Body>(path: string): Promise<Body> => (await send("GET", path)).json();
 
   const services = () => read<ServiceSummary[]>("/services");
+
+  const recordPath = (key: string, recordKey: string) =>
+    `/collections/${encodeURIComponent(key)}/records/${encodeURIComponent(recordKey)}`;
 
   return {
     services,
@@ -471,6 +512,31 @@ export function createEditorApi(apiOrigin: string, landingOrigin?: string) {
 
       return written.ok ? ok(undefined) : written;
     },
+    /** Every data collection, with its field list and record count. */
+    collections: async () =>
+      (await read<{ collections: CollectionSummary[] }>("/collections")).collections,
+    /** A collection and its records; a 404 when there is no such collection. */
+    collection: (key: string) =>
+      read<CollectionDetail>(`/collections/${encodeURIComponent(key)}/records`),
+    /** Adds a record; a 409 `record_exists` when its key is taken. */
+    createRecord: async (
+      key: string,
+      recordKey: string,
+      data: RecordInput["data"],
+    ): Promise<CollectionRecord> =>
+      (await send("POST", recordPath(key, recordKey), { data })).json(),
+    /** Replaces a record's data, over the version last read, `ifUpdatedAt`; a 409 `conflict` once it has moved on. */
+    saveRecord: async (
+      key: string,
+      recordKey: string,
+      data: RecordInput["data"],
+      ifUpdatedAt: string,
+    ): Promise<CollectionRecord> =>
+      (await send("PUT", recordPath(key, recordKey), { data }, ifUpdatedAt)).json(),
+    /** Deletes a record at the version last read, `ifUpdatedAt`. */
+    deleteRecord: async (key: string, recordKey: string, ifUpdatedAt: string) => {
+      await send("DELETE", recordPath(key, recordKey), undefined, ifUpdatedAt);
+    },
     version: () => read<EstateVersion>("/version"),
     me: () => read<Me>("/editor/me"),
     page: (id: string) => read<ApiPage>(`/pages/${id}`),
@@ -478,6 +544,22 @@ export function createEditorApi(apiOrigin: string, landingOrigin?: string) {
       (await send("POST", "/pages", page)).json(),
     savePage: async (id: string, fields: SavePageInput, ifUpdatedAt: string): Promise<ApiPage> =>
       (await send("PUT", `/pages/${id}`, fields, ifUpdatedAt)).json(),
+    submitRevision: async (id: string, ifUpdatedAt: string): Promise<ApiRevision> =>
+      (await send("POST", `/pages/${id}/revision/submit`, undefined, ifUpdatedAt)).json(),
+    /** The changes waiting for an approver, the longest-waiting first. */
+    reviewQueue: async () =>
+      (await read<{ revisions: ReviewQueueEntry[] }>("/revisions?status=submitted")).revisions,
+    revision: (id: string) => read<ApiRevision>(`/pages/${id}/revision`),
+    /** Publishes the change at the version the approver reviewed, `ifUpdatedAt`. */
+    publishRevision: async (id: string, ifUpdatedAt: string): Promise<ApiPage> =>
+      (await send("POST", `/pages/${id}/revision/publish`, undefined, ifUpdatedAt)).json(),
+    /** Rejects the change at the version the approver reviewed, `ifUpdatedAt`, telling the editor why. */
+    rejectRevision: async (
+      id: string,
+      comment: string,
+      ifUpdatedAt: string,
+    ): Promise<ApiRevision> =>
+      (await send("POST", `/pages/${id}/revision/reject`, { comment }, ifUpdatedAt)).json(),
     deletePage: async (id: string) => {
       await send("DELETE", `/pages/${id}`);
     },

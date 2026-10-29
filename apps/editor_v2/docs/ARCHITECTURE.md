@@ -106,7 +106,7 @@ The editable site preview mounts landing's public renderer inside the CMS docume
 
 Services and pages come only from the API. Form IDs remain page metadata, without a browser-form join. The workspace keeps three clean views and pins any additional dirty/error/pending views. Reopened clean sessions compare API versions; confirmed discard also drops undo. One coordinated guard covers page/workspace departure, sign-out and unload. Cancel changes neither location nor working copies. Old local workspace/draft keys are inert and left untouched. Historical ADR 0007 describes the former local workspace.
 
-Remote page sessions live in `workspace/remote-page-pane.tsx`; navigation has its own UI modules. `remote-page-dialogs.tsx` performs API creation/deletion through the existing `workspace-dialog.tsx` shell. There are no local-document dialogs or production form-editor route.
+Remote page sessions live in `workspace/remote-page-pane.tsx`; navigation has its own UI modules. `remote-page-dialogs.tsx` uses `ui/form-dialog.tsx` for creation and `ui/confirm-dialog.tsx` for deletion. There are no local-document dialogs or production form-editor route.
 
 ## Extension proofs
 

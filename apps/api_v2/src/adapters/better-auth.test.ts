@@ -1,4 +1,6 @@
 import { betterAuth } from "better-auth";
+import { sql } from "drizzle-orm";
+import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 import pino from "pino";
 import {
@@ -11,11 +13,14 @@ import {
   vi,
 } from "vitest";
 import { parseConfig, type AuthConfig } from "../config";
+import type { Database } from "../db";
+import { createTestDb } from "../test-db";
 import { betterAuthOptions } from "./better-auth";
 
 const pool = new Pool();
-const authWith = (config: AuthConfig) =>
-  betterAuth(betterAuthOptions(pool, config, pino({ enabled: false })));
+const authWith = (config: AuthConfig, db: Database = drizzle(pool)) =>
+  betterAuth(betterAuthOptions(db, config, pino({ enabled: false })));
+let authConfig: AuthConfig;
 let auth: ReturnType<typeof authWith>;
 
 beforeAll(() => {
@@ -28,7 +33,8 @@ beforeAll(() => {
     API_V2_ADMIN_EMAILS: "admin@govtech.bb",
   });
   if (!config.ok) throw config.error;
-  auth = authWith(config.value.auth);
+  authConfig = config.value.auth;
+  auth = authWith(authConfig);
 });
 afterEach(() => vi.unstubAllGlobals());
 afterAll(() => pool.end());
@@ -129,5 +135,57 @@ describe("GitHub provider boundary", () => {
     expect(context.socialProviders.map((provider) => provider.id)).toEqual([
       "github",
     ]);
+  });
+});
+
+describe("a new user", () => {
+  it("is made an editor when created, and only then, so a revocation outlasts later sign-ins", async () => {
+    const { db, close } = await createTestDb();
+    try {
+      const auth = authWith(authConfig, db);
+      const { databaseHooks } = auth.options;
+      // Creating a user runs this hook; a returning sign-in creates none.
+      expect(Object.keys(databaseHooks)).toEqual(["user", "account"]);
+      expect(Object.keys(databaseHooks.user)).toEqual(["create"]);
+      expect(Object.keys(databaseHooks.user.create)).toEqual(["after"]);
+      const context = await auth.$context;
+
+      // BetterAuth runs the hook once the user and account have committed.
+      const { user } = await context.internalAdapter.createOAuthUser(
+        { email: "new@govtech.bb", name: "New", emailVerified: true },
+        { accountId: "12345", providerId: "github" },
+      );
+
+      const { rows } = await db.execute(
+        sql`select role, granted_by from user_roles where user_id = ${user.id}`,
+      );
+      expect(rows).toEqual([{ role: "editor", granted_by: null }]);
+    } finally {
+      await close();
+    }
+  });
+});
+
+describe("first sign-in", () => {
+  it("leaves no user behind when the account cannot be created", async () => {
+    const { db, close } = await createTestDb();
+    try {
+      const context = await authWith(authConfig, db).$context;
+
+      await expect(
+        context.internalAdapter.createOAuthUser(
+          { email: "new@govtech.bb", name: "New", emailVerified: true },
+          // auth_account.accountId is not null, so the second insert fails.
+          { accountId: null as unknown as string, providerId: "github" },
+        ),
+      ).rejects.toThrow();
+
+      const { rows } = await db.execute(
+        sql`select 1 from auth_user where email = 'new@govtech.bb'`,
+      );
+      expect(rows).toEqual([]);
+    } finally {
+      await close();
+    }
   });
 });

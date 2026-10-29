@@ -22,6 +22,7 @@ import { editorRoutes } from "./routes/editor";
 import { siteRoutes } from "./routes/site";
 import type { EmployeeGate, RoleRecords } from "./services/editor-access";
 import type { ICategoryEditing } from "./services/category-editing";
+import type { CollectionEditing } from "./services/collection-editing";
 import type { EditorIndex } from "./services/editor-index";
 import type { PageEditing } from "./services/page-editing";
 import type { PageResolution } from "./services/page-resolution";
@@ -56,6 +57,7 @@ export interface AppOptions {
   readonly editing: PageEditing;
   readonly index: EditorIndex;
   readonly categories: ICategoryEditing;
+  readonly collections: CollectionEditing;
   readonly access: EmployeeGate;
   /** Who holds which role, for the admin routes. */
   readonly roles: RoleRecords;
@@ -68,6 +70,8 @@ export interface AppOptions {
   readonly previewSecret?: Redacted<string>;
   /** The root logger shared with database and authentication adapters. */
   readonly logger?: FastifyBaseLogger;
+  /** Whether the database answers; `/health/db` reports it, never the load balancer. */
+  readonly ready: () => Promise<boolean>;
 }
 
 /**
@@ -121,6 +125,14 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
   app.get("/docs", { schema: { hide: true } }, async (_request, reply) =>
     reply.type("text/html; charset=utf-8").send(DOCS_HTML),
   );
+  app.get("/health", { schema: { hide: true } }, async () => ({
+    status: "ok",
+  }));
+  app.get("/health/db", { schema: { hide: true } }, async (_request, reply) =>
+    (await options.ready())
+      ? { status: "ok" }
+      : reply.status(503).send({ error: "database_unavailable" }),
+  );
 
   app.setErrorHandler((error: FastifyError, request, reply) => {
     // Fastify's own refusals (invalid JSON, wrong content type, too large,
@@ -150,12 +162,14 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
   await app.register(siteRoutes, {
     resolution: options.resolution,
     navigation: options.navigation,
+    collections: options.collections,
     previewSecret: options.previewSecret,
   });
   await app.register(editorRoutes, {
     editing: options.editing,
     index: options.index,
     categories: options.categories,
+    collections: options.collections,
     access: options.access,
     roles: options.roles,
     editorOrigin: config.editorOrigin,

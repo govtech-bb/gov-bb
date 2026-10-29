@@ -22,6 +22,7 @@ const KNOWN_KEYS = new Set([
   ...TEXT_FRONTMATTER,
 ]);
 
+// Legacy drafts must round-trip without changing visibility on unrelated saves.
 const VISIBILITIES = ["public", "preview", "draft"] as const;
 
 /** The editor's Markdown for a page: its fields as YAML frontmatter, then its body. */
@@ -137,7 +138,8 @@ export function markdownToPageSaveInput(
   const visibilityText = text("visibility") || "public";
   const visibility = VISIBILITIES.find((value) => value === visibilityText);
 
-  if (!visibility) errors.push({ field: "visibility", message: "Choose public, preview or draft" });
+  if (!visibility)
+    errors.push({ field: "visibility", message: "Choose Public or Preview link only" });
 
   const categoryId = categoryOf(document, base, categories, errors);
   const frontmatter: SavePageInput["frontmatter"] = {};
@@ -286,6 +288,8 @@ const FIELD_LABELS = new Map([
   ["lede", "Introduction"],
   ["parent_id", "Parent page"],
   ["id", "Page"],
+  ["body_markdown", "Content"],
+  ["frontmatter", "Page settings"],
 ]);
 
 /** How the editor names a field the API refused. */

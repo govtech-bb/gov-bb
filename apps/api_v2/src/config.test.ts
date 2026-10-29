@@ -169,3 +169,51 @@ describe("admin emails", () => {
     ]);
   });
 });
+
+describe("review notifications", () => {
+  const production = {
+    ...required,
+    NODE_ENV: "production",
+    EDITOR_ORIGIN: "https://editor.example",
+    BETTER_AUTH_URL: "https://api.example",
+  };
+
+  it("are off by default, and sent through SES from the configured sender when on", () => {
+    const off = parseConfig(production);
+    const on = parseConfig({
+      ...production,
+      REVIEW_NOTIFICATIONS: "ses",
+      SES_FROM_ADDRESS: "noreply@gov.bb",
+      AWS_DEFAULT_REGION: "us-east-2",
+    });
+    expect(off.ok && off.value.notifications).toEqual({ transport: "off" });
+    expect(on.ok && on.value.notifications).toEqual({
+      transport: "ses",
+      from: "noreply@gov.bb",
+      region: "us-east-2",
+    });
+  });
+
+  it("refuses SES without a sender, saying which setting to fix", () => {
+    const refused = parseConfig({
+      ...production,
+      REVIEW_NOTIFICATIONS: "ses",
+    });
+    expect(refused.ok).toBe(false);
+    if (!refused.ok) {
+      expect(refused.error.fields).toEqual(["SES_FROM_ADDRESS"]);
+      expect(refused.error.reasons).toEqual([
+        expect.stringContaining("verified SES sender"),
+      ]);
+    }
+  });
+
+  it("logs them only outside production", () => {
+    const local = parseConfig({ ...required, REVIEW_NOTIFICATIONS: "log" });
+    expect(local.ok && local.value.notifications).toEqual({ transport: "log" });
+    const refused = parseConfig({ ...production, REVIEW_NOTIFICATIONS: "log" });
+    expect(!refused.ok && refused.error.fields).toEqual([
+      "REVIEW_NOTIFICATIONS",
+    ]);
+  });
+});

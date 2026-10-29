@@ -3,6 +3,7 @@ import {
   AuthUnavailable,
   Forbidden,
   Unauthenticated,
+  UserId,
   type Role,
 } from "../modules/auth";
 import { ContentStoreUnavailable } from "../modules/page";
@@ -26,7 +27,7 @@ function rolesHolding(held: Role[] = []) {
 }
 
 const employee = {
-  id: "employee-id",
+  id: UserId.parse("employee-id"),
   email: "employee@govtech.bb",
   name: "Employee",
 };

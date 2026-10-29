@@ -1,6 +1,7 @@
 /** @vitest-environment jsdom */
 import { expect, test } from "vitest";
 import { act } from "react";
+import { screen } from "@testing-library/react";
 import { UNDO_COMMAND } from "lexical";
 import { parseContentMarkdown } from "@govtech-bb/govbbmarkd";
 import { govbbPageCodec } from "../../src/presets/govbb-page";
@@ -15,36 +16,23 @@ test.each([
   { caret: "Outside list", hover: true },
   { caret: "Other start", hover: true },
   { caret: "Start now", hover: false },
-])("nested Start settings use hover=$hover with the caret in $caret", async ({ caret, hover }) => {
-  await renderPageEditor(
-    'Outside list\n\n1. First route\n\n   <a data-start-link href="/first">Other start</a>\n\n2. Second route\n\n   <a data-start-link href="/second">Start now</a>\n',
-  );
-  await selectPageText(caret);
-  const start = pageControl<HTMLElement>('ol > li:nth-child(2) [data-page-component="start"]');
+])(
+  "a nested Start button's menu leaves its destination to the card at the caret (hover=$hover, caret in $caret)",
+  async ({ caret, hover }) => {
+    await renderPageEditor(
+      'Outside list\n\n1. First route\n\n   <a data-start-link href="/first">Other start</a>\n\n2. Second route\n\n   <a data-start-link href="/second">Start now</a>\n',
+    );
+    await selectPageText(caret);
+    const start = pageControl<HTMLElement>('ol > li:nth-child(2) [data-page-component="start"]');
 
-  if (hover) await hoverPageMenu(start);
-  else
-    await act(async () => pageControl<HTMLButtonElement>('[aria-label="Block options"]').click());
-  const input = pageControl<HTMLInputElement>(".page-component-settings input");
-  expect(input.value).toBe("/second");
-  await act(async () => {
-    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(
-      input,
-      "/edited",
-    );
-    input.dispatchEvent(new Event("input", { bubbles: true }));
-  });
-  await act(async () => {
-    pageControl(".page-component-settings").dispatchEvent(
-      new Event("submit", { bubbles: true, cancelable: true }),
-    );
-  });
-  expect(start.dataset.destination).toBe("/edited");
-  expect(
-    pageControl<HTMLElement>('ol > li:first-child [data-page-component="start"]').dataset
-      .destination,
-  ).toBe("/first");
-});
+    if (hover) await hoverPageMenu(start);
+    else
+      await act(async () => pageControl<HTMLButtonElement>('[aria-label="Block options"]').click());
+
+    expect(pageControl(".page-block-menu").textContent).not.toContain("Button destination");
+    expect(start.dataset.destination).toBe("/second");
+  },
+);
 
 test("nested hover settings do not change the root block used by delete and undo", async () => {
   const editor = await renderPageEditor(
@@ -54,9 +42,9 @@ test("nested hover settings do not change the root block used by delete and undo
   const before = govbbPageCodec.encode(editor.getEditorState().toJSON());
   await hoverPageMenu(pageControl<HTMLElement>('[data-page-component="start"]'));
 
-  const remove = [...pageControl(".page-block-menu").querySelectorAll("button")].find(
-    (button) => button.textContent === "Delete block",
-  );
+  const remove = [
+    ...pageControl(".page-block-menu").querySelectorAll<HTMLElement>('[role="menuitem"]'),
+  ].find((item) => item.textContent === "Delete block");
 
   expect(remove).toBeDefined();
   await act(async () => remove!.click());
@@ -122,6 +110,39 @@ test("action settings switch between registered forms, URLs and the linked form 
   expect(parseContentMarkdown(linked).errors).toEqual([]);
 });
 
+test.each([
+  { kind: "details", source: ":::details[More]\nBody\n:::\n" },
+  {
+    kind: "table",
+    source: ":::table[Fees]\n| Service | Cost |\n| --- | --- |\n| Copy | 50 |\n:::\n",
+  },
+  { kind: "summary-item", source: "::::summary-list\n:::summary-item[Fee]\nBBD 50\n:::\n::::\n" },
+])("$kind settings keep the newer blur-to-save interaction", async ({ kind, source }) => {
+  const editor = await renderPageEditor(source);
+  await hoverPageMenu(pageControl<HTMLElement>(`[data-page-component="${kind}"]`));
+  const input = pageControl<HTMLInputElement>(".page-component-settings input");
+  await act(async () => input.focus());
+  await editDestination("Updated label");
+  await act(async () => input.blur());
+  const encoded = govbbPageCodec.encode(editor.getEditorState().toJSON());
+  expect(encoded).toContain("[Updated label]");
+  expect(parseContentMarkdown(encoded).errors).toEqual([]);
+});
+
+test("button style changes apply immediately without changing its form target", async () => {
+  const editor = await renderPageEditor(':::action{form="birth-certificate"}\nApply\n:::\n');
+  await hoverPageMenu(pageControl<HTMLElement>('[data-page-component="action"]'));
+  const style = screen.getByRole<HTMLSelectElement>("combobox", { name: "Button style" });
+  await act(async () => {
+    style.value = "secondary";
+    style.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+  const source = govbbPageCodec.encode(editor.getEditorState().toJSON());
+  expect(source).toContain('variant="secondary"');
+  expect(source).toContain('form="birth-certificate"');
+  expect(parseContentMarkdown(source).errors).toEqual([]);
+});
+
 test("the summary list menu adds an editable row that round-trips", async () => {
   const editor = await renderPageEditor(
     "::::summary-list\n:::summary-item[Fee]\nBBD 50\n:::\n::::\n",
@@ -129,9 +150,9 @@ test("the summary list menu adds an editable row that round-trips", async () => 
 
   await hoverPageMenu(pageControl<HTMLElement>('[data-page-component="summary-list"]'));
 
-  const add = [...pageControl(".page-block-menu").querySelectorAll("button")].find(
-    (button) => button.textContent === "Add summary item",
-  );
+  const add = [
+    ...pageControl(".page-block-menu").querySelectorAll<HTMLElement>('[role="menuitem"]'),
+  ].find((button) => button.textContent === "Add summary item");
 
   if (!add) throw new Error("Expected the add summary item action");
   await act(async () => add.click());

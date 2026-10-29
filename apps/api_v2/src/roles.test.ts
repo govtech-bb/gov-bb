@@ -1,7 +1,7 @@
 /**
- * Roles (#3187, ADR 0079): only an approver changes what citizens see, only
- * an admin changes who holds which role, and roles are read from the
- * database on every request.
+ * Roles (#3187, #3197, ADR 0079): only an editor writes, only an approver
+ * changes what citizens see, only an admin changes who holds which role,
+ * and roles are read from the database on every request.
  */
 
 import { sql } from "drizzle-orm";
@@ -11,6 +11,7 @@ import pino from "pino";
 import { PostgresRoles } from "./adapters/postgres-roles";
 import type { Database } from "./db";
 import type { Employee } from "./modules/auth";
+import { PostgresPages } from "./adapters/postgres-pages";
 import { withDefaults, type PageId } from "./modules/page";
 import { Redacted } from "./modules/redacted";
 import { ok } from "./modules/result";
@@ -21,6 +22,7 @@ import {
   createTestApp,
   createTestDb,
   createTestServices,
+  SELF_APPROVAL,
   expectOk,
   TEST_EDITOR,
   TEST_EMPLOYEE,
@@ -36,7 +38,9 @@ let services: ReturnType<typeof createTestServices>;
 
 beforeEach(async () => {
   ({ db, close } = await createTestDb());
-  services = createTestServices(db);
+  // Fixtures are set up as AUTH_BYPASS would, so only the app under test
+  // holds an approver to the self-approval rule.
+  services = createTestServices(db, SELF_APPROVAL);
   // The cookie names the fixture; its roles come from the database.
   app = await createTestApp(db, {
     sessions: {
@@ -70,7 +74,8 @@ const as = (employee: Employee, options: InjectOptions) =>
 const seedPage = async (overrides: Record<string, unknown> = {}) =>
   expectOk(await services.editing.create(aPage(overrides), TEST_EMPLOYEE));
 
-const stored = async (id: PageId) => expectOk(await services.editing.get(id));
+const stored = async (id: PageId) =>
+  expectOk(await new PostgresPages(db).find(id));
 
 const FORBIDDEN = {
   error: "forbidden",
@@ -109,7 +114,13 @@ describe("a page's visibility", () => {
   });
 
   it("is changed by an approver, and the change is recorded against them", async () => {
-    const page = await seedPage({ visibility: "preview" });
+    // Written by someone else, so making it public is the approver's review.
+    const page = expectOk(
+      await services.editing.create(
+        aPage({ visibility: "preview" }),
+        TEST_EDITOR,
+      ),
+    );
 
     const response = await as(TEST_EMPLOYEE, {
       method: "PUT",
@@ -188,6 +199,31 @@ describe("deleting a page", () => {
   );
 });
 
+describe("an employee whose editor role is revoked", () => {
+  it("can still read, but every write is refused, from the next request", async () => {
+    const page = await seedPage({ visibility: "draft" });
+    await as(TEST_EMPLOYEE, {
+      method: "DELETE",
+      url: `/editor/employees/${TEST_EDITOR.id}/roles/editor`,
+    });
+
+    for (const url of ["/services", `/pages/${page.id}`, "/editor/me"])
+      expect((await as(TEST_EDITOR, { url })).statusCode, url).toBe(200);
+    const response = await as(TEST_EDITOR, {
+      method: "PUT",
+      url: `/pages/${page.id}`,
+      payload: withDefaults(aPage({ visibility: "draft", title: "Changed" })),
+    });
+    expect(response.statusCode).toBe(403);
+    expect(response.json()).toEqual({
+      error: "forbidden",
+      message:
+        "You need the editor role to make changes. Ask an admin to grant it.",
+    });
+    expect((await stored(page.id))?.title).toBe(page.title);
+  });
+});
+
 describe("GET /editor/me", () => {
   it("is the signed-in employee and their roles", async () => {
     const response = await as(TEST_EDITOR, { url: "/editor/me" });
@@ -203,7 +239,7 @@ describe("GET /editor/me", () => {
 });
 
 describe("role management", () => {
-  const grant = (role: string, id = TEST_EDITOR.id) =>
+  const grant = (role: string, id: string = TEST_EDITOR.id) =>
     as(TEST_EMPLOYEE, {
       method: "PUT",
       url: `/editor/employees/${id}/roles/${role}`,

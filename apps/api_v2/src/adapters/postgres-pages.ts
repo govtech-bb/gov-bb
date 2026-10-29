@@ -11,11 +11,14 @@
 import {
   and,
   count,
+  desc,
   eq,
   inArray,
   isNull,
   max,
+  or,
   sql,
+  TransactionRollbackError,
   type SQL,
 } from "drizzle-orm";
 import { z } from "zod";
@@ -31,31 +34,38 @@ import {
   isCategoryAnchor,
   type CategoryValues,
 } from "../modules/category";
+import type { UserId } from "../modules/auth";
 import type { CategoryRecords } from "../services/category-editing";
 import {
   ContentStoreUnavailable,
+  OPEN_REVISION_STATUSES,
   PageRejected,
   type FieldError,
   type Frontmatter,
   type PageDocument,
   type PageId,
+  type PendingRevision,
+  type ReviewQueueEntry,
   type Visibility,
 } from "../modules/page";
 import type { Ancestor, ResolvablePage } from "../modules/page-visibility";
 import { err, ok, type Result } from "../modules/result";
 import type { SearchChunk } from "../modules/search-text";
 import {
+  authUser,
   categories,
   changeEvents,
   contentPages,
+  pageRevisions,
   searchChunks,
 } from "../schema";
 import type { EstateVersion, IndexReads } from "../services/editor-index";
 import type {
   NewPageRecord,
-  PageChange,
   PageRecords,
   PageRevision,
+  PendingRevisionRecord,
+  RevisionMark,
 } from "../services/page-editing";
 import type { PublicPageReads } from "../services/page-resolution";
 import type { NavigationReads } from "../services/site-navigation";
@@ -83,6 +93,28 @@ export const toDocument = (row: PageRow): PageDocument => ({
   created_at: row.createdAt.toISOString(),
   updated_at: row.updatedAt.toISOString(),
 });
+
+type RevisionRow = typeof pageRevisions.$inferSelect;
+
+const toRevision = (row: RevisionRow): PendingRevision => ({
+  id: row.id,
+  page_id: row.pageId,
+  status: row.status,
+  fields: row.fields,
+  live_updated_at: row.liveUpdatedAt.toISOString(),
+  created_by: row.createdBy,
+  contributors: row.contributors,
+  submitted_by: row.submittedBy,
+  submitted_at: row.submittedAt?.toISOString() ?? null,
+  decided_by: row.decidedBy,
+  decided_at: row.decidedAt?.toISOString() ?? null,
+  comment: row.comment,
+  created_at: row.createdAt.toISOString(),
+  updated_at: row.updatedAt.toISOString(),
+});
+
+/** A page's one open revision, as the partial unique index defines it. */
+const isOpen = inArray(pageRevisions.status, OPEN_REVISION_STATUSES);
 
 /** The constraints a write can break, as the field an editor can fix. */
 const REFUSALS: Readonly<Record<string, FieldError>> = {
@@ -189,32 +221,6 @@ export async function writeSearchChunks(
     .values(chunks.map((chunk, ordinal) => ({ pageId, ordinal, ...chunk })));
 }
 
-/** Append an entry to a page's change log, numbered after its last. */
-export async function writeChange(
-  db: Database,
-  change: PageChange,
-): Promise<void> {
-  const [next] = await db
-    .select({
-      versionNo: sql<number>`coalesce(max(${changeEvents.versionNo}), 0) + 1`,
-    })
-    .from(changeEvents)
-    .where(
-      and(
-        eq(changeEvents.entityKind, "content_page"),
-        eq(changeEvents.entityId, change.page.id),
-      ),
-    );
-  await db.insert(changeEvents).values({
-    entityKind: "content_page",
-    entityId: change.page.id,
-    versionNo: Number(next?.versionNo ?? 1),
-    action: change.action,
-    actor: change.actorId,
-    snapshot: change.page,
-  });
-}
-
 /** Pages, categories, search text and the change log, in the content database. */
 export class PostgresPages
   implements
@@ -227,8 +233,14 @@ export class PostgresPages
   /** The root supplies the drizzle database over its shared pool. */
   constructor(private readonly db: Database) {}
 
-  /** Acquire the shared content lock first; an error Result rolls back the entire transaction. */
+  /**
+   * Run `work` in one transaction as `actorId`, whom the change-log trigger
+   * records, after taking the shared content lock; an error result rolls back
+   * everything it wrote. The setting is transaction-local, so a pooled
+   * connection never carries it into another request.
+   */
   async atomically<R extends Result<unknown, Error>>(
+    actorId: UserId,
     work: (records: PageRecords & CategoryRecords) => Promise<R>,
   ): Promise<R | Result<never, ContentStoreUnavailable>> {
     let refused: R | undefined;
@@ -236,6 +248,9 @@ export class PostgresPages
       return await this.db.transaction(async (tx) => {
         await tx.execute(
           sql`select pg_advisory_xact_lock(hashtext('content_pages.parent_id'))`,
+        );
+        await tx.execute(
+          sql`select set_config('app.user_id', ${actorId}, true)`,
         );
         const result = await work(new PostgresPages(tx));
         if (!result.ok) {
@@ -422,11 +437,13 @@ export class PostgresPages
     fields: CategoryValues,
     position: number,
     stamp: CategoryStamp,
-  ): Promise<Result<void, CategoryRejected | ContentStoreUnavailable>> {
+  ): Promise<
+    Result<CategoryStamp, CategoryRejected | ContentStoreUnavailable>
+  > {
     return attempt(
       "replaceCategory",
       async () => {
-        await this.db
+        const rows = await this.db
           .update(categories)
           .set({
             title: fields.title,
@@ -436,7 +453,9 @@ export class PostgresPages
             position,
             updatedAt: new Date(stamp),
           })
-          .where(eq(categories.id, id));
+          .where(eq(categories.id, id))
+          .returning({ updatedAt: categories.updatedAt });
+        return CategoryStamp.parse(rows[0]?.updatedAt.toISOString());
       },
       categoryRejectionOf,
     );
@@ -674,6 +693,34 @@ export class PostgresPages
     return rows.ok ? ok(onlyDocument(rows.value)) : rows;
   }
 
+  /** Refuse what `replace` would: it writes in a savepoint and rolls it back. */
+  checkReplace(
+    id: PageId,
+    page: PageRevision,
+  ): Promise<Result<void, PageRejected | ContentStoreUnavailable>> {
+    return attempt(
+      "checkReplace",
+      async () => {
+        try {
+          await this.db.transaction(async (savepoint) => {
+            await savepoint
+              .update(contentPages)
+              .set({
+                ...page.values,
+                updatedAt: page.updatedAt,
+                publishedAt: page.publishedAt,
+              })
+              .where(eq(contentPages.id, id));
+            savepoint.rollback();
+          });
+        } catch (error) {
+          if (!(error instanceof TransactionRollbackError)) throw error;
+        }
+      },
+      rejectionOf,
+    );
+  }
+
   /**
    * File a page's uncategorised sub-pages, all the way down, under its
    * category. `on update cascade` moves sub-pages that had the parent's old
@@ -696,6 +743,121 @@ export class PostgresPages
             and id in (select id from below where not is_cycle)`),
     );
     return filed.ok ? ok(undefined) : filed;
+  }
+
+  /**
+   * A page's open revision; otherwise its latest rejected one, while the live
+   * page is still the version it was saved over; or null. A live write after
+   * the rejection (an unpublish, or another revision published) retires it.
+   */
+  async currentRevision(
+    pageId: PageId,
+  ): Promise<Result<PendingRevision | null, ContentStoreUnavailable>> {
+    const rows = await attempt("currentRevision", () =>
+      this.db
+        .select({ revision: pageRevisions })
+        .from(pageRevisions)
+        .innerJoin(contentPages, eq(contentPages.id, pageRevisions.pageId))
+        .where(
+          and(
+            eq(pageRevisions.pageId, pageId),
+            or(
+              isOpen,
+              and(
+                eq(pageRevisions.status, "rejected"),
+                eq(pageRevisions.liveUpdatedAt, contentPages.updatedAt),
+              ),
+            ),
+          ),
+        )
+        .orderBy(
+          sql`${pageRevisions.status} = 'rejected'`,
+          desc(pageRevisions.decidedAt),
+        )
+        .limit(1),
+    );
+    if (!rows.ok) return rows;
+    const [row] = rows.value;
+    return ok(row ? toRevision(row.revision) : null);
+  }
+
+  /** Start a page's open revision, or overwrite it, keeping who started it. */
+  async writeRevision(
+    pageId: PageId,
+    revision: PendingRevisionRecord,
+  ): Promise<Result<PendingRevision, ContentStoreUnavailable>> {
+    const rows = await attempt("writeRevision", () =>
+      this.db
+        .insert(pageRevisions)
+        .values({
+          pageId,
+          fields: revision.fields,
+          liveUpdatedAt: revision.liveUpdatedAt,
+          createdBy: revision.createdBy,
+          contributors: [...revision.contributors],
+          createdAt: revision.updatedAt,
+          updatedAt: revision.updatedAt,
+        })
+        .onConflictDoUpdate({
+          target: pageRevisions.pageId,
+          targetWhere: sql`status in ('draft', 'submitted')`,
+          set: {
+            fields: revision.fields,
+            liveUpdatedAt: revision.liveUpdatedAt,
+            contributors: [...revision.contributors],
+            updatedAt: revision.updatedAt,
+          },
+        })
+        .returning(),
+    );
+    if (!rows.ok) return rows;
+    const [row] = rows.value;
+    if (!row) throw new Error("Postgres returned no row for a write");
+    return ok(toRevision(row));
+  }
+
+  /** Discard a page's open revision, if it has one. */
+  dropRevision(pageId: PageId): Promise<Result<void, ContentStoreUnavailable>> {
+    return attempt("dropRevision", async () => {
+      await this.db
+        .delete(pageRevisions)
+        .where(and(eq(pageRevisions.pageId, pageId), isOpen));
+    });
+  }
+
+  /** Move a revision to a review status, recording who moved it; a rejection moves its version to its time, and a discard closes it. */
+  async markRevision(
+    revisionId: string,
+    mark: RevisionMark,
+  ): Promise<Result<PendingRevision, ContentStoreUnavailable>> {
+    const rows = await attempt("markRevision", () =>
+      this.db
+        .update(pageRevisions)
+        .set(
+          mark.status === "submitted"
+            ? {
+                status: mark.status,
+                submittedBy: mark.by,
+                submittedAt: mark.at,
+              }
+            : mark.status === "rejected"
+              ? {
+                  status: mark.status,
+                  decidedBy: mark.by,
+                  decidedAt: mark.at,
+                  comment: mark.comment,
+                  // So an editor holding the earlier version reloads and sees why.
+                  updatedAt: mark.at,
+                }
+              : { status: mark.status, decidedBy: mark.by, decidedAt: mark.at },
+        )
+        .where(eq(pageRevisions.id, revisionId))
+        .returning(),
+    );
+    if (!rows.ok) return rows;
+    const [row] = rows.value;
+    if (!row) throw new Error("Postgres returned no row for a write");
+    return ok(toRevision(row));
   }
 
   /** Replace a page's search chunks. */
@@ -723,11 +885,37 @@ export class PostgresPages
     return rows.ok ? ok(firstDocument(rows.value)) : rows;
   }
 
-  /** Append an entry to the change log, numbered after the page's last. */
-  appendChange(
-    change: PageChange,
-  ): Promise<Result<void, ContentStoreUnavailable>> {
-    return attempt("appendChange", () => writeChange(this.db, change));
+  /**
+   * Who changed a page's content since it was last public, or ever when it
+   * never was, from its history: the actors of each created, updated,
+   * published or unpublished entry whose row differs from the one before it
+   * in more than visibility and stamps. A sub-page's category is left out
+   * too: it follows its parent's, so a write above it that carries it along
+   * changes nothing of its own. Review events are left out, since their
+   * snapshot is a revision row.
+   */
+  async changedSincePublic(
+    id: PageId,
+  ): Promise<Result<string[], ContentStoreUnavailable>> {
+    const rows = await attempt("changedSincePublic", () =>
+      this.db.execute<{ actor: string }>(sql`
+        with entries as (
+          select version_no, actor,
+                 snapshot->>'visibility' = 'public' as public,
+                 snapshot - array['visibility', 'published_at', 'updated_at', 'created_at']
+                   - case when snapshot->>'parent_id' is null then '' else 'category_id' end
+                   as content
+            from change_events
+           where entity_kind = 'content_page' and entity_id = ${id}
+             and action in ('created', 'updated', 'published', 'unpublished')
+        ), history as (
+          select *, lag(content) over (order by version_no) as before from entries
+        )
+        select distinct actor from history
+         where version_no > coalesce((select max(version_no) from history where public), 0)
+           and content is distinct from before`),
+    );
+    return rows.ok ? ok(rows.value.rows.map((row) => row.actor)) : rows;
   }
 
   /** Every page with its category, for the service index. */
@@ -774,6 +962,36 @@ export class PostgresPages
         latest: row?.latest?.toISOString() ?? null,
       };
     });
+  }
+
+  /** Every revision waiting for review, with its submitter's name, the longest-waiting first. */
+  async submittedRevisions(): Promise<
+    Result<ReviewQueueEntry[], ContentStoreUnavailable>
+  > {
+    const rows = await attempt("submittedRevisions", () =>
+      this.db
+        .select({ revision: pageRevisions, name: authUser.name })
+        .from(pageRevisions)
+        .leftJoin(authUser, eq(authUser.id, pageRevisions.submittedBy))
+        .where(eq(pageRevisions.status, "submitted"))
+        .orderBy(pageRevisions.submittedAt, pageRevisions.id),
+    );
+    if (!rows.ok) return rows;
+    return ok(
+      rows.value.map(({ revision, name }) => ({
+        id: revision.id,
+        page_id: revision.pageId,
+        title: revision.fields.title,
+        url: revision.fields.url,
+        // A submitted revision always records who submitted it, and when.
+        submitted_by: revision.submittedBy ?? "",
+        submitted_by_name: name,
+        submitted_at: (
+          revision.submittedAt ?? revision.updatedAt
+        ).toISOString(),
+        updated_at: revision.updatedAt.toISOString(),
+      })),
+    );
   }
 }
 

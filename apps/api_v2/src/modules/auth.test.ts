@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { admitGitHubIdentity, Forbidden, parseEmployee } from "./auth";
+import { admitGitHubIdentity, Forbidden, parseEmployee, UserId } from "./auth";
 
 const github = (profile: object = {}, action = "create-user") => ({
   email: "employee@example.com",
@@ -108,5 +108,16 @@ describe("GitHub employee admission", () => {
         emailVerified: false,
       }).ok,
     ).toBe(false);
+  });
+  it("refuses an empty user id, which the history would record as system", () => {
+    expect(
+      parseEmployee({
+        id: "",
+        email: "employee@govtech.bb",
+        name: "Employee",
+        emailVerified: true,
+      }).ok,
+    ).toBe(false);
+    expect(UserId.safeParse("").success).toBe(false);
   });
 });

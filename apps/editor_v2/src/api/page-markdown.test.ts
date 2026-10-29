@@ -46,6 +46,7 @@ const pages: ApiPage[] = estate.pages.map((page) => ({
   published_at: page.published_at,
   created_at: "2026-10-07T12:00:00.000Z",
   updated_at: "2026-10-07T12:00:00.000Z",
+  pending_revision: null,
 }));
 
 const entry = pages.find((page) => page.url === "/money-financial-support/calculate-severance-pay");
@@ -125,7 +126,7 @@ describe("page markdown", () => {
     if (prepared.mode === "source") throw new Error("The entry page should open visually");
     const editor = createHeadlessEditor(govbbPageEditor, prepared.state);
 
-    editor.update(() => $setPageMetadata({ visibility: "draft", subcategory: undefined }), {
+    editor.update(() => $setPageMetadata({ visibility: "preview", subcategory: undefined }), {
       discrete: true,
     });
     const edited = govbbPageCodec.encode(editor.getEditorState().toJSON());
@@ -138,8 +139,46 @@ describe("page markdown", () => {
     // An edit re-exports the body in the editor's normal form (a hard break becomes <br>).
     expect({ ...after.value, body_markdown: "" }).toEqual({
       ...before.value,
-      visibility: "draft",
+      visibility: "preview",
       body_markdown: "",
+    });
+  });
+
+  it("keeps a legacy draft hidden when unrelated edits are saved", () => {
+    const page: ApiPage = { ...entry, visibility: "draft" };
+    const prepared = govbbPageCodec.prepare(pageToMarkdown(page, categories));
+
+    if (prepared.mode === "source") throw new Error("The draft page should open visually");
+    const editor = createHeadlessEditor(govbbPageEditor, prepared.state);
+
+    try {
+      editor.update(() => $setPageMetadata({ title: "Edited hidden page" }), { discrete: true });
+
+      const saved = markdownToPageSaveInput(
+        govbbPageCodec.encode(editor.getEditorState().toJSON()),
+        page,
+        categories,
+      );
+
+      expect(saved.ok && saved.value.title).toBe("Edited hidden page");
+      expect(saved.ok && saved.value.visibility).toBe("draft");
+    } finally {
+      editor.dispose();
+    }
+  });
+
+  it("names the available visibility choices when an imported value cannot be saved", () => {
+    const saved = markdownToPageSaveInput(
+      markdownOf(
+        "title: Severance\nurl: /money/severance\ncategory: money-financial-support\nvisibility: secret",
+      ),
+      entry,
+      categories,
+    );
+
+    expect(saved).toEqual({
+      ok: false,
+      errors: [{ field: "visibility", message: "Choose Public or Preview link only" }],
     });
   });
 

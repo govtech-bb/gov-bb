@@ -1,8 +1,10 @@
 name: CI
 
 on:
+  # v2-rewrite is a long-lived integration branch; its PRs and merges run the
+  # same checks as main's until it merges in.
   pull_request:
-    branches: [main]
+    branches: [main, v2-rewrite]
   # Re-validate the trunk after every merge. CI otherwise runs only on
   # pull_request, so a break that emerges from the COMBINATION of two
   # independently-green PRs (e.g. #1875's recipes + #1970's new lint, incident
@@ -10,7 +12,7 @@ on:
   # `main` flags a red trunk immediately. `validate-recipes` matters most here:
   # it validates ALL recipes, not just nx-affected ones.
   push:
-    branches: [main]
+    branches: [main, v2-rewrite]
   workflow_dispatch:
 
 permissions:
@@ -603,6 +605,10 @@ jobs:
 
       - name: Build affected packages
         id: build
+        env:
+          # editor_v2 refuses a production build without an HTTPS API origin;
+          # Amplify supplies the real one, CI only needs the shell to prerender.
+          VITE_API_ORIGIN: https://api.example.invalid
         run: |
           pnpm exec nx affected -t build --nxBail=false 2>&1 | tee build-output.txt
           exit ${PIPESTATUS[0]}
@@ -625,6 +631,11 @@ jobs:
           echo "pnpm exec nx affected -t build" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
           exit 1
+
+      # Client bundle budgets (apps/landing/.size-limit.js, #3139). Runs only
+      # when landing is affected, and reuses the build above from the nx cache.
+      - name: Check bundle size budgets
+        run: pnpm exec nx affected -t size
 
   validate-recipes:
     name: Validate Recipes

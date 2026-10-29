@@ -18,6 +18,7 @@
 import { spawn, type ChildProcess } from "node:child_process";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
+import { drizzle } from "drizzle-orm/node-postgres";
 import { Client, Pool } from "pg";
 import { createHmac, randomUUID } from "node:crypto";
 import pino from "pino";
@@ -268,7 +269,11 @@ export async function createEmployeeSession(
   const pool = new Pool({ ...DB, database });
   try {
     const context = await betterAuth(
-      betterAuthOptions(pool, config.value.auth, pino({ enabled: false })),
+      betterAuthOptions(
+        drizzle(pool),
+        config.value.auth,
+        pino({ enabled: false }),
+      ),
     ).$context;
     const userId = randomUUID();
     // The GitHub identity check is tested separately. Here the fixture inserts
@@ -282,7 +287,8 @@ export async function createEmployeeSession(
         options.emailVerified ?? true,
       ],
     );
-    for (const role of options.roles ?? [])
+    // Every employee is an editor unless a test says otherwise, as at a real first sign-in.
+    for (const role of options.roles ?? ["editor"])
       await pool.query(
         "insert into user_roles (user_id, role) values ($1, $2)",
         [userId, role],

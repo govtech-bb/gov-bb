@@ -36,6 +36,16 @@ export async function authenticatedContext(browser, options) {
       },
     }),
   );
+  await context.route("**/editor/me", (route) =>
+    route.fulfill({
+      json: { ...employeeSession().user, roles: ["editor", "approver"] },
+      headers: {
+        "access-control-allow-origin": route.request().headers().origin ?? "*",
+        "access-control-allow-credentials": "true",
+        "cache-control": "no-store",
+      },
+    }),
+  );
   // The editor's own /services page shares the path; only the API fetch is answered.
   await context.route("**/services", (route) =>
     route.request().resourceType() === "fetch"
