@@ -1,8 +1,4 @@
-import {
-  categoryChain,
-  categoryCrumbs,
-  type CategoryRecord,
-} from "../modules/navigation";
+import { pageCategory, type CategoryRecord } from "../modules/navigation";
 import {
   bareSlugOf,
   type ContentStoreUnavailable,
@@ -74,14 +70,17 @@ export class PageResolution {
     const categories =
       page.categoryId === null ? ok([]) : await this.reads.categories();
     if (!categories.ok) return categories;
-    const chain = categoryChain(page.categoryId, categories.value);
+    const { crumbs, category, subcategory } = pageCategory(
+      page.categoryId,
+      categories.value,
+    );
     return ok({
       kind: "page",
       page: toPublicPage(page, {
         ancestors: ancestors.value,
-        categoryCrumbs: categoryCrumbs(chain, categories.value),
-        category: chain[0]?.slug ?? null,
-        subcategory: chain[1]?.slug ?? null,
+        categoryCrumbs: crumbs,
+        category,
+        subcategory,
         hideStartLinks: start.value !== null && !canSee(viewer, start.value),
       }),
     });
