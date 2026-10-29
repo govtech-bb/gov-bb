@@ -19,7 +19,7 @@ import { inject } from "vitest";
 import { PostgresPages } from "./adapters/postgres-pages";
 import { PostgresRoles } from "./adapters/postgres-roles";
 import { buildApp, type AppOptions } from "./app";
-import type { Database } from "./db";
+import { ping, type Database } from "./db";
 import { ROLES, UserId, type Employee } from "./modules/auth";
 import { ok, type Result } from "./modules/result";
 import { EditorAccess, type SessionReader } from "./services/editor-access";
@@ -184,7 +184,7 @@ export const TEST_HEADERS = {
 export async function createTestApp(
   db: Database,
   options: Partial<
-    Pick<AppOptions, "auth" | "config" | "logger" | "previewSecret">
+    Pick<AppOptions, "auth" | "config" | "logger" | "previewSecret" | "ready">
   > & {
     sessions?: SessionReader;
     /** Let an approver make public what they changed, as AUTH_BYPASS does. */
@@ -209,6 +209,7 @@ export async function createTestApp(
     config: options.config ?? TEST_HTTP_CONFIG,
     ...(options.logger ? { logger: options.logger } : {}),
     ...(options.previewSecret ? { previewSecret: options.previewSecret } : {}),
+    ready: options.ready ?? (() => ping(db)),
   });
 }
 

@@ -7,7 +7,7 @@ import { createBetterAuth } from "./adapters/better-auth";
 import { PostgresPages } from "./adapters/postgres-pages";
 import { PostgresRoles } from "./adapters/postgres-roles";
 import { parseConfig } from "./config";
-import { connect, createPool, type DatabaseFailure } from "./db";
+import { connect, createPool, ping, type DatabaseFailure } from "./db";
 import { migrate } from "./migrate";
 import { authBypass, registerBypassEmployee } from "./adapters/auth-bypass";
 import type { AuthHandler } from "./routes/auth";
@@ -132,6 +132,7 @@ async function main(): Promise<void> {
       },
       ...(config.previewSecret ? { previewSecret: config.previewSecret } : {}),
       logger,
+      ready: () => ping(db),
     });
     if (shutdown.signal.aborted) return;
     // A bypassed API admits any caller, so only this machine may reach it.

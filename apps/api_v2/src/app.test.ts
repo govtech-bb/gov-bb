@@ -100,6 +100,30 @@ const ENTRY_MARKDOWN = [
   "- apply by post",
 ].join("\n");
 
+describe("GET /health", () => {
+  it("answers ok when the database does", async () => {
+    for (const url of ["/health", "/health/db"]) {
+      const response = await app.inject({ url });
+      expect(response.statusCode).toBe(200);
+      expect(response.json()).toEqual({ status: "ok" });
+    }
+  });
+
+  it("checks only the process; /health/db answers 503 without the database", async () => {
+    const unready = await createTestApp(db, { ready: async () => false });
+    try {
+      const process = await unready.inject({ url: "/health" });
+      expect(process.statusCode).toBe(200);
+      expect(process.json()).toEqual({ status: "ok" });
+      const database = await unready.inject({ url: "/health/db" });
+      expect(database.statusCode).toBe(503);
+      expect(database.json()).toEqual({ error: "database_unavailable" });
+    } finally {
+      await unready.close();
+    }
+  });
+});
+
 describe("GET /pages?url=", () => {
   it("400s when url is missing", async () => {
     const response = await inject({ url: "/pages" });

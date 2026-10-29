@@ -244,6 +244,8 @@ erDiagram
 | GET      | `/search/documents`                 | Every visible page with its search text in chunks                      |
 | GET      | `/docs`                             | Public API reference (Scalar)                                          |
 | GET      | `/docs/openapi.json`                | Public OpenAPI document                                                |
+| GET      | `/health`                           | Load balancer check: 200 while the process serves; never hits the DB   |
+| GET      | `/health/db`                        | 200 if the database answers in 2 s, else 503; not for the ALB          |
 | GET      | `/pages/:id`                        | Employee; includes drafts and previews, with any pending revision      |
 | GET      | `/pages/:id/revision`               | Employee; a public page's pending revision, with its `changes`         |
 | GET      | `/revisions?status=submitted`       | Employee; the review queue: revisions waiting for an approver          |
