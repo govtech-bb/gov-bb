@@ -29,13 +29,12 @@ top-level pages. The `GET /pages` response had no category field to map from.
   categories.
 - **Landing validates the response shape, not the taxonomy rules.** Its Zod
   parser checks `string | null`; slug syntax, length and category relationships
-  belong to api_v2. Missing fields from older deployments become null, preserving
-  `categories: []`. Wrong field types take the existing logged-miss fallback.
+  belong to api_v2. See "Second review" for how lenient the parse now is.
 - **Parity is checked offline against the snapshot.** The responses are built
   from parsed `estate.json` data and pass through `resolveApiV2Page`, including
   the HTTP response parser and markdown compiler. A content change without
-  `pnpm --filter @govtech-bb/api-v2 seed-data` fails `landing:test`. Nx also
-  hashes the snapshot for that target, so a seed-only change reruns the test.
+  `pnpm --filter @govtech-bb/api-v2 seed-data` fails `landing:test`. Landing
+  has an implicit nx dependency on api_v2, so a seed-only change reruns it.
 
 ## What we almost got wrong
 
@@ -49,7 +48,7 @@ commented allowance rather than changing content. Adding categories to
 The first version of that allowance took the expected value from the same seed
 row that built the response, so it compared the seed with itself. The review
 caught this. It now applies only to `/start` urls and expects the parent's
-*static* category.
+_static_ category.
 
 ## Open questions
 
@@ -85,3 +84,25 @@ Verification on the integrated branch:
   `en_US.utf8` sorts the two fixture email addresses in the opposite order.
   This review used a disposable Postgres 16 container initialized with
   `POSTGRES_INITDB_ARGS=--locale=C`. No application code changed for that check.
+
+## Second review (sajclarke)
+
+- **The parse accepts what the old guard accepted.** Only `url`, the title,
+  `body_markdown`, `hide_start_links` and `breadcrumbs` can reject a page.
+  Every other field falls back alone (`form_id`/`published_at` to null, the
+  rest dropped), timestamps may carry an offset, and unknown frontmatter keys
+  pass through. A bad optional field must not 404 a page with no static twin.
+- **No `category` key means an older API, not an unfiled page.** Landing
+  files it under the url's first segment again, so analytics keeps a category
+  until the new API deploys. An explicit `null` stays unfiled.
+- **A subcategory without a category is a malformed miss**, matching the
+  static registry. On api_v2, `pageCategory` (which replaced `categoryChain`
+  and `categoryCrumbs` with one lookup) returns a union that can't express it.
+- **The API mapping is tested in api_v2.** `seed.test.ts` resolves every
+  seeded page through the app and checks its taxonomy against the snapshot's
+  category rows; reversing the pair fails 18 cases. Landing's parity test only
+  restates the mapping to build its input.
+- **The merge of `v2-rewrite` brought #3393's render-parity test**, which
+  covers what this PR's parity test did. The two were folded into it: it now
+  sends the taxonomy and reads every page through `resolveApiV2Page`. It
+  imports the snapshot through the `@api-v2-seed/*` alias.
