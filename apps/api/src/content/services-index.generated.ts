@@ -317,6 +317,12 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
     visibility: "draft",
   },
   {
+    slug: "e2e-j2-publish-check",
+    title: "E2E publish check (test service)",
+    formId: "e2e-j2-publish-check",
+    visibility: "draft",
+  },
+  {
     slug: "early-history",
     title: "Barbados' early history",
     category: "about-barbados",
