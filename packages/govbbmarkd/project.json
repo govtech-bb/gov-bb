@@ -24,6 +24,11 @@
     "test": {
       "executor": "nx:run-commands",
       "dependsOn": ["typecheck"],
+      "inputs": [
+        "default",
+        "^production",
+        "{workspaceRoot}/docs/content-markdown.md"
+      ],
       "options": {
         "command": "vitest run",
         "cwd": "packages/govbbmarkd"
