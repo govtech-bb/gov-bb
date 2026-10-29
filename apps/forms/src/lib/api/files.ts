@@ -312,12 +312,11 @@ export const checkFile = async ({
   }
 };
 
+// Wording approved by content design on #2940.
 /** Continue pressed while a file on the field is still uploading or checking. */
-export const UPLOAD_IN_PROGRESS_MESSAGE =
-  "Wait for your file to finish uploading";
+export const UPLOAD_IN_PROGRESS_MESSAGE = "Wait until your file is ready.";
 /** Continue pressed while a file that can be retried is still on the field. */
-export const UPLOAD_NOT_ADDED_MESSAGE =
-  "Remove or retry the file that could not be added";
+export const UPLOAD_NOT_ADDED_MESSAGE = "Remove the file or try again.";
 /** Continue pressed while only Remove can clear a file (unsafe, couldn't check). */
 export const UPLOAD_REFUSED_MESSAGE = "Remove the file that could not be added";
 

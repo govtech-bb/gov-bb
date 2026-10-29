@@ -7,6 +7,8 @@ import {
   FileUploadError,
   REQUEST_TIMEOUT_MS,
   SCAN_RECHECK_INTERVAL_MS,
+  UPLOAD_IN_PROGRESS_MESSAGE,
+  UPLOAD_NOT_ADDED_MESSAGE,
   UPLOAD_PROBLEM_MESSAGE,
 } from "./files";
 
@@ -595,6 +597,18 @@ describe("files API client", () => {
 
   // A stalled request must end, so the row can offer Retry instead of
   // "Checking your file" forever behind a blocked Continue (#2940).
+  // Content design (Fab) approved this wording on #2940. Shown when Continue
+  // is pressed before a file is ready.
+  describe("Continue messages", () => {
+    it("asks the person to wait while a file uploads or is checked", () => {
+      expect(UPLOAD_IN_PROGRESS_MESSAGE).toBe("Wait until your file is ready.");
+    });
+
+    it("asks the person to remove or retry a file that can be retried", () => {
+      expect(UPLOAD_NOT_ADDED_MESSAGE).toBe("Remove the file or try again.");
+    });
+  });
+
   describe("stopping a request", () => {
     beforeEach(() => {
       vi.useFakeTimers({ toFake: ["setTimeout", "Date"] });
