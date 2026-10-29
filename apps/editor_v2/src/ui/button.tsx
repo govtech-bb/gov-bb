@@ -13,7 +13,7 @@ import { Tip } from "./tooltip";
 export const blockHandle =
   "grid h-6 cursor-pointer place-items-center rounded-sm transition-colors hover:bg-hover active:shadow-press aria-expanded:bg-hover [&>svg]:text-muted [&>svg]:transition-colors hover:[&>svg]:text-ink aria-expanded:[&>svg]:text-ink";
 
-// The one control scale, shared with Input: 24, 32, 36 and 40px
+// Heights match Input so adjacent controls align.
 const sizes = {
   // An icon control in a rail, a chip or a dense row
   xs: "h-6 gap-1 px-1.5 text-12 [&>i>svg]:size-3.5",
@@ -25,8 +25,7 @@ const sizes = {
   lg: "h-10 gap-2 px-4 text-16 [&>i>svg]:size-4",
 };
 
-// Held down, each is pressed in with GovBB's inset edge, and looks as it does under the pointer, which a touch screen
-// never shows. A trigger whose menu or panel is open keeps the pointer's tint, so it shows what it opened
+// Open triggers retain their hover tint; active styles also provide touch feedback.
 const variants = {
   ghost:
     "text-muted pressable:hover:bg-hover pressable:hover:text-ink pressable:active:bg-hover pressable:active:text-ink pressable:active:shadow-press aria-expanded:bg-hover aria-expanded:text-ink data-popup-open:bg-hover data-popup-open:text-ink",
@@ -55,11 +54,6 @@ type Size = keyof typeof sizes;
 
 export type ButtonVariant = keyof typeof variants;
 
-/**
- * The button's classes. Focus is GovBB's teal halo. Under a coarse pointer it's 44px each way, except as a link, which
- * keeps to the line of text it's in. Disabled, or aria-disabled while it keeps its focus, it fades and the pointer
- * doesn't change it; pending (data-pending) it keeps its colour.
- */
 const button = (size: Size = "sm", variant: ButtonVariant = "ghost") =>
   cn(
     "relative inline-flex shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-sm text-center align-middle leading-none font-semibold no-underline outline-offset-2 transition-colors focus-visible:outline-3 focus-visible:outline-focus disabled:cursor-not-allowed disabled:opacity-50 aria-disabled:not-data-pending:cursor-not-allowed aria-disabled:not-data-pending:opacity-50",
@@ -76,23 +70,13 @@ type Decoration = {
   /** Leading icon. With no label the button is square. */
   icon?: ReactNode;
   iconEnd?: ReactNode;
-  /**
-   * Working on what it started, such as a save: a turning circle takes its icon's place and it ignores presses, but it
-   * keeps its colour and its focus, where disabling it would grey it out as if the press hadn't worked.
-   */
+  /** Blocks activation and shows a spinner without dropping focus or dimming the button. */
   pending?: boolean;
-  /**
-   * Its words while pending, such as “Deleting page…”. It's as wide as the wider of its two labels, so nothing beside
-   * it moves as the work starts and ends.
-   */
+  /** Both labels reserve space, so the button's width stays fixed while pending. */
   pendingLabel?: ReactNode;
 };
 
-/**
- * What it's called: its words, or for an icon alone an `aria-label`, unless a part that renders it brings the name,
- * such as a trigger with a label of its own. `tip` shows an icon's label in a tooltip as well, so a sighted author
- * isn't left guessing: the label is required then, and the button has no words of its own.
- */
+/** Icon-only tooltips require an accessible label and no visible text. */
 type Name =
   | { tip?: false }
   | { tip: true; icon: ReactNode; "aria-label": string; children?: never };
@@ -100,10 +84,8 @@ type Name =
 export type ButtonProps = Decoration & useRender.ComponentProps<"button"> & Name;
 
 /**
- * The tool's button. A ghost button shows when it's on: pressed, for a toggle, or the current page, in a pager. With
- * `aria-disabled` it can't be used but keeps its focus, such as a Save with nothing to save: it looks disabled and a
- * press does nothing. `render` gives the look to another element, such as the router's Link. In a toolbar it's one of
- * the toolbar's controls; natively disabled, the arrow keys pass it by.
+ * Joins the nearest toolbar's keyboard navigation. Use `aria-disabled` to block activation without losing focus.
+ * `render` applies the same behavior to a link or another control.
  */
 export function Button({
   size,
@@ -122,7 +104,6 @@ export function Button({
 }: ButtonProps) {
   const inToolbar = useContext(InToolbar);
   const solo = children == null && !iconEnd;
-  // Turning only when motion is welcome: still, the circle and the words say it's working
   const lead = pending ? <CircleNotch className="motion-safe:animate-spin" /> : icon;
 
   const pressed =
@@ -133,7 +114,7 @@ export function Button({
 
   const unusable = pending || props["aria-disabled"] === true || props["aria-disabled"] === "true";
 
-  // Both labels in one cell, the one not in use invisible, so the button keeps the width of the wider
+  // Hidden labels still contribute to the grid's width.
   const label =
     pendingLabel == null ? (
       children != null && <span>{children}</span>
@@ -156,7 +137,7 @@ export function Button({
 
   const element = useRender({
     defaultTagName: "button",
-    // The control the toolbar's arrow keys move to. Its own render's type would win over a submit's, so it has none
+    // Leave the rendered button's type unset so it cannot override type="submit".
     render: inToolbar ? (
       <Toolbar.Button
         render={render ?? <button />}
@@ -181,7 +162,6 @@ export function Button({
       props,
       {
         "aria-disabled": pending || props["aria-disabled"],
-        // A press while it's pending or aria-disabled does nothing, a form's submit included
         onClick: unusable ? (event) => event.preventDefault() : onClick,
         children: (
           <>
@@ -192,7 +172,6 @@ export function Button({
         ),
       },
     ),
-    // data-pending, while it works
     state: { pending },
   });
 

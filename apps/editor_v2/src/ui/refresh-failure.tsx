@@ -2,10 +2,7 @@ import type { ReactNode } from "react";
 import { Banner } from "./banner";
 import { Button } from "./button";
 
-/**
- * Content that couldn't be read again while what was read before still shows, such as a list after a lost
- * connection: a warning strip that says so and what's on screen, and Try again, which turns while it works.
- */
+/** Retry notice for a failed refresh while the last successful result remains visible. */
 export function RefreshFailure({
   inset,
   pending,
@@ -15,7 +12,6 @@ export function RefreshFailure({
 }: {
   /** `card` inside a card, such as over a list's rows. */
   inset?: "bar" | "card";
-  /** Trying again. */
   pending: boolean;
   /** Its words meanwhile, such as “Refreshing services…”. */
   pendingLabel?: string;

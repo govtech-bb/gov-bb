@@ -1,9 +1,8 @@
 import { createCn, validators } from "cn/config";
 
 /**
- * shadcn's `cn` (clsx + tailwind-merge rules), taught this theme: numeric font sizes (`text-14`), the shadow names,
- * the easing (`ease-out-quint`) and the layers (`z-popup`). A `leading-*` overrides a size's own line-height, so a size
- * mustn't drop it.
+ * Merges classes using the editor's font sizes, shadows, easing and z-index tokens.
+ * Font sizes preserve explicit `leading-*` overrides.
  */
 export const cn = createCn({
   extend: {

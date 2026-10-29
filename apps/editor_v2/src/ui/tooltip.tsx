@@ -4,10 +4,7 @@ import { cn } from "../cn";
 
 export const TipProvider = Tooltip.Provider;
 
-/**
- * A tooltip's look, for one drawn without Tip, such as node DOM's own in CSS: white words on ink, 12px semibold, never
- * wider than the screen.
- */
+/** Shared tooltip classes for React and editor-created DOM nodes. */
 export const tipPopup =
   "max-w-[calc(100vw-32px)] rounded-sm bg-ink px-2 py-1 text-12 leading-4 font-semibold text-white";
 
@@ -63,7 +60,6 @@ export function Tip({
           collisionPadding={8}
           className="z-tooltip"
         >
-          {/* It fades in and out on the popups' timing */}
           <Tooltip.Popup
             className={cn(
               tipPopup,

@@ -59,7 +59,7 @@ function AuthPage() {
       ? "You are signed out"
       : "Sign in to GovBB editor";
 
-  // What the button will say while it works, known before it starts, so it keeps one width throughout
+  // Reserve the pending label's width before the request starts.
   const progress = retrySession ? "Checking your session…" : "Opening GitHub…";
 
   const message =

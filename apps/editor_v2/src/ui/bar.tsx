@@ -8,8 +8,6 @@ import { Toolbar, toolbarRule } from "./toolbar";
 import { Tip } from "./tooltip";
 import { useMediaQuery, wideScreen } from "./use-media-query";
 
-// White over a document, ruled off from it; GovBB's navy for the app's own header. Each with its quiet text, its rule
-// and the tint a link takes under the pointer
 const tones = {
   light: {
     bar: "border-b border-line bg-white text-ink",
@@ -34,10 +32,7 @@ const BarContext = createContext<{ tone: Tone; toolbar: boolean }>({
 
 type RootProps = Omit<ComponentProps<"div">, "aria-label"> & {
   tone?: Tone;
-  /**
-   * Names its controls for screen readers, which makes it a Toolbar, such as “Page tools”: its Buttons are one Tab stop,
-   * with the arrow keys between them.
-   */
+  /** Supplying a label enables toolbar semantics and roving keyboard focus. */
   label?: string;
 };
 
@@ -126,8 +121,7 @@ function BarTool({ icon, label, children, className, ...props }: ToolProps) {
     </Button>
   );
 
-  // Its tooltip waits, unshown, while its name is on screen: the same button either way, so it keeps its focus as the
-  // window crosses 1200px
+  // Keep the same button mounted across breakpoints to preserve focus.
   return (
     <Tip content={label} disabled={wide}>
       {tool}
@@ -173,10 +167,7 @@ function BarCrumb({ label, render, current }: Crumb & { current: boolean }) {
   });
 }
 
-/**
- * Where the screen is, as a trail from the bar's start, such as Services, then the service open in it: a navigation
- * landmark round a list, its last step the screen you're on. In either tone; the bar's font weight carries into it.
- */
+/** Breadcrumb navigation with the last item marked as the current page. */
 function BarCrumbs({ label = "Breadcrumb", crumbs }: { label?: string; crumbs: readonly Crumb[] }) {
   const { tone } = useContext(BarContext);
 
@@ -199,10 +190,7 @@ function BarCrumbs({ label = "Breadcrumb", crumbs }: { label?: string; crumbs: r
   );
 }
 
-/**
- * The tool's bars: Root holds Crumbs or a Title, a Status and Actions, ruled into groups by Separators, some of them
- * Tools.
- */
+/** Shared header layout. A labelled Root also provides toolbar keyboard navigation. */
 export const Bar = {
   Root: BarRoot,
   Crumbs: BarCrumbs,

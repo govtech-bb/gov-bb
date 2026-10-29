@@ -2,11 +2,8 @@ import type { ReactNode, Ref } from "react";
 import { ScreenHeader } from "./screen-header";
 
 /**
- * A screen that lists things, such as Services or Categories: its ScreenHeader over a card that holds the list. In the
- * card, any filters over the rows; a status line for screen readers, which outlives the table, so a load is announced
- * once; notices, such as a RefreshFailure while what was read before still shows; then the table and its pagination, or why the list
- * couldn't load in their place. The card is a size container, so a table narrower than its columns folds the secondary
- * ones into its first. Inset at the bars' margins, so the title lines up with the header's first control.
+ * Shared list layout with a persistent loading announcement and notices above the rows.
+ * The card provides the container query boundary for responsive table columns.
  */
 export function ListScreen({
   title,
@@ -28,10 +25,7 @@ export function ListScreen({
   filters?: ReactNode;
   /** For screen readers only, such as “Loading services…” while the list loads; empty otherwise. */
   status?: ReactNode;
-  /**
-   * Notices over the rows, each with the card's inset: a RefreshFailure while the list on screen is an old one, or why
-   * nothing in it can be changed.
-   */
+  /** Notices above the rows. Use the card inset to align them with the table. */
   notices?: ReactNode;
   /** Why the list couldn't load at all, such as a LoadFailure, in place of the table and its pagination. */
   failure?: ReactNode;

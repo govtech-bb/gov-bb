@@ -144,8 +144,7 @@ export function CaretLinkPopover({
 
   const shown = !form && found && focused && dismissed !== found.key ? found.key : null;
 
-  // Esc while the card shows puts the card away and nothing more. Without this, Lexical's own Esc, which leaves the
-  // editor, took the card with it, and the next keystrokes went nowhere
+  // Consume Escape before Lexical's handler moves focus out of the editor.
   useEffect(() => {
     if (!shown) return;
 

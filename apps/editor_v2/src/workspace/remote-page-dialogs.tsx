@@ -51,10 +51,7 @@ function PathField({
   );
 }
 
-/**
- * A new service in the content API: a preview-only entry page filed under a category. Once it’s sent, only its answer
- * closes the dialog, so a service can’t be made after the author has let it go.
- */
+/** Creates a preview-only service entry page. Blocks dismissal while the API request is pending. */
 export function CreateRemoteServiceDialog({
   api,
   open,
@@ -147,10 +144,7 @@ export function CreateRemoteServiceDialog({
   );
 }
 
-/**
- * A new preview-only page beneath a service’s entry page: its start page or a supporting page. Once it’s sent, only
- * its answer closes the dialog.
- */
+/** Creates a preview-only start or supporting page. Blocks dismissal while the API request is pending. */
 export function CreateRemotePageDialog({
   api,
   open,

@@ -14,11 +14,9 @@ import { Popover } from "./popover";
 import { group, groupLabel, listEmpty, listFooter, row, type PopupName } from "./surface";
 
 /**
- * The keys of a list whose focus stays elsewhere, such as in its search box or in the text being typed: ↑ and ↓ move
- * the highlight, round from one end to the other as a menu's do, Home and End to the first and last row, and Enter
- * picks the highlighted row. The highlight keeps in view as it moves, scrolling the list but never the page, and not as
- * the list opens, at its top. Spread `comboboxProps` on the field,
- * `listProps` on the Root and `optionProps(index)` on each Option. `initial` -1 starts with no row highlighted.
+ * Arrow, Home, End and Enter navigation without moving focus out of the input.
+ * Spread comboboxProps on the input, listProps on Root and optionProps(index) on each Option.
+ * Scrolls only the list. Use initial: -1 to start without a highlighted row.
  */
 export function useListNavigation(
   count: number,
@@ -224,9 +222,8 @@ function ListBoxPopover({ className, ...props }: ComponentProps<typeof Popover.C
 }
 
 /**
- * Lists of rows to pick from that aren't Base UI menus, such as the blocks to insert or the pages a link can go to:
- * Root holds Options, in Groups or not, beside an Empty note, under a Search and over a Footer, in a Popover or in a
- * popup of the caller's own, such as a Lexical typeahead's. useListNavigation gives them their keys.
+ * Listbox parts for choices that keep focus in an input, including Lexical typeaheads.
+ * Pair with useListNavigation for keyboard handling, or provide the editor's own navigation.
  */
 export const ListBox = {
   Popover: ListBoxPopover,

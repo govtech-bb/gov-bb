@@ -351,7 +351,7 @@ export const divider = <span className="ml-1 h-4 w-px shrink-0 bg-grey-30" />;
 
 export const pillValue = "pointer-events-none min-w-0 truncate leading-normal select-none";
 
-// Focused from the keyboard it takes the global ring, teal over an ink edge: outline-none would cancel any outline-*
+/** Pill trigger with an expanded hit area; inherits the global keyboard focus ring. */
 export const pillButton = cn(
   pillChevron,
   "relative ml-0.5 cursor-pointer after:absolute after:-inset-y-2 after:-right-2 after:-left-1.75 focus-visible:rounded-xs",

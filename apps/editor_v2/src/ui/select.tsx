@@ -33,10 +33,7 @@ const looks = {
   field: `${frame} flex w-full gap-2 bg-white px-2.5 font-normal aria-invalid:shadow-input-error aria-invalid:focus-visible:shadow-input-focus data-disabled:bg-tint data-disabled:text-muted data-disabled:shadow-none max-sm:text-16`,
   // A word in a sentence, such as a logic rule: as wide as its value
   pill: "cursor-pointer data-disabled:cursor-not-allowed data-disabled:opacity-50",
-  // A list's filter, in the toolbar over it, as wide as its value but at least 192px beside the others, so choosing one,
-  // such as a category, doesn't push the filters after it along. While it narrows the list it's a Tag's chosen blue, so
-  // the filters at work stand out from those showing everything; hover and focus still edge it. Its "everything" is an
-  // item valued "" or, with `multiple`, its placeholder
+  // Reserve filter width to reduce layout shifts. Empty string means "all"; multi-select uses its placeholder.
   filter: `${frame} inline-flex max-w-64 gap-2 bg-white px-2.5 font-normal not-data-placeholder:bg-highlight not-data-placeholder:text-blue-80 not-data-placeholder:shadow-none max-sm:text-16 sm:min-w-48`,
 };
 
@@ -263,9 +260,8 @@ export type SelectProps<V extends string> = Naming & {
   );
 
 /**
- * Picks one item, or several with `multiple`, from a list: the parts below, put together. With a `label`, it's a
- * Field: the label, then the select, its hint and its error. Build from the parts for anything else, such as a footer
- * under the list or a trigger that shows only the chosen item's icon.
+ * Wraps labelled choices in a Field with its hint and error.
+ * Use the compound parts for a custom trigger, grouped content or a footer.
  */
 export function Select<V extends string>(props: SelectProps<V>) {
   const { items, variant = "field", icon, placeholder, disabled, className } = props;

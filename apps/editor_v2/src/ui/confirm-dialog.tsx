@@ -29,15 +29,12 @@ type ConfirmDialogProps = {
 };
 
 /**
- * A question to answer before an action that can't be undone: an alert dialog, which a
- * click outside doesn't close. Its button names the action, and stays pressed while it works; an error shows in the
- * dialog. Cancel comes first, so it has the focus when the dialog opens.
+ * Confirms an irreversible action. Focus starts on Cancel; outside clicks never dismiss it.
+ * Keep mounted for the closing transition. Pending actions block dismissal; failures stay in the dialog.
  */
 export function ConfirmDialog(props: ConfirmDialogProps) {
   const { open, onOpenChange, finalFocus, onConfirm } = props;
 
-  // Closing, it keeps saying what it said open, so an answer that changes what's behind it, such as leaving without
-  // saving, doesn't change its words as it fades away
   const {
     title,
     description,

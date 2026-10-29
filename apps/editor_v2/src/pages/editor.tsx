@@ -18,8 +18,7 @@ export function PageEditor({ label = "Page content" }: { label?: string }) {
       <ContentEditable
         aria-label={label}
         aria-describedby={hintId}
-        // The block being dragged fades, to show it's the one moving. One line tall at the least, whether or not the
-        // page is empty, so Add content under it doesn't drop as the first letter is typed
+        // Keep the same minimum height when typing starts, so Add content doesn't jump.
         className="page-body page-editable min-h-13 outline-none *:data-dragged:opacity-40"
       />
       {anchor && <PageBlockControls anchor={anchor} hintId={hintId} />}

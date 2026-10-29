@@ -2038,7 +2038,6 @@ function InsertMenu() {
   );
 }
 
-/** The blocks a page inserts, in a list popover with its search, as "+" opens it. */
 function ListBoxDemo() {
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
@@ -2157,7 +2156,6 @@ const demoColumns = demoColumn.columns([
   }),
 ]);
 
-/** Services as the workspace lists them, from made-up rows, or under a refresh that failed. */
 function ServicesDemo({ stale = false }: { stale?: boolean }) {
   const table = useAppTable({
     columns: demoColumns,
@@ -2233,7 +2231,6 @@ function RowSelection() {
   );
 }
 
-/** Publish changes beside Cancel, working for a moment once pressed; and a Delete page that's working throughout. */
 function Working() {
   const [pending, setPending] = useState(false);
 
@@ -2521,7 +2518,6 @@ function DeletePage() {
   );
 }
 
-/** Create service as the workspace asks it: the FormDialog works for a moment, then closes and says it's done. */
 function CreateServiceDialog() {
   const [open, setOpen] = useState(false);
   const [pending, setPending] = useState(false);
@@ -2676,7 +2672,6 @@ const spaceSteps = [
   ["32", "Page sections", "w-8"],
 ] as const;
 
-/** The parts form authoring is built from, each in its states. */
 function AuthoringSections() {
   return (
     <>
@@ -2973,7 +2968,6 @@ const questionOptions = questions.map((item) => (
   </Select.Item>
 ));
 
-/** A combobox's group of fields, under its heading. */
 const fieldOptions = (fields: GalleryFieldGroup) => (
   <Combobox.Group key={fields.label} label={fields.label} items={fields.items}>
     {(field: GalleryField) => (
@@ -2991,7 +2985,6 @@ const operators: SelectItem[] = [
   { value: "lt", label: "is less than", icon: <LessThan /> },
 ];
 
-/** A day, picked and cleared. */
 function CalendarDemo() {
   const [day, setDay] = useState<Date>();
 
@@ -3004,7 +2997,6 @@ function RangeDemo() {
   return <Calendar mode="range" value={range} onValueChange={setRange} />;
 }
 
-/** A pill that opens a calendar, showing the day picked. */
 function DatePillDemo() {
   const [day, setDay] = useState<Date>();
   const [open, setOpen] = useState(false);
@@ -3039,7 +3031,6 @@ function DatePillDemo() {
   );
 }
 
-/** An operator shown by its icon alone, named in a tooltip. */
 function OperatorDemo() {
   const [operator, setOperator] = useState("gt");
   const chosen = operators.find((item) => item.value === operator);
@@ -3068,10 +3059,6 @@ function OperatorDemo() {
   );
 }
 
-/**
- * A value typed into a pill, or a field picked from its list in place of one: the list opens from the caret, or from
- * the field once picked, and Clear goes back to typing.
- */
 function ValuePickDemo() {
   const [field, setField] = useState<GalleryField | null>(null);
   const [typed, setTyped] = useState("");
@@ -3109,7 +3096,6 @@ function ValuePickDemo() {
 
 type GalleryCondition = { id: number; question: string; value: string };
 
-/** A rule's conditions, each a sentence of pills, to add, move, copy and remove. */
 function EditableListDemo() {
   const [conditions, setConditions] = useState<GalleryCondition[]>([
     { id: 1, question: "age", value: "18" },
@@ -3178,7 +3164,6 @@ const formBlocks = [
   { key: "age", label: "Age", icon: <Hash /> },
 ];
 
-/** Blocks to show, found by a search the caller runs. */
 function ChecklistDemo() {
   const [query, setQuery] = useState("");
   const [ticked, setTicked] = useState(new Set(["dob"]));
@@ -3208,7 +3193,6 @@ const pages = [
   { key: "contact", label: "Contact details", blocks: formBlocks.slice(3) },
 ];
 
-/** Pages and their blocks, a page ticked when all its blocks are and partly when some are. */
 function ChecklistTreeDemo() {
   const [ticked, setTicked] = useState(new Set(["phone"]));
   const [open, setOpen] = useState(new Set(["contact"]));

@@ -487,8 +487,7 @@ function RemotePageEditor({
       nav={nav}
       server={standing()}
       publish={
-        // Pending while it saves, and unusable but still focusable otherwise, so it keeps the focus when its own save
-        // leaves nothing to save or a newer version arrives meanwhile
+        // Keep focus when a completed save leaves nothing to save, or a newer version blocks editing.
         <Button
           variant="accent"
           pending={save.isPending}

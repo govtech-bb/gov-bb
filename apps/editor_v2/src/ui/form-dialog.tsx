@@ -7,34 +7,24 @@ type FormDialogProps = {
   /** Closes it: Cancel, Esc, a click outside or its close button. Not while it's pending. */
   onOpenChange: (open: boolean) => void;
   title: string;
-  /** What the task does. */
   description: ReactNode;
   /** Sends the form, from its submit button or from Enter in a field. */
   onSubmit: () => void;
-  /**
-   * The task is under way, such as a save: Cancel, Esc, a click outside and the close button wait for its answer, which
-   * still needs the dialog, as does what was typed.
-   */
+  /** Blocks dismissal until the request finishes, preserving the form and its result. */
   pending?: boolean;
-  /**
-   * The buttons after Cancel, the one that finishes the task last: a submit Button, which shows the work with `pending`
-   * and `pendingLabel`, or what stands in for it, such as loading someone else's newer version.
-   */
+  /** Render the submit action last, after any recovery actions. Cancel is supplied by the dialog. */
   actions: ReactNode;
   /** Its fields, 16px apart, and what came of sending them. */
   children: ReactNode;
 };
 
 /**
- * A task in a dialog, such as creating a service: its title, what it does, its fields, then Cancel and the button that
- * finishes it. Enter in a field sends it. It stays on the page once closed, so it fades away showing what it showed
- * open: keep it rendered and drive `open`.
+ * Uses native form submission and blocks dismissal while pending.
+ * Keep mounted and control `open` so the closing transition retains the form's last state.
  */
 export function FormDialog(props: FormDialogProps) {
   const { open, onOpenChange, onSubmit } = props;
 
-  // Closing, it shows what it showed open, so the answer that closed it, such as the service made, doesn't turn its
-  // buttons back as it fades away
   const {
     title,
     description,

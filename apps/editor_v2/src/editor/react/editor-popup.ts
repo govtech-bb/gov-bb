@@ -13,12 +13,9 @@ import {
 import { useCallback } from "react";
 import { belowBar } from "../../ui/popover";
 
-// What the popups over the text share: the side they open on, and the caret they hand back when they close without
-// acting.
-
 /**
- * Below its anchor when a list has room there, or else on the side with more room. Picked once as it opens, so a
- * popup that filters as you type shrinks towards its anchor instead of flipping over it.
+ * Prefers space below the anchor, otherwise uses the roomier side.
+ * Choose once on open to prevent flipping while the list is filtered.
  */
 export function roomierSide(anchor: { top: number; bottom: number }, wanted = 320) {
   const below = window.innerHeight - anchor.bottom - 8;
@@ -27,6 +24,7 @@ export function roomierSide(anchor: { top: number; bottom: number }, wanted = 32
   return below >= wanted || below >= above ? ("bottom" as const) : ("top" as const);
 }
 
+/** Whether a saved selection point still refers to an attached node and a valid offset. */
 export function $validPoint(point: PointType) {
   const node = $getNodeByKey(point.key);
 
@@ -48,10 +46,8 @@ function $stillThere(selection: BaseSelection) {
 }
 
 /**
- * Hands the caret back when a popup over the text closes without acting: on Esc, a second press of its own button,
- * or a press on nothing in particular, the caret goes back where it was, without scrolling. A press on another
- * control, or in the text, keeps the focus it took. Without this, focus fell to the page's top, and the next
- * keystrokes landed in its first heading.
+ * Restores the saved selection on Escape or a second trigger press.
+ * After an outside click, restores it only if no other control took focus.
  */
 export function useCaretReturn() {
   const [editor] = useLexicalComposerContext();
@@ -74,7 +70,7 @@ export function useCaretReturn() {
       };
 
       if (now) give();
-      // A press outside moves the focus as it ends, so look where it went once it has
+      // Wait for the outside click to finish moving focus.
       else setTimeout(give);
     },
     [editor],

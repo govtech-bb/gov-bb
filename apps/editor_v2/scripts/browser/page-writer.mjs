@@ -31,7 +31,6 @@ const url = process.argv[2] ?? "http://localhost:3015/";
 
 const button = (name) => page.getByRole("button", { name, exact: true });
 
-// Block options is a menu: its rows are menu items
 const item = (name) => page.getByRole("menuitem", { name, exact: true });
 
 const body = page.getByRole("textbox", { name: "Page content", exact: true });
@@ -614,7 +613,6 @@ try {
   await reset(':::actions\n::action[Continue]{href="/next" variant="primary"}\n:::');
   const actionButton = body.locator('[data-page-component="action"]');
   await menuAt(actionButton);
-  // A style applies as it's chosen
   await page.getByRole("combobox", { name: "Button style", exact: true }).selectOption("secondary");
   await page.keyboard.press("Escape");
   assert.equal(
@@ -669,7 +667,6 @@ try {
     );
     const nestedStart = body.locator('ol > li:nth-child(2) [data-page-component="start"]');
     await body.getByText(caret, { exact: true }).click();
-    // A button's destination is edited in one place: the card at the caret in its words
     await nestedStart.click();
     await button("Change destination").click();
     const destination = page.getByRole("textbox", { name: "Link", exact: true });

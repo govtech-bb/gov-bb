@@ -8,10 +8,7 @@ import { cn } from "../cn";
 export const caption =
   "flex h-6 min-w-0 items-center gap-1.5 text-12 leading-4 font-semibold text-muted select-none [&>svg]:size-3.5 [&>svg]:shrink-0 [&>svg]:text-blue-40";
 
-/**
- * What a part of the canvas the author sees, and people filling in the form don't, is: an icon, then a few words, such
- * as “Preview” over a page's preview.
- */
+/** Labels editor-only content that is not part of the published form. */
 export function Caption({
   icon,
   className,
@@ -35,10 +32,7 @@ type AuthorCardProps = Omit<ComponentProps<"div">, "title"> & {
   title: string;
 };
 
-/**
- * A block only the author sees, such as logic or calculated fields: on the desk's grey rather than the form's white
- * sheet, under a caption that says what it is and that the form won't show it.
- */
+/** Groups editor-only controls under a caption that distinguishes them from published form content. */
 export function AuthorCard({ icon, title, className, children, ...props }: AuthorCardProps) {
   return (
     <div

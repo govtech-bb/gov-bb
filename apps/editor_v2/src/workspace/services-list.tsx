@@ -50,7 +50,6 @@ function VisibilityTag({ visibility }: { visibility: ServiceSummary["visibility"
   );
 }
 
-// Its title is the row's link, which a click anywhere else on the row follows too
 function ServiceCell({ service, href }: { service: ServiceSummary; href: string | undefined }) {
   return (
     <NameCell
@@ -87,7 +86,7 @@ function ServiceCell({ service, href }: { service: ServiceSummary; href: string 
 
 const serviceColumns = (api: EditorApi) =>
   column.columns([
-    // The url rides along so search finds it; sorting still follows the title. It takes the room the others leave
+    // Include the URL in search without adding another column.
     column.accessor((service) => `${service.title} ${service.url}`, {
       id: "title",
       header: "Service",
@@ -96,8 +95,7 @@ const serviceColumns = (api: EditorApi) =>
         <ServiceCell service={service} href={api.landingUrl(service.url)} />
       ),
     }),
-    // Filtered by its slug, which the list's address keeps: a renamed category, or two with one name, stay apart. A
-    // long name wraps
+    // Filter by slug so renamed categories and duplicate titles retain distinct URL filters.
     column.accessor((service) => service.category.slug, {
       id: "category",
       header: "Category",
@@ -116,8 +114,7 @@ const serviceColumns = (api: EditorApi) =>
       meta: { secondary: true, width: "w-36" },
       cell: ({ cell }) => <cell.DateCell />,
     }),
-    // Filtered by the status itself, the word the list's address keeps; its label sorts the same way. Room for the
-    // longest, Preview link only
+    // Filter by the status stored in the URL, not its display label.
     column.accessor("visibility", {
       header: "Status",
       sortFn: "text",
@@ -311,7 +308,6 @@ export function ServicesList({
 
   return (
     <table.AppTable>
-      {/* A line under the title, as Categories has, so moving between the two leaves the table where it was */}
       <ListScreen
         title="Services"
         lead="Each service has an entry page, an optional start page and supporting pages."

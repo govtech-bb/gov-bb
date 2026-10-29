@@ -335,7 +335,7 @@ export function SourceEditor({
           </Dialog.Title>
           <Dialog.Description>{intro}</Dialog.Description>
         </Dialog.Header>
-        {/* The body's sections bring their own margins, as they do inline, so no gap of the dialog's */}
+        {/* Child sections own their spacing. */}
         <Dialog.Body className="gap-0 pt-1">{body}</Dialog.Body>
         <Dialog.Actions>{actions}</Dialog.Actions>
       </Dialog.Content>

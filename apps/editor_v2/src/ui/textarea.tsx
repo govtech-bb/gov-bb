@@ -12,7 +12,6 @@ const variants = {
   code: "p-3 font-mono leading-6",
 };
 
-// Hands the element to a ref, whichever kind it is
 function setRef<T>(ref: Ref<T> | undefined, element: T | null) {
   if (ref instanceof Function) ref(element);
   else if (ref) ref.current = element;
@@ -20,10 +19,7 @@ function setRef<T>(ref: Ref<T> | undefined, element: T | null) {
 
 type TextareaProps = ComponentProps<"textarea"> & {
   variant?: keyof typeof variants;
-  /**
-   * Grows with its words rather than scrolling inside itself, from `rows` (or a `min-h-*`) up: sized by the browser
-   * where it can size a field to its content, and measured as its words and width change where it can't.
-   */
+  /** Uses CSS field-sizing when supported, otherwise measures content and width changes. */
   autoGrow?: boolean;
 };
 

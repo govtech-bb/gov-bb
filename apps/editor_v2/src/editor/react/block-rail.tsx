@@ -61,9 +61,8 @@ function firstTextLine(element: HTMLElement) {
 }
 
 /**
- * The middle of an element's first line of text, in the anchor's coordinates. That's where its text is: a table's
- * first cell or a button's label sits well below the block's own top. A block that draws its first line itself, as
- * a Details block draws its summary, is measured by its line height instead.
+ * Returns the first line's midpoint in anchor coordinates, including nested table or button text.
+ * Uses line height for generated content such as a Details summary.
  */
 export function firstLineMiddle(editor: LexicalEditor, anchor: HTMLElement, key: NodeKey) {
   const element = editor.getElementByKey(key);
@@ -133,14 +132,13 @@ export function useRailTarget(anchor: HTMLElement, rules: TargetRules) {
   useEffect(() => {
     if (held) return;
 
-    // The pointer may have left while the rail was held, with no leave to say so
+    // Pointer listeners were paused while held, so a leave event may have been missed.
     if (pointer.current && !anchor.matches(":hover")) {
       pointer.current = null;
       measure();
     }
 
-    // A drag from the grip cancels the pointer, and the browser then has it leave: that isn't the pointer leaving
-    // the block, so the rail stays with it
+    // Native drag sends pointercancel then pointerleave without actually leaving the block.
     let cancelled = false;
 
     const onCancel = () => {
@@ -309,17 +307,13 @@ type DragRules<At extends { line: Line }> = {
   $drop: (key: NodeKey, at: At) => void;
   /** After every drag, dropped or not, except a nudge that onNudge takes. */
   onEnd?: () => void;
-  /**
-   * A press on the grip that slipped a few pixels, which the browser takes for a drag (a trackpad's press often
-   * does): the click it was meant to be. Without this the press did nothing, and the rail went back to the caret.
-   */
+  /** Treats a short, uncommitted drag as a click on the grip. */
   onNudge?: (key: NodeKey) => void;
 };
 
-/** How far a drag can end from where it started and still be a press that slipped. */
+/** Maximum distance in pixels for treating an uncommitted drag as a click. */
 const NUDGE = 10;
 
-/** The block being dragged: where the drag started, how far it got, and whether it left the anchor on the way. */
 type DragSession = { key: NodeKey; element: HTMLElement; from: Point; to: Point; strayed: boolean };
 
 /**
@@ -338,7 +332,7 @@ export function useBlockDrag<At extends { line: Line }>(anchor: HTMLElement, rul
     latest.current = rules;
   });
 
-  // "ended" is the browser's own end, without a drop: a nudge if it never got anywhere
+  // Only a native drag end can become a click; explicit cancellation must not open the menu.
   const finish = useCallback(
     (how: "dropped" | "ended" | "stopped" = "stopped") => {
       if (feedback.current !== null) clearTimeout(feedback.current);
@@ -441,7 +435,6 @@ export function useBlockDrag<At extends { line: Line }>(anchor: HTMLElement, rul
         );
       }
 
-      // Let go where it can't land, such as back on its own grip, it's ended like any drag that went nowhere
       finish(landed ? "dropped" : "ended");
     };
 
@@ -505,7 +498,7 @@ export function useBlockDrag<At extends { line: Line }>(anchor: HTMLElement, rul
     session.current = { key, element, from: at, to: at, strayed: false };
     event.dataTransfer.setData(rules.type, key);
     event.dataTransfer.effectAllowed = "move";
-    // Held where it was grabbed: the grip sits beside the block, so the picture keeps that offset
+    // Preserve the pointer's offset from the block in the drag image.
     const box = element.getBoundingClientRect();
     event.dataTransfer.setDragImage(element, event.clientX - box.left, event.clientY - box.top);
     // Once the browser has its full-opacity picture of the block: hiding the grip in dragstart itself would end the drag

@@ -175,7 +175,7 @@ const button = (name) => page.getByRole("button", { name, exact: true });
 
 const focused = (locator) => locator.evaluate((node) => node === document.activeElement);
 
-// Menus and dialogs fade out before they hand the focus back, so a check waits for it to land
+// Focus returns after the closing transition.
 const waitForFocus = (name) =>
   page.waitForFunction((name) => {
     const active = document.activeElement;
@@ -286,6 +286,9 @@ try {
   await page.getByRole("dialog").getByRole("button", { name: "Cancel", exact: true }).click();
   await page.getByRole("link", { name: service.title, exact: true }).click();
   await page.getByRole("textbox", { name: "Page title", exact: true }).waitFor();
+  await menu.evaluate((node) =>
+    Promise.all(node.getAnimations().map((animation) => animation.finished)),
+  );
   assert.equal((await menu.boundingBox()).width, 56);
 
   if ((await button("Page settings").getAttribute("aria-expanded")) !== "true")

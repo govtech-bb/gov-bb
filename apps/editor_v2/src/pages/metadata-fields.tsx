@@ -178,13 +178,8 @@ function enter(field: HTMLTextAreaElement | null) {
 }
 
 /**
- * The page's title and introduction, which run into its body as one piece of writing: Enter, or ArrowDown at the end
- * of a field, goes on to the next, and ArrowUp at the start of one, or on the body's first line, goes back.
- */
-/**
- * The title and introduction's fields, wherever they're drawn: on the writer's canvas or in the inline preview. The
- * title is one line: Enter, or ArrowDown at its end, goes on to the introduction, and from there into the body; ArrowUp
- * comes back the same way.
+ * Shares title and introduction editing between the canvas and site preview.
+ * Enter and boundary arrow keys move between these fields and the body, preserving editor history.
  */
 export function useHeadingFields() {
   const { editor, metadata, editable, update, historyKeys } = useMetadataUpdate();
@@ -274,6 +269,7 @@ export function useHeadingFields() {
   return { titleProps, ledeProps };
 }
 
+/** Editable page headings with keyboard navigation into the body and shared undo history. */
 export function PageTitleField({ error }: { error?: string }) {
   const { titleProps, ledeProps } = useHeadingFields();
 

@@ -217,7 +217,6 @@ export function Match({
   return (
     <>
       <Select.Root<LogicalOperator> value={value} onValueChange={(v) => v && onChange(v)}>
-        {/* Focused from the keyboard, the global ring: outline-none would cancel any outline-* given with it */}
         <Select.Trigger
           aria-label={value === "OR" ? "any" : "all"}
           className="inline-flex min-h-6 cursor-pointer items-center gap-0.5 rounded-xs px-1 hover:bg-hover [&>svg]:size-3.5"

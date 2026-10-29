@@ -1,17 +1,11 @@
 import type { ReactNode } from "react";
 import { cn } from "../cn";
 
-/**
- * Classes for a reference to a field's answer, for a node built in DOM code, such as a mention in rich text: teal on
- * its tint, as GovBB draws what can be followed, and wrapping with the words around it.
- */
+/** Inline answer-reference styling for editor-created DOM nodes; wraps with surrounding text. */
 export const fieldChip =
   "rounded-sm bg-interactive-subtle px-1 text-interactive box-decoration-clone";
 
-/**
- * A reference to a field's answer, in a formula, a rule or a sentence: the field's icon, then its name, which a long
- * one cuts short. The one look for a field's answer wherever it stands in for it.
- */
+/** Answer reference for formulas and rules. Truncates long field names instead of wrapping. */
 export function FieldChip({
   icon,
   className,

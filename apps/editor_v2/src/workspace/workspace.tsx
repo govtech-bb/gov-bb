@@ -142,9 +142,8 @@ export function ServiceWorkspace({
   }, [documentId]);
 
   const [dialog, setDialog] = useState<"service" | "page" | "delete" | null>(null);
-  // The dialog last opened, still on the page while it fades away
   const shown = useLatched(dialog);
-  // Counts the openings, so each opens afresh: nothing typed, and no answer left from the last time
+  // Remount on each opening to clear the previous form and request state.
   const [opened, setOpened] = useState(0);
 
   const openDialog = (kind: "service" | "page" | "delete") => {
@@ -196,8 +195,7 @@ export function ServiceWorkspace({
   const serviceName = place.service ?? listed?.title;
   const servicePages = !!location && !missing && (!!remote.data || remote.isPending);
 
-  // While the service's pages are hidden, or always in a drawer, the page's bar starts with what shows them; open
-  // beside the page, the list's own header hides them
+  // When the sidebar is hidden, move its toggle into the page bar so it stays reachable.
   const showPages =
     servicePages && !(sidebar.wide && sidebar.open) ? (
       <Sidebar.Toggle sidebar={sidebar} label="Pages" />
@@ -295,14 +293,11 @@ export function ServiceWorkspace({
             </Sidebar.Toggle>
           )}
           <GovbbLogo fit="height" className="h-6 shrink-0" />
-          {/* Where the trail starts is always the same link, so it keeps the focus as it changes screens */}
           <Bar.Crumbs crumbs={crumbs} />
           <Bar.Actions>
-            {/* Under a laptop's width it gives way, so the bar keeps to one row */}
             <Bar.Status className="max-w-64 truncate font-normal max-lg:hidden" title={email}>
               {email}
             </Bar.Status>
-            {/* Pending while it signs out, so it keeps the focus and its colour if signing out fails */}
             <Button
               variant="inverse"
               pending={signingOut}
@@ -354,7 +349,7 @@ export function ServiceWorkspace({
           />
         )}
         <main id="workspace-content" tabIndex={-1} className="min-w-0 flex-1 outline-none">
-          {/* No page's bar to hold it yet, such as before a page is chosen: a bar of its own */}
+          {/* Keep the sidebar toggle reachable before a page is selected. */}
           {showPages && !selected && <Bar.Root>{showPages}</Bar.Root>}
           {missing && (
             <EmptyState

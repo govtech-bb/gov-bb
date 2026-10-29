@@ -64,14 +64,9 @@ function Placeholder({ className }: { className: string }) {
 const controls = "a, button, input, select, textarea, label";
 
 /**
- * The current page of rows, with loading, empty and no-match states in place of rows. Its columns keep the widths the
- * screen gives them (`meta.width`), the leading column the rest, so loading, sorting, filtering and paging never move
- * them. Loading, placeholder rows stand in the shape of the rows to come, a name and its address leading each, so
- * nothing moves as they arrive; the first says what it's loading, named by its caption. Screen readers hear that from
- * the screen's own status line instead, which outlives the table.
- *
- * With `rowLink`, a row that lights up under the pointer opens like it: a click anywhere on it that isn't on one of its
- * controls follows its first link, which stays the way in for the keyboard and screen readers.
+ * Renders the current page with fixed column widths and loading, empty and filtered states.
+ * The parent owns loading announcements so its live region survives table replacement.
+ * `rowLink` forwards plain row clicks to the first link; controls, selections and modified clicks are left alone.
  */
 export function DataTable({
   caption,
@@ -248,7 +243,7 @@ export function Pagination({ name }: { name: [string, string] }) {
 
   return (
     <div className="flex flex-wrap items-center gap-x-4 gap-y-3 border-t border-line px-4 py-3 text-14 text-muted">
-      {/* Its figures one width, in room for the longest, so the page size beside it stays put from page to page */}
+      {/* Reserve space so the page-size control stays put as the range changes. */}
       <p aria-live="polite" className="min-w-44 tabular-nums">
         {first}–{Math.min(total, first + pageSize - 1)} of {total} {total === 1 ? name[0] : name[1]}
       </p>

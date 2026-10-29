@@ -18,10 +18,10 @@ type Role = "dialog" | "alertdialog";
 // An alert dialog waits for an answer: it needs its own trigger, and it has no close button
 const DialogRole = createContext<Role>("dialog");
 
-// Whether the content's work is pending, which its Root reads before Esc or a click outside may close it
+// Content shares the pending flag with Root so dismissal handlers can block it.
 const DialogPending = createContext<RefObject<boolean>>({ current: false });
 
-// The same, for the parts inside it that wait for the work, such as Cancel
+// Cancel reads the pending state without subscribing Root to content updates.
 const DialogBusy = createContext(false);
 
 type RootProps =
@@ -32,7 +32,6 @@ type RootProps =
 function DialogRoot(props: RootProps) {
   const pending = useRef(false);
 
-  // While the work is pending, Esc and a click outside wait for it, as the dialog's buttons do
   const guard =
     <Details extends { cancel: () => void }>(
       onOpenChange?: (open: boolean, details: Details) => void,
@@ -76,10 +75,7 @@ function DialogTrigger(props: Omit<BaseDialog.Trigger.Props, "handle">) {
   );
 }
 
-/**
- * What a dialog or a drawer dims the page with. A dialog put on the page already open, which Base UI doesn't animate,
- * fades in from the same start (`starting:`).
- */
+/** Shared overlay. `starting:` also animates dialogs mounted already open. */
 export const backdrop =
   "fixed inset-0 z-popup bg-ink/40 transition-opacity duration-(--duration-dialog-in) ease-out-quint starting:opacity-0 data-starting-style:opacity-0 data-ending-style:opacity-0 data-ending-style:duration-(--duration-dialog-out)";
 
@@ -100,19 +96,13 @@ type ContentProps = Pick<BaseDialog.Popup.Props, "initialFocus" | "finalFocus"> 
   close?: boolean;
   /** Names the close button, such as “Close source”. */
   closeLabel?: string;
-  /**
-   * Its work is under way, such as a save: Esc, a click outside, the close button and Cancel wait until it's done, so
-   * what the work answers still has somewhere to show.
-   */
+  /** Blocks dismissal while a request is pending, preserving inputs and the place for its result. */
   pending?: boolean;
   className?: string;
   children: ReactNode;
 };
 
-/**
- * The dialog over a dimmed page, centred, scaling up a little as it fades in. Lay it out with Header, Body and
- * Actions: the body scrolls when the screen is short, so the header and the buttons stay in view.
- */
+/** Header and Actions stay visible while Body scrolls on short screens. */
 function DialogContent({
   size = "md",
   close = true,
@@ -184,10 +174,7 @@ function DialogDescription({ children }: { children: ReactNode }) {
   );
 }
 
-/**
- * Its fields and messages, stacked 16px apart as the foundations space field from field. Scrolls when the screen is
- * short; its bottom inset keeps a focused field's ring from being cut off at the edge.
- */
+/** Scrollable fields with enough bottom padding to avoid clipping focus rings. */
 function DialogBody({ className, children }: { className?: string; children: ReactNode }) {
   return (
     <div
@@ -216,7 +203,7 @@ function DialogCancel({ children = "Cancel" }: { children?: ReactNode }) {
   return <BaseDialog.Close disabled={pending} render={<Button size="md">{children}</Button>} />;
 }
 
-/** The tool's dialogs, on Base UI's Dialog and AlertDialog: Close is Base UI's own part. */
+/** Composable Dialog and AlertDialog parts. Set pending on Content to block dismissal. */
 export const Dialog = {
   Root: DialogRoot,
   Trigger: DialogTrigger,

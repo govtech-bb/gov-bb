@@ -116,7 +116,7 @@ function $pageBlockDescendant(key: string | null, block: LexicalNode) {
   return node?.isAttached() && $rootBlock(node)?.is(block) ? node : null;
 }
 
-/** The page block whose band holds a height on screen: its own box, and half the gap to each neighbour. */
+/** Assigns gaps between blocks to their nearest block, keeping the rail reachable through the gutter. */
 function $pageBlockAt(editor: LexicalEditor, y: number) {
   const blocks = $getRoot()
     .getChildren()
@@ -171,10 +171,8 @@ function EditablePageControls({ anchor, hintId }: { anchor: HTMLElement; hintId:
   const byKeyboard = useRef(false);
 
   const { target, pin, release } = useRailTarget(anchor, {
-    // While a menu from the rail is open, the rail stays beside its block rather than following the pointer into it
+    // Keep the rail anchored while interacting with its menu.
     held: !!insert || !!blockMenu,
-    // On a block, that block. Between blocks, or in the gutter beside them, the block whose band holds the pointer,
-    // so the rail never drops out on the way. Elsewhere, such as below the page, it stays where it is
     $blockAt: (element, point) => {
       const root = editor.getRootElement();
 
@@ -204,7 +202,6 @@ function EditablePageControls({ anchor, hintId }: { anchor: HTMLElement; hintId:
     $at: (key, point) => $pageDropAt(editor, anchor, key, point),
     $drop: $dropPageBlock,
     onEnd: release,
-    // A press on the grip that slipped into a drag opens the menu, as the click would have
     onNudge: (key) => openBlockMenu(key, target?.key === key ? target.context : null),
   });
 
@@ -399,10 +396,7 @@ function EditablePageControls({ anchor, hintId }: { anchor: HTMLElement; hintId:
   );
 }
 
-/**
- * The insert menu, kept mounted so it can fade in and out. It opens on the side of its button with more room and
- * stays there, so the search field never jumps as a search narrows the list.
- */
+/** Keeps the last menu state through its exit transition and fixes placement while filtering. */
 function PageInsertMenu({
   menu,
   onDone,
@@ -426,7 +420,7 @@ function PageInsertMenu({
           align="start"
           collisionPadding={belowBar()}
           collisionAvoidance={{ side: "none", align: "shift", fallbackAxisSide: "none" }}
-          // Into the search, without scrolling the page to a popup that hasn't been placed yet
+          // Focus before positioning must not scroll the page.
           initialFocus={() => {
             search.current?.focus({ preventScroll: true });
 
@@ -477,8 +471,7 @@ function InsertList({
   const selected = actions[index];
   const shownIndex = useRef(index);
 
-  // The highlight keeps in view as the arrows move it. Not as the menu opens, at the top of its list, where it would
-  // only scroll the page towards a popup that hasn't been placed yet
+  // Scroll only after the highlight moves; the popup may not be positioned on its first render.
   useEffect(() => {
     if (shownIndex.current === index) return;
     shownIndex.current = index;
@@ -571,7 +564,7 @@ function InsertList({
   );
 }
 
-/** The block menu: a menu like any other, with the arrow keys, and Delete last. Kept mounted, so it fades out too. */
+/** Keeps the last block's menu content through its exit transition. */
 function PageBlockMenu({ menu, onDone }: { menu: BlockMenu | null; onDone: () => void }) {
   const shown = useLatched(menu);
 
@@ -895,9 +888,8 @@ function BlockMenuRows({ menu, onDone }: { menu: BlockMenu; onDone: () => void }
 }
 
 /**
- * A component's settings, at the top of its menu, each applied as it's made, as the page settings are: a Details
- * block's summary as you leave its field or press Enter, a button's style as it's chosen. Where a button goes is
- * edited in one place, the card at the caret in its words (PageButtonLink), with one set of rules.
+ * Commits summaries on blur or Enter and styles on selection.
+ * Button destinations are edited by PageButtonLink so URL validation has one owner.
  */
 function ComponentSettings({
   component,
@@ -928,7 +920,7 @@ function ComponentSettings({
   };
 
   return (
-    // The keys are the fields': the menu would take letters for its typeahead and arrows for moving
+    // Keep text editing keys out of menu navigation; Escape still dismisses it.
     <div
       className="page-component-settings grid gap-4 px-3.5 pt-1 pb-3"
       onKeyDown={(event) => event.key !== "Escape" && event.stopPropagation()}

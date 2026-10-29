@@ -16,7 +16,6 @@ export function SitePreviewInline({ regions }: { regions: SitePreviewRegions }) 
 
   return (
     <>
-      {/* The writer's own title and introduction, with the same keys between them and the body */}
       {createPortal(<textarea {...titleProps} className="cms-inline-field" />, regions.title)}
       {createPortal(<textarea {...ledeProps} className="cms-inline-field" />, regions.lede)}
       {createPortal(

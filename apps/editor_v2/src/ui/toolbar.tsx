@@ -2,10 +2,7 @@ import { Toolbar as BaseToolbar } from "@base-ui/react/toolbar";
 import { createContext, type KeyboardEvent } from "react";
 import { cn } from "../cn";
 
-/**
- * Whether a Button is one of a toolbar's controls, which the toolbar's arrow keys move between. The popups its controls
- * open set it back to false: the buttons in them are the popup's, not the toolbar's.
- */
+/** Buttons join the nearest toolbar. Portaled dialogs and popovers reset this to keep their controls separate. */
 export const InToolbar = createContext(false);
 
 /** The rule between one group of a toolbar's controls and the next: 20px, in the line's grey. Bar.Separator is one. */
@@ -43,11 +40,7 @@ type RootProps = Omit<BaseToolbar.Root.Props, "aria-label" | "className"> & {
   className?: string;
 };
 
-/**
- * A row of controls named as one, such as a document's tools: one Tab stop, the arrow keys moving between its controls,
- * and Home and End to its first and last. Every Button in it is one of its controls; a control that isn't a Button
- * joins through Toolbar.Button's `render`.
- */
+/** One tab stop with arrow, Home and End navigation. Buttons register automatically; other controls use Toolbar.Button. */
 function ToolbarRoot({ label, className, onKeyDown, ...props }: RootProps) {
   return (
     <InToolbar value>
@@ -64,10 +57,7 @@ function ToolbarRoot({ label, className, onKeyDown, ...props }: RootProps) {
   );
 }
 
-/**
- * Makes a control that isn't a Button one of the toolbar's, such as a select's trigger: `render` it. A Button is one
- * already, with nothing round it.
- */
+/** Registers a non-Button control, such as a select trigger, in the toolbar's keyboard navigation. */
 function ToolbarButton(
   props: Omit<BaseToolbar.Button.Props, "render"> & {
     render: NonNullable<BaseToolbar.Button.Props["render"]>;
@@ -91,10 +81,7 @@ function ToolbarSeparator({ className }: { className?: string }) {
   return <BaseToolbar.Separator className={cn(toolbarRule, className)} />;
 }
 
-/**
- * The tool's toolbars, on Base UI's Toolbar: a Root with its label, Buttons in it, Groups of them, ruled off by
- * Separators. A labelled Bar is one.
- */
+/** Keyboard-navigable control groups. A labelled Bar uses the same toolbar behavior. */
 export const Toolbar = {
   Root: ToolbarRoot,
   Button: ToolbarButton,
