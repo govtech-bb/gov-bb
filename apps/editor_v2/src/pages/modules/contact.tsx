@@ -107,17 +107,22 @@ export function ContactPreview({
     </div>
   );
 
-  if (!record)
-    return onChoose ? (
+  // Not set up yet, which is no problem: what it still needs, and the button that chooses it
+  const unset = (need: string, action: string) =>
+    onChoose ? (
       <div className="page-contact page-contact-empty">
-        <p>Choose the contact record this block shows.</p>
+        <p>{need}</p>
         <Button variant="secondary" onClick={onChoose}>
-          Choose a record
+          {action}
         </Button>
       </div>
     ) : (
-      status("No contact record chosen yet.")
+      status(need)
     );
+
+  if (!record) return unset("Choose the contact record this block shows.", "Choose a record");
+
+  if (!fields.length) return unset("Choose the details this block shows.", "Choose details");
 
   if (state.status !== "read")
     return state.status === "unavailable"
@@ -359,10 +364,7 @@ export function ContactBlockSettings({
         </NativeSelect>
       </Field>
       {detailFields.length > 0 && (
-        <FieldGroup
-          label="Details to show"
-          error={fields.length ? undefined : "Choose at least one detail to show."}
-        >
+        <FieldGroup label="Details to show">
           {detailFields.map((field) => (
             <Checkbox
               key={field.key}
@@ -379,6 +381,9 @@ export function ContactBlockSettings({
             />
           ))}
         </FieldGroup>
+      )}
+      {detailFields.length > 0 && !fields.length && (
+        <p className="-mt-2 text-14 text-muted">Nothing shows until you choose one.</p>
       )}
       {state.status === "failed" && (
         <p className="text-error" role="alert">

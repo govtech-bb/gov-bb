@@ -198,6 +198,17 @@ describe("the contact block in the editor", () => {
     );
   });
 
+  test("with no details chosen, asks for them calmly rather than warning", async () => {
+    await mount(`${CONTACT.replace("phone,email,hours", "")}\n`, { read: async () => CONTACTS });
+    const block = pageControl(".page-contact-block");
+
+    expect(block.textContent).toContain("Choose the details this block shows.");
+    expect(block.querySelector("[role=alert]")).toBeNull();
+    expect([...block.querySelectorAll("button")].map((button) => button.textContent)).toEqual([
+      "Choose details",
+    ]);
+  });
+
   test("warns when the collection has gone", async () => {
     await mount(`${CONTACT}\n`, { read: async () => null });
     expect(pageControl(".page-contact-warning").textContent).toContain(
