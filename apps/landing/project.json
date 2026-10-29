@@ -74,6 +74,11 @@
     },
     "test": {
       "executor": "nx:run-commands",
+      "inputs": [
+        "default",
+        "^production",
+        "{workspaceRoot}/apps/api_v2/src/seed-data/estate.json"
+      ],
       "options": {
         "command": "npm run test",
         "cwd": "apps/landing"
