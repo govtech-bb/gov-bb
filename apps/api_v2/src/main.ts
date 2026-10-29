@@ -5,10 +5,12 @@ import pino from "pino";
 import { buildApp } from "./app";
 import { createBetterAuth } from "./adapters/better-auth";
 import { PostgresCollections } from "./adapters/postgres-collections";
+import { mailerFor } from "./adapters/mail";
 import { PostgresPages } from "./adapters/postgres-pages";
+import { PostgresReviewRecipients } from "./adapters/postgres-review-recipients";
 import { PostgresRoles } from "./adapters/postgres-roles";
 import { parseConfig } from "./config";
-import { connect, createPool, type DatabaseFailure } from "./db";
+import { connect, createPool, ping, type DatabaseFailure } from "./db";
 import { migrate } from "./migrate";
 import { authBypass, registerBypassEmployee } from "./adapters/auth-bypass";
 import type { AuthHandler } from "./routes/auth";
@@ -18,6 +20,10 @@ import { CategoryEditing } from "./services/category-editing";
 import { CollectionEditing } from "./services/collection-editing";
 import { PageEditing } from "./services/page-editing";
 import { PageResolution } from "./services/page-resolution";
+import {
+  NO_REVIEW_NOTIFICATIONS,
+  ReviewNotifications,
+} from "./services/review-notifications";
 import { SiteNavigation } from "./services/site-navigation";
 import { seed } from "./seed";
 
@@ -116,13 +122,25 @@ async function main(): Promise<void> {
     }
     operation = "http";
     const pages = new PostgresPages(db);
+    const mailer = mailerFor(config.notifications, logger);
+    const notifier = mailer
+      ? new ReviewNotifications(
+          mailer,
+          new PostgresReviewRecipients(db),
+          config.auth.editorOrigin,
+          logger,
+        )
+      : NO_REVIEW_NOTIFICATIONS;
     app = await buildApp({
       resolution: new PageResolution(pages),
       navigation: new SiteNavigation(pages),
       // One local developer runs the whole review flow (ADR 0079).
-      editing: new PageEditing(pages, () => new Date(), {
-        allowSelfApproval: config.authBypass,
-      }),
+      editing: new PageEditing(
+        pages,
+        () => new Date(),
+        { allowSelfApproval: config.authBypass },
+        notifier,
+      ),
       index: new EditorIndex(pages),
       categories: new CategoryEditing(pages, () => new Date()),
       collections: new CollectionEditing(new PostgresCollections(db)),
@@ -135,6 +153,7 @@ async function main(): Promise<void> {
       },
       ...(config.previewSecret ? { previewSecret: config.previewSecret } : {}),
       logger,
+      ready: () => ping(db),
     });
     if (shutdown.signal.aborted) return;
     // A bypassed API admits any caller, so only this machine may reach it.

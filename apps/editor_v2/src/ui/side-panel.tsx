@@ -1,8 +1,7 @@
 import { SidebarSimple } from "@phosphor-icons/react";
 import { createContext, useContext, useId, useState, type ReactNode } from "react";
-import { Button } from "./button";
-import { Drawer, useDrawerPanel, type DrawerPanel } from "./drawer";
-import { Tip } from "./tooltip";
+import { cn } from "../cn";
+import { Drawer, PanelToggle, useColumnMotion, useDrawerPanel, type DrawerPanel } from "./drawer";
 import { wideScreen } from "./use-media-query";
 
 // A section is titled a level under what holds it: the document's h1 beside the page, the drawer's own h2 title
@@ -15,7 +14,7 @@ export function useSidePanel(): SidePanelState {
   return useDrawerPanel(wideScreen, useState(true));
 }
 
-/** Shows and hides the panel, from the document's toolbar. The panel beside the page, or over it, shows it's open. */
+/** Shows and hides the panel, from the far end of the document's bar, right above the panel it opens. */
 function SidePanelToggle({
   panel,
   label,
@@ -26,16 +25,12 @@ function SidePanelToggle({
   disabled?: boolean;
 }) {
   return (
-    <Tip content={label}>
-      <Button
-        icon={<SidebarSimple mirrored />}
-        aria-label={label}
-        aria-expanded={panel.open}
-        aria-controls={panel.open ? panel.id : undefined}
-        disabled={disabled}
-        onClick={() => panel.setOpen(!panel.open)}
-      />
-    </Tip>
+    <PanelToggle
+      panel={panel}
+      label={label}
+      icon={<SidebarSimple mirrored />}
+      disabled={disabled}
+    />
   );
 }
 
@@ -51,9 +46,11 @@ type RootProps = {
 
 /**
  * A document's settings: beside the canvas on a wide screen, where they stay in view as the page
- * scrolls, and a drawer from the end edge on a narrow one, which can be swiped away.
+ * scrolls and ease away as the panel hides, and a drawer from the end edge on a narrow one, which can be swiped away.
  */
 function SidePanelRoot({ panel, label, inert, children }: RootProps) {
+  const motion = useColumnMotion();
+
   if (panel.wide)
     return (
       <aside
@@ -61,10 +58,10 @@ function SidePanelRoot({ panel, label, inert, children }: RootProps) {
         aria-label={label}
         hidden={!panel.open}
         inert={inert}
-        className="w-80 shrink-0 border-s border-line bg-white text-14 text-ink"
+        className={cn("w-80 shrink-0 border-s border-line bg-white text-14 text-ink", motion)}
       >
         {/* In view as the page scrolls, under the document's bar pinned above it */}
-        <div className="sticky top-(--bar-height) max-h-[calc(100dvh-var(--bar-height))] overflow-y-auto overscroll-contain">
+        <div className="sticky top-(--bar-height) max-h-[calc(100dvh-var(--bar-height))] w-80 overflow-y-auto overscroll-contain">
           <SectionHeading value="h2">{children}</SectionHeading>
         </div>
       </aside>

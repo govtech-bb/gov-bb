@@ -32,11 +32,12 @@ import { categoriesQuery } from "../api/queries";
 import { Banner } from "../ui/banner";
 import { Button } from "../ui/button";
 import { Menu } from "../ui/menu";
-import { ScreenHeader } from "../ui/screen-header";
+import { ListScreen } from "../ui/list-screen";
+import { RefreshFailure } from "../ui/refresh-failure";
 import { NameCell } from "../ui/table/cell-components";
 import { createAppColumnHelper, useAppTable } from "../ui/table/table-hooks";
-import { toast } from "../ui/toast";
 import { Tip } from "../ui/tooltip";
+import { useLatched } from "../ui/use-latched";
 import { CategoryDialog, DeleteCategoryDialog } from "./category-dialogs";
 import { LoadFailure } from "./load-failure";
 
@@ -45,12 +46,14 @@ type Direction = -1 | 1;
 
 /**
  * What a row's controls do: a move says which control asked, so that control gets the focus back. `moving` says
- * whether its sibling group has a move still being saved, when its moves wait.
+ * whether its sibling group has a move still being saved, when its moves wait; `pressed`, whether a move button is the
+ * one that move came from, which turns until it's settled.
  */
 type RowActions = {
   move: (row: CategoryRow, by: Direction, from: "button" | "menu") => void;
   moving: (row: CategoryRow) => boolean;
-  /** Nothing can be moved, edited or deleted, for someone who can't change categories. */
+  pressed: (row: CategoryRow, by: Direction) => boolean;
+  /** Nothing can be moved, edited or deleted, for someone who can’t change categories. */
   readOnly: boolean;
   edit: (row: CategoryRow) => void;
   remove: (row: CategoryRow) => void;
@@ -59,10 +62,14 @@ type RowActions = {
 const Actions = createContext<RowActions>({
   move: () => {},
   moving: () => false,
+  pressed: () => false,
   readOnly: false,
   edit: () => {},
   remove: () => {},
 });
+
+/** The dialog open over the list, if any: a new category, or one to edit or delete as it was when it opened. */
+type ListDialog = { kind: "add" } | { kind: "edit" | "delete"; category: Category };
 
 // A sibling group's key: its parent's id, or the top level's
 const groupOf = (category: Pick<Category, "parent_id">) => category.parent_id ?? "";
@@ -110,7 +117,8 @@ const CategoryActions = memo(function CategoryActions({ row }: { row: CategoryRo
   const actions = useContext(Actions);
   const first = row.place === 1;
   const last = row.place === row.siblings;
-  // While its group's last move is saved, its moves stay focusable and named, but wait
+  // While its group's last move is saved, its moves stay focusable and named, but wait, looking unavailable; the one
+  // that was pressed turns
   const waiting = actions.moving(row);
 
   return (
@@ -123,6 +131,7 @@ const CategoryActions = memo(function CategoryActions({ row }: { row: CategoryRo
             data-move={row.id}
             data-by={-1}
             disabled={first || actions.readOnly}
+            pending={actions.pressed(row, -1)}
             aria-disabled={waiting || undefined}
             onClick={() => actions.move(row, -1, "button")}
           />
@@ -134,6 +143,7 @@ const CategoryActions = memo(function CategoryActions({ row }: { row: CategoryRo
             data-move={row.id}
             data-by={1}
             disabled={last || actions.readOnly}
+            pending={actions.pressed(row, 1)}
             aria-disabled={waiting || undefined}
             onClick={() => actions.move(row, 1, "button")}
           />
@@ -207,7 +217,6 @@ const column = createAppColumnHelper<CategoryRow>();
 const columns = column.columns([
   column.accessor("title", {
     header: "Name",
-    enableHiding: false,
     // Its parent from the list itself, so the words follow a renamed parent
     cell: ({ row, table }) => (
       <CategoryCell
@@ -219,14 +228,17 @@ const columns = column.columns([
   // Narrow, the count rides under the name instead
   column.accessor("services", {
     header: () => <span className="block text-end">Services</span>,
-    meta: { secondary: true },
+    meta: { secondary: true, width: "w-28" },
     cell: ({ row }) => (
       <span className="block text-end text-14 tabular-nums">{row.original.services}</span>
     ),
   }),
+  // Room for its four buttons, 44px each under a coarse pointer, or for the one that opens their menu once they fold
+  // into it
   column.display({
     id: "actions",
     header: () => <span className="block text-end">Actions</span>,
+    meta: { width: "w-44 @max-xl:w-20 pointer-coarse:@xl:w-56" },
     cell: ({ row }) => <CategoryActions row={row.original} />,
   }),
 ]);
@@ -256,12 +268,20 @@ export function CategoriesScreen({
   const blocked = categories.isError && !refreshFailed;
   const rows = useMemo(() => categoryRows(categories.data ?? []), [categories.data]);
 
-  // A dialog keeps the category it opened with, whatever the list does meanwhile
-  const [dialog, setDialog] = useState<
-    { kind: "add" } | { kind: "edit" | "delete"; category: Category }
-  >();
+  // A dialog keeps the category it opened with, whatever the list does meanwhile, and shows it until it has faded away
+  const [dialog, setDialog] = useState<ListDialog | null>(null);
+  const shown = useLatched(dialog);
+  // Counts the openings, so each opens afresh: nothing typed, and no answer left from the last time
+  const [opened, setOpened] = useState(0);
+
+  const openDialog = useCallback((next: ListDialog) => {
+    setOpened((count) => count + 1);
+    setDialog(next);
+  }, []);
 
   const [moved, setMoved] = useState("");
+  // What went wrong with a move, in the card over the rows until the next one: a toast would leave while its buttons stay
+  const [problem, setProblem] = useState<{ tone: "error" | "warning"; text: string } | null>(null);
   // The row that last moved, tinted while moves go on, so a pointer can follow it to its new place
   const [marked, setMarked] = useState<string>();
   const unmark = useRef<ReturnType<typeof setTimeout>>(undefined);
@@ -276,6 +296,8 @@ export function CategoriesScreen({
    */
   const [moving, setMoving] = useState<ReadonlyMap<string, "saving" | CategoryOrder>>(new Map());
   const settling = useRef(new Map<string, "saving" | CategoryOrder>());
+  // The move button a save or a check came from, which turns while its group waits
+  const [pressed, setPressed] = useState<{ group: string; id: string; by: Direction }>();
 
   const settle = useCallback((group: string, state?: "saving" | CategoryOrder) => {
     const next = new Map(settling.current);
@@ -284,6 +306,8 @@ export function CategoriesScreen({
     else next.delete(group);
     settling.current = next;
     setMoving(next);
+
+    if (state !== "saving") setPressed((button) => (button?.group === group ? undefined : button));
   }, []);
 
   // Says where a moved row is now, keeps its control focused and tints it for a while
@@ -295,6 +319,8 @@ export function CategoriesScreen({
       unmark.current = setTimeout(() => setMarked(undefined), 2000);
 
       const row = categoryRows(list).find((item) => item.id === id);
+
+      setProblem(null);
 
       if (row)
         setMoved(`${row.title} moved ${by < 0 ? "up" : "down"}: ${row.place} of ${row.siblings}`);
@@ -312,17 +338,17 @@ export function CategoriesScreen({
       if (!result.ok) {
         settle(group, order);
         setMoved("");
-        toast(
-          "We couldn’t tell whether the category moved. Check your connection, then try again.",
-          {
-            tone: "error",
-          },
-        );
+        setProblem({
+          tone: "error",
+          text: "We couldn’t tell whether the category moved. Check your connection, then try again.",
+        });
 
         return undefined;
       }
 
+      // The list could be read, so a card saying it couldn't is out of date
       settle(group);
+      setProblem(null);
       void client.invalidateQueries({ queryKey: ["content"] });
 
       return result.value;
@@ -340,14 +366,17 @@ export function CategoriesScreen({
 
       // Settle the lost one first; the author presses again once the list says where things are
       if (unsettled) {
+        setPressed({ group, id: row.id, by });
         const list = await checkMove(group, unsettled);
 
-        if (list)
-          setMoved(
-            inOrder(list, unsettled)
-              ? "The last move was saved."
-              : "We couldn’t find the last move in the list yet. Check the order before moving it again.",
-          );
+        if (list && inOrder(list, unsettled)) setMoved("The last move was saved.");
+        else if (list) {
+          setMoved("");
+          setProblem({
+            tone: "warning",
+            text: "We couldn’t find the last move in the list yet. Check the order before moving it again.",
+          });
+        }
 
         return;
       }
@@ -356,6 +385,7 @@ export function CategoriesScreen({
 
       if (!order) return;
       settle(group, "saving");
+      setPressed({ group, id: row.id, by });
       const result = await api.orderCategories(order);
 
       if (result.ok) {
@@ -378,10 +408,13 @@ export function CategoriesScreen({
           const list = await checkMove(group, order);
 
           if (list && inOrder(list, order)) showMoved(list, row.id, by, from);
-          else if (list)
-            setMoved(
-              "We couldn’t find that move in the list yet. Check the order before moving it again.",
-            );
+          else if (list) {
+            setMoved("");
+            setProblem({
+              tone: "warning",
+              text: "We couldn’t find that move in the list yet. Check the order before moving it again.",
+            });
+          }
 
           return;
         }
@@ -389,27 +422,26 @@ export function CategoriesScreen({
         case "CategoryConflict":
           settle(group);
           setMoved("");
-          toast(
-            "Someone changed these categories first. The list now shows their changes: move it again.",
-            {
-              tone: "error",
-            },
-          );
+          setProblem({
+            tone: "error",
+            text: "Someone changed these categories first. The list now shows their changes: move it again.",
+          });
           void client.invalidateQueries({ queryKey: ["content"] });
 
           return;
         default:
           settle(group);
           setMoved("");
-          toast(
-            result.error._tag === "CategoryAccessDenied"
-              ? result.error.status === 401
-                ? "Your session has ended. Sign in again, then move the category."
-                : // A refusal, such as no editor role: the API's reason, since trying again won't help
-                  result.error.message
-              : "The category could not be moved. Try again.",
-            { tone: "error" },
-          );
+          setProblem({
+            tone: "error",
+            text:
+              result.error._tag === "CategoryAccessDenied"
+                ? result.error.status === 401
+                  ? "Your session has ended. Sign in again, then move the category."
+                  : // A refusal, such as no editor role: the API's reason, since trying again won't help
+                    result.error.message
+                : "The category could not be moved. Try again.",
+          });
       }
     },
     [api, categories.data, checkMove, client, settle, showMoved],
@@ -420,11 +452,12 @@ export function CategoriesScreen({
     () => ({
       move: (row, by, from) => void move(row, by, from),
       moving: (row) => moving.get(groupOf(row)) === "saving",
+      pressed: (row, by) => pressed?.id === row.id && pressed.by === by,
       readOnly,
-      edit: (row) => setDialog({ kind: "edit", category: row }),
-      remove: (row) => setDialog({ kind: "delete", category: row }),
+      edit: (row) => openDialog({ kind: "edit", category: row }),
+      remove: (row) => openDialog({ kind: "delete", category: row }),
     }),
-    [move, moving, readOnly],
+    [move, moving, pressed, readOnly, openDialog],
   );
 
   useEffect(() => () => clearTimeout(unmark.current), []);
@@ -455,12 +488,13 @@ export function CategoriesScreen({
     enableSorting: false,
   });
 
-  const close = () => setDialog(undefined);
+  const close = () => setDialog(null);
 
   return (
     <Actions value={actions}>
       <table.AppTable>
-        <ScreenHeader
+        <ListScreen
+          ref={card}
           title="Categories"
           lead="People browse these to find services on the site."
           action={
@@ -469,89 +503,88 @@ export function CategoriesScreen({
               variant="accent"
               size="md"
               disabled={readOnly}
-              onClick={() => setDialog({ kind: "add" })}
+              onClick={() => openDialog({ kind: "add" })}
             >
               Add category
             </Button>
           }
-        />
-        <div
-          ref={card}
-          className="@container min-w-0 rounded-sm bg-white shadow-sheet ring-1 ring-grey-40"
+          status={categories.isPending ? "Loading categories…" : null}
+          notices={
+            <>
+              {readOnly && why && (
+                <Banner tone="info" layout="strip" inset="card">
+                  {why}
+                </Banner>
+              )}
+              {refreshFailed && (
+                <RefreshFailure
+                  inset="card"
+                  pending={categories.isFetching}
+                  pendingLabel="Refreshing categories…"
+                  onRetry={() => void categories.refetch()}
+                >
+                  We could not refresh categories. Showing the last loaded list.
+                </RefreshFailure>
+              )}
+              {problem && (
+                <Banner tone={problem.tone} layout="strip" inset="card">
+                  {problem.text}
+                </Banner>
+              )}
+            </>
+          }
+          failure={
+            blocked && (
+              <LoadFailure
+                noun="categories"
+                error={categories.error}
+                retrying={categories.isFetching}
+                retry={() => void categories.refetch()}
+              />
+            )
+          }
         >
-          <p role="status" className="sr-only">
-            {categories.isPending ? "Loading categories…" : null}
-          </p>
-          {readOnly && why && (
-            <Banner tone="info" layout="strip">
-              {why}
-            </Banner>
-          )}
-          {refreshFailed && (
-            <Banner
-              tone="warning"
-              layout="strip"
-              actions={
+          <table.DataTable
+            caption="Categories"
+            loading={categories.isPending}
+            marked={marked}
+            empty={{
+              title: "No categories yet",
+              description: "Add one, so services can be filed under it.",
+              // The header holds the teal Add category, so this one is grey
+              actions: (
                 <Button
                   variant="secondary"
-                  pending={categories.isFetching}
-                  onClick={() => void categories.refetch()}
+                  disabled={readOnly}
+                  onClick={() => openDialog({ kind: "add" })}
                 >
-                  {categories.isFetching ? "Refreshing categories…" : "Try again"}
+                  Add category
                 </Button>
-              }
-            >
-              We could not refresh categories. Showing the last loaded list.
-            </Banner>
-          )}
-          {blocked ? (
-            <LoadFailure
-              noun="categories"
-              error={categories.error}
-              retrying={categories.isFetching}
-              retry={() => void categories.refetch()}
-            />
-          ) : (
-            <table.DataTable
-              caption="Categories"
-              loading={categories.isPending}
-              marked={marked}
-              empty={{
-                title: "No categories yet",
-                description: "Add one, so services can be filed under it.",
-                actions: (
-                  <Button
-                    variant="accent"
-                    disabled={readOnly}
-                    onClick={() => setDialog({ kind: "add" })}
-                  >
-                    Add category
-                  </Button>
-                ),
-              }}
-            />
-          )}
-        </div>
+              ),
+            }}
+          />
+        </ListScreen>
         <p role="status" className="sr-only">
           {moved}
         </p>
-        {dialog?.kind === "add" && (
-          <CategoryDialog api={api} categories={categories.data ?? []} close={close} />
-        )}
-        {dialog?.kind === "edit" && (
+        {(shown?.kind === "add" || shown?.kind === "edit") && (
           <CategoryDialog
+            key={opened}
             api={api}
-            category={dialog.category}
+            open={dialog !== null}
+            category={shown.kind === "edit" ? shown.category : undefined}
             categories={categories.data ?? []}
-            close={close}
+            onClose={close}
           />
         )}
-        {dialog?.kind === "delete" && (
+        {shown?.kind === "delete" && (
           <DeleteCategoryDialog
+            key={opened}
             api={api}
-            category={dialog.category}
+            open={dialog !== null}
+            category={shown.category}
             categories={categories.data ?? []}
-            close={close}
+            onClose={close}
             focusAfter={add}
           />
         )}

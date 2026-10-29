@@ -18,6 +18,7 @@ import { Button } from "../ui/button";
 import { ConfirmDialog } from "../ui/confirm-dialog";
 import { EmptyState } from "../ui/empty-state";
 import { Field } from "../ui/field";
+import { FormDialog } from "../ui/form-dialog";
 import { LoadingState } from "../ui/loading-state";
 import { ScreenHeader } from "../ui/screen-header";
 import { TextLink } from "../ui/text-link";
@@ -25,7 +26,6 @@ import { Textarea } from "../ui/textarea";
 import { toast } from "../ui/toast";
 import { lineDiff } from "./line-diff";
 import { LoadFailure } from "./load-failure";
-import { WorkspaceDialog } from "./workspace-dialog";
 
 const when = new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeStyle: "short" });
 
@@ -445,68 +445,67 @@ export function ReviewScreen({
       )}
       <ConfirmDialog
         open={deciding?.decision === "publish"}
-        onClose={close}
+        onOpenChange={(next) => {
+          if (!next) close();
+        }}
         title="Publish this change?"
         description={`Citizens will see it at ${change.fields.url} straight away.`}
-        confirm="Approve and publish"
+        confirmLabel="Approve and publish"
         pendingLabel="Publishing…"
         pending={decide.isPending}
-        tone="accent"
+        variant="accent"
         error={dialogError}
         onConfirm={() => deciding && decide.mutate(deciding)}
       />
-      {deciding?.decision === "reject" && (
-        <WorkspaceDialog
-          title="Reject this change"
-          description="The live page stays as it is. The editor sees your comment with their change."
-          close={close}
-          onSubmit={() => {
-            const trimmed = comment.trim();
+      <FormDialog
+        open={deciding?.decision === "reject"}
+        onOpenChange={(next) => {
+          if (!next) close();
+        }}
+        title="Reject this change"
+        description="The live page stays as it is. The editor sees your comment with their change."
+        pending={decide.isPending}
+        onSubmit={() => {
+          const trimmed = comment.trim();
 
-            const problem = !trimmed
-              ? "Enter why you're rejecting this change"
-              : trimmed.length > MAX_COMMENT
-                ? `Use ${MAX_COMMENT} characters or fewer`
-                : "";
+          const problem = !trimmed
+            ? "Enter why you're rejecting this change"
+            : trimmed.length > MAX_COMMENT
+              ? `Use ${MAX_COMMENT} characters or fewer`
+              : "";
 
-            setCommentError(problem);
+          setCommentError(problem);
 
-            if (problem) return setRefusals((count) => count + 1);
-            decide.mutate(deciding);
-          }}
-          body={
-            <>
-              <Field
-                label="Why are you rejecting it?"
-                hint="Say what the editor needs to change."
-                error={commentError}
-              >
-                <Textarea
-                  ref={commentField}
-                  rows={5}
-                  value={comment}
-                  onChange={(event) => setComment(event.target.value)}
-                />
-              </Field>
-              {dialogError && (
-                <Banner tone="error" className="mt-4">
-                  {dialogError}
-                </Banner>
-              )}
-            </>
-          }
-          footer={
-            <>
-              <Button size="md" type="button" disabled={decide.isPending} onClick={close}>
-                Cancel
-              </Button>
-              <Button size="md" type="submit" variant="danger" pending={decide.isPending}>
-                {decide.isPending ? "Rejecting…" : "Reject change"}
-              </Button>
-            </>
-          }
-        />
-      )}
+          if (problem) return setRefusals((count) => count + 1);
+
+          if (deciding) decide.mutate(deciding);
+        }}
+        actions={
+          <Button
+            size="md"
+            type="submit"
+            variant="danger"
+            pending={decide.isPending}
+            pendingLabel="Rejecting…"
+          >
+            Reject change
+          </Button>
+        }
+      >
+        <Field
+          label="Why are you rejecting it?"
+          hint="Say what the editor needs to change."
+          error={commentError}
+        >
+          <Textarea
+            ref={commentField}
+            rows={5}
+            value={comment}
+            onChange={(event) => setComment(event.target.value)}
+          />
+        </Field>
+        {dialogError && <Banner tone="error">{dialogError}</Banner>}
+      </FormDialog>
     </>
   );
 }

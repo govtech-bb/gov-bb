@@ -32,6 +32,18 @@ const category = fixtureCategory(
   { services: 1 },
 );
 
+// The lede leads the frontmatter when the page has one, as api_v2 stores it
+const frontmatter = {};
+
+if (metadata.lede) frontmatter.lede = metadata.lede;
+
+Object.assign(frontmatter, {
+  source_url: "",
+  stage: "beta",
+  service_type: "other",
+  keywords: [""],
+});
+
 let current = {
   id: service.id,
   parent_id: null,
@@ -43,13 +55,7 @@ let current = {
   visibility: "public",
   form_id: metadata.form_id ?? null,
   body_markdown: bodyMarkdown,
-  frontmatter: {
-    ...(metadata.lede ? { lede: metadata.lede } : {}),
-    source_url: "",
-    stage: "beta",
-    service_type: "other",
-    keywords: [""],
-  },
+  frontmatter,
   published_at: "2026-01-13T12:00:00.000Z",
   created_at: "2026-01-13T12:00:00.000Z",
   updated_at: "2026-10-07T12:00:00.000Z",
@@ -225,7 +231,7 @@ try {
   await button("About this preview").click();
   await page
     .getByRole("dialog", { name: "About this preview", exact: true })
-    .getByText("Links, buttons and the feedback form don't work here.", { exact: true })
+    .getByText("Links, buttons and the feedback form don’t work here.", { exact: true })
     .waitFor();
   await page.keyboard.press("Escape");
   assert.equal(await page.locator('[contenteditable="true"]').count(), 0);
@@ -355,7 +361,7 @@ try {
   await button("Save").click();
   await page.locator("[data-document-bar]:visible").getByText("Saved", { exact: true }).waitFor();
   await page
-    .getByText("Your changes are saved but not live. Submit them for review when they're ready.")
+    .getByText("Your changes are saved but not live. Submit them for review when they’re ready.")
     .first()
     .waitFor();
   await button("Submit for review").click();

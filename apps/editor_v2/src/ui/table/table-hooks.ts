@@ -14,21 +14,18 @@ import {
   sortFn_text,
   tableFeatures,
 } from "@tanstack/react-table";
-import { DateCell, TextCell } from "./cell-components";
+import { DateCell } from "./cell-components";
 import { SortButton } from "./header-components";
-import {
-  ColumnsMenu,
-  DataTable,
-  FilterMenu,
-  FilterTabs,
-  Pagination,
-  Search,
-} from "./table-components";
+import { DataTable, Pagination, Search } from "./table-components";
 
-/** Per-column presentation. A secondary column folds away when the table is narrow. */
-export type ColumnMeta = { secondary?: boolean };
+/**
+ * Per-column presentation. A secondary column folds away when the table is narrow. `width` is the column's width as a
+ * class, such as `w-36`, so it stays put whatever its rows hold; the leading column has none and takes the rest.
+ * `align: "end"` lines its header and its cells up at their end, as for a count or a row's actions.
+ */
+export type ColumnMeta = { secondary?: boolean; width?: string; align?: "end" };
 
-/** Keeps rows whose value is one of the chosen values; FilterTabs and FilterMenu set it. */
+/** Keeps rows whose value is one of the chosen values, as a list's filters choose them. */
 const oneOf = constructFilterFn({
   filter: (value: string, chosen: string[]) => chosen.includes(value),
   autoRemove: (chosen?: string[]) => !chosen?.length,
@@ -60,8 +57,8 @@ export const {
     columnMeta: {} as ColumnMeta,
   }),
   globalFilterFn: "includesString",
-  tableComponents: { Search, FilterTabs, FilterMenu, ColumnsMenu, DataTable, Pagination },
-  cellComponents: { TextCell, DateCell },
+  tableComponents: { Search, DataTable, Pagination },
+  cellComponents: { DateCell },
   headerComponents: { SortButton },
 });
 

@@ -151,7 +151,7 @@ try {
   await button("Add document").click();
   const add = page.getByRole("dialog", { name: "Add a page", exact: true });
   await add
-    .getByText("The page starts in Preview beneath this service's entry page.", { exact: true })
+    .getByText("The page starts in Preview beneath this service’s entry page.", { exact: true })
     .waitFor();
   assert.deepEqual(await add.getByLabel("Document type").locator("option").allTextContents(), [
     "Start page",

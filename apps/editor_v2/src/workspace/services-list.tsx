@@ -7,9 +7,9 @@ import { ApiFailure, type EditorApi, type ServiceSummary } from "../api/client";
 import { categoriesQuery, servicesQuery } from "../api/queries";
 import { visibilityLabels, visibilityTones } from "../pages";
 import { Badge } from "../ui/badge";
-import { Banner } from "../ui/banner";
 import { Button } from "../ui/button";
-import { ScreenHeader } from "../ui/screen-header";
+import { ListScreen } from "../ui/list-screen";
+import { RefreshFailure } from "../ui/refresh-failure";
 import { Select, type SelectItem } from "../ui/select";
 import { StatusDot } from "../ui/status-dot";
 import { NameCell } from "../ui/table/cell-components";
@@ -53,7 +53,6 @@ function VisibilityTag({ visibility }: { visibility: ServiceSummary["visibility"
 function ServiceCell({ service, href }: { service: ServiceSummary; href: string | undefined }) {
   return (
     <NameCell
-      className="@3xl:min-w-72"
       name={
         <TextLink
           render={
@@ -87,41 +86,41 @@ function ServiceCell({ service, href }: { service: ServiceSummary; href: string 
 
 const serviceColumns = (api: EditorApi) =>
   column.columns([
-    // The url rides along so search finds it; sorting still follows the title.
+    // Include the URL in search without adding another column.
     column.accessor((service) => `${service.title} ${service.url}`, {
       id: "title",
       header: "Service",
       sortFn: "text",
-      enableHiding: false,
       cell: ({ row: { original: service } }) => (
         <ServiceCell service={service} href={api.landingUrl(service.url)} />
       ),
     }),
-    // Filtered by its slug, which the list's address keeps: a renamed category, or two with one name, stay apart
+    // Filter by slug so renamed categories and duplicate titles retain distinct URL filters.
     column.accessor((service) => service.category.slug, {
       id: "category",
       header: "Category",
       sortFn: (a, b) => a.original.category.title.localeCompare(b.original.category.title),
       filterFn: "oneOf",
       enableGlobalFilter: false,
-      meta: { secondary: true },
+      meta: { secondary: true, width: "w-48" },
       cell: ({ row }) => <span className="text-14">{row.original.category.title}</span>,
     }),
+    // Room for the longest date, such as 28 Sept 2026
     column.accessor("updated_at", {
       header: "Updated",
       sortFn: "basic",
       sortDescFirst: true,
       enableGlobalFilter: false,
-      meta: { secondary: true },
+      meta: { secondary: true, width: "w-36" },
       cell: ({ cell }) => <cell.DateCell />,
     }),
-    // Filtered by the status itself, the word the list's address keeps; its label sorts the same way
+    // Filter by the status stored in the URL, not its display label.
     column.accessor("visibility", {
       header: "Status",
       sortFn: "text",
       filterFn: "oneOf",
       enableGlobalFilter: false,
-      meta: { secondary: true },
+      meta: { secondary: true, width: "w-44" },
       cell: ({ row }) => <VisibilityTag visibility={row.original.visibility} />,
     }),
   ]);
@@ -309,60 +308,55 @@ export function ServicesList({
 
   return (
     <table.AppTable>
-      <ScreenHeader
+      <ListScreen
         title="Services"
+        lead="Each service has an entry page, an optional start page and supporting pages."
         action={
           <Button variant="accent" size="md" disabled={readOnly} onClick={onCreate}>
             Create service
           </Button>
         }
-      />
-      <div className="@container min-w-0 rounded-sm bg-white shadow-sheet ring-1 ring-grey-40">
-        <ServiceFilters categories={categories} />
-        <p role="status" className="sr-only">
-          {services.isPending ? "Loading services…" : null}
-        </p>
-        {refreshFailed && (
-          <Banner
-            tone="warning"
-            layout="strip"
-            actions={
-              <Button
-                variant="secondary"
-                pending={services.isFetching}
-                onClick={() => void services.refetch()}
-              >
-                {services.isFetching ? "Refreshing services…" : "Try again"}
+        filters={<ServiceFilters categories={categories} />}
+        status={services.isPending ? "Loading services…" : null}
+        notices={
+          refreshFailed && (
+            <RefreshFailure
+              inset="card"
+              pending={services.isFetching}
+              pendingLabel="Refreshing services…"
+              onRetry={() => void services.refetch()}
+            >
+              We could not refresh services. Showing the last loaded list.
+            </RefreshFailure>
+          )
+        }
+        failure={
+          blocked && (
+            <LoadFailure
+              noun="services"
+              error={services.error}
+              retrying={services.isFetching}
+              retry={() => void services.refetch()}
+            />
+          )
+        }
+      >
+        <table.DataTable
+          caption="Services"
+          loading={services.isPending}
+          rowLink
+          empty={{
+            title: "No services yet",
+            description: "Create a service to start adding its pages.",
+            actions: (
+              <Button variant="secondary" disabled={readOnly} onClick={onCreate}>
+                Create service
               </Button>
-            }
-          >
-            We could not refresh services. Showing the last loaded list.
-          </Banner>
-        )}
-        {blocked ? (
-          <LoadFailure
-            noun="services"
-            error={services.error}
-            retrying={services.isFetching}
-            retry={() => void services.refetch()}
-          />
-        ) : (
-          <table.DataTable
-            caption="Services"
-            loading={services.isPending}
-            empty={{
-              title: "No services yet",
-              description: "Create a service to start adding its pages.",
-              actions: (
-                <Button variant="secondary" disabled={readOnly} onClick={onCreate}>
-                  Create service
-                </Button>
-              ),
-            }}
-          />
-        )}
-        {!blocked && <table.Pagination name={["service", "services"]} />}
-      </div>
+            ),
+          }}
+        />
+        <table.Pagination name={["service", "services"]} />
+      </ListScreen>
     </table.AppTable>
   );
 }

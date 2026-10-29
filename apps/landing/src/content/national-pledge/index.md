@@ -1,6 +1,7 @@
 ---
-title: National Pledge
+title: National pledge of Barbados
 category: about-barbados
+subcategory: national-symbols
 source_url: https://www.gov.bb/Visit-Barbados/national-pledge
 visibility: preview
 ---

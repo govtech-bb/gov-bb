@@ -2,7 +2,6 @@ import { LexicalTypeaheadMenuPlugin, MenuOption } from "@lexical/react/LexicalTy
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
 import { useLexicalEditable } from "@lexical/react/useLexicalEditable";
 import { useCallback, useEffect, useState } from "react";
-import { createPortal } from "react-dom";
 import { $isListItemNode } from "@lexical/list";
 import { $isHeadingNode, $isQuoteNode } from "@lexical/rich-text";
 import {
@@ -21,9 +20,11 @@ import {
 import { $turnLineInto } from "../editor/core/turn-into";
 import { $caretLine, registerLineHint } from "../editor/react/block-dom";
 import { useEditorDefinition } from "../editor/react/composer";
+import { roomierSide } from "../editor/react/editor-popup";
 import { useSlashTrigger } from "../editor/react/slash-trigger";
 import { cn } from "../cn";
-import { listFooter, surface } from "../ui/surface";
+import { belowBar, Popover } from "../ui/popover";
+import { listFooter } from "../ui/surface";
 import { actionList, PageActionList } from "./action-menu";
 import { $pageInsertionTarget } from "./insertion";
 import { PageMetadataNode } from "./metadata";
@@ -81,6 +82,8 @@ function EditablePageSlashMenu() {
   const definition = useEditorDefinition();
   const [query, setQuery] = useState<string | null>(null);
   const [error, setError] = useState<string>();
+  // Picked as the menu opens and kept, so it shrinks towards the caret as you type instead of flipping over it
+  const [side, setSide] = useState<"top" | "bottom">("bottom");
   useEffect(() => registerLineHint(editor, $pageHint), [editor]);
 
   const trigger = useSlashTrigger(
@@ -123,6 +126,7 @@ function EditablePageSlashMenu() {
   return (
     <LexicalTypeaheadMenuPlugin<PageOption>
       options={options}
+      onOpen={(resolution) => setSide(roomierSide(resolution.getRect()))}
       onQueryChange={(value) => {
         setQuery(value);
         setError(undefined);
@@ -135,7 +139,7 @@ function EditablePageSlashMenu() {
         $pageInsertionTarget() ? trigger(text, currentEditor) : null
       }
       commandPriority={COMMAND_PRIORITY_NORMAL}
-      anchorClassName="z-50"
+      anchorClassName="z-popup"
       onSelectOption={(option, text, close) => {
         const line = $getNodeByKey(option.targetKey);
 
@@ -161,20 +165,34 @@ function EditablePageSlashMenu() {
         } else setError(result.error ?? "This block cannot be inserted here.");
       }}
       menuRenderFn={(anchor, { selectedIndex, setHighlightedIndex, selectOptionAndCleanUp }) =>
-        anchor.current &&
-        createPortal(
-          <>
-            {/* Lexical points aria-activedescendant at the highlighted option; this also says it aloud */}
-            <p role="status" className="sr-only">
-              {options[selectedIndex ?? 0]?.action.title}
-            </p>
-            <div
-              className={cn(
-                "page-insert-menu flex w-[min(21rem,calc(100vw-2rem))] flex-col text-14",
-                surface,
-              )}
+        anchor.current && (
+          // Placed by the popover rather than where Lexical puts its anchor, so it stays on screen and clear of the
+          // bar. The caret keeps the focus: typing and the arrow keys stay the editor's
+          <Popover.Root open>
+            <Popover.Content
+              aria-label="Insert page content"
+              anchor={anchor.current}
+              // Inside Lexical's anchor, which reads its options from there
+              container={anchor.current}
+              role="presentation"
+              side={side}
+              align="start"
+              sideOffset={4}
+              collisionPadding={belowBar()}
+              collisionAvoidance={{ side: "none", align: "shift", fallbackAxisSide: "none" }}
+              initialFocus={false}
+              finalFocus={false}
+              className="page-insert-menu flex w-[min(21rem,calc(100vw-2rem))] flex-col overflow-hidden p-0 text-14"
             >
-              <div className={actionList} role="listbox" aria-label="Insert page content">
+              {/* Lexical points aria-activedescendant at the highlighted option; this also says it aloud */}
+              <p role="status" className="sr-only">
+                {options[selectedIndex ?? 0]?.action.title}
+              </p>
+              <div
+                className={cn(actionList, "min-h-0")}
+                role="listbox"
+                aria-label="Insert page content"
+              >
                 <PageActionList
                   actions={options.map((option) => option.action)}
                   searching={!!query}
@@ -191,9 +209,8 @@ function EditablePageSlashMenu() {
                   {options[selectedIndex ?? 0]!.action.description}
                 </p>
               )}
-            </div>
-          </>,
-          anchor.current,
+            </Popover.Content>
+          </Popover.Root>
         )
       }
     />

@@ -13,6 +13,7 @@ import { FilesService } from "@/files/files.service";
 import type { ServiceContract } from "@govtech-bb/form-types";
 import type { FormDraftEntity } from "@/database/entities/form-draft.entity";
 import type { SubmitDto } from "./submissions.types";
+import { INFECTED_FILE_MESSAGE } from "@/files/malware-scan-status";
 
 const mockDraft = (overrides: Partial<FormDraftEntity> = {}): FormDraftEntity =>
   ({
@@ -295,6 +296,22 @@ describe("SubmissionPipelineService", () => {
 
     it("does not throw when all active fields are valid", async () => {
       await expect(service.run(baseDto())).resolves.toBeDefined();
+    });
+
+    // #2939: FilesService refuses a file GuardDuty hasn't tagged clean; the
+    // pipeline must turn that into a 422 before anything is persisted.
+    it("rejects with 422 when a file fails the malware scan check", async () => {
+      const fileErrors = {
+        "personal-info": { proof: [INFECTED_FILE_MESSAGE] },
+      };
+      vi.mocked(
+        module.get(FilesService).verifySubmissionFiles,
+      ).mockResolvedValue(fileErrors);
+      const err = await service.run(baseDto()).catch((e: unknown) => e);
+      expect(err).toBeInstanceOf(UnprocessableEntityException);
+      expect(
+        JSON.stringify((err as UnprocessableEntityException).getResponse()),
+      ).toContain(INFECTED_FILE_MESSAGE);
     });
 
     it("throws UnprocessableEntityException with per-field errors when required fields empty", async () => {

@@ -15,6 +15,7 @@ import { createEditorApi } from "../../src/api/client";
 import { retryContentRead } from "../../src/api/queries";
 import { Toaster } from "../../src/ui/toast";
 import { CategoriesScreen } from "../../src/workspace/categories-screen";
+import { shownText } from "../helpers/shown-text";
 
 const id = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
 
@@ -415,7 +416,7 @@ const loaded = (count = 5) => until(() => expect(names()).toHaveLength(count));
 
 const button = (name: string) =>
   [...document.querySelectorAll<HTMLButtonElement>("button")].find(
-    (item) => item.getAttribute("aria-label") === name || item.textContent === name,
+    (item) => item.getAttribute("aria-label") === name || shownText(item) === name,
   )!;
 
 // An open dialog; a toast is a dialog too, so only those the screen opens count
@@ -484,8 +485,10 @@ test("headers that can't sort sit in the sort toggle's height, end-aligned ones 
   for (const th of headers) {
     const box = th.firstElementChild!;
 
-    // As tall as a sort toggle's min-h-8, as a full-width block so its label can align to its end
+    // As tall as a sort toggle's min-h-8, 44px under a coarse pointer as the toggle is, as a full-width block so its
+    // label can align to its end
     expect(box.className).toContain("min-h-8");
+    expect(box.className).toContain("pointer-coarse:min-h-11");
     expect(box.className).toContain("flex-col");
     expect(box.className).not.toMatch(/inline-flex|\bw-fit\b/);
     expect(th.querySelector("button")).toBeNull();
@@ -594,10 +597,12 @@ test("one move at a time in a sibling group: the rest wait, still focusable", as
 
   button("Move Health up").focus();
   await press("Move Health up");
-  // While it's saved, its group's moves are named and focusable, but do nothing
+  // While it's saved, its group's moves are named and focusable, but do nothing; the one pressed turns as it waits
   expect(button("Move Health down").getAttribute("aria-disabled")).toBe("true");
   expect(button("Move Education down").getAttribute("aria-disabled")).toBe("true");
   expect(button("Move Health up").disabled).toBe(false);
+  expect(button("Move Health up").hasAttribute("data-pending")).toBe(true);
+  expect(host.querySelectorAll("[data-pending]")).toHaveLength(1);
   expect(document.activeElement).toBe(button("Move Health up"));
   await press("Move Health up");
   await press("Move Education down");
@@ -612,6 +617,7 @@ test("one move at a time in a sibling group: the rest wait, still focusable", as
     1,
   );
   expect(button("Move Health down").getAttribute("aria-disabled")).toBeNull();
+  expect(host.querySelector("[data-pending]")).toBeNull();
 });
 
 test("the tint stays on through a run of moves, and clears two seconds after the last", async () => {
@@ -762,7 +768,7 @@ test.each([true, false])(
 
     try {
       await submit();
-      await until(() => expect(mainAction().textContent).toBe("Check again"));
+      await until(() => expect(shownText(mainAction())).toBe("Check again"));
       expect(button("Cancel").disabled).toBe(false);
       expect(control("Name").value).toBe("Health services");
       expect(categoryReads()).toBe(reads + 1);
@@ -783,20 +789,20 @@ test.each(["edit", "delete"] as const)(
 
     if (operation === "edit") await submit();
     else await press("Delete category");
-    await until(() => expect(mainAction().textContent).toBe("Load their version"));
+    await until(() => expect(shownText(mainAction())).toBe("Load their version"));
     const writes = server.writes.length;
     const release = server.hold("read");
 
     try {
       await act(async () => mainAction().click());
-      expect(mainAction().textContent).toBe("Checking category…");
+      expect(shownText(mainAction())).toBe("Checking category…");
       expect(server.writes).toHaveLength(writes);
     } finally {
       await act(async () => release());
     }
 
     await until(() =>
-      expect(mainAction().textContent).toBe(
+      expect(shownText(mainAction())).toBe(
         operation === "edit" ? "Save category" : "Delete category",
       ),
     );
@@ -922,6 +928,7 @@ test("a move whose answer was lost is checked against the list before another ca
   );
   await press("Move Health down");
   await until(() => expect(said()).toContain("The last move was saved."));
+  expect(document.body.textContent).not.toContain("couldn’t tell whether the category moved");
   expect(server.writes.filter((write) => write.path === "/editor/categories/order")).toHaveLength(
     2,
   );
@@ -1018,12 +1025,12 @@ test("an address in use, or an app route's, keeps its slug and parent", async ()
 
   await press("Edit Health");
   expect(control("Slug").disabled).toBe(true);
-  expect(dialog()?.textContent).toContain("A page of the site's own is at this address");
+  expect(dialog()?.textContent).toContain("A page of the site’s own is at this address");
   // Its name can still change
   expect(control("Name").disabled).toBe(false);
   await press("Cancel");
   await press("Delete Health");
-  expect(dialog()?.textContent).toContain("A page of the site's own is at /health");
+  expect(dialog()?.textContent).toContain("A page of the site’s own is at /health");
   expect(button("Delete category")).toBeUndefined();
 });
 
@@ -1037,9 +1044,9 @@ test("a stale save keeps what was typed, and saves once their version is loaded"
 
   await until(() => expect(dialog()?.textContent).toContain("Someone changed this category"));
   expect(control("Name").value).toBe("Health services");
-  expect(mainAction().textContent).toBe("Load their version");
+  expect(shownText(mainAction())).toBe("Load their version");
   await act(async () => mainAction().click());
-  await until(() => expect(mainAction().textContent).toBe("Save category"));
+  await until(() => expect(shownText(mainAction())).toBe("Save category"));
   // What was typed stays; the save now goes over their version
   expect(control("Name").value).toBe("Health services");
   await submit();
@@ -1092,7 +1099,7 @@ test("an add whose outcome can't be checked asks to check again, never adds blin
   await until(() =>
     expect(dialog()?.textContent).toContain("We couldn’t tell whether that went through"),
   );
-  expect(mainAction().textContent).toBe("Check again");
+  expect(shownText(mainAction())).toBe("Check again");
   await submit();
   await closed();
   expect(server.writes.filter((write) => write.method === "POST")).toHaveLength(1);

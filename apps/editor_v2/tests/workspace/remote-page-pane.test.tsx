@@ -120,7 +120,8 @@ async function savePage(name = "Save") {
     (item) => item.textContent === name,
   )!;
 
-  expect(button.disabled).toBe(false);
+  // Save that can't be used keeps its focus, so it says so with aria-disabled rather than disabled
+  expect(button.getAttribute("aria-disabled")).toBeNull();
   await act(async () => button.click());
 }
 
@@ -236,7 +237,47 @@ test("someone without the editor role can't save", async () => {
     (item) => item.textContent === "Save",
   )!;
 
-  expect(save.disabled).toBe(true);
+  // Unusable, though it keeps its place for the keyboard; a press sends nothing
+  expect(save.getAttribute("aria-disabled")).toBe("true");
+  await act(async () => save.click());
+  expect(vi.mocked(fetch).mock.calls.some(([, init]) => init?.method === "PUT")).toBe(false);
+});
+
+test("Save keeps the focus while it saves, and once its save leaves nothing to save", async () => {
+  const answered = Promise.withResolvers<void>();
+  let current = page;
+
+  const h = await mountPage(async (_url, init) => {
+    if (init?.method === "PUT") {
+      await answered.promise;
+      current = {
+        ...page,
+        ...JSON.parse(String(init.body)),
+        updated_at: "2026-10-07T13:00:00.000Z",
+      };
+    }
+
+    return Response.json(current);
+  });
+
+  await applySource(h.session(), h.session().store.getSnapshot().source + "\n\nSaved soon");
+
+  const save = [...document.querySelectorAll("button")].find(
+    (item) => item.textContent === "Save",
+  )!;
+
+  await act(async () => save.focus());
+  await act(async () => save.click());
+  // Working, it turns in its own colour rather than greying out, and ignores another press
+  await vi.waitFor(() => expect(save.hasAttribute("data-pending")).toBe(true));
+  expect(save.disabled).toBe(false);
+  expect(document.activeElement).toBe(save);
+
+  await act(async () => answered.resolve());
+  await vi.waitFor(() => expect(pageHasUnsavedChanges(h.session())).toBe(false));
+  expect(save.hasAttribute("data-pending")).toBe(false);
+  expect(save.getAttribute("aria-disabled")).toBe("true");
+  expect(document.activeElement).toBe(save);
 });
 
 test("a visual page stays editable without history controls or requests", async () => {
@@ -249,7 +290,9 @@ test("a visual page stays editable without history controls or requests", async 
 
   await applySource(h.session(), h.session().store.getSnapshot().source + "\n\nNew content");
   expect(pageHasUnsavedChanges(h.session())).toBe(true);
-  expect(buttons.find((button) => button.textContent === "Save")?.disabled).toBe(false);
+  expect(
+    buttons.find((button) => button.textContent === "Save")?.getAttribute("aria-disabled"),
+  ).toBeNull();
   expect(vi.mocked(fetch).mock.calls.some(([url]) => String(url).includes("/history"))).toBe(false);
 });
 
@@ -259,7 +302,7 @@ test("a page the editor can't show opens read-only, its content left as it was s
   );
 
   expect(h.session().store.getSnapshot().mode).toBe("source");
-  expect(document.body.textContent).toContain("This page can't be edited here");
+  expect(document.body.textContent).toContain("This page can’t be edited here");
   const names = [...document.querySelectorAll("button")].map((button) => button.textContent);
   expect(names).not.toContain("Save");
   expect(names).not.toContain("History");
@@ -310,7 +353,7 @@ test("a rejected saved version leaves the working copy editable and its baseline
     document.querySelector('[aria-label="Page content"]')?.getAttribute("contenteditable"),
   ).toBe("true");
   expect(loadSaved.disabled).toBe(false);
-  expect(document.body.textContent).toContain("The saved version couldn't be opened");
+  expect(document.body.textContent).toContain("The saved version couldn’t be opened");
   expect(document.body.textContent).toContain("Your open copy is unchanged.");
   expect(vi.mocked(fetch).mock.calls.some(([, init]) => init?.method === "PUT")).toBe(false);
   await act(async () =>
@@ -529,7 +572,7 @@ test("a save the API refuses (403) says why and offers no retry, keeping the wor
   expect(pageHasUnsavedChanges(h.session())).toBe(true);
 });
 
-const PENDING = "Your changes are saved but not live. Submit them for review when they're ready.";
+const PENDING = "Your changes are saved but not live. Submit them for review when they’re ready.";
 
 const WAITING =
   "Waiting for review. Citizens will see these changes once an approver publishes them.";

@@ -2,6 +2,30 @@ import { Popover as BasePopover } from "@base-ui/react/popover";
 import type { ReactNode } from "react";
 import { cn } from "../cn";
 import { surface, surfaceMotion, type PopupName } from "./surface";
+import { InToolbar } from "./toolbar";
+
+let barHeight: number | null = null;
+
+/** The sticky bar's height in pixels, measured once from `--bar-height`, whatever unit it's written in. */
+function stickyBar() {
+  if (barHeight === null) {
+    const probe = document.createElement("div");
+    probe.style.cssText = "position:absolute;visibility:hidden;height:var(--bar-height)";
+    document.body.append(probe);
+    barHeight = probe.offsetHeight;
+    probe.remove();
+  }
+
+  return barHeight;
+}
+
+/**
+ * Collision padding for a popup over a document: it keeps clear of the sticky bar above the page, where it would
+ * otherwise cover the document's own tools.
+ */
+export function belowBar() {
+  return { top: stickyBar() + 8, right: 8, bottom: 8, left: 8 };
+}
 
 type ContentProps = Pick<
   BasePopover.Positioner.Props,
@@ -19,13 +43,17 @@ type ContentProps = Pick<
   PopupName & {
     /** For the popup: its width, or less padding for content that brings its own. */
     className?: string;
+    /** Where its portal goes, when not the page's body: such as a typeahead's own anchor, which the editor owns. */
+    container?: HTMLElement | null;
+    /** A dialog unless said otherwise: `presentation` for a list the focus never enters, such as a typeahead's. */
+    role?: "dialog" | "presentation";
     children: ReactNode;
   };
 
 /**
  * The popover in its portal, below its trigger unless placed otherwise. `anchor` places it against something other
  * than the trigger, such as a block or the selected text. Name it with `aria-label`, or with `aria-labelledby` and
- * the id of its Title.
+ * the id of its Title. Scrolled to its end, it keeps the scroll rather than handing it to the page.
  */
 function PopoverContent({
   initialFocus,
@@ -34,18 +62,21 @@ function PopoverContent({
   "aria-label": label,
   "aria-labelledby": labelledBy,
   className,
+  container,
+  role,
   children,
   ...placement
 }: ContentProps) {
   return (
-    <BasePopover.Portal>
+    <BasePopover.Portal container={container ?? undefined}>
       <BasePopover.Positioner
         sideOffset={6}
         collisionPadding={8}
         {...placement}
-        className="z-50 outline-none"
+        className="z-popup outline-none"
       >
         <BasePopover.Popup
+          role={role ?? "dialog"}
           initialFocus={initialFocus}
           finalFocus={finalFocus}
           onClick={onClick}
@@ -54,11 +85,12 @@ function PopoverContent({
           className={cn(
             surface,
             surfaceMotion,
-            "max-h-(--available-height) max-w-[calc(100vw-2rem)] overflow-y-auto p-3.5",
+            "max-h-(--available-height) max-w-[calc(100vw-2rem)] overflow-y-auto overscroll-contain p-3.5",
             className,
           )}
         >
-          {children}
+          {/* Opened from a toolbar, its buttons are its own rather than the toolbar's */}
+          <InToolbar value={false}>{children}</InToolbar>
         </BasePopover.Popup>
       </BasePopover.Positioner>
     </BasePopover.Portal>

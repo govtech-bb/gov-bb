@@ -172,7 +172,7 @@ export function categoryLabel(category: Category, categories: readonly Category[
  */
 export function addressLock(category: Category, categories: readonly Category[]) {
   if (category.reserved_route)
-    return "A page of the site's own is at this address, so it keeps its slug and parent.";
+    return "A page of the site’s own is at this address, so it keeps its slug and parent.";
 
   if (category.services > 0) return "Services are filed under it, so it keeps its slug and parent.";
 
@@ -222,7 +222,7 @@ export const holdsFields = (category: Category, fields: CategoryFields) =>
 /** Why a category cannot be deleted: services, subcategories or an app route still use it. */
 export function deleteBlocker(category: Category, categories: readonly Category[]) {
   if (category.reserved_route)
-    return `A page of the site's own is at ${category.url}, so ${category.title} stays.`;
+    return `A page of the site’s own is at ${category.url}, so ${category.title} stays.`;
 
   if (category.services === 1)
     return `1 service is filed under ${category.title}. Move it to another category first.`;

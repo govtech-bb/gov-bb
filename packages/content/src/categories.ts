@@ -138,6 +138,18 @@ export const CATEGORY_TAXONOMY: Array<Category> = [
     slug: "about-barbados",
     title: "About Barbados",
     description: "Learn about the history and heritage of Barbados",
+    subcategories: [
+      {
+        slug: "history",
+        title: "History and national development",
+      },
+      {
+        slug: "national-symbols",
+        title: "National symbols of Barbados",
+        description:
+          "Explore the national flag, coat of arms, anthem, pledge and flower.",
+      },
+    ],
   },
 ];
 
