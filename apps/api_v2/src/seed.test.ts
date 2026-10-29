@@ -5,7 +5,7 @@
  */
 
 import { sql } from "drizzle-orm";
-import { describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { Database } from "./db";
 import { importEstate, seed } from "./seed";
 import { ESTATE } from "./seed-data";
@@ -86,6 +86,8 @@ describe("seed", () => {
     expect(resolved).toMatchObject({
       kind: "page",
       page: {
+        category: "money-financial-support",
+        subcategory: null,
         breadcrumbs: [
           {
             name: "Money and financial support",
@@ -100,6 +102,32 @@ describe("seed", () => {
     });
 
     await close();
+  }, 60_000);
+
+  it("serves a seeded subcategory page only in preview with its taxonomy", async ({
+    onTestFinished,
+  }) => {
+    const { db, close } = await createTestDb();
+    onTestFinished(close);
+    await seed(db);
+    const app = await createTestApp(db, {
+      previewSecret: new Redacted("preview"),
+    });
+    onTestFinished(() => app.close());
+    const url =
+      "/pages?url=%2Fyouth-and-community%2Farts-culture%2Fcommunity-canvas";
+
+    expect((await app.inject({ url })).statusCode).toBe(404);
+    const response = await app.inject({
+      url,
+      headers: { [PREVIEW_TOKEN]: "preview" },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      category: "youth-and-community",
+      subcategory: "arts-culture",
+    });
   }, 60_000);
 
   it("files subcategories, sub-pages and the pages landing nests by hand", async () => {
@@ -356,6 +384,56 @@ describe("seed", () => {
 
     await close();
   }, 60_000);
+});
+
+/**
+ * Every seeded page's `category`/`subcategory` as `GET /pages` serves them,
+ * against what the snapshot's category rows imply. This is the test of the
+ * API mapping; landing's render-parity test restates the mapping to build its
+ * input from the same snapshot and tests only landing's side.
+ */
+describe("GET /pages taxonomy for every seeded page", () => {
+  const expected = (slug: string | null) => {
+    const row = ESTATE.categories.find((category) => category.slug === slug);
+    if (!row) return { category: null, subcategory: null };
+    return row.parent
+      ? { category: row.parent, subcategory: row.slug }
+      : { category: row.slug, subcategory: null };
+  };
+  let app: Awaited<ReturnType<typeof createTestApp>>;
+  let close: () => Promise<void>;
+
+  beforeAll(async () => {
+    const test = await createTestDb();
+    close = test.close;
+    await seed(test.db);
+    // Drafts are visible to nobody; the mapping doesn't depend on visibility.
+    await test.db.execute(
+      sql`update content_pages set visibility = 'preview' where visibility = 'draft'`,
+    );
+    app = await createTestApp(test.db, {
+      previewSecret: new Redacted("preview"),
+    });
+  }, 60_000);
+
+  afterAll(async () => {
+    await app?.close();
+    await close?.();
+  });
+
+  it.each(ESTATE.pages.map((page) => [page.url, page.category] as const))(
+    "%s",
+    async (url, category) => {
+      const response = await app.inject({
+        url: `/pages?url=${encodeURIComponent(url)}`,
+        headers: { [PREVIEW_TOKEN]: "preview" },
+      });
+
+      expect(response.statusCode).toBe(200);
+      const { category: served, subcategory } = response.json();
+      expect({ category: served, subcategory }).toEqual(expected(category));
+    },
+  );
 });
 
 async function countOf(db: Database, table: string) {
