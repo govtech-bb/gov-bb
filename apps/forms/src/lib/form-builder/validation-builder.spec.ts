@@ -1035,16 +1035,19 @@ describe("file field with an upload that is not added yet", () => {
 
   afterEach(() => setUploadBlock("docs_proof", undefined));
 
-  it.each([
-    UPLOAD_IN_PROGRESS_MESSAGE,
-    UPLOAD_NOT_ADDED_MESSAGE,
-    UPLOAD_REFUSED_MESSAGE,
-  ])("fails an optional field with %j", (reason) => {
+  // The widget records a code; the field shows that code's message.
+  const blocks = [
+    ["uploadInProgress", UPLOAD_IN_PROGRESS_MESSAGE],
+    ["uploadNotAdded", UPLOAD_NOT_ADDED_MESSAGE],
+    ["uploadRefused", UPLOAD_REFUSED_MESSAGE],
+  ] as const;
+
+  it.each(blocks)("fails an optional field for %s with %j", (code, message) => {
     const { onDynamic } = buildFieldValidationProperties(fileField());
-    setUploadBlock("docs_proof", reason);
+    setUploadBlock("docs_proof", code);
 
     expect(onDynamic!({ value: null, fieldApi: makeFieldApi() })).toEqual([
-      reason,
+      message,
     ]);
   });
 
@@ -1054,7 +1057,7 @@ describe("file field with an upload that is not added yet", () => {
     const { onDynamic } = buildFieldValidationProperties(
       fileField({ required: { value: true, error: "Upload the proof" } }),
     );
-    setUploadBlock("docs_proof", UPLOAD_IN_PROGRESS_MESSAGE);
+    setUploadBlock("docs_proof", "uploadInProgress");
 
     expect(onDynamic!({ value: null, fieldApi: makeFieldApi() })).toEqual([
       UPLOAD_IN_PROGRESS_MESSAGE,
@@ -1063,12 +1066,9 @@ describe("file field with an upload that is not added yet", () => {
 
   // The `form-validation-error` event reports why Continue was refused; an
   // upload block is a reason too, even on a field with no rules of its own.
-  it.each([
-    [UPLOAD_IN_PROGRESS_MESSAGE, "uploadInProgress"],
-    [UPLOAD_NOT_ADDED_MESSAGE, "uploadNotAdded"],
-    [UPLOAD_REFUSED_MESSAGE, "uploadNotAdded"],
-  ])("reports %j to analytics as %s", (reason, code) => {
-    setUploadBlock("docs_proof", reason);
+  // The code is the one the widget recorded, not read back from the message.
+  it.each(blocks)("reports %s to analytics", (code) => {
+    setUploadBlock("docs_proof", code);
 
     expect(collectStepErrorCodes([noRules], {})).toEqual([
       { fieldId: "proof", codes: [code] },
@@ -1083,7 +1083,7 @@ describe("file field with an upload that is not added yet", () => {
     const { onDynamic } = buildFieldValidationProperties(
       fileField({ required: { value: true, error: "Upload the proof" } }),
     );
-    setUploadBlock("docs_proof", UPLOAD_IN_PROGRESS_MESSAGE);
+    setUploadBlock("docs_proof", "uploadInProgress");
     setUploadBlock("docs_proof", undefined);
 
     expect(onDynamic!({ value: null, fieldApi: makeFieldApi() })).toEqual([

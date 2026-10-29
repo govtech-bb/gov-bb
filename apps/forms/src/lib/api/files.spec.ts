@@ -6,6 +6,7 @@ import {
   checkFile,
   FileUploadError,
   REQUEST_TIMEOUT_MS,
+  SCAN_RECHECK_INTERVAL_MS,
   UPLOAD_PROBLEM_MESSAGE,
 } from "./files";
 
@@ -687,6 +688,31 @@ describe("files API client", () => {
 
       expect(settled).toBe(true);
       await expect(result).resolves.toBeInstanceOf(FileUploadError);
+    });
+
+    // A wait that runs its course mustn't leave its cancel listener behind on
+    // the run's signal, one per re-check.
+    it("drops its cancel listener once a wait between checks ends", async () => {
+      fetchMock
+        .mockResolvedValueOnce(
+          jsonResponse({ key: "uploads/k", scanStatus: "pending" }),
+        )
+        .mockResolvedValue(
+          jsonResponse({ key: "uploads/k", scanStatus: "clean" }),
+        );
+      const run = new AbortController();
+      const added = vi.spyOn(run.signal, "addEventListener");
+      const removed = vi.spyOn(run.signal, "removeEventListener");
+
+      const result = checkFile({ ...ref, signal: run.signal });
+      await vi.advanceTimersByTimeAsync(SCAN_RECHECK_INTERVAL_MS);
+      await result;
+
+      const waitListener = added.mock.calls.find(
+        ([, , opts]) => typeof opts === "object" && opts?.once,
+      )?.[1];
+      expect(waitListener).toBeDefined();
+      expect(removed).toHaveBeenCalledWith("abort", waitListener);
     });
 
     // A cancel can land while presign's body is read, so the PUT can start

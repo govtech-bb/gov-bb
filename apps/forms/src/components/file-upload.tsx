@@ -9,9 +9,7 @@ import {
   sendFile,
   checkFile,
   UPLOAD_PROBLEM_MESSAGE,
-  UPLOAD_IN_PROGRESS_MESSAGE,
-  UPLOAD_NOT_ADDED_MESSAGE,
-  UPLOAD_REFUSED_MESSAGE,
+  type UploadBlockCode,
   setUploadBlock,
 } from "../lib/api/files";
 import {
@@ -56,18 +54,18 @@ const CHECKING_MESSAGE = "Checking your file";
  * Why Continue has to wait for this field, or undefined. A file refused before
  * upload (`rejected`) doesn't block: it never started, so nothing is lost.
  */
-function continueBlock(pending: PendingUpload[]): string | undefined {
+function continueBlock(pending: PendingUpload[]): UploadBlockCode | undefined {
   if (
     pending.some((p) => p.status === "uploading" || p.status === "checking")
   ) {
-    return UPLOAD_IN_PROGRESS_MESSAGE;
+    return "uploadInProgress";
   }
   // Only offer Retry in the message when a row actually has a Retry button.
   if (pending.some((p) => p.status === "timeout" || p.status === "error")) {
-    return UPLOAD_NOT_ADDED_MESSAGE;
+    return "uploadNotAdded";
   }
   if (pending.some((p) => p.status !== "rejected")) {
-    return UPLOAD_REFUSED_MESSAGE;
+    return "uploadRefused";
   }
   return undefined;
 }
@@ -115,7 +113,7 @@ export default function FileUpload({
   const blockReason = continueBlock(pending);
   const onUploadsChangeRef = React.useRef(onUploadsChange);
   onUploadsChangeRef.current = onUploadsChange;
-  const reportedBlockRef = React.useRef<string | undefined>(undefined);
+  const reportedBlockRef = React.useRef<UploadBlockCode | undefined>(undefined);
   React.useEffect(() => {
     setUploadBlock(field.id, blockReason);
     if (reportedBlockRef.current === blockReason) return;

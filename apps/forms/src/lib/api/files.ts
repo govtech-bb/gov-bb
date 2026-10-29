@@ -270,15 +270,15 @@ export type CheckFileParams = Omit<UploadFileParams, "file" | "onProgress"> & {
 /** Waits `ms`, or less when the caller cancels in the meantime. */
 const wait = (ms: number, signal?: AbortSignal) =>
   new Promise<void>((resolve) => {
-    const timer = setTimeout(resolve, ms);
-    signal?.addEventListener(
-      "abort",
-      () => {
-        clearTimeout(timer);
-        resolve();
-      },
-      { once: true },
-    );
+    // Whichever ends the wait, the timer or a cancel, clears the other, so no
+    // listener piles up on the run's signal across re-checks.
+    const done = () => {
+      clearTimeout(timer);
+      signal?.removeEventListener("abort", done);
+      resolve();
+    };
+    const timer = setTimeout(done, ms);
+    signal?.addEventListener("abort", done, { once: true });
   });
 
 /**
@@ -321,18 +321,42 @@ export const UPLOAD_NOT_ADDED_MESSAGE =
 /** Continue pressed while only Remove can clear a file (unsafe, couldn't check). */
 export const UPLOAD_REFUSED_MESSAGE = "Remove the file that could not be added";
 
+/**
+ * Why Continue must wait for a file field. The code is what analytics reports
+ * (`form-validation-error`); the person sees its message.
+ */
+export type UploadBlockCode =
+  | "uploadInProgress"
+  | "uploadNotAdded"
+  | "uploadRefused";
+
+const UPLOAD_BLOCK_MESSAGES: Record<UploadBlockCode, string> = {
+  uploadInProgress: UPLOAD_IN_PROGRESS_MESSAGE,
+  uploadNotAdded: UPLOAD_NOT_ADDED_MESSAGE,
+  uploadRefused: UPLOAD_REFUSED_MESSAGE,
+};
+
 // File fields whose picked file isn't a form value yet, by field id, with the
 // reason Continue must wait. The upload widget keeps this current and the
 // field's validator reads it, so the step can't move on mid-upload or past a
 // refused file (#2940) — the same shape as `placesBeingLocated` in geocode.ts.
-const uploadsNotAdded = new Map<string, string>();
+const uploadsNotAdded = new Map<string, UploadBlockCode>();
 
 /** Record why `fieldId` can't be continued past, or clear it with undefined. */
-export function setUploadBlock(fieldId: string, reason: string | undefined) {
-  if (reason) uploadsNotAdded.set(fieldId, reason);
+export function setUploadBlock(
+  fieldId: string,
+  code: UploadBlockCode | undefined,
+) {
+  if (code) uploadsNotAdded.set(fieldId, code);
   else uploadsNotAdded.delete(fieldId);
 }
 
-/** Why `fieldId` can't be continued past yet; undefined when nothing blocks. */
-export const uploadBlock = (fieldId: string): string | undefined =>
+/** Why `fieldId` can't be continued past yet, as a code; undefined when nothing blocks. */
+export const uploadBlockCode = (fieldId: string): UploadBlockCode | undefined =>
   uploadsNotAdded.get(fieldId);
+
+/** The message for why `fieldId` can't be continued past yet. */
+export const uploadBlock = (fieldId: string): string | undefined => {
+  const code = uploadsNotAdded.get(fieldId);
+  return code && UPLOAD_BLOCK_MESSAGES[code];
+};

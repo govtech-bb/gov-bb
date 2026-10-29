@@ -10,7 +10,7 @@ import { valueIsEmpty } from "./validation-methods";
 import { getVisibleFields } from "./helpers/behavior-helper";
 import { buildStepScopedValues } from "./helpers/value-tree";
 import { placeBeingLocated, ROUTING_COORDINATE } from "../api/geocode";
-import { UPLOAD_IN_PROGRESS_MESSAGE, uploadBlock } from "../api/files";
+import { uploadBlock, uploadBlockCode } from "../api/files";
 import {
   validate,
   validateDateField,
@@ -350,16 +350,9 @@ export const collectStepErrorCodes = (
   for (const field of fields) {
     // An upload that stopped Continue is the reason, as on screen — even on a
     // file field with no rules of its own (#2940).
-    const blocked = field.htmlType === "file" && uploadBlock(field.id);
+    const blocked = field.htmlType === "file" && uploadBlockCode(field.id);
     if (blocked) {
-      out.push({
-        fieldId: field.fieldId,
-        codes: [
-          blocked === UPLOAD_IN_PROGRESS_MESSAGE
-            ? "uploadInProgress"
-            : "uploadNotAdded",
-        ],
-      });
+      out.push({ fieldId: field.fieldId, codes: [blocked] });
       continue;
     }
     if (
