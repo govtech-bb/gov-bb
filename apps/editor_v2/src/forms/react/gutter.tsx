@@ -353,6 +353,8 @@ export function Gutter({ anchor }: { anchor: HTMLElement }) {
     },
     // The next move finds what's under the pointer now
     onEnd: release,
+    // A press on the grip that slipped into a drag opens the menu, as the click would have
+    onNudge: () => setMenuOpen(editor.isEditable()),
   });
 
   useEffect(() => {
@@ -632,7 +634,7 @@ export function Gutter({ anchor }: { anchor: HTMLElement }) {
       {modal}
       <BlockRail
         target={target}
-        className="w-25 px-0.5 max-sm:w-6.25 max-sm:px-0 max-sm:[&>button:not(:last-child)]:hidden"
+        className="w-25 ps-0.5 pe-2.5 max-sm:w-6.25 max-sm:px-0 max-sm:[&>button:not(:last-of-type)]:hidden"
       >
         <Tip
           side="left"

@@ -1,5 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { buildSitemapXml, collectSitemapEntries } from '../lib/sitemap'
+import { fetchCategoryTree } from '../lib/api-v2-categories'
+import { apiV2Base } from '../lib/api-v2-page'
 import {
   deriveVisibilityOverlay,
   getServiceStatuses,
@@ -13,9 +15,18 @@ export const Route = createFileRoute('/sitemap.xml')({
       // service_status overlay: a `disabled` service drops out, an `enabled`
       // one is included.
       GET: async () => {
-        const overlay = deriveVisibilityOverlay(await getServiceStatuses())
+        const [statuses, categoryTree] = await Promise.all([
+          getServiceStatuses(),
+          fetchCategoryTree(apiV2Base()),
+        ])
+
+        const overlay = deriveVisibilityOverlay(statuses)
+
         return new Response(
-          buildSitemapXml(collectSitemapEntries(overlay), SITE_URL),
+          buildSitemapXml(
+            collectSitemapEntries(overlay, categoryTree),
+            SITE_URL,
+          ),
           { headers: { 'content-type': 'application/xml; charset=utf-8' } },
         )
       },

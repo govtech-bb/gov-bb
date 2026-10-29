@@ -5,6 +5,7 @@ import {
   COMMAND_PRIORITY_NORMAL,
   HISTORY_PUSH_TAG,
   KEY_DOWN_COMMAND,
+  KEY_ESCAPE_COMMAND,
   mergeRegister,
   type CommandListenerPriority,
   type LexicalNode,
@@ -140,6 +141,23 @@ export function CaretLinkPopover({
       ),
     );
   }, [editor, $find, $canInsert, $insert, priority]);
+
+  const shown = !form && found && focused && dismissed !== found.key ? found.key : null;
+
+  // Consume Escape before Lexical's handler moves focus out of the editor.
+  useEffect(() => {
+    if (!shown) return;
+
+    return editor.registerCommand(
+      KEY_ESCAPE_COMMAND,
+      () => {
+        setDismissed(shown);
+
+        return true;
+      },
+      COMMAND_PRIORITY_NORMAL,
+    );
+  }, [editor, shown]);
 
   const done = () => {
     setForm(null);

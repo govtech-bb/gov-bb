@@ -1,7 +1,6 @@
-import type { ReactNode } from "react";
 import { sectioned, type EditorAction } from "../editor/core/actions";
 import { RowContent } from "../ui/menu";
-import { buttonRow, group, groupLabel, listEmpty, row } from "../ui/surface";
+import { group, groupLabel, listEmpty, row } from "../ui/surface";
 
 /** The list of page content to insert: room for a group or two, then it scrolls. */
 export const actionList =
@@ -73,20 +72,5 @@ export function PageActionList({
             </div>
           ))}
     </>
-  );
-}
-
-export function PageMenuRow({
-  children,
-  icon,
-  ...props
-}: {
-  children: ReactNode;
-  icon?: ReactNode;
-} & Omit<import("react").ComponentProps<"button">, "children">) {
-  return (
-    <button type="button" className={buttonRow} {...props}>
-      <RowContent icon={icon}>{children}</RowContent>
-    </button>
   );
 }

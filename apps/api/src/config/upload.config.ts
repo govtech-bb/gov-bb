@@ -10,6 +10,7 @@ export default registerAs("upload", () => ({
     process.env.UPLOAD_PRESIGN_TTL_SECONDS ?? "900",
     10,
   ),
+  malwareScanEnabled: process.env.UPLOAD_MALWARE_SCAN_ENABLED === "true",
   readUrlTtlSeconds: parseInt(
     process.env.UPLOAD_READ_URL_TTL_SECONDS ?? "604800",
     10,

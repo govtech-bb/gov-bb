@@ -44,6 +44,13 @@ const sourceOnly = new Set([
   "post-office-redirection-business/index.md",
   "post-office-redirection-business/start.md",
   "get-death-certificate/start.md",
+  // About Barbados pages open with an image, which needs Markdown source editing
+  "archaeological-history/index.md",
+  "coat-of-arms/index.md",
+  "flag-etiquette/index.md",
+  "national-anthem/index.md",
+  "national-flower/index.md",
+  "national-pledge/index.md",
 ]);
 
 function fixture(path: string) {

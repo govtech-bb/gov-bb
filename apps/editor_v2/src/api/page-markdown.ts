@@ -1,6 +1,7 @@
 import { isMap, isScalar, isSeq, parseDocument, stringify } from "yaml";
 import { parsePageMarkdown } from "../pages/markdown";
-import type { ApiPage, FieldError, SavePageInput, SavedCategory } from "./client";
+import { categoryLabel, type Category } from "./categories";
+import type { ApiPage, FieldError, SavePageInput } from "./client";
 import { slugify } from "./slug";
 
 const TEXT_FRONTMATTER = ["stage", "section", "service_type", "source_url"] as const;
@@ -21,10 +22,11 @@ const KNOWN_KEYS = new Set([
   ...TEXT_FRONTMATTER,
 ]);
 
+// Legacy drafts must round-trip without changing visibility on unrelated saves.
 const VISIBILITIES = ["public", "preview", "draft"] as const;
 
 /** The editor's Markdown for a page: its fields as YAML frontmatter, then its body. */
-export function pageToMarkdown(page: ApiPage, categories: readonly SavedCategory[]) {
+export function pageToMarkdown(page: ApiPage, categories: readonly Category[]) {
   const values = new Map<string, string | boolean | string[]>([["title", page.title]]);
 
   if (page.frontmatter.lede !== undefined) values.set("lede", page.frontmatter.lede);
@@ -84,7 +86,7 @@ export type PageSaveInputResult =
 export function markdownToPageSaveInput(
   markdown: string,
   base: ApiPage,
-  categories: readonly SavedCategory[],
+  categories: readonly Category[],
 ): PageSaveInputResult {
   const first = parsePageMarkdown(markdown).children[0];
   const yaml = first?.type === "yaml" ? first : undefined;
@@ -136,7 +138,8 @@ export function markdownToPageSaveInput(
   const visibilityText = text("visibility") || "public";
   const visibility = VISIBILITIES.find((value) => value === visibilityText);
 
-  if (!visibility) errors.push({ field: "visibility", message: "Choose public, preview or draft" });
+  if (!visibility)
+    errors.push({ field: "visibility", message: "Choose Public or Preview link only" });
 
   const categoryId = categoryOf(document, base, categories, errors);
   const frontmatter: SavePageInput["frontmatter"] = {};
@@ -188,7 +191,7 @@ export function markdownToPageSaveInput(
 function categoryOf(
   document: ReturnType<typeof parseDocument>,
   base: ApiPage,
-  categories: readonly SavedCategory[],
+  categories: readonly Category[],
   errors: FieldError[],
 ) {
   const named = document.get("category");
@@ -245,16 +248,21 @@ function categoryOf(
   return sub?.id ?? null;
 }
 
-/** The categories page details offers: each top-level category with its subcategories. */
-export function pickerCategories(categories: readonly SavedCategory[]) {
+/**
+ * The categories page details offers: each top-level category with its subcategories, named as lists of categories
+ * name them, so two with one name show their addresses.
+ */
+export function pickerCategories(categories: readonly Category[]) {
   return categories.flatMap((category) =>
     category.parent_id === null
       ? [
           {
             slug: category.slug,
-            title: category.title,
+            title: categoryLabel(category, categories),
             subcategories: categories.flatMap((sub) =>
-              sub.parent_id === category.id ? [{ slug: sub.slug, title: sub.title }] : [],
+              sub.parent_id === category.id
+                ? [{ slug: sub.slug, title: categoryLabel(sub, categories) }]
+                : [],
             ),
           },
         ]
@@ -280,6 +288,8 @@ const FIELD_LABELS = new Map([
   ["lede", "Introduction"],
   ["parent_id", "Parent page"],
   ["id", "Page"],
+  ["body_markdown", "Content"],
+  ["frontmatter", "Page settings"],
 ]);
 
 /** How the editor names a field the API refused. */

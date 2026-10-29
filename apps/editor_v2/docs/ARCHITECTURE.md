@@ -47,7 +47,7 @@ src/ui/table                 shared list table: features and components once; ea
 src/routes                   TanStack routes and server-safe document shell
 ```
 
-`src/api/client.ts` also hosts a temporary, in-memory category preview until #3178: it starts from the saved categories (`GET /editor/categories`) and reads service counts, uses `ApiFailure` for local validation/refusals, and never persists category edits or changes the saved categories used by page/service pickers. See [Development](DEVELOPMENT.md#app-shell-and-routes).
+`src/api/client.ts` also owns the category boundary for `/editor/categories`: it parses each answer and returns a `CategoryResult` with a tagged failure, never throwing for an expected one; `categoriesQuery` is the one place that unwraps it, for React Query. `src/api/categories.ts` holds the pure category rules the dialogs check before sending. See [Development](DEVELOPMENT.md#app-shell-and-routes) and ADR 0078.
 
 The TypeScript boundary checker enforces these dependency boundaries. Generic editor code cannot import forms, presets, the app or persistence. Pure layers cannot reach browser globals or React UI. Form behavior is owned by installed form contributions; it is not selected from a second global catalog.
 
@@ -106,7 +106,7 @@ The editable site preview mounts landing's public renderer inside the CMS docume
 
 Services and pages come only from the API. Form IDs remain page metadata, without a browser-form join. The workspace keeps three clean views and pins any additional dirty/error/pending views. Reopened clean sessions compare API versions; confirmed discard also drops undo. One coordinated guard covers page/workspace departure, sign-out and unload. Cancel changes neither location nor working copies. Old local workspace/draft keys are inert and left untouched. Historical ADR 0007 describes the former local workspace.
 
-Remote page sessions live in `workspace/remote-page-pane.tsx`; navigation has its own UI modules. `remote-page-dialogs.tsx` performs API creation/deletion through the existing `workspace-dialog.tsx` shell. There are no local-document dialogs or production form-editor route.
+Remote page sessions live in `workspace/remote-page-pane.tsx`; navigation has its own UI modules. `remote-page-dialogs.tsx` uses `ui/form-dialog.tsx` for creation and `ui/confirm-dialog.tsx` for deletion. There are no local-document dialogs or production form-editor route.
 
 ## Extension proofs
 
