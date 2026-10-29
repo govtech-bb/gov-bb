@@ -10,6 +10,7 @@ import { valueIsEmpty } from "./validation-methods";
 import { getVisibleFields } from "./helpers/behavior-helper";
 import { buildStepScopedValues } from "./helpers/value-tree";
 import { placeBeingLocated, ROUTING_COORDINATE } from "../api/geocode";
+import { uploadBlock, uploadBlockCode } from "../api/files";
 import {
   validate,
   validateDateField,
@@ -178,6 +179,17 @@ export const buildFieldValidationProperties = (
   field: ClientPrimitive,
 ): FieldValidationProperties => {
   const properties = buildRuleValidationProperties(field);
+  if (field.htmlType === "file") {
+    // A file still uploading, or refused, isn't a value yet: say why Continue
+    // has to wait before judging the value itself (#2940).
+    return {
+      ...properties,
+      onDynamic(input) {
+        const blocked = uploadBlock(field.id);
+        return blocked ? [blocked] : properties.onDynamic?.(input);
+      },
+    };
+  }
   const coordinatesFieldId = field.geocodeTargets?.coordinatesFieldId;
   if (field.htmlType !== "address-lookup" || !coordinatesFieldId) {
     return properties;
@@ -336,6 +348,13 @@ export const collectStepErrorCodes = (
 ): { fieldId: string; codes: string[] }[] => {
   const out: { fieldId: string; codes: string[] }[] = [];
   for (const field of fields) {
+    // An upload that stopped Continue is the reason, as on screen — even on a
+    // file field with no rules of its own (#2940).
+    const blocked = field.htmlType === "file" && uploadBlockCode(field.id);
+    if (blocked) {
+      out.push({ fieldId: field.fieldId, codes: [blocked] });
+      continue;
+    }
     if (
       field.htmlType === "show-hide" ||
       field.htmlType === "content" ||
