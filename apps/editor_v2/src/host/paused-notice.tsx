@@ -9,12 +9,12 @@ function explain(pause: DraftPause, document: string) {
   switch (pause) {
     case "invalid":
       return {
-        reason: `This ${document}'s source could not be applied.`,
+        reason: `This ${document}’s source could not be applied.`,
         fix: "Review Markdown",
       };
     case "source":
       return {
-        reason: "Your Markdown changes haven't been applied.",
+        reason: "Your Markdown changes haven’t been applied.",
         fix: "Review Markdown changes",
       };
   }

@@ -49,3 +49,16 @@ test("follows its checked prop when controlled", async () => {
   expect(onCheckedChange).toHaveBeenLastCalledWith(false, expect.anything());
   expect(control().getAttribute("aria-checked")).toBe("true");
 });
+
+test("className styles the switch and labelClassName its row, 44px under a coarse pointer", async () => {
+  await render(
+    <Switch label="Repeat this page" className="ms-auto" labelClassName="justify-between" />,
+  );
+
+  const label = host.querySelector("label")!;
+
+  expect(control().className).toContain("ms-auto");
+  expect(label.className).toContain("justify-between");
+  expect(label.className).not.toContain("ms-auto");
+  expect(label.className).toContain("pointer-coarse:min-h-11");
+});

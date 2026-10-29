@@ -74,3 +74,26 @@ test("a badge's words are its whole label", async () => {
   expect(host.textContent).toBe("Public");
   expect(host.firstElementChild!.className).toContain("bg-green-10");
 });
+
+test("a strip lines up with the bars over it, or inside a card with the card's rows", async () => {
+  await render(
+    <>
+      <Banner tone="warning" layout="strip">
+        We could not refresh this service.
+      </Banner>
+      <Banner tone="warning" layout="strip" inset="card">
+        We could not refresh services.
+      </Banner>
+      <Banner tone="info" inset="card">
+        A box keeps its own inset.
+      </Banner>
+    </>,
+  );
+
+  const [bar, card, box] = [...host.children];
+
+  expect(bar!.className).toContain("sm:px-6");
+  expect(card!.className).toContain("px-4");
+  expect(card!.className).not.toContain("sm:px-6");
+  expect(box!.className).toContain("px-3.5");
+});

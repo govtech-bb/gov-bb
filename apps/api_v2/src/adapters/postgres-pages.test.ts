@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { creationOf, PageRejected, withDefaults } from "../modules/page";
 import { err } from "../modules/result";
 import { contentPages } from "../schema";
-import { aPage, createTestDb, expectOk } from "../test-db";
+import { aPage, createTestDb, expectOk, TEST_EMPLOYEE } from "../test-db";
 import { PostgresPages } from "./postgres-pages";
 import {
   CategoryId,
@@ -25,9 +25,11 @@ describe("PostgresPages category constraints", () => {
       );
       const stamp = CategoryStamp.parse("2026-10-26T12:00:00.000Z");
       const id = expectOk(
-        await records.atomically((tx) => tx.insertCategory(fields, 0, stamp)),
+        await records.atomically(TEST_EMPLOYEE.id, (tx) =>
+          tx.insertCategory(fields, 0, stamp),
+        ),
       );
-      const duplicate = await records.atomically((tx) =>
+      const duplicate = await records.atomically(TEST_EMPLOYEE.id, (tx) =>
         tx.insertCategory(fields, 1, stamp),
       );
       expect(duplicate).toMatchObject({
@@ -37,7 +39,7 @@ describe("PostgresPages category constraints", () => {
       const missingParent = CategoryId.parse(
         "00000000-0000-4000-8000-000000000000",
       );
-      const invalidParent = await records.atomically((tx) =>
+      const invalidParent = await records.atomically(TEST_EMPLOYEE.id, (tx) =>
         tx.replaceCategory(
           id,
           { ...fields, parent_id: missingParent },
@@ -64,6 +66,7 @@ describe("PostgresPages.atomically", () => {
     try {
       const refusal = new PageRejected([{ field: "title", message: "No." }]);
       const outcome = await new PostgresPages(db).atomically(
+        TEST_EMPLOYEE.id,
         async (records) => {
           const inserted = await records.insert(
             creationOf(undefined, withDefaults(aPage()), new Date()),

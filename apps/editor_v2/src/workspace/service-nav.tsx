@@ -21,6 +21,7 @@ export function ServiceNav({
   onAdd,
   onDelete,
   deleteBlocked,
+  readOnly,
   loading = false,
 }: {
   /** Whether it shows, beside the page or as a drawer: `useSidebar`. */
@@ -35,11 +36,14 @@ export function ServiceNav({
   onDelete?: () => void;
   /** Why the selected page can't be deleted yet, such as the pages under it. */
   deleteBlocked?: string;
+  /** Why nothing can be added or deleted, for someone who can't make changes. */
+  readOnly?: string;
   /** Its pages are still loading: the rows known so far show, and nothing can be added or deleted yet. */
   loading?: boolean;
 }) {
   const reason = useId();
   const pages = rows;
+  const blocked = readOnly ?? deleteBlocked;
 
   const item = (row: ServiceNavRow, nested: ReactNode[]) => (
     <Sidebar.Item
@@ -79,7 +83,9 @@ export function ServiceNav({
 
   return (
     <Sidebar.Root sidebar={sidebar} label="Service documents">
-      <Sidebar.Header />
+      <Sidebar.Header>
+        <Sidebar.Toggle sidebar={sidebar} label="Pages" />
+      </Sidebar.Header>
       <Sidebar.Content>
         <Sidebar.Group label="Pages">{items(pages)}</Sidebar.Group>
         {loading ? (
@@ -91,13 +97,18 @@ export function ServiceNav({
         )}
         {!loading && (
           <Sidebar.Actions>
-            <Button variant="secondary" onClick={onAdd}>
+            <Button
+              variant="secondary"
+              disabled={!!readOnly}
+              aria-describedby={readOnly ? reason : undefined}
+              onClick={onAdd}
+            >
               Add document
             </Button>
             {onDelete && (
               <Button
-                disabled={!pages.some((row) => row.document.id === selectedId) || !!deleteBlocked}
-                aria-describedby={deleteBlocked ? reason : undefined}
+                disabled={!pages.some((row) => row.document.id === selectedId) || !!blocked}
+                aria-describedby={blocked ? reason : undefined}
                 onClick={onDelete}
               >
                 Delete page
@@ -105,9 +116,9 @@ export function ServiceNav({
             )}
           </Sidebar.Actions>
         )}
-        {deleteBlocked && (
+        {blocked && (
           <p id={reason} className="mt-2 text-14 text-muted">
-            {deleteBlocked}
+            {blocked}
           </p>
         )}
       </Sidebar.Content>

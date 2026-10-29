@@ -110,6 +110,28 @@ export async function selectPageText(value: string) {
   });
 }
 
+/** The page editor last rendered, to watch what it's asked to do. */
+export function pageEditor() {
+  return editor;
+}
+
+/** Select all of a block's words, as dragging across them would. */
+export async function selectPageWords(value: string) {
+  await act(async () => {
+    editor.update(
+      () => {
+        const text = $getRoot()
+          .getAllTextNodes()
+          .find((node) => node.getTextContent() === value);
+
+        if (!text) throw new Error(`Missing page text: ${value}`);
+        text.select(0, value.length);
+      },
+      { discrete: true },
+    );
+  });
+}
+
 /** Open the page hover menu across ancestor padding without clicking the content. */
 export async function hoverPageMenu(target: HTMLElement) {
   await act(async () => {

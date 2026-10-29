@@ -25,7 +25,7 @@ import { cn } from "../../../cn";
 import { Button } from "../../../ui/button";
 import { Input } from "../../../ui/input";
 import { pill } from "../../../ui/pill";
-import { SelectOption, SelectPopup } from "../../../ui/select";
+import { Select as KitSelect } from "../../../ui/select";
 import { Tip } from "../../../ui/tooltip";
 import type { Action, CalculateOperator, Condition, LogicalOperator } from "../../core/logic";
 import { ageConditionError, conditionMode } from "../../core/logic-age";
@@ -219,18 +219,18 @@ export function Match({
       <Select.Root<LogicalOperator> value={value} onValueChange={(v) => v && onChange(v)}>
         <Select.Trigger
           aria-label={value === "OR" ? "any" : "all"}
-          className="inline-flex min-h-6 cursor-pointer items-center gap-0.5 rounded-xs px-1 outline-none hover:bg-hover focus-visible:outline-3 focus-visible:outline-offset-1 focus-visible:outline-focus [&>svg]:size-3.5"
+          className="inline-flex min-h-6 cursor-pointer items-center gap-0.5 rounded-xs px-1 hover:bg-hover [&>svg]:size-3.5"
         >
           {value === "OR" ? "any" : "all"}
           <CaretDown />
         </Select.Trigger>
-        <SelectPopup>
+        <KitSelect.Content>
           {(["AND", "OR"] as const).map((op) => (
-            <SelectOption key={op} value={op}>
+            <KitSelect.Item key={op} value={op}>
               {op === "OR" ? "any" : "all"}
-            </SelectOption>
+            </KitSelect.Item>
           ))}
-        </SelectPopup>
+        </KitSelect.Content>
       </Select.Root>
       match
     </>

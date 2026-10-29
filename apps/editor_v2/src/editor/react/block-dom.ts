@@ -116,7 +116,7 @@ export function $tip(text: string, side: "top" | "bottom") {
   const tip = el(
     "span",
     cn(
-      "pointer-events-none invisible absolute left-1/2 z-60 -translate-x-1/2 rounded-sm bg-ink px-2 py-1 font-sans text-12 leading-4 font-semibold whitespace-nowrap text-white opacity-0 transition-[opacity,visibility] duration-200 ease-out group-hover/tip:visible group-hover/tip:opacity-100 in-data-current:visible in-data-current:opacity-100",
+      "pointer-events-none invisible absolute left-1/2 z-tooltip -translate-x-1/2 rounded-sm bg-ink px-2 py-1 font-sans text-12 leading-4 font-semibold whitespace-nowrap text-white opacity-0 transition-[opacity,visibility] duration-200 ease-out group-hover/tip:visible group-hover/tip:opacity-100 in-data-current:visible in-data-current:opacity-100",
       side === "top" ? "bottom-full mb-2.5" : "top-full mt-2.5",
     ),
   );

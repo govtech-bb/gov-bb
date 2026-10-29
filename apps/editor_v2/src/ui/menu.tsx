@@ -52,7 +52,7 @@ function MenuContent({
         sideOffset={6}
         collisionPadding={8}
         {...placement}
-        className="z-50 outline-none"
+        className="z-popup outline-none"
       >
         <BaseMenu.Popup
           finalFocus={finalFocus}

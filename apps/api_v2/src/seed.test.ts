@@ -45,9 +45,10 @@ describe("seed", () => {
       documents: ESTATE.pages.length,
     });
     expect(await seed(db)).toEqual({ categories: 0, documents: 0 });
-    // Each page's history starts where the seed left it, and only once.
+    // Each page's and category's history starts where the seed left it,
+    // and only once.
     expect(expectOk(await createTestServices(db).index.version()).count).toBe(
-      ESTATE.pages.length,
+      ESTATE.pages.length + ESTATE.categories.length,
     );
 
     await close();
@@ -181,12 +182,14 @@ describe("seed", () => {
     await close();
   }, 60_000);
 
-  it("imports the estate once, naming the markdown commit as the actor", async () => {
+  it("imports the estate once as system, naming the markdown commit in its report", async () => {
     const { db, close } = await createTestDb();
 
     const report = await importEstate(db, { dryRun: false });
 
     expect(report).toEqual({
+      source: ESTATE.source,
+      reason: null,
       existing: 0,
       actors: {},
       categories: ESTATE.categories.length,
@@ -195,7 +198,7 @@ describe("seed", () => {
     const { rows } = await db.execute<{ actor: string }>(
       sql`select distinct actor from change_events`,
     );
-    expect(rows.map((row) => row.actor)).toEqual([`import:${ESTATE.source}`]);
+    expect(rows.map((row) => row.actor)).toEqual(["system"]);
 
     await close();
   }, 60_000);
@@ -207,7 +210,9 @@ describe("seed", () => {
 
     const refusal = importEstate(db, { dryRun: false });
     await expect(refusal).rejects.toThrow(/refusing/);
-    await expect(refusal).rejects.toThrow(`seed=${ESTATE.pages.length}`);
+    await expect(refusal).rejects.toThrow(
+      `system=${ESTATE.pages.length + ESTATE.categories.length}`,
+    );
     expect(await countOf(db, "content_pages")).toBe(ESTATE.pages.length);
     expect(await countOf(db, "change_events")).toBe(history);
 
@@ -218,6 +223,8 @@ describe("seed", () => {
     const { db, close } = await createTestDb();
 
     expect(await importEstate(db, { dryRun: true })).toEqual({
+      source: ESTATE.source,
+      reason: null,
       existing: 0,
       actors: {},
       categories: ESTATE.categories.length,
@@ -243,15 +250,11 @@ describe("seed", () => {
     expect(await countOf(db, "content_pages")).toBe(ESTATE.pages.length);
     expect(await countOf(db, "categories")).toBe(ESTATE.categories.length);
     expect(await countOf(db, "change_events")).toBe(history);
-    const { rows } = await db.execute<{ actor: string }>(
-      sql`select distinct actor from change_events order by actor`,
-    );
-    expect(rows.map((row) => row.actor)).toEqual(["seed"]);
 
     await close();
   }, 60_000);
 
-  it("force replaces existing content in one transaction and records the reason", async () => {
+  it("force replaces existing content in one transaction and reports the reason", async () => {
     const { db, close } = await createTestDb();
     await seed(db);
 
@@ -261,19 +264,41 @@ describe("seed", () => {
     });
 
     expect(report).toEqual({
+      source: ESTATE.source,
+      reason: "test replace",
       existing: ESTATE.pages.length,
-      actors: { seed: ESTATE.pages.length },
+      actors: { system: ESTATE.pages.length + ESTATE.categories.length },
       categories: ESTATE.categories.length,
       documents: ESTATE.pages.length,
     });
     expect(await countOf(db, "content_pages")).toBe(ESTATE.pages.length);
-    const { rows } = await db.execute<{ actor: string }>(
-      sql`select distinct actor from change_events order by actor`,
+
+    await close();
+  }, 60_000);
+
+  it("force records the replaced pages and categories as deleted", async () => {
+    const { db, close } = await createTestDb();
+    await seed(db);
+    const { rows: replaced } = await db.execute<{ id: string }>(
+      sql`select id from content_pages union all select id from categories`,
     );
-    expect(rows.map((row) => row.actor)).toEqual([
-      `import:${ESTATE.source} force: test replace`,
-      "seed",
-    ]);
+
+    await importEstate(db, { dryRun: false, force: "test history" });
+
+    const { rows: latest } = await db.execute<{
+      entity_id: string;
+      action: string;
+      actor: string;
+    }>(
+      sql`select distinct on (entity_id) entity_id, action, actor
+            from change_events order by entity_id, version_no desc`,
+    );
+    const ids = new Set(replaced.map((row) => row.id));
+    const last = latest.filter((row) => ids.has(row.entity_id));
+    expect(last).toHaveLength(replaced.length);
+    expect(new Set(last.map((row) => `${row.action}:${row.actor}`))).toEqual(
+      new Set(["deleted:system"]),
+    );
 
     await close();
   }, 60_000);
@@ -281,7 +306,9 @@ describe("seed", () => {
   it("force also clears categories left behind without pages", async () => {
     const { db, close } = await createTestDb();
     await seed(db);
-    await db.execute(sql`truncate search_chunks, content_pages`);
+    await db.execute(
+      sql`truncate search_chunks, page_revisions, content_pages`,
+    );
 
     const report = await importEstate(db, {
       dryRun: false,

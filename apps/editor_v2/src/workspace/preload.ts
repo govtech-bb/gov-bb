@@ -4,7 +4,8 @@ import {
   PRELOAD_FRESH,
   categoriesQuery,
   pageQuery,
-  savedCategoriesQuery,
+  reviewQueueQuery,
+  revisionQuery,
   serviceQuery,
   servicesQuery,
 } from "../api/queries";
@@ -34,10 +35,20 @@ export function primePage(client: QueryClient, api: EditorApi, serviceId: string
 
   if (!page) return;
   void client.prefetchQuery({ ...pageQuery(api, pageId), staleTime: PRELOAD_FRESH });
-  void client.prefetchQuery({ ...savedCategoriesQuery(api), staleTime: PRELOAD_FRESH });
+  void client.prefetchQuery({ ...categoriesQuery(api), staleTime: PRELOAD_FRESH });
 }
 
 /** Starts loading the categories before their screen opens. */
 export function primeCategories(client: QueryClient, api: EditorApi) {
   void client.prefetchQuery({ ...categoriesQuery(api), staleTime: PRELOAD_FRESH });
+}
+
+/** Starts loading the review queue before its screen opens. */
+export function primeReviewQueue(client: QueryClient, api: EditorApi) {
+  void client.prefetchQuery({ ...reviewQueueQuery(api), staleTime: PRELOAD_FRESH });
+}
+
+/** Starts loading a page's change before its review screen opens. */
+export function primeRevision(client: QueryClient, api: EditorApi, pageId: string) {
+  void client.prefetchQuery({ ...revisionQuery(api, pageId), staleTime: PRELOAD_FRESH });
 }
