@@ -8,7 +8,7 @@ import { sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { Database } from "./db";
 import { importEstate, seed } from "./seed";
-import { ESTATE } from "./seed-data";
+import { ESTATE, ESTATE_SOURCE } from "./seed-data";
 import { COLLECTIONS } from "./seed-data/collections";
 import { Redacted } from "./modules/redacted";
 import { PREVIEW_TOKEN } from "./routes/site";
@@ -32,8 +32,8 @@ const SEEDED_EVENTS =
   SEEDED.records;
 
 describe("seed", () => {
-  it("records the markdown commit the snapshot came from", () => {
-    expect(ESTATE.source).toMatch(/^[0-9a-f]{40}$/);
+  it("names the snapshot by a hash of its content", () => {
+    expect(ESTATE_SOURCE).toMatch(/^[0-9a-f]{40}$/);
   });
 
   it("files every page under a known category and parent", () => {
@@ -234,7 +234,7 @@ describe("seed", () => {
     const report = await importEstate(db, { dryRun: false });
 
     expect(report).toEqual({
-      source: ESTATE.source,
+      source: ESTATE_SOURCE,
       reason: null,
       existing: 0,
       actors: {},
@@ -268,7 +268,7 @@ describe("seed", () => {
     const { db, close } = await createTestDb();
 
     expect(await importEstate(db, { dryRun: true })).toEqual({
-      source: ESTATE.source,
+      source: ESTATE_SOURCE,
       reason: null,
       existing: 0,
       actors: {},
@@ -310,7 +310,7 @@ describe("seed", () => {
     });
 
     expect(report).toEqual({
-      source: ESTATE.source,
+      source: ESTATE_SOURCE,
       reason: "test replace",
       existing: ESTATE.pages.length,
       actors: { system: SEEDED_EVENTS },

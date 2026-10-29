@@ -702,10 +702,10 @@ jobs:
     #     content back — #3136)
     # Nothing in the build forces a regen, so a content PR that skips it leaves
     # them stale (#2070). Regenerate them here; if they drifted, commit the
-    # regen back onto the PR branch (#2303) — the form_builder Content flow
-    # writes pages through the GitHub contents API with no checkout and no
-    # pnpm, so it can never run the generators itself. The stale run still
-    # fails; the pushed commit gets its own run, which is the one that counts.
+    # regen back onto the PR branch rather than only failing (#2303) — the
+    # form_builder Content flow writes pages through the GitHub contents API
+    # with no checkout and no pnpm, so it can never run the generators itself
+    # and every page it adds would otherwise land red.
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -792,16 +792,13 @@ jobs:
             exit 0
           fi
 
-          # Fails even when the regen was pushed: this commit is stale. The
-          # pushed commit is the new PR head and its own run is the one the
-          # required check reads (#3136).
           if [ "$PUSHED" = "success" ]; then
             {
-              echo "## ❌ Generated files were out of date and have been regenerated"
+              echo "## ✅ Generated files were out of date and have been regenerated"
               echo ""
-              echo "A commit regenerating them was pushed to this PR branch. A fresh CI run is validating it; this run fails because the commit it checked was stale."
+              echo "A commit regenerating them was pushed to this PR branch. A fresh CI run is validating it."
             } >> "$GITHUB_STEP_SUMMARY"
-            exit 1
+            exit 0
           fi
 
           {

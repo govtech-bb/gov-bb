@@ -6,6 +6,7 @@
  * the running API ships without the landing app's source.
  */
 
+import { createHash } from "node:crypto";
 import { z } from "zod";
 import { Frontmatter, PageUrl, Visibility } from "../modules/page";
 import estateJson from "./estate.json";
@@ -42,8 +43,6 @@ const SeedPage = z.object({
 export type SeedPage = z.infer<typeof SeedPage>;
 
 const SeedEstate = z.object({
-  /** sha1 of the `apps/landing/src/content` markdown the snapshot was built from. */
-  source: z.string().regex(/^[0-9a-f]{40}$/),
   categories: z.array(SeedCategory),
   pages: z.array(SeedPage),
 });
@@ -53,3 +52,12 @@ export type SeedEstate = z.infer<typeof SeedEstate>;
 
 /** The committed snapshot, parsed. */
 export const ESTATE = SeedEstate.parse(estateJson);
+
+/**
+ * sha1 of the snapshot, so an import can name the content it loaded.
+ * Derived rather than stored: a stored hash is one line every content PR
+ * rewrites, so open content PRs would all conflict on it.
+ */
+export const ESTATE_SOURCE = createHash("sha1")
+  .update(JSON.stringify(ESTATE))
+  .digest("hex");

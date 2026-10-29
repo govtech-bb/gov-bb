@@ -16,17 +16,15 @@
  *   a page has one `category_id`.
  * - categories: `CATEGORY_TAXONOMY` in its order, each subcategory a
  *   category with a parent.
- * - source: a sha1 of the markdown it was built from (`contentHash`), so an
- *   import can name the content. Not a commit sha: that differs between a PR
- *   branch and its squash merge and needs full history, so CI's drift check
- *   (#3136) would fail every content merge. The hash depends only on the
- *   markdown.
+ *
+ * No `source` field: every content change would rewrite that one line, so
+ * any two open content PRs would conflict on it. The import derives its
+ * hash from the snapshot instead (`ESTATE_SOURCE`).
  */
 
 import { readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { join, relative } from "node:path";
 import { execFileSync } from "node:child_process";
-import { createHash } from "node:crypto";
 import matter from "gray-matter";
 import { CATEGORY_TAXONOMY } from "@govtech-bb/content/categories";
 import type { Frontmatter } from "../src/modules/page";
@@ -171,22 +169,7 @@ for (const page of pages) {
   if (parent) page.category = parent.category;
 }
 
-/**
- * sha1 over each markdown file's path and bytes, in path order: exactly the
- * input this script reads, so nothing else in the directory moves it.
- */
-function contentHash(files: string[]): string {
-  const hash = createHash("sha1");
-  for (const path of [...files].sort()) {
-    hash.update(`${relative(contentDir, path)}\0`);
-    hash.update(readFileSync(path));
-    hash.update("\0");
-  }
-  return hash.digest("hex");
-}
-
 const estate: SeedEstate = {
-  source: contentHash(markdownFiles(contentDir)),
   categories: CATEGORY_TAXONOMY.flatMap((category, position) => [
     {
       slug: category.slug,
