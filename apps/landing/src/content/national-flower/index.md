@@ -1,6 +1,7 @@
 ---
-title: National Flower
+title: National flower of Barbados
 category: about-barbados
+subcategory: national-symbols
 source_url: https://www.gov.bb/Visit-Barbados/national-flower
 visibility: preview
 ---
