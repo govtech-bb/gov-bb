@@ -1,0 +1,119 @@
+name: E2E Nightly Form Builder Publish
+
+# Journey 2 (#3009): sign in to the sandbox form builder, publish a change to
+# the `e2e-j2-publish-check` test form, and fail if the Deploy PR's recipe
+# lost a hand-edited processor (#2409). The spec always closes that PR and
+# deletes its branch — it is never merged, because a nightly merge to main
+# would deploy sandbox → staging every night. It then checks the test form
+# (merged by the PR that added it) is live in the forms app and in the
+# services index. Nightly and off the deploy path: this journey is the
+# release path, so it never blocks a deploy. A failure alerts Slack.
+#
+# No X-Smoke-Submission header: nothing is submitted, and the header would
+# ride along to the form builder and GitHub.
+
+on:
+  schedule:
+    # 09:30 UTC = 05:30 in Barbados, out of working hours and clear of J7.
+    - cron: "30 9 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: e2e-nightly-form-builder-publish
+  cancel-in-progress: false
+
+jobs:
+  journey-2:
+    name: Journey 2 (form builder publish → PR keeps processors → form live → listed)
+    # The nightly run stays off until its setup is done (see #3009's PR): set
+    # the repo variable E2E_FORM_BUILDER_PUBLISH_ENABLED=true to turn it on.
+    # Until then it would fail closed every night and train people to ignore
+    # the alert. A manual run always goes ahead.
+    if: github.event_name == 'workflow_dispatch' || vars.E2E_FORM_BUILDER_PUBLISH_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Require the secrets
+        env:
+          PREVIEW_TOKEN: ${{ secrets.E2E_RECIPE_PREVIEW_TOKEN }}
+          SESSION_SECRET: ${{ secrets.E2E_FORM_BUILDER_SESSION_SECRET }}
+          GITHUB_TOKEN_FOR_BUILDER: ${{ secrets.E2E_FORM_BUILDER_GITHUB_TOKEN }}
+        run: |
+          missing=0
+          if [ -z "$PREVIEW_TOKEN" ]; then
+            echo "::error::E2E_RECIPE_PREVIEW_TOKEN is not set — it must match sandbox's RECIPE_PREVIEW_TOKEN so the run can open the preview test form."
+            missing=1
+          fi
+          if [ -z "$SESSION_SECRET" ]; then
+            echo "::error::E2E_FORM_BUILDER_SESSION_SECRET is not set — it must match the sandbox form builder's session_secret so the run can sign in."
+            missing=1
+          fi
+          if [ -z "$GITHUB_TOKEN_FOR_BUILDER" ]; then
+            echo "::error::E2E_FORM_BUILDER_GITHUB_TOKEN is not set — a GitHub token with write access to gov-bb, which the builder publishes with."
+            missing=1
+          fi
+          exit "$missing"
+      - name: Checkout
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version-file: ".nvmrc"
+          cache: "pnpm"
+      - run: pnpm install --frozen-lockfile
+      - name: Resolve Playwright version
+        id: playwright-version
+        run: |
+          version="$(pnpm --filter @govtech-bb/forms exec playwright --version | awk '{print $2}')"
+          test -n "$version" || { echo "could not resolve playwright version"; exit 1; }
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+      - name: Cache Playwright browsers
+        id: playwright-cache
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-chromium-${{ runner.os }}-${{ steps.playwright-version.outputs.version }}
+      - name: Install Playwright chromium
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        timeout-minutes: 10
+        run: pnpm --filter @govtech-bb/forms exec playwright install chromium
+      - name: Run journey 2
+        env:
+          SMOKE_BASE_URL: https://forms.sandbox.alpha.gov.bb
+          E2E_FORM_BUILDER_URL: https://builder.sandbox.alpha.gov.bb
+          E2E_API_URL: https://forms.api.sandbox.alpha.gov.bb
+          PREVIEW_TOKEN: ${{ secrets.E2E_RECIPE_PREVIEW_TOKEN }}
+          E2E_FORM_BUILDER_SESSION_SECRET: ${{ secrets.E2E_FORM_BUILDER_SESSION_SECRET }}
+          E2E_FORM_BUILDER_GITHUB_TOKEN: ${{ secrets.E2E_FORM_BUILDER_GITHUB_TOKEN }}
+        run: >
+          pnpm --filter @govtech-bb/forms exec playwright test
+          --config playwright.smoke.config.ts
+          journey-2-form-builder-publish.smoke.spec.ts
+      - name: Upload Playwright screenshots on failure
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: journey-2-form-builder-publish-screenshots
+          path: apps/forms/test-results/
+          retention-days: 7
+
+  notify-failure:
+    name: Notify Slack on failure
+    needs: [journey-2]
+    if: always() && needs.journey-2.result == 'failure'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send Slack notification
+        uses: slackapi/slack-github-action@91efab103c0de0a537f72a35f6b8cda0ee76bf0a # v2.1.1
+        with:
+          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
+          webhook-type: incoming-webhook
+          payload: |
+            {
+              "text": ":x: *Nightly E2E J2 failed* — form builder publish → Deploy PR → form live → listed, on sandbox. The run says which step failed.\n<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View failed run>"
+            }
