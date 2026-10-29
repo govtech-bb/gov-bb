@@ -129,6 +129,6 @@ MDAST and HAST are intentional low-level compiler interfaces. Hosts own conversi
 
 The content package re-exports legacy authoring helpers from `@govtech-bb/govbbmarkd/legacy` and the URL helper from `@govtech-bb/govbbmarkd/content-url`. Compatibility APIs carry `@deprecated` JSDoc. Legacy editor capability checks stay in the host rather than becoming language validation. The language package does not depend on the content package.
 
-Landing search and API search rows now use AST-derived text. Existing API rows need the explicit `reindex-search` check/apply command documented in the [package README](../packages/govbbmarkd/README.md#compatibility-and-indexing). No reindex runs at startup. Chat keeps its deprecated section-splitting contract so chunk ids and embedding hashes do not change during extraction.
+Landing search and API search rows now use AST-derived text. Existing API rows need the explicit `reindex-search` check/apply command documented in the [package README](../packages/govbbmarkd/README.md#compatibility-and-indexing). No reindex runs at startup. The deprecated chat app is not integrated.
 
 The API adds a TypeScript project reference to govbbmarkd without changing its existing compiler flags. Enabling `exactOptionalPropertyTypes` currently fails in older code, including `src/import-estate.ts` and the auth/route tests. That compiler-option migration is separate from the Markdown contract.

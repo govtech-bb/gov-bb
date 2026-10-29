@@ -5,27 +5,9 @@ import { parseContentMarkdown } from "./page-markdown.ts";
 import {
   parseLegacyPageStartLink,
   serializeLegacyPageStartLink,
-  splitLegacyMarkdownSections,
 } from "./legacy-markdown.ts";
 
 describe("legacy Markdown compatibility", () => {
-  it("preserves the historical section shape, even where the old algorithm treats a code example as a heading", () => {
-    expect(
-      splitLegacyMarkdownSections(
-        "Intro\n\n## Fees\nPay\n\n### Card\nBy card\n\n```md\n## Example\nCode\n```",
-      ),
-    ).toEqual([
-      { heading: "Summary", headingPath: ["Summary"], text: "Intro" },
-      { heading: "Fees", headingPath: ["Fees"], text: "Pay" },
-      {
-        heading: "Card",
-        headingPath: ["Fees", "Card"],
-        text: "By card\n\n```md",
-      },
-      { heading: "Example", headingPath: ["Example"], text: "Code\n```" },
-    ]);
-  });
-
   it("round trips literal start labels without interpreting their Markdown or HTML", () => {
     fc.assert(
       fc.property(

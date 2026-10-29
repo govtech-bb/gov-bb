@@ -11,7 +11,7 @@ It does not load content, query databases or resolve forms.
 | `@govtech-bb/govbbmarkd`             | Parsing, validation, compilation, readable text and document outlines |
 | `@govtech-bb/govbbmarkd/react`       | Optional GovBB design-system rendering                                |
 | `@govtech-bb/govbbmarkd/content-url` | URL policy without loading the Markdown processor                     |
-| `@govtech-bb/govbbmarkd/legacy`      | Deprecated compatibility parsers, serializers and section splitting   |
+| `@govtech-bb/govbbmarkd/legacy`      | Deprecated compatibility parsers and serializers   |
 
 The main, URL and legacy entry points do not load React. The React renderer
 requires the optional peers `react` and `@govtech-bb/react@1.0.0-alpha.29`.
@@ -122,10 +122,8 @@ Run against a migrated database during a quiet period: the rebuild holds the
 content advisory lock. It changes search rows, not page bytes, timestamps,
 visibility or audit history. Check mode writes nothing; apply is atomic.
 
-Chat still uses `splitLegacyMarkdownSections` so this extraction does not change
-stored chunk ids, text or embedding hashes. Moving chat to AST sections requires
-a planned full reindex and review of its ingestion dry-run. It is not an automatic
-side effect of importing the package.
+Chat is deprecated and outside this integration. It retains its own chunking code.
+Its Docker images still include this package for the existing content dependency.
 
 ## Relationship to Govspeak
 

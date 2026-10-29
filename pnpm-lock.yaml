@@ -574,9 +574,6 @@ importers:
       '@govtech-bb/form-validation':
         specifier: workspace:*
         version: link:../../packages/form-validation
-      '@govtech-bb/govbbmarkd':
-        specifier: workspace:*
-        version: link:../../packages/govbbmarkd
       '@govtech-bb/react':
         specifier: ^1.0.0-alpha.17
         version: 1.0.0-alpha.17(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(tailwindcss@4.3.1)

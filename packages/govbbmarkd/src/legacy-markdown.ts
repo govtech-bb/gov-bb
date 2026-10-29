@@ -422,4 +422,3 @@ export {
   parseLegacyPageStartLink,
   serializeLegacyPageStartLink,
 } from "#govbbmarkd/legacy-start-link";
-export { splitLegacyMarkdownSections } from "#govbbmarkd/legacy-sections";

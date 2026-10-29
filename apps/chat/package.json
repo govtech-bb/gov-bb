@@ -27,7 +27,6 @@
     "@govtech-bb/ai-bedrock": "workspace:*",
     "@govtech-bb/aws-secrets": "workspace:*",
     "@govtech-bb/content": "workspace:*",
-    "@govtech-bb/govbbmarkd": "workspace:*",
     "@govtech-bb/design": "^1.0.0-alpha.17",
     "@govtech-bb/form-conditions": "workspace:*",
     "@govtech-bb/form-types": "workspace:*",
