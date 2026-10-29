@@ -16,6 +16,7 @@ import { FormDisabledOverridesService } from "../form-disabled-overrides/form-di
 import { GetFormDefinitionDocs } from "./form-definitions.docs";
 import { ApiResponse as AppApiResponse } from "@/common/response";
 import { isValidSecretToken } from "@/common/secret-token";
+import { includeNonPublicFromAuth } from "@/common/include-non-public";
 import {
   PREVIEW_COOKIE_NAME,
   PREVIEW_COOKIE_BYPASS_VALUES,
@@ -61,12 +62,20 @@ export class FormDefinitionsController {
     // shared-sandbox smoke path sends no token and is unaffected.
     @Headers("x-recipe-preview") previewToken?: string,
     @Res({ passthrough: true }) res?: Response,
+    // A forwarded GitHub token from an authorized user also unlocks it
+    // (#2902), the same soft auth as GET /services: Feature flagging lists
+    // forms with the signed-in user's token, so a new form with no landing
+    // page can still be found and switched on. Invalid or absent → public-only.
+    @Headers("authorization") auth?: string,
   ): Promise<ApiResponseShape<PublicFormSummary[]>> {
     const configuredToken = this.configService.get<string>(
       "RECIPE_PREVIEW_TOKEN",
       "",
     );
-    const includeNonPublic = isValidSecretToken(configuredToken, previewToken);
+    // `||` short-circuits: a valid preview token skips the GitHub round-trip.
+    const includeNonPublic =
+      isValidSecretToken(configuredToken, previewToken) ||
+      (await includeNonPublicFromAuth(auth));
     if (includeNonPublic) {
       // A non-public list must never be cached by a CDN/proxy/browser (same as
       // the single-form preview path).

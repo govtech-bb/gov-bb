@@ -6,14 +6,19 @@ export interface NormalizeInput {
   hiddenStepIds: Set<string>;
   activeFieldsByInstance: Map<string, Array<Set<string>>>;
   // For each step, the field ids whose values are file-attachment arrays.
-  // Their array entries have transient presigned `url` fields stripped
-  // before persistence (only the S3 `key` is durable).
+  // Their array entries have the transient presigned `url` and the
+  // client-held `scanStatus` stripped before persistence (only the S3 `key`
+  // is durable). The scan verdict is read from S3 at submit, never stored.
   fileFieldsByStep?: Map<string, Set<string>>;
 }
 
 function stripFileEntryUrl(item: unknown): unknown {
   if (!item || typeof item !== "object") return item;
-  const { url: _url, ...rest } = item as Record<string, unknown>;
+  const {
+    url: _url,
+    scanStatus: _scanStatus,
+    ...rest
+  } = item as Record<string, unknown>;
   return rest;
 }
 
