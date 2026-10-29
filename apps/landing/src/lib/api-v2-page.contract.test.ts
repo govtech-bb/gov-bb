@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it, vi } from 'vitest'
-import { fetchApiV2Page, fromApiV2 } from './api-v2-page'
+import { resolveApiV2Page } from './api-v2-page'
 import type { PageResponse } from './api-v2-page'
 
 /**
@@ -40,9 +40,12 @@ const spec = JSON.parse(
   >
 }
 
-function responseSchema(status: string): Schema {
-  return spec.paths['/pages'].get.responses[status].content['application/json']
-    .schema
+/** Undefined (not a TypeError) when the route or status is gone, so the
+ *  "missing from api_v2's response" message names it. */
+function responseSchema(status: string): Schema | undefined {
+  return spec.paths['/pages']?.get?.responses[status]?.content[
+    'application/json'
+  ]?.schema
 }
 
 /** What landing expects of a field: its type, and whether landing's type
@@ -55,13 +58,21 @@ type Field = {
   items?: Field
 }
 
-const str: Field = { type: 'string' }
-const optStr: Field = { type: 'string', optional: true }
+/** A `Field` whose `optional`/`nullable` must match landing's type `T`, so
+ *  the tables below can't drift from `PageResponse`. */
+type FieldOf<T> = Field &
+  (undefined extends T ? { optional: true } : { optional?: false }) &
+  (null extends T ? { nullable: true } : { nullable?: false })
+
+const str = { type: 'string' } as const
+const optStr = { type: 'string', optional: true } as const
 
 // Mapped over `keyof`, so a field added to `PageResponse` without a line here
 // fails landing's typecheck.
 const FRONTMATTER: {
-  [K in keyof PageResponse['frontmatter']]-?: Field
+  [K in keyof PageResponse['frontmatter']]-?: FieldOf<
+    PageResponse['frontmatter'][K]
+  >
 } = {
   lede: optStr,
   stage: optStr,
@@ -74,7 +85,7 @@ const FRONTMATTER: {
   description: optStr,
 }
 
-const PAGE: { [K in keyof PageResponse]-?: Field } = {
+const PAGE: { [K in keyof PageResponse]-?: FieldOf<PageResponse[K]> } = {
   url: str,
   frontmatter: { type: 'object', properties: FRONTMATTER },
   body_markdown: str,
@@ -111,20 +122,22 @@ function mismatches(
   return problems
 }
 
-/** A value shaped like `schema`: every property, or only the required ones. */
-function sample(schema: Schema, onlyRequired: boolean): unknown {
+/** A value shaped like `schema`: every property filled in, or the least api_v2
+ *  may send (required properties only, null where nullable). */
+function sample(schema: Schema, minimal: boolean): unknown {
+  if (minimal && schema.nullable) return null
   switch (schema.type) {
     case 'string':
       return schema.format === 'date-time' ? '2026-01-01T00:00:00.000Z' : 'x'
     case 'boolean':
       return false
     case 'array':
-      return [sample(schema.items ?? {}, onlyRequired)]
+      return [sample(schema.items ?? {}, minimal)]
     case 'object':
       return Object.fromEntries(
         Object.entries(schema.properties ?? {})
-          .filter(([key]) => !onlyRequired || schema.required?.includes(key))
-          .map(([key, child]) => [key, sample(child, onlyRequired)]),
+          .filter(([key]) => !minimal || schema.required?.includes(key))
+          .map(([key, child]) => [key, sample(child, minimal)]),
       )
     default:
       throw new Error(`no sample for schema type ${schema.type}`)
@@ -142,7 +155,7 @@ function respond(status: number, body: unknown) {
 }
 
 describe('landing ↔ api_v2 GET /pages contract (openapi.json)', () => {
-  it('every field landing reads exists with a compatible type', () => {
+  it('every PageResponse field exists with a compatible type', () => {
     expect(
       mismatches(
         'page',
@@ -164,19 +177,23 @@ describe('landing ↔ api_v2 GET /pages contract (openapi.json)', () => {
 
   it.each([
     ['every field', false],
-    ['only the required fields', true],
+    ['only required fields and nulls', true],
   ])(
     'a spec-shaped page with %s is accepted and mapped',
-    async (_, onlyRequired) => {
-      const body = sample(responseSchema('200'), onlyRequired) as PageResponse
-      const result = await fetchApiV2Page(
+    async (_, minimal) => {
+      const schema = responseSchema('200')
+      if (!schema)
+        throw new Error("GET /pages 200 is missing from api_v2's spec")
+      const body = sample(schema, minimal) as PageResponse
+      const result = await resolveApiV2Page(
         'http://api.example',
         '/x',
         respond(200, body),
       )
-      expect(result.kind).toBe('page')
+      if (result.kind !== 'page')
+        throw new Error(`no page: ${JSON.stringify(result)}`)
 
-      const page = await fromApiV2(body)
+      const { page } = result
       expect(page.frontmatter.title).toBe(body.frontmatter.title)
       expect(page.body).toBe(body.body_markdown)
       expect(page.hideStartLinks).toBe(body.hide_start_links)
