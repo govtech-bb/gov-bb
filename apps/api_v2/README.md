@@ -36,6 +36,9 @@ For local development only, `AUTH_BYPASS=true` skips sign-in. BetterAuth is not 
 | `AUTH_BYPASS`                                      | Local development only: `true` skips sign-in (see above)                                                                                                                                                               |
 | `PREVIEW_SECRET`                                   | Optional; the site's preview token. Unset, every preview read is refused                                                                                                                                               |
 | `API_V2_ADMIN_EMAILS`                              | Required unless `AUTH_BYPASS=true`: comma-separated emails granted the `admin` role whenever they sign in (see Roles). Startup refuses an empty list, since without an admin nobody can grant `approver` (ADR 0079)    |
+| `REVIEW_NOTIFICATIONS`                             | `off` (default), `log` or `ses`: whether review steps email people (see Review emails). `log` writes each email to the log instead, for local runs and tests; production refuses it                                    |
+| `SES_FROM_ADDRESS`                                 | Required when `REVIEW_NOTIFICATIONS=ses`: the verified SES sender, as apps/api's `SES_FROM_ADDRESS`. Startup refuses `ses` without it                                                                                  |
+| `SES_REGION`                                       | Optional SES region; falls back to `AWS_DEFAULT_REGION`, then `us-east-1`                                                                                                                                              |
 
 Production requires HTTPS API/editor origins on the same site, such as separate subdomains of the same organizational domain. Cookies are host-only, HttpOnly, Secure on HTTPS, and SameSite=Lax; API requests from the editor include credentials. Do not enable broad cookie domains or permissive CORS. Register the production API's exact `/api/auth/callback/github` URI in GitHub. Forwarded Host headers do not determine callback URLs; the configured origin does. This change does not configure hosting, DNS, or a reverse proxy.
 
@@ -101,6 +104,12 @@ Publish and reject are a 404 when nothing waits for review, and a 409 `not_submi
 `GET /pages/:id/revision`, and the submit and reject responses, carry `changes`: `{ field, live, proposed }` for each page field whose proposed value differs from the live page's, in field order. Publish returns the page as it now stands.
 
 `GET /revisions?status=submitted` is the review queue (#3202): every revision waiting for review, the longest-waiting first, each with its `page_id`, its proposed `title` and `url`, `submitted_by` and the submitter's name, `submitted_at` and its `updated_at`. Like every read it is open to any signed-in employee, so an approver who holds no other role sees what to review.
+
+### Review emails
+
+Review steps email the people who need to act or know (#3267). When an editor submits a change, every user with the `approver` role gets an email, except the submitter and anyone who changed it, since none of them may decide on it. When an approver publishes or rejects it, the submitter gets one. Publishing is the approval: there is no separate approve step, so "approved" means published. Each email has the page's title and a link to the editor, never the page's content: `/reviews/:pageId` for an approver, and the page's own screen, `/services/:serviceId/:pageId`, for the submitter, which shows a rejection's comment (a page outside any service links to its review screen when rejected, and to the services list when published). Addresses come from `auth_user` and `user_roles`.
+
+Emails go after the review step commits, through the `ReviewNotifier` port `PageEditing` depends on. A failed lookup or send is logged, without the address, and the step still succeeds; SES calls are bounded by short timeouts and one retry, since the step's response waits for them. The `log` mailer does write addresses to the log, which is why production refuses it. `REVIEW_NOTIFICATIONS` turns them on per environment and picks the mailer (`log` or `ses`); they are off by default. Sending through SES needs the ECS task role to be allowed `ses:SendEmail` from the sender.
 
 ## Database
 

@@ -27,6 +27,7 @@ import { EditorIndex } from "./services/editor-index";
 import { CategoryEditing } from "./services/category-editing";
 import { PageEditing } from "./services/page-editing";
 import { PageResolution } from "./services/page-resolution";
+import type { ReviewNotifier } from "./services/review-notifications";
 import { SiteNavigation } from "./services/site-navigation";
 
 declare module "vitest" {
@@ -119,12 +120,13 @@ export function createTestServices(
   review: ConstructorParameters<typeof PageEditing>[2] = {
     allowSelfApproval: false,
   },
+  notifier?: ReviewNotifier,
 ) {
   const pages = new PostgresPages(db);
   return {
     resolution: new PageResolution(pages),
     navigation: new SiteNavigation(pages),
-    editing: new PageEditing(pages, () => new Date(), review),
+    editing: new PageEditing(pages, () => new Date(), review, notifier),
     index: new EditorIndex(pages),
     categories: new CategoryEditing(pages, () => new Date()),
   };
@@ -189,14 +191,18 @@ export async function createTestApp(
     sessions?: SessionReader;
     /** Let an approver make public what they changed, as AUTH_BYPASS does. */
     allowSelfApproval?: boolean;
+    /** Who hears of review steps; nobody by default, as with notifications off. */
+    notifier?: ReviewNotifier;
   } = {},
 ) {
   await registerTestEmployees(db);
   const roles = new PostgresRoles(db);
   return buildApp({
-    ...createTestServices(db, {
-      allowSelfApproval: options.allowSelfApproval ?? false,
-    }),
+    ...createTestServices(
+      db,
+      { allowSelfApproval: options.allowSelfApproval ?? false },
+      options.notifier,
+    ),
     access: new EditorAccess(
       options.sessions ?? { findSession: async () => ok(TEST_EMPLOYEE) },
       roles,

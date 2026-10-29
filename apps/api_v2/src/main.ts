@@ -4,7 +4,9 @@ import type { FastifyInstance, FastifyRequest } from "fastify";
 import pino from "pino";
 import { buildApp } from "./app";
 import { createBetterAuth } from "./adapters/better-auth";
+import { mailerFor } from "./adapters/mail";
 import { PostgresPages } from "./adapters/postgres-pages";
+import { PostgresReviewRecipients } from "./adapters/postgres-review-recipients";
 import { PostgresRoles } from "./adapters/postgres-roles";
 import { parseConfig } from "./config";
 import { connect, createPool, ping, type DatabaseFailure } from "./db";
@@ -16,6 +18,10 @@ import { EditorIndex } from "./services/editor-index";
 import { CategoryEditing } from "./services/category-editing";
 import { PageEditing } from "./services/page-editing";
 import { PageResolution } from "./services/page-resolution";
+import {
+  NO_REVIEW_NOTIFICATIONS,
+  ReviewNotifications,
+} from "./services/review-notifications";
 import { SiteNavigation } from "./services/site-navigation";
 import { seed } from "./seed";
 
@@ -114,13 +120,25 @@ async function main(): Promise<void> {
     }
     operation = "http";
     const pages = new PostgresPages(db);
+    const mailer = mailerFor(config.notifications, logger);
+    const notifier = mailer
+      ? new ReviewNotifications(
+          mailer,
+          new PostgresReviewRecipients(db),
+          config.auth.editorOrigin,
+          logger,
+        )
+      : NO_REVIEW_NOTIFICATIONS;
     app = await buildApp({
       resolution: new PageResolution(pages),
       navigation: new SiteNavigation(pages),
       // One local developer runs the whole review flow (ADR 0079).
-      editing: new PageEditing(pages, () => new Date(), {
-        allowSelfApproval: config.authBypass,
-      }),
+      editing: new PageEditing(
+        pages,
+        () => new Date(),
+        { allowSelfApproval: config.authBypass },
+        notifier,
+      ),
       index: new EditorIndex(pages),
       categories: new CategoryEditing(pages, () => new Date()),
       access,
