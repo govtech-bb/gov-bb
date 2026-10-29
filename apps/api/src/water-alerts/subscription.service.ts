@@ -12,14 +12,14 @@ import {
 } from "@govtech-bb/database";
 import { SesMailer } from "../email/ses-mailer";
 import { buildConfirmEmail } from "./emails";
-import { landingOrigin } from "./origins";
+import {
+  landingOrigin,
+  landingUnsubscribeUrl,
+  WATER_OUTAGES_PATH,
+} from "./origins";
 import { areaLabelFor } from "./parishes";
 import { WaterSubscriberRepository } from "./water-subscriber.repository";
 import { redactEmailsIn, redactPii } from "@/common/log-sanitize";
-
-// Public route the confirm/unsubscribe links resolve to (a landing page that
-// calls the API back). Built onto LANDING_BASE_URL.
-const WATER_OUTAGES_PATH = "/health-and-emergency-services/water-outages";
 
 export type TokenOutcome = "done" | "already" | "invalid";
 
@@ -162,7 +162,7 @@ export class SubscriptionService {
     // one arrives (and the nightly E2E journey can clean up after itself).
     // Safe against mail scanners that pre-open links: the landing unsubscribe
     // page only acts on a button click.
-    const unsubscribeUrl = `${landingOrigin()}${WATER_OUTAGES_PATH}/unsubscribe?token=${unsubscribeToken}`;
+    const unsubscribeUrl = landingUnsubscribeUrl(unsubscribeToken);
     const { subject, html, text } = buildConfirmEmail(
       areaLabelFor(area),
       confirmUrl,

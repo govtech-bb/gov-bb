@@ -7,7 +7,7 @@ import { type AlertNotice, buildAlertEmail, type EmailContent } from "./emails";
 import { FeedService, reason, type SkippedNotice } from "./feed.service";
 import { OpsAlertService } from "./ops-alerts.service";
 import { isPast, type Outage } from "./outages.domain";
-import { apiOrigin, landingOrigin } from "./origins";
+import { apiOrigin, landingUnsubscribeUrl } from "./origins";
 import { areaLabelFor } from "./parishes";
 import {
   type PendingAlert,
@@ -16,8 +16,6 @@ import {
 import { WaterSubscriberRepository } from "./water-subscriber.repository";
 import { redactEmailsIn } from "@/common/log-sanitize";
 
-// Public path the unsubscribe body-link resolves to (a landing page).
-const WATER_OUTAGES_PATH = "/health-and-emergency-services/water-outages";
 // Session-scoped advisory-lock key so only one API task runs the check at once.
 const CHECK_LOCK_KEY = 91442;
 // How many emails to send concurrently, and mark sent per batch. Bounds SES
@@ -216,7 +214,7 @@ export class CheckerService {
       summary: outage.summary,
       link: outage.link,
     };
-    const bodyUnsubUrl = `${landingOrigin()}${WATER_OUTAGES_PATH}/unsubscribe?token=${row.unsubscribeToken}`;
+    const bodyUnsubUrl = landingUnsubscribeUrl(row.unsubscribeToken);
     const api = apiOrigin();
     const oneClickUnsubUrl =
       api && `${api}/water-alerts/unsubscribe/${row.unsubscribeToken}`;

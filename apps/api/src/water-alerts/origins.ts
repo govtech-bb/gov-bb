@@ -6,3 +6,11 @@ export const landingOrigin = (): string =>
 
 export const apiOrigin = (): string | undefined =>
   process.env.API_PUBLIC_URL?.replace(/\/+$/, "") || undefined;
+
+// Public landing route the confirm/unsubscribe links resolve to.
+export const WATER_OUTAGES_PATH =
+  "/health-and-emergency-services/water-outages";
+
+// Shared by the confirm and alert emails so the two links can't drift apart.
+export const landingUnsubscribeUrl = (token: string): string =>
+  `${landingOrigin()}${WATER_OUTAGES_PATH}/unsubscribe?token=${token}`;
