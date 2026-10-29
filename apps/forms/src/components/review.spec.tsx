@@ -1365,3 +1365,60 @@ describe("Review", () => {
     expect(screen.getByText("No values provided")).toBeInTheDocument();
   });
 });
+
+// A checkbox-accordion keeps its options inside `groups`, so it needs the
+// same value→label lookup as the MDA email (#3064), not the raw values.
+describe("Review — checkbox-accordion (#3064)", () => {
+  const accordionField = makeField({
+    id: "step-1.food-served",
+    fieldId: "food-served",
+    label: "Food and drink you will serve",
+    htmlType: "checkbox-accordion",
+    groups: [
+      {
+        label: "Local dishes",
+        options: [
+          { value: "macaroni-pie", label: "Macaroni pie" },
+          { value: "cou-cou", label: "Cou-cou" },
+        ],
+      },
+      {
+        label: "Drinks",
+        options: [{ value: "coconut-water", label: "Coconut water" }],
+      },
+    ],
+  });
+  const renderWith = (value: unknown) =>
+    render(
+      <Review
+        formMeta={baseFormMeta as FormMeta}
+        form={makeMockForm({ "step-1.food-served": value }) as never}
+        visibleSteps={[
+          makeStep({
+            stepId: "step-1",
+            title: "Step One",
+            fields: [accordionField],
+          }),
+        ]}
+      />,
+    );
+
+  it("shows the labels of the ticked options across groups", () => {
+    renderWith(["coconut-water", "macaroni-pie"]);
+    expect(screen.getByText("Coconut water, Macaroni pie")).toBeInTheDocument();
+    expect(screen.queryByText(/coconut-water/)).not.toBeInTheDocument();
+  });
+
+  // Matches the email: resolveOptionDisplay falls back to the raw value.
+  it("shows the raw value for an option no longer in the recipe", () => {
+    renderWith(["macaroni-pie", "flying-fish"]);
+    expect(screen.getByText("Macaroni pie, flying-fish")).toBeInTheDocument();
+  });
+
+  it("renders no row when nothing is ticked", () => {
+    renderWith([]);
+    expect(
+      screen.queryByText("Food and drink you will serve"),
+    ).not.toBeInTheDocument();
+  });
+});

@@ -83,7 +83,9 @@ export function ServiceNav({
 
   return (
     <Sidebar.Root sidebar={sidebar} label="Service documents">
-      <Sidebar.Header />
+      <Sidebar.Header>
+        <Sidebar.Toggle sidebar={sidebar} label="Pages" />
+      </Sidebar.Header>
       <Sidebar.Content>
         <Sidebar.Group label="Pages">{items(pages)}</Sidebar.Group>
         {loading ? (

@@ -1,4 +1,3 @@
-import logo from "@govtech-bb/frontend/assets/images/govbb-logo.svg?raw";
 import { Files, List } from "@phosphor-icons/react";
 import {
   Link,
@@ -25,15 +24,17 @@ import { listedServiceRows, remoteServiceRows } from "./service-pages";
 import { ServiceNav } from "./service-nav";
 import { workspaceLink } from "./navigation";
 import { Banner } from "../ui/banner";
-import { Bar } from "../ui/bar";
+import { Bar, type Crumb } from "../ui/bar";
 import { Button } from "../ui/button";
 import { EmptyState } from "../ui/empty-state";
 import { LoadingState } from "../ui/loading-state";
 import { TextLink } from "../ui/text-link";
 import { Sidebar, useSidebar } from "../ui/sidebar";
+import { useLatched } from "../ui/use-latched";
 import { useScreenPlace } from "./screen-place";
 import { ScreenTitle } from "./screen-title";
 import { DocumentSessions, keptViews } from "./document-views";
+import { GovbbLogo } from "./govbb-logo";
 import { ServicesList } from "./services-list";
 import type { ServicesSearch } from "./services-search";
 import type { WorkspaceLocation } from "./model";
@@ -50,13 +51,9 @@ type Account = {
 
 const SIDEBAR_KEY = "govbb-editor:sidebar-collapsed";
 
-// The bar's trail of links, light on dark
-const crumb =
-  "rounded-sm px-2 py-2 underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-focus";
-
 /** What someone without the editor role is told, on every screen. */
 const READ_ONLY =
-  "You can read pages and categories but not change them, because you don't have the editor role. Ask an admin to give it to you.";
+  "You can read pages and categories but not change them, because you don’t have the editor role. Ask an admin to give it to you.";
 
 /** Authenticated API services and page editors; no browser-local workspace is loaded. */
 export function ServiceWorkspace({
@@ -141,10 +138,19 @@ export function ServiceWorkspace({
     setPanes(kept);
   }, [documentId, panes, pageSessions, sessions]);
   useEffect(() => {
-    setDialog(undefined);
+    setDialog(null);
   }, [documentId]);
 
-  const [dialog, setDialog] = useState<"service" | "page" | "delete">();
+  const [dialog, setDialog] = useState<"service" | "page" | "delete" | null>(null);
+  const shown = useLatched(dialog);
+  // Remount on each opening to clear the previous form and request state.
+  const [opened, setOpened] = useState(0);
+
+  const openDialog = (kind: "service" | "page" | "delete") => {
+    setOpened((count) => count + 1);
+    setDialog(kind);
+  };
+
   const [error, setError] = useState("");
   const [signingOut, setSigningOut] = useState(false);
   const sidebar = useSidebar(SIDEBAR_KEY);
@@ -163,7 +169,8 @@ export function ServiceWorkspace({
   );
 
   const roles = useQuery(rolesQuery(api)).data;
-  // Until the roles load, deleting a public page waits rather than offering what the API may refuse
+  // Until the roles load, deleting a public page and changing categories wait rather than offering what the API may
+  // refuse
   const approver = roles?.includes("approver") ?? false;
   // Without the editor role everything still reads, but nothing can be changed. Until the roles load everyone is
   // offered the changes, since nearly everyone is an editor; the API refuses anyone who isn't
@@ -171,6 +178,8 @@ export function ServiceWorkspace({
 
   const rows = useMemo(() => (remote.data ? remoteServiceRows(remote.data) : []), [remote.data]);
   const selected = rows.find((row) => row.document.id === documentId)?.document;
+  // The page being deleted, kept while its dialog fades away after the page itself has gone
+  const deleting = useLatched(dialog === "delete" ? (selected ?? null) : null);
 
   const missing =
     !!location &&
@@ -184,6 +193,14 @@ export function ServiceWorkspace({
   );
 
   const serviceName = place.service ?? listed?.title;
+  const servicePages = !!location && !missing && (!!remote.data || remote.isPending);
+
+  // When the sidebar is hidden, move its toggle into the page bar so it stays reachable.
+  const showPages =
+    servicePages && !(sidebar.wide && sidebar.open) ? (
+      <Sidebar.Toggle sidebar={sidebar} label="Pages" />
+    ) : null;
+
   const serviceStatus = remote.error instanceof ApiFailure ? remote.error.status : undefined;
 
   const serviceRecovery =
@@ -200,8 +217,13 @@ export function ServiceWorkspace({
         Sign in again
       </Button>
     ) : (
-      <Button variant="secondary" pending={remote.isFetching} onClick={() => void remote.refetch()}>
-        {remote.isFetching ? "Refreshing service…" : "Try again"}
+      <Button
+        variant="secondary"
+        pending={remote.isFetching}
+        pendingLabel="Refreshing service…"
+        onClick={() => void remote.refetch()}
+      >
+        Try again
       </Button>
     );
 
@@ -219,6 +241,17 @@ export function ServiceWorkspace({
       setSigningOut(false);
     }
   };
+
+  const crumbs: Crumb[] = [
+    onCategories
+      ? { label: "Categories", render: <Link to="/categories" /> }
+      : onReviews
+        ? { label: "Review queue", render: <Link to="/reviews" /> }
+        : { label: "Services", render: <Link to="/services" search={servicesSearch} /> },
+  ];
+
+  if (serviceName)
+    crumbs.push({ label: <span className="block max-w-100 truncate">{serviceName}</span> });
 
   const leave = usePageLeaveGuard({
     getPages,
@@ -248,7 +281,7 @@ export function ServiceWorkspace({
           event.preventDefault();
           document.getElementById("workspace-content")?.focus();
         }}
-        className="sr-only z-50 bg-white px-4 py-3 focus:not-sr-only focus:fixed focus:start-2 focus:top-2"
+        className="sr-only z-popup bg-white px-4 py-3 focus:not-sr-only focus:fixed focus:start-2 focus:top-2"
       >
         Skip to content
       </a>
@@ -259,42 +292,19 @@ export function ServiceWorkspace({
               Menu
             </Sidebar.Toggle>
           )}
-          <span
-            className="h-6 shrink-0 [&>svg]:h-full [&>svg]:w-auto"
-            aria-label="GovBB"
-            dangerouslySetInnerHTML={{ __html: logo }}
-          />
-          {/* Where the trail starts: always the same link, so it keeps the focus as it changes screens */}
-          {onCategories ? (
-            <Link to="/categories" className={crumb}>
-              Categories
-            </Link>
-          ) : onReviews ? (
-            <Link to="/reviews" className={crumb}>
-              Review queue
-            </Link>
-          ) : (
-            <Link to="/services" search={servicesSearch} className={crumb}>
-              Services
-            </Link>
-          )}
-          {serviceName && (
-            <>
-              <span aria-hidden="true" className="text-blue-20">
-                /
-              </span>
-              <span className="min-w-0 max-w-100 truncate">{serviceName}</span>
-              <Sidebar.Toggle sidebar={sidebar} variant="inverse">
-                Pages
-              </Sidebar.Toggle>
-            </>
-          )}
+          <GovbbLogo fit="height" className="h-6 shrink-0" />
+          <Bar.Crumbs crumbs={crumbs} />
           <Bar.Actions>
-            <Bar.Status className="max-w-64 truncate font-normal" title={email}>
+            <Bar.Status className="max-w-64 truncate font-normal max-lg:hidden" title={email}>
               {email}
             </Bar.Status>
-            <Button variant="inverse" disabled={signingOut} onClick={leave.requestSignOut}>
-              {signingOut ? "Signing out…" : "Sign out"}
+            <Button
+              variant="inverse"
+              pending={signingOut}
+              pendingLabel="Signing out…"
+              onClick={leave.requestSignOut}
+            >
+              Sign out
             </Button>
           </Bar.Actions>
         </Bar.Root>
@@ -316,7 +326,7 @@ export function ServiceWorkspace({
       )}
       <div className="flex flex-1">
         <AppNav sidebar={appNav} rail={!!location} servicesSearch={servicesSearch} />
-        {location && !missing && (remote.data || remote.isPending) && (
+        {servicePages && (
           <ServiceNav
             sidebar={sidebar}
             serviceId={location.serviceId}
@@ -324,8 +334,8 @@ export function ServiceWorkspace({
             loading={!remote.data}
             selectedId={documentId}
             stores={stores}
-            onAdd={() => setDialog("page")}
-            onDelete={() => setDialog("delete")}
+            onAdd={() => openDialog("page")}
+            onDelete={() => openDialog("delete")}
             readOnly={readOnly ? "You need the editor role to add or delete pages." : undefined}
             deleteBlocked={
               selected && remote.data?.pages.some((page) => page.parent_id === selected.id)
@@ -339,6 +349,8 @@ export function ServiceWorkspace({
           />
         )}
         <main id="workspace-content" tabIndex={-1} className="min-w-0 flex-1 outline-none">
+          {/* Keep the sidebar toggle reachable before a page is selected. */}
+          {showPages && !selected && <Bar.Root>{showPages}</Bar.Root>}
           {missing && (
             <EmptyState
               kind="not-found"
@@ -370,7 +382,7 @@ export function ServiceWorkspace({
           )}
           {!missing && location && remote.isError && !remote.data && (
             <EmptyState
-              kind="failed"
+              tone="error"
               size="page"
               title="We could not load this service"
               description={
@@ -384,12 +396,20 @@ export function ServiceWorkspace({
             />
           )}
           {!location && onCategories && (
-            <section className="mx-auto w-full max-w-300 px-6 py-10">
-              <CategoriesScreen api={api} readOnly={readOnly} />
+            <section>
+              <CategoriesScreen
+                api={api}
+                readOnly={!approver}
+                why={
+                  roles && !approver
+                    ? "Only approvers can add, change, move or delete categories."
+                    : undefined
+                }
+              />
             </section>
           )}
           {!location && onReviews && (
-            <section className="mx-auto w-full max-w-300 px-6 py-10">
+            <section className="mx-auto w-full max-w-300 px-4 py-10 sm:px-6">
               {reviewing ? (
                 <ReviewScreen
                   key={reviewing}
@@ -403,7 +423,7 @@ export function ServiceWorkspace({
             </section>
           )}
           {!location && !onCategories && !onReviews && (
-            <section className="mx-auto w-full max-w-300 px-6 py-10">
+            <section>
               <ServicesList
                 api={api}
                 search={listSearch ?? {}}
@@ -411,7 +431,7 @@ export function ServiceWorkspace({
                   setServicesSearch(search);
                   void routerNavigate({ to: "/services", search, replace: true });
                 }}
-                onCreate={() => setDialog("service")}
+                onCreate={() => openDialog("service")}
                 readOnly={readOnly}
               />
             </section>
@@ -423,7 +443,7 @@ export function ServiceWorkspace({
               title={remote.data.service.title}
               description="Choose a document or add one to this service."
               actions={
-                <Button variant="accent" disabled={readOnly} onClick={() => setDialog("page")}>
+                <Button variant="accent" disabled={readOnly} onClick={() => openDialog("page")}>
                   Add document
                 </Button>
               }
@@ -445,44 +465,50 @@ export function ServiceWorkspace({
                 active={!missing && id === selected?.id}
                 onSession={trackPageSession}
                 sessions={sessions}
+                nav={showPages}
               />
             </section>
           ))}
         </main>
       </div>
       {leave.dialog}
-      {dialog === "service" && (
+      {shown === "service" && (
         <CreateRemoteServiceDialog
+          key={opened}
           api={api}
-          close={() => setDialog(undefined)}
-          done={(id) => {
-            setDialog(undefined);
+          open={dialog === "service"}
+          onClose={() => setDialog(null)}
+          onDone={(id) => {
+            setDialog(null);
             void navigate({ serviceId: id, documentId: id });
           }}
         />
       )}
-      {dialog === "page" && remote.data && location && (
+      {shown === "page" && remote.data && location && (
         <CreateRemotePageDialog
+          key={opened}
           api={api}
+          open={dialog === "page"}
           detail={remote.data}
-          close={() => setDialog(undefined)}
-          done={(id) => {
-            setDialog(undefined);
+          onClose={() => setDialog(null)}
+          onDone={(id) => {
+            setDialog(null);
             void navigate({ serviceId: location.serviceId, documentId: id });
           }}
         />
       )}
-      {dialog === "delete" && selected && location && (
+      {shown === "delete" && deleting && (
         <DeleteRemotePageDialog
+          key={opened}
           api={api}
-          page={selected}
-          close={() => setDialog(undefined)}
-          done={() => {
-            const deleted = selected.id;
-            setDialog(undefined);
-            discardPages([deleted]);
+          open={dialog === "delete"}
+          page={deleting}
+          onClose={() => setDialog(null)}
+          onDone={() => {
+            setDialog(null);
+            discardPages([deleting.id]);
             void navigate(
-              deleted === location.serviceId
+              !location || deleting.id === location.serviceId
                 ? undefined
                 : { serviceId: location.serviceId, documentId: location.serviceId },
             );

@@ -2,7 +2,7 @@ import { LinkBreak, PencilSimple } from "@phosphor-icons/react";
 import type { ComponentProps, MouseEvent } from "react";
 import { Button } from "./button";
 import { LinkForm } from "./link-picker";
-import { Popover } from "./popover";
+import { belowBar, Popover } from "./popover";
 import { Tip } from "./tooltip";
 
 // Its buttons leave the focus, and the caret, in the text
@@ -59,6 +59,7 @@ export function LinkAtCaret({
         anchor={anchor}
         side="bottom"
         align="start"
+        collisionPadding={belowBar()}
         initialFocus={editing}
         finalFocus={false}
         className="p-0"

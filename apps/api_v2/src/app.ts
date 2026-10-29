@@ -68,6 +68,8 @@ export interface AppOptions {
   readonly previewSecret?: Redacted<string>;
   /** The root logger shared with database and authentication adapters. */
   readonly logger?: FastifyBaseLogger;
+  /** Whether the database answers; `/health/db` reports it, never the load balancer. */
+  readonly ready: () => Promise<boolean>;
 }
 
 /**
@@ -120,6 +122,14 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
   );
   app.get("/docs", { schema: { hide: true } }, async (_request, reply) =>
     reply.type("text/html; charset=utf-8").send(DOCS_HTML),
+  );
+  app.get("/health", { schema: { hide: true } }, async () => ({
+    status: "ok",
+  }));
+  app.get("/health/db", { schema: { hide: true } }, async (_request, reply) =>
+    (await options.ready())
+      ? { status: "ok" }
+      : reply.status(503).send({ error: "database_unavailable" }),
   );
 
   app.setErrorHandler((error: FastifyError, request, reply) => {

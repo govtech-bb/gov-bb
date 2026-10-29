@@ -14,6 +14,7 @@ import {
   createTestApp,
   createTestDb,
   createTestServices,
+  SELF_APPROVAL,
   expectOk,
   TEST_EMPLOYEE,
   TEST_HTTP_CONFIG,
@@ -37,7 +38,7 @@ const get = (url: string, token?: string) =>
  */
 beforeAll(async () => {
   test = await createTestDb();
-  const { editing } = createTestServices(test.db);
+  const { editing } = createTestServices(test.db, SELF_APPROVAL);
   const page = async (overrides: Record<string, unknown>) =>
     expectOk(await editing.create(aPage(overrides), TEST_EMPLOYEE));
 

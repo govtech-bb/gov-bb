@@ -83,7 +83,8 @@ describe.skipIf(!HAS_DATABASE)("api_v2 over HTTP", () => {
       body: JSON.stringify({
         url,
         title: "An e2e page",
-        visibility: "public",
+        // Not public: an approver can't make public a page they wrote (#3201).
+        visibility: "draft",
         body_markdown: "Written by the e2e suite.",
       }),
     });

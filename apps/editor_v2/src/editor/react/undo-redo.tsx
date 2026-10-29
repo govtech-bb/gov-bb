@@ -9,7 +9,7 @@ import {
   mergeRegister,
 } from "lexical";
 import { ArrowCounterClockwise, ArrowClockwise } from "@phosphor-icons/react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { historyAvailable } from "../core/history";
 import { Button } from "../../ui/button";
 import { Tip } from "../../ui/tooltip";
@@ -25,35 +25,43 @@ export function UndoRedo() {
   // A history carried on from the document's last editor may already have steps
   const [canUndo, setCanUndo] = useState(() => historyAvailable(editor).undo);
   const [canRedo, setCanRedo] = useState(() => historyAvailable(editor).redo);
-  useEffect(
-    () =>
-      mergeRegister(
-        editor.registerCommand(
-          CAN_UNDO_COMMAND,
-          (value) => {
-            setCanUndo(value);
+  const undo = useRef<HTMLButtonElement>(null);
+  const redo = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    // Out of steps, a button turns off: if it had the focus, the text takes it, rather than the page
+    const handOn = (button: HTMLButtonElement | null) => {
+      if (button && document.activeElement === button) editor.focus();
+    };
 
-            return false;
-          },
-          COMMAND_PRIORITY_LOW,
-        ),
-        editor.registerCommand(
-          CAN_REDO_COMMAND,
-          (value) => {
-            setCanRedo(value);
+    return mergeRegister(
+      editor.registerCommand(
+        CAN_UNDO_COMMAND,
+        (value) => {
+          if (!value) handOn(undo.current);
+          setCanUndo(value);
 
-            return false;
-          },
-          COMMAND_PRIORITY_LOW,
-        ),
+          return false;
+        },
+        COMMAND_PRIORITY_LOW,
       ),
-    [editor],
-  );
+      editor.registerCommand(
+        CAN_REDO_COMMAND,
+        (value) => {
+          if (!value) handOn(redo.current);
+          setCanRedo(value);
+
+          return false;
+        },
+        COMMAND_PRIORITY_LOW,
+      ),
+    );
+  }, [editor]);
 
   return (
     <div className="flex items-center gap-1">
       <Tip content="Undo">
         <Button
+          ref={undo}
           aria-label="Undo"
           icon={<ArrowCounterClockwise />}
           disabled={!editable || !canUndo}
@@ -63,6 +71,7 @@ export function UndoRedo() {
       </Tip>
       <Tip content="Redo">
         <Button
+          ref={redo}
           aria-label="Redo"
           icon={<ArrowClockwise />}
           disabled={!editable || !canRedo}

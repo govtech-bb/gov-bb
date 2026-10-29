@@ -11,7 +11,9 @@
  * signed-in employee who is not an approver change what citizens see, and
  * no admin route answers someone who is not an admin. A route that changes
  * what citizens see declares the approver role, unless it is one of the page
- * writes whose approver check is in PageEditing (#3199).
+ * writes whose approver check is in PageEditing (#3199). Every category write
+ * declares the approver role, so landing shows only what an approver changed
+ * (#3201).
  */
 
 import { randomUUID } from "node:crypto";
@@ -29,6 +31,7 @@ import {
   createTestDb,
   createTestServices,
   expectOk,
+  SELF_APPROVAL,
   TEST_EDITOR,
   TEST_EMPLOYEE,
   TEST_HEADERS,
@@ -91,7 +94,9 @@ beforeEach(async () => {
   registered.length = 0;
   diagnostics.subscribe("fastify.initialization", recordRoutes);
   ({ db, close } = await createTestDb());
-  app = await createTestApp(db);
+  // Which routes write, and as whom, not review: an approver's page goes
+  // public as they write it (review.test.ts holds them to the rule).
+  app = await createTestApp(db, SELF_APPROVAL);
   await app.ready();
 });
 
@@ -361,8 +366,11 @@ const NOT_SEEN = new Set<string | undefined>([
 async function routesChangingWhatCitizensSee(employee: Employee) {
   // Before the app below registers its own copies of the routes.
   const routes = writes();
+  // Self-approval allowed, so the probe finds every route that can change
+  // what citizens see, not only those an approver may use on their own work.
   const signedIn = await createTestApp(db, {
     sessions: { findSession: async () => ok(employee) },
+    ...SELF_APPROVAL,
   });
   const changed = new Set<string>();
   const refused = new Set<string>();
@@ -462,6 +470,45 @@ it("needs the approver role to publish or reject a revision (#3199)", () => {
     writes().find(({ method, url }) => `${method} ${url}` === route)?.role;
   expect(declared("POST /pages/:id/revision/publish")).toBe("approver");
   expect(declared("POST /pages/:id/revision/reject")).toBe("approver");
+});
+
+it("needs the approver role for every category write, so landing shows only an approver's changes (#3201)", async () => {
+  const categoryWrites = writes().filter(({ url }) =>
+    url.startsWith("/editor/categories"),
+  );
+  expect(categoryWrites.length).toBeGreaterThan(0);
+  expect(
+    categoryWrites
+      .filter(({ role }) => role !== "approver")
+      .map(({ method, url }) => `${method} ${url}`),
+  ).toEqual([]);
+
+  const snapshot = async () =>
+    (
+      await db.execute(
+        sql`select json_agg(c order by c.id) as categories,
+                   (select count(*)::int from change_events) as events
+            from categories c`,
+      )
+    ).rows;
+  const signedIn = await createTestApp(db, {
+    sessions: { findSession: async () => ok(TEST_EDITOR) },
+  });
+  for (const [n, { method, url }] of categoryWrites.entries()) {
+    const request = await categoryWrite(method, url, n);
+    const before = await snapshot();
+    const response = await signedIn.inject({
+      ...request,
+      headers: { ...request.headers, cookie: "test-session=editor" },
+    });
+    expect(response.statusCode, `${method} ${url}`).toBe(403);
+    expect(response.json(), `${method} ${url}`).toEqual({
+      error: "forbidden",
+      message: "You need the approver role to do this.",
+    });
+    expect(await snapshot(), `${method} ${url}`).toEqual(before);
+  }
+  await signedIn.close();
 });
 
 it("refuses every admin route to a non-admin", async () => {

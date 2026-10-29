@@ -69,3 +69,17 @@ test("is named by any element it says it's labelled by", async () => {
 
   expect(text(popup().getAttribute("aria-labelledby"))).toBe("Start button");
 });
+
+test("scrolled to its end, it keeps the scroll rather than handing it to the page", async () => {
+  await render(
+    <Popover.Root defaultOpen>
+      <Popover.Trigger>Block options</Popover.Trigger>
+      <Popover.Content aria-label="Block options">
+        <p>Settings</p>
+      </Popover.Content>
+    </Popover.Root>,
+  );
+
+  expect(popup().className).toContain("overflow-y-auto");
+  expect(popup().className).toContain("overscroll-contain");
+});

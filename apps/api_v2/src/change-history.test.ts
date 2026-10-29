@@ -17,6 +17,7 @@ import {
   aPage,
   createTestDb,
   createTestServices,
+  SELF_APPROVAL,
   expectOk,
   TEST_EMPLOYEE,
   TEST_SERVER,
@@ -197,7 +198,7 @@ describe("the change history trigger", () => {
 
   it("records one event when the same content is saved twice", async () => {
     const { db, close } = await createTestDb();
-    const { editing } = createTestServices(db);
+    const { editing } = createTestServices(db, SELF_APPROVAL);
     const page = expectOk(await editing.create(aLivePage(), TEST_EMPLOYEE));
     const fields = { ...withDefaults(aLivePage()), title: "Renamed" };
 
@@ -213,7 +214,7 @@ describe("the change history trigger", () => {
 
   it("keeps updated_at when a save changes nothing, so another editor's copy stays current", async () => {
     const { db, close } = await createTestDb();
-    const { editing } = createTestServices(db);
+    const { editing } = createTestServices(db, SELF_APPROVAL);
     const page = expectOk(await editing.create(aLivePage(), TEST_EMPLOYEE));
     const fields = withDefaults(aLivePage());
 
@@ -305,7 +306,7 @@ describe("the change history trigger", () => {
 
   it("records each sub-page a parent's move carries, and moves its updated_at", async () => {
     const { db, close } = await createTestDb();
-    const { editing } = createTestServices(db);
+    const { editing } = createTestServices(db, SELF_APPROVAL);
     await db.execute(
       sql`insert into categories (id, slug, title)
           values (${CATEGORY_A}, 'a', 'A'), (${CATEGORY_B}, 'b', 'B')`,
@@ -346,7 +347,7 @@ describe("the change history trigger", () => {
 
   it("moves the version after a seed and a delete", async () => {
     const { db, close } = await createTestDb();
-    const { editing } = createTestServices(db);
+    const { editing } = createTestServices(db, SELF_APPROVAL);
 
     await seed(db);
     const seeded = await versionOf(db);

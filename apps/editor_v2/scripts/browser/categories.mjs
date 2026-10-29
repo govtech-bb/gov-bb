@@ -175,6 +175,14 @@ const button = (name) => page.getByRole("button", { name, exact: true });
 
 const focused = (locator) => locator.evaluate((node) => node === document.activeElement);
 
+// Focus returns after the closing transition.
+const waitForFocus = (name) =>
+  page.waitForFunction((name) => {
+    const active = document.activeElement;
+
+    return (active?.getAttribute("aria-label") ?? active?.textContent?.trim()) === name;
+  }, name);
+
 const menu = page.getByRole("navigation", { name: "Menu", exact: true });
 
 const categoryName = "tbody tr td:first-child .font-semibold > span:first-child";
@@ -233,9 +241,9 @@ try {
   assert.equal(await page.getByLabel("Slug", { exact: true }).isDisabled(), true);
   await button("Cancel").click();
   await button("Delete Health").click();
-  const reserved = page.getByRole("dialog", { name: "Health can't be deleted yet" });
+  const reserved = page.getByRole("dialog", { name: "Health can’t be deleted yet" });
 
-  assert.match(await reserved.textContent(), /site's own is at \/health/);
+  assert.match(await reserved.textContent(), /site’s own is at \/health/);
   await reserved.getByText("Close", { exact: true }).click();
   await reserved.waitFor({ state: "hidden" });
 
@@ -244,7 +252,7 @@ try {
   await page.getByLabel("Name", { exact: true }).fill("Schools");
   await button("Save category").click();
   await button("Delete Schools").click();
-  const blocked = page.getByRole("dialog", { name: "Schools can't be deleted yet" });
+  const blocked = page.getByRole("dialog", { name: "Schools can’t be deleted yet" });
   assert.match(await blocked.textContent(), /1 service is filed under Schools/);
   assert.equal(await button("Delete category").count(), 0);
   await page.getByRole("link", { name: "See its services" }).click();
@@ -278,6 +286,9 @@ try {
   await page.getByRole("dialog").getByRole("button", { name: "Cancel", exact: true }).click();
   await page.getByRole("link", { name: service.title, exact: true }).click();
   await page.getByRole("textbox", { name: "Page title", exact: true }).waitFor();
+  await menu.evaluate((node) =>
+    Promise.all(node.getAnimations().map((animation) => animation.finished)),
+  );
   assert.equal((await menu.boundingBox()).width, 56);
 
   if ((await button("Page settings").getAttribute("aria-expanded")) !== "true")
@@ -308,12 +319,12 @@ try {
   await page.getByRole("menuitem", { name: "Move up", exact: true }).focus();
   await page.keyboard.press("Enter");
   await waitForOrder(["Health", "Schools", "Youth", LONG, "Sport", "Housing"]);
-  assert.equal(await focused(button(`Actions for ${LONG}`)), true);
+  await waitForFocus(`Actions for ${LONG}`);
   await button("Actions for Housing").click();
   await page.getByRole("menuitem", { name: "Delete", exact: true }).click();
   await button("Delete category").click();
   await button("Actions for Housing").waitFor({ state: "detached" });
-  assert.equal(await focused(button("Add category")), true);
+  await waitForFocus("Add category");
   assert.equal(await fitsWidth(), true);
 
   // Every change was the content API's, so a reload shows them all

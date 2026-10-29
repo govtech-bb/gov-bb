@@ -24,6 +24,7 @@ import {
   createTestApp,
   createTestDb,
   createTestServices,
+  SELF_APPROVAL,
   expectOk,
   TEST_EMPLOYEE,
   TEST_HEADERS,
@@ -40,8 +41,10 @@ let services: ReturnType<typeof createTestServices>;
 
 beforeEach(async () => {
   ({ db, close } = await createTestDb());
-  services = createTestServices(db);
-  app = await createTestApp(db);
+  // Review has tests of its own (review.test.ts); here an approver's page
+  // goes public as they write it.
+  services = createTestServices(db, SELF_APPROVAL);
+  app = await createTestApp(db, SELF_APPROVAL);
   await app.ready();
 });
 
@@ -96,6 +99,30 @@ const ENTRY_MARKDOWN = [
   `- apply online: <a data-start-link href="${START}">Start now</a>`,
   "- apply by post",
 ].join("\n");
+
+describe("GET /health", () => {
+  it("answers ok when the database does", async () => {
+    for (const url of ["/health", "/health/db"]) {
+      const response = await app.inject({ url });
+      expect(response.statusCode).toBe(200);
+      expect(response.json()).toEqual({ status: "ok" });
+    }
+  });
+
+  it("checks only the process; /health/db answers 503 without the database", async () => {
+    const unready = await createTestApp(db, { ready: async () => false });
+    try {
+      const process = await unready.inject({ url: "/health" });
+      expect(process.statusCode).toBe(200);
+      expect(process.json()).toEqual({ status: "ok" });
+      const database = await unready.inject({ url: "/health/db" });
+      expect(database.statusCode).toBe(503);
+      expect(database.json()).toEqual({ error: "database_unavailable" });
+    } finally {
+      await unready.close();
+    }
+  });
+});
 
 describe("GET /pages?url=", () => {
   it("400s when url is missing", async () => {

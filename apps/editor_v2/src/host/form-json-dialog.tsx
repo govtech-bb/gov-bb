@@ -67,7 +67,8 @@ export function FormJsonDialog() {
             it.
           </Dialog.Description>
         </Dialog.Header>
-        <Dialog.Body className="flex flex-col">
+        {/* Child sections own their spacing. */}
+        <Dialog.Body className="gap-0">
           {unavailable && (
             <p role="status" className="mb-3 text-14 text-muted">
               {unavailable}

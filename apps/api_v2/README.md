@@ -36,6 +36,9 @@ For local development only, `AUTH_BYPASS=true` skips sign-in. BetterAuth is not 
 | `AUTH_BYPASS`                                      | Local development only: `true` skips sign-in (see above)                                                                                                                                                               |
 | `PREVIEW_SECRET`                                   | Optional; the site's preview token. Unset, every preview read is refused                                                                                                                                               |
 | `API_V2_ADMIN_EMAILS`                              | Required unless `AUTH_BYPASS=true`: comma-separated emails granted the `admin` role whenever they sign in (see Roles). Startup refuses an empty list, since without an admin nobody can grant `approver` (ADR 0079)    |
+| `REVIEW_NOTIFICATIONS`                             | `off` (default), `log` or `ses`: whether review steps email people (see Review emails). `log` writes each email to the log instead, for local runs and tests; production refuses it                                    |
+| `SES_FROM_ADDRESS`                                 | Required when `REVIEW_NOTIFICATIONS=ses`: the verified SES sender, as apps/api's `SES_FROM_ADDRESS`. Startup refuses `ses` without it                                                                                  |
+| `SES_REGION`                                       | Optional SES region; falls back to `AWS_DEFAULT_REGION`, then `us-east-1`                                                                                                                                              |
 
 Production requires HTTPS API/editor origins on the same site, such as separate subdomains of the same organizational domain. Cookies are host-only, HttpOnly, Secure on HTTPS, and SameSite=Lax; API requests from the editor include credentials. Do not enable broad cookie domains or permissive CORS. Register the production API's exact `/api/auth/callback/github` URI in GitHub. Forwarded Host headers do not determine callback URLs; the configured origin does. This change does not configure hosting, DNS, or a reverse proxy.
 
@@ -62,11 +65,17 @@ Migration `003_auth` adds BetterAuth's four core tables: `auth_user`, `auth_sess
 
 Signing in decides who is an employee; roles decide what they can do (ADR 0079). Roles are rows in `user_roles` (migration `008_user_roles`, numbered after #3340's 006 and 007), read on every request, so a revocation applies to the employee's next request.
 
-- `editor` writes: creating, saving and deleting pages, and managing categories. Every employee is an editor by default: api_v2 grants the role, with no grantor, when it creates the user at their first sign-in, and migration `009_default_editor_role` granted it once to everyone who had signed in before. It is never granted again, so an admin can revoke it to stop one person writing without removing them from the organisation.
-- `approver` changes what citizens see: changing a page's `visibility`, creating a page as `public`, deleting a `public` page, and rejecting or publishing a pending revision. An editor who isn't an approver can make every other edit, and submit a revision for review.
+- `editor` writes: creating, saving and deleting pages. Every employee is an editor by default: api_v2 grants the role, with no grantor, when it creates the user at their first sign-in, and migration `009_default_editor_role` granted it once to everyone who had signed in before. It is never granted again, so an admin can revoke it to stop one person writing without removing them from the organisation.
+- `approver` changes what citizens see: changing a page's `visibility`, deleting a `public` page, rejecting or publishing a pending revision, and creating, editing, reordering and deleting categories, so landing shows only category changes an approver made (#3201). These are direct actions, with no request waiting for a second approver, except that an approver can't make public content they changed (see Making a page public). An editor who isn't an approver can make every other edit, and submit a revision for review.
 - `admin` lists employees and grants and revokes roles (`/editor/employees…`), recording who granted each. A signed-in employee whose email `API_V2_ADMIN_EMAILS` lists is granted `admin`, with no grantor, if they lack it; so an admin cannot revoke a listed admin for good.
 
-A refusal is a 403 `{error: "forbidden", message}` and the database is unchanged. Reads stay open to every signed-in employee, roles or not. Each write route names the role it needs in its route options (`config: { role: "editor" }`, or `"approver"` for publishing and rejecting revisions), and the editor scope's `onRequest` hook enforces it; a write route that names none is refused to everyone, and `src/route-auth.test.ts` fails until it names one. That test also fails when a route that changes what citizens see names neither `approver` nor is one of the page writes (`POST`, `PUT` and `DELETE /pages…`) whose approver check sits in `PageEditing`, because only some of their writes need one.
+A refusal is a 403 `{error: "forbidden", message}` and the database is unchanged. Reads stay open to every signed-in employee, roles or not. Each write route names the role it needs in its route options (`config: { role: "editor" }`, or `"approver"` for publishing and rejecting revisions and for every category write), and the editor scope's `onRequest` hook enforces it; a write route that names none is refused to everyone, and `src/route-auth.test.ts` fails until it names one. That test also fails when a route that changes what citizens see names neither `approver` nor is one of the page writes (`POST`, `PUT` and `DELETE /pages…`) whose approver check sits in `PageEditing`, because only some of their writes need one.
+
+### Making a page public
+
+Making a page public approves its content, so the self-approval rule (ADR 0079) applies to it as it does to a revision (#3201). A save that makes a page public is a 403, and nothing is written, when the approver changed the page's content since it was last public, or ever when it never was: in an earlier save, or in this one. Another approver makes it public. Who changed it comes from the page's `change_events`: the actor of each `created`, `updated`, `published` or `unpublished` entry since the last one whose snapshot is public, counting only entries whose row differs from the one before in more than `visibility` and its stamps (and, for a sub-page, its category, which follows its parent's when a write above it carries it along), so an approver who only took the page out of public view, or moved it between Draft and Preview, may still make it public. Creating a page as `public` needs the approver role, and is refused to an approver for the same reason, so outside `AUTH_BYPASS` nobody creates a page as `public`: create it as Preview or Draft. Under `AUTH_BYPASS` the rule is relaxed, as it is for revisions. So an approver can't skip review by taking a public page private, editing it and making it public again, nor by deleting it and creating it again as `public`.
+
+Unpublishing a page and deleting a `public` page stay direct approver actions: they take content away from citizens rather than show them unreviewed content. Deleting a Preview or Draft page needs only the editor role (#3187).
 
 Under `AUTH_BYPASS` the local developer holds every role. `GET /editor/me` returns the signed-in employee and their roles, which the editor uses to hide what they cannot do.
 
@@ -76,7 +85,7 @@ A save that keeps a `public` page public, whoever sends it, approvers included, 
 
 The editor reads and saves the working copy: `GET /pages/:id` and the save's response lay the revision over the live page, set `pending_revision`, and give the revision's `updated_at`, which is what the next save sends in `if-updated-at`. `GET /pages/:id/revision` returns the revision itself, or 404 when there is none.
 
-A save to a page that is not public writes the page as before. Changing `visibility` stays a direct approver action (ADR 0079): an approver's save that takes a public page out of public view changes only the live row's `visibility`. The other fields it sends are ignored and the live content stays, so revision content never reaches `content_pages` that way, to be made public again without review. It closes the page's open revision, keeping the rule that only a public page has one: a draft is dropped, and a revision waiting for review is marked `discarded` with the approver and the time (migration `015_revision_discarded`, #3203), so an urgent takedown needs no rejection first. The page's history then reads `discarded` followed by `unpublished`, both by the approver. A rejected revision retires as the live page moves on. The remaining gap, accepted in ADR 0079 until #3201, is that an approver can edit a page while it is not public and then make it public. A revision save writes no `change_events` entry, because the live page did not change; its review steps are recorded (see below).
+A save to a page that is not public writes the page as before. Changing `visibility` stays a direct approver action (ADR 0079): an approver's save that takes a public page out of public view changes only the live row's `visibility`. The other fields it sends are ignored and the live content stays, so revision content never reaches `content_pages` that way, to be made public again without review. It closes the page's open revision, keeping the rule that only a public page has one: a draft is dropped, and a revision waiting for review is marked `discarded` with the approver and the time (migration `015_revision_discarded`, #3203), so an urgent takedown needs no rejection first. The page's history then reads `discarded` followed by `unpublished`, both by the approver. A rejected revision retires as the live page moves on. An approver who then edits the page while it is not public can't make it public themselves (see Making a page public). A revision save writes no `change_events` entry, because the live page did not change; its review steps are recorded (see below).
 
 ### Reviewing a revision
 
@@ -95,6 +104,12 @@ Publish and reject are a 404 when nothing waits for review, and a 409 `not_submi
 `GET /pages/:id/revision`, and the submit and reject responses, carry `changes`: `{ field, live, proposed }` for each page field whose proposed value differs from the live page's, in field order. Publish returns the page as it now stands.
 
 `GET /revisions?status=submitted` is the review queue (#3202): every revision waiting for review, the longest-waiting first, each with its `page_id`, its proposed `title` and `url`, `submitted_by` and the submitter's name, `submitted_at` and its `updated_at`. Like every read it is open to any signed-in employee, so an approver who holds no other role sees what to review.
+
+### Review emails
+
+Review steps email the people who need to act or know (#3267). When an editor submits a change, every user with the `approver` role gets an email, except the submitter and anyone who changed it, since none of them may decide on it. When an approver publishes or rejects it, the submitter gets one. Publishing is the approval: there is no separate approve step, so "approved" means published. Each email has the page's title and a link to the editor, never the page's content: `/reviews/:pageId` for an approver, and the page's own screen, `/services/:serviceId/:pageId`, for the submitter, which shows a rejection's comment (a page outside any service links to its review screen when rejected, and to the services list when published). Addresses come from `auth_user` and `user_roles`.
+
+Emails go after the review step commits, through the `ReviewNotifier` port `PageEditing` depends on. A failed lookup or send is logged, without the address, and the step still succeeds; SES calls are bounded by short timeouts and one retry, since the step's response waits for them. The `log` mailer does write addresses to the log, which is why production refuses it. `REVIEW_NOTIFICATIONS` turns them on per environment and picks the mailer (`log` or `ses`); they are off by default. Sending through SES needs the ECS task role to be allowed `ses:SendEmail` from the sender.
 
 ## Database
 
@@ -238,18 +253,20 @@ erDiagram
 | GET      | `/search/documents`                 | Every visible page with its search text in chunks                      |
 | GET      | `/docs`                             | Public API reference (Scalar)                                          |
 | GET      | `/docs/openapi.json`                | Public OpenAPI document                                                |
+| GET      | `/health`                           | Load balancer check: 200 while the process serves; never hits the DB   |
+| GET      | `/health/db`                        | 200 if the database answers in 2 s, else 503; not for the ALB          |
 | GET      | `/pages/:id`                        | Employee; includes drafts and previews, with any pending revision      |
 | GET      | `/pages/:id/revision`               | Employee; a public page's pending revision, with its `changes`         |
 | GET      | `/revisions?status=submitted`       | Employee; the review queue: revisions waiting for an approver          |
 | GET      | `/services`                         | Employee service index, grouped by `parent_id`                         |
 | GET      | `/services/:id`                     | Employee; one service's pages with their roles, entry first            |
 | GET      | `/editor/categories`                | Employee; every shared category, counts, address protection and stamps |
-| POST     | `/editor/categories`                | Employee; append a category or subcategory                             |
-| PUT      | `/editor/categories/:id`            | Employee; edit with mandatory `if-updated-at`                          |
-| PUT      | `/editor/categories/order`          | Employee; reorder a complete expected sibling snapshot                 |
-| DELETE   | `/editor/categories/:id`            | Employee; delete an empty category with `if-updated-at`                |
+| POST     | `/editor/categories`                | Approver; append a category or subcategory                             |
+| PUT      | `/editor/categories/:id`            | Approver; edit with mandatory `if-updated-at`                          |
+| PUT      | `/editor/categories/order`          | Approver; reorder a complete expected sibling snapshot                 |
+| DELETE   | `/editor/categories/:id`            | Approver; delete an empty category with `if-updated-at`                |
 | GET      | `/version`                          | Employee change token                                                  |
-| POST     | `/pages`                            | Employee create; as `public`, approver only                            |
+| POST     | `/pages`                            | Employee create; as `public`, refused (approver under `AUTH_BYPASS`)   |
 | PUT      | `/pages/:id`                        | Editor save, optional `if-updated-at`; public pages save to a revision |
 | DELETE   | `/pages/:id`                        | Employee delete; a `public` page, approver only                        |
 | POST     | `/pages/:id/revision/submit`        | Editor; submit the draft revision for review                           |
