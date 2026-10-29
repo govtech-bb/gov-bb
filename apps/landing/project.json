@@ -77,7 +77,7 @@
       "executor": "nx:run-commands",
       "dependsOn": ["build"],
       "options": {
-        "command": "npm run size",
+        "command": "pnpm run size",
         "cwd": "apps/landing"
       }
     },

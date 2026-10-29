@@ -1,5 +1,6 @@
 // Client bundle budgets, checked in CI by `nx run landing:size` (#3139).
-// Budgets are the gzip size at the time they were set, plus 10%.
+// Budgets are the gzip size at the time they were set, plus 10%, measured on
+// the CI build (no VITE_* env), which can differ slightly from a deploy build.
 //
 // The entry chunk carries its own budget because a total would miss the
 // regression it exists to catch: a static import of `src/utils/markdown`

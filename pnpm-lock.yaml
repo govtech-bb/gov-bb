@@ -1362,7 +1362,7 @@ importers:
         version: 4.4.3
     devDependencies:
       '@size-limit/file':
-        specifier: ^14.3.0
+        specifier: 14.3.0
         version: 14.3.0(size-limit@14.3.0)
       '@tailwindcss/typography':
         specifier: ^0.5.19
@@ -1428,7 +1428,7 @@ importers:
         specifier: ^11.1.1
         version: 11.1.2
       size-limit:
-        specifier: ^14.3.0
+        specifier: 14.3.0
         version: 14.3.0
       typescript:
         specifier: 'catalog:'
