@@ -584,11 +584,16 @@ jobs:
       # itself and the run is green, so the report below fails on any skip.
       - name: Run api_v2 e2e specs
         id: e2e
-        if: ${{ !cancelled() }}
+        # Skip only when the unit tests never started (install or set-shas
+        # failed); a failed unit run still gets its e2e results.
+        if: ${{ !cancelled() && steps.test.outcome != 'skipped' }}
         env:
           DB_HOST: localhost
         run: |
-          if ! pnpm exec nx show projects --affected --withTarget e2e --json | jq -e 'index("api_v2") != null' > /dev/null; then
+          # Captured first so an nx failure fails the step (bash -e) rather
+          # than reading as "not affected" and passing with nothing run.
+          affected=$(pnpm exec nx show projects --affected --withTarget e2e --json)
+          if ! jq -e 'index("api_v2") != null' <<<"$affected" > /dev/null; then
             echo "api_v2 is not affected; skipping its e2e specs."
             exit 0
           fi
@@ -629,18 +634,21 @@ jobs:
           {
             echo "$heading"
             echo ""
-            echo "| Spec | Passed | Failed | Skipped |"
-            echo "| --- | ---: | ---: | ---: |"
+            echo "| Spec | File | Passed | Failed | Skipped |"
+            echo "| --- | --- | ---: | ---: | ---: |"
             jq -r '.testResults[] | [
                 (.name | sub(".*/apps/api_v2/"; "")),
+                .status,
                 ([.assertionResults[] | select(.status == "passed")] | length),
                 ([.assertionResults[] | select(.status == "failed")] | length),
                 ([.assertionResults[] | select(.status != "passed" and .status != "failed")] | length)
-              ] | "| `\(.[0])` | \(.[1]) | \(.[2]) | \(.[3]) |"' "$report"
+              ] | "| `\(.[0])` | \(.[1]) | \(.[2]) | \(.[3]) | \(.[4]) |"' "$report"
             echo ""
             if [ "$skipped" -gt 0 ]; then
-              echo "**$skipped test(s) skipped.** A skip here means the database was not"
-              echo "reached (\`DB_HOST\` unset) or a test was marked skip/todo; CI must run them all."
+              echo "**$skipped test(s) skipped.** CI must run them all. Check the File"
+              echo "column first: a failed file (a throwing beforeAll) skips its tests."
+              echo "Otherwise the database was not reached (\`DB_HOST\` unset) or a"
+              echo "test is marked skip/todo."
               echo ""
             fi
             if [ "$ok" = false ]; then

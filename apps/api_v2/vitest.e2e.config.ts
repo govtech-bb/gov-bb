@@ -8,8 +8,8 @@ import { defineConfig } from "vitest/config";
  * replaced rather than appended to — merging would run every unit test again
  * under a 60-second timeout and call the result "e2e".
  *
- * It is a different bargain from the unit suite. That one runs anywhere; this
- * one needs a database and proves what PGlite cannot — that
+ * It is a different bargain from the unit suite, which goes through
+ * `app.inject`. This one proves what that cannot — that
  * the DDL runs on a real server, that `timestamptz(3)` round-trips through
  * the node-postgres driver rather than through WASM that happens to round the
  * same way, and that the process boots and serves over HTTP rather than only
