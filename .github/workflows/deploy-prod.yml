@@ -92,6 +92,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write # fast-forward the prod branch ref
+      actions: read # read staging's Journey 5 result (#3012)
     outputs:
       # The SHA prod was serving BEFORE this deploy. `setup` uses it as the
       # affected base — see the rationale on its "Derive base/head SHAs" step.
@@ -110,6 +111,31 @@ jobs:
             echo "   For a deliberate rollback/hotfix from another ref, set allow_non_staging=true."
             exit 1
           fi
+      # Journey 5 (#3012) pays for a certificate on staging after each staging
+      # deploy. Once E2E_PAYMENTS_ENABLED=true, prod only ships a commit whose
+      # staging run passed it. Off (or a deliberate allow_non_staging
+      # rollback/hotfix) → no check, exactly as before.
+      - name: Guard — staging passed Journey 5 for this commit
+        if: vars.E2E_PAYMENTS_ENABLED == 'true' && inputs.allow_non_staging != true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          runs=$(gh api "repos/$REPO/actions/workflows/deploy-staging.yml/runs?head_sha=$SHA&per_page=20" \
+            --jq '.workflow_runs[].id')
+          for run in $runs; do
+            conclusions=$(gh api "repos/$REPO/actions/runs/$run/jobs?per_page=100" \
+              --jq '.jobs[] | select(.name | startswith("Journey 5")) | .conclusion')
+            if grep -qx success <<<"$conclusions"; then
+              echo "✅ Journey 5 passed on staging for $SHA (run $run)"
+              exit 0
+            fi
+          done
+          echo "::error title=Journey 5 not passed::No Deploy Staging run for $SHA has a passing Journey 5 (EZ Pay) job. Fix or re-run it on staging before deploying to prod."
+          exit 1
+
       # Read BEFORE the fast-forward below moves the ref — this is the SHA
       # prod is actually serving, and `setup` uses it as the affected base.
       #

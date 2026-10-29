@@ -661,11 +661,9 @@ jobs:
   # rolling 60s window. `fail-fast: false` so one form failing doesn't cancel
   # the others.
   #
-  # NOT listed (their specs are test.fixme): the three certificate forms
-  # (get-birth-/get-death-/get-marriage-certificate) block on the EZ Pay
-  # confirmation-screen bug (#919); referral-student-support-services has an
-  # unsubmittable required-checkbox-with-empty-options recipe bug (ADR 0027).
-  # Add them to the matrix once those are fixed.
+  # NOT listed (its spec is test.fixme): referral-student-support-services has
+  # an unsubmittable required-checkbox-with-empty-options recipe bug (ADR 0027).
+  # Add it to the matrix once that is fixed.
   #
   # ALSO NOT listed — gated `visibility: preview` (#1646) pending the misrouted
   # submission-email fix (#1517): apply-for-conductor-licence,
@@ -699,6 +697,14 @@ jobs:
             artifact_name: jobstart-plus-smoke-trace
           - spec: sell-goods-services-beach-park.smoke.spec.ts
             artifact_name: beach-park-smoke-trace
+          # The certificate forms are EZ Pay-gated; the smoke token drops the
+          # payment, so these assert the saved confirmation (#919, #3012).
+          - spec: get-birth-certificate.smoke.spec.ts
+            artifact_name: get-birth-certificate-smoke-trace
+          - spec: get-death-certificate.smoke.spec.ts
+            artifact_name: get-death-certificate-smoke-trace
+          - spec: get-marriage-certificate.smoke.spec.ts
+            artifact_name: get-marriage-certificate-smoke-trace
     uses: ./.github/workflows/forms-smoke.yml
     with:
       base_url: https://forms.sandbox.alpha.gov.bb
