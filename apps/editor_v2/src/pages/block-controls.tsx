@@ -79,6 +79,7 @@ import { actionList, PageActionList, PageMenuRow } from "./action-menu";
 import { $writeAtEnd } from "./block-exit";
 import { $blockLines, $pageChoices, $turnPageLines } from "./turn-into";
 import { $rootBlock, type PagePlace } from "./insertion";
+import { OPEN_BLOCK_OPTIONS_COMMAND } from "./block-options";
 import { $isPageContactNode, ContactBlockSettings } from "./modules/contact";
 import { startWriting } from "./slash-menu";
 import { PageMetadataNode } from "./metadata";
@@ -237,6 +238,26 @@ function EditablePageControls({ anchor, hintId }: { anchor: HTMLElement; hintId:
 
           if (!key || !grip.current) return false;
           event.preventDefault();
+          byKeyboard.current = true;
+          pin(key);
+          open("block", grip.current, key);
+
+          return true;
+        },
+        COMMAND_PRIORITY_LOW,
+      ),
+    // open reads only refs and state setters
+    [editor, pin],
+  );
+
+  // A block that still needs setting up opens its own Block options, such as a contact block once it's inserted.
+  // As from ⌘/, closing them lets the pointer lead the rail again
+  useEffect(
+    () =>
+      editor.registerCommand(
+        OPEN_BLOCK_OPTIONS_COMMAND,
+        (key) => {
+          if (!editor.isEditable() || !grip.current) return false;
           byKeyboard.current = true;
           pin(key);
           open("block", grip.current, key);

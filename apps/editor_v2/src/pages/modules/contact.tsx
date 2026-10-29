@@ -1,7 +1,10 @@
 import { AddressBook, ArrowRight, Warning } from "@phosphor-icons/react";
 import { contactBlockFor, contactDetails } from "@govtech-bb/block-kit/contact";
+import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
+import { useLexicalEditable } from "@lexical/react/useLexicalEditable";
 import { DecoratorNode, type LexicalNode, type NodeKey, type SerializedLexicalNode } from "lexical";
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
+import { OPEN_BLOCK_OPTIONS_COMMAND } from "../block-options";
 import type { PageHandler, PageModule } from "../definition";
 import { UnsupportedPageContent } from "../markdown";
 import { pageInsertAction } from "../insertion";
@@ -82,8 +85,16 @@ export const findRecord = (collection: CollectionRecords, record: string) =>
 
 export type ContactSettings = { collection: string; record: string; fields: readonly string[] };
 
-/** The record's details, as the page shows them: a warning when the record has gone. */
-export function ContactPreview({ collection, record, fields }: ContactSettings) {
+/**
+ * The record's details, as the page shows them: a warning when the record has gone. Before a record is chosen it says
+ * so, and `onChoose`, where the block can be changed, is the button that chooses one.
+ */
+export function ContactPreview({
+  collection,
+  record,
+  fields,
+  onChoose,
+}: ContactSettings & { onChoose?: () => void }) {
   const state = useCollection(collection);
 
   const status = (children: ReactNode, warning = false) => (
@@ -96,7 +107,17 @@ export function ContactPreview({ collection, record, fields }: ContactSettings) 
     </div>
   );
 
-  if (!record) return status("Choose the contact record to show, in Block options.");
+  if (!record)
+    return onChoose ? (
+      <div className="page-contact page-contact-empty">
+        <p>Choose the contact record this block shows.</p>
+        <Button variant="secondary" onClick={onChoose}>
+          Choose a record
+        </Button>
+      </div>
+    ) : (
+      status("No contact record chosen yet.")
+    );
 
   if (state.status !== "read")
     return state.status === "unavailable"
@@ -186,8 +207,49 @@ export class PageContactNode extends DecoratorNode<ReactNode> {
     return false;
   }
   override decorate() {
-    return <ContactPreview {...this.getSettings()} />;
+    return <PageContactBlock nodeKey={this.__key} {...this.getSettings()} />;
   }
+}
+
+// Blocks just inserted from a menu, which open their Block options once they're on the page
+const inserted = new Set<NodeKey>();
+
+/** A contact block on the page, which asks for its Block options when it has no record to show. */
+function PageContactBlock({ nodeKey, ...settings }: ContactSettings & { nodeKey: NodeKey }) {
+  const [editor] = useLexicalComposerContext();
+  const editable = useLexicalEditable();
+  const wrapper = useRef<HTMLDivElement>(null);
+  const choose = () => editor.dispatchCommand(OPEN_BLOCK_OPTIONS_COMMAND, nodeKey);
+
+  // Just inserted, it has no record yet: its Block options open, to choose one. Deleted when it fires, not before,
+  // so a remount in between still opens them
+  useEffect(() => {
+    if (!inserted.has(nodeKey)) return;
+
+    const timer = setTimeout(() => {
+      inserted.delete(nodeKey);
+
+      if (!settings.record) editor.dispatchCommand(OPEN_BLOCK_OPTIONS_COMMAND, nodeKey);
+    });
+
+    return () => clearTimeout(timer);
+  }, [editor, nodeKey, settings.record]);
+
+  // Keys pressed on its own button are the button's: the editor would otherwise take Enter for a new line
+  useEffect(() => {
+    const element = wrapper.current;
+    const stop = (event: KeyboardEvent) => event.stopPropagation();
+
+    element?.addEventListener("keydown", stop);
+
+    return () => element?.removeEventListener("keydown", stop);
+  }, []);
+
+  return (
+    <div ref={wrapper}>
+      <ContactPreview {...settings} onChoose={editable ? choose : undefined} />
+    </div>
+  );
 }
 
 export const $isPageContactNode = (node: LexicalNode | null | undefined): node is PageContactNode =>
@@ -252,6 +314,16 @@ export function ContactBlockSettings({
   const host = usePageCollections();
   const { record, fields } = settings;
   const collection = state.status === "read" ? state.value : null;
+  const recordField = useRef<HTMLSelectElement>(null);
+  const focused = useRef(false);
+
+  // Without a record the block shows nothing, so choosing one comes first: the field takes the focus once it can
+  // be used, as the records arrive
+  useEffect(() => {
+    if (focused.current || record || !collection) return;
+    focused.current = true;
+    recordField.current?.focus();
+  }, [record, collection]);
 
   const choices = [...(collection?.records ?? [])].sort((a, b) =>
     (a.data.name ?? a.record_key).localeCompare(b.data.name ?? b.record_key),
@@ -266,6 +338,7 @@ export function ContactBlockSettings({
     <div className="page-component-settings grid gap-4 border-b border-line px-3.5 pt-2 pb-4">
       <Field size="sm" label="Contact record">
         <NativeSelect
+          ref={recordField}
           size="sm"
           value={record}
           disabled={!collection}
@@ -337,12 +410,17 @@ export function PageContactModule(): PageModule {
       pageInsertAction(
         "page-contact",
         "Contact details",
-        () =>
-          new PageContactNode({
+        () => {
+          const node = new PageContactNode({
             collection: "contacts",
             record: "",
             fields: ["phone", "email", "hours"],
-          }),
+          });
+
+          inserted.add(node.getKey());
+
+          return node;
+        },
         {
           group: "Components",
           order: 40,

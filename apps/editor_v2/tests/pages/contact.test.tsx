@@ -1,7 +1,8 @@
 /** @vitest-environment jsdom */
 import { describe, expect, test, vi } from "vitest";
 import { act } from "react";
-import { $getRoot } from "lexical";
+import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
+import { $getRoot, type LexicalEditor } from "lexical";
 import { createHeadlessEditor } from "../../src/editor/core/create-editor";
 import { $availableActions, executeAction, rankActions } from "../../src/editor/core/actions";
 import { EditorComposer } from "../../src/editor/react/composer";
@@ -201,6 +202,53 @@ describe("the contact block in the editor", () => {
     await mount(`${CONTACT}\n`, { read: async () => null });
     expect(pageControl(".page-contact-warning").textContent).toContain(
       "no contact record “barbados-drug-service”",
+    );
+  });
+
+  test("a block inserted for a record to choose opens Block options on the record, and offers them again", async () => {
+    Element.prototype.scrollIntoView = () => {};
+
+    let editor!: LexicalEditor;
+
+    function Capture() {
+      [editor] = useLexicalComposerContext();
+
+      return null;
+    }
+
+    await renderInPage(
+      <PageCollectionsProvider collections={{ read: async () => CONTACTS }}>
+        <EditorComposer definition={govbbPageEditor} initialState={visual("Intro\n")}>
+          <PageEditor />
+          <Capture />
+        </EditorComposer>
+      </PageCollectionsProvider>,
+    );
+    const targetKey = editor.getEditorState().read(() => $getRoot().getLastChild()!.getKey());
+    await act(async () => {
+      executeAction(editor, govbbPageEditor, "page-contact", { targetKey, mode: "below" });
+    });
+
+    // Choosing a record is the one thing it still needs, so that's where the focus goes
+    await vi.waitFor(() =>
+      expect(document.activeElement).toBe(pageControl(".page-component-settings select")),
+    );
+
+    await act(async () => {
+      document.activeElement!.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
+      );
+    });
+    await vi.waitFor(() => expect(document.querySelector(".page-component-settings")).toBeNull());
+
+    // Closed without one, the block itself offers the choice
+    const choose = [...pageControl(".page-contact-block").querySelectorAll("button")].find(
+      (button) => button.textContent === "Choose a record",
+    )!;
+
+    await act(async () => choose.click());
+    await vi.waitFor(() =>
+      expect(document.activeElement).toBe(pageControl(".page-component-settings select")),
     );
   });
 

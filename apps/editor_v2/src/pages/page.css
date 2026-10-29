@@ -202,6 +202,14 @@
   border: 1px dashed var(--page-line);
   color: var(--color-muted);
 }
+.page-body .page-contact > p {
+  flex: 1;
+  margin: 0;
+}
+.page-body .page-contact-empty {
+  flex-wrap: wrap;
+  align-items: center;
+}
 .page-body .page-contact-warning {
   border-style: solid;
   border-color: var(--color-yellow-80);
