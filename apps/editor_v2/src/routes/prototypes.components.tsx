@@ -52,6 +52,7 @@ import { EmptyState } from "../ui/empty-state";
 import { FileButton } from "../ui/file-button";
 import { FormDialog } from "../ui/form-dialog";
 import { ListBox, useListNavigation } from "../ui/list-box";
+import { SearchRow } from "../ui/search-row";
 import { ListScreen } from "../ui/list-screen";
 import { LoadingState } from "../ui/loading-state";
 import { Drawer } from "../ui/drawer";
@@ -2066,7 +2067,7 @@ function ListBoxDemo() {
     >
       <Popover.Trigger render={<Button icon={<Plus />}>Add content</Button>} />
       <ListBox.Popover aria-label="Insert page content" className="w-72">
-        <ListBox.Search
+        <SearchRow
           aria-label="Search page content"
           placeholder="Search content…"
           value={query}

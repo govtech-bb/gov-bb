@@ -1,4 +1,3 @@
-import { MagnifyingGlass } from "@phosphor-icons/react";
 import {
   useEffect,
   useId,
@@ -14,9 +13,9 @@ import { Popover } from "./popover";
 import { group, groupLabel, listEmpty, listFooter, row, type PopupName } from "./surface";
 
 /**
- * Arrow, Home, End and Enter navigation without moving focus out of the input.
- * Spread comboboxProps on the input, listProps on Root and optionProps(index) on each Option.
- * Scrolls only the list. Use initial: -1 to start without a highlighted row.
+ * Arrow and Enter navigation without moving focus out of the input: Home and End stay with its caret, and the arrows
+ * stop at the list's ends, ArrowUp at none when it started there. Spread comboboxProps on the input, listProps on Root
+ * and optionProps(index) on each Option. Scrolls only the list. Use initial: -1 to start without a highlighted row.
  */
 export function useListNavigation(
   count: number,
@@ -47,10 +46,8 @@ export function useListNavigation(
     if (!count) return;
 
     const next = new Map([
-      ["ArrowDown", (index + 1) % count],
-      ["ArrowUp", index <= 0 ? count - 1 : index - 1],
-      ["Home", 0],
-      ["End", count - 1],
+      ["ArrowDown", Math.min(index + 1, count - 1)],
+      ["ArrowUp", Math.max(index - 1, Math.min(initial, 0))],
     ]).get(event.key);
 
     if (next !== undefined) {
@@ -190,29 +187,7 @@ function ListBoxFooter({ children }: { children?: ReactNode }) {
 }
 
 /**
- * The search box at the head of a list: its icon, a field with no frame of its own, and GovBB's focus halo round it.
- * With useListNavigation's `comboboxProps`, the arrows move through the rows below while the typing stays here.
- */
-function ListBoxSearch({ className, ...props }: Omit<ComponentProps<"input">, "type"> & PopupName) {
-  return (
-    <label className="flex shrink-0 items-center gap-2.5 border-b border-line px-3.5 py-2.5 text-muted">
-      <MagnifyingGlass aria-hidden="true" className="size-4 shrink-0" />
-      <input
-        type="text"
-        autoComplete="off"
-        spellCheck={false}
-        {...props}
-        className={cn(
-          "min-w-0 flex-1 rounded-sm bg-transparent text-14 leading-5 text-ink placeholder:text-placeholder max-sm:text-16",
-          className,
-        )}
-      />
-    </label>
-  );
-}
-
-/**
- * A popover that holds a list: no padding of its own, its Search, list and Footer stacked, and only the list scrolling
+ * A popover that holds a list: no padding of its own, its SearchRow, list and Footer stacked, and only the list scrolling
  * between them.
  */
 function ListBoxPopover({ className, ...props }: ComponentProps<typeof Popover.Content>) {
@@ -227,7 +202,6 @@ function ListBoxPopover({ className, ...props }: ComponentProps<typeof Popover.C
  */
 export const ListBox = {
   Popover: ListBoxPopover,
-  Search: ListBoxSearch,
   Root: ListBoxRoot,
   Group: ListBoxGroup,
   Option: ListBoxOption,

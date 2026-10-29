@@ -110,6 +110,7 @@ export function Toolbar({
   const [, rerender] = useReducer((n: number) => n + 1, 0);
   const openRef = useRef(false);
   openRef.current = open;
+  const controls = useRef<HTMLDivElement>(null);
   // The selection's place on screen, kept while a field in the menu has the focus
   const range = useRef<Range | null>(null);
 
@@ -171,9 +172,7 @@ export function Toolbar({
         (event) => {
           // Alt+F10 takes the keyboard into the toolbar over the selection; Esc there comes back to the text
           if (event.altKey && event.key === "F10" && openRef.current) {
-            const control = document.querySelector<HTMLElement>(
-              '[role="toolbar"][aria-label="Text formatting"] [tabindex="0"]',
-            );
+            const control = controls.current?.querySelector<HTMLElement>('[tabindex="0"]');
 
             if (!control) return false;
             event.preventDefault();
@@ -285,7 +284,8 @@ export function Toolbar({
         if (next) return;
         setOpen(false);
 
-        // From the toolbar's own controls, Esc goes back to the selected text
+        // From the toolbar's own controls, Esc goes back to the selected text, which keeps its selection. A popup
+        // within it, such as the link field, takes its own Esc
         if (reason === "escape-key") editor.focus();
       }}
     >
@@ -302,17 +302,7 @@ export function Toolbar({
         finalFocus={false}
         className="overflow-visible p-0 px-1 motion-safe:starting:scale-100 motion-safe:data-starting-style:scale-100 motion-safe:data-ending-style:scale-100"
       >
-        <Controls.Root
-          label="Text formatting"
-          className="flex items-center gap-0.5"
-          // Esc from its controls goes back to the selected text, which keeps its selection
-          onKeyDown={(event) => {
-            if (event.key !== "Escape") return;
-            event.preventDefault();
-            setOpen(false);
-            editor.focus();
-          }}
-        >
+        <Controls.Root ref={controls} label="Text formatting" className="flex items-center gap-0.5">
           {state.turnInto && (
             <>
               <TurnIntoMenu

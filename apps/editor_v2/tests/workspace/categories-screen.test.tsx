@@ -928,6 +928,7 @@ test("a move whose answer was lost is checked against the list before another ca
   );
   await press("Move Health down");
   await until(() => expect(said()).toContain("The last move was saved."));
+  expect(document.body.textContent).not.toContain("couldn’t tell whether the category moved");
   expect(server.writes.filter((write) => write.path === "/editor/categories/order")).toHaveLength(
     2,
   );

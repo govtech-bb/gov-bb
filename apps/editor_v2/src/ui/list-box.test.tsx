@@ -3,6 +3,7 @@ import { act, useState, type ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { ListBox, useListNavigation } from "./list-box";
+import { SearchRow } from "./search-row";
 import { Popover } from "./popover";
 
 let host: HTMLDivElement;
@@ -41,7 +42,7 @@ function Insert({ onPick }: { onPick: (title: string) => void }) {
   return (
     <Popover.Root open>
       <ListBox.Popover aria-label="Insert page content">
-        <ListBox.Search
+        <SearchRow
           aria-label="Search page content"
           value={query}
           onChange={(event) => {
@@ -86,12 +87,20 @@ const highlighted = () =>
     .filter((option) => option.getAttribute("aria-selected") === "true")
     .map((option) => option.textContent);
 
-const press = (key: string) =>
-  act(async () => {
-    search().dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true }));
+/** Whether the key's default, such as moving the caret, went ahead. */
+const press = async (key: string) => {
+  let kept = true;
+
+  await act(async () => {
+    kept = search().dispatchEvent(
+      new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true }),
+    );
   });
 
-test("the arrows move the highlight round the list, Home and End to its ends, and Enter picks", async () => {
+  return kept;
+};
+
+test("the arrows move the highlight, stopping at the list's ends, Home and End move the caret, and Enter picks", async () => {
   const picked: string[] = [];
 
   await render(<Insert onPick={(title) => picked.push(title)} />);
@@ -105,12 +114,17 @@ test("the arrows move the highlight round the list, Home and End to its ends, an
   expect(options()[0]!.hasAttribute("data-highlighted")).toBe(true);
 
   await press("ArrowUp");
-  expect(highlighted()).toEqual(["Details:::details"]);
-  await press("ArrowDown");
   expect(highlighted()).toEqual(["Heading##"]);
-  await press("End");
+
+  for (const _ of options()) await press("ArrowDown");
   expect(highlighted()).toEqual(["Details:::details"]);
-  await press("Home");
+
+  // A text field keeps Home and End for its caret
+  expect(await press("Home")).toBe(true);
+  expect(await press("End")).toBe(true);
+  expect(highlighted()).toEqual(["Details:::details"]);
+
+  for (const _ of options()) await press("ArrowUp");
   await press("ArrowDown");
   expect(highlighted()).toEqual(["Paragraph"]);
   expect(search().getAttribute("aria-activedescendant")).toBe(options()[1]!.id);

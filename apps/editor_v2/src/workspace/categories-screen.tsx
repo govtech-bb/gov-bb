@@ -346,7 +346,9 @@ export function CategoriesScreen({
         return undefined;
       }
 
+      // The list could be read, so a card saying it couldn't is out of date
       settle(group);
+      setProblem(null);
       void client.invalidateQueries({ queryKey: ["content"] });
 
       return result.value;
