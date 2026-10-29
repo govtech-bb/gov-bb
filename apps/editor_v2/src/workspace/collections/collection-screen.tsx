@@ -124,6 +124,11 @@ export function CollectionScreen({
   const detail = useQuery(collectionQuery(api, collectionKey));
   const [adding, setAdding] = useState(false);
   const [deleting, setDeleting] = useState<CollectionRecord>();
+  // Each dialog stays on the page once closed, so it fades out showing what it showed open. Counting the openings
+  // makes each one a new dialog
+  const [additions, setAdditions] = useState(0);
+  const [deletion, setDeletion] = useState<{ record: CollectionRecord; opening: number }>();
+  const [shown, setShown] = useState<{ record: CollectionRecord; opening: number }>();
   const add = useRef<HTMLButtonElement>(null);
   const card = useRef<HTMLDivElement>(null);
   const collection = detail.data?.collection;
@@ -142,13 +147,33 @@ export function CollectionScreen({
   // dialog and what's typed in it alone
   const [opened, setOpened] = useState<CollectionRecord>();
 
-  if (opened?.record_key !== wanted && found !== opened) setOpened(found);
+  if (opened?.record_key !== wanted && found !== opened) {
+    setOpened(found);
+
+    if (found) setShown((last) => ({ record: found, opening: (last?.opening ?? 0) + 1 }));
+  }
+
+  const startAdding = () => {
+    setAdditions((count) => count + 1);
+    setAdding(true);
+  };
+
+  const startDeleting = (record: CollectionRecord) => {
+    setDeleting(record);
+    setDeletion((last) => ({ record, opening: (last?.opening ?? 0) + 1 }));
+  };
 
   const columns = useMemo(
     () =>
       collection
-        ? recordColumns(collection, (record) => onRecord(record.record_key), setDeleting, readOnly)
+        ? recordColumns(
+            collection,
+            (record) => onRecord(record.record_key),
+            startDeleting,
+            readOnly,
+          )
         : [],
+    // startDeleting sets state only
     [collection, onRecord, readOnly],
   );
 
@@ -180,7 +205,7 @@ export function CollectionScreen({
             variant="accent"
             size="md"
             disabled={readOnly || !collection}
-            onClick={() => setAdding(true)}
+            onClick={startAdding}
           >
             Add record
           </Button>
@@ -230,7 +255,7 @@ export function CollectionScreen({
               title: "No records yet",
               description: "Add one, and pages can show it.",
               actions: !readOnly && (
-                <Button variant="secondary" onClick={() => setAdding(true)}>
+                <Button variant="secondary" onClick={startAdding}>
                   Add record
                 </Button>
               ),
@@ -239,39 +264,40 @@ export function CollectionScreen({
         )}
         {!blocked && <table.Pagination name={["record", "records"]} />}
       </div>
-      {collection && adding && (
+      {collection && additions > 0 && (
         <RecordDialog
+          key={additions}
+          open={adding}
           api={api}
           collection={collection}
           readOnly={readOnly}
           close={() => setAdding(false)}
         />
       )}
-      {collection && opened && (
+      {collection && shown && (
         <RecordDialog
-          key={opened.record_key}
+          key={shown.opening}
+          open={!!opened}
           api={api}
           collection={collection}
-          record={opened}
+          record={shown.record}
           readOnly={readOnly}
-          close={() => {
-            onRecord(undefined);
-            // Opened from the address, it has no button to give the focus back to, so its row's Edit takes it
-            setTimeout(() => {
-              if (document.activeElement !== document.body) return;
-
-              [...(card.current?.querySelectorAll<HTMLElement>("[data-edit]") ?? [])]
-                .find((button) => button.dataset.edit === opened.record_key)
-                ?.focus();
-            });
-          }}
+          close={() => onRecord(undefined)}
+          // Back to the record's row, which also gives a dialog opened from the address somewhere to go
+          finalFocus={() =>
+            [...(card.current?.querySelectorAll<HTMLElement>("[data-edit]") ?? [])].find(
+              (button) => button.dataset.edit === shown.record.record_key,
+            ) ?? true
+          }
         />
       )}
-      {collection && deleting && (
+      {collection && deletion && (
         <DeleteRecordDialog
+          key={deletion.opening}
+          open={!!deleting}
           api={api}
           collection={collection}
-          record={deleting}
+          record={deletion.record}
           close={() => setDeleting(undefined)}
           focusAfter={add}
         />

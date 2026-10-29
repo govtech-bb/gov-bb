@@ -46,9 +46,9 @@ function DialogTrigger(props: Omit<BaseDialog.Trigger.Props, "handle">) {
   );
 }
 
-/** What a dialog or a drawer dims the page with. */
+/** What a dialog or a drawer dims the page with. `starting:` fades in a dialog added to the page already open too. */
 export const backdrop =
-  "fixed inset-0 z-50 bg-ink/40 transition-opacity duration-200 ease-out-quint data-starting-style:opacity-0 data-ending-style:opacity-0 data-ending-style:duration-150";
+  "fixed inset-0 z-50 bg-ink/40 transition-opacity duration-200 ease-out-quint starting:opacity-0 data-starting-style:opacity-0 data-ending-style:opacity-0 data-ending-style:duration-150";
 
 const sizes = {
   // A question and its answers
@@ -95,7 +95,7 @@ function DialogContent({
           finalFocus={finalFocus}
           className={cn(
             "relative flex max-h-full w-full flex-col overflow-hidden rounded-sm bg-white pb-6 font-sans text-ink shadow-popup outline-none",
-            "transition-[opacity,scale] duration-200 ease-out-quint data-starting-style:opacity-0 data-ending-style:opacity-0 data-ending-style:duration-150 motion-safe:data-starting-style:scale-96 motion-safe:data-ending-style:scale-96",
+            "transition-[opacity,scale] duration-200 ease-out-quint starting:opacity-0 data-starting-style:opacity-0 data-ending-style:opacity-0 data-ending-style:duration-150 motion-safe:starting:scale-96 motion-safe:data-starting-style:scale-96 motion-safe:data-ending-style:scale-96",
             sizes[size],
             className,
           )}

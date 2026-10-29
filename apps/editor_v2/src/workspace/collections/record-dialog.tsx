@@ -45,12 +45,18 @@ const refusedWith = (error: Error | null, status: number, code?: string) =>
  * load the saved one or download this one, as a page does.
  */
 export function RecordDialog({
+  open = true,
   api,
   collection,
   record,
   readOnly = false,
   close,
+  finalFocus,
 }: {
+  /** Kept on the page once closed, it fades out showing what it showed open; each opening is a new dialog. */
+  open?: boolean;
+  /** Where the focus goes once it closes, such as the record's row when nothing on the page opened it. */
+  finalFocus?: Parameters<typeof WorkspaceDialog>[0]["finalFocus"];
   api: EditorApi;
   collection: Collection;
   /** The record as it was read when the dialog opened; none to add one. */
@@ -209,6 +215,8 @@ export function RecordDialog({
 
   return (
     <WorkspaceDialog
+      open={open}
+      finalFocus={finalFocus}
       title={base ? `Edit ${base.record_key}` : "Add a record"}
       description={`${collection.title}. Saving changes every page that shows this record.`}
       close={close}
@@ -303,12 +311,15 @@ export function RecordDialog({
 
 /** Delete a record, once its author confirms, at the version they read. */
 export function DeleteRecordDialog({
+  open = true,
   api,
   collection,
   record,
   close,
   focusAfter,
 }: {
+  /** Kept on the page once closed, it fades out as it was; each opening is a new dialog. */
+  open?: boolean;
   api: EditorApi;
   collection: Collection;
   record: CollectionRecord;
@@ -351,7 +362,7 @@ export function DeleteRecordDialog({
 
   return (
     <ConfirmDialog
-      open
+      open={open}
       onClose={close}
       title={`Delete ${record.record_key}?`}
       description={`It's removed from ${collection.title}, and from every page that shows it. This can't be undone.`}
