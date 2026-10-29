@@ -1,6 +1,7 @@
 /**
  * Loads the live estate's categories and markdown pages — the snapshot in
- * `seed-data/estate.json` — with each new page's search chunks. The database
+ * `seed-data/estate.json` — with each new page's search chunks, and the data
+ * collections in `seed-data/collections.ts` with their records. The database
  * records each insert in the history; nothing here names a user, so it is
  * recorded as `system`.
  *
@@ -14,14 +15,23 @@ import { count, eq, sql, TransactionRollbackError } from "drizzle-orm";
 import { writeSearchChunks } from "./adapters/postgres-pages";
 import type { Database } from "./db";
 import { chunkMarkdown } from "./modules/search-text";
-import { categories, changeEvents, contentPages } from "./schema";
+import {
+  categories,
+  changeEvents,
+  collectionRecords,
+  contentPages,
+  dataCollections,
+} from "./schema";
 import { ESTATE } from "./seed-data";
+import { COLLECTIONS } from "./seed-data/collections";
 
 export async function seed(db: Database): Promise<{
   categories: number;
   documents: number;
+  collections: number;
+  records: number;
 }> {
-  const counts = { categories: 0, documents: 0 };
+  const counts = { categories: 0, documents: 0, collections: 0, records: 0 };
 
   // The taxonomy lists a category before its subcategories.
   const categoryIds = new Map<string, string>();
@@ -116,6 +126,35 @@ export async function seed(db: Database): Promise<{
     pending = pending.filter((page) => !ready.includes(page));
   }
 
+  for (const collection of COLLECTIONS) {
+    const inserted = await db
+      .insert(dataCollections)
+      .values({
+        key: collection.key,
+        title: collection.title,
+        recordKey: collection.record_key,
+        schema: collection.schema,
+      })
+      .onConflictDoNothing()
+      .returning({ id: dataCollections.id });
+    counts.collections += inserted.length;
+    // Records only with a new collection, so a reseed never brings back a
+    // record an editor deleted.
+    if (inserted.length === 0) continue;
+    for (const data of collection.records) {
+      const record = await db
+        .insert(collectionRecords)
+        .values({
+          collectionKey: collection.key,
+          recordKey: data[collection.record_key]!,
+          data,
+        })
+        .onConflictDoNothing()
+        .returning({ id: collectionRecords.id });
+      counts.records += record.length;
+    }
+  }
+
   return counts;
 }
 
@@ -131,6 +170,8 @@ export type ImportReport = {
   actors: Record<string, number>;
   categories: number;
   documents: number;
+  collections: number;
+  records: number;
 };
 
 /**

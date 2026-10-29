@@ -4,6 +4,7 @@ import type { FastifyInstance, FastifyRequest } from "fastify";
 import pino from "pino";
 import { buildApp } from "./app";
 import { createBetterAuth } from "./adapters/better-auth";
+import { PostgresCollections } from "./adapters/postgres-collections";
 import { mailerFor } from "./adapters/mail";
 import { PostgresPages } from "./adapters/postgres-pages";
 import { PostgresReviewRecipients } from "./adapters/postgres-review-recipients";
@@ -16,6 +17,7 @@ import type { AuthHandler } from "./routes/auth";
 import { EditorAccess, type EmployeeGate } from "./services/editor-access";
 import { EditorIndex } from "./services/editor-index";
 import { CategoryEditing } from "./services/category-editing";
+import { CollectionEditing } from "./services/collection-editing";
 import { PageEditing } from "./services/page-editing";
 import { PageResolution } from "./services/page-resolution";
 import {
@@ -91,7 +93,7 @@ async function main(): Promise<void> {
     if (config.seed) {
       operation = "seed";
       const counts = await seed(db);
-      if (counts.documents + counts.categories > 0)
+      if (Object.values(counts).some((n) => n > 0))
         logger.info(counts, "seeded the estate");
     }
     if (shutdown.signal.aborted) return;
@@ -141,6 +143,7 @@ async function main(): Promise<void> {
       ),
       index: new EditorIndex(pages),
       categories: new CategoryEditing(pages, () => new Date()),
+      collections: new CollectionEditing(new PostgresCollections(db)),
       access,
       roles,
       auth,

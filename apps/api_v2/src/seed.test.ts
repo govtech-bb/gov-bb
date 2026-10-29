@@ -9,6 +9,7 @@ import { describe, expect, it } from "vitest";
 import type { Database } from "./db";
 import { importEstate, seed } from "./seed";
 import { ESTATE } from "./seed-data";
+import { COLLECTIONS } from "./seed-data/collections";
 import { Redacted } from "./modules/redacted";
 import { PREVIEW_TOKEN } from "./routes/site";
 import {
@@ -17,6 +18,18 @@ import {
   createTestServices,
   expectOk,
 } from "./test-db";
+
+/** What the seed adds besides the estate: its collections and their records. */
+const SEEDED = {
+  collections: COLLECTIONS.length,
+  records: COLLECTIONS.reduce((n, c) => n + c.records.length, 0),
+};
+/** The history the seed writes, an event per row. */
+const SEEDED_EVENTS =
+  ESTATE.pages.length +
+  ESTATE.categories.length +
+  SEEDED.collections +
+  SEEDED.records;
 
 describe("seed", () => {
   it("records the markdown commit the snapshot came from", () => {
@@ -43,12 +56,17 @@ describe("seed", () => {
     expect(await seed(db)).toEqual({
       categories: ESTATE.categories.length,
       documents: ESTATE.pages.length,
+      ...SEEDED,
     });
-    expect(await seed(db)).toEqual({ categories: 0, documents: 0 });
-    // Each page's and category's history starts where the seed left it,
-    // and only once.
+    expect(await seed(db)).toEqual({
+      categories: 0,
+      documents: 0,
+      collections: 0,
+      records: 0,
+    });
+    // Each seeded row's history starts where the seed left it, and only once.
     expect(expectOk(await createTestServices(db).index.version()).count).toBe(
-      ESTATE.pages.length + ESTATE.categories.length,
+      SEEDED_EVENTS,
     );
 
     await close();
@@ -194,6 +212,7 @@ describe("seed", () => {
       actors: {},
       categories: ESTATE.categories.length,
       documents: ESTATE.pages.length,
+      ...SEEDED,
     });
     const { rows } = await db.execute<{ actor: string }>(
       sql`select distinct actor from change_events`,
@@ -210,9 +229,7 @@ describe("seed", () => {
 
     const refusal = importEstate(db, { dryRun: false });
     await expect(refusal).rejects.toThrow(/refusing/);
-    await expect(refusal).rejects.toThrow(
-      `system=${ESTATE.pages.length + ESTATE.categories.length}`,
-    );
+    await expect(refusal).rejects.toThrow(`system=${SEEDED_EVENTS}`);
     expect(await countOf(db, "content_pages")).toBe(ESTATE.pages.length);
     expect(await countOf(db, "change_events")).toBe(history);
 
@@ -229,6 +246,7 @@ describe("seed", () => {
       actors: {},
       categories: ESTATE.categories.length,
       documents: ESTATE.pages.length,
+      ...SEEDED,
     });
     expect(await countOf(db, "content_pages")).toBe(0);
     expect(await countOf(db, "categories")).toBe(0);
@@ -267,9 +285,12 @@ describe("seed", () => {
       source: ESTATE.source,
       reason: "test replace",
       existing: ESTATE.pages.length,
-      actors: { system: ESTATE.pages.length + ESTATE.categories.length },
+      actors: { system: SEEDED_EVENTS },
       categories: ESTATE.categories.length,
       documents: ESTATE.pages.length,
+      // Collections are not content an import replaces: editors' records stay.
+      collections: 0,
+      records: 0,
     });
     expect(await countOf(db, "content_pages")).toBe(ESTATE.pages.length);
 

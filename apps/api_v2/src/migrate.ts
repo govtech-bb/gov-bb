@@ -28,6 +28,7 @@ import { SQL as PAGE_REVISIONS_SQL } from "./migrations/010_page_revisions";
 import { SQL as REVISION_REVIEW_SQL } from "./migrations/011_revision_review";
 import { SQL as REVIEW_ACTIONS_SQL } from "./migrations/012_change_action_review";
 import { SQL as REVIEW_HISTORY_SQL } from "./migrations/013_review_history_trigger";
+import { SQL as DATA_COLLECTIONS_SQL } from "./migrations/014_data_collections";
 import { SQL as REVISION_DISCARDED_SQL } from "./migrations/015_revision_discarded";
 import type { Database } from "./db";
 
@@ -46,6 +47,7 @@ const MIGRATIONS = [
   ["011_revision_review", REVISION_REVIEW_SQL],
   ["012_change_action_review", REVIEW_ACTIONS_SQL],
   ["013_review_history_trigger", REVIEW_HISTORY_SQL],
+  ["014_data_collections", DATA_COLLECTIONS_SQL],
   ["015_revision_discarded", REVISION_DISCARDED_SQL],
 ] as const;
 
