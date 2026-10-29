@@ -176,20 +176,16 @@ async function mount(source: string, collections: PageCollections) {
 }
 
 describe("the contact block in the editor", () => {
-  test("shows the record's current details, linking only safe addresses", async () => {
+  test("shows the record's current details, with no links to leave the editor by", async () => {
     await mount(`${CONTACT.replace("phone,email,hours", "phone,email,website,hours")}\n`, {
       read: async () => CONTACTS,
     });
     const block = pageControl(".page-contacts");
+    expect(block.getAttribute("role")).toBe("group");
     expect(block.textContent).toContain("Telephone(246) 535-0021");
     expect(block.textContent).toContain("Opening hours8:30am to 4:30pm");
-    expect([...block.querySelectorAll("a")].map((link) => link.getAttribute("href"))).toEqual([
-      "tel:2465350021",
-      "mailto:drugservice@health.gov.bb",
-      // A script address is read as a site name, never run
-      "https://javascript:alert(1)",
-    ]);
-    expect(block.querySelector('a[href^="javascript"]')).toBeNull();
+    // The site links the phone, email and website. In the editor a press on a tile stays on the page being edited
+    expect(block.querySelector("a")).toBeNull();
   });
 
   test("warns when the record has gone", async () => {
@@ -222,6 +218,23 @@ describe("the contact block in the editor", () => {
       "Barbados Drug Service",
       "NIS Severance",
     ]);
+
+    // Each choice applies as it's made: there's nothing to apply, and closing the menu can't drop one
+    expect(
+      [...document.querySelectorAll("button")].some(
+        (button) => button.textContent === "Apply settings",
+      ),
+    ).toBe(false);
+    await act(async () => {
+      select.value = "nis-severance-payment-department";
+      select.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    await act(async () => {});
+    expect(pageControl(".page-contact-block").textContent).toContain("431-7400");
+    await act(async () => {
+      select.value = "barbados-drug-service";
+      select.dispatchEvent(new Event("change", { bubbles: true }));
+    });
 
     const open = [...document.querySelectorAll("button")].find(
       (button) => button.textContent === "Open the record to change it",

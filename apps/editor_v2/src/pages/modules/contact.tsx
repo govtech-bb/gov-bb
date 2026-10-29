@@ -1,4 +1,4 @@
-import { AddressBook, ArrowSquareOut, Warning } from "@phosphor-icons/react";
+import { AddressBook, ArrowRight, Warning } from "@phosphor-icons/react";
 import { contactBlockFor, contactDetails } from "@govtech-bb/block-kit/contact";
 import { DecoratorNode, type LexicalNode, type NodeKey, type SerializedLexicalNode } from "lexical";
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
@@ -117,21 +117,16 @@ export function ContactPreview({ collection, record, fields }: ContactSettings) 
 
   if (!details.length) return status("This record has none of the chosen details.", true);
 
+  // The site links what can be linked. In the editor nothing is, so a press on a tile stays on the page being edited
+  // and the tiles take no Tab stops in the text
   return (
-    <div className="page-contact page-contacts" aria-label="Contact details">
-      {details.map(({ field, label, text, href }) =>
-        href ? (
-          <a key={field} className="page-contact-tile" href={href}>
-            <span>{label}</span>
-            <strong>{text}</strong>
-          </a>
-        ) : (
-          <div key={field} className="page-contact-tile">
-            <span>{label}</span>
-            <strong>{text}</strong>
-          </div>
-        ),
-      )}
+    <div className="page-contact page-contacts" role="group" aria-label="Contact details">
+      {details.map(({ field, label, text }) => (
+        <div key={field} className="page-contact-tile">
+          <span>{label}</span>
+          <strong>{text}</strong>
+        </div>
+      ))}
     </div>
   );
 }
@@ -242,7 +237,10 @@ const contact: PageHandler = {
   render: (node, _, key) => <ContactPreview key={key} {...contactSettings(node)} />,
 };
 
-/** Block options for a contact block: its record, the details to show, and the way to change the record. */
+/**
+ * Block options for a contact block: its record, the details to show, and the way to change the record. Each choice
+ * applies as it's made, as the page's settings do, so closing the menu never drops one.
+ */
 export function ContactBlockSettings({
   settings,
   onChange,
@@ -252,9 +250,7 @@ export function ContactBlockSettings({
 }) {
   const state = useCollection(settings.collection);
   const host = usePageCollections();
-  const [record, setRecord] = useState(settings.record);
-  const [fields, setFields] = useState<readonly string[]>(settings.fields);
-  const [error, setError] = useState<string>();
+  const { record, fields } = settings;
   const collection = state.status === "read" ? state.value : null;
 
   const choices = [...(collection?.records ?? [])].sort((a, b) =>
@@ -267,24 +263,13 @@ export function ContactBlockSettings({
     ) ?? [];
 
   return (
-    <form
-      className="page-component-settings grid gap-4 border-b border-line px-3.5 pt-2 pb-4"
-      onSubmit={(event) => {
-        event.preventDefault();
-
-        if (!record) return setError("Choose a contact record.");
-
-        if (!fields.length) return setError("Choose at least one detail to show.");
-        setError(undefined);
-        onChange({ record, fields });
-      }}
-    >
+    <div className="page-component-settings grid gap-4 border-b border-line px-3.5 pt-2 pb-4">
       <Field size="sm" label="Contact record">
         <NativeSelect
           size="sm"
           value={record}
           disabled={!collection}
-          onChange={(event) => setRecord(event.target.value)}
+          onChange={(event) => onChange({ record: event.target.value })}
         >
           <option value="">
             {state.status === "loading" ? "Loading records…" : "Choose a record"}
@@ -301,19 +286,22 @@ export function ContactBlockSettings({
         </NativeSelect>
       </Field>
       {detailFields.length > 0 && (
-        <FieldGroup label="Details to show">
+        <FieldGroup
+          label="Details to show"
+          error={fields.length ? undefined : "Choose at least one detail to show."}
+        >
           {detailFields.map((field) => (
             <Checkbox
               key={field.key}
               label={field.label}
               checked={fields.includes(field.key)}
               onCheckedChange={(checked) =>
-                setFields(
+                onChange({
                   // In the collection's order, whatever order they're ticked in
-                  detailFields
+                  fields: detailFields
                     .map((item) => item.key)
                     .filter((key) => (key === field.key ? checked : fields.includes(key))),
-                )
+                })
               }
             />
           ))}
@@ -324,27 +312,18 @@ export function ContactBlockSettings({
           The contact records couldn't be loaded.
         </p>
       )}
-      {error && (
-        <p className="text-error" role="alert">
-          {error}
-        </p>
-      )}
-      <div className="flex flex-wrap gap-2">
-        <Button type="submit" variant="secondary">
-          Apply settings
-        </Button>
-        {host?.openRecord && settings.record && (
+      {host?.openRecord && record && (
+        <div>
           <Button
-            type="button"
             variant="ghost"
-            icon={<ArrowSquareOut />}
-            onClick={() => host.openRecord?.(settings.collection, settings.record)}
+            icon={<ArrowRight />}
+            onClick={() => host.openRecord?.(settings.collection, record)}
           >
             Open the record to change it
           </Button>
-        )}
-      </div>
-    </form>
+        </div>
+      )}
+    </div>
   );
 }
 

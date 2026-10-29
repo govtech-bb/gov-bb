@@ -23,6 +23,7 @@ import {
   $setSelection,
   COMMAND_PRIORITY_LOW,
   HISTORY_PUSH_TAG,
+  SKIP_SELECTION_FOCUS_TAG,
   INDENT_CONTENT_COMMAND,
   KEY_DOWN_COMMAND,
   OUTDENT_CONTENT_COMMAND,
@@ -541,7 +542,11 @@ function PageBlockMenu({ menu, onClose }: { menu: OpenMenu; onClose: () => void 
           else if ($isElementNode(block)) block.selectStart();
           apply(block);
         },
-        { tag: HISTORY_PUSH_TAG, discrete: true },
+        // Kept open, the menu's own control keeps the focus while the block changes
+        {
+          tag: close ? HISTORY_PUSH_TAG : [HISTORY_PUSH_TAG, SKIP_SELECTION_FOCUS_TAG],
+          discrete: true,
+        },
       );
 
       if (close) {
@@ -586,8 +591,6 @@ function PageBlockMenu({ menu, onClose }: { menu: OpenMenu; onClose: () => void 
         )}
         {model.contact && (
           <ContactBlockSettings
-            // A new form when the block changes underneath it, such as by undo
-            key={JSON.stringify(model.contact)}
             settings={model.contact}
             onChange={(patch) =>
               change((block) => {
