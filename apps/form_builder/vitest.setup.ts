@@ -1,11 +1,5 @@
 import "@testing-library/jest-dom/vitest";
-import { configure } from "@testing-library/react";
 import { vi } from "vitest";
-
-// findBy*/waitFor default to 1s. Under CI's full-suite load, mounting the
-// router and a workspace can outlast that, so specs flaked on waits that pass
-// alone (-services.spec.tsx). testTimeout (10s) still bounds a real hang.
-configure({ asyncUtilTimeout: 5000 });
 
 // @testing-library/dom's waitFor decides between real and fake timer handling
 // by probing the global `jest` object — without this alias it assumes real
@@ -15,6 +9,13 @@ configure({ asyncUtilTimeout: 5000 });
 // jsdom has no layout or media engine; real scrolling and popup positioning
 // are checked in the browser, while component tests exercise their behavior.
 if (typeof window !== "undefined") {
+  // findBy*/waitFor default to 1s. Under CI's full-suite load, mounting the
+  // router and a workspace can outlast that, so specs flaked on waits that
+  // pass alone (-services.spec.tsx). 3s stays well under testTimeout (10s), so
+  // a stuck wait still reports its own error and DOM. Imported here so
+  // node-environment specs don't load React DOM.
+  const { configure } = await import("@testing-library/react");
+  configure({ asyncUtilTimeout: 3000 });
   window.matchMedia ??= (media) => ({
     media,
     matches: false,
