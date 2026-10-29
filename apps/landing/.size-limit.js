@@ -1,3 +1,5 @@
+import { readdirSync } from 'node:fs'
+
 // Client bundle budgets, checked in CI by `nx run landing:size` (#3139).
 // Budgets are the gzip size at the time they were set, plus 10%, measured on
 // the CI build (no VITE_* env), which can differ slightly from a deploy build.
@@ -9,10 +11,22 @@
 // entry grows by ~100 KB gzip while the total barely moves.
 //
 // If a budget fails, check what grew before raising it.
+
+// Rollup names a chunk after its first module, so a lazy or vendor chunk could
+// also come out as `index-<hash>.js` and silently join the entry budget. Pin the
+// budget to a single file and fail loudly if the name stops being unique.
+const ASSETS = '.amplify-hosting/static/assets'
+const entries = readdirSync(ASSETS).filter((f) => /^index-[\w-]+\.js$/.test(f))
+if (entries.length !== 1) {
+  throw new Error(
+    `Expected exactly one client entry (index-*.js) in ${ASSETS}, found: ${entries.join(', ') || 'none'}`,
+  )
+}
+
 export default [
   {
     name: 'Client entry',
-    path: '.amplify-hosting/static/assets/index-*.js',
+    path: `${ASSETS}/${entries[0]}`,
     gzip: true,
     limit: '403 kB',
   },
