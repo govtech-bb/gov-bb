@@ -1,7 +1,7 @@
 import { Test } from "@nestjs/testing";
 import { ConfigService } from "@nestjs/config";
 import type { NestExpressApplication } from "@nestjs/platform-express";
-import { createHmac } from "node:crypto";
+import { createHmac, randomBytes } from "node:crypto";
 import request from "supertest";
 import { PaymentWebhookController } from "./payment-webhook.controller";
 import { PaymentWebhookService } from "./payment-webhook.service";
@@ -21,7 +21,8 @@ import { useBodyParsers } from "@/common/body-parsers";
  * `handleEzpayCallback` — the only path that confirms a payment.
  */
 
-const SECRET = "webhook-test-secret";
+// Random per run: a throwaway key for signing test callbacks, not a credential.
+const SECRET = randomBytes(32).toString("hex");
 
 const callback = {
   _reference: "pay-ref-1",
@@ -76,7 +77,7 @@ describe("POST /payments/ezpay/webhook — signature verification over HTTP", ()
 
   it("refuses a webhook signed with the wrong secret", async () => {
     const raw = JSON.stringify(callback);
-    const forged = createHmac("sha256", "not-the-secret")
+    const forged = createHmac("sha256", randomBytes(32))
       .update(raw)
       .digest("hex");
 
