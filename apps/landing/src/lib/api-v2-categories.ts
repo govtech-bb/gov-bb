@@ -95,7 +95,7 @@ export type CategoryPath = z.infer<typeof CategoryPath>
  * GET a public api_v2 read, parsed; `missing` is a 404 the caller may expect.
  * Any other miss logs an `api_v2_fallback` line (contract in api-v2-page.ts).
  */
-async function readPublic<T>(
+export async function readPublic<T>(
   base: string,
   path: string,
   schema: z.ZodType<T>,

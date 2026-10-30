@@ -56,8 +56,9 @@ describe.each(['', 'landing-secret'])('landing token %j', (token) => {
     )
   })
 
-  it('keeps API categories in the sitemap when landing is exempt', async () => {
+  it('keeps API categories and pages in the sitemap when landing is exempt', async () => {
     config.landingSecret = token
+    // One body for both reads: each schema ignores the other's key.
     const fetchImpl = apiFetch({
       categories: [
         {
@@ -68,6 +69,7 @@ describe.each(['', 'landing-secret'])('landing token %j', (token) => {
           subcategories: [],
         },
       ],
+      pages: [{ url: '/new-category/only-in-api-v2' }],
     })
     const { Route } = await import('../routes/sitemap[.]xml')
     // This route's GET handler does not use a request context.
@@ -77,14 +79,16 @@ describe.each(['', 'landing-secret'])('landing token %j', (token) => {
 
     const response = await GET()
     expect(response.status).toBe(200)
-    expect(await response.text()).toContain(
-      `<loc>${SITE_URL}/new-category</loc>`,
-    )
-    expect(fetchImpl).toHaveBeenCalledOnce()
-    const [url, init] = fetchImpl.mock.calls[0]
-    expect(url).toBe(`${config.apiV2Url}/categories`)
-    expect(new Headers(init?.headers).get('x-landing-token')).toBe(
-      token || null,
-    )
+    const xml = await response.text()
+    expect(xml).toContain(`<loc>${SITE_URL}/new-category</loc>`)
+    expect(xml).toContain(`<loc>${SITE_URL}/new-category/only-in-api-v2</loc>`)
+    expect(fetchImpl.mock.calls.map(([url]) => url).sort()).toEqual([
+      `${config.apiV2Url}/catalog`,
+      `${config.apiV2Url}/categories`,
+    ])
+    for (const [, init] of fetchImpl.mock.calls)
+      expect(new Headers(init?.headers).get('x-landing-token')).toBe(
+        token || null,
+      )
   })
 })
