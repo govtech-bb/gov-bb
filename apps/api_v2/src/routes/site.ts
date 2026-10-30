@@ -12,6 +12,7 @@ import { SCHEMAS } from "./contracts";
 import {
   EDITOR_READ,
   PUBLIC_READ,
+  SITE_VERSION_READ,
   siteNotFoundCache,
   siteReadCache,
   storageFailed,
@@ -127,6 +128,21 @@ export const siteRoutes: FastifyPluginAsyncZod<{
 
   await site.register(publicCategoryRoutes, { navigation, viewerFor });
   await site.register(publicCollectionRoutes, { collections, viewerFor });
+
+  site.route({
+    method: "GET",
+    url: "/site-version",
+    schema: SCHEMAS.getSiteVersion,
+    handler: async (request, reply) => {
+      const version = await navigation.version();
+      if (!version.ok)
+        return reply
+          .status(500)
+          .send(storageFailed(request.log, version.error));
+      reply.header("Cache-Control", SITE_VERSION_READ);
+      return { version: version.value };
+    },
+  });
 
   site.route({
     method: "GET",

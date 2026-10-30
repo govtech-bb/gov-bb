@@ -17,6 +17,7 @@ import {
   fetchCachedCategoryTree,
   fetchCategoryListing,
   fetchCategoryTree,
+  fetchCurrentCategoryTree,
   resolveCategoryAddress,
 } from './api-v2-categories'
 import type { CategoryListing, CategoryNode } from './api-v2-categories'
@@ -517,4 +518,99 @@ describe('resolveCategoryAddress', () => {
       ).toEqual({ kind })
     },
   )
+})
+
+describe('fetchCurrentCategoryTree', () => {
+  const OLD = [TREE[0]]
+  const NEW: CategoryNode[] = [
+    ...TREE,
+    {
+      slug: 'travel',
+      url: '/travel',
+      title: 'Travel',
+      description: null,
+      subcategories: [],
+    },
+  ]
+
+  /** A fetch whose answers are released by hand, one per request. */
+  function heldFetch() {
+    const held: Array<(response: Response) => void> = []
+    const fetchImpl = vi.fn(
+      () => new Promise<Response>((resolve) => held.push(resolve)),
+    ) as unknown as typeof fetch
+    const started = (n: number) =>
+      vi.waitFor(() => expect(held).toHaveLength(n))
+    const release = (i: number, categories: CategoryNode[]) =>
+      held[i](new Response(JSON.stringify({ categories }), { status: 200 }))
+    return { fetchImpl, started, release }
+  }
+
+  /** Site version moves, rising across tests: the watch's count is per instance. */
+  let changes = 1000
+
+  it('does not store a first load begun before the site version moved', async () => {
+    const { fetchImpl, started, release } = heldFetch()
+    const at = `${base}/current-first`
+    const before = fetchCurrentCategoryTree(at, ++changes, fetchImpl)
+    await started(1)
+    const after = fetchCurrentCategoryTree(at, ++changes, fetchImpl)
+    await started(2)
+    release(0, OLD)
+    release(1, NEW)
+    expect(await after).toEqual({ kind: 'found', categories: NEW })
+    expect(await before).toEqual({ kind: 'found', categories: NEW })
+    expect(await fetchCurrentCategoryTree(at, changes, fetchImpl)).toEqual({
+      kind: 'found',
+      categories: NEW,
+    })
+    expect(fetchImpl).toHaveBeenCalledTimes(2)
+  })
+
+  it('does not store a refresh begun before the site version moved', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    const { fetchImpl, started, release } = heldFetch()
+    const at = `${base}/current-refresh`
+    const first = fetchCurrentCategoryTree(at, ++changes, fetchImpl)
+    await started(1)
+    release(0, OLD)
+    expect(await first).toEqual({ kind: 'found', categories: OLD })
+
+    vi.advanceTimersByTime(CATEGORY_TREE_STALE_MS)
+    const before = fetchCurrentCategoryTree(at, changes, fetchImpl)
+    await started(2)
+    const after = fetchCurrentCategoryTree(at, ++changes, fetchImpl)
+    await started(3)
+    release(1, OLD)
+    release(2, NEW)
+    expect(await before).toEqual({ kind: 'found', categories: OLD })
+    expect(await after).toEqual({ kind: 'found', categories: NEW })
+    expect(await fetchCurrentCategoryTree(at, changes, fetchImpl)).toEqual({
+      kind: 'found',
+      categories: NEW,
+    })
+    expect(fetchImpl).toHaveBeenCalledTimes(3)
+  })
+
+  it('gives every read of a new site version the fresh tree, not only the first', async () => {
+    const { fetchImpl, started, release } = heldFetch()
+    const at = `${base}/current-concurrent`
+    const first = fetchCurrentCategoryTree(at, ++changes, fetchImpl)
+    await started(1)
+    release(0, OLD)
+    expect(await first).toEqual({ kind: 'found', categories: OLD })
+
+    ++changes
+    const reads = Promise.all([
+      fetchCurrentCategoryTree(at, changes, fetchImpl),
+      fetchCurrentCategoryTree(at, changes, fetchImpl),
+    ])
+    await started(2)
+    release(1, NEW)
+    expect(await reads).toEqual([
+      { kind: 'found', categories: NEW },
+      { kind: 'found', categories: NEW },
+    ])
+    expect(fetchImpl).toHaveBeenCalledTimes(2)
+  })
 })

@@ -1,7 +1,7 @@
 import { createServerFn } from '@tanstack/react-start'
-import { QueryClient } from '@tanstack/react-query'
+import { QueryClient, isCancelledError } from '@tanstack/react-query'
 import { z } from 'zod'
-import { API_V2_TIMEOUT_MS, apiV2Base } from './api-v2-page'
+import { API_V2_TIMEOUT_MS, apiV2Base, siteVersionChanges } from './api-v2-page'
 import { logFallback, message } from './api-v2-log'
 
 /**
@@ -253,16 +253,55 @@ export async function resolveCategoryAddress(
 const publicCategoryCache = new QueryClient()
 
 /** Public category reads shared across server requests, never the router's private viewer state. */
-export function fetchCachedCategoryTree(base: string | null) {
-  return publicCategoryCache.fetchQuery({
-    ...categoryTreeQuery(() => fetchCategoryTree(base)),
-    queryKey: ['public-category-tree', base],
-  })
+export async function fetchCachedCategoryTree(
+  base: string | null,
+  fetchImpl: typeof fetch = fetch,
+): Promise<CategoryTreeResult> {
+  const read = () =>
+    publicCategoryCache.fetchQuery({
+      ...categoryTreeQuery(() => fetchCategoryTree(base, fetchImpl)),
+      queryKey: ['public-category-tree', base],
+    })
+  try {
+    return await read()
+  } catch (error) {
+    // A first load cancelled by a site version move: join the fresh one.
+    if (isCancelledError(error)) return read()
+    throw error
+  }
 }
 
-/** Server function: the cached public tree from the configured api_v2. */
-export const getApiV2CategoryTree = createServerFn().handler(() =>
-  fetchCachedCategoryTree(apiV2Base()),
+/** Site version moves the cached tree has been expired for. */
+let treeChanges = 0
+/** The latest expiry; every read waits for it, not only the one that began it. */
+let expiring: Promise<void> = Promise.resolve()
+
+/**
+ * The cached public tree, expired first when `changes` (site version moves)
+ * differs from the last call, as the page cache is. A fetch begun before the
+ * move is cancelled, not just marked stale: otherwise the next read joins it
+ * and its older answer is stored as fresh. Its waiters get the tree cached
+ * before it, or, on a first load, the fresh read. Every read of the new
+ * version waits for the one expiry, so none is served the old tree meanwhile.
+ */
+export async function fetchCurrentCategoryTree(
+  base: string | null,
+  changes: number,
+  fetchImpl: typeof fetch = fetch,
+): Promise<CategoryTreeResult> {
+  if (changes !== treeChanges) {
+    treeChanges = changes
+    expiring = publicCategoryCache
+      .cancelQueries()
+      .then(() => publicCategoryCache.invalidateQueries())
+  }
+  await expiring
+  return fetchCachedCategoryTree(base, fetchImpl)
+}
+
+/** Server function: the current public tree from the configured api_v2. */
+export const getApiV2CategoryTree = createServerFn().handler(async () =>
+  fetchCurrentCategoryTree(apiV2Base(), await siteVersionChanges()),
 )
 
 /** Server function: `fetchCategoryListing` against the configured api_v2. */

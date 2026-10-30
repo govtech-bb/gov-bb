@@ -5,6 +5,7 @@ import type { ContentPage } from '../content/registry'
 import { bakeStartLinkFormId } from '../utils/markdown/plugins'
 import { createApiV2Cache } from './api-v2-cache'
 import { REASONS, logFallback, message } from './api-v2-log'
+import { createVersionWatch, fetchSiteVersion } from './api-v2-version'
 import type { Frontmatter } from './frontmatter'
 
 /**
@@ -341,10 +342,27 @@ export function contentSource(result: ApiV2Result): ContentSource {
 
 // Pure, so the client build (where the handler is stripped) drops the cache.
 const apiV2Cache = /* @__PURE__ */ createApiV2Cache()
+let siteChanges = 0
+const checkSiteVersion = /* @__PURE__ */ createVersionWatch(
+  () => fetchSiteVersion(apiV2Base()),
+  () => {
+    siteChanges++
+    apiV2Cache.expire()
+  },
+)
 
-/** Server function: `resolveApiV2Page` against the configured api_v2, cached. */
+/** Checks api_v2's site version, then resolves to how many times this
+ *  instance has seen it move, for a cache besides the page cache to expire on. */
+export async function siteVersionChanges(): Promise<number> {
+  await checkSiteVersion()
+  return siteChanges
+}
+
+/** Server function: `resolveApiV2Page` against the configured api_v2, cached
+ *  until it expires or api_v2's site version moves. */
 export const getApiV2Page = createServerFn()
   .validator((url: string) => url)
-  .handler(({ data: url }) =>
-    apiV2Cache.get(url, () => resolveApiV2Page(apiV2Base(), url)),
-  )
+  .handler(async ({ data: url }) => {
+    await checkSiteVersion()
+    return apiV2Cache.get(url, () => resolveApiV2Page(apiV2Base(), url))
+  })

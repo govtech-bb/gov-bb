@@ -1181,6 +1181,24 @@ describe("Cache-Control", () => {
   });
 });
 
+describe("GET /site-version", () => {
+  const version = async () => {
+    const response = await app.inject({ url: "/site-version" });
+    expect(response.statusCode).toBe(200);
+    expect(response.headers["cache-control"]).toBe("public, max-age=5");
+    return (response.json() as { version: string }).version;
+  };
+
+  it("needs no sign-in, holds still between changes and moves on one", async () => {
+    const before = await version();
+    expect(await version()).toBe(before);
+
+    await seedPage();
+
+    expect(await version()).not.toBe(before);
+  });
+});
+
 describe("timestamp precision", () => {
   /**
    * `updated_at` has to survive the round trip through JSON exactly, or
