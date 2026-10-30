@@ -22,17 +22,13 @@ name: Deploy Staging
 #     `staging` in the Amplify console with auto-build set per app IaC.
 
 on:
-  # TRUNK: staging is NOT pushed to directly. It's dispatched by deploy-sandbox's
-  # `promote-to-staging` job once sandbox is fully green (the sequential gate),
-  # or manually from the Actions tab. This job fast-forwards the `staging` branch
-  # to the commit being deployed so Amplify (which builds the `staging` branch)
-  # stays consistent with the ECS deploys.
+  # TRUNK: staging is NOT pushed to directly. deploy-sandbox's
+  # `promote-to-staging` fast-forwards `staging` to the commit sandbox proved and
+  # dispatches this workflow ON `staging`, so the run deploys exactly that commit
+  # (#2756). A manual run from main (Actions tab) still works: advance-staging
+  # fast-forwards `staging` to main's HEAD first so Amplify, which builds the
+  # `staging` branch, matches the ECS deploys.
   workflow_dispatch:
-    inputs:
-      promoted_sha:
-        description: "Commit sandbox proved (for the audit log; the run deploys main's HEAD)."
-        required: false
-        type: string
 
 permissions:
   # Single-purpose deploy workflow: every job assumes the AWS deploy role via
@@ -45,8 +41,10 @@ permissions:
 
 # Queue deploys; never cancel one mid-flight. A half-applied deploy must
 # finish before the next starts.
+# One queue whichever branch the run is on — deploy-sandbox's promote job joins
+# it too, so `staging` never moves under an in-flight deploy.
 concurrency:
-  group: deploy-staging-${{ github.ref }}
+  group: deploy-staging
   cancel-in-progress: false
 
 env:
@@ -65,8 +63,9 @@ env:
 
 jobs:
   # Move the `staging` deploy pointer to the commit being deployed BEFORE any
-  # Amplify job runs (Amplify builds the `staging` branch). force=false →
-  # fast-forward only; staging is always behind main, so this always ff's.
+  # Amplify job runs (Amplify builds the `staging` branch). A promoted run is
+  # already on `staging` (promote-to-staging moved it), so only a manual run
+  # from main has anything to do. force=false → fast-forward only.
   advance-staging:
     name: Advance staging branch
     runs-on: ubuntu-latest
@@ -76,11 +75,25 @@ jobs:
       - name: Fast-forward staging → ${{ github.sha }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # Via env, not inline ${{ }}, so the user-supplied input can't expand
-          # into the shell (zizmor template-injection).
-          PROMOTED_SHA: ${{ inputs.promoted_sha }}
         run: |
-          echo "Promoted from sandbox: ${PROMOTED_SHA:-manual dispatch}"
+          case "$GITHUB_REF_NAME" in
+            staging)
+              # Amplify builds the staging tip while ECS deploys GITHUB_SHA;
+              # refuse to start if anything has moved staging since dispatch.
+              TIP=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/staging" --jq .object.sha)
+              if [ "$TIP" != "$GITHUB_SHA" ]; then
+                echo "❌ staging is at $TIP, not $GITHUB_SHA — Amplify and ECS would deploy different commits."
+                exit 1
+              fi
+              echo "Promoted from sandbox: staging is already at ${GITHUB_SHA}"
+              exit 0 ;;
+            main) ;;
+            *)
+              # Fast-forwarding staging onto an unmerged branch would ship code
+              # that never went through main or sandbox.
+              echo "❌ Deploy Staging runs from main (manual) or staging (promoted), not $GITHUB_REF_NAME."
+              exit 1 ;;
+          esac
           gh api -X PATCH "repos/${{ github.repository }}/git/refs/heads/staging" \
             -f sha="${{ github.sha }}" -F force=false
 
@@ -113,8 +126,9 @@ jobs:
       - run: pnpm install --frozen-lockfile
 
       # The affected base is the commit of the last successful deploy-staging
-      # run on main (runs are dispatched with --ref main), so a skipped or failed
-      # promotion is picked up by the next one.
+      # run — on `staging` (promoted) or main (manual) — so a skipped or failed
+      # promotion is picked up by the next one. head_sha is the commit that run
+      # deployed, because a promoted run is dispatched on `staging` (#2756).
       #
       # This replaced nrwl/nx-set-shas. That action only accepts a past run whose
       # commit is among the latest 100 on main (one page of GET /commits). After
@@ -131,11 +145,11 @@ jobs:
           echo "NX_HEAD=$GITHUB_SHA" >> "$GITHUB_ENV"
 
           BASE=$(gh api \
-            "repos/$GITHUB_REPOSITORY/actions/workflows/deploy-staging.yml/runs?branch=main&event=workflow_dispatch&status=success&per_page=1" \
-            --jq '.workflow_runs[0].head_sha // empty')
+            "repos/$GITHUB_REPOSITORY/actions/workflows/deploy-staging.yml/runs?event=workflow_dispatch&status=success&per_page=30" \
+            --jq '[.workflow_runs[] | select(.head_branch == "staging" or .head_branch == "main")][0].head_sha // empty')
 
           [ -n "$BASE" ] || {
-            echo "❌ No successful deploy-staging run on main, so the affected base is unknown."
+            echo "❌ No successful deploy-staging run on staging or main, so the affected base is unknown."
             exit 1
           }
           git cat-file -e "${BASE}^{commit}" 2>/dev/null || {

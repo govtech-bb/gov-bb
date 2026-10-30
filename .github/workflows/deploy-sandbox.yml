@@ -945,7 +945,7 @@ jobs:
 
   summary:
     name: Deployment summary
-    needs: [setup, deploy-api, deploy-form-builder, amplify-forms, amplify-landing, amplify-form-builder, amplify-feature-flagging]
+    needs: [setup, deploy-api, deploy-form-builder, amplify-forms, amplify-landing, amplify-form-builder, amplify-feature-flagging, amplify-analytics, smoke-test-forms]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -957,6 +957,8 @@ jobs:
           LANDING_RESULT: ${{ needs.amplify-landing.result }}
           FB_APP_RESULT: ${{ needs.amplify-form-builder.result }}
           FF_APP_RESULT: ${{ needs.amplify-feature-flagging.result }}
+          ANALYTICS_RESULT: ${{ needs.amplify-analytics.result }}
+          SMOKE_RESULT: ${{ needs.smoke-test-forms.result }}
           MIGRATIONS_GATE: ${{ needs.setup.outputs.migrations }}
         run: |
           # Report each target's ACTUAL job result, not just the
@@ -997,6 +999,8 @@ jobs:
             echo "| Amplify landing | $(outcome "$LANDING_RESULT") |"
             echo "| Amplify form-builder | $(outcome "$FB_APP_RESULT") |"
             echo "| Amplify feature-flagging | $(outcome "$FF_APP_RESULT") |"
+            echo "| Amplify analytics | $(outcome "$ANALYTICS_RESULT") |"
+            echo "| Forms live smoke | $(outcome "$SMOKE_RESULT" | sed 's/deployed/passed/') |"
             echo ""
             echo "**API URL:** https://forms.api.sandbox.alpha.gov.bb"
             echo "**Landing URL:** https://landing.sandbox.alpha.gov.bb"
@@ -1007,7 +1011,7 @@ jobs:
 
   notify-failure:
     name: Notify Slack on failure
-    needs: [deploy-api, deploy-form-builder, amplify-forms, amplify-landing, amplify-form-builder, amplify-feature-flagging]
+    needs: [deploy-api, deploy-form-builder, amplify-forms, amplify-landing, amplify-form-builder, amplify-feature-flagging, amplify-analytics, smoke-test-forms, promote-to-staging]
     if: always() && contains(needs.*.result, 'failure')
     runs-on: ubuntu-latest
     steps:
@@ -1025,17 +1029,29 @@ jobs:
   # Runs only on a real trunk merge (not a manual sandbox re-run) and only when
   # every affected target deployed cleanly — a skipped/unaffected job is fine,
   # but any failure or cancellation stops the chain, so staging never receives
-  # code sandbox couldn't ship.
+  # code sandbox couldn't ship. That includes the live forms smoke and the
+  # analytics build (#2756).
+  #
+  # Staging deploys the exact commit sandbox proved: this job fast-forwards the
+  # `staging` branch to it and dispatches deploy-staging ON `staging`, so every
+  # checkout, image tag and Amplify build in that run is this commit — not
+  # whatever main's HEAD has moved on to. It joins deploy-staging's concurrency
+  # group so it waits for an in-flight staging deploy before moving the branch
+  # that deploy's Amplify jobs build — which keeps this sandbox run open until
+  # that staging deploy finishes.
   promote-to-staging:
     name: Promote to staging (on sandbox green)
-    needs: [setup, deploy-api, deploy-form-builder, amplify-forms, amplify-landing, amplify-form-builder, amplify-feature-flagging]
+    needs: [setup, deploy-api, deploy-form-builder, amplify-forms, amplify-landing, amplify-form-builder, amplify-feature-flagging, amplify-analytics, smoke-test-forms]
     if: ${{ github.event_name == 'push' && !failure() && !cancelled() }}
     runs-on: ubuntu-latest
+    concurrency:
+      group: deploy-staging
+      cancel-in-progress: false
     permissions:
       actions: write # dispatch deploy-staging via the built-in token
-      contents: read
+      contents: write # fast-forward the staging branch ref
     steps:
-      - name: Dispatch deploy-staging for ${{ github.sha }}
+      - name: Promote ${{ github.sha }} to staging
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # This job has no checkout, so gh can't infer the repo from a local
@@ -1043,10 +1059,21 @@ jobs:
           # --repo flag.
           GH_REPO: ${{ github.repository }}
         run: |
+          # A manual Deploy Staging from main can already have carried staging
+          # past this commit; it has nothing to promote then, and a backwards
+          # PATCH would fail a green sandbox run.
+          STATUS=$(gh api "repos/$GH_REPO/compare/$GITHUB_SHA...staging" --jq .status)
+          if [ "$STATUS" = "ahead" ]; then
+            echo "staging already contains $GITHUB_SHA — nothing to promote."
+            exit 0
+          fi
+          # force=false → fast-forward only, so a diverged staging fails this
+          # job, and notify-failure alerts Slack. An identical tip
+          # still dispatches: a re-run after a failed dispatch must deploy.
+          if [ "$STATUS" != "identical" ]; then
+            gh api -X PATCH "repos/$GH_REPO/git/refs/heads/staging" \
+              -f sha="$GITHUB_SHA" -F force=false
+          fi
           # Built-in GITHUB_TOKEN: workflow_dispatch is exempt from the token's
           # no-recursion guard, so this fires deploy-staging with NO PAT.
-          # --ref main runs main's deploy-staging.yml regardless of the default
-          # branch, and passes the exact commit sandbox proved so staging
-          # advances to the same SHA.
-          gh workflow run deploy-staging.yml --ref main \
-            -f promoted_sha="${{ github.sha }}"
+          gh workflow run deploy-staging.yml --ref staging
