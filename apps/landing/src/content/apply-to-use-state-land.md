@@ -67,9 +67,9 @@ There are 2 ways to apply.
 
 ## Cost
 
-There is no cost to apply, however depending on the use, there would be a cost once your application is approved. The Ministry will tell you if there is a fee and how much it is.
+There is no application fee. If your application is approved, the Ministry will tell you if there is a fee and how much it is.
 
-For example, commercial entities using Heroes’ Square would pay $1,500 plus VAT.
+For example, commercial entities using Heroes' Square would pay BDS $1,500 plus VAT.
 
 <!-- MDA NOTE: Confirm whether a security deposit is required once permission is granted. -->
 
