@@ -34,9 +34,7 @@ test("reads the complete authenticated page paths, categories and home without s
   const api = createEditorApi("https://api.example.com");
   const client = new QueryClient();
 
-  const paths = await client.fetchQuery(
-    pageLinkTargetsQuery(api, ["/missing", "/terms-conditions"]),
-  );
+  const paths = await client.fetchQuery(pageLinkTargetsQuery(api));
 
   expect(paths).toEqual([
     "/",
@@ -65,7 +63,7 @@ test.each(["/editor/page-paths", "/editor/categories"])(
     });
     const api = createEditorApi("https://api.example.com");
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-    const query = pageLinkTargetsQuery(api, ["/missing"]);
+    const query = pageLinkTargetsQuery(api);
 
     await expect(client.fetchQuery(query)).rejects.toMatchObject({ status: 500 });
     expect(client.getQueryData(query.queryKey)).toBeUndefined();
@@ -73,14 +71,13 @@ test.each(["/editor/page-paths", "/editor/categories"])(
   },
 );
 
-test("link target queries share an invalidatable content cache and wait until there are links", () => {
+test("link targets are invalidated with the content cache", async () => {
   const api = createEditorApi("https://api.example.com");
-  const empty = pageLinkTargetsQuery(api, []);
-  const first = pageLinkTargetsQuery(api, ["/first"]);
-  const second = pageLinkTargetsQuery(api, ["/second"]);
+  const client = new QueryClient();
+  const query = pageLinkTargetsQuery(api);
 
-  expect(empty.enabled).toBe(false);
-  expect(first.enabled).toBe(true);
-  expect(first.queryKey).toEqual(second.queryKey);
-  expect(first.queryKey[0]).toBe("content");
+  client.setQueryData(query.queryKey, ["/terms-conditions"]);
+  await client.invalidateQueries({ queryKey: ["content"] });
+  expect(client.getQueryState(query.queryKey)?.isInvalidated).toBe(true);
+  client.clear();
 });

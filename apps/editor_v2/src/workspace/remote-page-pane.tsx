@@ -31,7 +31,7 @@ import type { SaveStateProps } from "../ui/save-state";
 import { toast } from "../ui/toast";
 import { EditorSessionProvider } from "../editor/react/composer";
 import type { DocumentSessions } from "./document-views";
-import { brokenLinks, linkConfirmation, linkTargets } from "./broken-links";
+import { brokenLinks, linkConfirmation } from "./broken-links";
 import { savePageDraft, type PageSession, type ServerPageBaseline } from "./page-sync";
 
 type SessionListener = (id: string, session: PageSession | undefined) => void;
@@ -204,7 +204,7 @@ function RemotePageEditor({
     [draft.state, pageUrl],
   );
 
-  const known = useQuery(pageLinkTargetsQuery(api, linkTargets(links)));
+  const known = useQuery({ ...pageLinkTargetsQuery(api), enabled: links.length > 0 });
   // A refetch that failed keeps its last data, which is no evidence about the links now
   const listed = known.isError ? undefined : known.data;
   const broken = listed ? brokenLinks(links, listed, pageUrl) : [];
@@ -354,7 +354,7 @@ function RemotePageEditor({
     let fresh: readonly string[] | undefined;
 
     try {
-      fresh = await client.fetchQuery({ ...pageLinkTargetsQuery(api, ["/"]), staleTime: 0 });
+      fresh = await client.fetchQuery({ ...pageLinkTargetsQuery(api), staleTime: 0 });
     } catch {
       fresh = undefined;
     }

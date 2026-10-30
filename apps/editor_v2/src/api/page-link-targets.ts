@@ -2,13 +2,9 @@ import { queryOptions } from "@tanstack/react-query";
 import type { EditorApi } from "./client";
 
 /** All internal page link targets, including standalone pages; a failed listing is never an empty list. */
-export const pageLinkTargetsQuery = (
-  api: Pick<EditorApi, "pagePaths" | "categories">,
-  paths: readonly string[],
-) =>
+export const pageLinkTargetsQuery = (api: Pick<EditorApi, "pagePaths" | "categories">) =>
   queryOptions({
     queryKey: ["content", "page-link-targets"],
-    enabled: paths.length > 0,
     queryFn: async () => {
       const [pages, categories] = await Promise.all([api.pagePaths(), api.categories()]);
 

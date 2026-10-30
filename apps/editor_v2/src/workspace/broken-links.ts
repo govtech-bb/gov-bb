@@ -5,11 +5,6 @@ import { govbbPageCodec } from "../presets/govbb-page";
 export const linkTarget = (url: string) =>
   new URL(url, "https://www.gov.bb").pathname.replace(/\/+$/, "") || "/";
 
-/** The pages to look up, each once. */
-export const linkTargets = (links: readonly InternalPageLink[]) => [
-  ...new Set(links.map((link) => link.target)),
-];
-
 /** The links to a page the site doesn't have. A page may link to itself. */
 export function brokenLinks(
   links: readonly InternalPageLink[],

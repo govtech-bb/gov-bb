@@ -1025,7 +1025,7 @@ test("choosing a broken link's warning puts the caret in that link", async () =>
   });
 });
 
-test("a draft save also looks its links up again, and still saves when that fails", async () => {
+test("link checks wait for links, and a failed recheck does not block a draft save", async () => {
   const writes: SavePageInput[] = [];
   let lookups = 0;
 
@@ -1045,6 +1045,7 @@ test("a draft save also looks its links up again, and still saves when that fail
     return Response.json(page);
   });
 
+  expect(lookups).toBe(0);
   await applySource(h.session(), linkBody.replace("url:", "visibility: draft\nurl:"));
   await act(async () => {
     await vi.waitFor(() => expect(document.body.textContent).toContain("could not check"));

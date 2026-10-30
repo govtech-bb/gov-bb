@@ -27,7 +27,7 @@ import { Textarea } from "../ui/textarea";
 import { toast } from "../ui/toast";
 import { lineDiff } from "./line-diff";
 import { LoadFailure } from "./load-failure";
-import { brokenLinks, linkConfirmation, linksInMarkdown, linkTargets } from "./broken-links";
+import { brokenLinks, linkConfirmation, linksInMarkdown } from "./broken-links";
 
 const when = new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeStyle: "short" });
 
@@ -327,7 +327,7 @@ export function ReviewScreen({
     else if (links.length)
       try {
         const listed = await client.fetchQuery({
-          ...pageLinkTargetsQuery(api, linkTargets(links)),
+          ...pageLinkTargetsQuery(api),
           staleTime: 0,
         });
 
