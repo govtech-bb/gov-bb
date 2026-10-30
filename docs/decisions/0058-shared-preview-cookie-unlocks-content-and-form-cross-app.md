@@ -1,7 +1,7 @@
 # 0058 — A shared `preview` cookie unlocks content and form cross-app, and is a rollout gate not a confidentiality boundary
 
 **Date:** 2026-06-25
-**Status:** Accepted — amended <YYYY-MM-DD> ([#3456](https://github.com/govtech-bb/gov-bb/issues/3456)): landing's `draft` level and `DRAFT_SECRET` are removed; see the Amendment below
+**Status:** Accepted — amended 2026-10-30 ([#3456](https://github.com/govtech-bb/gov-bb/issues/3456)): landing's `draft` level and `DRAFT_SECRET` are removed; see the Amendment below
 **Related:** [#1646](https://github.com/govtech-bb/gov-bb/issues/1646) (Phase 3), [#1682](https://github.com/govtech-bb/gov-bb/issues/1682) (Phase 2), ADR-0011 (unpublished recipe preview is secret-gated per-request), ADR-0013 (content preview is a rollout gate, not a confidentiality boundary), ADR-0057 (env config validated with Zod at boot).
 
 ## Context
@@ -95,7 +95,7 @@ The split, made explicit:
   visibility cookie. It still does **not** expose DB scratch. Rotate by changing
   `RECIPE_PREVIEW_TOKEN` / `PREVIEW_SECRET` in lockstep across environments.
 
-## Amendment (<YYYY-MM-DD>) — landing has one reviewer level, `preview` ([#3456](https://github.com/govtech-bb/gov-bb/issues/3456))
+## Amendment (2026-10-30) — landing has one reviewer level, `preview` ([#3456](https://github.com/govtech-bb/gov-bb/issues/3456))
 
 Decided in [#3247](https://github.com/govtech-bb/gov-bb/issues/3247). The
 line above that "`DRAFT_SECRET` and the `?draft=` path are untouched" no
