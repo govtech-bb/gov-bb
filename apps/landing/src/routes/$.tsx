@@ -73,8 +73,8 @@ type LoaderData =
       /** Whether the form's application window has closed (#1936) — for the
        * closed notice and hiding the online application method. */
       applicationClosed: boolean
-      /** The page's effective level (with the status overlay) — for the review
-       * banner and `noindex`. */
+      /** The page's effective level (with the status overlay), or an api_v2
+       * page's own visibility (#3246) — for the review banner and `noindex`. */
       level: ViewLevel
       /** Whether the viewer may see the `/start` step — for hiding the online
        * application method. Precomputed here so the component needs no overlay. */
@@ -259,7 +259,9 @@ export const Route = createFileRoute('/$')({
         availableForms,
         underMaintenance,
         applicationClosed,
-        level: v2Page ? 'public' : pageLevel(page, overlay),
+        level: v2Page
+          ? v2Page.frontmatter.visibility
+          : pageLevel(page, overlay),
         startSubPageVisible: v2Page
           ? !v2Page.hideStartLinks
           : isStartSubPageVisible(page, level, overlay),
@@ -478,7 +480,8 @@ function PageView({
 }: {
   page: ContentPage
   availableForms: string[]
-  /** The page's effective level (with the status overlay), for the banner. */
+  /** The page's effective level (with the status overlay), or an api_v2
+   * page's own visibility (#3246), for the banner. */
   level: ViewLevel
   /** Whether the viewer may see the `/start` step (computed in the loader). */
   startSubPageVisible: boolean
