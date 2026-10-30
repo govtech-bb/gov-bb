@@ -1,5 +1,6 @@
 import { createHash, timingSafeEqual } from "node:crypto";
 import type { FastifyRequest } from "fastify";
+import rateLimit from "@fastify/rate-limit";
 import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
 import type { Viewer } from "../modules/page-visibility";
 import type { Redacted } from "../modules/redacted";
@@ -20,6 +21,21 @@ import {
 
 /** Landing's server sends its PREVIEW_SECRET here for a reviewer's read. */
 export const PREVIEW_TOKEN = "x-preview-token";
+/** Landing's server sends its LANDING_SECRET here to skip the rate limit. */
+export const LANDING_TOKEN = "x-landing-token";
+
+/** A request header's first value. */
+function headerOf(request: FastifyRequest, name: string): string | undefined {
+  const header = request.headers[name];
+  return Array.isArray(header) ? header[0] : header;
+}
+
+/** Whether `token` is the secret, compared in constant time. */
+function isSecret(token: string, secret: Redacted<string>): boolean {
+  // Hashing first gives equal lengths, which timingSafeEqual requires.
+  const digest = (value: string) => createHash("sha256").update(value).digest();
+  return timingSafeEqual(digest(token), digest(secret.reveal()));
+}
 
 /**
  * Who a site read is for. No token is the public; the right token is a
@@ -31,15 +47,10 @@ function viewerOf(
   request: FastifyRequest,
   secret: Redacted<string> | undefined,
 ): Viewer | null {
-  const header = request.headers[PREVIEW_TOKEN];
-  const token = Array.isArray(header) ? header[0] : header;
+  const token = headerOf(request, PREVIEW_TOKEN);
   if (token === undefined) return "public";
   if (!secret) return null;
-  // Hashing first gives equal lengths, which timingSafeEqual requires.
-  const digest = (value: string) => createHash("sha256").update(value).digest();
-  return timingSafeEqual(digest(token), digest(secret.reveal()))
-    ? "preview"
-    : null;
+  return isSecret(token, secret) ? "preview" : null;
 }
 
 /** Whether an `If-None-Match` list names this entity tag, compared weakly as RFC 9110 asks. */
@@ -56,7 +67,23 @@ export const siteRoutes: FastifyPluginAsyncZod<{
   navigation: SiteNavigation;
   collections: CollectionEditing;
   previewSecret: Redacted<string> | undefined;
-}> = async (site, { resolution, navigation, collections, previewSecret }) => {
+  landingSecret: Redacted<string> | undefined;
+}> = async (
+  site,
+  { resolution, navigation, collections, previewSecret, landingSecret },
+) => {
+  // Scoped to the site routes and keyed on request.ip (the ALB-forwarded
+  // client). Landing is exempt by its token: its server reads /pages on every
+  // uncached page view from a few shared egress addresses, so no limit could
+  // be sized above its rate (#3129). Unset, nobody is exempt.
+  await site.register(rateLimit, {
+    max: 1000,
+    timeWindow: "1 minute",
+    allowList: (request) => {
+      const token = headerOf(request, LANDING_TOKEN);
+      return Boolean(landingSecret && token && isSecret(token, landingSecret));
+    },
+  });
   site.decorateRequest("viewer", null);
   site.addHook("onRequest", async (request, reply) => {
     // Public and preview reads share a url, so a cache must key on the token.

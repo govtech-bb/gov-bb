@@ -160,6 +160,12 @@ export function apiV2Base(): string | null {
   return resolveApiV2Base(config.apiV2Url, process.env.VITE_API_V2_URL)
 }
 
+/** api_v2's LANDING_SECRET, which exempts landing from its rate limit (#3129). Server-only. */
+export function landingToken(): string | undefined {
+  const config = useRuntimeConfig() as { landingSecret?: string }
+  return config.landingSecret || process.env.LANDING_SECRET || undefined
+}
+
 /** `/…` only: not `//`, no backslash, no whitespace — the three ways a
  *  browser's URL parser turns a "path" into another origin (#3126). */
 function isSitePath(to: string): boolean {
@@ -175,6 +181,7 @@ export async function fetchApiV2Page(
   base: string,
   url: string,
   fetchImpl: typeof fetch = fetch,
+  landingToken?: string,
 ): Promise<
   | { kind: 'page'; body: PageResponse; cacheControl: string | null }
   | { kind: 'redirect'; to: string; cacheControl: string | null }
@@ -185,7 +192,11 @@ export async function fetchApiV2Page(
   try {
     const response = await fetchImpl(
       `${base}/pages?url=${encodeURIComponent(url)}`,
-      { redirect: 'manual', signal: controller.signal },
+      {
+        redirect: 'manual',
+        signal: controller.signal,
+        ...(landingToken && { headers: { 'x-landing-token': landingToken } }),
+      },
     )
     const cacheControl = response.headers.get('cache-control')
     if (response.status === 404) {
@@ -315,9 +326,10 @@ export async function resolveApiV2Page(
   base: string | null,
   url: string,
   fetchImpl: typeof fetch = fetch,
+  landingToken?: string,
 ): Promise<ApiV2Result> {
   if (!base) return { kind: 'miss', reason: 'unconfigured' }
-  const result = await fetchApiV2Page(base, url, fetchImpl)
+  const result = await fetchApiV2Page(base, url, fetchImpl, landingToken)
   if (result.kind !== 'page') return result
   const { cacheControl } = result
   try {
@@ -344,7 +356,7 @@ export function contentSource(result: ApiV2Result): ContentSource {
 const apiV2Cache = /* @__PURE__ */ createApiV2Cache()
 let siteChanges = 0
 const checkSiteVersion = /* @__PURE__ */ createVersionWatch(
-  () => fetchSiteVersion(apiV2Base()),
+  () => fetchSiteVersion(apiV2Base(), fetch, landingToken()),
   () => {
     siteChanges++
     apiV2Cache.expire()
@@ -364,5 +376,7 @@ export const getApiV2Page = createServerFn()
   .validator((url: string) => url)
   .handler(async ({ data: url }) => {
     await checkSiteVersion()
-    return apiV2Cache.get(url, () => resolveApiV2Page(apiV2Base(), url))
+    return apiV2Cache.get(url, () =>
+      resolveApiV2Page(apiV2Base(), url, fetch, landingToken()),
+    )
   })

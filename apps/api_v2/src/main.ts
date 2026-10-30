@@ -152,6 +152,7 @@ async function main(): Promise<void> {
         editorOrigin: config.auth.editorOrigin,
       },
       ...(config.previewSecret ? { previewSecret: config.previewSecret } : {}),
+      ...(config.landingSecret ? { landingSecret: config.landingSecret } : {}),
       logger,
       ready: () => ping(db),
     });

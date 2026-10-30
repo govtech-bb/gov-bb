@@ -1,7 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { buildSitemapXml, collectSitemapEntries } from '../lib/sitemap'
 import { fetchCategoryTree } from '../lib/api-v2-categories'
-import { apiV2Base } from '../lib/api-v2-page'
+import { apiV2Base, landingToken } from '../lib/api-v2-page'
 import {
   deriveVisibilityOverlay,
   getServiceStatuses,
@@ -17,7 +17,7 @@ export const Route = createFileRoute('/sitemap.xml')({
       GET: async () => {
         const [statuses, categoryTree] = await Promise.all([
           getServiceStatuses(),
-          fetchCategoryTree(apiV2Base()),
+          fetchCategoryTree(apiV2Base(), fetch, landingToken()),
         ])
 
         const overlay = deriveVisibilityOverlay(statuses)
