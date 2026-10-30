@@ -151,7 +151,9 @@ jobs:
       # target group checks /docs/openapi.json until alpha-infra points it at
       # /health; /categories proves the database answers and categories read.
       # /pages proves a seeded public page resolves with its content, since
-      # landing reads every page from it (#3146).
+      # landing reads every page from it (#3146). Sandbox content is edited,
+      # not reseeded, so that page must stay public there: unpublishing,
+      # moving or deleting it fails this step on every deploy.
       - name: Smoke test
         run: |
           for path in /health /docs/openapi.json /categories; do
