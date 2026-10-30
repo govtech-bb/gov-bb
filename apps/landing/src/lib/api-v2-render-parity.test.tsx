@@ -155,18 +155,11 @@ const KNOWN: Array<{ why: string; field: Field; urls: string[] }> = [
 ]
 
 /**
- * Seeded pages with no static page: the snapshot predates the About Barbados
- * restructure (#3361). Regenerating it (`pnpm --filter @govtech-bb/api-v2
- * seed-data`, #3136) removes them.
+ * Seeded pages with no static page. Empty while the snapshot is regenerated
+ * from landing content (#3136); add a url here only for a page seeded on purpose
+ * without a static twin.
  */
-const NO_STATIC_PAGE = [
-  'about-barbados/archaeological-history',
-  'about-barbados/coat-of-arms',
-  'about-barbados/flag-etiquette',
-  'about-barbados/national-anthem',
-  'about-barbados/national-flower',
-  'about-barbados/national-pledge',
-]
+const NO_STATIC_PAGE: string[] = []
 
 /** The page's body and chrome as the catch-all route renders it. */
 function render(page: ContentPage): string {

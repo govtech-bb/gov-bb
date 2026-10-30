@@ -632,6 +632,11 @@ jobs:
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
           exit 1
 
+      # Client bundle budgets (apps/landing/.size-limit.js, #3139). Runs only
+      # when landing is affected, and reuses the build above from the nx cache.
+      - name: Check bundle size budgets
+        run: pnpm exec nx affected -t size
+
   validate-recipes:
     name: Validate Recipes
     runs-on: ubuntu-latest
@@ -693,12 +698,15 @@ jobs:
 
   generated-drift:
     name: Generated Files Up To Date
-    # Two artifacts are pre-baked from landing content so their consumers carry
-    # no runtime dependency on @govtech-bb/content:
+    # Three artifacts are pre-baked from landing content so their consumers
+    # carry no runtime dependency on @govtech-bb/content:
     #   - apps/api/src/content/services-index.generated.ts  (`GET /services`)
     #   - packages/content/src/form-categories.generated.ts  (form -> category)
+    #   - apps/api_v2/src/seed-data/estate.json  (api_v2 seed; its pages take
+    #     priority over landing's static markdown, so a stale one rolls
+    #     content back — #3136)
     # Nothing in the build forces a regen, so a content PR that skips it leaves
-    # them stale (#2070). Regenerate both here; if they drifted, commit the
+    # them stale (#2070). Regenerate them here; if they drifted, commit the
     # regen back onto the PR branch rather than only failing (#2303) — the
     # form_builder Content flow writes pages through the GitHub contents API
     # with no checkout and no pnpm, so it can never run the generators itself
@@ -729,11 +737,12 @@ jobs:
         run: |
           pnpm generate:services-index
           pnpm generate:form-categories
+          pnpm generate:seed-data
 
       - name: Detect drift
         id: drift
         env:
-          FILES: apps/api/src/content/services-index.generated.ts packages/content/src/form-categories.generated.ts
+          FILES: apps/api/src/content/services-index.generated.ts packages/content/src/form-categories.generated.ts apps/api_v2/src/seed-data/estate.json
         run: |
           echo "files=$FILES" >> "$GITHUB_OUTPUT"
           if git diff --quiet -- $FILES; then
@@ -775,7 +784,7 @@ jobs:
           git -c user.name="github-actions[bot]" \
               -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
               commit -m "chore: regenerate content-derived generated files" \
-                     -m "Automated by the Generated Files Up To Date job. Regenerate locally with \`pnpm generate:services-index && pnpm generate:form-categories\`."
+                     -m "Automated by the Generated Files Up To Date job. Regenerate locally with \`pnpm generate:services-index && pnpm generate:form-categories && pnpm generate:seed-data\`."
           git push "https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}" \
             "HEAD:refs/heads/${BRANCH}"
 
@@ -800,7 +809,7 @@ jobs:
           {
             echo "## ❌ Generated files are out of date"
             echo ""
-            echo "Landing content changed but the content-derived generated files were not regenerated, so \`GET /services\` and the form→category map would serve stale data."
+            echo "Landing content changed but the content-derived generated files were not regenerated, so \`GET /services\`, the form→category map and the api_v2 seed snapshot would serve stale data."
             echo ""
             echo "The automatic write-back did not run or could not push (fork PR, missing App credentials, or the App lacks \`contents: write\` on this repo — see #2303)."
             echo ""
@@ -808,6 +817,7 @@ jobs:
             echo '```bash'
             echo "pnpm generate:services-index"
             echo "pnpm generate:form-categories"
+            echo "pnpm generate:seed-data"
             echo '```'
             echo "then commit the updated files."
           } >> "$GITHUB_STEP_SUMMARY"
