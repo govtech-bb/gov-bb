@@ -5,7 +5,10 @@
  *
  * - `enabled`       — page + form live.
  * - `form_disabled` — page visible, form unreachable (maintenance).
- * - `disabled`      — whole service hidden (preview-only).
+ * - `disabled`      — whole service hidden (preview-only). That hides the
+ *                     page only while landing serves static content; once it
+ *                     reads api_v2 it hides the form only (ADR 0063, "After
+ *                     cutover").
  */
 export type ServiceStatus = "enabled" | "form_disabled" | "disabled";
 
