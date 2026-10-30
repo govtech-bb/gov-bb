@@ -1,5 +1,5 @@
 /**
- * The Drizzle schema, matching migrations `001_init` to `011_revision_review`
+ * The Drizzle schema, matching migrations `001_init` to `016_content_updated_at`
  * applied in order, table for table and column for column. BetterAuth reads
  * and writes its four `auth_*` tables through these definitions; their
  * property keys are BetterAuth's field names.
@@ -34,6 +34,7 @@ import {
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { ROLES } from "./modules/auth";
+import type { CollectionSchema, RecordData } from "./modules/collection";
 import {
   REVISION_STATUSES,
   VISIBILITIES,
@@ -115,6 +116,13 @@ export const contentPages = pgTable(
       withTimezone: true,
       precision: 3,
     }),
+    // When the content last changed; set by a trigger (migration 016).
+    contentUpdatedAt: timestamp("content_updated_at", {
+      withTimezone: true,
+      precision: 3,
+    })
+      .notNull()
+      .defaultNow(),
     ...timestamps,
   },
   (table) => [
@@ -359,5 +367,44 @@ export const pageRevisions = pgTable(
     uniqueIndex("page_revisions_open_page_id_key")
       .on(table.pageId)
       .where(sql`status in ('draft', 'submitted')`),
+  ],
+);
+
+/**
+ * Facts many pages repeat, kept once (#3183). `schema` is the field list a
+ * record is checked against; a developer sets it, editors change records.
+ */
+export const dataCollections = pgTable("data_collections", {
+  id: uuid("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  key: varchar("key", { length: 100 }).notNull().unique(),
+  title: varchar("title", { length: 200 }).notNull(),
+  // The field whose value names a record, as `collection_records.record_key`.
+  recordKey: varchar("record_key", { length: 100 }).notNull(),
+  schema: jsonb("schema").$type<CollectionSchema>().notNull(),
+  schemaVersion: integer("schema_version").notNull().default(1),
+  ...timestamps,
+});
+
+/** One record of a collection; a collection with records cannot be deleted. */
+export const collectionRecords = pgTable(
+  "collection_records",
+  {
+    id: uuid("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    collectionKey: varchar("collection_key", { length: 100 })
+      .notNull()
+      .references(() => dataCollections.key, { onDelete: "restrict" }),
+    recordKey: varchar("record_key", { length: 200 }).notNull(),
+    data: jsonb("data").$type<RecordData>().notNull(),
+    ...timestamps,
+  },
+  (table) => [
+    unique("collection_records_collection_key_record_key_key").on(
+      table.collectionKey,
+      table.recordKey,
+    ),
   ],
 );

@@ -22,6 +22,16 @@
       "@govtech-bb/admin-ui": ["packages/admin-ui/src/index.ts"],
       "@govtech-bb/analytics": ["packages/analytics/src/index.ts"],
       "@govtech-bb/content": ["packages/content/src/index.ts"],
+      "@govtech-bb/govbbmarkd": ["packages/govbbmarkd/src/index.ts"],
+      "@govtech-bb/govbbmarkd/react": [
+        "packages/govbbmarkd/src/markdown-react.tsx"
+      ],
+      "@govtech-bb/govbbmarkd/legacy": [
+        "packages/govbbmarkd/src/legacy-markdown.ts"
+      ],
+      "@govtech-bb/govbbmarkd/content-url": [
+        "packages/govbbmarkd/src/content-url.ts"
+      ],
       "@govtech-bb/content/categories": ["packages/content/src/categories.ts"],
       "@govtech-bb/content/form-categories": [
         "packages/content/src/form-categories.ts"

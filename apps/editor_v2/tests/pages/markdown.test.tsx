@@ -49,6 +49,7 @@ const sourceOnly = new Set([
   "coat-of-arms/index.md",
   "flag-etiquette/index.md",
   "national-anthem/index.md",
+  "national-flag/index.md",
   "national-flower/index.md",
   "national-pledge/index.md",
 ]);
@@ -515,7 +516,7 @@ test("notices, nested details, action groups and Start labels round-trip safely"
       <PagePreview source={encoded} definition={govbbPageEditor} />,
     );
 
-    expect(preview).toContain("<summary>What you need</summary>");
+    expect(preview).toContain('<summary class="govbb-show-hide__summary">What you need</summary>');
     expect(preview).toContain('href="/help"');
   } finally {
     editor.dispose();

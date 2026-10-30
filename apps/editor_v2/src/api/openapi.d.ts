@@ -55,6 +55,10 @@ export interface paths {
                                 name: string;
                                 url: string;
                             }[];
+                            /** @description The slug of the category the page is filed under, or null for a page outside the taxonomy. */
+                            category: string | null;
+                            /** @description The slug of its subcategory, or null. */
+                            subcategory: string | null;
                             /**
                              * Format: date-time
                              * @description When the page first went public (seeded from landing's `publish_date`); null until it has.
@@ -62,7 +66,12 @@ export interface paths {
                             published_at: string | null;
                             /**
                              * Format: date-time
-                             * @description The page's last save, visibility changes included: the site's "Last updated" line.
+                             * @description When the title, description, body, frontmatter or form last changed, visibility changes not included: the site's "Last updated" line.
+                             */
+                            content_updated_at: string;
+                            /**
+                             * Format: date-time
+                             * @description The page's last save, visibility changes included.
                              */
                             updated_at: string;
                         };
@@ -605,6 +614,187 @@ export interface paths {
                             message?: string;
                         } & {
                             [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/collections/{key}/records": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * A data collection and its records
+         * @description Public: the site and the editor both read it. Records are ordered by `record_key`. 404 when there is no such collection.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    key: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Default Response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            collection: {
+                                key: string;
+                                title: string;
+                                /** @description The field whose value is each record's `record_key`. */
+                                record_key: string;
+                                schema: {
+                                    fields: {
+                                        key: string;
+                                        label: string;
+                                        /** @enum {string} */
+                                        type: "text" | "slug" | "email";
+                                    }[];
+                                };
+                                schema_version: number;
+                                /** Format: date-time */
+                                updated_at: string;
+                            };
+                            records: {
+                                record_key: string;
+                                data: {
+                                    [key: string]: string;
+                                };
+                                /**
+                                 * Format: date-time
+                                 * @description Send it back in `if-updated-at` to save or delete this version.
+                                 */
+                                updated_at: string;
+                            }[];
+                        };
+                    };
+                };
+                /** @description Default Response */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/site-version": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * A token that moves whenever content changes
+         * @description Opaque. The site polls it and drops its cached pages when it moves, so a published change shows within seconds instead of after the pages' max-age. Moves on any change, drafts included.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Default Response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            version: string;
                         };
                     };
                 };
@@ -1308,6 +1498,147 @@ export interface paths {
                 };
             };
         };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pages/{id}/history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get a page's history
+         * @description What happened to the page, newest first, from `change_events`: each change to the live page with the fields it changed, and each review step, with who did it and when. Read-only: nothing restores an entry. 404 when the page has no history.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Default Response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            entries: {
+                                version_no: number;
+                                /** @enum {string} */
+                                action: "created" | "updated" | "published" | "unpublished" | "reverted" | "deleted" | "submitted" | "approved" | "rejected" | "discarded";
+                                /** @description The user id of whoever did it, or `system`. */
+                                actor: string;
+                                /** @description Their name, or null when their account is gone. */
+                                actor_name: string | null;
+                                /** Format: date-time */
+                                occurred_at: string;
+                                /** @description For a change to the live page, the fields it changed against the page's previous entry, in field order. Empty for its creation and for a review step, whose snapshot is a revision. */
+                                changed: ("url" | "category_id" | "parent_id" | "title" | "description" | "visibility" | "form_id" | "body_markdown" | "frontmatter")[];
+                                /** @description Why an approver rejected the change; null for any other entry. */
+                                comment: string | null;
+                            }[];
+                        };
+                    };
+                };
+                /** @description Default Response */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -2655,6 +2986,577 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/collections": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Every data collection, with its field list and record count
+         * @description A collection keeps facts many pages repeat, such as a department's phone number, as records. `schema.fields` is what a record may hold. Field lists are set by developers; editors change records.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Default Response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            collections: {
+                                key: string;
+                                title: string;
+                                /** @description The field whose value is each record's `record_key`. */
+                                record_key: string;
+                                schema: {
+                                    fields: {
+                                        key: string;
+                                        label: string;
+                                        /** @enum {string} */
+                                        type: "text" | "slug" | "email";
+                                    }[];
+                                };
+                                schema_version: number;
+                                /** Format: date-time */
+                                updated_at: string;
+                                record_count: number;
+                            }[];
+                        };
+                    };
+                };
+                /** @description Default Response */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/collections/{key}/records/{recordKey}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Replace a record's data
+         * @description Needs the editor role (403 otherwise). Send every field to keep: the record becomes `data`. Checked as a create is. Send the `updated_at` you last read in `if-updated-at`; if the record has changed since, the save is refused with a 409 `conflict`. 404 when there is no such collection or record.
+         */
+        put: {
+            parameters: {
+                query?: never;
+                header?: {
+                    /** @description The `updated_at` this client last read. Omit to accept whatever is stored. */
+                    "if-updated-at"?: string;
+                };
+                path: {
+                    key: string;
+                    recordKey: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        /** @description A value for each field to set, by field key. The record key field is filled from the url when left out. */
+                        data: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            responses: {
+                /** @description Default Response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            record_key: string;
+                            data: {
+                                [key: string]: string;
+                            };
+                            /**
+                             * Format: date-time
+                             * @description Send it back in `if-updated-at` to save or delete this version.
+                             */
+                            updated_at: string;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": ({
+                            /** @enum {string} */
+                            error: "validation_failed";
+                            message: string;
+                            errors: {
+                                field: string;
+                                message: string;
+                            }[];
+                        } & {
+                            [key: string]: unknown;
+                        }) | ({
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        });
+                    };
+                };
+                /** @description Default Response */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @enum {string} */
+                            error: "conflict" | "record_exists";
+                            message: string;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+        };
+        /**
+         * Add a record to a collection
+         * @description Needs the editor role (403 otherwise). `data` is checked against the collection's field list: a field it does not have, or a value of the wrong kind, is a 400 `validation_failed` naming the field. 404 when there is no such collection; 409 `record_exists` when the record key is taken.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    key: string;
+                    recordKey: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        /** @description A value for each field to set, by field key. The record key field is filled from the url when left out. */
+                        data: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            responses: {
+                /** @description Default Response */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            record_key: string;
+                            data: {
+                                [key: string]: string;
+                            };
+                            /**
+                             * Format: date-time
+                             * @description Send it back in `if-updated-at` to save or delete this version.
+                             */
+                            updated_at: string;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": ({
+                            /** @enum {string} */
+                            error: "validation_failed";
+                            message: string;
+                            errors: {
+                                field: string;
+                                message: string;
+                            }[];
+                        } & {
+                            [key: string]: unknown;
+                        }) | ({
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        });
+                    };
+                };
+                /** @description Default Response */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @enum {string} */
+                            error: "conflict" | "record_exists";
+                            message: string;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+        };
+        /**
+         * Delete a record
+         * @description Needs the editor role (403 otherwise). With `if-updated-at`, a record that has changed since is refused with a 409 `conflict`. 404 when there is no such collection or record.
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: {
+                    /** @description The `updated_at` this client last read. Omit to accept whatever is stored. */
+                    "if-updated-at"?: string;
+                };
+                path: {
+                    key: string;
+                    recordKey: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Default Response */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Default Response */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": ({
+                            /** @enum {string} */
+                            error: "validation_failed";
+                            message: string;
+                            errors: {
+                                field: string;
+                                message: string;
+                            }[];
+                        } & {
+                            [key: string]: unknown;
+                        }) | ({
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        });
+                    };
+                };
+                /** @description Default Response */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @enum {string} */
+                            error: "conflict" | "record_exists";
+                            message: string;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/editor/employees": {
         parameters: {
             query?: never;
@@ -3067,7 +3969,7 @@ export interface paths {
         };
         /**
          * A version token for recorded content changes
-         * @description `change_events` records every page and category change, and each review step of a page's revision. Its count and newest timestamp identify those changes without reading the content.
+         * @description `change_events` records every page, category and collection record change, and each review step of a page's revision. Its count and newest timestamp identify those changes without reading the content.
          */
         get: {
             parameters: {

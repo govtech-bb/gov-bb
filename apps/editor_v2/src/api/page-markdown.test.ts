@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { compileContentMarkdown } from "@govtech-bb/govbbmarkd";
+import { sitePreviewDocument } from "../host/site-preview-renderer";
 import estate from "../../../api_v2/src/seed-data/estate.json";
 import { createHeadlessEditor } from "../editor/core/create-editor";
 import { $setPageMetadata } from "../pages/metadata";
@@ -58,6 +60,27 @@ if (!entry || !start) throw new Error("The seed no longer has the severance page
 const markdownOf = (yaml: string) => `---\n${yaml}\n---\n\nBody`;
 
 describe("page markdown", () => {
+  it("keeps leading body rules and instructions through saving and both preview paths", () => {
+    const body = "---\n\nYou must submit before Friday.\n\n---\n\nApply below.";
+    const source = pageToMarkdown({ ...entry, body_markdown: body }, categories);
+    const saved = markdownToPageSaveInput(source, entry, categories);
+
+    if (!saved.ok) throw new Error("Expected valid page save");
+    expect(saved.value.body_markdown).toBe(body);
+    const publicPage = compileContentMarkdown(saved.value.body_markdown, { frontmatter: false });
+    const localPreview = compileContentMarkdown(source);
+
+    const sitePreview = compileContentMarkdown(sitePreviewDocument(source).body, {
+      frontmatter: false,
+    });
+
+    expect(publicPage.ok && publicPage.value.text).toBe(
+      "You must submit before Friday. Apply below.",
+    );
+    expect(localPreview.ok && localPreview.value.text).toBe(publicPage.ok && publicPage.value.text);
+    expect(sitePreview.ok && sitePreview.value.text).toBe(publicPage.ok && publicPage.value.text);
+  });
+
   it("saves every seeded service page as the API holds it", () => {
     for (const page of pages) {
       const saved = markdownToPageSaveInput(pageToMarkdown(page, categories), page, categories);

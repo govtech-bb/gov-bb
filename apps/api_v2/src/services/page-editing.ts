@@ -1,3 +1,4 @@
+import { parseContentMarkdown } from "@govtech-bb/govbbmarkd";
 import {
   NotApprover,
   SelfApproval,
@@ -26,7 +27,7 @@ import {
   type PageDocument,
   type PageFields,
   type PageId,
-  type PageRejected,
+  PageRejected,
   type PageValues,
   type PendingRevision,
   type RevisionView,
@@ -34,6 +35,10 @@ import {
 } from "../modules/page";
 import { err, ok, type Result } from "../modules/result";
 import { chunkMarkdown, type SearchChunk } from "../modules/search-text";
+import {
+  NO_REVIEW_NOTIFICATIONS,
+  type ReviewNotifier,
+} from "./review-notifications";
 
 /** Wall-clock time for the stamps a write records. */
 export type Clock = () => Date;
@@ -178,13 +183,15 @@ export interface PageRecords {
  */
 export class PageEditing {
   /**
-   * The root supplies content storage and the clock, and allows
-   * self-approval only for local development under AUTH_BYPASS (ADR 0079).
+   * The root supplies content storage and the clock, allows self-approval
+   * only for local development under AUTH_BYPASS (ADR 0079), and supplies
+   * who hears of a review step once it commits (#3267); nobody, by default.
    */
   constructor(
     private readonly records: PageRecords,
     private readonly clock: Clock,
     private readonly review: { readonly allowSelfApproval: boolean },
+    private readonly notifier: ReviewNotifier = NO_REVIEW_NOTIFICATIONS,
   ) {}
 
   /**
@@ -236,9 +243,12 @@ export class PageEditing {
       // Its author wrote all of it, so another approver makes it public.
       if (page.visibility === "public" && !this.review.allowSelfApproval)
         return err(new SelfApproval(CREATED_PUBLIC));
+      const fields = withDefaults(page);
+      const invalidContent = markdownRejection(fields);
+      if (invalidContent) return err(invalidContent);
       const available = await records.checkPageUrl(page.url);
       if (!available.ok) return available;
-      const placed = await place(records, page.id, withDefaults(page));
+      const placed = await place(records, page.id, fields);
       if (!placed.ok) return placed;
       const created = await records.insert(
         creationOf(page.id, placed.value, this.clock()),
@@ -318,6 +328,12 @@ export class PageEditing {
       )
         return err(new NotApprover());
 
+      const invalidContent = markdownRejection(
+        current.visibility === "public" && fields.visibility !== "public"
+          ? { ...fieldsOf(current), visibility: fields.visibility }
+          : fields,
+      );
+      if (invalidContent) return err(invalidContent);
       // Past the pending revision's version too, which can run ahead of the
       // clock, so no client holding it matches the page's new one.
       const now = new Date(
@@ -408,14 +424,15 @@ export class PageEditing {
   /**
    * Send a page's draft revision for review. The submitter is recorded, and
    * none may approve their own submission. With `expectedUpdatedAt`, a draft
-   * saved since the caller read it is refused.
+   * saved since the caller read it is refused. Once it commits, the
+   * approvers hear a change waits for them.
    *
    * A rejected revision can be submitted again as it is: it is copied into a
    * new revision with the same version, since its content is unchanged, and
    * the rejected one is kept with its comment. The copy's contributors gain
    * the rejected round's submitter, so they still can't approve it.
    */
-  submit(
+  async submit(
     id: PageId,
     expectedUpdatedAt: Date | null,
     actor: Employee,
@@ -429,34 +446,46 @@ export class PageEditing {
       | ContentStoreUnavailable
     >
   > {
-    return this.records.atomically(actor.id, async (records) => {
-      const reviewing = await underReview(
-        records,
-        id,
-        expectedUpdatedAt,
-        "submit",
-      );
-      if (!reviewing.ok) return reviewing;
-      const { live, revision } = reviewing.value;
-      let draft = revision;
-      if (revision.status === "rejected") {
-        const again = await records.writeRevision(id, {
-          fields: revision.fields,
-          liveUpdatedAt: new Date(live.updated_at),
-          updatedAt: new Date(revision.updated_at),
-          createdBy: actor.id,
-          contributors: inheritedFrom(revision),
+    const submitted = await this.records.atomically(
+      actor.id,
+      async (records) => {
+        const reviewing = await underReview(
+          records,
+          id,
+          expectedUpdatedAt,
+          "submit",
+        );
+        if (!reviewing.ok) return reviewing;
+        const { live, revision } = reviewing.value;
+        let draft = revision;
+        if (revision.status === "rejected") {
+          const again = await records.writeRevision(id, {
+            fields: revision.fields,
+            liveUpdatedAt: new Date(live.updated_at),
+            updatedAt: new Date(revision.updated_at),
+            createdBy: actor.id,
+            contributors: inheritedFrom(revision),
+          });
+          if (!again.ok) return again;
+          draft = again.value;
+        }
+        const marked = await records.markRevision(draft.id, {
+          status: "submitted",
+          by: actor.id,
+          at: this.clock(),
         });
-        if (!again.ok) return again;
-        draft = again.value;
-      }
-      const marked = await records.markRevision(draft.id, {
-        status: "submitted",
-        by: actor.id,
-        at: this.clock(),
+        return marked.ok ? ok(viewOf(live, marked.value)) : marked;
+      },
+    );
+    if (submitted.ok)
+      await this.notifier.notify({
+        kind: "submitted",
+        pageId: id,
+        title: submitted.value.fields.title,
+        submittedBy: actor.id,
+        contributors: submitted.value.contributors,
       });
-      return marked.ok ? ok(viewOf(live, marked.value)) : marked;
-    });
+    return submitted;
   }
 
   /**
@@ -464,9 +493,10 @@ export class PageEditing {
    * unchanged and the rejected revision is kept; the next save starts a new
    * draft from it. The approver names the version they reviewed. Rejecting
    * moves the revision's version, so an editor still holding the earlier one
-   * reloads and sees the rejection rather than saving over it.
+   * reloads and sees the rejection rather than saving over it. Once it
+   * commits, the submitter hears it was rejected.
    */
-  reject(
+  async reject(
     id: PageId,
     comment: string,
     expectedUpdatedAt: Date,
@@ -482,26 +512,40 @@ export class PageEditing {
       | ContentStoreUnavailable
     >
   > {
-    return this.records.atomically(actor.id, async (records) => {
-      const reviewing = await underReview(
-        records,
-        id,
-        expectedUpdatedAt,
-        "decide",
-      );
-      if (!reviewing.ok) return reviewing;
-      const { live, revision } = reviewing.value;
-      if (this.isOwn(revision, actor)) return err(new SelfApproval());
-      const marked = await records.markRevision(revision.id, {
-        status: "rejected",
-        by: actor.id,
-        at: new Date(
-          Math.max(this.clock().getTime(), Date.parse(revision.updated_at) + 1),
-        ),
-        comment,
+    const rejected = await this.records.atomically(
+      actor.id,
+      async (records) => {
+        const reviewing = await underReview(
+          records,
+          id,
+          expectedUpdatedAt,
+          "decide",
+        );
+        if (!reviewing.ok) return reviewing;
+        const { live, revision } = reviewing.value;
+        if (this.isOwn(revision, actor)) return err(new SelfApproval());
+        const marked = await records.markRevision(revision.id, {
+          status: "rejected",
+          by: actor.id,
+          at: new Date(
+            Math.max(
+              this.clock().getTime(),
+              Date.parse(revision.updated_at) + 1,
+            ),
+          ),
+          comment,
+        });
+        return marked.ok ? ok(viewOf(live, marked.value)) : marked;
+      },
+    );
+    if (rejected.ok && rejected.value.submitted_by !== null)
+      await this.notifier.notify({
+        kind: "rejected",
+        pageId: id,
+        title: rejected.value.fields.title,
+        submittedBy: rejected.value.submitted_by,
       });
-      return marked.ok ? ok(viewOf(live, marked.value)) : marked;
-    });
+    return rejected;
   }
 
   /**
@@ -511,9 +555,10 @@ export class PageEditing {
    * The revision is checked again as a save would check it, since the
    * estate can have moved on while it waited; a stale one is refused with
    * the field to fix, and nothing changes. The approver names the version
-   * they reviewed, so a revision changed since is a conflict.
+   * they reviewed, so a revision changed since is a conflict. Once it
+   * commits, the submitter hears it is live: publishing is the approval.
    */
-  publish(
+  async publish(
     id: PageId,
     expectedUpdatedAt: Date,
     actor: Employee,
@@ -529,37 +574,57 @@ export class PageEditing {
       | ContentStoreUnavailable
     >
   > {
-    return this.records.atomically(actor.id, async (records) => {
-      const reviewing = await underReview(
-        records,
-        id,
-        expectedUpdatedAt,
-        "decide",
-      );
-      if (!reviewing.ok) return reviewing;
-      const { live, revision } = reviewing.value;
-      if (this.isOwn(revision, actor)) return err(new SelfApproval());
-      if (revision.fields.url !== live.url) {
-        const available = await records.checkPageUrl(revision.fields.url);
-        if (!available.ok) return available;
-      }
-      const placed = await place(records, id, revision.fields);
-      if (!placed.ok) return placed;
-      // Past the revision's version, which can run ahead of the clock.
-      const now = new Date(
-        Math.max(this.clock().getTime(), Date.parse(revision.updated_at) + 1),
-      );
-      // Marked first, so the page's history reads the approval before the
-      // change it lets live.
-      const marked = await records.markRevision(revision.id, {
-        status: "published",
-        by: actor.id,
-        at: now,
+    const published = await this.records.atomically(
+      actor.id,
+      async (records) => {
+        const reviewing = await underReview(
+          records,
+          id,
+          expectedUpdatedAt,
+          "decide",
+        );
+        if (!reviewing.ok) return reviewing;
+        const { live, revision } = reviewing.value;
+        if (this.isOwn(revision, actor)) return err(new SelfApproval());
+        const invalidContent = markdownRejection(revision.fields);
+        if (invalidContent) return err(invalidContent);
+        if (revision.fields.url !== live.url) {
+          const available = await records.checkPageUrl(revision.fields.url);
+          if (!available.ok) return available;
+        }
+        const placed = await place(records, id, revision.fields);
+        if (!placed.ok) return placed;
+        // Past the revision's version, which can run ahead of the clock.
+        const now = new Date(
+          Math.max(this.clock().getTime(), Date.parse(revision.updated_at) + 1),
+        );
+        // Marked first, so the page's history reads the approval before the
+        // change it lets live.
+        const marked = await records.markRevision(revision.id, {
+          status: "published",
+          by: actor.id,
+          at: now,
+        });
+        if (!marked.ok) return marked;
+        const saved = await writeLive(records, live, placed.value, now);
+        return saved.ok
+          ? ok({
+              page: workingCopy(saved.value, null),
+              submittedBy: marked.value.submitted_by,
+            })
+          : saved;
+      },
+    );
+    if (!published.ok) return published;
+    const { page, submittedBy } = published.value;
+    if (submittedBy !== null)
+      await this.notifier.notify({
+        kind: "published",
+        pageId: id,
+        title: page.title,
+        submittedBy,
       });
-      if (!marked.ok) return marked;
-      const saved = await writeLive(records, live, placed.value, now);
-      return saved.ok ? ok(workingCopy(saved.value, null)) : saved;
-    });
+    return ok(page);
   }
 
   /** Whether the employee changed or submitted the revision, and so may not decide on it. */
@@ -590,6 +655,22 @@ export class PageEditing {
       return removed.ok ? ok(undefined) : removed;
     });
   }
+}
+
+function markdownRejection(fields: SaveFields): PageRejected | null {
+  // Drafts retain incomplete or unsupported source; public and preview pages must compile.
+  if (fields.visibility === "draft") return null;
+  const { errors } = parseContentMarkdown(fields.body_markdown, {
+    frontmatter: false,
+  });
+  return errors.length
+    ? new PageRejected(
+        errors.map((error) => ({
+          field: "body_markdown",
+          message: `Line ${error.line}, column ${error.column}: ${error.message}`,
+        })),
+      )
+    : null;
 }
 
 /** Why an approver can't create a page as Public (ADR 0079, #3201). */

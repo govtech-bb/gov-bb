@@ -22,6 +22,18 @@ export interface AuthConfig {
   readonly githubClientSecret: Redacted<string>;
 }
 
+/**
+ * How review emails go out (#3267): not at all, to the log for local runs and
+ * tests, or through SES from a verified sender.
+ */
+export type NotificationsConfig =
+  | { readonly transport: "off" | "log" }
+  | {
+      readonly transport: "ses";
+      readonly from: string;
+      readonly region: string;
+    };
+
 /** The process's parsed settings; inner modules never read environment variables. */
 export interface AppConfig {
   readonly port: number;
@@ -39,6 +51,8 @@ export interface AppConfig {
    * fixed developer. Refused in production and unless the editor is local.
    */
   readonly authBypass: boolean;
+  /** Review emails to approvers and submitters; off unless an environment turns them on. */
+  readonly notifications: NotificationsConfig;
 }
 
 /** Invalid startup settings, reporting field names but never supplied values. */
@@ -103,6 +117,12 @@ const environment = z
           .filter(Boolean),
       )
       .pipe(z.array(z.email())),
+    // Off by default: an environment turns review emails on (#3267).
+    REVIEW_NOTIFICATIONS: z.enum(["off", "log", "ses"]).default("off"),
+    // The same sender settings as apps/api's SES mailer.
+    SES_FROM_ADDRESS: z.string().min(1).optional(),
+    SES_REGION: z.string().min(1).optional(),
+    AWS_DEFAULT_REGION: z.string().min(1).optional(),
   })
   .superRefine((value, context) => {
     // Without an admin nobody can grant approver, so nobody can change what citizens see.
@@ -127,6 +147,13 @@ const environment = z
         message:
           "Auth can only be bypassed for a local editor outside production",
       });
+    if (value.REVIEW_NOTIFICATIONS === "ses" && !value.SES_FROM_ADDRESS)
+      context.addIssue({
+        code: "custom",
+        path: ["SES_FROM_ADDRESS"],
+        message:
+          "Set SES_FROM_ADDRESS to a verified SES sender: REVIEW_NOTIFICATIONS=ses sends review emails from it",
+      });
     if (value.NODE_ENV !== "production") return;
     // A deployed database gets the estate once, from import-estate (#3052).
     if (value.SEED)
@@ -134,6 +161,14 @@ const environment = z
         code: "custom",
         path: ["SEED"],
         message: "Production does not seed on boot",
+      });
+    // On in production means emails reach people, not only the log.
+    if (value.REVIEW_NOTIFICATIONS === "log")
+      context.addIssue({
+        code: "custom",
+        path: ["REVIEW_NOTIFICATIONS"],
+        message:
+          "Production sends review emails with SES or not at all: set REVIEW_NOTIFICATIONS to ses or off",
       });
     for (const field of ["BETTER_AUTH_URL", "EDITOR_ORIGIN"] as const) {
       if (!value[field].startsWith("https://"))
@@ -188,5 +223,14 @@ export function parseConfig(
     },
     adminEmails: env.API_V2_ADMIN_EMAILS,
     authBypass: env.AUTH_BYPASS === "true",
+    // The refinement above refuses ses without a sender.
+    notifications:
+      env.REVIEW_NOTIFICATIONS === "ses" && env.SES_FROM_ADDRESS
+        ? {
+            transport: "ses",
+            from: env.SES_FROM_ADDRESS,
+            region: env.SES_REGION ?? env.AWS_DEFAULT_REGION ?? "us-east-1",
+          }
+        : { transport: env.REVIEW_NOTIFICATIONS === "log" ? "log" : "off" },
   });
 }

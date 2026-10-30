@@ -1,5 +1,6 @@
 import type { FastifyReply, FastifyRequest } from "fastify";
 import type { ICategoryEditing } from "../services/category-editing";
+import type { CollectionEditing } from "../services/collection-editing";
 import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
 import type { Employee, Role, SelfApproval } from "../modules/auth";
 import type {
@@ -15,6 +16,7 @@ import type { EmployeeGate, RoleRecords } from "../services/editor-access";
 import type { EditorIndex } from "../services/editor-index";
 import type { PageEditing } from "../services/page-editing";
 import { editorCategoryRoutes } from "./categories";
+import { editorCollectionRoutes } from "./collections";
 import { IF_UPDATED_AT, SCHEMAS } from "./contracts";
 import { EDITOR_READ, rejected, storageFailed } from "./responses";
 import { editorRoleRoutes } from "./roles";
@@ -93,12 +95,13 @@ export const editorRoutes: FastifyPluginAsyncZod<{
   editing: PageEditing;
   index: EditorIndex;
   categories: ICategoryEditing;
+  collections: CollectionEditing;
   access: EmployeeGate;
   roles: RoleRecords;
   editorOrigin: string;
 }> = async (
   editor,
-  { editing, index, categories, access, roles, editorOrigin },
+  { editing, index, categories, collections, access, roles, editorOrigin },
 ) => {
   editor.decorateRequest("employee", null);
   editor.addHook("onRequest", async (request, reply) => {
@@ -179,6 +182,24 @@ export const editorRoutes: FastifyPluginAsyncZod<{
   });
   editor.route({
     method: "GET",
+    url: "/pages/:id/history",
+    schema: SCHEMAS.getPageHistory,
+    handler: async (request, reply) => {
+      const history = await index.history(request.params.id);
+      if (!history.ok)
+        return reply
+          .status(500)
+          .send(storageFailed(request.log, history.error));
+      return history.value.length > 0
+        ? { entries: history.value }
+        : reply.status(404).send({
+            error: "not_found",
+            message: `No history for page ${request.params.id}`,
+          });
+    },
+  });
+  editor.route({
+    method: "GET",
     url: "/pages/:id/revision",
     schema: SCHEMAS.getRevision,
     handler: async (request, reply) => {
@@ -234,6 +255,7 @@ export const editorRoutes: FastifyPluginAsyncZod<{
     },
   });
   await editor.register(editorCategoryRoutes, { categories, actor });
+  await editor.register(editorCollectionRoutes, { collections, actor });
   await editor.register(editorRoleRoutes, { roles, actor });
   editor.route({
     method: "GET",

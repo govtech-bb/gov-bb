@@ -85,6 +85,57 @@ describe("the change history trigger", () => {
     await close();
   });
 
+  it("moves content_updated_at when what citizens read changes, and only then (#3105)", async () => {
+    const { db, close } = await createTestDb();
+    const run = (statement: ReturnType<typeof sql>) => db.execute(statement);
+    const stamp = async () =>
+      (
+        await db.execute<{ at: string }>(
+          sql`select (content_updated_at at time zone 'UTC')::text as at
+                from content_pages where id = ${PAGE}`,
+        )
+      ).rows[0]?.at;
+
+    // A page carried over from landing keeps its publish date.
+    await run(
+      sql`insert into content_pages (id, url, slug, title, body_markdown, visibility, published_at)
+          values (${PAGE}, '/x', 'x', 'X', '', 'public', '2026-01-22T00:00:00Z')`,
+    );
+    const imported = await stamp();
+    expect(imported).toBe("2026-01-22 00:00:00");
+
+    for (const change of [
+      sql`update content_pages set visibility = 'preview' where id = ${PAGE}`,
+      sql`update content_pages set visibility = 'public' where id = ${PAGE}`,
+      sql`update content_pages set url = '/y', slug = 'y' where id = ${PAGE}`,
+      sql`update content_pages set content_updated_at = now() where id = ${PAGE}`,
+    ])
+      await run(change);
+    expect(await stamp()).toBe(imported);
+
+    for (const [column, change] of [
+      ["title", sql`update content_pages set title = 'Y' where id = ${PAGE}`],
+      [
+        "description",
+        sql`update content_pages set description = 'D' where id = ${PAGE}`,
+      ],
+      [
+        "body",
+        sql`update content_pages set body_markdown = 'B' where id = ${PAGE}`,
+      ],
+      [
+        "frontmatter",
+        sql`update content_pages set frontmatter = '{"lede":"L"}' where id = ${PAGE}`,
+      ],
+      ["form", sql`update content_pages set form_id = 'f' where id = ${PAGE}`],
+    ] as const) {
+      const before = await stamp();
+      await run(change);
+      expect(await stamp(), column).not.toBe(before);
+    }
+    await close();
+  });
+
   it("names a revision's review steps in its page's history, as system when no user is set", async () => {
     const { db, close } = await createTestDb();
     const run = (statement: ReturnType<typeof sql>) => db.execute(statement);
@@ -175,6 +226,7 @@ describe("the change history trigger", () => {
   it("forgets the user when their transaction ends, on the same connection", async () => {
     const { name, close } = await createTestDb();
     const pool = new Pool({ ...TEST_SERVER, database: name, max: 1 });
+    pool.on("error", () => {}); // close() may terminate it; see test-db.ts
     const db = drizzle(pool);
     try {
       const created = expectOk(

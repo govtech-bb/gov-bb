@@ -10,6 +10,8 @@ type RehypeHideStartLinksOptions = {
    * else, in which case the plugin is a no-op.
    */
   hideStartLink?: boolean
+  /** Scope suppression to this page’s form and unbound legacy links; null means no linked form. Omit for legacy global suppression. */
+  linkedFormId?: string | null
 }
 
 const WAYS_TO_APPLY_REGEX = /are (\d+) ways|are ([a-zA-Z]+) ways/i
@@ -38,36 +40,49 @@ export function isDataStartLink(node: ElementContent): boolean {
   )
 }
 
-function containsDataStartLink(node: ElementContent): boolean {
+function containsDataStartLink(
+  node: ElementContent,
+  matches: (link: Element) => boolean,
+): boolean {
   if (node.type !== 'element') return false
-  if (isDataStartLink(node)) return true
-  return node.children.some(containsDataStartLink)
+  if (isDataStartLink(node) && matches(node)) return true
+  return node.children.some((child) => containsDataStartLink(child, matches))
 }
 
 function rehypeHideStartLinks(options: RehypeHideStartLinksOptions = {}) {
-  const { hideStartLink = false } = options
+  const { hideStartLink = false, linkedFormId } = options
+  const matchesPage = (node: Element) =>
+    linkedFormId === undefined ||
+    node.properties.dataFormId === undefined ||
+    node.properties.dataFormId === linkedFormId
 
   return (tree: Root) => {
     if (!hideStartLink) return
 
     let removedCount = 0
 
-    const filterChildren = (children: Root['children']): Root['children'] =>
+    const filterChildren = (
+      children: Root['children'],
+      countAnchors = true,
+    ): Root['children'] =>
       children
         .filter((node) => {
           if (node.type !== 'element') return true
           // Drop a whole list item that hosts the online method, otherwise an
           // orphaned heading/blurb would be left behind.
           if (node.tagName === 'li') {
-            if (containsDataStartLink(node)) {
+            if (
+              containsDataStartLink(node, matchesPage) &&
+              !containsDataStartLink(node, (link) => !matchesPage(link))
+            ) {
               removedCount++
               return false
             }
             return true
           }
           // A data-start-link not wrapped in a list item: drop just the anchor.
-          if (isDataStartLink(node)) {
-            removedCount++
+          if (isDataStartLink(node) && matchesPage(node)) {
+            if (countAnchors) removedCount++
             return false
           }
           return true
@@ -76,7 +91,10 @@ function rehypeHideStartLinks(options: RehypeHideStartLinksOptions = {}) {
           if (node.type === 'element' && node.children) {
             return {
               ...node,
-              children: filterChildren(node.children) as Element['children'],
+              children: filterChildren(
+                node.children,
+                countAnchors && node.tagName !== 'li',
+              ) as Element['children'],
             }
           }
           return node

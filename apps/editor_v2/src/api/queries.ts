@@ -41,6 +41,10 @@ export const reviewQueueQuery = (api: Pick<EditorApi, "reviewQueue">) =>
 export const revisionQuery = (api: Pick<EditorApi, "revision">, id: string) =>
   queryOptions({ queryKey: ["content", "revision", id], queryFn: () => api.revision(id) });
 
+/** What happened to a page, newest first; a 404 when it has no history. */
+export const historyQuery = (api: Pick<EditorApi, "history">, id: string) =>
+  queryOptions({ queryKey: ["content", "history", id], queryFn: () => api.history(id) });
+
 /**
  * The one shared category list for Categories, Services filters, page settings and Create service. A failed read
  * is thrown here, where React Query keeps it as the query's error for the screen to show.
@@ -99,3 +103,11 @@ export const estateVersionQuery = (api: Pick<EditorApi, "version">, client: Quer
     },
     refetchInterval: 30_000,
   });
+
+/** The data collections, with their record counts, for the Collections screen. */
+export const collectionsQuery = (api: EditorApi) =>
+  queryOptions({ queryKey: ["content", "collections"], queryFn: () => api.collections() });
+
+/** One collection and its records, shared by its screen and the record dialogs over it. */
+export const collectionQuery = (api: EditorApi, key: string) =>
+  queryOptions({ queryKey: ["content", "collection", key], queryFn: () => api.collection(key) });

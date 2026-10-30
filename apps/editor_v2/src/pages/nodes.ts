@@ -1,8 +1,22 @@
 import { ElementNode, type SerializedElementNode, type NodeKey } from "lexical";
 
-export type PageComponentKind = "notice" | "details" | "actions" | "action" | "start";
+import type { PageMarkdownComponent } from "@govtech-bb/govbbmarkd";
 
-export type PageComponentAttributes = { summary?: string; href?: string; variant?: string };
+/** Start is retained only for existing serialized editor states and HTML markers. */
+export type PageComponentKind = PageMarkdownComponent["kind"] | "start";
+
+/** Editable fields may be incomplete; the Markdown boundary validates authored components. */
+export type PageComponentAttributes = {
+  summary?: string;
+  href?: string;
+  variant?: string;
+  form?: string;
+  target?: "form";
+  caption?: string;
+  rowHeaders?: "first" | "none";
+  numericColumns?: readonly number[];
+  summaryKey?: string;
+};
 
 type SerializedPageComponent = SerializedElementNode & {
   kind: PageComponentKind;
@@ -54,14 +68,18 @@ export class PageComponentNode extends ElementNode {
 
     return element;
   }
-  decorateElement(element: HTMLElement) {
+  /** Labels the editing surface without inserting authored body text. */
+  decorateElement(element: HTMLElement): void {
     element.dataset.pageComponent = this.__kind;
 
-    if (this.__kind === "details")
-      element.dataset.summary = this.__attributes.summary ?? "More information";
+    const label =
+      this.__attributes.summary ?? this.__attributes.caption ?? this.__attributes.summaryKey;
+
+    if (label !== undefined) element.dataset.summary = label;
 
     if (this.__kind === "start" || this.__kind === "action")
-      element.dataset.destination = this.__attributes.href ?? "Linked form";
+      element.dataset.destination =
+        this.__attributes.href ?? this.__attributes.form ?? "Linked form";
 
     element.classList.toggle(
       "page-action-secondary",
@@ -77,8 +95,9 @@ export class PageComponentNode extends ElementNode {
   override canBeEmpty() {
     return false;
   }
-  override isShadowRoot() {
-    return this.__kind === "notice" || this.__kind === "details" || this.__kind === "actions";
+  /** Editing operations stay inside containers; actions remain editable inline labels. */
+  override isShadowRoot(): boolean {
+    return this.__kind !== "action" && this.__kind !== "start";
   }
 }
 

@@ -1,4 +1,2 @@
 export { default as hideStartLinks } from './hideStartLinks'
-export { default as sanitizeUrls } from './sanitizeUrls'
-export { default as tableScopes } from './tableScopes'
 export { bakeStartLinkFormId } from './bakeStartLinkFormId'

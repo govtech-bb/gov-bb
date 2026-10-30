@@ -33,6 +33,11 @@ export type ReviewQueueEntry = Json<
   paths["/revisions"]["get"]["responses"][200]
 >["revisions"][number];
 
+/** One entry in a page's history: what happened, who did it, when, and what it changed. */
+export type PageHistoryEntry = Json<
+  paths["/pages/{id}/history"]["get"]["responses"][200]
+>["entries"][number];
+
 /** What rejecting a change sends: why, for the editor. */
 type RejectRevisionInput = Json<paths["/pages/{id}/revision/reject"]["post"]["requestBody"]>;
 
@@ -47,6 +52,25 @@ export type ServicePage = ServiceDetail["pages"][number];
 
 /** The signed-in employee and their roles. */
 export type Me = Json<paths["/editor/me"]["get"]["responses"][200]>;
+
+/** A data collection in the editor's list: its field list and how many records it holds. */
+export type CollectionSummary = Json<
+  paths["/collections"]["get"]["responses"][200]
+>["collections"][number];
+
+/** A data collection and its records, ordered by record key. */
+export type CollectionDetail = Json<paths["/collections/{key}/records"]["get"]["responses"][200]>;
+
+/** A collection's definition: its key, title, record key field and field list. */
+export type Collection = CollectionDetail["collection"];
+
+/** One record of a collection: a value for some or all of its fields, every one a string. */
+export type CollectionRecord = CollectionDetail["records"][number];
+
+/** What saving a record sends: every value to keep, by field key. */
+export type RecordInput = Json<
+  paths["/collections/{key}/records/{recordKey}"]["put"]["requestBody"]
+>;
 
 /** The estate's change token. */
 export type EstateVersion = Json<paths["/version"]["get"]["responses"][200]>;
@@ -290,7 +314,13 @@ export function createEditorApi(apiOrigin: string, landingOrigin?: string) {
   async function request(
     method: "GET" | "POST" | "PUT" | "DELETE",
     path: string,
-    body?: CreatePageInput | SavePageInput | CategoryFields | CategoryOrder | RejectRevisionInput,
+    body?:
+      | CreatePageInput
+      | SavePageInput
+      | CategoryFields
+      | CategoryOrder
+      | RejectRevisionInput
+      | RecordInput,
     ifUpdatedAt?: string,
   ) {
     const headers = new Headers();
@@ -397,6 +427,9 @@ export function createEditorApi(apiOrigin: string, landingOrigin?: string) {
 
   const services = () => read<ServiceSummary[]>("/services");
 
+  const recordPath = (key: string, recordKey: string) =>
+    `/collections/${encodeURIComponent(key)}/records/${encodeURIComponent(recordKey)}`;
+
   return {
     services,
     service: (id: string) => read<ServiceDetail>(`/services/${id}`),
@@ -484,6 +517,31 @@ export function createEditorApi(apiOrigin: string, landingOrigin?: string) {
 
       return written.ok ? ok(undefined) : written;
     },
+    /** Every data collection, with its field list and record count. */
+    collections: async () =>
+      (await read<{ collections: CollectionSummary[] }>("/collections")).collections,
+    /** A collection and its records; a 404 when there is no such collection. */
+    collection: (key: string) =>
+      read<CollectionDetail>(`/collections/${encodeURIComponent(key)}/records`),
+    /** Adds a record; a 409 `record_exists` when its key is taken. */
+    createRecord: async (
+      key: string,
+      recordKey: string,
+      data: RecordInput["data"],
+    ): Promise<CollectionRecord> =>
+      (await send("POST", recordPath(key, recordKey), { data })).json(),
+    /** Replaces a record's data, over the version last read, `ifUpdatedAt`; a 409 `conflict` once it has moved on. */
+    saveRecord: async (
+      key: string,
+      recordKey: string,
+      data: RecordInput["data"],
+      ifUpdatedAt: string,
+    ): Promise<CollectionRecord> =>
+      (await send("PUT", recordPath(key, recordKey), { data }, ifUpdatedAt)).json(),
+    /** Deletes a record at the version last read, `ifUpdatedAt`. */
+    deleteRecord: async (key: string, recordKey: string, ifUpdatedAt: string) => {
+      await send("DELETE", recordPath(key, recordKey), undefined, ifUpdatedAt);
+    },
     version: () => read<EstateVersion>("/version"),
     me: () => read<Me>("/editor/me"),
     page: (id: string) => read<ApiPage>(`/pages/${id}`),
@@ -497,6 +555,9 @@ export function createEditorApi(apiOrigin: string, landingOrigin?: string) {
     reviewQueue: async () =>
       (await read<{ revisions: ReviewQueueEntry[] }>("/revisions?status=submitted")).revisions,
     revision: (id: string) => read<ApiRevision>(`/pages/${id}/revision`),
+    /** What happened to a page, newest first. */
+    history: async (id: string) =>
+      (await read<{ entries: PageHistoryEntry[] }>(`/pages/${id}/history`)).entries,
     /** Publishes the change at the version the approver reviewed, `ifUpdatedAt`. */
     publishRevision: async (id: string, ifUpdatedAt: string): Promise<ApiPage> =>
       (await send("POST", `/pages/${id}/revision/publish`, undefined, ifUpdatedAt)).json(),

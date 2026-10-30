@@ -150,6 +150,13 @@ export function pageInsertAction(
       for (const parent of destination ? [destination, ...destination.getParents()] : []) {
         if (parent.getType() === "tablecell" && id !== "page-paragraph") return false;
 
+        if (
+          id === "page-details" &&
+          parent instanceof PageComponentNode &&
+          parent.getKind() === "details"
+        )
+          return false;
+
         if ($isQuoteNode(parent) && !quotable.has(id)) return false;
       }
 

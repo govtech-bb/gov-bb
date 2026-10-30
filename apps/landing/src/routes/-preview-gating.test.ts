@@ -4,6 +4,7 @@ import type * as CategoryApiModule from '../lib/api-v2-categories'
 // Type-only, so it erases at runtime and the route still loads lazily, after
 // the mocks below are in place.
 import type * as ContentRouteModule from './$'
+import { processMarkdown } from '../utils/markdown/processor'
 
 // Mock the registry to drive the gate's throw paths deterministically. Only the
 // exports the routes use are stubbed.
@@ -43,9 +44,14 @@ vi.mock('../lib/preview-form-access', () => accessMocks)
 // api_v2 is asked first (#2944); a miss falls back to the registry, so the
 // static-page tests above keep their behaviour.
 const v2Mocks = vi.hoisted(() => ({
-  getApiV2Page: vi.fn(async (): Promise<unknown> => ({ kind: 'miss' })),
+  getApiV2Page: vi.fn(
+    async (): Promise<unknown> => ({ kind: 'miss', reason: 'not_found' }),
+  ),
 }))
-vi.mock('../lib/api-v2-page', () => v2Mocks)
+vi.mock('../lib/api-v2-page', async (importOriginal) => ({
+  ...(await importOriginal<object>()),
+  ...v2Mocks,
+}))
 
 const categoryMocks = vi.hoisted(() => ({
   getApiV2CategoryListing:
@@ -86,10 +92,12 @@ beforeEach(() => {
   mocks.isUrlVisible.mockReturnValue(true)
   mocks.urlLevel.mockReturnValue('public')
   mocks.resolveBareSlugRedirect.mockReturnValue(undefined)
-  v2Mocks.getApiV2Page.mockResolvedValue({ kind: 'miss' })
+  v2Mocks.getApiV2Page.mockResolvedValue({ kind: 'miss', reason: 'not_found' })
   categoryMocks.getApiV2CategoryListing.mockResolvedValue({
     kind: 'unavailable',
   })
+  // The loader asks api_v2 only when it is configured (#3127).
+  vi.stubEnv('VITE_API_V2_URL', 'http://api.example')
 })
 
 // Load the route once. Pulling the route + content graph through Vite's
@@ -102,6 +110,71 @@ beforeAll(async () => {
 }, 60_000)
 
 describe('$ route loader gating', () => {
+  it.each([undefined, 'page-form'])(
+    'filters closed and disabled targets independently of page form %s',
+    async (formId) => {
+      mocks.findPage.mockReturnValue({
+        ...fakePage,
+        frontmatter: { ...fakePage.frontmatter, form_id: formId },
+      })
+      mocks.isVisible.mockReturnValue(true)
+      const publicForms = [
+        'page-form',
+        'closed-form',
+        'disabled-form',
+        'open-form',
+      ]
+      formMocks.getAvailableForms.mockResolvedValueOnce(publicForms)
+      formMocks.getClosedForms.mockResolvedValueOnce(['closed-form'])
+      const loader = Route.options.loader as (a: unknown) => Promise<unknown>
+      const result = await loader({
+        params: { _splat: 'secret-service' },
+        context: {
+          level: 'public',
+          serviceStatuses: [['disabled-form', 'form_disabled']],
+          categoryTree: STATIC,
+        },
+      })
+      expect(result).toMatchObject({
+        availableForms: ['page-form', 'open-form'],
+        applicationClosed: false,
+        underMaintenance: false,
+      })
+      expect(publicForms).toEqual([
+        'page-form',
+        'closed-form',
+        'disabled-form',
+        'open-form',
+      ])
+    },
+  )
+
+  it('checks explicit preview targets once each and excludes inaccessible forms', async () => {
+    const { hast } = await processMarkdown(
+      ':::action{form="review-form"}\nReview\n:::\n\n:::action{form="review-form"}\nAgain\n:::\n\n:::action{form="denied-form"}\nDenied\n:::',
+    )
+    mocks.findPage.mockReturnValue({ ...fakePage, hast })
+    mocks.isVisible.mockReturnValue(true)
+    accessMocks.checkFormAccessible
+      .mockResolvedValueOnce(true)
+      .mockResolvedValueOnce(false)
+    const loader = Route.options.loader as (a: unknown) => Promise<unknown>
+    const result = await loader({
+      params: { _splat: 'secret-service' },
+      context: { level: 'preview', serviceStatuses: [], categoryTree: STATIC },
+    })
+    expect(result).toMatchObject({
+      availableForms: ['get-birth-certificate', 'review-form'],
+    })
+    expect(accessMocks.checkFormAccessible).toHaveBeenCalledTimes(2)
+    expect(accessMocks.checkFormAccessible).toHaveBeenCalledWith({
+      data: 'review-form',
+    })
+    expect(accessMocks.checkFormAccessible).toHaveBeenCalledWith({
+      data: 'denied-form',
+    })
+  })
+
   it('throws notFound for a gated page the viewer cannot see', async () => {
     mocks.findPage.mockReturnValue(fakePage)
     mocks.isVisible.mockReturnValue(false)
@@ -240,6 +313,7 @@ describe('$ route loader gating', () => {
       applicationClosed: false,
       level: 'public',
       startSubPageVisible: true,
+      source: 'static',
     })
     expect((data as { page?: unknown }).page).toBeUndefined()
     expect(mocks.isVisible).toHaveBeenCalledWith(fakePage, 'draft', new Map())
@@ -397,9 +471,66 @@ describe('$ route api_v2 pages (#2944)', () => {
       page: v2Page,
       level: 'public',
       startSubPageVisible: true,
+      source: 'api_v2',
     })
     // api_v2 already enforced visibility.
     expect(mocks.isVisible).not.toHaveBeenCalled()
+  })
+
+  it('never asks api_v2 when VITE_API_V2_URL is unset, serving the registry page (#3127)', async () => {
+    vi.stubEnv('VITE_API_V2_URL', '')
+    mocks.findPage.mockReturnValue(fakePage)
+    mocks.isVisible.mockReturnValue(true)
+    const loader = Route.options.loader as (a: unknown) => Promise<unknown>
+    const data = (await loader({
+      params: { _splat: fakePage.url },
+      context: { level: 'public', serviceStatuses: [], categoryTree: STATIC },
+    })) as Record<string, unknown>
+    expect(v2Mocks.getApiV2Page).not.toHaveBeenCalled()
+    expect(data).toMatchObject({
+      kind: 'page',
+      url: fakePage.url,
+      source: 'static',
+    })
+  })
+
+  it.each([
+    ['not_found', 'static'],
+    ['network', 'static-fallback'],
+  ])(
+    'marks a registry page served on a %s miss as %s',
+    async (reason, source) => {
+      v2Mocks.getApiV2Page.mockResolvedValue({ kind: 'miss', reason })
+      mocks.findPage.mockReturnValue(fakePage)
+      mocks.isVisible.mockReturnValue(true)
+      const loader = Route.options.loader as (a: unknown) => Promise<unknown>
+      const data = await loader({
+        params: { _splat: fakePage.url },
+        context: { level: 'public', serviceStatuses: [], categoryTree: STATIC },
+      })
+      expect(data).toMatchObject({ kind: 'page', source })
+    },
+  )
+
+  it('sends x-content-source on every response with loader data', () => {
+    const headers = Route.options.headers as (a: unknown) => unknown
+    for (const source of [
+      'api_v2',
+      'api_v2-stale',
+      'static',
+      'static-fallback',
+    ])
+      expect(headers({ loaderData: { kind: 'page', source } })).toEqual({
+        'x-content-source': source,
+      })
+    for (const kind of ['category', 'subcategory-index', 'subcategory'])
+      expect(headers({ loaderData: { kind } })).toEqual({
+        'x-content-source': 'static',
+      })
+    expect(headers({ loaderData: { kind: 'api-category' } })).toEqual({
+      'x-content-source': 'api_v2',
+    })
+    expect(headers({ loaderData: undefined })).toBeUndefined()
   })
 
   it('301-redirects to the api_v2 redirect target', async () => {

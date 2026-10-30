@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { Heading } from '@govtech-bb/react'
 
-/** Grid of highlight cards. Part of the curated content palette. */
+/** @deprecated Retains existing highlights HTML; no replacement directive is approved. */
 export function Highlights({ children }: { children: ReactNode }) {
   return (
     <ul className="grid list-none grid-cols-1 gap-s p-0 sm:grid-cols-2">
@@ -10,7 +10,7 @@ export function Highlights({ children }: { children: ReactNode }) {
   )
 }
 
-/** A single titled highlight card; body is the children. */
+/** @deprecated Retains existing highlight HTML; use ordinary Markdown headings and prose for new content. */
 export function Highlight({
   title,
   children,

@@ -17,9 +17,16 @@ import {
   fetchCachedCategoryTree,
   fetchCategoryListing,
   fetchCategoryTree,
+  fetchCurrentCategoryTree,
   resolveCategoryAddress,
 } from './api-v2-categories'
 import type { CategoryListing, CategoryNode } from './api-v2-categories'
+
+/** The one `api_v2_fallback` line logged through `spy`, parsed. */
+function logged(spy: ReturnType<typeof vi.spyOn>) {
+  expect(spy).toHaveBeenCalledOnce()
+  return JSON.parse(String(spy.mock.calls[0][0]))
+}
 
 const TREE: CategoryNode[] = [
   {
@@ -133,17 +140,35 @@ describe('fetchCategoryTree', () => {
     })
   })
 
+  it('logs a failed read as one api_v2_fallback line at error', async () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+    reply = json(503, { error: 'internal_error' })
+    await fetchCategoryTree(base)
+    expect(logged(error)).toEqual({
+      event: 'api_v2_fallback',
+      reason: 'status',
+      url: '/categories',
+      status: 503,
+    })
+  })
+
   it.each([
-    ['a server error', json(500, { error: 'internal_error' })],
-    ['a missing route', json(404, { error: 'not_found' })],
-  ])('is unavailable on %s', async (_, response) => {
-    vi.spyOn(console, 'warn').mockImplementation(() => {})
+    ['a server error', json(500, { error: 'internal_error' }), 500],
+    ['a missing route', json(404, { error: 'not_found' }), 404],
+  ])('is unavailable on %s, logged as status', async (_, response, status) => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
     reply = response
     expect(await fetchCategoryTree(base)).toEqual({ kind: 'unavailable' })
+    expect(logged(error)).toEqual({
+      event: 'api_v2_fallback',
+      reason: 'status',
+      url: '/categories',
+      status,
+    })
   })
 
   it('is unavailable when api_v2 cannot be reached', async () => {
-    vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
     const closed = createServer()
     await new Promise<void>((resolve) => closed.listen(0, '127.0.0.1', resolve))
     // SAFETY: still listening on TCP here, so address() is an AddressInfo.
@@ -152,16 +177,27 @@ describe('fetchCategoryTree', () => {
     expect(await fetchCategoryTree(`http://127.0.0.1:${port}`)).toEqual({
       kind: 'unavailable',
     })
+    expect(logged(error)).toMatchObject({
+      event: 'api_v2_fallback',
+      reason: 'network',
+      url: '/categories',
+      error: expect.stringContaining('ECONNREFUSED'),
+    })
   })
 
   it('is unavailable when api_v2 does not answer in time', async () => {
-    vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
     reply = 'hang'
     const result = fetchCategoryTree(base)
     await vi.waitFor(() => expect(requests).toHaveLength(1))
     await vi.runAllTimersAsync()
     expect(await result).toEqual({ kind: 'unavailable' })
+    expect(logged(error)).toMatchObject({
+      event: 'api_v2_fallback',
+      reason: 'timeout',
+      url: '/categories',
+    })
   })
 
   it.each([
@@ -169,9 +205,14 @@ describe('fetchCategoryTree', () => {
     ['the wrong shape', json(200, { categories: [{ slug: 1 }] })],
     ['a missing list', json(200, {})],
   ])('is malformed when the body is %s', async (_, response) => {
-    vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
     reply = response
     expect(await fetchCategoryTree(base)).toEqual({ kind: 'malformed' })
+    expect(logged(error)).toEqual({
+      event: 'api_v2_fallback',
+      reason: 'malformed',
+      url: '/categories',
+    })
   })
 })
 
@@ -213,22 +254,30 @@ describe('fetchCategoryListing', () => {
   )
 
   it('is not found on a 404, so the caller can try a page', async () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
     reply = json(404, { error: 'not_found' })
     expect(await fetchCategoryListing(base, ['nope'])).toEqual({
       kind: 'not_found',
     })
+    expect(error).not.toHaveBeenCalled()
   })
 
   it('is unavailable on a server error, not not-found', async () => {
-    vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
     reply = json(503, { error: 'internal_error' })
-    expect(await fetchCategoryListing(base, ['money'])).toEqual({
+    expect(await fetchCategoryListing(base, ['money', 'tax'])).toEqual({
       kind: 'unavailable',
+    })
+    expect(logged(error)).toEqual({
+      event: 'api_v2_fallback',
+      reason: 'status',
+      url: '/categories/money/tax',
+      status: 503,
     })
   })
 
   it('is malformed when the listing has the wrong shape', async () => {
-    vi.spyOn(console, 'warn').mockImplementation(() => {})
+    vi.spyOn(console, 'error').mockImplementation(() => {})
     reply = json(200, { ...LISTING, pages: 'none' })
     expect(await fetchCategoryListing(base, ['money'])).toEqual({
       kind: 'malformed',
@@ -275,7 +324,7 @@ describe('categoryTreeQuery', () => {
 
   it('holds a failed read for the same minute, then tries again', async () => {
     vi.useFakeTimers({ toFake: ['Date'] })
-    vi.spyOn(console, 'warn').mockImplementation(() => {})
+    vi.spyOn(console, 'error').mockImplementation(() => {})
     reply = json(500, { error: 'internal_error' })
     const load = () => fetchCategoryTree(base)
     const client = freshClient()
@@ -304,7 +353,7 @@ describe('categoryTreeQuery', () => {
   })
 
   it('turns a failed server-function call into unavailable, never a rejection', async () => {
-    vi.spyOn(console, 'warn').mockImplementation(() => {})
+    vi.spyOn(console, 'error').mockImplementation(() => {})
     const client = freshClient()
     await expect(
       client.fetchQuery(
@@ -355,7 +404,7 @@ describe('fetchCachedCategoryTree', () => {
     'caches %s across requests without preserving stale categories',
     async (kind, failure) => {
       vi.useFakeTimers({ toFake: ['Date'] })
-      vi.spyOn(console, 'warn').mockImplementation(() => {})
+      vi.spyOn(console, 'error').mockImplementation(() => {})
       const load = () => fetchCachedCategoryTree(`${base}/${kind}`)
       reply = json(200, { categories: TREE })
       expect(await load()).toEqual({ kind: 'found', categories: TREE })
@@ -372,7 +421,7 @@ describe('fetchCachedCategoryTree', () => {
   )
 
   it('a timed-out read does not make the next request wait for the API again', async () => {
-    vi.spyOn(console, 'warn').mockImplementation(() => {})
+    vi.spyOn(console, 'error').mockImplementation(() => {})
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] })
     reply = 'hang'
     const load = () => fetchCachedCategoryTree(`${base}/timeout`)
@@ -462,11 +511,106 @@ describe('resolveCategoryAddress', () => {
   ] as const)(
     'reports a %s listing, never a static one',
     async (kind, response) => {
-      vi.spyOn(console, 'warn').mockImplementation(() => {})
+      vi.spyOn(console, 'error').mockImplementation(() => {})
       reply = response
       expect(
         await resolveCategoryAddress(['money-financial-support'], found, read),
       ).toEqual({ kind })
     },
   )
+})
+
+describe('fetchCurrentCategoryTree', () => {
+  const OLD = [TREE[0]]
+  const NEW: CategoryNode[] = [
+    ...TREE,
+    {
+      slug: 'travel',
+      url: '/travel',
+      title: 'Travel',
+      description: null,
+      subcategories: [],
+    },
+  ]
+
+  /** A fetch whose answers are released by hand, one per request. */
+  function heldFetch() {
+    const held: Array<(response: Response) => void> = []
+    const fetchImpl = vi.fn(
+      () => new Promise<Response>((resolve) => held.push(resolve)),
+    ) as unknown as typeof fetch
+    const started = (n: number) =>
+      vi.waitFor(() => expect(held).toHaveLength(n))
+    const release = (i: number, categories: CategoryNode[]) =>
+      held[i](new Response(JSON.stringify({ categories }), { status: 200 }))
+    return { fetchImpl, started, release }
+  }
+
+  /** Site version moves, rising across tests: the watch's count is per instance. */
+  let changes = 1000
+
+  it('does not store a first load begun before the site version moved', async () => {
+    const { fetchImpl, started, release } = heldFetch()
+    const at = `${base}/current-first`
+    const before = fetchCurrentCategoryTree(at, ++changes, fetchImpl)
+    await started(1)
+    const after = fetchCurrentCategoryTree(at, ++changes, fetchImpl)
+    await started(2)
+    release(0, OLD)
+    release(1, NEW)
+    expect(await after).toEqual({ kind: 'found', categories: NEW })
+    expect(await before).toEqual({ kind: 'found', categories: NEW })
+    expect(await fetchCurrentCategoryTree(at, changes, fetchImpl)).toEqual({
+      kind: 'found',
+      categories: NEW,
+    })
+    expect(fetchImpl).toHaveBeenCalledTimes(2)
+  })
+
+  it('does not store a refresh begun before the site version moved', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    const { fetchImpl, started, release } = heldFetch()
+    const at = `${base}/current-refresh`
+    const first = fetchCurrentCategoryTree(at, ++changes, fetchImpl)
+    await started(1)
+    release(0, OLD)
+    expect(await first).toEqual({ kind: 'found', categories: OLD })
+
+    vi.advanceTimersByTime(CATEGORY_TREE_STALE_MS)
+    const before = fetchCurrentCategoryTree(at, changes, fetchImpl)
+    await started(2)
+    const after = fetchCurrentCategoryTree(at, ++changes, fetchImpl)
+    await started(3)
+    release(1, OLD)
+    release(2, NEW)
+    expect(await before).toEqual({ kind: 'found', categories: OLD })
+    expect(await after).toEqual({ kind: 'found', categories: NEW })
+    expect(await fetchCurrentCategoryTree(at, changes, fetchImpl)).toEqual({
+      kind: 'found',
+      categories: NEW,
+    })
+    expect(fetchImpl).toHaveBeenCalledTimes(3)
+  })
+
+  it('gives every read of a new site version the fresh tree, not only the first', async () => {
+    const { fetchImpl, started, release } = heldFetch()
+    const at = `${base}/current-concurrent`
+    const first = fetchCurrentCategoryTree(at, ++changes, fetchImpl)
+    await started(1)
+    release(0, OLD)
+    expect(await first).toEqual({ kind: 'found', categories: OLD })
+
+    ++changes
+    const reads = Promise.all([
+      fetchCurrentCategoryTree(at, changes, fetchImpl),
+      fetchCurrentCategoryTree(at, changes, fetchImpl),
+    ])
+    await started(2)
+    release(1, NEW)
+    expect(await reads).toEqual([
+      { kind: 'found', categories: NEW },
+      { kind: 'found', categories: NEW },
+    ])
+    expect(fetchImpl).toHaveBeenCalledTimes(2)
+  })
 })

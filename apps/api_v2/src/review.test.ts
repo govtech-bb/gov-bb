@@ -260,6 +260,89 @@ describe("an editor", () => {
 });
 
 describe("publishing a revision", () => {
+  it("publishes valid GovBB Markdown without rewriting its source", async () => {
+    const body = ':::action{href="/guidance"}\nRead **guidance**\n:::';
+    const { page } = await submitted({ body_markdown: body });
+    const response = await review(APPROVER, page.id, "publish");
+    expect(response.statusCode).toBe(200);
+    expect(
+      (await app.inject({ url: `/pages?url=${ENTRY}` })).json().body_markdown,
+    ).toBe(body);
+  });
+
+  it.each([
+    ':::action{href="javascript:run()"}\nRun\n:::',
+    ":::unknown-component\nBody\n:::",
+    ":::details[Help]\nUnclosed content",
+  ])(
+    "refuses stored invalid Markdown on approval without changing live content: %s",
+    async (body) => {
+      const { page } = await submitted();
+      const [revision] = await revisions();
+      if (!revision) throw new Error("Expected the submitted revision");
+      // A revision saved before Markdown validation was introduced.
+      await db
+        .update(pageRevisions)
+        .set({
+          fields: { ...revision.fields, body_markdown: body },
+        })
+        .where(eq(pageRevisions.id, revision.id));
+      const before = {
+        page: await stored(page.id),
+        revisions: await revisions(),
+        events: await events(),
+        public: await publicResponses(),
+      };
+
+      const response = await review(APPROVER, page.id, "publish");
+
+      expect(response.statusCode).toBe(422);
+      expect(response.json()).toMatchObject({
+        error: "validation_failed",
+        errors: [
+          {
+            field: "body_markdown",
+            message: expect.stringContaining("Line 1, column 1:"),
+          },
+        ],
+      });
+      expect({
+        page: await stored(page.id),
+        revisions: await revisions(),
+        events: await events(),
+        public: await publicResponses(),
+      }).toEqual(before);
+    },
+  );
+
+  it.each(["draft", "submitted"] as const)(
+    "rejects invalid saves before changing a %s revision",
+    async (status) => {
+      const { page, version } =
+        status === "draft" ? await drafted() : await submitted();
+      const before = {
+        page: await stored(page.id),
+        revisions: await revisions(),
+        events: await events(),
+        public: await publicResponses(),
+      };
+      const response = await save(
+        TEST_EDITOR,
+        { ...page, updated_at: version },
+        {
+          body_markdown: ':::action{href="javascript:run()"}\nRun\n:::',
+        },
+      );
+      expect(response.statusCode).toBe(422);
+      expect({
+        page: await stored(page.id),
+        revisions: await revisions(),
+        events: await events(),
+        public: await publicResponses(),
+      }).toEqual(before);
+    },
+  );
+
   it("writes it to the live page, so the site, search and navigation show it", async () => {
     const { page, version } = await submitted();
     const before = await publicResponses();
@@ -585,6 +668,65 @@ describe("the page's history (#3200)", () => {
       // The live write the approval let through.
       step(6, "updated", APPROVER.id),
     ]);
+  });
+
+  it("lists review steps with nothing changed, a rejection with its reason, and diffs the next live edit against the live page", async () => {
+    const { page } = await submitted();
+    const version = (
+      await review(APPROVER, page.id, "reject", {
+        comment: "The fee is wrong.",
+      })
+    ).json().updated_at as string;
+    // A change to the live page: only its visibility, though the rejected revision changed the title and body.
+    const unpublished = await save(
+      TEST_EMPLOYEE,
+      { ...page, updated_at: version },
+      {
+        title: "Severance pay",
+        body_markdown: "Rewritten\n\n## Costs\n\nTwenty dollars",
+        visibility: "preview",
+      },
+    );
+    expect(unpublished.statusCode).toBe(200);
+
+    const response = await as(APPROVER, { url: `/pages/${page.id}/history` });
+
+    expect(response.statusCode).toBe(200);
+    expect(
+      response
+        .json()
+        .entries.map(
+          ({ action, changed, comment }: Record<string, unknown>) => ({
+            action,
+            changed,
+            comment,
+          }),
+        ),
+    ).toEqual([
+      { action: "unpublished", changed: ["visibility"], comment: null },
+      { action: "rejected", changed: [], comment: "The fee is wrong." },
+      { action: "submitted", changed: [], comment: null },
+      { action: "created", changed: [], comment: null },
+    ]);
+  });
+
+  // editor_v2 tells the live write an approval let through from an edit by this: the same
+  // transaction, so the same `occurred_at`, straight after the approval and by its approver.
+  it("lists an approval's live write straight after it, by the approver, at the same moment", async () => {
+    const { page } = await submitted();
+    expect((await review(APPROVER, page.id, "publish")).statusCode).toBe(200);
+
+    const response = await as(APPROVER, { url: `/pages/${page.id}/history` });
+
+    const [write, approval, submission] = response.json().entries;
+    expect(write).toMatchObject({
+      action: "updated",
+      actor: APPROVER.id,
+      changed: ["title", "body_markdown"],
+    });
+    expect(approval).toMatchObject({ action: "approved", actor: APPROVER.id });
+    expect(write.occurred_at).toBe(approval.occurred_at);
+    expect(submission.occurred_at).not.toBe(approval.occurred_at);
   });
 });
 

@@ -1,7 +1,20 @@
-import { Info, CaretCircleDown, CursorClick, ArrowSquareRight } from "@phosphor-icons/react";
+import {
+  Info,
+  CaretCircleDown,
+  CursorClick,
+  ArrowSquareRight,
+  ListDashes,
+} from "@phosphor-icons/react";
+import {
+  isPageDirective,
+  parsePageComponent,
+  type PageMarkdownComponent,
+} from "@govtech-bb/govbbmarkd";
 import { $createLineBreakNode, $createParagraphNode, $createTextNode } from "lexical";
-import { decodeHTMLAttribute, decodeHTMLStrict, encodeXML } from "entities";
-import type { PhrasingContent } from "mdast";
+import {
+  parseLegacyPageStartLink,
+  serializeLegacyPageStartLink,
+} from "@govtech-bb/govbbmarkd/legacy";
 import type { MarkdownNode, PageHandler, PageModule } from "../definition";
 import { PageComponentNode, type PageComponentAttributes } from "../nodes";
 import { defineSlot } from "../../editor/react/contributions";
@@ -10,167 +23,58 @@ import { pageInsertAction } from "../insertion";
 import { PageButtonLink } from "../button-link";
 import { safePageUrl } from "./text";
 
-function startLabel(nodes: readonly MarkdownNode[]): PhrasingContent[] | undefined {
-  const root: PhrasingContent[] = [];
-  const stack = [{ tag: "", children: root }];
+function assertPageComponent(node: MarkdownNode): PageMarkdownComponent {
+  if (!isPageDirective(node)) throw new UnsupportedPageContent(node);
+  const parsed = parsePageComponent(node);
 
-  for (const node of nodes) {
-    const parent = stack.at(-1)!;
+  // Lexical's synchronous import boundary translates this into a source-only draft.
+  if (!parsed.ok) throw new UnsupportedPageContent(node, parsed.error.message);
 
-    if (node.type === "text" || node.type === "inlineCode" || node.type === "break")
-      parent.children.push(node);
-    else if (node.type === "strong" || node.type === "emphasis" || node.type === "delete") {
-      const children = startLabel(node.children);
+  return parsed.value;
+}
 
-      if (!children) return;
-      parent.children.push({ ...node, children });
-    } else if (node.type === "html") {
-      if (/^<br\s*\/?\s*>$/i.test(node.value)) {
-        parent.children.push({ type: "break" });
+function componentAttributes(component: PageMarkdownComponent): PageComponentAttributes {
+  switch (component.kind) {
+    case "action": {
+      const attributes: PageComponentAttributes = {};
 
-        continue;
-      }
+      if (component.variant === "secondary") attributes.variant = "secondary";
 
-      const match = /^<(\/?)(strong|em|del|code)>$/i.exec(node.value);
+      if (component.target.kind === "url") attributes.href = component.target.href;
+      else if (component.target.kind === "form") attributes.form = component.target.formId;
+      else attributes.target = "form";
 
-      if (!match) return;
-      const tag = match[2]!.toLowerCase();
+      return attributes;
+    }
 
-      if (!match[1]) stack.push({ tag, children: [] });
-      else {
-        if (stack.length === 1 || parent.tag !== tag) return;
-        stack.pop();
-        const children = stack.at(-1)!.children;
-
-        if (tag === "code") {
-          if (!parent.children.every((child) => child.type === "text")) return;
-          children.push({
-            type: "inlineCode",
-            value: parent.children.map((child) => child.value).join(""),
-          });
-        } else
-          children.push({
-            type: tag === "strong" ? "strong" : tag === "em" ? "emphasis" : "delete",
-            children: parent.children,
-          });
-      }
-    } else return;
+    case "details":
+      return { summary: component.summary };
+    case "summary-item":
+      return { summaryKey: component.key };
+    case "table":
+      return {
+        caption: component.caption,
+        rowHeaders: component.rowHeaders,
+        numericColumns: component.numericColumns,
+      };
+    default:
+      return {};
   }
-
-  return stack.length === 1 ? root : undefined;
-}
-
-function startText(value: string) {
-  // These characters must remain literal even when the anchor is parsed as inline Markdown.
-  return encodeXML(value).replace(
-    /[\\`*_[\]~:\r\n]/g,
-    (character) => `&#${character.charCodeAt(0)};`,
-  );
-}
-
-function startLabelHtml(node: MarkdownNode): string {
-  if (node.type === "text") return startText(node.value);
-
-  if (node.type === "inlineCode") return `<code>${startText(node.value)}</code>`;
-
-  if (node.type === "break" || (node.type === "html" && /^<br\s*\/?\s*>$/i.test(node.value)))
-    return "<br>";
-
-  if (node.type === "strong" || node.type === "emphasis" || node.type === "delete") {
-    const tag = node.type === "strong" ? "strong" : node.type === "emphasis" ? "em" : "del";
-
-    return `<${tag}>${node.children.map(startLabelHtml).join("")}</${tag}>`;
-  }
-
-  throw new Error("This Start button label contains content that cannot be saved as inline text");
-}
-
-function startLink(node: MarkdownNode): { label: PhrasingContent[]; href?: string } | undefined {
-  let value: string;
-  let content: readonly MarkdownNode[] | undefined;
-
-  if (node.type === "paragraph") {
-    const first = node.children[0];
-    const last = node.children.at(-1);
-
-    if (first?.type !== "html" || last?.type !== "html" || last.value !== "</a>") return;
-
-    value = `${first.value}</a>`;
-    content = node.children.slice(1, -1);
-  } else if (node.type === "html") value = node.value;
-  else return;
-
-  const match =
-    /^<a\s+data-start-link(?:\s+href=(?:"([^"<>]*)"|'([^'<>]*)'))?\s*>([\s\S]*)<\/a>$/i.exec(value);
-
-  if (!match) return;
-
-  const href =
-    match[1] !== undefined || match[2] !== undefined
-      ? decodeHTMLAttribute(match[1] ?? match[2]!)
-      : undefined;
-
-  if (href !== undefined && !safePageUrl(href)) return;
-
-  if (!content) {
-    content = match[3]!
-      .split(/(<[^>]*>)/)
-      .map((part) =>
-        part.startsWith("<")
-          ? { type: "html", value: part }
-          : { type: "text", value: decodeHTMLStrict(part) },
-      );
-  }
-
-  const label = startLabel(content);
-
-  if (!label) return;
-
-  return { label, ...(href !== undefined && { href }) };
-}
-
-function attributes(node: MarkdownNode): PageComponentAttributes {
-  if (node.type !== "containerDirective" && node.type !== "leafDirective")
-    throw new UnsupportedPageContent(node);
-  const data = node.attributes ?? {};
-
-  const allowed =
-    node.name === "details" ? ["summary"] : node.name === "action" ? ["href", "variant"] : [];
-
-  if (Object.keys(data).some((key) => !allowed.includes(key)))
-    throw new UnsupportedPageContent(
-      node,
-      "This component has attributes that need source editing",
-    );
-
-  if (node.name === "details" && !data.summary)
-    throw new UnsupportedPageContent(node, "Details need a summary");
-
-  if (
-    node.name === "action" &&
-    (!data.href ||
-      !safePageUrl(data.href) ||
-      (data.variant != null && !["primary", "secondary"].includes(data.variant)))
-  )
-    throw new UnsupportedPageContent(node, "The action destination or style needs source editing");
-
-  return {
-    ...(data.summary != null && { summary: data.summary }),
-    ...(data.href != null && { href: data.href }),
-    ...(data.variant != null && { variant: data.variant }),
-  };
 }
 
 const components: PageHandler = {
   accepts: (node) =>
     node.type === "html" ||
-    !!startLink(node) ||
+    !!parseLegacyPageStartLink(node) ||
     node.type === "containerDirective" ||
     node.type === "leafDirective" ||
     node.type === "textDirective",
   owns: (node) => node instanceof PageComponentNode,
   $import(node, context) {
-    const start = startLink(node);
+    const start = parseLegacyPageStartLink(node);
+
+    if (start?.href !== undefined && !safePageUrl(start.href))
+      throw new UnsupportedPageContent(node, "This link destination needs source editing");
 
     if (start)
       return [
@@ -182,34 +86,21 @@ const components: PageHandler = {
     if (node.type === "html" && /^<br\s*\/?\s*>$/i.test(node.value))
       return [$createLineBreakNode()];
 
-    if (
-      node.type === "containerDirective" &&
-      ["notice", "details", "actions"].includes(node.name)
-    ) {
-      const attrs = attributes(node);
+    const component = assertPageComponent(node);
+    const result = new PageComponentNode(component.kind, componentAttributes(component));
 
-      if (
-        node.name === "actions" &&
-        (!node.children.length ||
-          node.children.some((child) => child.type !== "leafDirective" || child.name !== "action"))
-      )
-        throw new UnsupportedPageContent(node, "Action groups must contain actions");
-      // SAFETY: The component name is checked against the three container variants immediately above.
-      const result = new PageComponentNode(node.name as "notice" | "details" | "actions", attrs);
-      result.append(...node.children.flatMap((child) => context.$import(child)));
+    const children =
+      component.kind === "action"
+        ? component.label
+        : component.kind === "table"
+          ? [component.table]
+          : component.body;
 
-      if (!result.getChildrenSize()) result.append($createParagraphNode());
+    result.append(...children.flatMap((child) => context.$import(child)));
 
-      return [result];
-    }
+    if (!result.getChildrenSize()) result.append($createParagraphNode());
 
-    if (node.type === "leafDirective" && node.name === "action")
-      return [
-        new PageComponentNode("action", attributes(node)).append(
-          ...node.children.flatMap((child) => context.$import(child)),
-        ),
-      ];
-    throw new UnsupportedPageContent(node, "This HTML or component needs Markdown source editing");
+    return [result];
   },
   $export(node, context) {
     if (!(node instanceof PageComponentNode)) throw new Error("Expected a page component");
@@ -220,11 +111,10 @@ const components: PageHandler = {
       return [
         {
           type: "html",
-          value: `<a data-start-link${data.href === undefined ? "" : ` href="${encodeXML(data.href)}"`}>${node
-            .getChildren()
-            .flatMap((child) => context.$export(child))
-            .map(startLabelHtml)
-            .join("")}</a>`,
+          value: serializeLegacyPageStartLink(
+            node.getChildren().flatMap((child) => context.$export(child)),
+            data.href,
+          ),
         },
       ];
     const children = node.getChildren().flatMap((child) => context.$export(child));
@@ -232,86 +122,56 @@ const components: PageHandler = {
     if (kind === "action")
       return [
         {
-          type: "leafDirective",
+          type: "containerDirective",
           name: "action",
-          attributes: { href: data.href ?? "", ...(data.variant && { variant: data.variant }) },
-          children: phrasing(children),
+          attributes: {
+            href: data.href,
+            form: data.form,
+            target: data.target,
+            variant: data.variant,
+          },
+          children: [{ type: "paragraph", children: phrasing(children) }],
         },
       ];
+
+    const label =
+      kind === "details"
+        ? data.summary
+        : kind === "table"
+          ? data.caption
+          : kind === "summary-item"
+            ? data.summaryKey
+            : undefined;
+
+    const body = blocks(children);
+
+    if (label !== undefined)
+      body.unshift({
+        type: "paragraph",
+        data: { directiveLabel: true },
+        children: [{ type: "text", value: label }],
+      });
 
     return [
       {
         type: "containerDirective",
         name: kind,
-        attributes: kind === "details" ? { summary: data.summary ?? "More information" } : {},
-        children: blocks(children),
+        attributes:
+          kind === "table"
+            ? {
+                "row-headers": data.rowHeaders === "first" ? "first" : undefined,
+                "numeric-columns": data.numericColumns?.length
+                  ? data.numericColumns.map((index) => index + 1).join(",")
+                  : undefined,
+              }
+            : {},
+        children: body,
       },
     ];
   },
-  render(node, context, key) {
-    const start = startLink(node);
-
-    if (start)
-      return (
-        <p key={key}>
-          <a
-            className="page-action"
-            href={start.href}
-            data-start-link=""
-            aria-disabled={start.href === undefined ? "true" : undefined}
-          >
-            {start.label.map((child, index) => context.render(child, `${key}/${index}`))}
-          </a>
-        </p>
-      );
-
-    if (node.type === "html" && /^<br\s*\/?\s*>$/i.test(node.value)) return <br key={key} />;
-
-    if (node.type === "containerDirective" || node.type === "leafDirective") {
-      const data = attributes(node);
-
-      const children = node.children.map((child, index) =>
-        context.render(child, `${key}/${index}`),
-      );
-
-      if (node.name === "notice")
-        return (
-          <aside key={key} className="page-notice">
-            {children}
-          </aside>
-        );
-
-      if (node.name === "details")
-        return (
-          <details key={key} className="page-details">
-            <summary>{data.summary}</summary>
-            {children}
-          </details>
-        );
-
-      if (node.name === "actions")
-        return (
-          <div key={key} className="page-actions">
-            {children}
-          </div>
-        );
-
-      if (node.name === "action")
-        return (
-          <a
-            key={key}
-            className={`page-action ${data.variant === "secondary" ? "page-action-secondary" : ""}`}
-            href={data.href}
-          >
-            {children}
-          </a>
-        );
-    }
-
-    throw new UnsupportedPageContent(node);
-  },
 };
 
+/** Registers authored components while preserving existing HTML start markers. */
 export function PageComponentsModule(): PageModule {
   return {
     key: "page-components",
@@ -365,13 +225,31 @@ export function PageComponentsModule(): PageModule {
       pageInsertAction(
         "page-start",
         "Start button",
-        () => new PageComponentNode("start").append($createTextNode("Start now")),
+        () =>
+          new PageComponentNode("action", { target: "form" }).append($createTextNode("Start now")),
         {
           group: "Components",
           order: 40,
           icon: <ArrowSquareRight />,
           description: "Take readers to the linked form.",
           aliases: ["start now", "apply", "call to action"],
+        },
+      ),
+      pageInsertAction(
+        "page-summary-list",
+        "Summary list",
+        () =>
+          new PageComponentNode("summary-list").append(
+            new PageComponentNode("summary-item", { summaryKey: "Key" }).append(
+              $createParagraphNode(),
+            ),
+          ),
+        {
+          group: "Components",
+          order: 40,
+          icon: <ListDashes />,
+          description: "Present named facts and their values.",
+          aliases: ["key value", "facts"],
         },
       ),
     ],

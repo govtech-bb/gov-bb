@@ -106,6 +106,15 @@ async function mountWorkspace(
 
       if (path === "/editor/categories") return Response.json({ categories: [] });
 
+      if (path === "/collections")
+        return Response.json({ collections: [{ ...contacts, record_count: 1 }] });
+
+      if (path === "/collections/contacts/records")
+        return Response.json({
+          collection: contacts,
+          records: [{ record_key: "nis", data: { key: "nis" }, updated_at: stamp }],
+        });
+
       if (path === "/version") return Response.json({ count: 1, latest: stamp });
       const page = pages.get(path.replace("/pages/", ""));
 
@@ -452,6 +461,15 @@ test("clean navigation keeps at most three page views and retains API navigation
   expect(question()).toBeNull();
 });
 
+const contacts = {
+  key: "contacts",
+  title: "Ministries and departments",
+  record_key: "key",
+  schema: { fields: [{ key: "key", label: "Key", type: "slug" }] },
+  schema_version: 1,
+  updated_at: "2026-10-07T12:00:00.000Z",
+};
+
 const menuLink = (name: string) =>
   [...document.querySelectorAll<HTMLAnchorElement>('nav[aria-label="Menu"] a')].find(
     (link) => link.textContent === name,
@@ -476,6 +494,42 @@ test("the menu names the editor's screens, folded to icons beside a service's ow
   expect(document.querySelector('nav[aria-label="Service documents"]')).toBeNull();
   expect(document.querySelector("header a")?.textContent).toBe("Categories");
   await until(() => expect(document.body.textContent).toContain("No categories yet"));
+});
+
+test("Collections is in the menu, and a record's dialog follows the address", async () => {
+  const h = await mountWorkspace("/collections");
+
+  await until(() => expect(document.querySelector("h1")?.textContent).toBe("Collections"));
+  expect(menuLink("Collections")?.getAttribute("aria-current")).toBe("page");
+  expect(document.querySelector("header a")?.textContent).toBe("Collections");
+
+  await act(async () =>
+    h.router.navigate({ to: "/collections/$key", params: { key: "contacts" } }),
+  );
+  await until(() =>
+    expect(document.querySelector("h1")?.textContent).toBe("Ministries and departments"),
+  );
+  // Still the Collections screen in the menu, beside one of its collections
+  expect(menuLink("Collections")?.getAttribute("aria-current")).toBe("page");
+
+  // The address a page's contact block links to opens the record's dialog
+  await act(async () =>
+    h.router.navigate({
+      to: "/collections/$key",
+      params: { key: "contacts" },
+      search: { record: "nis" },
+    }),
+  );
+  await until(() =>
+    expect(document.querySelector('[role="dialog"]')?.textContent).toContain("Edit nis"),
+  );
+
+  // Closing it takes the record out of the address
+  await act(async () =>
+    [...document.querySelectorAll("button")].find((item) => item.textContent === "Cancel")!.click(),
+  );
+  await until(() => expect(h.router.state.location.search).toEqual({}));
+  expect(h.router.state.location.pathname).toBe("/collections/contacts");
 });
 
 test("menu and bar links keep the focus as the screen changes and the menu folds or opens out", async () => {

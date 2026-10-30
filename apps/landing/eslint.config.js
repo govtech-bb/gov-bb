@@ -30,6 +30,12 @@ export default [
   },
   {
     // Generated deploy/renderer output is not source.
-    ignores: ['eslint.config.js', 'prettier.config.js', '.amplify-hosting/**', 'public/cms-preview/**'],
+    ignores: [
+      'eslint.config.js',
+      'prettier.config.js',
+      '.size-limit.js',
+      '.amplify-hosting/**',
+      'public/cms-preview/**',
+    ],
   },
 ]

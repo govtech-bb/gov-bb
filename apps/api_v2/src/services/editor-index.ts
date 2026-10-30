@@ -11,6 +11,11 @@ import type {
   PageId,
   ReviewQueueEntry,
 } from "../modules/page";
+import {
+  historyOf,
+  type PageChangeEvent,
+  type PageHistoryEntry,
+} from "../modules/page-history";
 import { ok, type Result } from "../modules/result";
 
 /** The change log's size and newest timestamp. */
@@ -34,6 +39,10 @@ export interface IndexReads {
   submittedRevisions(): Promise<
     Result<ReviewQueueEntry[], ContentStoreUnavailable>
   >;
+  /** A page's change events, oldest first, with each actor's name. */
+  pageEvents(
+    id: PageId,
+  ): Promise<Result<PageChangeEvent[], ContentStoreUnavailable>>;
 }
 
 /** What the editor's index lists, and the token it polls to know when to refetch. */
@@ -69,5 +78,13 @@ export class EditorIndex {
   /** The changes waiting for an approver, the longest-waiting first. */
   reviewQueue(): Promise<Result<ReviewQueueEntry[], ContentStoreUnavailable>> {
     return this.reads.submittedRevisions();
+  }
+
+  /** What happened to a page, newest first; empty when it has no history. */
+  async history(
+    id: PageId,
+  ): Promise<Result<PageHistoryEntry[], ContentStoreUnavailable>> {
+    const events = await this.reads.pageEvents(id);
+    return events.ok ? ok(historyOf(events.value)) : events;
   }
 }

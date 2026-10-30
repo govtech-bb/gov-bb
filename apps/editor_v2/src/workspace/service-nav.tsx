@@ -6,6 +6,7 @@ import { Button } from "../ui/button";
 import type { DrawerPanel } from "../ui/drawer";
 import { Sidebar } from "../ui/sidebar";
 import { StatusDot } from "../ui/status-dot";
+import { TextLink } from "../ui/text-link";
 import { DocumentLabel } from "./document-label";
 import type { ServiceNavRow } from "./service-pages";
 
@@ -44,6 +45,7 @@ export function ServiceNav({
   const reason = useId();
   const pages = rows;
   const blocked = readOnly ?? deleteBlocked;
+  const selected = pages.some((row) => row.document.id === selectedId);
 
   const item = (row: ServiceNavRow, nested: ReactNode[]) => (
     <Sidebar.Item
@@ -107,7 +109,7 @@ export function ServiceNav({
             </Button>
             {onDelete && (
               <Button
-                disabled={!pages.some((row) => row.document.id === selectedId) || !!blocked}
+                disabled={!selected || !!blocked}
                 aria-describedby={blocked ? reason : undefined}
                 onClick={onDelete}
               >
@@ -120,6 +122,22 @@ export function ServiceNav({
           <p id={reason} className="mt-2 text-14 text-muted">
             {blocked}
           </p>
+        )}
+        {selectedId && selected && (
+          <TextLink
+            className="mt-4 block w-fit text-14"
+            render={
+              <Link
+                to="/history/$pageId"
+                params={{ pageId: selectedId }}
+                search={{ service: serviceId }}
+                // As a page row does, so the drawer isn't open again on the way back
+                onClick={() => !sidebar.wide && sidebar.setOpen(false)}
+              />
+            }
+          >
+            View page history
+          </TextLink>
         )}
       </Sidebar.Content>
     </Sidebar.Root>

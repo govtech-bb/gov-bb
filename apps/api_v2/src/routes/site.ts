@@ -5,12 +5,15 @@ import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
 import type { Viewer } from "../modules/page-visibility";
 import type { Redacted } from "../modules/redacted";
 import type { PageResolution } from "../services/page-resolution";
+import type { CollectionEditing } from "../services/collection-editing";
 import type { SiteNavigation } from "../services/site-navigation";
 import { publicCategoryRoutes } from "./categories";
+import { publicCollectionRoutes } from "./collections";
 import { SCHEMAS } from "./contracts";
 import {
   EDITOR_READ,
   PUBLIC_READ,
+  SITE_VERSION_READ,
   siteNotFoundCache,
   siteReadCache,
   storageFailed,
@@ -58,13 +61,17 @@ function matches(ifNoneMatch: string | undefined, etag: string): boolean {
     .some((tag) => tag === "*" || tag === etag);
 }
 
-/** What the site reads: pages by url, categories, the catalog and search text. */
+/** What the site reads: pages by url, categories, collections, the catalog and search text. */
 export const siteRoutes: FastifyPluginAsyncZod<{
   resolution: PageResolution;
   navigation: SiteNavigation;
+  collections: CollectionEditing;
   previewSecret: Redacted<string> | undefined;
   landingSecret: Redacted<string> | undefined;
-}> = async (site, { resolution, navigation, previewSecret, landingSecret }) => {
+}> = async (
+  site,
+  { resolution, navigation, collections, previewSecret, landingSecret },
+) => {
   // Scoped to the site routes and keyed on request.ip (the ALB-forwarded
   // client). Landing is exempt by its token: its server reads /pages on every
   // uncached page view from a few shared egress addresses, so no limit could
@@ -147,6 +154,22 @@ export const siteRoutes: FastifyPluginAsyncZod<{
   });
 
   await site.register(publicCategoryRoutes, { navigation, viewerFor });
+  await site.register(publicCollectionRoutes, { collections, viewerFor });
+
+  site.route({
+    method: "GET",
+    url: "/site-version",
+    schema: SCHEMAS.getSiteVersion,
+    handler: async (request, reply) => {
+      const version = await navigation.version();
+      if (!version.ok)
+        return reply
+          .status(500)
+          .send(storageFailed(request.log, version.error));
+      reply.header("Cache-Control", SITE_VERSION_READ);
+      return { version: version.value };
+    },
+  });
 
   site.route({
     method: "GET",

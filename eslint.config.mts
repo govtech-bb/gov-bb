@@ -115,9 +115,9 @@ export default defineConfig([
     },
   },
   {
-    // Only the composition root reads the environment; the test harness reads its database settings.
+    // Composition roots read the environment; the test harness reads its database settings.
     files: ["apps/api_v2/src/**/*.ts"],
-    ignores: ["apps/api_v2/src/main.ts", "apps/api_v2/src/test-db.ts", "apps/api_v2/src/**/*.test.ts"],
+    ignores: ["apps/api_v2/src/main.ts", "apps/api_v2/src/import-estate.ts", "apps/api_v2/src/reindex-search.ts", "apps/api_v2/src/test-db.ts", "apps/api_v2/src/**/*.test.ts"],
     rules: {
       "no-restricted-syntax": ["error", {
         selector: "MemberExpression[object.name='process'][property.name='env']",

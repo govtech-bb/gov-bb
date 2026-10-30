@@ -1,4 +1,5 @@
-// Board automation for the Platform Team project (#7). See
+// Board automation for the Platform Team project (#7), and for v2-rewrite
+// issues the Platform Upgrade to Version 2 API project (#28). See
 // docs/superpowers/specs/2026-05-29-board-label-automation-design.md
 import { readFileSync } from "node:fs";
 
@@ -19,8 +20,13 @@ export type Action =
   | { type: "closeIssue" }
   | { type: "removeFromBoard" };
 
+export type Board = "platform" | "v2";
+
 export interface IssuePlan {
   issue: number;
+  // Board that ensureOnBoard/setStatus act on; absent means "platform".
+  // removeFromBoard always targets the platform board.
+  board?: Board;
   actions: Action[];
 }
 
@@ -42,16 +48,17 @@ export type SyncInput =
       merged?: boolean;
       baseRef?: string;
       linkedIssues?: number[];
-      // Linked issues that isExcluded() keeps off the board.
+      // Linked issues that isExcluded() routes to the v2 board.
       excludedIssues?: number[];
       // PR author login; absent for bot authors, which we never assign.
       prAuthor?: string;
     };
 
 // Trunk-based: PRs merge into main; sandbox/staging/prod are deploy pointers.
-const MERGE_TARGETS = new Set(["main"]);
+// v2-rewrite is the long-lived v2 trunk, so merging into it finishes v2 work.
+const MERGE_TARGETS = new Set(["main", "v2-rewrite"]);
 
-// v2-rewrite work is tracked on its own project, so it stays off this board.
+// v2-rewrite work is tracked on its own project, so it moves there instead.
 const EXCLUDED_LABEL = "v2-rewrite";
 const EXCLUDED_TITLE = /v2[- ]rewrite/i;
 
@@ -61,7 +68,7 @@ export function isExcluded(title: string, labels: string[]): boolean {
 
 /**
  * Pure: maps a normalized event to an ordered per-issue action plan. Excluded
- * issues lose their board actions (and any existing card) but keep the rest.
+ * issues get the same plan on the v2 board, and lose any platform-board card.
  */
 export function decideActions(input: SyncInput): IssuePlan[] {
   if (
@@ -70,7 +77,11 @@ export function decideActions(input: SyncInput): IssuePlan[] {
     input.labelName === EXCLUDED_LABEL
   ) {
     return [
-      { issue: input.issueNumber, actions: [{ type: "removeFromBoard" }] },
+      {
+        issue: input.issueNumber,
+        board: "v2",
+        actions: [{ type: "removeFromBoard" }, { type: "ensureOnBoard" }],
+      },
     ];
   }
   const excluded =
@@ -83,12 +94,9 @@ export function decideActions(input: SyncInput): IssuePlan[] {
     excluded.includes(plan.issue)
       ? {
           issue: plan.issue,
+          board: "v2",
           actions: plan.actions.flatMap((a): Action[] =>
-            a.type === "ensureOnBoard"
-              ? [{ type: "removeFromBoard" }]
-              : a.type === "setStatus"
-                ? []
-                : [a],
+            a.type === "ensureOnBoard" ? [{ type: "removeFromBoard" }, a] : [a],
           ),
         }
       : plan,
@@ -195,7 +203,7 @@ function planActions(input: SyncInput): IssuePlan[] {
 
 const API = "https://api.github.com";
 const PROJECT_OWNER = "govtech-bb";
-const PROJECT_NUMBER = 7;
+const PROJECT_NUMBERS: Record<Board, number> = { platform: 7, v2: 28 };
 
 type FetchFn = typeof fetch;
 
@@ -236,6 +244,7 @@ interface ProjectMeta {
 export async function resolveProjectMeta(
   token: string,
   f: FetchFn = fetch,
+  board: Board = "platform",
 ): Promise<ProjectMeta> {
   const data = await gql<{
     organization: {
@@ -251,7 +260,7 @@ export async function resolveProjectMeta(
         field(name:"Status"){ ... on ProjectV2SingleSelectField { id options { id name } } }
       } }
     }`,
-    { org: PROJECT_OWNER, num: PROJECT_NUMBER },
+    { org: PROJECT_OWNER, num: PROJECT_NUMBERS[board] },
     token,
     f,
   );
@@ -270,7 +279,8 @@ export async function resolveProjectMeta(
       "In progress": byName("In progress"),
       "In review": byName("In review"),
       Done: byName("Done"),
-      Closed: byName("Closed"),
+      // The v2 board has no Closed column; any close lands in Done there.
+      Closed: byName(board === "v2" ? "Done" : "Closed"),
     },
   };
 }
@@ -475,8 +485,11 @@ async function apply(
   token: string,
   f: FetchFn = fetch,
 ): Promise<void> {
-  const meta = await resolveProjectMeta(token, f);
+  const metas: Partial<Record<Board, ProjectMeta>> = {};
+  const metaFor = async (board: Board): Promise<ProjectMeta> =>
+    (metas[board] ??= await resolveProjectMeta(token, f, board));
   for (const plan of plans) {
+    const meta = await metaFor(plan.board ?? "platform");
     let itemId: string | undefined;
     for (const action of plan.actions) {
       switch (action.type) {
@@ -505,35 +518,53 @@ async function apply(
           await closeIssue(owner, repo, plan.issue, token, f);
           break;
         case "removeFromBoard":
-          await removeFromBoard(owner, repo, plan.issue, meta, token, f);
+          await removeFromBoard(
+            owner,
+            repo,
+            plan.issue,
+            await metaFor("platform"),
+            token,
+            f,
+          );
           break;
       }
     }
     console.log(
-      `#${plan.issue}: ${plan.actions.map((a) => a.type).join(", ")}`,
+      `#${plan.issue} (${plan.board ?? "platform"}): ${plan.actions.map((a) => a.type).join(", ")}`,
     );
   }
 }
 
-/** Reads a PR's closing-keyword issue references, flagging excluded ones. */
-async function closingIssues(
+const CLOSING_REF =
+  /\b(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?):?\s+#(\d+)\b/gi;
+
+/** Pure: same-repo issue numbers a PR body names with a closing keyword. */
+export function parseClosingRefs(body: string): number[] {
+  return [...new Set([...body.matchAll(CLOSING_REF)].map((m) => +m[1]))];
+}
+
+interface LinkedIssue {
+  number: number;
+  title: string;
+  labels: { nodes: { name: string }[] };
+}
+
+/**
+ * Reads a PR's closing-keyword issue references, flagging excluded ones.
+ * GitHub only links closing keywords on PRs into the default branch, so for
+ * any other base pass `body` and its `Closes #N` refs are read here instead.
+ */
+export async function closingIssues(
   owner: string,
   repo: string,
   pr: number,
+  body: string | undefined,
   token: string,
   f: FetchFn = fetch,
 ): Promise<{ linkedIssues: number[]; excludedIssues: number[] }> {
   const data = await gql<{
     repository: {
-      pullRequest: {
-        closingIssuesReferences: {
-          nodes: {
-            number: number;
-            title: string;
-            labels: { nodes: { name: string }[] };
-          }[];
-        };
-      };
+      pullRequest: { closingIssuesReferences: { nodes: LinkedIssue[] } };
     };
   }>(
     `query($owner:String!,$repo:String!,$num:Int!){
@@ -544,6 +575,27 @@ async function closingIssues(
     f,
   );
   const nodes = data.repository.pullRequest.closingIssuesReferences.nodes;
+  for (const num of parseClosingRefs(body ?? "")) {
+    if (nodes.some((n) => n.number === num)) continue;
+    try {
+      const found = await gql<{
+        repository: { issueOrPullRequest: Partial<LinkedIssue> | null };
+      }>(
+        `query($owner:String!,$repo:String!,$num:Int!){
+          repository(owner:$owner,name:$repo){ issueOrPullRequest(number:$num){ ... on Issue { number title labels(first:50){ nodes { name } } } } }
+        }`,
+        { owner, repo, num },
+        token,
+        f,
+      );
+      // A PR number resolves to an empty object (no Issue fragment match).
+      const issue = found.repository.issueOrPullRequest;
+      if (issue?.number) nodes.push(issue as LinkedIssue);
+    } catch (err) {
+      // A typo'd ref shouldn't sink the run for the real ones.
+      console.log(`Skipping #${num}: ${(err as Error).message}`);
+    }
+  }
   return {
     linkedIssues: nodes.map((n) => n.number),
     excludedIssues: nodes
@@ -592,6 +644,7 @@ async function main(): Promise<void> {
       owner,
       repo,
       pr.number,
+      pr.base.ref === payload.repository.default_branch ? undefined : pr.body,
       token,
     );
     input = {

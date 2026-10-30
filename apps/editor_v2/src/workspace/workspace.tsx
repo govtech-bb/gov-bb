@@ -18,7 +18,9 @@ import {
 } from "./remote-page-dialogs";
 import { RemotePagePane } from "./remote-page-pane";
 import { AppNav } from "./app-nav";
+import { CollectionScreen, CollectionsScreen } from "./collections";
 import { CategoriesScreen } from "./categories-screen";
+import { HistoryScreen } from "./history-screen";
 import { ReviewQueueScreen, ReviewScreen } from "./review-screens";
 import { listedServiceRows, remoteServiceRows } from "./service-pages";
 import { ServiceNav } from "./service-nav";
@@ -53,7 +55,7 @@ const SIDEBAR_KEY = "govbb-editor:sidebar-collapsed";
 
 /** What someone without the editor role is told, on every screen. */
 const READ_ONLY =
-  "You can read pages and categories but not change them, because you don’t have the editor role. Ask an admin to give it to you.";
+  "You can read pages, categories and collections but not change them, because you don’t have the editor role. Ask an admin to give it to you.";
 
 /** Authenticated API services and page editors; no browser-local workspace is loaded. */
 export function ServiceWorkspace({
@@ -70,6 +72,16 @@ export function ServiceWorkspace({
   const onCategories = !!useMatch({ from: "/_workspace/categories", shouldThrow: false });
   const onReviews = !!useMatch({ from: "/_workspace/reviews", shouldThrow: false });
   const reviewing = params.pageId;
+  const historySearch = useSearch({ from: "/_workspace/history/$pageId", shouldThrow: false });
+  const onHistory = !!historySearch;
+  const onCollections = !!useMatch({ from: "/_workspace/collections", shouldThrow: false });
+
+  const collectionSearch = useSearch({
+    from: "/_workspace/collections/$key",
+    shouldThrow: false,
+  });
+
+  const collectionKey = onCollections ? params.key : undefined;
   const [servicesSearch, setServicesSearch] = useState<ServicesSearch>({});
 
   const location = params.serviceId
@@ -227,6 +239,20 @@ export function ServiceWorkspace({
       </Button>
     );
 
+  // A record's dialog lives in the collection's address, so a page's block can link straight to it
+  const openRecord = useCallback(
+    (record: string | undefined) => {
+      if (collectionKey)
+        void routerNavigate({
+          to: "/collections/$key",
+          params: { key: collectionKey },
+          search: record ? { record } : {},
+          replace: true,
+        });
+    },
+    [collectionKey, routerNavigate],
+  );
+
   const navigate = (next: WorkspaceLocation) =>
     routerNavigate(next ? workspaceLink(next) : { to: "/services", search: servicesSearch });
 
@@ -247,7 +273,9 @@ export function ServiceWorkspace({
       ? { label: "Categories", render: <Link to="/categories" /> }
       : onReviews
         ? { label: "Review queue", render: <Link to="/reviews" /> }
-        : { label: "Services", render: <Link to="/services" search={servicesSearch} /> },
+        : onCollections
+          ? { label: "Collections", render: <Link to="/collections" /> }
+          : { label: "Services", render: <Link to="/services" search={servicesSearch} /> },
   ];
 
   if (serviceName)
@@ -272,7 +300,9 @@ export function ServiceWorkspace({
                 ? reviewing
                   ? ["Review change", "Review queue"]
                   : ["Review queue"]
-                : [onCategories ? "Categories" : "Services"]
+                : onHistory
+                  ? ["Page history"]
+                  : [onCategories ? "Categories" : onCollections ? "Collections" : "Services"]
         }
       />
       <a
@@ -408,6 +438,22 @@ export function ServiceWorkspace({
               />
             </section>
           )}
+          {!location && onCollections && (
+            <section>
+              {collectionKey ? (
+                <CollectionScreen
+                  key={collectionKey}
+                  api={api}
+                  collectionKey={collectionKey}
+                  record={collectionSearch?.record}
+                  onRecord={openRecord}
+                  readOnly={readOnly}
+                />
+              ) : (
+                <CollectionsScreen api={api} />
+              )}
+            </section>
+          )}
           {!location && onReviews && (
             <section className="mx-auto w-full max-w-300 px-4 py-10 sm:px-6">
               {reviewing ? (
@@ -422,7 +468,17 @@ export function ServiceWorkspace({
               )}
             </section>
           )}
-          {!location && !onCategories && !onReviews && (
+          {!location && onHistory && params.pageId && (
+            <section className="mx-auto w-full max-w-300 px-4 py-10 sm:px-6">
+              <HistoryScreen
+                key={params.pageId}
+                api={api}
+                pageId={params.pageId}
+                serviceId={historySearch.service}
+              />
+            </section>
+          )}
+          {!location && !onCategories && !onCollections && !onReviews && !onHistory && (
             <section>
               <ServicesList
                 api={api}
