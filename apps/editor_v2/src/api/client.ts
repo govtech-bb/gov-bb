@@ -33,6 +33,11 @@ export type ReviewQueueEntry = Json<
   paths["/revisions"]["get"]["responses"][200]
 >["revisions"][number];
 
+/** One entry in a page's history: what happened, who did it, when, and what it changed. */
+export type PageHistoryEntry = Json<
+  paths["/pages/{id}/history"]["get"]["responses"][200]
+>["entries"][number];
+
 /** What rejecting a change sends: why, for the editor. */
 type RejectRevisionInput = Json<paths["/pages/{id}/revision/reject"]["post"]["requestBody"]>;
 
@@ -550,6 +555,9 @@ export function createEditorApi(apiOrigin: string, landingOrigin?: string) {
     reviewQueue: async () =>
       (await read<{ revisions: ReviewQueueEntry[] }>("/revisions?status=submitted")).revisions,
     revision: (id: string) => read<ApiRevision>(`/pages/${id}/revision`),
+    /** What happened to a page, newest first. */
+    history: async (id: string) =>
+      (await read<{ entries: PageHistoryEntry[] }>(`/pages/${id}/history`)).entries,
     /** Publishes the change at the version the approver reviewed, `ifUpdatedAt`. */
     publishRevision: async (id: string, ifUpdatedAt: string): Promise<ApiPage> =>
       (await send("POST", `/pages/${id}/revision/publish`, undefined, ifUpdatedAt)).json(),

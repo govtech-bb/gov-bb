@@ -755,6 +755,69 @@ describe("PUT /pages/:id", () => {
     ]);
   });
 
+  it("lists a page's history newest first, with who did it and what each change changed", async () => {
+    const draft = await seedPage({ visibility: "draft" });
+    const put = async (
+      current: typeof draft,
+      changes: Record<string, unknown>,
+    ) =>
+      (
+        await inject({
+          method: "PUT",
+          url: `/pages/${draft.id}`,
+          payload: { ...current, ...changes },
+        })
+      ).json();
+    await put(await put(draft, { title: "Renamed" }), { visibility: "public" });
+
+    const response = await inject({ url: `/pages/${draft.id}/history` });
+
+    expect(response.statusCode).toBe(200);
+    expect(
+      response
+        .json()
+        .entries.map(
+          ({
+            action,
+            actor,
+            actor_name,
+            changed,
+          }: Record<string, unknown>) => ({
+            action,
+            actor,
+            actor_name,
+            changed,
+          }),
+        ),
+    ).toEqual([
+      {
+        action: "published",
+        actor: TEST_EMPLOYEE.id,
+        actor_name: TEST_EMPLOYEE.name,
+        changed: ["visibility"],
+      },
+      {
+        action: "updated",
+        actor: TEST_EMPLOYEE.id,
+        actor_name: TEST_EMPLOYEE.name,
+        changed: ["title"],
+      },
+      {
+        action: "created",
+        actor: TEST_EMPLOYEE.id,
+        actor_name: TEST_EMPLOYEE.name,
+        changed: [],
+      },
+    ]);
+  });
+
+  it("404s the history of a page that has none", async () => {
+    const response = await inject({
+      url: "/pages/22222222-2222-4222-8222-222222222222/history",
+    });
+    expect(response.statusCode).toBe(404);
+  });
+
   it("serves content_updated_at, moved by a content change but not by a visibility change (#3105)", async () => {
     const draft = await seedPage({ visibility: "draft" });
     const put = async (
@@ -946,8 +1009,9 @@ describe("PUT /pages/:id", () => {
   });
 });
 
-describe("removed page history endpoints", () => {
-  it.each(["history", "history/1"])(
+describe("removed page version endpoints", () => {
+  // The history list came back read-only; reading or restoring a version did not.
+  it.each(["history/1"])(
     "404s %s even for an employee and an existing page",
     async (path) => {
       const page = await seedPage();
@@ -1222,6 +1286,7 @@ describe("employee access", () => {
     ["POST", "/pages"],
     ["PUT", "/pages/not-a-uuid"],
     ["DELETE", "/pages/not-a-uuid"],
+    ["GET", "/pages/not-a-uuid/history"],
   ] as const)(
     "rejects anonymous %s %s before validation or storage",
     async (method, url) => {

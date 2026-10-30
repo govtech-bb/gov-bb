@@ -182,6 +182,24 @@ export const editorRoutes: FastifyPluginAsyncZod<{
   });
   editor.route({
     method: "GET",
+    url: "/pages/:id/history",
+    schema: SCHEMAS.getPageHistory,
+    handler: async (request, reply) => {
+      const history = await index.history(request.params.id);
+      if (!history.ok)
+        return reply
+          .status(500)
+          .send(storageFailed(request.log, history.error));
+      return history.value.length > 0
+        ? { entries: history.value }
+        : reply.status(404).send({
+            error: "not_found",
+            message: `No history for page ${request.params.id}`,
+          });
+    },
+  });
+  editor.route({
+    method: "GET",
     url: "/pages/:id/revision",
     schema: SCHEMAS.getRevision,
     handler: async (request, reply) => {

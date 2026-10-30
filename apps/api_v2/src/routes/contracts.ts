@@ -41,6 +41,7 @@ import {
   RecordBody,
   RecordKey,
 } from "../modules/collection";
+import { PageHistoryEntry } from "../modules/page-history";
 import { PublicPage } from "../modules/page-visibility";
 import { EstateVersion } from "../services/editor-index";
 
@@ -330,6 +331,24 @@ export const SCHEMAS = {
     },
   },
 
+  getPageHistory: {
+    summary: "Get a page's history",
+    description:
+      "What happened to the page, newest first, from `change_events`: each " +
+      "change to the live page with the fields it changed, and each review " +
+      "step, with who did it and when. Read-only: nothing restores an " +
+      "entry. 404 when the page has no history.",
+    tags: ["pages"],
+    params: idParams,
+    security: editorSecurity,
+    response: {
+      200: z.object({ entries: z.array(PageHistoryEntry) }),
+      400: error,
+      404: error,
+      500: error,
+      ...authErrors,
+    },
+  },
   getRevision: {
     summary: "Get a page's pending revision",
     description:

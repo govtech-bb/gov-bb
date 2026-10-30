@@ -586,6 +586,65 @@ describe("the page's history (#3200)", () => {
       step(6, "updated", APPROVER.id),
     ]);
   });
+
+  it("lists review steps with nothing changed, a rejection with its reason, and diffs the next live edit against the live page", async () => {
+    const { page } = await submitted();
+    const version = (
+      await review(APPROVER, page.id, "reject", {
+        comment: "The fee is wrong.",
+      })
+    ).json().updated_at as string;
+    // A change to the live page: only its visibility, though the rejected revision changed the title and body.
+    const unpublished = await save(
+      TEST_EMPLOYEE,
+      { ...page, updated_at: version },
+      {
+        title: "Severance pay",
+        body_markdown: "Rewritten\n\n## Costs\n\nTwenty dollars",
+        visibility: "preview",
+      },
+    );
+    expect(unpublished.statusCode).toBe(200);
+
+    const response = await as(APPROVER, { url: `/pages/${page.id}/history` });
+
+    expect(response.statusCode).toBe(200);
+    expect(
+      response
+        .json()
+        .entries.map(
+          ({ action, changed, comment }: Record<string, unknown>) => ({
+            action,
+            changed,
+            comment,
+          }),
+        ),
+    ).toEqual([
+      { action: "unpublished", changed: ["visibility"], comment: null },
+      { action: "rejected", changed: [], comment: "The fee is wrong." },
+      { action: "submitted", changed: [], comment: null },
+      { action: "created", changed: [], comment: null },
+    ]);
+  });
+
+  // editor_v2 tells the live write an approval let through from an edit by this: the same
+  // transaction, so the same `occurred_at`, straight after the approval and by its approver.
+  it("lists an approval's live write straight after it, by the approver, at the same moment", async () => {
+    const { page } = await submitted();
+    expect((await review(APPROVER, page.id, "publish")).statusCode).toBe(200);
+
+    const response = await as(APPROVER, { url: `/pages/${page.id}/history` });
+
+    const [write, approval, submission] = response.json().entries;
+    expect(write).toMatchObject({
+      action: "updated",
+      actor: APPROVER.id,
+      changed: ["title", "body_markdown"],
+    });
+    expect(approval).toMatchObject({ action: "approved", actor: APPROVER.id });
+    expect(write.occurred_at).toBe(approval.occurred_at);
+    expect(submission.occurred_at).not.toBe(approval.occurred_at);
+  });
 });
 
 describe("self-approval (ADR 0079)", () => {
