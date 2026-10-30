@@ -661,6 +661,29 @@ describe('fromApiV2', () => {
     })
   })
 
+  it("carries api_v2's preview visibility", async () => {
+    const page = await fromApiV2(pageBody({ visibility: 'preview' }))
+    expect(page.frontmatter.visibility).toBe('preview')
+  })
+
+  // draft never reaches the site (#3247): read as public, like any unknown value.
+  it.each([
+    ['preview', 'preview'],
+    ['draft', 'public'],
+    ['secret', 'public'],
+    [42, 'public'],
+  ])(
+    'reads visibility %j as %s, keeping the page',
+    async (visibility, level) => {
+      const result = await resolveApiV2Page(BASE, '/x', async () =>
+        jsonResponse(200, { ...pageBody(), visibility }),
+      )
+      expect(result.kind).toBe('page')
+      if (result.kind === 'page')
+        expect(result.page.frontmatter.visibility).toBe(level)
+    },
+  )
+
   it('maps a subcategory page to its category and subcategory', async () => {
     const page = await fromApiV2(
       pageBody({

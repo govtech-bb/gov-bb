@@ -98,6 +98,8 @@ const PageResponse = z
     // url for absent.
     category: lenient(z.string().nullable()),
     subcategory: z.string().nullable().catch(null).optional(),
+    /** Who may see the page (#3246); absent from an API older than it. */
+    visibility: lenient(z.enum(['public', 'preview'])),
   })
   .refine((page) => page.subcategory == null || page.category != null, {
     message: 'a subcategory needs its category',
@@ -282,7 +284,7 @@ export async function fromApiV2(body: PageResponse): Promise<ApiV2Page> {
           ? [body.category]
           : [],
     ...(body.subcategory && { subcategory: body.subcategory }),
-    visibility: 'public',
+    visibility: body.visibility ?? 'public',
     ...(body.form_id && { form_id: body.form_id }),
     // "Last updated" is the last content change (#3105), shown once the page
     // has been public; an older API sends only first publication.
