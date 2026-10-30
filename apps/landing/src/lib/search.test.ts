@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest'
 import { FrontmatterSchema } from './frontmatter'
 import type { ViewLevel } from './frontmatter'
 import { normalizeSearchQuery, search, suggest } from './search'
+import { PAGES } from '../content/registry'
+import type { ApiV2SearchDocument } from './api-v2-site'
 
 describe('search metadata', () => {
   it('trims aliases and rejects blank entries', () => {
@@ -164,5 +166,61 @@ describe('autocomplete', () => {
 
   it('does not suggest a missing service from a partial word', () => {
     expect(suggest('passp', 'preview')).toEqual([])
+  })
+})
+
+describe('api_v2 search documents', () => {
+  const onlyInApiV2: ApiV2SearchDocument = {
+    url: '/work-employment/register-a-zebra-crossing-guard',
+    title: 'Register a zebra crossing guard',
+    description: 'Sign up to guard a crossing.',
+    digital: true,
+    keywords: ['lollipop'],
+    chunks: [{ heading: 'Who can apply', body: 'Anyone patient.' }],
+  }
+
+  it('finds a page only api_v2 serves', () => {
+    const extra = [onlyInApiV2]
+    expect(
+      search('zebra crossing guard', 'public', undefined, extra)[0],
+    ).toEqual({
+      id: 'service:work-employment/register-a-zebra-crossing-guard',
+      title: 'Register a zebra crossing guard',
+      description: 'Sign up to guard a crossing.',
+      href: '/work-employment/register-a-zebra-crossing-guard',
+      digital: true,
+      kind: 'service',
+    })
+    expect(search('lollipop', 'public', undefined, extra)[0]?.href).toBe(
+      onlyInApiV2.url,
+    )
+    expect(suggest('zebra', 'public', undefined, extra)[0]?.href).toBe(
+      onlyInApiV2.url,
+    )
+    expect(search('zebra crossing guard')).toEqual([])
+  })
+
+  it('shows the public an api_v2 page whose static copy is preview-only', () => {
+    const teacher = PAGES.find((page) =>
+      page.slug.endsWith('temporary-teacher'),
+    )
+    expect(teacher?.frontmatter.visibility).toBe('preview')
+    const extra: ApiV2SearchDocument[] = [
+      {
+        url: `/${teacher?.url}`,
+        title: 'Apply to be a temporary teacher',
+        description: null,
+        digital: true,
+        keywords: [],
+        chunks: [],
+      },
+    ]
+
+    expect(
+      search('temporary teacher', 'public', undefined, extra),
+    ).toHaveLength(1)
+    expect(
+      suggest('temporary teacher', 'public', undefined, extra),
+    ).toHaveLength(1)
   })
 })

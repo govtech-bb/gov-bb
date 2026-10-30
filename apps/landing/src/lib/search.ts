@@ -8,6 +8,7 @@ import {
   PAGES,
 } from '../content/registry'
 import type { ViewLevel } from './frontmatter'
+import type { ApiV2SearchDocument } from './api-v2-site'
 
 type SearchKind = 'service'
 
@@ -23,6 +24,8 @@ export interface SearchHit {
 interface IndexDoc extends SearchHit {
   body: string
   keywords: string
+  /** A registry page, shown per its visibility; api_v2 lists public pages only. */
+  gated: boolean
 }
 
 const INDEX_FIELDS = ['title', 'keywords', 'description', 'body']
@@ -165,7 +168,9 @@ function normalizeLiteralPrefix(text: string): string {
   return tokenize(text).map(normalizeTerm).join(' ')
 }
 
-function buildIndex(): {
+const NO_EXTRA: readonly ApiV2SearchDocument[] = []
+
+function buildIndex(extra: readonly ApiV2SearchDocument[]): {
   engine: MiniSearch<IndexDoc>
   documents: Map<string, IndexDoc>
 } {
@@ -182,6 +187,25 @@ function buildIndex(): {
       href: `/${page.url}`,
       digital: isDigitalService(page),
       kind: 'service',
+      gated: true,
+    }
+    documents.set(document.id, document)
+  }
+
+  // api_v2's public pages, replacing a static copy at the same url.
+  for (const page of extra) {
+    const document: IndexDoc = {
+      id: `service:${page.url.slice(1)}`,
+      title: page.title,
+      description: page.description ?? '',
+      body: page.chunks
+        .map((chunk) => [chunk.heading, chunk.body].filter(Boolean).join(' '))
+        .join(' '),
+      keywords: page.keywords.join(' '),
+      href: page.url,
+      digital: page.digital,
+      kind: 'service',
+      gated: false,
     }
     documents.set(document.id, document)
   }
@@ -197,10 +221,19 @@ function buildIndex(): {
   return { engine, documents }
 }
 
-let index: ReturnType<typeof buildIndex> | undefined
+let index:
+  | {
+      extra: readonly ApiV2SearchDocument[]
+      built: ReturnType<typeof buildIndex>
+    }
+  | undefined
 
-function getIndex(): ReturnType<typeof buildIndex> {
-  return (index ??= buildIndex())
+/** The index, rebuilt only when api_v2's documents change. */
+function getIndex(
+  extra: readonly ApiV2SearchDocument[],
+): ReturnType<typeof buildIndex> {
+  if (index?.extra !== extra) index = { extra, built: buildIndex(extra) }
+  return index.built
 }
 
 function toSearchHit(document: IndexDoc): SearchHit {
@@ -291,7 +324,10 @@ function visibleHits(
 ): Array<SearchHit> {
   return results.flatMap((result) => {
     const document = documents.get(String(result.id))
-    if (!document || !isUrlVisible(document.href.slice(1), viewer, overlay)) {
+    if (
+      !document ||
+      (document.gated && !isUrlVisible(document.href.slice(1), viewer, overlay))
+    ) {
       return []
     }
     return [toSearchHit(document)]
@@ -302,11 +338,12 @@ export function search(
   query: string,
   viewer: ViewLevel = 'public',
   overlay?: ReadonlyMap<string, ViewLevel>,
+  extra: readonly ApiV2SearchDocument[] = NO_EXTRA,
 ): Array<SearchHit> {
   const normalized = normalizeSearchQuery(query)
   if (!normalized) return []
 
-  const { engine, documents } = getIndex()
+  const { engine, documents } = getIndex(extra)
   const queryTerms = normalized.split(' ')
   const strictIdentityResults = engine
     .search(normalized, { fields: IDENTITY_FIELDS })
@@ -346,11 +383,12 @@ export function suggest(
   query: string,
   viewer: ViewLevel = 'public',
   overlay?: ReadonlyMap<string, ViewLevel>,
+  extra: readonly ApiV2SearchDocument[] = NO_EXTRA,
 ): Array<SearchHit> {
   const trimmed = query.trim()
   if (trimmed.length < MIN_SUGGESTION_LENGTH) return []
 
-  const { engine, documents } = getIndex()
+  const { engine, documents } = getIndex(extra)
   const normalizedPrefix = normalizeLiteralPrefix(trimmed)
   const normalizedQuery = normalizeSearchQuery(trimmed)
   const titlePrefixDocuments = [...documents.values()]
@@ -371,7 +409,7 @@ export function suggest(
   for (const document of [...titlePrefixDocuments, ...searchDocuments]) {
     if (
       seen.has(document.id) ||
-      !isUrlVisible(document.href.slice(1), viewer, overlay)
+      (document.gated && !isUrlVisible(document.href.slice(1), viewer, overlay))
     ) {
       continue
     }
