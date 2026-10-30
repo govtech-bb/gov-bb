@@ -194,11 +194,9 @@ function PeopleComponent() {
 
 Loaders simplify your data fetching logic dramatically. Check out more information in the [Loader documentation](https://tanstack.com/router/latest/docs/framework/react/guide/data-loading#loader-parameters).
 
-## CMS inline preview renderer
+## CMS page preview
 
-`pnpm build:cms-preview` builds `src/preview/cms-preview.tsx` into the repository's ignored `dist/editor-site-preview/cms-preview/` directory and copies public images alongside it. The editor's `dev` and `build` scripts run this automatically; landing's own build does not. The renderer uses ordinary public-page components, CSS and `govbbmarkd`, without building the landing server or loading live content.
-
-Editor v2 ships these assets in its own deployment and loads them from its own origin. No remote renderer URL or CORS configuration is needed. The CMS owns authentication, the working copy, inline editing and explicit publication; this renderer has no API writes or analytics. It does not change the older builder preview transport. See [the runtime contract and verification guide](../editor_v2/docs/SITE-PREVIEW.md).
+Editor v2 builds its own prose-page template with `@govtech-bb/react`, `@govtech-bb/frontend` and `govbbmarkd`. Landing serves no renderer bundle to the editor. Both applications use the shared Markdown renderer, including retained legacy blocks and form-link transformations. The older builder preview transport is unchanged. See [the editor preview guide](../editor_v2/docs/SITE-PREVIEW.md).
 
 ## Analytics (Umami and journey events)
 

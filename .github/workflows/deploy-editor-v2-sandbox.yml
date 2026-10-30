@@ -13,8 +13,8 @@ name: Deploy editor_v2 to Sandbox
 # Lives on v2-rewrite for the same reason as the api_v2 workflow: the file has
 # to exist on the branch that is pushed.
 #
-# Paths include landing's renderer/assets and the shared Markdown dialect:
-# these are bundled with the editor, not fetched from landing at runtime.
+# The editor's prose template uses the shared Markdown dialect and the
+# design-system packages installed from the lockfile.
 #
 # Role: api-v2-github-actions-sandbox, which trusts gov-bb v2-rewrite and main
 # and may start/read jobs on this one Amplify branch only (alpha-infra#738).
@@ -24,7 +24,6 @@ on:
     branches: [v2-rewrite]
     paths:
       - "apps/editor_v2/**"
-      - "apps/landing/**"
       - "packages/govbbmarkd/**"
       - "nx.json"
       - "tsconfig.base.json"
@@ -137,7 +136,7 @@ jobs:
         timeout-minutes: 5
         run: pnpm --filter @govtech-bb/forms exec playwright install chromium
       # Real deployed UI/assets and CSP; fixture authentication/API, with all mutations blocked.
-      - name: Verify bundled preview and unsaved edits
+      - name: Verify prose preview and unsaved edits
         run: |
           PLAYWRIGHT_MODULE_PATH="$(pnpm --filter @govtech-bb/forms exec node -p "require.resolve('playwright', { paths: [require.resolve('@playwright/test')] })")"
           export PLAYWRIGHT_MODULE_PATH

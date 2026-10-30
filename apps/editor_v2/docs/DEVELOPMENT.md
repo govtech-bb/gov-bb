@@ -88,11 +88,11 @@ Avoid editing source while checking undo and document switching: a development r
 
 ## Editable site preview checks
 
-[Site preview](SITE-PREVIEW.md) documents the bundled renderer build, same-origin assets and production delivery. `scripts/browser/site-preview-smoke.mjs <cms-url>` needs only the editor. It opens and closes preview, checks unsaved edits and shared undo, validates asset delivery, and blocks all mutations and unexpected remote requests. The sandbox deploy runs it against the deployed UI with fixture API/auth responses.
+[Site preview](SITE-PREVIEW.md) documents the local design-system prose template. `scripts/browser/site-preview-smoke.mjs <cms-url>` needs only the editor. It opens and closes preview, checks unsaved edits and branding, and blocks all mutations and unexpected remote requests. The sandbox deploy runs it against the deployed UI with fixture API/auth responses.
 
-`site-preview.mjs <cms-url> [landing-url]` also checks matched public-page rendering, style lifecycle, error recovery and explicit saves against fixtures. `site-preview-parity.mjs <landing-url> [cms-url]` compares the standalone editor-hosted renderer to the ordinary mentor page. The default CMS URL is `http://127.0.0.1:3060`. Run these against development and production-built output.
+`site-preview.mjs <cms-url> [landing-url]` checks public-page parity, inline editing, shared undo, style isolation, recovery and explicit saves against fixtures. `site-preview-parity.mjs <landing-url> [cms-url]` checks the local template against the ordinary mentor page at four widths. The default CMS URL is `http://127.0.0.1:3060`.
 
-The writer fixture uses the editor's own preview assets and needs no preview setting in its build environment. Real employee sign-in and API authorization still need a manual deployment check; synthetic composition and narrow viewports do not replace assistive-technology or phone IME testing.
+The writer fixture bundles the same local template and needs no preview setting in its build environment. Real employee sign-in and API authorization still need a manual deployment check; synthetic composition and narrow viewports do not replace assistive-technology or phone IME testing.
 
 ## Persistence and recovery
 

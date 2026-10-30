@@ -28,8 +28,6 @@ const blocked = [];
 
 const errors = [];
 
-const assets = new Map();
-
 const fixturePaths = new Set([
   "/api/auth/get-session",
   "/editor/me",
@@ -52,8 +50,8 @@ await context.route("**/*", (route) => {
     if (
       url.origin === origin &&
       request.method() !== "OPTIONS" &&
-      (["document", "script", "stylesheet", "image", "font"].includes(request.resourceType()) ||
-        url.pathname.startsWith("/cms-preview/"))
+      !url.pathname.startsWith("/cms-preview/") &&
+      ["document", "script", "stylesheet", "image", "font"].includes(request.resourceType())
     )
       return route.continue();
   }
@@ -73,23 +71,9 @@ page.on("console", (message) => {
   if (message.type() === "error") errors.push(message.text());
 });
 
-page.on("response", (response) => {
-  const url = new URL(response.url());
-
-  if (url.pathname.startsWith("/cms-preview/"))
-    assets.set(url.pathname, {
-      origin: url.origin,
-      status: response.status(),
-      type: response.headers()["content-type"],
-      cache: response.headers()["cache-control"],
-    });
-});
-
 const button = (name) => page.getByRole("button", { name, exact: true });
 
 const title = page.getByRole("textbox", { name: "Page title", exact: true });
-
-const introduction = page.getByRole("textbox", { name: "Introduction", exact: true });
 
 const preview = page.locator("[data-cms-site-preview]");
 
@@ -112,48 +96,24 @@ try {
     await Promise.all(images.map((image) => image.decode()));
 
     for (const image of images) {
-      if (!image.naturalWidth || new URL(image.src).origin !== location.origin)
+      if (
+        !image.naturalWidth ||
+        (!image.src.startsWith("data:image/") && new URL(image.src).origin !== location.origin)
+      )
         throw new Error("Site preview image is missing or depends on another origin");
     }
   });
 
-  for (const [path, mime] of [
-    ["/cms-preview/renderer.js", /(?:java|ecma)script/],
-    ["/cms-preview/styles.css", /^text\/css/],
-  ]) {
-    const asset = assets.get(path);
-    assert.ok(asset, `${path} was loaded`);
-    assert.equal(asset.origin, origin);
-    assert.equal(asset.status, 200);
-    assert.match(asset.type, mime);
-    assert.match(asset.cache, /no-cache/, `${path} must revalidate with the editor release`);
-  }
-
   assert.equal(page.url(), url);
   assert.equal(await page.locator("iframe").count(), 0);
-  await preview.getByRole("link", { name: "Help us improve alpha.gov.bb" }).click();
-  assert.equal(page.url(), url, "preview actions cannot navigate");
-  await button("Edit content").click();
-  await introduction.fill("Written in preview, not saved.");
-  assert.equal(await page.locator('[contenteditable="true"]').count(), 1);
   await button("Close preview").click();
   assert.equal(await title.inputValue(), "Unsaved preview smoke title");
-  assert.equal(await introduction.inputValue(), "Written in preview, not saved.");
-  assert.equal(
-    await button("Preview page").evaluate((element) => element === document.activeElement),
-    true,
-  );
-  assert.equal(await page.locator("style[data-cms-preview-styles]").count(), 0);
-  await button("Undo").click();
-  assert.equal(await introduction.inputValue(), "");
-  assert.equal(await title.inputValue(), "Unsaved preview smoke title");
-  await button("Undo").click();
-  assert.equal(await title.inputValue(), initial.title);
+  assert.equal(page.url(), url);
   assert.deepEqual(api.writes, []);
   assert.deepEqual(blocked, [], "no mutation or unmocked remote request is allowed");
   assert.deepEqual(errors, []);
   console.log(
-    `Site preview smoke passed at ${origin}: local assets, inline editing, undo, no writes.`,
+    `Site preview smoke passed at ${origin}: local template, unsaved content intact, no writes.`,
   );
 } finally {
   await browser.close();

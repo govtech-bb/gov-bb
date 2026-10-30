@@ -379,17 +379,21 @@ try {
   assert.equal(writes[0].title, "Explicitly published from preview");
   await button("Close preview").click();
   assert.equal(await title.inputValue(), "Explicitly published from preview");
-  // Renderer/style failure is recoverable, with no legacy preview fallback or draft reset.
+  // Unsupported styling is recoverable without a fallback renderer or draft reset.
   await body.locator("p").last().scrollIntoViewIfNeeded();
   const scrollBeforeRetry = await page.evaluate(() => window.scrollY);
   assert.ok(scrollBeforeRetry > 0);
-  const failStyles = (route) => route.abort("failed");
-  await context.route("**/cms-preview/styles.css", failStyles);
+  await page.evaluate(() => {
+    window.previewScopeSupport = window.CSSScopeRule;
+    delete window.CSSScopeRule;
+  });
   // Isolate restoration from Playwright scrolling the trigger into view before a pointer click.
   await button("Preview page").evaluate((element) => element.click());
   await page.getByText(/Your working copy is unchanged/).waitFor();
   assert.equal(await page.locator("style[data-cms-preview-styles]").count(), 0);
-  await context.unroute("**/cms-preview/styles.css", failStyles);
+  await page.evaluate(() => {
+    window.CSSScopeRule = window.previewScopeSupport;
+  });
   await button("Retry preview").click();
   await page.locator("[data-cms-site-preview] .govbb-prose").waitFor();
   assert.equal(await page.locator("style[data-cms-preview-styles]").count(), 1);
@@ -400,30 +404,6 @@ try {
     scrollBeforeRetry,
     "retry preserves the original writer scroll position",
   );
-
-  // Leaving during asset loading must not mount a late renderer or leave styles behind.
-  let releaseStyles;
-
-  const delayedStyles = async (route) => {
-    await new Promise((resolve) => {
-      releaseStyles = resolve;
-    });
-    await route.abort("failed");
-  };
-
-  await context.route("**/cms-preview/styles.css", delayedStyles);
-
-  const loading = page.waitForRequest((request) =>
-    request.url().endsWith("/cms-preview/styles.css"),
-  );
-
-  await button("Preview page").click();
-  await loading;
-  await button("Close preview").click();
-  releaseStyles();
-  await context.unroute("**/cms-preview/styles.css", delayedStyles);
-  assert.equal(await page.locator("style[data-cms-preview-styles]").count(), 0);
-  assert.equal(await page.locator("[data-cms-preview-host]").count(), 0);
 
   // Give browser Back a real in-workspace history entry, and reopen the retained session.
   await page.locator("header").getByRole("link", { name: "Services", exact: true }).click();

@@ -1,0 +1,12 @@
+@import "tailwindcss" source(none);
+@import "@govtech-bb/frontend/tailwind";
+@import "@govtech-bb/frontend/css" layer(components);
+@source "./prose-page.tsx";
+@source "../../../../packages/govbbmarkd/src";
+
+/* Match landing's header until the design-system nav-gap fix ships (#283). */
+@container (width >= 50rem) {
+  .govbb-header__nav-inner {
+    column-gap: var(--govbb-space-m);
+  }
+}

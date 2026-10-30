@@ -1,6 +1,25 @@
 import { expect, test } from "vitest";
 import { boundaryIssues } from "./check-boundaries";
 
+test("prose templates use the design system without depending on workspace or persistence", () => {
+  const check = (source: string) =>
+    boundaryIssues(new Map([["src/templates/prose-page.tsx", source]]));
+  expect(
+    check(
+      'import { Header } from "@govtech-bb/react"; import styles from "@govtech-bb/frontend/css?inline"; document.getElementById("preview");',
+    ),
+  ).toEqual([]);
+  expect(check('import { compileContentMarkdown } from "@govtech-bb/govbbmarkd";')).toEqual([]);
+  expect(check('import { save } from "../persistence/save";')).toHaveLength(1);
+  expect(check('import { editor } from "../host/page-editor";')).toHaveLength(1);
+  expect(
+    boundaryIssues(new Map([["src/templates/prose-page-content.ts", "document.body;"]])),
+  ).toHaveLength(1);
+  expect(
+    boundaryIssues(new Map([["src/host/site-preview.tsx", "import(location.href);"]])),
+  ).toHaveLength(1);
+});
+
 test("completed boundaries reject runtime imports, re-exports and dynamic imports of legacy UI", () => {
   for (const source of [
     'import { Widget } from "../../canvas/widgets";',

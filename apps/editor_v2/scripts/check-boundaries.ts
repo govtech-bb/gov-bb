@@ -59,6 +59,7 @@ const checked = (file: string) =>
     within(file, "src/forms/adapters/ssb") ||
     within(file, "src/presets") ||
     hostLayer(file) ||
+    within(file, "src/templates") ||
     formPublicLayer(file) ||
     genericBrowserLayer(file) ||
     formBrowserLayer(file) ||
@@ -291,10 +292,22 @@ function permitted(from: string, to: string, typeOnly: boolean) {
 
   if (formPublicLayer(from)) return within(to, "src/forms") || within(to, "src/converters");
 
+  if (within(from, "src/templates"))
+    return (
+      within(to, "src/templates") ||
+      [
+        "react",
+        "date-fns",
+        "@govtech-bb/react",
+        "@govtech-bb/govbbmarkd",
+        "@govtech-bb/govbbmarkd/react",
+      ].includes(to) ||
+      to.startsWith("@govtech-bb/frontend/")
+    );
+
   if (hostLayer(from))
     return (
-      // The same-document site preview loads a trusted browser entry, never landing source.
-      (from === "src/host/site-preview.tsx" && to === "<non-literal import>") ||
+      within(to, "src/templates") ||
       (from === "src/host/site-preview-renderer.ts" && to === "yaml") ||
       within(to, "src/host") ||
       within(to, "src/persistence") ||
@@ -531,6 +544,7 @@ export function boundaryIssues(sources: ReadonlyMap<string, string>): BoundaryIs
       !pageBrowserLayer(file) &&
       !(within(file, "src/workspace") && file.endsWith(".tsx")) &&
       !hostLayer(file) &&
+      !(within(file, "src/templates") && file.endsWith(".tsx")) &&
       !formPublicLayer(file)
     )
       for (const global of globals)

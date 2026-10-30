@@ -15,7 +15,7 @@ pnpm dev:editor_v2
 
 Open `http://localhost:3000`. Set `PORT` to use another port, for example `PORT=3015 pnpm dev:editor_v2`. The app runs on TanStack Start and Vite in SPA mode.
 
-The `dev` and `build` scripts also build the public-page preview from landing's components and `govbbmarkd`. The editor serves the renderer, styles and images itself; preview needs no landing server or URL setting. See [Site preview](docs/SITE-PREVIEW.md) for its build and browser checks.
+The public-page preview is a local React template in `src/templates`, using the GovBB design-system packages and `govbbmarkd`. Vite builds it with the editor; no landing build, renderer URL or separate asset-copy step is needed. See [Site preview](docs/SITE-PREVIEW.md) for its behavior and browser checks.
 
 Run [api_v2](../api_v2/README.md) with its GitHub authentication configuration first. Opening the editor checks your session, then offers **Continue with GitHub** if you are signed out. Only that action starts sign-in; use a GitHub account with a verified email and active membership in `govtech-bb`. The API session expires after eight hours. The editor checks it on workspace entry, window focus and expiry, reuses an unexpired admission between workspace screens, and verifies the session cookie after GitHub returns. Cancellation, denied accounts, unavailable authentication and blocked cookies stop at a recovery screen instead of restarting sign-in.
 

@@ -1,2 +1,1 @@
-export { default as hideStartLinks } from './hideStartLinks'
-export { bakeStartLinkFormId } from './bakeStartLinkFormId'
+export { hideStartLinks, bakeStartLinkFormId } from '@govtech-bb/govbbmarkd'

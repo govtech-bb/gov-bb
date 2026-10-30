@@ -88,8 +88,10 @@ ranking, indexing jobs and embeddings.
 `renderMarkdownNodes(hast.children, components?)` renders the validated tree
 with `ButtonGroup`, `LinkButton`, `ShowHide`, `SummaryList` and table components.
 Host overrides apply recursively, including links inside tables and summary
-values. The host supplies routing, form availability, analytics and any retained
-application-specific HTML components. Without a host adapter, unresolved form
+values. The renderer includes retained GovBB contacts, highlights and muted HTML.
+The host supplies routing, form availability, analytics and any other
+application-specific HTML components. `bakeStartLinkFormId` and `hideStartLinks`
+provide the shared form-link transformations; hosts decide availability. Without a host adapter, unresolved form
 actions have no destination and are marked disabled.
 
 Existing editor modules can retain their deprecated `PageHandler.render` and

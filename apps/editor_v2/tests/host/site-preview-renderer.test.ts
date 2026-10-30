@@ -1,10 +1,5 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
-import { sitePreviewBase, sitePreviewDocument } from "../../src/host/site-preview-renderer";
-
-afterEach(() => {
-  vi.unstubAllEnvs();
-  vi.unstubAllGlobals();
-});
+import { describe, expect, it } from "vitest";
+import { sitePreviewDocument } from "../../src/host/site-preview-renderer";
 
 describe("site preview display contract", () => {
   it("keeps all frontmatter and passes the original Markdown, not reader HTML", () => {
@@ -55,22 +50,5 @@ describe("site preview display contract", () => {
 
   it("keeps a body with no YAML intact", () => {
     expect(sitePreviewDocument("Plain **Markdown**\n").body).toBe("Plain **Markdown**\n");
-  });
-
-  it.each(["https://editor-v2.sandbox.alpha.gov.bb", "http://127.0.0.1:3060"])(
-    "loads bundled assets from the editor origin without configuration: %s",
-    (origin) => {
-      vi.stubGlobal("location", { origin });
-      vi.stubEnv("VITE_SITE_PREVIEW_URL", "");
-
-      expect(sitePreviewBase().href).toBe(`${origin}/cms-preview/`);
-    },
-  );
-
-  it("ignores a stale remote renderer setting", () => {
-    vi.stubGlobal("location", { origin: "https://editor-v2.sandbox.alpha.gov.bb" });
-    vi.stubEnv("VITE_SITE_PREVIEW_URL", "https://old-renderer.example/cms-preview/");
-
-    expect(sitePreviewBase().href).toBe("https://editor-v2.sandbox.alpha.gov.bb/cms-preview/");
   });
 });

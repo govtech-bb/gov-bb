@@ -250,15 +250,6 @@ applications:
         paths:
           - .pnpm-store/**/*
       customHeaders:
-        # Fixed-name preview assets must update with the editor that loads them.
-        - pattern: "/cms-preview/**"
-          headers:
-            - key: "Cache-Control"
-              value: "no-cache"
-        - pattern: "/images/**"
-          headers:
-            - key: "Cache-Control"
-              value: "no-cache"
         - pattern: "**/*"
           headers:
             - key: "Strict-Transport-Security"

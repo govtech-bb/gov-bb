@@ -1,32 +1,9 @@
 import { parseDocument } from "yaml";
 import { parsePageMarkdown } from "../pages/markdown";
+import type { ProsePageDocument } from "../templates/prose-page-content";
 
-/** Display-only contract with the bundled /cms-preview/renderer.js. No source imports cross apps. */
-export type SitePreviewDocument = {
-  // eslint-disable-next-line anti-slop/no-unsafe-dictionary-type -- Opaque YAML crosses the renderer boundary; landing validates the fields it reads.
-  frontmatter: Record<string, unknown>;
-  body: string;
-  path: string;
-  breadcrumbs: Array<{ label: string; href: string }>;
-  formStatus?: "available" | "unavailable" | "maintenance" | "closed";
-  startSubPageVisible?: boolean;
-};
-
-export type SitePreviewRegions = { title: HTMLElement; lede: HTMLElement; body: HTMLElement };
-
-export type SitePreviewHandle = {
-  update: (document: SitePreviewDocument) => Promise<void>;
-  setEditing: (editing: boolean) => SitePreviewRegions | null;
-  dispose: () => void;
-};
-
-export type SitePreviewRenderer = {
-  mountCmsPreview: (
-    container: HTMLElement,
-    document: SitePreviewDocument,
-    assetBase: string,
-  ) => Promise<SitePreviewHandle>;
-};
+/** Display-only input for the local prose page template. */
+export type SitePreviewDocument = ProsePageDocument;
 
 export type SitePreviewContext = Pick<
   SitePreviewDocument,
@@ -70,9 +47,4 @@ export function sitePreviewDocument(
     formStatus: context?.formStatus,
     startSubPageVisible: context?.startSubPageVisible,
   };
-}
-
-/** Preview code and styles ship with the editor, never from authored content or another origin. */
-export function sitePreviewBase(): URL {
-  return new URL("/cms-preview/", location.origin);
 }

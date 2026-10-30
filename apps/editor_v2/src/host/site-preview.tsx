@@ -1,26 +1,18 @@
 import { createPortal } from "react-dom";
-import { useEffect, useId, useRef, useState, type ReactNode } from "react";
+import { useEffect, useId, useMemo, useState, type ReactNode } from "react";
 import { Info, PencilSimple } from "@phosphor-icons/react";
 import { Banner } from "../ui/banner";
 import { Bar } from "../ui/bar";
 import { Button } from "../ui/button";
-import { LoadingState } from "../ui/loading-state";
 import { Popover } from "../ui/popover";
+import { prepareProsePage } from "../templates/prose-page-content";
 import { SitePreviewInline } from "./site-preview-inline";
-import { loadSitePreviewStyles } from "./site-preview-styles";
-import {
-  sitePreviewBase,
-  sitePreviewDocument,
-  type SitePreviewContext,
-  type SitePreviewHandle,
-  type SitePreviewRegions,
-  type SitePreviewRenderer,
-} from "./site-preview-renderer";
+import { sitePreviewDocument, type SitePreviewContext } from "./site-preview-renderer";
 
 /** Site preview controls rendered in the shared document bar. */
 export type SitePreviewTools = { edit: ReactNode; about: ReactNode };
 
-/** Same-document site preview. No navigation, second editor, draft store or automatic save. */
+/** Local prose page preview; opening and closing never save, publish or replace the editor. */
 export function SitePreview({
   source,
   context,
@@ -35,88 +27,43 @@ export function SitePreview({
   editing: boolean;
   paused: boolean;
   onEditingChange: (editing: boolean) => void;
-  /** Renders preview tools in the host's document bar, without a second toolbar. */
   controls: (tools: SitePreviewTools) => ReactNode;
   writerScrollY: number;
 }) {
-  const container = useRef<HTMLDivElement>(null);
-  const latest = useRef({ source, context });
-  latest.current = { source, context };
-  const [handle, setHandle] = useState<SitePreviewHandle>();
-  const [regions, setRegions] = useState<SitePreviewRegions | null>(null);
-  const [error, setError] = useState<string>();
   const [attempt, setAttempt] = useState(0);
   const aboutTitle = useId();
+  const preview = useMemo(() => {
+    try {
+      if (!("CSSScopeRule" in window))
+        throw new Error(
+          "Site preview needs a browser with CSS scope support. You can still use the writer.",
+        );
+      return { page: prepareProsePage(sitePreviewDocument(source, context)) };
+    } catch (cause) {
+      return {
+        error: cause instanceof Error ? cause.message : "Site preview could not be opened.",
+      };
+    }
+  }, [source, context, attempt]);
 
   useEffect(() => {
-    let disposed = false;
-    let renderer: SitePreviewHandle | undefined;
-    let restoreStyles: (() => void) | undefined;
-    const abort = new AbortController();
     const workspace = document.querySelector<HTMLElement>("[data-cms-workspace]");
     const hidden = workspace?.hidden;
     const inert = workspace?.inert;
     const href = location.href;
-
     if (workspace) {
       workspace.hidden = true;
       workspace.inert = true;
     }
-
     window.scrollTo(0, 0);
-    setError(undefined);
-    setHandle(undefined);
-
-    const open = async () => {
-      try {
-        const base = sitePreviewBase();
-        const entry = new URL("renderer.js", base).href;
-
-        // SAFETY: the editor's bundled entry implements SitePreviewRenderer; authored URLs cannot select it.
-        const [module, activateStyles] = await Promise.all([
-          import(/* @vite-ignore */ entry) as Promise<SitePreviewRenderer>,
-          loadSitePreviewStyles(base, abort.signal),
-        ]);
-
-        if (disposed) return;
-        restoreStyles = activateStyles();
-        renderer = await module.mountCmsPreview(
-          container.current!,
-          sitePreviewDocument(latest.current.source, latest.current.context),
-          base.origin,
-        );
-
-        if (disposed) {
-          renderer.dispose();
-
-          return;
-        }
-
-        setHandle(renderer);
-      } catch (cause) {
-        if (disposed) return;
-        restoreStyles?.();
-        restoreStyles = undefined;
-        setError(cause instanceof Error ? cause.message : "Site preview could not be opened.");
-      }
-    };
-
-    void open();
 
     return () => {
-      disposed = true;
-      abort.abort();
-      restoreStyles?.();
-
       if (workspace) {
         workspace.hidden = hidden!;
         workspace.inert = inert!;
       }
-
-      // Let portals detach and Lexical finish reattaching before restoring focus.
+      // Let Lexical reattach to the writer before restoring focus.
       queueMicrotask(() => {
-        renderer?.dispose();
-
         if (location.href === href && !document.querySelector("[data-cms-preview-host]")) {
           document
             .querySelector<HTMLElement>(
@@ -127,55 +74,20 @@ export function SitePreview({
         }
       });
     };
-  }, [attempt, writerScrollY]);
-
-  useEffect(() => {
-    if (!handle) return;
-    let disposed = false;
-
-    // Do not re-render the site's body under a live Lexical root.
-    if (editing) {
-      setRegions(handle.setEditing(true));
-
-      return;
-    }
-
-    setRegions(null);
-    // Let React remove its portals before landing replaces the reader's content.
-    queueMicrotask(() => {
-      if (disposed) return;
-      void Promise.resolve()
-        .then(() => {
-          if (disposed) return;
-          handle.setEditing(false);
-
-          return handle.update(sitePreviewDocument(source, context));
-        })
-        .catch((cause: Error) => {
-          if (!disposed) setError(cause.message);
-        });
-    });
-
-    return () => {
-      disposed = true;
-    };
-  }, [handle, editing, source, context]);
-
-  const ready = !!handle && !error;
+  }, [writerScrollY]);
 
   const edit = (
     <Button
       aria-pressed={editing}
       icon={<PencilSimple weight={editing ? "fill" : "regular"} />}
-      disabled={!ready || (!editing && paused)}
+      disabled={!preview.page || (!editing && paused)}
       onClick={() => onEditingChange(!editing)}
     >
-      {/* Keep the full accessible name when the visible label is shortened. */}
       Edit<span className="max-sm:sr-only"> content</span>
     </Button>
   );
 
-  const about = ready && (
+  const about = preview.page && (
     <Popover.Root>
       <Popover.Trigger render={<Bar.Tool icon={<Info />} label="About this preview" />} />
       <Popover.Content aria-labelledby={aboutTitle} align="end" className="w-88">
@@ -194,7 +106,9 @@ export function SitePreview({
   return createPortal(
     <div data-cms-preview-host="">
       {controls({ edit, about })}
-      {error ? (
+      {preview.page ? (
+        <SitePreviewInline page={preview.page} editing={editing} />
+      ) : (
         <Banner
           tone="error"
           layout="strip"
@@ -203,7 +117,6 @@ export function SitePreview({
             <Button
               variant="secondary"
               onClick={() => {
-                setRegions(null);
                 onEditingChange(false);
                 setAttempt((value) => value + 1);
               }}
@@ -213,13 +126,9 @@ export function SitePreview({
           }
         >
           Your working copy is unchanged. Close the preview to keep editing.
-          <span className="block text-muted">{error}</span>
+          <span className="block text-muted">{preview.error}</span>
         </Banner>
-      ) : (
-        !handle && <LoadingState size="page" label="Loading site preview…" />
       )}
-      <div ref={container} hidden={!!error} />
-      {regions && !error && <SitePreviewInline regions={regions} />}
     </div>,
     document.body,
   );
