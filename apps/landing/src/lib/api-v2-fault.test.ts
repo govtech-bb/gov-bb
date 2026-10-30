@@ -20,7 +20,8 @@ import { resolveApiV2Page } from './api-v2-page'
  * down, black-holed or slow, and each request goes through the same
  * `createApiV2Cache().get(url, () => resolveApiV2Page(base, url))` pair that
  * `getApiV2Page` (called from routes/$.tsx) runs. A fresh cache per test is
- * the reset for the module-level cache and breaker.
+ * the reset for the module-level cache and breaker. That wiring, and $.tsx's
+ * skip when VITE_API_V2_URL is unset, are mirrored here, not executed.
  *
  * The budget is fixed here, not derived from API_V2_TIMEOUT_MS, so the test
  * fails if the timeout goes back to 5 s.
@@ -46,6 +47,7 @@ async function pageTime(cache: Cache, base: string | null, url: string) {
   return { ms: performance.now() - start, result }
 }
 
+/** Nearest-rank p95; with 10 samples that is the slowest one. */
 function p95(samples: Array<number>) {
   const sorted = [...samples].sort((a, b) => a - b)
   return sorted[Math.ceil(sorted.length * 0.95) - 1]
@@ -161,7 +163,7 @@ describe('landing with a slow or unavailable api_v2', () => {
       expect(slowRequests).toBe(FAILURES_TO_OPEN)
 
       // Within 10% of unset, with a 5 ms floor: both are sub-millisecond, where
-      // 10% is scheduler noise.
+      // 10% is scheduler noise. The no-calls asserts above are the real guard.
       const [openP95, unsetP95] = [p95(open), p95(unset)]
       console.info(
         `[api-v2-fault] breaker open: p95 ${openP95.toFixed(3)} ms, unset: p95 ${unsetP95.toFixed(3)} ms`,
@@ -170,11 +172,13 @@ describe('landing with a slow or unavailable api_v2', () => {
         Math.max(unsetP95 * 1.1, unsetP95 + 5),
       )
 
-      // After the window api_v2 is called again (the 4th request reaches the stub).
+      // Just after the window, api_v2 is called again (the 4th request reaches
+      // the stub). The window opened when the trip requests started, within a
+      // few ms of trippedAt.
       const reopened = cache.get(
         '/after',
         () => resolveApiV2Page(slowBase, '/after'),
-        Date.now() + OPEN_MS,
+        trippedAt + OPEN_MS + 100,
       )
       await vi.waitFor(() => expect(slowRequests).toBe(FAILURES_TO_OPEN + 1))
       expect(await reopened).toEqual({ kind: 'miss', reason: 'timeout' })
