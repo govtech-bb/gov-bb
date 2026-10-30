@@ -116,7 +116,7 @@ export function markdownToPageSaveInput(
   if (document.has("publish_date"))
     errors.push({
       field: "publish_date",
-      message: "Remove this field; a page is dated when it first goes public",
+      message: "Remove this field; a page's date is set by the server",
     });
 
   const title = text("title") ?? "";
