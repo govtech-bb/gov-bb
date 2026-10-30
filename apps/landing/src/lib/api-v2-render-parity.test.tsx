@@ -53,9 +53,8 @@ const ESTATE: {
 /**
  * The page as `GET /pages` returns it (`toPublicPage` in
  * apps/api_v2/src/modules/page-visibility.ts) after seeding: apps/api_v2/
- * src/seed.ts stores `published_at` for a public page only, so a non-public
- * page has none until it goes public. The insert trigger dates a public
- * page's `content_updated_at` from its `published_at`. `category`/`subcategory` restate
+ * src/seed.ts stores every page's `published_at`, public or not. The insert
+ * trigger dates a page's `content_updated_at` from its `published_at`. `category`/`subcategory` restate
  * `categoryChain` in apps/api_v2/src/modules/navigation.ts; api_v2's
  * seed.test.ts checks the real mapping against the same snapshot.
  */
@@ -77,11 +76,8 @@ function served(page: SeedPage): PageResponse {
     form_id: page.form_id,
     hide_start_links: false,
     breadcrumbs: [],
-    published_at: page.visibility === 'public' ? page.published_at : null,
-    content_updated_at:
-      page.visibility === 'public'
-        ? (page.published_at ?? undefined)
-        : undefined,
+    published_at: page.published_at,
+    content_updated_at: page.published_at ?? undefined,
     updated_at: '2026-01-01T00:00:00.000Z',
     category,
     subcategory,
@@ -144,18 +140,6 @@ const KNOWN: Array<{ why: string; field: Field; urls: string[] }> = [
       'travel-id-citizenship/post-office-redirection-deceased/start',
       'travel-id-citizenship/post-office-redirection-individual/start',
     ],
-  },
-  {
-    // The seed stores `published_at` for public pages only, so a preview or
-    // draft page loses its `publish_date` ("Last updated") until it is
-    // published, and then gets the publication time instead. Nobody sees this
-    // until landing sends the preview token (#2961). Derived rather than
-    // listed: it is every non-public seed page with a date.
-    why: 'seed drops publish_date for non-public pages',
-    field: 'publish_date',
-    urls: ESTATE.pages
-      .filter((page) => page.visibility !== 'public' && page.published_at)
-      .map((page) => page.url.replace(/^\//, '')),
   },
 ]
 

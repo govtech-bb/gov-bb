@@ -274,7 +274,7 @@ export async function fromApiV2(body: PageResponse): Promise<ApiV2Page> {
     visibility: 'public',
     ...(body.form_id && { form_id: body.form_id }),
     // "Last updated" is the last content change (#3105), shown once the page
-    // has been public; an older API sends only first publication.
+    // has a publication date; an older API sends only first publication.
     ...(body.published_at && {
       publish_date: barbadosDay(body.content_updated_at ?? body.published_at),
     }),

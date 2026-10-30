@@ -89,7 +89,10 @@ export const PageDocument = PageFields.extend({
   published_at: z.iso
     .datetime()
     .nullable()
-    .describe("When the page first went public; null until it has."),
+    .describe(
+      "Landing's `publish_date` for an imported page, else when the page " +
+        "first went public; null until it has one.",
+    ),
   created_at: z.iso.datetime(),
   updated_at: z.iso
     .datetime()

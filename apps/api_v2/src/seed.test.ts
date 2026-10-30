@@ -104,7 +104,7 @@ describe("seed", () => {
     await close();
   }, 60_000);
 
-  it("serves a seeded subcategory page only in preview with its taxonomy", async ({
+  it("serves a seeded subcategory page only in preview with its taxonomy and publish date", async ({
     onTestFinished,
   }) => {
     const { db, close } = await createTestDb();
@@ -128,6 +128,27 @@ describe("seed", () => {
       category: "youth-and-community",
       subcategory: "arts-culture",
     });
+
+    // A preview page keeps its frontmatter date, so it shows the static
+    // page's "Last updated" and keeps that date when it goes public.
+    const preview = ESTATE.pages.filter(
+      (page) => page.visibility === "preview",
+    );
+    const dated = preview.find((page) => page.published_at)!;
+    const undated = preview.find((page) => !page.published_at)!;
+    const served = async (pageUrl: string) =>
+      (
+        await app.inject({
+          url: `/pages?url=${encodeURIComponent(pageUrl)}`,
+          headers: { [PREVIEW_TOKEN]: "preview" },
+        })
+      ).json();
+
+    expect(await served(dated.url)).toMatchObject({
+      published_at: dated.published_at,
+      content_updated_at: dated.published_at,
+    });
+    expect(await served(undated.url)).toMatchObject({ published_at: null });
   }, 60_000);
 
   it("files subcategories, sub-pages and the pages landing nests by hand", async () => {

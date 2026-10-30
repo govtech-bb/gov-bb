@@ -106,8 +106,8 @@ export const PublicPage = z.object({
     .datetime()
     .nullable()
     .describe(
-      "When the page first went public (seeded from landing's " +
-        "`publish_date`); null until it has.",
+      "Landing's `publish_date` for an imported page, else when the page " +
+        "first went public; null until it has one.",
     ),
   content_updated_at: z.iso
     .datetime()
