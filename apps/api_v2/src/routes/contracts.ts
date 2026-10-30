@@ -478,6 +478,17 @@ export const SCHEMAS = {
     },
   },
 
+  pagePaths: {
+    summary: "List internal page link targets",
+    description:
+      "Every stored page path, including drafts, previews and uncategorised pages, " +
+      "plus unambiguous bare-slug redirects. For editor link checks, not a promise " +
+      "that a page is public. Requires an employee session.",
+    tags: ["pages"],
+    security: editorSecurity,
+    response: { 200: z.array(z.string()), 500: error, ...authErrors },
+  },
+
   listServices: {
     summary: "List services",
     description:

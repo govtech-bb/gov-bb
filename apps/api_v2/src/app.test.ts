@@ -375,6 +375,64 @@ describe("GET /pages/:id", () => {
   });
 });
 
+describe("GET /editor/page-paths", () => {
+  it("lists draft, preview, nested and standalone pages without their content", async () => {
+    const category = await seedCategory();
+    const entry = await seedPage({ category_id: category.id });
+    await seedPage({ url: START, parent_id: entry.id, visibility: "preview" });
+    await seedPage({
+      url: "/fees",
+      parent_id: entry.id,
+      visibility: "draft",
+    });
+    await seedPage({ url: "/terms-conditions" });
+
+    const response = await inject({ url: "/editor/page-paths" });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.headers["cache-control"]).toBe("no-store");
+    expect(response.json()).toEqual(
+      [
+        ENTRY,
+        START,
+        "/fees",
+        "/terms-conditions",
+        "/calculate-severance-pay",
+        "/start",
+      ].sort(),
+    );
+  });
+
+  it("only includes a bare-slug redirect when its target is unambiguous", async () => {
+    await seedPage({ url: "/one/help" });
+    await seedPage({ url: "/two/help" });
+
+    const response = await inject({ url: "/editor/page-paths" });
+
+    expect(response.json()).toEqual(["/one/help", "/two/help"]);
+  });
+
+  it("does not mistake a failed lookup for an empty list", async () => {
+    const broken = await createTestDb();
+    const brokenApp = await createTestApp(broken.db);
+    try {
+      await broken.db.execute(
+        sql`alter table content_pages rename to unavailable_pages`,
+      );
+      const response = await brokenApp.inject({
+        url: "/editor/page-paths",
+        headers: TEST_HEADERS,
+      });
+
+      expect(response.statusCode).toBe(500);
+      expect(response.json()).toMatchObject({ error: "internal_error" });
+    } finally {
+      await brokenApp.close();
+      await broken.close();
+    }
+  });
+});
+
 describe("GET /services", () => {
   it("groups each entry page with the pages below it, ordered by title", async () => {
     const category = await seedCategory();
@@ -1173,6 +1231,7 @@ describe("employee access", () => {
     ["GET", "/pages/not-a-uuid"],
     ["HEAD", "/pages/not-a-uuid"],
     ["GET", "/services"],
+    ["GET", "/editor/page-paths"],
     ["GET", "/services/not-a-uuid"],
     ["GET", "/editor/categories"],
     ["HEAD", "/editor/categories"],

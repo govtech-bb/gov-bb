@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactN
 import type { Category } from "../api/categories";
 import { ApiFailure, type ApiPage, type EditorApi } from "../api/client";
 import { apiMessage } from "../api/failure-messages";
+import { pageLinkTargetsQuery } from "../api/page-link-targets";
 import { pageToMarkdown, pickerCategories, pageFieldLabel } from "../api/page-markdown";
 import {
   PRELOAD_FRESH,
@@ -15,12 +16,14 @@ import {
 } from "../api/queries";
 import { PageDraftEditor } from "../host/page-editor";
 import { download } from "../host/source-ui";
+import { collectInternalPageLinks } from "../pages/link-checks";
 import { readPageMetadata } from "../pages";
 import { DraftStore } from "../persistence/draft-store";
 import { govbbPageCodec } from "../presets/govbb-page";
 import { Banner } from "../ui/banner";
 import { Bar } from "../ui/bar";
 import { Button } from "../ui/button";
+import { ConfirmDialog } from "../ui/confirm-dialog";
 import { EmptyState } from "../ui/empty-state";
 import { LoadingState } from "../ui/loading-state";
 import { TextLink } from "../ui/text-link";
@@ -28,6 +31,7 @@ import type { SaveStateProps } from "../ui/save-state";
 import { toast } from "../ui/toast";
 import { EditorSessionProvider } from "../editor/react/composer";
 import type { DocumentSessions } from "./document-views";
+import { brokenLinks, linkConfirmation, linkTargets } from "./broken-links";
 import { savePageDraft, type PageSession, type ServerPageBaseline } from "./page-sync";
 
 type SessionListener = (id: string, session: PageSession | undefined) => void;
@@ -192,6 +196,36 @@ function RemotePageEditor({
     [services],
   );
 
+  // Links to pages the site doesn't have warn as the page is written, and are checked again before each save
+  const pageUrl = readPageMetadata(draft.committed).url ?? server.url;
+
+  const links = useMemo(
+    () => (draft.state ? collectInternalPageLinks(draft.state, pageUrl) : []),
+    [draft.state, pageUrl],
+  );
+
+  const known = useQuery(pageLinkTargetsQuery(api, linkTargets(links)));
+  // A refetch that failed keeps its last data, which is no evidence about the links now
+  const listed = known.isError ? undefined : known.data;
+  const broken = listed ? brokenLinks(links, listed, pageUrl) : [];
+  const [checking, setChecking] = useState(false);
+
+  const [confirming, setConfirming] = useState<{
+    markdown: string;
+    title: string;
+    message: string;
+  }>();
+
+  const mounted = useRef(true);
+
+  useEffect(() => {
+    mounted.current = true;
+
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
+
   const save = useMutation({
     mutationFn: (current: { base: ServerPageBaseline; markdown: string }) =>
       savePageDraft(api, current.base, current.markdown, categories),
@@ -265,7 +299,7 @@ function RemotePageEditor({
       getBaseline: () => baseline.current,
       isSaving: () => saving.current,
     }),
-    [store, base, save.isPending],
+    [store, base, save.isPending, checking],
   );
 
   useEffect(() => {
@@ -297,6 +331,59 @@ function RemotePageEditor({
       return;
     saving.current = true;
     save.mutate({ base: baseline.current, markdown: snapshot.committed });
+  };
+
+  // Looks the page's links up again, then saves. Only making the page public stops to ask about what it found.
+  const checkedSave = async () => {
+    const snapshot = store.getSnapshot();
+
+    if (
+      saving.current ||
+      stale ||
+      !snapshot.valid ||
+      snapshot.dirty ||
+      snapshot.status === "error" ||
+      !snapshot.state ||
+      !collectInternalPageLinks(snapshot.state, pageUrl).length
+    )
+      return saveDraft();
+
+    // Held like a save, so a second click is ignored and leaving the page waits for it
+    saving.current = true;
+    setChecking(true);
+    let fresh: readonly string[] | undefined;
+
+    try {
+      fresh = await client.fetchQuery({ ...pageLinkTargetsQuery(api, ["/"]), staleTime: 0 });
+    } catch {
+      fresh = undefined;
+    }
+
+    saving.current = false;
+
+    if (!mounted.current) return;
+    setChecking(false);
+
+    // What is checked is what is sent: the page as it stands now
+    const latest = store.getSnapshot();
+
+    if (!latest.state || !latest.valid || latest.dirty || latest.status === "error") return;
+    const latestUrl = readPageMetadata(latest.committed).url ?? server.url;
+    const found = collectInternalPageLinks(latest.state, latestUrl);
+
+    const makesPublic =
+      (readPageMetadata(latest.committed).visibility || "public") === "public" &&
+      server.visibility !== "public";
+
+    const asked = makesPublic
+      ? linkConfirmation(
+          fresh ? brokenLinks(found, fresh, latestUrl) : [],
+          found.length > 0 && !fresh,
+        )
+      : undefined;
+
+    if (asked) setConfirming({ markdown: latest.committed, ...asked });
+    else saveDraft();
   };
 
   const loadSaved = () => {
@@ -338,7 +425,7 @@ function RemotePageEditor({
         error:
           "We could not save this page. Keep this editor open to retry, or download your changes.",
         conflict,
-        onRetry: saveDraft,
+        onRetry: () => void checkedSave(),
         onDownload: downloadMine,
       };
 
@@ -481,46 +568,72 @@ function RemotePageEditor({
   ) : undefined;
 
   return (
-    <PageDraftEditor
-      store={store}
-      active={active}
-      nav={nav}
-      server={standing()}
-      publish={
-        // Keep focus when a completed save leaves nothing to save, or a newer version blocks editing.
-        <Button
-          variant="accent"
-          pending={save.isPending}
-          aria-disabled={
-            !unsaved || stale || blocked || readOnly || outcome?.kind === "missing" || undefined
-          }
-          onClick={saveDraft}
-        >
-          {publishes ? "Publish changes" : "Save"}
-        </Button>
-      }
-      notice={
-        readNotice ? (
-          <>
-            {readNotice}
-            {notice}
-          </>
-        ) : (
-          notice
-        )
-      }
-      linkPages={linkPages}
-      previewContext={previewContext}
-      settings={{
-        ...(server.parent_id === null && {
-          categories: pickerCategories(categories),
-          single: true,
-        }),
-        publishedAt: server.published_at,
-        savedVisibility: base.page.visibility,
-        visibilityLocked: !approver,
-        errors: Object.fromEntries(errors.map((error) => [error.field, error.message])),
-      }}
-    />
+    <>
+      <PageDraftEditor
+        store={store}
+        active={active}
+        nav={nav}
+        server={standing()}
+        publish={
+          // Keep focus when a completed save leaves nothing to save, or a newer version blocks editing.
+          <Button
+            variant="accent"
+            pending={save.isPending || checking}
+            aria-disabled={
+              !unsaved || stale || blocked || readOnly || outcome?.kind === "missing" || undefined
+            }
+            onClick={() => void checkedSave()}
+          >
+            {publishes ? "Publish changes" : "Save"}
+          </Button>
+        }
+        notice={
+          readNotice ? (
+            <>
+              {readNotice}
+              {notice}
+            </>
+          ) : (
+            notice
+          )
+        }
+        linkPages={linkPages}
+        linkWarnings={{
+          broken,
+          unavailable: links.length > 0 && known.isError,
+          retrying: known.isFetching,
+          onRetry: () => void known.refetch(),
+        }}
+        previewContext={previewContext}
+        settings={{
+          ...(server.parent_id === null && {
+            categories: pickerCategories(categories),
+            single: true,
+          }),
+          publishedAt: server.published_at,
+          savedVisibility: base.page.visibility,
+          visibilityLocked: !approver,
+          errors: Object.fromEntries(errors.map((error) => [error.field, error.message])),
+        }}
+      />
+      <ConfirmDialog
+        open={!!confirming}
+        onOpenChange={(next) => {
+          if (!next) setConfirming(undefined);
+        }}
+        title={confirming?.title ?? ""}
+        description={`${confirming?.message ?? ""} Citizens will see this page straight away.`}
+        confirmLabel="Publish changes"
+        variant="accent"
+        onConfirm={() => {
+          const asked = confirming;
+          setConfirming(undefined);
+
+          // Only the page that was shown is published
+          if (asked?.markdown === store.getSnapshot().committed) saveDraft();
+          else toast("The page changed", { description: "Publish it again to check its links." });
+        }}
+      />
+    </>
   );
 }

@@ -934,3 +934,198 @@ test("a change discarded while more was typed is still announced, and the typing
     document.querySelector<HTMLButtonElement>('[aria-label="Dismiss"]')?.click(),
   );
 });
+
+const withLinks =
+  (request: (url: string, init?: RequestInit) => Promise<Response>) =>
+  (url: string, init?: RequestInit) =>
+    url.endsWith("/editor/page-paths")
+      ? Promise.resolve(Response.json(["/family/birth-certificate"]))
+      : request(url, init);
+
+const linkBody =
+  "---\ntitle: Fees\nurl: /family/birth-certificate/fees\n---\n\nSee [the old page](/gone).";
+
+test("a broken link warns by its words but doesn't stop a draft save", async () => {
+  const writes: SavePageInput[] = [];
+
+  const h = await mountPage(
+    withLinks(async (_url, init) => {
+      if (init?.method === "PUT") {
+        writes.push(JSON.parse(String(init.body)));
+
+        return Response.json({
+          ...page,
+          updated_at: "2026-10-07T12:01:00.000Z",
+        });
+      }
+
+      return Response.json(page);
+    }),
+  );
+
+  await applySource(h.session(), linkBody.replace("url:", "visibility: draft\nurl:"));
+  await act(async () => {
+    await vi.waitFor(() => expect(document.body.textContent).toContain("doesn’t exist"));
+  });
+  await savePage();
+  expect(writes).toHaveLength(1);
+});
+
+test("making a page public with a broken link asks first", async () => {
+  const writes: SavePageInput[] = [];
+
+  const h = await mountPage(
+    withLinks(async (_url, init) => {
+      if (init?.method === "PUT") {
+        writes.push(JSON.parse(String(init.body)));
+
+        return Response.json({ ...page, visibility: "public" });
+      }
+
+      return Response.json(page);
+    }),
+  );
+
+  await applySource(h.session(), linkBody.replace("url:", "visibility: public\nurl:"));
+  await savePage("Publish changes");
+  await act(async () => {
+    await vi.waitFor(() =>
+      expect(document.body.textContent).toContain("Publish with broken links?"),
+    );
+  });
+  expect(writes).toHaveLength(0);
+
+  await act(async () =>
+    [...document.querySelectorAll("button")]
+      .filter((item) => item.textContent === "Publish changes")
+      .at(-1)!
+      .click(),
+  );
+  await vi.waitFor(() => expect(writes).toHaveLength(1));
+});
+
+test("choosing a broken link's warning puts the caret in that link", async () => {
+  const h = await mountPage(withLinks(async () => Response.json(page)));
+
+  await applySource(h.session(), linkBody.replace("url:", "visibility: draft\nurl:"));
+  await act(async () => {
+    await vi.waitFor(() => expect(document.body.textContent).toContain("doesn’t exist"));
+  });
+  await act(async () => {
+    [...document.querySelectorAll("button")]
+      .find((item) => item.textContent === "the old page")!
+      .click();
+  });
+  await act(async () => {
+    await vi.waitFor(() => {
+      const anchor = window.getSelection()?.anchorNode;
+
+      expect(anchor?.textContent).toBe("the old page");
+    });
+  });
+});
+
+test("a draft save also looks its links up again, and still saves when that fails", async () => {
+  const writes: SavePageInput[] = [];
+  let lookups = 0;
+
+  const h = await mountPage(async (url, init) => {
+    if (url.endsWith("/editor/page-paths")) {
+      lookups++;
+
+      return Response.json({ error: "down" }, { status: 500 });
+    }
+
+    if (init?.method === "PUT") {
+      writes.push(JSON.parse(String(init.body)));
+
+      return Response.json(page);
+    }
+
+    return Response.json(page);
+  });
+
+  await applySource(h.session(), linkBody.replace("url:", "visibility: draft\nurl:"));
+  await act(async () => {
+    await vi.waitFor(() => expect(document.body.textContent).toContain("could not check"));
+  });
+  const before = lookups;
+  await savePage();
+  await vi.waitFor(() => expect(writes).toHaveLength(1));
+  expect(lookups).toBeGreaterThan(before);
+});
+
+test("publishing while the page list can't be read asks, without calling the links broken", async () => {
+  let up = true;
+
+  const h = await mountPage(async (url) => {
+    if (url.endsWith("/editor/page-paths"))
+      return up ? Response.json(["/family/birth-certificate"]) : Response.json({}, { status: 500 });
+
+    return Response.json(page);
+  });
+
+  await applySource(h.session(), linkBody);
+  await act(async () => {
+    await vi.waitFor(() => expect(document.body.textContent).toContain("doesn’t exist"));
+  });
+  up = false;
+  await savePage("Publish changes");
+  await act(async () => {
+    await vi.waitFor(() =>
+      expect(document.body.textContent).toContain("Publish without checking links?"),
+    );
+  });
+  expect(document.body.textContent).not.toContain("Publish with broken links?");
+});
+
+test("the host is notified when a link check starts and finishes, so leaving waits for it", async () => {
+  let pending: Promise<Response> | undefined;
+  const writes: SavePageInput[] = [];
+
+  const h = await mountPage(async (url, init) => {
+    if (url.endsWith("/editor/page-paths"))
+      return pending ?? Response.json(["/family/birth-certificate"]);
+
+    if (init?.method === "PUT") writes.push(JSON.parse(String(init.body)));
+
+    return Response.json(page);
+  });
+
+  await applySource(h.session(), linkBody);
+  await act(async () => {
+    await vi.waitFor(() => expect(document.body.textContent).toContain("doesn’t exist"));
+  });
+  const before = h.session();
+  let answer!: (response: Response) => void;
+  pending = new Promise((resolve) => {
+    answer = resolve;
+  });
+  await savePage("Publish changes");
+  expect(h.session().isSaving()).toBe(true);
+  expect(h.session()).not.toBe(before);
+  const checking = h.session();
+
+  await act(async () => {
+    answer(Response.json(["/family/birth-certificate"]));
+    await vi.waitFor(() =>
+      expect(document.body.textContent).toContain("Publish with broken links?"),
+    );
+  });
+  expect(h.session().isSaving()).toBe(false);
+  expect(h.session()).not.toBe(checking);
+  expect(writes).toHaveLength(0);
+});
+
+test("removing the last link also removes an earlier lookup failure warning", async () => {
+  const h = await mountPage(async (url) =>
+    url.endsWith("/editor/page-paths") ? Response.json({}, { status: 500 }) : Response.json(page),
+  );
+
+  await applySource(h.session(), linkBody.replace("url:", "visibility: draft\nurl:"));
+  await act(async () => {
+    await vi.waitFor(() => expect(document.body.textContent).toContain("could not check"));
+  });
+  await applySource(h.session(), "---\ntitle: Fees\nvisibility: draft\n---\n\nNo links remain.");
+  expect(document.body.textContent).not.toContain("could not check");
+});
