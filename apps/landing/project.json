@@ -19,9 +19,6 @@
         "production",
         "^production",
         {
-          "env": "DRAFT_SECRET"
-        },
-        {
           "env": "LANDING_SECRET"
         },
         {

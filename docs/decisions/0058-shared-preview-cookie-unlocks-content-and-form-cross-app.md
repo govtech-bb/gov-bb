@@ -1,7 +1,7 @@
 # 0058 — A shared `preview` cookie unlocks content and form cross-app, and is a rollout gate not a confidentiality boundary
 
 **Date:** 2026-06-25
-**Status:** Accepted
+**Status:** Accepted — amended <YYYY-MM-DD> ([#3456](https://github.com/govtech-bb/gov-bb/issues/3456)): landing's `draft` level and `DRAFT_SECRET` are removed; see the Amendment below
 **Related:** [#1646](https://github.com/govtech-bb/gov-bb/issues/1646) (Phase 3), [#1682](https://github.com/govtech-bb/gov-bb/issues/1682) (Phase 2), ADR-0011 (unpublished recipe preview is secret-gated per-request), ADR-0013 (content preview is a rollout gate, not a confidentiality boundary), ADR-0057 (env config validated with Zod at boot).
 
 ## Context
@@ -94,3 +94,25 @@ The split, made explicit:
   single secret exposes both unlaunched content and the ability to mint the
   visibility cookie. It still does **not** expose DB scratch. Rotate by changing
   `RECIPE_PREVIEW_TOKEN` / `PREVIEW_SECRET` in lockstep across environments.
+
+## Amendment (<YYYY-MM-DD>) — landing has one reviewer level, `preview` ([#3456](https://github.com/govtech-bb/gov-bb/issues/3456))
+
+Decided in [#3247](https://github.com/govtech-bb/gov-bb/issues/3247). The
+line above that "`DRAFT_SECRET` and the `?draft=` path are untouched" no
+longer holds: landing's `draft` viewer level, its `?draft=<DRAFT_SECRET>`
+grant and the `DRAFT_SECRET` build input are removed. `DRAFT_SECRET` was
+never set in any environment ([#3367](https://github.com/govtech-bb/gov-bb/issues/3367))
+and `decideViewLevel` fails closed on an unset secret, so no `?draft=` link
+ever unlocked anything.
+
+Landing now has two viewer levels, `public` and `preview`, unlocked by one
+`?preview=<PREVIEW_SECRET>` token — the two visibilities editor_v2 offers
+([#3191](https://github.com/govtech-bb/gov-bb/issues/3191)) and the two
+viewers api_v2 serves. `draft` remains a storage value (api_v2 pages, and
+static frontmatter until [#3220](https://github.com/govtech-bb/gov-bb/issues/3220))
+meaning editor-only; it is not a site level and no token grants it. Landing
+no longer mints a `draft`-valued `preview` cookie, and reads a stale one as
+`public`. The API's cookie bypass set (`preview`/`draft`/`1`) is unchanged;
+accepting `draft` is harmless because nothing mints it. The forms-side
+`?draft=` (`X-Recipe-Draft`, DB-scratch sourcing, ADR-0011) is a separate
+mechanism and is unchanged.
