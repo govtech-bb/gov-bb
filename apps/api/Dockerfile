@@ -32,6 +32,7 @@ COPY --chown=app:app packages/submission-summary/package.json packages/submissio
 # content is never imported by the api, but the ROOT package.json pins it
 # (workspace:*), and the root project is part of the prod-deps install below.
 COPY --chown=app:app packages/content/package.json packages/content/
+COPY --chown=app:app packages/govbbmarkd/package.json packages/govbbmarkd/
 
 # BuildKit cache mount keeps the pnpm content-addressable store across builds,
 # so a cache-invalidating change to the lockfile or any package.json re-installs

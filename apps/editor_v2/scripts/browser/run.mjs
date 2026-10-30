@@ -38,6 +38,7 @@ const suites = requested.length
       "categories.mjs",
       "collections.mjs",
       "page-writer.mjs",
+      "page-preview.mjs",
       "site-preview.mjs",
     ];
 

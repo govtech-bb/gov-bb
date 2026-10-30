@@ -6,9 +6,7 @@ import {
   $isTableSelection,
   $isTableNode,
   $insertTableRowAtSelection,
-  $insertTableColumnAtSelection,
   $deleteTableRowAtSelection,
-  $deleteTableColumnAtSelection,
 } from "@lexical/table";
 import {
   $createParagraphNode,
@@ -68,7 +66,7 @@ import {
   useBlockDrag,
   useRailTarget,
 } from "../editor/react/block-rail";
-import { useEditorDefinition } from "../editor/react/composer";
+import { useEditorDefinition, useLinkPages } from "../editor/react/composer";
 import { $validPoint, roomierSide, useCaretReturn } from "../editor/react/editor-popup";
 import { cn } from "../cn";
 import { altKey } from "../editor/react/shortcut";
@@ -90,8 +88,12 @@ import { $blockLines, $pageChoices, $turnPageLines } from "./turn-into";
 import { $rootBlock, type PagePlace } from "./insertion";
 import { startWriting } from "./slash-menu";
 import { PageMetadataNode } from "./metadata";
-import { PageComponentNode } from "./nodes";
+import { PageComponentNode, type PageComponentAttributes } from "./nodes";
 import { $nearestPageList, $setPageListType } from "./modules/lists";
+import { $changePageTableColumns } from "./modules/tables";
+import { linkAddress } from "../editor/modules/links/url";
+import { safePageUrl } from "./modules/text";
+import { LinkPicker } from "../ui/link-picker";
 import { $dropPageBlock, $pageDropAt, PAGE_BLOCK_DRAG } from "./block-drag";
 
 function $blockSelection(selection: BaseSelection | null, block: LexicalNode) {
@@ -102,8 +104,11 @@ function $blockSelection(selection: BaseSelection | null, block: LexicalNode) {
   )
     return null;
 
-  if ($isTableSelection(selection))
-    return selection.tableKey === block.getKey() && $isTableNode(block) ? selection : null;
+  if ($isTableSelection(selection)) {
+    const table = $getNodeByKey(selection.tableKey);
+
+    return $isTableNode(table) && $rootBlock(table)?.is(block) ? selection : null;
+  }
 
   const anchor = $getNodeByKey(selection.anchor.key);
 
@@ -188,7 +193,11 @@ function EditablePageControls({ anchor, hintId }: { anchor: HTMLElement; hintId:
     // The caret's block, kept while the selection is somewhere else for a moment
     $caretBlock: () => {
       const selection = $getSelection();
-      const block = $isRangeSelection(selection) ? $rootBlock(selection.anchor.getNode()) : null;
+
+      const block =
+        $isRangeSelection(selection) || $isTableSelection(selection)
+          ? $rootBlock(selection.anchor.getNode())
+          : null;
 
       if (block) caret.current = block.getKey();
 
@@ -600,7 +609,9 @@ function BlockMenuRows({ menu, onDone }: { menu: BlockMenu; onDone: () => void }
 
       let node: LexicalNode | null =
         $pageBlockDescendant(menu.contextKey, block) ??
-        ($isRangeSelection(selection) ? $getNodeByKey(selection.anchor.key) : block);
+        ($isRangeSelection(selection) || $isTableSelection(selection)
+          ? $getNodeByKey(selection.anchor.key)
+          : block);
 
       let component: PageComponentNode | null = null;
       const list = $nearestPageList(node);
@@ -664,21 +675,6 @@ function BlockMenuRows({ menu, onDone }: { menu: BlockMenu; onDone: () => void }
     }
   };
 
-  const table = (apply: () => void) =>
-    change((block) => {
-      const selection = $getSelection();
-
-      if (
-        !($isTableSelection(selection) && selection.tableKey === block.getKey()) &&
-        (!$isRangeSelection(selection) ||
-          $rootBlock(selection.anchor.getNode())?.getKey() !== block.getKey())
-      ) {
-        if ($isElementNode(block)) block.selectStart();
-      }
-
-      apply();
-    });
-
   return (
     <>
       <div className={groupLabel} aria-hidden="true">
@@ -705,6 +701,31 @@ function BlockMenuRows({ menu, onDone }: { menu: BlockMenu; onDone: () => void }
               }
             />
           )}
+          {model.component &&
+            (model.component.kind === "summary-list" ||
+              model.component.kind === "summary-item") && (
+              <BlockMenuItem
+                icon={<Plus />}
+                onClick={() =>
+                  change((block) => {
+                    if (!model.component) return;
+                    const node = $pageBlockDescendant(model.component.key, block);
+
+                    if (!(node instanceof PageComponentNode)) return;
+
+                    const item = new PageComponentNode("summary-item", {
+                      summaryKey: "Key",
+                    }).append($createParagraphNode());
+
+                    if (node.getKind() === "summary-list") node.append(item);
+                    else node.insertAfter(item);
+                    item.selectStart();
+                  })
+                }
+              >
+                Add summary item
+              </BlockMenuItem>
+            )}
           {model.component &&
             (model.component.kind === "action" || model.component.kind === "actions") && (
               <BlockMenuItem
@@ -749,7 +770,7 @@ function BlockMenuRows({ menu, onDone }: { menu: BlockMenu; onDone: () => void }
           <BlockMenuItem
             icon={<Table />}
             onClick={() =>
-              table(() => {
+              change(() => {
                 $insertTableRowAtSelection(true);
               })
             }
@@ -758,18 +779,14 @@ function BlockMenuRows({ menu, onDone }: { menu: BlockMenu; onDone: () => void }
           </BlockMenuItem>
           <BlockMenuItem
             icon={<Table />}
-            onClick={() =>
-              table(() => {
-                $insertTableColumnAtSelection(true);
-              })
-            }
+            onClick={() => change(() => $changePageTableColumns("insert"))}
           >
             Add column
           </BlockMenuItem>
-          <BlockMenuItem onClick={() => table($deleteTableRowAtSelection)}>
+          <BlockMenuItem onClick={() => change($deleteTableRowAtSelection)}>
             Delete row
           </BlockMenuItem>
-          <BlockMenuItem onClick={() => table($deleteTableColumnAtSelection)}>
+          <BlockMenuItem onClick={() => change(() => $changePageTableColumns("delete"))}>
             Delete column
           </BlockMenuItem>
         </Menu.Group>
@@ -887,10 +904,7 @@ function BlockMenuRows({ menu, onDone }: { menu: BlockMenu; onDone: () => void }
   );
 }
 
-/**
- * Commits summaries on blur or Enter and styles on selection.
- * Button destinations are edited by PageButtonLink so URL validation has one owner.
- */
+/** Action target fields are applied together; legacy Start destinations stay at the caret. */
 function ComponentSettings({
   component,
   onChange,
@@ -898,57 +912,146 @@ function ComponentSettings({
   component: {
     key: string;
     kind: string;
-    attributes: { summary?: string; variant?: string };
+    attributes: PageComponentAttributes;
   };
-  onChange: (patch: { summary?: string; variant?: string }) => void;
+  onChange: (patch: PageComponentAttributes) => void;
 }) {
-  const [summary, setSummary] = useState(component.attributes.summary ?? "");
+  const data = component.attributes;
+  const [label, setLabel] = useState(data.summary ?? data.caption ?? data.summaryKey ?? "");
+  const [href, setHref] = useState(data.href ?? "");
+  const [form, setForm] = useState(data.form ?? "");
+
+  const [target, setTarget] = useState<"url" | "form" | "linked-form">(
+    data.form !== undefined ? "form" : data.href !== undefined ? "url" : "linked-form",
+  );
+
   const [error, setError] = useState<string>();
+  const pages = useLinkPages();
 
-  if (component.kind !== "details" && component.kind !== "action") return null;
+  const labelName =
+    component.kind === "details"
+      ? "Details summary"
+      : component.kind === "table"
+        ? "Table caption"
+        : component.kind === "summary-item"
+          ? "Summary key"
+          : undefined;
 
-  const keepSummary = () => {
-    if (!summary.trim()) {
-      setError("Enter a details summary.");
+  if (!labelName && component.kind !== "action") return null;
 
-      return;
+  const keepSettings = () => {
+    if (labelName) {
+      if (!label.trim()) {
+        setError(`Enter a ${labelName.toLowerCase()}.`);
+
+        return;
+      }
+
+      if (label !== (data.summary ?? data.caption ?? data.summaryKey ?? ""))
+        onChange(
+          component.kind === "details"
+            ? { summary: label }
+            : component.kind === "table"
+              ? { caption: label }
+              : { summaryKey: label },
+        );
+    } else {
+      const destination = target === "url" ? linkAddress(href, safePageUrl) : undefined;
+
+      if (destination === null) {
+        setError("Enter a relative link, or an http, https, email or telephone link.");
+
+        return;
+      }
+
+      onChange({
+        href: destination,
+        form: target === "form" ? form : undefined,
+        target: target === "linked-form" ? "form" : undefined,
+      });
+
+      if (destination) setHref(destination);
     }
 
     setError(undefined);
-
-    if (summary !== component.attributes.summary) onChange({ summary });
   };
 
   return (
-    // Keep text editing keys out of menu navigation; Escape still dismisses it.
-    <div
+    <form
       className="page-component-settings grid gap-4 px-3.5 pt-1 pb-3"
       onKeyDown={(event) => event.key !== "Escape" && event.stopPropagation()}
+      onSubmit={(event) => {
+        event.preventDefault();
+        keepSettings();
+      }}
     >
-      {component.kind === "details" ? (
-        <Field size="sm" label="Details summary" error={error}>
+      {labelName ? (
+        <Field size="sm" label={labelName} error={error}>
           <Input
             size="sm"
-            value={summary}
-            onChange={(event) => setSummary(event.target.value)}
-            onBlur={keepSummary}
-            onKeyDown={(event) => {
-              if (event.key === "Enter") keepSummary();
-            }}
+            value={label}
+            onChange={(event) => setLabel(event.target.value)}
+            onBlur={keepSettings}
           />
         </Field>
       ) : (
-        <Field size="sm" label="Button style">
-          <NativeSelect
-            size="sm"
-            value={component.attributes.variant ?? "primary"}
-            onChange={(event) => onChange({ variant: event.target.value })}
-          >
-            <option value="primary">Primary</option>
-            <option value="secondary">Secondary</option>
-          </NativeSelect>
-        </Field>
+        <>
+          <Field size="sm" label="Destination type">
+            <NativeSelect
+              size="sm"
+              value={target}
+              onChange={(event) => {
+                const value = event.target.value;
+
+                if (value === "url" || value === "form" || value === "linked-form")
+                  setTarget(value);
+              }}
+            >
+              <option value="url">Link</option>
+              <option value="linked-form">Page's linked form</option>
+              <option value="form">Registered form</option>
+            </NativeSelect>
+          </Field>
+          {target === "url" && (
+            <Field size="sm" label="Button destination">
+              <LinkPicker size="sm" value={href} pages={pages} onValueChange={setHref} />
+            </Field>
+          )}
+          {target === "form" && (
+            <Field size="sm" label="Form identifier">
+              <Input
+                size="sm"
+                value={form}
+                autoComplete="off"
+                autoCapitalize="none"
+                spellCheck={false}
+                required
+                pattern="[a-zA-Z0-9][a-zA-Z0-9_-]*"
+                title="Use letters, numbers, hyphens or underscores; start with a letter or number."
+                onChange={(event) => setForm(event.target.value)}
+              />
+            </Field>
+          )}
+          <Field size="sm" label="Button style">
+            <NativeSelect
+              size="sm"
+              value={data.variant ?? "primary"}
+              onChange={(event) => onChange({ variant: event.target.value })}
+            >
+              <option value="primary">Primary</option>
+              <option value="secondary">Secondary</option>
+            </NativeSelect>
+          </Field>
+          {error && (
+            <p className="text-error" role="alert">
+              {error}
+            </p>
+          )}
+          <Button type="submit" variant="secondary" className="justify-self-start">
+            Apply settings
+          </Button>
+        </>
       )}
-    </div>
+    </form>
   );
 }

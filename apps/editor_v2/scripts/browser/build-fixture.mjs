@@ -10,6 +10,7 @@ export async function buildBrowserFixture(entry, bundle) {
     configFile: false,
     root,
     plugins: [tailwindcss(), react()],
+    resolve: { dedupe: ["react", "react-dom", "@govtech-bb/react"] },
     define: { "process.env.NODE_ENV": JSON.stringify("development") },
     logLevel: "warn",
     build: {

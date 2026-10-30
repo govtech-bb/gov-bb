@@ -1,3 +1,4 @@
+import { parseContentMarkdown } from "@govtech-bb/govbbmarkd";
 import {
   NotApprover,
   SelfApproval,
@@ -26,7 +27,7 @@ import {
   type PageDocument,
   type PageFields,
   type PageId,
-  type PageRejected,
+  PageRejected,
   type PageValues,
   type PendingRevision,
   type RevisionView,
@@ -242,9 +243,12 @@ export class PageEditing {
       // Its author wrote all of it, so another approver makes it public.
       if (page.visibility === "public" && !this.review.allowSelfApproval)
         return err(new SelfApproval(CREATED_PUBLIC));
+      const fields = withDefaults(page);
+      const invalidContent = markdownRejection(fields);
+      if (invalidContent) return err(invalidContent);
       const available = await records.checkPageUrl(page.url);
       if (!available.ok) return available;
-      const placed = await place(records, page.id, withDefaults(page));
+      const placed = await place(records, page.id, fields);
       if (!placed.ok) return placed;
       const created = await records.insert(
         creationOf(page.id, placed.value, this.clock()),
@@ -324,6 +328,12 @@ export class PageEditing {
       )
         return err(new NotApprover());
 
+      const invalidContent = markdownRejection(
+        current.visibility === "public" && fields.visibility !== "public"
+          ? { ...fieldsOf(current), visibility: fields.visibility }
+          : fields,
+      );
+      if (invalidContent) return err(invalidContent);
       // Past the pending revision's version too, which can run ahead of the
       // clock, so no client holding it matches the page's new one.
       const now = new Date(
@@ -576,6 +586,8 @@ export class PageEditing {
         if (!reviewing.ok) return reviewing;
         const { live, revision } = reviewing.value;
         if (this.isOwn(revision, actor)) return err(new SelfApproval());
+        const invalidContent = markdownRejection(revision.fields);
+        if (invalidContent) return err(invalidContent);
         if (revision.fields.url !== live.url) {
           const available = await records.checkPageUrl(revision.fields.url);
           if (!available.ok) return available;
@@ -643,6 +655,22 @@ export class PageEditing {
       return removed.ok ? ok(undefined) : removed;
     });
   }
+}
+
+function markdownRejection(fields: SaveFields): PageRejected | null {
+  // Drafts retain incomplete or unsupported source; public and preview pages must compile.
+  if (fields.visibility === "draft") return null;
+  const { errors } = parseContentMarkdown(fields.body_markdown, {
+    frontmatter: false,
+  });
+  return errors.length
+    ? new PageRejected(
+        errors.map((error) => ({
+          field: "body_markdown",
+          message: `Line ${error.line}, column ${error.column}: ${error.message}`,
+        })),
+      )
+    : null;
 }
 
 /** Why an approver can't create a page as Public (ADR 0079, #3201). */

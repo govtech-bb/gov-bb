@@ -4,6 +4,7 @@ import type * as CategoryApiModule from '../lib/api-v2-categories'
 // Type-only, so it erases at runtime and the route still loads lazily, after
 // the mocks below are in place.
 import type * as ContentRouteModule from './$'
+import { processMarkdown } from '../utils/markdown/processor'
 
 // Mock the registry to drive the gate's throw paths deterministically. Only the
 // exports the routes use are stubbed.
@@ -109,6 +110,71 @@ beforeAll(async () => {
 }, 60_000)
 
 describe('$ route loader gating', () => {
+  it.each([undefined, 'page-form'])(
+    'filters closed and disabled targets independently of page form %s',
+    async (formId) => {
+      mocks.findPage.mockReturnValue({
+        ...fakePage,
+        frontmatter: { ...fakePage.frontmatter, form_id: formId },
+      })
+      mocks.isVisible.mockReturnValue(true)
+      const publicForms = [
+        'page-form',
+        'closed-form',
+        'disabled-form',
+        'open-form',
+      ]
+      formMocks.getAvailableForms.mockResolvedValueOnce(publicForms)
+      formMocks.getClosedForms.mockResolvedValueOnce(['closed-form'])
+      const loader = Route.options.loader as (a: unknown) => Promise<unknown>
+      const result = await loader({
+        params: { _splat: 'secret-service' },
+        context: {
+          level: 'public',
+          serviceStatuses: [['disabled-form', 'form_disabled']],
+          categoryTree: STATIC,
+        },
+      })
+      expect(result).toMatchObject({
+        availableForms: ['page-form', 'open-form'],
+        applicationClosed: false,
+        underMaintenance: false,
+      })
+      expect(publicForms).toEqual([
+        'page-form',
+        'closed-form',
+        'disabled-form',
+        'open-form',
+      ])
+    },
+  )
+
+  it('checks explicit preview targets once each and excludes inaccessible forms', async () => {
+    const { hast } = await processMarkdown(
+      ':::action{form="review-form"}\nReview\n:::\n\n:::action{form="review-form"}\nAgain\n:::\n\n:::action{form="denied-form"}\nDenied\n:::',
+    )
+    mocks.findPage.mockReturnValue({ ...fakePage, hast })
+    mocks.isVisible.mockReturnValue(true)
+    accessMocks.checkFormAccessible
+      .mockResolvedValueOnce(true)
+      .mockResolvedValueOnce(false)
+    const loader = Route.options.loader as (a: unknown) => Promise<unknown>
+    const result = await loader({
+      params: { _splat: 'secret-service' },
+      context: { level: 'preview', serviceStatuses: [], categoryTree: STATIC },
+    })
+    expect(result).toMatchObject({
+      availableForms: ['get-birth-certificate', 'review-form'],
+    })
+    expect(accessMocks.checkFormAccessible).toHaveBeenCalledTimes(2)
+    expect(accessMocks.checkFormAccessible).toHaveBeenCalledWith({
+      data: 'review-form',
+    })
+    expect(accessMocks.checkFormAccessible).toHaveBeenCalledWith({
+      data: 'denied-form',
+    })
+  })
+
   it('throws notFound for a gated page the viewer cannot see', async () => {
     mocks.findPage.mockReturnValue(fakePage)
     mocks.isVisible.mockReturnValue(false)

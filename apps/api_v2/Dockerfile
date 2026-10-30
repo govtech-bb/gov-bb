@@ -25,6 +25,7 @@ COPY --chown=app:app patches/ ./patches/
 # package.json also pins it (workspace:*).
 COPY --chown=app:app apps/api_v2/package.json apps/api_v2/
 COPY --chown=app:app packages/content/package.json packages/content/
+COPY --chown=app:app packages/govbbmarkd/package.json packages/govbbmarkd/
 
 # Full install, devDependencies included: nx and TypeScript are root devDeps.
 RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store,uid=1001,gid=1001 \
@@ -32,10 +33,9 @@ RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store,uid=1001,gid=1001 \
       --filter @govtech-bb/api-v2... --filter @govtech-bb/modular-forms-monorepo
 
 COPY --chown=app:app apps/api_v2/ apps/api_v2/
+COPY --chown=app:app packages/govbbmarkd/ packages/govbbmarkd/
 
-# --excludeTaskDependencies: api_v2 imports no workspace package at runtime,
-# so there is nothing upstream to build.
-RUN pnpm exec nx build api_v2 --excludeTaskDependencies
+RUN pnpm exec nx build api_v2
 
 # ---- prod-deps ----------------------------------------------------------
 # Production dependencies in pnpm's default isolated layout: the packages
@@ -51,7 +51,7 @@ FROM builder AS prod-deps
 RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store,uid=1001,gid=1001 \
     rm -rf node_modules apps/api_v2/node_modules packages/*/node_modules && \
     pnpm install --store-dir=/pnpm/store --frozen-lockfile --ignore-scripts --prefer-offline --prod \
-      --filter @govtech-bb/api-v2
+      --filter @govtech-bb/api-v2...
 
 # ---- runner -------------------------------------------------------------
 # Slim runtime image: plain `node`, no package manager. Migrations and the
@@ -85,6 +85,10 @@ USER app
 # definition passes the PEM in DB_SSL_CA, which src/db.ts hands to pg.
 COPY --from=prod-deps --chown=app:app /app/node_modules/ ./node_modules/
 COPY --from=prod-deps --chown=app:app /app/apps/api_v2/node_modules/ ./apps/api_v2/node_modules/
+# govbbmarkd exports erasable TypeScript; Node 24 loads it through the workspace link.
+COPY --from=prod-deps --chown=app:app /app/packages/govbbmarkd/package.json ./packages/govbbmarkd/
+COPY --from=prod-deps --chown=app:app /app/packages/govbbmarkd/src/ ./packages/govbbmarkd/src/
+COPY --from=prod-deps --chown=app:app /app/packages/govbbmarkd/node_modules/ ./packages/govbbmarkd/node_modules/
 COPY --from=builder --chown=app:app /app/apps/api_v2/dist/ ./apps/api_v2/dist/
 # The compiled output is CommonJS; api_v2's package.json (no "type") keeps it so.
 COPY --from=builder --chown=app:app /app/apps/api_v2/package.json ./apps/api_v2/

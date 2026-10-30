@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { ESTATE } from "../seed-data";
-import { chunkMarkdown, stripMarkdown } from "./search-text";
+import { analyzeContentMarkdown } from "@govtech-bb/govbbmarkd";
+import { chunkMarkdown } from "./search-text";
 
 /** How a search client rebuilds one page's text from its chunks. */
 const rejoin = (chunks: ReturnType<typeof chunkMarkdown>) =>
@@ -10,6 +11,12 @@ const rejoin = (chunks: ReturnType<typeof chunkMarkdown>) =>
     .join(" ");
 
 describe("chunkMarkdown", () => {
+  it("keeps instructions between leading rules in stored bodies", () => {
+    expect(
+      chunkMarkdown("---\n\nSubmit before Friday.\n\n---\n\nApply below."),
+    ).toEqual([{ heading: null, body: "Submit before Friday. Apply below." }]);
+  });
+
   it("splits at headings, keeping the text before the first one", () => {
     expect(
       chunkMarkdown(
@@ -17,8 +24,7 @@ describe("chunkMarkdown", () => {
       ),
     ).toEqual([
       { heading: null, body: "Intro with a link." },
-      // Emphasis markers become spaces, exactly as landing strips them.
-      { heading: "Fees", body: "It costs $10 ." },
+      { heading: "Fees", body: "It costs $10." },
       { heading: "Paying", body: "By card." },
     ]);
   });
@@ -33,13 +39,18 @@ describe("chunkMarkdown", () => {
     expect(chunkMarkdown("  \n")).toEqual([]);
   });
 
-  // Search ranking must not move when its text comes from chunks rather than
-  // from the page: for every page in the estate, the chunks rejoined are
-  // exactly the body landing indexes today.
+  it("indexes component copy, not form ids or directive syntax", () => {
+    expect(
+      chunkMarkdown(':::action{form="birth-certificate"}\nApply now\n:::'),
+    ).toEqual([{ heading: null, body: "Apply now" }]);
+  });
+
   it.each(ESTATE.pages.map((page) => [page.url, page.body_markdown]))(
     "rejoins %s to the text landing indexes",
     (_url, body) => {
-      expect(rejoin(chunkMarkdown(body))).toBe(stripMarkdown(body));
+      expect(rejoin(chunkMarkdown(body))).toBe(
+        analyzeContentMarkdown(body, { frontmatter: false }).text,
+      );
     },
   );
 });

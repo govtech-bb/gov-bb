@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 
-/** Grid of tappable contact tiles. */
+/** @deprecated Retains existing contacts HTML; use ordinary Markdown for new contact information. */
 export function Contacts({ children }: { children: ReactNode }) {
   return <div className="grid grid-cols-1 gap-s md:grid-cols-3">{children}</div>
 }
@@ -9,6 +9,7 @@ export function Contacts({ children }: { children: ReactNode }) {
  * A tappable phone-number tile. `emergency` (a bare directive flag) is the red,
  * full-width variant. The accessible label is derived from the label + number,
  * so authors only supply what they can see.
+ * @deprecated Retains existing contact HTML; use explicit tel: links in new Markdown.
  */
 export function Contact({
   label,

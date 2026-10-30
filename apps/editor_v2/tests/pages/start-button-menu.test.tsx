@@ -1,7 +1,9 @@
 /** @vitest-environment jsdom */
 import { expect, test } from "vitest";
 import { act } from "react";
+import { screen } from "@testing-library/react";
 import { UNDO_COMMAND } from "lexical";
+import { parseContentMarkdown } from "@govtech-bb/govbbmarkd";
 import { govbbPageCodec } from "../../src/presets/govbb-page";
 import {
   hoverPageMenu,
@@ -51,4 +53,113 @@ test("nested hover settings do not change the root block used by delete and undo
     editor.dispatchCommand(UNDO_COMMAND, undefined);
   });
   expect(govbbPageCodec.encode(editor.getEditorState().toJSON())).toBe(before);
+});
+
+async function editDestination(value: string) {
+  const input = pageControl<HTMLInputElement>(".page-component-settings input");
+  const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
+
+  if (!setter) throw new Error("Expected the native input value setter");
+  await act(async () => {
+    setter.call(input, value);
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+}
+
+async function applySettings() {
+  await act(async () => {
+    pageControl(".page-component-settings").dispatchEvent(
+      new Event("submit", { bubbles: true, cancelable: true }),
+    );
+  });
+}
+
+async function chooseDestination(value: string) {
+  await act(async () => {
+    const select = pageControl<HTMLSelectElement>(".page-component-settings select");
+    select.value = value;
+    select.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+}
+
+test("action settings switch between registered forms, URLs and the linked form without retaining conflicting targets", async () => {
+  const editor = await renderPageEditor(':::action{form="birth-certificate"}\nApply\n:::\n');
+  await hoverPageMenu(pageControl<HTMLElement>('[data-page-component="action"]'));
+  expect(pageControl<HTMLInputElement>(".page-component-settings input").value).toBe(
+    "birth-certificate",
+  );
+  await editDestination("death-certificate");
+  await applySettings();
+  expect(govbbPageCodec.encode(editor.getEditorState().toJSON())).toContain(
+    'form="death-certificate"',
+  );
+
+  await chooseDestination("url");
+  await editDestination("/guidance");
+  await applySettings();
+  const link = govbbPageCodec.encode(editor.getEditorState().toJSON());
+  expect(link).toContain('href="/guidance"');
+  expect(link).not.toContain("form=");
+  expect(parseContentMarkdown(link).errors).toEqual([]);
+
+  await chooseDestination("linked-form");
+  await applySettings();
+  const linked = govbbPageCodec.encode(editor.getEditorState().toJSON());
+  expect(linked).toContain('target="form"');
+  expect(linked).not.toContain("href=");
+  expect(parseContentMarkdown(linked).errors).toEqual([]);
+});
+
+test.each([
+  { kind: "details", source: ":::details[More]\nBody\n:::\n" },
+  {
+    kind: "table",
+    source: ":::table[Fees]\n| Service | Cost |\n| --- | --- |\n| Copy | 50 |\n:::\n",
+  },
+  { kind: "summary-item", source: "::::summary-list\n:::summary-item[Fee]\nBBD 50\n:::\n::::\n" },
+])("$kind settings keep the newer blur-to-save interaction", async ({ kind, source }) => {
+  const editor = await renderPageEditor(source);
+  await hoverPageMenu(pageControl<HTMLElement>(`[data-page-component="${kind}"]`));
+  const input = pageControl<HTMLInputElement>(".page-component-settings input");
+  await act(async () => input.focus());
+  await editDestination("Updated label");
+  await act(async () => input.blur());
+  const encoded = govbbPageCodec.encode(editor.getEditorState().toJSON());
+  expect(encoded).toContain("[Updated label]");
+  expect(parseContentMarkdown(encoded).errors).toEqual([]);
+});
+
+test("button style changes apply immediately without changing its form target", async () => {
+  const editor = await renderPageEditor(':::action{form="birth-certificate"}\nApply\n:::\n');
+  await hoverPageMenu(pageControl<HTMLElement>('[data-page-component="action"]'));
+  const style = screen.getByRole<HTMLSelectElement>("combobox", { name: "Button style" });
+  await act(async () => {
+    style.value = "secondary";
+    style.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+  const source = govbbPageCodec.encode(editor.getEditorState().toJSON());
+  expect(source).toContain('variant="secondary"');
+  expect(source).toContain('form="birth-certificate"');
+  expect(parseContentMarkdown(source).errors).toEqual([]);
+});
+
+test("the summary list menu adds an editable row that round-trips", async () => {
+  const editor = await renderPageEditor(
+    "::::summary-list\n:::summary-item[Fee]\nBBD 50\n:::\n::::\n",
+  );
+
+  await hoverPageMenu(pageControl<HTMLElement>('[data-page-component="summary-list"]'));
+
+  const add = [
+    ...pageControl(".page-block-menu").querySelectorAll<HTMLElement>('[role="menuitem"]'),
+  ].find((button) => button.textContent === "Add summary item");
+
+  if (!add) throw new Error("Expected the add summary item action");
+  await act(async () => add.click());
+  expect(
+    pageControl(".page-editable").querySelectorAll('[data-page-component="summary-item"]'),
+  ).toHaveLength(2);
+  const source = govbbPageCodec.encode(editor.getEditorState().toJSON());
+  expect(parseContentMarkdown(source).errors).toEqual([]);
+  expect(govbbPageCodec.prepare(source).mode).toBe("visual");
 });
