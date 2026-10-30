@@ -15,9 +15,9 @@ interface ServiceSearchProps {
   overlay?: ReadonlyMap<string, ViewLevel>
   defaultValue?: string
   emptyHref?: '/services' | '/search-results'
-  /** api_v2's search documents, when the page already has them. */
+  /** api_v2's search documents the page already has: a start, refreshed on edits. */
   documents?: readonly ApiV2SearchDocument[]
-  /** Reads api_v2's search documents when none are given. */
+  /** Reads api_v2's search documents. */
   loadDocuments?: () => Promise<readonly ApiV2SearchDocument[]>
 }
 
@@ -34,9 +34,7 @@ export function ServiceSearch({
   const inputId = useId()
   const [inputValue, setInputValue] = useState(defaultValue)
   const [hasTyped, setHasTyped] = useState(false)
-  const [loadedDocuments, setLoadedDocuments] =
-    useState<readonly ApiV2SearchDocument[]>()
-  const documents = givenDocuments ?? loadedDocuments
+  const [documents, setDocuments] = useState(givenDocuments)
   const items = hasTyped ? suggest(inputValue, viewer, overlay, documents) : []
 
   const submit = (value: string) => {
@@ -76,9 +74,9 @@ export function ServiceSearch({
           onChange={(event) => {
             setHasTyped(true)
             setInputValue(event.currentTarget.value)
-            // api_v2's pages, unless given: the same list while it is fresh,
-            // so a failed or outdated read is replaced on a later edit.
-            if (!givenDocuments) void loadDocuments().then(setLoadedDocuments)
+            // api_v2's pages: the same list while it is fresh, so a failed or
+            // outdated read, or the page's own copy, is replaced on a later edit.
+            void loadDocuments().then(setDocuments)
           }}
           onSuggestionSelect={(_, index) => {
             const selectedItem = items[index]

@@ -260,7 +260,8 @@ describe('ServiceSearch', () => {
     expect(loadDocumentsMock).toHaveBeenCalledTimes(2)
   })
 
-  it('suggests from documents it is given, without loading any', () => {
+  it('suggests from documents it is given until an edit loads fresh ones', async () => {
+    loadDocumentsMock.mockResolvedValue([])
     renderSearch({ documents: DOCUMENTS })
     typeInto(screen.getByRole('combobox'), 'onl')
 
@@ -270,7 +271,15 @@ describe('ServiceSearch', () => {
       undefined,
       DOCUMENTS,
     )
-    expect(loadDocumentsMock).not.toHaveBeenCalled()
+    expect(loadDocumentsMock).toHaveBeenCalledOnce()
+    await waitFor(() =>
+      expect(suggestMock).toHaveBeenLastCalledWith(
+        'onl',
+        'public',
+        undefined,
+        [],
+      ),
+    )
   })
 
   it('keeps the list closed when there are no suggestions', () => {
