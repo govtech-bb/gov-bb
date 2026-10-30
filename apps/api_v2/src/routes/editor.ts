@@ -295,11 +295,7 @@ export const editorRoutes: FastifyPluginAsyncZod<{
     config: { role: "editor" },
     handler: async (request, reply) => {
       const created = await editing.create(request.body, actor(request));
-      // A new page has no pending revision.
-      if (created.ok)
-        return reply
-          .status(201)
-          .send({ ...created.value, pending_revision: null });
+      if (created.ok) return reply.status(201).send(created.value);
       switch (created.error._tag) {
         case "PageRejected":
           return reply.status(422).send(rejected(created.error));

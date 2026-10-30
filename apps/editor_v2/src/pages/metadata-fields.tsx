@@ -331,6 +331,8 @@ export type PageSettingsOptions = {
   single?: boolean;
   /** When the server dates publication, its date shown read-only; null until the page first goes public. */
   publishedAt?: string | null;
+  /** Latest recorded actor supplied by the host, not inferred from this working copy. */
+  lastEditedBy?: { name: string | null } | null;
   /** The accepted server visibility, so an unsaved change can return to a legacy draft. */
   savedVisibility?: string;
   /** Why the host refused each field, keyed by field name. */
@@ -344,6 +346,7 @@ export function PageSettings({
   categories = [],
   single = false,
   publishedAt,
+  lastEditedBy,
   savedVisibility,
   errors = {},
   visibilityLocked = false,
@@ -477,6 +480,11 @@ export function PageSettings({
               />
             )}
           </Field>
+        )}
+        {lastEditedBy && (
+          <FieldText label="Edited by">
+            <bdi className="wrap-anywhere">{lastEditedBy.name ?? "a former employee"}</bdi>
+          </FieldText>
         )}
       </SidePanel.Section>
       <SidePanel.Section title="Details">

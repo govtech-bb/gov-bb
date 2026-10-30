@@ -42,6 +42,7 @@ const seed = (): Stored[] => [
     position: 0,
     services: 2,
     reserved_route: false,
+    last_edited_by: null,
     version: 0,
   },
   {
@@ -53,6 +54,7 @@ const seed = (): Stored[] => [
     position: 1,
     services: 0,
     reserved_route: false,
+    last_edited_by: null,
     version: 0,
   },
   {
@@ -64,6 +66,7 @@ const seed = (): Stored[] => [
     position: 2,
     services: 0,
     reserved_route: false,
+    last_edited_by: null,
     version: 0,
   },
   {
@@ -75,6 +78,7 @@ const seed = (): Stored[] => [
     position: 0,
     services: 1,
     reserved_route: false,
+    last_edited_by: null,
     version: 0,
   },
   {
@@ -86,6 +90,7 @@ const seed = (): Stored[] => [
     position: 1,
     services: 0,
     reserved_route: false,
+    last_edited_by: null,
     version: 0,
   },
 ];
@@ -163,6 +168,7 @@ function contentApi() {
         position: stored.filter((other) => other.parent_id === fields.parent_id).length,
         services: 0,
         reserved_route: false,
+        last_edited_by: null,
         version: clock++,
       };
 
@@ -474,13 +480,43 @@ test("lists each category with its address and services, subcategories under the
   expect(server.fetch.mock.calls[0]?.[0]).toBe("https://api.example.test/editor/categories");
 });
 
+test("shows each category and subcategory author in its column and folded details without adding controls", async () => {
+  const longName = "A".repeat(250);
+  server.change(EDUCATION, { last_edited_by: { id: "editor", name: longName } });
+  server.change(YOUTH, { last_edited_by: { id: "system", name: "System" } });
+  server.change(SPORT, { last_edited_by: { id: "former", name: null } });
+  server.change(ARTS, { last_edited_by: { id: "unicode", name: "山田太郎 — ليلى أحمد" } });
+  await render();
+  await loaded();
+
+  for (const [index, name] of [
+    longName,
+    null,
+    "System",
+    "a former employee",
+    "山田太郎 — ليلى أحمد",
+  ].entries()) {
+    const cells = rows()[index]!.querySelectorAll("td");
+    expect(cells[2]!.textContent).toBe(name ?? "");
+    expect(cells[2]!.querySelectorAll("a, button, input, [tabindex]")).toHaveLength(0);
+    expect(cells[0]!.textContent?.includes("Edited by")).toBe(name !== null);
+
+    if (name) {
+      expect(cells[0]!.textContent).toContain(`Edited by ${name}`);
+      expect(cells[2]!.querySelector("bdi")?.classList).toContain("wrap-anywhere");
+    }
+
+    expect(rows()[index]!.querySelectorAll("button")).toHaveLength(5);
+  }
+});
+
 test("headers that can't sort sit in the sort toggle's height, end-aligned ones still at the end", async () => {
   await render();
   await loaded();
 
   const headers = [...host.querySelectorAll("thead th")];
 
-  expect(headers.map((th) => th.textContent)).toEqual(["Name", "Services", "Actions"]);
+  expect(headers.map((th) => th.textContent)).toEqual(["Name", "Services", "Edited by", "Actions"]);
 
   for (const th of headers) {
     const box = th.firstElementChild!;
@@ -496,7 +532,7 @@ test("headers that can't sort sit in the sort toggle's height, end-aligned ones 
   }
 
   expect(headers[1]!.querySelector(".text-end")?.textContent).toBe("Services");
-  expect(headers[2]!.querySelector(".text-end")?.textContent).toBe("Actions");
+  expect(headers[3]!.querySelector(".text-end")?.textContent).toBe("Actions");
 });
 
 test("the list sits in a card with a defined grey edge over the sheet's shadow", async () => {

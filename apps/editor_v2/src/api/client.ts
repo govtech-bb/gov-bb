@@ -251,6 +251,14 @@ const STAMP = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}(?:Z|[+-]\d{2}:\d{2})$
 const isStamp = (value: unknown): value is string =>
   isText(value) && STAMP.test(value) && Number.isFinite(Date.parse(value));
 
+const isLastEditedBy = (value: unknown): value is ApiPage["last_edited_by"] =>
+  value === null ||
+  (value instanceof Object &&
+    "id" in value &&
+    isText(value.id) &&
+    "name" in value &&
+    (value.name === null || isText(value.name)));
+
 const isCategory = (value: unknown): value is ApiCategory =>
   value instanceof Object &&
   "id" in value &&
@@ -273,7 +281,9 @@ const isCategory = (value: unknown): value is ApiCategory =>
   "reserved_route" in value &&
   isFlag(value.reserved_route) &&
   "updated_at" in value &&
-  isStamp(value.updated_at);
+  isStamp(value.updated_at) &&
+  "last_edited_by" in value &&
+  isLastEditedBy(value.last_edited_by);
 
 const isCategoryList = (value: unknown): value is { categories: ApiCategory[] } =>
   value instanceof Object &&

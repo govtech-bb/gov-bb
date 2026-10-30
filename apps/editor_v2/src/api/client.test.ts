@@ -79,6 +79,7 @@ const health: Category = {
   position: 0,
   services: 2,
   reserved_route: false,
+  last_edited_by: null,
   updated_at: "2026-10-26T12:00:00.123Z",
 };
 
@@ -169,7 +170,28 @@ describe("editor API client", () => {
   });
 
   it.each([
+    null,
+    { id: "editor", name: "Jane Smith" },
+    { id: "system", name: "System" },
+    { id: "former", name: null },
+  ])("preserves category attribution %j", async (last_edited_by) => {
+    status = 200;
+    response = JSON.stringify({ categories: [{ ...health, last_edited_by }] });
+    expect(await createEditorApi(origin).categories()).toEqual({
+      ok: true,
+      value: [{ ...health, last_edited_by }],
+    });
+  });
+
+  it.each([
     ["no list", { items: [] }],
+    ["missing attribution", { categories: [{ ...health, last_edited_by: undefined }] }],
+    ["an actor without an id", { categories: [{ ...health, last_edited_by: { name: "Jane" } }] }],
+    ["an actor without a name", { categories: [{ ...health, last_edited_by: { id: "editor" } }] }],
+    [
+      "an actor with a numeric name",
+      { categories: [{ ...health, last_edited_by: { id: "editor", name: 12 } }] },
+    ],
     ["a missing reserved_route", { categories: [{ ...health, reserved_route: undefined }] }],
     [
       "a stamp without milliseconds",

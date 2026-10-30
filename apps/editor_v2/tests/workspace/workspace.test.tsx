@@ -30,6 +30,7 @@ const pages = new Map(
       created_at: stamp,
       updated_at: stamp,
       pending_revision: null,
+      last_edited_by: null,
     } satisfies ApiPage,
   ]),
 );

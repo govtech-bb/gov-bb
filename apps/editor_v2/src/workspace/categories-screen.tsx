@@ -90,7 +90,18 @@ function CategoryCell({ row, parent }: { row: CategoryRow; parent?: Category }) 
         </>
       }
       path={row.url}
-      details={`${row.services} ${row.services === 1 ? "service" : "services"}`}
+      details={
+        <>
+          <span>
+            {row.services} {row.services === 1 ? "service" : "services"}
+          </span>
+          {row.last_edited_by && (
+            <span className="wrap-anywhere">
+              Edited by <bdi>{row.last_edited_by.name ?? "a former employee"}</bdi>
+            </span>
+          )}
+        </>
+      }
     />
   );
 
@@ -232,6 +243,17 @@ const columns = column.columns([
     cell: ({ row }) => (
       <span className="block text-end text-14 tabular-nums">{row.original.services}</span>
     ),
+  }),
+  column.accessor((row) => row.last_edited_by?.name, {
+    id: "edited_by",
+    header: "Edited by",
+    meta: { secondary: true, width: "w-40" },
+    cell: ({ row: { original } }) =>
+      original.last_edited_by && (
+        <bdi className="block text-14 wrap-anywhere text-muted">
+          {original.last_edited_by.name ?? "a former employee"}
+        </bdi>
+      ),
   }),
   // Room for its four buttons, 44px each under a coarse pointer, or for the one that opens their menu once they fold
   // into it

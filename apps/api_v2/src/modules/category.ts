@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { LastEditedBy } from "./content-attribution";
 import type { FieldError } from "./page";
 import { err, ok, type Result } from "./result";
 
@@ -46,6 +47,7 @@ export const EditorCategory = categoryValues.extend({
   services: z.int().nonnegative(),
   reserved_route: z.boolean(),
   updated_at: CategoryStamp,
+  last_edited_by: LastEditedBy,
 });
 /** One category shared by management and every page picker. */
 export type EditorCategory = z.infer<typeof EditorCategory>;

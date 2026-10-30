@@ -18,6 +18,8 @@ export type Category = {
   reserved_route: boolean;
   /** Last-read version, sent when saving, deleting or reordering. */
   updated_at: string;
+  /** Latest recorded change; null without history, a null name when the actor's name is unavailable. */
+  last_edited_by: { id: string; name: string | null } | null;
 };
 
 /** Fields shared by category creation and editing; a blank description is saved as null. */
