@@ -72,7 +72,7 @@ export function SitePreview({
         const base = sitePreviewBase();
         const entry = new URL("renderer.js", base).href;
 
-        // SAFETY: this configured application bundle implements SitePreviewRenderer; authored URLs cannot select it.
+        // SAFETY: the editor's bundled entry implements SitePreviewRenderer; authored URLs cannot select it.
         const [module, activateStyles] = await Promise.all([
           import(/* @vite-ignore */ entry) as Promise<SitePreviewRenderer>,
           loadSitePreviewStyles(base, abort.signal),

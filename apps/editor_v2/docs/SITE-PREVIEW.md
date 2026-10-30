@@ -8,8 +8,8 @@ The page's document bar is the only CMS chrome above the public page. It holds t
 
 ## Ownership and runtime contract
 
-- `apps/landing/src/preview/cms-preview.tsx` composes the normal public header, breadcrumbs, notices, `MarkdownContent`, feedback region and footer. It uses the ordinary Markdown pipeline and public CSS, not the older builder preview route.
-- `apps/editor_v2/src/host/site-preview.tsx` loads that application-owned renderer and attaches CMS controls. No application imports the other's source; no shared package or second draft store is involved.
+- `apps/landing/src/preview/cms-preview.tsx` composes the normal public header, breadcrumbs, notices, `MarkdownContent`, feedback region and footer. It uses the ordinary `govbbmarkd` pipeline and public CSS, not the older builder preview route.
+- `apps/editor_v2/src/host/site-preview.tsx` loads that renderer from the editor's own deployment and attaches CMS controls. No application imports the other's source, and there is no second draft store.
 - The existing `EditorComposer` stays mounted. Its normal writer surface is unmounted during preview. `site-preview-inline.tsx` attaches the same Lexical editor to the body's slot and uses the existing metadata updates, insertion, formatting and block controls.
 
 The renderer exports:
@@ -38,65 +38,63 @@ The preview is a full-page CMS surface, not a modal dialog. The underlying works
 
 ## Build, delivery and trust
 
-Build landing's renderer with:
+The editor's normal `dev` and `build` scripts build the renderer first. To rebuild only its assets:
 
 ```sh
 pnpm --dir apps/landing build:cms-preview
 ```
 
-This emits ignored `public/cms-preview/renderer.js` and `styles.css`. Landing's normal `dev` and `build` scripts build these first; its production output includes them under `.amplify-hosting/static/cms-preview/`. If starting Vite directly, build them explicitly. Rebuild them after changing landing rendering code; the browser entry is not a source-level HMR bridge.
+This generates `dist/editor-site-preview/` at the repository root:
 
-Configure the CMS at build/dev-server start:
+- `cms-preview/renderer.js` and `cms-preview/styles.css`, with embedded design-system fonts.
+- `images/`, copied from landing's public images for both branding and existing Markdown image paths.
 
-```dotenv
-VITE_SITE_PREVIEW_URL=https://alpha.gov.bb/cms-preview/
-```
+Editor Vite uses that tree as its public directory. The production build includes it in `apps/editor_v2/dist/client`; landing no longer generates or deploys the preview assets. No landing server, preview URL setting or live forms/API build is needed. If starting editor Vite directly, generate the assets first. Rebuild after changing landing components or styles; this separate browser bundle does not use source-level HMR.
 
-Select the appropriate trusted landing deployment for the CMS environment. Changing this value requires rebuilding/restarting the CMS. HTTPS is required except for loopback development. Credentials, queries and fragments are rejected in this configuration URL. A missing configuration gives a recoverable error, never a local-renderer fallback.
+Nx tracks landing and `govbbmarkd` changes as editor build inputs and restores both generated output directories from cache. The editor builds its required packages, not the full `landing:build`. The sandbox deployment workflow also watches these sources.
 
-The configured bundle executes in the CMS document: **it is trusted application code, not a sandbox for third-party renderers**. Authored URLs cannot choose it. Keep renderer and CMS releases compatible; deploy the renderer assets before enabling the CMS entry. Their CORS headers must allow module/CSS loading without credentials. The CMS CSP must allow that origin for scripts, styles/connections and images, and the embedded font data. `amplify.yml` permits the GovBB deployment estate and sets CORS/no-cache headers on the renderer assets. Verify those headers on the deployed environment; a local build is not deployment verification.
+The host always loads `/cms-preview/` from its own origin. Authored URLs cannot select executable code or styles. The preview bundle supplies display-only chat/forms/tracker destinations because navigation is intercepted; landing's real production configuration checks are unchanged.
 
-The preview rejects executable/embedded HTML, SVG/MathML and event/style attributes, and rejects unsafe source-notice URLs. It mounts no public application loaders or analytics. Preview links and submissions are intercepted; local fragment links can move focus within the preview. Feedback and application actions cannot submit. There is no public editing entry point, preview-token authentication or transmission of the working document to landing.
+The bundle executes beside CMS credentials, so it retains its markup and URL checks. It rejects executable/embedded HTML, SVG/MathML and event/style attributes, plus unsafe source-notice URLs. It mounts no public application loaders or analytics. Local fragment links can move focus within the preview, but feedback and application actions cannot navigate or submit. Drafts never leave the editor for rendering.
+
+`amplify.yml` permits same-origin scripts and embedded fonts, and sets `Cache-Control: no-cache` on the fixed-name renderer/CSS/images. Cross-origin renderer CORS and script permissions are no longer needed. Deploy the self-contained editor before retiring old landing-hosted assets still used by an older editor. No cloud environment-variable change is required.
 
 ## Running browser checks
 
-From the repository root, build the renderer and run landing and the CMS in separate terminals:
+Start only the editor for the preview smoke, writer and workspace suites:
 
 ```sh
-pnpm --dir apps/landing build:cms-preview
+PORT=3060 VITE_API_ORIGIN=http://127.0.0.1:3061 \
+  pnpm --dir apps/editor_v2 dev --host 127.0.0.1
+
+# In another terminal, using an existing Playwright/Chromium installation:
+PLAYWRIGHT_MODULE_PATH=/path/to/playwright-core \
+  pnpm --dir apps/editor_v2 exec node scripts/browser/site-preview-smoke.mjs http://127.0.0.1:3060
+```
+
+The smoke opens the actual editor with employee/page API fixtures, changes an unsaved title, opens preview, edits the introduction, closes and undoes both changes. It checks same-origin assets, MIME/cache headers and branding images. Unexpected requests and all mutations are blocked. It neither signs in a real employee nor writes to the content API.
+
+Public-page parity additionally needs an ordinary landing page as an independent reference, not as a preview asset server:
+
+```sh
 VITE_API_V2_URL= pnpm --dir apps/landing exec vite dev --port 3040 --host 127.0.0.1
-VITE_API_ORIGIN=http://127.0.0.1:3061 \
-  VITE_SITE_PREVIEW_URL=http://127.0.0.1:3040/cms-preview/ \
-  pnpm --dir apps/editor_v2 exec vite dev --port 3060 --host 127.0.0.1
+
+PLAYWRIGHT_MODULE_PATH=/path/to/playwright-core \
+  pnpm --dir apps/editor_v2 exec node scripts/browser/site-preview.mjs http://127.0.0.1:3060 http://127.0.0.1:3040
+PLAYWRIGHT_MODULE_PATH=/path/to/playwright-core \
+  pnpm --dir apps/editor_v2 exec node scripts/browser/site-preview-parity.mjs http://127.0.0.1:3040 http://127.0.0.1:3060
 ```
 
-With an existing compatible Playwright/Chromium installation:
+The integrated suite compares the same mentor Markdown at 390, 800, 1000 and 1440px. It checks the document bar, single-editor ownership, shared undo, generated telephone links, formatting/insertion/tables, failed/late assets, retry and cleanup, explicit saves, pending edits, conflicts and departure guards. Geometry assertions use reduced motion to compare resting layouts, not sidebar transitions. Screenshots go to `/tmp/govbb-site-preview/`.
 
-```sh
-PLAYWRIGHT_MODULE_PATH=/path/to/playwright-core \
-  pnpm --dir apps/editor_v2 exec node scripts/browser/site-preview.mjs http://127.0.0.1:3060
-PLAYWRIGHT_MODULE_PATH=/path/to/playwright-core \
-  pnpm --dir apps/editor_v2 exec node scripts/browser/site-preview-parity.mjs http://127.0.0.1:3040
-```
+Writer fixtures build their own host bundle but load preview assets from the same editor URL. They need no separate preview configuration. Stop/restart development servers after production builds if their generated server artifacts were replaced.
 
-The integrated suite mocks authentication/API responses at the HTTP boundary, not the editor or renderer. It compares the same mentor Markdown on the ordinary landing route and CMS at 390, 800, 1000 and 1440px; checks the bar as the only chrome above the page, single-editor ownership, a no-op preview, undo across surfaces, generated telephone links, formatting/insertion/tables, failed/late assets, cleanup, explicit publication, pending edits, conflicts and departure guards. Screenshots go to `/tmp/govbb-site-preview/`. A second URL argument after the CMS URL can select another locally served reference; it must serve the same fixture source.
+Run the smoke and integrated suite against production-built `dist/client` too. Serve existing assets normally and rewrite application URLs to `/_shell.html`. A missing JS/CSS file must fail, not return the SPA shell as a successful asset response.
 
-The existing writer browser fixture also needs `VITE_SITE_PREVIEW_URL` in the test process environment, because it builds its own host bundle. Its intercepted document receives Chromium's local-network permission for local renderer assets; the production application does not request this permission. Stop/restart Vite development servers after production builds if their generated server artifacts were replaced.
+## Deployment checks and limits
 
-Run the integrated suite again against production-built `dist/client`, serving assets normally and rewriting other application URLs to `/_shell.html`. A real deployment must additionally check CSP/CORS, real sign-in and API permissions. Narrow/reduced-height reflow and synthetic composing-Enter tests are automated; they do **not** replace a real phone keyboard, IME, screen reader or browser-zoom assessment.
+After Amplify succeeds, `deploy-editor-v2-sandbox.yml` runs the smoke against the deployed editor in a separate job without AWS credentials. It tests the real deployed UI, assets and browser-enforced CSP, while authentication and API responses remain fixtures. This is not evidence of real employee authorization.
 
-## Preview-only branch verification
+For release acceptance, an authorized employee should open the reported service page, make an unsaved edit, open/close preview and confirm the working copy is intact with no save/publish request. Do not publish test content.
 
-The preview branch includes `v2-rewrite` through `855dd10b`. Its newer explicit sign-in, contextual loading and removal of saved-version history are retained. Preview editing still shares the writer's local undo history. The diff against that base contains only preview integration, configuration, documentation and tests.
-
-Checks on the merged candidate used fixture authentication/API data, not a live publishing account:
-
-- All 23 non-landing Nx build targets passed (22 cache hits), as did the full landing and renderer builds.
-- All 1,216 editor tests and all 709 landing tests passed. The earlier services-list failure is resolved by the upstream fixture change.
-- Editor typechecking, lint, full formatting, all 400 boundaries and `git diff --check` passed. Landing lint passed with the three existing `no-shadow` warnings in `-preview-gating.test.ts`.
-- The integrated suite passed against the production-built CMS and built renderer, with the ordinary landing development route as the reference. It checked public-page parity at 390, 800, 1000 and 1440px, inline editing/shared undo, cleanup and retries, menus, explicit saves, pending-save/conflict handling, departure guards and narrow reflow.
-- Production-CMS authentication, remote-page, service-workspace and routing checks passed, including the absence of saved-version history controls/requests. Writer, link-editing and form-source fixtures also passed.
-
-Landing typechecking still reports incompatible installed HAST 3.0.4/3.0.5 types in the unchanged `src/utils/markdown/processor.ts:43`. That dependency issue was not changed for preview. A fresh all-project test run was not performed.
-
-Deployed CSP/CORS, real employee authentication/API authorization, real phone/IME behavior, screen-reader use and native 200% browser zoom remain unverified.
+Narrow/reduced-height reflow and synthetic composing-Enter tests do not replace real phone/IME, screen-reader or browser-zoom checks.

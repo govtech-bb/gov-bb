@@ -1,7 +1,7 @@
 import { parseDocument } from "yaml";
 import { parsePageMarkdown } from "../pages/markdown";
 
-/** Display-only runtime contract with landing's /cms-preview/renderer.js. No source imports cross apps. */
+/** Display-only contract with the bundled /cms-preview/renderer.js. No source imports cross apps. */
 export type SitePreviewDocument = {
   // eslint-disable-next-line anti-slop/no-unsafe-dictionary-type -- Opaque YAML crosses the renderer boundary; landing validates the fields it reads.
   frontmatter: Record<string, unknown>;
@@ -72,25 +72,7 @@ export function sitePreviewDocument(
   };
 }
 
-/** Never take executable module or stylesheet URLs from authored content. */
-export function sitePreviewBase(configured = import.meta.env.VITE_SITE_PREVIEW_URL): URL {
-  if (!configured)
-    throw new Error(
-      "Site preview is not configured. Set VITE_SITE_PREVIEW_URL to the landing renderer’s asset directory.",
-    );
-  const url = new URL(configured);
-
-  if (
-    (url.protocol !== "https:" &&
-      !(url.protocol === "http:" && ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname))) ||
-    url.username ||
-    url.password ||
-    url.search ||
-    url.hash
-  )
-    throw new Error("Site preview requires a trusted HTTPS asset directory.");
-
-  if (!url.pathname.endsWith("/")) url.pathname += "/";
-
-  return url;
+/** Preview code and styles ship with the editor, never from authored content or another origin. */
+export function sitePreviewBase(): URL {
+  return new URL("/cms-preview/", location.origin);
 }

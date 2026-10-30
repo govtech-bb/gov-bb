@@ -20,14 +20,14 @@
     "vitest": "^4.1.11"
   },
   "scripts": {
-    "dev": "vite dev",
+    "dev": "pnpm --dir ../landing build:cms-preview && vite dev",
     "test": "vitest run",
     "lint": "oxlint vite.config.ts vitest.config.ts src tests scripts docs/examples",
     "lint:fix": "oxlint --fix vite.config.ts vitest.config.ts src tests scripts docs/examples",
     "format": "oxfmt --write vite.config.ts vitest.config.ts \"src/**/*.{ts,tsx}\" \"tests/**/*.{ts,tsx}\" \"scripts/**/*.{ts,mjs}\" \"docs/examples/**/*.{ts,tsx}\"",
     "format:check": "oxfmt --check vite.config.ts vitest.config.ts \"src/**/*.{ts,tsx}\" \"tests/**/*.{ts,tsx}\" \"scripts/**/*.{ts,mjs}\" \"docs/examples/**/*.{ts,tsx}\"",
     "typecheck": "tsc --noEmit",
-    "build": "vite build",
+    "build": "pnpm --dir ../landing build:cms-preview && vite build",
     "check:boundaries": "node scripts/check-boundaries.ts",
     "check:coverage": "vitest run scripts/check-native-form-coverage.test.ts tests/forms/native-capability-fixtures.test.ts",
     "generate:demo": "EDITOR_GENERATE_DEMO=1 vitest run docs/examples/editor-system.test.ts"
@@ -64,6 +64,7 @@
     "name": "editor_v2",
     "projectType": "application",
     "sourceRoot": "apps/editor_v2/src",
+    "implicitDependencies": ["landing"],
     "namedInputs": {
       "default": [
         "{projectRoot}/**/*",
@@ -75,14 +76,15 @@
         "continuous": true
       },
       "build": {
+        "dependsOn": [{ "target": "build", "projects": ["govbbmarkd"] }],
         "inputs": [
           "production",
           "^production",
-          { "env": "VITE_API_ORIGIN" },
-          { "env": "VITE_SITE_PREVIEW_URL" }
+          { "env": "VITE_API_ORIGIN" }
         ],
         "outputs": [
-          "{projectRoot}/dist"
+          "{projectRoot}/dist",
+          "{workspaceRoot}/dist/editor-site-preview"
         ]
       },
       "test": {

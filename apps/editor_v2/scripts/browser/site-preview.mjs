@@ -70,7 +70,11 @@ let releaseSave;
 
 const browser = await chromium.launch();
 
-const context = await authenticatedContext(browser, { viewport: { width: 1440, height: 1000 } });
+// Geometry assertions compare resting layouts, not the sidebar's width transition.
+const context = await authenticatedContext(browser, {
+  viewport: { width: 1440, height: 1000 },
+  reducedMotion: "reduce",
+});
 
 await context.route("**/*", async (route) => {
   const request = route.request();
@@ -494,7 +498,7 @@ try {
   await table.locator("td").last().click();
   await page.keyboard.insertText("(246) 123-4567");
   await button("Block options").click();
-  await button("Add row").click();
+  await page.getByRole("menuitem", { name: "Add row", exact: true }).click();
   assert.equal(await table.locator("tr").count(), rows + 1);
   await button("Undo").click();
   assert.equal(await table.locator("tr").count(), rows);

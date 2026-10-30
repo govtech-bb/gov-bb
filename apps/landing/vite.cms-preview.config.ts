@@ -3,20 +3,22 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 
-// A public, read-only browser entry built by landing. The CMS loads the entry;
-// neither app imports the other's source or needs a shared workspace package.
-export default defineConfig(({ mode }) => ({
+// Built from landing's components, shipped as the editor's own static assets.
+export default defineConfig({
   base: './',
   publicDir: false,
+  envDir: false,
+  resolve: { tsconfigPaths: true },
   define: {
     'process.env.NODE_ENV': JSON.stringify('production'),
-    // A library build is always production code, so `requireEnv` would throw
-    // for unset URLs even under `pnpm dev`. Keep its dev defaults in dev mode.
-    'import.meta.env.DEV': JSON.stringify(mode !== 'production'),
+    'import.meta.env.DEV': 'false',
+    // Preview intercepts navigation; no deployment-specific destinations are needed.
+    'import.meta.env.VITE_CHAT_URL': JSON.stringify('#'),
+    'import.meta.env.VITE_FORMS_URL': JSON.stringify('#'),
+    'import.meta.env.VITE_TRACKER_URL': JSON.stringify('#'),
   },
   plugins: [react(), tailwindcss()],
   build: {
-    outDir: 'public/cms-preview',
     emptyOutDir: true,
     lib: {
       entry: fileURLToPath(
@@ -27,4 +29,4 @@ export default defineConfig(({ mode }) => ({
       cssFileName: 'styles',
     },
   },
-}))
+})

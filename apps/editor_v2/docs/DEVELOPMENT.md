@@ -46,7 +46,7 @@ Only the sign-in button starts OAuth. Initial admission and callback checks use 
 
 ## Browser checks
 
-Start the app, then run the browser suites against the same URL. The full suite includes site preview: also build/start landing and set `VITE_SITE_PREVIEW_URL` in the CMS and test-process environments as described in [Site preview](SITE-PREVIEW.md). Its normal-page reference defaults to `http://127.0.0.1:3040`:
+Start the app, then run the browser suites against the same URL. The editor's dev/build scripts include its preview assets. Only the public-page parity suites need a normal landing reference, defaulting to `http://127.0.0.1:3040`; see [Site preview](SITE-PREVIEW.md). No remote renderer or preview environment variable is needed:
 
 ```sh
 PLAYWRIGHT_MODULE_PATH=/path/to/playwright-core \
@@ -88,9 +88,11 @@ Avoid editing source while checking undo and document switching: a development r
 
 ## Editable site preview checks
 
-[Site preview](SITE-PREVIEW.md) documents the landing renderer build, `VITE_SITE_PREVIEW_URL`, local two-app setup and production asset delivery. `scripts/browser/site-preview.mjs <cms-url> [landing-url]` uses the actual authenticated route with API fixtures to verify editing/history, matched public-page rendering, style lifecycle, error recovery and explicit publication. Run it against development and production-built CMS output. `site-preview-parity.mjs <landing-url>` separately compares the fresh renderer to the ordinary mentor page.
+[Site preview](SITE-PREVIEW.md) documents the bundled renderer build, same-origin assets and production delivery. `scripts/browser/site-preview-smoke.mjs <cms-url>` needs only the editor. It opens and closes preview, checks unsaved edits and shared undo, validates asset delivery, and blocks all mutations and unexpected remote requests. The sandbox deploy runs it against the deployed UI with fixture API/auth responses.
 
-The page-writer fixture builds its own bundle, so pass `VITE_SITE_PREVIEW_URL` to the browser-test process as well as the dev server. Keep the normal landing reference available while running these suites. Real deployment headers, sign-in, assistive technology and phone IME still need manual checks; synthetic composition and narrow viewports are not substitutes.
+`site-preview.mjs <cms-url> [landing-url]` also checks matched public-page rendering, style lifecycle, error recovery and explicit saves against fixtures. `site-preview-parity.mjs <landing-url> [cms-url]` compares the standalone editor-hosted renderer to the ordinary mentor page. The default CMS URL is `http://127.0.0.1:3060`. Run these against development and production-built output.
+
+The writer fixture uses the editor's own preview assets and needs no preview setting in its build environment. Real employee sign-in and API authorization still need a manual deployment check; synthetic composition and narrow viewports do not replace assistive-technology or phone IME testing.
 
 ## Persistence and recovery
 

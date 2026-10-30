@@ -6,6 +6,8 @@ import { chromium } from "./playwright.mjs";
 // The reference is the normal published route, never the retired preview route.
 const origin = process.argv[2] ?? "http://127.0.0.1:3040";
 
+const editorOrigin = process.argv[3] ?? "http://127.0.0.1:3060";
+
 const path = "/work-employment/apply-to-be-a-project-protege-mentor";
 
 const markdown = await readFile(
@@ -56,7 +58,7 @@ const measure = (page) =>
   });
 
 try {
-  for (const width of [390, 800, 1440]) {
+  for (const width of [390, 800, 1000, 1440]) {
     const context = await browser.newContext({ viewport: { width, height: 1000 } });
     const reference = await context.newPage();
     await reference.goto(`${origin}${path}`);
@@ -82,7 +84,7 @@ try {
         body: `<!doctype html><html lang="en"><head><meta name="viewport" content="width=device-width, initial-scale=1"><link rel="stylesheet" href="/cms-preview/styles.css"></head><body><div id="preview"></div></body></html>`,
       }),
     );
-    await preview.goto(`${origin}/__site-preview-parity`);
+    await preview.goto(`${editorOrigin}/__site-preview-parity`);
     await preview.evaluate(
       async ({ frontmatter, body, path, breadcrumbs, available }) => {
         const { mountCmsPreview } = await import("/cms-preview/renderer.js");

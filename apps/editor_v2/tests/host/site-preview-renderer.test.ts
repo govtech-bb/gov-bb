@@ -1,5 +1,10 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { sitePreviewBase, sitePreviewDocument } from "../../src/host/site-preview-renderer";
+
+afterEach(() => {
+  vi.unstubAllEnvs();
+  vi.unstubAllGlobals();
+});
 
 describe("site preview display contract", () => {
   it("keeps all frontmatter and passes the original Markdown, not reader HTML", () => {
@@ -52,22 +57,20 @@ describe("site preview display contract", () => {
     expect(sitePreviewDocument("Plain **Markdown**\n").body).toBe("Plain **Markdown**\n");
   });
 
-  it("loads only a configured trusted asset directory, never a page's URL", () => {
-    expect(sitePreviewBase("https://alpha.gov.bb/cms-preview").href).toBe(
-      "https://alpha.gov.bb/cms-preview/",
-    );
-    expect(sitePreviewBase("http://127.0.0.1:3040/cms-preview/").origin).toBe(
-      "http://127.0.0.1:3040",
-    );
-  });
+  it.each(["https://editor-v2.sandbox.alpha.gov.bb", "http://127.0.0.1:3060"])(
+    "loads bundled assets from the editor origin without configuration: %s",
+    (origin) => {
+      vi.stubGlobal("location", { origin });
+      vi.stubEnv("VITE_SITE_PREVIEW_URL", "");
 
-  it.each([
-    "",
-    "javascript:alert(1)",
-    "http://example.com/cms-preview/",
-    "https://user:password@example.com/",
-    "https://alpha.gov.bb/?source=bad",
-  ])("refuses an unsafe or missing renderer URL: %s", (url) => {
-    expect(() => sitePreviewBase(url)).toThrow();
+      expect(sitePreviewBase().href).toBe(`${origin}/cms-preview/`);
+    },
+  );
+
+  it("ignores a stale remote renderer setting", () => {
+    vi.stubGlobal("location", { origin: "https://editor-v2.sandbox.alpha.gov.bb" });
+    vi.stubEnv("VITE_SITE_PREVIEW_URL", "https://old-renderer.example/cms-preview/");
+
+    expect(sitePreviewBase().href).toBe("https://editor-v2.sandbox.alpha.gov.bb/cms-preview/");
   });
 });
