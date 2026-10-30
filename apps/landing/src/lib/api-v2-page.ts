@@ -20,15 +20,17 @@ import type { Frontmatter } from './frontmatter'
  * open), `static` (static markdown, api_v2 unset, skipped or answered "no
  * page"), or `static-fallback` (static markdown because api_v2 failed or sent
  * bad content). Category listings send `api_v2` when api_v2 lists them
- * (ADR 0078) and `static` otherwise. Each failed fetch logs one JSON line `{event:
- * "api_v2_fallback", reason, url, status?, error?}`, whichever header follows
+ * (ADR 0078) and `static` otherwise. Each failed fetch logs one JSON line
+ * `{event: "api_v2_fallback", reason, url, status?, error?}`, whichever header
+ * follows
  * — `console.error` for api_v2 failures (`status`, `timeout`, `network`,
  * `malformed`, `no_target`: these count toward the breaker), `console.warn`
  * for answers landing can't use (`rejected` — a 4xx other than 404 —
  * `bad_redirect`, `compile`). A 404 isn't logged. A breaker trip logs one
  * `{event: "api_v2_circuit_open", url}` at `console.error`; requests it turns
  * away aren't logged. Category reads (api-v2-categories.ts) log the same
- * lines, with the api_v2 path as `url`. `REASONS` in api-v2-log.ts holds the
+ * lines, with the api_v2 path as `url`, but have no `rejected`: any status but
+ * 200 and 404 is `status`, as is a 404 from `/categories`. `REASONS` in api-v2-log.ts holds the
  * classification.
  */
 

@@ -21,6 +21,12 @@ import {
 } from './api-v2-categories'
 import type { CategoryListing, CategoryNode } from './api-v2-categories'
 
+/** The one `api_v2_fallback` line logged through `spy`, parsed. */
+function logged(spy: ReturnType<typeof vi.spyOn>) {
+  expect(spy).toHaveBeenCalledOnce()
+  return JSON.parse(String(spy.mock.calls[0][0]))
+}
+
 const TREE: CategoryNode[] = [
   {
     slug: 'money-financial-support',
@@ -137,8 +143,7 @@ describe('fetchCategoryTree', () => {
     const error = vi.spyOn(console, 'error').mockImplementation(() => {})
     reply = json(503, { error: 'internal_error' })
     await fetchCategoryTree(base)
-    expect(error).toHaveBeenCalledOnce()
-    expect(JSON.parse(String(error.mock.calls[0][0]))).toEqual({
+    expect(logged(error)).toEqual({
       event: 'api_v2_fallback',
       reason: 'status',
       url: '/categories',
@@ -147,16 +152,22 @@ describe('fetchCategoryTree', () => {
   })
 
   it.each([
-    ['a server error', json(500, { error: 'internal_error' })],
-    ['a missing route', json(404, { error: 'not_found' })],
-  ])('is unavailable on %s', async (_, response) => {
-    vi.spyOn(console, 'error').mockImplementation(() => {})
+    ['a server error', json(500, { error: 'internal_error' }), 500],
+    ['a missing route', json(404, { error: 'not_found' }), 404],
+  ])('is unavailable on %s, logged as status', async (_, response, status) => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
     reply = response
     expect(await fetchCategoryTree(base)).toEqual({ kind: 'unavailable' })
+    expect(logged(error)).toEqual({
+      event: 'api_v2_fallback',
+      reason: 'status',
+      url: '/categories',
+      status,
+    })
   })
 
   it('is unavailable when api_v2 cannot be reached', async () => {
-    vi.spyOn(console, 'error').mockImplementation(() => {})
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
     const closed = createServer()
     await new Promise<void>((resolve) => closed.listen(0, '127.0.0.1', resolve))
     // SAFETY: still listening on TCP here, so address() is an AddressInfo.
@@ -165,16 +176,27 @@ describe('fetchCategoryTree', () => {
     expect(await fetchCategoryTree(`http://127.0.0.1:${port}`)).toEqual({
       kind: 'unavailable',
     })
+    expect(logged(error)).toMatchObject({
+      event: 'api_v2_fallback',
+      reason: 'network',
+      url: '/categories',
+      error: expect.stringContaining('ECONNREFUSED'),
+    })
   })
 
   it('is unavailable when api_v2 does not answer in time', async () => {
-    vi.spyOn(console, 'error').mockImplementation(() => {})
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
     reply = 'hang'
     const result = fetchCategoryTree(base)
     await vi.waitFor(() => expect(requests).toHaveLength(1))
     await vi.runAllTimersAsync()
     expect(await result).toEqual({ kind: 'unavailable' })
+    expect(logged(error)).toMatchObject({
+      event: 'api_v2_fallback',
+      reason: 'timeout',
+      url: '/categories',
+    })
   })
 
   it.each([
@@ -182,9 +204,14 @@ describe('fetchCategoryTree', () => {
     ['the wrong shape', json(200, { categories: [{ slug: 1 }] })],
     ['a missing list', json(200, {})],
   ])('is malformed when the body is %s', async (_, response) => {
-    vi.spyOn(console, 'error').mockImplementation(() => {})
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
     reply = response
     expect(await fetchCategoryTree(base)).toEqual({ kind: 'malformed' })
+    expect(logged(error)).toEqual({
+      event: 'api_v2_fallback',
+      reason: 'malformed',
+      url: '/categories',
+    })
   })
 })
 
@@ -226,17 +253,25 @@ describe('fetchCategoryListing', () => {
   )
 
   it('is not found on a 404, so the caller can try a page', async () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
     reply = json(404, { error: 'not_found' })
     expect(await fetchCategoryListing(base, ['nope'])).toEqual({
       kind: 'not_found',
     })
+    expect(error).not.toHaveBeenCalled()
   })
 
   it('is unavailable on a server error, not not-found', async () => {
-    vi.spyOn(console, 'error').mockImplementation(() => {})
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
     reply = json(503, { error: 'internal_error' })
-    expect(await fetchCategoryListing(base, ['money'])).toEqual({
+    expect(await fetchCategoryListing(base, ['money', 'tax'])).toEqual({
       kind: 'unavailable',
+    })
+    expect(logged(error)).toEqual({
+      event: 'api_v2_fallback',
+      reason: 'status',
+      url: '/categories/money/tax',
+      status: 503,
     })
   })
 

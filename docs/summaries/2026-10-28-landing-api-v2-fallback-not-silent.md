@@ -21,6 +21,11 @@ already added a typed miss `reason` and the cache and breaker.
   `{"event":"api_v2_fallback","reason",url,status?,error?}`, through
   `logFallback`. The free-text warnings are gone.
 - A breaker trip logs once, as its own event `api_v2_circuit_open`.
+- Category reads from #3133 (`api-v2-categories.ts`) log the same
+  `api_v2_fallback` line at `error`, with the api_v2 path as `url`. They have
+  no `rejected` case: any status other than 200 or 404 is `status`, and so is a
+  404 from `/categories`, because that route always exists. A category listing
+  served by api_v2 sends `x-content-source: api_v2`.
 - One `REASONS` table in `api-v2-log.ts` classifies each miss reason: whether
   it is a failure (breaker, not cached), its header value, and its log level.
 - The contract is in the doc comment at the top of `api-v2-page.ts`.
@@ -100,3 +105,8 @@ only types, so both other modules can import it.
   api_v2, so `api_v2`, `api_v2-stale` and the 500 → `status` case are covered
   by unit tests only. The `static-fallback` (network) and `static` (unset) cases were checked
   with `curl` on the dev server.
+- **Category reads skip the breaker.** With the category tree unavailable,
+  each one- or two-segment request asks `GET /categories/<path>` before the
+  page fetch, so during an outage it logs a `network` or `timeout` line even
+  while the page breaker is open. This dates from #3133; this change only
+  makes the line visible at `error`.

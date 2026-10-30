@@ -122,6 +122,7 @@ async function readPublic<T>(
     const parsed = schema.safeParse(body)
 
     if (parsed.success) return { kind: 'ok', value: parsed.data }
+    if (controller.signal.aborted) throw new Error('timed out reading the body')
     logFallback('malformed', path)
 
     return { kind: 'malformed' }
@@ -292,7 +293,8 @@ export function categoryTreeQuery(
       try {
         return await load()
       } catch (error) {
-        logFallback('network', '/categories', { error: message(error) })
+        // Only in the browser: landing's server function failed, not api_v2.
+        console.warn('category tree read failed:', error)
 
         return { kind: 'unavailable' }
       }
