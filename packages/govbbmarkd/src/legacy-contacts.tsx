@@ -1,8 +1,10 @@
-import type { ReactNode } from 'react'
+import type { ReactNode } from "react";
 
 /** @deprecated Retains existing contacts HTML; use ordinary Markdown for new contact information. */
 export function Contacts({ children }: { children: ReactNode }) {
-  return <div className="grid grid-cols-1 gap-s md:grid-cols-3">{children}</div>
+  return (
+    <div className="grid grid-cols-1 gap-s md:grid-cols-3">{children}</div>
+  );
 }
 
 /**
@@ -17,22 +19,22 @@ export function Contact({
   tel,
   emergency,
 }: {
-  label: string
-  number: string
-  tel: string
-  emergency?: boolean | string
+  label: string;
+  number: string;
+  tel: string;
+  emergency?: boolean | string;
 }) {
   const isEmergency =
-    emergency !== undefined && emergency !== false && emergency !== 'false'
-  const ariaLabel = `Call the ${label} on ${number.replace(/-/g, ' ')}`
+    emergency !== undefined && emergency !== false && emergency !== "false";
+  const ariaLabel = `Call the ${label} on ${number.replace(/-/g, " ")}`;
   return (
     <a
       aria-label={ariaLabel}
       href={tel}
       className={
         isEmergency
-          ? 'col-span-full flex flex-col gap-xxs border-red-80 border-l-4 bg-red-10 p-s text-current no-underline transition-colors hover:bg-red-20 focus-visible:outline focus-visible:outline-4 focus-visible:outline-red-40 focus-visible:outline-offset-2'
-          : 'flex flex-col gap-xxs border-teal-80 border-l-4 bg-teal-10 p-s text-current no-underline transition-colors hover:bg-teal-20 focus-visible:outline focus-visible:outline-4 focus-visible:outline-teal-40 focus-visible:outline-offset-2'
+          ? "col-span-full flex flex-col gap-xxs border-red-80 border-l-4 bg-red-10 p-s text-current no-underline transition-colors hover:bg-red-20 focus-visible:outline focus-visible:outline-4 focus-visible:outline-red-40 focus-visible:outline-offset-2"
+          : "flex flex-col gap-xxs border-teal-80 border-l-4 bg-teal-10 p-s text-current no-underline transition-colors hover:bg-teal-20 focus-visible:outline focus-visible:outline-4 focus-visible:outline-teal-40 focus-visible:outline-offset-2"
       }
     >
       {isEmergency ? (
@@ -44,12 +46,12 @@ export function Contact({
       <span
         className={
           isEmergency
-            ? 'font-bold text-body-lg text-red-80'
-            : 'font-bold text-teal-80 text-body'
+            ? "font-bold text-body-lg text-red-80"
+            : "font-bold text-teal-80 text-body"
         }
       >
         {number}
       </span>
     </a>
-  )
+  );
 }

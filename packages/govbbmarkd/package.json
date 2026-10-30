@@ -7,9 +7,22 @@
     ".": "./src/index.ts",
     "./react": "./src/markdown-react.tsx",
     "./legacy": "./src/legacy-markdown.ts",
-    "./content-url": "./src/content-url.ts"
+    "./content-url": "./src/content-url.ts",
+    "./form-links": "./src/form-links.ts"
   },
   "imports": {
+    "#govbbmarkd/legacy-contacts": {
+      "types": "./src/legacy-contacts.d.ts",
+      "default": "./src/legacy-contacts.tsx"
+    },
+    "#govbbmarkd/legacy-highlights": {
+      "types": "./src/legacy-highlights.d.ts",
+      "default": "./src/legacy-highlights.tsx"
+    },
+    "#govbbmarkd/legacy-muted": {
+      "types": "./src/legacy-muted.d.ts",
+      "default": "./src/legacy-muted.tsx"
+    },
     "#govbbmarkd/legacy-notice": {
       "types": "./src/legacy-notice.d.ts",
       "default": "./src/legacy-notice.tsx"

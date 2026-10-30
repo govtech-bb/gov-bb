@@ -12,17 +12,6 @@ export default defineConfig({
     extensions: ['.mjs', '.js', '.mts', '.ts', '.jsx', '.tsx', '.json'],
   },
   plugins: [
-    {
-      name: 'cms-preview-assets',
-      configureServer(server) {
-        // Nitro serves public assets before Vite's own CORS middleware.
-        server.middlewares.use((request, response, next) => {
-          if (request.url?.startsWith('/cms-preview/'))
-            response.setHeader('Access-Control-Allow-Origin', '*')
-          next()
-        })
-      },
-    },
     tailwindcss(),
     devtools(),
     markdown(),

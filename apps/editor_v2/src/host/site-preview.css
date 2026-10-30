@@ -1,4 +1,4 @@
-/* Only the preview's editing surfaces. Public prose and layout stay landing-owned. */
+/* Only the preview's editing surfaces; the prose template uses design-system styles. */
 @reference "../../index.css";
 
 .cms-inline-field {
