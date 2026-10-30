@@ -3,14 +3,14 @@ import { z } from 'zod'
 /**
  * Content rollout levels, ordered from least to most restricted. A page's
  * `visibility` is the *minimum* level a viewer must hold to see it; a request's
- * resolved level is the highest grant it carries. Access is hierarchical:
- * `draft` sees everything, `preview` sees public + preview, the public sees
+ * resolved level is the grant it carries. `public` < `preview` are the two
+ * levels a viewer can hold: `preview` sees public + preview, the public sees
  * only public (see `rankOf` in `content/registry.ts`).
  *
- * Like `preview`, `draft` is a rollout gate, *not* a confidentiality boundary —
- * the content still ships in the client bundle (see
- * `docs/decisions/0013-…`). It just sits one rung above `preview`, hidden even
- * from preview-token holders.
+ * `draft` is a value a page can carry that no token grants (#3247), so a
+ * `draft` page is hidden from every viewer until #3220 removes static content.
+ * Like `preview`, it is a rollout gate, *not* a confidentiality boundary — the
+ * content still ships in the client bundle (see `docs/decisions/0013-…`).
  */
 export const VIEW_LEVELS = ['public', 'preview', 'draft'] as const
 export type ViewLevel = (typeof VIEW_LEVELS)[number]
