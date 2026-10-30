@@ -46,8 +46,9 @@ describe("sharesSite", () => {
   });
 });
 
-// canDropPreviewToken composes sharesSite with the build-time API host. Under
-// test VITE_API_URL is unset, so it defaults to http://localhost:3001.
+// canDropPreviewToken composes sharesSite with the build-time API host
+// (API_URL from config/api). vitest.config.ts sets VITE_API_URL to
+// http://localhost:3001 for tests.
 describe("canDropPreviewToken (API host = localhost)", () => {
   it("allows dropping the token when the page is same-site as the API", () => {
     expect(canDropPreviewToken("localhost")).toBe(true);
