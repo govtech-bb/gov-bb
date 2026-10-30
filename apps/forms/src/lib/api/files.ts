@@ -186,6 +186,10 @@ export const putFileToS3 = (
     // Must match the contentType sent at presign time — S3 signs it, so a
     // mismatch fails the PUT with SignatureDoesNotMatch.
     xhr.setRequestHeader("Content-Type", resolveContentType(file));
+    // Write only if nothing is at this key yet (#3332). Every presign is a new
+    // key, so this always passes for us; once the API signs it into the URL,
+    // it stops a second PUT replacing a file that has passed the scan.
+    xhr.setRequestHeader("If-None-Match", "*");
     if (onProgress) {
       xhr.upload.onprogress = (e) => {
         if (e.lengthComputable) onProgress(e.loaded / e.total);
