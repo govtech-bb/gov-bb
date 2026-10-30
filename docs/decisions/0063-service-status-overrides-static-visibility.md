@@ -3,7 +3,9 @@
 **Date:** 2026-07-08
 **Status:** Accepted (amended 2026-07-08 — landing shipped via
 [#1928](https://github.com/govtech-bb/gov-bb/pull/1928), which also gates
-sitemap and search; see "Accepted gaps")
+sitemap and search; see "Accepted gaps"; amended 2026-10-30 — page
+visibility is set in api_v2 in any environment whose landing reads it, see
+"After cutover"; the form column is unchanged)
 **Related:** [#1650](https://github.com/govtech-bb/gov-bb/issues/1650) (epic:
 feature-flagging on `service_status`), [#1896](https://github.com/govtech-bb/gov-bb/issues/1896)
 (forms API gate), [#1897](https://github.com/govtech-bb/gov-bb/issues/1897)
@@ -128,3 +130,35 @@ matching their existing architecture:
   `service_status` values into its own existing visibility vocabulary. The
   Form Builder (ADR 0074, #2875) consumes the forms API's *result* through
   form_builder_api instead of adding a third mapping.
+
+## After cutover (amended 2026-10-30)
+
+Once an environment's landing reads its pages from api_v2,
+`content_pages.visibility` (approver-gated, ADR 0079) is the only page switch.
+Landing applies the `service_status` overlay only to its static fallback, so a
+row no longer changes a page. `service_status` keeps only the form column of
+the table above until [#3189](https://github.com/govtech-bb/gov-bb/issues/3189)
+moves form state into api_v2. feature_flagging offers no page toggle in such an
+environment (`EDITOR_V2_URL` set at build time) and links to editor_v2 instead;
+`disabled` on a form row then hides the form only, so unpublishing a service is
+two steps. The rows are kept, not deleted, so a rollback
+([#3225](https://github.com/govtech-bb/gov-bb/issues/3225)) restores
+pre-cutover visibility.
+
+Rejected:
+
+- api_v2 reads `service_status`: a cross-service call on every page view, and a
+  second page switch that bypasses the approver role.
+- Leave feature_flagging as is and document it: a select that writes a row and
+  changes nothing is a trap.
+- Retire feature_flagging now: form maintenance stays on api v1 until #3189.
+
+Consequences:
+
+- editor_v2 changes made after cutover are not reflected in `service_status`;
+  a rollback shows the pre-cutover levels.
+- The page half of the seed ([#3251](https://github.com/govtech-bb/gov-bb/issues/3251))
+  can be retired.
+- Setting `EDITOR_V2_URL` freezes the page-only rows in the UI, the freeze
+  [#3226](https://github.com/govtech-bb/gov-bb/issues/3226) needs at cutover.
+  The server function still accepts a write for any slug.
