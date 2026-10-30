@@ -100,6 +100,8 @@ export function CreateRemoteServiceDialog({
             category_id: category.id,
             visibility: "preview",
             body_markdown: "",
+            // /services lists only alpha services (#3244).
+            frontmatter: { stage: "alpha" },
           });
       }}
       actions={

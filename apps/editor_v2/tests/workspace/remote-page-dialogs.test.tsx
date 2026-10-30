@@ -119,7 +119,10 @@ test.each(["service", "start", "supporting"] as const)(
       title: kind === "service" ? "Licence" : kind === "start" ? "Before you start" : "Fees",
       url:
         kind === "service" ? service.url : `${service.url}/${kind === "start" ? "start" : "fees"}`,
-      ...(kind === "service" ? { category_id: category.id } : { parent_id: service.id }),
+      // A new service is alpha, so /services lists it; its sub-pages carry no stage.
+      ...(kind === "service"
+        ? { category_id: category.id, frontmatter: { stage: "alpha" } }
+        : { parent_id: service.id }),
       visibility: "preview",
       body_markdown: "",
     });
