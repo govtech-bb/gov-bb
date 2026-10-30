@@ -133,17 +133,30 @@ describe('fetchCategoryTree', () => {
     })
   })
 
+  it('logs a failed read as one api_v2_fallback line at error', async () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+    reply = json(503, { error: 'internal_error' })
+    await fetchCategoryTree(base)
+    expect(error).toHaveBeenCalledOnce()
+    expect(JSON.parse(String(error.mock.calls[0][0]))).toEqual({
+      event: 'api_v2_fallback',
+      reason: 'status',
+      url: '/categories',
+      status: 503,
+    })
+  })
+
   it.each([
     ['a server error', json(500, { error: 'internal_error' })],
     ['a missing route', json(404, { error: 'not_found' })],
   ])('is unavailable on %s', async (_, response) => {
-    vi.spyOn(console, 'warn').mockImplementation(() => {})
+    vi.spyOn(console, 'error').mockImplementation(() => {})
     reply = response
     expect(await fetchCategoryTree(base)).toEqual({ kind: 'unavailable' })
   })
 
   it('is unavailable when api_v2 cannot be reached', async () => {
-    vi.spyOn(console, 'warn').mockImplementation(() => {})
+    vi.spyOn(console, 'error').mockImplementation(() => {})
     const closed = createServer()
     await new Promise<void>((resolve) => closed.listen(0, '127.0.0.1', resolve))
     // SAFETY: still listening on TCP here, so address() is an AddressInfo.
@@ -155,7 +168,7 @@ describe('fetchCategoryTree', () => {
   })
 
   it('is unavailable when api_v2 does not answer in time', async () => {
-    vi.spyOn(console, 'warn').mockImplementation(() => {})
+    vi.spyOn(console, 'error').mockImplementation(() => {})
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
     reply = 'hang'
     const result = fetchCategoryTree(base)
@@ -169,7 +182,7 @@ describe('fetchCategoryTree', () => {
     ['the wrong shape', json(200, { categories: [{ slug: 1 }] })],
     ['a missing list', json(200, {})],
   ])('is malformed when the body is %s', async (_, response) => {
-    vi.spyOn(console, 'warn').mockImplementation(() => {})
+    vi.spyOn(console, 'error').mockImplementation(() => {})
     reply = response
     expect(await fetchCategoryTree(base)).toEqual({ kind: 'malformed' })
   })
@@ -220,7 +233,7 @@ describe('fetchCategoryListing', () => {
   })
 
   it('is unavailable on a server error, not not-found', async () => {
-    vi.spyOn(console, 'warn').mockImplementation(() => {})
+    vi.spyOn(console, 'error').mockImplementation(() => {})
     reply = json(503, { error: 'internal_error' })
     expect(await fetchCategoryListing(base, ['money'])).toEqual({
       kind: 'unavailable',
@@ -228,7 +241,7 @@ describe('fetchCategoryListing', () => {
   })
 
   it('is malformed when the listing has the wrong shape', async () => {
-    vi.spyOn(console, 'warn').mockImplementation(() => {})
+    vi.spyOn(console, 'error').mockImplementation(() => {})
     reply = json(200, { ...LISTING, pages: 'none' })
     expect(await fetchCategoryListing(base, ['money'])).toEqual({
       kind: 'malformed',
@@ -275,7 +288,7 @@ describe('categoryTreeQuery', () => {
 
   it('holds a failed read for the same minute, then tries again', async () => {
     vi.useFakeTimers({ toFake: ['Date'] })
-    vi.spyOn(console, 'warn').mockImplementation(() => {})
+    vi.spyOn(console, 'error').mockImplementation(() => {})
     reply = json(500, { error: 'internal_error' })
     const load = () => fetchCategoryTree(base)
     const client = freshClient()
@@ -304,7 +317,7 @@ describe('categoryTreeQuery', () => {
   })
 
   it('turns a failed server-function call into unavailable, never a rejection', async () => {
-    vi.spyOn(console, 'warn').mockImplementation(() => {})
+    vi.spyOn(console, 'error').mockImplementation(() => {})
     const client = freshClient()
     await expect(
       client.fetchQuery(
@@ -355,7 +368,7 @@ describe('fetchCachedCategoryTree', () => {
     'caches %s across requests without preserving stale categories',
     async (kind, failure) => {
       vi.useFakeTimers({ toFake: ['Date'] })
-      vi.spyOn(console, 'warn').mockImplementation(() => {})
+      vi.spyOn(console, 'error').mockImplementation(() => {})
       const load = () => fetchCachedCategoryTree(`${base}/${kind}`)
       reply = json(200, { categories: TREE })
       expect(await load()).toEqual({ kind: 'found', categories: TREE })
@@ -372,7 +385,7 @@ describe('fetchCachedCategoryTree', () => {
   )
 
   it('a timed-out read does not make the next request wait for the API again', async () => {
-    vi.spyOn(console, 'warn').mockImplementation(() => {})
+    vi.spyOn(console, 'error').mockImplementation(() => {})
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] })
     reply = 'hang'
     const load = () => fetchCachedCategoryTree(`${base}/timeout`)
@@ -462,7 +475,7 @@ describe('resolveCategoryAddress', () => {
   ] as const)(
     'reports a %s listing, never a static one',
     async (kind, response) => {
-      vi.spyOn(console, 'warn').mockImplementation(() => {})
+      vi.spyOn(console, 'error').mockImplementation(() => {})
       reply = response
       expect(
         await resolveCategoryAddress(['money-financial-support'], found, read),

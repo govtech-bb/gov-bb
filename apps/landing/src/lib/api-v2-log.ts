@@ -25,6 +25,14 @@ export const REASONS: Record<
   circuit_open: { failure: true, source: 'static-fallback' },
 }
 
+/** An error's message, with its `cause` chain (where Node's fetch puts why). */
+export const message = (error: unknown): string =>
+  error instanceof Error
+    ? error.cause
+      ? `${error.message}: ${message(error.cause)}`
+      : error.message
+    : String(error)
+
 /** The `api_v2_fallback` line, at the reason's level. */
 export function logFallback(
   reason: ApiV2MissReason,

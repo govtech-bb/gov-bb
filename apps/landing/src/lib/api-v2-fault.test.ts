@@ -111,6 +111,7 @@ beforeEach(() => {
   slowRequests = 0
   // Every failed fetch logs; keep the output readable.
   vi.spyOn(console, 'warn').mockImplementation(() => {})
+  vi.spyOn(console, 'error').mockImplementation(() => {})
   return () => vi.restoreAllMocks()
 })
 

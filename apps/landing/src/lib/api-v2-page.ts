@@ -4,7 +4,7 @@ import { z } from 'zod'
 import type { ContentPage } from '../content/registry'
 import { bakeStartLinkFormId } from '../utils/markdown/plugins'
 import { createApiV2Cache } from './api-v2-cache'
-import { REASONS, logFallback } from './api-v2-log'
+import { REASONS, logFallback, message } from './api-v2-log'
 import type { Frontmatter } from './frontmatter'
 
 /**
@@ -27,7 +27,9 @@ import type { Frontmatter } from './frontmatter'
  * for answers landing can't use (`rejected` — a 4xx other than 404 —
  * `bad_redirect`, `compile`). A 404 isn't logged. A breaker trip logs one
  * `{event: "api_v2_circuit_open", url}` at `console.error`; requests it turns
- * away aren't logged. `REASONS` in api-v2-log.ts holds the classification.
+ * away aren't logged. Category reads (api-v2-categories.ts) log the same
+ * lines, with the api_v2 path as `url`. `REASONS` in api-v2-log.ts holds the
+ * classification.
  */
 
 export const API_V2_TIMEOUT_MS = 750
@@ -141,13 +143,6 @@ export function apiV2Base(): string | null {
 function isSitePath(to: string): boolean {
   return /^\/(?!\/)[^\\\s]*$/.test(to)
 }
-
-const message = (error: unknown): string =>
-  error instanceof Error
-    ? error.cause
-      ? `${error.message}: ${message(error.cause)}`
-      : error.message
-    : String(error)
 
 /**
  * `GET /pages?url=` without following redirects. A 404 is a silent miss;
