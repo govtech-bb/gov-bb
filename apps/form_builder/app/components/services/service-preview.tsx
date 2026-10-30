@@ -9,6 +9,11 @@ import { XIcon } from "@phosphor-icons/react";
 import { servicePageLabel } from "./service-model";
 import { formPreviewUrl } from "../../lib/form-url";
 
+// Both fall back to "" (the "Preview unavailable" state) instead of failing
+// fast like config/preview.ts. This module is in a chunk every builder page
+// loads, and builder PR previews are built without VITE_LANDING_PREVIEW_URL,
+// so requireEnv here would break every preview (#2871). VITE_FORMS_PREVIEW_URL
+// stays optional until the forms /preview-service receiver exists (#3030).
 const landingURL =
   import.meta.env.VITE_LANDING_PREVIEW_URL ||
   (import.meta.env.DEV ? "http://localhost:4000/preview-start-page" : "");
