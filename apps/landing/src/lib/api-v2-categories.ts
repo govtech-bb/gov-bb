@@ -1,7 +1,12 @@
 import { createServerFn } from '@tanstack/react-start'
 import { QueryClient, isCancelledError } from '@tanstack/react-query'
 import { z } from 'zod'
-import { API_V2_TIMEOUT_MS, apiV2Base, siteVersionChanges } from './api-v2-page'
+import {
+  API_V2_TIMEOUT_MS,
+  apiV2Base,
+  landingToken,
+  siteVersionChanges,
+} from './api-v2-page'
 import { logFallback, message } from './api-v2-log'
 
 /**
@@ -15,6 +20,8 @@ import { logFallback, message } from './api-v2-log'
  *
  * Only the public `/categories` reads, with no preview token: the editor's
  * `/editor/categories` carries private counts and is never called from here.
+ * They carry landing's token, as `/pages` does, so api_v2's rate limit
+ * doesn't count them (#3129).
  */
 
 /** Copied from apps/api_v2/src/modules/navigation.ts (`CategoryRef`). */
@@ -93,6 +100,7 @@ async function readPublic<T>(
   path: string,
   schema: z.ZodType<T>,
   fetchImpl: typeof fetch,
+  landingToken?: string,
 ): Promise<
   { kind: 'ok'; value: T } | { kind: 'missing' } | CategoryReadFailure
 > {
@@ -102,6 +110,7 @@ async function readPublic<T>(
   try {
     const response = await fetchImpl(`${base}${path}`, {
       signal: controller.signal,
+      ...(landingToken && { headers: { 'x-landing-token': landingToken } }),
     })
 
     if (response.status === 404) {
@@ -140,6 +149,7 @@ async function readPublic<T>(
 export async function fetchCategoryTree(
   base: string | null,
   fetchImpl: typeof fetch = fetch,
+  landingToken?: string,
 ): Promise<CategoryTreeResult> {
   if (!base) return { kind: 'disabled' }
 
@@ -148,6 +158,7 @@ export async function fetchCategoryTree(
     '/categories',
     CategoryTreeBody,
     fetchImpl,
+    landingToken,
   )
 
   switch (result.kind) {
@@ -174,6 +185,7 @@ export async function fetchCategoryListing(
   base: string | null,
   path: CategoryPath,
   fetchImpl: typeof fetch = fetch,
+  landingToken?: string,
 ): Promise<CategoryListingResult> {
   if (!base) return { kind: 'disabled' }
 
@@ -185,6 +197,7 @@ export async function fetchCategoryListing(
     `/categories/${path.join('/')}`,
     CategoryListing,
     fetchImpl,
+    landingToken,
   )
 
   switch (result.kind) {
@@ -256,10 +269,13 @@ const publicCategoryCache = new QueryClient()
 export async function fetchCachedCategoryTree(
   base: string | null,
   fetchImpl: typeof fetch = fetch,
+  landingToken?: string,
 ): Promise<CategoryTreeResult> {
   const read = () =>
     publicCategoryCache.fetchQuery({
-      ...categoryTreeQuery(() => fetchCategoryTree(base, fetchImpl)),
+      ...categoryTreeQuery(() =>
+        fetchCategoryTree(base, fetchImpl, landingToken),
+      ),
       queryKey: ['public-category-tree', base],
     })
   try {
@@ -288,6 +304,7 @@ export async function fetchCurrentCategoryTree(
   base: string | null,
   changes: number,
   fetchImpl: typeof fetch = fetch,
+  landingToken?: string,
 ): Promise<CategoryTreeResult> {
   if (changes !== treeChanges) {
     treeChanges = changes
@@ -296,18 +313,25 @@ export async function fetchCurrentCategoryTree(
       .then(() => publicCategoryCache.invalidateQueries())
   }
   await expiring
-  return fetchCachedCategoryTree(base, fetchImpl)
+  return fetchCachedCategoryTree(base, fetchImpl, landingToken)
 }
 
 /** Server function: the current public tree from the configured api_v2. */
 export const getApiV2CategoryTree = createServerFn().handler(async () =>
-  fetchCurrentCategoryTree(apiV2Base(), await siteVersionChanges()),
+  fetchCurrentCategoryTree(
+    apiV2Base(),
+    await siteVersionChanges(),
+    fetch,
+    landingToken(),
+  ),
 )
 
 /** Server function: `fetchCategoryListing` against the configured api_v2. */
 export const getApiV2CategoryListing = createServerFn()
   .validator(CategoryPath)
-  .handler(({ data: path }) => fetchCategoryListing(apiV2Base(), path))
+  .handler(({ data: path }) =>
+    fetchCategoryListing(apiV2Base(), path, fetch, landingToken()),
+  )
 
 /** A minute per cache layer, within api_v2's freshness/revalidation window. */
 export const CATEGORY_TREE_STALE_MS = 60_000

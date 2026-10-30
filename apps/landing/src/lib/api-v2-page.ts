@@ -161,7 +161,7 @@ export function apiV2Base(): string | null {
 }
 
 /** api_v2's LANDING_SECRET, which exempts landing from its rate limit (#3129). Server-only. */
-function landingToken(): string | undefined {
+export function landingToken(): string | undefined {
   const config = useRuntimeConfig() as { landingSecret?: string }
   return config.landingSecret || process.env.LANDING_SECRET || undefined
 }

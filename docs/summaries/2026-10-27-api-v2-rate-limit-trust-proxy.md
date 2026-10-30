@@ -8,7 +8,7 @@ api_v2 had no limiter and no `trustProxy`, so every caller behind the ALB looked
 
 - `trustProxy: "uniquelocal"` in `apps/api_v2/src/app.ts`.
 - `@fastify/rate-limit` registered at the top of `siteRoutes` (`apps/api_v2/src/routes/site.ts`): 1,000 requests/min per `request.ip`, in memory.
-- Landing is exempt by a shared secret: api_v2's optional `LANDING_SECRET`, which landing's server sends as `x-landing-token` on its `/pages` fetch (`apps/landing/src/lib/api-v2-page.ts`, build-baked into Nitro's server-only `runtimeConfig` and added to `check-no-secret-leak.mjs`). The rate limiter's `allowList` compares it in constant time, with the same hash-then-`timingSafeEqual` helper as the preview token. Unset, nobody is exempt.
+- Landing is exempt by a shared secret: api_v2's optional `LANDING_SECRET`, which landing's server sends as `x-landing-token` on its `/pages` and `/categories…` reads (`apps/landing/src/lib/api-v2-page.ts`, `api-v2-categories.ts`; build-baked into Nitro's server-only `runtimeConfig` and added to `check-no-secret-leak.mjs`). The rate limiter's `allowList` compares it in constant time, with the same hash-then-`timingSafeEqual` helper as the preview token. Unset, nobody is exempt.
 - `apps/api_v2/src/rate-limit.test.ts`: tier and scope, keying on the forwarded client, spoofed and untrusted-peer headers ignored, the 1,001st request is a 429 in the API's own error shape, and landing's token skips the limit (no `x-ratelimit-*` headers) while a wrong, missing or unconfigured one does not.
 
 ## Why we did it that way
