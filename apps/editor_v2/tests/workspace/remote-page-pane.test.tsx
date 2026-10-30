@@ -100,11 +100,15 @@ async function mountPage(
     </RouterContextProvider>,
   );
   await act(async () => {
-    // Someone without the editor role never holds editing authority, so only the lock is waited for
-    await vi.waitFor(() =>
-      expect(
-        roles.includes("editor") ? session?.getEditLockToken() : locks.get(page.id)?.claim,
-      ).toBeDefined(),
+    // Someone without the editor role never holds editing authority, so only the lock is waited for.
+    // Editing waits on two page reads in turn (the first and the one after the lock), so a cold first
+    // mount needs more than waitFor's default second
+    await vi.waitFor(
+      () =>
+        expect(
+          roles.includes("editor") ? session?.getEditLockToken() : locks.get(page.id)?.claim,
+        ).toBeDefined(),
+      { timeout: 5_000 },
     );
   });
 
@@ -148,6 +152,17 @@ async function savePage(name = "Save") {
   expect(button.getAttribute("aria-disabled")).toBeNull();
   await act(async () => button.click());
 }
+
+test("an editor holds editing authority once mounted, even when the page reads are slow", async () => {
+  const h = await mountPage(async () => {
+    // Two reads of 600ms each outlast waitFor's default second on their own
+    await new Promise((resolve) => setTimeout(resolve, 600));
+
+    return Response.json(page);
+  });
+
+  expect(h.session().getEditLockToken()).toBeDefined();
+});
 
 test.each(["", "preview"])(
   "a legacy draft can return from %j without losing edits or writing until Save",
