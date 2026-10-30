@@ -104,6 +104,41 @@ describe("seed", () => {
     await close();
   }, 60_000);
 
+  it("crumbs the seeded pharmacy sub-pages through their parent page", async () => {
+    const { db, close } = await createTestDb();
+    await seed(db);
+    const title = (url: string) =>
+      ESTATE.pages.find((page) => page.url === url)?.title;
+    const category = "/health-and-emergency-services";
+    const parent = `${category}/find-an-open-pharmacy`;
+
+    for (const url of [
+      `${category}/prescription-colours`,
+      `${category}/free-or-subsidised-medication`,
+    ]) {
+      const resolved = expectOk(
+        await createTestServices(db).resolution.resolve(url, "public"),
+      );
+      expect(resolved).toMatchObject({
+        kind: "page",
+        page: {
+          breadcrumbs: [
+            {
+              name: ESTATE.categories.find(
+                (c) => c.slug === "health-and-emergency-services",
+              )?.title,
+              url: category,
+            },
+            { name: title(parent), url: parent },
+            { name: title(url), url },
+          ],
+        },
+      });
+    }
+
+    await close();
+  }, 60_000);
+
   it("serves a seeded subcategory page only in preview with its taxonomy", async ({
     onTestFinished,
   }) => {
