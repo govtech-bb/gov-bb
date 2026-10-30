@@ -44,6 +44,8 @@ describe("authentication boundaries", () => {
     "/content-types",
     "/content-types/new",
     "/content-types/announcements",
+    "/collections",
+    "/collections/contacts?record=barbados-drug-service",
     "/collections/announcements/",
     "/collections/announcements/new",
     "/collections/announcements/entry-1?view=source#content",
@@ -59,7 +61,7 @@ describe("authentication boundaries", () => {
   it.each([
     "/categories/other",
     "/content-types-extra",
-    "/collections",
+    "/collections/a/b/c",
     "/prototypes/components",
     "https://evil.example",
     "//evil.example",

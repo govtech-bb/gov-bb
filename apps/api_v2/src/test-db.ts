@@ -16,6 +16,7 @@ import { sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Client, Pool } from "pg";
 import { inject } from "vitest";
+import { PostgresCollections } from "./adapters/postgres-collections";
 import { PostgresPages } from "./adapters/postgres-pages";
 import { PostgresRoles } from "./adapters/postgres-roles";
 import { buildApp, type AppOptions } from "./app";
@@ -25,6 +26,7 @@ import { ok, type Result } from "./modules/result";
 import { EditorAccess, type SessionReader } from "./services/editor-access";
 import { EditorIndex } from "./services/editor-index";
 import { CategoryEditing } from "./services/category-editing";
+import { CollectionEditing } from "./services/collection-editing";
 import { PageEditing } from "./services/page-editing";
 import { PageResolution } from "./services/page-resolution";
 import type { ReviewNotifier } from "./services/review-notifications";
@@ -85,6 +87,9 @@ export async function createDatabase(
       : `create database ${name}`,
   );
   const pool = new Pool({ ...TEST_SERVER, database: name });
+  // pool.end() resolves before its idle clients disconnect, so close()'s
+  // forced drop can terminate them (57P01); unheard, that is an uncaught error.
+  pool.on("error", () => {});
   return {
     db: drizzle(pool),
     pool,
@@ -129,6 +134,7 @@ export function createTestServices(
     editing: new PageEditing(pages, () => new Date(), review, notifier),
     index: new EditorIndex(pages),
     categories: new CategoryEditing(pages, () => new Date()),
+    collections: new CollectionEditing(new PostgresCollections(db)),
   };
 }
 

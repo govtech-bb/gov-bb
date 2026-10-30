@@ -175,6 +175,7 @@ describe("the change history trigger", () => {
   it("forgets the user when their transaction ends, on the same connection", async () => {
     const { name, close } = await createTestDb();
     const pool = new Pool({ ...TEST_SERVER, database: name, max: 1 });
+    pool.on("error", () => {}); // close() may terminate it; see test-db.ts
     const db = drizzle(pool);
     try {
       const created = expectOk(

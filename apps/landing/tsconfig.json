@@ -17,8 +17,10 @@
       "@govtech-bb/analytics": ["../../packages/analytics/src/index.ts"],
       "@govtech-bb/content/categories": [
         "../../packages/content/src/categories.ts"
-      ]
+      ],
+      "@api-v2-seed/*": ["../api_v2/src/seed-data/*"]
     },
+    "resolveJsonModule": true,
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "types": ["vite/client"],
 

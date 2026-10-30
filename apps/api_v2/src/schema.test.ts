@@ -20,7 +20,9 @@ import {
   authVerification,
   categories,
   changeEvents,
+  collectionRecords,
   contentPages,
+  dataCollections,
   pageRevisions,
   searchChunks,
   userRoles,
@@ -57,6 +59,8 @@ const TABLES = {
   search_chunks: searchChunks,
   user_roles: userRoles,
   page_revisions: pageRevisions,
+  data_collections: dataCollections,
+  collection_records: collectionRecords,
 };
 
 describe("the Drizzle schema and the migration", () => {

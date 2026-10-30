@@ -181,6 +181,14 @@ erDiagram
     text actor FK
     timestamptz(3) occurred_at
   }
+  collection_records {
+    uuid id PK
+    varchar(100) collection_key FK "unique (collection_key, record_key)"
+    varchar(200) record_key
+    jsonb data
+    timestamptz(3) created_at
+    timestamptz(3) updated_at
+  }
   content_pages {
     uuid id PK "unique (id, category_id)"
     varchar(512) url UK
@@ -196,6 +204,16 @@ erDiagram
     jsonb frontmatter
     timestamptz(3) published_at "nullable"
     uuid parent_id FK "nullable"
+  }
+  data_collections {
+    uuid id PK
+    varchar(100) key UK
+    varchar(200) title
+    varchar(100) record_key
+    jsonb schema
+    int4 schema_version
+    timestamptz(3) created_at
+    timestamptz(3) updated_at
   }
   page_revisions {
     uuid id PK
@@ -231,6 +249,7 @@ erDiagram
   auth_user ||--o{ auth_session : "userId -> id"
   categories |o--o{ categories : "parent_id -> id"
   auth_user ||--o{ change_events : "actor -> id"
+  data_collections ||--o{ collection_records : "collection_key -> key"
   categories |o--o{ content_pages : "category_id -> id"
   content_pages |o--o{ content_pages : "parent_id, category_id -> id, category_id"
   content_pages |o--o{ content_pages : "parent_id -> id"
@@ -243,54 +262,61 @@ erDiagram
 
 ## HTTP surface
 
-| Method   | Path                                | Access                                                                 |
-| -------- | ----------------------------------- | ---------------------------------------------------------------------- |
-| GET      | `/pages?url=…`                      | Site page resolution (public, or preview with the token)               |
-| GET      | `/categories`                       | Site category tree                                                     |
-| GET      | `/categories/:slug`                 | A category's subcategories and root pages                              |
-| GET      | `/categories/:c/:s`                 | A subcategory's root pages                                             |
-| GET      | `/catalog`                          | Every visible page (sitemap, service lists)                            |
-| GET      | `/search/documents`                 | Every visible page with its search text in chunks                      |
-| GET      | `/docs`                             | Public API reference (Scalar)                                          |
-| GET      | `/docs/openapi.json`                | Public OpenAPI document                                                |
-| GET      | `/health`                           | Load balancer check: 200 while the process serves; never hits the DB   |
-| GET      | `/health/db`                        | 200 if the database answers in 2 s, else 503; not for the ALB          |
-| GET      | `/pages/:id`                        | Employee; includes drafts and previews, with any pending revision      |
-| GET      | `/pages/:id/revision`               | Employee; a public page's pending revision, with its `changes`         |
-| GET      | `/revisions?status=submitted`       | Employee; the review queue: revisions waiting for an approver          |
-| GET      | `/services`                         | Employee service index, grouped by `parent_id`                         |
-| GET      | `/services/:id`                     | Employee; one service's pages with their roles, entry first            |
-| GET      | `/editor/categories`                | Employee; every shared category, counts, address protection and stamps |
-| POST     | `/editor/categories`                | Approver; append a category or subcategory                             |
-| PUT      | `/editor/categories/:id`            | Approver; edit with mandatory `if-updated-at`                          |
-| PUT      | `/editor/categories/order`          | Approver; reorder a complete expected sibling snapshot                 |
-| DELETE   | `/editor/categories/:id`            | Approver; delete an empty category with `if-updated-at`                |
-| GET      | `/version`                          | Employee change token                                                  |
-| POST     | `/pages`                            | Employee create; as `public`, refused (approver under `AUTH_BYPASS`)   |
-| PUT      | `/pages/:id`                        | Editor save, optional `if-updated-at`; public pages save to a revision |
-| DELETE   | `/pages/:id`                        | Employee delete; a `public` page, approver only                        |
-| POST     | `/pages/:id/revision/submit`        | Editor; submit the draft revision for review                           |
-| POST     | `/pages/:id/revision/reject`        | Approver, not its author or submitter; reject with a `comment`         |
-| POST     | `/pages/:id/revision/publish`       | Approver, not its author or submitter; publish it to the live page     |
-| GET      | `/editor/me`                        | Employee; who is signed in, with their roles                           |
-| GET      | `/editor/employees`                 | Admin; everyone who has signed in, with their roles                    |
-| PUT      | `/editor/employees/:id/roles/:role` | Admin; grant a role                                                    |
-| DELETE   | `/editor/employees/:id/roles/:role` | Admin; revoke a role                                                   |
-| GET/POST | `/api/auth/*`                       | BetterAuth's GitHub/session protocol                                   |
+| Method   | Path                                   | Access                                                                 |
+| -------- | -------------------------------------- | ---------------------------------------------------------------------- |
+| GET      | `/pages?url=…`                         | Site page resolution (public, or preview with the token)               |
+| GET      | `/categories`                          | Site category tree                                                     |
+| GET      | `/categories/:slug`                    | A category's subcategories and root pages                              |
+| GET      | `/categories/:c/:s`                    | A subcategory's root pages                                             |
+| GET      | `/catalog`                             | Every visible page (sitemap, service lists)                            |
+| GET      | `/search/documents`                    | Every visible page with its search text in chunks                      |
+| GET      | `/collections/:key/records`            | A data collection and its records (public; the editor reads it too)    |
+| GET      | `/docs`                                | Public API reference (Scalar)                                          |
+| GET      | `/docs/openapi.json`                   | Public OpenAPI document                                                |
+| GET      | `/health`                              | Load balancer check: 200 while the process serves; never hits the DB   |
+| GET      | `/health/db`                           | 200 if the database answers in 2 s, else 503; not for the ALB          |
+| GET      | `/pages/:id`                           | Employee; includes drafts and previews, with any pending revision      |
+| GET      | `/pages/:id/revision`                  | Employee; a public page's pending revision, with its `changes`         |
+| GET      | `/revisions?status=submitted`          | Employee; the review queue: revisions waiting for an approver          |
+| GET      | `/services`                            | Employee service index, grouped by `parent_id`                         |
+| GET      | `/services/:id`                        | Employee; one service's pages with their roles, entry first            |
+| GET      | `/editor/categories`                   | Employee; every shared category, counts, address protection and stamps |
+| POST     | `/editor/categories`                   | Approver; append a category or subcategory                             |
+| PUT      | `/editor/categories/:id`               | Approver; edit with mandatory `if-updated-at`                          |
+| PUT      | `/editor/categories/order`             | Approver; reorder a complete expected sibling snapshot                 |
+| DELETE   | `/editor/categories/:id`               | Approver; delete an empty category with `if-updated-at`                |
+| GET      | `/collections`                         | Employee; every data collection with its field list and record count   |
+| POST     | `/collections/:key/records/:recordKey` | Editor; add a record, checked against the collection's field list      |
+| PUT      | `/collections/:key/records/:recordKey` | Editor; replace a record's data, optional `if-updated-at`              |
+| DELETE   | `/collections/:key/records/:recordKey` | Editor; delete a record, optional `if-updated-at`                      |
+| GET      | `/version`                             | Employee change token                                                  |
+| POST     | `/pages`                               | Employee create; as `public`, refused (approver under `AUTH_BYPASS`)   |
+| PUT      | `/pages/:id`                           | Editor save, optional `if-updated-at`; public pages save to a revision |
+| DELETE   | `/pages/:id`                           | Employee delete; a `public` page, approver only                        |
+| POST     | `/pages/:id/revision/submit`           | Editor; submit the draft revision for review                           |
+| POST     | `/pages/:id/revision/reject`           | Approver, not its author or submitter; reject with a `comment`         |
+| POST     | `/pages/:id/revision/publish`          | Approver, not its author or submitter; publish it to the live page     |
+| GET      | `/editor/me`                           | Employee; who is signed in, with their roles                           |
+| GET      | `/editor/employees`                    | Admin; everyone who has signed in, with their roles                    |
+| PUT      | `/editor/employees/:id/roles/:role`    | Admin; grant a role                                                    |
+| DELETE   | `/editor/employees/:id/roles/:role`    | Admin; revoke a role                                                   |
+| GET/POST | `/api/auth/*`                          | BetterAuth's GitHub/session protocol                                   |
 
-Missing, expired, or revoked sessions produce JSON 401 responses; disallowed employees or write origins produce 403; unavailable session verification produces 503. The API does not redirect protected content requests to GitHub. The editor handles navigation. Authenticated writes require `Origin: <EDITOR_ORIGIN>`. Auth/session/editor responses use `Cache-Control: no-store` and do not receive ETags. Page and category write audit rows record the authenticated user ID, never a caller-supplied actor, and commit with the write they record.
+Missing, expired, or revoked sessions produce JSON 401 responses; disallowed employees or write origins produce 403; unavailable session verification produces 503. The API does not redirect protected content requests to GitHub. The editor handles navigation. Authenticated writes require `Origin: <EDITOR_ORIGIN>`. Auth/session/editor responses use `Cache-Control: no-store` and do not receive ETags. Page, category and collection record write audit rows record the authenticated user ID, never a caller-supplied actor, and commit with the write they record.
 
-The database writes the history itself: a trigger (`record_change`, migration `007`) adds a `change_events` row for every insert, update and delete of a content table (`content_pages`, `categories`), including the sub-pages a parent's move carries with it. Its `actor` is the transaction's `app.user_id`, which the editor's writes set (transaction-local, so a pooled connection never carries it into the next request), or `system`, a user with no account, when nothing set it: the seed, the import, raw SQL. `actor` references `auth_user`, so a user with history cannot be deleted. An update that changes nothing but `updated_at` is not recorded; a page going public is `published` and one leaving public is `unpublished`. The snapshot is the row as stored. A new content table attaches `record_change` in the migration that creates it, or `migrate.test.ts` fails.
+The database writes the history itself: a trigger (`record_change`, migration `007`) adds a `change_events` row for every insert, update and delete of a content table (`content_pages`, `categories`, `data_collections`, `collection_records`), including the sub-pages a parent's move carries with it. Its `actor` is the transaction's `app.user_id`, which the editor's writes set (transaction-local, so a pooled connection never carries it into the next request), or `system`, a user with no account, when nothing set it: the seed, the import, raw SQL. `actor` references `auth_user`, so a user with history cannot be deleted. An update that changes nothing but `updated_at` is not recorded; a page going public is `published` and one leaving public is `unpublished`. The snapshot is the row as stored. A new content table attaches `record_change` in the migration that creates it, or `migrate.test.ts` fails.
 
 Review is recorded the same way (`record_review`, migration `013`): when a page's revision changes status, the page's own history gets `submitted` (a first submission or a resubmission), `rejected`, `approved` (on publish) or `discarded` (unpublished while waiting, migration `015`), by the transaction's user, numbered after the page's last event. The snapshot is the revision row, so it names the submitter (`submitted_by`), the approver or rejecter (`decided_by`) and a rejection's `comment`. A page's history therefore holds two snapshot shapes under `entity_kind = 'content_page'`: review events (`submitted`, `rejected`, `approved`, `discarded`) store a `page_revisions` row, whose `snapshot->>'id'` is the revision's id (the page's is `snapshot->>'page_id'`), and every other event stores a `content_pages` row. Anything that rebuilds a page's state from its history must filter on `action`. A publish then logs the live write as `updated` (or `published`) by the same approver, so a page's history reads who submitted a change, who approved it, and when it went live. Saves to a revision, draft or submitted, are not recorded.
 
-Public site reads (`/pages?url=`, `/categories…`, `/catalog`, `/search/documents`) send `public, max-age=60, stale-while-revalidate=300, stale-if-error=86400`; unknown public URLs send `public, max-age=10`. ETags and 304s remain available for public reads. These routes do not look up or refresh employee sessions.
+Public site reads (`/pages?url=`, `/categories…`, `/catalog`, `/search/documents`, `/collections/:key/records`) send `public, max-age=60, stale-while-revalidate=300, stale-if-error=86400`; unknown public URLs send `public, max-age=10`. ETags and 304s remain available for public reads. These routes do not look up or refresh employee sessions.
+
+The editor reads a collection's records through that same public route, fetching with `cache: "no-store"`, and sends a record's `updated_at` back in `if-updated-at` when it saves or deletes it. That depends on no shared cache (a CDN, or a server-side fetch cache) sitting between the editor and api_v2: a cached read up to six minutes old would turn the editor's next save into a 409 against its own earlier write. Put a cache in front of api_v2 and the editor needs an uncached, editor-scope read of records first.
 
 Preview: the site's server sends its `PREVIEW_SECRET` as `x-preview-token`, and the same reads then include `preview` content. Those responses are `no-store` with no ETag, so preview content never enters a shared cache. A wrong token, or any token when `PREVIEW_SECRET` is unset here, is a 401 rather than a quiet fall-back to the public view. `draft` content is only ever served to the editor.
 
 The hierarchy is `parent_id`, not the url. A page is served only when it and every page above it are visible; its breadcrumbs are its category (and parent category, for a subcategory), then the pages above it; a category lists only the pages at its root (`parent_id` null), so `start` steps and sub-pages never appear in a listing. A sub-page must share its parent's category (moving the parent moves its sub-pages), a page cannot sit beneath itself, and a page with sub-pages cannot be deleted: each is a field-specific 422.
 
-`GET /pages?url=` returns `{url, frontmatter, body_markdown, form_id, hide_start_links, breadcrumbs}`. `hide_start_links` is true when the page's `start` sub-page is hidden from the viewer. Whether a form is open is the forms API's to say: `form_id` is a name, and the site asks the forms API for the form's status. The API serves markdown as written; the site owns sanitization and rendering. Editor writes return field-specific 422s for invalid references or duplicates, 409 for a stale supplied version, and stamp `published_at` only on first publication. A save replaces the page, so it sends every field; only `parent_id` may be left out, which keeps the page's parent. Changing `url` moves that page alone: its sub-pages keep theirs, and nothing redirects from the old url. Each write still records an append-only audit snapshot (see above); page-history readers are no longer exposed. A request its route's schema refuses (a missing field, an id that is not a UUID, an `if-updated-at` that is not a timestamp, a url over 512 characters, a title over 300) is a 400; Fastify's own refusals keep their status (a body that is not JSON is a 415), and an unknown route is a JSON 404.
+`GET /pages?url=` returns `{url, frontmatter, body_markdown, form_id, hide_start_links, breadcrumbs, category, subcategory}`. `category` and `subcategory` are slugs, null when the page has none. `hide_start_links` is true when the page's `start` sub-page is hidden from the viewer. Whether a form is open is the forms API's to say: `form_id` is a name, and the site asks the forms API for the form's status. The API serves markdown as written; the site owns sanitization and rendering. Editor writes return field-specific 422s for invalid references or duplicates, 409 for a stale supplied version, and stamp `published_at` only on first publication. A save replaces the page, so it sends every field; only `parent_id` may be left out, which keeps the page's parent. Changing `url` moves that page alone: its sub-pages keep theirs, and nothing redirects from the old url. Each write still records an append-only audit snapshot (see above); page-history readers are no longer exposed. A request its route's schema refuses (a missing field, an id that is not a UUID, an `if-updated-at` that is not a timestamp, a url over 512 characters, a title over 300) is a 400; Fastify's own refusals keep their status (a body that is not JSON is a 415), and an unknown route is a JSON 404.
 
 ### Category management
 
@@ -339,7 +365,7 @@ tracked in #3178, landing integration in #3179, and sandbox acceptance in #3180.
 
 `search_chunks` holds each page's body split at its headings, as plain text, rewritten in the same transaction as every save. Rejoined, a page's chunks are exactly the text landing's search indexes today (`search-text.test.ts` checks every seeded page), so moving search onto the API does not move its ranking. The generated `tsv` column and its GIN index are there for server-side search and are not read yet.
 
-The seed is a committed snapshot of legacy markdown and the category taxonomy, subcategories included, with each sub-page's parent. Inserts are additive and idempotent and never replace authored changes. It runs only with `SEED=true`, because an additive insert also brings back a page an editor deleted. Each page and category it adds gets a `created` entry by `system` in the audit log, which also moves the editor's change token. Regenerate it with `pnpm seed-data` when intentionally updating the snapshot. `pnpm seed-data` also records `source`, the last commit that touched `apps/landing/src/content`, which the one-time import prints in its report (see "Importing the estate" below).
+The seed is a committed snapshot of legacy markdown and the category taxonomy, subcategories included, with each sub-page's parent. Inserts are additive and idempotent and never replace authored changes. It runs only with `SEED=true`, because an additive insert also brings back a page an editor deleted. Each page and category it adds gets a `created` entry by `system` in the audit log, which also moves the editor's change token. Regenerate it with `pnpm seed-data` (or `pnpm generate:seed-data` from the root) when intentionally updating the snapshot. The one-time import (see "Importing the estate" below) reports `source`, a sha1 of the snapshot's categories and pages computed at import time. It is not stored in `estate.json`, so content PRs don't all rewrite one shared line and conflict. CI's "Generated Files Up To Date" job regenerates the snapshot on every PR and, when it differs, commits the regen back to the PR branch, or fails when it can't push. So a content change can't merge with a stale `estate.json`.
 
 ## Importing the estate (one-time)
 
@@ -351,13 +377,13 @@ node dist/src/import-estate.js [--dry-run] [--force "<reason>"]
 
 Locally, from this directory, run `pnpm import-estate --dry-run` or `pnpm import-estate`; it reads `.env` like `pnpm dev`. Do not add a `--` separator: this pnpm forwards it literally and tsx then rejects the flag.
 
-The command migrates first, prints `database: <name> host: <addr>` before writing anything, then one JSON line: `{"mode":"dry-run"|"import"|"replace","source":"<sha>","reason":"<reason>"|null,"existing":N,"actors":{…},"categories":N,"documents":N}`. It refuses, with exit code 1, when `content_pages` already has rows: `content_pages has N rows (history actors: …); refusing. Pass --force "<reason>" to replace them.` `--force` deletes every row of `search_chunks`, `page_revisions` (the pending revisions of the pages it replaces), `content_pages` and `categories` and then imports, all in one transaction, so the history records each replaced page and category as `deleted` by `system`; `change_events` is never emptied. The transaction holds a lock on `content_pages` until it commits or rolls back, so editor saves stall for the few seconds it takes; public reads keep seeing the old content until it commits. `--dry-run` does the real work and rolls it back, so its counts and errors are real. Every imported page's and category's `created` history entry is by `system`; the source sha and the `--force` reason are in the JSON line, not the history.
+The command migrates first, prints `database: <name> host: <addr>` before writing anything, then one JSON line: `{"mode":"dry-run"|"import"|"replace","source":"<content sha1>","reason":"<reason>"|null,"existing":N,"actors":{…},"categories":N,"documents":N}`. It refuses, with exit code 1, when `content_pages` already has rows: `content_pages has N rows (history actors: …); refusing. Pass --force "<reason>" to replace them.` `--force` deletes every row of `search_chunks`, `page_revisions` (the pending revisions of the pages it replaces), `content_pages` and `categories` and then imports, all in one transaction, so the history records each replaced page and category as `deleted` by `system`; `change_events` is never emptied. The transaction holds a lock on `content_pages` until it commits or rolls back, so editor saves stall for the few seconds it takes; public reads keep seeing the old content until it commits. `--dry-run` does the real work and rolls it back, so its counts and errors are real. Every imported page's and category's `created` history entry is by `system`; the source hash and the `--force` reason are in the JSON line, not the history.
 
 ### Per environment
 
 Do sandbox first, then staging and prod once their api_v2 services exist.
 
-1. Refresh the snapshot: merge `main` into `v2-rewrite`, run `pnpm seed-data`, commit `estate.json`, merge, and let the deploy build the image. The `source` sha in that commit is what the import reports.
+1. Refresh the snapshot: merge `main` into `v2-rewrite`, run `pnpm seed-data`, commit `estate.json`, merge, and let the deploy build the image. The `source` the import reports is a sha1 of that commit's parsed `estate.json` (`ESTATE_SOURCE` in `src/seed-data/index.ts`), not of the file's bytes, so `sha1sum estate.json` will not match it.
 2. Confirm the task definition does not set `SEED`: `aws ecs describe-task-definition --task-definition api-v2-<env> --query 'taskDefinition.containerDefinitions[0].environment'`. If it does, see #3052.
 3. Run the command inside the live container with ECS Exec (needs the AWS Session Manager plugin and credentials for the account). The deployed image has no `psql`, so every database step goes through the command. Dry run first; read the `database:` line and the counts; then the real run.
 
@@ -385,7 +411,7 @@ Do sandbox first, then staging and prod once their api_v2 services exist.
 
    A one-shot form also works when the command needs no quoting, e.g. `--command "node dist/src/import-estate.js --dry-run"`; for a forced run as a one-shot, wrap it as `--command "/bin/sh -c 'node dist/src/import-estate.js --force \"<reason>\"'"` and confirm the quoting on the sandbox rehearsal before relying on it.
 
-4. Record it: keep the real run's JSON line, which names the `source` sha and any `--force` reason. The `change_events` rows it wrote are by `system` and carry `occurred_at`.
+4. Record it: keep the real run's JSON line, which names the `source` hash and any `--force` reason. The `change_events` rows it wrote are by `system` and carry `occurred_at`.
 5. Smoke from your machine. Every `public` page in `estate.json` returns 200 from `GET /pages?url=`; `preview` pages return 200 only with the `x-preview-token` header (the task's `PREVIEW_SECRET`); `draft` pages are never served by that endpoint.
 
    ```sh

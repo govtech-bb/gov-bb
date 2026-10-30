@@ -119,6 +119,9 @@ it("finds the editor's writes, so an empty route list cannot pass", () => {
       "PUT /editor/categories/:id",
       "PUT /editor/categories/order",
       "DELETE /editor/categories/:id",
+      "POST /collections/:key/records/:recordKey",
+      "PUT /collections/:key/records/:recordKey",
+      "DELETE /collections/:key/records/:recordKey",
     ]),
   );
 });
@@ -168,6 +171,7 @@ it("refuses every write to an employee with no role and leaves the database unch
         select (select json_agg(p order by p.id) from content_pages p) as pages,
                (select json_agg(c order by c.id) from categories c) as categories,
                (select json_agg(r order by r.id) from page_revisions r) as revisions,
+               (select json_agg(r order by r.id) from collection_records r) as records,
                (select count(*)::int from change_events) as events,
                (select json_agg(r order by r.user_id, r.role) from user_roles r) as roles`)
     ).rows;
@@ -274,6 +278,35 @@ async function categoryWrite(
   };
 }
 
+/** A signed-in request to a record route, about a record of the database's own. */
+async function recordWrite(
+  method: string,
+  url: string,
+  n: number,
+): Promise<InjectOptions> {
+  await db.execute(
+    sql`insert into data_collections (key, title, record_key, schema)
+        values ('contacts', 'Contacts', 'key',
+                '{"fields":[{"key":"key","label":"Key","type":"slug"},{"key":"name","label":"Name","type":"text"}]}')
+        on conflict do nothing`,
+  );
+  await db.execute(
+    sql`insert into collection_records (collection_key, record_key, data)
+        values ('contacts', ${`existing-${n}`}, '{"name":"Existing"}')`,
+  );
+  return {
+    method: method as InjectOptions["method"],
+    url: url
+      .replace(":key", "contacts")
+      .replace(
+        ":recordKey",
+        method === "POST" ? `written-${n}` : `existing-${n}`,
+      ),
+    headers: TEST_HEADERS,
+    payload: method === "DELETE" ? undefined : { data: { name: "Written" } },
+  };
+}
+
 /** Writes that change no content table, so the history has nothing to record, and why. */
 const NOT_CONTENT: Readonly<Record<string, string>> = {
   "POST /pages/:id/revision/submit":
@@ -294,7 +327,9 @@ it("records every signed-in write against the employee", async () => {
     // route's change can carry the employee's id.
     const request = url.startsWith("/editor/categories")
       ? await categoryWrite(method, url, n)
-      : await pageWrite(method, url, n);
+      : url.startsWith("/collections")
+        ? await recordWrite(method, url, n)
+        : await pageWrite(method, url, n);
     const before = new Set((await eventsSoFar()).map((event) => event.id));
     const response = await app.inject(request);
     expect(response.statusCode, `${method} ${url}`).toBeLessThan(300);
@@ -322,6 +357,12 @@ const NOT_PAGE_VISIBILITY: Readonly<Record<string, string>> = {
   "PUT /editor/categories/:id": "renames or moves a category, not its pages",
   "PUT /editor/categories/order": "reorders categories; pages are untouched",
   "DELETE /editor/categories/:id": "refuses a category any page is filed under",
+  "POST /collections/:key/records/:recordKey":
+    "adds a collection record; pages are untouched",
+  "PUT /collections/:key/records/:recordKey":
+    "changes a collection record; pages are untouched",
+  "DELETE /collections/:key/records/:recordKey":
+    "deletes a collection record; pages are untouched",
   "PUT /editor/employees/:id/roles/:role": "grants a role, in user_roles",
   "DELETE /editor/employees/:id/roles/:role": "revokes a role, in user_roles",
 };
