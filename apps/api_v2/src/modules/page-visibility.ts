@@ -102,6 +102,13 @@ export const PublicPage = z.object({
     .string()
     .nullable()
     .describe("The slug of its subcategory, or null."),
+  visibility: z
+    .enum(["public", "preview"])
+    .describe(
+      "Effective visibility: the most restrictive of the page and the pages " +
+        "above it. preview reaches only a reviewer; the site shows its review " +
+        "banner and noindex from it.",
+    ),
   published_at: z.iso
     .datetime()
     .nullable()
@@ -172,6 +179,9 @@ export function toPublicPage(
     ],
     category: view.category,
     subcategory: view.subcategory,
+    visibility: hiddenFrom("public", page, view.ancestors)
+      ? "preview"
+      : "public",
     published_at: page.publishedAt?.toISOString() ?? null,
     content_updated_at: page.contentUpdatedAt.toISOString(),
     updated_at: page.updatedAt.toISOString(),

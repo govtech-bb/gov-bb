@@ -60,6 +60,11 @@ export interface paths {
                             /** @description The slug of its subcategory, or null. */
                             subcategory: string | null;
                             /**
+                             * @description Effective visibility: the most restrictive of the page and the pages above it. preview reaches only a reviewer; the site shows its review banner and noindex from it.
+                             * @enum {string}
+                             */
+                            visibility: "public" | "preview";
+                            /**
                              * Format: date-time
                              * @description When the page first went public (seeded from landing's `publish_date`); null until it has.
                              */
