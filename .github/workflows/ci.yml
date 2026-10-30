@@ -578,6 +578,99 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
           exit 1
 
+      # api_v2's e2e specs boot the built server against the Postgres service
+      # above. Run by name rather than `nx affected -t e2e`, which would also
+      # run forms' Playwright suite. Without DB_HOST every database spec skips
+      # itself and the run is green, so the report below fails on any skip.
+      - name: Run api_v2 e2e specs
+        id: e2e
+        # Skip only when the unit tests never started (install or set-shas
+        # failed); a failed unit run still gets its e2e results.
+        if: ${{ !cancelled() && steps.test.outcome != 'skipped' }}
+        env:
+          DB_HOST: localhost
+        run: |
+          # Captured first so an nx failure fails the step (bash -e) rather
+          # than reading as "not affected" and passing with nothing run.
+          affected=$(pnpm exec nx show projects --affected --withTarget e2e --json)
+          # jq -e exits 1 only for "false"; any other non-zero (5 = not JSON)
+          # is an error, not "not affected".
+          found=0
+          jq -e 'index("api_v2") != null' <<<"$affected" > /dev/null || found=$?
+          if [ "$found" -eq 1 ]; then
+            echo "api_v2 is not affected; skipping its e2e specs."
+            exit 0
+          fi
+          [ "$found" -eq 0 ] || exit "$found"
+          echo "ran=true" >> "$GITHUB_OUTPUT"
+          pnpm exec nx run api_v2:e2e -- --reporter=default --reporter=json \
+            --outputFile.json="$PWD/api-v2-e2e.json" 2>&1 | tee e2e-output.txt
+          exit ${PIPESTATUS[0]}
+
+      - name: Report api_v2 e2e results
+        if: ${{ !cancelled() && steps.e2e.outputs.ran == 'true' }}
+        env:
+          E2E_OUTCOME: ${{ steps.e2e.outcome }}
+        run: |
+          report=api-v2-e2e.json
+          if [ ! -s "$report" ]; then
+            {
+              echo "## ❌ api_v2 e2e specs did not report"
+              echo ""
+              echo '```'
+              sed 's/\x1b\[[0-9;]*m//g' e2e-output.txt | tail -100
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+
+          total=$(jq '.numTotalTests' "$report")
+          failed=$(jq '.numFailedTests' "$report")
+          skipped=$(jq '.numPendingTests + .numTodoTests' "$report")
+          if [ "$E2E_OUTCOME" = "success" ] && [ "$failed" -eq 0 ] && [ "$skipped" -eq 0 ] && [ "$total" -gt 0 ]; then
+            heading="## ✅ api_v2 e2e specs passed"
+            ok=true
+          else
+            heading="## ❌ api_v2 e2e specs failed"
+            ok=false
+          fi
+
+          {
+            echo "$heading"
+            echo ""
+            echo "| Spec | File | Passed | Failed | Skipped |"
+            echo "| --- | --- | ---: | ---: | ---: |"
+            jq -r '.testResults[] | [
+                (.name | sub(".*/apps/api_v2/"; "")),
+                .status,
+                ([.assertionResults[] | select(.status == "passed")] | length),
+                ([.assertionResults[] | select(.status == "failed")] | length),
+                ([.assertionResults[] | select(.status != "passed" and .status != "failed")] | length)
+              ] | "| `\(.[0])` | \(.[1]) | \(.[2]) | \(.[3]) | \(.[4]) |"' "$report"
+            echo ""
+            if [ "$skipped" -gt 0 ]; then
+              echo "**$skipped test(s) skipped.** CI must run them all. Check the File"
+              echo "column first: a failed file (a throwing beforeAll) skips its tests."
+              echo "Otherwise the database was not reached (\`DB_HOST\` unset) or a"
+              echo "test is marked skip/todo."
+              echo ""
+            fi
+            if [ "$ok" = false ]; then
+              echo "<details><summary>Output (last 200 lines)</summary>"
+              echo ""
+              echo '```'
+              sed 's/\x1b\[[0-9;]*m//g' e2e-output.txt | tail -200
+              echo '```'
+              echo "</details>"
+              echo ""
+              echo "**Fix it locally** (needs a Postgres on localhost):"
+              echo '```bash'
+              echo "DB_HOST=localhost pnpm exec nx run api_v2:e2e"
+              echo '```'
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+          [ "$ok" = true ]
+
   build:
     name: Build
     runs-on: ubuntu-latest

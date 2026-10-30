@@ -27,8 +27,8 @@ import {
 } from '../lib/service-status'
 import { shouldHideStartLink } from '../lib/hide-start-link'
 import { checkFormAccessible } from '../lib/preview-form-access'
-import { getApiV2Page } from '../lib/api-v2-page'
-import type { SerializedContentPage } from '../lib/api-v2-page'
+import { contentSource, getApiV2Page } from '../lib/api-v2-page'
+import type { ContentSource, SerializedContentPage } from '../lib/api-v2-page'
 import {
   getApiV2CategoryListing,
   resolveCategoryAddress,
@@ -78,6 +78,8 @@ type LoaderData =
       /** Whether the viewer may see the `/start` step — for hiding the online
        * application method. Precomputed here so the component needs no overlay. */
       startSubPageVisible: boolean
+      /** Sent as `x-content-source` (contract in api-v2-page.ts). */
+      source: ContentSource
       /** api_v2 mode only: the whole trail, this page last and Home left out,
        * shared by the visible breadcrumbs and their JSON-LD. */
       breadcrumbs?: Crumb[]
@@ -248,6 +250,7 @@ export const Route = createFileRoute('/$')({
           ? !v2Page.hideStartLinks
           : isStartSubPageVisible(page, level, overlay),
         page: v2Page,
+        source: contentSource(v2),
         ...(apiMode && {
           breadcrumbs: v2Page
             ? v2Page.breadcrumbs.map((crumb) => ({
@@ -288,6 +291,18 @@ export const Route = createFileRoute('/$')({
 
     throw notFound()
   },
+  // On the SSR document response, unlike setResponseHeader in a server fn.
+  headers: ({ loaderData }) =>
+    loaderData
+      ? {
+          'x-content-source':
+            loaderData.kind === 'page'
+              ? loaderData.source
+              : loaderData.kind === 'api-category'
+                ? 'api_v2'
+                : 'static',
+        }
+      : undefined,
   head: ({ loaderData }) => {
     if (!loaderData) return {}
     if (loaderData.kind === 'page') {

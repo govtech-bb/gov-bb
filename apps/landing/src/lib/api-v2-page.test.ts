@@ -2,12 +2,13 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { Element, RootContent } from 'hast'
 import {
   API_V2_TIMEOUT_MS,
+  contentSource,
   fetchApiV2Page,
   fromApiV2,
   resolveApiV2Base,
   resolveApiV2Page,
 } from './api-v2-page'
-import type { PageResponse } from './api-v2-page'
+import type { ApiV2MissReason, PageResponse } from './api-v2-page'
 
 const BASE = 'http://api.example'
 
@@ -43,6 +44,12 @@ function stubFetch(response: Response | Error) {
     if (response instanceof Error) throw response
     return response
   }) as unknown as typeof fetch & ReturnType<typeof vi.fn>
+}
+
+/** The one `api_v2_fallback` line logged through `spy`, parsed. */
+function logged(spy: ReturnType<typeof vi.spyOn>) {
+  expect(spy).toHaveBeenCalledTimes(1)
+  return JSON.parse(spy.mock.calls[0][0] as string) as Record<string, unknown>
 }
 
 function findElement(
@@ -113,6 +120,7 @@ describe('fetchApiV2Page', () => {
 
   it('treats a 404 as a silent not_found miss carrying its Cache-Control', async () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
     const result = await fetchApiV2Page(
       BASE,
       '/x',
@@ -130,6 +138,7 @@ describe('fetchApiV2Page', () => {
       cacheControl: 'public, max-age=10',
     })
     expect(warn).not.toHaveBeenCalled()
+    expect(error).not.toHaveBeenCalled()
   })
 
   it('cancels the unread body of a miss so the socket is released', async () => {
@@ -140,32 +149,49 @@ describe('fetchApiV2Page', () => {
   })
 
   it.each([500, 408, 429])(
-    'treats a %i as a status miss and warns',
+    'treats a %i as a status miss and logs an error',
     async (status) => {
-      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+      const error = vi.spyOn(console, 'error').mockImplementation(() => {})
       const result = await fetchApiV2Page(
         BASE,
         '/x',
         stubFetch(jsonResponse(status, {})),
       )
       expect(result).toEqual({ kind: 'miss', reason: 'status' })
-      expect(warn).toHaveBeenCalled()
+      expect(logged(error)).toEqual({
+        event: 'api_v2_fallback',
+        reason: 'status',
+        url: '/x',
+        status,
+      })
     },
   )
 
-  it('treats a network error as a miss and warns', async () => {
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+  it('treats a network error as a miss and logs an error', async () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
     const result = await fetchApiV2Page(
       BASE,
       '/x',
-      stubFetch(new TypeError('fetch failed')),
+      stubFetch(
+        new TypeError('fetch failed', {
+          cause: new Error('connect ECONNREFUSED', {
+            cause: 'socket closed',
+          }),
+        }),
+      ),
     )
     expect(result).toEqual({ kind: 'miss', reason: 'network' })
-    expect(warn).toHaveBeenCalled()
+    expect(logged(error)).toEqual({
+      event: 'api_v2_fallback',
+      reason: 'network',
+      url: '/x',
+      error: 'fetch failed: connect ECONNREFUSED: socket closed',
+    })
   })
 
-  it('treats a 4xx as a rejected miss (api_v2 answering, not failing)', async () => {
-    vi.spyOn(console, 'warn').mockImplementation(() => {})
+  it('treats a 4xx as a rejected miss (api_v2 answering) and warns', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
     const result = await fetchApiV2Page(
       BASE,
       '/x',
@@ -176,11 +202,18 @@ describe('fetchApiV2Page', () => {
       reason: 'rejected',
       cacheControl: null,
     })
+    expect(logged(warn)).toEqual({
+      event: 'api_v2_fallback',
+      reason: 'rejected',
+      url: '/x',
+      status: 400,
+    })
+    expect(error).not.toHaveBeenCalled()
   })
 
   it('treats a timeout while reading a 301 body as a timeout miss', async () => {
     vi.useFakeTimers()
-    vi.spyOn(console, 'warn').mockImplementation(() => {})
+    vi.spyOn(console, 'error').mockImplementation(() => {})
     const stalledBody = vi.fn(
       async (_url: string, init: RequestInit) =>
         ({
@@ -205,7 +238,7 @@ describe('fetchApiV2Page', () => {
 
   it('treats a timeout as a timeout miss', async () => {
     vi.useFakeTimers()
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
     const neverResolves = vi.fn(
       (_url: string, init: RequestInit) =>
         new Promise<Response>((_, reject) => {
@@ -217,12 +250,17 @@ describe('fetchApiV2Page', () => {
     const pending = fetchApiV2Page(BASE, '/x', neverResolves)
     await vi.advanceTimersByTimeAsync(API_V2_TIMEOUT_MS)
     expect(await pending).toEqual({ kind: 'miss', reason: 'timeout' })
-    expect(warn).toHaveBeenCalled()
+    expect(logged(error)).toMatchObject({
+      event: 'api_v2_fallback',
+      reason: 'timeout',
+      url: '/x',
+      error: 'aborted',
+    })
   })
 
   it('treats a timeout while reading the body as a timeout miss', async () => {
     vi.useFakeTimers()
-    vi.spyOn(console, 'warn').mockImplementation(() => {})
+    vi.spyOn(console, 'error').mockImplementation(() => {})
     const stalledBody = vi.fn(
       async (_url: string, init: RequestInit) =>
         ({
@@ -241,18 +279,23 @@ describe('fetchApiV2Page', () => {
     expect(await pending).toEqual({ kind: 'miss', reason: 'timeout' })
   })
 
-  it('treats an unparseable 200 body as a miss', async () => {
-    vi.spyOn(console, 'warn').mockImplementation(() => {})
+  it('treats an unparseable 200 body as a miss and logs an error', async () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
     const result = await fetchApiV2Page(
       BASE,
       '/x',
       stubFetch(new Response('<html>', { status: 200 })),
     )
     expect(result).toEqual({ kind: 'miss', reason: 'malformed' })
+    expect(logged(error)).toEqual({
+      event: 'api_v2_fallback',
+      reason: 'malformed',
+      url: '/x',
+    })
   })
 
   it('treats a malformed 200 body as a miss', async () => {
-    vi.spyOn(console, 'warn').mockImplementation(() => {})
+    vi.spyOn(console, 'error').mockImplementation(() => {})
     const result = await fetchApiV2Page(
       BASE,
       '/x',
@@ -262,7 +305,7 @@ describe('fetchApiV2Page', () => {
   })
 
   it('treats a 200 without a boolean hide_start_links as a miss', async () => {
-    vi.spyOn(console, 'warn').mockImplementation(() => {})
+    vi.spyOn(console, 'error').mockImplementation(() => {})
     const { hide_start_links: _, ...body } = pageBody()
     const result = await fetchApiV2Page(
       BASE,
@@ -292,7 +335,7 @@ describe('fetchApiV2Page', () => {
   ])(
     'rejects a subcategory without a category %j',
     async ({ subcategory, ...taxonomy }) => {
-      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+      const error = vi.spyOn(console, 'error').mockImplementation(() => {})
       const { category: _, ...body } = pageBody()
 
       const result = await fetchApiV2Page(BASE, '/x', async () =>
@@ -300,7 +343,11 @@ describe('fetchApiV2Page', () => {
       )
 
       expect(result).toEqual({ kind: 'miss', reason: 'malformed' })
-      expect(warn).toHaveBeenCalledWith('[api-v2] malformed page for /x')
+      expect(logged(error)).toEqual({
+        event: 'api_v2_fallback',
+        reason: 'malformed',
+        url: '/x',
+      })
     },
   )
 
@@ -464,15 +511,19 @@ describe('fetchApiV2Page', () => {
     expect(result).toEqual({ kind: 'redirect', to: '/new', cacheControl: null })
   })
 
-  it('treats a 301 with no target as a no_target failure', async () => {
-    vi.spyOn(console, 'warn').mockImplementation(() => {})
-
+  it('treats a 301 with no target as a no_target failure and logs an error', async () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
     const result = await fetchApiV2Page(
       BASE,
       '/old',
       stubFetch(jsonResponse(301, {})),
     )
     expect(result).toEqual({ kind: 'miss', reason: 'no_target' })
+    expect(logged(error)).toEqual({
+      event: 'api_v2_fallback',
+      reason: 'no_target',
+      url: '/old',
+    })
   })
 
   it.each([
@@ -506,7 +557,12 @@ describe('fetchApiV2Page', () => {
         reason: 'bad_redirect',
         cacheControl: 'max-age=60',
       })
-      expect(warn).toHaveBeenCalled()
+      expect(logged(warn)).toEqual({
+        event: 'api_v2_fallback',
+        reason: 'bad_redirect',
+        url: '/old',
+        to: target,
+      })
     },
   )
 
@@ -673,8 +729,26 @@ describe('fromApiV2', () => {
     )
   })
 
+  it('dates "Last updated" from content_updated_at when the API sends it (#3105)', async () => {
+    const page = await fromApiV2(
+      pageBody({
+        published_at: '2026-01-02T00:00:00.000Z',
+        content_updated_at: '2026-10-29T13:13:03.684Z',
+        updated_at: '2026-11-01T00:00:00.000Z',
+      }),
+    )
+    expect(page.frontmatter.publish_date).toEqual(
+      new Date('2026-10-29T00:00:00.000Z'),
+    )
+  })
+
   it('has no publish_date until the page has been published', async () => {
-    const page = await fromApiV2(pageBody({ published_at: null }))
+    const page = await fromApiV2(
+      pageBody({
+        published_at: null,
+        content_updated_at: '2026-10-29T13:13:03.684Z',
+      }),
+    )
     expect(page.frontmatter).not.toHaveProperty('publish_date')
   })
 
@@ -780,6 +854,44 @@ describe('resolveApiV2Page', () => {
       reason: 'compile',
       cacheControl: 'max-age=60',
     })
-    expect(warn).toHaveBeenCalled()
+    expect(logged(warn)).toMatchObject({
+      event: 'api_v2_fallback',
+      reason: 'compile',
+      url: '/x',
+      error: expect.any(String),
+    })
+  })
+})
+
+describe('contentSource', () => {
+  it('is api_v2 for a page', async () => {
+    const page = await fromApiV2(pageBody())
+    expect(contentSource({ kind: 'page', page, cacheControl: null })).toBe(
+      'api_v2',
+    )
+  })
+
+  it('is api_v2-stale for a kept page the cache served after a failure', async () => {
+    const page = await fromApiV2(pageBody())
+    expect(
+      contentSource({ kind: 'page', page, cacheControl: null, stale: true }),
+    ).toBe('api_v2-stale')
+  })
+
+  it.each<[ApiV2MissReason, string]>([
+    ['unconfigured', 'static'],
+    ['skipped', 'static'],
+    ['not_found', 'static'],
+    ['rejected', 'static'],
+    ['bad_redirect', 'static-fallback'],
+    ['compile', 'static-fallback'],
+    ['no_target', 'static-fallback'],
+    ['status', 'static-fallback'],
+    ['malformed', 'static-fallback'],
+    ['timeout', 'static-fallback'],
+    ['network', 'static-fallback'],
+    ['circuit_open', 'static-fallback'],
+  ])('is %s → %s for a miss', (reason, source) => {
+    expect(contentSource({ kind: 'miss', reason })).toBe(source)
   })
 })

@@ -903,7 +903,7 @@ export class PostgresPages
         with entries as (
           select version_no, actor,
                  snapshot->>'visibility' = 'public' as public,
-                 snapshot - array['visibility', 'published_at', 'updated_at', 'created_at']
+                 snapshot - array['visibility', 'published_at', 'content_updated_at', 'updated_at', 'created_at']
                    - case when snapshot->>'parent_id' is null then '' else 'category_id' end
                    as content
             from change_events

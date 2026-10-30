@@ -172,6 +172,7 @@ describe("GET /pages?url=", () => {
       category: "money-financial-support",
       subcategory: null,
       published_at: created.published_at,
+      content_updated_at: created.published_at,
       updated_at: created.updated_at,
     });
   });
@@ -815,6 +816,43 @@ describe("PUT /pages/:id", () => {
       url: "/pages/22222222-2222-4222-8222-222222222222/history",
     });
     expect(response.statusCode).toBe(404);
+  });
+
+  it("serves content_updated_at, moved by a content change but not by a visibility change (#3105)", async () => {
+    const draft = await seedPage({ visibility: "draft" });
+    const put = async (
+      current: typeof draft,
+      changes: Record<string, unknown>,
+    ) =>
+      (
+        await inject({
+          method: "PUT",
+          url: `/pages/${draft.id}`,
+          payload: { ...current, ...changes },
+        })
+      ).json();
+    const servedDate = async () =>
+      (await read(draft.url)).json().content_updated_at;
+
+    const editedDraft = await put(draft, { title: "Drafted" });
+    const published = await put(editedDraft, { visibility: "public" });
+    const first = await servedDate();
+    expect(new Date(first).getTime()).toBeGreaterThanOrEqual(
+      new Date(published.published_at).getTime(),
+    );
+
+    const hidden = await put(published, { visibility: "preview" });
+    const again = await put(hidden, { visibility: "public" });
+    expect(await servedDate()).toBe(first);
+
+    const edited = await put(await put(again, { visibility: "preview" }), {
+      title: "Renamed",
+    });
+    await put(edited, { visibility: "public" });
+    const moved = await servedDate();
+    expect(new Date(moved).getTime()).toBeGreaterThan(
+      new Date(first).getTime(),
+    );
   });
 
   it("422s a page placed beneath its own sub-page", async () => {
