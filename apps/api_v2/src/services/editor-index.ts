@@ -58,6 +58,26 @@ export class EditorIndex {
     return pages.ok ? ok(groupServices(pages.value)) : pages;
   }
 
+  /** All stored page paths and unambiguous bare-slug redirects, regardless of visibility or category. */
+  async pagePaths(): Promise<Result<string[], ContentStoreUnavailable>> {
+    const pages = await this.reads.indexedPages();
+    if (!pages.ok) return pages;
+    const slugs = new Map<string, number>();
+    for (const page of pages.value)
+      slugs.set(page.slug, (slugs.get(page.slug) ?? 0) + 1);
+    return ok(
+      [
+        ...new Set(
+          pages.value.flatMap((page) =>
+            slugs.get(page.slug) === 1
+              ? [page.url, `/${page.slug}`]
+              : [page.url],
+          ),
+        ),
+      ].sort(),
+    );
+  }
+
   /** The service whose entry page this is, with every page in it, or null. */
   async service(
     id: PageId,

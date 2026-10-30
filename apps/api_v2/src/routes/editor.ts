@@ -228,6 +228,17 @@ export const editorRoutes: FastifyPluginAsyncZod<{
   });
   editor.route({
     method: "GET",
+    url: "/editor/page-paths",
+    schema: SCHEMAS.pagePaths,
+    handler: async (request, reply) => {
+      const paths = await index.pagePaths();
+      return paths.ok
+        ? paths.value
+        : reply.status(500).send(storageFailed(request.log, paths.error));
+    },
+  });
+  editor.route({
+    method: "GET",
     url: "/services",
     schema: SCHEMAS.listServices,
     handler: async (request, reply) => {

@@ -1,32 +1,9 @@
 import { parseDocument } from "yaml";
 import { parsePageMarkdown } from "../pages/markdown";
+import type { ProsePageDocument } from "../templates/prose-page-content";
 
-/** Display-only runtime contract with landing's /cms-preview/renderer.js. No source imports cross apps. */
-export type SitePreviewDocument = {
-  // eslint-disable-next-line anti-slop/no-unsafe-dictionary-type -- Opaque YAML crosses the renderer boundary; landing validates the fields it reads.
-  frontmatter: Record<string, unknown>;
-  body: string;
-  path: string;
-  breadcrumbs: Array<{ label: string; href: string }>;
-  formStatus?: "available" | "unavailable" | "maintenance" | "closed";
-  startSubPageVisible?: boolean;
-};
-
-export type SitePreviewRegions = { title: HTMLElement; lede: HTMLElement; body: HTMLElement };
-
-export type SitePreviewHandle = {
-  update: (document: SitePreviewDocument) => Promise<void>;
-  setEditing: (editing: boolean) => SitePreviewRegions | null;
-  dispose: () => void;
-};
-
-export type SitePreviewRenderer = {
-  mountCmsPreview: (
-    container: HTMLElement,
-    document: SitePreviewDocument,
-    assetBase: string,
-  ) => Promise<SitePreviewHandle>;
-};
+/** Display-only input for the local prose page template. */
+export type SitePreviewDocument = ProsePageDocument;
 
 export type SitePreviewContext = Pick<
   SitePreviewDocument,
@@ -70,27 +47,4 @@ export function sitePreviewDocument(
     formStatus: context?.formStatus,
     startSubPageVisible: context?.startSubPageVisible,
   };
-}
-
-/** Never take executable module or stylesheet URLs from authored content. */
-export function sitePreviewBase(configured = import.meta.env.VITE_SITE_PREVIEW_URL): URL {
-  if (!configured)
-    throw new Error(
-      "Site preview is not configured. Set VITE_SITE_PREVIEW_URL to the landing renderer’s asset directory.",
-    );
-  const url = new URL(configured);
-
-  if (
-    (url.protocol !== "https:" &&
-      !(url.protocol === "http:" && ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname))) ||
-    url.username ||
-    url.password ||
-    url.search ||
-    url.hash
-  )
-    throw new Error("Site preview requires a trusted HTTPS asset directory.");
-
-  if (!url.pathname.endsWith("/")) url.pathname += "/";
-
-  return url;
 }

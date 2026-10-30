@@ -12,17 +12,6 @@ export default defineConfig({
     extensions: ['.mjs', '.js', '.mts', '.ts', '.jsx', '.tsx', '.json'],
   },
   plugins: [
-    {
-      name: 'cms-preview-assets',
-      configureServer(server) {
-        // Nitro serves public assets before Vite's own CORS middleware.
-        server.middlewares.use((request, response, next) => {
-          if (request.url?.startsWith('/cms-preview/'))
-            response.setHeader('Access-Control-Allow-Origin', '*')
-          next()
-        })
-      },
-    },
     tailwindcss(),
     devtools(),
     markdown(),
@@ -66,6 +55,8 @@ export default defineConfig({
         formsApiUrl: process.env.VITE_FORMS_API_URL ?? '',
         // Optional api_v2 base for pages (src/lib/api-v2-page.ts, #2944); empty → static only.
         apiV2Url: process.env.VITE_API_V2_URL ?? '',
+        // api_v2's LANDING_SECRET, sent as x-landing-token to skip its rate limit (#3129).
+        landingSecret: process.env.LANDING_SECRET ?? '',
       },
     }),
     tanstackStart(),

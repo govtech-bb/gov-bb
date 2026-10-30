@@ -25,6 +25,7 @@ const suites = requested.length
       "native-formula.mjs",
       "native-field-controls.mjs",
       "link-editing.mjs",
+      "link-checks.mjs",
       "bug-undo-after-inserts.mjs",
       "source-editing.mjs",
       "unified-logic.mjs",
@@ -39,6 +40,7 @@ const suites = requested.length
       "collections.mjs",
       "page-writer.mjs",
       "page-preview.mjs",
+      "site-preview-smoke.mjs",
       "site-preview.mjs",
     ];
 

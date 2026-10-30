@@ -29,6 +29,9 @@ let reply = { status: 200, body: '' }
 
 const requests: string[] = []
 
+/** The `x-landing-token` each request carried. */
+const tokens: (string | undefined)[] = []
+
 let server: Server
 
 let origin: string
@@ -45,6 +48,7 @@ const nextBase = () => `${origin}/${++bases}`
 beforeAll(async () => {
   server = createServer((request, response) => {
     requests.push(request.url ?? '')
+    tokens.push(request.headers['x-landing-token'] as string | undefined)
     response.writeHead(reply.status, { 'content-type': 'application/json' })
     response.end(reply.body)
   })
@@ -60,6 +64,7 @@ afterAll(async () => {
 
 afterEach(() => {
   requests.length = 0
+  tokens.length = 0
   vi.restoreAllMocks()
   vi.useRealTimers()
   vi.unstubAllEnvs()
@@ -75,6 +80,15 @@ describe('fetchApiV2Catalog', () => {
   it('is empty without reading anything when api_v2 is not configured', async () => {
     expect(await fetchApiV2Catalog(null)).toEqual([])
     expect(requests).toEqual([])
+  })
+})
+
+describe('landing token (#3129)', () => {
+  it('sends it with both reads', async () => {
+    reply = json(200, { pages: [], documents: [] })
+    await fetchApiV2Catalog(nextBase(), fetch, 'landing-secret')
+    await readApiV2SearchDocuments(nextBase(), fetch, 'landing-secret')
+    expect(tokens).toEqual(['landing-secret', 'landing-secret'])
   })
 })
 

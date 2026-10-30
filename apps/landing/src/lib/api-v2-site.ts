@@ -2,7 +2,7 @@ import { createServerFn } from '@tanstack/react-start'
 import { QueryClient } from '@tanstack/react-query'
 import { z } from 'zod'
 import { readPublic } from './api-v2-categories'
-import { apiV2Base } from './api-v2-page'
+import { apiV2Base, landingToken } from './api-v2-page'
 import { logFallback } from './api-v2-log'
 
 /**
@@ -47,6 +47,7 @@ async function cachedList<T, U>(
   schema: z.ZodType<T>,
   pick: (body: T) => U[],
   fetchImpl: typeof fetch,
+  token: string | undefined,
 ): Promise<{ list: U[]; freshForMs: number }> {
   if (!base) return { list: [], freshForMs: STALE_MS }
 
@@ -55,7 +56,7 @@ async function cachedList<T, U>(
   const list = await siteCache.fetchQuery({
     queryKey,
     queryFn: async () => {
-      const result = await readPublic(base, path, schema, fetchImpl)
+      const result = await readPublic(base, path, schema, fetchImpl, token)
       if (result.kind === 'ok') return pick(result.value)
       // The route always exists; a 404 means api_v2 isn't serving it.
       if (result.kind === 'missing')
@@ -72,10 +73,11 @@ async function cachedList<T, U>(
   return { list, freshForMs: Math.max(0, updatedAt + STALE_MS - Date.now()) }
 }
 
-/** `GET /catalog`: the url of every public page. */
+/** `GET /catalog`: the url of every public page. `token` is landing's rate-limit exemption (#3129). */
 export function fetchApiV2Catalog(
   base: string | null,
   fetchImpl: typeof fetch = fetch,
+  token?: string,
 ): Promise<string[]> {
   return cachedList(
     base,
@@ -83,6 +85,7 @@ export function fetchApiV2Catalog(
     CatalogBody,
     (body) => body.pages.map((page) => page.url),
     fetchImpl,
+    token,
   ).then(({ list }) => list)
 }
 
@@ -92,10 +95,11 @@ type SearchDocumentsRead = {
   freshForMs: number
 }
 
-/** `GET /search/documents`: every public page's search text. */
+/** `GET /search/documents`: every public page's search text. `token` as for the catalog. */
 export async function readApiV2SearchDocuments(
   base: string | null,
   fetchImpl: typeof fetch = fetch,
+  token?: string,
 ): Promise<SearchDocumentsRead> {
   const { list, freshForMs } = await cachedList(
     base,
@@ -103,13 +107,14 @@ export async function readApiV2SearchDocuments(
     SearchDocumentsBody,
     (body) => body.documents,
     fetchImpl,
+    token,
   )
   return { documents: list, freshForMs }
 }
 
 /** Server function: the configured api_v2's public search documents. */
 export const getApiV2SearchDocuments = createServerFn().handler(() =>
-  readApiV2SearchDocuments(apiV2Base()),
+  readApiV2SearchDocuments(apiV2Base(), fetch, landingToken()),
 )
 
 const NO_DOCUMENTS: readonly ApiV2SearchDocument[] = []

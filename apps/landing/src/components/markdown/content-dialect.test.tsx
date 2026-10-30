@@ -7,7 +7,7 @@ import {
 } from '@tanstack/react-router'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { processMarkdown } from '../../utils/markdown/processor'
-import { bakeStartLinkFormId } from '../../utils/markdown/plugins/bakeStartLinkFormId'
+import { bakeStartLinkFormId } from '@govtech-bb/govbbmarkd/form-links'
 import { MarkdownBody } from './MarkdownContent'
 
 async function renderContent(

@@ -73,7 +73,9 @@ export async function installPageApi(context, service, initialPages) {
 
     if (
       request.resourceType() === "document" ||
-      !/^\/(services(?:\/[^?]+)?|pages(?:\/[^?]+)?|editor\/categories|version)$/.test(path)
+      !/^\/(services(?:\/[^?]+)?|pages(?:\/[^?]+)?|editor\/(categories|page-paths)|version)$/.test(
+        path,
+      )
     )
       return route.fallback();
 
@@ -90,6 +92,9 @@ export async function installPageApi(context, service, initialPages) {
     if (request.method() === "OPTIONS") return route.fulfill({ status: 204, headers });
 
     if (path === "/editor/categories") return reply({ categories: [category] });
+
+    if (path === "/editor/page-paths")
+      return reply([...new Set([...pages.values(), ...services.values()].map((page) => page.url))]);
 
     if (path === "/version")
       return reply({ count: pages.size, latest: new Date(version).toISOString() });

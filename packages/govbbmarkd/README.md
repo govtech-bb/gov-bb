@@ -11,9 +11,10 @@ It does not load content, query databases or resolve forms.
 | `@govtech-bb/govbbmarkd`             | Parsing, validation, compilation, readable text and document outlines |
 | `@govtech-bb/govbbmarkd/react`       | Optional GovBB design-system rendering                                |
 | `@govtech-bb/govbbmarkd/content-url` | URL policy without loading the Markdown processor                     |
-| `@govtech-bb/govbbmarkd/legacy`      | Deprecated compatibility parsers and serializers   |
+| `@govtech-bb/govbbmarkd/form-links`  | Form-link transforms without loading the Markdown processor           |
+| `@govtech-bb/govbbmarkd/legacy`      | Deprecated compatibility parsers and serializers                      |
 
-The main, URL and legacy entry points do not load React. The React renderer
+The main, URL, form-link and legacy entry points do not load React. The React renderer
 requires the optional peers `react` and `@govtech-bb/react@1.0.0-alpha.29`.
 Use one React instance per application; the editor's Vite configuration
 deduplicates React and the design-system package.
@@ -88,9 +89,12 @@ ranking, indexing jobs and embeddings.
 `renderMarkdownNodes(hast.children, components?)` renders the validated tree
 with `ButtonGroup`, `LinkButton`, `ShowHide`, `SummaryList` and table components.
 Host overrides apply recursively, including links inside tables and summary
-values. The host supplies routing, form availability, analytics and any retained
-application-specific HTML components. Without a host adapter, unresolved form
-actions have no destination and are marked disabled.
+values. The renderer includes retained GovBB contacts, highlights and muted HTML.
+The host supplies routing, form availability, analytics and any other
+application-specific HTML components. Import `bakeStartLinkFormId` and
+`hideStartLinks` from `@govtech-bb/govbbmarkd/form-links` for the shared form-link
+transformations; hosts decide availability. Without a host adapter, unresolved
+form actions have no destination and are marked disabled.
 
 Existing editor modules can retain their deprecated `PageHandler.render` and
 recursive `PageConversion.render` callbacks. The compatibility adapter keeps those

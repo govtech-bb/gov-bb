@@ -21,6 +21,9 @@ import {
   type LegacyMarkdownRenderer,
 } from "#govbbmarkd/legacy-preview";
 import { LegacyMarkdownNotice } from "#govbbmarkd/legacy-notice";
+import { Contacts, Contact } from "#govbbmarkd/legacy-contacts";
+import { Highlights, Highlight } from "#govbbmarkd/legacy-highlights";
+import { Muted } from "#govbbmarkd/legacy-muted";
 
 export { LegacyMarkdownNotice } from "#govbbmarkd/legacy-notice";
 export type { LegacyMarkdownRenderer } from "#govbbmarkd/legacy-preview";
@@ -232,6 +235,11 @@ function renderCompiledMarkdownNodes(
       return <TableCell {...props}>{children}</TableCell>;
     },
     notice: LegacyMarkdownNotice,
+    contacts: Contacts,
+    contact: Contact,
+    highlights: Highlights,
+    highlight: Highlight,
+    muted: Muted,
     "show-hide": ({
       node: _node,
       summary,

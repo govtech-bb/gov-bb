@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { categoryLabel } from "../api/categories";
 import { ApiFailure, isText, type ApiRevision, type EditorApi } from "../api/client";
 import { apiMessage } from "../api/failure-messages";
+import { pageLinkTargetsQuery } from "../api/page-link-targets";
 import { pageFieldLabel } from "../api/page-markdown";
 import {
   categoriesQuery,
@@ -26,6 +27,7 @@ import { Textarea } from "../ui/textarea";
 import { toast } from "../ui/toast";
 import { lineDiff } from "./line-diff";
 import { LoadFailure } from "./load-failure";
+import { brokenLinks, linkConfirmation, linksInMarkdown } from "./broken-links";
 
 const when = new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeStyle: "short" });
 
@@ -310,6 +312,33 @@ export function ReviewScreen({
     },
   });
 
+  // What the publish dialog says about the change's links: looked up again each time it opens, and until that
+  // settles it can't be confirmed. A page list that couldn't be read says so; it never counts as clear.
+  const [linkCheck, setLinkCheck] = useState<
+    { status: "checking" } | { status: "done"; note?: string }
+  >();
+
+  const checkLinks = async (body: string, url: string) => {
+    setLinkCheck({ status: "checking" });
+    const links = linksInMarkdown(body, url);
+    let note: string | undefined;
+
+    if (!links) note = linkConfirmation([], true)?.message;
+    else if (links.length)
+      try {
+        const listed = await client.fetchQuery({
+          ...pageLinkTargetsQuery(api),
+          staleTime: 0,
+        });
+
+        note = linkConfirmation(brokenLinks(links, listed, url), false)?.message;
+      } catch {
+        note = linkConfirmation([], true)?.message;
+      }
+
+    setLinkCheck({ status: "done", note });
+  };
+
   const gone = useRef<HTMLDivElement>(null);
   const missing = revision.error instanceof ApiFailure && revision.error.status === 404;
   // A failed read keeps the last data, so with it the change was on screen and has gone since
@@ -335,6 +364,9 @@ export function ReviewScreen({
     setComment("");
     setCommentError("");
     setDeciding({ decision, reviewed: revision.data.updated_at });
+
+    if (decision === "publish")
+      void checkLinks(revision.data.fields.body_markdown, revision.data.fields.url);
   };
 
   const close = () => {
@@ -449,7 +481,14 @@ export function ReviewScreen({
           if (!next) close();
         }}
         title="Publish this change?"
-        description={`Citizens will see it at ${change.fields.url} straight away.`}
+        description={
+          <>
+            Citizens will see it at {change.fields.url} straight away.
+            {linkCheck?.status === "checking" && " Checking its links…"}
+            {linkCheck?.status === "done" && linkCheck.note && ` ${linkCheck.note}`}
+          </>
+        }
+        confirmDisabled={linkCheck?.status !== "done"}
         confirmLabel="Approve and publish"
         pendingLabel="Publishing…"
         pending={decide.isPending}
