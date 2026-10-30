@@ -1248,6 +1248,7 @@ describe("employee access", () => {
     ["POST", "/pages"],
     ["PUT", "/pages/not-a-uuid"],
     ["DELETE", "/pages/not-a-uuid"],
+    ["GET", "/pages/not-a-uuid/history"],
   ] as const)(
     "rejects anonymous %s %s before validation or storage",
     async (method, url) => {

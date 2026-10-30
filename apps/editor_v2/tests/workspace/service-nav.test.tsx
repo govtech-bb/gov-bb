@@ -20,6 +20,7 @@ const rootRoute = createRootRoute();
 const router = createRouter({
   routeTree: rootRoute.addChildren([
     createRoute({ getParentRoute: () => rootRoute, path: "/services/$serviceId/$documentId" }),
+    createRoute({ getParentRoute: () => rootRoute, path: "/history/$pageId" }),
   ]),
   history: createMemoryHistory({ initialEntries: ["/services"] }),
 });
@@ -186,4 +187,20 @@ test("while a service's pages load, its sidebar shows what's known and offers no
     "Add document",
     "Delete page",
   ]);
+});
+
+test("View page history shows only for a selected page in the list, and opens its history", async () => {
+  const fees = pageDocumentFromApi({ id: "fees", title: "Fees", role: "supporting" });
+
+  const link = () =>
+    [...host.querySelectorAll("a")].find((item) => item.textContent === "View page history");
+
+  await render({ rows: [top(fees)] });
+  expect(link()).toBeUndefined();
+
+  await render({ rows: [top(fees)], selectedId: "gone" });
+  expect(link()).toBeUndefined();
+
+  await render({ rows: [top(fees)], selectedId: "fees" });
+  expect(link()?.getAttribute("href")).toBe("/history/fees?service=service");
 });

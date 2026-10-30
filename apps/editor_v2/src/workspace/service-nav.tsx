@@ -45,6 +45,7 @@ export function ServiceNav({
   const reason = useId();
   const pages = rows;
   const blocked = readOnly ?? deleteBlocked;
+  const selected = pages.some((row) => row.document.id === selectedId);
 
   const item = (row: ServiceNavRow, nested: ReactNode[]) => (
     <Sidebar.Item
@@ -108,7 +109,7 @@ export function ServiceNav({
             </Button>
             {onDelete && (
               <Button
-                disabled={!pages.some((row) => row.document.id === selectedId) || !!blocked}
+                disabled={!selected || !!blocked}
                 aria-describedby={blocked ? reason : undefined}
                 onClick={onDelete}
               >
@@ -122,7 +123,7 @@ export function ServiceNav({
             {blocked}
           </p>
         )}
-        {selectedId && pages.some((row) => row.document.id === selectedId) && (
+        {selectedId && selected && (
           <TextLink
             className="mt-4 block w-fit text-14"
             render={

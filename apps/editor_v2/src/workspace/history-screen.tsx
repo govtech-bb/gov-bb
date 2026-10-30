@@ -35,9 +35,9 @@ const ACTIONS: Record<PageHistoryEntry["action"], string> = {
   discarded: "Review closed when the page was taken out of public view",
 };
 
-/** Who did it: their name, the system for imports and seeding, or a former employee. */
+/** Who did it: the system for imports and seeding, though it has a user row named "System", or their name. */
 const byWhom = (entry: PageHistoryEntry) =>
-  entry.actor_name ?? (entry.actor === "system" ? "the system" : "a former employee");
+  entry.actor === "system" ? "the system" : (entry.actor_name ?? "a former employee");
 
 /** Everything that happened to one page, newest first. Read-only: nothing here changes the page. */
 export function HistoryScreen({
