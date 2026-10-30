@@ -13,6 +13,7 @@
     "preview": "nitro preview",
     "start": "node .amplify-hosting/compute/default/server.js",
     "test": "vitest run",
+    "test:smoke": "playwright test --config e2e/smoke/playwright.config.ts",
     "search:quality": "vitest run src/lib/search.relevance.test.ts --reporter=verbose",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
@@ -46,6 +47,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@playwright/test": "^1.60.0",
     "@size-limit/file": "14.3.0",
     "@tailwindcss/typography": "^0.5.19",
     "@tanstack/devtools-vite": "catalog:",
