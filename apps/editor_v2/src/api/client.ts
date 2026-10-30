@@ -432,6 +432,8 @@ export function createEditorApi(apiOrigin: string, landingOrigin?: string) {
 
   return {
     services,
+    pagePaths: () =>
+      read<Json<paths["/editor/page-paths"]["get"]["responses"][200]>>("/editor/page-paths"),
     service: (id: string) => read<ServiceDetail>(`/services/${id}`),
     /** The one shared category list: each top-level category, then its subcategories, in their order. */
     categories: async (): Promise<
