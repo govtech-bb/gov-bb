@@ -32,6 +32,7 @@ const page: ApiPage = {
   created_at: "2026-10-07T12:00:00.000Z",
   updated_at: "2026-10-07T12:00:00.000Z",
   pending_revision: null,
+  last_edited_by: null,
 };
 
 const router = createRouter({
@@ -124,6 +125,34 @@ async function savePage(name = "Save") {
   expect(button.getAttribute("aria-disabled")).toBeNull();
   await act(async () => button.click());
 }
+
+test.each([
+  { last_edited_by: { id: "editor", name: "Jane Smith" }, shown: "Jane Smith" },
+  { last_edited_by: { id: "system", name: "System" }, shown: "System" },
+  { last_edited_by: { id: "former", name: null }, shown: "a former employee" },
+  { last_edited_by: null, shown: null },
+  {
+    last_edited_by: { id: "unicode", name: "山田太郎 — ليلى أحمد" },
+    shown: "山田太郎 — ليلى أحمد",
+  },
+  { last_edited_by: { id: "long", name: "A".repeat(250) }, shown: "A".repeat(250) },
+])(
+  "shows recorded page attribution $shown without writing it into Markdown",
+  async ({ last_edited_by, shown }) => {
+    const h = await mountPage(async () => Response.json({ ...page, last_edited_by }));
+    expect(document.body.textContent?.includes("Edited by")).toBe(shown !== null);
+    const name = document.querySelector("bdi");
+    expect(name?.textContent ?? null).toBe(shown);
+
+    if (name) {
+      expect(name.classList).toContain("wrap-anywhere");
+      expect(name.hasAttribute("tabindex")).toBe(false);
+    }
+
+    expect(h.session().getBaseline().page.last_edited_by).toEqual(last_edited_by);
+    expect(h.session().store.getSnapshot().committed).not.toContain("last_edited_by");
+  },
+);
 
 test.each(["", "preview"])(
   "a legacy draft can return from %j without losing edits or writing until Save",

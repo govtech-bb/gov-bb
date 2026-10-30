@@ -10,7 +10,7 @@ import type { FastifyInstance, InjectOptions } from "fastify";
 import type { Database } from "./db";
 import { UserId, type Employee } from "./modules/auth";
 import { PostgresPages } from "./adapters/postgres-pages";
-import { withDefaults, type PageId } from "./modules/page";
+import { PageDocument, withDefaults, type PageId } from "./modules/page";
 import { ok } from "./modules/result";
 import { PageEditing } from "./services/page-editing";
 import { categories, changeEvents, pageRevisions } from "./schema";
@@ -95,7 +95,8 @@ const seedPage = async (overrides: Record<string, unknown> = {}) => {
     category?.id ??
     (await db.select().from(categories))[0]?.id ??
     expect.unreachable();
-  return expectOk(
+  // Storage comparisons use the live document, not editor-only response metadata.
+  const page = expectOk(
     await services.editing.create(
       aPage({
         category_id: categoryId,
@@ -105,6 +106,7 @@ const seedPage = async (overrides: Record<string, unknown> = {}) => {
       TEST_EMPLOYEE,
     ),
   );
+  return PageDocument.parse(page);
 };
 
 const stored = async (id: PageId) =>
@@ -1327,10 +1329,12 @@ describe("making a page public (#3201)", () => {
   });
 
   it("refuses content changed in the save that makes it public, and writes nothing", async () => {
-    const page = expectOk(
-      await services.editing.create(
-        aPage({ visibility: "preview" }),
-        TEST_EDITOR,
+    const page = PageDocument.parse(
+      expectOk(
+        await services.editing.create(
+          aPage({ visibility: "preview" }),
+          TEST_EDITOR,
+        ),
       ),
     );
 

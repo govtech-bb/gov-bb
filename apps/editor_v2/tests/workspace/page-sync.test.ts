@@ -22,6 +22,7 @@ const page: ApiPage = {
   created_at: "2026-10-07T12:00:00.000Z",
   updated_at: "2026-10-07T12:00:00.000Z",
   pending_revision: null,
+  last_edited_by: null,
 };
 
 const newer: ApiPage = {
@@ -116,6 +117,7 @@ describe("saving a page", () => {
       position: 0,
       services: 30,
       reserved_route: false,
+      last_edited_by: null,
       updated_at: "2026-10-28T12:00:00.000Z",
     };
 

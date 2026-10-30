@@ -85,6 +85,8 @@ A save that keeps a `public` page public, whoever sends it, approvers included, 
 
 The editor reads and saves the working copy: `GET /pages/:id` and the save's response lay the revision over the live page, set `pending_revision`, and give the revision's `updated_at`, which is what the next save sends in `if-updated-at`. `GET /pages/:id/revision` returns the revision itself, or 404 when there is none.
 
+Editor page responses also include `last_edited_by: { id, name } | null` (#3171), from the page's highest `version_no` change event joined to `auth_user`. Review steps count; pending-revision saves do not create events, so this may not identify the working copy's last saver or the author of its `updated_at`. A system event returns `{ id: "system", name: "System" }`. No event returns null; an event whose actor's name is unavailable keeps its id with `name: null`, as history does. Public page, category, catalog and search reads never include attribution, even for signed-in callers.
+
 A save to a page that is not public writes the page as before. Changing `visibility` stays a direct approver action (ADR 0079): an approver's save that takes a public page out of public view changes only the live row's `visibility`. The other fields it sends are ignored and the live content stays, so revision content never reaches `content_pages` that way, to be made public again without review. It closes the page's open revision, keeping the rule that only a public page has one: a draft is dropped, and a revision waiting for review is marked `discarded` with the approver and the time (migration `015_revision_discarded`, #3203), so an urgent takedown needs no rejection first. The page's history then reads `discarded` followed by `unpublished`, both by the approver. A rejected revision retires as the live page moves on. An approver who then edits the page while it is not public can't make it public themselves (see Making a page public). A revision save writes no `change_events` entry, because the live page did not change; its review steps are recorded (see below).
 
 ### Reviewing a revision
@@ -327,7 +329,9 @@ The one shared list serves category management, every page picker and every cont
 type. `GET /editor/categories` returns `{ categories: [...] }` with each parent
 followed by its ordered children. Rows contain `id`, `parent_id`, `title`, `slug`,
 nullable `description`, `url`, `position`, `services`, `reserved_route` and
-`updated_at`. Service counts match `/services` roots, including unpublished work.
+`updated_at` and `last_edited_by`. Attribution uses the category's latest change event
+and the same nullable author shape as editor pages. Service counts match `/services`
+roots, including unpublished work.
 Public category reads expose none of the private counts or editor metadata.
 The former taxonomy endpoint is removed without an alias.
 
@@ -362,8 +366,7 @@ sibling order or deleted ID first; a changed timestamp alone does not prove succ
 
 Category writes are recorded by the change history trigger against the
 signed-in employee and advance `/version`. A save that changes nothing keeps
-the category's `updated_at`, so other editors' copies stay current. #3171
-owns private last-editor reads. The editor's persisted category controls are
+the category's `updated_at` and `last_edited_by`, so other editors' copies stay current. The editor's persisted category controls are
 tracked in #3178, landing integration in #3179, and sandbox acceptance in #3180.
 
 `search_chunks` holds each page's body split at its headings, as plain text, rewritten in the same transaction as every save. Rejoined, a page's chunks are exactly the text landing's search indexes today (`search-text.test.ts` checks every seeded page), so moving search onto the API does not move its ranking. The generated `tsv` column and its GIN index are there for server-side search and are not read yet.

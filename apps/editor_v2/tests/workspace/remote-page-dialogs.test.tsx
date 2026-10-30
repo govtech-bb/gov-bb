@@ -41,6 +41,7 @@ test.each(["service", "start", "supporting"] as const)(
       position: 0,
       services: 0,
       reserved_route: false,
+      last_edited_by: null,
       updated_at: "2026-10-07T12:00:00.000Z",
     };
 
@@ -269,6 +270,7 @@ test("a service on its way can't be cancelled, so none is made after the author 
     position: 0,
     services: 0,
     reserved_route: false,
+    last_edited_by: null,
     updated_at: "2026-10-28T12:00:00.000Z",
   };
 

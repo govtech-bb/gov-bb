@@ -15,6 +15,7 @@ const category = {
   position: 0,
   services: 1,
   reserved_route: false,
+  last_edited_by: null,
   updated_at: stamp,
 };
 

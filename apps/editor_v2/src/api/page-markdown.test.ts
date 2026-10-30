@@ -28,6 +28,7 @@ const categories: Category[] = estate.categories.map((category, position) => ({
   position,
   services: 0,
   reserved_route: false,
+  last_edited_by: null,
   updated_at: "2026-10-26T12:00:00.000Z",
 }));
 
@@ -47,6 +48,7 @@ const pages: ApiPage[] = estate.pages.map((page) => ({
   created_at: "2026-10-07T12:00:00.000Z",
   updated_at: "2026-10-07T12:00:00.000Z",
   pending_revision: null,
+  last_edited_by: null,
 }));
 
 const entry = pages.find((page) => page.url === "/money-financial-support/calculate-severance-pay");
@@ -246,6 +248,7 @@ describe("page markdown", () => {
       position: 0,
       services: 0,
       reserved_route: false,
+      last_edited_by: null,
       updated_at: "2026-10-26T12:00:00.000Z",
     });
 
