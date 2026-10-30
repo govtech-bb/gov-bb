@@ -150,6 +150,8 @@ jobs:
       # /health proves the route the ALB will check is live (#3128). The ALB
       # target group checks /docs/openapi.json until alpha-infra points it at
       # /health; /categories proves the database answers and categories read.
+      # /pages proves a seeded public page resolves with its content, since
+      # landing reads every page from it (#3146).
       - name: Smoke test
         run: |
           for path in /health /docs/openapi.json /categories; do
@@ -160,3 +162,16 @@ jobs:
               exit 1
             fi
           done
+
+          page_path="/pages?url=/family-birth-relationships/register-a-birth"
+          page_json="$RUNNER_TEMP/page.json"
+          status=$(curl -s -o "$page_json" -w '%{http_code}' --max-time 15 "$API_URL$page_path")
+          echo "$page_path -> $status"
+          if [ "$status" != "200" ]; then
+            echo "::error::$API_URL$page_path returned $status"
+            exit 1
+          fi
+          if ! jq -e '(.frontmatter.title | type == "string" and length > 0) and (.body_markdown | type == "string" and length > 0)' "$page_json" > /dev/null; then
+            echo "::error::$API_URL$page_path has no frontmatter.title or body_markdown"
+            exit 1
+          fi
