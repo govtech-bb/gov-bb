@@ -324,6 +324,16 @@ describe("files API client", () => {
     });
   });
 
+  // The API will sign If-None-Match into the URL (#3332), so the browser must
+  // already send it, or every PUT would fail with SignatureDoesNotMatch.
+  it("putFileToS3 asks S3 to write only if nothing is at the key yet", async () => {
+    const file = new File(["x"], "a.pdf", { type: "application/pdf" });
+
+    await putFileToS3("https://s3/put?sig=1", file);
+
+    expect(FakeXhr.last?.headers["If-None-Match"]).toBe("*");
+  });
+
   // fetch can't report upload progress; XHR's upload.onprogress can (#2940).
   it("putFileToS3 reports upload progress as a fraction", async () => {
     FakeXhr.respond = (xhr) => {
@@ -471,9 +481,9 @@ describe("files API client", () => {
 
     // S3 signs the content type, so the PUT header has to match what presign
     // signed — sending the empty original here fails with SignatureDoesNotMatch.
-    expect(FakeXhr.last.headers).toEqual({
-      "Content-Type": "application/octet-stream",
-    });
+    expect(FakeXhr.last.headers["Content-Type"]).toBe(
+      "application/octet-stream",
+    );
   });
 
   it("uploadFile surfaces a presign failure without PUTting", async () => {
