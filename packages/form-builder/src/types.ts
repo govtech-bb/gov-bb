@@ -47,6 +47,13 @@ export type RecipeProcessorDraft = Processor & { id: string };
 // the recipe. So this is just every processor type.
 export type AuthorableProcessorType = Processor["type"];
 
+// What the builder's "Add" list offers: every authorable type, plus UI-only
+// presets that seed a processor of an existing type with a different shape.
+// `webhook-cams` seeds a mapped (Case Management System) webhook (#2684).
+export type AuthorableProcessorPreset =
+  | AuthorableProcessorType
+  | "webhook-cams";
+
 export interface RecipeDraft {
   formId: string;
   title: string;
