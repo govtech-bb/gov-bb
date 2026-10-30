@@ -9,6 +9,7 @@ import {
 } from '../content/registry'
 import type { ViewLevel } from './frontmatter'
 import type { ApiV2SearchDocument } from './api-v2-site'
+import { sitePath } from './breadcrumb-trail'
 
 type SearchKind = 'service'
 
@@ -194,15 +195,16 @@ function buildIndex(extra: readonly ApiV2SearchDocument[]): {
 
   // api_v2's public pages, replacing a static copy at the same url.
   for (const page of extra) {
+    const href = sitePath(page.url)
     const document: IndexDoc = {
-      id: `service:${page.url.slice(1)}`,
+      id: `service:${href.slice(1)}`,
       title: page.title,
       description: page.description ?? '',
       body: page.chunks
         .map((chunk) => [chunk.heading, chunk.body].filter(Boolean).join(' '))
         .join(' '),
       keywords: page.keywords.join(' '),
-      href: page.url,
+      href,
       digital: page.digital,
       kind: 'service',
       gated: false,

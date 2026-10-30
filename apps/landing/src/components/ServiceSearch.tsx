@@ -15,6 +15,8 @@ interface ServiceSearchProps {
   overlay?: ReadonlyMap<string, ViewLevel>
   defaultValue?: string
   emptyHref?: '/services' | '/search-results'
+  /** api_v2's search documents, when the page already has them. */
+  documents?: readonly ApiV2SearchDocument[]
 }
 
 export function ServiceSearch({
@@ -23,18 +25,22 @@ export function ServiceSearch({
   overlay,
   defaultValue = '',
   emptyHref = '/search-results',
+  documents: givenDocuments,
 }: ServiceSearchProps) {
   const navigate = useNavigate()
   const inputId = useId()
   const [inputValue, setInputValue] = useState(defaultValue)
   const [hasTyped, setHasTyped] = useState(false)
-  const [documents, setDocuments] = useState<readonly ApiV2SearchDocument[]>()
+  const [loadedDocuments, setLoadedDocuments] =
+    useState<readonly ApiV2SearchDocument[]>()
+  const documents = givenDocuments ?? loadedDocuments
   const items = hasTyped ? suggest(inputValue, viewer, overlay, documents) : []
 
-  // api_v2's pages, read once someone starts typing.
+  // api_v2's pages, read once someone starts typing, unless already given.
   useEffect(() => {
-    if (hasTyped) void loadApiV2SearchDocuments().then(setDocuments)
-  }, [hasTyped])
+    if (hasTyped && !givenDocuments)
+      void loadApiV2SearchDocuments().then(setLoadedDocuments)
+  }, [hasTyped, givenDocuments])
 
   const submit = (value: string) => {
     const query = value.trim()

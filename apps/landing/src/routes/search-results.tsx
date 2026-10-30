@@ -57,6 +57,7 @@ function SearchResultsPage() {
               viewer={level}
               overlay={overlay}
               defaultValue={query}
+              documents={apiV2Documents}
             />
           </div>
         </div>

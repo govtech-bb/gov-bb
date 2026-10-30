@@ -256,6 +256,19 @@ describe('ServiceSearch', () => {
     expect(loadDocumentsMock).toHaveBeenCalledOnce()
   })
 
+  it('suggests from documents it is given, without loading any', () => {
+    renderSearch({ documents: DOCUMENTS })
+    typeInto(screen.getByRole('combobox'), 'onl')
+
+    expect(suggestMock).toHaveBeenLastCalledWith(
+      'onl',
+      'public',
+      undefined,
+      DOCUMENTS,
+    )
+    expect(loadDocumentsMock).not.toHaveBeenCalled()
+  })
+
   it('keeps the list closed when there are no suggestions', () => {
     suggestMock.mockReturnValue([])
     renderSearch()

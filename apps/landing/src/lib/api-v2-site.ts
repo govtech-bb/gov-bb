@@ -108,23 +108,25 @@ let loaded:
 /**
  * Search documents for a search caller on either side: none, without a call,
  * when api_v2 isn't configured, and none if the server function fails, so
- * search still answers from the static pages. One read per minute is shared,
- * so the search index (rebuilt when its documents change) isn't rebuilt on
- * every search.
+ * search still answers from the static pages. In the browser one read per
+ * minute is shared, so the search index (rebuilt when its documents change)
+ * isn't rebuilt on every search; the server has its own cache behind the
+ * server function.
  */
 export function loadApiV2SearchDocuments(
   now = Date.now(),
 ): Promise<readonly ApiV2SearchDocument[]> {
   if (!import.meta.env.VITE_API_V2_URL) return Promise.resolve(NO_DOCUMENTS)
 
+  const read = () =>
+    getApiV2SearchDocuments().catch((error: unknown) => {
+      console.warn('search documents read failed:', error)
+      return NO_DOCUMENTS
+    })
+
+  if (import.meta.env.SSR) return read()
   if (!loaded || now - loaded.at >= STALE_MS)
-    loaded = {
-      at: now,
-      documents: getApiV2SearchDocuments().catch((error: unknown) => {
-        console.warn('search documents read failed:', error)
-        return NO_DOCUMENTS
-      }),
-    }
+    loaded = { at: now, documents: read() }
 
   return loaded.documents
 }

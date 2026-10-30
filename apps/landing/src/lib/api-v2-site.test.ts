@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   fetchApiV2Catalog,
   fetchApiV2SearchDocuments,
@@ -31,9 +31,14 @@ const json = (body: unknown, status = 200) =>
 let bases = 0
 const nextBase = () => `http://api-v2-${++bases}.test`
 
+beforeEach(() => {
+  serverFn.mockReset()
+})
+
 afterEach(() => {
   vi.restoreAllMocks()
   vi.useRealTimers()
+  vi.unstubAllEnvs()
 })
 
 describe('fetchApiV2Catalog', () => {
@@ -109,6 +114,11 @@ describe('fetchApiV2SearchDocuments', () => {
 })
 
 describe('loadApiV2SearchDocuments', () => {
+  // Vitest runs as the server; these read as the browser unless a test says.
+  beforeEach(() => {
+    vi.stubEnv('SSR', false)
+  })
+
   it('shares one read a minute, without one when api_v2 is unset', async () => {
     vi.stubEnv('VITE_API_V2_URL', '')
     expect(await loadApiV2SearchDocuments(0)).toEqual([])
@@ -123,7 +133,6 @@ describe('loadApiV2SearchDocuments', () => {
 
     await loadApiV2SearchDocuments(60_000)
     expect(serverFn).toHaveBeenCalledTimes(2)
-    vi.unstubAllEnvs()
   })
 
   it('is empty when the server function fails', async () => {
@@ -131,6 +140,14 @@ describe('loadApiV2SearchDocuments', () => {
     vi.spyOn(console, 'warn').mockImplementation(() => {})
     serverFn.mockRejectedValue(new Error('down'))
     expect(await loadApiV2SearchDocuments(10 * 60_000)).toEqual([])
-    vi.unstubAllEnvs()
+  })
+
+  it('reads every time on the server, behind its own cache', async () => {
+    vi.stubEnv('VITE_API_V2_URL', 'http://api.example')
+    vi.stubEnv('SSR', true)
+    serverFn.mockResolvedValue([DOCUMENT])
+    await loadApiV2SearchDocuments(20 * 60_000)
+    await loadApiV2SearchDocuments(20 * 60_000)
+    expect(serverFn).toHaveBeenCalledTimes(2)
   })
 })

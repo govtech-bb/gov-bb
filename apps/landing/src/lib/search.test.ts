@@ -223,4 +223,25 @@ describe('api_v2 search documents', () => {
       suggest('temporary teacher', 'public', undefined, extra),
     ).toHaveLength(1)
   })
+
+  it('replaces a public static page with its api_v2 copy, once', () => {
+    const [staticHit] = search('birth certificate')
+    expect(staticHit).toBeDefined()
+    const extra: ApiV2SearchDocument[] = [
+      {
+        // No leading slash: still the same page.
+        url: staticHit.href.slice(1),
+        title: 'Get a birth certificate from api_v2',
+        description: null,
+        digital: false,
+        keywords: [],
+        chunks: [],
+      },
+    ]
+
+    const hits = search('birth certificate', 'public', undefined, extra)
+    expect(hits.filter((hit) => hit.href === staticHit.href)).toEqual([
+      expect.objectContaining({ title: 'Get a birth certificate from api_v2' }),
+    ])
+  })
 })
