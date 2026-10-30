@@ -48,6 +48,7 @@ import {
   type ReviewQueueEntry,
   type Visibility,
 } from "../modules/page";
+import type { PageChangeEvent } from "../modules/page-history";
 import type { Ancestor, ResolvablePage } from "../modules/page-visibility";
 import { err, ok, type Result } from "../modules/result";
 import type { SearchChunk } from "../modules/search-text";
@@ -962,6 +963,36 @@ export class PostgresPages
         latest: row?.latest?.toISOString() ?? null,
       };
     });
+  }
+
+  /** A page's `change_events`, oldest first, with each actor's name. */
+  async pageEvents(
+    id: PageId,
+  ): Promise<Result<PageChangeEvent[], ContentStoreUnavailable>> {
+    const rows = await attempt("pageEvents", () =>
+      this.db
+        .select({ event: changeEvents, name: authUser.name })
+        .from(changeEvents)
+        .leftJoin(authUser, eq(authUser.id, changeEvents.actor))
+        .where(
+          and(
+            eq(changeEvents.entityKind, "content_page"),
+            eq(changeEvents.entityId, id),
+          ),
+        )
+        .orderBy(changeEvents.versionNo),
+    );
+    if (!rows.ok) return rows;
+    return ok(
+      rows.value.map(({ event, name }) => ({
+        versionNo: event.versionNo,
+        action: event.action,
+        actor: event.actor,
+        actorName: name,
+        occurredAt: event.occurredAt,
+        snapshot: event.snapshot as Record<string, unknown>,
+      })),
+    );
   }
 
   /** Every revision waiting for review, with its submitter's name, the longest-waiting first. */

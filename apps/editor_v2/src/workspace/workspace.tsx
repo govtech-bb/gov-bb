@@ -20,6 +20,7 @@ import { RemotePagePane } from "./remote-page-pane";
 import { AppNav } from "./app-nav";
 import { CollectionScreen, CollectionsScreen } from "./collections";
 import { CategoriesScreen } from "./categories-screen";
+import { HistoryScreen } from "./history-screen";
 import { ReviewQueueScreen, ReviewScreen } from "./review-screens";
 import { listedServiceRows, remoteServiceRows } from "./service-pages";
 import { ServiceNav } from "./service-nav";
@@ -71,6 +72,8 @@ export function ServiceWorkspace({
   const onCategories = !!useMatch({ from: "/_workspace/categories", shouldThrow: false });
   const onReviews = !!useMatch({ from: "/_workspace/reviews", shouldThrow: false });
   const reviewing = params.pageId;
+  const historySearch = useSearch({ from: "/_workspace/history/$pageId", shouldThrow: false });
+  const onHistory = !!historySearch;
   const onCollections = !!useMatch({ from: "/_workspace/collections", shouldThrow: false });
 
   const collectionSearch = useSearch({
@@ -297,7 +300,9 @@ export function ServiceWorkspace({
                 ? reviewing
                   ? ["Review change", "Review queue"]
                   : ["Review queue"]
-                : [onCategories ? "Categories" : onCollections ? "Collections" : "Services"]
+                : onHistory
+                  ? ["Page history"]
+                  : [onCategories ? "Categories" : onCollections ? "Collections" : "Services"]
         }
       />
       <a
@@ -463,7 +468,17 @@ export function ServiceWorkspace({
               )}
             </section>
           )}
-          {!location && !onCategories && !onCollections && !onReviews && (
+          {!location && onHistory && params.pageId && (
+            <section className="mx-auto w-full max-w-300 px-4 py-10 sm:px-6">
+              <HistoryScreen
+                key={params.pageId}
+                api={api}
+                pageId={params.pageId}
+                serviceId={historySearch.service}
+              />
+            </section>
+          )}
+          {!location && !onCategories && !onCollections && !onReviews && !onHistory && (
             <section>
               <ServicesList
                 api={api}
