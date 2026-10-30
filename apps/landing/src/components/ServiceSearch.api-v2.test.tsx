@@ -1,7 +1,7 @@
 /**
  * @vitest-environment jsdom
  */
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { ApiV2SearchDocument } from '../lib/api-v2-site'
 import { ServiceSearch } from './ServiceSearch'
@@ -26,12 +26,12 @@ function renderWith(...lists: Array<readonly ApiV2SearchDocument[]>) {
   return renderGiven(undefined, ...lists)
 }
 
-/** As `renderWith`, starting from `documents` as a page's loader gives them. */
+/** As `renderWith`, starting from `documents` as a page's loader gives them. A `undefined` list is a failed read. */
 function renderGiven(
   documents: readonly ApiV2SearchDocument[] | undefined,
-  ...lists: Array<readonly ApiV2SearchDocument[]>
+  ...lists: Array<readonly ApiV2SearchDocument[] | undefined>
 ) {
-  const loadDocuments = vi.fn(async () => lists.shift() ?? NONE)
+  const loadDocuments = vi.fn(async () => (lists.length ? lists.shift() : NONE))
   render(
     <ServiceSearch
       source="home"
@@ -75,5 +75,14 @@ describe('ServiceSearch with api_v2 documents', () => {
     expect(suggestion()).not.toBeNull()
 
     await vi.waitFor(() => expect(suggestion()).toBeNull())
+  })
+
+  it('keeps the given documents when a load fails', async () => {
+    const type = renderGiven([ZEBRA], undefined)
+    type('zebr')
+    // Let the failed load settle and React apply whatever it sets.
+    await act(async () => {})
+
+    expect(suggestion()).not.toBeNull()
   })
 })

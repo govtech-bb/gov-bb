@@ -218,13 +218,16 @@ describe('loadApiV2SearchDocuments', () => {
     expect(await site.loadApiV2SearchDocuments(read)).toEqual([DOCUMENT])
   })
 
-  it('is empty when the server function fails', async () => {
+  it('is undefined, and retried a minute later, when the server function fails', async () => {
     vi.spyOn(console, 'warn').mockImplementation(() => {})
-    expect(
-      await site.loadApiV2SearchDocuments(() =>
-        Promise.reject(new Error('down')),
-      ),
-    ).toEqual([])
+    const failing = vi.fn(() => Promise.reject(new Error('down')))
+    expect(await site.loadApiV2SearchDocuments(failing)).toBeUndefined()
+    expect(await site.loadApiV2SearchDocuments(failing)).toBeUndefined()
+    expect(failing).toHaveBeenCalledOnce()
+
+    vi.advanceTimersByTime(60_000)
+    reply = json(200, { documents: [DOCUMENT] })
+    expect(await site.loadApiV2SearchDocuments(read)).toEqual([DOCUMENT])
   })
 
   it('reads every time on the server, behind its own cache', async () => {

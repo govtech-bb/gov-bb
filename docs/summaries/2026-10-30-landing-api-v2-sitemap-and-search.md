@@ -18,7 +18,7 @@ There are two PRs, both into `v2-rewrite`:
   - New `lib/api-v2-site.ts`. It reads `/catalog` and `/search/documents` through `readPublic`, now exported from `api-v2-categories.ts`.
   - `collectSitemapEntries` takes the api_v2 urls as an argument.
   - In the search index, api_v2 documents replace their static copy and are not checked against the static visibility rules (a `gated` flag on each index entry marks which ones are).
-  - `/search-results` loads the documents in its loader. `ServiceSearch` either receives them from the page or fetches them once, on the first keystroke.
+  - `/search-results` loads the documents in its loader, again for each new query (`loaderDeps` on `q`). `ServiceSearch` starts from the page's documents when it has them, and asks the browser memo again on every edit.
 
 ## Why we did it that way
 
@@ -26,8 +26,8 @@ There are two PRs, both into `v2-rewrite`:
 - **Reused `readPublic` instead of writing a second fetch helper.** It already has the timeout, the zod parse and the `api_v2_fallback` logging. The plan's `resolveCachedValue` design came from before that helper existed.
 - **A `QueryClient` cache, as the category tree uses.** It caches each list for 60 s and never throws. On a failed read it serves the last good list, or an empty list on a cold start, and doesn't try again for a minute. That way a down api_v2 costs one 750 ms timeout per minute per list, not one on every request. We kept the cached list indefinitely (`gcTime: Infinity`) so a long outage still has something to serve.
 - **No cache expiry on publish.** The category tree is cleared when the site version moves; these lists are not. A publish or unpublish takes up to 60 s to show in the sitemap and search. That met the plan's bar and saved copying the version-watch code. The local smoke test confirmed the 60 s figure.
-- **The browser memo is browser-only.** Without it, each visit to `/search-results` returned a fresh array, so the browser rebuilt the whole search index, markdown analysis of every static page included. On the server the memo stacked on top of the `QueryClient` cache, which made results up to two minutes stale, so the server goes straight to its own cache.
-- **The search page gives the box its documents.** Otherwise the autocomplete fetched a second copy, which could differ from the loader's copy and made the single-slot index memo rebuild as the page switched between them.
+- **The browser memo is browser-only, and lasts only as long as the server's copy.** Without it, every search and every keystroke would ask the server again, with a new array each time and an index rebuild to match. The server function returns how long its cached copy has left (`freshForMs`), and the browser keeps the list only that long. Timing the memo from when the browser asked let a list live for almost two minutes (PR review). On the server the memo would stack on top of the `QueryClient` cache, so the server goes straight to its own cache.
+- **The page's documents are where the box starts, not a fixed list.** `/search-results` passes its loader's documents in so the first suggestions match the results, but every edit asks the memo again. A box that treated them as fixed kept suggesting a withdrawn page until the search was submitted (PR review). A failed browser read returns `undefined` and leaves the current list alone, instead of swapping in an empty one for a minute.
 - **api_v2 documents skip the static visibility rules.** Some pages are preview in the static files but public in api_v2. The page route serves them, so search has to find them too; otherwise "visibility comes from api_v2 alone" would fail in search.
 
 ## What we almost got wrong

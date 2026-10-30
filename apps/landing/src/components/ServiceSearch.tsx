@@ -18,7 +18,7 @@ interface ServiceSearchProps {
   /** api_v2's search documents the page already has: a start, refreshed on edits. */
   documents?: readonly ApiV2SearchDocument[]
   /** Reads api_v2's search documents. */
-  loadDocuments?: () => Promise<readonly ApiV2SearchDocument[]>
+  loadDocuments?: () => Promise<readonly ApiV2SearchDocument[] | undefined>
 }
 
 export function ServiceSearch({
@@ -74,9 +74,10 @@ export function ServiceSearch({
           onChange={(event) => {
             setHasTyped(true)
             setInputValue(event.currentTarget.value)
-            // api_v2's pages: the same list while it is fresh, so a failed or
-            // outdated read, or the page's own copy, is replaced on a later edit.
-            void loadDocuments().then(setDocuments)
+            // api_v2's pages: the same list while it is fresh, so an outdated
+            // list, or the page's own copy, is replaced on a later edit. A
+            // failed read (undefined) keeps the current list.
+            void loadDocuments().then((next) => next && setDocuments(next))
           }}
           onSuggestionSelect={(_, index) => {
             const selectedItem = items[index]

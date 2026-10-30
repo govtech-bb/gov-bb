@@ -120,13 +120,17 @@ export const getApiV2SearchDocuments = createServerFn().handler(() =>
 const NO_DOCUMENTS: readonly ApiV2SearchDocument[] = []
 
 let loaded:
-  | { until: number; documents: Promise<readonly ApiV2SearchDocument[]> }
+  | {
+      until: number
+      documents: Promise<readonly ApiV2SearchDocument[] | undefined>
+    }
   | undefined
 
 /**
  * Search documents for a search caller on either side: none, without a call,
- * when api_v2 isn't configured, and none if the server function fails, so
- * search still answers from the static pages. In the browser one read is
+ * when api_v2 isn't configured, and `undefined` if the server function fails,
+ * so a caller keeps what it has and search still answers from the static
+ * pages; the failure is retried a minute later. In the browser one read is
  * shared until the server's copy expires, so the search index (rebuilt
  * when its documents change) isn't rebuilt on every search; the server has its
  * own cache behind the server function.
@@ -134,13 +138,13 @@ let loaded:
 export function loadApiV2SearchDocuments(
   read: () => Promise<SearchDocumentsRead> = () => getApiV2SearchDocuments(),
   now = Date.now(),
-): Promise<readonly ApiV2SearchDocument[]> {
+): Promise<readonly ApiV2SearchDocument[] | undefined> {
   if (!import.meta.env.VITE_API_V2_URL) return Promise.resolve(NO_DOCUMENTS)
 
   const safeRead = () =>
     read().catch((error: unknown) => {
       console.warn('search documents read failed:', error)
-      return { documents: NO_DOCUMENTS, freshForMs: STALE_MS }
+      return { documents: undefined, freshForMs: STALE_MS }
     })
 
   if (import.meta.env.SSR) return safeRead().then(({ documents }) => documents)
