@@ -356,7 +356,7 @@ export function contentSource(result: ApiV2Result): ContentSource {
 const apiV2Cache = /* @__PURE__ */ createApiV2Cache()
 let siteChanges = 0
 const checkSiteVersion = /* @__PURE__ */ createVersionWatch(
-  () => fetchSiteVersion(apiV2Base()),
+  () => fetchSiteVersion(apiV2Base(), fetch, landingToken()),
   () => {
     siteChanges++
     apiV2Cache.expire()
