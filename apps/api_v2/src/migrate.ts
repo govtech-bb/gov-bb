@@ -20,6 +20,16 @@ import { SQL as MARKDOWN_PAGES_SQL } from "./migrations/002_markdown_pages";
 import { SQL as AUTH_SQL } from "./migrations/003_auth";
 import { SQL as GITHUB_SESSIONS_SQL } from "./migrations/004_github_sessions";
 import { SQL as HIERARCHY_SQL } from "./migrations/005_hierarchy_and_search";
+import { SQL as UNPUBLISHED_SQL } from "./migrations/006_change_action_unpublished";
+import { SQL as CHANGE_HISTORY_SQL } from "./migrations/007_change_history_trigger";
+import { SQL as USER_ROLES_SQL } from "./migrations/008_user_roles";
+import { SQL as DEFAULT_EDITOR_SQL } from "./migrations/009_default_editor_role";
+import { SQL as PAGE_REVISIONS_SQL } from "./migrations/010_page_revisions";
+import { SQL as REVISION_REVIEW_SQL } from "./migrations/011_revision_review";
+import { SQL as REVIEW_ACTIONS_SQL } from "./migrations/012_change_action_review";
+import { SQL as REVIEW_HISTORY_SQL } from "./migrations/013_review_history_trigger";
+import { SQL as DATA_COLLECTIONS_SQL } from "./migrations/014_data_collections";
+import { SQL as REVISION_DISCARDED_SQL } from "./migrations/015_revision_discarded";
 import type { Database } from "./db";
 
 /** The migrations, in the order they apply. Each is idempotent by rule. */
@@ -29,6 +39,16 @@ const MIGRATIONS = [
   ["003_auth", AUTH_SQL],
   ["004_github_sessions", GITHUB_SESSIONS_SQL],
   ["005_hierarchy_and_search", HIERARCHY_SQL],
+  ["006_change_action_unpublished", UNPUBLISHED_SQL],
+  ["007_change_history_trigger", CHANGE_HISTORY_SQL],
+  ["008_user_roles", USER_ROLES_SQL],
+  ["009_default_editor_role", DEFAULT_EDITOR_SQL],
+  ["010_page_revisions", PAGE_REVISIONS_SQL],
+  ["011_revision_review", REVISION_REVIEW_SQL],
+  ["012_change_action_review", REVIEW_ACTIONS_SQL],
+  ["013_review_history_trigger", REVIEW_HISTORY_SQL],
+  ["014_data_collections", DATA_COLLECTIONS_SQL],
+  ["015_revision_discarded", REVISION_DISCARDED_SQL],
 ] as const;
 
 /** Serialises instances that boot together; released when its transaction ends. */

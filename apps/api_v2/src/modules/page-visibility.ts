@@ -90,6 +90,17 @@ export const PublicPage = z.object({
       "The full trail, current page included, Home not: the category " +
         "(and its parent, for a subcategory), then the pages above this one.",
     ),
+  category: z
+    .string()
+    .nullable()
+    .describe(
+      "The slug of the category the page is filed under, or null for a " +
+        "page outside the taxonomy.",
+    ),
+  subcategory: z
+    .string()
+    .nullable()
+    .describe("The slug of its subcategory, or null."),
   published_at: z.iso
     .datetime()
     .nullable()
@@ -132,6 +143,8 @@ export function toPublicPage(
   view: {
     readonly ancestors: readonly Ancestor[];
     readonly categoryCrumbs: readonly Breadcrumb[];
+    readonly category: string | null;
+    readonly subcategory: string | null;
     readonly hideStartLinks: boolean;
   },
 ): PublicPage {
@@ -153,6 +166,8 @@ export function toPublicPage(
       })),
       { name: page.title, url: page.url },
     ],
+    category: view.category,
+    subcategory: view.subcategory,
     published_at: page.publishedAt?.toISOString() ?? null,
     updated_at: page.updatedAt.toISOString(),
   };

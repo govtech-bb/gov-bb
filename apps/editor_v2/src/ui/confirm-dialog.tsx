@@ -2,17 +2,18 @@ import type { ReactNode } from "react";
 import { Banner } from "./banner";
 import { Button } from "./button";
 import { Dialog } from "./dialog";
+import { useLatched } from "./use-latched";
 
 type ConfirmDialogProps = {
   open: boolean;
   /** Closes it, from Cancel or Escape. Not while the action is pending: it can't be called back. */
-  onClose: () => void;
+  onOpenChange: (open: boolean) => void;
   /** The question, such as “Delete this page?” */
   title: string;
   /** What happens, in plain words: what's lost, and what's kept. */
   description: ReactNode;
   /** The verb on the button that does it, such as “Delete page”. */
-  confirm: string;
+  confirmLabel: string;
   /** Wait for a separate operation without preventing cancellation of this question. */
   confirmDisabled?: boolean;
   /** The button's words while the action works, such as “Deleting page…”. */
@@ -21,40 +22,33 @@ type ConfirmDialogProps = {
   /** Why the action failed. The dialog stays open, so the author can try again or cancel. */
   error?: ReactNode;
   /** Red for an action that loses work, teal for any other. */
-  tone?: "danger" | "accent";
+  variant?: "danger" | "accent";
   /** Where the focus goes once it closes, when the button that opened it has gone. */
   finalFocus?: Parameters<typeof Dialog.Content>[0]["finalFocus"];
   onConfirm: () => void;
 };
 
 /**
- * A question to answer before an action that can't be undone: an alert dialog, which a
- * click outside doesn't close. Its button names the action, and stays pressed while it works; an error shows in the
- * dialog. Cancel comes first, so it has the focus when the dialog opens.
+ * Confirms an irreversible action. Focus starts on Cancel; outside clicks never dismiss it.
+ * Keep mounted for the closing transition. Pending actions block dismissal; failures stay in the dialog.
  */
-export function ConfirmDialog({
-  open,
-  onClose,
-  title,
-  description,
-  confirm,
-  confirmDisabled = false,
-  pendingLabel,
-  pending = false,
-  error,
-  tone = "danger",
-  finalFocus,
-  onConfirm,
-}: ConfirmDialogProps) {
+export function ConfirmDialog(props: ConfirmDialogProps) {
+  const { open, onOpenChange, finalFocus, onConfirm } = props;
+
+  const {
+    title,
+    description,
+    confirmLabel,
+    confirmDisabled = false,
+    pendingLabel,
+    pending = false,
+    error,
+    variant = "danger",
+  } = useLatched(open ? props : null) ?? props;
+
   return (
-    <Dialog.Root
-      role="alertdialog"
-      open={open}
-      onOpenChange={(next) => {
-        if (!next && !pending) onClose();
-      }}
-    >
-      <Dialog.Content size="sm" finalFocus={finalFocus}>
+    <Dialog.Root role="alertdialog" open={open} onOpenChange={onOpenChange}>
+      <Dialog.Content size="sm" pending={pending} finalFocus={finalFocus}>
         <Dialog.Header>
           <Dialog.Title>{title}</Dialog.Title>
           <Dialog.Description>{description}</Dialog.Description>
@@ -65,17 +59,16 @@ export function ConfirmDialog({
           </Dialog.Body>
         )}
         <Dialog.Actions>
-          <Button size="md" disabled={pending} onClick={onClose}>
-            Cancel
-          </Button>
+          <Dialog.Cancel />
           <Button
             size="md"
-            variant={tone}
+            variant={variant}
             pending={pending}
+            pendingLabel={pendingLabel}
             disabled={confirmDisabled}
             onClick={onConfirm}
           >
-            {pending && pendingLabel ? pendingLabel : confirm}
+            {confirmLabel}
           </Button>
         </Dialog.Actions>
       </Dialog.Content>

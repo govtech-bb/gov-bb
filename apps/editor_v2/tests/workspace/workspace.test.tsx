@@ -7,6 +7,7 @@ import { createEditorApi, type ApiPage, type ServiceDetail } from "../../src/api
 import { AuthFailure, type EditorAuth } from "../../src/auth/session";
 import { routeTree } from "../../src/routeTree.gen";
 import { renderInPage } from "../helpers/page-editor";
+import { shownText } from "../helpers/shown-text";
 
 const stamp = "2026-10-07T12:00:00.000Z";
 
@@ -28,6 +29,7 @@ const pages = new Map(
       published_at: null,
       created_at: stamp,
       updated_at: stamp,
+      pending_revision: null,
     } satisfies ApiPage,
   ]),
 );
@@ -56,7 +58,13 @@ afterEach(() => {
   clients.splice(0).forEach((client) => client.clear());
 });
 
-async function mountWorkspace(path = "/services/service/fees") {
+async function mountWorkspace(
+  path = "/services/service/fees",
+  {
+    roles = ["editor", "approver"],
+    publicIds = [],
+  }: { roles?: readonly string[]; publicIds?: readonly string[] } = {},
+) {
   vi.stubGlobal("matchMedia", (query: string) => ({
     matches: true,
     media: query,
@@ -85,9 +93,27 @@ async function mountWorkspace(path = "/services/service/fees") {
 
       if (path === "/services") return Response.json([detail.service]);
 
-      if (path === "/services/service") return Response.json(detail);
+      if (path === "/services/service")
+        return Response.json({
+          ...detail,
+          pages: detail.pages.map((page) =>
+            publicIds.includes(page.id) ? { ...page, visibility: "public" } : page,
+          ),
+        });
+
+      if (path === "/editor/me")
+        return Response.json({ id: "me", email: "author@govtech.bb", name: "Author", roles });
 
       if (path === "/editor/categories") return Response.json({ categories: [] });
+
+      if (path === "/collections")
+        return Response.json({ collections: [{ ...contacts, record_count: 1 }] });
+
+      if (path === "/collections/contacts/records")
+        return Response.json({
+          collection: contacts,
+          records: [{ record_key: "nis", data: { key: "nis" }, updated_at: stamp }],
+        });
 
       if (path === "/version") return Response.json({ count: 1, latest: stamp });
       const page = pages.get(path.replace("/pages/", ""));
@@ -190,6 +216,59 @@ test.each([0, 503, 401, 403, 404])(
   },
 );
 
+test.each([
+  [["editor"], true],
+  [["editor", "approver"], false],
+])(
+  "Delete page on a public page, for someone with roles %j, is held back with the reason: %s",
+  async (roles, blocked) => {
+    await mountWorkspace("/services/service/fees", { roles, publicIds: ["fees"] });
+
+    const deleteButton = () =>
+      [...document.querySelectorAll("button")].find(
+        (button) => button.textContent === "Delete page",
+      )!;
+
+    await until(() => expect(deleteButton().disabled).toBe(blocked));
+    const reason = deleteButton().getAttribute("aria-describedby");
+    expect(reason && document.getElementById(reason)?.textContent).toBe(
+      blocked ? "Only approvers can delete a public page." : null,
+    );
+  },
+);
+
+test("someone without the editor role is told why, and can't add, delete or create", async () => {
+  const h = await mountWorkspace("/services/service/fees", { roles: [] });
+
+  const button = (name: string) =>
+    [...document.querySelectorAll("button")].find((item) => item.textContent === name)!;
+
+  await until(() => expect(document.body.textContent).toContain("you don’t have the editor role"));
+  await until(() => expect(button("Delete page").disabled).toBe(true));
+  expect(button("Add document").disabled).toBe(true);
+  const reason = button("Add document").getAttribute("aria-describedby");
+  expect(reason && document.getElementById(reason)?.textContent).toBe(
+    "You need the editor role to add or delete pages.",
+  );
+  expect(button("Delete page").getAttribute("aria-describedby")).toBe(reason);
+
+  await act(async () => {
+    await h.router.navigate({ to: "/services" });
+  });
+  await until(() => expect(button("Create service").disabled).toBe(true));
+});
+
+test("an editor is offered adding and creating, with no read-only notice", async () => {
+  await mountWorkspace("/services/service/fees", { roles: ["editor"] });
+
+  const button = (name: string) =>
+    [...document.querySelectorAll("button")].find((item) => item.textContent === name)!;
+
+  await until(() => expect(button("Delete page").disabled).toBe(false));
+  expect(button("Add document").disabled).toBe(false);
+  expect(document.body.textContent).not.toContain("you don’t have the editor role");
+});
+
 test("malformed old workspaces and drafts cannot shadow API pages or create browser-only flows", async () => {
   localStorage.setItem("govbb-editor:workspace:v1", "{broken");
   localStorage.setItem("govbb-editor:documents:fees:markdown", "Old local page");
@@ -224,7 +303,7 @@ test("old local URLs use normal API not-found behavior", async () => {
 
 const control = (label: string, scope: ParentNode = document) => {
   const button = [...scope.querySelectorAll("button")].find(
-    (item) => item.textContent === label || item.getAttribute("aria-label") === label,
+    (item) => shownText(item) === label || item.getAttribute("aria-label") === label,
   );
 
   if (!button) throw Error("Missing button: " + label);
@@ -302,10 +381,16 @@ test("sign-out asks before revoking auth and does not show a second route prompt
 test("failed sign-out and a cancelled session-expiry redirect keep the working copy", async () => {
   const h = await mountWorkspace();
   await editTitle("Keep on auth failure");
-  vi.mocked(h.auth.signOut).mockResolvedValue({ ok: false, error: new AuthFailure("unavailable") });
+  const answer = Promise.withResolvers<Awaited<ReturnType<EditorAuth["signOut"]>>>();
+  vi.mocked(h.auth.signOut).mockReturnValue(answer.promise);
   await click("Sign out");
   await click("Sign out", question());
+  // While it works it keeps its colour and its place for the keyboard, rather than greying out
+  await until(() => expect(control("Signing out…").hasAttribute("data-pending")).toBe(true));
+  expect(control("Signing out…").disabled).toBe(false);
+  await act(async () => answer.resolve({ ok: false, error: new AuthFailure("unavailable") }));
   await until(() => expect(document.body.textContent).toContain("We could not sign you out"));
+  expect(control("Sign out").hasAttribute("data-pending")).toBe(false);
   expect(activeTitle().value).toBe("Keep on auth failure");
   vi.mocked(h.auth.session).mockResolvedValue({ ok: true, value: null });
   await act(async () => window.dispatchEvent(new Event("focus")));
@@ -347,7 +432,8 @@ test("pending saves block departure but the navigation question can still be can
       }),
     );
   });
-  await until(() => expect(control("Save").disabled).toBe(true));
+  // Nothing left to save: unusable, though it keeps its place for the keyboard
+  await until(() => expect(control("Save").getAttribute("aria-disabled")).toBe("true"));
 });
 
 test("clean navigation keeps at most three page views and retains API navigation", async () => {
@@ -375,6 +461,15 @@ test("clean navigation keeps at most three page views and retains API navigation
   expect(question()).toBeNull();
 });
 
+const contacts = {
+  key: "contacts",
+  title: "Ministries and departments",
+  record_key: "key",
+  schema: { fields: [{ key: "key", label: "Key", type: "slug" }] },
+  schema_version: 1,
+  updated_at: "2026-10-07T12:00:00.000Z",
+};
+
 const menuLink = (name: string) =>
   [...document.querySelectorAll<HTMLAnchorElement>('nav[aria-label="Menu"] a')].find(
     (link) => link.textContent === name,
@@ -399,6 +494,42 @@ test("the menu names the editor's screens, folded to icons beside a service's ow
   expect(document.querySelector('nav[aria-label="Service documents"]')).toBeNull();
   expect(document.querySelector("header a")?.textContent).toBe("Categories");
   await until(() => expect(document.body.textContent).toContain("No categories yet"));
+});
+
+test("Collections is in the menu, and a record's dialog follows the address", async () => {
+  const h = await mountWorkspace("/collections");
+
+  await until(() => expect(document.querySelector("h1")?.textContent).toBe("Collections"));
+  expect(menuLink("Collections")?.getAttribute("aria-current")).toBe("page");
+  expect(document.querySelector("header a")?.textContent).toBe("Collections");
+
+  await act(async () =>
+    h.router.navigate({ to: "/collections/$key", params: { key: "contacts" } }),
+  );
+  await until(() =>
+    expect(document.querySelector("h1")?.textContent).toBe("Ministries and departments"),
+  );
+  // Still the Collections screen in the menu, beside one of its collections
+  expect(menuLink("Collections")?.getAttribute("aria-current")).toBe("page");
+
+  // The address a page's contact block links to opens the record's dialog
+  await act(async () =>
+    h.router.navigate({
+      to: "/collections/$key",
+      params: { key: "contacts" },
+      search: { record: "nis" },
+    }),
+  );
+  await until(() =>
+    expect(document.querySelector('[role="dialog"]')?.textContent).toContain("Edit nis"),
+  );
+
+  // Closing it takes the record out of the address
+  await act(async () =>
+    [...document.querySelectorAll("button")].find((item) => item.textContent === "Cancel")!.click(),
+  );
+  await until(() => expect(h.router.state.location.search).toEqual({}));
+  expect(h.router.state.location.pathname).toBe("/collections/contacts");
 });
 
 test("menu and bar links keep the focus as the screen changes and the menu folds or opens out", async () => {

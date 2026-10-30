@@ -15,6 +15,7 @@ if (!url || !["http:", "https:"].includes(url.protocol)) {
   process.exit(2);
 }
 
+// Opt-in only, by name: categories-live.mjs writes to a real api_v2 and its database
 const suites = requested.length
   ? requested
   : [
@@ -35,6 +36,7 @@ const suites = requested.length
       "remote-page-editing.mjs",
       "routing.mjs",
       "categories.mjs",
+      "collections.mjs",
       "page-writer.mjs",
       "site-preview.mjs",
     ];

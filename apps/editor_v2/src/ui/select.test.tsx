@@ -1,5 +1,5 @@
 /** @vitest-environment jsdom */
-import { act, type ReactNode } from "react";
+import { act, createRef, type ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { pill } from "./pill";
@@ -188,4 +188,81 @@ test("a filter of several shows everything, its placeholder, in the words of a c
   expect(trigger().textContent).toBe("All statuses");
   expect(trigger().hasAttribute("data-placeholder")).toBe(true);
   expect(trigger().querySelector(".text-placeholder")).toBeNull();
+});
+
+test("its parts make a quiet pill with a footer under its list, and the trigger takes a ref", async () => {
+  const ref = createRef<HTMLButtonElement>();
+  const onValueChange = vi.fn();
+
+  await render(
+    <Select.Root
+      items={[
+        { value: "number", label: "Number", icon: <svg data-testid="number" /> },
+        { value: "text", label: "Text" },
+      ]}
+      defaultValue="number"
+      onValueChange={onValueChange}
+    >
+      <Select.Trigger ref={ref} look="pill" tone="quiet" aria-label="Value type" />
+      <Select.Content footer={<button type="button">Add a type</button>}>
+        <Select.Group label="Types">
+          <Select.Item value="number">Number</Select.Item>
+          <Select.Item value="text">Text</Select.Item>
+        </Select.Group>
+      </Select.Content>
+    </Select.Root>,
+  );
+
+  expect(ref.current).toBe(trigger());
+  // The chosen item's icon comes with its label; the pill's look is ./pill's, in its quiet tone, at 32px
+  expect(trigger().textContent).toBe("Number");
+  expect(trigger().querySelector('[data-testid="number"]')).not.toBeNull();
+  expect(trigger().className).toContain("bg-tint");
+  expect(trigger().className).toContain("h-8");
+  await open();
+  expect(document.querySelector('[role="group"]')!.firstElementChild!.textContent).toBe("Types");
+  expect(document.querySelector('[role="listbox"]')!.nextElementSibling!.textContent).toBe(
+    "Add a type",
+  );
+  await act(async () =>
+    options()
+      .find((option) => option.textContent === "Text")!
+      .click(),
+  );
+  expect(onValueChange).toHaveBeenCalledWith("text", expect.anything());
+  expect(trigger().textContent).toBe("Text");
+});
+
+test("an icon-only trigger shows the chosen icon, its label left to screen readers", async () => {
+  await render(
+    <Select.Root
+      items={[{ value: "eq", label: "is equal to", icon: <svg data-testid="equals" /> }]}
+      defaultValue="eq"
+    >
+      <Select.Trigger look="pill" iconOnly aria-label="Operator" />
+      <Select.Content>
+        <Select.Item value="eq">is equal to</Select.Item>
+      </Select.Content>
+    </Select.Root>,
+  );
+
+  expect(trigger().querySelector('[data-testid="equals"]')).not.toBeNull();
+  expect(trigger().querySelector(".sr-only")!.textContent).toBe("is equal to");
+});
+
+test("a trigger's words stand in for the chosen item, and a field is 36px unless small", async () => {
+  await render(
+    <Select.Root multiple items={statuses} defaultValue={["draft", "published"]}>
+      <Select.Trigger aria-label="Statuses" size="sm">
+        Draft, Published
+      </Select.Trigger>
+      <Select.Content>
+        <Select.Item value="draft">Draft</Select.Item>
+      </Select.Content>
+    </Select.Root>,
+  );
+
+  expect(trigger().textContent).toBe("Draft, Published");
+  expect(trigger().className).toContain("h-8");
+  expect(trigger().className).not.toContain("h-9");
 });

@@ -4,17 +4,26 @@ import type { FastifyInstance, FastifyRequest } from "fastify";
 import pino from "pino";
 import { buildApp } from "./app";
 import { createBetterAuth } from "./adapters/better-auth";
+import { PostgresCollections } from "./adapters/postgres-collections";
+import { mailerFor } from "./adapters/mail";
 import { PostgresPages } from "./adapters/postgres-pages";
+import { PostgresReviewRecipients } from "./adapters/postgres-review-recipients";
+import { PostgresRoles } from "./adapters/postgres-roles";
 import { parseConfig } from "./config";
-import { connect, createPool, type DatabaseFailure } from "./db";
+import { connect, createPool, ping, type DatabaseFailure } from "./db";
 import { migrate } from "./migrate";
-import { authBypass } from "./adapters/auth-bypass";
+import { authBypass, registerBypassEmployee } from "./adapters/auth-bypass";
 import type { AuthHandler } from "./routes/auth";
 import { EditorAccess, type EmployeeGate } from "./services/editor-access";
 import { EditorIndex } from "./services/editor-index";
 import { CategoryEditing } from "./services/category-editing";
+import { CollectionEditing } from "./services/collection-editing";
 import { PageEditing } from "./services/page-editing";
 import { PageResolution } from "./services/page-resolution";
+import {
+  NO_REVIEW_NOTIFICATIONS,
+  ReviewNotifications,
+} from "./services/review-notifications";
 import { SiteNavigation } from "./services/site-navigation";
 import { seed } from "./seed";
 
@@ -51,7 +60,11 @@ async function main(): Promise<void> {
   if (!parsed.ok) {
     // Field names only: the supplied values may be secrets.
     logger.error(
-      { error: parsed.error._tag, fields: parsed.error.fields },
+      {
+        error: parsed.error._tag,
+        fields: parsed.error.fields,
+        reasons: parsed.error.reasons,
+      },
       parsed.error.message,
     );
     process.exitCode = 1;
@@ -80,32 +93,59 @@ async function main(): Promise<void> {
     if (config.seed) {
       operation = "seed";
       const counts = await seed(db);
-      if (counts.documents + counts.categories > 0)
+      if (Object.values(counts).some((n) => n > 0))
         logger.info(counts, "seeded the estate");
     }
     if (shutdown.signal.aborted) return;
     operation = "auth";
+    const roles = new PostgresRoles(db);
     let access: EmployeeGate;
     let auth: AuthHandler;
     if (config.authBypass) {
       logger.warn(
         "AUTH_BYPASS is on: every editor request runs as a local developer without signing in",
       );
+      const registered = await registerBypassEmployee(db);
+      if (!registered.ok) {
+        logger.error(
+          { error: registered.error._tag, reason: registered.error.reason },
+          registered.error.message,
+        );
+        process.exitCode = 1;
+        return;
+      }
       ({ access, auth } = authBypass);
     } else {
-      const github = await createBetterAuth(pool, config.auth, logger);
-      access = new EditorAccess(github);
+      const github = await createBetterAuth(db, config.auth, logger);
+      access = new EditorAccess(github, roles, config.adminEmails);
       auth = github;
     }
     operation = "http";
     const pages = new PostgresPages(db);
+    const mailer = mailerFor(config.notifications, logger);
+    const notifier = mailer
+      ? new ReviewNotifications(
+          mailer,
+          new PostgresReviewRecipients(db),
+          config.auth.editorOrigin,
+          logger,
+        )
+      : NO_REVIEW_NOTIFICATIONS;
     app = await buildApp({
       resolution: new PageResolution(pages),
       navigation: new SiteNavigation(pages),
-      editing: new PageEditing(pages, () => new Date()),
+      // One local developer runs the whole review flow (ADR 0079).
+      editing: new PageEditing(
+        pages,
+        () => new Date(),
+        { allowSelfApproval: config.authBypass },
+        notifier,
+      ),
       index: new EditorIndex(pages),
       categories: new CategoryEditing(pages, () => new Date()),
+      collections: new CollectionEditing(new PostgresCollections(db)),
       access,
+      roles,
       auth,
       config: {
         apiOrigin: config.auth.apiOrigin,
@@ -113,9 +153,14 @@ async function main(): Promise<void> {
       },
       ...(config.previewSecret ? { previewSecret: config.previewSecret } : {}),
       logger,
+      ready: () => ping(db),
     });
     if (shutdown.signal.aborted) return;
-    await app.listen({ port: config.port, host: "0.0.0.0" });
+    // A bypassed API admits any caller, so only this machine may reach it.
+    await app.listen({
+      port: config.port,
+      host: config.authBypass ? "127.0.0.1" : "0.0.0.0",
+    });
     if (!shutdown.signal.aborted) await once(shutdown.signal, "abort");
   } catch (error) {
     const code =

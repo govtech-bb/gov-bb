@@ -36,11 +36,11 @@ import { rankActions } from "../../editor/core/actions";
 import { Button } from "../../ui/button";
 import { Calendar } from "../../ui/calendar";
 import { formatDay, parseDay, shortDate } from "../core/dates";
-import { PillInput, pill, pillChevron, pillIcon } from "../../ui/pill";
+import { Pill, pill, pillChevron, pillIcon } from "../../ui/pill";
 import { Menu } from "../../ui/menu";
 import { NativeSelect } from "../../ui/native-select";
 import { Popover } from "../../ui/popover";
-import { SelectOption, SelectPopup } from "../../ui/select";
+import { Select as KitSelect } from "../../ui/select";
 import {
   fieldList,
   fieldPopup,
@@ -119,10 +119,9 @@ export function Caption({ icon, children }: { icon: ReactNode; children: string 
   );
 }
 
-export const row = "relative flex w-max items-center gap-1 *:shrink-0 [&_button:focus]:outline-3";
+export const row = "relative flex w-max items-center gap-1 *:shrink-0";
 
-export const header =
-  "flex items-center gap-1 text-14 leading-5 font-semibold text-muted [&_button:focus]:outline-3";
+export const header = "flex items-center gap-1 text-14 leading-5 font-semibold text-muted";
 
 /** Use the nearest vertically scrolling ancestor, falling back to the page. */
 export function scroller(el: HTMLElement) {
@@ -295,14 +294,14 @@ export function ContextMenu({
 
   return createPortal(
     <>
-      <div className="form-context-menu-overlay fixed inset-0 z-1000000005" />
+      <div className="form-context-menu-overlay fixed inset-0 z-popup" />
       <div
         ref={box}
         aria-hidden={!place}
         onClick={(e) => e.stopPropagation()}
         style={style}
         className={cn(
-          "form-context-menu z-1000000005 max-w-175 overflow-hidden rounded-sm bg-white font-sans shadow-popup max-md:max-w-[min(700px,calc(100vw-50px))] max-sm:max-w-[min(700px,calc(50vw-10px))]",
+          "form-context-menu z-popup max-w-175 overflow-hidden rounded-sm bg-white font-sans shadow-popup max-md:max-w-[min(700px,calc(100vw-50px))] max-sm:max-w-[min(700px,calc(50vw-10px))]",
           into ? "absolute" : "fixed",
           !place && "opacity-0",
         )}
@@ -352,12 +351,13 @@ export const divider = <span className="ml-1 h-4 w-px shrink-0 bg-grey-30" />;
 
 export const pillValue = "pointer-events-none min-w-0 truncate leading-normal select-none";
 
+/** Pill trigger with an expanded hit area; inherits the global keyboard focus ring. */
 export const pillButton = cn(
   pillChevron,
-  "relative ml-0.5 cursor-pointer outline-none after:absolute after:-inset-y-2 after:-right-2 after:-left-1.75 focus-visible:rounded-xs focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-focus",
+  "relative ml-0.5 cursor-pointer after:absolute after:-inset-y-2 after:-right-2 after:-left-1.75 focus-visible:rounded-xs",
 );
 
-export const popupLayer = "z-50 outline-none";
+export const popupLayer = "z-popup outline-none";
 
 export const searchBar =
   "flex min-h-9 w-full shrink-0 items-center gap-2 border-b border-line bg-white pr-2.5 pl-3.5 [&>svg:first-child]:size-4 [&>svg:first-child]:shrink-0 [&>svg:first-child]:text-subtle";
@@ -431,13 +431,13 @@ export function Pick<T extends string>({
       }}
     >
       {iconOnly && current ? <Tip content={current.label}>{trigger}</Tip> : trigger}
-      <SelectPopup footer={footer}>
+      <KitSelect.Content footer={footer}>
         {items.map((i) => (
-          <SelectOption key={i.value} value={i.value} icon={i.icon}>
+          <KitSelect.Item key={i.value} value={i.value} icon={i.icon}>
             {i.label}
-          </SelectOption>
+          </KitSelect.Item>
         ))}
-      </SelectPopup>
+      </KitSelect.Content>
     </Select.Root>
   );
 }
@@ -489,13 +489,13 @@ export function OptionsPick({
           <CaretDown />
         </Select.Icon>
       </Select.Trigger>
-      <SelectPopup>
+      <KitSelect.Content>
         {options.map(([v, l]) => (
-          <SelectOption key={v} value={v}>
+          <KitSelect.Item key={v} value={v}>
             {l}
-          </SelectOption>
+          </KitSelect.Item>
         ))}
-      </SelectPopup>
+      </KitSelect.Content>
     </Select.Root>
   );
 }
@@ -603,11 +603,11 @@ export function FieldCombobox({
               <span className={pillValue}>{text}</span>
             </Combobox.Trigger>
           ) : (
-            <PillInput
+            <Pill.Input
               placeholder={placeholder}
               label={label}
               value={draft ?? text}
-              onChange={(next) => {
+              onValueChange={(next) => {
                 setDraft(next);
                 onType?.(next);
               }}
@@ -783,10 +783,10 @@ export function DatePick({
         <div className="py-2">
           <Calendar
             mode="single"
-            selected={day}
-            month={day}
+            value={day}
+            defaultMonth={day}
             weekStartsOn={1}
-            onDayClick={(picked) => {
+            onValueChange={(_, picked) => {
               if (day && isSameDay(day, picked)) return onChange("");
               onChange(formatDay(picked));
               close();
@@ -1331,7 +1331,7 @@ export function TreeRowView({
               onToggle();
             }}
             className={cn(
-              "flex size-5 shrink-0 items-center justify-center rounded-sm text-muted transition-colors before:absolute before:inset-y-0 before:left-0 before:w-[calc(var(--indent)+28px)] hover:bg-hover hover:text-ink focus-visible:outline-none [&>svg]:size-3.5 [&>svg]:transition-transform [&>svg]:duration-150",
+              "flex size-5 shrink-0 items-center justify-center rounded-sm text-muted transition-colors before:absolute before:inset-y-0 before:left-0 before:w-[calc(var(--indent)+28px)] hover:bg-hover hover:text-ink focus-visible:outline-none [&>svg]:size-3.5 [&>svg]:transition-transform",
               r.open && "[&>svg]:rotate-90",
             )}
           >

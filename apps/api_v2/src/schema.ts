@@ -1,7 +1,8 @@
 /**
- * The Drizzle schema, matching migrations `001_init` to
- * `005_hierarchy_and_search` applied in order, table for table and column for
- * column.
+ * The Drizzle schema, matching migrations `001_init` to `015_revision_discarded`
+ * applied in order, table for table and column for column. BetterAuth reads
+ * and writes its four `auth_*` tables through these definitions; their
+ * property keys are BetterAuth's field names.
  *
  * The DDL in `migrations/` stays the source of truth and this file is the
  * typed view of it that queries are written against. `schema.test.ts` asserts
@@ -14,13 +15,17 @@
 
 import {
   type AnyPgColumn,
+  boolean,
+  check,
   customType,
   index,
   integer,
+  uniqueIndex,
   foreignKey,
   jsonb,
   pgEnum,
   pgTable,
+  primaryKey,
   text,
   timestamp,
   unique,
@@ -28,7 +33,15 @@ import {
   varchar,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
-import { VISIBILITIES, type Frontmatter, type PageId } from "./modules/page";
+import { ROLES } from "./modules/auth";
+import type { CollectionSchema, RecordData } from "./modules/collection";
+import {
+  REVISION_STATUSES,
+  VISIBILITIES,
+  type Frontmatter,
+  type PageFields,
+  type PageId,
+} from "./modules/page";
 
 export const pageVisibility = pgEnum("page_visibility", VISIBILITIES);
 
@@ -38,6 +51,11 @@ export const changeAction = pgEnum("change_action", [
   "published",
   "reverted",
   "deleted",
+  "unpublished",
+  "submitted",
+  "rejected",
+  "approved",
+  "discarded",
 ]);
 
 const timestamps = {
@@ -115,6 +133,89 @@ export const contentPages = pgTable(
   ],
 );
 
+/**
+ * BetterAuth's tables, as `003_auth` creates them: quoted camelCase columns
+ * and BetterAuth's own timestamp precision. `system` is the user with no
+ * account.
+ */
+export const authUser = pgTable("auth_user", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  email: text("email").notNull().unique(),
+  emailVerified: boolean("emailVerified").notNull(),
+  image: text("image"),
+  createdAt: timestamp("createdAt", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
+export const authSession = pgTable(
+  "auth_session",
+  {
+    id: text("id").primaryKey(),
+    expiresAt: timestamp("expiresAt", { withTimezone: true }).notNull(),
+    token: text("token").notNull().unique(),
+    createdAt: timestamp("createdAt", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updatedAt", { withTimezone: true }).notNull(),
+    ipAddress: text("ipAddress"),
+    userAgent: text("userAgent"),
+    userId: text("userId")
+      .notNull()
+      .references(() => authUser.id, { onDelete: "cascade" }),
+  },
+  (table) => [index("auth_session_userId_idx").on(table.userId)],
+);
+
+export const authAccount = pgTable(
+  "auth_account",
+  {
+    id: text("id").primaryKey(),
+    accountId: text("accountId").notNull(),
+    providerId: text("providerId").notNull(),
+    userId: text("userId")
+      .notNull()
+      .references(() => authUser.id, { onDelete: "cascade" }),
+    accessToken: text("accessToken"),
+    refreshToken: text("refreshToken"),
+    idToken: text("idToken"),
+    accessTokenExpiresAt: timestamp("accessTokenExpiresAt", {
+      withTimezone: true,
+    }),
+    refreshTokenExpiresAt: timestamp("refreshTokenExpiresAt", {
+      withTimezone: true,
+    }),
+    scope: text("scope"),
+    password: text("password"),
+    createdAt: timestamp("createdAt", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updatedAt", { withTimezone: true }).notNull(),
+  },
+  (table) => [index("auth_account_userId_idx").on(table.userId)],
+);
+
+export const authVerification = pgTable(
+  "auth_verification",
+  {
+    id: text("id").primaryKey(),
+    identifier: text("identifier").notNull(),
+    value: text("value").notNull(),
+    expiresAt: timestamp("expiresAt", { withTimezone: true }).notNull(),
+    createdAt: timestamp("createdAt", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updatedAt", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [index("auth_verification_identifier_idx").on(table.identifier)],
+);
+
 const tsvector = customType<{ data: string }>({
   dataType: () => "tsvector",
 });
@@ -146,10 +247,18 @@ export const searchChunks = pgTable(
 );
 
 /**
- * Append-only, enforced by a trigger rather than by convention. A row is
- * written on every save, which is what makes the trigger something the tests
- * exercise rather than only declare — and what a live-update feed would read
- * from.
+ * Append-only, enforced by a trigger rather than by convention. The database
+ * writes a row on every change to a content table (`record_change`, see
+ * `007_change_history_trigger`), and on each review step of a page's revision
+ * (`record_review`, see `013_review_history_trigger`), which is what a
+ * live-update feed would read from. `actor` is the user whose transaction
+ * made the change, or `system`.
+ *
+ * The snapshot is the row that changed, so its shape follows the action, not
+ * just `entity_kind`: a page's `submitted`, `rejected` and `approved` events
+ * hold a `page_revisions` row (its `id` is the revision's; `page_id` is the
+ * page), while its other events hold a `content_pages` row. Rebuilding a
+ * page's state means filtering on action.
  */
 export const changeEvents = pgTable(
   "change_events",
@@ -162,7 +271,10 @@ export const changeEvents = pgTable(
     versionNo: integer("version_no").notNull(),
     action: changeAction("action").notNull(),
     snapshot: jsonb("snapshot").notNull(),
-    actor: text("actor").notNull().default("spike"),
+    actor: text("actor")
+      .notNull()
+      .default("system")
+      .references(() => authUser.id, { onDelete: "restrict" }),
     occurredAt: timestamp("occurred_at", { withTimezone: true, precision: 3 })
       .notNull()
       .defaultNow(),
@@ -172,6 +284,120 @@ export const changeEvents = pgTable(
       table.entityKind,
       table.entityId,
       table.versionNo,
+    ),
+  ],
+);
+
+/**
+ * An employee's roles, a row each. `user_id` references `auth_user`, which
+ * BetterAuth owns, so the key is in the migration only.
+ */
+export const userRoles = pgTable(
+  "user_roles",
+  {
+    userId: text("user_id").notNull(),
+    role: text("role", { enum: ROLES }).notNull(),
+    // The admin who granted it; null when api_v2 granted it itself: the
+    // default editor role, or admin from API_V2_ADMIN_EMAILS.
+    grantedBy: text("granted_by"),
+    grantedAt: timestamp("granted_at", { withTimezone: true, precision: 3 })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.userId, table.role] }),
+    check(
+      "user_roles_role_check",
+      sql`${table.role} in ('editor', 'approver', 'admin')`,
+    ),
+  ],
+);
+
+/**
+ * A change to a public page waiting for an approver; the live row is
+ * unchanged until it is published. A page has at most one open revision, a
+ * draft or a submitted one; rejected and published revisions are kept.
+ */
+export const pageRevisions = pgTable(
+  "page_revisions",
+  {
+    id: uuid("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    pageId: uuid("page_id")
+      .notNull()
+      .references(() => contentPages.id, { onDelete: "cascade" })
+      .$type<PageId>(),
+    status: text("status", { enum: REVISION_STATUSES })
+      .notNull()
+      .default("draft"),
+    fields: jsonb("fields").$type<PageFields>().notNull(),
+    // The live page's version this revision was last saved over.
+    liveUpdatedAt: timestamp("live_updated_at", {
+      withTimezone: true,
+      precision: 3,
+    }).notNull(),
+    createdBy: text("created_by").notNull(),
+    // Everyone who saved to it; none of them may approve it (ADR 0079).
+    contributors: text("contributors").array().notNull(),
+    submittedBy: text("submitted_by"),
+    submittedAt: timestamp("submitted_at", {
+      withTimezone: true,
+      precision: 3,
+    }),
+    // Who rejected or published it, and when.
+    decidedBy: text("decided_by"),
+    decidedAt: timestamp("decided_at", { withTimezone: true, precision: 3 }),
+    // Why it was rejected.
+    comment: text("comment"),
+    ...timestamps,
+  },
+  (table) => [
+    check(
+      "page_revisions_status_check",
+      sql`${table.status} in ('draft', 'submitted', 'rejected', 'published', 'discarded')`,
+    ),
+    uniqueIndex("page_revisions_open_page_id_key")
+      .on(table.pageId)
+      .where(sql`status in ('draft', 'submitted')`),
+  ],
+);
+
+/**
+ * Facts many pages repeat, kept once (#3183). `schema` is the field list a
+ * record is checked against; a developer sets it, editors change records.
+ */
+export const dataCollections = pgTable("data_collections", {
+  id: uuid("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  key: varchar("key", { length: 100 }).notNull().unique(),
+  title: varchar("title", { length: 200 }).notNull(),
+  // The field whose value names a record, as `collection_records.record_key`.
+  recordKey: varchar("record_key", { length: 100 }).notNull(),
+  schema: jsonb("schema").$type<CollectionSchema>().notNull(),
+  schemaVersion: integer("schema_version").notNull().default(1),
+  ...timestamps,
+});
+
+/** One record of a collection; a collection with records cannot be deleted. */
+export const collectionRecords = pgTable(
+  "collection_records",
+  {
+    id: uuid("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    collectionKey: varchar("collection_key", { length: 100 })
+      .notNull()
+      .references(() => dataCollections.key, { onDelete: "restrict" }),
+    recordKey: varchar("record_key", { length: 200 }).notNull(),
+    data: jsonb("data").$type<RecordData>().notNull(),
+    ...timestamps,
+  },
+  (table) => [
+    unique("collection_records_collection_key_record_key_key").on(
+      table.collectionKey,
+      table.recordKey,
     ),
   ],
 );

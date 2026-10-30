@@ -1,24 +1,17 @@
 import { createCn, validators } from "cn/config";
 
 /**
- * shadcn's `cn` (clsx + tailwind-merge rules), taught this theme: numeric font sizes (`text-14`)
- * and the shadow names. A `leading-*` overrides a size's own line-height, so a size mustn't drop it.
+ * Merges classes using the editor's font sizes, shadows, easing and z-index tokens.
+ * Font sizes preserve explicit `leading-*` overrides.
  */
 export const cn = createCn({
   extend: {
     theme: {
       text: [validators.isNumber],
-      shadow: [
-        "input",
-        "input-hover",
-        "input-focus",
-        "input-active",
-        "input-error",
-        "press",
-        "popup",
-        "sheet",
-      ],
+      shadow: ["input", "input-hover", "input-focus", "input-error", "press", "popup", "sheet"],
+      ease: ["out-quint"],
     },
+    classGroups: { z: [{ z: ["canvas", "bar", "popup", "tooltip", "toast"] }] },
   },
   override: { conflictingClassGroups: { "font-size": [] } },
 });

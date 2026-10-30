@@ -9,6 +9,11 @@
 const GITHUB_USER_URL = "https://api.github.com/user";
 const REPO_NAME = "gov-bb";
 const USER_AGENT = "gov-bb-api";
+// Bound every GitHub call (#2902). GET /form-definitions and GET /services now
+// authorize Feature flagging's token on each page load, so a stalled GitHub
+// must fail fast — the soft-auth lists fall back to public-only and the guard
+// rejects — instead of hanging until the caller's own timeout.
+const GITHUB_TIMEOUT_MS = 5_000;
 
 const GH_HEADERS = (token: string) => ({
   Authorization: `Bearer ${token}`,
@@ -16,6 +21,12 @@ const GH_HEADERS = (token: string) => ({
   "X-GitHub-Api-Version": "2022-11-28",
   "User-Agent": USER_AGENT,
 });
+
+const ghFetch = (url: string, token: string) =>
+  fetch(url, {
+    headers: GH_HEADERS(token),
+    signal: AbortSignal.timeout(GITHUB_TIMEOUT_MS),
+  });
 
 /** Parse `Authorization: Bearer <token>` without regex (avoids ReDoS flags). */
 export function extractBearerToken(
@@ -33,7 +44,7 @@ export function extractBearerToken(
  * (GitHub returns 401/403). Throws only on unexpected transport failures.
  */
 export async function fetchGitHubLogin(token: string): Promise<string | null> {
-  const res = await fetch(GITHUB_USER_URL, { headers: GH_HEADERS(token) });
+  const res = await ghFetch(GITHUB_USER_URL, token);
   if (res.status === 401 || res.status === 403) return null;
   if (!res.ok) throw new Error(`GitHub GET /user failed: ${res.status}`);
   const user = (await res.json()) as { login?: string };
@@ -48,7 +59,7 @@ export async function userIsTeamMember(args: {
   login: string;
 }): Promise<boolean> {
   const url = `https://api.github.com/orgs/${encodeURIComponent(args.org)}/teams/${encodeURIComponent(args.teamSlug)}/memberships/${encodeURIComponent(args.login)}`;
-  const res = await fetch(url, { headers: GH_HEADERS(args.token) });
+  const res = await ghFetch(url, args.token);
   if (res.status === 404 || res.status === 403) return false;
   if (!res.ok)
     throw new Error(`GitHub team membership check failed: ${res.status}`);
@@ -63,7 +74,7 @@ export async function userHasRepoWriteAccess(args: {
   login: string;
 }): Promise<boolean> {
   const url = `https://api.github.com/repos/${encodeURIComponent(args.org)}/${REPO_NAME}/collaborators/${encodeURIComponent(args.login)}/permission`;
-  const res = await fetch(url, { headers: GH_HEADERS(args.token) });
+  const res = await ghFetch(url, args.token);
   if (res.status === 404 || res.status === 403) return false;
   if (!res.ok) throw new Error(`GitHub permission check failed: ${res.status}`);
   const perm = (await res.json()) as { permission?: string };

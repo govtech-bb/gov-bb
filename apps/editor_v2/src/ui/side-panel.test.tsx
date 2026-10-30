@@ -130,3 +130,16 @@ test("narrowing the window doesn't spring the drawer open over the page", async 
 
   expect(host.querySelector("aside")?.hidden).toBe(false);
 });
+
+test("beside the page, hiding it eases the canvas over rather than moving it in one frame", async () => {
+  await render();
+
+  const panel = host.querySelector("aside")!;
+
+  expect(panel.className).toContain("transition-[width,display]");
+  expect(panel.className).toContain("[&[hidden]]:w-0");
+  expect(panel.className).toContain("motion-reduce:transition-none");
+  // Its settings keep their width as it narrows, clipped rather than re-wrapped
+  expect(panel.className).toContain("overflow-x-clip");
+  expect(panel.firstElementChild?.className).toContain("w-80");
+});

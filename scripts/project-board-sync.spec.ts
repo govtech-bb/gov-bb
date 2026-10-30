@@ -7,6 +7,8 @@ import {
   closeIssue,
   isExcluded,
   removeFromBoard,
+  parseClosingRefs,
+  closingIssues,
 } from "./project-board-sync";
 
 describe("decideActions", () => {
@@ -367,6 +369,113 @@ describe("resolveProjectMeta", () => {
       resolveProjectMeta("tok", fetchMock as unknown as typeof fetch),
     ).rejects.toThrow('Status option not found on board: "Done"');
   });
+
+  it("queries project 28 for the v2 board and maps Closed to Done", async () => {
+    const body = {
+      data: {
+        organization: {
+          projectV2: {
+            id: "P28",
+            field: {
+              id: "F",
+              options: [
+                { id: "1", name: "Backlog" },
+                { id: "2", name: "Ready" },
+                { id: "3", name: "In progress" },
+                { id: "4", name: "In review" },
+                { id: "5", name: "Done" },
+              ],
+            },
+          },
+        },
+      },
+    };
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(new Response(JSON.stringify(body), { status: 200 }));
+    const meta = await resolveProjectMeta(
+      "tok",
+      fetchMock as unknown as typeof fetch,
+      "v2",
+    );
+    const sent = JSON.parse(fetchMock.mock.calls[0][1].body as string);
+    expect(sent.variables.num).toBe(28);
+    expect(meta.optionIds.Closed).toBe("5");
+  });
+});
+
+describe("parseClosingRefs", () => {
+  it("reads every closing keyword form, once per issue", () => {
+    expect(
+      parseClosingRefs(
+        "Closes #1\nfixes: #2, Resolved #3 and closes #1\nFix #4",
+      ),
+    ).toEqual([1, 2, 3, 4]);
+  });
+
+  it("ignores bare and cross-repo references", () => {
+    expect(
+      parseClosingRefs("Covers #5. Closes govtech-bb/other#6. See #7"),
+    ).toEqual([]);
+  });
+});
+
+describe("closingIssues", () => {
+  const ok = (data: unknown) =>
+    new Response(JSON.stringify({ data }), { status: 200 });
+  const refs = (nodes: unknown[]) =>
+    ok({ repository: { pullRequest: { closingIssuesReferences: { nodes } } } });
+
+  it("adds body refs GitHub didn't link, skipping PRs and bad numbers", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(refs([]))
+      .mockResolvedValueOnce(
+        ok({
+          repository: {
+            issueOrPullRequest: {
+              number: 5,
+              title: "Fix it",
+              labels: { nodes: [{ name: "v2-rewrite" }] },
+            },
+          },
+        }),
+      )
+      .mockResolvedValueOnce(ok({ repository: { issueOrPullRequest: {} } }))
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({ errors: [{ message: "Could not resolve" }] }),
+          { status: 200 },
+        ),
+      );
+    const result = await closingIssues(
+      "o",
+      "r",
+      1,
+      "Closes #5\nCloses #6\nCloses #9999",
+      "tok",
+      fetchMock as unknown as typeof fetch,
+    );
+    expect(result).toEqual({ linkedIssues: [5], excludedIssues: [5] });
+  });
+
+  it("reads only GitHub's links when there is no body to parse", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        refs([{ number: 3, title: "Fix it", labels: { nodes: [] } }]),
+      );
+    const result = await closingIssues(
+      "o",
+      "r",
+      1,
+      undefined,
+      "tok",
+      fetchMock as unknown as typeof fetch,
+    );
+    expect(result).toEqual({ linkedIssues: [3], excludedIssues: [] });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe("removeLabel", () => {
@@ -507,7 +616,7 @@ describe("isExcluded", () => {
 });
 
 describe("decideActions for excluded issues", () => {
-  it("opening an excluded issue removes it from the board instead", () => {
+  it("opening an excluded issue puts it in Backlog on the v2 board", () => {
     expect(
       decideActions({
         eventName: "issues",
@@ -516,10 +625,69 @@ describe("decideActions for excluded issues", () => {
         title: "Fix it",
         labels: ["v2-rewrite"],
       }),
-    ).toEqual([{ issue: 5, actions: [{ type: "removeFromBoard" }] }]);
+    ).toEqual([
+      {
+        issue: 5,
+        board: "v2",
+        actions: [
+          { type: "removeFromBoard" },
+          { type: "ensureOnBoard" },
+          { type: "setStatus", status: "Backlog" },
+        ],
+      },
+    ]);
   });
 
-  it("adding the v2-rewrite label removes the card", () => {
+  it("closing an excluded issue as not planned still asks for Closed", () => {
+    // resolveProjectMeta maps Closed to the v2 board's Done column.
+    expect(
+      decideActions({
+        eventName: "issues",
+        action: "closed",
+        issueNumber: 5,
+        stateReason: "not_planned",
+        title: "Fix it",
+        labels: ["v2-rewrite"],
+      }),
+    ).toEqual([
+      {
+        issue: 5,
+        board: "v2",
+        actions: [
+          { type: "removeFromBoard" },
+          { type: "ensureOnBoard" },
+          { type: "setStatus", status: "Closed" },
+        ],
+      },
+    ]);
+  });
+
+  it("a PR merged into v2-rewrite moves its issue to Done on the v2 board", () => {
+    expect(
+      decideActions({
+        eventName: "pull_request",
+        action: "closed",
+        baseRef: "v2-rewrite",
+        merged: true,
+        linkedIssues: [7],
+        excludedIssues: [7],
+      }),
+    ).toEqual([
+      {
+        issue: 7,
+        board: "v2",
+        actions: [
+          { type: "removeFromBoard" },
+          { type: "ensureOnBoard" },
+          { type: "setStatus", status: "Done" },
+          { type: "removeLabel", label: "progressing" },
+          { type: "closeIssue" },
+        ],
+      },
+    ]);
+  });
+
+  it("adding the v2-rewrite label moves the card to the v2 board", () => {
     expect(
       decideActions({
         eventName: "issues",
@@ -529,10 +697,16 @@ describe("decideActions for excluded issues", () => {
         title: "Fix it",
         labels: ["v2-rewrite"],
       }),
-    ).toEqual([{ issue: 5, actions: [{ type: "removeFromBoard" }] }]);
+    ).toEqual([
+      {
+        issue: 5,
+        board: "v2",
+        actions: [{ type: "removeFromBoard" }, { type: "ensureOnBoard" }],
+      },
+    ]);
   });
 
-  it("still swaps the exclusive labels, without setting a status", () => {
+  it("swaps the exclusive labels and sets the status on the v2 board", () => {
     expect(
       decideActions({
         eventName: "issues",
@@ -545,15 +719,18 @@ describe("decideActions for excluded issues", () => {
     ).toEqual([
       {
         issue: 5,
+        board: "v2",
         actions: [
           { type: "removeLabel", label: "progressing" },
           { type: "removeFromBoard" },
+          { type: "ensureOnBoard" },
+          { type: "setStatus", status: "Ready" },
         ],
       },
     ]);
   });
 
-  it("a merged PR still closes and assigns an excluded issue", () => {
+  it("a merged PR closes and assigns an excluded issue on the v2 board", () => {
     expect(
       decideActions({
         eventName: "pull_request",
@@ -577,8 +754,11 @@ describe("decideActions for excluded issues", () => {
       },
       {
         issue: 7,
+        board: "v2",
         actions: [
           { type: "removeFromBoard" },
+          { type: "ensureOnBoard" },
+          { type: "setStatus", status: "Done" },
           { type: "removeLabel", label: "progressing" },
           { type: "assignIfUnassigned", login: "octocat" },
           { type: "closeIssue" },

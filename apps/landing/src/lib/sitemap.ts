@@ -6,6 +6,8 @@ import {
   pharmacyDetailHref,
 } from '../routes/health-and-emergency-services/find-an-open-pharmacy/-lib/routes'
 import type { ViewLevel } from './frontmatter'
+import type { CategoryTreeResult } from './api-v2-categories'
+import { sitePath } from './breadcrumb-trail'
 
 const PHARMACY_SERVICE_URL =
   'health-and-emergency-services/find-an-open-pharmacy'
@@ -18,13 +20,15 @@ export interface SitemapEntry {
 
 /**
  * Every anonymously-visible URL, in priority order: the home and services
- * pages, each public category and its subcategories, and each public content
+ * pages, each public category and its subcategories (api_v2's when it is
+ * configured), and each public content
  * page (excluding `/start` application entry sub-pages). Gated and preview-only
  * content is left out, mirroring what a public visitor can reach. Deduped so a
  * top-level page sharing a category slug can't appear twice.
  */
 export function collectSitemapEntries(
   overlay?: ReadonlyMap<string, ViewLevel>,
+  categoryTree: CategoryTreeResult = { kind: 'disabled' },
 ): SitemapEntry[] {
   const entries: SitemapEntry[] = []
   const seen = new Set<string>()
@@ -37,11 +41,22 @@ export function collectSitemapEntries(
   add('/', 1)
   add('/services', 0.9)
 
-  for (const cat of CATEGORIES) {
-    if (!isCategoryVisible(cat, 'public', overlay)) continue
-    add(`/${cat.slug}`, 0.8)
-    for (const sub of cat.subcategories ?? []) {
-      add(`/${cat.slug}/${sub.slug}`, 0.7)
+  // api_v2 mode (ADR 0078): its public tree's categories, or none when it
+  // can't be read. Never use the static taxonomy, which would list removed ones.
+  // Pages and app routes below are listed either way.
+  if (categoryTree.kind === 'disabled') {
+    for (const cat of CATEGORIES) {
+      if (!isCategoryVisible(cat, 'public', overlay)) continue
+      add(`/${cat.slug}`, 0.8)
+      for (const sub of cat.subcategories ?? []) {
+        add(`/${cat.slug}/${sub.slug}`, 0.7)
+      }
+    }
+  } else if (categoryTree.kind === 'found') {
+    for (const cat of categoryTree.categories) {
+      add(sitePath(cat.url), 0.8)
+
+      for (const sub of cat.subcategories) add(sitePath(sub.url), 0.7)
     }
   }
 

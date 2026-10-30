@@ -1,18 +1,20 @@
-import {
-  categoriesFrom,
-  categoryProblems,
-  categoryUrl,
-  deleteBlocker,
-  movedOrder,
-  reordered,
-  siblingsOf,
-  withServiceCounts,
-  type Category,
-  type CategoryFields,
-} from "./categories";
+import type { Category, CategoryBlockers, CategoryFields, CategoryOrder } from "./categories";
 import type { paths } from "./openapi";
 
 type Json<Content> = Content extends { content: { "application/json": infer Body } } ? Body : never;
+
+type ApiCategory = Json<paths["/editor/categories"]["get"]["responses"][200]>["categories"][number];
+
+type CreateCategoryInput = Json<paths["/editor/categories"]["post"]["requestBody"]>;
+
+type UpdateCategoryInput = Json<paths["/editor/categories/{id}"]["put"]["requestBody"]>;
+
+type OrderCategoriesInput = Json<paths["/editor/categories/order"]["put"]["requestBody"]>;
+
+type ApiCategoryBlockers = Extract<
+  Json<paths["/editor/categories/{id}"]["delete"]["responses"][409]>,
+  { error: "category_in_use" }
+>["blockers"];
 
 /** A page as the editor reads and saves it. */
 export type ApiPage = Json<paths["/pages/{id}"]["get"]["responses"][200]>;
@@ -23,6 +25,17 @@ export type CreatePageInput = Json<paths["/pages"]["post"]["requestBody"]>;
 /** What saving a page sends: every field, with `parent_id` left out to keep the parent. */
 export type SavePageInput = Json<paths["/pages/{id}"]["put"]["requestBody"]>;
 
+/** A public page's change waiting for an approver, with what it changes. */
+export type ApiRevision = Json<paths["/pages/{id}/revision"]["get"]["responses"][200]>;
+
+/** A change waiting for an approver, as the review queue lists it. */
+export type ReviewQueueEntry = Json<
+  paths["/revisions"]["get"]["responses"][200]
+>["revisions"][number];
+
+/** What rejecting a change sends: why, for the editor. */
+type RejectRevisionInput = Json<paths["/pages/{id}/revision/reject"]["post"]["requestBody"]>;
+
 /** One row of the services list. */
 export type ServiceSummary = Json<paths["/services"]["get"]["responses"][200]>[number];
 
@@ -32,10 +45,27 @@ export type ServiceDetail = Json<paths["/services/{id}"]["get"]["responses"][200
 /** A page of an opened service. */
 export type ServicePage = ServiceDetail["pages"][number];
 
-/** A category as the content API has it saved: what a page's `category_id` can name. */
-export type SavedCategory = Json<
-  paths["/editor/categories"]["get"]["responses"][200]
->["categories"][number];
+/** The signed-in employee and their roles. */
+export type Me = Json<paths["/editor/me"]["get"]["responses"][200]>;
+
+/** A data collection in the editor's list: its field list and how many records it holds. */
+export type CollectionSummary = Json<
+  paths["/collections"]["get"]["responses"][200]
+>["collections"][number];
+
+/** A data collection and its records, ordered by record key. */
+export type CollectionDetail = Json<paths["/collections/{key}/records"]["get"]["responses"][200]>;
+
+/** A collection's definition: its key, title, record key field and field list. */
+export type Collection = CollectionDetail["collection"];
+
+/** One record of a collection: a value for some or all of its fields, every one a string. */
+export type CollectionRecord = CollectionDetail["records"][number];
+
+/** What saving a record sends: every value to keep, by field key. */
+export type RecordInput = Json<
+  paths["/collections/{key}/records/{recordKey}"]["put"]["requestBody"]
+>;
 
 /** The estate's change token. */
 export type EstateVersion = Json<paths["/version"]["get"]["responses"][200]>;
@@ -43,7 +73,7 @@ export type EstateVersion = Json<paths["/version"]["get"]["responses"][200]>;
 /** A field the API refused, and what the editor can do about it. */
 export type FieldError = Json<paths["/pages"]["post"]["responses"][422]>["errors"][number];
 
-type FailureBody = { message?: string; errors?: FieldError[] };
+type FailureBody = { error?: string; message?: string; errors?: FieldError[] };
 
 /** A request the API refused or never answered: status 0 means it was not reached. */
 export class ApiFailure extends Error {
@@ -51,10 +81,223 @@ export class ApiFailure extends Error {
     readonly status: number,
     readonly errors: readonly FieldError[] = [],
     message = status === 0 ? "The content API could not be reached" : `HTTP ${status}`,
+    /** The API's `error`, which tells refusals with one status apart. */
+    readonly code?: string,
   ) {
     super(message);
   }
 }
+
+/** A category operation's outcome: what it read or saved, or the known reason it didn't. */
+export type CategoryResult<Value, Failure extends Error> =
+  | { readonly ok: true; readonly value: Value }
+  | { readonly ok: false; readonly error: Failure };
+
+/** A category read that got no answer from the content API; nothing changed. */
+export class CategoryUnreachable extends ApiFailure {
+  /** Stable failure discriminator. */
+  readonly _tag = "CategoryUnreachable" as const;
+
+  constructor() {
+    super(0, [], "Category list unreachable: the content API could not be reached");
+  }
+}
+
+/** The session has ended (401), or the signed-in person may not manage categories (403). */
+export class CategoryAccessDenied extends ApiFailure {
+  /** Stable failure discriminator. */
+  readonly _tag = "CategoryAccessDenied" as const;
+
+  constructor(
+    override readonly status: 401 | 403,
+    message: string,
+  ) {
+    super(status, [], message);
+  }
+}
+
+/** The category to change or delete no longer exists, such as after another author deleted it. */
+export class CategoryNotFound extends ApiFailure {
+  /** Stable failure discriminator. */
+  readonly _tag = "CategoryNotFound" as const;
+
+  constructor(message: string) {
+    super(404, [], message);
+  }
+}
+
+/** Fields the content API refused, each with the reason an author can act on. */
+export class CategoryRejected extends ApiFailure {
+  /** Stable failure discriminator. */
+  readonly _tag = "CategoryRejected" as const;
+
+  constructor(errors: readonly FieldError[], message: string) {
+    super(422, errors, message);
+  }
+}
+
+/** A category save, move or deletion refused because another author changed the categories first: read them again. */
+export class CategoryConflict extends ApiFailure {
+  /** Stable failure discriminator. */
+  readonly _tag = "CategoryConflict" as const;
+
+  /** `message` is the content API's own sentence. */
+  constructor(message: string) {
+    super(409, [], message);
+  }
+}
+
+/** A category deletion refused because pages, subcategories or an app route still use the category. */
+export class CategoryInUse extends ApiFailure {
+  /** Stable failure discriminator. */
+  readonly _tag = "CategoryInUse" as const;
+
+  /** `blockers` counts pages of every status, not only the services the list shows. */
+  constructor(
+    message: string,
+    readonly blockers: CategoryBlockers,
+  ) {
+    super(409, [], message);
+  }
+}
+
+/**
+ * Any other refusal: a request the content API couldn't read (400), a read's failure on the API's side (5xx), or an
+ * answer outside the operation's contract. A write's 5xx is never this: it may follow a commit, so its outcome is
+ * unknown.
+ */
+export class CategoryRefused extends ApiFailure {
+  /** Stable failure discriminator. */
+  readonly _tag = "CategoryRefused" as const;
+
+  constructor(status: number, message?: string) {
+    super(status, [], message ?? `Category request refused: HTTP ${status}`);
+  }
+}
+
+/** The content API's answer isn't the category, or list of categories, its contract promises. */
+export class CategoryAnswerMalformed extends Error {
+  /** Stable failure discriminator. */
+  readonly _tag = "CategoryAnswerMalformed" as const;
+
+  constructor() {
+    super("Category answer malformed: the content API's answer is not the categories it promises");
+  }
+}
+
+/**
+ * A category write whose outcome is unknown: it may have reached the content API, but no answer, or none that could
+ * be read, came back. Nothing says it failed, so it is never repeated blindly: read the categories again and compare.
+ */
+export class CategoryOutcomeUnknown extends Error {
+  /** Stable failure discriminator. */
+  readonly _tag = "CategoryOutcomeUnknown" as const;
+
+  /** `cause` is the lost request's error, or the unreadable answer's. */
+  constructor(
+    readonly operation: "create" | "update" | "order" | "delete",
+    cause: unknown,
+  ) {
+    super(
+      `Category ${operation} outcome unknown: the content API's answer was lost or unreadable`,
+      {
+        cause,
+      },
+    );
+  }
+}
+
+/** Why the content API refused a category request that it answered. */
+export type CategoryRefusal =
+  | CategoryAccessDenied
+  | CategoryNotFound
+  | CategoryRejected
+  | CategoryConflict
+  | CategoryInUse
+  | CategoryRefused;
+
+// A refusal the operation's contract names, or else one outside it
+type Within<Tag extends CategoryRefusal["_tag"]> = Extract<CategoryRefusal, { _tag: Tag }>;
+
+const isWithin = <Tag extends CategoryRefusal["_tag"]>(
+  refusal: CategoryRefusal,
+  tags: readonly Tag[],
+): refusal is Within<Tag> => tags.some((tag) => tag === refusal._tag);
+
+const ok = <Value>(value: Value) => ({ ok: true, value }) as const;
+
+const failed = <Failure extends Error>(error: Failure) => ({ ok: false, error }) as const;
+
+// JSON's text: any other JSON value, even a number, reads as something different
+export const isText = (value: unknown): value is string => String(value) === value;
+
+const isFlag = (value: unknown): value is boolean => value === true || value === false;
+
+const isCount = (value: unknown): value is number =>
+  Number.isSafeInteger(value) && Number(value) >= 0;
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+const isId = (value: unknown): value is string => isText(value) && UUID.test(value);
+
+// A version as the content API stamps it: an ISO instant to the millisecond
+const STAMP = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}(?:Z|[+-]\d{2}:\d{2})$/;
+
+const isStamp = (value: unknown): value is string =>
+  isText(value) && STAMP.test(value) && Number.isFinite(Date.parse(value));
+
+const isCategory = (value: unknown): value is ApiCategory =>
+  value instanceof Object &&
+  "id" in value &&
+  isId(value.id) &&
+  "parent_id" in value &&
+  (value.parent_id === null || isId(value.parent_id)) &&
+  "title" in value &&
+  isText(value.title) &&
+  "slug" in value &&
+  isText(value.slug) &&
+  "description" in value &&
+  (value.description === null || isText(value.description)) &&
+  "url" in value &&
+  isText(value.url) &&
+  value.url.startsWith("/") &&
+  "position" in value &&
+  isCount(value.position) &&
+  "services" in value &&
+  isCount(value.services) &&
+  "reserved_route" in value &&
+  isFlag(value.reserved_route) &&
+  "updated_at" in value &&
+  isStamp(value.updated_at);
+
+const isCategoryList = (value: unknown): value is { categories: ApiCategory[] } =>
+  value instanceof Object &&
+  "categories" in value &&
+  Array.isArray(value.categories) &&
+  value.categories.every(isCategory);
+
+const isFieldErrors = (value: unknown): value is FieldError[] =>
+  Array.isArray(value) &&
+  value.every(
+    (item) =>
+      item instanceof Object &&
+      "field" in item &&
+      isText(item.field) &&
+      "message" in item &&
+      isText(item.message),
+  );
+
+const isCategoryBlockers = (value: unknown): value is ApiCategoryBlockers =>
+  value instanceof Object &&
+  "pages" in value &&
+  isCount(value.pages) &&
+  "subcategories" in value &&
+  isCount(value.subcategories) &&
+  "reserved_route" in value &&
+  isFlag(value.reserved_route);
+
+// The body of an answer, or undefined when it isn't JSON or was cut off
+const bodyOf = async (response: Response) => response.json().catch(() => undefined);
 
 export type EditorApi = ReturnType<typeof createEditorApi>;
 
@@ -62,10 +305,17 @@ export type EditorApi = ReturnType<typeof createEditorApi>;
 export function createEditorApi(apiOrigin: string, landingOrigin?: string) {
   const landing = landingOrigin ? new URL(landingOrigin).origin : undefined;
 
-  async function send(
+  // Any answer the API gives; only a request that got none fails
+  async function request(
     method: "GET" | "POST" | "PUT" | "DELETE",
     path: string,
-    body?: CreatePageInput | SavePageInput,
+    body?:
+      | CreatePageInput
+      | SavePageInput
+      | CategoryFields
+      | CategoryOrder
+      | RejectRevisionInput
+      | RecordInput,
     ifUpdatedAt?: string,
   ) {
     const headers = new Headers();
@@ -80,165 +330,239 @@ export function createEditorApi(apiOrigin: string, landingOrigin?: string) {
 
     if (ifUpdatedAt) headers.set("if-updated-at", ifUpdatedAt);
 
-    let response: Response;
-
     try {
-      response = await fetch(`${apiOrigin}${path}`, init);
+      return await fetch(`${apiOrigin}${path}`, init);
     } catch {
       throw new ApiFailure(0);
     }
+  }
+
+  const refused = (status: number, failure: FailureBody | null | undefined) =>
+    new ApiFailure(status, failure?.errors, failure?.message, failure?.error);
+
+  async function send(...args: Parameters<typeof request>) {
+    const response = await request(...args);
 
     if (response.ok) return response;
-    const failure: FailureBody | null = await response.json().catch(() => null);
-    throw new ApiFailure(response.status, failure?.errors, failure?.message);
+    throw refused(response.status, await bodyOf(response));
+  }
+
+  // A category refusal by its status, a 409 told apart by the content API's required `error`
+  async function categoryRefusal(response: Response): Promise<CategoryRefusal> {
+    const failure = await bodyOf(response);
+
+    const message =
+      failure instanceof Object && "message" in failure && isText(failure.message)
+        ? failure.message
+        : undefined;
+
+    const errors =
+      failure instanceof Object && "errors" in failure && isFieldErrors(failure.errors)
+        ? failure.errors
+        : undefined;
+
+    const status = response.status;
+
+    if (status === 401 || status === 403)
+      return new CategoryAccessDenied(status, message ?? `Category access denied: HTTP ${status}`);
+
+    if (status === 404) return new CategoryNotFound(message ?? "Category not found");
+
+    if (status === 422 && errors) return new CategoryRejected(errors, message ?? "Not saved");
+
+    if (status === 409 && message && failure instanceof Object && "error" in failure) {
+      if (failure.error === "conflict") return new CategoryConflict(message);
+
+      if (
+        failure.error === "category_in_use" &&
+        "blockers" in failure &&
+        isCategoryBlockers(failure.blockers)
+      )
+        return new CategoryInUse(message, failure.blockers);
+    }
+
+    return new CategoryRefused(status, message);
+  }
+
+  // A category write's answer, or the refusal its contract names; with no answer, its outcome is unknown
+  async function writeCategory<Tag extends CategoryRefusal["_tag"]>(
+    operation: CategoryOutcomeUnknown["operation"],
+    expected: readonly Tag[],
+    ...args: Parameters<typeof request>
+  ): Promise<CategoryResult<Response, Within<Tag> | CategoryRefused | CategoryOutcomeUnknown>> {
+    let response: Response;
+
+    try {
+      response = await request(...args);
+    } catch (error) {
+      return failed(new CategoryOutcomeUnknown(operation, error));
+    }
+
+    if (response.ok) return ok(response);
+    const refusal = await categoryRefusal(response);
+
+    // A gateway or server failure can follow a committed write, so it proves nothing failed
+    if (response.status >= 500) return failed(new CategoryOutcomeUnknown(operation, refusal));
+
+    return failed(
+      isWithin(refusal, expected) ? refusal : new CategoryRefused(refusal.status, refusal.message),
+    );
+  }
+
+  // The category a create or an update saved, as the API read it back; unreadable, its outcome is unknown
+  async function savedCategory(operation: "create" | "update", response: Response) {
+    const saved = await bodyOf(response);
+
+    return isCategory(saved)
+      ? ok<Category>(saved)
+      : failed(new CategoryOutcomeUnknown(operation, new CategoryAnswerMalformed()));
   }
 
   const read = async <Body>(path: string): Promise<Body> => (await send("GET", path)).json();
 
   const services = () => read<ServiceSummary[]>("/services");
 
-  // Page pickers offer these; the preview starts from them, and its edits never reach them
-  const savedCategories = async () =>
-    (await read<{ categories: SavedCategory[] }>("/editor/categories")).categories;
+  const recordPath = (key: string, recordKey: string) =>
+    `/collections/${encodeURIComponent(key)}/records/${encodeURIComponent(recordKey)}`;
 
   return {
     services,
     service: (id: string) => read<ServiceDetail>(`/services/${id}`),
-    savedCategories,
-    ...categoryShell(savedCategories, services),
+    /** The one shared category list: each top-level category, then its subcategories, in their order. */
+    categories: async (): Promise<
+      CategoryResult<
+        Category[],
+        CategoryUnreachable | CategoryAccessDenied | CategoryRefused | CategoryAnswerMalformed
+      >
+    > => {
+      let response: Response;
+
+      try {
+        response = await request("GET", "/editor/categories");
+      } catch {
+        return failed(new CategoryUnreachable());
+      }
+
+      if (!response.ok) {
+        const refusal = await categoryRefusal(response);
+
+        return failed(
+          refusal._tag === "CategoryAccessDenied"
+            ? refusal
+            : new CategoryRefused(refusal.status, refusal.message),
+        );
+      }
+
+      const list = await bodyOf(response);
+
+      return isCategoryList(list) ? ok(list.categories) : failed(new CategoryAnswerMalformed());
+    },
+    /** Adds a category at the end of its parent's subcategories, or of the top level. */
+    createCategory: async (fields: CategoryFields) => {
+      const written = await writeCategory(
+        "create",
+        ["CategoryAccessDenied", "CategoryRejected"],
+        "POST",
+        "/editor/categories",
+        fields satisfies CreateCategoryInput,
+      );
+
+      return written.ok ? savedCategory("create", written.value) : written;
+    },
+    /** Saves a category's fields over the version last read, `ifUpdatedAt`; moved to a new parent, it goes last. */
+    updateCategory: async (id: string, fields: CategoryFields, ifUpdatedAt: string) => {
+      const written = await writeCategory(
+        "update",
+        ["CategoryAccessDenied", "CategoryNotFound", "CategoryRejected", "CategoryConflict"],
+        "PUT",
+        `/editor/categories/${id}`,
+        fields satisfies UpdateCategoryInput,
+        ifUpdatedAt,
+      );
+
+      return written.ok ? savedCategory("update", written.value) : written;
+    },
+    /** Puts one whole sibling group in a new order, if none of its siblings changed since they were read. */
+    orderCategories: async (order: CategoryOrder) => {
+      const written = await writeCategory(
+        "order",
+        ["CategoryAccessDenied", "CategoryRejected", "CategoryConflict"],
+        "PUT",
+        "/editor/categories/order",
+        order satisfies OrderCategoriesInput,
+      );
+
+      if (!written.ok) return written;
+      const saved = await bodyOf(written.value);
+
+      return isCategoryList(saved)
+        ? ok<Category[]>(saved.categories)
+        : failed(new CategoryOutcomeUnknown("order", new CategoryAnswerMalformed()));
+    },
+    /** Deletes a category nothing uses, at the version last read, `ifUpdatedAt`. */
+    deleteCategory: async (id: string, ifUpdatedAt: string) => {
+      const written = await writeCategory(
+        "delete",
+        ["CategoryAccessDenied", "CategoryNotFound", "CategoryConflict", "CategoryInUse"],
+        "DELETE",
+        `/editor/categories/${id}`,
+        undefined,
+        ifUpdatedAt,
+      );
+
+      return written.ok ? ok(undefined) : written;
+    },
+    /** Every data collection, with its field list and record count. */
+    collections: async () =>
+      (await read<{ collections: CollectionSummary[] }>("/collections")).collections,
+    /** A collection and its records; a 404 when there is no such collection. */
+    collection: (key: string) =>
+      read<CollectionDetail>(`/collections/${encodeURIComponent(key)}/records`),
+    /** Adds a record; a 409 `record_exists` when its key is taken. */
+    createRecord: async (
+      key: string,
+      recordKey: string,
+      data: RecordInput["data"],
+    ): Promise<CollectionRecord> =>
+      (await send("POST", recordPath(key, recordKey), { data })).json(),
+    /** Replaces a record's data, over the version last read, `ifUpdatedAt`; a 409 `conflict` once it has moved on. */
+    saveRecord: async (
+      key: string,
+      recordKey: string,
+      data: RecordInput["data"],
+      ifUpdatedAt: string,
+    ): Promise<CollectionRecord> =>
+      (await send("PUT", recordPath(key, recordKey), { data }, ifUpdatedAt)).json(),
+    /** Deletes a record at the version last read, `ifUpdatedAt`. */
+    deleteRecord: async (key: string, recordKey: string, ifUpdatedAt: string) => {
+      await send("DELETE", recordPath(key, recordKey), undefined, ifUpdatedAt);
+    },
     version: () => read<EstateVersion>("/version"),
+    me: () => read<Me>("/editor/me"),
     page: (id: string) => read<ApiPage>(`/pages/${id}`),
     createPage: async (page: CreatePageInput): Promise<ApiPage> =>
       (await send("POST", "/pages", page)).json(),
     savePage: async (id: string, fields: SavePageInput, ifUpdatedAt: string): Promise<ApiPage> =>
       (await send("PUT", `/pages/${id}`, fields, ifUpdatedAt)).json(),
+    submitRevision: async (id: string, ifUpdatedAt: string): Promise<ApiRevision> =>
+      (await send("POST", `/pages/${id}/revision/submit`, undefined, ifUpdatedAt)).json(),
+    /** The changes waiting for an approver, the longest-waiting first. */
+    reviewQueue: async () =>
+      (await read<{ revisions: ReviewQueueEntry[] }>("/revisions?status=submitted")).revisions,
+    revision: (id: string) => read<ApiRevision>(`/pages/${id}/revision`),
+    /** Publishes the change at the version the approver reviewed, `ifUpdatedAt`. */
+    publishRevision: async (id: string, ifUpdatedAt: string): Promise<ApiPage> =>
+      (await send("POST", `/pages/${id}/revision/publish`, undefined, ifUpdatedAt)).json(),
+    /** Rejects the change at the version the approver reviewed, `ifUpdatedAt`, telling the editor why. */
+    rejectRevision: async (
+      id: string,
+      comment: string,
+      ifUpdatedAt: string,
+    ): Promise<ApiRevision> =>
+      (await send("POST", `/pages/${id}/revision/reject`, { comment }, ifUpdatedAt)).json(),
     deletePage: async (id: string) => {
       await send("DELETE", `/pages/${id}`);
     },
     landingUrl: (path: string) => (landing ? `${landing}${path}` : undefined),
-  };
-}
-
-/**
- * Local category preview seeded from the saved categories, with fresh service counts on each read.
- * Changes never reach page pickers or the API: the editor does not send category writes yet.
- */
-function categoryShell(
-  savedCategories: () => Promise<SavedCategory[]>,
-  services: () => Promise<ServiceSummary[]>,
-) {
-  let kept: Category[] = [];
-  let loading: Promise<void> | undefined;
-  // The category each slug named when the list loaded: services name theirs by slug
-  let ids: ReadonlyMap<string, string> = new Map();
-
-  // The first read loads the list; a failed one is asked again next time
-  const load = async () => {
-    loading ??= savedCategories().then((entries) => {
-      ids = new Map(entries.map((entry) => [entry.slug, entry.id]));
-      kept = categoriesFrom(entries);
-    });
-
-    try {
-      await loading;
-    } catch (error) {
-      loading = undefined;
-      throw error;
-    }
-  };
-
-  const find = (categories: readonly Category[], id: string) => {
-    const category = categories.find((item) => item.id === id);
-
-    if (!category) throw new ApiFailure(404);
-
-    return category;
-  };
-
-  const checked = (fields: CategoryFields, categories: readonly Category[], id?: string) => {
-    const problems = categoryProblems(fields, categories, id);
-
-    if (problems.length > 0) throw new ApiFailure(422, problems);
-    const parent = categories.find((item) => item.id === fields.parent_id);
-
-    return {
-      title: fields.title.trim(),
-      slug: fields.slug,
-      parent_id: parent?.id ?? null,
-      description: fields.description.trim(),
-      url: categoryUrl(fields.slug, parent),
-    };
-  };
-
-  // With the services filed under each one now, so a count is never older than the services list
-  const counted = async () => {
-    await load();
-    const listed = await services();
-
-    return withServiceCounts(kept, listed, ids);
-  };
-
-  // After the last of its new siblings
-  const endOf = (categories: readonly Category[], parentId: string | null) =>
-    Math.max(-1, ...siblingsOf(categories, parentId).map((item) => item.position)) + 1;
-
-  return {
-    categories: counted,
-    createCategory: async (fields: CategoryFields): Promise<Category> => {
-      await load();
-      const categories = kept;
-      const values = checked(fields, categories);
-
-      const created = {
-        ...values,
-        id: crypto.randomUUID(),
-        position: endOf(categories, values.parent_id),
-        services: 0,
-        serviceCategoryTitle: values.title,
-      };
-
-      kept = [...categories, created];
-
-      return created;
-    },
-    updateCategory: async (id: string, fields: CategoryFields): Promise<Category> => {
-      await load();
-      const categories = kept;
-      const old = find(categories, id);
-      const values = checked(fields, categories, id);
-
-      const updated = {
-        ...old,
-        ...values,
-        position:
-          values.parent_id === old.parent_id ? old.position : endOf(categories, values.parent_id),
-      };
-
-      // A subcategory's address starts with its parent's slug
-      kept = categories.map((item) =>
-        item.id === id
-          ? updated
-          : item.parent_id === id
-            ? { ...item, url: categoryUrl(item.slug, updated) }
-            : item,
-      );
-
-      return updated;
-    },
-    moveCategory: async (id: string, by: -1 | 1) => {
-      await load();
-      const ids = movedOrder(kept, id, by);
-
-      kept = reordered(kept, ids);
-
-      return ids;
-    },
-    deleteCategory: async (id: string) => {
-      const categories = await counted();
-      const blocked = deleteBlocker(find(categories, id), kept);
-
-      if (blocked) throw new ApiFailure(409, [], blocked);
-      kept = kept.filter((item) => item.id !== id);
-    },
   };
 }

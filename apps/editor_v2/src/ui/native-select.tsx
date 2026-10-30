@@ -3,6 +3,7 @@ import { mergeProps } from "@base-ui/react/merge-props";
 import { CaretDown } from "@phosphor-icons/react";
 import type { ComponentProps, ReactNode, Ref } from "react";
 import { cn } from "../cn";
+import { useFieldSize } from "./field";
 import { input } from "./input";
 
 type NativeSelectProps = Omit<ComponentProps<"select">, "size" | "className"> & {
@@ -15,7 +16,7 @@ type NativeSelectProps = Omit<ComponentProps<"select">, "size" | "className"> & 
 
 /**
  * The browser's own select, in the Input's frame with Select's caret. For a short list of plain options, where the
- * platform's picker serves best. In a Field, it takes the field's label, hint and error.
+ * platform's picker serves best. In a Field, it takes the field's label, hint, error and size.
  */
 export function NativeSelect({
   size,
@@ -25,6 +26,8 @@ export function NativeSelect({
   children,
   ...props
 }: NativeSelectProps) {
+  const fieldSize = useFieldSize();
+
   return (
     <span className={cn("relative flex min-w-0", className)}>
       {icon && (
@@ -41,7 +44,11 @@ export function NativeSelect({
         render={(control) => (
           <select
             {...mergeProps<"select">(control, props)}
-            className={cn(input(size), "cursor-pointer appearance-none pe-8", icon && "ps-8")}
+            className={cn(
+              input(size ?? fieldSize),
+              "cursor-pointer appearance-none pe-8",
+              icon && "ps-8",
+            )}
           >
             {children}
           </select>

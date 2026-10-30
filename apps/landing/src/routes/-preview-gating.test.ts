@@ -1,5 +1,6 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ContentPage } from '../content/registry'
+import type * as CategoryApiModule from '../lib/api-v2-categories'
 // Type-only, so it erases at runtime and the route still loads lazily, after
 // the mocks below are in place.
 import type * as ContentRouteModule from './$'
@@ -51,6 +52,18 @@ vi.mock('../lib/api-v2-page', async (importOriginal) => ({
   ...v2Mocks,
 }))
 
+const categoryMocks = vi.hoisted(() => ({
+  getApiV2CategoryListing:
+    vi.fn<typeof CategoryApiModule.getApiV2CategoryListing>(),
+}))
+vi.mock('../lib/api-v2-categories', async (importOriginal) => ({
+  ...(await importOriginal<typeof CategoryApiModule>()),
+  ...categoryMocks,
+}))
+
+// Legacy mode: api_v2 categories are off, so the static taxonomy applies.
+const STATIC = { kind: 'disabled' } as const
+
 const fakePage: ContentPage = {
   slug: 'secret-service',
   url: 'secret-service',
@@ -79,6 +92,9 @@ beforeEach(() => {
   mocks.urlLevel.mockReturnValue('public')
   mocks.resolveBareSlugRedirect.mockReturnValue(undefined)
   v2Mocks.getApiV2Page.mockResolvedValue({ kind: 'miss', reason: 'not_found' })
+  categoryMocks.getApiV2CategoryListing.mockResolvedValue({
+    kind: 'unavailable',
+  })
   // The loader asks api_v2 only when it is configured (#3127).
   vi.stubEnv('VITE_API_V2_URL', 'http://api.example')
 })
@@ -100,7 +116,7 @@ describe('$ route loader gating', () => {
     const loader = Route.options.loader as (a: unknown) => Promise<unknown>
     const err = await loader({
       params: { _splat: 'secret-service' },
-      context: { level: 'public', serviceStatuses: [] },
+      context: { level: 'public', serviceStatuses: [], categoryTree: STATIC },
     }).catch((e: unknown) => e)
     expect(err).toBeDefined()
     expect((err as { isNotFound?: boolean }).isNotFound).toBe(true)
@@ -118,7 +134,7 @@ describe('$ route loader gating', () => {
     const loader = Route.options.loader as (a: unknown) => Promise<unknown>
     const err = await loader({
       params: { _splat: 'get-marriage-certificate' },
-      context: { level: 'public', serviceStatuses: [] },
+      context: { level: 'public', serviceStatuses: [], categoryTree: STATIC },
     }).catch((e: unknown) => e)
 
     const opts = (err as { options?: { href?: string; statusCode?: number } })
@@ -142,7 +158,7 @@ describe('$ route loader gating', () => {
     const loader = Route.options.loader as (a: unknown) => Promise<unknown>
     const err = await loader({
       params: { _splat: 'not-a-real-service' },
-      context: { level: 'public', serviceStatuses: [] },
+      context: { level: 'public', serviceStatuses: [], categoryTree: STATIC },
     }).catch((e: unknown) => e)
 
     expect((err as { isNotFound?: boolean }).isNotFound).toBe(true)
@@ -166,7 +182,7 @@ describe('$ route loader gating', () => {
     const loader = Route.options.loader as (a: unknown) => Promise<unknown>
     const err = await loader({
       params: { _splat: 'work-employment/apply-for-conductor-licence/start' },
-      context: { level: 'public', serviceStatuses: [] },
+      context: { level: 'public', serviceStatuses: [], categoryTree: STATIC },
     }).catch((e: unknown) => e)
     expect((err as { isNotFound?: boolean }).isNotFound).toBe(true)
   })
@@ -187,7 +203,7 @@ describe('$ route loader gating', () => {
     const loader = Route.options.loader as (a: unknown) => Promise<unknown>
     const data = (await loader({
       params: { _splat: 'life-events/get-birth-certificate/start' },
-      context: { level: 'public', serviceStatuses: [] },
+      context: { level: 'public', serviceStatuses: [], categoryTree: STATIC },
     })) as { kind: string }
     expect(data.kind).toBe('page')
   })
@@ -209,7 +225,7 @@ describe('$ route loader gating', () => {
     const loader = Route.options.loader as (a: unknown) => Promise<unknown>
     const data = (await loader({
       params: { _splat: 'work-employment/apply-for-conductor-licence/start' },
-      context: { level: 'preview', serviceStatuses: [] },
+      context: { level: 'preview', serviceStatuses: [], categoryTree: STATIC },
     })) as { kind: string }
     expect(data.kind).toBe('page')
   })
@@ -221,7 +237,7 @@ describe('$ route loader gating', () => {
     const loader = Route.options.loader as (a: unknown) => Promise<unknown>
     const data = await loader({
       params: { _splat: 'secret-service' },
-      context: { level: 'draft', serviceStatuses: [] },
+      context: { level: 'draft', serviceStatuses: [], categoryTree: STATIC },
     })
     expect(data).toEqual({
       kind: 'page',
@@ -255,7 +271,7 @@ describe('$ route loader gating', () => {
     const loader = Route.options.loader as (a: unknown) => Promise<unknown>
     const data = (await loader({
       params: { _splat: 'secret-service' },
-      context: { level: 'public', serviceStatuses: [] },
+      context: { level: 'public', serviceStatuses: [], categoryTree: STATIC },
     })) as { underMaintenance: boolean }
     expect(data.underMaintenance).toBe(true)
   })
@@ -275,7 +291,7 @@ describe('$ route loader gating', () => {
     const loader = Route.options.loader as (a: unknown) => Promise<unknown>
     const data = (await loader({
       params: { _splat: 'secret-service' },
-      context: { level: 'public', serviceStatuses: [] },
+      context: { level: 'public', serviceStatuses: [], categoryTree: STATIC },
     })) as { underMaintenance: boolean }
     expect(data.underMaintenance).toBe(false)
   })
@@ -296,7 +312,7 @@ describe('$ route loader gating', () => {
     const loader = Route.options.loader as (a: unknown) => Promise<unknown>
     const data = (await loader({
       params: { _splat: 'secret-service' },
-      context: { level: 'public', serviceStatuses: [] },
+      context: { level: 'public', serviceStatuses: [], categoryTree: STATIC },
     })) as { applicationClosed: boolean; availableForms: string[] }
     expect(data.applicationClosed).toBe(true)
     // Closed forms are stripped from availableForms so the Start CTA is hidden.
@@ -318,7 +334,7 @@ describe('$ route loader gating', () => {
     const loader = Route.options.loader as (a: unknown) => Promise<unknown>
     const data = (await loader({
       params: { _splat: 'secret-service' },
-      context: { level: 'public', serviceStatuses: [] },
+      context: { level: 'public', serviceStatuses: [], categoryTree: STATIC },
     })) as { applicationClosed: boolean; availableForms: string[] }
     expect(data.applicationClosed).toBe(false)
     expect(data.availableForms).toContain('get-birth-certificate')
@@ -346,6 +362,7 @@ describe('$ route loader gating', () => {
         // Status rows are keyed by the canonical key — the form_id here.
         level: 'public',
         serviceStatuses: [['svc-form', 'form_disabled']],
+        categoryTree: STATIC,
       },
     })) as { availableForms: string[]; underMaintenance: boolean }
     // The form is dropped from the public available list (Start hidden) and the
@@ -372,7 +389,7 @@ describe('$ route api_v2 pages (#2944)', () => {
     const loader = Route.options.loader as (a: unknown) => Promise<unknown>
     return loader({
       params: { _splat: page.url },
-      context: { level, serviceStatuses: [] },
+      context: { level, serviceStatuses: [], categoryTree: STATIC },
     }).catch((e: unknown) => e) as Promise<Record<string, unknown>>
   }
 
@@ -401,7 +418,7 @@ describe('$ route api_v2 pages (#2944)', () => {
     const loader = Route.options.loader as (a: unknown) => Promise<unknown>
     const data = (await loader({
       params: { _splat: fakePage.url },
-      context: { level: 'public', serviceStatuses: [] },
+      context: { level: 'public', serviceStatuses: [], categoryTree: STATIC },
     })) as Record<string, unknown>
     expect(v2Mocks.getApiV2Page).not.toHaveBeenCalled()
     expect(data).toMatchObject({
@@ -423,7 +440,7 @@ describe('$ route api_v2 pages (#2944)', () => {
       const loader = Route.options.loader as (a: unknown) => Promise<unknown>
       const data = await loader({
         params: { _splat: fakePage.url },
-        context: { level: 'public', serviceStatuses: [] },
+        context: { level: 'public', serviceStatuses: [], categoryTree: STATIC },
       })
       expect(data).toMatchObject({ kind: 'page', source })
     },
@@ -444,6 +461,9 @@ describe('$ route api_v2 pages (#2944)', () => {
       expect(headers({ loaderData: { kind } })).toEqual({
         'x-content-source': 'static',
       })
+    expect(headers({ loaderData: { kind: 'api-category' } })).toEqual({
+      'x-content-source': 'api_v2',
+    })
     expect(headers({ loaderData: undefined })).toBeUndefined()
   })
 
@@ -455,7 +475,7 @@ describe('$ route api_v2 pages (#2944)', () => {
     const loader = Route.options.loader as (a: unknown) => Promise<unknown>
     const err = await loader({
       params: { _splat: 'work-employment/old-service' },
-      context: { level: 'public', serviceStatuses: [] },
+      context: { level: 'public', serviceStatuses: [], categoryTree: STATIC },
     }).catch((e: unknown) => e)
     const opts = (err as { options?: { href?: string; statusCode?: number } })
       .options
@@ -497,7 +517,7 @@ describe('$ route category gating', () => {
     const loader = Route.options.loader as (a: unknown) => Promise<unknown>
     const err = await loader({
       params: { _splat: 'pensions-and-gratuities' },
-      context: { level: 'public', serviceStatuses: [] },
+      context: { level: 'public', serviceStatuses: [], categoryTree: STATIC },
     }).catch((e: unknown) => e)
     expect((err as { isNotFound?: boolean }).isNotFound).toBe(true)
     expect(mocks.isCategoryVisible).toHaveBeenCalledWith(
@@ -513,7 +533,7 @@ describe('$ route category gating', () => {
     const loader = Route.options.loader as (a: unknown) => Promise<unknown>
     const data = (await loader({
       params: { _splat: 'pensions-and-gratuities' },
-      context: { level: 'preview', serviceStatuses: [] },
+      context: { level: 'preview', serviceStatuses: [], categoryTree: STATIC },
     })) as { kind: string; category: { slug: string } }
     expect(data.kind).toBe('category')
     expect(data.category.slug).toBe('pensions-and-gratuities')
@@ -528,7 +548,7 @@ describe('$ route subcategory gating', () => {
     const loader = Route.options.loader as (a: unknown) => Promise<unknown>
     const err = await loader({
       params: { _splat: 'youth-and-community/youth-development-leadership' },
-      context: { level: 'public', serviceStatuses: [] },
+      context: { level: 'public', serviceStatuses: [], categoryTree: STATIC },
     }).catch((e: unknown) => e)
     expect((err as { isNotFound?: boolean }).isNotFound).toBe(true)
     expect(mocks.isCategoryVisible).toHaveBeenCalledWith(
@@ -545,7 +565,7 @@ describe('$ route subcategory gating', () => {
     const loader = Route.options.loader as (a: unknown) => Promise<unknown>
     const data = (await loader({
       params: { _splat: 'youth-and-community/youth-development-leadership' },
-      context: { level: 'preview', serviceStatuses: [] },
+      context: { level: 'preview', serviceStatuses: [], categoryTree: STATIC },
     })) as { kind: string; subcategory: { slug: string } }
     expect(data.kind).toBe('subcategory')
     expect(data.subcategory.slug).toBe('youth-development-leadership')
@@ -558,7 +578,7 @@ describe('$ route subcategory gating', () => {
     const loader = Route.options.loader as (a: unknown) => Promise<unknown>
     await loader({
       params: { _splat: 'youth-and-community/youth-development-leadership' },
-      context: { level: 'public', serviceStatuses: [] },
+      context: { level: 'public', serviceStatuses: [], categoryTree: STATIC },
     })
     expect(v2Mocks.getApiV2Page).not.toHaveBeenCalled()
   })
@@ -569,7 +589,7 @@ describe('$ route subcategory gating', () => {
     const loader = Route.options.loader as (a: unknown) => Promise<unknown>
     await loader({
       params: { _splat: 'youth-and-community/some-service' },
-      context: { level: 'public', serviceStatuses: [] },
+      context: { level: 'public', serviceStatuses: [], categoryTree: STATIC },
     }).catch(() => undefined)
     expect(v2Mocks.getApiV2Page).toHaveBeenCalledWith({
       data: '/youth-and-community/some-service',
@@ -584,7 +604,7 @@ describe('form route beforeLoad gating', () => {
       await import('./money-financial-support/calculate-severance-pay/form')
     const err = caught(() =>
       (Route.options.beforeLoad as (a: unknown) => unknown)({
-        context: { level: 'public', serviceStatuses: [] },
+        context: { level: 'public', serviceStatuses: [], categoryTree: STATIC },
       }),
     )
     expect((err as { isNotFound?: boolean }).isNotFound).toBe(true)
@@ -596,7 +616,11 @@ describe('form route beforeLoad gating', () => {
       await import('./money-financial-support/calculate-severance-pay/form')
     const err = caught(() =>
       (Route.options.beforeLoad as (a: unknown) => unknown)({
-        context: { level: 'preview', serviceStatuses: [] },
+        context: {
+          level: 'preview',
+          serviceStatuses: [],
+          categoryTree: STATIC,
+        },
       }),
     )
     expect(err).toBeUndefined()
@@ -608,9 +632,212 @@ describe('form route beforeLoad gating', () => {
       await import('./money-financial-support/calculate-severance-pay/form')
     const err = caught(() =>
       (Route.options.beforeLoad as (a: unknown) => unknown)({
-        context: { level: 'public', serviceStatuses: [] },
+        context: { level: 'public', serviceStatuses: [], categoryTree: STATIC },
       }),
     )
     expect(err).toBeUndefined()
+  })
+})
+
+// The real loader and category resolver run against a stubbed listing response.
+// scripts/check-api-v2-categories.mjs covers the built RPC wiring.
+describe('$ route loader in api_v2 category mode (ADR 0078)', () => {
+  const ref = (url: string, title: string) => ({
+    slug: url.split('/').at(-1) ?? '',
+    url,
+    title,
+    description: null,
+  })
+
+  const FAMILY = ref('/family-renamed', 'Family (api_v2)')
+  const BIRTHS = ref('/family-renamed/births', 'Births')
+
+  const tree: CategoryApiModule.CategoryTreeResult = {
+    kind: 'found',
+    categories: [{ ...FAMILY, subcategories: [BIRTHS] }],
+  }
+
+  type LoaderData = (typeof Route)['types']['loaderData']
+
+  type LoaderArgs = Parameters<
+    Extract<
+      NonNullable<(typeof Route)['options']['loader']>,
+      (args: never) => Promise<LoaderData>
+    >
+  >[0]
+
+  /** The part of the router's loader argument that `$`'s loader reads. */
+  type ReadLoaderArgs = Pick<LoaderArgs, 'params'> & {
+    context: Pick<
+      LoaderArgs['context'],
+      'level' | 'serviceStatuses' | 'categoryTree'
+    >
+  }
+
+  const load = (
+    splat: string,
+    categoryTree: CategoryApiModule.CategoryTreeResult = tree,
+  ): Promise<LoaderData> =>
+    // SAFETY: `$` declares its loader in the plain-function form, and it
+    // reads only `params._splat` and `context.{level, serviceStatuses,
+    // categoryTree}` (ReadLoaderArgs, picked from the router's own type);
+    // the router's other loader arguments (abort controller, location, deps,
+    // preload flag) go unread.
+    (Route.options.loader as (args: ReadLoaderArgs) => Promise<LoaderData>)({
+      params: { _splat: splat },
+      context: { level: 'public', serviceStatuses: [], categoryTree },
+    })
+
+  /** The JSON-LD `$`'s head writes for this loader result, as script text. */
+  const ldScripts = (loaderData: LoaderData): string[] =>
+    // SAFETY: `$`'s head reads only `loaderData`; the router's other head
+    // arguments go unread.
+    (
+      Route.options.head as (args: { loaderData: LoaderData }) => {
+        scripts?: Array<{ children: string }>
+      }
+    )({ loaderData }).scripts?.map((script) => script.children) ?? []
+
+  it('serves a static page when the tree and listing are unavailable', async () => {
+    mocks.findPage.mockReturnValue({
+      ...fakePage,
+      url: 'family-renamed/secret-service',
+    })
+    mocks.isVisible.mockReturnValue(true)
+
+    await expect(
+      load('family-renamed/secret-service', { kind: 'unavailable' }),
+    ).resolves.toMatchObject({
+      kind: 'page',
+      url: 'family-renamed/secret-service',
+    })
+    expect(categoryMocks.getApiV2CategoryListing).toHaveBeenCalledWith({
+      data: ['family-renamed', 'secret-service'],
+    })
+    expect(v2Mocks.getApiV2Page).toHaveBeenCalledWith({
+      data: '/family-renamed/secret-service',
+    })
+    expect(mocks.findPage).toHaveBeenCalledWith('family-renamed/secret-service')
+    expect(mocks.categoryServices).not.toHaveBeenCalled()
+  })
+
+  it('keeps the category error when the tree and listing are unavailable and no page resolves', async () => {
+    mocks.findPage.mockReturnValue(undefined)
+
+    await expect(
+      load('family-renamed/missing-page', { kind: 'unavailable' }),
+    ).rejects.toThrow(
+      'Category listing unavailable for /family-renamed/missing-page',
+    )
+    expect(v2Mocks.getApiV2Page).toHaveBeenCalledWith({
+      data: '/family-renamed/missing-page',
+    })
+    expect(mocks.findPage).toHaveBeenCalledWith('family-renamed/missing-page')
+    expect(mocks.categoryServices).not.toHaveBeenCalled()
+  })
+
+  it('does not read a page when a listed category has an unavailable listing', async () => {
+    mocks.findPage.mockReturnValue(fakePage)
+    mocks.isVisible.mockReturnValue(true)
+
+    await expect(load('family-renamed')).rejects.toThrow(
+      'Category listing unavailable for /family-renamed',
+    )
+    expect(categoryMocks.getApiV2CategoryListing).toHaveBeenCalledWith({
+      data: ['family-renamed'],
+    })
+    expect(v2Mocks.getApiV2Page).not.toHaveBeenCalled()
+    expect(mocks.findPage).not.toHaveBeenCalled()
+  })
+
+  it('never shows a static category api_v2 does not list', async () => {
+    mocks.findPage.mockReturnValue(undefined)
+
+    // A real static category and subcategory, absent from api_v2's tree.
+    for (const splat of [
+      'youth-and-community',
+      'youth-and-community/youth-development-leadership',
+    ]) {
+      // A 404, so neither the static listing nor a listing read ran.
+      await expect(load(splat)).rejects.toMatchObject({ isNotFound: true })
+    }
+
+    expect(mocks.categoryServices).not.toHaveBeenCalled()
+  })
+
+  it("carries an api_v2 page's own trail to the breadcrumbs and JSON-LD", async () => {
+    const trail = [
+      { name: 'Family (api_v2)', url: '/family-renamed' },
+      { name: 'Register a birth', url: '/family-renamed/register-a-birth' },
+    ]
+
+    v2Mocks.getApiV2Page.mockResolvedValue({
+      kind: 'page',
+      page: {
+        ...fakePage,
+        slug: 'register-a-birth',
+        url: 'family-renamed/register-a-birth',
+        frontmatter: { title: 'Register a birth', categories: [] },
+        hideStartLinks: false,
+        breadcrumbs: trail,
+      },
+    })
+    const data = await load('family-renamed/register-a-birth')
+    expect(data).toHaveProperty('kind', 'page')
+    expect(data).toHaveProperty('breadcrumbs', trail)
+
+    const list = ldScripts(data)
+      .map((text) => JSON.parse(text))
+      .find((ld) => ld['@type'] === 'BreadcrumbList')
+
+    expect(
+      list.itemListElement.map((item: { name: string }) => item.name),
+    ).toEqual(['Home', 'Family (api_v2)', 'Register a birth'])
+  })
+
+  it('writes JSON-LD without a literal <, parsing back to the same names', async () => {
+    const title = 'Fees < 100 & over'
+    const category = 'Grants < 5 years'
+    v2Mocks.getApiV2Page.mockResolvedValue({
+      kind: 'page',
+      page: {
+        ...fakePage,
+        slug: 'fees',
+        url: 'family-renamed/fees',
+        frontmatter: { title, description: 'Under < over', categories: [] },
+        hideStartLinks: false,
+        breadcrumbs: [
+          { name: category, url: '/family-renamed' },
+          { name: title, url: '/family-renamed/fees' },
+        ],
+      },
+    })
+    const texts = ldScripts(await load('family-renamed/fees'))
+
+    expect(texts).toHaveLength(2)
+
+    for (const text of texts) expect(text).not.toContain('<')
+
+    const [service, trail] = texts.map((text) => JSON.parse(text))
+
+    expect(service).toMatchObject({ name: title, description: 'Under < over' })
+    expect(
+      trail.itemListElement.map((item: { name: string }) => item.name),
+    ).toEqual(['Home', category, title])
+  })
+
+  it('labels a static page from the api_v2 tree, never the static taxonomy', async () => {
+    mocks.findPage.mockReturnValue({
+      ...fakePage,
+      url: 'youth-and-community/a-static-page',
+      frontmatter: { title: 'A static page', categories: [] },
+    })
+    mocks.isVisible.mockReturnValue(true)
+    const data = await load('youth-and-community/a-static-page')
+    // Youth and community is not in api_v2's tree, so it is left out.
+    expect(data).toHaveProperty('kind', 'page')
+    expect(data).toHaveProperty('breadcrumbs', [
+      { name: 'A static page', url: '/youth-and-community/a-static-page' },
+    ])
   })
 })

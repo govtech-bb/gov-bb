@@ -76,7 +76,7 @@ export function sitePreviewDocument(
 export function sitePreviewBase(configured = import.meta.env.VITE_SITE_PREVIEW_URL): URL {
   if (!configured)
     throw new Error(
-      "Site preview is not configured. Set VITE_SITE_PREVIEW_URL to the landing renderer's asset directory.",
+      "Site preview is not configured. Set VITE_SITE_PREVIEW_URL to the landing renderer’s asset directory.",
     );
   const url = new URL(configured);
 
