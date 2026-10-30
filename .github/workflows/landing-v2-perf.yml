@@ -27,6 +27,8 @@ concurrency:
 # Amplify job access the wait step needs on landing's v2-rewrite branch.
 env:
   AWS_ROLE_ARN: arn:aws:iam::672203047922:role/api-v2-github-actions-sandbox
+  # The build waited on and the host measured must be the same one.
+  PREVIEW_URL: https://v2-rewrite.d3kbl8o0ovutw4.amplifyapp.com
 
 jobs:
   ttfb:
@@ -54,7 +56,7 @@ jobs:
           app-id: d3kbl8o0ovutw4
           branch: v2-rewrite
           sha: ${{ github.sha }}
-          url: https://v2-rewrite.d3kbl8o0ovutw4.amplifyapp.com
+          url: ${{ env.PREVIEW_URL }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up k6
@@ -68,7 +70,6 @@ jobs:
       - name: Run k6
         if: steps.wait.outputs.superseded != 'true'
         env:
-          PREVIEW_URL: https://v2-rewrite.d3kbl8o0ovutw4.amplifyapp.com
           STAGING_URL: https://staging.alpha.gov.bb
           OUT_DIR: ${{ runner.temp }}
         run: k6 run --quiet apps/landing/perf/ttfb.mjs

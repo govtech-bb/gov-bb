@@ -24,6 +24,8 @@ const OUT_DIR = __ENV.OUT_DIR || '.'
 
 // One URL per template, all public on both hosts. Status is the one the URL
 // must answer with; the redirect isn't followed, so its own TTFB is measured.
+// A wrong status fails the run, so if a page here is unpublished or renamed
+// on either host, swap it for another page of the same template.
 const CONTENT = [
   ['/', 200], // home
   ['/services', 200], // services index
@@ -134,7 +136,10 @@ function result(data, target) {
 export function handleSummary(data) {
   const preview = result(data, 'preview')
   const staging = result(data, 'staging')
-  const rows = evaluate(preview, staging)
+  const rows = evaluate(preview, staging, {
+    content: CONTENT.length * PER_URL,
+    notFound: UNKNOWN.length * PER_URL,
+  })
   const md = renderSummary(rows, [
     { name: 'api_v2', url: TARGETS.preview, result: preview },
     { name: 'static', url: TARGETS.staging, result: staging },

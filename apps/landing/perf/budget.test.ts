@@ -13,8 +13,9 @@ const host = (
 })
 
 const staging = host([200, 300], [200, 300])
+const expected = { content: 4000, notFound: 1200 }
 const failed = (preview: HostResult, base = staging) =>
-  evaluate(preview, base)
+  evaluate(preview, base, expected)
     .filter((r) => !r.pass)
     .map((r) => r.budget)
 
@@ -66,14 +67,31 @@ describe('evaluate', () => {
 
   it('fails closed when a metric is missing', () => {
     const empty = host([NaN, NaN], [NaN, NaN])
-    expect(failed(empty)).toHaveLength(5)
+    expect(failed(empty)).toEqual([
+      'Content p95 (#3147)',
+      'Content p95 vs staging (#3147)',
+      'Content p50 vs staging (#3147)',
+      '404 p95 (#3149)',
+      '404 p95 vs staging (#3149)',
+    ])
+  })
+
+  it('fails when either host completed fewer requests than planned', () => {
+    const short = (h: HostResult, key: 'content' | 'notFound') => ({
+      ...h,
+      [key]: { ...h[key], count: expected[key] - 1 },
+    })
+    const ok = host([200, 300], [200, 300])
+    const bad = 'Full sample (both hosts)'
+    expect(failed(short(ok, 'content'))).toEqual([bad])
+    expect(failed(ok, short(staging, 'notFound'))).toEqual([bad])
   })
 })
 
 describe('renderSummary', () => {
   it('shows both hosts, content and 404 separately, and each budget', () => {
     const preview = host([250, 900], [250, 400])
-    const md = renderSummary(evaluate(preview, staging), [
+    const md = renderSummary(evaluate(preview, staging, expected), [
       { name: 'api_v2', url: 'https://preview', result: preview },
       { name: 'static', url: 'https://staging', result: staging },
     ])

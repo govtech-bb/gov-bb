@@ -37,9 +37,17 @@ export const BUDGETS = {
 
 const ms = (n: number) => `${Math.round(n)} ms`
 
+/** Requests each host must complete: k6 drops iterations without error when
+ * every VU is busy, which under-samples exactly the slow stretches. */
+export interface Expected {
+  content: number
+  notFound: number
+}
+
 export function evaluate(
   preview: HostResult,
   staging: HostResult,
+  expected: Expected,
 ): BudgetRow[] {
   const b = BUDGETS
   const p95Limit = staging.content.p95 * b.contentP95VsStaging
@@ -83,6 +91,18 @@ export function evaluate(
       actual: String(preview.unexpected + staging.unexpected),
       limit: '0',
       pass: preview.unexpected + staging.unexpected === 0,
+    },
+    {
+      budget: 'Full sample (both hosts)',
+      actual: [preview, staging]
+        .map((h) => `${h.content.count} + ${h.notFound.count}`)
+        .join(', '),
+      limit: `>= ${expected.content} + ${expected.notFound} each`,
+      pass: [preview, staging].every(
+        (h) =>
+          h.content.count >= expected.content &&
+          h.notFound.count >= expected.notFound,
+      ),
     },
   ]
 }
