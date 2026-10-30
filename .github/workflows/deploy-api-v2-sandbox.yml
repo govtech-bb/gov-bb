@@ -167,8 +167,8 @@ jobs:
       # time includes TLS. Fails only above a generous ceiling: from a client
       # 90 ms away in Oct 2026, p50 was ~285 ms and p95 300-400 ms, nearly all
       # of it network (the server answers in under 10 ms). 100 requests sit
-      # far under the site routes' per-client rate limit, and a 429 fails the
-      # step rather than skewing the sample.
+      # far under the site routes' 1,000/min per-client limit (#3356), and a
+      # 429 fails the step rather than skewing the sample.
       - name: GET /pages latency (p50, p95)
         env:
           PAGE_URL: /money-financial-support/calculate-severance-pay
