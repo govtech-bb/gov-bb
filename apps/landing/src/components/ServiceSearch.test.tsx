@@ -25,9 +25,6 @@ vi.mock('@tanstack/react-router', () => ({
 }))
 vi.mock('../lib/analytics', () => ({ trackEvent: trackEventMock }))
 vi.mock('../lib/search', () => ({ suggest: suggestMock }))
-vi.mock('../lib/api-v2-site', () => ({
-  loadApiV2SearchDocuments: loadDocumentsMock,
-}))
 
 const DOCUMENTS = [
   {
@@ -55,7 +52,14 @@ const HITS: Array<SearchHit> = Array.from({ length: 5 }, (_, index) => ({
 function renderSearch(
   props: Partial<React.ComponentProps<typeof ServiceSearch>> = {},
 ) {
-  return render(<ServiceSearch source="home" viewer="public" {...props} />)
+  return render(
+    <ServiceSearch
+      source="home"
+      viewer="public"
+      loadDocuments={loadDocumentsMock}
+      {...props}
+    />,
+  )
 }
 
 function listboxFor(input: HTMLElement): HTMLUListElement {
@@ -237,7 +241,7 @@ describe('ServiceSearch', () => {
     })
   })
 
-  it('loads api_v2 documents once, on the first keystroke, and suggests from them', async () => {
+  it('loads api_v2 documents on every edit, not before, and suggests from them', async () => {
     renderSearch()
     expect(loadDocumentsMock).not.toHaveBeenCalled()
 
@@ -253,7 +257,7 @@ describe('ServiceSearch', () => {
     )
 
     typeInto(input, 'only')
-    expect(loadDocumentsMock).toHaveBeenCalledOnce()
+    expect(loadDocumentsMock).toHaveBeenCalledTimes(2)
   })
 
   it('suggests from documents it is given, without loading any', () => {

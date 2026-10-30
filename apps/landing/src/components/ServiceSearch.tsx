@@ -1,4 +1,4 @@
-import { useEffect, useId, useState } from 'react'
+import { useId, useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { Autocomplete } from '@govtech-bb/react'
 import type { ViewLevel } from '../lib/frontmatter'
@@ -17,6 +17,8 @@ interface ServiceSearchProps {
   emptyHref?: '/services' | '/search-results'
   /** api_v2's search documents, when the page already has them. */
   documents?: readonly ApiV2SearchDocument[]
+  /** Reads api_v2's search documents when none are given. */
+  loadDocuments?: () => Promise<readonly ApiV2SearchDocument[]>
 }
 
 export function ServiceSearch({
@@ -26,6 +28,7 @@ export function ServiceSearch({
   defaultValue = '',
   emptyHref = '/search-results',
   documents: givenDocuments,
+  loadDocuments = loadApiV2SearchDocuments,
 }: ServiceSearchProps) {
   const navigate = useNavigate()
   const inputId = useId()
@@ -35,12 +38,6 @@ export function ServiceSearch({
     useState<readonly ApiV2SearchDocument[]>()
   const documents = givenDocuments ?? loadedDocuments
   const items = hasTyped ? suggest(inputValue, viewer, overlay, documents) : []
-
-  // api_v2's pages, read once someone starts typing, unless already given.
-  useEffect(() => {
-    if (hasTyped && !givenDocuments)
-      void loadApiV2SearchDocuments().then(setLoadedDocuments)
-  }, [hasTyped, givenDocuments])
 
   const submit = (value: string) => {
     const query = value.trim()
@@ -79,6 +76,9 @@ export function ServiceSearch({
           onChange={(event) => {
             setHasTyped(true)
             setInputValue(event.currentTarget.value)
+            // api_v2's pages, unless given: the same list while it is fresh,
+            // so a failed or outdated read is replaced on a later edit.
+            if (!givenDocuments) void loadDocuments().then(setLoadedDocuments)
           }}
           onSuggestionSelect={(_, index) => {
             const selectedItem = items[index]

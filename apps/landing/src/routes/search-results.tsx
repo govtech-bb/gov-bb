@@ -14,6 +14,8 @@ const SearchParams = z.object({
 
 export const Route = createFileRoute('/search-results')({
   validateSearch: SearchParams,
+  // Re-run per query: the browser memo answers while its documents are fresh.
+  loaderDeps: ({ search: { q } }) => ({ q }),
   loader: () => loadApiV2SearchDocuments(),
   head: () => ({
     meta: [

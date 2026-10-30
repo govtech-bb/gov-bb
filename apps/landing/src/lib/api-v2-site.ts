@@ -12,6 +12,8 @@ import { logFallback } from './api-v2-log'
  *
  * Each list is cached per server instance for a minute. A failed read serves
  * the last good list, or none on a cold start, and waits the same minute.
+ * Each read also says how much of that minute is left (`freshForMs`), so the
+ * browser holds a list no longer than the server does.
  */
 
 /** Copied from apps/api_v2/src/modules/navigation.ts (`CatalogEntry`), the url only. */
@@ -38,19 +40,19 @@ const STALE_MS = 60_000
 
 const siteCache = new QueryClient()
 
-/** `path` from api_v2, cached; never throws. */
+/** `path` from api_v2, cached, and how long it stays so; never throws. */
 async function cachedList<T, U>(
   base: string | null,
   path: string,
   schema: z.ZodType<T>,
   pick: (body: T) => U[],
   fetchImpl: typeof fetch,
-): Promise<U[]> {
-  if (!base) return []
+): Promise<{ list: U[]; freshForMs: number }> {
+  if (!base) return { list: [], freshForMs: STALE_MS }
 
   const queryKey = [path, base]
 
-  return siteCache.fetchQuery({
+  const list = await siteCache.fetchQuery({
     queryKey,
     queryFn: async () => {
       const result = await readPublic(base, path, schema, fetchImpl)
@@ -64,6 +66,10 @@ async function cachedList<T, U>(
     // Keep the last good list however long api_v2 is down.
     gcTime: Infinity,
   })
+  const updatedAt = siteCache.getQueryState(queryKey)?.dataUpdatedAt ?? 0
+
+  // Relative, so the browser's clock never has to agree with this one.
+  return { list, freshForMs: Math.max(0, updatedAt + STALE_MS - Date.now()) }
 }
 
 /** `GET /catalog`: the url of every public page. */
@@ -77,56 +83,73 @@ export function fetchApiV2Catalog(
     CatalogBody,
     (body) => body.pages.map((page) => page.url),
     fetchImpl,
-  )
+  ).then(({ list }) => list)
+}
+
+/** Search documents, and how long the server's copy stays fresh. */
+type SearchDocumentsRead = {
+  documents: readonly ApiV2SearchDocument[]
+  freshForMs: number
 }
 
 /** `GET /search/documents`: every public page's search text. */
-export function fetchApiV2SearchDocuments(
+export async function readApiV2SearchDocuments(
   base: string | null,
   fetchImpl: typeof fetch = fetch,
-): Promise<ApiV2SearchDocument[]> {
-  return cachedList(
+): Promise<SearchDocumentsRead> {
+  const { list, freshForMs } = await cachedList(
     base,
     '/search/documents',
     SearchDocumentsBody,
     (body) => body.documents,
     fetchImpl,
   )
+  return { documents: list, freshForMs }
 }
 
 /** Server function: the configured api_v2's public search documents. */
 export const getApiV2SearchDocuments = createServerFn().handler(() =>
-  fetchApiV2SearchDocuments(apiV2Base()),
+  readApiV2SearchDocuments(apiV2Base()),
 )
 
 const NO_DOCUMENTS: readonly ApiV2SearchDocument[] = []
 
 let loaded:
-  | { at: number; documents: Promise<readonly ApiV2SearchDocument[]> }
+  | { until: number; documents: Promise<readonly ApiV2SearchDocument[]> }
   | undefined
 
 /**
  * Search documents for a search caller on either side: none, without a call,
  * when api_v2 isn't configured, and none if the server function fails, so
- * search still answers from the static pages. In the browser one read per
- * minute is shared, so the search index (rebuilt when its documents change)
- * isn't rebuilt on every search; the server has its own cache behind the
- * server function.
+ * search still answers from the static pages. In the browser one read is
+ * shared until the server's copy expires, so the search index (rebuilt
+ * when its documents change) isn't rebuilt on every search; the server has its
+ * own cache behind the server function.
  */
 export function loadApiV2SearchDocuments(
+  read: () => Promise<SearchDocumentsRead> = () => getApiV2SearchDocuments(),
   now = Date.now(),
 ): Promise<readonly ApiV2SearchDocument[]> {
   if (!import.meta.env.VITE_API_V2_URL) return Promise.resolve(NO_DOCUMENTS)
 
-  const read = () =>
-    getApiV2SearchDocuments().catch((error: unknown) => {
+  const safeRead = () =>
+    read().catch((error: unknown) => {
       console.warn('search documents read failed:', error)
-      return NO_DOCUMENTS
+      return { documents: NO_DOCUMENTS, freshForMs: STALE_MS }
     })
 
-  if (import.meta.env.SSR) return read()
-  if (!loaded || now - loaded.at >= STALE_MS)
-    loaded = { at: now, documents: read() }
+  if (import.meta.env.SSR) return safeRead().then(({ documents }) => documents)
+  if (!loaded || now >= loaded.until) {
+    // Shared while in flight; then held as long as the server holds it.
+    const entry = {
+      until: Infinity,
+      documents: safeRead().then(({ documents, freshForMs }) => {
+        entry.until = now + freshForMs
+        return documents
+      }),
+    }
+    loaded = entry
+  }
 
   return loaded.documents
 }
