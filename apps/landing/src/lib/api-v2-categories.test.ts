@@ -591,4 +591,26 @@ describe('fetchCurrentCategoryTree', () => {
     })
     expect(fetchImpl).toHaveBeenCalledTimes(3)
   })
+
+  it('gives every read of a new site version the fresh tree, not only the first', async () => {
+    const { fetchImpl, started, release } = heldFetch()
+    const at = `${base}/current-concurrent`
+    const first = fetchCurrentCategoryTree(at, ++changes, fetchImpl)
+    await started(1)
+    release(0, OLD)
+    expect(await first).toEqual({ kind: 'found', categories: OLD })
+
+    ++changes
+    const reads = Promise.all([
+      fetchCurrentCategoryTree(at, changes, fetchImpl),
+      fetchCurrentCategoryTree(at, changes, fetchImpl),
+    ])
+    await started(2)
+    release(1, NEW)
+    expect(await reads).toEqual([
+      { kind: 'found', categories: NEW },
+      { kind: 'found', categories: NEW },
+    ])
+    expect(fetchImpl).toHaveBeenCalledTimes(2)
+  })
 })

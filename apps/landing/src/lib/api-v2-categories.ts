@@ -273,13 +273,16 @@ export async function fetchCachedCategoryTree(
 
 /** Site version moves the cached tree has been expired for. */
 let treeChanges = 0
+/** The latest expiry; every read waits for it, not only the one that began it. */
+let expiring: Promise<void> = Promise.resolve()
 
 /**
  * The cached public tree, expired first when `changes` (site version moves)
  * differs from the last call, as the page cache is. A fetch begun before the
  * move is cancelled, not just marked stale: otherwise the next read joins it
  * and its older answer is stored as fresh. Its waiters get the tree cached
- * before it, or, on a first load, the fresh read.
+ * before it, or, on a first load, the fresh read. Every read of the new
+ * version waits for the one expiry, so none is served the old tree meanwhile.
  */
 export async function fetchCurrentCategoryTree(
   base: string | null,
@@ -288,9 +291,11 @@ export async function fetchCurrentCategoryTree(
 ): Promise<CategoryTreeResult> {
   if (changes !== treeChanges) {
     treeChanges = changes
-    await publicCategoryCache.cancelQueries()
-    await publicCategoryCache.invalidateQueries()
+    expiring = publicCategoryCache
+      .cancelQueries()
+      .then(() => publicCategoryCache.invalidateQueries())
   }
+  await expiring
   return fetchCachedCategoryTree(base, fetchImpl)
 }
 
