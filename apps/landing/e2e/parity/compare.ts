@@ -89,8 +89,9 @@ export function snapshot(
 
 /**
  * Word-level similarity, 0..1: twice the longest common subsequence over the
- * total word count (difflib's ratio). Common prefix and suffix are trimmed
- * first, so near-identical pages stay cheap.
+ * total word count (an LCS ratio; at least as lenient as difflib's
+ * Ratcliff/Obershelp ratio). Common prefix and suffix are trimmed first, so
+ * near-identical pages stay cheap.
  */
 export function textSimilarity(a: string, b: string): number {
   const x = a.split(' ').filter(Boolean)

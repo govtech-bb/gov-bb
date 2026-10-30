@@ -8,7 +8,9 @@ name: Landing v2 Parity
 #  - visual: one page per template is screenshotted on both at 390px and
 #    1280px and compared (#3142); diffs are uploaded on failure.
 # Both are gates: a red run on v2-rewrite's head blocks the merge to main
-# (#3131). After that merge, #3311 retargets them to landing.sandbox.
+# (#3131). After that merge, #3311 retargets them to landing.sandbox: that
+# means V2_BASE_URL below and the wait step's app-id/branch, plus the
+# defaults in crawl.ts and templates.visual.ts.
 #
 # The role trusts gov-bb v2-rewrite and main only. Its ARN is not a secret.
 # No `environment:` on any job: it would change the OIDC subject.
@@ -61,7 +63,7 @@ jobs:
           app-id: d3kbl8o0ovutw4
           branch: v2-rewrite
           sha: ${{ github.sha }}
-          url: https://v2-rewrite.d3kbl8o0ovutw4.amplifyapp.com
+          url: ${{ env.V2_BASE_URL }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
   crawl:

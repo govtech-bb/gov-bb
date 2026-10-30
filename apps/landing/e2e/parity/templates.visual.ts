@@ -12,27 +12,41 @@ const V2 =
   process.env.V2_BASE_URL ?? 'https://v2-rewrite.d3kbl8o0ovutw4.amplifyapp.com'
 const STATIC = process.env.STATIC_BASE_URL ?? 'https://staging.alpha.gov.bb'
 
+/**
+ * `source` is the `x-content-source` the api_v2 host must send: `api_v2`
+ * for every template except the self-rendered page, which must still come
+ * from static. An exact match also rules out a page api_v2 missed (served
+ * `static`), which would otherwise compare static with static.
+ */
 const TEMPLATES = [
-  { name: 'category-listing', path: '/family-birth-relationships' },
+  {
+    name: 'category-listing',
+    path: '/family-birth-relationships',
+    source: 'api_v2',
+  },
   // No subcategory index or tables-and-details page is public on either
   // host yet; these are skipped while both answer 404 (see below).
-  { name: 'subcategory-index', path: '/youth-and-community' },
+  { name: 'subcategory-index', path: '/youth-and-community', source: 'api_v2' },
   {
     name: 'service-page',
     path: '/family-birth-relationships/register-a-birth',
+    source: 'api_v2',
   },
   {
     name: 'start-page',
     path: '/family-birth-relationships/get-birth-certificate/start',
+    source: 'api_v2',
   },
   {
     name: 'tables-and-details',
     path: '/pensions-and-gratuities/calculate-your-pension/about-government-pensions',
+    source: 'api_v2',
   },
   {
     // Self-rendered (.tsx) page: must still render from static.
     name: 'self-rendered',
     path: '/health-and-emergency-services/stormready/checklist',
+    source: 'static',
   },
 ]
 
@@ -67,7 +81,7 @@ async function shoot(page: Page, height: number) {
   })
 }
 
-for (const { name, path } of TEMPLATES) {
+for (const { name, path, source } of TEMPLATES) {
   test(`${name} (${path})`, async ({ page, context }, testInfo) => {
     const v2Page = await context.newPage()
     const base = await load(page, STATIC + path)
@@ -77,10 +91,7 @@ for (const { name, path } of TEMPLATES) {
       `${path} is not public on either host`,
     )
     expect(v2.status, 'api_v2 status').toBe(base.status)
-    // A fallback is static markdown: it would match without testing api_v2.
-    expect(v2.source, 'x-content-source').not.toMatch(
-      /^(api_v2-stale|static-fallback)$/,
-    )
+    expect(v2.source, 'x-content-source').toBe(source)
 
     const height = Math.max(await pageHeight(page), await pageHeight(v2Page))
     const baseShot = await shoot(page, height)
