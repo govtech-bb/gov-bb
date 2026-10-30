@@ -1,9 +1,19 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
+import { analyzeContentMarkdown } from '@govtech-bb/govbbmarkd'
+import type * as markd from '@govtech-bb/govbbmarkd'
 import { FrontmatterSchema } from './frontmatter'
 import type { ViewLevel } from './frontmatter'
 import { normalizeSearchQuery, search, suggest } from './search'
 import { PAGES } from '../content/registry'
 import type { ApiV2SearchDocument } from './api-v2-site'
+
+vi.mock('@govtech-bb/govbbmarkd', async (importOriginal) => {
+  const actual = await importOriginal<typeof markd>()
+  return {
+    ...actual,
+    analyzeContentMarkdown: vi.fn(actual.analyzeContentMarkdown),
+  }
+})
 
 describe('search metadata', () => {
   it('trims aliases and rejects blank entries', () => {
@@ -243,5 +253,28 @@ describe('api_v2 search documents', () => {
     expect(hits.filter((hit) => hit.href === staticHit.href)).toEqual([
       expect.objectContaining({ title: 'Get a birth certificate from api_v2' }),
     ])
+  })
+})
+
+describe('search index', () => {
+  it('analyses the static pages once, whatever api_v2 documents come and go', () => {
+    search('birth certificate')
+    vi.mocked(analyzeContentMarkdown).mockClear()
+    const extra: ApiV2SearchDocument[] = [
+      {
+        url: '/only-in-api-v2',
+        title: 'Only in api_v2',
+        description: null,
+        digital: false,
+        keywords: [],
+        chunks: [],
+      },
+    ]
+
+    suggest('birth', 'public', undefined, [])
+    suggest('birth', 'public', undefined, extra)
+    search('birth certificate', 'public', undefined, [])
+
+    expect(analyzeContentMarkdown).not.toHaveBeenCalled()
   })
 })

@@ -171,11 +171,12 @@ function normalizeLiteralPrefix(text: string): string {
 
 const NO_EXTRA: readonly ApiV2SearchDocument[] = []
 
-function buildIndex(extra: readonly ApiV2SearchDocument[]): {
-  engine: MiniSearch<IndexDoc>
-  documents: Map<string, IndexDoc>
-} {
-  const documents = new Map<string, IndexDoc>()
+let staticDocuments: Map<string, IndexDoc> | undefined
+
+/** The registry pages, analysed once: the costly part of building the index. */
+function getStaticDocuments(): Map<string, IndexDoc> {
+  if (staticDocuments) return staticDocuments
+  staticDocuments = new Map()
 
   for (const page of PAGES) {
     if (isSubPage(page)) continue
@@ -190,8 +191,17 @@ function buildIndex(extra: readonly ApiV2SearchDocument[]): {
       kind: 'service',
       gated: true,
     }
-    documents.set(document.id, document)
+    staticDocuments.set(document.id, document)
   }
+
+  return staticDocuments
+}
+
+function buildIndex(extra: readonly ApiV2SearchDocument[]): {
+  engine: MiniSearch<IndexDoc>
+  documents: Map<string, IndexDoc>
+} {
+  const documents = new Map(getStaticDocuments())
 
   // api_v2's public pages, replacing a static copy at the same url.
   for (const page of extra) {
@@ -230,10 +240,11 @@ let index:
     }
   | undefined
 
-/** The index, rebuilt only when api_v2's documents change. */
+/** The index, rebuilt only when api_v2's documents change; every empty list is the same. */
 function getIndex(
-  extra: readonly ApiV2SearchDocument[],
+  documents: readonly ApiV2SearchDocument[],
 ): ReturnType<typeof buildIndex> {
+  const extra = documents.length > 0 ? documents : NO_EXTRA
   if (index?.extra !== extra) index = { extra, built: buildIndex(extra) }
   return index.built
 }

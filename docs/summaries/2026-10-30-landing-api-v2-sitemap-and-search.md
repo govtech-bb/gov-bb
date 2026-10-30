@@ -33,6 +33,7 @@ There are two PRs, both into `v2-rewrite`:
 ## What we almost got wrong
 
 - The first version built an api_v2 document's search id with `url.slice(1)`. That assumes a leading `/`; every other api_v2 url goes through `sitePath`. Without the slash, the id wouldn't match the static copy and the page would show up twice. The existing twin test missed this because its static copy is preview-only and so was hidden anyway. The new test uses a public static twin.
+- The index memo compared document lists by identity, and two different empty lists were in play: one in `search.ts`, one in `api-v2-site.ts`. So a search box rebuilt the whole index after its first keystroke, about 0.3–0.5 s of markdown analysis, even with api_v2 unset. PR review caught it. The registry pages are now analysed once, and any empty list counts as the same list.
 - Vitest runs with `import.meta.env.SSR` set to true, so the browser-memo tests have to stub it to false.
 
 ## Open questions
