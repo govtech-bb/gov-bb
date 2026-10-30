@@ -5,7 +5,7 @@ import { useFieldSize } from "./field";
 // A hairline that darkens on hover and becomes the focus ring. An error edges it in red, but focus still shows over it.
 // 44px on a touch screen, like a menu's rows, and 16px text on phones, so iOS doesn't zoom in on focus
 export const fieldFrame =
-  "rounded-sm bg-white text-14 text-ink shadow-input outline-none placeholder:text-placeholder hover:shadow-input-hover focus:shadow-input-focus aria-invalid:shadow-input-error aria-invalid:focus:shadow-input-focus disabled:cursor-not-allowed disabled:bg-tint disabled:text-muted disabled:shadow-none pointer-coarse:min-h-11 max-sm:text-16";
+  "rounded-sm bg-white text-14 text-ink shadow-input outline-none focus-visible:outline-hidden placeholder:text-placeholder hover:shadow-input-hover focus:shadow-input-focus aria-invalid:shadow-input-error aria-invalid:focus:shadow-input-focus disabled:cursor-not-allowed disabled:bg-tint disabled:text-muted disabled:shadow-none pointer-coarse:min-h-11 max-sm:text-16";
 
 const sizes = {
   // A settings or dialog field
