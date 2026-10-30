@@ -1,8 +1,10 @@
-import { useId, useState } from 'react'
+import { useEffect, useId, useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { Autocomplete } from '@govtech-bb/react'
 import type { ViewLevel } from '../lib/frontmatter'
 import { suggest } from '../lib/search'
+import { loadApiV2SearchDocuments } from '../lib/api-v2-site'
+import type { ApiV2SearchDocument } from '../lib/api-v2-site'
 import { trackEvent } from '../lib/analytics'
 
 type SearchSource = 'home' | 'services' | 'results'
@@ -26,7 +28,13 @@ export function ServiceSearch({
   const inputId = useId()
   const [inputValue, setInputValue] = useState(defaultValue)
   const [hasTyped, setHasTyped] = useState(false)
-  const items = hasTyped ? suggest(inputValue, viewer, overlay) : []
+  const [documents, setDocuments] = useState<readonly ApiV2SearchDocument[]>()
+  const items = hasTyped ? suggest(inputValue, viewer, overlay, documents) : []
+
+  // api_v2's pages, read once someone starts typing.
+  useEffect(() => {
+    if (hasTyped) void loadApiV2SearchDocuments().then(setDocuments)
+  }, [hasTyped])
 
   const submit = (value: string) => {
     const query = value.trim()
