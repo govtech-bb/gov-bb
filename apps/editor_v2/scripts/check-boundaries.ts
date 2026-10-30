@@ -212,6 +212,7 @@ function permitted(from: string, to: string, typeOnly: boolean) {
         "remark-frontmatter",
         "yaml",
         "entities",
+        "@govtech-bb/block-kit/contact",
       ].includes(to) ||
       to.startsWith("@lexical/") ||
       to.startsWith("@base-ui/") ||

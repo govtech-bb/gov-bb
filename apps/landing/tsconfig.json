@@ -15,6 +15,9 @@
       "#/*": ["./src/*"],
       "@/*": ["./src/*"],
       "@govtech-bb/analytics": ["../../packages/analytics/src/index.ts"],
+      "@govtech-bb/block-kit/contact": [
+        "../../packages/block-kit/src/contact.ts"
+      ],
       "@govtech-bb/content/categories": [
         "../../packages/content/src/categories.ts"
       ],
