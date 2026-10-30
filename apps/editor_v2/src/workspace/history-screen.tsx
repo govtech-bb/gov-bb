@@ -35,6 +35,16 @@ const ACTIONS: Record<PageHistoryEntry["action"], string> = {
   discarded: "Review closed when the page was taken out of public view",
 };
 
+/**
+ * Whether an edit is the live write an approval let through: the API writes it in the approval's transaction, so
+ * straight after it, by the same approver, at the same `occurred_at`. `older` is the entry before it.
+ */
+const appliesApproval = (entry: PageHistoryEntry, older: PageHistoryEntry | undefined) =>
+  entry.action === "updated" &&
+  older?.action === "approved" &&
+  older.actor === entry.actor &&
+  older.occurred_at === entry.occurred_at;
+
 /** Who did it: the system for imports and seeding, though it has a user row named "System", or their name. */
 const byWhom = (entry: PageHistoryEntry) =>
   entry.actor === "system" ? "the system" : (entry.actor_name ?? "a former employee");
@@ -85,10 +95,13 @@ export function HistoryScreen({
         <LoadingState label="Loading the page's history…" />
       ) : (
         <ol className="divide-y divide-line rounded-sm border border-line bg-white">
-          {history.data.map((entry) => (
+          {history.data.map((entry, index, entries) => (
             <li key={entry.version_no} className="flex flex-col gap-1 px-4 py-3">
               <span className="font-semibold">
-                {ACTIONS[entry.action]} by {byWhom(entry)}
+                {appliesApproval(entry, entries[index + 1])
+                  ? "Approved change published"
+                  : ACTIONS[entry.action]}{" "}
+                by {byWhom(entry)}
               </span>
               <time dateTime={entry.occurred_at} className="text-14 text-muted tabular-nums">
                 {when.format(new Date(entry.occurred_at))}
@@ -98,7 +111,7 @@ export function HistoryScreen({
                   Changed: {entry.changed.map(pageFieldLabel).join(", ")}
                 </span>
               )}
-              {entry.comment && <span className="text-14">Reason: {entry.comment}</span>}
+              {entry.comment && <span className="text-14 wrap-break-word">Reason: {entry.comment}</span>}
             </li>
           ))}
         </ol>

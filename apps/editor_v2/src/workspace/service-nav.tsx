@@ -131,6 +131,8 @@ export function ServiceNav({
                 to="/history/$pageId"
                 params={{ pageId: selectedId }}
                 search={{ service: serviceId }}
+                // As a page row does, so the drawer isn't open again on the way back
+                onClick={() => !sidebar.wide && sidebar.setOpen(false)}
               />
             }
           >

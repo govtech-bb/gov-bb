@@ -626,6 +626,25 @@ describe("the page's history (#3200)", () => {
       { action: "created", changed: [], comment: null },
     ]);
   });
+
+  // editor_v2 tells the live write an approval let through from an edit by this: the same
+  // transaction, so the same `occurred_at`, straight after the approval and by its approver.
+  it("lists an approval's live write straight after it, by the approver, at the same moment", async () => {
+    const { page } = await submitted();
+    expect((await review(APPROVER, page.id, "publish")).statusCode).toBe(200);
+
+    const response = await as(APPROVER, { url: `/pages/${page.id}/history` });
+
+    const [write, approval, submission] = response.json().entries;
+    expect(write).toMatchObject({
+      action: "updated",
+      actor: APPROVER.id,
+      changed: ["title", "body_markdown"],
+    });
+    expect(approval).toMatchObject({ action: "approved", actor: APPROVER.id });
+    expect(write.occurred_at).toBe(approval.occurred_at);
+    expect(submission.occurred_at).not.toBe(approval.occurred_at);
+  });
 });
 
 describe("self-approval (ADR 0079)", () => {

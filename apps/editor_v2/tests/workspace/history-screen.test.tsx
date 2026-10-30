@@ -127,6 +127,41 @@ test("an entry names the fields it changed, and a rejection its reason", async (
   expect(items()[1]).not.toContain("Reason:");
 });
 
+test("the live write an approval let through reads as publishing it, not as the approver's edit", async () => {
+  const approver = { actor: "approver-1", actor_name: "Ben Approver" };
+  const approvedAt = "2026-10-28T12:00:00.000Z";
+
+  await render([
+    entry({ version_no: 5, ...approver, occurred_at: "2026-10-28T13:00:00.000Z", changed: ["title"] }),
+    entry({ version_no: 4, ...approver, occurred_at: approvedAt, changed: ["title", "body_markdown"] }),
+    entry({ version_no: 3, ...approver, action: "approved", occurred_at: approvedAt }),
+    entry({ version_no: 2, action: "submitted" }),
+    entry({ version_no: 1, action: "created" }),
+  ]);
+
+  await until(() => expect(items()).toHaveLength(5));
+  expect(items().map((item) => item?.match(/^(.*?)\d/)?.[1])).toEqual([
+    "Edited by Ben Approver",
+    "Approved change published by Ben Approver",
+    "Approved and published by Ben Approver",
+    "Submitted for review by Ada Editor",
+    "Created by Ada Editor",
+  ]);
+  expect(items()[1]).toContain("Changed: Title, Content");
+});
+
+test("a long rejection reason wraps rather than running out of its entry", async () => {
+  await render([entry({ action: "rejected", comment: "https://example.test/".repeat(20) })]);
+
+  await until(() => expect(items()).toHaveLength(1));
+
+  const reason = [...host.querySelectorAll("li span")].find((span) =>
+    span.textContent?.startsWith("Reason:"),
+  );
+
+  expect(reason?.classList).toContain("wrap-break-word");
+});
+
 test("Back to the page goes to the page in the service it was opened from", async () => {
   await render([entry({})]);
 
