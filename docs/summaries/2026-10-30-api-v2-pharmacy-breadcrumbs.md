@@ -38,6 +38,6 @@ stayed open.
 
 - The manual check — create a sub-page in editor_v2 on sandbox and see its
   parent's title in the `v2-rewrite` preview's breadcrumb — needs a deployed
-  api_v2, which no CI job has. Recorded on #3243's closing comment.
+  api_v2, which no CI job has. To be recorded on #3243's closing comment.
 - Sandbox only shows the pharmacy nesting once an import carrying `parent`
   has run there (#3234).
