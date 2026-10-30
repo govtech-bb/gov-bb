@@ -38,7 +38,6 @@ on:
   workflow_dispatch:
 
 permissions:
-  id-token: write # assume the deploy role via OIDC
   contents: read
 
 # Queue deploys; never cancel one mid-flight. Amplify also refuses a second
@@ -58,6 +57,9 @@ jobs:
   deploy:
     name: Build editor_v2 on Amplify
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write # assume the deploy role via OIDC
+      contents: read
     # No `environment:` here: it would change the OIDC subject to
     # repo:...:environment:<name>, which the deploy role does not trust.
     # No checkout either: Amplify clones the commit itself.
