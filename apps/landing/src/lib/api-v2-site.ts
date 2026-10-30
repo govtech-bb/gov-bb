@@ -7,7 +7,7 @@ import { logFallback } from './api-v2-log'
 
 /**
  * The site-wide lists api_v2 serves to the public (#3125): every page for the
- * sitemap, and every page's text for search. With no preview token api_v2
+ * sitemap and /services (#3244), and every page's text for search. With no preview token api_v2
  * lists public pages only, so drafts and previews never reach either.
  *
  * Each list is cached per server instance for a minute. A failed read serves
@@ -16,8 +16,19 @@ import { logFallback } from './api-v2-log'
  * browser holds a list no longer than the server does.
  */
 
-/** Copied from apps/api_v2/src/modules/navigation.ts (`CatalogEntry`), the url only. */
-const CatalogBody = z.object({ pages: z.array(z.object({ url: z.string() })) })
+/** Copied from apps/api_v2/src/modules/navigation.ts (`CatalogEntry`). */
+const CatalogEntry = z.object({
+  url: z.string(),
+  title: z.string(),
+  description: z.string().nullable(),
+  digital: z.boolean(),
+  stage: z.string().nullable(),
+})
+
+/** A public api_v2 page as the catalog lists it. */
+export type ApiV2CatalogEntry = z.infer<typeof CatalogEntry>
+
+const CatalogBody = z.object({ pages: z.array(CatalogEntry) })
 
 /** Copied from apps/api_v2/src/modules/navigation.ts (`SearchDocument`). */
 const SearchDocument = z.object({
@@ -73,20 +84,31 @@ async function cachedList<T, U>(
   return { list, freshForMs: Math.max(0, updatedAt + STALE_MS - Date.now()) }
 }
 
-/** `GET /catalog`: the url of every public page. `token` is landing's rate-limit exemption (#3129). */
+/** `GET /catalog`: every public page. `token` is landing's rate-limit exemption (#3129). */
+export function fetchApiV2CatalogEntries(
+  base: string | null,
+  fetchImpl: typeof fetch = fetch,
+  token?: string,
+): Promise<ApiV2CatalogEntry[]> {
+  return cachedList(
+    base,
+    '/catalog',
+    CatalogBody,
+    (body) => body.pages,
+    fetchImpl,
+    token,
+  ).then(({ list }) => list)
+}
+
+/** The url of every public page, from the same cached catalog read. */
 export function fetchApiV2Catalog(
   base: string | null,
   fetchImpl: typeof fetch = fetch,
   token?: string,
 ): Promise<string[]> {
-  return cachedList(
-    base,
-    '/catalog',
-    CatalogBody,
-    (body) => body.pages.map((page) => page.url),
-    fetchImpl,
-    token,
-  ).then(({ list }) => list)
+  return fetchApiV2CatalogEntries(base, fetchImpl, token).then((pages) =>
+    pages.map((page) => page.url),
+  )
 }
 
 /** Search documents, and how long the server's copy stays fresh. */
@@ -115,6 +137,11 @@ export async function readApiV2SearchDocuments(
 /** Server function: the configured api_v2's public search documents. */
 export const getApiV2SearchDocuments = createServerFn().handler(() =>
   readApiV2SearchDocuments(apiV2Base(), fetch, landingToken()),
+)
+
+/** Server function: the configured api_v2's public catalog. */
+export const getApiV2CatalogEntries = createServerFn().handler(() =>
+  fetchApiV2CatalogEntries(apiV2Base(), fetch, landingToken()),
 )
 
 const NO_DOCUMENTS: readonly ApiV2SearchDocument[] = []

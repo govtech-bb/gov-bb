@@ -3,6 +3,8 @@ import { Heading, Link, Text } from '@govtech-bb/react'
 import { HelpfulBox } from '../components/HelpfulBox'
 import { ServiceSearch } from '../components/ServiceSearch'
 import { isDigitalService, isVisible, PAGES } from '../content/registry'
+import { getApiV2CatalogEntries } from '../lib/api-v2-site'
+import { sitePath } from '../lib/breadcrumb-trail'
 import { pageHead } from '../lib/page-head'
 import { deriveVisibilityOverlay } from '../lib/service-status'
 
@@ -13,25 +15,42 @@ export const Route = createFileRoute('/services')({
       'Browse all digital government services available on alpha.gov.bb.',
       { path: '/services' },
     ),
+  // api_v2 mode replaces the static list (ADR 0078); the catalog is A to Z.
+  loader: async ({ context }) =>
+    context.categoryTree.kind === 'disabled'
+      ? null
+      : (await getApiV2CatalogEntries())
+          .filter((p) => p.stage === 'alpha')
+          .map((p) => {
+            const href = sitePath(p.url)
+            return {
+              title: p.title,
+              href,
+              slug: href.slice(1),
+              digital: p.digital,
+            }
+          }),
   component: ServicesPage,
 })
 
 function ServicesPage() {
   const { level, serviceStatuses } = Route.useRouteContext()
   const overlay = deriveVisibilityOverlay(serviceStatuses)
-  const items = PAGES.filter(
-    (p) =>
-      p.frontmatter.stage === 'alpha' &&
-      !p.slug.endsWith('/start') &&
-      isVisible(p, level, overlay),
-  )
-    .map((p) => ({
-      title: p.frontmatter.title,
-      href: `/${p.url}`,
-      slug: p.url,
-      digital: isDigitalService(p),
-    }))
-    .sort((a, b) => a.title.localeCompare(b.title))
+  const items =
+    Route.useLoaderData() ??
+    PAGES.filter(
+      (p) =>
+        p.frontmatter.stage === 'alpha' &&
+        !p.slug.endsWith('/start') &&
+        isVisible(p, level, overlay),
+    )
+      .map((p) => ({
+        title: p.frontmatter.title,
+        href: `/${p.url}`,
+        slug: p.url,
+        digital: isDigitalService(p),
+      }))
+      .sort((a, b) => a.title.localeCompare(b.title))
 
   return (
     <>
