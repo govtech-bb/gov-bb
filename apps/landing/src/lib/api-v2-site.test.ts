@@ -11,8 +11,13 @@ import {
   it,
   vi,
 } from 'vitest'
-import { fetchApiV2Catalog, readApiV2SearchDocuments } from './api-v2-site'
+import {
+  fetchApiV2Catalog,
+  fetchApiV2CatalogEntries,
+  readApiV2SearchDocuments,
+} from './api-v2-site'
 import type { ApiV2SearchDocument } from './api-v2-site'
+import { siteCache } from './api-v2-site-cache'
 import type * as SiteModule from './api-v2-site'
 
 const DOCUMENT: ApiV2SearchDocument = {
@@ -22,6 +27,14 @@ const DOCUMENT: ApiV2SearchDocument = {
   digital: true,
   keywords: ['funding'],
   chunks: [{ heading: null, body: 'Some money.' }],
+}
+
+const ENTRY = {
+  url: '/a',
+  title: 'A',
+  description: null,
+  digital: true,
+  stage: 'alpha',
 }
 
 /** What the fake api_v2 answers next. */
@@ -72,9 +85,45 @@ afterEach(() => {
 
 describe('fetchApiV2Catalog', () => {
   it('lists the catalog urls', async () => {
-    reply = json(200, { pages: [{ url: '/a', title: 'A', stage: null }] })
+    reply = json(200, { pages: [ENTRY] })
     expect(await fetchApiV2Catalog(`${origin}/catalog-test`)).toEqual(['/a'])
     expect(requests).toEqual(['/catalog-test/catalog'])
+  })
+
+  it('lists the full catalog entries', async () => {
+    reply = json(200, { pages: [ENTRY] })
+    expect(await fetchApiV2CatalogEntries(nextBase())).toEqual([ENTRY])
+  })
+
+  it('shares one read with the entries', async () => {
+    reply = json(200, { pages: [ENTRY] })
+    const base = nextBase()
+    expect(await fetchApiV2Catalog(base)).toEqual(['/a'])
+    expect(await fetchApiV2CatalogEntries(base)).toEqual([ENTRY])
+    expect(requests).toHaveLength(1)
+  })
+
+  // A cache declared in api-v2-site.ts is copied into the server-function
+  // handler by the production build, so direct and server-function reads
+  // would each hold their own (#3461). This pins the cache to its own module.
+  it('caches in the shared site cache module', async () => {
+    reply = json(200, { pages: [ENTRY] })
+    const base = nextBase()
+    await fetchApiV2Catalog(base)
+    expect(siteCache.getQueryData(['/catalog', base])).toEqual([ENTRY])
+  })
+
+  it('serves the last good entries when a later read fails', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    const base = nextBase()
+
+    reply = json(200, { pages: [ENTRY] })
+    await fetchApiV2CatalogEntries(base)
+    vi.advanceTimersByTime(61_000)
+    reply = json(503, {})
+    expect(await fetchApiV2CatalogEntries(base)).toEqual([ENTRY])
+    expect(requests).toHaveLength(2)
   })
 
   it('is empty without reading anything when api_v2 is not configured', async () => {

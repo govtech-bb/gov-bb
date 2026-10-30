@@ -69,7 +69,15 @@ describe.each(['', 'landing-secret'])('landing token %j', (token) => {
           subcategories: [],
         },
       ],
-      pages: [{ url: '/new-category/only-in-api-v2' }],
+      pages: [
+        {
+          url: '/new-category/only-in-api-v2',
+          title: 'Only in api_v2',
+          description: null,
+          digital: false,
+          stage: null,
+        },
+      ],
     })
     const { Route } = await import('../routes/sitemap[.]xml')
     // This route's GET handler does not use a request context.
