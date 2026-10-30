@@ -242,3 +242,44 @@ describe('api_v2 render parity', () => {
     },
   )
 })
+
+describe('"Last updated" date (#3105)', () => {
+  const lastUpdated = async (
+    dates: Pick<PageResponse, 'published_at' | 'content_updated_at'>,
+  ) => {
+    const seed = ESTATE.pages.find((page) => page.visibility === 'public')
+    if (!seed) throw new Error('The seed snapshot has no public page')
+    const result = await resolveApiV2Page(
+      'http://api.example',
+      seed.url,
+      async () => Response.json({ ...served(seed), ...dates }),
+    )
+    if (result.kind !== 'page') throw new Error(JSON.stringify(result))
+    return render(result.page).match(/Last updated on (.+?)</)?.[1]
+  }
+
+  it('dates an evening edit by its day in Barbados', async () => {
+    expect(
+      await lastUpdated({
+        published_at: '2026-01-22T00:00:00.000Z',
+        content_updated_at: '2026-10-30T02:00:00.000Z',
+      }),
+    ).toBe('October 29th, 2026')
+  })
+
+  it('keeps an imported date on its calendar day, backfilled or not', async () => {
+    const imported = '2026-01-22T00:00:00.000Z'
+    expect(
+      await lastUpdated({
+        published_at: imported,
+        content_updated_at: imported,
+      }),
+    ).toBe('January 22nd, 2026')
+    expect(
+      await lastUpdated({
+        published_at: imported,
+        content_updated_at: undefined,
+      }),
+    ).toBe('January 22nd, 2026')
+  })
+})

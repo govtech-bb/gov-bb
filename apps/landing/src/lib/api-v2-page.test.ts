@@ -682,7 +682,7 @@ describe('fromApiV2', () => {
       }),
     )
     expect(page.frontmatter.publish_date).toEqual(
-      new Date('2026-10-29T13:13:03.684Z'),
+      new Date('2026-10-29T00:00:00.000Z'),
     )
   })
 
