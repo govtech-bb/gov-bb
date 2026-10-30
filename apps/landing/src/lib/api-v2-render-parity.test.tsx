@@ -54,7 +54,8 @@ const ESTATE: {
  * The page as `GET /pages` returns it (`toPublicPage` in
  * apps/api_v2/src/modules/page-visibility.ts) after seeding: apps/api_v2/
  * src/seed.ts stores `published_at` for a public page only, so a non-public
- * page has none until it goes public. `category`/`subcategory` restate
+ * page has none until it goes public. The insert trigger dates a public
+ * page's `content_updated_at` from its `published_at`. `category`/`subcategory` restate
  * `categoryChain` in apps/api_v2/src/modules/navigation.ts; api_v2's
  * seed.test.ts checks the real mapping against the same snapshot.
  */
@@ -77,6 +78,10 @@ function served(page: SeedPage): PageResponse {
     hide_start_links: false,
     breadcrumbs: [],
     published_at: page.visibility === 'public' ? page.published_at : null,
+    content_updated_at:
+      page.visibility === 'public'
+        ? (page.published_at ?? undefined)
+        : undefined,
     updated_at: '2026-01-01T00:00:00.000Z',
     category,
     subcategory,

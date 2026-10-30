@@ -14,6 +14,9 @@
  *   frontmatter or form. A visibility, url, slug, category or parent change
  *   keeps it. Publishing a revision writes its fields to the live row, so an
  *   approved change moves it too.
+ * - It is never earlier than `published_at`, so a page drafted, edited and
+ *   then made public by a visibility-only save is dated from going public, as
+ *   a page created public is.
  *
  * Replay-safe: the column is added only if missing, backfilled only where
  * null, and the function and trigger are replaced.
@@ -43,6 +46,9 @@ begin
     );
   else
     new.content_updated_at := old.content_updated_at;
+  end if;
+  if new.published_at is not null then
+    new.content_updated_at := greatest(new.content_updated_at, new.published_at);
   end if;
   return new;
 end;

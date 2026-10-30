@@ -771,9 +771,12 @@ describe("PUT /pages/:id", () => {
     const servedDate = async () =>
       (await read(draft.url)).json().content_updated_at;
 
-    const published = await put(draft, { visibility: "public" });
+    const editedDraft = await put(draft, { title: "Drafted" });
+    const published = await put(editedDraft, { visibility: "public" });
     const first = await servedDate();
-    expect(first).toEqual(expect.any(String));
+    expect(new Date(first).getTime()).toBeGreaterThanOrEqual(
+      new Date(published.published_at).getTime(),
+    );
 
     const hidden = await put(published, { visibility: "preview" });
     const again = await put(hidden, { visibility: "public" });
