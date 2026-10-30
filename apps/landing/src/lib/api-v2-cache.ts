@@ -1,14 +1,16 @@
 import type { ApiV2Result } from './api-v2-page'
+import { REASONS } from './api-v2-log'
 
 /**
  * In-memory cache in front of api_v2 page reads (#3127), per server instance.
  * TTLs come only from api_v2's `Cache-Control` (#2702): pages get max-age 60 +
  * stale-while-revalidate 300, a 404 max-age 10, `no-store` nothing. A stale
  * entry is served at once while one background refetch per URL runs; on a
- * failure the last good copy is served at any age. After three failures in a
- * row api_v2 isn't called for 30 s. `expire()` makes every entry stale at
- * once, for when api_v2's site version moves (a publish): the next read of
- * each url waits for a fresh copy, falling back to the old one on a failure.
+ * failure the last good copy is served at any age, marked `stale`. After three
+ * failures in a row api_v2 isn't called for 30 s. `expire()` makes every entry
+ * stale at once, for when api_v2's site version moves (a publish): the next
+ * read of each url waits for a fresh copy, falling back to the old one on a
+ * failure.
  *
  * Keyed by URL alone, which is safe only because landing never sends
  * `x-preview-token`, so api_v2's answer is the same for every viewer. A call
@@ -20,15 +22,12 @@ export const MAX_ENTRIES = 500
 const FAILURES_TO_OPEN = 3
 const OPEN_MS = 30_000
 /** api_v2 failed (vs. answered): never cached, counted toward the breaker. */
-const FAILURES = new Set([
-  'no_target',
-  'status',
-  'malformed',
-  'timeout',
-  'network',
-])
+const failed = (r: ApiV2Result) =>
+  r.kind === 'miss' && REASONS[r.reason].failure
 
-const failed = (r: ApiV2Result) => r.kind === 'miss' && FAILURES.has(r.reason)
+/** A kept page served because api_v2 failed: `x-content-source: api_v2-stale`. */
+const kept = (r: ApiV2Result): ApiV2Result =>
+  r.kind === 'page' ? { ...r, stale: true } : r
 
 function seconds(cacheControl: string | null | undefined, directive: RegExp) {
   return Number(cacheControl?.match(directive)?.[1] ?? 0) * 1000
@@ -65,6 +64,7 @@ export function createApiV2Cache() {
           if (++failures >= FAILURES_TO_OPEN) {
             openUntil = now + OPEN_MS
             failures = 0
+            console.error(JSON.stringify({ event: 'api_v2_circuit_open', url }))
           }
           return result
         }
@@ -109,13 +109,15 @@ export function createApiV2Cache() {
     const age = entry ? now - entry.storedAt : Infinity
     if (entry && age < entry.maxAgeMs) return entry.result
     if (now < openUntil)
-      return entry?.result ?? { kind: 'miss', reason: 'circuit_open' }
+      return entry
+        ? kept(entry.result)
+        : { kind: 'miss', reason: 'circuit_open' }
     if (entry && age < entry.maxAgeMs + entry.swrMs) {
       void revalidate(url, resolve, now).catch(() => {})
       return entry.result
     }
     const result = await revalidate(url, resolve, now)
-    return failed(result) ? (entry?.result ?? result) : result
+    return failed(result) && entry ? kept(entry.result) : result
   }
 
   function expire() {

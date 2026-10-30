@@ -2,6 +2,7 @@ import { createServerFn } from '@tanstack/react-start'
 import { QueryClient } from '@tanstack/react-query'
 import { z } from 'zod'
 import { API_V2_TIMEOUT_MS, apiV2Base } from './api-v2-page'
+import { logFallback, message } from './api-v2-log'
 
 /**
  * Categories from api_v2's public reads (ADR 0078). When `VITE_API_V2_URL` is
@@ -83,9 +84,13 @@ export const CategoryPath = z.union([
 /** A category path: `[category]` or `[category, subcategory]`. */
 export type CategoryPath = z.infer<typeof CategoryPath>
 
-/** GET a public api_v2 read, parsed; `missing` is a 404 the caller may expect. */
+/**
+ * GET a public api_v2 read, parsed; `missing` is a 404 the caller may expect.
+ * Any other miss logs an `api_v2_fallback` line (contract in api-v2-page.ts).
+ */
 async function readPublic<T>(
-  url: string,
+  base: string,
+  path: string,
   schema: z.ZodType<T>,
   fetchImpl: typeof fetch,
 ): Promise<
@@ -95,7 +100,9 @@ async function readPublic<T>(
   const timer = setTimeout(() => controller.abort(), API_V2_TIMEOUT_MS)
 
   try {
-    const response = await fetchImpl(url, { signal: controller.signal })
+    const response = await fetchImpl(`${base}${path}`, {
+      signal: controller.signal,
+    })
 
     if (response.status === 404) {
       // Release the socket: an unread body pins a keep-alive connection.
@@ -105,7 +112,7 @@ async function readPublic<T>(
     }
 
     if (response.status !== 200) {
-      console.warn(`[api-v2] ${response.status} for ${url}`)
+      logFallback('status', path, { status: response.status })
       await response.body?.cancel()
 
       return { kind: 'unavailable' }
@@ -115,11 +122,13 @@ async function readPublic<T>(
     const parsed = schema.safeParse(body)
 
     if (parsed.success) return { kind: 'ok', value: parsed.data }
-    console.warn(`[api-v2] malformed response for ${url}`)
+    if (controller.signal.aborted) throw new Error('timed out reading the body')
+    logFallback('malformed', path)
 
     return { kind: 'malformed' }
   } catch (error) {
-    console.warn(`[api-v2] request for ${url} failed:`, error)
+    const reason = controller.signal.aborted ? 'timeout' : 'network'
+    logFallback(reason, path, { error: message(error) })
 
     return { kind: 'unavailable' }
   } finally {
@@ -135,7 +144,8 @@ export async function fetchCategoryTree(
   if (!base) return { kind: 'disabled' }
 
   const result = await readPublic(
-    `${base}/categories`,
+    base,
+    '/categories',
     CategoryTreeBody,
     fetchImpl,
   )
@@ -145,6 +155,7 @@ export async function fetchCategoryTree(
       return { kind: 'found', categories: result.value.categories }
     // The tree route always exists; a 404 means api_v2 isn't serving it.
     case 'missing':
+      logFallback('status', '/categories', { status: 404 })
       return { kind: 'unavailable' }
     default:
       return result
@@ -170,7 +181,8 @@ export async function fetchCategoryListing(
     return { kind: 'not_found' }
 
   const result = await readPublic(
-    `${base}/categories/${path.join('/')}`,
+    base,
+    `/categories/${path.join('/')}`,
     CategoryListing,
     fetchImpl,
   )
@@ -281,7 +293,8 @@ export function categoryTreeQuery(
       try {
         return await load()
       } catch (error) {
-        console.warn('[api-v2] category tree read failed:', error)
+        // Only in the browser: landing's server function failed, not api_v2.
+        console.warn('category tree read failed:', error)
 
         return { kind: 'unavailable' }
       }
