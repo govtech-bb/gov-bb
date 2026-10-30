@@ -31,18 +31,24 @@ env:
   AWS_ROLE_ARN: arn:aws:iam::672203047922:role/api-v2-github-actions-sandbox
   SMOKE_LANDING_URL: https://v2-rewrite.d3kbl8o0ovutw4.amplifyapp.com
   SMOKE_API_V2_URL: https://api-v2.sandbox.alpha.gov.bb
+  # Must equal the Amplify v2-rewrite branch's VITE_FORMS_URL: the walk
+  # looks for Start links to exactly <this>/forms/<form_id>.
   SMOKE_FORMS_URL: https://forms.sandbox.alpha.gov.bb
 
 jobs:
   wait:
     name: Wait for Amplify build
+    # The wait and the smoke target the v2-rewrite build, so a manual run from
+    # another branch would check the wrong commit.
+    if: github.ref == 'refs/heads/v2-rewrite'
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     # No `environment:` here: it would change the OIDC subject, which the
     # role does not trust.
     permissions:
       id-token: write # assume the role via OIDC
       contents: read
+      actions: read # watch this commit's api_v2 deploy
     outputs:
       superseded: ${{ steps.build.outputs.superseded }}
     steps:
@@ -63,6 +69,23 @@ jobs:
           sha: ${{ github.sha }}
           url: ${{ env.SMOKE_LANDING_URL }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
+      # A push that changes api_v2 also deploys it (deploy-api-v2-sandbox.yml).
+      # Smoke only once that rollout has finished, or this commit's api_v2
+      # would go unchecked until the next push.
+      - name: Wait for this commit's api_v2 deploy, if any
+        if: steps.build.outputs.superseded != 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.sha }}
+        run: |
+          RUN_ID=$(gh api "repos/$REPO/actions/workflows/deploy-api-v2-sandbox.yml/runs?head_sha=$SHA" \
+            --jq '.workflow_runs[0].id // empty')
+          if [ -z "$RUN_ID" ]; then
+            echo "No api_v2 deploy for ${SHA:0:7}"
+            exit 0
+          fi
+          gh run watch "$RUN_ID" --repo "$REPO" --exit-status --interval 30
 
   smoke:
     name: Smoke (api_v2 source, Start links)

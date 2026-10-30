@@ -25,7 +25,7 @@ export default defineConfig({
   retries: process.env.CI ? 1 : 0,
   workers: 1,
   // Each live test sweeps every page, one after another.
-  timeout: 300_000,
+  timeout: 600_000,
   reporter: [['list']],
   use: {
     ...devices['Desktop Chrome'],

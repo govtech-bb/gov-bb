@@ -129,11 +129,15 @@ interface StartLink {
 }
 
 const START_LINK = /<a\b[^>]*\bdata-start-link\b[^>]*>/gi
+// Leading whitespace so `href` never matches `data-href`.
 const attr = (tag: string, name: string) =>
-  new RegExp(`\\b${name}\\s*=\\s*(?:"([^"]*)"|'([^']*)')`, 'i').exec(tag)
+  new RegExp(`\\s${name}\\s*=\\s*(?:"([^"]*)"|'([^']*)')`, 'i').exec(tag)
+// Text landing never renders as links: HTML comments and fenced code.
+const UNRENDERED = /<!--[\s\S]*?-->|^(```|~~~)[\s\S]*?^\1/gm
 
 export function startLinks(markdown: string): StartLink[] {
-  return [...markdown.matchAll(START_LINK)].map(([tag]) => {
+  const rendered = markdown.replace(UNRENDERED, '')
+  return [...rendered.matchAll(START_LINK)].map(([tag]) => {
     const href = attr(tag, 'href')
     const formId = attr(tag, 'data-form-id')
     return {
@@ -146,19 +150,21 @@ export function startLinks(markdown: string): StartLink[] {
 /**
  * How a citizen gets from a catalog page to its form: the landing pages to
  * click through (`path[0]` is the catalog page) and the form the last page's
- * Start link must open. `problem` instead when the page can never open its
- * form: a start link with no target and no `form_id` to bake into it.
+ * Start link must open, with each page's own `form_id` (whose maintenance or
+ * closed banner landing shows). `problem` instead when the page can never
+ * open its form: a start link with no target and no `form_id` to bake into it.
  */
 export type StartChain =
-  | { path: string[]; formId: string }
+  | { path: string[]; pageFormIds: (string | null)[]; formId: string }
   | { path: string[]; problem: string }
 
 const MAX_HOPS = 3
 
 /**
  * Follows the first start link of `url` through same-site pages (usually the
- * `/start` step) until one has no href, which landing binds to that page's
- * `form_id` (bakeStartLinkFormId). Null when the page has no start link, hides
+ * `/start` step) until one has no href. As in StartLink.tsx, an authored href
+ * wins, then an authored `data-form-id`, then the page's `form_id`
+ * (bakeStartLinkFormId). Null when the page has no start link, hides
  * them, or (for a page with no `form_id`) its link leads somewhere that isn't
  * an api_v2 page, such as an interactive tool's `/find` or `/form` — none of
  * those open a form.
@@ -168,15 +174,17 @@ export function startChain(
   pages: ReadonlyMap<string, ApiV2Page | null>,
 ): StartChain | null {
   const path: string[] = []
+  const pageFormIds: (string | null)[] = []
   let current = pages.get(url)
   while (current) {
     path.push(current.url)
+    pageFormIds.push(current.form_id)
     if (current.hide_start_links) return null
     const [link] = startLinks(current.body_markdown)
     if (!link) return null
-    if (link.formId) return { path, formId: link.formId }
     if (link.href === undefined) {
-      if (current.form_id) return { path, formId: current.form_id }
+      const formId = link.formId ?? current.form_id
+      if (formId) return { path, pageFormIds, formId }
       return {
         path,
         problem: `${current.url} has a start link but no form_id`,

@@ -6,6 +6,7 @@ import {
   readSmokeEnv,
   startChain,
   startChains,
+  startLinks,
 } from './api-v2-smoke'
 import type { ApiV2Page } from './api-v2-smoke'
 import recorded from './fixtures/api-v2-sandbox.json'
@@ -108,8 +109,16 @@ describe('pagesToCheck', () => {
 describe('startChains', () => {
   it('follows recorded start links to the form each page is bound to', async () => {
     expect(await startChains(API, fakeApi())).toEqual([
-      { path: [BIRTH, `${BIRTH}/start`], formId: 'get-birth-certificate' },
-      { path: [SUMMER], formId: 'national-summer-camp-2025-registration' },
+      {
+        path: [BIRTH, `${BIRTH}/start`],
+        pageFormIds: ['get-birth-certificate', 'get-birth-certificate'],
+        formId: 'get-birth-certificate',
+      },
+      {
+        path: [SUMMER],
+        pageFormIds: ['national-summer-camp-2025-registration'],
+        formId: 'national-summer-camp-2025-registration',
+      },
     ])
     // Severance pay links a calculator, not a form; register-a-birth has no
     // start link. Neither is checked.
@@ -144,7 +153,11 @@ describe('startChains', () => {
       API,
       fakeApi({ pages: { [SUMMER]: { ...page, form_id: 'no-such-form' } } }),
     )
-    expect(chains[1]).toEqual({ path: [SUMMER], formId: 'no-such-form' })
+    expect(chains[1]).toEqual({
+      path: [SUMMER],
+      pageFormIds: ['no-such-form'],
+      formId: 'no-such-form',
+    })
   })
 })
 
@@ -169,7 +182,40 @@ describe('startChain', () => {
         page({ body_markdown: "<a data-start-link data-form-id='b'>Go</a>" }),
       ],
     ])
-    expect(startChain('/a', pages)).toEqual({ path: ['/a'], formId: 'b' })
+    expect(startChain('/a', pages)).toEqual({
+      path: ['/a'],
+      pageFormIds: ['form-a'],
+      formId: 'b',
+    })
+  })
+
+  it('lets an authored href win over data-form-id, as StartLink does', () => {
+    const pages = new Map([
+      [
+        '/a',
+        page({
+          body_markdown:
+            '<a data-start-link href="/a/start" data-form-id="b">Go</a>',
+        }),
+      ],
+      ['/a/start', page({ url: '/a/start' })],
+    ])
+    expect(startChain('/a', pages)).toEqual({
+      path: ['/a', '/a/start'],
+      pageFormIds: ['form-a', 'form-a'],
+      formId: 'form-a',
+    })
+  })
+
+  it('reads only start links landing renders', () => {
+    const body = [
+      '<!-- <a data-start-link href="/old">Start now</a> -->',
+      '```html',
+      '<a data-start-link href="/example">Start now</a>',
+      '```',
+      '<a data-start-link data-href="/x">Start now</a>',
+    ].join('\n')
+    expect(startLinks(body)).toEqual([{}])
   })
 
   it('ignores an authored off-site link', () => {

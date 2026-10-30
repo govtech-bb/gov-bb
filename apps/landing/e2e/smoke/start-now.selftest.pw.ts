@@ -38,12 +38,25 @@ let env: SmokeEnv
 
 test.use({ navigationTimeout: 5_000 })
 
+const NOTICE =
+  'This form is currently being upgraded to serve you better. Please check back soon.'
+
+/** A chain whose every page is bound to `formId`. */
+const chain = (path: string[], formId: string) => ({
+  path,
+  pageFormIds: path.map(() => formId),
+  formId,
+})
+
 test.beforeAll(async () => {
   // A form's first step: the forms app adds `?step=` once the recipe loads.
+  const step = `<script>history.replaceState(null, '', '?step=first')</script>`
   forms = await serve({
     '/forms/good-form': {
-      body: `<h1>Tell us about yourself</h1><button>Continue</button>
-        <script>history.replaceState(null, '', '?step=first')</script>`,
+      body: `<h1>Tell us about yourself</h1><button>Continue</button>${step}`,
+    },
+    '/forms/one-step': {
+      body: `<h1>Your feedback</h1><button>Submit</button>${step}`,
     },
     '/forms/gone-form': { body: '<h1>Form not found</h1>' },
   })
@@ -58,11 +71,16 @@ test.beforeAll(async () => {
       source: api,
       body: `<a href="${formsUrl}/forms/good-form">Start now</a>`,
     },
+    '/one-step': {
+      source: api,
+      body: `<a href="${formsUrl}/forms/one-step">Start now</a>`,
+    },
     '/typo': { source: api, body: '<p>There is 1 way to apply.</p>' },
     '/maintenance': {
       source: api,
-      body: '<p>This form is currently being upgraded to serve you better. Please check back soon.</p>',
+      body: `<div class="govbb-status-banner"><p>${NOTICE}</p></div>`,
     },
+    '/notice-in-copy': { source: api, body: `<p>${NOTICE}</p>` },
     '/gone': {
       source: api,
       body: `<a href="${formsUrl}/forms/gone-form">Start now</a>`,
@@ -82,36 +100,62 @@ test.afterAll(() => {
 
 test('opens the form through the start step', async ({ page }) => {
   await expect(
-    walkStartChain(page, env, {
-      path: ['/service', '/service/start'],
-      formId: 'good-form',
-    }),
+    walkStartChain(
+      page,
+      env,
+      chain(['/service', '/service/start'], 'good-form'),
+    ),
+  ).resolves.toBe('opened')
+})
+
+test('opens a one-step form, whose button is Submit', async ({ page }) => {
+  await expect(
+    walkStartChain(page, env, chain(['/one-step'], 'one-step')),
   ).resolves.toBe('opened')
 })
 
 test('passes a form landing marks as under maintenance', async ({ page }) => {
   await expect(
-    walkStartChain(page, env, { path: ['/maintenance'], formId: 'x' }),
+    walkStartChain(page, env, chain(['/maintenance'], 'x')),
   ).resolves.toBe('unavailable')
+})
+
+test('fails a maintenance banner for a different form', async ({ page }) => {
+  await expect(
+    walkStartChain(page, env, {
+      path: ['/maintenance'],
+      pageFormIds: ['other-form'],
+      formId: 'x',
+    }),
+  ).rejects.toThrow('/maintenance: unavailable banner for other-form, not x')
+})
+
+test('fails the notice words in body copy, outside the banner', async ({
+  page,
+}) => {
+  await expect(
+    walkStartChain(page, env, chain(['/notice-in-copy'], 'x')),
+  ).rejects.toThrow('/notice-in-copy has no Start link')
 })
 
 test('fails a form_id that names no form', async ({ page }) => {
   await expect(
-    walkStartChain(page, env, { path: ['/typo'], formId: 'no-such-form' }),
+    walkStartChain(page, env, chain(['/typo'], 'no-such-form')),
   ).rejects.toThrow('/typo has no Start link')
 })
 
 test('fails a Start link whose form does not load', async ({ page }) => {
   await expect(
-    walkStartChain(page, env, { path: ['/gone'], formId: 'gone-form' }),
+    walkStartChain(page, env, chain(['/gone'], 'gone-form')),
   ).rejects.toThrow(/Timeout/)
 })
 
 test('fails a step landing served from static', async ({ page }) => {
   await expect(
-    walkStartChain(page, env, {
-      path: ['/fallback', '/service/start'],
-      formId: 'good-form',
-    }),
+    walkStartChain(
+      page,
+      env,
+      chain(['/fallback', '/service/start'], 'good-form'),
+    ),
   ).rejects.toThrow('/fallback: x-content-source: static-fallback')
 })
