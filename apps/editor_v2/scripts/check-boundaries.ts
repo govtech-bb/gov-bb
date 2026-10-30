@@ -300,6 +300,7 @@ function permitted(from: string, to: string, typeOnly: boolean) {
         "date-fns",
         "@govtech-bb/react",
         "@govtech-bb/govbbmarkd",
+        "@govtech-bb/govbbmarkd/form-links",
         "@govtech-bb/govbbmarkd/react",
       ].includes(to) ||
       to.startsWith("@govtech-bb/frontend/")

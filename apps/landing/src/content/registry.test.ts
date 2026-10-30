@@ -20,7 +20,10 @@ import { CATEGORY_BY_SLUG } from './categories'
 import { search } from '../lib/search'
 import type { Element, ElementContent } from 'hast'
 import { hideStartLinks } from '../utils/markdown/plugins'
-import { isDataStartLink, isWaysParagraph } from '@govtech-bb/govbbmarkd'
+import {
+  isDataStartLink,
+  isWaysParagraph,
+} from '@govtech-bb/govbbmarkd/form-links'
 import type { ViewLevel } from '../lib/frontmatter'
 
 // The tests below walk loosely typed hast; ask the plugin what a start link is

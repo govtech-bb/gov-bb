@@ -65,6 +65,7 @@ try {
       viewport: { width, height: 1000 },
       reducedMotion: "reduce",
     });
+
     const reference = await context.newPage();
     await reference.goto(`${origin}${path}`);
     await reference.locator(".govbb-prose").waitFor();

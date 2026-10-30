@@ -40,6 +40,7 @@ describe("design-system prose page template", () => {
         keywords: [""],
       },
     };
+
     const before = structuredClone(input);
     expect(render(input)).toContain("API page");
     expect(render(input)).not.toContain("View the original source");
@@ -56,6 +57,7 @@ describe("design-system prose page template", () => {
       },
       body: "| Help | Telephone |\n| --- | --- |\n| Office | (246) 123-4567 |\n",
     });
+
     expect(html).toContain("January 13th, 2026");
     expect(html).toContain("View the original source");
     expect(html).toContain('href="tel:+12461234567"');
@@ -67,6 +69,7 @@ describe("design-system prose page template", () => {
       frontmatter: { form_id: "example" },
       body: "<a data-start-link>Start now</a>",
     };
+
     expect(render(input)).toContain("Untitled page");
     expect(render(input)).not.toContain("Last updated on");
     expect(render(input)).not.toContain("Start now");
@@ -82,6 +85,7 @@ describe("design-system prose page template", () => {
       frontmatter: { form_id: "example" },
       body: "There are two ways to apply.\n\n1. Online\n\n   <a data-start-link>Start now</a>\n\n2. In person\n",
     });
+
     expect(html).toContain("There is 1 way to apply.");
     expect(html).not.toContain("Start now");
   });
@@ -91,6 +95,7 @@ describe("design-system prose page template", () => {
       ...document,
       body: '<muted caption>Small print</muted>\n\n<highlights><highlight title="Important">Bring ID.</highlight></highlights>',
     });
+
     expect(html).toContain("govbb-text-body-sm");
     expect(html).toContain("Important");
     expect(html).not.toContain("<highlight");
@@ -107,6 +112,7 @@ describe("design-system prose page template", () => {
         }}
       />,
     );
+
     expect(html).toContain('aria-label="Title"');
     expect(html).toContain("data-editor-body");
     expect(html).not.toContain("Bring");

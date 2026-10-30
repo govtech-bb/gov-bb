@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Element, Properties, Root, Text } from "hast";
-import rehypeHideStartLinks from "./hide-start-links";
+import { hideStartLinks as rehypeHideStartLinks } from "@govtech-bb/govbbmarkd/form-links";
 
 const text = (value: string): Text => ({ type: "text", value });
 

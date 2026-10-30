@@ -27,12 +27,15 @@ export type ProsePageRegions = { title: ReactNode; lede: ReactNode; body: ReactN
 
 function blockPreviewAction(event: SyntheticEvent) {
   const target = event.target;
+
   if (!(target instanceof Element) || !target.closest("a, form")) return;
   event.preventDefault();
   event.stopPropagation();
   const href = target.closest("a")?.getAttribute("href");
+
   if (event.type === "click" && href?.startsWith("#")) {
     const destination = document.getElementById(href.slice(1));
+
     if (destination && event.currentTarget.contains(destination)) {
       destination.scrollIntoView();
       destination.focus({ preventScroll: true });
@@ -52,17 +55,21 @@ export function ProsePage({
     a: ({ node, href, children, ...rest }) => {
       if (node?.properties.dataStartLink !== undefined) {
         const { "data-start-link": _start, "data-form-id": _form, ...linkProps } = rest;
+
         const available =
           page.formStatus === "available" && node.properties.dataFormId === page.formId;
+
         return href || available ? (
           <LinkButton {...linkProps} href={href ?? "#"}>
             {children}
           </LinkButton>
         ) : null;
       }
+
       if (node?.properties.className?.includes("anchor-heading"))
         return <a href={href ?? "#"} {...rest} />;
       const external = href && !/^(\/|#|tel:)/.test(href);
+
       return (
         <Link
           href={href ?? "#"}
@@ -80,6 +87,7 @@ export function ProsePage({
       />
     ),
   };
+
   return (
     <div
       data-cms-site-preview=""

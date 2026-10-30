@@ -32,12 +32,14 @@ export function SitePreview({
 }) {
   const [attempt, setAttempt] = useState(0);
   const aboutTitle = useId();
+
   const preview = useMemo(() => {
     try {
       if (!("CSSScopeRule" in window))
         throw new Error(
           "Site preview needs a browser with CSS scope support. You can still use the writer.",
         );
+
       return { page: prepareProsePage(sitePreviewDocument(source, context)) };
     } catch (cause) {
       return {
@@ -51,10 +53,12 @@ export function SitePreview({
     const hidden = workspace?.hidden;
     const inert = workspace?.inert;
     const href = location.href;
+
     if (workspace) {
       workspace.hidden = true;
       workspace.inert = true;
     }
+
     window.scrollTo(0, 0);
 
     return () => {
@@ -62,6 +66,7 @@ export function SitePreview({
         workspace.hidden = hidden!;
         workspace.inert = inert!;
       }
+
       // Let Lexical reattach to the writer before restoring focus.
       queueMicrotask(() => {
         if (location.href === href && !document.querySelector("[data-cms-preview-host]")) {

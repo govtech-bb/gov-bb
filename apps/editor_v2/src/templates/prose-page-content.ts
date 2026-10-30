@@ -1,9 +1,5 @@
-import {
-  bakeStartLinkFormId,
-  compileContentMarkdown,
-  hideStartLinks,
-  type CompiledContentMarkdown,
-} from "@govtech-bb/govbbmarkd";
+import { compileContentMarkdown, type CompiledContentMarkdown } from "@govtech-bb/govbbmarkd";
+import { bakeStartLinkFormId, hideStartLinks } from "@govtech-bb/govbbmarkd/form-links";
 import { format } from "date-fns";
 
 /** Display-only page input; the editor owns the source, history and publication. */
@@ -23,6 +19,7 @@ type ProseNode = CompiledContentMarkdown["hast"]["children"][number];
 function assertProseMarkup(nodes: ProseNode[]) {
   for (const node of nodes) {
     if (node.type !== "element") continue;
+
     if (
       [
         "script",
@@ -54,22 +51,28 @@ function assertProseMarkup(nodes: ProseNode[]) {
 export function prepareProsePage(document: ProsePageDocument) {
   const text = (key: string) => {
     const value = document.frontmatter[key];
+
     // eslint-disable-next-line anti-slop/no-runtime-typeof -- Authored YAML is an untrusted display boundary.
     if (value !== undefined && typeof value !== "string")
       throw new Error(`Site preview metadata must be text: ${key}.`);
+
     return value;
   };
+
   const title = text("title") || "Untitled page";
   const lede = text("lede");
   const sourceUrl = text("source_url");
   const formId = text("form_id");
+
   if (sourceUrl && !/^https?:\/\//i.test(sourceUrl))
     throw new Error("Site preview source URL must use HTTP or HTTPS.");
 
   const published = document.frontmatter.publish_date;
   let publishDate: string | undefined;
+
   if (published !== undefined) {
     const date = new Date(String(published));
+
     if (Number.isNaN(date.getTime())) throw new Error("Site preview publication date is invalid.");
     publishDate = format(
       new Date(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()),
@@ -78,6 +81,7 @@ export function prepareProsePage(document: ProsePageDocument) {
   }
 
   const compiled = compileContentMarkdown(document.body, { html: "legacy", frontmatter: false });
+
   if (!compiled.ok) throw compiled.errors[0];
   const { hast } = compiled.value;
   assertProseMarkup(hast.children);
