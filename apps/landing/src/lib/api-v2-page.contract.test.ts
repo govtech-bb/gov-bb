@@ -97,6 +97,7 @@ const PAGE: { [K in keyof PageResponse]-?: FieldOf<PageResponse[K]> } = {
     items: { type: 'object', properties: { name: str, url: str } },
   },
   published_at: { type: 'string', nullable: true },
+  content_updated_at: optStr,
   updated_at: optStr,
   category: { type: 'string', optional: true, nullable: true },
   subcategory: { type: 'string', optional: true, nullable: true },

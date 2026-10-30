@@ -729,8 +729,26 @@ describe('fromApiV2', () => {
     )
   })
 
+  it('dates "Last updated" from content_updated_at when the API sends it (#3105)', async () => {
+    const page = await fromApiV2(
+      pageBody({
+        published_at: '2026-01-02T00:00:00.000Z',
+        content_updated_at: '2026-10-29T13:13:03.684Z',
+        updated_at: '2026-11-01T00:00:00.000Z',
+      }),
+    )
+    expect(page.frontmatter.publish_date).toEqual(
+      new Date('2026-10-29T00:00:00.000Z'),
+    )
+  })
+
   it('has no publish_date until the page has been published', async () => {
-    const page = await fromApiV2(pageBody({ published_at: null }))
+    const page = await fromApiV2(
+      pageBody({
+        published_at: null,
+        content_updated_at: '2026-10-29T13:13:03.684Z',
+      }),
+    )
     expect(page.frontmatter).not.toHaveProperty('publish_date')
   })
 

@@ -54,7 +54,8 @@ const ESTATE: {
  * The page as `GET /pages` returns it (`toPublicPage` in
  * apps/api_v2/src/modules/page-visibility.ts) after seeding: apps/api_v2/
  * src/seed.ts stores `published_at` for a public page only, so a non-public
- * page has none until it goes public. `category`/`subcategory` restate
+ * page has none until it goes public. The insert trigger dates a public
+ * page's `content_updated_at` from its `published_at`. `category`/`subcategory` restate
  * `categoryChain` in apps/api_v2/src/modules/navigation.ts; api_v2's
  * seed.test.ts checks the real mapping against the same snapshot.
  */
@@ -77,6 +78,10 @@ function served(page: SeedPage): PageResponse {
     hide_start_links: false,
     breadcrumbs: [],
     published_at: page.visibility === 'public' ? page.published_at : null,
+    content_updated_at:
+      page.visibility === 'public'
+        ? (page.published_at ?? undefined)
+        : undefined,
     updated_at: '2026-01-01T00:00:00.000Z',
     category,
     subcategory,
@@ -236,4 +241,45 @@ describe('api_v2 render parity', () => {
       }
     },
   )
+})
+
+describe('"Last updated" date (#3105)', () => {
+  const lastUpdated = async (
+    dates: Pick<PageResponse, 'published_at' | 'content_updated_at'>,
+  ) => {
+    const seed = ESTATE.pages.find((page) => page.visibility === 'public')
+    if (!seed) throw new Error('The seed snapshot has no public page')
+    const result = await resolveApiV2Page(
+      'http://api.example',
+      seed.url,
+      async () => Response.json({ ...served(seed), ...dates }),
+    )
+    if (result.kind !== 'page') throw new Error(JSON.stringify(result))
+    return render(result.page).match(/Last updated on (.+?)</)?.[1]
+  }
+
+  it('dates an evening edit by its day in Barbados', async () => {
+    expect(
+      await lastUpdated({
+        published_at: '2026-01-22T00:00:00.000Z',
+        content_updated_at: '2026-10-30T02:00:00.000Z',
+      }),
+    ).toBe('October 29th, 2026')
+  })
+
+  it('keeps an imported date on its calendar day, backfilled or not', async () => {
+    const imported = '2026-01-22T00:00:00.000Z'
+    expect(
+      await lastUpdated({
+        published_at: imported,
+        content_updated_at: imported,
+      }),
+    ).toBe('January 22nd, 2026')
+    expect(
+      await lastUpdated({
+        published_at: imported,
+        content_updated_at: undefined,
+      }),
+    ).toBe('January 22nd, 2026')
+  })
 })

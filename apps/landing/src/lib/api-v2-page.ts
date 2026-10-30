@@ -40,6 +40,23 @@ export const API_V2_TIMEOUT_MS = 750
 const lenient = <T extends z.ZodType>(schema: T) =>
   schema.optional().catch(undefined)
 
+const BARBADOS_DAY = new Intl.DateTimeFormat('en-CA', {
+  timeZone: 'America/Barbados',
+})
+
+/**
+ * `publish_date` is a calendar day held as UTC midnight, as frontmatter dates
+ * are. A date imported from markdown, and a backfilled row that copies it,
+ * already is one and keeps its day. Any other value is the instant an editor
+ * saved, so it becomes its day in Barbados: an edit at 10 p.m. on 29 October
+ * is dated the 29th, not the UTC 30th.
+ */
+function barbadosDay(iso: string): Date {
+  const instant = new Date(iso)
+  if (instant.getTime() % 86_400_000 === 0) return instant
+  return new Date(BARBADOS_DAY.format(instant))
+}
+
 /**
  * PublicPage from api_v2's modules/page-visibility.ts. Only `url`, the title,
  * `body_markdown`, `hide_start_links` and `breadcrumbs` can reject a page;
@@ -71,6 +88,8 @@ const PageResponse = z
     breadcrumbs: z.array(z.object({ name: z.string(), url: z.string() })),
     /** First publication, not the last save. */
     published_at: z.iso.datetime({ offset: true }).nullable().catch(null),
+    /** The last content change (#3105); absent from an API older than it. */
+    content_updated_at: lenient(z.iso.datetime({ offset: true })),
     /** The last save; landing doesn't read it. */
     updated_at: lenient(z.iso.datetime({ offset: true })),
     // The API owns slug syntax and taxonomy relationships. Absent (an API
@@ -253,8 +272,11 @@ export async function fromApiV2(body: PageResponse): Promise<ApiV2Page> {
     ...(body.subcategory && { subcategory: body.subcategory }),
     visibility: 'public',
     ...(body.form_id && { form_id: body.form_id }),
-    // "Last updated" is first publication, as in static frontmatter.
-    ...(body.published_at && { publish_date: new Date(body.published_at) }),
+    // "Last updated" is the last content change (#3105), shown once the page
+    // has been public; an older API sends only first publication.
+    ...(body.published_at && {
+      publish_date: barbadosDay(body.content_updated_at ?? body.published_at),
+    }),
   }
   // Dynamic so the parser stays out of the client entry: a static import
   // survives the server-fn split and ships ~340 KB of remark/rehype.

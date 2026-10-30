@@ -42,6 +42,7 @@ export interface ResolvablePage {
   readonly bodyMarkdown: string;
   readonly frontmatter: Frontmatter;
   readonly publishedAt: Date | null;
+  readonly contentUpdatedAt: Date;
   readonly updatedAt: Date;
 }
 
@@ -108,12 +109,15 @@ export const PublicPage = z.object({
       "When the page first went public (seeded from landing's " +
         "`publish_date`); null until it has.",
     ),
-  updated_at: z.iso
+  content_updated_at: z.iso
     .datetime()
     .describe(
-      "The page's last save, visibility changes included: the site's " +
-        '"Last updated" line.',
+      "When the title, description, body, frontmatter or form last changed, " +
+        'visibility changes not included: the site\'s "Last updated" line.',
     ),
+  updated_at: z.iso
+    .datetime()
+    .describe("The page's last save, visibility changes included."),
 });
 
 /** A page as the site reads it. */
@@ -169,6 +173,7 @@ export function toPublicPage(
     category: view.category,
     subcategory: view.subcategory,
     published_at: page.publishedAt?.toISOString() ?? null,
+    content_updated_at: page.contentUpdatedAt.toISOString(),
     updated_at: page.updatedAt.toISOString(),
   };
 }
