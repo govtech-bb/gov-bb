@@ -2,6 +2,7 @@
 import { IconContext } from "@phosphor-icons/react";
 import { act, useContext } from "react";
 import { createRoot, type Root } from "react-dom/client";
+import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { Sidebar, useSidebar } from "./sidebar";
 
@@ -275,4 +276,55 @@ test("as a drawer it shows whole rows, even where the column beside the page is 
   expect(anchor("#categories").querySelector(".sr-only")).toBeNull();
   expect(anchor("#categories").textContent).toBe("CategoriesDraft");
   expect(document.querySelector('[role="dialog"]')?.textContent).toContain("Archived");
+});
+
+test("a row keeps room for its words in semibold, so becoming current never re-wraps it", async () => {
+  await render();
+
+  const words = (name: string) => link(name).querySelector<HTMLElement>("[data-words]")!;
+
+  // Its words' semibold copy shares their cell, unseen and unread
+  expect(words("Fees").dataset.words).toBe("Fees");
+  expect(words("Fees").className).toContain("after:content-[attr(data-words)]");
+  expect(words("Fees").className).toContain("after:font-semibold");
+  expect(words("Fees").className).toContain("after:invisible");
+  expect(link("Fees").textContent).toBe("Fees");
+});
+
+test("beside the page, the column eases away rather than moving the page in one frame", async () => {
+  // As it first shows, it's simply there
+  expect(renderToStaticMarkup(<Service />)).not.toContain("starting:w-0");
+  await render();
+
+  const column = nav()!;
+
+  expect(column.className).toContain("transition-[width,display]");
+  expect(column.className).toContain("[&[hidden]]:w-0");
+  expect(column.className).toContain("motion-reduce:transition-none");
+  // Shown again later, it opens out from nothing
+  expect(column.className).toContain("starting:w-0");
+  // Its content keeps the column's width as it narrows, so nothing in it re-wraps
+  expect(column.firstElementChild?.className).toContain("w-60");
+});
+
+test("while a group's rows load, a line says so once, with the turning circle", async () => {
+  await act(async () =>
+    root.render(
+      <Sidebar.Root
+        sidebar={{ id: "pages", wide: true, open: true, setOpen: () => {} }}
+        label="Pages"
+      >
+        <Sidebar.Content>
+          <Sidebar.Loading>Loading pages…</Sidebar.Loading>
+        </Sidebar.Content>
+      </Sidebar.Root>,
+    ),
+  );
+
+  const line = host.querySelector('[role="status"]')!;
+
+  expect(line.textContent).toBe("Loading pages…");
+  expect(line.querySelector("svg")?.getAttribute("aria-hidden")).toBe("true");
+  // Not an empty state's tray
+  expect(line.querySelector(".motion-safe\\:animate-spin")).not.toBeNull();
 });

@@ -140,6 +140,31 @@ try {
   await b.locator("[data-cms-preview-article]").waitFor();
   assert.equal(await button(b, "Edit content").isDisabled(), true);
   await button(b, "Close preview").click();
+  // At 320px, with reduced motion, the notice reflows and its question works from the keyboard alone
+  await b.setViewportSize({ width: 320, height: 640 });
+  await b.emulateMedia({ reducedMotion: "reduce" });
+  assert.ok(
+    await button(b, "Take over editing").evaluate((element) => {
+      const notice = element.closest('[role="status"]');
+
+      return (
+        !!notice &&
+        notice.getBoundingClientRect().right <= 320 &&
+        element.getBoundingClientRect().right <= 320
+      );
+    }),
+    "the read-only notice and its action reflow within 320px",
+  );
+  await button(b, "Take over editing").focus();
+  await b.keyboard.press("Enter");
+  const takeoverDialog = b.getByRole("alertdialog", { name: "Take over editing?", exact: true });
+  await takeoverDialog.waitFor();
+  await b.waitForFunction(() => document.activeElement?.textContent === "Cancel");
+  await b.keyboard.press("Escape");
+  await takeoverDialog.waitFor({ state: "hidden" });
+  await b.waitForFunction(() => document.activeElement?.textContent === "Take over editing");
+  await b.setViewportSize({ width: 1440, height: 1000 });
+  await b.emulateMedia({ reducedMotion: null });
   await takeover(b);
   await editable(b);
   assert.notEqual(credentials.get(b), tokenA);
@@ -222,9 +247,26 @@ try {
 
   await control("idle-prompt");
   await a.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));
-  await a.getByRole("alertdialog", { name: "Are you still editing?" }).waitFor();
-  await button(a, "I'm still editing").click();
+  const idle = a.getByRole("alertdialog", { name: "Are you still editing?" });
+  await idle.waitFor();
+  // It opens on the answer that keeps editing, and Escape doesn't stop editing
+  await a.waitForFunction(() =>
+    document.activeElement?.closest('[role="alertdialog"]')?.textContent?.includes("I'm still"),
+  );
+  assert.equal(
+    await button(a, "I'm still editing").evaluate((element) => element === document.activeElement),
+    true,
+  );
+  await a.keyboard.press("Escape");
+  assert.equal(await idle.isVisible(), true, "Escape leaves the idle question open");
+  await a.keyboard.press("Enter");
+  await idle.waitFor({ state: "hidden" });
   await editable(a);
+  assert.equal(
+    await a.evaluate(() => document.activeElement !== document.body),
+    true,
+    "answering hands focus back to the page",
+  );
   await title(a).fill("Keep when idle or signed out");
   await control("idle-expire");
   await a.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));
@@ -259,7 +301,7 @@ try {
     .getByRole("alertdialog")
     .getByRole("button", { name: "Leave without saving", exact: true })
     .click();
-  await a.getByText("This page can't be edited here").waitFor();
+  await a.getByText("This page can’t be edited here").waitFor();
   await button(a, "Delete page").click();
   await control("change-unsupported");
 

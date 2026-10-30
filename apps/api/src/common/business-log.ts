@@ -12,7 +12,11 @@
 export type BusinessLogType =
   | "journey_event"
   | "journey_rejected"
-  | "business_event";
+  | "business_event"
+  // Upload malware-scan outcomes (#2938). Infra's CloudWatch alarm
+  // (alpha-infra#698) matches `event` and `verdict` exactly; renaming either
+  // silences the alarm rather than failing it, so tell infra first.
+  | "security_event";
 
 export function writeBusinessLog(
   logType: BusinessLogType,

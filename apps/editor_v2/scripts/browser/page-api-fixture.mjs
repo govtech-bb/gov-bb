@@ -20,6 +20,7 @@ export const fixturePage = (id, fields) => ({
   published_at: null,
   created_at: stamp,
   updated_at: stamp,
+  pending_revision: null,
   ...fields,
 });
 

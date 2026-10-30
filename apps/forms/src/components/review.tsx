@@ -9,6 +9,7 @@ import {
   resolveFieldLabel,
   resolveStepTitle,
 } from "@govtech-bb/form-conditions";
+import { resolveOptionDisplay } from "@govtech-bb/submission-summary";
 import { buildStepScopedValues } from "../lib/form-builder/helpers/value-tree";
 import { trackEvent } from "../lib/analytics";
 import { formCategory } from "../lib/form-category";
@@ -138,6 +139,12 @@ export default function Review({
         return selectedOptions.length > 0
           ? selectedOptions.map((option) => option.label).join(", ")
           : null;
+      }
+      case "checkbox-accordion": {
+        // Options live inside `groups`; share the email's lookup (#3064) so
+        // Check your answers shows the same labels the MDA receives.
+        if (!Array.isArray(value) || value.length === 0) return null;
+        return (resolveOptionDisplay(field, value) as string[]).join(", ");
       }
       case "radio": {
         if (!field.options) return emptyToNull(value);

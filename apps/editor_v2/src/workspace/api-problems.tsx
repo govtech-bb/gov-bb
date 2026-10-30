@@ -13,12 +13,12 @@ export function ApiProblemText({ messages }: { messages: readonly string[] }) {
   );
 }
 
-/** Dialog problems announced together, separate from field-specific errors. */
+/** Dialog problems announced together, separate from field-specific errors, under the fields in a Dialog.Body. */
 export function ApiProblems({ messages }: { messages: readonly string[] }) {
   if (messages.length === 0) return null;
 
   return (
-    <Banner tone="error" className="mt-4">
+    <Banner tone="error">
       <ApiProblemText messages={messages} />
     </Banner>
   );

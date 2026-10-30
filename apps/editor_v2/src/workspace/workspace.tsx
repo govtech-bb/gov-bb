@@ -1,4 +1,3 @@
-import logo from "@govtech-bb/frontend/assets/images/govbb-logo.svg?raw";
 import { Files, List } from "@phosphor-icons/react";
 import {
   Link,
@@ -11,7 +10,7 @@ import {
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ApiFailure, type EditorApi } from "../api/client";
-import { serviceQuery, servicesQuery, estateVersionQuery } from "../api/queries";
+import { rolesQuery, serviceQuery, servicesQuery, estateVersionQuery } from "../api/queries";
 import {
   CreateRemotePageDialog,
   CreateRemoteServiceDialog,
@@ -19,20 +18,25 @@ import {
 } from "./remote-page-dialogs";
 import { RemotePagePane } from "./remote-page-pane";
 import { AppNav } from "./app-nav";
+import { CollectionScreen, CollectionsScreen } from "./collections";
 import { CategoriesScreen } from "./categories-screen";
+import { HistoryScreen } from "./history-screen";
+import { ReviewQueueScreen, ReviewScreen } from "./review-screens";
 import { listedServiceRows, remoteServiceRows } from "./service-pages";
 import { ServiceNav } from "./service-nav";
 import { workspaceLink } from "./navigation";
 import { Banner } from "../ui/banner";
-import { Bar } from "../ui/bar";
+import { Bar, type Crumb } from "../ui/bar";
 import { Button } from "../ui/button";
 import { EmptyState } from "../ui/empty-state";
 import { LoadingState } from "../ui/loading-state";
 import { TextLink } from "../ui/text-link";
 import { Sidebar, useSidebar } from "../ui/sidebar";
+import { useLatched } from "../ui/use-latched";
 import { useScreenPlace } from "./screen-place";
 import { ScreenTitle } from "./screen-title";
 import { DocumentSessions, keptViews } from "./document-views";
+import { GovbbLogo } from "./govbb-logo";
 import { ServicesList } from "./services-list";
 import type { ServicesSearch } from "./services-search";
 import type { WorkspaceLocation } from "./model";
@@ -41,23 +45,43 @@ import { usePageLeaveGuard } from "./page-leave-guard";
 
 type Account = {
   email: string;
+  /** Whether the API lets someone decide on their own change: only for one local developer under the auth bypass. */
+  selfApproval?: boolean;
   onSignOut: () => Promise<string | undefined>;
   notice?: string;
 };
 
 const SIDEBAR_KEY = "govbb-editor:sidebar-collapsed";
 
-// The bar's trail of links, light on dark
-const crumb =
-  "rounded-sm px-2 py-2 underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-focus";
+/** What someone without the editor role is told, on every screen. */
+const READ_ONLY =
+  "You can read pages, categories and collections but not change them, because you don’t have the editor role. Ask an admin to give it to you.";
 
 /** Authenticated API services and page editors; no browser-local workspace is loaded. */
-export function ServiceWorkspace({ api, email, onSignOut, notice }: Account & { api: EditorApi }) {
+export function ServiceWorkspace({
+  api,
+  email,
+  selfApproval,
+  onSignOut,
+  notice,
+}: Account & { api: EditorApi }) {
   const params = useParams({ strict: false });
   const href = useRouterState({ select: (state) => state.location.href });
   const routerNavigate = useNavigate();
   const listSearch = useSearch({ from: "/_workspace/services", shouldThrow: false });
   const onCategories = !!useMatch({ from: "/_workspace/categories", shouldThrow: false });
+  const onReviews = !!useMatch({ from: "/_workspace/reviews", shouldThrow: false });
+  const reviewing = params.pageId;
+  const historySearch = useSearch({ from: "/_workspace/history/$pageId", shouldThrow: false });
+  const onHistory = !!historySearch;
+  const onCollections = !!useMatch({ from: "/_workspace/collections", shouldThrow: false });
+
+  const collectionSearch = useSearch({
+    from: "/_workspace/collections/$key",
+    shouldThrow: false,
+  });
+
+  const collectionKey = onCollections ? params.key : undefined;
   const [servicesSearch, setServicesSearch] = useState<ServicesSearch>({});
 
   const location = params.serviceId
@@ -126,10 +150,19 @@ export function ServiceWorkspace({ api, email, onSignOut, notice }: Account & { 
     setPanes(kept);
   }, [documentId, panes, pageSessions, sessions]);
   useEffect(() => {
-    setDialog(undefined);
+    setDialog(null);
   }, [documentId]);
 
-  const [dialog, setDialog] = useState<"service" | "page" | "delete">();
+  const [dialog, setDialog] = useState<"service" | "page" | "delete" | null>(null);
+  const shown = useLatched(dialog);
+  // Remount on each opening to clear the previous form and request state.
+  const [opened, setOpened] = useState(0);
+
+  const openDialog = (kind: "service" | "page" | "delete") => {
+    setOpened((count) => count + 1);
+    setDialog(kind);
+  };
+
   const [error, setError] = useState("");
   const [signingOut, setSigningOut] = useState(false);
   const sidebar = useSidebar(SIDEBAR_KEY);
@@ -147,9 +180,24 @@ export function ServiceWorkspace({ api, email, onSignOut, notice }: Account & { 
     (item) => item.id === location?.serviceId,
   );
 
+  const roles = useQuery(rolesQuery(api)).data;
+  // Until the roles load, deleting a public page and changing categories wait rather than offering what the API may
+  // refuse
+  const approver = roles?.includes("approver") ?? false;
+  // Without the editor role everything still reads, but nothing can be changed. Until the roles load everyone is
+  // offered the changes, since nearly everyone is an editor; the API refuses anyone who isn't
+  const readOnly = !!roles && !roles.includes("editor");
+
   const rows = useMemo(() => (remote.data ? remoteServiceRows(remote.data) : []), [remote.data]);
   const selected = rows.find((row) => row.document.id === documentId)?.document;
   const selectedSession = selected ? pageSessions.get(selected.id) : undefined;
+
+  // The page being deleted and its editing session, kept while its dialog fades away after the page itself has gone
+  const deleting = useLatched(
+    dialog === "delete" && selected && selectedSession
+      ? { page: selected, session: selectedSession }
+      : null,
+  );
 
   const missing =
     !!location &&
@@ -163,6 +211,14 @@ export function ServiceWorkspace({ api, email, onSignOut, notice }: Account & { 
   );
 
   const serviceName = place.service ?? listed?.title;
+  const servicePages = !!location && !missing && (!!remote.data || remote.isPending);
+
+  // When the sidebar is hidden, move its toggle into the page bar so it stays reachable.
+  const showPages =
+    servicePages && !(sidebar.wide && sidebar.open) ? (
+      <Sidebar.Toggle sidebar={sidebar} label="Pages" />
+    ) : null;
+
   const serviceStatus = remote.error instanceof ApiFailure ? remote.error.status : undefined;
 
   const serviceRecovery =
@@ -179,10 +235,29 @@ export function ServiceWorkspace({ api, email, onSignOut, notice }: Account & { 
         Sign in again
       </Button>
     ) : (
-      <Button variant="secondary" pending={remote.isFetching} onClick={() => void remote.refetch()}>
-        {remote.isFetching ? "Refreshing service…" : "Try again"}
+      <Button
+        variant="secondary"
+        pending={remote.isFetching}
+        pendingLabel="Refreshing service…"
+        onClick={() => void remote.refetch()}
+      >
+        Try again
       </Button>
     );
+
+  // A record's dialog lives in the collection's address, so a page's block can link straight to it
+  const openRecord = useCallback(
+    (record: string | undefined) => {
+      if (collectionKey)
+        void routerNavigate({
+          to: "/collections/$key",
+          params: { key: collectionKey },
+          search: record ? { record } : {},
+          replace: true,
+        });
+    },
+    [collectionKey, routerNavigate],
+  );
 
   const navigate = (next: WorkspaceLocation) =>
     routerNavigate(next ? workspaceLink(next) : { to: "/services", search: servicesSearch });
@@ -199,6 +274,19 @@ export function ServiceWorkspace({ api, email, onSignOut, notice }: Account & { 
     }
   };
 
+  const crumbs: Crumb[] = [
+    onCategories
+      ? { label: "Categories", render: <Link to="/categories" /> }
+      : onReviews
+        ? { label: "Review queue", render: <Link to="/reviews" /> }
+        : onCollections
+          ? { label: "Collections", render: <Link to="/collections" /> }
+          : { label: "Services", render: <Link to="/services" search={servicesSearch} /> },
+  ];
+
+  if (serviceName)
+    crumbs.push({ label: <span className="block max-w-100 truncate">{serviceName}</span> });
+
   const leave = usePageLeaveGuard({
     getPages,
     activeId: documentId,
@@ -214,7 +302,13 @@ export function ServiceWorkspace({ api, email, onSignOut, notice }: Account & { 
             ? ["Document not found"]
             : location
               ? [place.document, serviceName]
-              : [onCategories ? "Categories" : "Services"]
+              : onReviews
+                ? reviewing
+                  ? ["Review change", "Review queue"]
+                  : ["Review queue"]
+                : onHistory
+                  ? ["Page history"]
+                  : [onCategories ? "Categories" : onCollections ? "Collections" : "Services"]
         }
       />
       <a
@@ -223,7 +317,7 @@ export function ServiceWorkspace({ api, email, onSignOut, notice }: Account & { 
           event.preventDefault();
           document.getElementById("workspace-content")?.focus();
         }}
-        className="sr-only z-50 bg-white px-4 py-3 focus:not-sr-only focus:fixed focus:start-2 focus:top-2"
+        className="sr-only z-popup bg-white px-4 py-3 focus:not-sr-only focus:fixed focus:start-2 focus:top-2"
       >
         Skip to content
       </a>
@@ -234,38 +328,19 @@ export function ServiceWorkspace({ api, email, onSignOut, notice }: Account & { 
               Menu
             </Sidebar.Toggle>
           )}
-          <span
-            className="h-6 shrink-0 [&>svg]:h-full [&>svg]:w-auto"
-            aria-label="GovBB"
-            dangerouslySetInnerHTML={{ __html: logo }}
-          />
-          {/* Where the trail starts: always the same link, so it keeps the focus as it changes screens */}
-          {onCategories ? (
-            <Link to="/categories" className={crumb}>
-              Categories
-            </Link>
-          ) : (
-            <Link to="/services" search={servicesSearch} className={crumb}>
-              Services
-            </Link>
-          )}
-          {serviceName && (
-            <>
-              <span aria-hidden="true" className="text-blue-20">
-                /
-              </span>
-              <span className="min-w-0 max-w-100 truncate">{serviceName}</span>
-              <Sidebar.Toggle sidebar={sidebar} variant="inverse">
-                Pages
-              </Sidebar.Toggle>
-            </>
-          )}
+          <GovbbLogo fit="height" className="h-6 shrink-0" />
+          <Bar.Crumbs crumbs={crumbs} />
           <Bar.Actions>
-            <Bar.Status className="max-w-64 truncate font-normal" title={email}>
+            <Bar.Status className="max-w-64 truncate font-normal max-lg:hidden" title={email}>
               {email}
             </Bar.Status>
-            <Button variant="inverse" disabled={signingOut} onClick={leave.requestSignOut}>
-              {signingOut ? "Signing out…" : "Sign out"}
+            <Button
+              variant="inverse"
+              pending={signingOut}
+              pendingLabel="Signing out…"
+              onClick={leave.requestSignOut}
+            >
+              Sign out
             </Button>
           </Bar.Actions>
         </Bar.Root>
@@ -280,9 +355,14 @@ export function ServiceWorkspace({ api, email, onSignOut, notice }: Account & { 
           {error}
         </Banner>
       )}
+      {readOnly && (
+        <Banner tone="info" layout="strip">
+          {READ_ONLY}
+        </Banner>
+      )}
       <div className="flex flex-1">
         <AppNav sidebar={appNav} rail={!!location} servicesSearch={servicesSearch} />
-        {location && !missing && (remote.data || remote.isPending) && (
+        {servicePages && (
           <ServiceNav
             sidebar={sidebar}
             serviceId={location.serviceId}
@@ -290,18 +370,25 @@ export function ServiceWorkspace({ api, email, onSignOut, notice }: Account & { 
             loading={!remote.data}
             selectedId={documentId}
             stores={stores}
-            onAdd={() => setDialog("page")}
-            onDelete={() => setDialog("delete")}
+            onAdd={() => openDialog("page")}
+            onDelete={() => openDialog("delete")}
+            readOnly={readOnly ? "You need the editor role to add or delete pages." : undefined}
             deleteBlocked={
               selected && remote.data?.pages.some((page) => page.parent_id === selected.id)
                 ? "Delete or move the pages under this page first."
-                : !selectedSession?.getEditLockToken() || selectedSession.isSaving()
-                  ? "Confirm editing ownership and finish any pending save before deleting."
-                  : undefined
+                : !approver &&
+                    remote.data?.pages.find((page) => page.id === selected?.id)?.visibility ===
+                      "public"
+                  ? "Only approvers can delete a public page."
+                  : !selectedSession?.getEditLockToken() || selectedSession.isSaving()
+                    ? "Confirm editing ownership and finish any pending save before deleting."
+                    : undefined
             }
           />
         )}
         <main id="workspace-content" tabIndex={-1} className="min-w-0 flex-1 outline-none">
+          {/* Keep the sidebar toggle reachable before a page is selected. */}
+          {showPages && !selected && <Bar.Root>{showPages}</Bar.Root>}
           {missing && (
             <EmptyState
               kind="not-found"
@@ -333,7 +420,7 @@ export function ServiceWorkspace({ api, email, onSignOut, notice }: Account & { 
           )}
           {!missing && location && remote.isError && !remote.data && (
             <EmptyState
-              kind="failed"
+              tone="error"
               size="page"
               title="We could not load this service"
               description={
@@ -347,12 +434,60 @@ export function ServiceWorkspace({ api, email, onSignOut, notice }: Account & { 
             />
           )}
           {!location && onCategories && (
-            <section className="mx-auto w-full max-w-300 px-6 py-10">
-              <CategoriesScreen api={api} />
+            <section>
+              <CategoriesScreen
+                api={api}
+                readOnly={!approver}
+                why={
+                  roles && !approver
+                    ? "Only approvers can add, change, move or delete categories."
+                    : undefined
+                }
+              />
             </section>
           )}
-          {!location && !onCategories && (
-            <section className="mx-auto w-full max-w-300 px-6 py-10">
+          {!location && onCollections && (
+            <section>
+              {collectionKey ? (
+                <CollectionScreen
+                  key={collectionKey}
+                  api={api}
+                  collectionKey={collectionKey}
+                  record={collectionSearch?.record}
+                  onRecord={openRecord}
+                  readOnly={readOnly}
+                />
+              ) : (
+                <CollectionsScreen api={api} />
+              )}
+            </section>
+          )}
+          {!location && onReviews && (
+            <section className="mx-auto w-full max-w-300 px-4 py-10 sm:px-6">
+              {reviewing ? (
+                <ReviewScreen
+                  key={reviewing}
+                  api={api}
+                  pageId={reviewing}
+                  selfApproval={selfApproval}
+                />
+              ) : (
+                <ReviewQueueScreen api={api} />
+              )}
+            </section>
+          )}
+          {!location && onHistory && params.pageId && (
+            <section className="mx-auto w-full max-w-300 px-4 py-10 sm:px-6">
+              <HistoryScreen
+                key={params.pageId}
+                api={api}
+                pageId={params.pageId}
+                serviceId={historySearch.service}
+              />
+            </section>
+          )}
+          {!location && !onCategories && !onCollections && !onReviews && !onHistory && (
+            <section>
               <ServicesList
                 api={api}
                 search={listSearch ?? {}}
@@ -360,7 +495,8 @@ export function ServiceWorkspace({ api, email, onSignOut, notice }: Account & { 
                   setServicesSearch(search);
                   void routerNavigate({ to: "/services", search, replace: true });
                 }}
-                onCreate={() => setDialog("service")}
+                onCreate={() => openDialog("service")}
+                readOnly={readOnly}
               />
             </section>
           )}
@@ -371,7 +507,7 @@ export function ServiceWorkspace({ api, email, onSignOut, notice }: Account & { 
               title={remote.data.service.title}
               description="Choose a document or add one to this service."
               actions={
-                <Button variant="accent" onClick={() => setDialog("page")}>
+                <Button variant="accent" disabled={readOnly} onClick={() => openDialog("page")}>
                   Add document
                 </Button>
               }
@@ -393,46 +529,51 @@ export function ServiceWorkspace({ api, email, onSignOut, notice }: Account & { 
                 active={!missing && id === selected?.id}
                 onSession={trackPageSession}
                 sessions={sessions}
+                nav={showPages}
               />
             </section>
           ))}
         </main>
       </div>
       {leave.dialog}
-      {dialog === "service" && (
+      {shown === "service" && (
         <CreateRemoteServiceDialog
+          key={opened}
           api={api}
-          close={() => setDialog(undefined)}
-          done={(id) => {
-            setDialog(undefined);
+          open={dialog === "service"}
+          onClose={() => setDialog(null)}
+          onDone={(id) => {
+            setDialog(null);
             void navigate({ serviceId: id, documentId: id });
           }}
         />
       )}
-      {dialog === "page" && remote.data && location && (
+      {shown === "page" && remote.data && location && (
         <CreateRemotePageDialog
+          key={opened}
           api={api}
+          open={dialog === "page"}
           detail={remote.data}
-          close={() => setDialog(undefined)}
-          done={(id) => {
-            setDialog(undefined);
+          onClose={() => setDialog(null)}
+          onDone={(id) => {
+            setDialog(null);
             void navigate({ serviceId: location.serviceId, documentId: id });
           }}
         />
       )}
-      {dialog === "delete" && selected && selectedSession && location && (
+      {shown === "delete" && deleting && (
         <DeleteRemotePageDialog
-          key={selected.id}
+          key={opened}
           api={api}
-          page={selected}
-          session={selectedSession}
-          close={() => setDialog(undefined)}
-          done={() => {
-            const deleted = selected.id;
-            setDialog(undefined);
-            discardPages([deleted]);
+          open={dialog === "delete"}
+          page={deleting.page}
+          session={deleting.session}
+          onClose={() => setDialog(null)}
+          onDone={() => {
+            setDialog(null);
+            discardPages([deleting.page.id]);
             void navigate(
-              deleted === location.serviceId
+              !location || deleting.page.id === location.serviceId
                 ? undefined
                 : { serviceId: location.serviceId, documentId: location.serviceId },
             );

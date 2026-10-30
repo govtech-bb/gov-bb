@@ -28,6 +28,7 @@ COPY --chown=app:app apps/forms/package.json apps/forms/
 COPY --chown=app:app apps/chat/package.json apps/chat/
 COPY --chown=app:app apps/form_builder/package.json apps/form_builder/
 COPY --chown=app:app packages/content/package.json packages/content/
+COPY --chown=app:app packages/govbbmarkd/package.json packages/govbbmarkd/
 COPY --chown=app:app packages/database/package.json packages/database/
 COPY --chown=app:app packages/expressions/package.json packages/expressions/
 COPY --chown=app:app packages/form-builder/package.json packages/form-builder/

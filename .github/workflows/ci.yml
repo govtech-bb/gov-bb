@@ -1,8 +1,10 @@
 name: CI
 
 on:
+  # v2-rewrite is a long-lived integration branch; its PRs and merges run the
+  # same checks as main's until it merges in.
   pull_request:
-    branches: [main]
+    branches: [main, v2-rewrite]
   # Re-validate the trunk after every merge. CI otherwise runs only on
   # pull_request, so a break that emerges from the COMBINATION of two
   # independently-green PRs (e.g. #1875's recipes + #1970's new lint, incident
@@ -10,7 +12,7 @@ on:
   # `main` flags a red trunk immediately. `validate-recipes` matters most here:
   # it validates ALL recipes, not just nx-affected ones.
   push:
-    branches: [main]
+    branches: [main, v2-rewrite]
   workflow_dispatch:
 
 permissions:
@@ -576,6 +578,183 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
           exit 1
 
+      # api_v2's e2e specs boot the built server against the Postgres service
+      # above. Run by name rather than `nx affected -t e2e`, which would also
+      # run forms' Playwright suite. Without DB_HOST every database spec skips
+      # itself and the run is green, so the report below fails on any skip.
+      - name: Run api_v2 e2e specs
+        id: e2e
+        # Skip only when the unit tests never started (install or set-shas
+        # failed); a failed unit run still gets its e2e results.
+        if: ${{ !cancelled() && steps.test.outcome != 'skipped' }}
+        env:
+          DB_HOST: localhost
+        run: |
+          # Captured first so an nx failure fails the step (bash -e) rather
+          # than reading as "not affected" and passing with nothing run.
+          affected=$(pnpm exec nx show projects --affected --withTarget e2e --json)
+          # jq -e exits 1 only for "false"; any other non-zero (5 = not JSON)
+          # is an error, not "not affected".
+          found=0
+          jq -e 'index("api_v2") != null' <<<"$affected" > /dev/null || found=$?
+          if [ "$found" -eq 1 ]; then
+            echo "api_v2 is not affected; skipping its e2e specs."
+            exit 0
+          fi
+          [ "$found" -eq 0 ] || exit "$found"
+          echo "ran=true" >> "$GITHUB_OUTPUT"
+          pnpm exec nx run api_v2:e2e -- --reporter=default --reporter=json \
+            --outputFile.json="$PWD/api-v2-e2e.json" 2>&1 | tee e2e-output.txt
+          exit ${PIPESTATUS[0]}
+
+      - name: Report api_v2 e2e results
+        if: ${{ !cancelled() && steps.e2e.outputs.ran == 'true' }}
+        env:
+          E2E_OUTCOME: ${{ steps.e2e.outcome }}
+        run: |
+          report=api-v2-e2e.json
+          if [ ! -s "$report" ]; then
+            {
+              echo "## ❌ api_v2 e2e specs did not report"
+              echo ""
+              echo '```'
+              sed 's/\x1b\[[0-9;]*m//g' e2e-output.txt | tail -100
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+
+          total=$(jq '.numTotalTests' "$report")
+          failed=$(jq '.numFailedTests' "$report")
+          skipped=$(jq '.numPendingTests + .numTodoTests' "$report")
+          if [ "$E2E_OUTCOME" = "success" ] && [ "$failed" -eq 0 ] && [ "$skipped" -eq 0 ] && [ "$total" -gt 0 ]; then
+            heading="## ✅ api_v2 e2e specs passed"
+            ok=true
+          else
+            heading="## ❌ api_v2 e2e specs failed"
+            ok=false
+          fi
+
+          {
+            echo "$heading"
+            echo ""
+            echo "| Spec | File | Passed | Failed | Skipped |"
+            echo "| --- | --- | ---: | ---: | ---: |"
+            jq -r '.testResults[] | [
+                (.name | sub(".*/apps/api_v2/"; "")),
+                .status,
+                ([.assertionResults[] | select(.status == "passed")] | length),
+                ([.assertionResults[] | select(.status == "failed")] | length),
+                ([.assertionResults[] | select(.status != "passed" and .status != "failed")] | length)
+              ] | "| `\(.[0])` | \(.[1]) | \(.[2]) | \(.[3]) | \(.[4]) |"' "$report"
+            echo ""
+            if [ "$skipped" -gt 0 ]; then
+              echo "**$skipped test(s) skipped.** CI must run them all. Check the File"
+              echo "column first: a failed file (a throwing beforeAll) skips its tests."
+              echo "Otherwise the database was not reached (\`DB_HOST\` unset) or a"
+              echo "test is marked skip/todo."
+              echo ""
+            fi
+            if [ "$ok" = false ]; then
+              echo "<details><summary>Output (last 200 lines)</summary>"
+              echo ""
+              echo '```'
+              sed 's/\x1b\[[0-9;]*m//g' e2e-output.txt | tail -200
+              echo '```'
+              echo "</details>"
+              echo ""
+              echo "**Fix it locally** (needs a Postgres on localhost):"
+              echo '```bash'
+              echo "DB_HOST=localhost pnpm exec nx run api_v2:e2e"
+              echo '```'
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+          [ "$ok" = true ]
+
+  editor-v2-concurrency:
+    name: Editor v2 concurrent editing
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17.9@sha256:2a0d0fe14825b0939f78a8cad5cd4e6aa68bf94d0e5dd96e24b6d23af4315545 # 17.9
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 2s
+          --health-timeout 5s
+          --health-retries 15
+    env:
+      DB_HOST: 127.0.0.1
+      DB_PORT: 5432
+      DB_USERNAME: postgres
+      DB_PASSWORD: postgres
+      VITE_AUTH_BYPASS: "false"
+      VITE_API_ORIGIN: http://127.0.0.1:3038
+      VITE_API_V2_URL: ""
+      VITE_FORMS_API_URL: http://127.0.0.1:3038
+      VITE_SITE_PREVIEW_URL: http://127.0.0.1:3048/cms-preview/
+      BROWSER_BASE_URL: http://127.0.0.1:3018/
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version-file: ".nvmrc"
+          cache: "pnpm"
+      - run: pnpm install --frozen-lockfile
+      - name: Test API-first release gate
+        run: pnpm exec node --test .github/scripts/wait-for-api-v2-deploy.test.mjs
+      - name: Install locked Chromium
+        run: pnpm --dir apps/editor_v2 exec playwright install --with-deps chromium
+      - name: Build the local landing renderer
+        run: pnpm --dir apps/landing build:cms-preview --mode development
+      - name: Run real-API concurrent editing
+        run: |
+          pnpm --dir apps/editor_v2 exec vite dev --host 127.0.0.1 --port 3018 --strictPort > editor-browser.log 2>&1 &
+          editor=$!
+          pnpm --dir apps/landing exec vite dev --host 127.0.0.1 --port 3048 --strictPort > landing-browser.log 2>&1 &
+          landing=$!
+          cleanup() {
+            result=$?
+            trap - EXIT
+            kill "$editor" "$landing" 2>/dev/null || true
+            wait "$editor" "$landing" 2>/dev/null || true
+            if [ "$result" -ne 0 ]; then
+              tail -100 editor-browser.log landing-browser.log
+            fi
+            exit "$result"
+          }
+          trap cleanup EXIT
+          ready=false
+          for _ in $(seq 1 60); do
+            if curl -fsS -o /dev/null http://127.0.0.1:3018/ && \
+               curl -fsS -o /dev/null http://127.0.0.1:3048/cms-preview/renderer.js; then
+              ready=true
+              break
+            fi
+            kill -0 "$editor" "$landing"
+            sleep 1
+          done
+          "$ready"
+          pnpm --dir apps/api_v2 exec vitest run --config vitest.browser.config.ts \
+            --reporter=default --reporter=json --outputFile.json="$PWD/api-v2-concurrency.json"
+          pnpm exec node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import { readFileSync, appendFileSync } from 'node:fs';
+          const report = JSON.parse(readFileSync('api-v2-concurrency.json', 'utf8'));
+          assert.equal(report.success, true);
+          assert.ok(report.numPassedTests > 0);
+          assert.equal(report.numFailedTests + report.numPendingTests + report.numTodoTests, 0);
+          appendFileSync(process.env.GITHUB_STEP_SUMMARY,
+            `Real PostgreSQL/API concurrent browser: ${report.numPassedTests} passed; zero failed/skipped/todo.\n`);
+          NODE
+
   build:
     name: Build
     runs-on: ubuntu-latest
@@ -603,6 +782,10 @@ jobs:
 
       - name: Build affected packages
         id: build
+        env:
+          # editor_v2 refuses a production build without an HTTPS API origin;
+          # Amplify supplies the real one, CI only needs the shell to prerender.
+          VITE_API_ORIGIN: https://api.example.invalid
         run: |
           pnpm exec nx affected -t build --nxBail=false 2>&1 | tee build-output.txt
           exit ${PIPESTATUS[0]}
@@ -625,6 +808,11 @@ jobs:
           echo "pnpm exec nx affected -t build" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
           exit 1
+
+      # Client bundle budgets (apps/landing/.size-limit.js, #3139). Runs only
+      # when landing is affected, and reuses the build above from the nx cache.
+      - name: Check bundle size budgets
+        run: pnpm exec nx affected -t size
 
   validate-recipes:
     name: Validate Recipes
@@ -687,12 +875,15 @@ jobs:
 
   generated-drift:
     name: Generated Files Up To Date
-    # Two artifacts are pre-baked from landing content so their consumers carry
-    # no runtime dependency on @govtech-bb/content:
+    # Three artifacts are pre-baked from landing content so their consumers
+    # carry no runtime dependency on @govtech-bb/content:
     #   - apps/api/src/content/services-index.generated.ts  (`GET /services`)
     #   - packages/content/src/form-categories.generated.ts  (form -> category)
+    #   - apps/api_v2/src/seed-data/estate.json  (api_v2 seed; its pages take
+    #     priority over landing's static markdown, so a stale one rolls
+    #     content back — #3136)
     # Nothing in the build forces a regen, so a content PR that skips it leaves
-    # them stale (#2070). Regenerate both here; if they drifted, commit the
+    # them stale (#2070). Regenerate them here; if they drifted, commit the
     # regen back onto the PR branch rather than only failing (#2303) — the
     # form_builder Content flow writes pages through the GitHub contents API
     # with no checkout and no pnpm, so it can never run the generators itself
@@ -723,11 +914,12 @@ jobs:
         run: |
           pnpm generate:services-index
           pnpm generate:form-categories
+          pnpm generate:seed-data
 
       - name: Detect drift
         id: drift
         env:
-          FILES: apps/api/src/content/services-index.generated.ts packages/content/src/form-categories.generated.ts
+          FILES: apps/api/src/content/services-index.generated.ts packages/content/src/form-categories.generated.ts apps/api_v2/src/seed-data/estate.json
         run: |
           echo "files=$FILES" >> "$GITHUB_OUTPUT"
           if git diff --quiet -- $FILES; then
@@ -769,7 +961,7 @@ jobs:
           git -c user.name="github-actions[bot]" \
               -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
               commit -m "chore: regenerate content-derived generated files" \
-                     -m "Automated by the Generated Files Up To Date job. Regenerate locally with \`pnpm generate:services-index && pnpm generate:form-categories\`."
+                     -m "Automated by the Generated Files Up To Date job. Regenerate locally with \`pnpm generate:services-index && pnpm generate:form-categories && pnpm generate:seed-data\`."
           git push "https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}" \
             "HEAD:refs/heads/${BRANCH}"
 
@@ -794,7 +986,7 @@ jobs:
           {
             echo "## ❌ Generated files are out of date"
             echo ""
-            echo "Landing content changed but the content-derived generated files were not regenerated, so \`GET /services\` and the form→category map would serve stale data."
+            echo "Landing content changed but the content-derived generated files were not regenerated, so \`GET /services\`, the form→category map and the api_v2 seed snapshot would serve stale data."
             echo ""
             echo "The automatic write-back did not run or could not push (fork PR, missing App credentials, or the App lacks \`contents: write\` on this repo — see #2303)."
             echo ""
@@ -802,6 +994,7 @@ jobs:
             echo '```bash'
             echo "pnpm generate:services-index"
             echo "pnpm generate:form-categories"
+            echo "pnpm generate:seed-data"
             echo '```'
             echo "then commit the updated files."
           } >> "$GITHUB_STEP_SUMMARY"

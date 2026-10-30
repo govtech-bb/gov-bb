@@ -63,6 +63,7 @@ test("pointing at a service's link starts loading the service and its entry page
                   published_at: null,
                   created_at: service.updated_at,
                   updated_at: service.updated_at,
+                  pending_revision: null,
                 },
         ),
       );

@@ -20,10 +20,18 @@ on:
     branches: [v2-rewrite]
     paths:
       - "apps/api_v2/**"
+      - "packages/content/package.json"
+      - "packages/govbbmarkd/**"
+      - "patches/**"
+      - ".dockerignore"
+      - "nx.json"
+      - "tsconfig.base.json"
+      - ".nvmrc"
       - "pnpm-lock.yaml"
       - "pnpm-workspace.yaml"
       - "package.json"
       - ".github/workflows/deploy-api-v2-sandbox.yml"
+      - ".github/scripts/verify-ecs-deployment.sh"
   workflow_dispatch:
 
 permissions:
@@ -147,11 +155,16 @@ jobs:
             exit 1
           fi
 
-      # The ALB health check uses /docs/openapi.json; /categories proves the
-      # database answers (it reads the seeded categories).
+      # /health proves the route the ALB will check is live (#3128). The ALB
+      # target group checks /docs/openapi.json until alpha-infra points it at
+      # /health; /categories proves the database answers and categories read.
+      # /pages proves a seeded public page resolves with its content, since
+      # landing reads every page from it (#3146). Sandbox content is edited,
+      # not reseeded, so that page must stay public there: unpublishing,
+      # moving or deleting it fails this step on every deploy.
       - name: Smoke test
         run: |
-          for path in /docs/openapi.json /categories; do
+          for path in /health /docs/openapi.json /categories; do
             status=$(curl -s -o /dev/null -w '%{http_code}' --max-time 15 "$API_URL$path")
             echo "$path -> $status"
             if [ "$status" != "200" ]; then
@@ -159,3 +172,65 @@ jobs:
               exit 1
             fi
           done
+
+          page_path="/pages?url=/family-birth-relationships/register-a-birth"
+          page_json="$RUNNER_TEMP/page.json"
+          status=$(curl -s -o "$page_json" -w '%{http_code}' --max-time 15 "$API_URL$page_path")
+          echo "$page_path -> $status"
+          if [ "$status" != "200" ]; then
+            echo "::error::$API_URL$page_path returned $status"
+            exit 1
+          fi
+          if ! jq -e '(.frontmatter.title | type == "string" and length > 0) and (.body_markdown | type == "string" and length > 0)' "$page_json" > /dev/null; then
+            echo "::error::$API_URL$page_path has no frontmatter.title or body_markdown"
+            exit 1
+          fi
+
+      # GET /pages p50 and p95 after each deploy (#3150): landing asks for
+      # every page here, so a slow query or an N+1 shows up as landing latency.
+      # 100 sequential reads of the page the smoke test pins (so the same "must
+      # stay public on sandbox" rule covers it), each a fresh connection, so
+      # the time includes TLS. Fails only above a generous ceiling: from a client
+      # 90 ms away in Oct 2026, p50 was ~285 ms and p95 300-400 ms, nearly all
+      # of it network (the server answers in under 10 ms). 100 requests sit
+      # far under the site routes' 1,000/min per-client limit (#3356), and a
+      # 429 fails the step rather than skewing the sample.
+      - name: GET /pages latency (p50, p95)
+        env:
+          PAGE_URL: /family-birth-relationships/register-a-birth
+          SAMPLES: "100"
+          CEILING_MS: "500"
+        run: |
+          times=$(mktemp)
+          for _ in $(seq "$SAMPLES"); do
+            read -r status seconds < <(curl -s -o /dev/null --max-time 15 \
+              -w '%{http_code} %{time_total}\n' "$API_URL/pages?url=$PAGE_URL" || echo "000 0")
+            if [ "$status" = "429" ]; then
+              echo "::error::GET /pages was rate limited (429), so the latency sample is void"
+              exit 1
+            fi
+            if [ "$status" != "200" ]; then
+              echo "::error::GET /pages?url=$PAGE_URL returned $status"
+              exit 1
+            fi
+            echo "$seconds" >> "$times"
+          done
+          # Nearest-rank percentiles, in whole milliseconds.
+          read -r count p50 p95 < <(sort -n "$times" | awk '
+            { ms[NR] = $1 * 1000 }
+            END {
+              i50 = int(NR * 0.50 + 0.999999); i95 = int(NR * 0.95 + 0.999999)
+              printf "%d %.0f %.0f\n", NR, ms[i50], ms[i95]
+            }')
+          {
+            echo "### api_v2 GET /pages latency"
+            echo ""
+            echo "| Samples | p50 | p95 | p95 ceiling |"
+            echo "| --- | --- | --- | --- |"
+            echo "| $count | ${p50} ms | ${p95} ms | ${CEILING_MS} ms |"
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "GET /pages: $count samples, p50 ${p50} ms, p95 ${p95} ms"
+          if [ "$p95" -gt "$CEILING_MS" ]; then
+            echo "::error::GET /pages p95 ${p95} ms is above the ${CEILING_MS} ms ceiling"
+            exit 1
+          fi

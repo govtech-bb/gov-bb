@@ -18,6 +18,7 @@
 import { spawn, type ChildProcess } from "node:child_process";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
+import { drizzle } from "drizzle-orm/node-postgres";
 import { Client, Pool } from "pg";
 import { createHmac, randomUUID } from "node:crypto";
 import pino from "pino";
@@ -112,6 +113,7 @@ export const AUTH_ENV = {
   BETTER_AUTH_SECRET: "api-v2-test-secret-at-least-thirty-two-characters",
   GITHUB_CLIENT_ID: "api-v2-test-client",
   GITHUB_CLIENT_SECRET: "api-v2-test-client-secret",
+  API_V2_ADMIN_EMAILS: "admin@govtech.bb",
 };
 
 const entrypoint = join(root, "dist", "src", "main.js");
@@ -255,14 +257,23 @@ export interface EmployeeSession {
 export async function createEmployeeSession(
   database: string,
   apiOrigin: string,
-  options: { expiresAt?: Date; email?: string; emailVerified?: boolean } = {},
+  options: {
+    expiresAt?: Date;
+    email?: string;
+    emailVerified?: boolean;
+    roles?: string[];
+  } = {},
 ): Promise<EmployeeSession> {
   const config = parseConfig({ ...AUTH_ENV, BETTER_AUTH_URL: apiOrigin });
   if (!config.ok) throw config.error;
   const pool = new Pool({ ...DB, database });
   try {
     const context = await betterAuth(
-      betterAuthOptions(pool, config.value.auth, pino({ enabled: false })),
+      betterAuthOptions(
+        drizzle(pool),
+        config.value.auth,
+        pino({ enabled: false }),
+      ),
     ).$context;
     const userId = randomUUID();
     // The GitHub identity check is tested separately. Here the fixture inserts
@@ -276,6 +287,12 @@ export async function createEmployeeSession(
         options.emailVerified ?? true,
       ],
     );
+    // Every employee is an editor unless a test says otherwise, as at a real first sign-in.
+    for (const role of options.roles ?? ["editor"])
+      await pool.query(
+        "insert into user_roles (user_id, role) values ($1, $2)",
+        [userId, role],
+      );
     const session = await context.internalAdapter.createSession(
       userId,
       false,
@@ -313,4 +330,35 @@ export async function databaseQuery(
   } finally {
     await client.end();
   }
+}
+
+/**
+ * Take a page's edit lease over the socket, over whoever holds it, as the
+ * editor does before a save or delete; returns the header the write sends.
+ */
+export async function takePageEditLease(
+  url: string,
+  pageId: string,
+  cookie: string,
+): Promise<Record<string, string>> {
+  const headers = { cookie, origin: AUTH_ENV.EDITOR_ORIGIN };
+  const status = (await (
+    await fetch(`${url}/pages/${pageId}/lock`, { headers })
+  ).json()) as { lockGeneration: number };
+  const token = randomUUID();
+  const response = await fetch(`${url}/pages/${pageId}/lock`, {
+    method: "POST",
+    headers: {
+      ...headers,
+      "content-type": "application/json",
+      "x-page-edit-lock-token": token,
+    },
+    body: JSON.stringify({
+      action: "takeover",
+      expectedLockGeneration: status.lockGeneration,
+    }),
+  });
+  if (response.status !== 200)
+    throw new Error(`Edit lease refused: ${response.status}`);
+  return { "x-page-edit-lock-token": token };
 }

@@ -1,15 +1,15 @@
 import { expectTypeOf, it } from "vitest";
 import type { Employee } from "../modules/auth";
-import type { PageDocument, PageContentVersion } from "../modules/page";
+import type { EditorPage, PageContentVersion } from "../modules/page";
 import type {
   PageEditLockGeneration,
   PageEditLockToken,
 } from "../modules/page-edit-lock";
-import type { IPageEditing } from "./page-editing";
+import type { PageEditing } from "./page-editing";
 
 function pageEditingCalls(
-  editing: IPageEditing,
-  page: PageDocument,
+  editing: PageEditing,
+  page: EditorPage,
   actor: Employee,
   token: PageEditLockToken,
   generation: PageEditLockGeneration,
@@ -24,9 +24,12 @@ function pageEditingCalls(
   void editing.delete(page.id, generation, token, actor);
   // @ts-expect-error The employee's login identity is not an acquisition credential.
   void editing.delete(page.id, page.version, actor.id, actor);
+  void editing.publish(page.id, page.version, actor);
+  // @ts-expect-error A review decision names the page version, not a timestamp.
+  void editing.publish(page.id, new Date(page.updated_at), actor);
 }
 
 it("keeps reviewed versions and ownership credentials distinct in ordinary calls", () => {
-  expectTypeOf(pageEditingCalls).parameter(0).toEqualTypeOf<IPageEditing>();
+  expectTypeOf(pageEditingCalls).parameter(0).toEqualTypeOf<PageEditing>();
   expectTypeOf<PageEditLockGeneration>().not.toEqualTypeOf<PageContentVersion>();
 });

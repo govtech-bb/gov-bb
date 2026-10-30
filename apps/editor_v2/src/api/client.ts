@@ -38,6 +38,25 @@ export type SavePageInput = Omit<Json<paths["/pages/{id}"]["put"]["requestBody"]
   version: PageContentVersion;
 };
 
+/** A public page's change waiting for an approver, with what it changes. */
+export type ApiRevision = Json<paths["/pages/{id}/revision"]["get"]["responses"][200]>;
+
+/** A change waiting for an approver, as the review queue lists it. */
+export type ReviewQueueEntry = Json<
+  paths["/revisions"]["get"]["responses"][200]
+>["revisions"][number];
+
+/** One entry in a page's history: what happened, who did it, when, and what it changed. */
+export type PageHistoryEntry = Json<
+  paths["/pages/{id}/history"]["get"]["responses"][200]
+>["entries"][number];
+
+/** What rejecting a change sends: why, for the editor, and the page version the approver reviewed. */
+type RejectRevisionInput = Json<paths["/pages/{id}/revision/reject"]["post"]["requestBody"]>;
+
+/** What submitting or publishing a change sends: the page version it was decided on. */
+type RevisionDecisionInput = Json<paths["/pages/{id}/revision/publish"]["post"]["requestBody"]>;
+
 /** One row of the services list. */
 export type ServiceSummary = Json<paths["/services"]["get"]["responses"][200]>[number];
 
@@ -47,13 +66,35 @@ export type ServiceDetail = Json<paths["/services/{id}"]["get"]["responses"][200
 /** A page of an opened service. */
 export type ServicePage = ServiceDetail["pages"][number];
 
+/** The signed-in employee and their roles. */
+export type Me = Json<paths["/editor/me"]["get"]["responses"][200]>;
+
+/** A data collection in the editor's list: its field list and how many records it holds. */
+export type CollectionSummary = Json<
+  paths["/collections"]["get"]["responses"][200]
+>["collections"][number];
+
+/** A data collection and its records, ordered by record key. */
+export type CollectionDetail = Json<paths["/collections/{key}/records"]["get"]["responses"][200]>;
+
+/** A collection's definition: its key, title, record key field and field list. */
+export type Collection = CollectionDetail["collection"];
+
+/** One record of a collection: a value for some or all of its fields, every one a string. */
+export type CollectionRecord = CollectionDetail["records"][number];
+
+/** What saving a record sends: every value to keep, by field key. */
+export type RecordInput = Json<
+  paths["/collections/{key}/records/{recordKey}"]["put"]["requestBody"]
+>;
+
 /** The estate's change token. */
 export type EstateVersion = Json<paths["/version"]["get"]["responses"][200]>;
 
 /** A field the API refused, and what the editor can do about it. */
 export type FieldError = Json<paths["/pages"]["post"]["responses"][422]>["errors"][number];
 
-type FailureBody = { message?: string; errors?: FieldError[] };
+type FailureBody = { error?: string; message?: string; errors?: FieldError[] };
 
 /** A request the API refused or never answered: status 0 means it was not reached. */
 export class ApiFailure extends Error {
@@ -61,6 +102,8 @@ export class ApiFailure extends Error {
     readonly status: number,
     readonly errors: readonly FieldError[] = [],
     message = status === 0 ? "The content API could not be reached" : `HTTP ${status}`,
+    /** The API's `error`, which tells refusals with one status apart. */
+    readonly code?: string,
   ) {
     super(message);
   }
@@ -207,7 +250,7 @@ const ok = <Value>(value: Value) => ({ ok: true, value }) as const;
 const failed = <Failure extends Error>(error: Failure) => ({ ok: false, error }) as const;
 
 // JSON's text: any other JSON value, even a number, reads as something different
-const isText = (value: unknown): value is string => String(value) === value;
+export const isText = (value: unknown): value is string => String(value) === value;
 
 const isFlag = (value: unknown): value is boolean => value === true || value === false;
 
@@ -343,8 +386,41 @@ export interface EditorApi extends PageEditLockApi {
       | CategoryOutcomeUnknown
     >
   >;
+  /** Every data collection, with its field list and record count. */
+  collections(): Promise<CollectionSummary[]>;
+  /** A collection and its records; a 404 when there is no such collection. */
+  collection(key: string): Promise<CollectionDetail>;
+  /** Adds a record; a 409 `record_exists` when its key is taken. */
+  createRecord(
+    key: string,
+    recordKey: string,
+    data: RecordInput["data"],
+  ): Promise<CollectionRecord>;
+  /** Replaces a record's data over the version last read, `ifUpdatedAt`. */
+  saveRecord(
+    key: string,
+    recordKey: string,
+    data: RecordInput["data"],
+    ifUpdatedAt: string,
+  ): Promise<CollectionRecord>;
+  /** Deletes a record at the version last read, `ifUpdatedAt`. */
+  deleteRecord(key: string, recordKey: string, ifUpdatedAt: string): Promise<void>;
   /** Read the existing estate polling token. */
   version(): Promise<EstateVersion>;
+  /** The signed-in employee and their roles. */
+  me(): Promise<Me>;
+  /** Submit the page's change for review at the page version the editor read; lease-exempt. */
+  submitRevision(id: string, version: PageContentVersion): Promise<ApiRevision>;
+  /** The changes waiting for an approver, the longest-waiting first. */
+  reviewQueue(): Promise<ReviewQueueEntry[]>;
+  /** A page's pending change with what it changes; a 404 when it has none. */
+  revision(id: string): Promise<ApiRevision>;
+  /** What happened to a page, newest first. */
+  history(id: string): Promise<PageHistoryEntry[]>;
+  /** Publish the change at the page version the approver reviewed; lease-exempt. */
+  publishRevision(id: string, version: PageContentVersion): Promise<ApiPage>;
+  /** Reject the change at the page version the approver reviewed; lease-exempt. */
+  rejectRevision(id: string, comment: string, version: PageContentVersion): Promise<ApiRevision>;
   /** Parse a full page before it becomes a local editing baseline. */
   page(id: string): Promise<PageApiResult<ApiPage>>;
   /** Create explicitly; an uncertain response must not cause an automatic duplicate request. */
@@ -369,6 +445,9 @@ const fieldErrorsSchema = z.object({
   errors: z.array(z.object({ field: z.string(), message: z.string() })),
 });
 
+// A role or review-policy refusal's own sentence, such as "You need the approver role to do this."
+const policyRefusalSchema = z.object({ message: z.string().min(1) });
+
 const conflictSchema = z.object({
   error: z.enum([
     "page_version_conflict",
@@ -387,7 +466,14 @@ export function createEditorApi(apiOrigin: string, landingOrigin?: string): Edit
   async function request(
     method: "GET" | "POST" | "PUT" | "DELETE",
     path: string,
-    body?: CreatePageInput | SavePageInput | CategoryFields | CategoryOrder,
+    body?:
+      | CreatePageInput
+      | SavePageInput
+      | CategoryFields
+      | CategoryOrder
+      | RejectRevisionInput
+      | RevisionDecisionInput
+      | RecordInput,
     ifUpdatedAt?: string,
   ) {
     const headers = new Headers();
@@ -410,7 +496,7 @@ export function createEditorApi(apiOrigin: string, landingOrigin?: string): Edit
   }
 
   const refused = (status: number, failure: FailureBody | null | undefined) =>
-    new ApiFailure(status, failure?.errors, failure?.message);
+    new ApiFailure(status, failure?.errors, failure?.message, failure?.error);
 
   async function send(...args: Parameters<typeof request>) {
     const response = await request(...args);
@@ -530,7 +616,16 @@ export function createEditorApi(apiOrigin: string, landingOrigin?: string): Edit
 
     if (response.status === 401) return { ok: false, error: { kind: "signed-out" } };
 
-    if (response.status === 403) return { ok: false, error: { kind: "forbidden" } };
+    if (response.status === 403) {
+      const refusal = policyRefusalSchema.safeParse(await bodyOf(response));
+
+      return {
+        ok: false,
+        error: refusal.success
+          ? { kind: "forbidden", message: refusal.data.message }
+          : { kind: "forbidden" },
+      };
+    }
 
     if (response.status === 404) return { ok: false, error: { kind: "missing" } };
 
@@ -561,6 +656,9 @@ export function createEditorApi(apiOrigin: string, landingOrigin?: string): Edit
   const pagePath = (id: string) => `/pages/${encodeURIComponent(id)}`;
 
   const services = () => read<ServiceSummary[]>("/services");
+
+  const recordPath = (key: string, recordKey: string) =>
+    `/collections/${encodeURIComponent(key)}/records/${encodeURIComponent(recordKey)}`;
 
   return {
     services,
@@ -649,7 +747,33 @@ export function createEditorApi(apiOrigin: string, landingOrigin?: string): Edit
 
       return written.ok ? ok(undefined) : written;
     },
+    /** Every data collection, with its field list and record count. */
+    collections: async () =>
+      (await read<{ collections: CollectionSummary[] }>("/collections")).collections,
+    /** A collection and its records; a 404 when there is no such collection. */
+    collection: (key: string) =>
+      read<CollectionDetail>(`/collections/${encodeURIComponent(key)}/records`),
+    /** Adds a record; a 409 `record_exists` when its key is taken. */
+    createRecord: async (
+      key: string,
+      recordKey: string,
+      data: RecordInput["data"],
+    ): Promise<CollectionRecord> =>
+      (await send("POST", recordPath(key, recordKey), { data })).json(),
+    /** Replaces a record's data, over the version last read, `ifUpdatedAt`; a 409 `conflict` once it has moved on. */
+    saveRecord: async (
+      key: string,
+      recordKey: string,
+      data: RecordInput["data"],
+      ifUpdatedAt: string,
+    ): Promise<CollectionRecord> =>
+      (await send("PUT", recordPath(key, recordKey), { data }, ifUpdatedAt)).json(),
+    /** Deletes a record at the version last read, `ifUpdatedAt`. */
+    deleteRecord: async (key: string, recordKey: string, ifUpdatedAt: string) => {
+      await send("DELETE", recordPath(key, recordKey), undefined, ifUpdatedAt);
+    },
     version: () => read<EstateVersion>("/version"),
+    me: () => read<Me>("/editor/me"),
     page: (id) => pageRequest("GET", pagePath(id), apiPageSchema),
     createPage: (page) => pageRequest("POST", "/pages", apiPageSchema, page),
     savePage: (id, fields, token) => pageRequest("PUT", pagePath(id), apiPageSchema, fields, token),
@@ -684,6 +808,26 @@ export function createEditorApi(apiOrigin: string, landingOrigin?: string): Edit
 
       return released.ok ? { ok: true, value: undefined } : released;
     },
+    /** Submits the saved draft, or a rejected change as it is, at the page version the editor read. */
+    submitRevision: async (id: string, version: PageContentVersion): Promise<ApiRevision> =>
+      (await send("POST", `${pagePath(id)}/revision/submit`, { version })).json(),
+    /** The changes waiting for an approver, the longest-waiting first. */
+    reviewQueue: async () =>
+      (await read<{ revisions: ReviewQueueEntry[] }>("/revisions?status=submitted")).revisions,
+    revision: (id: string) => read<ApiRevision>(`${pagePath(id)}/revision`),
+    /** What happened to a page, newest first. */
+    history: async (id: string) =>
+      (await read<{ entries: PageHistoryEntry[] }>(`${pagePath(id)}/history`)).entries,
+    /** Publishes the change at the page version the approver reviewed. */
+    publishRevision: async (id: string, version: PageContentVersion): Promise<ApiPage> =>
+      (await send("POST", `${pagePath(id)}/revision/publish`, { version })).json(),
+    /** Rejects the change at the page version the approver reviewed, telling the editor why. */
+    rejectRevision: async (
+      id: string,
+      comment: string,
+      version: PageContentVersion,
+    ): Promise<ApiRevision> =>
+      (await send("POST", `${pagePath(id)}/revision/reject`, { comment, version })).json(),
     landingUrl: (path: string) => (landing ? `${landing}${path}` : undefined),
   };
 }

@@ -20,6 +20,7 @@ const rootRoute = createRootRoute();
 const router = createRouter({
   routeTree: rootRoute.addChildren([
     createRoute({ getParentRoute: () => rootRoute, path: "/services/$serviceId/$documentId" }),
+    createRoute({ getParentRoute: () => rootRoute, path: "/history/$pageId" }),
   ]),
   history: createMemoryHistory({ initialEntries: ["/services"] }),
 });
@@ -166,21 +167,59 @@ test("a page sits in the list under its parent, dotted with how far it's publish
     ["Entry page", "Fees", "Refunds", "Contact"].map((name) =>
       item(name).querySelector('[role="img"]')?.getAttribute("aria-label"),
     ),
-  ).toEqual(["Public", "Preview link only", "Draft link only", "Draft link only"]);
+  ).toEqual(["Public", "Preview link only", "Draft (hidden)", "Draft (hidden)"]);
 });
 
 test("while a service's pages load, its sidebar shows what's known and offers nothing yet", async () => {
   const entry = pageDocumentFromApi({ id: "entry", title: "Severance", role: "entry" });
   await render({ rows: [top(entry)], loading: true, onDelete: () => {} });
 
+  // Actions on the pages, that is: the header's Pages toggle only hides the list
+  const actions = () => host.querySelectorAll('button:not([aria-label="Pages"])');
+
   expect(rows()).toEqual(["Entry page"]);
   expect(host.textContent).toContain("Loading pages…");
-  expect(host.querySelectorAll("button")).toHaveLength(0);
+  expect(actions()).toHaveLength(0);
 
   await render({ rows: [top(entry)], onDelete: () => {} });
   expect(host.textContent).not.toContain("Loading pages…");
-  expect([...host.querySelectorAll("button")].map((button) => button.textContent)).toEqual([
+  expect([...actions()].map((button) => button.textContent)).toEqual([
     "Add document",
     "Delete page",
   ]);
+});
+
+test("View page history shows only for a selected page in the list, and opens its history", async () => {
+  const fees = pageDocumentFromApi({ id: "fees", title: "Fees", role: "supporting" });
+
+  const link = () =>
+    [...host.querySelectorAll("a")].find((item) => item.textContent === "View page history");
+
+  await render({ rows: [top(fees)] });
+  expect(link()).toBeUndefined();
+
+  await render({ rows: [top(fees)], selectedId: "gone" });
+  expect(link()).toBeUndefined();
+
+  await render({ rows: [top(fees)], selectedId: "fees" });
+  expect(link()?.getAttribute("href")).toBe("/history/fees?service=service");
+});
+
+test("on a narrow screen, View page history closes the Pages drawer, so it isn't open on the way back", async () => {
+  const fees = pageDocumentFromApi({ id: "fees", title: "Fees", role: "supporting" });
+  const setOpen = vi.fn();
+
+  await render({
+    sidebar: { id: "sidebar", wide: false, open: true, setOpen },
+    rows: [top(fees)],
+    selectedId: "fees",
+  });
+
+  const link = [...document.querySelectorAll("a")].find(
+    (item) => item.textContent === "View page history",
+  );
+
+  await act(async () => link!.click());
+
+  expect(setOpen).toHaveBeenCalledWith(false);
 });

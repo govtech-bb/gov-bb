@@ -5,6 +5,8 @@ import { SaveState, type SaveStateProps } from "./save-state";
 type DocumentBarProps = {
   /** Names its toolbar, such as “Page tools”. */
   label: string;
+  /** Before the title: what shows the list beside the document, such as its service's pages, while it's hidden. */
+  nav?: ReactNode;
   /** The document title, rendered as an h1 by default. */
   title: ReactNode;
   /** Use false when the content already supplies the page heading. */
@@ -18,7 +20,7 @@ type DocumentBarProps = {
   source?: ReactNode;
   /** Sends the changes on for everyone: Publish changes, or Save. */
   publish?: ReactNode;
-  /** Shows and hides the document's settings. */
+  /** Shows and hides the document's settings: at the far end, right above the panel it opens. */
   settings?: ReactNode;
   /** What stands in the document's way, edge to edge under the bar, such as editing that's paused. */
   notices?: ReactNode;
@@ -29,10 +31,12 @@ type DocumentBarProps = {
 /**
  * The bar over every document: the same slots in the same order for a page
  * and a form, so the author finds each thing where they left it. The title, where it stands, undo and redo, the ways
- * to look at it, publishing, then its settings; each group ruled off from the next. Its notices sit under it.
+ * to look at it, publishing, then its settings; each group ruled off from the next. A panel's toggle sits at the bar's
+ * edge on the panel's side: the list of pages before the title, the settings at the end. Its notices sit under it.
  */
 export function DocumentBar({
   label,
+  nav,
   title,
   heading = true,
   save,
@@ -69,10 +73,11 @@ export function DocumentBar({
         label={label}
         hidden={hidden}
         data-document-bar=""
-        className="md:sticky md:top-0 md:z-10 md:flex-nowrap"
+        className="md:sticky md:top-0 md:z-bar md:flex-nowrap"
       >
         {/* The title is cut short to make room: for the tools beside it from a tablet up, where the bar keeps to one
             row, and for where it stands on a phone, where the tools have their own row */}
+        {nav}
         <Bar.Title render={heading ? <h1 /> : undefined} className="max-md:grow max-md:basis-0">
           {title}
         </Bar.Title>

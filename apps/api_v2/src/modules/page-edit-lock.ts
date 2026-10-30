@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { Employee, EmployeeId } from "./auth";
+import type { Employee, UserId } from "./auth";
 import type { PageId } from "./page";
 import { Redacted } from "./redacted";
 import { err, ok, type Result } from "./result";
@@ -76,7 +76,7 @@ export type PageEditLockStatus = z.infer<typeof PageEditLockStatus>;
 
 /** Persisted acquisition claim; callers must check its deadline before treating it as live. */
 export interface PageEditLockClaim {
-  readonly employeeId: EmployeeId;
+  readonly userId: UserId;
   readonly holderName: string;
   readonly token: PageEditLockToken;
   readonly acquiredAt: Date;
@@ -95,14 +95,14 @@ export interface PageEditLockRecord {
 export function ownsPageEditLock(
   record: PageEditLockRecord,
   now: Date,
-  employeeId: EmployeeId,
+  userId: UserId,
   token: PageEditLockToken,
 ): boolean {
   const claim = record.claim;
   return (
     claim !== null &&
     claim.lockExpiresAt > now &&
-    claim.employeeId === employeeId &&
+    claim.userId === userId &&
     claim.token.equals(token)
   );
 }
@@ -111,7 +111,7 @@ export function ownsPageEditLock(
 export function describePageEditLock(
   record: PageEditLockRecord,
   now: Date,
-  employeeId: EmployeeId,
+  userId: UserId,
   token?: PageEditLockToken,
 ): PageEditLockStatus {
   const common = {
@@ -126,7 +126,7 @@ export function describePageEditLock(
     state: "held",
     holderName: claim.holderName,
     ownedByCaller:
-      token !== undefined && ownsPageEditLock(record, now, employeeId, token),
+      token !== undefined && ownsPageEditLock(record, now, userId, token),
     lockExpiresAt: claim.lockExpiresAt.toISOString(),
     lastActivityAt: claim.lastActivityAt.toISOString(),
     idlePromptAt: new Date(
@@ -160,7 +160,7 @@ export function claimPageEditLock(
   return ok({
     lockGeneration: PageEditLockGeneration.parse(record.lockGeneration + 1),
     claim: {
-      employeeId: employee.id,
+      userId: employee.id,
       holderName: employee.name,
       token,
       acquiredAt: now,
@@ -176,12 +176,12 @@ export function extendPageEditLock(
   pageId: PageId,
   record: PageEditLockRecord,
   now: Date,
-  employeeId: EmployeeId,
+  userId: UserId,
   token: PageEditLockToken,
   activitySequence: PageEditActivitySequence,
 ): Result<PageEditLockRecord, PageEditLockLost> {
   const claim = record.claim;
-  if (claim === null || !ownsPageEditLock(record, now, employeeId, token))
+  if (claim === null || !ownsPageEditLock(record, now, userId, token))
     return err(new PageEditLockLost(pageId));
   const lastActivityAt =
     activitySequence > claim.activitySequence ? now : claim.lastActivityAt;
@@ -207,13 +207,11 @@ export function extendPageEditLock(
 /** Superseded release is a no-op; the public generation is retained after a matching release. */
 export function clearPageEditLock(
   record: PageEditLockRecord,
-  employeeId: EmployeeId,
+  userId: UserId,
   token: PageEditLockToken,
 ): PageEditLockRecord {
   const claim = record.claim;
-  return claim !== null &&
-    claim.employeeId === employeeId &&
-    claim.token.equals(token)
+  return claim !== null && claim.userId === userId && claim.token.equals(token)
     ? { lockGeneration: record.lockGeneration, claim: null }
     : record;
 }

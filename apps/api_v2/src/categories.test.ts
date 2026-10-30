@@ -6,6 +6,7 @@ import {
   acquireTestPageEditLock,
   createTestApp,
   createTestDb,
+  SELF_APPROVAL,
   TEST_HEADERS,
   type TestDb,
 } from "./test-db";
@@ -31,7 +32,8 @@ let app: FastifyInstance;
 
 beforeEach(async () => {
   test = await createTestDb();
-  app = await createTestApp(test.db);
+  // Pages here go public as an approver writes them; review.test.ts covers review.
+  app = await createTestApp(test.db, SELF_APPROVAL);
 });
 afterEach(async () => {
   await app.close();
@@ -146,8 +148,9 @@ describe("editor categories", () => {
     ]);
     expect((await request({ url: "/taxonomy" })).statusCode).toBe(404);
     expect(app.swagger().paths).not.toHaveProperty("/taxonomy");
+    // Three creates and a save, each a recorded change.
     const version = await request({ url: "/version" });
-    expect(version.json()).toEqual({ count: 0, latest: null });
+    expect(version.json()).toEqual({ count: 4, latest: expect.any(String) });
     const another = await createTestApp(test.db);
     try {
       expect(

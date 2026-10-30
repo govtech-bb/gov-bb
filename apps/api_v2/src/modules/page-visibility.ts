@@ -42,6 +42,7 @@ export interface ResolvablePage {
   readonly bodyMarkdown: string;
   readonly frontmatter: Frontmatter;
   readonly publishedAt: Date | null;
+  readonly contentUpdatedAt: Date;
   readonly updatedAt: Date;
 }
 
@@ -90,6 +91,17 @@ export const PublicPage = z.object({
       "The full trail, current page included, Home not: the category " +
         "(and its parent, for a subcategory), then the pages above this one.",
     ),
+  category: z
+    .string()
+    .nullable()
+    .describe(
+      "The slug of the category the page is filed under, or null for a " +
+        "page outside the taxonomy.",
+    ),
+  subcategory: z
+    .string()
+    .nullable()
+    .describe("The slug of its subcategory, or null."),
   published_at: z.iso
     .datetime()
     .nullable()
@@ -97,12 +109,15 @@ export const PublicPage = z.object({
       "When the page first went public (seeded from landing's " +
         "`publish_date`); null until it has.",
     ),
-  updated_at: z.iso
+  content_updated_at: z.iso
     .datetime()
     .describe(
-      "The page's last save, visibility changes included: the site's " +
-        '"Last updated" line.',
+      "When the title, description, body, frontmatter or form last changed, " +
+        'visibility changes not included: the site\'s "Last updated" line.',
     ),
+  updated_at: z.iso
+    .datetime()
+    .describe("The page's last save, visibility changes included."),
 });
 
 /** A page as the site reads it. */
@@ -132,6 +147,8 @@ export function toPublicPage(
   view: {
     readonly ancestors: readonly Ancestor[];
     readonly categoryCrumbs: readonly Breadcrumb[];
+    readonly category: string | null;
+    readonly subcategory: string | null;
     readonly hideStartLinks: boolean;
   },
 ): PublicPage {
@@ -153,7 +170,10 @@ export function toPublicPage(
       })),
       { name: page.title, url: page.url },
     ],
+    category: view.category,
+    subcategory: view.subcategory,
     published_at: page.publishedAt?.toISOString() ?? null,
+    content_updated_at: page.contentUpdatedAt.toISOString(),
     updated_at: page.updatedAt.toISOString(),
   };
 }

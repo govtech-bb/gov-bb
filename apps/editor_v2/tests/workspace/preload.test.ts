@@ -59,6 +59,7 @@ const answer = (path: string) =>
           frontmatter: {},
           published_at: null,
           created_at: summary.updated_at,
+          pending_revision: null,
         };
 
 afterEach(() => {

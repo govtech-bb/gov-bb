@@ -113,18 +113,26 @@ export function SitePreview({
         workspace.inert = inert!;
       }
 
+      const returning = () =>
+        location.href === href && !document.querySelector("[data-cms-preview-host]");
+
       // Let portals detach and Lexical finish reattaching before restoring focus.
       queueMicrotask(() => {
         renderer?.dispose();
 
-        if (location.href === href && !document.querySelector("[data-cms-preview-host]")) {
-          document
-            .querySelector<HTMLElement>(
-              "[data-cms-workspace] [data-document-bar]:not([hidden]) [data-site-preview-trigger]",
-            )
-            ?.focus({ preventScroll: true });
-          window.scrollTo(0, writerScrollY);
-        }
+        if (!returning()) return;
+        document
+          .querySelector<HTMLElement>(
+            "[data-cms-workspace] [data-document-bar]:not([hidden]) [data-site-preview-trigger]",
+          )
+          ?.focus({ preventScroll: true });
+
+        // Un-hiding the workspace replays its open panels' entry transitions, narrowing the writer
+        // mid-scroll so the page is too short to restore. They were already open: settle them,
+        // and only them, since a loader's infinite animation can't finish and should keep going.
+        for (const animation of workspace?.getAnimations({ subtree: true }) ?? [])
+          if (animation instanceof CSSTransition) animation.finish();
+        window.scrollTo(0, writerScrollY);
       });
     };
   }, [attempt, writerScrollY]);
@@ -185,7 +193,7 @@ export function SitePreview({
             Changes stay in your working copy until you save or publish them. Closing the preview or
             turning off editing saves nothing.
           </li>
-          <li>Links, buttons and the feedback form don't work here.</li>
+          <li>Links, buttons and the feedback form don’t work here.</li>
         </ul>
       </Popover.Content>
     </Popover.Root>
@@ -198,7 +206,7 @@ export function SitePreview({
         <Banner
           tone="error"
           layout="strip"
-          title="The preview can't be shown"
+          title="The preview can’t be shown"
           actions={
             <Button
               variant="secondary"

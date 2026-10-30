@@ -22,6 +22,7 @@ COPY --chown=app:app patches/ ./patches/
 COPY --chown=app:app apps/chat/package.json apps/chat/
 COPY --chown=app:app packages/aws-secrets/package.json packages/aws-secrets/
 COPY --chown=app:app packages/content/package.json packages/content/
+COPY --chown=app:app packages/govbbmarkd/package.json packages/govbbmarkd/
 COPY --chown=app:app packages/expressions/package.json packages/expressions/
 COPY --chown=app:app packages/form-conditions/package.json packages/form-conditions/
 COPY --chown=app:app packages/form-types/package.json packages/form-types/
@@ -41,6 +42,7 @@ COPY --chown=app:app apps/chat/ apps/chat/
 # "Wait for ingest to complete" step times out (#1392 added the import).
 COPY --chown=app:app packages/aws-secrets/ packages/aws-secrets/
 COPY --chown=app:app packages/content/ packages/content/
+COPY --chown=app:app packages/govbbmarkd/ packages/govbbmarkd/
 
 # Source data the loader actually reads. `@govtech-bb/content`'s loadContent()
 # resolves apps/landing/src/content/ via the workspace root and returns empty

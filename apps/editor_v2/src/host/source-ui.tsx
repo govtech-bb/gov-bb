@@ -304,10 +304,10 @@ export function SourceEditor({
       {/* The Markdown can't be had back once discarded, so ask; the focus then goes back to it */}
       <ConfirmDialog
         open={discarding}
-        onClose={() => setDiscarding(false)}
+        onOpenChange={setDiscarding}
         title="Discard your changes?"
-        description={`Your changes to the Markdown haven't been applied, and they'll be lost. The ${documentLabel} stays as it is.`}
-        confirm="Discard changes"
+        description={`Your changes to the Markdown haven’t been applied, and they’ll be lost. The ${documentLabel} stays as it is.`}
+        confirmLabel="Discard changes"
         finalFocus={source}
         confirmDisabled={readOnly}
         onConfirm={() => {
@@ -360,8 +360,8 @@ export function SourceEditor({
           </Dialog.Title>
           <Dialog.Description>{intro}</Dialog.Description>
         </Dialog.Header>
-        {/* The body's sections bring their own top margins */}
-        <Dialog.Body className="flex flex-col pt-1">{body}</Dialog.Body>
+        {/* Child sections own their spacing. */}
+        <Dialog.Body className="gap-0 pt-1">{body}</Dialog.Body>
         <Dialog.Actions>{actions}</Dialog.Actions>
       </Dialog.Content>
     </Dialog.Root>

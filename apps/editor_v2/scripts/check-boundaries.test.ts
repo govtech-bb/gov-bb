@@ -515,6 +515,14 @@ test("page modules use generic editor contracts without depending on forms, pres
   expect(
     check('import { FormattingModule } from "../../editor/modules/formatting/module";'),
   ).toEqual([]);
+  expect(check('import { parseContentMarkdown } from "@govtech-bb/govbbmarkd";')).toEqual([]);
+  expect(check('import { renderMarkdownNodes } from "@govtech-bb/govbbmarkd/react";')).toEqual([]);
+  expect(
+    check('import { parseLegacyPageStartLink } from "@govtech-bb/govbbmarkd/legacy";'),
+  ).toEqual([]);
+  expect(check('import { isSafeContentUrl } from "@govtech-bb/govbbmarkd/content-url";')).toEqual(
+    [],
+  );
 
   for (const source of [
     'import type { Settings } from "../../forms/core/settings";',
@@ -522,6 +530,7 @@ test("page modules use generic editor contracts without depending on forms, pres
     'import { govbbPageEditor } from "../../presets/govbb-page";',
     'const load = () => import("../../host/page-editor");',
     'export { savePageChanges } from "../../workspace/page-sync";',
+    'import { loadContent } from "@govtech-bb/content/load";',
   ])
     expect(check(source)).toHaveLength(1);
 });

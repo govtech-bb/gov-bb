@@ -90,9 +90,12 @@ describe.skipIf(!HAS_DATABASE)(
         });
         expect(privateResponse.status).toBe(503);
         expect(privateResponse.headers.get("cache-control")).toBe("no-store");
+        expect((await fetch(`${server.url}/health/db`)).status).toBe(503);
+        expect((await fetch(`${server.url}/health`)).status).toBe(200);
       } finally {
         await allowConnections(database, true);
       }
+      expect((await fetch(`${server.url}/health/db`)).status).toBe(200);
       expect(await status()).toBe(200);
       expect(
         (

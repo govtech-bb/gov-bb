@@ -3,6 +3,7 @@
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
   "sourceRoot": "apps/landing/src",
   "projectType": "application",
+  "implicitDependencies": ["api_v2"],
   "namedInputs": {
     "default": ["{projectRoot}/**/*", "sharedGlobals"]
   },
@@ -28,6 +29,9 @@
         },
         {
           "env": "VITE_ALLOW_INDEXING"
+        },
+        {
+          "env": "VITE_API_V2_URL"
         },
         {
           "env": "VITE_CHAT_URL"
@@ -69,8 +73,21 @@
         "cwd": "apps/landing"
       }
     },
+    "size": {
+      "executor": "nx:run-commands",
+      "dependsOn": ["build"],
+      "options": {
+        "command": "pnpm run size",
+        "cwd": "apps/landing"
+      }
+    },
     "test": {
       "executor": "nx:run-commands",
+      "inputs": [
+        "default",
+        "^production",
+        "{workspaceRoot}/apps/api_v2/openapi.json"
+      ],
       "options": {
         "command": "npm run test",
         "cwd": "apps/landing"

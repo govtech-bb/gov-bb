@@ -87,6 +87,13 @@ export const apiPageSchema = z.object({
   created_at: z.iso.datetime(),
   updated_at: z.iso.datetime(),
   version: pageContentVersionSchema,
+  /** A public page's change waiting for an approver; its fields are the ones above. */
+  pending_revision: z
+    .object({
+      status: z.enum(["draft", "submitted", "rejected"]),
+      comment: z.string().nullable(),
+    })
+    .nullable(),
 });
 
 const lockStatus = z.object({
@@ -119,10 +126,11 @@ export type PageApiFailure =
       readonly kind: "version-conflict" | "lock-required" | "lock-lost" | "lock-conflict";
       readonly pageId: string;
     }
+  /** A role or review-policy refusal, with the API's own sentence when it sent one; not lost editing ownership. */
+  | { readonly kind: "forbidden"; readonly message?: string }
   | {
       readonly kind:
         | "signed-out"
-        | "forbidden"
         | "missing"
         | "unavailable"
         | "invalid-response"

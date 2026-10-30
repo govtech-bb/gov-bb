@@ -6,6 +6,7 @@ import { Button } from "../ui/button";
 import type { DrawerPanel } from "../ui/drawer";
 import { Sidebar } from "../ui/sidebar";
 import { StatusDot } from "../ui/status-dot";
+import { TextLink } from "../ui/text-link";
 import { DocumentLabel } from "./document-label";
 import type { ServiceNavRow } from "./service-pages";
 
@@ -21,6 +22,7 @@ export function ServiceNav({
   onAdd,
   onDelete,
   deleteBlocked,
+  readOnly,
   loading = false,
 }: {
   /** Whether it shows, beside the page or as a drawer: `useSidebar`. */
@@ -35,11 +37,15 @@ export function ServiceNav({
   onDelete?: () => void;
   /** Why the selected page can't be deleted yet, such as the pages under it. */
   deleteBlocked?: string;
+  /** Why nothing can be added or deleted, for someone who can't make changes. */
+  readOnly?: string;
   /** Its pages are still loading: the rows known so far show, and nothing can be added or deleted yet. */
   loading?: boolean;
 }) {
   const reason = useId();
   const pages = rows;
+  const blocked = readOnly ?? deleteBlocked;
+  const selected = pages.some((row) => row.document.id === selectedId);
 
   const item = (row: ServiceNavRow, nested: ReactNode[]) => (
     <Sidebar.Item
@@ -79,7 +85,9 @@ export function ServiceNav({
 
   return (
     <Sidebar.Root sidebar={sidebar} label="Service documents">
-      <Sidebar.Header />
+      <Sidebar.Header>
+        <Sidebar.Toggle sidebar={sidebar} label="Pages" />
+      </Sidebar.Header>
       <Sidebar.Content>
         <Sidebar.Group label="Pages">{items(pages)}</Sidebar.Group>
         {loading ? (
@@ -91,13 +99,18 @@ export function ServiceNav({
         )}
         {!loading && (
           <Sidebar.Actions>
-            <Button variant="secondary" onClick={onAdd}>
+            <Button
+              variant="secondary"
+              disabled={!!readOnly}
+              aria-describedby={readOnly ? reason : undefined}
+              onClick={onAdd}
+            >
               Add document
             </Button>
             {onDelete && (
               <Button
-                disabled={!pages.some((row) => row.document.id === selectedId) || !!deleteBlocked}
-                aria-describedby={deleteBlocked ? reason : undefined}
+                disabled={!selected || !!blocked}
+                aria-describedby={blocked ? reason : undefined}
                 onClick={onDelete}
               >
                 Delete page
@@ -105,10 +118,26 @@ export function ServiceNav({
             )}
           </Sidebar.Actions>
         )}
-        {deleteBlocked && (
+        {blocked && (
           <p id={reason} className="mt-2 text-14 text-muted">
-            {deleteBlocked}
+            {blocked}
           </p>
+        )}
+        {selectedId && selected && (
+          <TextLink
+            className="mt-4 block w-fit text-14"
+            render={
+              <Link
+                to="/history/$pageId"
+                params={{ pageId: selectedId }}
+                search={{ service: serviceId }}
+                // As a page row does, so the drawer isn't open again on the way back
+                onClick={() => !sidebar.wide && sidebar.setOpen(false)}
+              />
+            }
+          >
+            View page history
+          </TextLink>
         )}
       </Sidebar.Content>
     </Sidebar.Root>

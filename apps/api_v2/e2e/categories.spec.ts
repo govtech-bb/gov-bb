@@ -12,30 +12,51 @@ import {
   HAS_DATABASE,
   startServer,
   type Server,
+  takePageEditLease,
 } from "./support";
 
 describe.skipIf(!HAS_DATABASE)("category management over HTTP", () => {
   let server: Server;
   let database: string;
   let cookie: string;
+  // A second approver, who makes public the pages the first one writes (#3201).
+  let reviewer: string;
   beforeAll(async () => {
     database = await createScratchDatabase();
     server = await startServer({ DB_NAME: database, SEED: "false" });
-    cookie = (await createEmployeeSession(database, server.url)).cookie;
+    // An editor and approver, since these sessions create and delete public pages.
+    cookie = (
+      await createEmployeeSession(database, server.url, {
+        roles: ["editor", "approver"],
+      })
+    ).cookie;
+    reviewer = (
+      await createEmployeeSession(database, server.url, {
+        roles: ["editor", "approver"],
+      })
+    ).cookie;
   });
   afterAll(async () => {
     await server?.stop();
     if (database) await dropScratchDatabase(database);
   });
 
-  const send = (method: string, path: string, body?: object, stamp?: string) =>
+  const send = (
+    method: string,
+    path: string,
+    body?: object,
+    stamp?: string,
+    as = cookie,
+    lease: Record<string, string> = {},
+  ) =>
     fetch(server.url + path, {
       method,
       headers: {
-        cookie,
+        cookie: as,
         origin: AUTH_ENV.EDITOR_ORIGIN,
         ...(body ? { "content-type": "application/json" } : {}),
         ...(stamp ? { "if-updated-at": stamp } : {}),
+        ...lease,
       },
       ...(body ? { body: JSON.stringify(body) } : {}),
     });
@@ -121,9 +142,10 @@ describe.skipIf(!HAS_DATABASE)("category management over HTTP", () => {
     expect(
       (await fetch(server.url + "/categories/socket-a/socket-child")).status,
     ).toBe(404);
+    // Three creates, a save, two reordered rows and a delete.
     expect(await (await send("GET", "/version")).json()).toEqual({
-      count: 0,
-      latest: null,
+      count: 7,
+      latest: expect.any(String),
     });
   });
 
@@ -150,17 +172,38 @@ describe.skipIf(!HAS_DATABASE)("category management over HTTP", () => {
       });
     }
     for (const visibility of ["public", "draft"]) {
+      const page = {
+        url: `/socket-public/${visibility}`,
+        category_id: current.id,
+        title: visibility,
+        visibility,
+        body_markdown: "Content",
+        description: null,
+        form_id: null,
+        frontmatter: {},
+      };
+      // An approver can't make public a page they wrote, so another does.
+      const created = await send("POST", "/pages", {
+        ...page,
+        visibility: "preview",
+      });
+      expect(created.status).toBe(201);
+      const { id, version } = (await created.json()) as {
+        id: string;
+        version: number;
+      };
       expect(
         (
-          await send("POST", "/pages", {
-            url: `/socket-public/${visibility}`,
-            category_id: current.id,
-            title: visibility,
-            visibility,
-            body_markdown: "Content",
-          })
+          await send(
+            "PUT",
+            `/pages/${id}`,
+            { ...page, version },
+            undefined,
+            reviewer,
+            await takePageEditLease(server.url, id, reviewer),
+          )
         ).status,
-      ).toBe(201);
+      ).toBe(200);
     }
     const blocked = await send(
       "DELETE",

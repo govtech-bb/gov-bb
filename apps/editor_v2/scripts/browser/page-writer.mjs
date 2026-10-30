@@ -31,6 +31,8 @@ const url = process.argv[2] ?? "http://localhost:3015/";
 
 const button = (name) => page.getByRole("button", { name, exact: true });
 
+const item = (name) => page.getByRole("menuitem", { name, exact: true });
+
 const body = page.getByRole("textbox", { name: "Page content", exact: true });
 
 const dropLine = page.locator('[data-dragging] > [aria-hidden="true"][style]');
@@ -244,7 +246,7 @@ try {
   await button("Block options").click();
   await page.keyboard.press("ControlOrMeta+z");
   assert.equal(await body.textContent(), "");
-  await button("Add text after block").click();
+  await item("Add text after block").click();
   assert.equal(await body.locator("p").count(), 2);
   await button("Undo").click();
   assert.equal(await body.locator("p").count(), 1);
@@ -280,7 +282,7 @@ try {
       "Caret stays in this paragraph.",
     );
     await page.mouse.click(point.x, point.y);
-    await button("Add text after block").click();
+    await item("Add text after block").click();
     assert.deepEqual(
       await hovered.evaluate((element) => ({
         tag: element.nextElementSibling.tagName,
@@ -334,7 +336,7 @@ try {
   await button("Block options").click();
   await page.keyboard.press("ControlOrMeta+z");
   assert.equal(await body.textContent(), "Keep");
-  await button("Add text after block").click();
+  await item("Add text after block").click();
   assert.equal(await body.locator("p").count(), 2);
   await button("Undo").click();
   assert.equal(await body.locator("p").count(), 1);
@@ -380,7 +382,7 @@ try {
   await reset("| Item | Cost |\n| --- | --- |\n| One | 1 |\n| Two | 2 |\n| Three | 3 |");
   const table = body.locator("table");
   await menuAt(table.locator("tr").nth(2).locator("td").last());
-  await button("Add row").click();
+  await item("Add row").click();
   assert.equal(await table.locator("tr").count(), 5);
   assert.match(await table.locator("tr").nth(2).textContent(), /Two/);
   assert.equal(await table.locator("tr").nth(3).textContent(), "");
@@ -388,7 +390,7 @@ try {
   await button("Undo").click();
   assert.equal(await table.locator("tr").count(), 4);
   await menuAt(table.locator("tr").nth(2).locator("td").last());
-  await button("Delete row").click();
+  await item("Delete row").click();
   assert.equal(await table.locator("tr").count(), 3);
   assert.doesNotMatch(await table.textContent(), /Two/);
   await button("Undo").click();
@@ -396,7 +398,7 @@ try {
 
   await reset("First paragraph.\n\nSecond paragraph.\n\nThird paragraph.");
   await menuAt(body.locator("p").nth(1));
-  await button("Move up").click();
+  await item("Move up").click();
   assert.deepEqual(await body.locator("p").allTextContents(), [
     "Second paragraph.",
     "First paragraph.",
@@ -407,7 +409,7 @@ try {
   await button("Redo").click();
   assert.equal(await body.locator("p").first().textContent(), "Second paragraph.");
   await menuAt(body.locator("p").first());
-  await button("Delete block").click();
+  await item("Delete block").click();
   assert.deepEqual(await body.locator("p").allTextContents(), [
     "First paragraph.",
     "Third paragraph.",
@@ -536,10 +538,10 @@ try {
     await body.getByText("Parent", { exact: true }).click();
     await hoverNestedMenu(body.locator(`${outer} ${inner} > li`).first());
     assert.equal(
-      await button(`Change to ${action === "numbered" ? "bulleted" : "numbered"} list`).count(),
+      await item(`Change to ${action === "numbered" ? "bulleted" : "numbered"} list`).count(),
       0,
     );
-    await button(`Change to ${action} list`).click();
+    await item(`Change to ${action} list`).click();
     assert.equal(await body.locator(`:scope > ${outer} ${outer}`).textContent(), "Nested");
     assert.equal(await body.locator(`:scope > ${outer}`).textContent(), "ParentNestedSibling");
     const after = await markdown();
@@ -553,7 +555,7 @@ try {
     await reset(`${marker} One\n${marker} Two\n${marker} Three`);
     const beforeIndent = await markdown();
     await menuAt(body.getByText("Two", { exact: true }));
-    await button("Indent list").click();
+    await item("Indent list").click();
     const afterIndent = await markdown();
     assert.notEqual(afterIndent, beforeIndent);
     assert.equal(
@@ -580,7 +582,7 @@ try {
     await body.waitFor();
     await setPageSettingsOpen(false);
     await menuAt(body.getByText("Two", { exact: true }));
-    await button("Outdent list").click();
+    await item("Outdent list").click();
     assert.deepEqual(await body.locator(":scope > :is(ul, ol) > li").allTextContents(), [
       "One",
       "Two",
@@ -612,7 +614,6 @@ try {
   const actionButton = body.locator('[data-page-component="action"]');
   await menuAt(actionButton);
   await page.getByRole("combobox", { name: "Button style", exact: true }).selectOption("secondary");
-  await button("Apply settings").click();
   await page.keyboard.press("Escape");
   assert.equal(
     await actionButton.evaluate((element) => element.classList.contains("page-action-secondary")),
@@ -654,7 +655,6 @@ try {
   );
   await menuAt(actionButton);
   await page.getByRole("combobox", { name: "Button style", exact: true }).selectOption("primary");
-  await button("Apply settings").click();
   await page.keyboard.press("Escape");
   assert.equal(
     await actionButton.evaluate((element) => element.classList.contains("page-action-secondary")),
@@ -667,13 +667,13 @@ try {
     );
     const nestedStart = body.locator('ol > li:nth-child(2) [data-page-component="start"]');
     await body.getByText(caret, { exact: true }).click();
-    await hoverNestedMenu(nestedStart);
-    const destination = page.getByRole("textbox", { name: "Button destination", exact: true });
+    await nestedStart.click();
+    await button("Change destination").click();
+    const destination = page.getByRole("textbox", { name: "Link", exact: true });
     await destination.waitFor({ timeout: 5000 });
     assert.equal(await destination.inputValue(), "/second");
     await destination.fill("/edited");
-    await button("Apply settings").click();
-    await page.keyboard.press("Escape");
+    await destination.press("Enter");
     assert.equal(await nestedStart.getAttribute("data-destination"), "/edited");
     assert.equal(
       await body
@@ -725,8 +725,10 @@ try {
 
   await reset(':::details{summary="Before"}\nSupporting information.\n:::');
   await menuAt(body.locator('[data-page-component="details"] p'));
-  await page.getByRole("textbox", { name: "Details summary", exact: true }).fill("After");
-  await button("Apply settings").click();
+  const summary = page.getByRole("textbox", { name: "Details summary", exact: true });
+
+  await summary.fill("After");
+  await summary.press("Enter");
   assert.equal(
     await body.locator('[data-page-component="details"]').getAttribute("data-summary"),
     "After",
@@ -743,17 +745,39 @@ try {
   await replaceSource(
     currentSource.replace(
       "title: Writer interactions",
-      "title: Writer interactions\npublish_date: 2026-99-99\ncategories: [housing, 7]",
+      "title: Writer interactions\nvisibility: draft\npublish_date: 2026-99-99\ncategories: [housing, 7]",
     ),
   );
   await setPageSettingsOpen(true);
   assert.equal(await publicationDate.inputValue(), "2026-99-99");
   assert.equal(await publicationDate.getAttribute("readonly"), "");
   assert.equal(await addCategory.count(), 0);
+  assert.equal(await visibility.inputValue(), "draft");
+  assert.equal(await visibility.locator('option[value="draft"]').isDisabled(), true);
+  assert.deepEqual(await visibility.locator("option:enabled").allTextContents(), [
+    "Public",
+    "Preview link only",
+  ]);
+  await settings
+    .getByText(
+      "Draft pages are hidden, even from preview links. Visibility changes take effect only when you save.",
+    )
+    .waitFor();
   await description.fill("An unrelated metadata edit.");
   const unusualSource = await markdown();
   assert.match(unusualSource, /publish_date: ["']?2026-99-99/);
   assert.match(unusualSource, /categories: \[\s*housing,\s*7\s*\]/);
+  assert.match(unusualSource, /visibility: draft/);
+  await visibility.focus();
+  await visibility.press("p");
+  assert.equal(await visibility.inputValue(), "");
+  assert.equal(await visibility.locator('option[value="draft"]').count(), 0);
+  assert.doesNotMatch(await markdown(), /^visibility:/m);
+  await button("Undo").click();
+  assert.equal(await visibility.inputValue(), "draft");
+  assert.equal(await markdown(), unusualSource);
+  await button("Redo").click();
+  assert.equal(await visibility.inputValue(), "");
 
   const withMetadata = currentSource.replace(
     "title: Writer interactions",
@@ -765,6 +789,10 @@ try {
   assert.equal(await introduction.inputValue(), "A short introduction.");
   assert.equal(await description.inputValue(), "A page description.");
   assert.equal(await visibility.inputValue(), "");
+  assert.deepEqual(await visibility.locator("option").allTextContents(), [
+    "Public",
+    "Preview link only",
+  ]);
   assert.equal(await addCategory.isDisabled(), true);
   await button("Remove family-birth-relationships").waitFor();
   await button("Remove youth-and-community").waitFor();

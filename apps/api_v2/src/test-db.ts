@@ -12,21 +12,28 @@
  */
 
 import { randomUUID } from "node:crypto";
+import { sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Client, Pool } from "pg";
-import { expect, inject } from "vitest";
 import type { FastifyInstance } from "fastify";
-import { PAGE_EDIT_LOCK_HEADER } from "./routes/contracts";
+import { expect, inject } from "vitest";
+import { PostgresCollections } from "./adapters/postgres-collections";
 import { PostgresPages } from "./adapters/postgres-pages";
+import { PostgresRoles } from "./adapters/postgres-roles";
 import { buildApp, type AppOptions } from "./app";
-import type { Database } from "./db";
-import { EmployeeId, type Employee } from "./modules/auth";
+import { PAGE_EDIT_LOCK_HEADER } from "./routes/contracts";
+import { ping, type Database } from "./db";
+import { ROLES, UserId, type Employee } from "./modules/auth";
+import type { PageId } from "./modules/page";
+import { PageEditLockToken } from "./modules/page-edit-lock";
 import { ok, type Result } from "./modules/result";
 import { EditorAccess, type SessionReader } from "./services/editor-access";
 import { EditorIndex } from "./services/editor-index";
 import { CategoryEditing } from "./services/category-editing";
+import { CollectionEditing } from "./services/collection-editing";
 import { PageEditing } from "./services/page-editing";
 import { PageResolution } from "./services/page-resolution";
+import type { ReviewNotifier } from "./services/review-notifications";
 import { SiteNavigation } from "./services/site-navigation";
 
 declare module "vitest" {
@@ -84,6 +91,9 @@ export async function createDatabase(
       : `create database ${name}`,
   );
   const pool = new Pool({ ...TEST_SERVER, database: name });
+  // pool.end() resolves before its idle clients disconnect, so close()'s
+  // forced drop can terminate them (57P01); unheard, that is an uncaught error.
+  pool.on("error", () => {});
   return {
     db: drizzle(pool),
     pool,
@@ -106,16 +116,49 @@ export async function createEmptyDb(): Promise<TestDb> {
   return createDatabase(inject("templateDatabase").replace(/template$/, ""));
 }
 
+/**
+ * Content services that let an approver make public what they wrote, as
+ * AUTH_BYPASS does: for setting up fixtures, and for tests about something
+ * other than review (ADR 0079).
+ */
+export const SELF_APPROVAL = { allowSelfApproval: true } as const;
+
 /** Compose the content services over a test database, as main.ts does over its pool. */
-export function createTestServices(db: Database) {
+export function createTestServices(
+  db: Database,
+  review: ConstructorParameters<typeof PageEditing>[2] = {
+    allowSelfApproval: false,
+  },
+  notifier?: ReviewNotifier,
+) {
   const pages = new PostgresPages(db);
   return {
     resolution: new PageResolution(pages),
     navigation: new SiteNavigation(pages),
-    editing: new PageEditing(pages, () => new Date()),
+    editing: new PageEditing(pages, () => new Date(), review, notifier),
     index: new EditorIndex(pages),
     categories: new CategoryEditing(pages, () => new Date()),
+    collections: new CollectionEditing(new PostgresCollections(db)),
   };
+}
+
+/** Take a page's edit lease through the service, over whoever holds it, as the editor does before a save or delete; returns the token. */
+export async function takeTestPageEditLock(
+  editing: PageEditing,
+  pageId: PageId,
+  actor: Employee = TEST_EMPLOYEE,
+): Promise<PageEditLockToken> {
+  const token = PageEditLockToken.parse(randomUUID());
+  const { lockGeneration } = expectOk(
+    await editing.readPageEditLock(pageId, actor),
+  );
+  expectOk(
+    await editing.acquirePageEditLock(pageId, actor, token, {
+      action: "takeover",
+      expectedLockGeneration: lockGeneration,
+    }),
+  );
+  return token;
 }
 
 /** The value of a result a test expects to have succeeded. */
@@ -124,12 +167,36 @@ export function expectOk<T>(result: Result<T, Error>): T {
   return result.value;
 }
 
-/** An employee fixture, never accepted by the production session adapter. */
+/** An employee fixture holding every role, never accepted by the production session adapter. */
 export const TEST_EMPLOYEE: Employee = {
-  id: EmployeeId.parse("employee-test"),
+  id: UserId.parse("employee-test"),
   email: "editor@govtech.bb",
   name: "Test editor",
+  roles: ROLES,
 };
+/** An employee who edits but neither approves nor administers. */
+export const TEST_EDITOR: Employee = {
+  id: UserId.parse("editor-test"),
+  email: "editor-only@govtech.bb",
+  name: "Test editor without approval",
+  roles: ["editor"],
+};
+
+/** Make the fixtures users holding their roles, as a real sign-in and grants would. */
+async function registerTestEmployees(db: Database) {
+  for (const employee of [TEST_EMPLOYEE, TEST_EDITOR]) {
+    await db.execute(
+      sql`insert into auth_user (id, name, email, "emailVerified")
+          values (${employee.id}, ${employee.name}, ${employee.email}, true)
+          on conflict do nothing`,
+    );
+    for (const role of employee.roles)
+      await db.execute(
+        sql`insert into user_roles (user_id, role) values (${employee.id}, ${role})
+            on conflict do nothing`,
+      );
+  }
+}
 /** Explicit origins used by HTTP integration tests. */
 export const TEST_HTTP_CONFIG = {
   apiOrigin: "http://localhost:3020",
@@ -141,36 +208,81 @@ export const TEST_HEADERS = {
   origin: TEST_HTTP_CONFIG.editorOrigin,
 };
 
-/** Acquire editing ownership of a newly created fixture page before testing guarded writes. */
+/** Take a fixture page's edit lease over whoever holds it, as the editor does before saving or deleting; returns the token to send. */
 export async function acquireTestPageEditLock(
   app: FastifyInstance,
   pageId: string,
+  headers: Record<string, string> = TEST_HEADERS,
 ): Promise<string> {
-  const token = randomUUID();
-  const response = await app.inject({
-    method: "POST",
-    url: `/pages/${pageId}/lock`,
-    headers: { ...TEST_HEADERS, [PAGE_EDIT_LOCK_HEADER]: token },
-    payload: { action: "acquire", expectedLockGeneration: 0 },
-  });
-  expect(response.statusCode, response.body).toBe(200);
+  const { token, status } = await tryTestPageEditLock(app, pageId, headers);
+  expect(status).toBe(200);
   return token;
 }
 
-/** Compose the production HTTP adapter with an explicit session test double. */
-export function createTestApp(
+/**
+ * The header a write sends with the caller's edit lease, taken over whoever
+ * holds it. A caller who may not edit is refused the lease; the token is
+ * sent anyway, so their write is refused for their role, as it would be.
+ */
+export async function testPageEditLockHeaders(
+  app: FastifyInstance,
+  pageId: string,
+  headers: Record<string, string>,
+): Promise<Record<string, string>> {
+  const { token } = await tryTestPageEditLock(app, pageId, headers);
+  return { [PAGE_EDIT_LOCK_HEADER]: token };
+}
+
+async function tryTestPageEditLock(
+  app: FastifyInstance,
+  pageId: string,
+  headers: Record<string, string>,
+): Promise<{ token: string; status: number }> {
+  const token = randomUUID();
+  const lease = await app.inject({ url: `/pages/${pageId}/lock`, headers });
+  if (lease.statusCode !== 200) return { token, status: lease.statusCode };
+  const response = await app.inject({
+    method: "POST",
+    url: `/pages/${pageId}/lock`,
+    headers: { ...headers, [PAGE_EDIT_LOCK_HEADER]: token },
+    payload: {
+      action: "takeover",
+      expectedLockGeneration: lease.json<{ lockGeneration: number }>()
+        .lockGeneration,
+    },
+  });
+  return { token, status: response.statusCode };
+}
+
+/**
+ * Compose the production HTTP adapter with an explicit session test double.
+ * Roles are read from the database, where the fixtures hold theirs.
+ */
+export async function createTestApp(
   db: Database,
   options: Partial<
-    Pick<AppOptions, "auth" | "config" | "logger" | "previewSecret">
+    Pick<AppOptions, "auth" | "config" | "logger" | "previewSecret" | "ready">
   > & {
     sessions?: SessionReader;
+    /** Let an approver make public what they changed, as AUTH_BYPASS does. */
+    allowSelfApproval?: boolean;
+    /** Who hears of review steps; nobody by default, as with notifications off. */
+    notifier?: ReviewNotifier;
   } = {},
 ) {
+  await registerTestEmployees(db);
+  const roles = new PostgresRoles(db);
   return buildApp({
-    ...createTestServices(db),
+    ...createTestServices(
+      db,
+      { allowSelfApproval: options.allowSelfApproval ?? false },
+      options.notifier,
+    ),
     access: new EditorAccess(
       options.sessions ?? { findSession: async () => ok(TEST_EMPLOYEE) },
+      roles,
     ),
+    roles,
     auth: options.auth ?? {
       handle: async () =>
         Response.json({ error: "test_auth_not_configured" }, { status: 404 }),
@@ -178,6 +290,7 @@ export function createTestApp(
     config: options.config ?? TEST_HTTP_CONFIG,
     ...(options.logger ? { logger: options.logger } : {}),
     ...(options.previewSecret ? { previewSecret: options.previewSecret } : {}),
+    ready: options.ready ?? (() => ping(db)),
   });
 }
 

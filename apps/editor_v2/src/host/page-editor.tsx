@@ -31,6 +31,8 @@ const shell = "flex min-h-[calc(100dvh-var(--bar-height))] flex-col bg-white";
 type PageHost = {
   /** Host editing authority; changing it never replaces the editor or working copy. */
   readOnly?: boolean;
+  /** Before the title in the page's bar, such as what shows the host's list of pages while it's hidden. */
+  nav?: ReactNode;
   settings?: PageSettingsOptions;
   /** Where the page stands against the host's last server save. */
   server?: SaveStateProps;
@@ -58,6 +60,7 @@ export function PageDraftEditor({
 function PageDraft({
   active,
   readOnly = false,
+  nav,
   settings,
   server,
   publish,
@@ -78,14 +81,15 @@ function PageDraft({
       <div className={shell}>
         <DocumentBar
           label="Page tools"
+          nav={nav}
           title={<SourceTitle source={draft.committed} />}
           save={server}
           notices={notice}
         />
         <EmptyState
           icon={<PencilSimpleSlash />}
-          title="This page can't be edited here"
-          description="It has content the editor doesn't support, such as raw HTML. The saved page stays as it is."
+          title="This page can’t be edited here"
+          description="It has content the editor doesn’t support, such as raw HTML. The saved page stays as it is."
         />
       </div>
     ) : null;
@@ -97,6 +101,7 @@ function PageDraft({
     <DocumentBar
       label="Page tools"
       hidden={!active}
+      nav={nav}
       title={<PageTitle />}
       heading={!tools}
       save={save}

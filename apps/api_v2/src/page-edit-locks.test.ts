@@ -2,11 +2,10 @@ import { randomUUID } from "node:crypto";
 import { eq, sql } from "drizzle-orm";
 import fc from "fast-check";
 import pino from "pino";
-import { EmployeeId } from "./modules/auth";
 import { ok } from "./modules/result";
 import type { FastifyInstance } from "fastify";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { withDefaults } from "./modules/page";
+import { withDefaults, type PageId } from "./modules/page";
 import {
   categories,
   contentPages,
@@ -20,6 +19,8 @@ import {
   createTestDb,
   createTestServices,
   expectOk,
+  SELF_APPROVAL,
+  TEST_EDITOR,
   TEST_EMPLOYEE,
   TEST_HEADERS,
   type TestDb,
@@ -29,6 +30,9 @@ let database: TestDb;
 let app: FastifyInstance;
 let services: ReturnType<typeof createTestServices>;
 const tokenHeader = "x-page-edit-lock-token";
+/** Pages whose saves go live; a public page's wait in a revision (revisions.test.ts covers those). */
+const aLivePage = (overrides: Record<string, unknown> = {}) =>
+  aPage({ visibility: "preview", ...overrides });
 
 beforeEach(async () => {
   database = await createTestDb();
@@ -41,8 +45,8 @@ afterEach(async () => {
 });
 
 const seedPage = (overrides: Record<string, unknown> = {}) =>
-  services.editing.create(aPage(overrides), TEST_EMPLOYEE).then(expectOk);
-const fields = () => withDefaults(aPage());
+  services.editing.create(aLivePage(overrides), TEST_EMPLOYEE).then(expectOk);
+const fields = () => withDefaults(aLivePage());
 
 async function acquire(
   pageId: string,
@@ -59,6 +63,32 @@ async function acquire(
   expect(response.statusCode, response.body).toBe(200);
   return response.json();
 }
+
+describe("lease authorization", () => {
+  it("cannot confirm editing authority after the editor role is revoked", async () => {
+    const page = await seedPage();
+    const token = randomUUID();
+    await acquire(page.id, token);
+    await database.db.execute(
+      sql`delete from user_roles where user_id = ${TEST_EMPLOYEE.id} and role = 'editor'`,
+    );
+    const headers = { ...TEST_HEADERS, [tokenHeader]: token };
+    const pageRead = await app.inject({ url: `/pages/${page.id}`, headers });
+    expect(pageRead.statusCode).toBe(200);
+    const presence = await app.inject({
+      url: `/pages/${page.id}/lock`,
+      headers,
+    });
+    expect(presence.statusCode).toBe(403);
+    const renewal = await app.inject({
+      method: "PUT",
+      url: `/pages/${page.id}/lock`,
+      headers,
+      payload: { activitySequence: 1 },
+    });
+    expect(renewal.statusCode).toBe(403);
+  });
+});
 
 describe("required content versions", () => {
   it("returns a numeric version with a created and fetched page", async () => {
@@ -89,7 +119,7 @@ describe("required content versions", () => {
       headers: TEST_HEADERS,
     });
     expect(response.statusCode).toBe(400);
-    expect(expectOk(await services.editing.get(page.id))).not.toBeNull();
+    expect(expectOk(await services.editing.open(page.id))).not.toBeNull();
   });
 
   it.each([0, -1, 1.5, "1", 2_147_483_648])(
@@ -135,7 +165,7 @@ describe("required content versions", () => {
         error: "page_version_conflict",
         pageId: page.id,
       });
-      expect(expectOk(await services.editing.get(page.id))?.title).toBe(
+      expect(expectOk(await services.editing.open(page.id))?.title).toBe(
         "Another author's title",
       );
     },
@@ -271,7 +301,7 @@ describe("editing-session ownership", () => {
     });
     for (const secret of [token, TEST_EMPLOYEE.email, TEST_EMPLOYEE.id])
       expect(status.body).not.toContain(secret);
-    expect(expectOk(await services.editing.get(page.id))?.version).toBe(1);
+    expect(expectOk(await services.editing.open(page.id))?.version).toBe(1);
   });
 
   it("does not let another employee use the holder's token", async () => {
@@ -280,12 +310,7 @@ describe("editing-session ownership", () => {
     await acquire(page.id, token);
     const other = await createTestApp(database.db, {
       sessions: {
-        findSession: async () =>
-          ok({
-            id: EmployeeId.parse("another-employee"),
-            name: "Other editor",
-            email: "other@example.com",
-          }),
+        findSession: async () => ok(TEST_EDITOR),
       },
     });
     try {
@@ -441,7 +466,7 @@ describe("transaction serialization", () => {
       expect(responses.map((response) => response.statusCode).sort()).toEqual([
         200, 409,
       ]);
-      expect(expectOk(await services.editing.get(page.id))?.version).toBe(2);
+      expect(expectOk(await services.editing.open(page.id))?.version).toBe(2);
       expect(await database.db.select().from(changeEvents)).toHaveLength(2);
     } finally {
       await other.close();
@@ -457,7 +482,8 @@ describe("transaction serialization", () => {
         method: "PUT",
         url: `/pages/${page.id}`,
         headers: { ...TEST_HEADERS, [tokenHeader]: token },
-        payload: { ...fields(), version: 1 },
+        // A save that changes nothing keeps the version, so this one changes something.
+        payload: { ...fields(), version: 1, title: "Saved before deletion" },
       }),
       app.inject({
         method: "DELETE",
@@ -488,7 +514,7 @@ describe("transaction serialization", () => {
     ]);
     expect([200, 409]).toContain(saved.statusCode);
     expect(takeover.lockGeneration).toBe(first.lockGeneration + 1);
-    const current = expectOk(await services.editing.get(page.id));
+    const current = expectOk(await services.editing.open(page.id));
     if (!current) throw new Error("Missing test page");
     const late = await app.inject({
       method: "PUT",
@@ -518,7 +544,10 @@ describe("transaction serialization", () => {
       },
     });
     expect(response.statusCode).toBe(500);
-    expect(expectOk(await services.editing.get(page.id))).toEqual(page);
+    expect(expectOk(await services.editing.open(page.id))).toEqual({
+      ...page,
+      pending_revision: null,
+    });
     expect(await database.db.select().from(searchChunks)).toEqual(searchBefore);
     expect(await database.db.select().from(changeEvents)).toHaveLength(1);
   });
@@ -530,19 +559,260 @@ describe("transaction serialization", () => {
         async (titles) => {
           const page = await seedPage({ url: `/generated-${randomUUID()}` });
           let version = 1;
+          let previous = page.title;
           for (const title of titles) {
             await database.db
               .update(contentPages)
               .set({ title, version: 1, updatedAt: new Date(page.updated_at) })
               .where(eq(contentPages.id, page.id));
-            version += 1;
-            expect(expectOk(await services.editing.get(page.id))?.version).toBe(
-              version,
-            );
+            // A write that changes nothing is not a new version (017).
+            if (title !== previous) version += 1;
+            previous = title;
+            expect(
+              expectOk(await services.editing.open(page.id))?.version,
+            ).toBe(version);
           }
         },
       ),
       { numRuns: 10 },
     );
+  });
+});
+
+describe("pending revisions and review under exclusive editing", () => {
+  /** An app whose every request is `employee`'s; roles come from the database. */
+  const appAs = (employee: typeof TEST_EMPLOYEE) =>
+    createTestApp(database.db, {
+      sessions: { findSession: async () => ok(employee) },
+    });
+  const save = (
+    instance: FastifyInstance,
+    pageId: string,
+    token: string,
+    version: number,
+    title: string,
+  ) =>
+    instance.inject({
+      method: "PUT",
+      url: `/pages/${pageId}`,
+      headers: { ...TEST_HEADERS, [tokenHeader]: token },
+      payload: { ...withDefaults(aPage({ title })), version },
+    });
+  const review = (
+    instance: FastifyInstance,
+    pageId: string,
+    step: "submit" | "reject" | "publish",
+    payload: Record<string, unknown>,
+  ) =>
+    instance.inject({
+      method: "POST",
+      url: `/pages/${pageId}/revision/${step}`,
+      headers: TEST_HEADERS,
+      payload,
+    });
+  /** A public page, made public as AUTH_BYPASS would, so its saves go into a revision. */
+  const seedPublicPage = () =>
+    createTestServices(database.db, SELF_APPROVAL)
+      .editing.create(aPage(), TEST_EMPLOYEE)
+      .then(expectOk);
+  const stored = async (id: PageId) =>
+    (
+      await database.db
+        .select()
+        .from(contentPages)
+        .where(eq(contentPages.id, id))
+    )[0];
+  const pageEvents = async () =>
+    (
+      await database.db
+        .select({ action: changeEvents.action, actor: changeEvents.actor })
+        .from(changeEvents)
+        .where(eq(changeEvents.entityKind, "content_page"))
+        .orderBy(changeEvents.versionNo)
+    ).map(({ action, actor }) => `${action}:${actor}`);
+
+  it("lets one of two same-version saves of a public page's revision win, across instances", async () => {
+    const page = await seedPublicPage();
+    const token = randomUUID();
+    await acquire(page.id, token);
+    const other = await createTestApp(database.db);
+    try {
+      const responses = await Promise.all(
+        [app, other].map((instance, index) =>
+          save(instance, page.id, token, page.version, `Writer ${index}`),
+        ),
+      );
+      expect(responses.map(({ statusCode }) => statusCode).sort()).toEqual([
+        200, 409,
+      ]);
+      const lost = responses.find(({ statusCode }) => statusCode === 409);
+      expect(lost?.json().error).toBe("page_version_conflict");
+      const won = responses.find(({ statusCode }) => statusCode === 200);
+      const opened = expectOk(await services.editing.open(page.id));
+      expect(opened).toMatchObject({
+        title: won?.json().title,
+        version: won?.json().version,
+        pending_revision: { status: "draft" },
+      });
+      // The live page is untouched, and a draft's save is not history.
+      expect((await stored(page.id))?.title).toBe(page.title);
+      expect((await stored(page.id))?.updatedAt.toISOString()).toBe(
+        page.updated_at,
+      );
+      expect(await pageEvents()).toEqual([`created:${TEST_EMPLOYEE.id}`]);
+    } finally {
+      await other.close();
+    }
+  });
+
+  it("lets an approver publish while an editor holds the lease, then refuses the editor's stale save by version", async () => {
+    const page = await seedPublicPage();
+    const editor = await appAs(TEST_EDITOR);
+    try {
+      const token = randomUUID();
+      const acquired = await editor.inject({
+        method: "POST",
+        url: `/pages/${page.id}/lock`,
+        headers: { ...TEST_HEADERS, [tokenHeader]: token },
+        payload: { action: "acquire", expectedLockGeneration: 0 },
+      });
+      expect(acquired.statusCode).toBe(200);
+      const drafted = await save(editor, page.id, token, page.version, "Draft");
+      expect(drafted.statusCode).toBe(200);
+      const submitted = await review(editor, page.id, "submit", {
+        version: drafted.json().version,
+      });
+      expect(submitted.statusCode).toBe(200);
+      expect(submitted.json().version).toBeGreaterThan(drafted.json().version);
+
+      // TEST_EMPLOYEE neither wrote nor submitted it, and holds no lease.
+      const published = await review(app, page.id, "publish", {
+        version: submitted.json().version,
+      });
+
+      expect(published.statusCode).toBe(200);
+      expect(published.json()).toMatchObject({
+        title: "Draft",
+        pending_revision: null,
+        version: (await stored(page.id))?.version,
+      });
+      const lease = await editor.inject({
+        url: `/pages/${page.id}/lock`,
+        headers: { ...TEST_HEADERS, [tokenHeader]: token },
+      });
+      expect(lease.json()).toMatchObject({
+        state: "held",
+        ownedByCaller: true,
+      });
+      const stale = await save(
+        editor,
+        page.id,
+        token,
+        submitted.json().version,
+        "Over the approval",
+      );
+      expect(stale.statusCode).toBe(409);
+      expect(stale.json().error).toBe("page_version_conflict");
+      expect((await stored(page.id))?.title).toBe("Draft");
+    } finally {
+      await editor.close();
+    }
+  });
+
+  it.each(["reject", "publish"] as const)(
+    "refuses to %s a version the approver read before a later save, changing nothing",
+    async (step) => {
+      const page = await seedPublicPage();
+      const editor = await appAs(TEST_EDITOR);
+      try {
+        const token = randomUUID();
+        await editor.inject({
+          method: "POST",
+          url: `/pages/${page.id}/lock`,
+          headers: { ...TEST_HEADERS, [tokenHeader]: token },
+          payload: { action: "acquire", expectedLockGeneration: 0 },
+        });
+        const drafted = await save(editor, page.id, token, page.version, "R1");
+        const submitted = await review(editor, page.id, "submit", {
+          version: drafted.json().version,
+        });
+        const read = submitted.json().version;
+        const resaved = await save(editor, page.id, token, read, "R2");
+        expect(resaved.statusCode).toBe(200);
+        const before = await stored(page.id);
+
+        const response = await review(app, page.id, step, {
+          version: read,
+          comment: "Too late",
+        });
+
+        expect(response.statusCode).toBe(409);
+        expect(response.json()).toMatchObject({
+          error: "page_version_conflict",
+          pageId: page.id,
+        });
+        expect(await stored(page.id)).toEqual(before);
+        expect(
+          expectOk(await services.editing.open(page.id))?.pending_revision,
+        ).toEqual({ status: "submitted", comment: null });
+      } finally {
+        await editor.close();
+      }
+    },
+  );
+
+  it.each([
+    ["missing", {}],
+    ["zero", { version: 0 }],
+    ["a string", { version: "1" }],
+    ["a timestamp", { version: "2026-01-01T00:00:00.000Z" }],
+  ])("400s a review step whose version is %s", async (_why, payload) => {
+    const page = await seedPublicPage();
+    for (const step of ["submit", "reject", "publish"] as const) {
+      const response = await review(app, page.id, step, {
+        ...payload,
+        comment: "Why",
+      });
+      expect(response.statusCode, step).toBe(400);
+    }
+  });
+
+  it("refuses a decision to an editor without the approver role, with a current version", async () => {
+    const page = await seedPublicPage();
+    const editor = await appAs(TEST_EDITOR);
+    try {
+      for (const step of ["reject", "publish"] as const) {
+        const response = await review(editor, page.id, step, {
+          version: page.version,
+          comment: "No",
+        });
+        expect(response.statusCode, step).toBe(403);
+      }
+    } finally {
+      await editor.close();
+    }
+  });
+
+  it("keeps lease activity out of the page's content, stamps, version and history", async () => {
+    const page = await seedPage();
+    const before = await stored(page.id);
+    const events = await database.db.select().from(changeEvents);
+    const token = randomUUID();
+    const first = await acquire(page.id, token);
+    await app.inject({
+      method: "PUT",
+      url: `/pages/${page.id}/lock`,
+      headers: { ...TEST_HEADERS, [tokenHeader]: token },
+      payload: { activitySequence: 1 },
+    });
+    await acquire(page.id, randomUUID(), first.lockGeneration, "takeover");
+    await app.inject({
+      method: "DELETE",
+      url: `/pages/${page.id}/lock`,
+      headers: { ...TEST_HEADERS, [tokenHeader]: token },
+    });
+
+    expect(await stored(page.id)).toEqual(before);
+    expect(await database.db.select().from(changeEvents)).toEqual(events);
   });
 });

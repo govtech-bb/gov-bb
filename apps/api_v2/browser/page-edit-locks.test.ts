@@ -2,7 +2,7 @@ import { fork } from "node:child_process";
 import { resolve } from "node:path";
 import { test, expect } from "vitest";
 import { z } from "zod";
-import { EmployeeId } from "../src/modules/auth";
+import { UserId } from "../src/modules/auth";
 import { PageDocument } from "../src/modules/page";
 import { ok } from "../src/modules/result";
 import { createTestApp, createTestDb, TEST_EMPLOYEE } from "../src/test-db";
@@ -25,9 +25,14 @@ test("real browser sessions obey PostgreSQL versions, ownership, expiry and revi
   const apiOrigin = "http://127.0.0.1:3038";
   const database = await createTestDb();
   let expired = false;
+  const firstEmployee = {
+    ...TEST_EMPLOYEE,
+    name: "Alexandria".repeat(8) + " Rivera",
+  };
   const secondEmployee = {
     ...TEST_EMPLOYEE,
-    id: EmployeeId.parse("second-browser-editor"),
+    roles: ["editor"] as const,
+    id: UserId.parse("second-browser-editor"),
     name: "Second employee",
     email: "second@govtech.bb",
   };
@@ -40,7 +45,7 @@ test("real browser sessions obey PostgreSQL versions, ownership, expiry and revi
           cookie.includes("browser-employee=two")
             ? secondEmployee
             : cookie.includes("browser-employee=one") && !expired
-              ? TEST_EMPLOYEE
+              ? firstEmployee
               : null,
         );
       },
@@ -51,7 +56,7 @@ test("real browser sessions obey PostgreSQL versions, ownership, expiry and revi
           .get("cookie")
           ?.includes("browser-employee=two");
         if (expired && !second) return Response.json(null);
-        const employee = second ? secondEmployee : TEST_EMPLOYEE;
+        const employee = second ? secondEmployee : firstEmployee;
         const stamp = new Date().toISOString();
         return Response.json({
           session: {
@@ -77,6 +82,20 @@ test("real browser sessions obey PostgreSQL versions, ownership, expiry and revi
   });
   let child: ReturnType<typeof fork> | undefined;
   try {
+    await database.pool.query("update auth_user set name = $1 where id = $2", [
+      firstEmployee.name,
+      firstEmployee.id,
+    ]);
+    // A real user with the editor role, as a sign-in would make them: roles
+    // come from the database, and history references auth_user.
+    await database.pool.query(
+      `insert into auth_user (id, name, email, "emailVerified") values ($1, $2, $3, true)`,
+      [secondEmployee.id, secondEmployee.name, secondEmployee.email],
+    );
+    await database.pool.query(
+      "insert into user_roles (user_id, role) values ($1, 'editor')",
+      [secondEmployee.id],
+    );
     const categoryId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
     await database.pool.query(
       "insert into categories(id, slug, title, position) values($1, 'browser-test', 'Browser test', 1)",

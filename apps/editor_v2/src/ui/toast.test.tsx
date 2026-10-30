@@ -64,3 +64,15 @@ test("dismissToast takes a toast away early, and a toast without an action has n
 
   expect(document.body.textContent).not.toContain("Changes published");
 });
+
+test("its action is a kit Button, a finger's size on a touch screen, in teal apart from Dismiss", async () => {
+  await act(async () => {
+    toast("Page deleted", { action: { label: "Undo", onClick: () => {} } });
+  });
+
+  const undo = [...document.querySelectorAll("button")].find((b) => b.textContent === "Undo")!;
+
+  expect(undo.classList).toContain("pointer-coarse:min-h-11");
+  expect(undo.classList).toContain("text-interactive");
+  expect(undo.getAttribute("type")).toBe("button");
+});

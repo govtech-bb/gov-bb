@@ -5,6 +5,7 @@ import {
   type SerializedEditorState,
 } from "lexical";
 import type { Root } from "mdast";
+import { parseContentMarkdown } from "@govtech-bb/govbbmarkd";
 import { createHeadlessEditor } from "../editor/core/create-editor";
 import { SourceError, type DraftCodec, type PreparedSource } from "../persistence/types";
 import type { PageEditorDefinition } from "./definition";
@@ -60,7 +61,8 @@ export function pageMarkdownToLexical(
   source: string,
   definition: PageEditorDefinition,
 ): PreparedSource {
-  const root = parsePageMarkdown(source);
+  const parsed = parseContentMarkdown(source);
+  const root = parsed.root;
   const first = root.children[0];
   const yaml = first?.type === "yaml" ? first.value : "";
 
@@ -79,6 +81,19 @@ export function pageMarkdownToLexical(
       },
     ]);
   }
+
+  if (parsed.errors.length)
+    return {
+      mode: "source",
+      source,
+      diagnostics: parsed.errors.map((error) => ({
+        code: error.code,
+        severity: "warning",
+        message: error.message,
+        line: error.line,
+        column: error.column,
+      })),
+    };
 
   const editor = createHeadlessEditor(definition, undefined, { prepare: false });
 

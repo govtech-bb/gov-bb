@@ -44,6 +44,14 @@ const sourceOnly = new Set([
   "post-office-redirection-business/index.md",
   "post-office-redirection-business/start.md",
   "get-death-certificate/start.md",
+  // About Barbados pages open with an image, which needs Markdown source editing
+  "archaeological-history/index.md",
+  "coat-of-arms/index.md",
+  "flag-etiquette/index.md",
+  "national-anthem/index.md",
+  "national-flag/index.md",
+  "national-flower/index.md",
+  "national-pledge/index.md",
 ]);
 
 function fixture(path: string) {
@@ -508,7 +516,7 @@ test("notices, nested details, action groups and Start labels round-trip safely"
       <PagePreview source={encoded} definition={govbbPageEditor} />,
     );
 
-    expect(preview).toContain("<summary>What you need</summary>");
+    expect(preview).toContain('<summary class="govbb-show-hide__summary">What you need</summary>');
     expect(preview).toContain('href="/help"');
   } finally {
     editor.dispose();

@@ -14,11 +14,19 @@ import { getTableColumns } from "drizzle-orm";
 import { sql } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 import {
+  authAccount,
+  authSession,
+  authUser,
+  authVerification,
   categories,
   changeEvents,
+  collectionRecords,
   contentPages,
+  dataCollections,
   pageEditLocks,
+  pageRevisions,
   searchChunks,
+  userRoles,
 } from "./schema";
 import { createTestDb } from "./test-db";
 import type { Database } from "./db";
@@ -42,11 +50,19 @@ const rowsOf = async (db: Database) => {
 };
 
 const TABLES = {
+  auth_account: authAccount,
+  auth_session: authSession,
+  auth_user: authUser,
+  auth_verification: authVerification,
   categories,
   content_pages: contentPages,
-  page_edit_locks: pageEditLocks,
   change_events: changeEvents,
   search_chunks: searchChunks,
+  user_roles: userRoles,
+  page_revisions: pageRevisions,
+  page_edit_locks: pageEditLocks,
+  data_collections: dataCollections,
+  collection_records: collectionRecords,
 };
 
 describe("the Drizzle schema and the migration", () => {
@@ -81,9 +97,11 @@ describe("the Drizzle schema and the migration", () => {
     const timestamps = (await rowsOf(db)).filter(
       (row) =>
         row.data_type === "timestamp with time zone" &&
-        // `schema_migrations` is the runner's own bookkeeping and never
-        // crosses the wire, so its precision does not matter.
-        row.table_name in TABLES,
+        // `schema_migrations` is the runner's own bookkeeping, and
+        // BetterAuth's tables are BetterAuth's; neither crosses the wire in
+        // a concurrency check, so their precision does not matter.
+        row.table_name in TABLES &&
+        !row.table_name.startsWith("auth_"),
     );
 
     expect(timestamps.length).toBeGreaterThan(0);

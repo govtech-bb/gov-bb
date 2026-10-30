@@ -276,7 +276,7 @@ export function PageBreak({ nodeKey, settings }: WidgetProps) {
                   label={<span className="max-md:sr-only">Confirmation page</span>}
                   checked={!!settings.confirmation}
                   onCheckedChange={(confirmation) => set({ confirmation })}
-                  className={gapButton}
+                  labelClassName={gapButton}
                 />
               </span>
             </Tip>

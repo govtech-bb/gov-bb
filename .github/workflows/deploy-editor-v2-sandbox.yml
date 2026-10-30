@@ -15,8 +15,8 @@ name: Deploy editor_v2 to Sandbox
 #
 # Paths: the editor's own folder, plus everything else its Amplify build reads
 # (amplify.yml runs `nvm use $(cat .nvmrc)`, installs pnpm from package.json's
-# packageManager, then `pnpm install --frozen-lockfile`). The editor has no
-# workspace-package dependencies, only published ones, so no packages/** path.
+# packageManager, then `pnpm install --frozen-lockfile`). The editor's
+# shared Markdown package is included in the deployment inputs.
 #
 # Role: api-v2-github-actions-sandbox, which trusts gov-bb v2-rewrite and main
 # and may start/read jobs on this one Amplify branch only (alpha-infra#738).
@@ -26,17 +26,20 @@ on:
     branches: [v2-rewrite]
     paths:
       - "apps/editor_v2/**"
+      - "packages/govbbmarkd/**"
       - "amplify.yml"
       - "pnpm-lock.yaml"
       - "pnpm-workspace.yaml"
       - "package.json"
       - ".nvmrc"
       - ".github/workflows/deploy-editor-v2-sandbox.yml"
+      - ".github/scripts/wait-for-api-v2-deploy*.mjs"
   workflow_dispatch:
 
 permissions:
   id-token: write # assume the deploy role via OIDC
   contents: read
+  actions: read # inspect the matching API deployment and its verified steps
 
 # Queue deploys; never cancel one mid-flight. Amplify also refuses a second
 # RELEASE job while one is running on the branch.
@@ -50,20 +53,69 @@ env:
   AMPLIFY_APP_ID: d2bjaphcrcz9hl
   AMPLIFY_BRANCH: v2-rewrite
   APP_URL: https://editor-v2.sandbox.alpha.gov.bb
+  API_URL: https://api-v2.sandbox.alpha.gov.bb
+  ECS_CLUSTER: modular-forms-sandbox
+  ECS_SERVICE: api-v2-sandbox
+  API_IMAGE: 672203047922.dkr.ecr.ca-central-1.amazonaws.com/gov-bb-api-v2
 
 jobs:
   deploy:
     name: Build editor_v2 on Amplify
     runs-on: ubuntu-latest
+    timeout-minutes: 60
     # No `environment:` here: it would change the OIDC subject to
     # repo:...:environment:<name>, which the deploy role does not trust.
-    # No checkout either: Amplify clones the commit itself.
     steps:
+      - name: Checkout deployment evidence
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version-file: ".nvmrc"
+
+      - name: Wait for a compatible API deployment
+        id: api
+        timeout-minutes: 22
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ "$GITHUB_REF" != "refs/heads/v2-rewrite" ]; then
+            echo "::error::Run this workflow from v2-rewrite."
+            exit 1
+          fi
+          # This gate uses only Node built-ins; do not auto-install the workspace.
+          pnpm --config.verify-deps-before-run=false exec node .github/scripts/wait-for-api-v2-deploy.mjs
+
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@254c19bd240aabef8777f48595e9d2d7b972184b # v6.2.1
         with:
           role-to-assume: ${{ env.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
+
+      - name: Verify the live API image and contract
+        timeout-minutes: 12
+        env:
+          API_DEPLOY_SHA: ${{ steps.api.outputs.api_sha }}
+        run: |
+          aws ecs wait services-stable --cluster "$ECS_CLUSTER" --services "$ECS_SERVICE"
+          # shellcheck disable=SC2016 # PRIMARY is a JMESPath literal, not shell substitution.
+          TASK_DEF=$(aws ecs describe-services \
+            --cluster "$ECS_CLUSTER" --services "$ECS_SERVICE" \
+            --query 'services[0].deployments[?status==`PRIMARY`].taskDefinition | [0]' --output text)
+          RUNNING_IMAGE=$(aws ecs describe-task-definition --task-definition "$TASK_DEF" \
+            --query 'taskDefinition.containerDefinitions[0].image' --output text)
+          EXPECTED_IMAGE="$API_IMAGE:$API_DEPLOY_SHA"
+          if [ "$RUNNING_IMAGE" != "$EXPECTED_IMAGE" ]; then
+            echo "::error::The current API image does not match the verified deployment."
+            exit 1
+          fi
+          curl --fail --silent --show-error --max-time 15 "$API_URL/docs/openapi.json" \
+            -o "$RUNNER_TEMP/api-editor-contract.json"
+          pnpm --config.verify-deps-before-run=false exec node .github/scripts/wait-for-api-v2-deploy.mjs \
+            --check-contract "$RUNNER_TEMP/api-editor-contract.json"
 
       # --commit-id builds exactly the commit that triggered this run, not
       # whatever the branch head is by the time Amplify clones it.

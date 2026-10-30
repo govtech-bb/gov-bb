@@ -13,7 +13,7 @@
     "./types": "./src/types.ts"
   },
   "dependencies": {
-    "entities": "^8.0.0",
+    "@govtech-bb/govbbmarkd": "workspace:*",
     "gray-matter": "^4.0.3",
     "zod": "^4.4.3"
   }

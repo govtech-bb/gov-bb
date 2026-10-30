@@ -91,6 +91,7 @@ const page = {
   created_at: "2026-10-07T12:00:00.000Z",
   updated_at: "2026-10-07T12:00:00.000Z",
   version: 2,
+  pending_revision: null,
 };
 
 const lock = {
@@ -150,6 +151,66 @@ describe("page API contracts", () => {
     expect(requests.at(-1)?.headers["if-match"]).toBeUndefined();
     expect(requests.at(-1)?.headers["if-updated-at"]).toBeUndefined();
     expect(JSON.parse(requests.at(-1)?.body ?? "null")).toEqual(fields);
+  });
+
+  it("reads the review queue, and decides on a change at the page version the approver reviewed", async () => {
+    const api = createEditorApi(origin);
+    const reviewed = fields.version;
+    status = 200;
+    response = JSON.stringify({ revisions: [{ page_id: "page-1" }] });
+
+    expect(await api.reviewQueue()).toEqual([{ page_id: "page-1" }]);
+    expect(requests.at(-1)).toMatchObject({ url: "/revisions?status=submitted", method: "GET" });
+
+    response = JSON.stringify({ id: "page-1" });
+    await api.publishRevision("page-1", reviewed);
+    expect(requests.at(-1)).toMatchObject({
+      url: "/pages/page-1/revision/publish",
+      method: "POST",
+      headers: { "content-type": "application/json" },
+    });
+    expect(requests.at(-1)?.headers["if-updated-at"]).toBeUndefined();
+    expect(requests.at(-1)?.headers["x-page-edit-lock-token"]).toBeUndefined();
+    expect(JSON.parse(requests.at(-1)?.body ?? "null")).toEqual({ version: reviewed });
+
+    await api.submitRevision("page-1", reviewed);
+    expect(requests.at(-1)).toMatchObject({
+      url: "/pages/page-1/revision/submit",
+      method: "POST",
+      headers: { "content-type": "application/json" },
+    });
+    expect(requests.at(-1)?.headers["x-page-edit-lock-token"]).toBeUndefined();
+    expect(JSON.parse(requests.at(-1)?.body ?? "null")).toEqual({ version: reviewed });
+
+    await api.rejectRevision("page-1", "Check the fees.", reviewed);
+    expect(requests.at(-1)).toMatchObject({
+      url: "/pages/page-1/revision/reject",
+      method: "POST",
+      headers: { "content-type": "application/json" },
+    });
+    expect(requests.at(-1)?.headers["if-updated-at"]).toBeUndefined();
+    expect(JSON.parse(requests.at(-1)?.body ?? "null")).toEqual({
+      comment: "Check the fees.",
+      version: reviewed,
+    });
+  });
+
+  it("carries a policy refusal's own sentence, apart from lost access or ownership", async () => {
+    status = 403;
+    response = JSON.stringify({
+      error: "forbidden",
+      message: "You need the approver role to do this.",
+    });
+    expect(await createEditorApi(origin).savePage(id, fields, token)).toEqual({
+      ok: false,
+      error: { kind: "forbidden", message: "You need the approver role to do this." },
+    });
+
+    response = JSON.stringify({ error: "forbidden" });
+    expect(await createEditorApi(origin).savePage(id, fields, token)).toEqual({
+      ok: false,
+      error: { kind: "forbidden" },
+    });
   });
 
   it("deletes the confirmed query version without a body or a credential in the URL", async () => {

@@ -26,6 +26,7 @@ COPY --chown=app:app apps/forms/package.json apps/forms/
 COPY --chown=app:app apps/chat/package.json apps/chat/
 COPY --chown=app:app packages/aws-secrets/package.json packages/aws-secrets/
 COPY --chown=app:app packages/content/package.json packages/content/
+COPY --chown=app:app packages/govbbmarkd/package.json packages/govbbmarkd/
 COPY --chown=app:app packages/expressions/package.json packages/expressions/
 COPY --chown=app:app packages/form-conditions/package.json packages/form-conditions/
 COPY --chown=app:app packages/form-types/package.json packages/form-types/
@@ -45,6 +46,7 @@ COPY --chown=app:app apps/chat/ apps/chat/
 # container crash-loops on ERR_MODULE_NOT_FOUND (#1392 added the import).
 COPY --chown=app:app packages/aws-secrets/ packages/aws-secrets/
 COPY --chown=app:app packages/content/ packages/content/
+COPY --chown=app:app packages/govbbmarkd/ packages/govbbmarkd/
 
 ENV NODE_ENV=development
 EXPOSE 3000

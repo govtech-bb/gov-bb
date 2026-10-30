@@ -57,9 +57,11 @@ The runner resolves an existing `playwright` or `playwright-core` installation, 
 
 App UI suites supply employee/API responses at the HTTP boundary. `authentication.mjs` covers explicit sign-in, duplicate activation, delayed session/callback checks, deep-link return paths, outages, sign-out and cancelled expiry without revoking auth prematurely. It also captures transient framework-error screens and uncaught errors. Reusable form and page-canvas suites use `buildBrowserFixture` and `tests/browser/editor-host.tsx`, intercepted only by Playwright—not a production route. `openDemoForm` and `seedFormSource` supply explicit source; `reloadEditorFromSource` explicitly exports and reopens it to test conversion. A normal reload restores only fixture input. No production draft-storage seeding is needed. Real GitHub consent/cookies still require a deployment smoke test.
 
-`remote-page-editing.mjs` checks explicit saves, version conflicts, undo/redo, safe preview links, the absence of history controls/requests and API reloads; `service-workspace.mjs` checks API creation/deletion and holds list/service/page/category responses to verify contextual loading without remounting the header. Run the auth and service-workspace suites against both development and production-built `dist/client` served with the documented `/_shell.html` rewrite; keep auth bypass off for these checks. `routing.mjs` checks cancelled links/Back/Forward, reload/tab-close warnings and clean-view eviction. `persistence-isolation.mjs` seeds malformed old keys and proves editing/lifecycle events neither read nor write them.
+`remote-page-editing.mjs` checks explicit saves, version conflicts, undo/redo, safe preview links, the absence of saved-version restore controls or background history requests, and API reloads. Read-only page history is a separate screen; `service-workspace.mjs` checks API creation/deletion and holds list/service/page/category responses to verify contextual loading without remounting the header. Run the auth and service-workspace suites against both development and production-built `dist/client` served with the documented `/_shell.html` rewrite; keep auth bypass off for these checks. `routing.mjs` checks cancelled links/Back/Forward, reload/tab-close warnings and clean-view eviction. `persistence-isolation.mjs` seeds malformed old keys and proves editing/lifecycle events neither read nor write them.
 
 `categories.mjs` answers `/editor/categories` with a versioned fixture at the HTTP boundary. It checks loading, versioned keyboard moves with focus and announcements, app-route and in-use locks, refused slugs, renamed-category service links by slug, unmatched bookmark filters, the shared Create service and page settings pickers, a failed load and Try again, long names, and the 390px drawer and row menu. Touch contexts check 44px targets; fine-pointer geometry is not evidence of touch size.
+
+`collections.mjs` answers api_v2's `/collections` routes with a versioned fixture at the HTTP boundary. It reaches Collections from the menu by keyboard, opens a collection's table and a record's dialog from its row, checks `?record=` in the address, a field refused by `validation_failed`, the stale-save choices, keyboard add and delete with focus returned, visible focus at each stop, and the table at 390px. Screenshots go to `/tmp/c3184-collections-*.png`.
 
 `categories-live.mjs` is opt-in and never in the default list. It writes to a real api_v2 over a disposable database, with nothing intercepted. Follow the [API local setup](../../api_v2/README.md#run-locally), using that database, `SEED=false`, `AUTH_BYPASS=true`, `PORT=43107`, `BETTER_AUTH_URL=http://127.0.0.1:43107` and `EDITOR_ORIGIN=http://localhost:43108`. Start the editor in a separate terminal, then run the suite from this directory:
 
@@ -96,16 +98,21 @@ The existing TypeScript configuration does not enable `exactOptionalPropertyType
 
 `concurrent-page-editing.mjs` runs two employees and same-user tabs against real Fastify and isolated PostgreSQL, rather than HTTP fixtures. It covers takeover, stale writes, ordinary heartbeat loss detection, confirmed reloads without version choices, idle response/expiry, auth-expiry exports and guarded deletion of unsupported content. `apps/api_v2/browser/page-edit-locks.test.ts` owns the temporary API and database and tears both down; its test-only clock controls are not production routes.
 
-Start the editor with `VITE_API_ORIGIN=http://127.0.0.1:3038`, auth bypass off, and a working site preview. Start landing at `127.0.0.1:3048` and set `VITE_SITE_PREVIEW_URL=http://127.0.0.1:3048/cms-preview/`. Then run from the repo root, with an isolated PostgreSQL server and installed Playwright Chromium:
+Start the editor with `VITE_API_ORIGIN=http://127.0.0.1:3038`, auth bypass off, and a working site preview. Start landing at `127.0.0.1:3048` and set `VITE_SITE_PREVIEW_URL=http://127.0.0.1:3048/cms-preview/`. Then run from the repo root, with an isolated PostgreSQL server and Chromium installed for the editor’s pinned Playwright dependency:
 
 ```sh
 DB_HOST=127.0.0.1 DB_PORT=55438 \
-PLAYWRIGHT_MODULE_PATH="$PWD/node_modules/.pnpm/node_modules/playwright" \
 pnpm --dir apps/editor_v2 exec node scripts/browser/run.mjs \
   http://127.0.0.1:3018/ concurrent-page-editing.mjs
 ```
 
+CI’s **Editor v2 concurrent editing** job runs this same real-API scenario with PostgreSQL 17, dummy cookie sessions, auth bypass off and the local landing renderer. It fails if no test executed or any test failed, skipped or remained todo. The job also runs the mocked API-first release-gate tests. The editor declares the existing locked Playwright version directly; `PLAYWRIGHT_MODULE_PATH` remains available for another installed copy. Missing browser/database prerequisites are failures, not successful skips.
+
 The runner forwards the editor URL and starts the API at port 3038. Do not point this scenario at a deployed database. Keep running `remote-page-editing.mjs`, `routing.mjs` and `service-workspace.mjs` alongside it. If the full editor Vitest run exhausts local workers, `pnpm exec nx run editor_v2:test -- --maxWorkers=4` limits concurrency without skipping tests.
+
+When running `site-preview.mjs`, its optional second URL chooses the ordinary landing reference. Otherwise it uses the origin of `VITE_SITE_PREVIEW_URL`, then the original localhost:3040 default. Keep the preview assets and reference page on the same local landing build.
+
+Release ordering and safe rollback are documented in [API-first release and rollback](../../api_v2/README.md#api-first-release-and-rollback).
 
 ## Persistence and recovery
 
@@ -135,11 +142,11 @@ Paths below are relative to `src`. Symbols not listed as renamed keep their name
 | `workspace/api-page.tsx` | `workspace/remote-page-pane.tsx`: `RemotePagePane`, private `RemotePageEditor`; baseline state is in memory |
 | `workspace/api-service.tsx` | `workspace/service-nav.tsx`: `ServiceNav`, listing API pages only |
 | `workspace/api-dialogs.tsx` | `workspace/remote-page-dialogs.tsx`: `ApiServiceDialog` → `CreateRemoteServiceDialog`, `ApiPageDialog` → `CreateRemotePageDialog`, `DeletePageDialog` → `DeleteRemotePageDialog` |
-| `workspace/dialogs.tsx` | Local dialogs removed; shared shell remains in `workspace/workspace-dialog.tsx` |
+| `workspace/dialogs.tsx` | Local dialogs removed; API dialogs use `ui/form-dialog.tsx` and `ui/confirm-dialog.tsx` |
 | Workspace model types only | `PageDocument` and `ServicePageRole`; local service/form models removed, reusable form schema unchanged |
 | `api/client.ts` input types | `NewPage` → `CreatePageInput`, `SaveFields` → `SavePageInput`; transport method `EditorApi.savePage` unchanged |
 | `api/page-markdown.ts` save conversion | `SaveFieldsResult` → `PageSaveInputResult`, `markdownToSaveFields` → `markdownToPageSaveInput` |
-| `api/queries.ts` | `versionQuery` → `estateVersionQuery`; polling keys and timing unchanged; `historyQuery` removed |
+| `api/queries.ts` | `versionQuery` → `estateVersionQuery`; polling keys and timing unchanged; the saved-version `historyQuery` was removed, and `historyQuery` now reads the read-only page history (`GET /pages/{id}/history`) |
 | `converters/lexicalToMarkdown/index.ts` | `converters/lexical-to-form-markdown.ts`: `lexicalToMarkdown` → `lexicalToFormMarkdown` |
 | `converters/markdownToLexical/index.ts` | `converters/form-markdown-to-lexical.ts`: `markdownToLexical` → `formMarkdownToLexical` |
 | `converters/formSchemaToLexical/index.ts` | `converters/form-schema-to-lexical.ts` |

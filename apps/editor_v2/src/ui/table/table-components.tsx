@@ -1,13 +1,11 @@
-import { CaretDown, CaretLeft, CaretRight, Columns, MagnifyingGlass } from "@phosphor-icons/react";
-import { useId, type Ref } from "react";
+import { CaretLeft, CaretRight, MagnifyingGlass } from "@phosphor-icons/react";
+import type { MouseEvent, Ref } from "react";
 import { cn } from "../../cn";
 import { Button } from "../button";
 import { EmptyState, type EmptyStateProps } from "../empty-state";
-import { hiddenControlFocus } from "../focus";
 import { Input } from "../input";
 import { NativeSelect } from "../native-select";
-import { Menu } from "../menu";
-import { Tag } from "../tag";
+import { NameCell } from "./cell-components";
 import { useTableFilters, useTableContext } from "./table-hooks";
 
 /** Narrow tables fold secondary columns into the leading cell instead of scrolling them away. */
@@ -48,162 +46,42 @@ export function Search({
   );
 }
 
-/** One column's values as tabs with counts, plus All. A native radio group, so arrow keys move between them. */
-export function FilterTabs({
-  column: id,
-  legend,
-  values,
-}: {
-  column: string;
-  legend: string;
-  values: string[];
-}) {
-  const table = useTableContext();
-  const name = useId();
-  const column = table.getColumn(id);
-  // SAFETY: Only FilterTabs and FilterMenu set these filters, always as the string arrays oneOf reads.
-  const chosen = (column?.getFilterValue() as string[] | undefined)?.[0] ?? "";
-  const rows = table.getCoreRowModel().rows;
-
-  return (
-    <fieldset className="flex min-w-0 flex-wrap gap-x-6 border-b border-line px-4">
-      <legend className="sr-only">{legend}</legend>
-      {["", ...values].map((value) => (
-        <label
-          key={value}
-          className={cn(
-            "relative flex min-h-12 cursor-pointer items-center gap-2 text-15 font-semibold text-muted transition-colors duration-150 hover:text-ink has-checked:text-ink has-checked:after:absolute has-checked:after:inset-x-0 has-checked:after:-bottom-px has-checked:after:h-0.5 has-checked:after:bg-ink",
-            hiddenControlFocus,
-          )}
-        >
-          <input
-            type="radio"
-            name={name}
-            className="sr-only"
-            checked={chosen === value}
-            onChange={() => column?.setFilterValue(value ? [value] : undefined)}
-          />
-          {value || "All"}
-          <span className="rounded-sm bg-tint px-1.5 text-13 leading-5 font-normal tabular-nums">
-            {value ? rows.filter((row) => row.getValue(id) === value).length : rows.length}
-          </span>
-        </label>
-      ))}
-    </fieldset>
-  );
-}
-
-/** Pick any of a column's values. Dashed until something is chosen, then a Tag with a button to clear it. */
-export function FilterMenu({ column: id, label }: { column: string; label: string }) {
-  const table = useTableContext();
-  const column = table.getColumn(id);
-  // SAFETY: Only FilterTabs and FilterMenu set these filters, always as the string arrays oneOf reads.
-  const chosen = (column?.getFilterValue() as string[] | undefined) ?? [];
-
-  const values = [
-    ...new Set(table.getCoreRowModel().rows.map((row) => String(row.getValue(id)))),
-  ].sort();
-
-  const summary = chosen.length > 1 ? `${chosen[0]} +${chosen.length - 1}` : (chosen[0] ?? label);
-
-  const trigger = (
-    <Menu.Trigger
-      aria-label={`Filter by ${label.toLowerCase()}${chosen.length ? `: ${summary}` : ""}`}
-      className={cn(
-        "inline-flex min-w-0 cursor-pointer items-center gap-1.5 rounded-sm text-14 font-semibold transition-colors duration-150",
-        !chosen.length &&
-          "h-9 border border-dashed border-grey-60 px-3 text-muted hover:border-ink hover:text-ink",
-      )}
-    >
-      <span className="max-w-48 truncate">{summary}</span>
-      <CaretDown aria-hidden="true" className="size-3.5 shrink-0" />
-    </Menu.Trigger>
-  );
-
-  return (
-    <Menu.Root>
-      {chosen.length ? (
-        // Chosen, it's a Tag: the menu to change the choice, and a button to clear it
-        <Tag
-          className="h-9"
-          removeLabel={`Clear ${label.toLowerCase()} filter`}
-          onRemove={() => column?.setFilterValue(undefined)}
-        >
-          {trigger}
-        </Tag>
-      ) : (
-        trigger
-      )}
-      <Menu.Content aria-label={`Filter by ${label.toLowerCase()}`} className="min-w-56">
-        {values.map((value) => (
-          <Menu.CheckboxItem
-            key={value}
-            checked={chosen.includes(value)}
-            onCheckedChange={(on) =>
-              column?.setFilterValue(
-                on ? [...chosen, value] : chosen.filter((item) => item !== value),
-              )
-            }
-            detail={table.getCoreRowModel().rows.filter((row) => row.getValue(id) === value).length}
-          >
-            {value}
-          </Menu.CheckboxItem>
-        ))}
-      </Menu.Content>
-    </Menu.Root>
-  );
-}
-
-/** Show or hide the columns that allow it. Hidden while narrow, where secondary columns fold away anyway. */
-export function ColumnsMenu() {
-  const table = useTableContext();
-
-  return (
-    <Menu.Root>
-      <Menu.Trigger
-        render={
-          <Button icon={<Columns />} className="ms-auto @max-3xl:hidden">
-            Columns
-          </Button>
-        }
-      />
-      <Menu.Content aria-label="Columns" align="end">
-        {table
-          .getAllLeafColumns()
-          .filter((column) => column.getCanHide())
-          .map((column) => (
-            <Menu.CheckboxItem
-              key={column.id}
-              checked={column.getIsVisible()}
-              onCheckedChange={(visible) => column.toggleVisibility(visible)}
-            >
-              {/* oxlint-disable-next-line anti-slop/no-runtime-typeof -- A column header is a label or a render function; only a label can name a menu row. */}
-              {typeof column.columnDef.header === "string" ? column.columnDef.header : column.id}
-            </Menu.CheckboxItem>
-          ))}
-      </Menu.Content>
-    </Menu.Root>
-  );
-}
-
 const sortState = { asc: "ascending", desc: "descending" } as const;
 
+/** A grey bar where words will be, pulsing while motion is welcome. */
+function Placeholder({ className }: { className: string }) {
+  return (
+    <span
+      className={cn(
+        "inline-block h-2.5 rounded-sm bg-grey-20 align-middle motion-safe:animate-pulse",
+        className,
+      )}
+    />
+  );
+}
+
+// A click on one of these is the control's, not the row's
+const controls = "a, button, input, select, textarea, label";
+
 /**
- * The current page of rows, with loading, empty and no-match states in place of rows. Loading, its first row shows what
- * it's loading, named by its caption, as tall as the placeholder rows under it, so nothing moves as the rows arrive.
- * Screen readers hear that from the screen's own status line instead, which outlives the table.
+ * Renders the current page with fixed column widths and loading, empty and filtered states.
+ * The parent owns loading announcements so its live region survives table replacement.
+ * `rowLink` forwards plain row clicks to the first link; controls, selections and modified clicks are left alone.
  */
 export function DataTable({
   caption,
   loading = false,
   empty,
   marked,
+  rowLink = false,
 }: {
   caption: string;
   loading?: boolean;
   empty: Pick<EmptyStateProps, "title" | "description" | "actions">;
   /** A row to pick out by its id, such as one that has just moved, so the eye can follow it. */
   marked?: string;
+  /** Each row opens with its first link, such as its name's. */
+  rowLink?: boolean;
 }) {
   const table = useTableContext();
   const rows = table.getRowModel().rows;
@@ -211,9 +89,19 @@ export function DataTable({
   const filters = useTableFilters();
   const loadingWords = `Loading ${caption.toLowerCase()}…`;
 
+  // A plain click, not one that ends a selection of the row's words
+  const open = (event: MouseEvent<HTMLTableRowElement>) => {
+    if (!(event.target instanceof Element) || event.target.closest(controls)) return;
+
+    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+
+    if (document.getSelection()?.toString()) return;
+    event.currentTarget.querySelector<HTMLAnchorElement>("a[href]")?.click();
+  };
+
   return (
     <div role="region" aria-label={caption} tabIndex={0} className="overflow-x-auto">
-      <table aria-busy={loading} className="w-full border-collapse text-start text-14">
+      <table aria-busy={loading} className="w-full table-fixed border-collapse text-start text-14">
         <caption className="sr-only">{caption}</caption>
         <thead className="text-12 text-muted">
           {table.getHeaderGroups().map((group) => (
@@ -222,6 +110,7 @@ export function DataTable({
                 <table.AppHeader header={h} key={h.id}>
                   {(header) => {
                     const sorted = header.column.getIsSorted();
+                    const meta = header.column.columnDef.meta;
 
                     return (
                       <th
@@ -235,7 +124,9 @@ export function DataTable({
                         }
                         className={cn(
                           "px-4 py-1.5 text-start font-semibold whitespace-nowrap",
-                          header.column.columnDef.meta?.secondary && secondary,
+                          meta?.width,
+                          meta?.align === "end" && "text-end",
+                          meta?.secondary && secondary,
                         )}
                       >
                         {!header.isPlaceholder && <header.SortButton />}
@@ -249,30 +140,39 @@ export function DataTable({
         </thead>
         <tbody>
           {loading ? (
-            <>
-              <tr className="border-t border-line">
-                <td colSpan={columns.length} aria-hidden="true" className="px-4 py-3 text-muted">
-                  {loadingWords}
-                </td>
-              </tr>
-              {Array.from({ length: 5 }, (_, row) => (
-                <tr key={row} className="border-t border-line">
-                  {columns.map((column, index) => (
-                    <td
-                      key={column.id}
-                      className={cn("px-4 py-4", column.columnDef.meta?.secondary && secondary)}
-                    >
-                      <span
-                        className={cn(
-                          "block h-3 rounded-sm bg-grey-20 motion-safe:animate-pulse",
-                          index ? "w-16" : "w-2/3 min-w-40",
-                        )}
+            Array.from({ length: 6 }, (_, place) => (
+              <tr key={place} aria-hidden="true" className="border-t border-line">
+                {columns.map((column, index) => (
+                  <td
+                    key={column.id}
+                    className={cn(
+                      "px-4 py-3.5 align-middle",
+                      column.columnDef.meta?.secondary && secondary,
+                    )}
+                  >
+                    {index ? (
+                      <Placeholder className="w-16" />
+                    ) : (
+                      <NameCell
+                        name={
+                          place ? (
+                            <Placeholder className="h-3 w-2/3" />
+                          ) : (
+                            <span className="font-normal text-muted">{loadingWords}</span>
+                          )
+                        }
+                        path={<Placeholder className="w-1/3" />}
+                        details={
+                          <span>
+                            <Placeholder className="w-24" />
+                          </span>
+                        }
                       />
-                    </td>
-                  ))}
-                </tr>
-              ))}
-            </>
+                    )}
+                  </td>
+                ))}
+              </tr>
+            ))
           ) : rows.length === 0 ? (
             <tr className="border-t border-line">
               <td colSpan={columns.length}>
@@ -287,9 +187,11 @@ export function DataTable({
             rows.map((row) => (
               <tr
                 key={row.id}
+                onClick={rowLink ? open : undefined}
                 className={cn(
-                  "border-t border-line transition-colors duration-150",
+                  "border-t border-line transition-colors",
                   row.id === marked ? "bg-blue-10" : "hover:bg-tint",
+                  rowLink && "cursor-pointer",
                 )}
               >
                 {row.getVisibleCells().map((c) => (
@@ -298,6 +200,7 @@ export function DataTable({
                       <td
                         className={cn(
                           "px-4 py-3.5 align-middle",
+                          cell.column.columnDef.meta?.align === "end" && "text-end",
                           cell.column.columnDef.meta?.secondary && secondary,
                         )}
                       >
@@ -340,7 +243,8 @@ export function Pagination({ name }: { name: [string, string] }) {
 
   return (
     <div className="flex flex-wrap items-center gap-x-4 gap-y-3 border-t border-line px-4 py-3 text-14 text-muted">
-      <p aria-live="polite" className="tabular-nums">
+      {/* Reserve space so the page-size control stays put as the range changes. */}
+      <p aria-live="polite" className="min-w-44 tabular-nums">
         {first}–{Math.min(total, first + pageSize - 1)} of {total} {total === 1 ? name[0] : name[1]}
       </p>
       {total > pageSizes[0]! && (

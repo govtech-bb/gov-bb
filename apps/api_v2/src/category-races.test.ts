@@ -356,9 +356,10 @@ describe("serialized category and page writes", () => {
       () => page("/new", category.id),
     );
     expect([deleted.statusCode, refused.statusCode]).toEqual([204, 422]);
+    // The category's create and delete; the refused page left nothing.
     expect((await request({ url: "/version" })).json()).toEqual({
-      count: 0,
-      latest: null,
+      count: 2,
+      latest: expect.any(String),
     });
   });
 
@@ -445,9 +446,10 @@ describe("serialized category and page writes", () => {
     for (let n = 0; n < 5; n++) {
       const previous = category.updated_at;
       category = expectOk(
+        // A real change each time: a save that changes nothing keeps its stamp.
         await editing.update(
           category.id,
-          fields("frozen"),
+          { ...fields("frozen"), title: `Frozen ${n}` },
           previous,
           TEST_EMPLOYEE,
         ),
@@ -461,7 +463,7 @@ describe("serialized category and page writes", () => {
       (
         await editing.update(
           category.id,
-          fields("frozen"),
+          { ...fields("frozen"), title: "Frozen again" },
           equivalent,
           TEST_EMPLOYEE,
         )

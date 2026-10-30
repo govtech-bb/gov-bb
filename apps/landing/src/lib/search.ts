@@ -1,4 +1,5 @@
 import MiniSearch from 'minisearch'
+import { analyzeContentMarkdown } from '@govtech-bb/govbbmarkd'
 import type { SearchOptions, SearchResult } from 'minisearch'
 import {
   isDigitalService,
@@ -164,18 +165,6 @@ function normalizeLiteralPrefix(text: string): string {
   return tokenize(text).map(normalizeTerm).join(' ')
 }
 
-function stripMarkdown(markdown: string): string {
-  return markdown
-    .replace(/```[\s\S]*?```/g, ' ')
-    .replace(/`([^`]*)`/g, '$1')
-    .replace(/!\[[^\]]*\]\([^)]*\)/g, ' ')
-    .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
-    .replace(/<[^>]+>/g, ' ')
-    .replace(/[#>*_~`|]/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim()
-}
-
 function buildIndex(): {
   engine: MiniSearch<IndexDoc>
   documents: Map<string, IndexDoc>
@@ -188,7 +177,7 @@ function buildIndex(): {
       id: `service:${page.url}`,
       title: page.frontmatter.title,
       description: page.frontmatter.description ?? '',
-      body: stripMarkdown(page.body),
+      body: analyzeContentMarkdown(page.body, { frontmatter: false }).text,
       keywords: page.frontmatter.keywords?.join(' ') ?? '',
       href: `/${page.url}`,
       digital: isDigitalService(page),

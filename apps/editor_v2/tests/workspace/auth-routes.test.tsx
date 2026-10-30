@@ -6,6 +6,7 @@ import { AuthFailure, type EditorAuth } from "../../src/auth/session";
 import { getRouter } from "../../src/router";
 import { routeTree } from "../../src/routeTree.gen";
 import { renderInPage } from "../helpers/page-editor";
+import { shownText } from "../helpers/shown-text";
 
 const routers: ReturnType<typeof getRouter>[] = [];
 
@@ -71,7 +72,7 @@ const until = (assertion: () => void) =>
   });
 
 const button = (label: string) =>
-  [...document.querySelectorAll("button")].find((item) => item.textContent === label)!;
+  [...document.querySelectorAll("button")].find((item) => shownText(item) === label)!;
 
 test("direct auth is a sign-in screen and never starts GitHub on mount or preload", async () => {
   const { auth, router } = await mountAuth("/auth");

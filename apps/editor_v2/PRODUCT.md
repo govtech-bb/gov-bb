@@ -6,9 +6,9 @@ The GovBB editor is an internal web tool for the GovTech Barbados service team a
 
 Authors can write service pages, save or publish them to the content API, and preview supported content. The workspace groups an entry page, an optional start page and supporting pages. Browser-only services, pages, forms and calculators are not workspace flows.
 
-The editor opens on api_v2's Services list, with search, category/status filters, sorting and pagination. A title opens the service at its entry page; its path opens landing. The sidebar lists API pages beneath their parents and shows visibility. Pages toggles the sidebar, whose preference is remembered; narrow screens use a drawer. Create service creates a draft API entry page under a category. Add document creates a start or supporting page. Delete page removes the selected API page after its children are gone; it retains no browser draft.
+The editor opens on api_v2's Services list, with search, category/status filters, sorting and pagination. A title opens the service at its entry page; its path opens landing. The sidebar lists API pages beneath their parents and shows visibility. Pages toggles the sidebar, whose preference is remembered; narrow screens use a drawer. Create service creates a preview-only API entry page under a category. Add document creates a preview-only start or supporting page. Delete page removes the selected API page after its children are gone; it retains no browser draft.
 
-The side menu names the editor's screens: Content holds Services, and Manage holds Categories. Inside a service it folds to a rail of icons beside the service's pages; narrow screens open it as a drawer from Menu. Categories lists the shared api_v2 records in order, each subcategory under its parent, with its address and directly filed services, including unpublished work. Categories, Services filters, Create service and page settings all use that same list.
+The side menu names the editor's screens: Content holds Services, and Manage holds Categories and Collections. Inside a service it folds to a rail of icons beside the service's pages; narrow screens open it as a drawer from Menu. Categories lists the shared api_v2 records in order, each subcategory under its parent, with its address and directly filed services, including unpublished work. Categories, Services filters, Create service and page settings all use that same list.
 
 The editor owns content authoring and conversion, including common page metadata. Saving a public page publishes its changes. Reusable form authoring remains available to embedding hosts, but has no replacement server integration in this workspace. Form-wide settings panels, form-check dashboards, submissions, scheduling and respondent execution remain outside scope.
 
@@ -22,11 +22,21 @@ A stale edit, deletion or reorder is refused rather than overwriting another aut
 
 Landing integration is tracked in #3179, category change events in #3169, private last-editor attribution in #3171 and sandbox acceptance in #3180.
 
+## Collections
+
+Collections hold facts many pages repeat, such as a department's contact details, as records in api_v2. Developers set each collection's fields; every value is text. Collections lists each one with its record count, and a collection's screen shows its records in a table, a column per field. A record is added, changed or deleted in a dialog, one field per entry in the field list under its label. Saving is explicit and replaces the whole record; a blank field is left out. A record keeps the key it was added with. `/collections/<key>?record=<record key>` opens that record's dialog, so a page's block can link to the record it shows.
+
+A field api_v2 refuses shows its reason under the field, and the dialog keeps what was typed. A save over a version someone else replaced offers the same choice as a page: keep this version, load the saved one or download this one. A deletion is asked first and refused if the record has changed since it was read.
+
 ## Page authoring
 
 Pages support headings, paragraphs, inline formatting, links, hard breaks, blockquotes, separators, nested lists, tables, notices, details and action buttons. Authors arrange the body freely. The title is edited above the body and stored in YAML frontmatter. The introduction is edited directly beneath the title. A collapsed Page details section on the separator summarises current values and edits description, categories, subcategory, visibility, publication date and form ID. Category options come from the host. A page from the content API offers api_v2's categories: a service's entry page takes one category and an optional subcategory, and its sub-pages are filed with it. Embedded page editors can also retain imported categories, with the first primary. A page from the content API also shows its path, and the server's publication date read-only.
 
 Page details and body share undo history. They reach the API only through explicit Save or Publish changes; typing never saves or publishes. A successful save acknowledges only the submitted snapshot, leaving edits made during the request unsaved. When someone saves a newer version first, the author chooses whether to keep theirs, load the saved version or download theirs, rather than either being overwritten. The editor checks the content API for changes every 30 seconds and when its window regains focus, refreshing its lists and flagging an open page saved elsewhere. Optional fields stay absent until edited, and clearing one removes its key. Unfamiliar imported values and specialist frontmatter are retained.
+
+Approvers can choose Public or Preview link only in visibility settings; other authors see the current visibility read-only. Existing draft pages remain hidden through unrelated edits and saves, and remain listed and filterable as "Draft (hidden)". Until a visibility change is saved, an approver can select Draft again without undoing later edits. After a successful Public/Preview save, Draft is no longer offered as a choice; shared undo remains available.
+
+New services, start pages and supporting pages are created in Preview with an empty body. Valid preview-token holders can see them immediately, including a new Start link when its parent is visible. This is intentional; the API's existing ancestor-visibility rules still apply.
 
 Original Markdown is retained exactly until a visual edit. Edits preserve unknown metadata, intentionally absent fields, content structure and destinations. A page with unsupported HTML, specialist content or invalid YAML opens read-only, its saved content unchanged. Pages have no Markdown source editing.
 

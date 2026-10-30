@@ -26,9 +26,9 @@ import { Input } from "../../../ui/input";
 import { LinkPicker } from "../../../ui/link-picker";
 // This file's own NativeSelect adds a label and items around it
 import { NativeSelect as BrowserSelect } from "../../../ui/native-select";
-import { pill, pillChevron, PillInput } from "../../../ui/pill";
+import { Pill, pill, pillChevron } from "../../../ui/pill";
 import { Popover } from "../../../ui/popover";
-import { SelectOption, SelectPopup } from "../../../ui/select";
+import { Select as KitSelect } from "../../../ui/select";
 import { FieldCombobox, header, More, Pick, typeGroups } from "../../react/logic-pickers";
 import type { Field } from "./queries";
 import { NativeFormulaPill, nativeFormula } from "../calculations/native-formula";
@@ -422,18 +422,18 @@ export function NativeConditionRow({
           >
             <Select.Trigger
               aria-label="Match conditions"
-              className="inline-flex min-h-6 cursor-pointer items-center gap-0.5 rounded-xs px-1 outline-none hover:bg-grey-20 focus-visible:outline-3 focus-visible:outline-offset-1 focus-visible:outline-focus [&>svg]:size-3.5"
+              className="inline-flex min-h-6 cursor-pointer items-center gap-0.5 rounded-xs px-1 hover:bg-grey-20 [&>svg]:size-3.5"
             >
               {group.op === "any" ? "any" : "all"}
               <CaretDown />
             </Select.Trigger>
-            <SelectPopup>
+            <KitSelect.Content>
               {(["all", "any"] as const).map((op) => (
-                <SelectOption key={op} value={op}>
+                <KitSelect.Item key={op} value={op}>
                   {op}
-                </SelectOption>
+                </KitSelect.Item>
               ))}
-            </SelectPopup>
+            </KitSelect.Content>
           </Select.Root>
           match
           {menu}
@@ -620,7 +620,7 @@ function VisibilityPicker({
           <Checkbox
             key={item.value}
             label={item.label}
-            className="rounded-sm px-2 py-2 hover:bg-tint"
+            labelClassName="rounded-sm px-2 py-2 hover:bg-tint"
             checked={selected.some((target) => target.value === item.value)}
             onCheckedChange={(checked) =>
               onChange(
@@ -770,10 +770,10 @@ export function NativeActionRow({
       )}
       {value.type === "error" && (
         <span className={pill}>
-          <PillInput
+          <Pill.Input
             placeholder="Error message"
             value={value.message}
-            onChange={(message) => onChange({ ...value, message })}
+            onValueChange={(message) => onChange({ ...value, message })}
           />
         </span>
       )}
@@ -1398,7 +1398,7 @@ export function NativeRichTextEditor({
                       <Checkbox
                         key={mark}
                         label={mark}
-                        className="text-12"
+                        size="sm"
                         checked={part.marks?.includes(mark) ?? false}
                         onCheckedChange={(checked) =>
                           set(index, {
@@ -1659,7 +1659,8 @@ export function NativeActionEditor({
               <Checkbox
                 key={item.value}
                 label={item.label}
-                className="py-1 text-12"
+                size="sm"
+                labelClassName="py-1"
                 checked={value.targets.some((target) => JSON.stringify(target) === item.value)}
                 onCheckedChange={(checked) =>
                   onChange({
