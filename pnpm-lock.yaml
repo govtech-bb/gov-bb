@@ -1592,12 +1592,6 @@ importers:
 
   packages/govbbmarkd:
     dependencies:
-      '@types/hast':
-        specifier: ^3.0.5
-        version: 3.0.5
-      '@types/mdast':
-        specifier: ^4.0.4
-        version: 4.0.4
       entities:
         specifier: ^8.1.0
         version: 8.1.0
@@ -1647,6 +1641,12 @@ importers:
       '@govtech-bb/react':
         specifier: 1.0.0-alpha.29
         version: 1.0.0-alpha.29(react@19.2.7)
+      '@types/hast':
+        specifier: ^3.0.5
+        version: 3.0.5
+      '@types/mdast':
+        specifier: ^4.0.4
+        version: 4.0.4
       '@types/react':
         specifier: 'catalog:'
         version: 19.2.17

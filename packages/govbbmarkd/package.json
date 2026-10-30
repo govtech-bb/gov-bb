@@ -20,21 +20,19 @@
     }
   },
   "dependencies": {
-    "@types/hast": "^3.0.5",
-    "@types/mdast": "^4.0.4",
     "entities": "^8.1.0",
     "hast-util-to-jsx-runtime": "^2.3.6",
+    "mdast-util-directive": "^3.1.0",
     "mdast-util-to-hast": "^13.2.1",
+    "mdast-util-to-markdown": "^2.2.0",
     "rehype-autolink-headings": "^7.1.0",
     "rehype-raw": "^7.0.0",
     "rehype-slug": "^6.0.0",
-    "remark-rehype": "^11.1.1",
-    "mdast-util-directive": "^3.1.0",
-    "mdast-util-to-markdown": "^2.2.0",
     "remark-directive": "^4.0.0",
     "remark-frontmatter": "^5.0.0",
     "remark-gfm": "^4.0.1",
     "remark-parse": "^11.0.0",
+    "remark-rehype": "^11.1.1",
     "unified": "^11.0.5",
     "zod": "^4.4.3"
   },
@@ -52,11 +50,13 @@
   },
   "devDependencies": {
     "@govtech-bb/react": "1.0.0-alpha.29",
+    "@types/hast": "^3.0.5",
+    "@types/mdast": "^4.0.4",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
+    "fast-check": "^4.10.2",
     "react": "catalog:",
     "react-dom": "catalog:",
-    "fast-check": "^4.10.2",
     "vitest": "^4.1.11"
   }
 }
