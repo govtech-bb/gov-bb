@@ -3,6 +3,7 @@ import { QueryClient } from '@tanstack/react-query'
 import { z } from 'zod'
 import { readPublic } from './api-v2-categories'
 import { apiV2Base } from './api-v2-page'
+import { logFallback } from './api-v2-log'
 
 /**
  * The site-wide lists api_v2 serves to the public (#3125): every page for the
@@ -54,6 +55,9 @@ async function cachedList<T, U>(
     queryFn: async () => {
       const result = await readPublic(base, path, schema, fetchImpl)
       if (result.kind === 'ok') return pick(result.value)
+      // The route always exists; a 404 means api_v2 isn't serving it.
+      if (result.kind === 'missing')
+        logFallback('status', path, { status: 404 })
       return siteCache.getQueryData<U[]>(queryKey) ?? []
     },
     staleTime: STALE_MS,
@@ -97,18 +101,30 @@ export const getApiV2SearchDocuments = createServerFn().handler(() =>
 
 const NO_DOCUMENTS: readonly ApiV2SearchDocument[] = []
 
+let loaded:
+  | { at: number; documents: Promise<readonly ApiV2SearchDocument[]> }
+  | undefined
+
 /**
  * Search documents for a search caller on either side: none, without a call,
  * when api_v2 isn't configured, and none if the server function fails, so
- * search still answers from the static pages.
+ * search still answers from the static pages. One read per minute is shared,
+ * so the search index (rebuilt when its documents change) isn't rebuilt on
+ * every search.
  */
-export function loadApiV2SearchDocuments(): Promise<
-  readonly ApiV2SearchDocument[]
-> {
+export function loadApiV2SearchDocuments(
+  now = Date.now(),
+): Promise<readonly ApiV2SearchDocument[]> {
   if (!import.meta.env.VITE_API_V2_URL) return Promise.resolve(NO_DOCUMENTS)
 
-  return getApiV2SearchDocuments().catch((error: unknown) => {
-    console.warn('search documents read failed:', error)
-    return NO_DOCUMENTS
-  })
+  if (!loaded || now - loaded.at >= STALE_MS)
+    loaded = {
+      at: now,
+      documents: getApiV2SearchDocuments().catch((error: unknown) => {
+        console.warn('search documents read failed:', error)
+        return NO_DOCUMENTS
+      }),
+    }
+
+  return loaded.documents
 }

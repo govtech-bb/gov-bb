@@ -1,5 +1,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { fetchApiV2Catalog, fetchApiV2SearchDocuments } from './api-v2-site'
+import {
+  fetchApiV2Catalog,
+  fetchApiV2SearchDocuments,
+  loadApiV2SearchDocuments,
+} from './api-v2-site'
 import type { ApiV2SearchDocument } from './api-v2-site'
 
 const DOCUMENT: ApiV2SearchDocument = {
@@ -10,6 +14,15 @@ const DOCUMENT: ApiV2SearchDocument = {
   keywords: ['funding'],
   chunks: [{ heading: null, body: 'Some money.' }],
 }
+
+const serverFn = vi.hoisted(() => vi.fn())
+
+// Every server function in the import graph is `serverFn`; only the
+// search documents one is called here.
+vi.mock('@tanstack/react-start', () => {
+  const builder = { validator: () => builder, handler: () => serverFn }
+  return { createServerFn: () => builder }
+})
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status })
@@ -92,5 +105,32 @@ describe('fetchApiV2SearchDocuments', () => {
     const failing = vi.fn(async () => json({}, 503))
     expect(await fetchApiV2SearchDocuments(base, failing)).toEqual([DOCUMENT])
     expect(failing).toHaveBeenCalledOnce()
+  })
+})
+
+describe('loadApiV2SearchDocuments', () => {
+  it('shares one read a minute, without one when api_v2 is unset', async () => {
+    vi.stubEnv('VITE_API_V2_URL', '')
+    expect(await loadApiV2SearchDocuments(0)).toEqual([])
+    expect(serverFn).not.toHaveBeenCalled()
+
+    vi.stubEnv('VITE_API_V2_URL', 'http://api.example')
+    serverFn.mockResolvedValue([DOCUMENT])
+    const first = await loadApiV2SearchDocuments(0)
+    expect(first).toEqual([DOCUMENT])
+    expect(await loadApiV2SearchDocuments(59_999)).toBe(first)
+    expect(serverFn).toHaveBeenCalledTimes(1)
+
+    await loadApiV2SearchDocuments(60_000)
+    expect(serverFn).toHaveBeenCalledTimes(2)
+    vi.unstubAllEnvs()
+  })
+
+  it('is empty when the server function fails', async () => {
+    vi.stubEnv('VITE_API_V2_URL', 'http://api.example')
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+    serverFn.mockRejectedValue(new Error('down'))
+    expect(await loadApiV2SearchDocuments(10 * 60_000)).toEqual([])
+    vi.unstubAllEnvs()
   })
 })
