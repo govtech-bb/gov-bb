@@ -1,5 +1,6 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ContentPage } from '../content/registry'
+import type { ViewLevel } from '../lib/frontmatter'
 import type * as CategoryApiModule from '../lib/api-v2-categories'
 // Type-only, so it erases at runtime and the route still loads lazily, after
 // the mocks below are in place.
@@ -13,7 +14,7 @@ const mocks = vi.hoisted(() => ({
   isVisible: vi.fn(),
   isCategoryVisible: vi.fn(() => true),
   categoryServices: vi.fn(() => [] as ContentPage[]),
-  pageLevel: vi.fn(() => 'public' as const),
+  pageLevel: vi.fn((): ViewLevel => 'public'),
   isSubPage: vi.fn(() => false),
   isStartSubPageVisible: vi.fn(() => true),
   isUrlVisible: vi.fn(() => true),
@@ -436,6 +437,27 @@ describe('$ route loader gating', () => {
     expect(data.availableForms).toEqual([])
     expect(data.underMaintenance).toBe(true)
   })
+
+  it('gates a static page through the overlay a disabled service_status derives (#3125)', async () => {
+    mocks.findPage.mockReturnValue(fakePage)
+    mocks.isVisible.mockReturnValue(false)
+
+    const loader = Route.options.loader as (a: unknown) => Promise<unknown>
+    const err = await loader({
+      params: { _splat: 'secret-service' },
+      context: {
+        level: 'public',
+        serviceStatuses: [['secret-service', 'disabled']],
+        categoryTree: STATIC,
+      },
+    }).catch((e: unknown) => e)
+    expect((err as { isNotFound?: boolean }).isNotFound).toBe(true)
+    expect(mocks.isVisible).toHaveBeenCalledWith(
+      fakePage,
+      'public',
+      new Map([['secret-service', 'preview']]),
+    )
+  })
 })
 
 describe('$ route api_v2 pages (#2944)', () => {
@@ -450,12 +472,16 @@ describe('$ route api_v2 pages (#2944)', () => {
     },
     hideStartLinks: false,
   }
-  const load = (page: typeof v2Page, level = 'public') => {
+  const load = (
+    page: typeof v2Page,
+    level = 'public',
+    serviceStatuses: [string, string][] = [],
+  ) => {
     v2Mocks.getApiV2Page.mockResolvedValue({ kind: 'page', page })
     const loader = Route.options.loader as (a: unknown) => Promise<unknown>
     return loader({
       params: { _splat: page.url },
-      context: { level, serviceStatuses: [], categoryTree: STATIC },
+      context: { level, serviceStatuses, categoryTree: STATIC },
     }).catch((e: unknown) => e) as Promise<Record<string, unknown>>
   }
 
@@ -573,6 +599,39 @@ describe('$ route api_v2 pages (#2944)', () => {
     ])
     const data = await load(v2Page)
     expect(data.underMaintenance).toBe(true)
+  })
+
+  // content_pages.visibility is the only page-level switch in v2 (#3125).
+  it.each(['disabled', 'enabled'])(
+    'ignores a service_status %s row for an api_v2 page (#3125)',
+    async (status) => {
+      // Would hide/demote a static page; must not touch an api_v2 one.
+      mocks.isVisible.mockReturnValue(false)
+      mocks.pageLevel.mockReturnValue('preview')
+      const data = await load(v2Page, 'public', [
+        ['get-birth-certificate', status],
+        ['v2-service', status],
+      ])
+      expect(data).toMatchObject({ kind: 'page', level: 'public' })
+      expect(mocks.isVisible).not.toHaveBeenCalled()
+    },
+  )
+
+  it('applies a form_disabled service_status to an api_v2 page (#3125)', async () => {
+    formMocks.getAvailableForms.mockResolvedValueOnce(['get-birth-certificate'])
+    const data = await load(v2Page, 'public', [
+      ['get-birth-certificate', 'form_disabled'],
+    ])
+    expect(data.availableForms).toEqual([])
+    expect(data.underMaintenance).toBe(true)
+  })
+
+  it('throws notFound for an api_v2 /start step whose form is status-disabled (#3125)', async () => {
+    formMocks.getAvailableForms.mockResolvedValueOnce(['get-birth-certificate'])
+    const err = await load({ ...v2Page, slug: 'v2-service/start' }, 'public', [
+      ['get-birth-certificate', 'form_disabled'],
+    ])
+    expect((err as { isNotFound?: boolean }).isNotFound).toBe(true)
   })
 })
 
