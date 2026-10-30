@@ -90,7 +90,7 @@ import { $writeAtEnd } from "./block-exit";
 import { $blockLines, $pageChoices, $turnPageLines } from "./turn-into";
 import { $rootBlock, type PagePlace } from "./insertion";
 import { OPEN_BLOCK_OPTIONS_COMMAND } from "./block-options";
-import { $isPageContactNode, ContactBlockSettings } from "./modules/contact";
+import { $isPageContactNode, ContactBlockSettings, type PageContactNode } from "./modules/contact";
 import { startWriting } from "./slash-menu";
 import { PageMetadataNode } from "./metadata";
 import { PageComponentNode } from "./nodes";
@@ -285,11 +285,17 @@ function EditablePageControls({ anchor, hintId }: { anchor: HTMLElement; hintId:
       editor.registerCommand(
         OPEN_BLOCK_OPTIONS_COMMAND,
         (key) => {
-          if (!editor.isEditable() || !grip.current) return false;
+          if (!editor.isEditable()) return false;
+
+          // Its root block takes the rail, which renders for it if no pointer or caret has put it anywhere yet; the
+          // block itself, such as a contact inside a notice, stays the menu's subject
+          const root = editor.getEditorState().read(() => $rootBlock($getNodeByKey(key))?.getKey());
+
+          if (!root) return false;
           // Pinned, the menu stays on its block; closing it lets the pointer lead the rail again
           byKeyboard.current = true;
-          pin(key);
-          openBlockMenu(key);
+          pin(root);
+          openBlockMenu(root, key);
 
           return true;
         },
@@ -626,13 +632,17 @@ function BlockMenuRows({ menu, onDone }: { menu: BlockMenu; onDone: () => void }
         ($isRangeSelection(selection) ? $getNodeByKey(selection.anchor.key) : block);
 
       let component: PageComponentNode | null = null;
+      let contact: PageContactNode | null = null;
       const list = $nearestPageList(node);
       let table = $isTableNode(block);
       // Turn into takes a whole text block: its line, a quote's lines or every item in a list
       const lines = block instanceof PageComponentNode ? null : $blockLines(block);
 
       while (node && !$isRootNode(node)) {
-        if (!component && node instanceof PageComponentNode) component = node;
+        // The innermost wins: a contact inside a notice is the contact's to set up
+        if (!component && !contact && $isPageContactNode(node)) contact = node;
+
+        if (!component && !contact && node instanceof PageComponentNode) component = node;
 
         if ($isTableCellNode(node)) table = true;
         node = node.getParent();
@@ -645,7 +655,7 @@ function BlockMenuRows({ menu, onDone }: { menu: BlockMenu; onDone: () => void }
           !!block.getPreviousSibling() && !(block.getPreviousSibling() instanceof PageMetadataNode),
         down: !!block.getNextSibling(),
         turnInto: lines?.length ? $pageChoices(lines) : null,
-        contact: $isPageContactNode(block) ? block.getSettings() : null,
+        contact: contact ? { key: contact.getKey(), settings: contact.getSettings() } : null,
         component: component
           ? {
               key: component.getKey(),
@@ -721,10 +731,12 @@ function BlockMenuRows({ menu, onDone }: { menu: BlockMenu; onDone: () => void }
         // Keep its fields' keys out of menu navigation; Escape still dismisses it.
         <div onKeyDown={(event) => event.key !== "Escape" && event.stopPropagation()}>
           <ContactBlockSettings
-            settings={model.contact}
+            settings={model.contact.settings}
             onChange={(patch) =>
               change((block) => {
-                if ($isPageContactNode(block)) block.setSettings(patch);
+                const node = $pageBlockDescendant(model.contact!.key, block);
+
+                if ($isPageContactNode(node)) node.setSettings(patch);
               }, false)
             }
           />

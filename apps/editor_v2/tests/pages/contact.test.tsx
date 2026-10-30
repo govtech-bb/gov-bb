@@ -302,4 +302,90 @@ describe("the contact block in the editor", () => {
     await act(async () => open!.click());
     expect(openRecord).toHaveBeenCalledWith("contacts", "barbados-drug-service");
   });
+
+  test.each([
+    [":::notice\n" + CONTACT + "\n:::\n"],
+    [':::details{summary="Help"}\n' + CONTACT + "\n:::\n"],
+  ])("inside a notice or details, keeps its own Block options: %s", async (source) => {
+    Element.prototype.scrollIntoView = () => {};
+
+    let editor!: LexicalEditor;
+
+    function Capture() {
+      [editor] = useLexicalComposerContext();
+
+      return null;
+    }
+
+    await renderInPage(
+      <PageCollectionsProvider collections={{ read: async () => CONTACTS }}>
+        <EditorComposer definition={govbbPageEditor} initialState={visual(source)}>
+          <PageEditor />
+          <Capture />
+        </EditorComposer>
+      </PageCollectionsProvider>,
+    );
+    await act(async () => {});
+    await hoverPageMenu(pageControl(".page-contact-block"));
+    await act(async () => {});
+
+    const select = pageControl<HTMLSelectElement>(".page-component-settings select");
+    expect(select.value).toBe("barbados-drug-service");
+    await act(async () => {
+      select.value = "nis-severance-payment-department";
+      select.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    expect(govbbPageCodec.encode(editor.getEditorState().toJSON())).toContain(
+      'record="nis-severance-payment-department"',
+    );
+  });
+
+  test("a saved block with no record opens its Block options from its own button, before any pointer or caret", async () => {
+    Element.prototype.scrollIntoView = () => {};
+
+    await mount(`${CONTACT.replace("barbados-drug-service", "")}\n`, {
+      read: async () => CONTACTS,
+    });
+    expect(document.querySelector(".page-block-rail")).toBeNull();
+
+    const choose = [...pageControl(".page-contact-block").querySelectorAll("button")].find(
+      (button) => button.textContent === "Choose a record",
+    )!;
+
+    await act(async () => {
+      choose.focus();
+      choose.click();
+    });
+    await vi.waitFor(() =>
+      expect(document.activeElement).toBe(pageControl(".page-component-settings select")),
+    );
+  });
+
+  test("shows a record added after the page opened, once Block options list it", async () => {
+    Element.prototype.scrollIntoView = () => {};
+
+    let contacts = CONTACTS;
+    await mount(`${CONTACT}\n`, { read: async () => contacts });
+
+    contacts = {
+      ...CONTACTS,
+      records: [
+        ...CONTACTS.records,
+        {
+          record_key: "new-office",
+          data: { key: "new-office", name: "New Office", phone: "555-0100" },
+        },
+      ],
+    };
+    await hoverPageMenu(pageControl(".page-contact-block"));
+    await act(async () => {});
+
+    const select = pageControl<HTMLSelectElement>(".page-component-settings select");
+    await act(async () => {
+      select.value = "new-office";
+      select.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    await act(async () => {});
+    expect(pageControl(".page-contact-block").textContent).toContain("555-0100");
+  });
 });

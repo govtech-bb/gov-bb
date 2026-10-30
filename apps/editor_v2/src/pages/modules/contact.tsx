@@ -3,7 +3,15 @@ import { contactBlockFor, contactDetails } from "@govtech-bb/block-kit/contact";
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
 import { useLexicalEditable } from "@lexical/react/useLexicalEditable";
 import { DecoratorNode, type LexicalNode, type NodeKey, type SerializedLexicalNode } from "lexical";
-import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useSyncExternalStore,
+  type ReactNode,
+} from "react";
 import { OPEN_BLOCK_OPTIONS_COMMAND } from "../block-options";
 import type { PageHandler, PageModule } from "../definition";
 import { UnsupportedPageContent } from "../markdown";
@@ -38,7 +46,48 @@ export type PageCollections = {
   openRecord?: (collection: string, record: string) => void;
 };
 
-const PageCollectionsContext = createContext<PageCollections | null>(null);
+type CollectionState =
+  | { status: "unavailable" | "loading" | "failed" }
+  | { status: "read"; value: CollectionRecords | null };
+
+/**
+ * The page's latest read of each collection. Every block and Block options showing a collection share it, so a read
+ * made as the options open, which may find a record added since, updates the blocks too.
+ */
+function collectionStore(host: PageCollections) {
+  const states = new Map<string, CollectionState>();
+  const latest = new Map<string, number>();
+  const listeners = new Set<() => void>();
+  let reads = 0;
+
+  return {
+    host,
+    subscribe: (listener: () => void) => {
+      listeners.add(listener);
+
+      return () => listeners.delete(listener);
+    },
+    get: (key: string) => states.get(key),
+    read(key: string) {
+      const read = ++reads;
+      latest.set(key, read);
+
+      const settle = (state: CollectionState) => {
+        // An earlier read answering late never replaces a later one
+        if (latest.get(key) !== read) return;
+        states.set(key, state);
+        listeners.forEach((listener) => listener());
+      };
+
+      host.read(key).then(
+        (value) => settle({ status: "read", value }),
+        () => settle({ status: "failed" }),
+      );
+    },
+  };
+}
+
+const PageCollectionsContext = createContext<ReturnType<typeof collectionStore> | null>(null);
 
 export function PageCollectionsProvider({
   collections,
@@ -47,36 +96,30 @@ export function PageCollectionsProvider({
   collections: PageCollections;
   children: ReactNode;
 }) {
-  return <PageCollectionsContext value={collections}>{children}</PageCollectionsContext>;
+  const store = useMemo(() => collectionStore(collections), [collections]);
+
+  return <PageCollectionsContext value={store}>{children}</PageCollectionsContext>;
 }
 
-export const usePageCollections = () => useContext(PageCollectionsContext);
+export const usePageCollections = () => useContext(PageCollectionsContext)?.host ?? null;
 
-type CollectionState =
-  | { status: "unavailable" | "loading" | "failed" }
-  | { status: "read"; value: CollectionRecords | null };
+const NO_STORE = () => () => {};
 
-/** A collection as the host reads it, read again when the block names another. */
+/** A collection as the host last read it, read again whenever a block or its options showing it appear. */
 export function useCollection(key: string): CollectionState {
-  const host = usePageCollections();
-  const [state, setState] = useState<{ key: string; state: CollectionState }>();
+  const store = useContext(PageCollectionsContext);
+
+  const state = useSyncExternalStore(store?.subscribe ?? NO_STORE, () =>
+    key ? store?.get(key) : undefined,
+  );
 
   useEffect(() => {
-    if (!host || !key) return;
-    let current = true;
-    host.read(key).then(
-      (value) => current && setState({ key, state: { status: "read", value } }),
-      () => current && setState({ key, state: { status: "failed" } }),
-    );
+    if (store && key) store.read(key);
+  }, [store, key]);
 
-    return () => {
-      current = false;
-    };
-  }, [host, key]);
+  if (!store || !key) return { status: "unavailable" };
 
-  if (!host || !key) return { status: "unavailable" };
-
-  return state?.key === key ? state.state : { status: "loading" };
+  return state ?? { status: "loading" };
 }
 
 /** The record a block names, from a read collection; undefined when it has gone. */
