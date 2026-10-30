@@ -8,7 +8,10 @@ import { CATEGORIES } from '../content/categories'
 import { isCategoryVisible } from '../content/registry'
 import type { CategoryTreeResult } from '../lib/api-v2-categories'
 import type { ViewLevel } from '../lib/frontmatter'
-import { publicChatSuggestions } from '../lib/chat-suggestions'
+import {
+  getServedChatSuggestions,
+  publicChatSuggestions,
+} from '../lib/chat-suggestions'
 import { pageHead } from '../lib/page-head'
 import { deriveVisibilityOverlay } from '../lib/service-status'
 
@@ -19,6 +22,12 @@ export const Route = createFileRoute('/')({
       "Access official Barbados government services online — apply for passports, birth certificates, driver's licences, and more at alpha.gov.bb.",
       { path: '/' },
     ),
+  // api_v2 decides which chips show when it is configured (#3245). A failed
+  // call in the browser shows no chips rather than an error page.
+  loader: ({ context }) =>
+    context.categoryTree.kind !== 'disabled'
+      ? getServedChatSuggestions().catch(() => [])
+      : publicChatSuggestions(deriveVisibilityOverlay(context.serviceStatuses)),
   component: Home,
 })
 
@@ -61,7 +70,7 @@ function homeCategories(
 function Home() {
   const { level, serviceStatuses, categoryTree } = Route.useRouteContext()
   const overlay = deriveVisibilityOverlay(serviceStatuses)
-  const questions = publicChatSuggestions(overlay)
+  const questions = Route.useLoaderData()
   const categories = homeCategories(categoryTree, level, overlay)
 
   return (
