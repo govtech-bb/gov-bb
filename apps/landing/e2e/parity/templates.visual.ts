@@ -36,39 +36,61 @@ const TEMPLATES = [
   },
 ]
 
-/** Load a page and screenshot it full length, with load-to-load noise masked. */
-async function shoot(page: Page, url: string) {
+/** Load a page; returns its status and `x-content-source`. */
+async function load(page: Page, url: string) {
   const res = await page.goto(url, { waitUntil: 'networkidle' })
   await page.evaluate(() => document.fonts.ready)
-  const status = res?.status() ?? 0
-  const shot = await page.screenshot({
+  return {
+    status: res?.status() ?? 0,
+    source: res?.headers()['x-content-source'] ?? null,
+  }
+}
+
+const pageHeight = (page: Page) =>
+  page.evaluate(() => document.documentElement.scrollHeight)
+
+/**
+ * Screenshot the page at a given height, with load-to-load noise masked.
+ * Both pages are stretched to the taller one's height first: the
+ * comparator fails any size mismatch outright, which would bypass the
+ * pixel thresholds for a page that's one wrapped line longer.
+ */
+async function shoot(page: Page, height: number) {
+  await page.evaluate((h) => {
+    document.documentElement.style.minHeight = `${h}px`
+  }, height)
+  return page.screenshot({
     fullPage: true,
     animations: 'disabled',
     caret: 'hide',
     mask: [page.locator('time')],
   })
-  return { status, shot }
 }
 
 for (const { name, path } of TEMPLATES) {
-  test(`${name} (${path})`, async ({ page }, testInfo) => {
-    const base = await shoot(page, STATIC + path)
-    const v2 = await shoot(page, V2 + path)
+  test(`${name} (${path})`, async ({ page, context }, testInfo) => {
+    const v2Page = await context.newPage()
+    const base = await load(page, STATIC + path)
+    const v2 = await load(v2Page, V2 + path)
     test.skip(
       base.status === 404 && v2.status === 404,
       `${path} is not public on either host`,
     )
     expect(v2.status, 'api_v2 status').toBe(base.status)
+    // A fallback is static markdown: it would match without testing api_v2.
+    expect(v2.source, 'x-content-source').not.toMatch(
+      /^(api_v2-stale|static-fallback)$/,
+    )
+
+    const height = Math.max(await pageHeight(page), await pageHeight(v2Page))
+    const baseShot = await shoot(page, height)
+    const v2Shot = await shoot(v2Page, height)
 
     // The static screenshot is the expected image for the comparator.
     const file = `${name}.png`
     const baseline = testInfo.snapshotPath(file)
     mkdirSync(dirname(baseline), { recursive: true })
-    writeFileSync(baseline, base.shot)
-    await testInfo.attach('static', {
-      body: base.shot,
-      contentType: 'image/png',
-    })
-    expect(v2.shot).toMatchSnapshot(file)
+    writeFileSync(baseline, baseShot)
+    expect(v2Shot).toMatchSnapshot(file)
   })
 }

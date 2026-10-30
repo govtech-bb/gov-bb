@@ -4,6 +4,7 @@ import {
   normalizeTarget,
   snapshot,
   textSimilarity,
+  unallowedDiffs,
 } from './compare'
 
 const V2 = 'https://v2.example.com/business-trade/x'
@@ -94,13 +95,65 @@ describe('comparePages', () => {
         snapshot(200, null, page('a'), V2),
         snapshot(404, null, '', STATIC),
       ),
-    ).toEqual(expect.arrayContaining(['status: 200 ≠ static 404']))
+    ).toEqual(['status: 200 ≠ static 404'])
   })
 
   it('fails on a different title or description', () => {
     expect(
       compare(page('a', '<title>Y</title>'), page('a', '<title>X</title>')),
     ).toEqual(['title: "Y" ≠ static "X"'])
+  })
+
+  it('still compares the body when the title differs', () => {
+    expect(
+      compare(
+        page('<h2>B</h2>', '<title>Y</title>'),
+        page('<h2>A</h2>', '<title>X</title>'),
+      ),
+    ).toEqual(
+      expect.arrayContaining([
+        'title: "Y" ≠ static "X"',
+        'heading missing: "A"',
+      ]),
+    )
+  })
+
+  it('collapses whitespace in the description', () => {
+    const head = (d: string) =>
+      `<title>X</title><meta property="og:description" content="${d}">`
+    expect(
+      comparePages(
+        snapshot(
+          200,
+          null,
+          `<html><head>${head('One\n  two')}</head></html>`,
+          V2,
+        ),
+        snapshot(
+          200,
+          null,
+          `<html><head>${head('One two')}</head></html>`,
+          STATIC,
+        ),
+      ),
+    ).toEqual([])
+  })
+})
+
+describe('unallowedDiffs', () => {
+  const entry = { path: '/x', reason: 'r', diffs: ['status: 200 ≠ static 404'] }
+
+  it('lets through only the listed differences', () => {
+    expect(unallowedDiffs(['status: 200 ≠ static 404'], entry)).toEqual([])
+    expect(
+      unallowedDiffs(['status: 200 ≠ static 404', 'link missing: "/b"'], entry),
+    ).toEqual(['link missing: "/b"'])
+  })
+
+  it('allows nothing without an entry', () => {
+    expect(unallowedDiffs(['title: "Y" ≠ static "X"'], undefined)).toEqual([
+      'title: "Y" ≠ static "X"',
+    ])
   })
 })
 

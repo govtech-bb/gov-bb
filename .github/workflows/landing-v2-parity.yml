@@ -34,6 +34,9 @@ env:
 jobs:
   wait:
     name: Wait for Amplify build
+    # Only v2-rewrite: from another ref, the shared action would start a
+    # v2-rewrite build of that ref's commit and test the wrong build.
+    if: github.ref == 'refs/heads/v2-rewrite'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:

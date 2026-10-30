@@ -70,13 +70,13 @@ export function snapshot(
     ?.querySelectorAll('script, style, template, noscript')
     .forEach((el) => el.remove())
   const title = document.querySelector('title')?.textContent
+  const description =
+    meta('meta[name="description"]') ?? meta('meta[property="og:description"]')
   return {
     status,
     location: location === null ? null : normalizeTarget(location, pageUrl),
     title: title == null ? null : collapse(title),
-    description:
-      meta('meta[name="description"]') ??
-      meta('meta[property="og:description"]'),
+    description: description === null ? null : collapse(description),
     text: collapse(main?.textContent ?? ''),
     headings: [...(main?.querySelectorAll('h1, h2, h3, h4, h5, h6') ?? [])].map(
       (h) => collapse(h.textContent),
@@ -140,10 +140,10 @@ export function comparePages(v2: PageSnapshot, base: PageSnapshot): string[] {
   }
   exact('status', v2.status, base.status)
   exact('redirect', v2.location, base.location)
-  exact('title', v2.title, base.title)
-  exact('description', v2.description, base.description)
   // A redirect or error page has no content worth comparing.
   if (diffs.length > 0 || v2.status !== 200) return diffs
+  exact('title', v2.title, base.title)
+  exact('description', v2.description, base.description)
 
   const similarity = textSimilarity(v2.text, base.text)
   if (similarity < MIN_TEXT_SIMILARITY)
@@ -158,4 +158,19 @@ export function comparePages(v2: PageSnapshot, base: PageSnapshot): string[] {
       diffs.push(`${field} not in static: ${JSON.stringify(item)}`)
   }
   return diffs
+}
+
+export interface AllowEntry {
+  path: string
+  reason: string
+  /** The exact differences allowed; any other difference still fails. */
+  diffs: string[]
+}
+
+/** The differences on a page that its allowlist entry doesn't cover. */
+export function unallowedDiffs(
+  diffs: string[],
+  entry: AllowEntry | undefined,
+): string[] {
+  return diffs.filter((d) => !entry?.diffs.includes(d))
 }
