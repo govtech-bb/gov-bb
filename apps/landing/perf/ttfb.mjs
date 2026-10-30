@@ -22,7 +22,7 @@ const TARGETS = {
 }
 const OUT_DIR = __ENV.OUT_DIR || '.'
 
-// One URL per template, all public on both hosts. Status is the one the URL
+// At least one URL per template, all public on both hosts. Status is the one the URL
 // must answer with; the redirect isn't followed, so its own TTFB is measured.
 // A wrong status fails the run, so if a page here is unpublished or renamed
 // on either host, swap it for another page of the same template.
@@ -104,6 +104,8 @@ export const options = {
   userAgent: 'govtech-bb-landing-perf/1.0 (k6; #3147)',
 }
 
+const reported = new Set()
+
 export function hit() {
   const target = __ENV.TARGET
   const url = URLS[exec.scenario.iterationInTest % URLS.length]
@@ -115,9 +117,13 @@ export function hit() {
   ttfb[target][url.kind].add(res.timings.waiting)
   if (res.status !== url.status) {
     unexpected[target].add(1)
-    console.error(
-      `${target} ${url.path}: ${res.status}, expected ${url.status}`,
-    )
+    // First mismatch per URL only (per VU), so the log stays readable; the
+    // counter still counts every one.
+    const key = `${target} ${url.path}`
+    if (!reported.has(key)) {
+      reported.add(key)
+      console.error(`${key}: ${res.status}, expected ${url.status}`)
+    }
   }
 }
 
