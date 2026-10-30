@@ -1,4 +1,5 @@
-// Board automation for the Alpha² project (#7). See
+// Board automation for the Platform Team project (#7), and for v2-rewrite
+// issues the Platform Upgrade to Version 2 API project (#28). See
 // docs/superpowers/specs/2026-05-29-board-label-automation-design.md
 import { readFileSync } from "node:fs";
 
@@ -16,10 +17,16 @@ export type Action =
   | { type: "setStatus"; status: Status }
   | { type: "removeLabel"; label: ExclusiveLabel }
   | { type: "assignIfUnassigned"; login: string }
-  | { type: "closeIssue" };
+  | { type: "closeIssue" }
+  | { type: "removeFromBoard" };
+
+export type Board = "platform" | "v2";
 
 export interface IssuePlan {
   issue: number;
+  // Board that ensureOnBoard/setStatus act on; absent means "platform".
+  // removeFromBoard always targets the platform board.
+  board?: Board;
   actions: Action[];
 }
 
@@ -32,6 +39,8 @@ export type SyncInput =
       // Reason an issue was closed: "completed", "not_planned", "duplicate",
       // or absent. Only present on `closed` events.
       stateReason?: string;
+      title?: string;
+      labels?: string[];
     }
   | {
       eventName: "pull_request";
@@ -39,14 +48,62 @@ export type SyncInput =
       merged?: boolean;
       baseRef?: string;
       linkedIssues?: number[];
+      // Linked issues that isExcluded() routes to the v2 board.
+      excludedIssues?: number[];
       // PR author login; absent for bot authors, which we never assign.
       prAuthor?: string;
     };
 
-const MERGE_TARGETS = new Set(["sandbox", "dev"]);
+// Trunk-based: PRs merge into main; sandbox/staging/prod are deploy pointers.
+// v2-rewrite is the long-lived v2 trunk, so merging into it finishes v2 work.
+const MERGE_TARGETS = new Set(["main", "v2-rewrite"]);
 
-/** Pure: maps a normalized event to an ordered per-issue action plan. */
+// v2-rewrite work is tracked on its own project, so it moves there instead.
+const EXCLUDED_LABEL = "v2-rewrite";
+const EXCLUDED_TITLE = /v2[- ]rewrite/i;
+
+export function isExcluded(title: string, labels: string[]): boolean {
+  return EXCLUDED_TITLE.test(title) || labels.includes(EXCLUDED_LABEL);
+}
+
+/**
+ * Pure: maps a normalized event to an ordered per-issue action plan. Excluded
+ * issues get the same plan on the v2 board, and lose any platform-board card.
+ */
 export function decideActions(input: SyncInput): IssuePlan[] {
+  if (
+    input.eventName === "issues" &&
+    input.action === "labeled" &&
+    input.labelName === EXCLUDED_LABEL
+  ) {
+    return [
+      {
+        issue: input.issueNumber,
+        board: "v2",
+        actions: [{ type: "removeFromBoard" }, { type: "ensureOnBoard" }],
+      },
+    ];
+  }
+  const excluded =
+    input.eventName === "issues"
+      ? isExcluded(input.title ?? "", input.labels ?? [])
+        ? [input.issueNumber]
+        : []
+      : (input.excludedIssues ?? []);
+  return planActions(input).map((plan) =>
+    excluded.includes(plan.issue)
+      ? {
+          issue: plan.issue,
+          board: "v2",
+          actions: plan.actions.flatMap((a): Action[] =>
+            a.type === "ensureOnBoard" ? [{ type: "removeFromBoard" }, a] : [a],
+          ),
+        }
+      : plan,
+  );
+}
+
+function planActions(input: SyncInput): IssuePlan[] {
   if (input.eventName === "issues") {
     const issue = input.issueNumber;
     if (input.action === "opened") {
@@ -146,7 +203,7 @@ export function decideActions(input: SyncInput): IssuePlan[] {
 
 const API = "https://api.github.com";
 const PROJECT_OWNER = "govtech-bb";
-const PROJECT_NUMBER = 7;
+const PROJECT_NUMBERS: Record<Board, number> = { platform: 7, v2: 28 };
 
 type FetchFn = typeof fetch;
 
@@ -162,7 +219,7 @@ export async function gql<T>(
     headers: {
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
-      "User-Agent": "alpha2-board-bot",
+      "User-Agent": "platform-board-bot",
     },
     body: JSON.stringify({ query, variables }),
   });
@@ -187,6 +244,7 @@ interface ProjectMeta {
 export async function resolveProjectMeta(
   token: string,
   f: FetchFn = fetch,
+  board: Board = "platform",
 ): Promise<ProjectMeta> {
   const data = await gql<{
     organization: {
@@ -202,7 +260,7 @@ export async function resolveProjectMeta(
         field(name:"Status"){ ... on ProjectV2SingleSelectField { id options { id name } } }
       } }
     }`,
-    { org: PROJECT_OWNER, num: PROJECT_NUMBER },
+    { org: PROJECT_OWNER, num: PROJECT_NUMBERS[board] },
     token,
     f,
   );
@@ -221,20 +279,21 @@ export async function resolveProjectMeta(
       "In progress": byName("In progress"),
       "In review": byName("In review"),
       Done: byName("Done"),
-      Closed: byName("Closed"),
+      // The v2 board has no Closed column; any close lands in Done there.
+      Closed: byName(board === "v2" ? "Done" : "Closed"),
     },
   };
 }
 
-/** Returns the issue's project item id, adding it to the board if missing. */
-async function ensureItem(
+/** Looks up the issue's node id and its item on this board, if any. */
+async function findItem(
   owner: string,
   repo: string,
   issue: number,
-  meta: ProjectMeta,
+  meta: Pick<ProjectMeta, "projectId">,
   token: string,
   f: FetchFn = fetch,
-): Promise<string> {
+): Promise<{ issueId: string; itemId?: string }> {
   const data = await gql<{
     repository: {
       issue: {
@@ -252,17 +311,58 @@ async function ensureItem(
     token,
     f,
   );
-  const existing = data.repository.issue.projectItems.nodes.find(
-    (n) => n.project.id === meta.projectId,
+  return {
+    issueId: data.repository.issue.id,
+    itemId: data.repository.issue.projectItems.nodes.find(
+      (n) => n.project.id === meta.projectId,
+    )?.id,
+  };
+}
+
+/** Returns the issue's project item id, adding it to the board if missing. */
+async function ensureItem(
+  owner: string,
+  repo: string,
+  issue: number,
+  meta: ProjectMeta,
+  token: string,
+  f: FetchFn = fetch,
+): Promise<string> {
+  const { issueId, itemId } = await findItem(
+    owner,
+    repo,
+    issue,
+    meta,
+    token,
+    f,
   );
-  if (existing) return existing.id;
+  if (itemId) return itemId;
   const added = await gql<{ addProjectV2ItemById: { item: { id: string } } }>(
     `mutation($project:ID!,$content:ID!){ addProjectV2ItemById(input:{projectId:$project,contentId:$content}){ item { id } } }`,
-    { project: meta.projectId, content: data.repository.issue.id },
+    { project: meta.projectId, content: issueId },
     token,
     f,
   );
   return added.addProjectV2ItemById.item.id;
+}
+
+/** Deletes the issue's card from this board; a no-op when it has none. */
+export async function removeFromBoard(
+  owner: string,
+  repo: string,
+  issue: number,
+  meta: Pick<ProjectMeta, "projectId">,
+  token: string,
+  f: FetchFn = fetch,
+): Promise<void> {
+  const { itemId } = await findItem(owner, repo, issue, meta, token, f);
+  if (!itemId) return;
+  await gql(
+    `mutation($project:ID!,$item:ID!){ deleteProjectV2Item(input:{projectId:$project,itemId:$item}){ deletedItemId } }`,
+    { project: meta.projectId, item: itemId },
+    token,
+    f,
+  );
 }
 
 async function setStatus(
@@ -299,7 +399,7 @@ async function rest(
     headers: {
       Authorization: `Bearer ${token}`,
       Accept: "application/vnd.github+json",
-      "User-Agent": "alpha2-board-bot",
+      "User-Agent": "platform-board-bot",
       ...(body ? { "Content-Type": "application/json" } : {}),
     },
     body: body ? JSON.stringify(body) : undefined,
@@ -385,8 +485,11 @@ async function apply(
   token: string,
   f: FetchFn = fetch,
 ): Promise<void> {
-  const meta = await resolveProjectMeta(token, f);
+  const metas: Partial<Record<Board, ProjectMeta>> = {};
+  const metaFor = async (board: Board): Promise<ProjectMeta> =>
+    (metas[board] ??= await resolveProjectMeta(token, f, board));
   for (const plan of plans) {
+    const meta = await metaFor(plan.board ?? "platform");
     let itemId: string | undefined;
     for (const action of plan.actions) {
       switch (action.type) {
@@ -414,37 +517,96 @@ async function apply(
         case "closeIssue":
           await closeIssue(owner, repo, plan.issue, token, f);
           break;
+        case "removeFromBoard":
+          await removeFromBoard(
+            owner,
+            repo,
+            plan.issue,
+            await metaFor("platform"),
+            token,
+            f,
+          );
+          break;
       }
     }
     console.log(
-      `#${plan.issue}: ${plan.actions.map((a) => a.type).join(", ")}`,
+      `#${plan.issue} (${plan.board ?? "platform"}): ${plan.actions.map((a) => a.type).join(", ")}`,
     );
   }
 }
 
-/** Reads the closing-keyword issue references for a PR. */
-async function closingIssues(
+const CLOSING_REF =
+  /\b(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?):?\s+#(\d+)\b/gi;
+
+/** Pure: same-repo issue numbers a PR body names with a closing keyword. */
+export function parseClosingRefs(body: string): number[] {
+  return [...new Set([...body.matchAll(CLOSING_REF)].map((m) => +m[1]))];
+}
+
+interface LinkedIssue {
+  number: number;
+  title: string;
+  labels: { nodes: { name: string }[] };
+}
+
+/**
+ * Reads a PR's closing-keyword issue references, flagging excluded ones.
+ * GitHub only links closing keywords on PRs into the default branch, so for
+ * any other base pass `body` and its `Closes #N` refs are read here instead.
+ */
+export async function closingIssues(
   owner: string,
   repo: string,
   pr: number,
+  body: string | undefined,
   token: string,
   f: FetchFn = fetch,
-): Promise<number[]> {
+): Promise<{ linkedIssues: number[]; excludedIssues: number[] }> {
   const data = await gql<{
     repository: {
-      pullRequest: { closingIssuesReferences: { nodes: { number: number }[] } };
+      pullRequest: { closingIssuesReferences: { nodes: LinkedIssue[] } };
     };
   }>(
     `query($owner:String!,$repo:String!,$num:Int!){
-      repository(owner:$owner,name:$repo){ pullRequest(number:$num){ closingIssuesReferences(first:50){ nodes { number } } } }
+      repository(owner:$owner,name:$repo){ pullRequest(number:$num){ closingIssuesReferences(first:50){ nodes { number title labels(first:50){ nodes { name } } } } } }
     }`,
     { owner, repo, num: pr },
     token,
     f,
   );
-  return data.repository.pullRequest.closingIssuesReferences.nodes.map(
-    (n) => n.number,
-  );
+  const nodes = data.repository.pullRequest.closingIssuesReferences.nodes;
+  for (const num of parseClosingRefs(body ?? "")) {
+    if (nodes.some((n) => n.number === num)) continue;
+    try {
+      const found = await gql<{
+        repository: { issueOrPullRequest: Partial<LinkedIssue> | null };
+      }>(
+        `query($owner:String!,$repo:String!,$num:Int!){
+          repository(owner:$owner,name:$repo){ issueOrPullRequest(number:$num){ ... on Issue { number title labels(first:50){ nodes { name } } } } }
+        }`,
+        { owner, repo, num },
+        token,
+        f,
+      );
+      // A PR number resolves to an empty object (no Issue fragment match).
+      const issue = found.repository.issueOrPullRequest;
+      if (issue?.number) nodes.push(issue as LinkedIssue);
+    } catch (err) {
+      // A typo'd ref shouldn't sink the run for the real ones.
+      console.log(`Skipping #${num}: ${(err as Error).message}`);
+    }
+  }
+  return {
+    linkedIssues: nodes.map((n) => n.number),
+    excludedIssues: nodes
+      .filter((n) =>
+        isExcluded(
+          n.title,
+          n.labels.nodes.map((l) => l.name),
+        ),
+      )
+      .map((n) => n.number),
+  };
 }
 
 async function main(): Promise<void> {
@@ -473,16 +635,25 @@ async function main(): Promise<void> {
       issueNumber: payload.issue.number,
       labelName: payload.label?.name,
       stateReason: payload.issue.state_reason,
+      title: payload.issue.title,
+      labels: payload.issue.labels.map((l: { name: string }) => l.name),
     };
   } else {
     const pr = payload.pull_request;
-    const linkedIssues = await closingIssues(owner, repo, pr.number, token);
+    const { linkedIssues, excludedIssues } = await closingIssues(
+      owner,
+      repo,
+      pr.number,
+      pr.base.ref === payload.repository.default_branch ? undefined : pr.body,
+      token,
+    );
     input = {
       eventName,
       action: payload.action,
       merged: pr.merged,
       baseRef: pr.base.ref,
       linkedIssues,
+      excludedIssues,
       prAuthor: pr.user?.type === "Bot" ? undefined : pr.user?.login,
     };
   }

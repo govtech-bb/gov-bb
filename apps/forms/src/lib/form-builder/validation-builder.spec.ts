@@ -16,9 +16,16 @@
 import {
   buildValidation,
   buildFieldValidationProperties,
+  collectStepErrorCodes,
   stepPassesValidation,
 } from "./validation-builder";
 import { locatingPlace } from "../api/geocode";
+import {
+  setUploadBlock,
+  UPLOAD_IN_PROGRESS_MESSAGE,
+  UPLOAD_NOT_ADDED_MESSAGE,
+  UPLOAD_REFUSED_MESSAGE,
+} from "../api/files";
 import type {
   ClientFormStep,
   ClientServiceContract,
@@ -1012,5 +1019,75 @@ describe("stepPassesValidation", () => {
     expect(
       stepPassesValidation(repeatable, makeFormApi({ step1_hasJob: "yes" })),
     ).toBe(true);
+  });
+});
+
+// A file not yet added — still uploading, or refused — stops Continue with a
+// reason, instead of being lost or slipping past on an optional field (#2940).
+describe("file field with an upload that is not added yet", () => {
+  const fileField = (validations: ClientPrimitive["validations"] = {}) =>
+    makeField("proof", "docs", { htmlType: "file", validations });
+
+  const noRules = makeField("proof", "docs", {
+    htmlType: "file",
+    validations: undefined,
+  });
+
+  afterEach(() => setUploadBlock("docs_proof", undefined));
+
+  // The widget records a code; the field shows that code's message.
+  const blocks = [
+    ["uploadInProgress", UPLOAD_IN_PROGRESS_MESSAGE],
+    ["uploadNotAdded", UPLOAD_NOT_ADDED_MESSAGE],
+    ["uploadRefused", UPLOAD_REFUSED_MESSAGE],
+  ] as const;
+
+  it.each(blocks)("fails an optional field for %s with %j", (code, message) => {
+    const { onDynamic } = buildFieldValidationProperties(fileField());
+    setUploadBlock("docs_proof", code);
+
+    expect(onDynamic!({ value: null, fieldApi: makeFieldApi() })).toEqual([
+      message,
+    ]);
+  });
+
+  // "Wait for it" is more useful than "this field is required" while the file
+  // the person picked is still on its way.
+  it("puts the upload reason before the field's own rules", () => {
+    const { onDynamic } = buildFieldValidationProperties(
+      fileField({ required: { value: true, error: "Upload the proof" } }),
+    );
+    setUploadBlock("docs_proof", "uploadInProgress");
+
+    expect(onDynamic!({ value: null, fieldApi: makeFieldApi() })).toEqual([
+      UPLOAD_IN_PROGRESS_MESSAGE,
+    ]);
+  });
+
+  // The `form-validation-error` event reports why Continue was refused; an
+  // upload block is a reason too, even on a field with no rules of its own.
+  // The code is the one the widget recorded, not read back from the message.
+  it.each(blocks)("reports %s to analytics", (code) => {
+    setUploadBlock("docs_proof", code);
+
+    expect(collectStepErrorCodes([noRules], {})).toEqual([
+      { fieldId: "proof", codes: [code] },
+    ]);
+  });
+
+  it("reports nothing to analytics once nothing is blocking", () => {
+    expect(collectStepErrorCodes([noRules], {})).toEqual([]);
+  });
+
+  it("falls back to the field's own rules once nothing is blocking", () => {
+    const { onDynamic } = buildFieldValidationProperties(
+      fileField({ required: { value: true, error: "Upload the proof" } }),
+    );
+    setUploadBlock("docs_proof", "uploadInProgress");
+    setUploadBlock("docs_proof", undefined);
+
+    expect(onDynamic!({ value: null, fieldApi: makeFieldApi() })).toEqual([
+      "Upload the proof",
+    ]);
   });
 });

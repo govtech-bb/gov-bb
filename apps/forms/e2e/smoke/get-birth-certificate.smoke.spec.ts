@@ -28,8 +28,8 @@
  *    `stepConditionalOn` (value "no") steps — `relationship-to-person` and
  *    `person-details` — HIDDEN, so the applicant IS the person and we never
  *    fill the relationship select, the person name fields, or the NIS branch.
- *  - `person-is-deceased` = "no" keeps the conditional `person-death-date`
- *    (components/date) hidden.
+ *  - The `person-deceased` step is also `stepConditionalOn` "no", so it is
+ *    hidden on this branch too.
  *  - `birth-date-of-birth` (components/date-of-birth) is a three-part
  *    day/month/year widget and must be in the past.
  *  - `parents` step: father names are optional; `mother-first-name` and
@@ -42,8 +42,8 @@
  *    is `declaration_declaration-confirmed`. The hidden
  *    `declaration-date` field needs no interaction.
  *  - Confirmation: the `submission-confirmation` step's `title` ("Application
- *    submitted") is the h1; it sets no `description`, so the subheading falls
- *    back to the helper default "Your submission has been saved" — omitted here.
+ *    submitted") is the h1. Under it: "Your submission has been saved" when
+ *    the smoke token drops the payment, else "Complete your payment" (EZ Pay).
  */
 import { faker } from "@faker-js/faker";
 import { test } from "@playwright/test";
@@ -63,18 +63,7 @@ import {
 const FORM_ID = "get-birth-certificate";
 
 test.describe("Get a Birth Certificate — Live Smoke", () => {
-  // PARKED (test.fixme) — and intentionally NOT wired into deploy-sandbox.yml.
-  //
-  // The deployed form is a payment form (v1.3.0, EZ Pay $5/copy). The
-  // submission SUCCEEDS — `POST /submissions` returns 200 with a real
-  // referenceCode (GBC-…), `status: pending_payment` and a `meta.deferred`
-  // EZ Pay paymentUrl — but the deployed `submission-confirmation` screen then
-  // renders the generic error state ("Something went wrong — We could not
-  // process your submission…") instead of the EZ Pay redirect / success
-  // heading. This is the same deployed-app payment-confirmation bug as
-  // get-death-certificate, tracked in #919 (not a spec defect). Un-fixme this
-  // and re-add its smoke-test job once the payment-confirmation flow is fixed.
-  test.fixme("submits the real form end-to-end and reaches the confirmation screen", async ({
+  test("submits the real form end-to-end and reaches the confirmation screen", async ({
     page,
   }) => {
     await openSmokeForm(page, FORM_ID);
@@ -121,11 +110,6 @@ test.describe("Get a Birth Certificate — Live Smoke", () => {
     );
     await advance(page, step);
 
-    // ─── Is the person deceased? "No" → death-date stays hidden. ──────────────
-    step = expectStep(page, "person-deceased", { exact: true });
-    await selectRadio(page, step, "person-is-deceased", "no");
-    await advance(page, step);
-
     // ─── Birth details ───────────────────────────────────────────────────────
     step = expectStep(page, "birth-details", { exact: true });
     await fillDate(page, step, "birth-date-of-birth", 15, 6, 1990);
@@ -160,8 +144,11 @@ test.describe("Get a Birth Certificate — Live Smoke", () => {
       .check();
 
     // ─── Submit + Submission Confirmation ────────────────────────────────────
+    // With SMOKE_SUBMISSION_TOKEN the API drops the EZ Pay payment and the page
+    // reads "saved"; without it the form is payment-gated and offers EZ Pay.
     await submitAndConfirm(page, {
       heading: "Application submitted",
+      subheading: /Your submission has been saved|Complete your payment/,
     });
   });
 });

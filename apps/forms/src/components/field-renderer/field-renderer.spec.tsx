@@ -43,6 +43,7 @@ const mockFieldApi = {
   },
   handleBlur: vi.fn(),
   handleChange: vi.fn(),
+  validate: vi.fn(),
 };
 
 const mockForm = {
@@ -1716,6 +1717,52 @@ describe("FieldRenderer", () => {
       const legend = container.querySelector(".govbb-fieldset__legend");
       expect(legend).toBeTruthy();
       expect(legend).not.toHaveClass("govbb-visually-hidden");
+    });
+  });
+
+  // The upload widget reports when its Continue block changes; a field already
+  // showing an error is re-judged so "Wait for your file…" clears (#2940).
+  describe("file field re-judging its error as uploads change", () => {
+    const fileField = primitive("file", {
+      validations: { fileTypes: { value: [".pdf"], error: "Upload a PDF" } },
+    });
+
+    // Picking a file starts an upload, which changes the block.
+    const pickFile = async (container: HTMLElement) => {
+      vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("offline"));
+      const input = container.querySelector(
+        ".govbb-file-upload__input",
+      ) as HTMLInputElement;
+      await userEvent.upload(
+        input,
+        new File(["x"], "a.pdf", { type: "application/pdf" }),
+      );
+    };
+
+    afterEach(() => vi.restoreAllMocks());
+
+    it("re-validates a field that is showing an error", async () => {
+      mockState = { value: null, meta: { isValid: false, errors: ["x"] } };
+      const { container } = renderField(fileField);
+      await pickFile(container);
+      expect(mockFieldApi.validate).toHaveBeenCalledWith("submit");
+    });
+
+    // The form sends the person back here with the server's refusal (an unsafe
+    // file) on the field; re-judging on arrival would wipe it.
+    it("doesn't re-validate an error on arrival, before any upload changes", () => {
+      mockState = { value: null, meta: { isValid: false, errors: ["x"] } };
+      mockFieldApi.validate.mockClear();
+      renderField(fileField);
+      expect(mockFieldApi.validate).not.toHaveBeenCalled();
+    });
+
+    it("leaves a field with no error alone, so nothing shows before Continue", async () => {
+      mockState = { value: null, meta: { isValid: true, errors: [] } };
+      mockFieldApi.validate.mockClear();
+      const { container } = renderField(fileField);
+      await pickFile(container);
+      expect(mockFieldApi.validate).not.toHaveBeenCalled();
     });
   });
 });

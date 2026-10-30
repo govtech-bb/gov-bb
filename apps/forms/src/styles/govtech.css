@@ -353,7 +353,6 @@
   /* One consistent gap between every confirmation block, both variants. */
   .form-page__reference,
   .govbb-payment,
-  .form-page__printed-answers,
   .form-page__markdown-content,
   .form-page__contact {
     margin-top: var(--govbb-space-m) !important;
@@ -372,6 +371,13 @@
   .govbb-payment__row,
   .form-page__printed-answers-section {
     break-inside: avoid;
+  }
+
+  /* The answers follow the confirmation on their own page (#3041), so page 1
+     is the whole receipt. Their parent, form-page__confirmation, is flattened
+     to block flow above — Chrome ignores this on a flex child. */
+  .form-page__printed-answers {
+    break-before: page;
   }
 }
 
@@ -456,4 +462,98 @@
   background: none;
   border: 0;
   cursor: pointer;
+}
+
+/* Upload rows that are not a form value yet (#2940). The package styles only
+   the name and the row, so these are the app's: Cancel/Retry/Remove sit on
+   the name's line, and the status wraps onto its own full-width line so the
+   bar never squeezes between the text and the buttons. A tighter row gap
+   keeps the status with its file name. */
+.govbb-file-upload__item--pending {
+  row-gap: var(--govbb-space-xs);
+}
+
+.govbb-file-upload__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--govbb-space-s);
+}
+
+.govbb-file-upload__status {
+  display: flex;
+  flex-basis: 100%;
+  flex-direction: column;
+  gap: var(--govbb-space-xxs);
+  font-size: var(--govbb-font-size-body-sm);
+  line-height: var(--govbb-line-height-base);
+  color: var(--govbb-color-muted);
+}
+
+.govbb-file-upload__status--error {
+  color: var(--govbb-color-error);
+}
+
+/* Native <progress> paints in the browser's own blue or system accent. Draw
+   it in the interactive teal instead, on a white track outlined in the muted
+   grey so it stands out from the row's pale blue (teal on white is well over
+   the 3:1 WCAG 1.4.11 needs). */
+.govbb-file-upload__progress {
+  appearance: none;
+  width: 100%;
+  height: var(--govbb-space-xs);
+  overflow: hidden;
+  color: var(--govbb-color-interactive);
+  background: var(--govbb-color-surface);
+  border: 1px solid var(--govbb-color-muted);
+  border-radius: var(--govbb-radius);
+}
+
+.govbb-file-upload__progress::-webkit-progress-bar {
+  background: var(--govbb-color-surface);
+}
+
+.govbb-file-upload__progress::-webkit-progress-value {
+  background: var(--govbb-color-interactive);
+  transition: width 0.2s;
+}
+
+.govbb-file-upload__progress::-moz-progress-bar {
+  background: var(--govbb-color-interactive);
+}
+
+/* The scan reports no percentage, so the checking bar has no value: a teal
+   band slides along the track instead of standing still at 0. */
+.govbb-file-upload__progress:indeterminate {
+  background: linear-gradient(
+      var(--govbb-color-interactive),
+      var(--govbb-color-interactive)
+    )
+    no-repeat var(--govbb-color-surface);
+  background-size: 30% 100%;
+  animation: govbb-file-upload-checking 1.2s ease-in-out infinite alternate;
+}
+
+.govbb-file-upload__progress:indeterminate::-webkit-progress-bar {
+  background: transparent;
+}
+
+.govbb-file-upload__progress:indeterminate::-moz-progress-bar {
+  background: transparent;
+}
+
+@keyframes govbb-file-upload-checking {
+  from {
+    background-position: 0 0;
+  }
+  to {
+    background-position: 100% 0;
+  }
+}
+
+/* Without motion the band sits still; "Checking your file" carries the
+   meaning on its own. */
+@media (prefers-reduced-motion: reduce) {
+  .govbb-file-upload__progress:indeterminate {
+    animation: none;
+  }
 }

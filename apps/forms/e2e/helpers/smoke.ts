@@ -423,8 +423,9 @@ type UploadFile = { name: string; mimeType: string; buffer: Buffer };
 
 /**
  * The upload's three requests, in the order the widget makes them
- * (apps/forms/src/lib/api/files.ts `uploadFile`): presign, the PUT of the file
- * to storage (S3, at a presigned URL), then confirm. `label` names each one in
+ * (apps/forms/src/lib/api/files.ts `sendFile`, then `checkFile`): presign, the
+ * PUT of the file to storage (S3, at a presigned URL), then confirm. Confirm
+ * may repeat while the malware scan is pending; the first one is watched. `label` names each one in
  * a failure message; the storage request is never named by its URL, which
  * carries the presigned signature.
  */
@@ -485,12 +486,15 @@ function watchStage(
   return outcome;
 }
 
-/** Throw a message naming the stage, the file and what went wrong. */
+/**
+ * The stage's response, or throw a message naming the stage, the file and
+ * what went wrong.
+ */
 async function expectStageOk(
   pending: Promise<{ response: Response } | { failure: string }>,
   stage: UploadStage,
   fileName: string,
-): Promise<void> {
+): Promise<Response> {
   let outcome: { response: Response } | { failure: string };
   try {
     outcome = await pending;
@@ -514,7 +518,7 @@ async function expectStageOk(
     );
   }
   const { response } = outcome;
-  if (response.ok()) return;
+  if (response.ok()) return response;
   const body = stage.showBody
     ? (await response.text().catch(() => "")).slice(0, 300)
     : "";
@@ -525,13 +529,32 @@ async function expectStageOk(
 }
 
 /**
+ * Throw if confirm-upload says the malware scan refused the file (#2940), so
+ * the failure names the verdict rather than timing out on a missing row.
+ * `pending` is fine here: the widget asks again until the scan finishes.
+ */
+async function expectNotRefused(confirm: Response, fileName: string) {
+  const body = (await confirm.json().catch(() => ({}))) as {
+    data?: { scanStatus?: string };
+  };
+  const verdict = body.data?.scanStatus;
+  if (verdict === "infected" || verdict === "unscannable") {
+    throw new Error(
+      `POST /files/confirm-upload says ${fileName} is ${verdict} (scanStatus); the widget will not add it`,
+    );
+  }
+}
+
+/**
  * Set one file on an upload input and wait until it is CONFIRMED (#2423).
  * Each of the upload's requests is watched before the file is set, so a
  * throttled, rejected or dropped request fails at once naming the request and
  * its status or network error (a 429 on confirm-upload, a 5xx on presign, a
  * 403 from storage, a refused connection) instead of timing out on a
- * "Remove {name}" button that never appears. That button is still the final
- * check: it only renders once the value has committed (see uploadOne).
+ * "Remove {name}" button that never appears. That button, in an added row, is
+ * still the final check: it only renders there once the value has committed
+ * (see uploadOne). A refused file's row has a Remove button too, so the
+ * locator skips the in-progress/refused rows (`--pending`).
  */
 async function uploadAndConfirm(
   page: Page,
@@ -540,11 +563,17 @@ async function uploadAndConfirm(
 ): Promise<void> {
   const watches = UPLOAD_STAGES.map((stage) => watchStage(page, stage));
   await input.setInputFiles(file);
+  let confirm: Response | undefined;
   for (const [i, stage] of UPLOAD_STAGES.entries()) {
-    await expectStageOk(watches[i], stage, file.name);
+    confirm = await expectStageOk(watches[i], stage, file.name);
   }
+  if (confirm) await expectNotRefused(confirm, file.name);
   await expect(
-    page.getByRole("button", { name: `Remove ${file.name}` }),
+    page
+      .locator(
+        ".govbb-file-upload__item:not(.govbb-file-upload__item--pending)",
+      )
+      .getByRole("button", { name: `Remove ${file.name}` }),
   ).toBeVisible({ timeout: UPLOAD_TIMEOUT });
 }
 
@@ -553,8 +582,8 @@ async function uploadAndConfirm(
  * CONFIRMED, not merely pending. The component renders a file's name for both
  * the "Uploading…" pending row and the confirmed row, so waiting on the name
  * alone can resolve before `confirm-upload` commits the value (and advancing
- * then trips minItems validation). The per-file "Remove {name}" button only
- * renders for a confirmed file, so wait on that instead.
+ * then trips minItems validation). The "Remove {name}" button in an added
+ * (non-pending) row only renders for a confirmed, clean file, so wait on that.
  */
 export async function uploadOne(
   page: Page,

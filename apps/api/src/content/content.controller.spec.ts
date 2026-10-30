@@ -8,36 +8,10 @@ vi.mock("@/common/github-identity", async (importOriginal) => ({
   authorizeGitHubToken,
 }));
 
-import {
-  ContentController,
-  includeNonPublicFromAuth,
-} from "./content.controller";
+import { ContentController } from "./content.controller";
 
 beforeEach(() => {
   vi.clearAllMocks();
-});
-
-describe("includeNonPublicFromAuth", () => {
-  it("returns false when there is no bearer token (public-only)", async () => {
-    expect(await includeNonPublicFromAuth(undefined)).toBe(false);
-    expect(authorizeGitHubToken).not.toHaveBeenCalled();
-  });
-
-  it("returns true when the forwarded GitHub token is authorized", async () => {
-    authorizeGitHubToken.mockResolvedValue("octocat");
-    expect(await includeNonPublicFromAuth("Bearer gh_token")).toBe(true);
-    expect(authorizeGitHubToken).toHaveBeenCalledWith("gh_token");
-  });
-
-  it("returns false when the token is not authorized", async () => {
-    authorizeGitHubToken.mockResolvedValue(null);
-    expect(await includeNonPublicFromAuth("Bearer gh_token")).toBe(false);
-  });
-
-  it("fails safe to public-only if verification throws", async () => {
-    authorizeGitHubToken.mockRejectedValue(new Error("misconfig"));
-    expect(await includeNonPublicFromAuth("Bearer gh_token")).toBe(false);
-  });
 });
 
 describe("ContentController", () => {

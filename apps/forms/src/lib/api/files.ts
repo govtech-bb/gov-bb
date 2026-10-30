@@ -1,13 +1,5 @@
 import type { UploadedFile } from "@forms/types";
-import { requireEnv } from "../../config/env";
-
-// Same resolution as the forms API client: required in production, defaults to
-// localhost only in dev (#1366). Vite injects VITE_API_URL at build.
-const API_URL = requireEnv(
-  import.meta.env.VITE_API_URL,
-  "VITE_API_URL",
-  "http://localhost:3001",
-);
+import { API_URL } from "../../config/api";
 
 export interface PresignUploadRequest {
   formId: string;
@@ -34,7 +26,18 @@ export interface ConfirmUploadRequest {
 
 export type UploadStage = "presign" | "put" | "confirm";
 
-/** Raised when any step of the upload flow fails; `stage` says which one. */
+/**
+ * What the person sees when any part of the upload fails: a network drop, a
+ * 5xx, a 429. It never names the stage — "File upload failed (presign)" meant
+ * nothing to a citizen (#2422) — and the widget offers Retry next to it.
+ */
+export const UPLOAD_PROBLEM_MESSAGE =
+  "We had a problem uploading your file. Try again.";
+
+/**
+ * Raised when any step of the upload flow fails, or is cancelled. The message
+ * is always UPLOAD_PROBLEM_MESSAGE; `stage` names the step, for debugging.
+ */
 export class FileUploadError extends Error {
   constructor(
     message: string,
@@ -45,12 +48,20 @@ export class FileUploadError extends Error {
   }
 }
 
+/**
+ * How long presign or confirm may take before we give up. Confirm waits up to
+ * 4s server-side for the scan tag, so this leaves a wide margin; without it a
+ * stalled request would leave a row "Checking your file" forever (#2940).
+ */
+export const REQUEST_TIMEOUT_MS = 30_000;
+
 async function postJson<T>(
   endpoint: string,
   body: unknown,
   stage: UploadStage,
   previewToken?: string,
   draftToken?: string,
+  signal?: AbortSignal,
 ): Promise<T> {
   // Forward the recipe token(s) as headers (never in the body — the API runs
   // forbidNonWhitelisted) so presign/confirm resolve the file field's config
@@ -62,10 +73,20 @@ async function postJson<T>(
     ...(previewToken ? { "X-Recipe-Preview": previewToken } : {}),
     ...(draftToken ? { "X-Recipe-Draft": draftToken } : {}),
   };
-  let response: Response;
+  // Ends the request on the timeout or when the caller cancels (Remove, or the
+  // field leaving the page). Built by hand: AbortSignal.any is too new for
+  // some of the browsers citizens use.
+  const stop = new AbortController();
+  const timer = setTimeout(() => stop.abort(), REQUEST_TIMEOUT_MS);
+  const cancel = () => stop.abort();
+  signal?.addEventListener("abort", cancel);
+  if (signal?.aborted) stop.abort();
+  // The timer stays on until the body is read: headers can arrive and the
+  // body stall, which would otherwise leave the row checking for good.
   try {
-    response = await fetch(`${API_URL}${endpoint}`, {
+    const response = await fetch(`${API_URL}${endpoint}`, {
       method: "POST",
+      signal: stop.signal,
       headers,
       body: JSON.stringify(body),
       // Attach the cross-app shared `preview` cookie so presign/confirm resolve
@@ -74,27 +95,23 @@ async function postJson<T>(
       // CORS allows credentials and it's harmless on the normal citizen flow.
       credentials: "include",
     });
+    if (!response.ok) throw new Error(response.statusText);
+    // The API wraps payloads as { status, message, data, ... }.
+    const json = (await response.json()) as { data: T };
+    return json.data;
   } catch {
-    throw new FileUploadError(
-      "Unable to reach the server. Please check your connection and try again.",
-      stage,
-    );
+    throw new FileUploadError(UPLOAD_PROBLEM_MESSAGE, stage);
+  } finally {
+    clearTimeout(timer);
+    signal?.removeEventListener("abort", cancel);
   }
-  if (!response.ok) {
-    throw new FileUploadError(
-      `File upload failed (${stage}). Please try again.`,
-      stage,
-    );
-  }
-  // The API wraps payloads as { status, message, data, ... }.
-  const json = (await response.json()) as { data: T };
-  return json.data;
 }
 
 export const presignUpload = (
   req: PresignUploadRequest,
   previewToken?: string,
   draftToken?: string,
+  signal?: AbortSignal,
 ): Promise<PresignUploadResponse> =>
   postJson<PresignUploadResponse>(
     "/files/presign-upload",
@@ -102,12 +119,14 @@ export const presignUpload = (
     "presign",
     previewToken,
     draftToken,
+    signal,
   );
 
 export const confirmUpload = (
   req: ConfirmUploadRequest,
   previewToken?: string,
   draftToken?: string,
+  signal?: AbortSignal,
 ): Promise<UploadedFile> =>
   postJson<UploadedFile>(
     "/files/confirm-upload",
@@ -115,6 +134,7 @@ export const confirmUpload = (
     "confirm",
     previewToken,
     draftToken,
+    signal,
   );
 
 /**
@@ -131,32 +151,46 @@ export const confirmUpload = (
 const resolveContentType = (file: File): string =>
   file.type || "application/octet-stream";
 
-export const putFileToS3 = async (
+/**
+ * PUTs the file to its presigned S3 URL. Uses XMLHttpRequest rather than fetch
+ * because only XHR reports upload progress (`upload.onprogress`), which drives
+ * the progress bar (#2940). `onProgress` gets the fraction sent, 0 to 1.
+ * No timeout: a large file on a slow connection can rightly take minutes, so a
+ * stalled upload is ended by the person (Remove) through `signal`.
+ */
+export const putFileToS3 = (
   uploadUrl: string,
   file: File,
-): Promise<void> => {
-  let response: Response;
-  try {
-    response = await fetch(uploadUrl, {
-      method: "PUT",
-      // Must match the contentType sent at presign time — S3 signs it, so a
-      // mismatch fails the PUT with SignatureDoesNotMatch.
-      headers: { "Content-Type": resolveContentType(file) },
-      body: file,
-    });
-  } catch {
-    throw new FileUploadError(
-      "Unable to upload the file. Please check your connection and try again.",
-      "put",
-    );
-  }
-  if (!response.ok) {
-    throw new FileUploadError(
-      `File upload failed (${response.status}). Please try again.`,
-      "put",
-    );
-  }
-};
+  onProgress?: (fraction: number) => void,
+  signal?: AbortSignal,
+): Promise<void> =>
+  new Promise((resolve, reject) => {
+    const failed = () =>
+      reject(new FileUploadError(UPLOAD_PROBLEM_MESSAGE, "put"));
+    // A cancel can land while presign's body is read, so the signal may
+    // already be aborted; its abort event won't fire again, so check first.
+    if (signal?.aborted) {
+      failed();
+      return;
+    }
+    const xhr = new XMLHttpRequest();
+    xhr.open("PUT", uploadUrl);
+    // Must match the contentType sent at presign time — S3 signs it, so a
+    // mismatch fails the PUT with SignatureDoesNotMatch.
+    xhr.setRequestHeader("Content-Type", resolveContentType(file));
+    if (onProgress) {
+      xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable) onProgress(e.loaded / e.total);
+      };
+    }
+    xhr.onload = () =>
+      xhr.status >= 200 && xhr.status < 300 ? resolve() : failed();
+    xhr.onerror = failed;
+    xhr.onabort = failed;
+    xhr.ontimeout = failed;
+    signal?.addEventListener("abort", () => xhr.abort(), { once: true });
+    xhr.send(file);
+  });
 
 export interface UploadFileParams {
   file: File;
@@ -173,21 +207,27 @@ export interface UploadFileParams {
    * field's config resolves against the in-progress draft during review (#1682).
    */
   draftToken?: string;
+  /** Called with the fraction of the file sent to S3, 0 to 1. */
+  onProgress?: (fraction: number) => void;
+  /** Cancels the run: Remove on an in-progress row, or the field unmounting. */
+  signal?: AbortSignal;
 }
 
 /**
- * Runs the full upload flow for a single file:
- *   presign → PUT to S3 → confirm.
- * Returns the confirmed reference to store in form state / the submission.
+ * Sends one file to storage: presign → PUT to S3. Returns the object key,
+ * which `checkFile` then confirms. Kept apart from the check so Retry after a
+ * scan that took too long only re-checks, without uploading again.
  */
-export const uploadFile = async ({
+export const sendFile = async ({
   file,
   formId,
   stepId,
   fieldId,
   previewToken,
   draftToken,
-}: UploadFileParams): Promise<UploadedFile> => {
+  onProgress,
+  signal,
+}: UploadFileParams): Promise<string> => {
   const presign = await presignUpload(
     {
       formId,
@@ -199,18 +239,115 @@ export const uploadFile = async ({
     },
     previewToken,
     draftToken,
+    signal,
   );
 
-  await putFileToS3(presign.uploadUrl, file);
+  await putFileToS3(presign.uploadUrl, file, onProgress, signal);
+  return presign.key;
+};
 
-  return confirmUpload(
-    {
-      key: presign.key,
-      formId,
-      stepId,
-      fieldId,
-    },
-    previewToken,
-    draftToken,
-  );
+/** How long to wait between asking again about a file still being scanned. */
+export const SCAN_RECHECK_INTERVAL_MS = 3_000;
+/**
+ * How long a file may stay `pending` before the widget says checking took too
+ * long. Matches CaMS (#2940). Each confirm-upload call itself waits up to 4s
+ * for the tag, so this is about three calls against a live API.
+ */
+export const SCAN_RECHECK_BUDGET_MS = 20_000;
+
+export type CheckFileParams = Omit<UploadFileParams, "file" | "onProgress"> & {
+  key: string;
+};
+
+/** Waits `ms`, or less when the caller cancels in the meantime. */
+const wait = (ms: number, signal?: AbortSignal) =>
+  new Promise<void>((resolve) => {
+    // Whichever ends the wait, the timer or a cancel, clears the other, so no
+    // listener piles up on the run's signal across re-checks.
+    const done = () => {
+      clearTimeout(timer);
+      signal?.removeEventListener("abort", done);
+      resolve();
+    };
+    const timer = setTimeout(done, ms);
+    signal?.addEventListener("abort", done, { once: true });
+  });
+
+/**
+ * Confirms an uploaded file and returns it with its scan verdict. While the
+ * verdict is `pending` it asks again every SCAN_RECHECK_INTERVAL_MS, and
+ * returns "timeout" rather than ask past SCAN_RECHECK_BUDGET_MS.
+ */
+export const checkFile = async ({
+  key,
+  formId,
+  stepId,
+  fieldId,
+  previewToken,
+  draftToken,
+  signal,
+}: CheckFileParams): Promise<UploadedFile | "timeout"> => {
+  const deadline = Date.now() + SCAN_RECHECK_BUDGET_MS;
+  for (;;) {
+    const file = await confirmUpload(
+      { key, formId, stepId, fieldId },
+      previewToken,
+      draftToken,
+      signal,
+    );
+    if (file.scanStatus !== "pending") return file;
+    if (Date.now() + SCAN_RECHECK_INTERVAL_MS > deadline) return "timeout";
+    await wait(SCAN_RECHECK_INTERVAL_MS, signal);
+    if (signal?.aborted) {
+      throw new FileUploadError(UPLOAD_PROBLEM_MESSAGE, "confirm");
+    }
+  }
+};
+
+// Wording approved by content design on #2940.
+/** Continue pressed while a file on the field is still uploading or checking. */
+export const UPLOAD_IN_PROGRESS_MESSAGE = "Wait until your file is ready.";
+/** Continue pressed while a file that can be retried is still on the field. */
+export const UPLOAD_NOT_ADDED_MESSAGE = "Remove the file or try again.";
+/** Continue pressed while only Remove can clear a file (unsafe, couldn't check). */
+export const UPLOAD_REFUSED_MESSAGE = "Remove the file that could not be added";
+
+/**
+ * Why Continue must wait for a file field. The code is what analytics reports
+ * (`form-validation-error`); the person sees its message.
+ */
+export type UploadBlockCode =
+  | "uploadInProgress"
+  | "uploadNotAdded"
+  | "uploadRefused";
+
+const UPLOAD_BLOCK_MESSAGES: Record<UploadBlockCode, string> = {
+  uploadInProgress: UPLOAD_IN_PROGRESS_MESSAGE,
+  uploadNotAdded: UPLOAD_NOT_ADDED_MESSAGE,
+  uploadRefused: UPLOAD_REFUSED_MESSAGE,
+};
+
+// File fields whose picked file isn't a form value yet, by field id, with the
+// reason Continue must wait. The upload widget keeps this current and the
+// field's validator reads it, so the step can't move on mid-upload or past a
+// refused file (#2940) — the same shape as `placesBeingLocated` in geocode.ts.
+const uploadsNotAdded = new Map<string, UploadBlockCode>();
+
+/** Record why `fieldId` can't be continued past, or clear it with undefined. */
+export function setUploadBlock(
+  fieldId: string,
+  code: UploadBlockCode | undefined,
+) {
+  if (code) uploadsNotAdded.set(fieldId, code);
+  else uploadsNotAdded.delete(fieldId);
+}
+
+/** Why `fieldId` can't be continued past yet, as a code; undefined when nothing blocks. */
+export const uploadBlockCode = (fieldId: string): UploadBlockCode | undefined =>
+  uploadsNotAdded.get(fieldId);
+
+/** The message for why `fieldId` can't be continued past yet. */
+export const uploadBlock = (fieldId: string): string | undefined => {
+  const code = uploadsNotAdded.get(fieldId);
+  return code && UPLOAD_BLOCK_MESSAGES[code];
 };

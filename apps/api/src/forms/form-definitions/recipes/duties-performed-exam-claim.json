@@ -68,7 +68,7 @@
           }
         },
         {
-          "ref": "components/generic-text",
+          "ref": "components/generic-textarea",
           "overrides": {
             "label": "Address",
             "fieldId": "address",
@@ -172,7 +172,7 @@
           }
         },
         {
-          "ref": "components/generic-text",
+          "ref": "components/generic-date",
           "overrides": {
             "label": "Claim Period From",
             "fieldId": "claim-period-from",
@@ -180,12 +180,16 @@
               "required": {
                 "error": "Claim Period From is required",
                 "value": true
+              },
+              "pastOrToday": {
+                "error": "Claim Period From must be today or in the past",
+                "value": true
               }
             }
           }
         },
         {
-          "ref": "components/generic-text",
+          "ref": "components/generic-date",
           "overrides": {
             "label": "Claim Period To",
             "fieldId": "claim-period-to",
@@ -193,6 +197,14 @@
               "required": {
                 "error": "Claim Period To is required",
                 "value": true
+              },
+              "pastOrToday": {
+                "error": "Claim Period To must be today or in the past",
+                "value": true
+              },
+              "onOrAfter": {
+                "error": "Claim Period To must be the same as or after Claim Period From",
+                "referenceFieldId": "claim-period-from"
               }
             }
           }
@@ -222,13 +234,17 @@
           }
         },
         {
-          "ref": "components/generic-text",
+          "ref": "components/generic-date",
           "overrides": {
             "label": "Date",
             "fieldId": "date",
             "validations": {
               "required": {
                 "error": "Date is required",
+                "value": true
+              },
+              "pastOrToday": {
+                "error": "Date must be today or in the past",
                 "value": true
               }
             }
@@ -353,13 +369,17 @@
       "title": "Section C: Practical Examination Setup",
       "elements": [
         {
-          "ref": "components/generic-text",
+          "ref": "components/generic-date",
           "overrides": {
             "label": "Date",
             "fieldId": "date",
             "validations": {
               "required": {
                 "error": "Date is required",
+                "value": true
+              },
+              "pastOrToday": {
+                "error": "Date must be today or in the past",
                 "value": true
               }
             }
@@ -484,13 +504,17 @@
       "title": "Section D: Reader, Writer, Interpreter, Model, Moderator or Dictator Duties",
       "elements": [
         {
-          "ref": "components/generic-text",
+          "ref": "components/generic-date",
           "overrides": {
             "label": "Date",
             "fieldId": "date",
             "validations": {
               "required": {
                 "error": "Date is required",
+                "value": true
+              },
+              "pastOrToday": {
+                "error": "Date must be today or in the past",
                 "value": true
               }
             }
@@ -849,5 +873,5 @@
     }
   ],
   "createdAt": "2026-05-27T20:25:58.965Z",
-  "updatedAt": "2026-10-21T16:52:59.000Z"
+  "updatedAt": "2026-10-22T15:32:24.000Z"
 }
