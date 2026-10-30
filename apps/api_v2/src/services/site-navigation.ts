@@ -12,10 +12,12 @@ import {
   type ListablePage,
   type SearchDocument,
 } from "../modules/navigation";
+import { createHash } from "node:crypto";
 import type { ContentStoreUnavailable, Visibility } from "../modules/page";
 import { visibleTo, type Viewer } from "../modules/page-visibility";
 import { ok, type Result } from "../modules/result";
 import type { SearchChunk } from "../modules/search-text";
+import type { EstateVersion } from "./editor-index";
 
 /** The reads site navigation needs from content storage. */
 export interface NavigationReads {
@@ -38,6 +40,8 @@ export interface NavigationReads {
   searchChunksOf(
     pageIds: readonly string[],
   ): Promise<Result<Map<string, SearchChunk[]>, ContentStoreUnavailable>>;
+  /** The change log's size and newest timestamp. */
+  changeLogVersion(): Promise<Result<EstateVersion, ContentStoreUnavailable>>;
 }
 
 /** What the site navigates by, as a viewer may see it. */
@@ -102,5 +106,22 @@ export class SiteNavigation {
         : await this.reads.searchChunksOf(pages.map((page) => page.id));
     if (!chunks.ok) return chunks;
     return ok(searchDocumentsOf(pages, chunks.value));
+  }
+
+  /**
+   * An opaque token that moves whenever any content changes, so the site can
+   * drop its cached pages at once rather than wait out their max-age. Hashed
+   * so it doesn't say how many changes there have been or when the last was.
+   */
+  async version(): Promise<Result<string, ContentStoreUnavailable>> {
+    const version = await this.reads.changeLogVersion();
+    if (!version.ok) return version;
+    const { count, latest } = version.value;
+    return ok(
+      createHash("sha256")
+        .update(`${count}:${latest}`)
+        .digest("base64url")
+        .slice(0, 16),
+    );
   }
 }

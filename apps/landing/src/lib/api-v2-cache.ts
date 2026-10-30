@@ -6,7 +6,9 @@ import type { ApiV2Result } from './api-v2-page'
  * stale-while-revalidate 300, a 404 max-age 10, `no-store` nothing. A stale
  * entry is served at once while one background refetch per URL runs; on a
  * failure the last good copy is served at any age. After three failures in a
- * row api_v2 isn't called for 30 s.
+ * row api_v2 isn't called for 30 s. `expire()` makes every entry stale at
+ * once, for when api_v2's site version moves (a publish): the next read of
+ * each url waits for a fresh copy, falling back to the old one on a failure.
  *
  * Keyed by URL alone, which is safe only because landing never sends
  * `x-preview-token`, so api_v2's answer is the same for every viewer. A call
@@ -44,6 +46,8 @@ export function createApiV2Cache() {
   const inflight = new Map<string, Promise<ApiV2Result>>()
   let failures = 0
   let openUntil = 0
+  /** Bumped by `expire()`, so a fetch begun before it can't store its older answer as fresh. */
+  let generation = 0
 
   function revalidate(
     url: string,
@@ -52,6 +56,7 @@ export function createApiV2Cache() {
   ) {
     let pending = inflight.get(url)
     if (pending) return pending
+    const startedIn = generation
     pending = resolve()
       .then((result) => {
         if (failed(result)) {
@@ -64,6 +69,7 @@ export function createApiV2Cache() {
           return result
         }
         failures = 0
+        if (startedIn !== generation) return result
         const maxAgeMs = seconds(result.cacheControl, /max-age=(\d+)/)
         const swrMs = seconds(
           result.cacheControl,
@@ -87,7 +93,9 @@ export function createApiV2Cache() {
         }
         return result
       })
-      .finally(() => inflight.delete(url))
+      .finally(() => {
+        if (inflight.get(url) === pending) inflight.delete(url)
+      })
     inflight.set(url, pending)
     return pending
   }
@@ -110,5 +118,11 @@ export function createApiV2Cache() {
     return failed(result) ? (entry?.result ?? result) : result
   }
 
-  return { get }
+  function expire() {
+    generation++
+    inflight.clear()
+    for (const entry of entries.values()) entry.storedAt = -Infinity
+  }
+
+  return { get, expire }
 }

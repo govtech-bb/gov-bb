@@ -4,6 +4,7 @@ import { z } from 'zod'
 import type { ContentPage } from '../content/registry'
 import { bakeStartLinkFormId } from '../utils/markdown/plugins'
 import { createApiV2Cache } from './api-v2-cache'
+import { createVersionWatch, fetchSiteVersion } from './api-v2-version'
 import type { Frontmatter } from './frontmatter'
 
 /**
@@ -277,10 +278,16 @@ export async function resolveApiV2Page(
 
 // Pure, so the client build (where the handler is stripped) drops the cache.
 const apiV2Cache = /* @__PURE__ */ createApiV2Cache()
+const checkSiteVersion = /* @__PURE__ */ createVersionWatch(
+  () => fetchSiteVersion(apiV2Base()),
+  () => apiV2Cache.expire(),
+)
 
-/** Server function: `resolveApiV2Page` against the configured api_v2, cached. */
+/** Server function: `resolveApiV2Page` against the configured api_v2, cached
+ *  until it expires or api_v2's site version moves. */
 export const getApiV2Page = createServerFn()
   .validator((url: string) => url)
-  .handler(({ data: url }) =>
-    apiV2Cache.get(url, () => resolveApiV2Page(apiV2Base(), url)),
-  )
+  .handler(async ({ data: url }) => {
+    await checkSiteVersion()
+    return apiV2Cache.get(url, () => resolveApiV2Page(apiV2Base(), url))
+  })

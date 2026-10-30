@@ -249,6 +249,19 @@ export const SCHEMAS = {
     },
   },
 
+  getSiteVersion: {
+    summary: "A token that moves whenever content changes",
+    description:
+      "Opaque. The site polls it and drops its cached pages when it moves, " +
+      "so a published change shows within seconds instead of after the " +
+      "pages' max-age. Moves on any change, drafts included.",
+    tags: ["meta"],
+    response: {
+      200: z.object({ version: z.string() }),
+      500: error,
+    },
+  },
+
   getPage: {
     summary: "Get a page by id",
     description:

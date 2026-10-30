@@ -213,4 +213,37 @@ describe('createApiV2Cache', () => {
     await cache.get('/junk-0', notFound, 1)
     expect(notFound).toHaveBeenCalledTimes(MAX_ENTRIES + 1)
   })
+
+  describe('expire', () => {
+    it('makes the next read within max-age wait for a fresh copy', async () => {
+      const cache = createApiV2Cache()
+      const resolve = resolver(redirect('/old'), redirect('/new'))
+      await cache.get('/x', resolve, 0)
+      cache.expire()
+      expect(await cache.get('/x', resolve, 1)).toMatchObject({ to: '/new' })
+      expect(await cache.get('/x', resolve, 2)).toMatchObject({ to: '/new' })
+      expect(resolve).toHaveBeenCalledTimes(2)
+    })
+
+    it('still serves the old copy when the fresh read fails', async () => {
+      const cache = createApiV2Cache()
+      const old = redirect('/old')
+      await cache.get('/x', resolver(old), 0)
+      cache.expire()
+      const failing = resolver({ kind: 'miss', reason: 'timeout' })
+      expect(await cache.get('/x', failing, 1)).toBe(old)
+    })
+
+    it("doesn't keep an answer fetched before it as fresh", async () => {
+      const cache = createApiV2Cache()
+      let finish!: (r: ApiV2Result) => void
+      const slow = vi.fn(() => new Promise<ApiV2Result>((r) => (finish = r)))
+      const first = cache.get('/x', slow, 0)
+      cache.expire()
+      finish(redirect('/old'))
+      await first
+      const resolve = resolver(redirect('/new'))
+      expect(await cache.get('/x', resolve, 1)).toMatchObject({ to: '/new' })
+    })
+  })
 })

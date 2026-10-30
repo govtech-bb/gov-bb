@@ -5,6 +5,8 @@ import type { Viewer } from "../modules/page-visibility";
 /** Public content may be shared by the site and its caches. */
 export const PUBLIC_READ =
   "public, max-age=60, stale-while-revalidate=300, stale-if-error=86400";
+/** The site version is polled every few seconds, so shared caches may only hold it briefly. */
+export const SITE_VERSION_READ = "public, max-age=5";
 /** Authenticated and preview responses must never enter a browser or shared cache. */
 export const EDITOR_READ = "no-store";
 /** A short negative cache keeps missing public URLs inexpensive. */
