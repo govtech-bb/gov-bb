@@ -939,6 +939,74 @@ describe("address-lookup field that writes a routing coordinate", () => {
   });
 });
 
+// The address gate's refusal reaches analytics and the return from a Change
+// through the same rule the field shows (#3400).
+describe("collectStepErrorCodes for an address that writes a routing coordinate", () => {
+  const address = (validations?: ClientPrimitive["validations"]) =>
+    makeField("event-address", "event", {
+      htmlType: "address-lookup",
+      geocodeTargets: { coordinatesFieldId: "event-coordinates" },
+      validations,
+    });
+  const required = { required: { value: true, error: "Enter the address" } };
+  const typed = {
+    "event_event-address": "Water Hall Tenantry Road",
+    "event_event-coordinates": "",
+  };
+
+  it("reports an address that was typed but not located", () => {
+    expect(collectStepErrorCodes([address(required)], typed)).toEqual([
+      { fieldId: "event-address", codes: ["addressNotLocated"] },
+    ]);
+  });
+
+  it("reports it on an address field with no rules of its own", () => {
+    expect(collectStepErrorCodes([address()], typed)).toEqual([
+      { fieldId: "event-address", codes: ["addressNotLocated"] },
+    ]);
+  });
+
+  it("reports nothing for a located address", () => {
+    expect(
+      collectStepErrorCodes([address(required)], {
+        "event_event-address": "Kensington Oval",
+        "event_event-coordinates": "13.104995,-59.622524",
+      }),
+    ).toEqual([]);
+  });
+
+  it("reports the field's own rule first, as on screen", () => {
+    expect(
+      collectStepErrorCodes([address(required)], {
+        "event_event-address": "",
+      }),
+    ).toEqual([{ fieldId: "event-address", codes: ["required"] }]);
+  });
+
+  it("reports nothing while a picked place is still being located", async () => {
+    let arrive: () => void = () => {};
+    const lookup = new Promise<void>((resolve) => (arrive = resolve));
+    locatingPlace("event_event-address", lookup);
+
+    expect(collectStepErrorCodes([address(required)], typed)).toEqual([]);
+    arrive();
+    await lookup;
+  });
+
+  it("fails the step on the return from a Change", () => {
+    const step: ClientFormStep = {
+      stepId: "event",
+      title: "Event",
+      fields: [address(required)],
+    };
+    const formApi = {
+      state: { values: typed },
+      getFieldValue: (id: string) => (typed as Record<string, unknown>)[id],
+    } as unknown as AnyFormApi;
+    expect(stepPassesValidation(step, formApi)).toBe(false);
+  });
+});
+
 describe("parish filled by a located address", () => {
   it("is not validated on its own", () => {
     const { onDynamic } = buildFieldValidationProperties(
