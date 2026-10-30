@@ -320,10 +320,21 @@ export function contentSource(result: ApiV2Result): ContentSource {
 
 // Pure, so the client build (where the handler is stripped) drops the cache.
 const apiV2Cache = /* @__PURE__ */ createApiV2Cache()
+let siteChanges = 0
 const checkSiteVersion = /* @__PURE__ */ createVersionWatch(
   () => fetchSiteVersion(apiV2Base()),
-  () => apiV2Cache.expire(),
+  () => {
+    siteChanges++
+    apiV2Cache.expire()
+  },
 )
+
+/** Checks api_v2's site version, then resolves to how many times this
+ *  instance has seen it move, for a cache besides the page cache to expire on. */
+export async function siteVersionChanges(): Promise<number> {
+  await checkSiteVersion()
+  return siteChanges
+}
 
 /** Server function: `resolveApiV2Page` against the configured api_v2, cached
  *  until it expires or api_v2's site version moves. */

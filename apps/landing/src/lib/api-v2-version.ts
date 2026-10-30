@@ -3,7 +3,7 @@
  * change, so a publish shows on the site within seconds rather than after a
  * cached page's max-age. Checked at most once per `EVERY_MS` per server
  * instance, before a read; when the token moves, `onChange` runs (landing's
- * page cache expires everything). A failed or slow check changes nothing, so
+ * page cache and its category-tree cache expire everything). A failed or slow check changes nothing, so
  * an api_v2 outage still serves the cached pages.
  */
 
@@ -48,7 +48,9 @@ export function createVersionWatch(
     pending = read()
       .then((version) => {
         if (version === null) return
-        if (seen !== null && version !== seen) onChange()
+        // Also on the first read: a publish made while earlier reads failed
+        // must still expire what was cached meanwhile. An empty cache costs nothing.
+        if (version !== seen) onChange()
         seen = version
       })
       .finally(() => {

@@ -1,7 +1,7 @@
 import { createServerFn } from '@tanstack/react-start'
 import { QueryClient } from '@tanstack/react-query'
 import { z } from 'zod'
-import { API_V2_TIMEOUT_MS, apiV2Base } from './api-v2-page'
+import { API_V2_TIMEOUT_MS, apiV2Base, siteVersionChanges } from './api-v2-page'
 import { logFallback, message } from './api-v2-log'
 
 /**
@@ -260,10 +260,19 @@ export function fetchCachedCategoryTree(base: string | null) {
   })
 }
 
-/** Server function: the cached public tree from the configured api_v2. */
-export const getApiV2CategoryTree = createServerFn().handler(() =>
-  fetchCachedCategoryTree(apiV2Base()),
-)
+/** Site version moves the cached tree has been expired for. */
+let treeChanges = 0
+
+/** Server function: the cached public tree from the configured api_v2,
+ *  expired when api_v2's site version moves, as the page cache is. */
+export const getApiV2CategoryTree = createServerFn().handler(async () => {
+  const changes = await siteVersionChanges()
+  if (changes !== treeChanges) {
+    treeChanges = changes
+    await publicCategoryCache.invalidateQueries()
+  }
+  return fetchCachedCategoryTree(apiV2Base())
+})
 
 /** Server function: `fetchCategoryListing` against the configured api_v2. */
 export const getApiV2CategoryListing = createServerFn()

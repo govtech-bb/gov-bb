@@ -12,13 +12,23 @@ function versions(...values: Array<string | null>) {
 }
 
 describe('createVersionWatch', () => {
-  it('runs onChange when the version moves, not on the first read', async () => {
+  it('runs onChange whenever the version differs from the last one seen', async () => {
     const onChange = vi.fn()
     const check = createVersionWatch(versions('a', 'a', 'b'), onChange)
     await check(0)
+    expect(onChange).toHaveBeenCalledTimes(1)
     await check(EVERY_MS)
-    expect(onChange).not.toHaveBeenCalled()
+    expect(onChange).toHaveBeenCalledTimes(1)
     await check(2 * EVERY_MS)
+    expect(onChange).toHaveBeenCalledTimes(2)
+  })
+
+  it('notices a publish made while its first read was failing', async () => {
+    const onChange = vi.fn()
+    const check = createVersionWatch(versions(null, 'b'), onChange)
+    await check(0)
+    expect(onChange).not.toHaveBeenCalled()
+    await check(EVERY_MS)
     expect(onChange).toHaveBeenCalledTimes(1)
   })
 
@@ -41,7 +51,7 @@ describe('createVersionWatch', () => {
     const onChange = vi.fn()
     const check = createVersionWatch(versions('a', null, 'a'), onChange)
     for (const now of [0, EVERY_MS, 2 * EVERY_MS]) await check(now)
-    expect(onChange).not.toHaveBeenCalled()
+    expect(onChange).toHaveBeenCalledTimes(1)
   })
 })
 
