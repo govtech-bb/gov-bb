@@ -22,6 +22,12 @@ concurrency:
   group: landing-v2-perf
   cancel-in-progress: true
 
+# The api_v2 sandbox role trusts gov-bb v2-rewrite and main (the repo's
+# AWS_ROLE_ARN secret doesn't trust v2-rewrite). alpha-infra grants it the
+# Amplify job access the wait step needs on landing's v2-rewrite branch.
+env:
+  AWS_ROLE_ARN: arn:aws:iam::672203047922:role/api-v2-github-actions-sandbox
+
 jobs:
   ttfb:
     name: Landing TTFB (api_v2 vs static)
@@ -38,7 +44,7 @@ jobs:
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@254c19bd240aabef8777f48595e9d2d7b972184b # v6.2.1
         with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          role-to-assume: ${{ env.AWS_ROLE_ARN }}
           aws-region: ca-central-1
 
       - name: Wait for the Amplify build
