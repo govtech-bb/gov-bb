@@ -27,6 +27,7 @@ import {
   TEST_EDITOR,
   TEST_EMPLOYEE,
   TEST_HTTP_CONFIG,
+  testPageEditLockHeaders,
 } from "./test-db";
 
 const FIXTURES = [TEST_EMPLOYEE, TEST_EDITOR];
@@ -77,6 +78,27 @@ const seedPage = async (overrides: Record<string, unknown> = {}) =>
 const stored = async (id: PageId) =>
   expectOk(await new PostgresPages(db).find(id));
 
+/** Save `fields` over the page, or delete it, at its current version, under `employee`'s own edit lease. */
+const write = async (
+  employee: Employee,
+  method: "PUT" | "DELETE",
+  page: { id: PageId },
+  fields?: Record<string, unknown>,
+) => {
+  const version = (await stored(page.id))?.version;
+  return as(employee, {
+    method,
+    url: `/pages/${page.id}${method === "DELETE" ? `?version=${version}` : ""}`,
+    headers: await testPageEditLockHeaders(app, page.id, {
+      cookie: `test-session=${employee.id}`,
+      origin: TEST_HTTP_CONFIG.editorOrigin,
+    }),
+    ...(method === "PUT"
+      ? { payload: { ...withDefaults(aPage(fields)), version } }
+      : {}),
+  });
+};
+
 const FORBIDDEN = {
   error: "forbidden",
   message: "Only approvers can change who can see a page.",
@@ -86,10 +108,9 @@ describe("a page's visibility", () => {
   it("is not changed by a non-approver's save, which leaves the page as it was", async () => {
     const page = await seedPage({ visibility: "preview" });
 
-    const response = await as(TEST_EDITOR, {
-      method: "PUT",
-      url: `/pages/${page.id}`,
-      payload: withDefaults(aPage({ visibility: "public", title: "Changed" })),
+    const response = await write(TEST_EDITOR, "PUT", page, {
+      visibility: "public",
+      title: "Changed",
     });
 
     expect(response.statusCode).toBe(403);
@@ -100,10 +121,8 @@ describe("a page's visibility", () => {
   it("still lets a non-approver edit a page's content", async () => {
     const page = await seedPage();
 
-    const response = await as(TEST_EDITOR, {
-      method: "PUT",
-      url: `/pages/${page.id}`,
-      payload: withDefaults(aPage({ title: "Changed" })),
+    const response = await write(TEST_EDITOR, "PUT", page, {
+      title: "Changed",
     });
 
     expect(response.statusCode).toBe(200);
@@ -122,10 +141,8 @@ describe("a page's visibility", () => {
       ),
     );
 
-    const response = await as(TEST_EMPLOYEE, {
-      method: "PUT",
-      url: `/pages/${page.id}`,
-      payload: withDefaults(aPage({ visibility: "public" })),
+    const response = await write(TEST_EMPLOYEE, "PUT", page, {
+      visibility: "public",
     });
 
     expect(response.statusCode).toBe(200);
@@ -172,10 +189,7 @@ describe("deleting a page", () => {
   it("that is public needs an approver, and keeps the page otherwise", async () => {
     const page = await seedPage();
 
-    const response = await as(TEST_EDITOR, {
-      method: "DELETE",
-      url: `/pages/${page.id}`,
-    });
+    const response = await write(TEST_EDITOR, "DELETE", page);
 
     expect(response.statusCode).toBe(403);
     expect(response.json()).toEqual(FORBIDDEN);
@@ -188,10 +202,7 @@ describe("deleting a page", () => {
     async (visibility) => {
       const page = await seedPage({ visibility });
 
-      const response = await as(TEST_EDITOR, {
-        method: "DELETE",
-        url: `/pages/${page.id}`,
-      });
+      const response = await write(TEST_EDITOR, "DELETE", page);
 
       expect(response.statusCode).toBe(204);
       expect(await stored(page.id)).toBeNull();
@@ -209,10 +220,9 @@ describe("an employee whose editor role is revoked", () => {
 
     for (const url of ["/services", `/pages/${page.id}`, "/editor/me"])
       expect((await as(TEST_EDITOR, { url })).statusCode, url).toBe(200);
-    const response = await as(TEST_EDITOR, {
-      method: "PUT",
-      url: `/pages/${page.id}`,
-      payload: withDefaults(aPage({ visibility: "draft", title: "Changed" })),
+    const response = await write(TEST_EDITOR, "PUT", page, {
+      visibility: "draft",
+      title: "Changed",
     });
     expect(response.statusCode).toBe(403);
     expect(response.json()).toEqual({
@@ -292,10 +302,8 @@ describe("role management", () => {
     });
 
     expect(revoked.statusCode).toBe(204);
-    const response = await as(TEST_EDITOR, {
-      method: "PUT",
-      url: `/pages/${page.id}`,
-      payload: withDefaults(aPage({ visibility: "public" })),
+    const response = await write(TEST_EDITOR, "PUT", page, {
+      visibility: "public",
     });
     expect(response.statusCode).toBe(403);
   });

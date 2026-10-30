@@ -144,7 +144,7 @@ export function ServiceWorkspace({
     for (const id of panes.filter((id) => !kept.includes(id))) {
       const page = pageSessions.get(id);
 
-      if (page) sessions.close(id, page.getBaseline().page.updated_at);
+      if (page) sessions.close(id, String(page.getBaseline().page.version));
     }
 
     setPanes(kept);
@@ -190,8 +190,14 @@ export function ServiceWorkspace({
 
   const rows = useMemo(() => (remote.data ? remoteServiceRows(remote.data) : []), [remote.data]);
   const selected = rows.find((row) => row.document.id === documentId)?.document;
-  // The page being deleted, kept while its dialog fades away after the page itself has gone
-  const deleting = useLatched(dialog === "delete" ? (selected ?? null) : null);
+  const selectedSession = selected ? pageSessions.get(selected.id) : undefined;
+
+  // The page being deleted and its editing session, kept while its dialog fades away after the page itself has gone
+  const deleting = useLatched(
+    dialog === "delete" && selected && selectedSession
+      ? { page: selected, session: selectedSession }
+      : null,
+  );
 
   const missing =
     !!location &&
@@ -374,7 +380,9 @@ export function ServiceWorkspace({
                     remote.data?.pages.find((page) => page.id === selected?.id)?.visibility ===
                       "public"
                   ? "Only approvers can delete a public page."
-                  : undefined
+                  : !selectedSession?.getEditLockToken() || selectedSession.isSaving()
+                    ? "Confirm editing ownership and finish any pending save before deleting."
+                    : undefined
             }
           />
         )}
@@ -558,13 +566,14 @@ export function ServiceWorkspace({
           key={opened}
           api={api}
           open={dialog === "delete"}
-          page={deleting}
+          page={deleting.page}
+          session={deleting.session}
           onClose={() => setDialog(null)}
           onDone={() => {
             setDialog(null);
-            discardPages([deleting.id]);
+            discardPages([deleting.page.id]);
             void navigate(
-              !location || deleting.id === location.serviceId
+              !location || deleting.page.id === location.serviceId
                 ? undefined
                 : { serviceId: location.serviceId, documentId: location.serviceId },
             );

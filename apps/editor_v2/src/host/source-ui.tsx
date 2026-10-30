@@ -23,17 +23,30 @@ import { draftEditorConnection } from "./draft-editor";
 
 const DraftContext = createContext<DraftStore | null>(null);
 
+const DraftReadOnlyContext = createContext(false);
+
 type SourceOpen = { open: boolean; setOpen: (open: boolean) => void };
 
 // Whether the document's Markdown is open: its tool in the bar opens it, and so does the notice that editing is paused
 const SourceOpenContext = createContext<SourceOpen>({ open: false, setOpen: () => {} });
 
-export function DraftProvider({ store, children }: { store: DraftStore; children: ReactNode }) {
+/** Host read-only gates source controls as well as the canvas, without changing the working copy. */
+export function DraftProvider({
+  store,
+  readOnly = false,
+  children,
+}: {
+  store: DraftStore;
+  readOnly?: boolean;
+  children: ReactNode;
+}): ReactNode {
   const [open, setOpen] = useState(false);
 
   return (
     <DraftContext value={store}>
-      <SourceOpenContext value={{ open, setOpen }}>{children}</SourceOpenContext>
+      <DraftReadOnlyContext value={readOnly}>
+        <SourceOpenContext value={{ open, setOpen }}>{children}</SourceOpenContext>
+      </DraftReadOnlyContext>
     </DraftContext>
   );
 }
@@ -77,6 +90,7 @@ export function download(text: string, name = "form-source.md") {
 /** What came of acting in a dialog, shown in its body in the outcome's tone (Banner). */
 export type DialogOutcome = { tone: BannerTone; text: string };
 
+/** Read-only ownership preserves source selection and recovery downloads while refusing source mutations. */
 export function SourceEditor({
   documentLabel = "form",
   fileName = "form-source.md",
@@ -85,9 +99,12 @@ export function SourceEditor({
   documentLabel?: string;
   fileName?: string;
   inline?: boolean;
-}) {
+}): ReactNode {
   const draft = useDraft();
   const save = useDraftSave(fileName);
+  const readOnly = useContext(DraftReadOnlyContext);
+  const readOnlyRef = useRef(readOnly);
+  readOnlyRef.current = readOnly;
   const { open: requestedOpen, setOpen: setRequestedOpen } = useSourceOpen();
   const [discarding, setDiscarding] = useState(false);
   const [outcome, setOutcome] = useState<DialogOutcome>();
@@ -122,7 +139,7 @@ export function SourceEditor({
   };
 
   const apply = () => {
-    if (draft.store.apply()) {
+    if (!readOnlyRef.current && draft.store.apply()) {
       setOutcome({ tone: "success", text: "Changes applied" });
       source.current?.focus();
     }
@@ -155,7 +172,7 @@ export function SourceEditor({
         <Button icon={<ArrowDown />} onClick={() => download(draft.source, fileName)}>
           Download source
         </Button>
-        <Button icon={<ArrowUp />} onClick={() => upload.current?.click()}>
+        <Button icon={<ArrowUp />} disabled={readOnly} onClick={() => upload.current?.click()}>
           Replace from file
         </Button>
         <input
@@ -170,14 +187,14 @@ export function SourceEditor({
             const file = input.files?.[0];
             input.value = "";
 
-            if (!file) return;
+            if (!file || readOnlyRef.current) return;
             const version = ++uploadVersion.current;
             const initial = draft.store.getSnapshot();
 
             try {
               const text = await file.text();
 
-              if (version !== uploadVersion.current) return;
+              if (version !== uploadVersion.current || readOnlyRef.current) return;
 
               if (draft.store.getSnapshot() !== initial) {
                 setOutcome({
@@ -216,7 +233,9 @@ export function SourceEditor({
         <Textarea
           ref={source}
           value={draft.source}
+          readOnly={readOnly}
           onChange={(event) => {
+            if (readOnlyRef.current) return;
             draft.store.edit(event.target.value);
             setOutcome(undefined);
           }}
@@ -275,7 +294,11 @@ export function SourceEditor({
       <span role="status" className="me-auto text-14 text-muted">
         {draft.dirty ? "Unapplied changes" : ""}
       </span>
-      <Button size="md" onClick={() => setDiscarding(true)} disabled={!draft.valid || !draft.dirty}>
+      <Button
+        size="md"
+        onClick={() => setDiscarding(true)}
+        disabled={readOnly || !draft.valid || !draft.dirty}
+      >
         Discard changes
       </Button>
       {/* The Markdown can't be had back once discarded, so ask; the focus then goes back to it */}
@@ -286,13 +309,15 @@ export function SourceEditor({
         description={`Your changes to the Markdown haven’t been applied, and they’ll be lost. The ${documentLabel} stays as it is.`}
         confirmLabel="Discard changes"
         finalFocus={source}
+        confirmDisabled={readOnly}
         onConfirm={() => {
+          if (readOnlyRef.current) return;
           draft.store.discard();
           setOutcome({ tone: "success", text: "Source changes discarded" });
           setDiscarding(false);
         }}
       />
-      <Button variant="accent" size="md" onClick={apply}>
+      <Button variant="accent" size="md" disabled={readOnly} onClick={apply}>
         Apply changes
       </Button>
     </>
@@ -346,13 +371,14 @@ export function SourceEditor({
 /** Source errors outrank server save feedback; an applied local edit is never a durable save. */
 export function useDraftSave(fileName: string, server?: SaveStateProps): SaveStateProps {
   const draft = useDraft();
+  const readOnly = useContext(DraftReadOnlyContext);
 
   if (draft.status === "error")
     return {
       status: "failed",
       error: draft.error,
       conflict: server?.conflict,
-      onRetry: draft.recovery?.kind === "canvas" ? draft.store.retry : undefined,
+      onRetry: !readOnly && draft.recovery?.kind === "canvas" ? draft.store.retry : undefined,
       onDownload: () =>
         download(
           draft.recovery?.kind === "canvas" ? draft.recovery.original : draft.source,

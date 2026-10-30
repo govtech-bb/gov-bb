@@ -23,6 +23,7 @@ import {
   collectionRecords,
   contentPages,
   dataCollections,
+  pageEditLocks,
   pageRevisions,
   searchChunks,
   userRoles,
@@ -59,6 +60,7 @@ const TABLES = {
   search_chunks: searchChunks,
   user_roles: userRoles,
   page_revisions: pageRevisions,
+  page_edit_locks: pageEditLocks,
   data_collections: dataCollections,
   collection_records: collectionRecords,
 };

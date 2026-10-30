@@ -35,11 +35,12 @@ const HAS_DB = !!process.env.DB_HOST;
       // exactly as we found them (same pattern as the other smoke specs).
       await queryRunner.startTransaction();
       try {
-        // The constraint may already be applied on this DB — drop it inside
-        // the transaction so the migration's up() path is exercised, and so
-        // the duplicate seed rows below can be inserted at all.
+        // Restore this migration's input schema inside the rolled-back transaction,
+        // including databases with the later form_id-only constraint applied.
         await queryRunner.query(
-          `ALTER TABLE "form_definitions" DROP CONSTRAINT IF EXISTS "UQ_form_definitions_form_id_version"`,
+          `ALTER TABLE "form_definitions"
+           DROP CONSTRAINT IF EXISTS "UQ_form_definitions_form_id_version",
+           DROP CONSTRAINT IF EXISTS "UQ_form_definitions_form_id"`,
         );
 
         // Seed a duplicate (form_id, version) pair.

@@ -198,6 +198,7 @@ try {
   await button("Delete page").click();
   const question = page.getByRole("alertdialog");
   await question.getByRole("button", { name: "Cancel", exact: true }).click();
+  await question.waitFor({ state: "hidden" });
   assert.equal(api.pages.has(child.id), true);
   await button("Delete page").click();
   await question.getByRole("button", { name: "Delete page", exact: true }).click();

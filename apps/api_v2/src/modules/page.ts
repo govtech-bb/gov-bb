@@ -39,6 +39,20 @@ export const PageId = z.guid().brand<"PageId">();
 /** A parsed content page id. */
 export type PageId = z.infer<typeof PageId>;
 
+/**
+ * A page's editor version, which the database owns (`017`): it moves with
+ * the live page's content and with every write or review step of its pending
+ * revision. Clients send back the version they read, never the next value.
+ */
+export const PageContentVersion = z
+  .number()
+  .int()
+  .positive()
+  .max(2_147_483_647)
+  .brand<"PageContentVersion">();
+/** A parsed page editor version, not an audit revision or edit-lock generation. */
+export type PageContentVersion = z.infer<typeof PageContentVersion>;
+
 /** Parses a page's url: a path with no trailing slash, query or fragment. */
 export const PageUrl = z
   .string()
@@ -93,10 +107,11 @@ export const PageDocument = PageFields.extend({
   created_at: z.iso.datetime(),
   updated_at: z.iso
     .datetime()
-    .describe(
-      "Millisecond precision, and exactly the value to send back in " +
-        "`if-updated-at` on the next save.",
-    ),
+    .describe("When the page was last directly saved."),
+  version: PageContentVersion.describe(
+    "The page's version: send it back to save, delete, submit, reject or " +
+      "publish. It moves whenever the page or its pending revision changes.",
+  ),
 });
 
 /** A page as the editor reads it. */
@@ -157,8 +172,8 @@ export const PendingRevision = z.object({
   updated_at: z.iso
     .datetime()
     .describe(
-      "Moves when its content is saved, not when it is submitted or " +
-        "rejected. Send it in `if-updated-at` to act on this version.",
+      "Moves when its content is saved or it is rejected. To act on it, " +
+        "send the page's `version`.",
     ),
 });
 
@@ -180,6 +195,9 @@ export type FieldChange = z.infer<typeof FieldChange>;
 
 /** A pending revision, with what it changes against the live page. */
 export const RevisionView = PendingRevision.extend({
+  version: PageContentVersion.describe(
+    "The page's version, to send back with a review decision.",
+  ),
   changes: z
     .array(FieldChange)
     .describe(
@@ -203,9 +221,10 @@ export const ReviewQueueEntry = z.object({
     .nullable()
     .describe("Their name, or null when their account is gone."),
   submitted_at: z.iso.datetime(),
-  updated_at: z.iso
-    .datetime()
-    .describe("The revision's version, as `GET /pages/{id}/revision` has it."),
+  updated_at: z.iso.datetime().describe("When its content was last saved."),
+  version: PageContentVersion.describe(
+    "The page's version, as `GET /pages/{id}/revision` has it.",
+  ),
 });
 
 /** A revision waiting for review. */
@@ -337,8 +356,8 @@ export function creationOf(
 }
 
 /**
- * What saving `fields` over the stored page writes. The version moves
- * strictly forward, so two saves in one millisecond still differ, and
+ * What saving `fields` over the stored page writes. The timestamp moves
+ * strictly forward; the database separately advances the content version, and
  * publication is stamped the first time the page goes public and never moves
  * after that.
  */
@@ -482,24 +501,13 @@ export class PageNotFound extends Error {
 }
 
 /** A save lost to a write its caller had not read. */
-export class PageConflict extends Error {
+export class PageVersionConflict extends Error {
   /** Stable protocol-projection discriminator. */
-  readonly _tag = "PageConflict" as const;
+  readonly _tag = "PageVersionConflict" as const;
   /** The page that changed underneath the caller. */
-  constructor(readonly documentId: PageId) {
+  constructor(readonly pageId: PageId) {
     super(
       "This page was changed somewhere else since you opened it. Reload to see the current version.",
-    );
-  }
-}
-
-/** A save to a revision waiting for review named no version, so it could overwrite another editor's change unseen. */
-export class PageVersionRequired extends Error {
-  /** Stable protocol-projection discriminator. */
-  readonly _tag = "PageVersionRequired" as const;
-  constructor() {
-    super(
-      "This change is waiting for review. Send the updated_at you last read in the if-updated-at header.",
     );
   }
 }

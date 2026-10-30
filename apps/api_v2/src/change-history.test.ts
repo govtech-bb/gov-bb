@@ -19,6 +19,7 @@ import {
   createTestServices,
   SELF_APPROVAL,
   expectOk,
+  takeTestPageEditLock,
   TEST_EMPLOYEE,
   TEST_SERVER,
 } from "./test-db";
@@ -253,9 +254,14 @@ describe("the change history trigger", () => {
     const { editing } = createTestServices(db, SELF_APPROVAL);
     const page = expectOk(await editing.create(aLivePage(), TEST_EMPLOYEE));
     const fields = { ...withDefaults(aLivePage()), title: "Renamed" };
+    const token = await takeTestPageEditLock(editing, page.id);
 
-    expectOk(await editing.save(page.id, fields, null, TEST_EMPLOYEE));
-    expectOk(await editing.save(page.id, fields, null, TEST_EMPLOYEE));
+    const saved = expectOk(
+      await editing.save(page.id, fields, page.version, token, TEST_EMPLOYEE),
+    );
+    expectOk(
+      await editing.save(page.id, fields, saved.version, token, TEST_EMPLOYEE),
+    );
 
     expect(await historyOf(db, page.id)).toEqual([
       { action: "created", actor: TEST_EMPLOYEE.id },
@@ -264,28 +270,26 @@ describe("the change history trigger", () => {
     await close();
   });
 
-  it("keeps updated_at when a save changes nothing, so another editor's copy stays current", async () => {
+  it("keeps updated_at and the version when a save changes nothing, so another editor's copy stays current", async () => {
     const { db, close } = await createTestDb();
     const { editing } = createTestServices(db, SELF_APPROVAL);
     const page = expectOk(await editing.create(aLivePage(), TEST_EMPLOYEE));
     const fields = withDefaults(aLivePage());
+    const token = await takeTestPageEditLock(editing, page.id);
 
     const again = expectOk(
-      await editing.save(
-        page.id,
-        fields,
-        new Date(page.updated_at),
-        TEST_EMPLOYEE,
-      ),
+      await editing.save(page.id, fields, page.version, token, TEST_EMPLOYEE),
     );
     expect(again.updated_at).toBe(page.updated_at);
+    expect(again.version).toBe(page.version);
 
-    // A second editor who loaded the page before that save can still save.
+    // A save by someone who loaded the page before that save still lands.
     expectOk(
       await editing.save(
         page.id,
         { ...fields, title: "Renamed" },
-        new Date(page.updated_at),
+        page.version,
+        token,
         TEST_EMPLOYEE,
       ),
     );
@@ -376,12 +380,17 @@ describe("the change history trigger", () => {
       ),
     );
     const before = await versionOf(db);
+    const token = await takeTestPageEditLock(editing, parent.id);
 
     expectOk(
       await editing.save(
         parent.id,
-        { ...parent, category_id: CATEGORY_B },
-        null,
+        {
+          ...withDefaults(aLivePage({ url: "/a/parent" })),
+          category_id: CATEGORY_B,
+        },
+        parent.version,
+        token,
         TEST_EMPLOYEE,
       ),
     );
@@ -389,6 +398,7 @@ describe("the change history trigger", () => {
     const moved = expectOk(await new PostgresPages(db).find(child.id));
     expect(moved?.category_id).toBe(CATEGORY_B);
     expect(moved?.updated_at).not.toBe(child.updated_at);
+    expect(moved?.version).toBe(child.version + 1);
     expect(await historyOf(db, child.id)).toEqual([
       { action: "created", actor: TEST_EMPLOYEE.id },
       { action: "updated", actor: TEST_EMPLOYEE.id },
@@ -408,7 +418,8 @@ describe("the change history trigger", () => {
     const page = expectOk(
       await editing.create(aPage({ url: "/new" }), TEST_EMPLOYEE),
     );
-    expectOk(await editing.delete(page.id, TEST_EMPLOYEE));
+    const token = await takeTestPageEditLock(editing, page.id);
+    expectOk(await editing.delete(page.id, page.version, token, TEST_EMPLOYEE));
 
     expect(await versionOf(db)).toBe(seeded + 2);
     await close();

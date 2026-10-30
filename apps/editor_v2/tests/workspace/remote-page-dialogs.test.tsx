@@ -4,8 +4,13 @@ import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, expect, test, vi } from "vitest";
 import type { Category } from "../../src/api/categories";
-import { createEditorApi, type ServiceDetail } from "../../src/api/client";
+import { createEditorApi, type ApiPage, type ServiceDetail } from "../../src/api/client";
+import { apiPageSchema, PageEditLockToken } from "../../src/api/page-schemas";
+import { pageToMarkdown } from "../../src/api/page-markdown";
 import { categoriesQuery } from "../../src/api/queries";
+import { DraftStore } from "../../src/persistence/draft-store";
+import { govbbPageCodec } from "../../src/presets/govbb-page";
+import type { PageSession } from "../../src/workspace/page-sync";
 import type { PageDocument } from "../../src/workspace/model";
 import {
   CreateRemotePageDialog,
@@ -26,13 +31,49 @@ const page: PageDocument = {
   role: "supporting",
 };
 
+const baselinePage = apiPageSchema.parse({
+  id: page.id,
+  version: 7,
+  title: page.title,
+  url: "/fees",
+  slug: "fees",
+  category_id: null,
+  parent_id: null,
+  description: null,
+  visibility: "draft",
+  form_id: null,
+  body_markdown: "Fees",
+  frontmatter: {},
+  published_at: null,
+  created_at: "2026-10-07T12:00:00.000Z",
+  updated_at: "2026-10-07T12:00:00.000Z",
+  pending_revision: null,
+});
+
+/** A page as api_v2 answers a create: every field, with its first version. */
+const createdPage = (fields: Partial<ApiPage>, id: string) =>
+  apiPageSchema.parse({ ...baselinePage, version: 1, ...fields, id });
+
+const token = PageEditLockToken.parse("33333333-3333-4333-8333-333333333333");
+
+if (!token) throw new Error("Invalid test credential");
+
+const markdown = pageToMarkdown(baselinePage, []);
+
+const session: PageSession = {
+  store: new DraftStore(markdown, govbbPageCodec),
+  getBaseline: () => ({ page: baselinePage, markdown }),
+  getEditLockToken: () => token,
+  isSaving: () => false,
+};
+
 test.each(["service", "start", "supporting"] as const)(
   "creating a %s starts in Preview with an empty body",
   async (kind) => {
     vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
 
     const category = {
-      id: "category-1",
+      id: "00000000-0000-4000-8000-000000000098",
       parent_id: null,
       slug: "business-trade",
       url: "/business-trade",
@@ -59,7 +100,7 @@ test.each(["service", "start", "supporting"] as const)(
     const send = vi.fn(async (_url: string, init?: RequestInit) =>
       Response.json(
         init?.method === "POST"
-          ? { ...JSON.parse(String(init.body)), id: page.id }
+          ? createdPage(JSON.parse(String(init.body)), page.id)
           : { categories: [category] },
       ),
     );
@@ -127,7 +168,7 @@ test.each(["service", "start", "supporting"] as const)(
   },
 );
 
-test("deleting a page asks in an alert dialog, which can't be closed while the page goes", async () => {
+test("deleting a page asks in an alert dialog at the reviewed version, and an uncertain answer blocks a retry", async () => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   let respond = (_response: Response) => {};
 
@@ -145,6 +186,7 @@ test("deleting a page asks in an alert dialog, which can't be closed while the p
           api={createEditorApi("https://api.example.invalid")}
           open
           page={page}
+          session={session}
           onClose={close}
           onDone={() => {}}
         />
@@ -168,30 +210,18 @@ test("deleting a page asks in an alert dialog, which can't be closed while the p
   });
   expect(close).not.toHaveBeenCalled();
 
-  // It fails: the dialog stays, with the reason, and the page can be deleted again
+  expect(vi.mocked(fetch).mock.calls[0]?.[0]).toBe(
+    `https://api.example.invalid/pages/${page.id}?version=7`,
+  );
+  // An uncertain result retains this confirmation; it must not fetch a fresh version and retry deletion.
   await act(async () => respond(new Response(null, { status: 500 })));
   await vi.waitFor(() =>
     expect(dialog.querySelector('[role="alert"]')?.textContent).toBe(
-      "The page could not be deleted. Try again.",
+      "The server may have completed this request. Cancel and check the saved pages before trying again. Your open working copy is unchanged.",
     ),
   );
-  expect(button("Delete page").getAttribute("aria-disabled")).toBeNull();
-
-  // Refused: the API's own reason, since trying again won't help
-  await act(async () => button("Delete page").click());
-  await act(async () =>
-    respond(
-      Response.json(
-        { error: "forbidden", message: "Only approvers can change who can see a page." },
-        { status: 403 },
-      ),
-    ),
-  );
-  await vi.waitFor(() =>
-    expect(dialog.querySelector('[role="alert"]')?.textContent).toBe(
-      "Only approvers can change who can see a page.",
-    ),
-  );
+  expect(button("Delete page").disabled).toBe(true);
+  expect(vi.mocked(fetch).mock.calls).toHaveLength(1);
   await act(async () => root.unmount());
 });
 
@@ -335,8 +365,56 @@ test("a service on its way can't be cancelled, so none is made after the author 
   });
   expect(close).not.toHaveBeenCalled();
 
-  await act(async () => created.resolve(Response.json({ id: "register-a-birth" })));
-  await vi.waitFor(() => expect(done).toHaveBeenCalledWith("register-a-birth"));
+  const birth = "77777777-7777-4777-8777-777777777777";
+  await act(async () =>
+    created.resolve(Response.json(createdPage({ title: "Register a birth" }, birth))),
+  );
+  await vi.waitFor(() => expect(done).toHaveBeenCalledWith(birth));
   expect(close).not.toHaveBeenCalled();
+
+  await act(async () => root.unmount());
+});
+
+test("deleting a page the API refuses on policy shows the API's own reason", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () =>
+      Response.json(
+        { error: "forbidden", message: "Only approvers can delete a public page." },
+        { status: 403 },
+      ),
+    ),
+  );
+  const root = createRoot(document.body.appendChild(document.createElement("div")));
+
+  await act(async () =>
+    root.render(
+      <QueryClientProvider client={new QueryClient()}>
+        <DeleteRemotePageDialog
+          api={createEditorApi("https://api.example.invalid")}
+          open
+          page={page}
+          session={session}
+          onClose={() => {}}
+          onDone={() => {}}
+        />
+      </QueryClientProvider>,
+    ),
+  );
+
+  const dialog = document.querySelector<HTMLElement>('[role="alertdialog"]')!;
+
+  const button = (name: string) =>
+    [...dialog.querySelectorAll("button")].find((item) => shownText(item) === name)!;
+
+  await act(async () => button("Delete page").click());
+  // A policy refusal, not lost editing ownership: its own words, and no blind retry
+  await vi.waitFor(() =>
+    expect(dialog.querySelector('[role="alert"]')?.textContent).toBe(
+      "Only approvers can delete a public page.",
+    ),
+  );
+  expect(button("Delete page").disabled).toBe(true);
   await act(async () => root.unmount());
 });

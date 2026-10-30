@@ -36,6 +36,7 @@ import {
   TEST_EMPLOYEE,
   TEST_HEADERS,
   TEST_HTTP_CONFIG,
+  testPageEditLockHeaders,
 } from "./test-db";
 
 const registered: {
@@ -199,6 +200,38 @@ it("refuses every write to an employee with no role and leaves the database unch
   expect(await snapshot()).toEqual(before);
 });
 
+/**
+ * What a page write sends besides its fields: the page's version (in the
+ * query for a delete, the body otherwise) and, for a save or delete, the
+ * caller's edit lease, taken through `via`.
+ */
+async function pageRequest(
+  via: FastifyInstance,
+  method: string,
+  url: string,
+  id: string,
+  payload: Record<string, unknown>,
+): Promise<InjectOptions> {
+  const { rows } = await db.execute<{ version: number }>(
+    sql`select version from content_pages where id = ${id}`,
+  );
+  const version = rows[0]?.version;
+  const leased = url === "/pages/:id";
+  return {
+    method: method as InjectOptions["method"],
+    url:
+      url.replace(/:\w+/g, id).replace("*", "x") +
+      (leased && method === "DELETE" ? `?version=${version}` : ""),
+    payload: method === "DELETE" ? undefined : { ...payload, version },
+    headers: leased
+      ? {
+          ...TEST_HEADERS,
+          ...(await testPageEditLockHeaders(via, id, TEST_HEADERS)),
+        }
+      : TEST_HEADERS,
+  };
+}
+
 /** A signed-in request to a page route, about a page of the database's own. */
 async function pageWrite(
   method: string,
@@ -211,27 +244,16 @@ async function pageWrite(
     sql`insert into content_pages (id, url, slug, title, body_markdown)
         values (${id}, ${`/existing-${n}`}, 'existing', 'Existing', '')`,
   );
-  // Publishing needs a submitted revision, by someone else, and the version reviewed.
-  const reviewed = url.endsWith("/revision/publish")
-    ? (
-        await db.execute<{ version: string }>(
-          sql`insert into page_revisions
-                (page_id, status, fields, live_updated_at, created_by, contributors, submitted_by)
-              select id, 'submitted', ${JSON.stringify(fields)}::jsonb, updated_at,
-                     'other-author', '{other-author}', 'other-author'
-              from content_pages where id = ${id}
-              returning to_json(updated_at)#>>'{}' as version`,
-        )
-      ).rows[0]?.version
-    : undefined;
-  return {
-    method: method as InjectOptions["method"],
-    url: url.replace(/:\w+/g, id),
-    payload: fields,
-    headers: reviewed
-      ? { ...TEST_HEADERS, "if-updated-at": reviewed }
-      : TEST_HEADERS,
-  };
+  // Publishing needs a submitted revision, by someone else.
+  if (url.endsWith("/revision/publish"))
+    await db.execute(
+      sql`insert into page_revisions
+            (page_id, status, fields, live_updated_at, created_by, contributors, submitted_by)
+          select id, 'submitted', ${JSON.stringify(fields)}::jsonb, updated_at,
+                 'other-author', '{other-author}', 'other-author'
+          from content_pages where id = ${id}`,
+    );
+  return pageRequest(app, method, url, id, fields);
 }
 
 /** A signed-in request to a category route, about categories of the database's own. */
@@ -315,6 +337,10 @@ const NOT_CONTENT: Readonly<Record<string, string>> = {
     "rejects a pending revision, in page_revisions; #3200 records review",
   "PUT /editor/employees/:id/roles/:role": "grants a role, in user_roles",
   "DELETE /editor/employees/:id/roles/:role": "revokes a role, in user_roles",
+  "POST /pages/:id/lock": "takes an edit lease, in page_edit_locks (#3108)",
+  "PUT /pages/:id/lock": "renews an edit lease, in page_edit_locks (#3108)",
+  "DELETE /pages/:id/lock":
+    "releases an edit lease, in page_edit_locks (#3108)",
 };
 
 it("records every signed-in write against the employee", async () => {
@@ -365,6 +391,9 @@ const NOT_PAGE_VISIBILITY: Readonly<Record<string, string>> = {
     "deletes a collection record; pages are untouched",
   "PUT /editor/employees/:id/roles/:role": "grants a role, in user_roles",
   "DELETE /editor/employees/:id/roles/:role": "revokes a role, in user_roles",
+  "POST /pages/:id/lock": "takes an edit lease; the page is untouched",
+  "PUT /pages/:id/lock": "renews an edit lease; the page is untouched",
+  "DELETE /pages/:id/lock": "releases an edit lease; the page is untouched",
 };
 
 /**
@@ -379,12 +408,16 @@ const GATED_IN_PAGE_EDITING = new Set([
   "DELETE /pages/:id",
 ]);
 
-/** What citizens see of each page by id: a public page's whole row, otherwise only its visibility. */
+/**
+ * What citizens see of each page by id: a public page's whole row, otherwise
+ * only its visibility. Its editor `version` is left out: the site never
+ * serves it, and a revision's writes move it (017).
+ */
 const citizenView = async () =>
   new Map(
     (
       await db.execute<{ id: string; seen: string }>(
-        sql`select id, case when visibility = 'public' then row_to_json(p)::text
+        sql`select id, case when visibility = 'public' then (to_jsonb(p) - 'version')::text
                             else visibility::text end as seen
             from content_pages p`,
       )
@@ -428,29 +461,22 @@ async function routesChangingWhatCitizensSee(employee: Employee) {
           sql`insert into content_pages (id, url, slug, title, visibility, body_markdown)
               values (${target}, ${`/existing-${n}`}, 'existing', 'Existing', ${from}, '')`,
         );
-        // A decision names the version reviewed, so the probe sends the revision's.
-        const reviewed = url.includes("/revision/")
-          ? (
-              await db.execute<{ version: string }>(
-                sql`insert into page_revisions
-                      (page_id, status, fields, live_updated_at, created_by, contributors, submitted_by)
-                    select id, ${url.endsWith("/submit") ? "draft" : "submitted"},
-                           ${JSON.stringify(fields)}::jsonb, updated_at,
-                           'probe-author', '{probe-author}', 'probe-author'
-                    from content_pages where id = ${target}
-                    returning to_json(updated_at)#>>'{}' as version`,
-              )
-            ).rows[0]?.version
-          : undefined;
-        const before = await citizenView();
-        const response = await signedIn.inject({
-          method: method as InjectOptions["method"],
-          url: url.replace(/:\w+/g, target).replace("*", "x"),
-          payload: { ...fields, comment: "Probed" },
-          headers: reviewed
-            ? { ...TEST_HEADERS, "if-updated-at": reviewed }
-            : TEST_HEADERS,
+        if (url.includes("/revision/"))
+          await db.execute(
+            sql`insert into page_revisions
+                  (page_id, status, fields, live_updated_at, created_by, contributors, submitted_by)
+                select id, ${url.endsWith("/submit") ? "draft" : "submitted"},
+                       ${JSON.stringify(fields)}::jsonb, updated_at,
+                       'probe-author', '{probe-author}', 'probe-author'
+                from content_pages where id = ${target}`,
+          );
+        // The version and lease are read before `before`: taking a lease changes nothing citizens see.
+        const request = await pageRequest(signedIn, method, url, target, {
+          ...fields,
+          comment: "Probed",
         });
+        const before = await citizenView();
+        const response = await signedIn.inject(request);
         const route = `${method} ${url}`;
         if (response.statusCode >= 300 && !(route in NOT_PAGE_VISIBILITY))
           refused.add(`${route} (${response.statusCode})`);

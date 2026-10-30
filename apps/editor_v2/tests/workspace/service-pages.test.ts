@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import type { ApiPage, ServiceDetail, ServicePage } from "../../src/api/client";
+import { pageContentVersionSchema } from "../../src/api/page-schemas";
 import { listedServiceRows, remoteServiceRows } from "../../src/workspace/service-pages";
 
 const page: ApiPage = {
+  version: pageContentVersionSchema.parse(1),
   id: "page-1",
   url: "/money-financial-support/severance/how-it-is-worked-out",
   slug: "how-it-is-worked-out",

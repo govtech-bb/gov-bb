@@ -34,12 +34,13 @@ import {
   isCategoryAnchor,
   type CategoryValues,
 } from "../modules/category";
-import type { UserId } from "../modules/auth";
+import { UserId } from "../modules/auth";
 import type { CategoryRecords } from "../services/category-editing";
 import {
   ContentStoreUnavailable,
   OPEN_REVISION_STATUSES,
   PageRejected,
+  PageContentVersion,
   type FieldError,
   type Frontmatter,
   type PageDocument,
@@ -51,18 +52,27 @@ import {
 import type { PageChangeEvent } from "../modules/page-history";
 import type { Ancestor, ResolvablePage } from "../modules/page-visibility";
 import { err, ok, type Result } from "../modules/result";
+import {
+  PageEditActivitySequence,
+  PageEditLockGeneration,
+  PageEditLockToken,
+  type PageEditLockRecord,
+} from "../modules/page-edit-lock";
 import type { SearchChunk } from "../modules/search-text";
 import {
   authUser,
   categories,
   changeEvents,
   contentPages,
+  pageEditLocks,
   pageRevisions,
   searchChunks,
 } from "../schema";
 import type { EstateVersion, IndexReads } from "../services/editor-index";
 import type {
   NewPageRecord,
+  PageEditLockSnapshot,
+  PageEditorSnapshot,
   PageRecords,
   PageRevision,
   PendingRevisionRecord,
@@ -93,6 +103,7 @@ export const toDocument = (row: PageRow): PageDocument => ({
   published_at: row.publishedAt?.toISOString() ?? null,
   created_at: row.createdAt.toISOString(),
   updated_at: row.updatedAt.toISOString(),
+  version: PageContentVersion.parse(row.version),
 });
 
 type RevisionRow = typeof pageRevisions.$inferSelect;
@@ -116,6 +127,17 @@ const toRevision = (row: RevisionRow): PendingRevision => ({
 
 /** A page's one open revision, as the partial unique index defines it. */
 const isOpen = inArray(pageRevisions.status, OPEN_REVISION_STATUSES);
+const eligiblePageRevision = or(
+  isOpen,
+  and(
+    eq(pageRevisions.status, "rejected"),
+    eq(pageRevisions.liveUpdatedAt, contentPages.updatedAt),
+  ),
+);
+const pageRevisionOrder = [
+  sql`${pageRevisions.status} = 'rejected'`,
+  desc(pageRevisions.decidedAt),
+];
 
 /** The constraints a write can break, as the field an editor can fix. */
 const REFUSALS: Readonly<Record<string, FieldError>> = {
@@ -608,6 +630,34 @@ export class PostgresPages
     return rows.ok ? ok(firstDocument(rows.value)) : rows;
   }
 
+  /** A page version and its current revision from one MVCC snapshot, without locking writers. */
+  async editorSnapshot(
+    id: PageId,
+  ): Promise<Result<PageEditorSnapshot | null, ContentStoreUnavailable>> {
+    const rows = await attempt("editorSnapshot", () =>
+      this.db
+        .select({ live: contentPages, revision: pageRevisions })
+        .from(contentPages)
+        .leftJoin(
+          pageRevisions,
+          and(eq(pageRevisions.pageId, contentPages.id), eligiblePageRevision),
+        )
+        .where(eq(contentPages.id, id))
+        .orderBy(...pageRevisionOrder)
+        .limit(1),
+    );
+    if (!rows.ok) return rows;
+    const [row] = rows.value;
+    return ok(
+      row
+        ? {
+            live: toDocument(row.live),
+            revision: row.revision ? toRevision(row.revision) : null,
+          }
+        : null,
+    );
+  }
+
   /** The page with this id, its row locked until the transaction ends, or null. */
   async lock(
     id: PageId,
@@ -620,6 +670,68 @@ export class PostgresPages
         .for("update"),
     );
     return rows.ok ? ok(firstDocument(rows.value)) : rows;
+  }
+
+  /** A page's edit lease and the database's time, read after the caller locked the page row. */
+  readPageEditLock(
+    id: PageId,
+  ): Promise<Result<PageEditLockSnapshot, ContentStoreUnavailable>> {
+    return attempt("readPageEditLock", async () => {
+      const [row] = await this.db
+        .select()
+        .from(pageEditLocks)
+        .where(eq(pageEditLocks.pageId, id));
+      const time = await this.db.execute(sql`select clock_timestamp() as now`);
+      const [{ now }] = z
+        .tuple([z.object({ now: z.string().pipe(z.coerce.date()) })])
+        .parse(time.rows);
+      return {
+        now,
+        record: {
+          lockGeneration: PageEditLockGeneration.parse(
+            row?.lockGeneration ?? 0,
+          ),
+          claim:
+            row && row.token !== null
+              ? {
+                  userId: UserId.parse(row.userId),
+                  holderName: z.string().parse(row.holderName),
+                  token: PageEditLockToken.parse(row.token),
+                  acquiredAt: z.date().parse(row.acquiredAt),
+                  lockExpiresAt: z.date().parse(row.lockExpiresAt),
+                  lastActivityAt: z.date().parse(row.lastActivityAt),
+                  activitySequence: PageEditActivitySequence.parse(
+                    row.activitySequence,
+                  ),
+                }
+              : null,
+        },
+      };
+    });
+  }
+
+  /** Replace a page's edit lease under the page row lock; a release keeps its generation. */
+  writePageEditLock(
+    id: PageId,
+    record: PageEditLockRecord,
+  ): Promise<Result<void, ContentStoreUnavailable>> {
+    return attempt("writePageEditLock", async () => {
+      const claim = record.claim;
+      const values = {
+        lockGeneration: record.lockGeneration,
+        userId: claim?.userId ?? null,
+        holderName: claim?.holderName ?? null,
+        token: claim?.token.reveal() ?? null,
+        acquiredAt: claim?.acquiredAt ?? null,
+        lockExpiresAt: claim?.lockExpiresAt ?? null,
+        lastActivityAt: claim?.lastActivityAt ?? null,
+        activitySequence: claim?.activitySequence ?? null,
+      };
+      await this.db
+        .insert(pageEditLocks)
+        .values({ pageId: id, ...values })
+        .onConflictDoUpdate({ target: pageEditLocks.pageId, set: values });
+    });
   }
 
   /** The ids of the pages above this one, the page itself included. */
@@ -759,22 +871,8 @@ export class PostgresPages
         .select({ revision: pageRevisions })
         .from(pageRevisions)
         .innerJoin(contentPages, eq(contentPages.id, pageRevisions.pageId))
-        .where(
-          and(
-            eq(pageRevisions.pageId, pageId),
-            or(
-              isOpen,
-              and(
-                eq(pageRevisions.status, "rejected"),
-                eq(pageRevisions.liveUpdatedAt, contentPages.updatedAt),
-              ),
-            ),
-          ),
-        )
-        .orderBy(
-          sql`${pageRevisions.status} = 'rejected'`,
-          desc(pageRevisions.decidedAt),
-        )
+        .where(and(eq(pageRevisions.pageId, pageId), eligiblePageRevision))
+        .orderBy(...pageRevisionOrder)
         .limit(1),
     );
     if (!rows.ok) return rows;
@@ -890,7 +988,7 @@ export class PostgresPages
    * Who changed a page's content since it was last public, or ever when it
    * never was, from its history: the actors of each created, updated,
    * published or unpublished entry whose row differs from the one before it
-   * in more than visibility and stamps. A sub-page's category is left out
+   * in more than visibility, stamps and version. A sub-page's category is left out
    * too: it follows its parent's, so a write above it that carries it along
    * changes nothing of its own. Review events are left out, since their
    * snapshot is a revision row.
@@ -903,7 +1001,7 @@ export class PostgresPages
         with entries as (
           select version_no, actor,
                  snapshot->>'visibility' = 'public' as public,
-                 snapshot - array['visibility', 'published_at', 'content_updated_at', 'updated_at', 'created_at']
+                 snapshot - array['visibility', 'published_at', 'content_updated_at', 'updated_at', 'created_at', 'version']
                    - case when snapshot->>'parent_id' is null then '' else 'category_id' end
                    as content
             from change_events
@@ -1001,15 +1099,20 @@ export class PostgresPages
   > {
     const rows = await attempt("submittedRevisions", () =>
       this.db
-        .select({ revision: pageRevisions, name: authUser.name })
+        .select({
+          revision: pageRevisions,
+          name: authUser.name,
+          version: contentPages.version,
+        })
         .from(pageRevisions)
+        .innerJoin(contentPages, eq(contentPages.id, pageRevisions.pageId))
         .leftJoin(authUser, eq(authUser.id, pageRevisions.submittedBy))
         .where(eq(pageRevisions.status, "submitted"))
         .orderBy(pageRevisions.submittedAt, pageRevisions.id),
     );
     if (!rows.ok) return rows;
     return ok(
-      rows.value.map(({ revision, name }) => ({
+      rows.value.map(({ revision, name, version }) => ({
         id: revision.id,
         page_id: revision.pageId,
         title: revision.fields.title,
@@ -1021,6 +1124,7 @@ export class PostgresPages
           revision.submittedAt ?? revision.updatedAt
         ).toISOString(),
         updated_at: revision.updatedAt.toISOString(),
+        version: PageContentVersion.parse(version),
       })),
     );
   }

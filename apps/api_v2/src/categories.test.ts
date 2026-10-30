@@ -3,6 +3,7 @@ import type { FastifyInstance, InjectOptions } from "fastify";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { z } from "zod";
 import {
+  acquireTestPageEditLock,
   createTestApp,
   createTestDb,
   SELF_APPROVAL,
@@ -468,10 +469,12 @@ describe("editor categories", () => {
       422,
     );
     const existing = await page("/page", null);
+    const token = await acquireTestPageEditLock(app, existing.id);
     for (const method of ["POST", "PUT"] as const) {
       const response = await request({
         method,
         url: method === "POST" ? "/pages" : `/pages/${existing.id}`,
+        headers: { "x-page-edit-lock-token": token },
         payload: { ...existing, url: candidate.url },
       });
       expect(response.statusCode).toBe(422);

@@ -20,10 +20,18 @@ on:
     branches: [v2-rewrite]
     paths:
       - "apps/api_v2/**"
+      - "packages/content/package.json"
+      - "packages/govbbmarkd/**"
+      - "patches/**"
+      - ".dockerignore"
+      - "nx.json"
+      - "tsconfig.base.json"
+      - ".nvmrc"
       - "pnpm-lock.yaml"
       - "pnpm-workspace.yaml"
       - "package.json"
       - ".github/workflows/deploy-api-v2-sandbox.yml"
+      - ".github/scripts/verify-ecs-deployment.sh"
   workflow_dispatch:
 
 permissions:

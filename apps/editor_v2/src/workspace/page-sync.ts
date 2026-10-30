@@ -1,21 +1,22 @@
 import type { Category } from "../api/categories";
-import { ApiFailure, type ApiPage, type EditorApi, type FieldError } from "../api/client";
-import { apiMessage } from "../api/failure-messages";
+import type { ApiPage, EditorApi, FieldError } from "../api/client";
 import { markdownToPageSaveInput, pageToMarkdown } from "../api/page-markdown";
+import type { PageEditLockToken } from "../api/page-schemas";
 import type { DraftStore } from "../persistence/draft-store";
 
 /** The exact page version and submitted Markdown last loaded or saved in this session. */
-export type ServerPageBaseline = { page: ApiPage; markdown: string };
+export type PageEditBaseline = { readonly page: ApiPage; readonly markdown: string };
 
 /** Mounted page registration; live getters let navigation see edits and pending saves immediately. */
 export type PageSession = {
   store: DraftStore;
-  getBaseline: () => ServerPageBaseline;
+  getBaseline: () => PageEditBaseline;
+  getEditLockToken: () => PageEditLockToken | undefined;
   isSaving: () => boolean;
 };
 
 /** Unapplied source and serialization failures count as unsaved, even when applied text still matches. */
-export function pageHasUnsavedChanges(session: PageSession) {
+export function pageHasUnsavedChanges(session: Pick<PageSession, "store" | "getBaseline">) {
   const draft = session.store.getSnapshot();
 
   return (
@@ -26,12 +27,16 @@ export function pageHasUnsavedChanges(session: PageSession) {
   );
 }
 
+/** Saving distinguishes content conflicts, lost ownership, policy refusals and uncertain acknowledgement. */
 export type PageSaveOutcome =
   /** `discarded`: taking the page out of public view discarded its unreviewed change, so `base` is the live page. */
-  | { kind: "saved"; base: ServerPageBaseline; discarded?: true }
+  | { kind: "saved"; base: PageEditBaseline; discarded?: true }
   | { kind: "invalid"; errors: readonly FieldError[] }
+  /** A role or review-policy refusal: saving again won't change the answer, and ownership is not in doubt. */
   | { kind: "forbidden"; message: string }
-  | { kind: "conflict" | "missing" | "signed-out" | "failed" };
+  | {
+      kind: "conflict" | "missing" | "signed-out" | "lock-lost" | "outcome-unknown" | "failed";
+    };
 
 /** Page source with its frontmatter's visibility line and trailing whitespace taken out; the body is otherwise as written. */
 function withoutVisibility(markdown: string) {
@@ -42,12 +47,13 @@ function withoutVisibility(markdown: string) {
     );
 }
 
-/** Save a draft over the version it was edited from; the API refuses it if that version has moved on. */
-export async function savePageDraft(
+/** Explicitly save the submitted Markdown over its reviewed version; newer edits remain dirty. */
+export async function savePageChanges(
   api: Pick<EditorApi, "savePage">,
-  base: ServerPageBaseline,
+  base: PageEditBaseline,
   markdown: string,
   categories: readonly Category[],
+  editLockToken: PageEditLockToken,
 ): Promise<PageSaveOutcome> {
   const fields = markdownToPageSaveInput(markdown, base.page, categories);
 
@@ -68,38 +74,48 @@ export async function savePageDraft(
       ],
     };
 
-  try {
-    const page = await api.savePage(base.page.id, fields.value, base.page.updated_at);
+  const result = await api.savePage(base.page.id, fields.value, editLockToken);
+
+  if (result.ok) {
+    const page = result.value;
 
     // api_v2 kept only the visibility, so the saved version is what it stored, not what was sent
-    if (hiding) {
-      const stored = { page, markdown: pageToMarkdown(page, categories) };
+    if (!hiding) return { kind: "saved", base: { page, markdown } };
+    const stored = { page, markdown: pageToMarkdown(page, categories) };
 
-      return base.page.pending_revision
-        ? { kind: "saved", base: stored, discarded: true }
-        : { kind: "saved", base: stored };
-    }
+    return base.page.pending_revision
+      ? { kind: "saved", base: stored, discarded: true }
+      : { kind: "saved", base: stored };
+  }
 
-    return { kind: "saved", base: { page, markdown } };
-  } catch (error) {
-    if (!(error instanceof ApiFailure)) throw error;
+  const error = result.error;
 
-    switch (error.status) {
-      case 422:
-        return { kind: "invalid", errors: error.errors };
-      case 409:
-        return { kind: "conflict" };
-      case 404:
-        return { kind: "missing" };
-      case 401:
-        return { kind: "signed-out" };
-      case 403:
-        return {
-          kind: "forbidden",
-          message: apiMessage(error) ?? "You don’t have permission to save this change.",
-        };
-      default:
-        return { kind: "failed" };
+  switch (error.kind) {
+    case "invalid":
+      return { kind: "invalid", errors: error.errors };
+    case "version-conflict":
+      return { kind: "conflict" };
+    case "lock-required":
+    case "lock-lost":
+    case "lock-conflict":
+      return { kind: "lock-lost" };
+    case "missing":
+      return { kind: "missing" };
+    case "signed-out":
+      return { kind: "signed-out" };
+    case "forbidden":
+      return {
+        kind: "forbidden",
+        message: error.message ?? "You don’t have permission to save this change.",
+      };
+    case "outcome-unknown":
+      return { kind: "outcome-unknown" };
+    case "unavailable":
+    case "invalid-response":
+      return { kind: "failed" };
+    default: {
+      const unexpected: never = error;
+      throw unexpected;
     }
   }
 }

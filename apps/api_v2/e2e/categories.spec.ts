@@ -12,6 +12,7 @@ import {
   HAS_DATABASE,
   startServer,
   type Server,
+  takePageEditLease,
 } from "./support";
 
 describe.skipIf(!HAS_DATABASE)("category management over HTTP", () => {
@@ -46,6 +47,7 @@ describe.skipIf(!HAS_DATABASE)("category management over HTTP", () => {
     body?: object,
     stamp?: string,
     as = cookie,
+    lease: Record<string, string> = {},
   ) =>
     fetch(server.url + path, {
       method,
@@ -54,6 +56,7 @@ describe.skipIf(!HAS_DATABASE)("category management over HTTP", () => {
         origin: AUTH_ENV.EDITOR_ORIGIN,
         ...(body ? { "content-type": "application/json" } : {}),
         ...(stamp ? { "if-updated-at": stamp } : {}),
+        ...lease,
       },
       ...(body ? { body: JSON.stringify(body) } : {}),
     });
@@ -185,12 +188,21 @@ describe.skipIf(!HAS_DATABASE)("category management over HTTP", () => {
         visibility: "preview",
       });
       expect(created.status).toBe(201);
-      const { id, updated_at } = (await created.json()) as {
+      const { id, version } = (await created.json()) as {
         id: string;
-        updated_at: string;
+        version: number;
       };
       expect(
-        (await send("PUT", `/pages/${id}`, page, updated_at, reviewer)).status,
+        (
+          await send(
+            "PUT",
+            `/pages/${id}`,
+            { ...page, version },
+            undefined,
+            reviewer,
+            await takePageEditLease(server.url, id, reviewer),
+          )
+        ).status,
       ).toBe(200);
     }
     const blocked = await send(

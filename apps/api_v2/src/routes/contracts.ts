@@ -19,6 +19,7 @@ import { EmployeeView, Role } from "../modules/auth";
 import {
   EditorPage,
   NewPage,
+  PageContentVersion,
   PageId,
   ReviewQueueEntry,
   RevisionComment,
@@ -42,11 +43,20 @@ import {
   RecordKey,
 } from "../modules/collection";
 import { PageHistoryEntry } from "../modules/page-history";
+import {
+  AcquirePageEditLock,
+  PageEditLockStatus,
+  PageEditLockToken,
+  RenewPageEditLock,
+} from "../modules/page-edit-lock";
 import { PublicPage } from "../modules/page-visibility";
 import { EstateVersion } from "../services/editor-index";
 
-/** The editor sends the exact millisecond timestamp from its last read. */
+/** Category and collection writes send the exact millisecond timestamp from their last read; page writes send the page's `version`. */
 export const IF_UPDATED_AT = "if-updated-at";
+
+/** The header carrying a page's edit lease token: a credential, so never in a url. */
+export const PAGE_EDIT_LOCK_HEADER = "x-page-edit-lock-token";
 
 /** No credentials, or the preview token. */
 const previewSecurity: Array<Record<string, string[]>> = [
@@ -79,10 +89,22 @@ const validationFailed = z.looseObject({
   errors: z.array(z.object({ field: z.string(), message: z.string() })),
 });
 
-const conflict = z.looseObject({
-  error: z.literal("conflict"),
+/**
+ * A page write refused for its version or its edit lease. `page_version_conflict`:
+ * the page or its pending revision changed since the version sent.
+ * `page_edit_lock_required`: no lease token was sent. `page_edit_lock_lost`:
+ * the lease expired or was taken over. `page_edit_lock_conflict`: someone
+ * else took the lease first.
+ */
+const pageConflict = z.object({
+  error: z.enum([
+    "page_version_conflict",
+    "page_edit_lock_required",
+    "page_edit_lock_lost",
+    "page_edit_lock_conflict",
+  ]),
   message: z.string(),
-  documentId: z.guid(),
+  pageId: PageId,
 });
 
 /** A review step refused because the revision is not in the state it needs. */
@@ -92,6 +114,26 @@ const revisionState = z.object({
 });
 
 const idParams = z.object({ id: PageId });
+
+/** The page version a review step was decided on. */
+const pageVersion = PageContentVersion.describe(
+  "The page's `version` the caller read; a 409 `page_version_conflict` " +
+    "when the page or its revision has changed since.",
+);
+
+/** A page edit lease token, optional so that leaving it out is the route's 409, not a 400. */
+const optionalLockHeaders = z.object({
+  [PAGE_EDIT_LOCK_HEADER]: PageEditLockToken.optional().describe(
+    "This editing session's edit lease token: a random UUID the client " +
+      "makes when it acquires the lease.",
+  ),
+});
+const requiredLockHeaders = z.object({
+  [PAGE_EDIT_LOCK_HEADER]: PageEditLockToken.describe(
+    "This editing session's edit lease token: a random UUID the client " +
+      "makes when it acquires the lease.",
+  ),
+});
 
 /** The version a write was made against; a 409 when it has moved on. */
 const ifUpdatedAt = (read: string) =>
@@ -106,23 +148,15 @@ const ifUpdatedAt = (read: string) =>
       ),
   });
 
-/**
- * The revision version an approver reviewed. Optional in the schema only so
- * that leaving it out is a 428, as the route answers, rather than a 400.
- */
-const reviewedVersion = z.object({
-  "if-updated-at": z.iso
-    .datetime({ offset: true })
-    .transform((value) => new Date(value))
-    .optional()
-    .describe(
-      "Required: the revision's `updated_at` the approver reviewed. " +
-        "Without it the decision is refused with a 428.",
-    ),
-});
-
 const editorSecurity = [{ editorSession: [] }];
 const authErrors = { 401: error, 403: error, 503: error };
+const lockResponses = {
+  200: PageEditLockStatus,
+  400: error,
+  404: error,
+  500: error,
+  ...authErrors,
+};
 const categoryConflict = z.object({
   error: z.literal("conflict"),
   message: z.string(),
@@ -306,10 +340,12 @@ export const SCHEMAS = {
       "editor role (403 otherwise). " +
       "Send every field: a save replaces the page and defaults none, except " +
       "that leaving `parent_id` out keeps the page's parent. " +
-      "Send the `updated_at` you last read in the `if-updated-at` header. " +
-      "If the stored row, or the page's pending revision, has moved on since, " +
-      "the save is refused with a 409 rather than silently discarding " +
-      "whoever wrote first. Changing `url` " +
+      "Send the page's `version` you last read in the body, and your edit " +
+      "lease token in `x-page-edit-lock-token`. If the page, or its pending " +
+      "revision, has moved on since, the save is refused with a 409 " +
+      "`page_version_conflict` rather than silently discarding whoever " +
+      "wrote first; without a live lease it is a 409 " +
+      "`page_edit_lock_required` or `page_edit_lock_lost`. Changing `url` " +
       "moves this page alone: its sub-pages keep their urls and stay beneath " +
       "it by `parent_id`, and nothing redirects from the old url. " +
       "Changing `visibility` needs the approver role (403 otherwise). " +
@@ -325,20 +361,19 @@ export const SCHEMAS = {
       "closed as `discarded`, which the page's history records. A save to " +
       "a page whose revision is waiting for review updates that revision, " +
       "which stays waiting; the saver joins its `contributors`, so may not " +
-      "approve it. Such a save needs `if-updated-at` (428 without it). " +
-      "Returns the page as the editor now works on it.",
+      "approve it. " +
+      "Returns the page as the editor now works on it, with its new `version`.",
     tags: ["pages"],
     params: idParams,
-    headers: ifUpdatedAt(""),
-    body: SaveFields,
+    headers: optionalLockHeaders,
+    body: SaveFields.extend({ version: pageVersion }),
     security: editorSecurity,
     response: {
       200: EditorPage,
       400: error,
       404: error,
-      409: conflict,
+      409: pageConflict,
       422: validationFailed,
-      428: error,
       500: error,
       ...authErrors,
     },
@@ -410,9 +445,11 @@ export const SCHEMAS = {
     summary: "Submit a page's draft revision for review",
     description:
       "Needs the editor role (403 otherwise). Records the submitter, who " +
-      "may not then approve it. 404 when the page has no draft revision; " +
-      "409 `under_review` when it is already submitted, or `conflict` when " +
-      "the draft has been saved since `if-updated-at`. Saves made while it " +
+      "may not then approve it. Needs no edit lease. 404 when the page has " +
+      "no draft revision; 409 `under_review` when it is already submitted, " +
+      "or `page_version_conflict` when the page has changed since " +
+      "`version`. Returns the revision with the page's new `version`. " +
+      "Saves made while it " +
       "waits update it, and it keeps waiting. A rejected revision can be submitted again " +
       "as it is: it is copied into a new submitted revision with the same " +
       "`updated_at`, and the rejected one keeps its comment. The copy's " +
@@ -420,13 +457,13 @@ export const SCHEMAS = {
       "approve it either.",
     tags: ["pages"],
     params: idParams,
-    headers: ifUpdatedAt(" for the revision"),
+    body: z.object({ version: pageVersion }),
     security: editorSecurity,
     response: {
       200: RevisionView,
       400: error,
       404: error,
-      409: z.union([conflict, revisionState]),
+      409: z.union([pageConflict, revisionState]),
       500: error,
       ...authErrors,
     },
@@ -438,24 +475,24 @@ export const SCHEMAS = {
       "Needs the approver role, and the approver must not have changed or " +
       "submitted the revision (403 otherwise). The live page is unchanged; " +
       "the revision is kept with the comment, and the next save starts a " +
-      "new draft from it. Rejecting moves the revision's `updated_at`, so " +
+      "new draft from it. Rejecting moves the page's `version`, so " +
       "an editor holding the earlier one reloads and sees why. " +
-      "`if-updated-at` is required (428 without it). 404 when nothing is " +
-      "waiting for review; 409 `not_submitted` for a draft, or `conflict` " +
-      "when the revision is no longer the version in `if-updated-at`.",
+      "Needs no edit lease, so someone editing the page does not block it. " +
+      "404 when nothing is waiting for review; 409 `not_submitted` for a " +
+      "draft, or `page_version_conflict` when the page is no longer the " +
+      "`version` reviewed. Returns the revision with the page's new `version`.",
     tags: ["pages"],
     params: idParams,
-    headers: reviewedVersion,
     body: z.object({
       comment: RevisionComment.describe("Why, for the editor."),
+      version: pageVersion,
     }),
     security: editorSecurity,
     response: {
       200: RevisionView,
       400: error,
       404: error,
-      409: z.union([conflict, revisionState]),
-      428: error,
+      409: z.union([pageConflict, revisionState]),
       500: error,
       ...authErrors,
     },
@@ -470,20 +507,20 @@ export const SCHEMAS = {
       "in `change_events`, all in one transaction. A revision that has gone " +
       "stale while it waited (its parent or category gone, or its url " +
       "taken) is refused with a 422 naming the field, and nothing changes. " +
-      "`if-updated-at` is required (428 without it). 404 when nothing is " +
-      "waiting for review; 409 `not_submitted` for a draft, or `conflict` " +
-      "when the revision is no longer the version in `if-updated-at`. " +
-      "Returns the page as it now stands.",
+      "Needs no edit lease, so someone editing the page does not block it. " +
+      "404 when nothing is waiting for review; 409 `not_submitted` for a " +
+      "draft, or `page_version_conflict` when the page is no longer the " +
+      "`version` reviewed. Returns the page as it now stands, with its new " +
+      "`version`.",
     tags: ["pages"],
     params: idParams,
-    headers: reviewedVersion,
+    body: z.object({ version: pageVersion }),
     security: editorSecurity,
     response: {
       200: EditorPage,
       400: error,
       404: error,
-      409: z.union([conflict, revisionState]),
-      428: error,
+      409: z.union([pageConflict, revisionState]),
       422: validationFailed,
       500: error,
       ...authErrors,
@@ -497,17 +534,84 @@ export const SCHEMAS = {
       "editor role (403 otherwise). A page with sub-pages is refused (422) " +
       "until they are moved or deleted. " +
       "Deleting a `public` page needs the approver role (403 otherwise). " +
-      "Its pending revision goes with it.",
+      "Its pending revision goes with it. Send the page's `version` you " +
+      "last read as a query parameter and your edit lease token in " +
+      "`x-page-edit-lock-token`; refused with a 409 as a save is.",
     tags: ["pages"],
     params: idParams,
+    headers: optionalLockHeaders,
+    querystring: z.object({
+      version: z
+        .string()
+        .regex(/^\d+$/)
+        .transform(Number)
+        .pipe(PageContentVersion)
+        .describe("The page's `version` the caller read."),
+    }),
     security: editorSecurity,
     response: {
       204: z.undefined(),
       400: error,
+      404: error,
+      409: pageConflict,
       422: validationFailed,
       500: error,
       ...authErrors,
     },
+  },
+
+  readPageEditLock: {
+    summary: "Who is editing a page",
+    description:
+      "Needs the editor role (403 otherwise), including when confirming " +
+      "an existing lease after access changes. Reads the lease without " +
+      "extending it; with your token, `ownedByCaller` says whether it is " +
+      "yours. Never returns a token, email or user id.",
+    tags: ["pages"],
+    params: idParams,
+    headers: optionalLockHeaders,
+    security: editorSecurity,
+    response: lockResponses,
+  },
+  acquirePageEditLock: {
+    summary: "Start editing a page, or take over its edit lease",
+    description:
+      "Needs the editor role (403 otherwise). `acquire` takes an unheld " +
+      "lease; `takeover` replaces whoever holds it. Both name the " +
+      "`lockGeneration` the caller saw, so a stale request is a 409 " +
+      "`page_edit_lock_conflict`. Asking again with the token that holds " +
+      "it returns the lease unchanged.",
+    tags: ["pages"],
+    params: idParams,
+    headers: requiredLockHeaders,
+    body: AcquirePageEditLock,
+    security: editorSecurity,
+    response: { ...lockResponses, 409: pageConflict },
+  },
+  renewPageEditLock: {
+    summary: "Keep a page's edit lease",
+    description:
+      "Needs the editor role (403 otherwise). Extends a live lease; an " +
+      "expired or replaced one is a 409 `page_edit_lock_lost`. A higher " +
+      "`activitySequence` records editing, which postpones the idle " +
+      "deadline; repeating one does not.",
+    tags: ["pages"],
+    params: idParams,
+    headers: requiredLockHeaders,
+    body: RenewPageEditLock,
+    security: editorSecurity,
+    response: { ...lockResponses, 409: pageConflict },
+  },
+  releasePageEditLock: {
+    summary: "Stop editing a page",
+    description:
+      "Needs the editor role (403 otherwise). Releases this token's lease; " +
+      "a lease someone else holds now is left as it is.",
+    tags: ["pages"],
+    params: idParams,
+    headers: requiredLockHeaders,
+    security: editorSecurity,
+    response: lockResponses,
   },
 
   listServices: {

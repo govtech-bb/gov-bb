@@ -235,9 +235,11 @@ export interface paths {
                             created_at: string;
                             /**
                              * Format: date-time
-                             * @description Millisecond precision, and exactly the value to send back in `if-updated-at` on the next save.
+                             * @description When the page was last directly saved.
                              */
                             updated_at: string;
+                            /** @description The page's version: send it back to save, delete, submit, reject or publish. It moves whenever the page or its pending revision changes. */
+                            version: number;
                             /** @description Set when the page is public and has a change waiting for an approver, or a rejected one that has not been replaced. The fields and `updated_at` are then the revision's, and citizens still see the live page. */
                             pending_revision: {
                                 /** @enum {string} */
@@ -1045,9 +1047,11 @@ export interface paths {
                             created_at: string;
                             /**
                              * Format: date-time
-                             * @description Millisecond precision, and exactly the value to send back in `if-updated-at` on the next save.
+                             * @description When the page was last directly saved.
                              */
                             updated_at: string;
+                            /** @description The page's version: send it back to save, delete, submit, reject or publish. It moves whenever the page or its pending revision changes. */
+                            version: number;
                             /** @description Set when the page is public and has a change waiting for an approver, or a rejected one that has not been replaced. The fields and `updated_at` are then the revision's, and citizens still see the live page. */
                             pending_revision: {
                                 /** @enum {string} */
@@ -1146,14 +1150,14 @@ export interface paths {
         };
         /**
          * Save a page
-         * @description Requires an employee session, the editor's Origin header and the editor role (403 otherwise). Send every field: a save replaces the page and defaults none, except that leaving `parent_id` out keeps the page's parent. Send the `updated_at` you last read in the `if-updated-at` header. If the stored row, or the page's pending revision, has moved on since, the save is refused with a 409 rather than silently discarding whoever wrote first. Changing `url` moves this page alone: its sub-pages keep their urls and stay beneath it by `parent_id`, and nothing redirects from the old url. Changing `visibility` needs the approver role (403 otherwise). Making a page public is refused (403) to an approver who changed its content since it was last public, in this save or before: another approver makes it public. A save that keeps a `public` page public, whoever sends it, goes into the page's pending revision: citizens keep seeing the live page until an approver publishes it. An approver's save that takes a `public` page out of public view changes only its `visibility`: the other fields sent are ignored, the live content stays, and the page's open revision is discarded: a draft is dropped, and one waiting for review is closed as `discarded`, which the page's history records. A save to a page whose revision is waiting for review updates that revision, which stays waiting; the saver joins its `contributors`, so may not approve it. Such a save needs `if-updated-at` (428 without it). Returns the page as the editor now works on it.
+         * @description Requires an employee session, the editor's Origin header and the editor role (403 otherwise). Send every field: a save replaces the page and defaults none, except that leaving `parent_id` out keeps the page's parent. Send the page's `version` you last read in the body, and your edit lease token in `x-page-edit-lock-token`. If the page, or its pending revision, has moved on since, the save is refused with a 409 `page_version_conflict` rather than silently discarding whoever wrote first; without a live lease it is a 409 `page_edit_lock_required` or `page_edit_lock_lost`. Changing `url` moves this page alone: its sub-pages keep their urls and stay beneath it by `parent_id`, and nothing redirects from the old url. Changing `visibility` needs the approver role (403 otherwise). Making a page public is refused (403) to an approver who changed its content since it was last public, in this save or before: another approver makes it public. A save that keeps a `public` page public, whoever sends it, goes into the page's pending revision: citizens keep seeing the live page until an approver publishes it. An approver's save that takes a `public` page out of public view changes only its `visibility`: the other fields sent are ignored, the live content stays, and the page's open revision is discarded: a draft is dropped, and one waiting for review is closed as `discarded`, which the page's history records. A save to a page whose revision is waiting for review updates that revision, which stays waiting; the saver joins its `contributors`, so may not approve it. Returns the page as the editor now works on it, with its new `version`.
          */
         put: {
             parameters: {
                 query?: never;
                 header?: {
-                    /** @description The `updated_at` this client last read. Omit to accept whatever is stored. */
-                    "if-updated-at"?: string;
+                    /** @description This editing session's edit lease token: a random UUID the client makes when it acquires the lease. */
+                    "x-page-edit-lock-token"?: string;
                 };
                 path: {
                     id: string;
@@ -1187,6 +1191,8 @@ export interface paths {
                             keywords?: string[];
                             source_url?: string;
                         };
+                        /** @description The page's `version` the caller read; a 409 `page_version_conflict` when the page or its revision has changed since. */
+                        version: number;
                     };
                 };
             };
@@ -1235,9 +1241,11 @@ export interface paths {
                             created_at: string;
                             /**
                              * Format: date-time
-                             * @description Millisecond precision, and exactly the value to send back in `if-updated-at` on the next save.
+                             * @description When the page was last directly saved.
                              */
                             updated_at: string;
+                            /** @description The page's version: send it back to save, delete, submit, reject or publish. It moves whenever the page or its pending revision changes. */
+                            version: number;
                             /** @description Set when the page is public and has a change waiting for an approver, or a rejected one that has not been replaced. The fields and `updated_at` are then the revision's, and citizens still see the live page. */
                             pending_revision: {
                                 /** @enum {string} */
@@ -1312,12 +1320,10 @@ export interface paths {
                     content: {
                         "application/json": {
                             /** @enum {string} */
-                            error: "conflict";
+                            error: "page_version_conflict" | "page_edit_lock_required" | "page_edit_lock_lost" | "page_edit_lock_conflict";
                             message: string;
                             /** Format: uuid */
-                            documentId: string;
-                        } & {
-                            [key: string]: unknown;
+                            pageId: string;
                         };
                     };
                 };
@@ -1335,20 +1341,6 @@ export interface paths {
                                 field: string;
                                 message: string;
                             }[];
-                        } & {
-                            [key: string]: unknown;
-                        };
-                    };
-                };
-                /** @description Default Response */
-                428: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            error: string;
-                            message?: string;
                         } & {
                             [key: string]: unknown;
                         };
@@ -1387,12 +1379,18 @@ export interface paths {
         post?: never;
         /**
          * Delete a page
-         * @description Requires an employee session, the editor's Origin header and the editor role (403 otherwise). A page with sub-pages is refused (422) until they are moved or deleted. Deleting a `public` page needs the approver role (403 otherwise). Its pending revision goes with it.
+         * @description Requires an employee session, the editor's Origin header and the editor role (403 otherwise). A page with sub-pages is refused (422) until they are moved or deleted. Deleting a `public` page needs the approver role (403 otherwise). Its pending revision goes with it. Send the page's `version` you last read as a query parameter and your edit lease token in `x-page-edit-lock-token`; refused with a 409 as a save is.
          */
         delete: {
             parameters: {
-                query?: never;
-                header?: never;
+                query: {
+                    /** @description The page's `version` the caller read. */
+                    version: string;
+                };
+                header?: {
+                    /** @description This editing session's edit lease token: a random UUID the client makes when it acquires the lease. */
+                    "x-page-edit-lock-token"?: string;
+                };
                 path: {
                     id: string;
                 };
@@ -1446,6 +1444,35 @@ export interface paths {
                             message?: string;
                         } & {
                             [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @enum {string} */
+                            error: "page_version_conflict" | "page_edit_lock_required" | "page_edit_lock_lost" | "page_edit_lock_conflict";
+                            message: string;
+                            /** Format: uuid */
+                            pageId: string;
                         };
                     };
                 };
@@ -1729,9 +1756,11 @@ export interface paths {
                             created_at: string;
                             /**
                              * Format: date-time
-                             * @description Moves when its content is saved, not when it is submitted or rejected. Send it in `if-updated-at` to act on this version.
+                             * @description Moves when its content is saved or it is rejected. To act on it, send the page's `version`.
                              */
                             updated_at: string;
+                            /** @description The page's version, to send back with a review decision. */
+                            version: number;
                             /** @description The fields whose proposed value differs from the live page's, in field order. Empty when the revision matches the live page. */
                             changes: {
                                 /** @enum {string} */
@@ -1883,9 +1912,11 @@ export interface paths {
                                 submitted_at: string;
                                 /**
                                  * Format: date-time
-                                 * @description The revision's version, as `GET /pages/{id}/revision` has it.
+                                 * @description When its content was last saved.
                                  */
                                 updated_at: string;
+                                /** @description The page's version, as `GET /pages/{id}/revision` has it. */
+                                version: number;
                             }[];
                         };
                     };
@@ -4070,21 +4101,25 @@ export interface paths {
         put?: never;
         /**
          * Submit a page's draft revision for review
-         * @description Needs the editor role (403 otherwise). Records the submitter, who may not then approve it. 404 when the page has no draft revision; 409 `under_review` when it is already submitted, or `conflict` when the draft has been saved since `if-updated-at`. Saves made while it waits update it, and it keeps waiting. A rejected revision can be submitted again as it is: it is copied into a new submitted revision with the same `updated_at`, and the rejected one keeps its comment. The copy's `contributors` gain the rejected round's submitter, who may not approve it either.
+         * @description Needs the editor role (403 otherwise). Records the submitter, who may not then approve it. Needs no edit lease. 404 when the page has no draft revision; 409 `under_review` when it is already submitted, or `page_version_conflict` when the page has changed since `version`. Returns the revision with the page's new `version`. Saves made while it waits update it, and it keeps waiting. A rejected revision can be submitted again as it is: it is copied into a new submitted revision with the same `updated_at`, and the rejected one keeps its comment. The copy's `contributors` gain the rejected round's submitter, who may not approve it either.
          */
         post: {
             parameters: {
                 query?: never;
-                header?: {
-                    /** @description The `updated_at` this client last read for the revision. Omit to accept whatever is stored. */
-                    "if-updated-at"?: string;
-                };
+                header?: never;
                 path: {
                     id: string;
                 };
                 cookie?: never;
             };
-            requestBody?: never;
+            requestBody: {
+                content: {
+                    "application/json": {
+                        /** @description The page's `version` the caller read; a 409 `page_version_conflict` when the page or its revision has changed since. */
+                        version: number;
+                    };
+                };
+            };
             responses: {
                 /** @description Default Response */
                 200: {
@@ -4149,9 +4184,11 @@ export interface paths {
                             created_at: string;
                             /**
                              * Format: date-time
-                             * @description Moves when its content is saved, not when it is submitted or rejected. Send it in `if-updated-at` to act on this version.
+                             * @description Moves when its content is saved or it is rejected. To act on it, send the page's `version`.
                              */
                             updated_at: string;
+                            /** @description The page's version, to send back with a review decision. */
+                            version: number;
                             /** @description The fields whose proposed value differs from the live page's, in field order. Empty when the revision matches the live page. */
                             changes: {
                                 /** @enum {string} */
@@ -4224,15 +4261,13 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": ({
+                        "application/json": {
                             /** @enum {string} */
-                            error: "conflict";
+                            error: "page_version_conflict" | "page_edit_lock_required" | "page_edit_lock_lost" | "page_edit_lock_conflict";
                             message: string;
                             /** Format: uuid */
-                            documentId: string;
-                        } & {
-                            [key: string]: unknown;
-                        }) | {
+                            pageId: string;
+                        } | {
                             /** @enum {string} */
                             error: "under_review" | "not_submitted";
                             message: string;
@@ -4286,15 +4321,12 @@ export interface paths {
         put?: never;
         /**
          * Reject a submitted revision with a comment
-         * @description Needs the approver role, and the approver must not have changed or submitted the revision (403 otherwise). The live page is unchanged; the revision is kept with the comment, and the next save starts a new draft from it. Rejecting moves the revision's `updated_at`, so an editor holding the earlier one reloads and sees why. `if-updated-at` is required (428 without it). 404 when nothing is waiting for review; 409 `not_submitted` for a draft, or `conflict` when the revision is no longer the version in `if-updated-at`.
+         * @description Needs the approver role, and the approver must not have changed or submitted the revision (403 otherwise). The live page is unchanged; the revision is kept with the comment, and the next save starts a new draft from it. Rejecting moves the page's `version`, so an editor holding the earlier one reloads and sees why. Needs no edit lease, so someone editing the page does not block it. 404 when nothing is waiting for review; 409 `not_submitted` for a draft, or `page_version_conflict` when the page is no longer the `version` reviewed. Returns the revision with the page's new `version`.
          */
         post: {
             parameters: {
                 query?: never;
-                header?: {
-                    /** @description Required: the revision's `updated_at` the approver reviewed. Without it the decision is refused with a 428. */
-                    "if-updated-at"?: string;
-                };
+                header?: never;
                 path: {
                     id: string;
                 };
@@ -4305,6 +4337,8 @@ export interface paths {
                     "application/json": {
                         /** @description Why, for the editor. */
                         comment: string;
+                        /** @description The page's `version` the caller read; a 409 `page_version_conflict` when the page or its revision has changed since. */
+                        version: number;
                     };
                 };
             };
@@ -4372,9 +4406,11 @@ export interface paths {
                             created_at: string;
                             /**
                              * Format: date-time
-                             * @description Moves when its content is saved, not when it is submitted or rejected. Send it in `if-updated-at` to act on this version.
+                             * @description Moves when its content is saved or it is rejected. To act on it, send the page's `version`.
                              */
                             updated_at: string;
+                            /** @description The page's version, to send back with a review decision. */
+                            version: number;
                             /** @description The fields whose proposed value differs from the live page's, in field order. Empty when the revision matches the live page. */
                             changes: {
                                 /** @enum {string} */
@@ -4447,32 +4483,16 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": ({
+                        "application/json": {
                             /** @enum {string} */
-                            error: "conflict";
+                            error: "page_version_conflict" | "page_edit_lock_required" | "page_edit_lock_lost" | "page_edit_lock_conflict";
                             message: string;
                             /** Format: uuid */
-                            documentId: string;
-                        } & {
-                            [key: string]: unknown;
-                        }) | {
+                            pageId: string;
+                        } | {
                             /** @enum {string} */
                             error: "under_review" | "not_submitted";
                             message: string;
-                        };
-                    };
-                };
-                /** @description Default Response */
-                428: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            error: string;
-                            message?: string;
-                        } & {
-                            [key: string]: unknown;
                         };
                     };
                 };
@@ -4523,21 +4543,25 @@ export interface paths {
         put?: never;
         /**
          * Approve a submitted revision and publish it
-         * @description Needs the approver role, and the approver must not have changed or submitted the revision (403 otherwise). Writes the revision to the live page as a save would, re-indexes it and records the approver in `change_events`, all in one transaction. A revision that has gone stale while it waited (its parent or category gone, or its url taken) is refused with a 422 naming the field, and nothing changes. `if-updated-at` is required (428 without it). 404 when nothing is waiting for review; 409 `not_submitted` for a draft, or `conflict` when the revision is no longer the version in `if-updated-at`. Returns the page as it now stands.
+         * @description Needs the approver role, and the approver must not have changed or submitted the revision (403 otherwise). Writes the revision to the live page as a save would, re-indexes it and records the approver in `change_events`, all in one transaction. A revision that has gone stale while it waited (its parent or category gone, or its url taken) is refused with a 422 naming the field, and nothing changes. Needs no edit lease, so someone editing the page does not block it. 404 when nothing is waiting for review; 409 `not_submitted` for a draft, or `page_version_conflict` when the page is no longer the `version` reviewed. Returns the page as it now stands, with its new `version`.
          */
         post: {
             parameters: {
                 query?: never;
-                header?: {
-                    /** @description Required: the revision's `updated_at` the approver reviewed. Without it the decision is refused with a 428. */
-                    "if-updated-at"?: string;
-                };
+                header?: never;
                 path: {
                     id: string;
                 };
                 cookie?: never;
             };
-            requestBody?: never;
+            requestBody: {
+                content: {
+                    "application/json": {
+                        /** @description The page's `version` the caller read; a 409 `page_version_conflict` when the page or its revision has changed since. */
+                        version: number;
+                    };
+                };
+            };
             responses: {
                 /** @description Default Response */
                 200: {
@@ -4583,9 +4607,11 @@ export interface paths {
                             created_at: string;
                             /**
                              * Format: date-time
-                             * @description Millisecond precision, and exactly the value to send back in `if-updated-at` on the next save.
+                             * @description When the page was last directly saved.
                              */
                             updated_at: string;
+                            /** @description The page's version: send it back to save, delete, submit, reject or publish. It moves whenever the page or its pending revision changes. */
+                            version: number;
                             /** @description Set when the page is public and has a change waiting for an approver, or a rejected one that has not been replaced. The fields and `updated_at` are then the revision's, and citizens still see the live page. */
                             pending_revision: {
                                 /** @enum {string} */
@@ -4658,15 +4684,13 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": ({
+                        "application/json": {
                             /** @enum {string} */
-                            error: "conflict";
+                            error: "page_version_conflict" | "page_edit_lock_required" | "page_edit_lock_lost" | "page_edit_lock_conflict";
                             message: string;
                             /** Format: uuid */
-                            documentId: string;
-                        } & {
-                            [key: string]: unknown;
-                        }) | {
+                            pageId: string;
+                        } | {
                             /** @enum {string} */
                             error: "under_review" | "not_submitted";
                             message: string;
@@ -4693,7 +4717,142 @@ export interface paths {
                     };
                 };
                 /** @description Default Response */
-                428: {
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pages/{id}/lock": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Who is editing a page
+         * @description Needs the editor role (403 otherwise), including when confirming an existing lease after access changes. Reads the lease without extending it; with your token, `ownedByCaller` says whether it is yours. Never returns a token, email or user id.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: {
+                    /** @description This editing session's edit lease token: a random UUID the client makes when it acquires the lease. */
+                    "x-page-edit-lock-token"?: string;
+                };
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Default Response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            lockGeneration: number;
+                            /** Format: date-time */
+                            serverTime: string;
+                            /** @enum {string} */
+                            state: "unheld";
+                        } | {
+                            lockGeneration: number;
+                            /** Format: date-time */
+                            serverTime: string;
+                            /** @enum {string} */
+                            state: "held";
+                            holderName: string;
+                            ownedByCaller: boolean;
+                            /** Format: date-time */
+                            lockExpiresAt: string;
+                            /** Format: date-time */
+                            lastActivityAt: string;
+                            /** Format: date-time */
+                            idlePromptAt: string;
+                            /** Format: date-time */
+                            idleExpiresAt: string;
+                            activitySequence: number;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                404: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -4736,7 +4895,458 @@ export interface paths {
                 };
             };
         };
-        delete?: never;
+        /**
+         * Keep a page's edit lease
+         * @description Needs the editor role (403 otherwise). Extends a live lease; an expired or replaced one is a 409 `page_edit_lock_lost`. A higher `activitySequence` records editing, which postpones the idle deadline; repeating one does not.
+         */
+        put: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description This editing session's edit lease token: a random UUID the client makes when it acquires the lease. */
+                    "x-page-edit-lock-token": string;
+                };
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        activitySequence: number;
+                    };
+                };
+            };
+            responses: {
+                /** @description Default Response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            lockGeneration: number;
+                            /** Format: date-time */
+                            serverTime: string;
+                            /** @enum {string} */
+                            state: "unheld";
+                        } | {
+                            lockGeneration: number;
+                            /** Format: date-time */
+                            serverTime: string;
+                            /** @enum {string} */
+                            state: "held";
+                            holderName: string;
+                            ownedByCaller: boolean;
+                            /** Format: date-time */
+                            lockExpiresAt: string;
+                            /** Format: date-time */
+                            lastActivityAt: string;
+                            /** Format: date-time */
+                            idlePromptAt: string;
+                            /** Format: date-time */
+                            idleExpiresAt: string;
+                            activitySequence: number;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @enum {string} */
+                            error: "page_version_conflict" | "page_edit_lock_required" | "page_edit_lock_lost" | "page_edit_lock_conflict";
+                            message: string;
+                            /** Format: uuid */
+                            pageId: string;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+        };
+        /**
+         * Start editing a page, or take over its edit lease
+         * @description Needs the editor role (403 otherwise). `acquire` takes an unheld lease; `takeover` replaces whoever holds it. Both name the `lockGeneration` the caller saw, so a stale request is a 409 `page_edit_lock_conflict`. Asking again with the token that holds it returns the lease unchanged.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description This editing session's edit lease token: a random UUID the client makes when it acquires the lease. */
+                    "x-page-edit-lock-token": string;
+                };
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        /** @enum {string} */
+                        action: "acquire" | "takeover";
+                        expectedLockGeneration: number;
+                    };
+                };
+            };
+            responses: {
+                /** @description Default Response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            lockGeneration: number;
+                            /** Format: date-time */
+                            serverTime: string;
+                            /** @enum {string} */
+                            state: "unheld";
+                        } | {
+                            lockGeneration: number;
+                            /** Format: date-time */
+                            serverTime: string;
+                            /** @enum {string} */
+                            state: "held";
+                            holderName: string;
+                            ownedByCaller: boolean;
+                            /** Format: date-time */
+                            lockExpiresAt: string;
+                            /** Format: date-time */
+                            lastActivityAt: string;
+                            /** Format: date-time */
+                            idlePromptAt: string;
+                            /** Format: date-time */
+                            idleExpiresAt: string;
+                            activitySequence: number;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @enum {string} */
+                            error: "page_version_conflict" | "page_edit_lock_required" | "page_edit_lock_lost" | "page_edit_lock_conflict";
+                            message: string;
+                            /** Format: uuid */
+                            pageId: string;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+        };
+        /**
+         * Stop editing a page
+         * @description Needs the editor role (403 otherwise). Releases this token's lease; a lease someone else holds now is left as it is.
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description This editing session's edit lease token: a random UUID the client makes when it acquires the lease. */
+                    "x-page-edit-lock-token": string;
+                };
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Default Response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            lockGeneration: number;
+                            /** Format: date-time */
+                            serverTime: string;
+                            /** @enum {string} */
+                            state: "unheld";
+                        } | {
+                            lockGeneration: number;
+                            /** Format: date-time */
+                            serverTime: string;
+                            /** @enum {string} */
+                            state: "held";
+                            holderName: string;
+                            ownedByCaller: boolean;
+                            /** Format: date-time */
+                            lockExpiresAt: string;
+                            /** Format: date-time */
+                            lastActivityAt: string;
+                            /** Format: date-time */
+                            idlePromptAt: string;
+                            /** Format: date-time */
+                            idleExpiresAt: string;
+                            activitySequence: number;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+        };
         options?: never;
         head?: never;
         patch?: never;

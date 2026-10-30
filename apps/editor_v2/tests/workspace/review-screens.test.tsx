@@ -16,7 +16,10 @@ import { ReviewQueueScreen, ReviewScreen } from "../../src/workspace/review-scre
 
 const PAGE = "44444444-4444-4444-8444-444444444444";
 
-const VERSION = "2026-10-28T12:00:00.000Z";
+const STAMP = "2026-10-28T12:00:00.000Z";
+
+/** The shared page version the approver reviews, as the queue and the revision both carry it. */
+const VERSION = 7;
 
 const entry: ReviewQueueEntry = {
   id: "55555555-5555-4555-8555-555555555555",
@@ -26,7 +29,8 @@ const entry: ReviewQueueEntry = {
   submitted_by: "editor-1",
   submitted_by_name: "Ada Editor",
   submitted_at: "2026-10-28T11:00:00.000Z",
-  updated_at: VERSION,
+  updated_at: STAMP,
+  version: VERSION,
 };
 
 const revision: ApiRevision = {
@@ -53,14 +57,15 @@ const revision: ApiRevision = {
   decided_at: null,
   comment: null,
   created_at: "2026-10-28T10:00:00.000Z",
-  updated_at: VERSION,
+  updated_at: STAMP,
+  version: VERSION,
   changes: [
     { field: "title", live: "Calculate severance pay", proposed: "Severance pay" },
     { field: "body_markdown", live: "Intro\n\n## Fees", proposed: "Intro\n\n## Costs" },
   ],
 };
 
-type Sent = { method: string; path: string; ifUpdatedAt: string | null; body: unknown };
+type Sent = { method: string; path: string; editLock: string | null; body: unknown };
 
 /** The content API's review routes; `decision` answers a publish or reject. */
 function contentApi(roles: string[]) {
@@ -76,7 +81,8 @@ function contentApi(roles: string[]) {
       sent.push({
         method,
         path,
-        ifUpdatedAt: new Headers(init?.headers).get("if-updated-at"),
+        // Review steps are lease-exempt: no editing credential is ever sent with them
+        editLock: new Headers(init?.headers).get("x-page-edit-lock-token"),
         body: init?.body ? JSON.parse(String(init.body)) : undefined,
       });
 
@@ -243,8 +249,8 @@ test("an approver publishes the change at the version they reviewed, and returns
     {
       method: "POST",
       path: `/pages/${PAGE}/revision/publish`,
-      ifUpdatedAt: VERSION,
-      body: undefined,
+      editLock: null,
+      body: { version: VERSION },
     },
   ]);
   expect(text()).toContain("Change published");
@@ -299,8 +305,8 @@ test("a rejection needs a comment, which goes to the editor with the version rev
   expect(server.sent[0]).toEqual({
     method: "POST",
     path: `/pages/${PAGE}/revision/reject`,
-    ifUpdatedAt: VERSION,
-    body: { comment: "Check the fees." },
+    editLock: null,
+    body: { comment: "Check the fees.", version: VERSION },
   });
 });
 

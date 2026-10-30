@@ -671,6 +671,90 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
           [ "$ok" = true ]
 
+  editor-v2-concurrency:
+    name: Editor v2 concurrent editing
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17.9@sha256:2a0d0fe14825b0939f78a8cad5cd4e6aa68bf94d0e5dd96e24b6d23af4315545 # 17.9
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 2s
+          --health-timeout 5s
+          --health-retries 15
+    env:
+      DB_HOST: 127.0.0.1
+      DB_PORT: 5432
+      DB_USERNAME: postgres
+      DB_PASSWORD: postgres
+      VITE_AUTH_BYPASS: "false"
+      VITE_API_ORIGIN: http://127.0.0.1:3038
+      VITE_API_V2_URL: ""
+      VITE_FORMS_API_URL: http://127.0.0.1:3038
+      VITE_SITE_PREVIEW_URL: http://127.0.0.1:3048/cms-preview/
+      BROWSER_BASE_URL: http://127.0.0.1:3018/
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version-file: ".nvmrc"
+          cache: "pnpm"
+      - run: pnpm install --frozen-lockfile
+      - name: Test API-first release gate
+        run: pnpm exec node --test .github/scripts/wait-for-api-v2-deploy.test.mjs
+      - name: Install locked Chromium
+        run: pnpm --dir apps/editor_v2 exec playwright install --with-deps chromium
+      - name: Build the local landing renderer
+        run: pnpm --dir apps/landing build:cms-preview --mode development
+      - name: Run real-API concurrent editing
+        run: |
+          pnpm --dir apps/editor_v2 exec vite dev --host 127.0.0.1 --port 3018 --strictPort > editor-browser.log 2>&1 &
+          editor=$!
+          pnpm --dir apps/landing exec vite dev --host 127.0.0.1 --port 3048 --strictPort > landing-browser.log 2>&1 &
+          landing=$!
+          cleanup() {
+            result=$?
+            trap - EXIT
+            kill "$editor" "$landing" 2>/dev/null || true
+            wait "$editor" "$landing" 2>/dev/null || true
+            if [ "$result" -ne 0 ]; then
+              tail -100 editor-browser.log landing-browser.log
+            fi
+            exit "$result"
+          }
+          trap cleanup EXIT
+          ready=false
+          for _ in $(seq 1 60); do
+            if curl -fsS -o /dev/null http://127.0.0.1:3018/ && \
+               curl -fsS -o /dev/null http://127.0.0.1:3048/cms-preview/renderer.js; then
+              ready=true
+              break
+            fi
+            kill -0 "$editor" "$landing"
+            sleep 1
+          done
+          "$ready"
+          pnpm --dir apps/api_v2 exec vitest run --config vitest.browser.config.ts \
+            --reporter=default --reporter=json --outputFile.json="$PWD/api-v2-concurrency.json"
+          pnpm exec node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import { readFileSync, appendFileSync } from 'node:fs';
+          const report = JSON.parse(readFileSync('api-v2-concurrency.json', 'utf8'));
+          assert.equal(report.success, true);
+          assert.ok(report.numPassedTests > 0);
+          assert.equal(report.numFailedTests + report.numPendingTests + report.numTodoTests, 0);
+          appendFileSync(process.env.GITHUB_STEP_SUMMARY,
+            `Real PostgreSQL/API concurrent browser: ${report.numPassedTests} passed; zero failed/skipped/todo.\n`);
+          NODE
+
   build:
     name: Build
     runs-on: ubuntu-latest

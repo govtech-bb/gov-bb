@@ -356,7 +356,7 @@ describe("seed", () => {
     const { db, close } = await createTestDb();
     await seed(db);
     await db.execute(
-      sql`truncate search_chunks, page_revisions, content_pages`,
+      sql`truncate search_chunks, page_revisions, page_edit_locks, content_pages`,
     );
 
     const report = await importEstate(db, {

@@ -13,7 +13,6 @@ import type { Database } from "./db";
 import { UserId, type Employee } from "./modules/auth";
 import { ContentStoreUnavailable, withDefaults } from "./modules/page";
 import { err, ok } from "./modules/result";
-import { IF_UPDATED_AT } from "./routes/contracts";
 import { categories } from "./schema";
 import {
   ReviewNotifications,
@@ -32,6 +31,7 @@ import {
   TEST_EDITOR,
   TEST_EMPLOYEE,
   TEST_HTTP_CONFIG,
+  testPageEditLockHeaders,
 } from "./test-db";
 
 /** An approver who has written nothing, so may decide on anyone's change. */
@@ -120,42 +120,59 @@ const seedPage = async (overrides: Record<string, unknown> = {}) => {
   );
 };
 
+/** `employee` saves `fields` over the page at `version`, under their own edit lease. */
+const save = async (
+  employee: Employee,
+  page: { id: string; version: number; category_id: string | null },
+  fields: Record<string, unknown>,
+) =>
+  as(employee, {
+    method: "PUT",
+    url: `/pages/${page.id}`,
+    headers: await testPageEditLockHeaders(app, page.id, {
+      cookie: `test-session=${employee.id}`,
+      origin: EDITOR,
+    }),
+    payload: {
+      ...withDefaults(aPage({ category_id: page.category_id, ...fields })),
+      version: page.version,
+    },
+  });
+
+/** `employee` submits the page's change, at the version the save returned. */
+const submitSaved = (employee: Employee, pageId: string, version: number) =>
+  as(employee, {
+    method: "POST",
+    url: `/pages/${pageId}/revision/submit`,
+    payload: { version },
+  });
+
 /** `employee` saves a change to the page and submits it. */
 const submit = async (
   employee: Employee,
-  page: { id: string; updated_at: string; category_id: string | null },
+  page: { id: string; version: number; category_id: string | null },
   fields: Record<string, unknown> = {},
 ) => {
-  const saved = await as(employee, {
-    method: "PUT",
-    url: `/pages/${page.id}`,
-    headers: { [IF_UPDATED_AT]: page.updated_at },
-    payload: withDefaults(
-      aPage({
-        category_id: page.category_id,
-        title: "Severance pay",
-        body_markdown: BODY,
-        ...fields,
-      }),
-    ),
+  const saved = await save(employee, page, {
+    title: "Severance pay",
+    body_markdown: BODY,
+    ...fields,
   });
   expect(saved.statusCode).toBe(200);
-  return as(employee, {
-    method: "POST",
-    url: `/pages/${page.id}/revision/submit`,
-  });
+  return submitSaved(employee, page.id, saved.json().version);
 };
 
 /** An approver publishes or rejects the change waiting on the page. */
 const decide = async (pageId: string, step: "publish" | "reject") => {
-  const version = (
-    await as(APPROVER, { url: `/pages/${pageId}/revision` })
-  ).json().updated_at as string;
+  const version = (await as(APPROVER, { url: `/pages/${pageId}` })).json()
+    .version as number;
   return as(APPROVER, {
     method: "POST",
     url: `/pages/${pageId}/revision/${step}`,
-    headers: { [IF_UPDATED_AT]: version },
-    ...(step === "reject" ? { payload: { comment: "Check the fees." } } : {}),
+    payload: {
+      version,
+      ...(step === "reject" ? { comment: "Check the fees." } : {}),
+    },
   });
 };
 
@@ -186,20 +203,14 @@ describe("who hears of a review step", () => {
 
   it("leaves out an approver who changed it, since they can't decide on it", async () => {
     const page = await seedPage();
-    const saved = await as(TEST_EMPLOYEE, {
-      method: "PUT",
-      url: `/pages/${page.id}`,
-      headers: { [IF_UPDATED_AT]: page.updated_at },
-      payload: withDefaults(
-        aPage({ category_id: page.category_id, title: "Severance pay" }),
-      ),
-    });
+    const saved = await save(TEST_EMPLOYEE, page, { title: "Severance pay" });
     expect(saved.statusCode).toBe(200);
 
-    const submitted = await as(TEST_EDITOR, {
-      method: "POST",
-      url: `/pages/${page.id}/revision/submit`,
-    });
+    const submitted = await submitSaved(
+      TEST_EDITOR,
+      page.id,
+      saved.json().version,
+    );
 
     expect(submitted.statusCode).toBe(200);
     expect(sent.map(({ to }) => to)).toEqual([APPROVER.email]);
@@ -214,10 +225,12 @@ describe("who hears of a review step", () => {
     sent = [];
     await decide(page.id, "reject");
     // Sent again as it is, then published.
-    await as(TEST_EDITOR, {
-      method: "POST",
-      url: `/pages/${page.id}/revision/submit`,
-    });
+    const again = await submitSaved(
+      TEST_EDITOR,
+      page.id,
+      (await as(TEST_EDITOR, { url: `/pages/${page.id}` })).json().version,
+    );
+    expect(again.statusCode).toBe(200);
     await decide(page.id, "publish");
 
     const links = sent

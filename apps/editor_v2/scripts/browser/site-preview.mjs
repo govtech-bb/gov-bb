@@ -4,6 +4,13 @@ import { parse } from "yaml";
 import { authenticatedContext, servicesFixture } from "./auth-fixture.mjs";
 import { fixtureCategory } from "./page-api-fixture.mjs";
 import { chromium } from "./playwright.mjs";
+import { installPageEditLocks } from "./page-edit-lock-fixture.mjs";
+
+const landingURL =
+  process.argv[3] ??
+  (process.env.VITE_SITE_PREVIEW_URL
+    ? new URL(process.env.VITE_SITE_PREVIEW_URL).origin
+    : "http://127.0.0.1:3040");
 
 const markdown = await readFile(
   new URL(
@@ -46,6 +53,7 @@ Object.assign(frontmatter, {
 
 let current = {
   id: service.id,
+  version: 1,
   parent_id: null,
   category_id: category.id,
   url: service.url,
@@ -100,24 +108,43 @@ await context.route("**/*", async (route) => {
     "access-control-allow-origin": request.headers().origin ?? "*",
     "access-control-allow-credentials": "true",
     "access-control-allow-methods": "GET, POST, PUT, OPTIONS",
-    "access-control-allow-headers": "content-type, if-updated-at",
+    "access-control-allow-headers": "content-type, x-page-edit-lock-token",
   };
 
   if (request.method() === "OPTIONS") return route.fulfill({ status: 204, headers });
 
-  // As api_v2 does: submitting sends the draft for review without moving the page's version
+  // As api_v2 does: submitting at the page version the editor read moves that shared version on
   if (path.endsWith("/revision/submit")) {
-    current = { ...current, pending_revision: { status: "submitted", comment: null } };
+    const { version } = request.postDataJSON();
 
-    return route.fulfill({ json: { status: "submitted", comment: null, changes: [] }, headers });
+    if (version !== current.version)
+      return route.fulfill({
+        status: 409,
+        json: { error: "page_version_conflict", message: "Changed", pageId: current.id },
+        headers,
+      });
+    current = {
+      ...current,
+      version: current.version + 1,
+      pending_revision: { status: "submitted", comment: null },
+    };
+
+    return route.fulfill({
+      json: { status: "submitted", comment: null, changes: [], version: current.version },
+      headers,
+    });
   }
 
   if (request.method() !== "GET") {
     const fields = request.postDataJSON();
     writes.push(fields);
 
-    if (request.headers()["if-updated-at"] !== current.updated_at)
-      return route.fulfill({ status: 409, json: { error: "conflict" }, headers });
+    if (fields.version !== current.version)
+      return route.fulfill({
+        status: 409,
+        json: { error: "page_version_conflict", pageId: current.id },
+        headers,
+      });
 
     if (holdSave)
       await new Promise((resolve) => {
@@ -128,6 +155,7 @@ await context.route("**/*", async (route) => {
     current = {
       ...current,
       ...fields,
+      version: current.version + 1,
       updated_at: new Date(Date.parse(current.updated_at) + 1000).toISOString(),
       pending_revision: reviewed ? { status: "draft", comment: null } : null,
     };
@@ -137,6 +165,8 @@ await context.route("**/*", async (route) => {
 
   return route.fulfill({ json: values[path], headers });
 });
+
+await installPageEditLocks(context);
 
 const page = await context.newPage();
 
@@ -152,8 +182,13 @@ const body = page.getByRole("textbox", { name: "Page content", exact: true });
 
 const introduction = page.getByRole("textbox", { name: "Introduction", exact: true });
 
-const writerGeometry = () =>
-  title.evaluate((element) => {
+const writerGeometry = async () => {
+  const element = await title.elementHandle();
+  assert.ok(element);
+
+  await element.waitForElementState("stable");
+
+  const geometry = await element.evaluate((element) => {
     const rect = element.getBoundingClientRect();
     const style = getComputedStyle(element);
 
@@ -166,6 +201,11 @@ const writerGeometry = () =>
       color: style.color,
     };
   });
+
+  await element.dispose();
+
+  return geometry;
+};
 
 try {
   const url = new URL(
@@ -237,7 +277,7 @@ try {
   assert.equal(await page.locator('[contenteditable="true"]').count(), 0);
   const reference = await context.newPage();
   reference.on("pageerror", (error) => console.error("Public reference:", error.message));
-  await reference.goto(`${process.argv[3] ?? "http://127.0.0.1:3040"}${service.url}`);
+  await reference.goto(`${landingURL}${service.url}`);
 
   const measure = (target, root) =>
     target.locator(root).evaluate((root) => {
@@ -265,7 +305,7 @@ try {
   for (const width of [390, 800, 1000, 1440]) {
     await page.setViewportSize({ width, height: 1000 });
     await reference.setViewportSize({ width, height: 1000 });
-    await reference.goto(`${process.argv[3] ?? "http://127.0.0.1:3040"}${service.url}`);
+    await reference.goto(`${landingURL}${service.url}`);
     await reference.locator("header[data-govbb-header-enhanced]").waitFor();
     await reference.evaluate(() => document.fonts.ready);
     await Promise.all(
@@ -389,6 +429,13 @@ try {
   await button("Retry preview").click();
   await page.locator("[data-cms-site-preview] .govbb-prose").waitFor();
   assert.equal(await page.locator("style[data-cms-preview-styles]").count(), 1);
+  // A pending loader's infinite animation can't be finished, and closing must leave it spinning.
+  await page.evaluate(() => {
+    const loader = document.createElement("span");
+    loader.dataset.testLoader = "";
+    loader.className = "inline-block size-4 motion-safe:animate-spin";
+    document.querySelector("[data-cms-workspace]").append(loader);
+  });
   await button("Close preview").click();
   assert.equal(await title.inputValue(), "Explicitly published from preview");
   assert.equal(
@@ -396,6 +443,14 @@ try {
     scrollBeforeRetry,
     "retry preserves the original writer scroll position",
   );
+  assert.deepEqual(
+    await page
+      .locator("[data-test-loader]")
+      .evaluate((loader) => loader.getAnimations().map((animation) => animation.playState)),
+    ["running"],
+    "closing leaves a live loader spinning",
+  );
+  await page.locator("[data-test-loader]").evaluate((loader) => loader.remove());
 
   // Leaving during asset loading must not mount a late renderer or leave styles behind.
   let releaseStyles;
@@ -494,7 +549,7 @@ try {
   await table.locator("td").last().click();
   await page.keyboard.insertText("(246) 123-4567");
   await button("Block options").click();
-  await button("Add row").click();
+  await page.getByRole("menuitem", { name: "Add row", exact: true }).click();
   assert.equal(await table.locator("tr").count(), rows + 1);
   await button("Undo").click();
   assert.equal(await table.locator("tr").count(), rows);
@@ -535,17 +590,30 @@ try {
 
   current = {
     ...current,
-    title: "Another employee's version",
+    title: "Another employee's saved title",
+    version: current.version + 1,
     updated_at: new Date(Date.parse(current.updated_at) + 1000).toISOString(),
   };
   await button("Save").click();
+  await button("Reload page").waitFor();
+  // A conflict makes the open changes read-only, so the preview leaves inline editing.
   await page
-    .getByText("A newer version of this page has been saved since you opened it.")
-    .first()
+    .locator("[data-cms-site-preview]")
+    .getByRole("heading", { level: 1, name: "Typed during publication", exact: true })
     .waitFor();
-  assert.equal(await title.inputValue(), "Typed during publication");
-  await button("Keep my version").click();
-  assert.equal(writes.length, 3, "keeping my version does not publish");
+  assert.equal(
+    await page.locator("[data-cms-site-preview] h1").innerText(),
+    "Typed during publication",
+  );
+  assert.equal(await button("Save").isDisabled(), true);
+  assert.equal(await button("Keep my version").count(), 0);
+  await button("Reload page").click();
+  await question.getByRole("button", { name: "Discard changes and reload", exact: true }).click();
+  await button("Preview page").click();
+  await button("Edit content").click();
+  assert.equal(await title.inputValue(), "Another employee's saved title");
+  assert.equal(await button("Undo").isDisabled(), true);
+  assert.equal(writes.length, 3, "reloading does not publish");
 
   // Mobile and zoom-equivalent narrow reflow, including a reduced-height phone keyboard viewport.
   for (const width of [720, 390, 320]) {

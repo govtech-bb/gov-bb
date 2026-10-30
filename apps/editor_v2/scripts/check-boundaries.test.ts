@@ -529,7 +529,7 @@ test("page modules use generic editor contracts without depending on forms, pres
     'import { FormTitleNode } from "../../forms/editor/nodes";',
     'import { govbbPageEditor } from "../../presets/govbb-page";',
     'const load = () => import("../../host/page-editor");',
-    'export { savePageDraft } from "../../workspace/page-sync";',
+    'export { savePageChanges } from "../../workspace/page-sync";',
     'import { loadContent } from "@govtech-bb/content/load";',
   ])
     expect(check(source)).toHaveLength(1);
@@ -597,7 +597,7 @@ test("workspace composition may assemble both document domains while reusable la
           ...files,
           [
             file,
-            `import { savePageDraft } from "${file.startsWith("src/editor/") ? "../../" : "../"}workspace/page-sync";`,
+            `import { savePageChanges } from "${file.startsWith("src/editor/") ? "../../" : "../"}workspace/page-sync";`,
           ],
         ]),
       ),

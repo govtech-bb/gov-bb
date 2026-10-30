@@ -287,6 +287,7 @@ try {
   const confirm = page.getByRole("alertdialog");
 
   await confirm.waitFor();
+  await confirm.getByRole("button", { name: "Cancel" }).and(page.locator(":focus")).waitFor();
   assert.equal(await focused(confirm.getByRole("button", { name: "Cancel" })), true);
   assert.equal(await focusShown(), true, "Cancel shows its focus");
   await page.keyboard.press("Escape");

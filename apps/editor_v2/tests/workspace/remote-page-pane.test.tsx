@@ -10,13 +10,18 @@ import { act } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { createEditorApi, type ApiPage, type SavePageInput } from "../../src/api/client";
 import { categoriesQuery, pageQuery } from "../../src/api/queries";
+import { pageContentVersionSchema } from "../../src/api/page-schemas";
 import { govbbPageCodec } from "../../src/presets/govbb-page";
 import { Toaster } from "../../src/ui/toast";
 import { RemotePagePane } from "../../src/workspace/remote-page-pane";
+import { DocumentSessions } from "../../src/workspace/document-views";
 import { pageHasUnsavedChanges, type PageSession } from "../../src/workspace/page-sync";
 import { pageControl, renderInPage } from "../helpers/page-editor";
+import { shownText } from "../helpers/shown-text";
+import { withInMemoryPageEditLocks } from "../helpers/page-edit-locks";
 
 const page: ApiPage = {
+  version: pageContentVersionSchema.parse(1),
   id: "44444444-4444-4444-8444-444444444444",
   url: "/family/birth-certificate/fees",
   slug: "fees",
@@ -70,8 +75,13 @@ async function mountPage(
       return request(url, init);
     }),
   );
-  const api = createEditorApi("http://localhost:3020");
+
+  const { api, locks } = withInMemoryPageEditLocks(createEditorApi("http://localhost:3020"), {
+    nowMs: Date.now,
+  });
+
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const sessions = new DocumentSessions();
   let session: PageSession | undefined;
   await renderInPage(
     <RouterContextProvider router={router}>
@@ -80,6 +90,7 @@ async function mountPage(
           api={api}
           id={page.id}
           active
+          sessions={sessions}
           onSession={(_id, current) => {
             session = current;
           }}
@@ -89,10 +100,19 @@ async function mountPage(
     </RouterContextProvider>,
   );
   await act(async () => {
-    await vi.waitFor(() => expect(session).toBeDefined());
+    // Someone without the editor role never holds editing authority, so only the lock is waited for.
+    // Editing waits on two page reads in turn (the first and the one after the lock), so a cold first
+    // mount needs more than waitFor's default second
+    await vi.waitFor(
+      () =>
+        expect(
+          roles.includes("editor") ? session?.getEditLockToken() : locks.get(page.id)?.claim,
+        ).toBeDefined(),
+      { timeout: 5_000 },
+    );
   });
 
-  return { client, api, session: () => session! };
+  return { client, api, locks, sessions, session: () => session! };
 }
 
 async function applySource(session: PageSession, source: string) {
@@ -100,6 +120,14 @@ async function applySource(session: PageSession, source: string) {
     session.store.edit(source);
     expect(session.store.apply()).toBe(true);
   });
+}
+
+async function clickButton(label: string, within: ParentNode = document) {
+  const button = [...within.querySelectorAll("button")].find((item) => shownText(item) === label);
+
+  if (!button) throw new Error(`Missing page control: ${label}`);
+  expect(button.disabled).toBe(false);
+  await act(async () => button.click());
 }
 
 const visibility = () => pageControl<HTMLSelectElement>("select");
@@ -125,6 +153,17 @@ async function savePage(name = "Save") {
   await act(async () => button.click());
 }
 
+test("an editor holds editing authority once mounted, even when the page reads are slow", async () => {
+  const h = await mountPage(async () => {
+    // Two reads of 600ms each outlast waitFor's default second on their own
+    await new Promise((resolve) => setTimeout(resolve, 600));
+
+    return Response.json(page);
+  });
+
+  expect(h.session().getEditLockToken()).toBeDefined();
+});
+
 test.each(["", "preview"])(
   "a legacy draft can return from %j without losing edits or writing until Save",
   async (value) => {
@@ -138,6 +177,7 @@ test.each(["", "preview"])(
         current = {
           ...current,
           ...fields,
+          version: pageContentVersionSchema.parse(current.version + 1),
           updated_at: new Date(Date.parse(current.updated_at) + 1000).toISOString(),
         };
       }
@@ -253,6 +293,7 @@ test("Save keeps the focus while it saves, and once its save leaves nothing to s
       current = {
         ...page,
         ...JSON.parse(String(init.body)),
+        version: pageContentVersionSchema.parse(page.version + 1),
         updated_at: "2026-10-07T13:00:00.000Z",
       };
     }
@@ -313,31 +354,33 @@ test("a page the editor can't show opens read-only, its content left as it was s
   expect(vi.mocked(fetch).mock.calls.some(([url]) => String(url).includes("/history"))).toBe(false);
 });
 
-test("a rejected saved version leaves the working copy editable and its baseline unchanged", async () => {
-  const h = await mountPage(async () => Response.json(page));
+test("a failed reload keeps unsaved work and its baseline read-only", async () => {
+  let current = page;
+  const h = await mountPage(async () => Response.json(current));
   const store = h.session().store;
   const source = store.getSnapshot().committed + "\n\nKeep my changes.";
   await applySource(h.session(), source);
   const baseline = h.session().getBaseline();
+  const history = h.sessions.get(page.id);
 
+  current = {
+    ...page,
+    title: "Saved elsewhere",
+    version: pageContentVersionSchema.parse(2),
+  };
   await act(async () => {
-    h.client.setQueryData(pageQuery(h.api, page.id).queryKey, {
-      ...page,
-      title: "Saved elsewhere",
-      updated_at: "2026-10-07T14:00:00.000Z",
-    });
-    await vi.waitFor(() => expect(document.body.textContent).toContain("A newer version"));
+    h.client.setQueryData(pageQuery(h.api, page.id).queryKey, current);
+    await vi.waitFor(() => expect(document.body.textContent).toContain("Reload page"));
   });
 
-  const loadSaved = [...document.querySelectorAll("button")].find(
-    (button) => button.textContent === "Load saved version",
-  )!;
-
+  await clickButton("Reload page");
   vi.spyOn(govbbPageCodec, "prepare").mockImplementationOnce(() => {
-    throw new Error("Cannot prepare saved version");
+    throw new Error("Cannot prepare saved page");
   });
-
-  await act(async () => loadSaved.click());
+  await clickButton("Discard changes and reload");
+  await vi.waitFor(() =>
+    expect(document.body.textContent).toContain("The saved page could not be opened"),
+  );
 
   expect(store.getSnapshot()).toMatchObject({
     source,
@@ -349,16 +392,34 @@ test("a rejected saved version leaves the working copy editable and its baseline
   });
   expect(h.session().getBaseline()).toEqual(baseline);
   expect(pageHasUnsavedChanges(h.session())).toBe(true);
+  // The undo history is the open copy's, and stays with it
+  expect(h.sessions.get(page.id)).toBe(history);
   expect(
     document.querySelector('[aria-label="Page content"]')?.getAttribute("contenteditable"),
-  ).toBe("true");
-  expect(loadSaved.disabled).toBe(false);
-  expect(document.body.textContent).toContain("The saved version couldn’t be opened");
-  expect(document.body.textContent).toContain("Your open copy is unchanged.");
+  ).toBe("false");
+  expect(h.session().getEditLockToken()).toBeUndefined();
   expect(vi.mocked(fetch).mock.calls.some(([, init]) => init?.method === "PUT")).toBe(false);
-  await act(async () =>
-    document.querySelector<HTMLButtonElement>('[aria-label="Dismiss"]')!.click(),
-  );
+});
+
+test("a background version change with the same timestamp cannot rebase invalid source", async () => {
+  const h = await mountPage(async () => Response.json(page));
+  const baseline = h.session().getBaseline();
+  const store = h.session().store;
+  await act(async () => store.edit("---\ntitle: [unfinished\n---\nKeep this source"));
+  const workingCopy = store.getSnapshot();
+  await act(async () => {
+    h.client.setQueryData(pageQuery(h.api, page.id).queryKey, {
+      ...page,
+      version: pageContentVersionSchema.parse(2),
+      title: "Inherited change",
+    });
+    await vi.waitFor(() => expect(document.body.textContent).toContain("Reload page"));
+  });
+  expect(h.session().getEditLockToken()).toBeUndefined();
+  expect(h.session().store).toBe(store);
+  expect(store.getSnapshot()).toBe(workingCopy);
+  expect(h.session().getBaseline()).toBe(baseline);
+  expect(h.session().getBaseline().page.version).toBe(1);
 });
 
 test("a page preloaded just now, as its link was pointed at, opens without waiting on the content API", async () => {
@@ -453,7 +514,12 @@ test("a slow save acknowledges only its submitted snapshot; refetch cannot overw
   const second = first + "\n\nTyped during save";
   await applySource(h.session(), second);
   const fields = JSON.parse(String(sent!.body));
-  current = { ...page, ...fields, updated_at: "2026-10-07T13:00:00.000Z" };
+  current = {
+    ...page,
+    ...fields,
+    version: pageContentVersionSchema.parse(2),
+    updated_at: "2026-10-07T13:00:00.000Z",
+  };
   await act(async () => {
     answer(Response.json(current));
     await vi.waitFor(() => expect(h.session().isSaving()).toBe(false));
@@ -462,23 +528,177 @@ test("a slow save acknowledges only its submitted snapshot; refetch cannot overw
   expect(draftOption()).toBeNull();
   expect(h.session().store.getSnapshot().committed).toBe(second);
   expect(pageHasUnsavedChanges(h.session())).toBe(true);
-  expect(new Headers(sent!.headers).get("if-updated-at")).toBe(page.updated_at);
+  expect(fields.version).toBe(page.version);
+  expect(new Headers(sent!.headers).get("x-page-edit-lock-token")).toBeDefined();
 
   await act(async () => {
     h.client.setQueryData(pageQuery(h.api, page.id).queryKey, {
       ...current,
+      version: pageContentVersionSchema.parse(3),
       updated_at: "2026-10-07T14:00:00.000Z",
       title: "Someone else's edit",
       visibility: "draft",
     });
   });
-  expect(h.session().getBaseline().page.updated_at).toBe(current.updated_at);
+  expect(h.session().getBaseline().page.version).toBe(current.version);
   expect(draftOption()).toBeNull();
   expect(h.session().store.getSnapshot().committed).toBe(second);
   await act(async () => {
-    await vi.waitFor(() => expect(document.body.textContent).toContain("A newer version"));
+    await vi.waitFor(() => expect(document.body.textContent).toContain("Reload page"));
   });
 });
+
+test("an uncertain save keeps raw edits until confirmed reload, without offering competing copies", async () => {
+  let current = page;
+  let writes = 0;
+  const response = Promise.withResolvers<Response>();
+
+  const h = await mountPage(async (_url, init) => {
+    if (init?.method === "PUT") {
+      writes++;
+
+      return response.promise;
+    }
+
+    return Response.json(current);
+  });
+
+  const store = h.session().store;
+  const submitted = store.getSnapshot().committed + "\n\nSubmitted content";
+  await applySource(h.session(), submitted);
+  await savePage();
+  await act(async () => store.edit("---\ntitle: [unfinished\n---\nNew raw source"));
+  const raw = store.getSnapshot();
+  current = {
+    ...page,
+    version: pageContentVersionSchema.parse(2),
+    body_markdown: "What it costs.\n\nSubmitted content",
+  };
+  await act(async () => {
+    response.resolve(Response.json({}, { status: 503 }));
+  });
+  await vi.waitFor(() => expect(document.body.textContent).toContain("Save outcome unknown"));
+  expect(h.session().getBaseline().page.version).toBe(1);
+  expect(store.getSnapshot()).toBe(raw);
+  expect(h.session().getEditLockToken()).toBeUndefined();
+
+  expect(document.body.textContent).not.toMatch(
+    /Keep my (version|working copy)|Review saved version/,
+  );
+  await clickButton("Reload page");
+  expect(h.session().getBaseline().page.version).toBe(1);
+  expect(store.getSnapshot()).toBe(raw);
+  await clickButton("Cancel", document.querySelector('[role="alertdialog"]')!);
+  expect(h.session().store).toBe(store);
+  expect(h.session().getEditLockToken()).toBeUndefined();
+
+  await clickButton("Reload page");
+  await clickButton("Discard changes and reload");
+  await vi.waitFor(() => expect(h.session().getEditLockToken()).toBeDefined());
+  expect(h.session().getBaseline().page.version).toBe(2);
+  expect(h.session().store.getSnapshot().committed).toContain("Submitted content");
+  expect(h.session().store.getSnapshot().source).not.toContain("New raw source");
+  expect(pageHasUnsavedChanges(h.session())).toBe(false);
+  expect(writes).toBe(1);
+});
+
+test("a new lock does not enable editing until a post-acquisition page read finishes", async () => {
+  const response = Promise.withResolvers<Response>();
+  let reads = 0;
+  const mounting = mountPage(async () => (++reads === 1 ? Response.json(page) : response.promise));
+  await vi.waitFor(() => expect(reads).toBe(2));
+
+  const editable = document
+    .querySelector('[aria-label="Page content"]')
+    ?.getAttribute("contenteditable");
+
+  response.resolve(Response.json({ ...page, title: "Latest saved title", version: 2 }));
+  const h = await mounting;
+  expect(editable).toBe("false");
+  expect(h.session().getBaseline().page.title).toBe("Latest saved title");
+  expect(h.session().store.getSnapshot().committed).toContain("Latest saved title");
+});
+
+test("reacquiring a lock requires reloading even when the saved page has not changed", async () => {
+  const h = await mountPage(async () => Response.json(page));
+  const store = h.session().store;
+  await applySource(h.session(), store.getSnapshot().source + "\n\nOld unsaved changes");
+  const oldToken = h.session().getEditLockToken();
+  await act(async () => {
+    window.dispatchEvent(new Event("pagehide"));
+    window.dispatchEvent(new Event("pageshow"));
+  });
+  await vi.waitFor(() => expect(h.locks.get(page.id)?.generation).toBe(2));
+  expect(h.session().getEditLockToken()).toBeUndefined();
+  expect(h.session().store).toBe(store);
+  await clickButton("Reload page");
+  await clickButton("Discard changes and reload");
+  await vi.waitFor(() => expect(h.session().getEditLockToken()).toBeDefined());
+  expect(h.session().getEditLockToken()).not.toBe(oldToken);
+  expect(h.session().store.getSnapshot().committed).not.toContain("Old unsaved changes");
+  expect(pageHasUnsavedChanges(h.session())).toBe(false);
+  expect(document.querySelector<HTMLButtonElement>('[aria-label="Undo"]')?.disabled).toBe(true);
+});
+
+test("a late reload cannot discard local work after editing ownership is lost", async () => {
+  const response = Promise.withResolvers<Response>();
+  let delayed = false;
+  const h = await mountPage(async () => (delayed ? response.promise : Response.json(page)));
+  const store = h.session().store;
+  await applySource(h.session(), store.getSnapshot().source + "\n\nKeep these changes");
+  await act(async () => {
+    window.dispatchEvent(new Event("pagehide"));
+    window.dispatchEvent(new Event("pageshow"));
+  });
+  await vi.waitFor(() => expect(h.locks.get(page.id)?.generation).toBe(2));
+  await clickButton("Reload page");
+  delayed = true;
+  await clickButton("Discard changes and reload");
+  await act(async () => {
+    window.dispatchEvent(new Event("pagehide"));
+    response.resolve(Response.json({ ...page, title: "Saved elsewhere", version: 2 }));
+  });
+  expect(h.session().store).toBe(store);
+  expect(h.session().store.getSnapshot().source).toContain("Keep these changes");
+  expect(h.session().getBaseline().page).toEqual(page);
+  expect(h.session().getEditLockToken()).toBeUndefined();
+});
+
+test.each(["request fails", "source changes"])(
+  "confirmed reload preserves recovery input when %s",
+  async (failure) => {
+    const response = Promise.withResolvers<Response>();
+    let delayed = false;
+    const h = await mountPage(async () => (delayed ? response.promise : Response.json(page)));
+    const store = h.session().store;
+    await act(async () => store.edit("---\ntitle: [unfinished\n---\nOriginal raw source"));
+    await act(async () => {
+      window.dispatchEvent(new Event("pagehide"));
+      window.dispatchEvent(new Event("pageshow"));
+    });
+    await vi.waitFor(() => expect(h.locks.get(page.id)?.generation).toBe(2));
+    await clickButton("Reload page");
+    delayed = true;
+    await clickButton("Discard changes and reload");
+    await act(async () => {
+      if (failure === "source changes") store.edit("Keep this later recovery input");
+      response.resolve(
+        failure === "request fails" ? Response.json({}, { status: 503 }) : Response.json(page),
+      );
+    });
+    expect(h.session().store).toBe(store);
+    expect(store.getSnapshot().source).toBe(
+      failure === "request fails"
+        ? "---\ntitle: [unfinished\n---\nOriginal raw source"
+        : "Keep this later recovery input",
+    );
+    expect(h.session().getBaseline().page).toEqual(page);
+    expect(h.session().getEditLockToken()).toBeUndefined();
+    await vi.waitFor(() =>
+      expect(document.body.textContent).toContain("Your open changes are unchanged."),
+    );
+  },
+);
 
 test.each([0, 503, 401, 403, 404])(
   "a failed background read (%s) explains the failure without unmounting the working copy",
@@ -569,6 +789,9 @@ test("a save the API refuses (403) says why and offers no retry, keeping the wor
   const names = [...document.querySelectorAll("button")].map((button) => button.textContent);
   expect(names).not.toContain("Retry");
   expect(document.body.textContent).not.toContain("We could not save this page");
+  // A policy refusal is not lost editing ownership: the lock and the editable copy remain
+  expect(document.body.textContent).not.toContain("We cannot confirm your editing lock");
+  expect(h.session().getEditLockToken()).toBeDefined();
   expect(pageHasUnsavedChanges(h.session())).toBe(true);
 });
 
@@ -590,6 +813,7 @@ test("a change saved to a public page waits for an approver: the editor keeps it
       current = {
         ...live,
         ...JSON.parse(String(init.body)),
+        version: pageContentVersionSchema.parse(live.version + 1),
         updated_at: "2026-10-07T13:00:00.000Z",
         pending_revision: { status: "draft", comment: null },
       };
@@ -608,10 +832,10 @@ test("a change saved to a public page waits for an approver: the editor keeps it
   await act(async () => {
     await vi.waitFor(() => expect(document.body.textContent).toContain(PENDING));
   });
-  expect(h.session().getBaseline().page.updated_at).toBe("2026-10-07T13:00:00.000Z");
+  expect(h.session().getBaseline().page.version).toBe(live.version + 1);
   expect(h.session().store.getSnapshot().committed).toBe(source);
   expect(pageHasUnsavedChanges(h.session())).toBe(false);
-  expect(document.body.textContent).not.toContain("A newer version");
+  expect(document.body.textContent).not.toContain("Reload page");
 });
 
 test("a public page opened with a change waiting for an approver says so", async () => {
@@ -643,7 +867,9 @@ test.each([
 });
 
 const button = (name: string) =>
-  [...document.querySelectorAll("button")].find((item) => item.textContent === name);
+  [...document.querySelectorAll("button")].find((item) => shownText(item) === name);
+
+const undo = () => document.querySelector<HTMLButtonElement>('[aria-label="Undo"]');
 
 test("a saved draft is submitted for review at the version the editor holds, and then says it's waiting", async () => {
   const drafted: ApiPage = { ...live, pending_revision: { status: "draft", comment: null } };
@@ -658,11 +884,18 @@ test("a saved draft is submitted for review at the version the editor holds, and
         comment: null,
         updated_at: live.updated_at,
         changes: [],
+        version: 2,
       });
     }
 
     return Response.json(
-      sent ? { ...drafted, pending_revision: { status: "submitted", comment: null } } : drafted,
+      sent
+        ? {
+            ...drafted,
+            version: 2,
+            pending_revision: { status: "submitted", comment: null },
+          }
+        : drafted,
     );
   });
 
@@ -672,8 +905,12 @@ test("a saved draft is submitted for review at the version the editor holds, and
     await vi.waitFor(() => expect(document.body.textContent).toContain(WAITING));
   });
   expect(sent?.url).toBe(`http://localhost:3020/pages/${page.id}/revision/submit`);
-  expect(new Headers(sent?.init?.headers).get("if-updated-at")).toBe(live.updated_at);
+  expect(JSON.parse(String(sent?.init?.body))).toEqual({ version: live.version });
+  // Review steps are lease-exempt: no editing credential travels with them
+  expect(new Headers(sent?.init?.headers).get("x-page-edit-lock-token")).toBeNull();
   expect(button("Submit for review")).toBeUndefined();
+  // Its own confirmed submission moves the baseline on, so the page isn't taken as changed elsewhere
+  expect(document.body.textContent).not.toContain("Reload page");
 });
 
 test("a draft with unsaved edits can't be submitted until they're saved", async () => {
@@ -708,11 +945,18 @@ test("a rejected change shows the approver's comment, and can be submitted again
     if (init?.method === "POST") {
       sent = init;
 
-      return Response.json({ status: "submitted", comment: null, updated_at: rejected.updated_at });
+      return Response.json({
+        status: "submitted",
+        comment: null,
+        updated_at: rejected.updated_at,
+        version: 2,
+      });
     }
 
     return Response.json(
-      sent ? { ...rejected, pending_revision: { status: "submitted", comment: null } } : rejected,
+      sent
+        ? { ...rejected, version: 2, pending_revision: { status: "submitted", comment: null } }
+        : rejected,
     );
   });
 
@@ -727,8 +971,8 @@ test("a rejected change shows the approver's comment, and can be submitted again
   await act(async () => {
     await vi.waitFor(() => expect(document.body.textContent).toContain(WAITING));
   });
-  expect(new Headers(sent?.headers).get("if-updated-at")).toBe(rejected.updated_at);
-  expect(document.body.textContent).not.toContain("A newer version");
+  expect(JSON.parse(String(sent?.body))).toEqual({ version: rejected.version });
+  expect(document.body.textContent).not.toContain("Reload page");
 });
 
 test("someone without the editor role sees a rejection's comment, but not how to act on it", async () => {
@@ -775,6 +1019,7 @@ test("a change waiting for review can still be saved, and keeps waiting", async 
       current = {
         ...waiting,
         ...JSON.parse(String(init.body)),
+        version: pageContentVersionSchema.parse(waiting.version + 1),
         updated_at: "2026-10-07T13:00:00.000Z",
       };
 
@@ -788,7 +1033,7 @@ test("a change waiting for review can still be saved, and keeps waiting", async 
   await savePage();
   await act(async () => {
     await vi.waitFor(() =>
-      expect(h.session().getBaseline().page.updated_at).toBe("2026-10-07T13:00:00.000Z"),
+      expect(h.session().getBaseline().page.version).toBe(waiting.version + 1),
     );
   });
   expect(document.body.textContent).toContain(WAITING);
@@ -877,6 +1122,10 @@ test("taking a public page with an unpublished change out of view shows its live
     select.value = "preview";
     select.dispatchEvent(new Event("change", { bubbles: true }));
   });
+  const original = h.session().store;
+  const history = h.sessions.get(page.id);
+  expect(undo()?.disabled).toBe(false);
+  await act(async () => button("Save")!.focus());
   await savePage();
   await act(async () => {
     await vi.waitFor(() =>
@@ -885,6 +1134,14 @@ test("taking a public page with an unpublished change out of view shows its live
   });
 
   expect(document.body.textContent).toContain("Its unpublished changes were discarded.");
+  // The discarded change is gone from undo too: a new working copy, with its own history
+  expect(h.session().store).not.toBe(original);
+  expect(h.sessions.get(page.id)).not.toBe(history);
+  expect(undo()?.disabled).toBe(true);
+  // Save went with the old copy; focus moves to the page rather than being dropped
+  await vi.waitFor(() =>
+    expect(document.activeElement?.getAttribute("aria-label")).toBe("Page title"),
+  );
   expect(h.session().store.getSnapshot().committed).toContain(live.body_markdown);
   expect(h.session().store.getSnapshot().committed).not.toContain("Unreviewed rewrite.");
   expect(pageHasUnsavedChanges(h.session())).toBe(false);
@@ -933,4 +1190,159 @@ test("a change discarded while more was typed is still announced, and the typing
   await act(async () =>
     document.querySelector<HTMLButtonElement>('[aria-label="Dismiss"]')?.click(),
   );
+});
+
+test.each(["unapplied source", "an editor state that couldn't be converted"])(
+  "a late discard acknowledgement keeps newer %s whole, with its store and undo history",
+  async (kind) => {
+    const waiting: ApiPage = {
+      ...live,
+      body_markdown: "Unreviewed rewrite.",
+      pending_revision: { status: "draft", comment: null },
+    };
+
+    let answer: (response: Response) => void = () => {};
+
+    const h = await mountPage(async (_url, init) =>
+      init?.method === "PUT"
+        ? new Promise<Response>((resolve) => {
+            answer = resolve;
+          })
+        : Response.json(waiting),
+    );
+
+    await vi.waitFor(() => expect(visibilitySelect()).toBeDefined());
+    await chooseVisibility("preview");
+    await savePage();
+    const store = h.session().store;
+    const sent = store.getSnapshot();
+    const history = h.sessions.get(page.id);
+    const canvas = document.querySelector('[aria-label="Page content"]');
+
+    // Store-level stand-ins for what the page can reach while a save is out: neither moves the applied Markdown
+    await act(async () => {
+      if (kind === "unapplied source") store.edit(`${sent.committed}\n\nNot applied yet`);
+      else {
+        vi.spyOn(govbbPageCodec, "encode").mockImplementationOnce(() => {
+          throw Error("Cannot convert");
+        });
+        store.canvasChanged(sent.state!);
+      }
+    });
+    const newer = store.getSnapshot();
+    expect(newer.committed).toBe(sent.committed);
+    expect(newer).not.toBe(sent);
+
+    await act(async () => {
+      answer(
+        Response.json({ ...live, visibility: "preview", updated_at: "2026-10-07T13:00:00.000Z" }),
+      );
+      await vi.waitFor(() =>
+        expect(document.body.textContent).toContain("your open copy still contains them"),
+      );
+    });
+
+    expect(h.session().store).toBe(store);
+    expect(store.getSnapshot()).toBe(newer);
+    expect(h.sessions.get(page.id)).toBe(history);
+    expect(document.querySelector('[aria-label="Page content"]')).toBe(canvas);
+    // Only the sent operation is acknowledged
+    expect(h.session().getBaseline().page.visibility).toBe("preview");
+    expect(pageHasUnsavedChanges(h.session())).toBe(true);
+    await act(async () =>
+      document.querySelector<HTMLButtonElement>('[aria-label="Dismiss"]')?.click(),
+    );
+  },
+);
+
+test("losing the editor role while editing makes the open copy read-only, even if the lock still answers", async () => {
+  const roles = ["editor", "approver"];
+  const h = await mountPage(async () => Response.json(page), roles);
+  const title = pageControl<HTMLTextAreaElement>('textarea[aria-label="Page title"]');
+
+  const reads = () =>
+    vi.mocked(fetch).mock.calls.filter(([url]) => String(url).endsWith("/editor/me")).length;
+
+  await applySource(h.session(), h.session().store.getSnapshot().source + "\n\nKeep this");
+  expect(title.readOnly).toBe(false);
+  const before = reads();
+
+  // The role goes; the lock routes refuse, and the editor reads its roles again
+  roles.splice(0);
+  h.locks.get(page.id)!.failure = { kind: "forbidden" };
+  await act(async () => window.dispatchEvent(new Event("focus")));
+  await vi.waitFor(() =>
+    expect(document.body.textContent).toContain("You no longer have permission to edit this page."),
+  );
+  await vi.waitFor(() => expect(reads()).toBeGreaterThan(before));
+  await vi.waitFor(() => expect(title.readOnly).toBe(true));
+
+  // A lock that answers again doesn't give back what the role took away
+  h.locks.get(page.id)!.failure = undefined;
+  await act(async () => window.dispatchEvent(new Event("focus")));
+  await vi.waitFor(() =>
+    expect(document.body.textContent).not.toContain("You no longer have permission"),
+  );
+  expect(h.session().getEditLockToken()).toBeUndefined();
+  expect(title.readOnly).toBe(true);
+  expect(h.session().store.getSnapshot().committed).toContain("Keep this");
+  const save = button("Save")!;
+  expect(save.getAttribute("aria-disabled")).toBe("true");
+  await act(async () => save.click());
+  expect(vi.mocked(fetch).mock.calls.some(([, init]) => init?.method === "PUT")).toBe(false);
+});
+
+test("when Reload page goes away under focus, focus moves to the page title", async () => {
+  let current = page;
+  const h = await mountPage(async () => Response.json(current));
+  current = { ...page, version: pageContentVersionSchema.parse(2) };
+  await act(async () => {
+    h.client.setQueryData(pageQuery(h.api, page.id).queryKey, {
+      ...page,
+      version: pageContentVersionSchema.parse(2),
+    });
+  });
+  await vi.waitFor(() => expect(button("Reload page")).toBeDefined());
+  await act(async () => button("Reload page")!.focus());
+  await clickButton("Reload page");
+  await vi.waitFor(() => expect(button("Reload page")).toBeUndefined());
+  await vi.waitFor(() =>
+    expect(document.activeElement?.getAttribute("aria-label")).toBe("Page title"),
+  );
+});
+
+test("a slow reload doesn't take the focus back from where the author moved it", async () => {
+  const response = Promise.withResolvers<Response>();
+  let slow = false;
+  const h = await mountPage(async () => (slow ? response.promise : Response.json(page)));
+  slow = true;
+  await act(async () => {
+    h.client.setQueryData(pageQuery(h.api, page.id).queryKey, {
+      ...page,
+      version: pageContentVersionSchema.parse(2),
+    });
+  });
+  await vi.waitFor(() => expect(button("Reload page")).toBeDefined());
+  await act(async () => button("Reload page")!.focus());
+  await clickButton("Reload page");
+  const elsewhere = document.createElement("button");
+  document.body.append(elsewhere);
+  await act(async () => elsewhere.focus());
+  await act(async () => response.resolve(Response.json({ ...page, version: 2 })));
+  await vi.waitFor(() => expect(button("Reload page")).toBeUndefined());
+  expect(document.activeElement).toBe(elsewhere);
+  elsewhere.remove();
+});
+
+test("Start editing, gone once pressed, leaves focus on the page", async () => {
+  const h = await mountPage(async () => Response.json(page));
+  h.locks.get(page.id)!.claim = undefined;
+  await act(async () => window.dispatchEvent(new Event("focus")));
+  await vi.waitFor(() => expect(button("Start editing")).toBeDefined());
+  // Before choosing, it says what editing again does to the open copy
+  expect(document.body.textContent).toContain("download any changes you want to keep");
+  await act(async () => button("Start editing")!.focus());
+  await clickButton("Start editing");
+  await vi.waitFor(() => expect(h.session().getEditLockToken()).toBeDefined());
+  expect(document.activeElement?.getAttribute("aria-label")).toBe("Page title");
 });

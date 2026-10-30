@@ -9,6 +9,7 @@ import {
 import { PostgresPages } from "./adapters/postgres-pages";
 import { CategoryEditing } from "./services/category-editing";
 import {
+  acquireTestPageEditLock,
   createTestApp,
   createTestDb,
   expectOk,
@@ -315,6 +316,7 @@ describe("serialized category and page writes", () => {
     async (action) => {
       const category = await create("category");
       const existing = (await page("/existing")).json();
+      const token = await acquireTestPageEditLock(app, existing.id);
       if (action === "save") {
         const child = await request({
           method: "POST",
@@ -334,6 +336,7 @@ describe("serialized category and page writes", () => {
           : request({
               method: "PUT",
               url: `/pages/${existing.id}`,
+              headers: { "x-page-edit-lock-token": token },
               payload: { ...existing, category_id: category.id },
             });
       const [assigned, blocked] = await race(assign, () => remove(category));
@@ -372,8 +375,14 @@ describe("serialized category and page writes", () => {
   it("allows empty-category deletion after the occupying page is deleted", async () => {
     const category = await create("category");
     const occupying = (await page("/occupying", category.id)).json();
+    const token = await acquireTestPageEditLock(app, occupying.id);
     const [deletedPage, deletedCategory] = await race(
-      () => request({ method: "DELETE", url: `/pages/${occupying.id}` }),
+      () =>
+        request({
+          method: "DELETE",
+          url: `/pages/${occupying.id}?version=${occupying.version}`,
+          headers: { "x-page-edit-lock-token": token },
+        }),
       () => remove(category),
     );
     expect([deletedPage.statusCode, deletedCategory.statusCode]).toEqual([
@@ -397,11 +406,13 @@ describe("serialized category and page writes", () => {
     async (categoryFirst) => {
       const category = await create("old");
       const existing = (await page("/page")).json();
+      const token = await acquireTestPageEditLock(app, existing.id);
       const moveCategory = () => save(category, { slug: "claimed" });
       const movePage = () =>
         request({
           method: "PUT",
           url: `/pages/${existing.id}`,
+          headers: { "x-page-edit-lock-token": token },
           payload: { ...existing, url: "/claimed" },
         });
       const [first, second] = await race(

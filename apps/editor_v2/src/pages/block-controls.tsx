@@ -992,6 +992,12 @@ function ComponentSettings({
             value={label}
             onChange={(event) => setLabel(event.target.value)}
             onBlur={keepSettings}
+            onKeyDown={(event) => {
+              if (event.key !== "Enter") return;
+              // Keeping closes the menu and focuses the page, which would otherwise receive this Enter
+              event.preventDefault();
+              keepSettings();
+            }}
           />
         </Field>
       ) : (

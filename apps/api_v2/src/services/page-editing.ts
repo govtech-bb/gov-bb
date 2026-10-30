@@ -9,9 +9,8 @@ import {
   changesOf,
   creationOf,
   cycleOf,
-  PageConflict,
   PageNotFound,
-  PageVersionRequired,
+  PageVersionConflict,
   pendingRevisionOf,
   fieldsOf,
   inheritedFrom,
@@ -24,6 +23,7 @@ import {
   type ContentStoreUnavailable,
   type EditorPage,
   type NewPage,
+  type PageContentVersion,
   type PageDocument,
   type PageFields,
   type PageId,
@@ -33,6 +33,20 @@ import {
   type RevisionView,
   type SaveFields,
 } from "../modules/page";
+import {
+  claimPageEditLock,
+  clearPageEditLock,
+  describePageEditLock,
+  extendPageEditLock,
+  ownsPageEditLock,
+  PageEditLockLost,
+  type AcquirePageEditLock,
+  type PageEditLockConflict,
+  type PageEditLockRecord,
+  type PageEditLockStatus,
+  type PageEditLockToken,
+  type RenewPageEditLock,
+} from "../modules/page-edit-lock";
 import { err, ok, type Result } from "../modules/result";
 import { chunkMarkdown, type SearchChunk } from "../modules/search-text";
 import {
@@ -81,6 +95,18 @@ export type RevisionMark =
       readonly at: Date;
     };
 
+/** A page's edit lease and the database time it was read at, after the row lock, so waiting for the lock cannot stretch an expired lease. */
+export interface PageEditLockSnapshot {
+  readonly record: PageEditLockRecord;
+  readonly now: Date;
+}
+
+/** A page version and its effective revision, read from the same database snapshot. */
+export interface PageEditorSnapshot {
+  readonly live: PageDocument;
+  readonly revision: PendingRevision | null;
+}
+
 /** The persistence the editor's page operations need. */
 export interface PageRecords {
   /**
@@ -96,6 +122,10 @@ export interface PageRecords {
   find(
     id: PageId,
   ): Promise<Result<PageDocument | null, ContentStoreUnavailable>>;
+  /** The live page and current revision from one snapshot, or null for a missing page. */
+  editorSnapshot(
+    id: PageId,
+  ): Promise<Result<PageEditorSnapshot | null, ContentStoreUnavailable>>;
   /** The page with this id, held against other writers until the transaction ends, or null. */
   lock(
     id: PageId,
@@ -104,6 +134,15 @@ export interface PageRecords {
   checkPageUrl(
     url: string,
   ): Promise<Result<void, PageRejected | ContentStoreUnavailable>>;
+  /** A page's edit lease, with the database's time, read while the caller holds the page row. */
+  readPageEditLock(
+    id: PageId,
+  ): Promise<Result<PageEditLockSnapshot, ContentStoreUnavailable>>;
+  /** Replace a page's edit lease while the caller holds the page row. */
+  writePageEditLock(
+    id: PageId,
+    record: PageEditLockRecord,
+  ): Promise<Result<void, ContentStoreUnavailable>>;
   /** The ids of the pages above this one; a loop in the data ends rather than repeating. */
   ancestorIds(
     pageId: PageId,
@@ -194,33 +233,24 @@ export class PageEditing {
     private readonly notifier: ReviewNotifier = NO_REVIEW_NOTIFICATIONS,
   ) {}
 
-  /**
-   * The page with this id as the editor works on it: with its pending
-   * revision laid over it. Two reads rather than one snapshot: a save between
-   * them leaves this with a version no save matches, so the next save is a
-   * conflict, never a lost write.
-   */
+  /** The effective working copy and its version from one database snapshot. */
   async open(
     id: PageId,
   ): Promise<Result<EditorPage | null, ContentStoreUnavailable>> {
-    const live = await this.records.find(id);
-    if (!live.ok) return live;
-    if (live.value === null) return ok(null);
-    const revision = await this.records.currentRevision(id);
-    if (!revision.ok) return revision;
-    return ok(workingCopy(live.value, revision.value));
+    const snapshot = await this.records.editorSnapshot(id);
+    if (!snapshot.ok) return snapshot;
+    const page = snapshot.value;
+    return ok(page ? workingCopy(page.live, page.revision) : null);
   }
 
-  /** The page's current revision and what it changes, or null when it has none. */
+  /** The revision, its live comparison and version from one snapshot, or null. */
   async revision(
     id: PageId,
   ): Promise<Result<RevisionView | null, ContentStoreUnavailable>> {
-    const live = await this.records.find(id);
-    if (!live.ok) return live;
-    if (live.value === null) return ok(null);
-    const revision = await this.records.currentRevision(id);
-    if (!revision.ok) return revision;
-    return ok(revision.value && viewOf(live.value, revision.value));
+    const snapshot = await this.records.editorSnapshot(id);
+    if (!snapshot.ok) return snapshot;
+    const page = snapshot.value;
+    return ok(page?.revision ? viewOf(page.live, page.revision) : null);
   }
 
   /**
@@ -264,18 +294,18 @@ export class PageEditing {
 
   /**
    * Replace a page's fields, and return the page as the editor now works on
-   * it. With `expectedUpdatedAt`, a page that has moved on since the caller
-   * read it is refused rather than silently discarding whoever wrote first;
-   * without it the caller accepts whatever is stored. A public page's version
-   * is its pending revision's, when it has one.
+   * it, with its new version. Only the holder of the page's live edit lease
+   * saves, and only over the version they read: a page or pending revision
+   * that has moved on since is refused rather than silently discarding
+   * whoever wrote first (#3108).
    *
    * A save that keeps a public page public goes into its pending revision.
    * A save to a page that is not public writes the page, as it always has.
    *
    * A save to a revision waiting for review updates it in place and it stays
-   * submitted (#3203). It must name the version it was made against. The saver joins its contributors, so can't approve
-   * it, and its version moves, so an approver holding the earlier one gets a
-   * conflict rather than publishing a version they haven't seen.
+   * submitted (#3203). The saver joins its contributors, so can't approve
+   * it, and the page's version moves, so an approver holding the earlier one
+   * gets a conflict rather than publishing a version they haven't seen.
    *
    * An approver's save that takes a public page out of public view changes
    * only its visibility: every other field it sends is ignored and the live
@@ -293,15 +323,16 @@ export class PageEditing {
   save(
     id: PageId,
     fields: SaveFields,
-    expectedUpdatedAt: Date | null,
+    expectedVersion: PageContentVersion,
+    editLockToken: PageEditLockToken,
     actor: Employee,
   ): Promise<
     Result<
       EditorPage,
       | PageRejected
       | PageNotFound
-      | PageConflict
-      | PageVersionRequired
+      | PageVersionConflict
+      | PageEditLockLost
       | NotApprover
       | SelfApproval
       | ContentStoreUnavailable
@@ -312,16 +343,16 @@ export class PageEditing {
       if (!locked.ok) return locked;
       const current = locked.value;
       if (current === null) return err(new PageNotFound(id));
+      const allowed = await checkPageWrite(
+        records,
+        current,
+        expectedVersion,
+        editLockToken,
+        actor,
+      );
+      if (!allowed.ok) return allowed;
       const pending = await records.currentRevision(id);
       if (!pending.ok) return pending;
-      if (expectedUpdatedAt === null && pending.value?.status === "submitted")
-        return err(new PageVersionRequired());
-      if (
-        expectedUpdatedAt !== null &&
-        (pending.value ?? current).updated_at !==
-          expectedUpdatedAt.toISOString()
-      )
-        return err(new PageConflict(id));
       if (
         fields.visibility !== current.visibility &&
         !actor.roles.includes("approver")
@@ -360,10 +391,11 @@ export class PageEditing {
           now,
         );
         if (!hidden.ok) return hidden;
-        if (pending.value?.status !== "draft")
-          return ok(workingCopy(hidden.value, null));
-        const dropped = await records.dropRevision(id);
-        return dropped.ok ? ok(workingCopy(hidden.value, null)) : dropped;
+        if (pending.value?.status === "draft") {
+          const dropped = await records.dropRevision(id);
+          if (!dropped.ok) return dropped;
+        }
+        return editorPageAfter(records, id, null);
       }
 
       if (fields.url !== current.url) {
@@ -398,7 +430,7 @@ export class PageEditing {
           ),
         );
         return proposed.ok
-          ? ok(workingCopy(current, proposed.value))
+          ? editorPageAfter(records, id, proposed.value)
           : proposed;
       }
       if (fields.visibility === "public" && !this.review.allowSelfApproval) {
@@ -417,15 +449,17 @@ export class PageEditing {
       }
       // Only a public page has a revision, so there is none to close here.
       const saved = await writeLive(records, current, placed.value, now);
-      return saved.ok ? ok(workingCopy(saved.value, null)) : saved;
+      return saved.ok ? editorPageAfter(records, id, null) : saved;
     });
   }
 
   /**
    * Send a page's draft revision for review. The submitter is recorded, and
-   * none may approve their own submission. With `expectedUpdatedAt`, a draft
-   * saved since the caller read it is refused. Once it commits, the
-   * approvers hear a change waits for them.
+   * none may approve their own submission. A page changed since the caller
+   * read `expectedVersion` is refused. Review steps need no edit lease, so
+   * someone else editing the page does not block them; the row lock orders
+   * them with saves. Once it commits, the approvers hear a change waits for
+   * them.
    *
    * A rejected revision can be submitted again as it is: it is copied into a
    * new revision with the same version, since its content is unchanged, and
@@ -434,14 +468,14 @@ export class PageEditing {
    */
   async submit(
     id: PageId,
-    expectedUpdatedAt: Date | null,
+    expectedVersion: PageContentVersion,
     actor: Employee,
   ): Promise<
     Result<
       RevisionView,
       | PageNotFound
       | RevisionNotFound
-      | PageConflict
+      | PageVersionConflict
       | RevisionStateConflict
       | ContentStoreUnavailable
     >
@@ -452,7 +486,7 @@ export class PageEditing {
         const reviewing = await underReview(
           records,
           id,
-          expectedUpdatedAt,
+          expectedVersion,
           "submit",
         );
         if (!reviewing.ok) return reviewing;
@@ -474,7 +508,9 @@ export class PageEditing {
           by: actor.id,
           at: this.clock(),
         });
-        return marked.ok ? ok(viewOf(live, marked.value)) : marked;
+        return marked.ok
+          ? revisionViewAfter(records, live, marked.value)
+          : marked;
       },
     );
     if (submitted.ok)
@@ -491,22 +527,22 @@ export class PageEditing {
   /**
    * Reject a submitted revision with the approver's comment. The live page is
    * unchanged and the rejected revision is kept; the next save starts a new
-   * draft from it. The approver names the version they reviewed. Rejecting
-   * moves the revision's version, so an editor still holding the earlier one
-   * reloads and sees the rejection rather than saving over it. Once it
-   * commits, the submitter hears it was rejected.
+   * draft from it. The approver names the page version they reviewed, and
+   * needs no edit lease. Rejecting moves the page's version, so an editor
+   * still holding the earlier one reloads and sees the rejection rather than
+   * saving over it. Once it commits, the submitter hears it was rejected.
    */
   async reject(
     id: PageId,
     comment: string,
-    expectedUpdatedAt: Date,
+    expectedVersion: PageContentVersion,
     actor: Employee,
   ): Promise<
     Result<
       RevisionView,
       | PageNotFound
       | RevisionNotFound
-      | PageConflict
+      | PageVersionConflict
       | RevisionStateConflict
       | SelfApproval
       | ContentStoreUnavailable
@@ -518,7 +554,7 @@ export class PageEditing {
         const reviewing = await underReview(
           records,
           id,
-          expectedUpdatedAt,
+          expectedVersion,
           "decide",
         );
         if (!reviewing.ok) return reviewing;
@@ -535,7 +571,9 @@ export class PageEditing {
           ),
           comment,
         });
-        return marked.ok ? ok(viewOf(live, marked.value)) : marked;
+        return marked.ok
+          ? revisionViewAfter(records, live, marked.value)
+          : marked;
       },
     );
     if (rejected.ok && rejected.value.submitted_by !== null)
@@ -554,20 +592,21 @@ export class PageEditing {
    * is, with the approver as the actor, and the revision is marked published.
    * The revision is checked again as a save would check it, since the
    * estate can have moved on while it waited; a stale one is refused with
-   * the field to fix, and nothing changes. The approver names the version
-   * they reviewed, so a revision changed since is a conflict. Once it
-   * commits, the submitter hears it is live: publishing is the approval.
+   * the field to fix, and nothing changes. The approver names the page
+   * version they reviewed, so a page or revision changed since is a
+   * conflict; they need no edit lease. Once it commits, the submitter hears
+   * it is live: publishing is the approval.
    */
   async publish(
     id: PageId,
-    expectedUpdatedAt: Date,
+    expectedVersion: PageContentVersion,
     actor: Employee,
   ): Promise<
     Result<
       EditorPage,
       | PageNotFound
       | RevisionNotFound
-      | PageConflict
+      | PageVersionConflict
       | RevisionStateConflict
       | SelfApproval
       | PageRejected
@@ -580,7 +619,7 @@ export class PageEditing {
         const reviewing = await underReview(
           records,
           id,
-          expectedUpdatedAt,
+          expectedVersion,
           "decide",
         );
         if (!reviewing.ok) return reviewing;
@@ -607,12 +646,11 @@ export class PageEditing {
         });
         if (!marked.ok) return marked;
         const saved = await writeLive(records, live, placed.value, now);
-        return saved.ok
-          ? ok({
-              page: workingCopy(saved.value, null),
-              submittedBy: marked.value.submitted_by,
-            })
-          : saved;
+        if (!saved.ok) return saved;
+        const page = await editorPageAfter(records, id, null);
+        return page.ok
+          ? ok({ page: page.value, submittedBy: marked.value.submitted_by })
+          : page;
       },
     );
     if (!published.ok) return published;
@@ -636,18 +674,40 @@ export class PageEditing {
     );
   }
 
-  /** Delete a page; one with sub-pages is refused, and one already gone is not an error. */
+  /**
+   * Delete a page, by the holder of its live edit lease, at the version they
+   * read; one with sub-pages is refused.
+   */
   delete(
     id: PageId,
+    expectedVersion: PageContentVersion,
+    editLockToken: PageEditLockToken,
     actor: Employee,
   ): Promise<
-    Result<void, PageRejected | NotApprover | ContentStoreUnavailable>
+    Result<
+      void,
+      | PageRejected
+      | PageNotFound
+      | PageVersionConflict
+      | PageEditLockLost
+      | NotApprover
+      | ContentStoreUnavailable
+    >
   > {
     return this.records.atomically(actor.id, async (records) => {
       const locked = await records.lock(id);
       if (!locked.ok) return locked;
+      if (locked.value === null) return err(new PageNotFound(id));
+      const allowed = await checkPageWrite(
+        records,
+        locked.value,
+        expectedVersion,
+        editLockToken,
+        actor,
+      );
+      if (!allowed.ok) return allowed;
       if (
-        locked.value?.visibility === "public" &&
+        locked.value.visibility === "public" &&
         !actor.roles.includes("approver")
       )
         return err(new NotApprover());
@@ -655,6 +715,179 @@ export class PageEditing {
       return removed.ok ? ok(undefined) : removed;
     });
   }
+
+  /** Who holds the page's edit lease, without extending it; `token` says whether it is the caller's. */
+  readPageEditLock(
+    id: PageId,
+    actor: Employee,
+    token?: PageEditLockToken,
+  ): Promise<
+    Result<PageEditLockStatus, PageNotFound | ContentStoreUnavailable>
+  > {
+    return this.withPageEditLock<PageEditLockStatus, never>(
+      id,
+      actor,
+      async ({ record, now }) =>
+        ok(describePageEditLock(record, now, actor.id, token)),
+    );
+  }
+
+  /**
+   * Take the page's edit lease, or take it over, only from the generation the
+   * caller saw. Asking again with the lease already held returns it as it is,
+   * without extending it.
+   */
+  acquirePageEditLock(
+    id: PageId,
+    actor: Employee,
+    token: PageEditLockToken,
+    command: AcquirePageEditLock,
+  ): Promise<
+    Result<
+      PageEditLockStatus,
+      PageNotFound | PageEditLockConflict | ContentStoreUnavailable
+    >
+  > {
+    return this.withPageEditLock<PageEditLockStatus, PageEditLockConflict>(
+      id,
+      actor,
+      async ({ record, now }, records) => {
+        const next = claimPageEditLock(id, record, now, actor, token, command);
+        if (!next.ok) return next;
+        if (next.value !== record) {
+          const written = await records.writePageEditLock(id, next.value);
+          if (!written.ok) return written;
+        }
+        return ok(describePageEditLock(next.value, now, actor.id, token));
+      },
+    );
+  }
+
+  /** Renew a live lease; it cannot revive an expired or replaced one, nor pass the server's idle deadline. */
+  renewPageEditLock(
+    id: PageId,
+    actor: Employee,
+    token: PageEditLockToken,
+    command: RenewPageEditLock,
+  ): Promise<
+    Result<
+      PageEditLockStatus,
+      PageNotFound | PageEditLockLost | ContentStoreUnavailable
+    >
+  > {
+    return this.withPageEditLock<PageEditLockStatus, PageEditLockLost>(
+      id,
+      actor,
+      async ({ record, now }, records) => {
+        const next = extendPageEditLock(
+          id,
+          record,
+          now,
+          actor.id,
+          token,
+          command.activitySequence,
+        );
+        if (!next.ok) return next;
+        const written = await records.writePageEditLock(id, next.value);
+        return written.ok
+          ? ok(describePageEditLock(next.value, now, actor.id, token))
+          : written;
+      },
+    );
+  }
+
+  /** Release this lease only; an older tab's release leaves a later lease alone. */
+  releasePageEditLock(
+    id: PageId,
+    actor: Employee,
+    token: PageEditLockToken,
+  ): Promise<
+    Result<PageEditLockStatus, PageNotFound | ContentStoreUnavailable>
+  > {
+    return this.withPageEditLock<PageEditLockStatus, never>(
+      id,
+      actor,
+      async ({ record, now }, records) => {
+        const next = clearPageEditLock(record, actor.id, token);
+        if (next !== record) {
+          const written = await records.writePageEditLock(id, next);
+          if (!written.ok) return written;
+        }
+        return ok(describePageEditLock(next, now, actor.id, token));
+      },
+    );
+  }
+
+  /** Run a lease step holding the page row, which content writes take too, so they serialise across instances. */
+  private withPageEditLock<T, E extends Error>(
+    id: PageId,
+    actor: Employee,
+    work: (
+      snapshot: PageEditLockSnapshot,
+      records: PageRecords,
+    ) => Promise<Result<T, E | ContentStoreUnavailable>>,
+  ): Promise<Result<T, E | PageNotFound | ContentStoreUnavailable>> {
+    return this.records.atomically(actor.id, async (records) => {
+      const page = await records.lock(id);
+      if (!page.ok) return page;
+      if (page.value === null) return err(new PageNotFound(id));
+      const snapshot = await records.readPageEditLock(id);
+      return snapshot.ok ? work(snapshot.value, records) : snapshot;
+    });
+  }
+}
+
+/**
+ * Whether the locked page may be written: still at the version the caller
+ * read, and under the caller's live edit lease. Both run before any write,
+ * the version first, so a stale page is a conflict whoever holds the lease.
+ */
+async function checkPageWrite(
+  records: PageRecords,
+  page: PageDocument,
+  expectedVersion: PageContentVersion,
+  token: PageEditLockToken,
+  actor: Employee,
+): Promise<
+  Result<void, PageVersionConflict | PageEditLockLost | ContentStoreUnavailable>
+> {
+  if (page.version !== expectedVersion)
+    return err(new PageVersionConflict(page.id));
+  const lease = await records.readPageEditLock(page.id);
+  if (!lease.ok) return lease;
+  return ownsPageEditLock(lease.value.record, lease.value.now, actor.id, token)
+    ? ok(undefined)
+    : err(new PageEditLockLost(page.id));
+}
+
+/**
+ * The page as the editor now works on it, read again inside the write's
+ * transaction because every write before it, a revision's included, moved
+ * its version.
+ */
+async function editorPageAfter(
+  records: PageRecords,
+  id: PageId,
+  revision: PendingRevision | null,
+): Promise<Result<EditorPage, PageNotFound | ContentStoreUnavailable>> {
+  const live = await records.find(id);
+  if (!live.ok) return live;
+  return live.value === null
+    ? err(new PageNotFound(id))
+    : ok(workingCopy(live.value, revision));
+}
+
+/** A revision's view after a review step, with the page's version that step left. */
+async function revisionViewAfter(
+  records: PageRecords,
+  live: PageDocument,
+  revision: PendingRevision,
+): Promise<Result<RevisionView, PageNotFound | ContentStoreUnavailable>> {
+  const page = await records.find(live.id);
+  if (!page.ok) return page;
+  return page.value === null
+    ? err(new PageNotFound(live.id))
+    : ok(viewOf(page.value, revision));
 }
 
 function markdownRejection(fields: SaveFields): PageRejected | null {
@@ -681,28 +914,32 @@ const CREATED_PUBLIC =
 const CHANGED_SINCE_PUBLIC =
   "You changed this page since it was last public, so another approver needs to make it public.";
 
-/** A revision with what it changes against the live page. */
+/** A revision with what it changes against the live page, and the page's version. */
 function viewOf(live: PageDocument, revision: PendingRevision): RevisionView {
-  return { ...revision, changes: changesOf(live, revision.fields) };
+  return {
+    ...revision,
+    version: live.version,
+    changes: changesOf(live, revision.fields),
+  };
 }
 
 /**
  * The locked live page and the revision a review step acts on, when it is in
- * the state the step needs and, with `expectedUpdatedAt`, still the version
- * the caller read. Submitting takes a draft, or a rejected revision to send
- * again; deciding takes a submitted one.
+ * the state the step needs and the page is still the version the caller
+ * read. Submitting takes a draft, or a rejected revision to send again;
+ * deciding takes a submitted one.
  */
 async function underReview(
   records: PageRecords,
   id: PageId,
-  expectedUpdatedAt: Date | null,
+  expectedVersion: PageContentVersion,
   step: "submit" | "decide",
 ): Promise<
   Result<
     { live: PageDocument; revision: PendingRevision },
     | PageNotFound
     | RevisionNotFound
-    | PageConflict
+    | PageVersionConflict
     | RevisionStateConflict
     | ContentStoreUnavailable
   >
@@ -723,11 +960,8 @@ async function underReview(
           : "This page has no change waiting for review.",
       ),
     );
-  if (
-    expectedUpdatedAt !== null &&
-    revision.value.updated_at !== expectedUpdatedAt.toISOString()
-  )
-    return err(new PageConflict(id));
+  if (locked.value.version !== expectedVersion)
+    return err(new PageVersionConflict(id));
   if (step === "submit" && revision.value.status === "submitted")
     return err(
       new RevisionStateConflict(

@@ -111,7 +111,9 @@ export function HistoryScreen({
                   Changed: {entry.changed.map(pageFieldLabel).join(", ")}
                 </span>
               )}
-              {entry.comment && <span className="text-14 wrap-break-word">Reason: {entry.comment}</span>}
+              {entry.comment && (
+                <span className="text-14 wrap-break-word">Reason: {entry.comment}</span>
+              )}
             </li>
           ))}
         </ol>

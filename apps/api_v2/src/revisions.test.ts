@@ -14,7 +14,6 @@ import { withDefaults, type PageId } from "./modules/page";
 import { ok } from "./modules/result";
 import { PageEditing } from "./services/page-editing";
 import { categories, changeEvents, pageRevisions } from "./schema";
-import { IF_UPDATED_AT } from "./routes/contracts";
 import {
   aPage,
   createTestApp,
@@ -22,6 +21,8 @@ import {
   createTestServices,
   SELF_APPROVAL,
   expectOk,
+  takeTestPageEditLock,
+  testPageEditLockHeaders,
   TEST_EDITOR,
   TEST_EMPLOYEE,
   TEST_HTTP_CONFIG,
@@ -103,16 +104,31 @@ const seedPage = async (overrides: Record<string, unknown> = {}) => {
 const stored = async (id: PageId) =>
   expectOk(await new PostgresPages(db).find(id));
 
-const save = (
+/** A live page without its version, which a revision's writes move (017). */
+const liveOf = (page: { version: number } | null) => {
+  if (page === null) return null;
+  const { version: _moves, ...live } = page;
+  return live;
+};
+
+/** The header with `employee`'s own edit lease on the page, taken over whoever held it. */
+const leaseOf = (employee: Employee, pageId: string) =>
+  testPageEditLockHeaders(app, pageId, {
+    cookie: `test-session=${employee.id}`,
+    origin: TEST_HTTP_CONFIG.editorOrigin,
+  });
+
+/** Save `fields` over the page at the `version` given, as `employee`, under their own edit lease. */
+const save = async (
   employee: Employee,
-  page: { id: string; updated_at: string },
+  page: { id: string; version: number },
   fields: Record<string, unknown>,
 ) =>
   as(employee, {
     method: "PUT",
     url: `/pages/${page.id}`,
-    headers: { [IF_UPDATED_AT]: page.updated_at },
-    payload: withDefaults(aPage(fields)),
+    headers: await leaseOf(employee, page.id),
+    payload: { ...withDefaults(aPage(fields)), version: page.version },
   });
 
 const revisions = () => db.select().from(pageRevisions);
@@ -158,7 +174,9 @@ describe("a save to a public page", () => {
 
       expect(response.statusCode).toBe(200);
       expect(await publicResponses()).toEqual(before);
-      expect(await stored(page.id)).toEqual(page);
+      // Only the page's version moves, with its revision.
+      expect(liveOf(await stored(page.id))).toEqual(liveOf(page));
+      expect((await stored(page.id))?.version).toBe(response.json().version);
       // A live page that did not change gets no "updated" entry (#3200).
       expect(await events()).toEqual([
         { action: "created", actor: TEST_EMPLOYEE.id },
@@ -203,9 +221,11 @@ describe("a save to a public page", () => {
       title: "Severance pay",
       body_markdown: aPage().body_markdown,
       updated_at: revision?.updatedAt.toISOString(),
+      version: (await stored(page.id))?.version,
       pending_revision: { status: "draft", comment: null },
     });
     expect(response.json().updated_at > page.updated_at).toBe(true);
+    expect(response.json().version).toBeGreaterThan(page.version);
   });
 
   it("updates the one open revision, and records everyone who saved to it", async () => {
@@ -233,7 +253,8 @@ describe("a save to a public page", () => {
     const response = await as(TEST_EDITOR, {
       method: "PUT",
       url: `/pages/${page.id}`,
-      payload: unplaced,
+      headers: await leaseOf(TEST_EDITOR, page.id),
+      payload: { ...unplaced, version: page.version },
     });
 
     expect(response.statusCode).toBe(200);
@@ -297,7 +318,7 @@ describe("a revision that moves a public page with sub-pages to another category
     expect(response.statusCode).toBe(200);
     expect(response.json().category_id).toBe(work?.id);
     expect(await stored(child.id)).toEqual(child);
-    expect(await stored(parent.id)).toEqual(parent);
+    expect(liveOf(await stored(parent.id))).toEqual(liveOf(parent));
     expect(await publicResponses()).toEqual(before);
   });
 });
@@ -382,8 +403,8 @@ describe("a stale save to a public page", () => {
 
     expect(response.statusCode).toBe(409);
     expect(response.json()).toMatchObject({
-      error: "conflict",
-      documentId: page.id,
+      error: "page_version_conflict",
+      pageId: page.id,
     });
     expect(await revisions()).toEqual([before]);
   });
@@ -412,7 +433,10 @@ describe("changing a public page's visibility", () => {
     });
 
     expect(response.statusCode).toBe(403);
-    expect(await stored(page.id)).toEqual(page);
+    expect(await stored(page.id)).toEqual({
+      ...page,
+      version: pending.version,
+    });
     expect(await revisions()).toEqual([before]);
   });
 
@@ -440,6 +464,7 @@ describe("changing a public page's visibility", () => {
       ...page,
       visibility: "preview",
       updated_at: response.json().updated_at,
+      version: response.json().version,
     });
     expect(await revisions()).toEqual([]);
     expect((await app.inject({ url: `/pages?url=${ENTRY}` })).statusCode).toBe(
@@ -455,11 +480,14 @@ describe("changing a public page's visibility", () => {
 describe("deleting a page", () => {
   it("deletes its pending revision with it", async () => {
     const page = await seedPage();
-    await save(TEST_EDITOR, page, { title: "Waiting" });
+    const pending = (
+      await save(TEST_EDITOR, page, { title: "Waiting" })
+    ).json();
 
     const response = await as(TEST_EMPLOYEE, {
       method: "DELETE",
-      url: `/pages/${page.id}`,
+      url: `/pages/${page.id}?version=${pending.version}`,
+      headers: await leaseOf(TEST_EMPLOYEE, page.id),
     });
 
     expect(response.statusCode).toBe(204);
@@ -478,11 +506,17 @@ describe("an approver taking a page out of public view", () => {
     );
     const fields = (overrides: Record<string, unknown>) =>
       withDefaults(aPage({ category_id: page.category_id, ...overrides }));
+    const editorToken = await takeTestPageEditLock(
+      editing,
+      page.id,
+      TEST_EDITOR,
+    );
     const pending = expectOk(
       await editing.save(
         page.id,
         fields({ title: "Waiting" }),
-        new Date(page.updated_at),
+        page.version,
+        editorToken,
         TEST_EDITOR,
       ),
     );
@@ -490,22 +524,31 @@ describe("an approver taking a page out of public view", () => {
       Date.parse(page.updated_at) + 1,
     );
 
-    expectOk(
+    const approverToken = await takeTestPageEditLock(editing, page.id);
+    const hidden = expectOk(
       await editing.save(
         page.id,
         fields({ title: "Waiting", visibility: "preview" }),
-        new Date(pending.updated_at),
+        pending.version,
+        approverToken,
         TEST_EMPLOYEE,
       ),
+    );
+    expect(hidden.version).toBeGreaterThan(pending.version);
+    const editorAgain = await takeTestPageEditLock(
+      editing,
+      page.id,
+      TEST_EDITOR,
     );
     const stale = await editing.save(
       page.id,
       fields({ title: "Stale", visibility: "preview" }),
-      new Date(pending.updated_at),
+      pending.version,
+      editorAgain,
       TEST_EDITOR,
     );
 
-    expect(stale.ok ? null : stale.error._tag).toBe("PageConflict");
+    expect(stale.ok ? null : stale.error._tag).toBe("PageVersionConflict");
     // Taking it out of view kept the live content.
     expect((await stored(page.id))?.title).toBe(page.title);
   });

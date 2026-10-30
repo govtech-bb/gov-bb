@@ -4,6 +4,7 @@ import {
   createTestApp,
   createTestDb,
   TEST_HEADERS,
+  testPageEditLockHeaders,
   type TestDb,
 } from "./test-db";
 
@@ -106,7 +107,10 @@ describe("Markdown page publication", () => {
     const rejected = await app.inject({
       method: "PUT",
       url: `/pages/${draft.id}`,
-      headers: TEST_HEADERS,
+      headers: {
+        ...TEST_HEADERS,
+        ...(await testPageEditLockHeaders(app, draft.id, TEST_HEADERS)),
+      },
       payload: { ...draft, visibility: "public" },
     });
     expect(rejected.statusCode).toBe(422);
@@ -118,6 +122,7 @@ describe("Markdown page publication", () => {
       body_markdown: invalid,
       visibility: "draft",
       updated_at: draft.updated_at,
+      version: draft.version,
       published_at: null,
     });
   });

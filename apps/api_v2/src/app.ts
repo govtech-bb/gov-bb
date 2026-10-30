@@ -17,8 +17,8 @@ import {
 import { OPENAPI_DOCUMENT } from "./openapi";
 import type { Redacted } from "./modules/redacted";
 import { authRoutes, type AuthHandler } from "./routes/auth";
-import { IF_UPDATED_AT } from "./routes/contracts";
 import { editorRoutes } from "./routes/editor";
+import { IF_UPDATED_AT, PAGE_EDIT_LOCK_HEADER } from "./routes/contracts";
 import { siteRoutes } from "./routes/site";
 import type { EmployeeGate, RoleRecords } from "./services/editor-access";
 import type { ICategoryEditing } from "./services/category-editing";
@@ -112,7 +112,12 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
       callback(null, !origin || origin === config.editorOrigin),
     credentials: true,
     methods: ["GET", "HEAD", "POST", "PUT", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", IF_UPDATED_AT, "If-None-Match"],
+    allowedHeaders: [
+      "Content-Type",
+      IF_UPDATED_AT,
+      PAGE_EDIT_LOCK_HEADER,
+      "If-None-Match",
+    ],
   });
   // Swagger must load before routes so its onRoute hook sees their schemas.
   await app.register(swagger, {

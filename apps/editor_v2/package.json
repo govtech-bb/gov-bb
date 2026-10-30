@@ -5,17 +5,19 @@
   "devDependencies": {
     "@oxlint/plugins": "1.87.0",
     "@phosphor-icons/core": "2.1.1",
+    "@tailwindcss/vite": "4.3.3",
+    "@types/mdast": "4.0.4",
+    "@types/node": "^24.0.0",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.0.2",
+    "fast-check": "^4.10.2",
     "openapi-typescript": "7.13.0",
     "oxfmt": "0.72.0",
     "oxlint": "1.87.0",
+    "playwright": "1.61.0",
     "tailwindcss": "^4.3.3",
     "typescript": "catalog:",
-    "@types/mdast": "4.0.4",
-    "@types/node": "^24.0.0",
-    "@vitejs/plugin-react": "^6.0.2",
-    "@tailwindcss/vite": "4.3.3",
     "vite": "catalog:",
     "vitest": "^4.1.11"
   },
@@ -45,6 +47,10 @@
     "@lexical/rich-text": "^0.51.0",
     "@lexical/table": "0.51.0",
     "@phosphor-icons/react": "2.1.10",
+    "@tanstack/react-query": "catalog:",
+    "@tanstack/react-router": "1.170.41",
+    "@tanstack/react-start": "1.168.60",
+    "@tanstack/react-table": "9.2.4",
     "better-auth": "1.7.7",
     "cn": "^0.4.0",
     "date-fns": "^4",
@@ -54,10 +60,7 @@
     "react-dom": "^19.3.0",
     "selecto": "^1.26.3",
     "yaml": "^2.9.1",
-    "@tanstack/react-start": "1.168.60",
-    "@tanstack/react-router": "1.170.41",
-    "@tanstack/react-query": "catalog:",
-    "@tanstack/react-table": "9.2.4"
+    "zod": "^4.4.3"
   },
   "version": "0.0.0",
   "nx": {
@@ -78,8 +81,12 @@
         "inputs": [
           "production",
           "^production",
-          { "env": "VITE_API_ORIGIN" },
-          { "env": "VITE_SITE_PREVIEW_URL" }
+          {
+            "env": "VITE_API_ORIGIN"
+          },
+          {
+            "env": "VITE_SITE_PREVIEW_URL"
+          }
         ],
         "outputs": [
           "{projectRoot}/dist"

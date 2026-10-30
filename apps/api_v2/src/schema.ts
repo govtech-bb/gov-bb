@@ -1,5 +1,5 @@
 /**
- * The Drizzle schema, matching migrations `001_init` to `016_content_updated_at`
+ * The Drizzle schema, matching migrations `001_init` to `017_page_edit_locks`
  * applied in order, table for table and column for column. BetterAuth reads
  * and writes its four `auth_*` tables through these definitions; their
  * property keys are BetterAuth's field names.
@@ -15,6 +15,7 @@
 
 import {
   type AnyPgColumn,
+  bigint,
   boolean,
   check,
   customType,
@@ -102,6 +103,8 @@ export const contentPages = pgTable(
         onDelete: "restrict",
       })
       .$type<PageId>(),
+    // The shared editor version `017` moves; the database owns it.
+    version: integer("version").notNull().default(1),
     title: varchar("title", { length: 300 }).notNull(),
     description: text("description"),
     visibility: pageVisibility("visibility").notNull().default("draft"),
@@ -319,6 +322,28 @@ export const userRoles = pgTable(
     ),
   ],
 );
+
+/** A page's editing lease, `017`: presence, not content, so it has no history. A released lease keeps its generation. */
+export const pageEditLocks = pgTable("page_edit_locks", {
+  pageId: uuid("page_id")
+    .primaryKey()
+    .references(() => contentPages.id, { onDelete: "cascade" })
+    .$type<PageId>(),
+  lockGeneration: integer("lock_generation").notNull(),
+  userId: text("user_id"),
+  holderName: text("holder_name"),
+  token: uuid("token"),
+  acquiredAt: timestamp("acquired_at", { withTimezone: true, precision: 3 }),
+  lockExpiresAt: timestamp("lock_expires_at", {
+    withTimezone: true,
+    precision: 3,
+  }),
+  lastActivityAt: timestamp("last_activity_at", {
+    withTimezone: true,
+    precision: 3,
+  }),
+  activitySequence: bigint("activity_sequence", { mode: "number" }),
+});
 
 /**
  * A change to a public page waiting for an approver; the live row is

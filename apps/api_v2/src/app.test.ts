@@ -9,11 +9,12 @@
  * the real handlers and the real error handler, against a real database.
  */
 
+import { randomUUID } from "node:crypto";
 import { sql } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { FastifyInstance, InjectOptions } from "fastify";
 import pino from "pino";
-import { IF_UPDATED_AT } from "./routes/contracts";
+import { PAGE_EDIT_LOCK_HEADER } from "./routes/contracts";
 import { PUBLIC_READ } from "./routes/responses";
 import type { Database } from "./db";
 import { PostgresPages } from "./adapters/postgres-pages";
@@ -29,6 +30,7 @@ import {
   TEST_EMPLOYEE,
   TEST_HEADERS,
   TEST_HTTP_CONFIG,
+  testPageEditLockHeaders,
 } from "./test-db";
 import { AuthUnavailable, Forbidden } from "./modules/auth";
 import { Redacted } from "./modules/redacted";
@@ -55,6 +57,10 @@ afterEach(async () => {
 
 const inject = (options: InjectOptions) =>
   app.inject({ ...options, headers: { ...TEST_HEADERS, ...options.headers } });
+
+/** The header with the test employee's own edit lease on the page, which a save or delete needs. */
+const lease = (pageId: string) =>
+  testPageEditLockHeaders(app, pageId, TEST_HEADERS);
 
 const seedPage = async (overrides: Record<string, unknown> = {}) =>
   expectOk(await services.editing.create(aPage(overrides), TEST_EMPLOYEE));
@@ -652,37 +658,45 @@ describe("POST /pages", () => {
 // A save to a public page goes into its pending revision (revisions.test.ts),
 // so the tests of what a save writes use a page that is not public.
 describe("PUT /pages/:id", () => {
-  it("saves and returns the new updated_at", async () => {
-    const created = await seedPage();
+  it("saves and returns the new updated_at and version", async () => {
+    const created = await seedPage({ visibility: "preview" });
     const response = await inject({
       method: "PUT",
       url: `/pages/${created.id}`,
-      headers: { [IF_UPDATED_AT]: created.updated_at },
+      headers: await lease(created.id),
       payload: { ...created, title: "Severance pay" },
     });
 
     expect(response.statusCode).toBe(200);
     expect(response.json().title).toBe("Severance pay");
     expect(response.json().updated_at).not.toBe(created.updated_at);
+    expect(response.json().version).toBe(created.version + 1);
   });
 
-  it("409s on a stale if-updated-at and leaves the row untouched", async () => {
+  it("409s on a stale version and leaves the row untouched", async () => {
     const created = await seedPage({ visibility: "preview" });
-    await inject({
+    const headers = await lease(created.id);
+    const first = await inject({
       method: "PUT",
       url: `/pages/${created.id}`,
-      headers: { [IF_UPDATED_AT]: created.updated_at },
+      headers,
       payload: { ...created, title: "First writer wins" },
     });
+    expect(first.statusCode).toBe(200);
 
     const response = await inject({
       method: "PUT",
       url: `/pages/${created.id}`,
-      headers: { [IF_UPDATED_AT]: created.updated_at },
+      headers,
       payload: { ...created, title: "Second writer clobbers" },
     });
 
     expect(response.statusCode).toBe(409);
+    expect(response.json()).toEqual({
+      error: "page_version_conflict",
+      message: expect.any(String),
+      pageId: created.id,
+    });
     expect(expectOk(await live(created.id))?.title).toBe("First writer wins");
   });
 
@@ -693,6 +707,7 @@ describe("PUT /pages/:id", () => {
     const response = await inject({
       method: "PUT",
       url: `/pages/${created.id}`,
+      headers: await lease(created.id),
       payload: partial,
     });
 
@@ -702,13 +717,53 @@ describe("PUT /pages/:id", () => {
     );
   });
 
-  it("400s an if-updated-at that is not a timestamp, rather than saving unconditionally", async () => {
-    const created = await seedPage();
+  it.each([
+    ["missing", undefined],
+    ["an old timestamp", "2026-01-01T00:00:00.000Z"],
+    ["zero", 0],
+    ["a fraction", 1.5],
+    ["a string", "1"],
+    ["past the integer range", 2_147_483_648],
+  ])(
+    "400s a version that is %s, rather than saving unconditionally",
+    async (_why, version) => {
+      const created = await seedPage({ visibility: "preview" });
+      const response = await inject({
+        method: "PUT",
+        url: `/pages/${created.id}`,
+        headers: await lease(created.id),
+        payload: { ...created, title: "Saved by accident", version },
+      });
+
+      expect(response.statusCode).toBe(400);
+      expect(expectOk(await live(created.id))?.title).toBe(created.title);
+    },
+  );
+
+  it("409s page_edit_lock_required without a lease token, and saves nothing", async () => {
+    const created = await seedPage({ visibility: "preview" });
     const response = await inject({
       method: "PUT",
       url: `/pages/${created.id}`,
-      headers: { [IF_UPDATED_AT]: "yesterday" },
-      payload: { ...created, title: "Saved by accident" },
+      payload: { ...created, title: "No lease" },
+    });
+
+    expect(response.statusCode).toBe(409);
+    expect(response.json().error).toBe("page_edit_lock_required");
+    expect(expectOk(await live(created.id))?.title).toBe(created.title);
+  });
+
+  it("ignores the old if-updated-at header, so a timestamp alone can't save", async () => {
+    const created = await seedPage({ visibility: "preview" });
+    const { version: _unsent, ...unversioned } = created;
+    const response = await inject({
+      method: "PUT",
+      url: `/pages/${created.id}`,
+      headers: {
+        ...(await lease(created.id)),
+        "if-updated-at": created.updated_at,
+      },
+      payload: { ...unversioned, title: "Timestamp only" },
     });
 
     expect(response.statusCode).toBe(400);
@@ -719,18 +774,21 @@ describe("PUT /pages/:id", () => {
     const response = await inject({
       method: "PUT",
       url: "/pages/22222222-2222-4222-8222-222222222222",
-      payload: withDefaults(aPage()),
+      headers: { [PAGE_EDIT_LOCK_HEADER]: randomUUID() },
+      payload: { ...withDefaults(aPage()), version: 1 },
     });
     expect(response.statusCode).toBe(404);
   });
 
   it("stamps published_at the first time a page goes public, and never moves it", async () => {
     const draft = await seedPage({ visibility: "draft" });
+    const headers = await lease(draft.id);
     const put = async (current: typeof draft, visibility: Visibility) =>
       (
         await inject({
           method: "PUT",
           url: `/pages/${draft.id}`,
+          headers,
           payload: { ...current, visibility },
         })
       ).json();
@@ -757,6 +815,7 @@ describe("PUT /pages/:id", () => {
 
   it("lists a page's history newest first, with who did it and what each change changed", async () => {
     const draft = await seedPage({ visibility: "draft" });
+    const headers = await lease(draft.id);
     const put = async (
       current: typeof draft,
       changes: Record<string, unknown>,
@@ -765,6 +824,7 @@ describe("PUT /pages/:id", () => {
         await inject({
           method: "PUT",
           url: `/pages/${draft.id}`,
+          headers,
           payload: { ...current, ...changes },
         })
       ).json();
@@ -820,6 +880,7 @@ describe("PUT /pages/:id", () => {
 
   it("serves content_updated_at, moved by a content change but not by a visibility change (#3105)", async () => {
     const draft = await seedPage({ visibility: "draft" });
+    const headers = await lease(draft.id);
     const put = async (
       current: typeof draft,
       changes: Record<string, unknown>,
@@ -828,6 +889,7 @@ describe("PUT /pages/:id", () => {
         await inject({
           method: "PUT",
           url: `/pages/${draft.id}`,
+          headers,
           payload: { ...current, ...changes },
         })
       ).json();
@@ -855,6 +917,39 @@ describe("PUT /pages/:id", () => {
     );
   });
 
+  it("keeps content_updated_at, the live updated_at, history and the site version still while a lease heartbeats and a revision waits", async () => {
+    const page = await seedPage();
+    const headers = await lease(page.id);
+    const siteVersion = async () =>
+      (await app.inject({ url: "/site-version" })).json().version as string;
+    const snapshot = async () => ({
+      served: (await read(page.url)).json().content_updated_at as string,
+      live: expectOk(await new PostgresPages(db).find(page.id))?.updated_at,
+      history: (await inject({ url: `/pages/${page.id}/history` })).json(),
+      site: await siteVersion(),
+    });
+    const before = await snapshot();
+
+    const heartbeat = await inject({
+      method: "PUT",
+      url: `/pages/${page.id}/lock`,
+      headers,
+      payload: { activitySequence: 1 },
+    });
+    expect(heartbeat.statusCode).toBe(200);
+    const pending = await inject({
+      method: "PUT",
+      url: `/pages/${page.id}`,
+      headers,
+      payload: { ...page, title: "Pending" },
+    });
+    expect(pending.statusCode).toBe(200);
+    // The revision moved the page's numeric version, and nothing else.
+    expect(pending.json().version).toBeGreaterThan(page.version);
+
+    expect(await snapshot()).toEqual(before);
+  });
+
   it("422s a page placed beneath its own sub-page", async () => {
     const parent = await seedPage();
     const child = await seedPage({ url: START, parent_id: parent.id });
@@ -862,6 +957,7 @@ describe("PUT /pages/:id", () => {
     const response = await inject({
       method: "PUT",
       url: `/pages/${parent.id}`,
+      headers: await lease(parent.id),
       payload: { ...parent, parent_id: child.id },
     });
 
@@ -881,6 +977,7 @@ describe("PUT /pages/:id", () => {
     const response = await inject({
       method: "PUT",
       url: `/pages/${child.id}`,
+      headers: await lease(child.id),
       payload: { ...unplaced, title: "Renamed" },
     });
 
@@ -901,6 +998,7 @@ describe("PUT /pages/:id", () => {
     const response = await inject({
       method: "PUT",
       url: `/pages/${parent.id}`,
+      headers: await lease(parent.id),
       payload: { ...parent, url: moved },
     });
 
@@ -957,12 +1055,15 @@ describe("PUT /pages/:id", () => {
     const response = await inject({
       method: "PUT",
       url: `/pages/${parent.id}`,
+      headers: await lease(parent.id),
       payload: { ...parent, category_id: to.id },
     });
 
     expect(response.statusCode).toBe(200);
     expect(expectOk(await live(start.id))?.category_id).toBe(to.id);
     expect(expectOk(await live(below.id))?.category_id).toBe(to.id);
+    // Carried along, so a tab holding a sub-page's old version conflicts.
+    expect(expectOk(await live(start.id))?.version).toBe(start.version + 1);
   });
 
   it("files an uncategorised parent's sub-pages when it gets a category", async () => {
@@ -973,11 +1074,13 @@ describe("PUT /pages/:id", () => {
     const start = await seedPage({ url: START, parent_id: parent.id });
     const below = await seedPage({ url: `${START}/more`, parent_id: start.id });
 
-    await inject({
+    const saved = await inject({
       method: "PUT",
       url: `/pages/${parent.id}`,
+      headers: await lease(parent.id),
       payload: { ...parent, category_id: category.id },
     });
+    expect(saved.statusCode).toBe(200);
 
     expect(expectOk(await live(start.id))?.category_id).toBe(category.id);
     expect(expectOk(await live(below.id))?.category_id).toBe(category.id);
@@ -992,11 +1095,13 @@ describe("PUT /pages/:id", () => {
       body_markdown: "Old text",
       visibility: "preview",
     });
-    await inject({
+    const saved = await inject({
       method: "PUT",
       url: `/pages/${created.id}`,
+      headers: await lease(created.id),
       payload: { ...created, body_markdown: "Intro\n\n## Fees\n\nTen dollars" },
     });
+    expect(saved.statusCode).toBe(200);
 
     const rows = await db
       .select({ heading: searchChunks.heading, body: searchChunks.body })
@@ -1028,7 +1133,8 @@ describe("DELETE /pages/:id", () => {
     const created = await seedPage();
     const response = await inject({
       method: "DELETE",
-      url: `/pages/${created.id}`,
+      url: `/pages/${created.id}?version=${created.version}`,
+      headers: await lease(created.id),
     });
 
     expect(response.statusCode).toBe(204);
@@ -1037,7 +1143,12 @@ describe("DELETE /pages/:id", () => {
 
   it("records who deleted the page, which moves the version", async () => {
     const created = await seedPage();
-    await inject({ method: "DELETE", url: `/pages/${created.id}` });
+    const deleted = await inject({
+      method: "DELETE",
+      url: `/pages/${created.id}?version=${created.version}`,
+      headers: await lease(created.id),
+    });
+    expect(deleted.statusCode).toBe(204);
 
     const events = await db
       .select({ action: changeEvents.action, actor: changeEvents.actor })
@@ -1056,7 +1167,8 @@ describe("DELETE /pages/:id", () => {
 
     const response = await inject({
       method: "DELETE",
-      url: `/pages/${parent.id}`,
+      url: `/pages/${parent.id}?version=${parent.version}`,
+      headers: await lease(parent.id),
     });
 
     expect(response.statusCode).toBe(422);
@@ -1214,15 +1326,16 @@ describe("timestamp precision", () => {
     expect(fetched.updated_at).toMatch(/\.\d{3}Z$/);
   });
 
-  it("accepts the updated_at it just handed out, twice in a row", async () => {
-    const created = await seedPage();
+  it("accepts the version it just handed out, twice in a row", async () => {
+    const created = await seedPage({ visibility: "preview" });
+    const headers = await lease(created.id);
 
     let current = created;
     for (const title of ["First edit", "Second edit"]) {
       const response = await inject({
         method: "PUT",
         url: `/pages/${current.id}`,
-        headers: { [IF_UPDATED_AT]: current.updated_at },
+        headers,
         payload: { ...current, title },
       });
       expect(response.statusCode).toBe(200);
@@ -1250,6 +1363,24 @@ describe("CORS", () => {
     expect(String(response.headers["access-control-allow-methods"])).toContain(
       "DELETE",
     );
+  });
+
+  it("lets the editor send its edit lease token, and the category and record timestamps", async () => {
+    const response = await inject({
+      method: "OPTIONS",
+      url: "/pages/x",
+      headers: {
+        origin: "http://localhost:3010",
+        "access-control-request-method": "PUT",
+        "access-control-request-headers": "x-page-edit-lock-token",
+      },
+    });
+
+    const allowed = String(
+      response.headers["access-control-allow-headers"],
+    ).toLowerCase();
+    expect(allowed).toContain("x-page-edit-lock-token");
+    expect(allowed).toContain("if-updated-at");
   });
 
   it("refuses a site's origin, since sites fetch from their own server", async () => {
@@ -1381,7 +1512,11 @@ describe("employee access", () => {
     const saved = await inject({
       method: "PUT",
       url: `/pages/${created.json().id}`,
-      payload: withDefaults(aPage({ title: "Updated", visibility: "preview" })),
+      headers: await lease(created.json().id),
+      payload: {
+        ...withDefaults(aPage({ title: "Updated", visibility: "preview" })),
+        version: created.json().version,
+      },
     });
     expect(saved.statusCode).toBe(200);
     const events = await db

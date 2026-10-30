@@ -15,13 +15,17 @@ import { randomUUID } from "node:crypto";
 import { sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Client, Pool } from "pg";
-import { inject } from "vitest";
+import type { FastifyInstance } from "fastify";
+import { expect, inject } from "vitest";
 import { PostgresCollections } from "./adapters/postgres-collections";
 import { PostgresPages } from "./adapters/postgres-pages";
 import { PostgresRoles } from "./adapters/postgres-roles";
 import { buildApp, type AppOptions } from "./app";
+import { PAGE_EDIT_LOCK_HEADER } from "./routes/contracts";
 import { ping, type Database } from "./db";
 import { ROLES, UserId, type Employee } from "./modules/auth";
+import type { PageId } from "./modules/page";
+import { PageEditLockToken } from "./modules/page-edit-lock";
 import { ok, type Result } from "./modules/result";
 import { EditorAccess, type SessionReader } from "./services/editor-access";
 import { EditorIndex } from "./services/editor-index";
@@ -138,6 +142,25 @@ export function createTestServices(
   };
 }
 
+/** Take a page's edit lease through the service, over whoever holds it, as the editor does before a save or delete; returns the token. */
+export async function takeTestPageEditLock(
+  editing: PageEditing,
+  pageId: PageId,
+  actor: Employee = TEST_EMPLOYEE,
+): Promise<PageEditLockToken> {
+  const token = PageEditLockToken.parse(randomUUID());
+  const { lockGeneration } = expectOk(
+    await editing.readPageEditLock(pageId, actor),
+  );
+  expectOk(
+    await editing.acquirePageEditLock(pageId, actor, token, {
+      action: "takeover",
+      expectedLockGeneration: lockGeneration,
+    }),
+  );
+  return token;
+}
+
 /** The value of a result a test expects to have succeeded. */
 export function expectOk<T>(result: Result<T, Error>): T {
   if (!result.ok) throw result.error;
@@ -184,6 +207,52 @@ export const TEST_HEADERS = {
   cookie: "test-session=employee",
   origin: TEST_HTTP_CONFIG.editorOrigin,
 };
+
+/** Take a fixture page's edit lease over whoever holds it, as the editor does before saving or deleting; returns the token to send. */
+export async function acquireTestPageEditLock(
+  app: FastifyInstance,
+  pageId: string,
+  headers: Record<string, string> = TEST_HEADERS,
+): Promise<string> {
+  const { token, status } = await tryTestPageEditLock(app, pageId, headers);
+  expect(status).toBe(200);
+  return token;
+}
+
+/**
+ * The header a write sends with the caller's edit lease, taken over whoever
+ * holds it. A caller who may not edit is refused the lease; the token is
+ * sent anyway, so their write is refused for their role, as it would be.
+ */
+export async function testPageEditLockHeaders(
+  app: FastifyInstance,
+  pageId: string,
+  headers: Record<string, string>,
+): Promise<Record<string, string>> {
+  const { token } = await tryTestPageEditLock(app, pageId, headers);
+  return { [PAGE_EDIT_LOCK_HEADER]: token };
+}
+
+async function tryTestPageEditLock(
+  app: FastifyInstance,
+  pageId: string,
+  headers: Record<string, string>,
+): Promise<{ token: string; status: number }> {
+  const token = randomUUID();
+  const lease = await app.inject({ url: `/pages/${pageId}/lock`, headers });
+  if (lease.statusCode !== 200) return { token, status: lease.statusCode };
+  const response = await app.inject({
+    method: "POST",
+    url: `/pages/${pageId}/lock`,
+    headers: { ...headers, [PAGE_EDIT_LOCK_HEADER]: token },
+    payload: {
+      action: "takeover",
+      expectedLockGeneration: lease.json<{ lockGeneration: number }>()
+        .lockGeneration,
+    },
+  });
+  return { token, status: response.statusCode };
+}
 
 /**
  * Compose the production HTTP adapter with an explicit session test double.

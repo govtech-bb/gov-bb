@@ -132,8 +132,18 @@ test("the live write an approval let through reads as publishing it, not as the 
   const approvedAt = "2026-10-28T12:00:00.000Z";
 
   await render([
-    entry({ version_no: 5, ...approver, occurred_at: "2026-10-28T13:00:00.000Z", changed: ["title"] }),
-    entry({ version_no: 4, ...approver, occurred_at: approvedAt, changed: ["title", "body_markdown"] }),
+    entry({
+      version_no: 5,
+      ...approver,
+      occurred_at: "2026-10-28T13:00:00.000Z",
+      changed: ["title"],
+    }),
+    entry({
+      version_no: 4,
+      ...approver,
+      occurred_at: approvedAt,
+      changed: ["title", "body_markdown"],
+    }),
     entry({ version_no: 3, ...approver, action: "approved", occurred_at: approvedAt }),
     entry({ version_no: 2, action: "submitted" }),
     entry({ version_no: 1, action: "created" }),

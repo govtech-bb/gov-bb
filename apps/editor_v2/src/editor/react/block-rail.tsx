@@ -168,14 +168,16 @@ export function useRailTarget(anchor: HTMLElement, rules: TargetRules) {
             return;
           }
 
-          // Crossing an ancestor's padding on the way to the rail keeps the inner node as the settings' target
+          // Crossing an ancestor's padding or the gutter on the way to the rail keeps the inner node as the settings' target
           const node = $getNearestNodeFromDOMNode(element);
           const previous = pointer.current?.context ? $getNodeByKey(pointer.current.context) : null;
 
-          const context =
-            node && previous?.isAttached() && node.isParentOf(previous)
-              ? previous.getKey()
-              : (node?.getKey() ?? null);
+          const kept =
+            previous &&
+            previous.isAttached() &&
+            (node ? node.isParentOf(previous) : pointer.current?.key === key);
+
+          const context = kept ? previous.getKey() : (node?.getKey() ?? null);
 
           pointer.current = { key, context };
         },

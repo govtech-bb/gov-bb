@@ -47,7 +47,24 @@ test("pointing at a service's link starts loading the service and its entry page
             ? { categories: [] }
             : path.startsWith("/services/")
               ? { service, pages: [] }
-              : { id: service.id },
+              : {
+                  id: service.id,
+                  version: 1,
+                  url: service.url,
+                  slug: "birth-certificate",
+                  parent_id: null,
+                  category_id: null,
+                  title: service.title,
+                  description: null,
+                  visibility: "public",
+                  form_id: null,
+                  body_markdown: "Service page",
+                  frontmatter: {},
+                  published_at: null,
+                  created_at: service.updated_at,
+                  updated_at: service.updated_at,
+                  pending_revision: null,
+                },
         ),
       );
     }),

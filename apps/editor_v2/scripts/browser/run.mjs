@@ -57,10 +57,18 @@ for (const suite of suites) {
 
   console.log(`Running ${suite} against ${url.href}`);
 
-  const result = spawnSync(process.execPath, [file, url.href], {
-    stdio: "inherit",
-    env: process.env,
-  });
+  const realApi = suite === "concurrent-page-editing.mjs";
+
+  const result = spawnSync(
+    realApi ? "pnpm" : process.execPath,
+    realApi
+      ? ["--dir", "../api_v2", "exec", "vitest", "run", "--config", "vitest.browser.config.ts"]
+      : [file, url.href],
+    {
+      stdio: "inherit",
+      env: { ...process.env, BROWSER_BASE_URL: url.href },
+    },
+  );
 
   if (result.error) {
     console.error(result.error.message);

@@ -535,6 +535,9 @@ importers:
       '@types/pg':
         specifier: ^8.20.0
         version: 8.20.0
+      fast-check:
+        specifier: ^4.10.2
+        version: 4.10.2
       gray-matter:
         specifier: ^4.0.3
         version: 4.0.3(patch_hash=4d3db6bd874f6db0fc4f9cb2b372ae022909b4f438a48cba722896f7bf5d305a)
@@ -764,6 +767,9 @@ importers:
       yaml:
         specifier: ^2.9.1
         version: 2.9.1
+      zod:
+        specifier: ^4.4.3
+        version: 4.4.3
     devDependencies:
       '@oxlint/plugins':
         specifier: 1.87.0
@@ -789,6 +795,9 @@ importers:
       '@vitejs/plugin-react':
         specifier: ^6.0.2
         version: 6.0.2(vite@8.0.16(@types/node@24.19.1)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.1))
+      fast-check:
+        specifier: ^4.10.2
+        version: 4.10.2
       openapi-typescript:
         specifier: 7.13.0
         version: 7.13.0(typescript@5.9.3)
@@ -798,6 +807,9 @@ importers:
       oxlint:
         specifier: 1.87.0
         version: 1.87.0
+      playwright:
+        specifier: 1.61.0
+        version: 1.61.0
       tailwindcss:
         specifier: ^4.3.3
         version: 4.3.3

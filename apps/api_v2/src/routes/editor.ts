@@ -2,22 +2,32 @@ import type { FastifyReply, FastifyRequest } from "fastify";
 import type { ICategoryEditing } from "../services/category-editing";
 import type { CollectionEditing } from "../services/collection-editing";
 import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
-import type { Employee, Role, SelfApproval } from "../modules/auth";
+import type {
+  Employee,
+  NotApprover,
+  Role,
+  SelfApproval,
+} from "../modules/auth";
 import type {
   ContentStoreUnavailable,
-  PageConflict,
   PageNotFound,
   PageRejected,
+  PageVersionConflict,
   RevisionNotFound,
   RevisionStateConflict,
 } from "../modules/page";
+import {
+  PageEditLockRequired,
+  type PageEditLockConflict,
+  type PageEditLockLost,
+} from "../modules/page-edit-lock";
 import { Redacted } from "../modules/redacted";
 import type { EmployeeGate, RoleRecords } from "../services/editor-access";
 import type { EditorIndex } from "../services/editor-index";
 import type { PageEditing } from "../services/page-editing";
 import { editorCategoryRoutes } from "./categories";
 import { editorCollectionRoutes } from "./collections";
-import { IF_UPDATED_AT, SCHEMAS } from "./contracts";
+import { PAGE_EDIT_LOCK_HEADER, SCHEMAS } from "./contracts";
 import { EDITOR_READ, rejected, storageFailed } from "./responses";
 import { editorRoleRoutes } from "./roles";
 
@@ -39,22 +49,19 @@ const NEEDS_ROLE: Readonly<Record<Role, string>> = {
   admin: "Only admins can see or change who has which role.",
 };
 
-/** A decision on a revision must name the version the approver reviewed. */
-const VERSION_REQUIRED = {
-  error: "precondition_required",
-  message:
-    "Send the revision's updated_at you reviewed in the if-updated-at header.",
-} as const;
-
-/** Why a page write or review step was refused, as its response. */
+/** Why a page write, review step or edit lease step was refused, as its response. Never echoes a lease token. */
 function pageRefused(
   request: FastifyRequest,
   reply: FastifyReply,
   error:
     | PageNotFound
     | RevisionNotFound
-    | PageConflict
+    | PageVersionConflict
+    | PageEditLockRequired
+    | PageEditLockLost
+    | PageEditLockConflict
     | RevisionStateConflict
+    | NotApprover
     | SelfApproval
     | PageRejected
     | ContentStoreUnavailable,
@@ -65,16 +72,35 @@ function pageRefused(
       return reply
         .status(404)
         .send({ error: "not_found", message: error.message });
-    case "PageConflict":
+    case "PageVersionConflict":
       return reply.status(409).send({
-        error: "conflict",
+        error: "page_version_conflict",
         message: error.message,
-        documentId: error.documentId,
+        pageId: error.pageId,
+      });
+    case "PageEditLockRequired":
+      return reply.status(409).send({
+        error: "page_edit_lock_required",
+        message: error.message,
+        pageId: error.pageId,
+      });
+    case "PageEditLockLost":
+      return reply.status(409).send({
+        error: "page_edit_lock_lost",
+        message: error.message,
+        pageId: error.pageId,
+      });
+    case "PageEditLockConflict":
+      return reply.status(409).send({
+        error: "page_edit_lock_conflict",
+        message: error.message,
+        pageId: error.pageId,
       });
     case "RevisionStateConflict":
       return reply
         .status(409)
         .send({ error: error.reason, message: error.message });
+    case "NotApprover":
     case "SelfApproval":
       return reply
         .status(403)
@@ -314,23 +340,22 @@ export const editorRoutes: FastifyPluginAsyncZod<{
     schema: SCHEMAS.savePage,
     config: { role: "editor" },
     handler: async (request, reply) => {
+      const token = request.headers[PAGE_EDIT_LOCK_HEADER];
+      if (token === undefined)
+        return pageRefused(
+          request,
+          reply,
+          new PageEditLockRequired(request.params.id),
+        );
+      const { version, ...fields } = request.body;
       const saved = await editing.save(
         request.params.id,
-        request.body,
-        request.headers[IF_UPDATED_AT] ?? null,
+        fields,
+        version,
+        token,
         actor(request),
       );
-      if (saved.ok) return saved.value;
-      if (saved.error._tag === "NotApprover")
-        return reply
-          .status(403)
-          .send({ error: "forbidden", message: saved.error.message });
-      if (saved.error._tag === "PageVersionRequired")
-        return reply.status(428).send({
-          error: "precondition_required",
-          message: saved.error.message,
-        });
-      return pageRefused(request, reply, saved.error);
+      return saved.ok ? saved.value : pageRefused(request, reply, saved.error);
     },
   });
   editor.route({
@@ -341,7 +366,7 @@ export const editorRoutes: FastifyPluginAsyncZod<{
     handler: async (request, reply) => {
       const submitted = await editing.submit(
         request.params.id,
-        request.headers[IF_UPDATED_AT] ?? null,
+        request.body.version,
         actor(request),
       );
       return submitted.ok
@@ -355,13 +380,10 @@ export const editorRoutes: FastifyPluginAsyncZod<{
     schema: SCHEMAS.rejectRevision,
     config: { role: "approver" },
     handler: async (request, reply) => {
-      const reviewed = request.headers[IF_UPDATED_AT];
-      if (reviewed === undefined)
-        return reply.status(428).send(VERSION_REQUIRED);
       const decided = await editing.reject(
         request.params.id,
         request.body.comment,
-        reviewed,
+        request.body.version,
         actor(request),
       );
       return decided.ok
@@ -375,12 +397,9 @@ export const editorRoutes: FastifyPluginAsyncZod<{
     schema: SCHEMAS.publishRevision,
     config: { role: "approver" },
     handler: async (request, reply) => {
-      const reviewed = request.headers[IF_UPDATED_AT];
-      if (reviewed === undefined)
-        return reply.status(428).send(VERSION_REQUIRED);
       const published = await editing.publish(
         request.params.id,
-        reviewed,
+        request.body.version,
         actor(request),
       );
       return published.ok
@@ -394,24 +413,88 @@ export const editorRoutes: FastifyPluginAsyncZod<{
     schema: SCHEMAS.deletePage,
     config: { role: "editor" },
     handler: async (request, reply) => {
-      const deleted = await editing.delete(request.params.id, actor(request));
-      if (deleted.ok) return reply.status(204).send();
-      switch (deleted.error._tag) {
-        case "PageRejected":
-          return reply.status(422).send(rejected(deleted.error));
-        case "NotApprover":
-          return reply
-            .status(403)
-            .send({ error: "forbidden", message: deleted.error.message });
-        case "ContentStoreUnavailable":
-          return reply
-            .status(500)
-            .send(storageFailed(request.log, deleted.error));
-        default: {
-          const unexpected: never = deleted.error;
-          throw unexpected;
-        }
-      }
+      const token = request.headers[PAGE_EDIT_LOCK_HEADER];
+      if (token === undefined)
+        return pageRefused(
+          request,
+          reply,
+          new PageEditLockRequired(request.params.id),
+        );
+      const deleted = await editing.delete(
+        request.params.id,
+        request.query.version,
+        token,
+        actor(request),
+      );
+      return deleted.ok
+        ? reply.status(204).send()
+        : pageRefused(request, reply, deleted.error);
+    },
+  });
+  editor.route({
+    method: "GET",
+    url: "/pages/:id/lock",
+    schema: SCHEMAS.readPageEditLock,
+    config: { role: "editor" },
+    handler: async (request, reply) => {
+      const status = await editing.readPageEditLock(
+        request.params.id,
+        actor(request),
+        request.headers[PAGE_EDIT_LOCK_HEADER],
+      );
+      return status.ok
+        ? status.value
+        : pageRefused(request, reply, status.error);
+    },
+  });
+  editor.route({
+    method: "POST",
+    url: "/pages/:id/lock",
+    schema: SCHEMAS.acquirePageEditLock,
+    config: { role: "editor" },
+    handler: async (request, reply) => {
+      const acquired = await editing.acquirePageEditLock(
+        request.params.id,
+        actor(request),
+        request.headers[PAGE_EDIT_LOCK_HEADER],
+        request.body,
+      );
+      return acquired.ok
+        ? acquired.value
+        : pageRefused(request, reply, acquired.error);
+    },
+  });
+  editor.route({
+    method: "PUT",
+    url: "/pages/:id/lock",
+    schema: SCHEMAS.renewPageEditLock,
+    config: { role: "editor" },
+    handler: async (request, reply) => {
+      const renewed = await editing.renewPageEditLock(
+        request.params.id,
+        actor(request),
+        request.headers[PAGE_EDIT_LOCK_HEADER],
+        request.body,
+      );
+      return renewed.ok
+        ? renewed.value
+        : pageRefused(request, reply, renewed.error);
+    },
+  });
+  editor.route({
+    method: "DELETE",
+    url: "/pages/:id/lock",
+    schema: SCHEMAS.releasePageEditLock,
+    config: { role: "editor" },
+    handler: async (request, reply) => {
+      const released = await editing.releasePageEditLock(
+        request.params.id,
+        actor(request),
+        request.headers[PAGE_EDIT_LOCK_HEADER],
+      );
+      return released.ok
+        ? released.value
+        : pageRefused(request, reply, released.error);
     },
   });
 };

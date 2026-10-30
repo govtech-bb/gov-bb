@@ -4,7 +4,7 @@
 
 Title, introduction and body edit the same working copy and Lexical history. Opening, typing, blurring, toggling editing and closing preview never save or publish. Save/Publish, conflict choices, pending-save snapshots and departure protection remain owned by the workspace. Unsaved work remains in memory, not browser recovery storage.
 
-The page's document bar is the only CMS chrome above the public page. It holds the title and save status, **Edit content** (a toggle, pressed while editing, with undo and redo beside it only then), **Close preview** in the writer's Preview page slot, **About this preview** (what preview can't do) and Publish. Page settings is not offered in preview, and the bar's title is not a heading there, as the public page has its own h1. Document notices, such as a newer version or a failed save, still appear under the bar.
+The page's document bar is the only CMS chrome above the public page. It holds the title and save status, **Edit content** (a toggle, pressed while editing, with undo and redo beside it only then), **Close preview** in the writer's Preview page slot, **About this preview** (what preview can't do) and Publish. Page settings is not offered in preview, and the bar's title is not a heading there, as the public page has its own h1. Editing-lock and reload notices, along with save failures, still appear under the bar.
 
 ## Ownership and runtime contract
 

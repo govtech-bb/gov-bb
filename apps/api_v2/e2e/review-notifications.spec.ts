@@ -12,6 +12,7 @@ import {
   dropScratchDatabase,
   HAS_DATABASE,
   startServer,
+  takePageEditLease,
   type Server,
 } from "./support";
 
@@ -100,7 +101,7 @@ describe.skipIf(!HAS_DATABASE)("review emails over HTTP", () => {
     as: keyof typeof people,
     method: string,
     path: string,
-    { body, stamp }: { body?: object; stamp?: string } = {},
+    { body, lease }: { body?: object; lease?: Record<string, string> } = {},
   ) => {
     const response = await fetch(server.url + path, {
       method,
@@ -108,7 +109,7 @@ describe.skipIf(!HAS_DATABASE)("review emails over HTTP", () => {
         cookie: people[as].cookie,
         origin: AUTH_ENV.EDITOR_ORIGIN,
         ...(body ? { "content-type": "application/json" } : {}),
-        ...(stamp ? { "if-updated-at": stamp } : {}),
+        ...lease,
       },
       ...(body ? { body: JSON.stringify(body) } : {}),
     });
@@ -116,25 +117,48 @@ describe.skipIf(!HAS_DATABASE)("review emails over HTTP", () => {
     return (await response.json()) as Record<string, unknown> & {
       id: string;
       updated_at: string;
+      version: number;
     };
   };
 
+  /** `as` saves the page under their own edit lease, at the version it carries. */
+  const save = async (
+    as: keyof typeof people,
+    body: { id: string } & Record<string, unknown>,
+  ) =>
+    send(as, "PUT", `/pages/${body.id}`, {
+      body,
+      lease: await takePageEditLease(server.url, body.id, people[as].cookie),
+    });
+
+  /** `as` submits the page's change at the version they last read. */
+  const submit = async (as: keyof typeof people) =>
+    send(as, "POST", `/pages/${page.id}/revision/submit`, {
+      body: {
+        version: (await send(as, "GET", `/pages/${page.id}`)).version,
+      },
+    });
+
   /** The editor saves a change to the public page and submits it. */
   const submitChange = async (title: string) => {
-    const saved = await send("editor", "PUT", `/pages/${page.id}`, {
-      body: { ...page, title, body_markdown: `${title} body, never emailed` },
-      stamp: page.updated_at,
+    const current = await send("editor", "GET", `/pages/${page.id}`);
+    const saved = await save("editor", {
+      ...current,
+      title,
+      body_markdown: `${title} body, never emailed`,
     });
-    await send("editor", "POST", `/pages/${page.id}/revision/submit`);
+    await submit("editor");
     return saved;
   };
 
   /** The first approver publishes or rejects the waiting change. */
   const decide = async (step: "publish" | "reject") => {
-    const revision = await send("first", "GET", `/pages/${page.id}/revision`);
+    const { version } = await send("first", "GET", `/pages/${page.id}`);
     return send("first", "POST", `/pages/${page.id}/revision/${step}`, {
-      stamp: revision.updated_at,
-      ...(step === "reject" ? { body: { comment: "Check the fees." } } : {}),
+      body: {
+        version,
+        ...(step === "reject" ? { comment: "Check the fees." } : {}),
+      },
     });
   };
 
@@ -160,9 +184,11 @@ describe.skipIf(!HAS_DATABASE)("review emails over HTTP", () => {
       body: { ...fields, visibility: "preview" },
     });
     // An approver can't make public a page they wrote, so another does.
-    page = await send("second", "PUT", `/pages/${created.id}`, {
-      body: { ...fields, visibility: "public" },
-      stamp: created.updated_at,
+    page = await save("second", {
+      ...fields,
+      id: created.id,
+      version: created.version,
+      visibility: "public",
     });
     const link = `${AUTH_ENV.EDITOR_ORIGIN}/services/${page.id}/${page.id}`;
 
@@ -190,7 +216,7 @@ describe.skipIf(!HAS_DATABASE)("review emails over HTTP", () => {
     ]);
 
     // Sent again as it is, then published.
-    await send("editor", "POST", `/pages/${page.id}/revision/submit`);
+    await submit("editor");
     await settled(server, { count: 5 });
     page = await decide("publish");
     const published = (await settled(server, { count: 6 })).slice(5);

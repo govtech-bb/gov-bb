@@ -7,13 +7,13 @@
  * the process, the driver and the socket.
  */
 
+import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { z } from "zod";
 import {
   AUTH_ENV,
   createEmployeeSession,
   createScratchDatabase,
-  databaseQuery,
   dropScratchDatabase,
   HAS_DATABASE,
   startServer,
@@ -23,6 +23,7 @@ import {
 const pageSchema = z
   .object({
     id: z.string(),
+    version: z.number().int().positive(),
     url: z.string(),
     title: z.string(),
     updated_at: z.string(),
@@ -92,14 +93,44 @@ describe.skipIf(!HAS_DATABASE)("api_v2 over HTTP", () => {
     return pageSchema.parse(await response.json());
   };
 
-  const put = (page: { id: string; updated_at: string }, changes: object) =>
+  const acquirePageEditLock = async (pageId: string) => {
+    const status = z
+      .object({ lockGeneration: z.number().int().nonnegative() })
+      .parse((await get(`/pages/${pageId}/lock`)).body);
+    const token = randomUUID();
+    const response = await fetch(`${server.url}/pages/${pageId}/lock`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        cookie,
+        origin: AUTH_ENV.EDITOR_ORIGIN,
+        "x-page-edit-lock-token": token,
+      },
+      body: JSON.stringify({
+        action: "acquire",
+        expectedLockGeneration: status.lockGeneration,
+      }),
+    });
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({
+      state: "held",
+      ownedByCaller: true,
+    });
+    return token;
+  };
+
+  const put = (
+    page: z.infer<typeof pageSchema>,
+    token: string,
+    changes: { title?: string; parent_id?: string },
+  ) =>
     fetch(`${server.url}/pages/${page.id}`, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
         cookie,
         origin: AUTH_ENV.EDITOR_ORIGIN,
-        "if-updated-at": page.updated_at,
+        "x-page-edit-lock-token": token,
       },
       body: JSON.stringify({ ...page, ...changes }),
     });
@@ -185,41 +216,37 @@ describe.skipIf(!HAS_DATABASE)("api_v2 over HTTP", () => {
     expect(Object.keys(objectSchema.parse(body.paths))).toContain("/pages");
   });
 
-  /**
-   * The bug PGlite could not find. Postgres stores `timestamptz` to
-   * microseconds and `toISOString()` emits milliseconds, so a bare
-   * `timestamptz` made every save look like a conflict — against a real
-   * server, through the real driver, which is exactly this path.
-   */
-  it("round-trips updated_at through node-postgres well enough to save twice", async () => {
+  it("round-trips content versions through node-postgres for repeated saves", async () => {
     let current = await createPage("/e2e/round-trip");
+    const token = await acquirePageEditLock(current.id);
+    const initialVersion = current.version;
 
     for (const title of ["First edit", "Second edit"]) {
-      const response = await put(current, { title });
+      const response = await put(current, token, { title });
       expect(response.status).toBe(200);
       current = pageSchema.parse(await response.json());
     }
 
     expect(current.title).toBe("Second edit");
+    expect(current.version).toBe(initialVersion + 2);
     expect(current.updated_at).toMatch(/\.\d{3}Z$/);
   });
 
-  it("refuses a save whose if-updated-at has been overtaken", async () => {
-    const page = await createPage("/e2e/overtaken");
-    // A create and edit can share one millisecond; give the prior version a
-    // distinct timestamp without changing the application's version policy.
-    await databaseQuery(
-      database,
-      "update content_pages set updated_at = $2 where id = $1",
-      [page.id, new Date(Date.now() - 60_000)],
-    );
-    const stale = pageSchema.parse((await get(`/pages/${page.id}`)).body);
+  it("refuses a save whose content version has been overtaken", async () => {
+    const stale = await createPage("/e2e/overtaken");
+    const token = await acquirePageEditLock(stale.id);
 
-    const first = await put(stale, { title: "Whoever got there first" });
+    const first = await put(stale, token, { title: "Whoever got there first" });
     expect(first.status).toBe(200);
-    const second = await put(stale, { title: "Whoever would have clobbered" });
+    const second = await put(stale, token, {
+      title: "Whoever would have clobbered",
+    });
 
     expect(second.status).toBe(409);
+    expect(await second.json()).toMatchObject({
+      error: "page_version_conflict",
+      pageId: stale.id,
+    });
     expect((await get(`/pages/${stale.id}`)).body.title).toBe(
       "Whoever got there first",
     );
@@ -228,7 +255,8 @@ describe.skipIf(!HAS_DATABASE)("api_v2 over HTTP", () => {
   it("names the field a refused page is wrong in", async () => {
     const page = await createPage("/e2e/refused");
 
-    const response = await put(page, {
+    const token = await acquirePageEditLock(page.id);
+    const response = await put(page, token, {
       parent_id: "22222222-2222-4222-8222-222222222222",
     });
 
@@ -237,6 +265,37 @@ describe.skipIf(!HAS_DATABASE)("api_v2 over HTTP", () => {
     expect(errors).toEqual([
       { field: "parent_id", message: "No page with that id." },
     ]);
+  });
+
+  it("fails closed for old clients and deletes only with the reviewed version and ownership", async () => {
+    const page = await createPage("/e2e/guarded-delete");
+    const token = await acquirePageEditLock(page.id);
+    const headers = {
+      cookie,
+      origin: AUTH_ENV.EDITOR_ORIGIN,
+      "x-page-edit-lock-token": token,
+    };
+    const oldSave = await fetch(`${server.url}/pages/${page.id}`, {
+      method: "PUT",
+      headers: {
+        ...headers,
+        "Content-Type": "application/json",
+        "if-updated-at": page.updated_at,
+      },
+      body: JSON.stringify({ ...page, version: undefined }),
+    });
+    expect(oldSave.status).toBe(400);
+    const missingVersion = await fetch(`${server.url}/pages/${page.id}`, {
+      method: "DELETE",
+      headers,
+    });
+    expect(missingVersion.status).toBe(400);
+    const response = await fetch(
+      `${server.url}/pages/${page.id}?version=${page.version}`,
+      { method: "DELETE", headers },
+    );
+    expect(response.status).toBe(204);
+    expect((await get(`/pages/${page.id}`)).status).toBe(404);
   });
 
   it("revalidates with an ETag rather than resending the body", async () => {
@@ -257,7 +316,10 @@ describe.skipIf(!HAS_DATABASE)("api_v2 over HTTP", () => {
     const before = (await get("/version")).body;
 
     const page = await createPage("/e2e/version");
-    await put(page, { title: "Moved the token" });
+    const token = await acquirePageEditLock(page.id);
+    expect((await put(page, token, { title: "Moved the token" })).status).toBe(
+      200,
+    );
 
     expect((await get("/version")).body.count).toBeGreaterThan(
       z.number().parse(before.count),

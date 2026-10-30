@@ -5,6 +5,7 @@ import { categoryLabel } from "../api/categories";
 import { ApiFailure, isText, type ApiRevision, type EditorApi } from "../api/client";
 import { apiMessage } from "../api/failure-messages";
 import { pageFieldLabel } from "../api/page-markdown";
+import { pageContentVersionSchema, type PageContentVersion } from "../api/page-schemas";
 import {
   categoriesQuery,
   employeeIdQuery,
@@ -261,7 +262,11 @@ export function ReviewScreen({
   )?.submitted_by_name;
 
   // The version the approver opened the decision on, so a change that moves underneath it is refused, not decided
-  const [deciding, setDeciding] = useState<{ decision: Decision; reviewed: string }>();
+  const [deciding, setDeciding] = useState<{
+    decision: Decision;
+    reviewed: PageContentVersion;
+  }>();
+
   const [comment, setComment] = useState("");
   const [commentError, setCommentError] = useState("");
   const commentField = useRef<HTMLTextAreaElement>(null);
@@ -274,7 +279,13 @@ export function ReviewScreen({
   const [screenError, setScreenError] = useState("");
 
   const decide = useMutation({
-    mutationFn: async ({ decision, reviewed }: { decision: Decision; reviewed: string }) => {
+    mutationFn: async ({
+      decision,
+      reviewed,
+    }: {
+      decision: Decision;
+      reviewed: PageContentVersion;
+    }) => {
       if (decision === "publish") await api.publishRevision(pageId, reviewed);
       else await api.rejectRevision(pageId, comment.trim(), reviewed);
     },
@@ -329,12 +340,15 @@ export function ReviewScreen({
   }, [vanished]);
 
   const open = (decision: Decision) => {
-    if (!revision.data) return;
+    // The shared page version the approver is looking at; without one there is nothing safe to decide on
+    const reviewed = pageContentVersionSchema.safeParse(revision.data?.version);
+
+    if (!reviewed.success) return;
     decide.reset();
     setScreenError("");
     setComment("");
     setCommentError("");
-    setDeciding({ decision, reviewed: revision.data.updated_at });
+    setDeciding({ decision, reviewed: reviewed.data });
   };
 
   const close = () => {

@@ -29,6 +29,7 @@
     "@govtech-bb/content": "workspace:*",
     "@types/node": "^24.0.0",
     "@types/pg": "^8.20.0",
+    "fast-check": "^4.10.2",
     "gray-matter": "^4.0.3",
     "tsx": "^4.22.3",
     "typescript": "catalog:",

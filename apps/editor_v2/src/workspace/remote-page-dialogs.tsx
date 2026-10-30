@@ -2,9 +2,11 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { categoryLabel, categoryRows } from "../api/categories";
 import type { EditorApi, CreatePageInput, ServiceDetail } from "../api/client";
-import { apiFailureMessages } from "../api/failure-messages";
 import { suggestedUrl, urlProblem, pageFieldLabel } from "../api/page-markdown";
 import { categoriesQuery, pageQuery } from "../api/queries";
+import type { PageApiFailure, PageEditLockToken } from "../api/page-schemas";
+import type { ApiPage } from "../api/client";
+import type { PageSession } from "./page-sync";
 import { Button } from "../ui/button";
 import { ConfirmDialog } from "../ui/confirm-dialog";
 import { Field } from "../ui/field";
@@ -21,12 +23,53 @@ function useCreatePage(api: EditorApi, onDone: (id: string) => void) {
 
   return useMutation({
     mutationFn: (page: CreatePageInput) => api.createPage(page),
-    onSuccess: (page) => {
+    onSuccess: (result) => {
+      if (!result.ok) return;
+      const page = result.value;
       client.setQueryData(pageQuery(api, page.id).queryKey, page);
       void client.invalidateQueries({ queryKey: ["content"] });
       onDone(page.id);
     },
   });
+}
+
+/** Why the API refused a change, as messages an author can act on. */
+function refusals(error: PageApiFailure | undefined, otherwise: string) {
+  if (!error) return [];
+
+  switch (error.kind) {
+    case "invalid":
+      return error.errors.length
+        ? error.errors.map((item) => `${pageFieldLabel(item.field)}: ${item.message}`)
+        : [otherwise];
+    case "signed-out":
+      return ["Your session has ended. Sign in again, then try again."];
+    case "forbidden":
+      return [error.message ?? "You no longer have permission to change this page."];
+    case "missing":
+      return ["This page is no longer available."];
+    case "version-conflict":
+      return [
+        "This page changed after you reviewed it. Cancel, reload the page, then confirm again.",
+      ];
+    case "lock-required":
+    case "lock-lost":
+    case "lock-conflict":
+      return [
+        "Editing ownership changed. Cancel and confirm your editing lock before trying again.",
+      ];
+    case "outcome-unknown":
+      return [
+        "The server may have completed this request. Cancel and check the saved pages before trying again. Your open working copy is unchanged.",
+      ];
+    case "unavailable":
+    case "invalid-response":
+      return [otherwise];
+    default: {
+      const unexpected: never = error;
+      throw unexpected;
+    }
+  }
 }
 
 function PathField({
@@ -70,6 +113,10 @@ export function CreateRemoteServiceDialog({
   const [edited, setEdited] = useState<string>();
   const [problems, setProblems] = useState<string[]>([]);
   const create = useCreatePage(api, onDone);
+
+  const creationUncertain =
+    create.data?.ok === false && create.data.error.kind === "outcome-unknown";
+
   const category = categories.find((item) => item.id === categoryId);
   const path = edited ?? suggestedUrl(category?.url ?? "", title);
 
@@ -83,6 +130,7 @@ export function CreateRemoteServiceDialog({
       description="The service starts in Preview. Add its start page and supporting pages once it exists."
       pending={create.isPending}
       onSubmit={() => {
+        if (create.isPending || creationUncertain) return;
         const badPath = urlProblem(path);
 
         const found = [
@@ -108,6 +156,7 @@ export function CreateRemoteServiceDialog({
           variant="accent"
           size="md"
           pending={create.isPending}
+          disabled={creationUncertain}
           pendingLabel="Creating service…"
         >
           Create service
@@ -133,10 +182,9 @@ export function CreateRemoteServiceDialog({
       <ApiProblems
         messages={[
           ...problems,
-          ...apiFailureMessages(
-            create.error,
+          ...refusals(
+            create.data?.ok === false ? create.data.error : undefined,
             "The page could not be created. Try again.",
-            pageFieldLabel,
           ),
         ]}
       />
@@ -166,6 +214,10 @@ export function CreateRemotePageDialog({
   const [edited, setEdited] = useState<string>();
   const [problems, setProblems] = useState<string[]>([]);
   const create = useCreatePage(api, onDone);
+
+  const creationUncertain =
+    create.data?.ok === false && create.data.error.kind === "outcome-unknown";
+
   const start = kind === "start";
   const name = title.trim() || (start ? "Before you start" : "");
   const path = start ? `${entry.url}/start` : (edited ?? suggestedUrl(entry.url, title));
@@ -180,6 +232,7 @@ export function CreateRemotePageDialog({
       description="The page starts in Preview beneath this service’s entry page."
       pending={create.isPending}
       onSubmit={() => {
+        if (create.isPending || creationUncertain) return;
         const badPath = urlProblem(path);
         const found = [...(name ? [] : ["Enter a page title"]), ...(badPath ? [badPath] : [])];
 
@@ -200,6 +253,7 @@ export function CreateRemotePageDialog({
           variant="accent"
           size="md"
           pending={create.isPending}
+          disabled={creationUncertain}
           pendingLabel="Adding page…"
         >
           Add page
@@ -219,10 +273,9 @@ export function CreateRemotePageDialog({
       <ApiProblems
         messages={[
           ...problems,
-          ...apiFailureMessages(
-            create.error,
+          ...refusals(
+            create.data?.ok === false ? create.data.error : undefined,
             "The page could not be created. Try again.",
-            pageFieldLabel,
           ),
         ]}
       />
@@ -230,11 +283,12 @@ export function CreateRemotePageDialog({
   );
 }
 
-/** Remove a page from the content API, once its author confirms. */
+/** Confirm deletion against the active editor's reviewed version and acquisition, not sidebar metadata. */
 export function DeleteRemotePageDialog({
   api,
   open,
   page,
+  session,
   onClose,
   onDone,
 }: {
@@ -242,25 +296,50 @@ export function DeleteRemotePageDialog({
   /** Shown; closed, it fades away as it was. Each opening is a new dialog. */
   open: boolean;
   page: PageDocument;
+  /** The active editor's session: its reviewed version and editing lock, captured as the dialog opens. */
+  session: PageSession;
   onClose: () => void;
   onDone: () => void;
 }) {
   const client = useQueryClient();
 
+  const [reviewed] = useState(() => {
+    const token = session.getEditLockToken();
+
+    return token ? { page: session.getBaseline().page, token } : undefined;
+  });
+
   const remove = useMutation({
-    mutationFn: () => api.deletePage(page.id),
-    onSuccess: () => {
+    mutationFn: (selection: { page: ApiPage; token: PageEditLockToken }) =>
+      api.deletePage(selection.page.id, selection.page.version, selection.token),
+    onSuccess: (result) => {
+      if (!result.ok) {
+        if (result.error.kind === "version-conflict")
+          void client.invalidateQueries({ queryKey: pageQuery(api, page.id).queryKey });
+
+        return;
+      }
+
       void client.invalidateQueries({ queryKey: ["content"] });
-      // The editor leaves the page, so say it went
       toast("Page deleted");
       onDone();
     },
   });
 
-  // A service is its entry page: deleting that page deletes the service
-  const service = page.role === "entry";
+  const failure = remove.data?.ok === false ? remove.data.error : undefined;
+  const requiresReview = failure && failure.kind !== "invalid";
 
-  // An alert dialog: a stray click outside doesn't dismiss it, and it can't be closed while the page is going
+  const canDelete =
+    reviewed &&
+    reviewed.page.id === page.id &&
+    !session.isSaving() &&
+    reviewed.page.version === session.getBaseline().page.version &&
+    reviewed.token === session.getEditLockToken() &&
+    !requiresReview;
+
+  const service = page.role === "entry";
+  const title = reviewed?.page.title ?? documentLabel(page);
+
   return (
     <ConfirmDialog
       open={open}
@@ -270,24 +349,23 @@ export function DeleteRemotePageDialog({
       title={service ? "Delete this service?" : "Delete this page?"}
       description={
         service
-          ? `${documentLabel(page)} is this service’s entry page, so deleting it deletes the service. It’s removed from the content API and, if it’s public, from the site. Any unsaved changes will be lost.`
-          : `${documentLabel(page)} is removed from the content API and, if it is public, from the site. Any unsaved changes will be lost.`
+          ? `${title} is this service’s entry page, so deleting it deletes the service. It’s removed from the content API and, if it’s public, from the site. Any unsaved changes will be lost.`
+          : `${title} is removed from the content API and, if it is public, from the site. Any unsaved changes will be lost.`
       }
       confirmLabel={service ? "Delete service" : "Delete page"}
+      confirmDisabled={!canDelete}
       pendingLabel={service ? "Deleting service…" : "Deleting page…"}
       pending={remove.isPending}
       error={
-        remove.error && (
+        failure && (
           <ApiProblemText
-            messages={apiFailureMessages(
-              remove.error,
-              "The page could not be deleted. Try again.",
-              pageFieldLabel,
-            )}
+            messages={refusals(failure, "The page could not be deleted. Try again.")}
           />
         )
       }
-      onConfirm={() => remove.mutate()}
+      onConfirm={() => {
+        if (canDelete && reviewed && !remove.isPending) remove.mutate(reviewed);
+      }}
     />
   );
 }

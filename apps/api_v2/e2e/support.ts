@@ -331,3 +331,34 @@ export async function databaseQuery(
     await client.end();
   }
 }
+
+/**
+ * Take a page's edit lease over the socket, over whoever holds it, as the
+ * editor does before a save or delete; returns the header the write sends.
+ */
+export async function takePageEditLease(
+  url: string,
+  pageId: string,
+  cookie: string,
+): Promise<Record<string, string>> {
+  const headers = { cookie, origin: AUTH_ENV.EDITOR_ORIGIN };
+  const status = (await (
+    await fetch(`${url}/pages/${pageId}/lock`, { headers })
+  ).json()) as { lockGeneration: number };
+  const token = randomUUID();
+  const response = await fetch(`${url}/pages/${pageId}/lock`, {
+    method: "POST",
+    headers: {
+      ...headers,
+      "content-type": "application/json",
+      "x-page-edit-lock-token": token,
+    },
+    body: JSON.stringify({
+      action: "takeover",
+      expectedLockGeneration: status.lockGeneration,
+    }),
+  });
+  if (response.status !== 200)
+    throw new Error(`Edit lease refused: ${response.status}`);
+  return { "x-page-edit-lock-token": token };
+}
