@@ -42,9 +42,11 @@ runs:
         REPO: ${{ github.repository }}
       run: |
         echo "superseded=false" >> "$GITHUB_OUTPUT"
+        # --no-paginate: with --max-items and more pages left, text output
+        # appends a "None" line for NextToken, corrupting the job id.
         find_job() {
           aws amplify list-jobs --app-id "$APP_ID" --branch-name "$BRANCH" \
-            --max-items 20 --output text \
+            --max-results 20 --no-paginate --output text \
             --query "jobSummaries[?commitId=='$SHA'] | [0].jobId"
         }
 
