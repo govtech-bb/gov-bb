@@ -737,6 +737,12 @@ jobs:
     needs: [deploy-api, amplify-forms, amplify-landing]
     if: ${{ github.event_name == 'push' && always() && !failure() && !cancelled() }}
     runs-on: ubuntu-latest
+    # The E2E_SERVICE_STATUS_TOKEN lives in this GitHub Environment (#3363), not a
+    # repo secret — scoped to `main` and to a sandbox-only admin team, so a leak
+    # can't touch prod service_status. An environment secret is only visible to a
+    # job that declares the environment. This job assumes no AWS role, so the
+    # environment adds no OIDC behaviour.
+    environment: sandbox-e2e
     # The journey polls past landing's 60s status cache across two flips, so it is
     # budgeted to ~3.5 min (see the spec); this 15m is a backstop against a hang
     # (install + browser), not a performance budget.
