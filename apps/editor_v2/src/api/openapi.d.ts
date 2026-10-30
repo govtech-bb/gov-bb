@@ -66,7 +66,12 @@ export interface paths {
                             published_at: string | null;
                             /**
                              * Format: date-time
-                             * @description The page's last save, visibility changes included: the site's "Last updated" line.
+                             * @description When the title, description, body, frontmatter or form last changed, visibility changes not included: the site's "Last updated" line.
+                             */
+                            content_updated_at: string;
+                            /**
+                             * Format: date-time
+                             * @description The page's last save, visibility changes included.
                              */
                             updated_at: string;
                         };

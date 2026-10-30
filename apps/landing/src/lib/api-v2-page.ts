@@ -50,6 +50,8 @@ const PageResponse = z
     breadcrumbs: z.array(z.object({ name: z.string(), url: z.string() })),
     /** First publication, not the last save. */
     published_at: z.iso.datetime({ offset: true }).nullable().catch(null),
+    /** The last content change (#3105); absent from an API older than it. */
+    content_updated_at: lenient(z.iso.datetime({ offset: true })),
     /** The last save; landing doesn't read it. */
     updated_at: lenient(z.iso.datetime({ offset: true })),
     // The API owns slug syntax and taxonomy relationships. Absent (an API
@@ -229,8 +231,11 @@ export async function fromApiV2(body: PageResponse): Promise<ApiV2Page> {
     ...(body.subcategory && { subcategory: body.subcategory }),
     visibility: 'public',
     ...(body.form_id && { form_id: body.form_id }),
-    // "Last updated" is first publication, as in static frontmatter.
-    ...(body.published_at && { publish_date: new Date(body.published_at) }),
+    // "Last updated" is the last content change (#3105), shown once the page
+    // has been public; an older API sends only first publication.
+    ...(body.published_at && {
+      publish_date: new Date(body.content_updated_at ?? body.published_at),
+    }),
   }
   // Dynamic so the parser stays out of the client entry: a static import
   // survives the server-fn split and ships ~340 KB of remark/rehype.
