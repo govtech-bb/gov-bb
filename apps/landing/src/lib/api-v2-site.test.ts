@@ -17,6 +17,7 @@ import {
   readApiV2SearchDocuments,
 } from './api-v2-site'
 import type { ApiV2SearchDocument } from './api-v2-site'
+import { siteCache } from './api-v2-site-cache'
 import type * as SiteModule from './api-v2-site'
 
 const DOCUMENT: ApiV2SearchDocument = {
@@ -100,6 +101,16 @@ describe('fetchApiV2Catalog', () => {
     expect(await fetchApiV2Catalog(base)).toEqual(['/a'])
     expect(await fetchApiV2CatalogEntries(base)).toEqual([ENTRY])
     expect(requests).toHaveLength(1)
+  })
+
+  // A cache declared in api-v2-site.ts is copied into the server-function
+  // handler by the production build, so direct and server-function reads
+  // would each hold their own (#3461). This pins the cache to its own module.
+  it('caches in the shared site cache module', async () => {
+    reply = json(200, { pages: [ENTRY] })
+    const base = nextBase()
+    await fetchApiV2Catalog(base)
+    expect(siteCache.getQueryData(['/catalog', base])).toEqual([ENTRY])
   })
 
   it('serves the last good entries when a later read fails', async () => {

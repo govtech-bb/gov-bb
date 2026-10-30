@@ -1,9 +1,9 @@
 import { createServerFn } from '@tanstack/react-start'
-import { QueryClient } from '@tanstack/react-query'
 import { z } from 'zod'
 import { readPublic } from './api-v2-categories'
 import { apiV2Base, landingToken } from './api-v2-page'
 import { logFallback } from './api-v2-log'
+import { siteCache } from './api-v2-site-cache'
 
 /**
  * The site-wide lists api_v2 serves to the public (#3125): every page for the
@@ -48,8 +48,6 @@ export type ApiV2SearchDocument = z.infer<typeof SearchDocument>
 const SearchDocumentsBody = z.object({ documents: z.array(SearchDocument) })
 
 const STALE_MS = 60_000
-
-const siteCache = new QueryClient()
 
 /** `path` from api_v2, cached, and how long it stays so; never throws. */
 async function cachedList<T, U>(

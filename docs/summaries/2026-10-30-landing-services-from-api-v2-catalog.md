@@ -44,6 +44,16 @@ urls only. This branch is stacked on that PR.
 
 ## What we almost got wrong
 
+- The "one cache entry" was two in production (caught in review on #3461).
+  TanStack Start copies a module that defines server functions into the
+  extracted handler, module-level state included, so `siteCache` existed
+  once for the sitemap's direct read and once for `/services`' server
+  function. Unit tests call the plain functions, so they couldn't see it, and
+  Vitest can't call a server function outside the Start runtime. The cache
+  now lives in `api-v2-site-cache.ts`, which both copies import. A test pins
+  the readers to that module, and the build output was checked: one
+  `siteCache` chunk, imported by both `api-v2-site` copies.
+
 - A route-component render test suspended under `renderToStaticMarkup`:
   the start plugin code-splits route components even in Vitest. The test
   awaits `Route.options.component.preload()` first.
