@@ -5,8 +5,6 @@ publish_date: 2026-01-13
 form_id: get-marriage-certificate
 ---
 
-<!-- # Get a copy of a marriage certificate -->
-
 You should complete your application in one go. At the moment, it is not possible to save your answers and come back to them later.
 
 You cannot use the online service if you would like the certificate to be sent overseas. Instead, contact the Registration Department.
