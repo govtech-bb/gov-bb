@@ -30,8 +30,6 @@ There are 2 ways to redirect your business mail. You can:
 
 1. #### Tell the Post Office online
 
-   <!-- You can complete the redirection form online. You must pay $30 BBD online as part of the process so you will need a credit or debit card, and you will need to have (or create) an EZPay+ account. -->
-
    <a data-start-link href="/travel-id-citizenship/post-office-redirection-business/start">Complete online form</a>
 
 2. #### Complete a paper redirection form

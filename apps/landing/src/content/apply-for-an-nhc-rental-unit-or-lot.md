@@ -57,5 +57,3 @@ Submitting an application does not mean that you have been offered a rental unit
 ## Contact
 
 If you need help with your application, contact the National Housing Corporation.
-
-<!-- MDA NOTE: Confirm the telephone number, email address and opening hours for rental enquiries, then add them here. The purchase service lists PBX (246) 536-5300 and nhc.customerservice@barbados.gov.bb for Customer Service (Property Sales), which is likely to be the wrong team for rentals. -->

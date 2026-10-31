@@ -30,7 +30,7 @@ import { createEmptyPage } from "../../src/pages/converters";
 import { parsePageMarkdown } from "../../src/pages/markdown";
 import manifest from "../fixtures/pages/manifest.json";
 
-const sourceOnly = new Set([
+const frozenSourceOnly = new Set([
   "apply-to-use-state-land.md",
   "apply-for-an-nhc-rental-unit-or-lot.md",
   "tenant-notice-to-buy-freehold.md",
@@ -44,10 +44,15 @@ const sourceOnly = new Set([
   "post-office-redirection-business/index.md",
   "post-office-redirection-business/start.md",
   "get-death-certificate/start.md",
-  // About Barbados pages open with an image, which needs Markdown source editing
-  "archaeological-history/index.md",
+]);
+
+const currentSourceOnly = new Set([
+  "calculate-your-pension/about-government-pensions.md",
+  "national-insurance-for-self-employed-workers/check-your-record.md",
+  "national-insurance-for-self-employed-workers/index.md",
+  "crop-over-permits/index.md",
+  "health-and-emergency-services/stormready/index.md",
   "coat-of-arms/index.md",
-  "flag-etiquette/index.md",
   "national-anthem/index.md",
   "national-flag/index.md",
   "national-flower/index.md",
@@ -66,11 +71,11 @@ function visual(source: string) {
   return prepared.state;
 }
 
-function checkPagePreservation(path: string, source: string) {
+function checkPagePreservation(path: string, source: string, expectsSourceOnly: boolean) {
   const prepared = govbbPageCodec.prepare(source);
   expect(prepared.source).toBe(source);
 
-  if (sourceOnly.has(path)) {
+  if (expectsSourceOnly) {
     expect(prepared.mode).toBe("source");
     expect(prepared.state).toBeUndefined();
     expect(prepared.diagnostics[0]?.severity).toBe("warning");
@@ -87,6 +92,15 @@ function checkPagePreservation(path: string, source: string) {
     const encoded = govbbPageCodec.encode(editor.getEditorState().toJSON());
     const reopened = visual(encoded);
     expect(reopened.root.children.slice(1)).toEqual(prepared.state.root.children.slice(1));
+
+    editor.update(
+      () =>
+        $getRoot().append($createParagraphNode().append($createTextNode("An edited paragraph."))),
+      { discrete: true },
+    );
+    const edited = editor.getEditorState().toJSON();
+    const saved = visual(govbbPageCodec.encode(edited));
+    expect(saved.root.children.slice(1)).toEqual(edited.root.children.slice(1));
   } finally {
     editor.dispose();
   }
@@ -95,14 +109,14 @@ function checkPagePreservation(path: string, source: string) {
 describe("frozen GovBB Markdown regressions", () => {
   test("contains three visual regression pages and all 13 source-only pages", () => {
     expect(manifest).toHaveLength(16);
-    expect(manifest.filter((item) => sourceOnly.has(item.path))).toHaveLength(13);
+    expect(manifest.filter((item) => frozenSourceOnly.has(item.path))).toHaveLength(13);
   });
 
   for (const item of manifest)
     test(item.path, () => {
       const source = fixture(item.path);
       expect(createHash("sha256").update(source).digest("hex")).toBe(item.sha256);
-      checkPagePreservation(item.path, source);
+      checkPagePreservation(item.path, source, frozenSourceOnly.has(item.path));
     });
 });
 
@@ -119,7 +133,11 @@ describe("current GovBB landing content", () => {
 
   for (const path of paths)
     test(path, () => {
-      checkPagePreservation(path, readFileSync(new URL(path, directory), "utf8"));
+      checkPagePreservation(
+        path,
+        readFileSync(new URL(path, directory), "utf8"),
+        currentSourceOnly.has(path),
+      );
     });
 });
 

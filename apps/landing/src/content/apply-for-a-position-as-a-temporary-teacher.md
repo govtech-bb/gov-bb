@@ -24,11 +24,6 @@ To apply, you need to:
 
 At the moment, you can only apply online by completing the [Application for registration as temporary/acting teacher form](https://barbados.seamlessdocs.com/f/pvyf07u3v0j2). 
 
-<!--
-You can apply online. It takes about 10 minutes.
-
-<a data-start-link>Start now</a> -->
-
 ### Find out about vacancies
 
 Vacancies are advertised throughout the year. However, more vacancies are posted during the summer months before the new school year starts in September. Look out for updates on the Ministry of Educational Transformation or Government Information Service websites.

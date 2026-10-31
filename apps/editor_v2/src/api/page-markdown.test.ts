@@ -62,6 +62,10 @@ if (!entry || !start) throw new Error("The seed no longer has the severance page
 const markdownOf = (yaml: string) => `---\n${yaml}\n---\n\nBody`;
 
 describe("page markdown", () => {
+  it("keeps HTML comments out of every imported page body (#3312)", () => {
+    for (const page of pages) expect(page.body_markdown, page.url).not.toContain("<!--");
+  });
+
   it("keeps leading body rules and instructions through saving and both preview paths", () => {
     const body = "---\n\nYou must submit before Friday.\n\n---\n\nApply below.";
     const source = pageToMarkdown({ ...entry, body_markdown: body }, categories);
