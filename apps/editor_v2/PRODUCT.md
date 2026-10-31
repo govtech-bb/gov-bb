@@ -14,13 +14,17 @@ The editor owns content authoring and conversion, including common page metadata
 
 ## Categories
 
-Every admitted editor can add, edit, reorder and delete categories through the API. Changes survive reload. There are two levels, categories and subcategories, with no separate lists per content type. New categories and ones moved to another parent go last among their new siblings. Services filters use slugs, so renaming a category does not lose its services. Known categories appear by their current name even when empty; an old title-valued bookmark remains visible as an unmatched filter that the author can clear.
+Approvers can add, edit, reorder and delete categories through the API. Other admitted employees can browse the list but cannot change it. Changes are stored in api_v2 and survive reload and a second session. There are two levels, categories and subcategories, with no separate lists per content type. New categories and ones moved to another parent go last among their new siblings. Services filters use slugs, so renaming a category does not lose its services. Known categories appear by their current name even when empty; an old title-valued bookmark remains visible as an unmatched filter that the author can clear.
 
 Editing a name never changes its address automatically. A category's slug or parent can change only while it has no pages or subcategories and is not an app-route anchor. Those same blockers prevent deletion. Draft and preview pages count too. Category changes never delete content, move page URLs or create redirects.
 
 A stale edit, deletion or reorder is refused rather than overwriting another author's change. Dialogs retain their typed input through refreshes and failures. An unanswered save may already have succeeded, so the editor checks the saved state before offering a retry.
 
-Landing integration is tracked in #3179, category change events in #3169, private last-editor attribution in #3171 and sandbox acceptance in #3180.
+Each changed category has a database-recorded change event attributed to the signed-in employee, including siblings moved by a reorder. Categories shows the last editor's name; a seed or import is shown as System. Public responses do not include those identities.
+
+In API mode, landing reads the saved category names and order at runtime, without a rebuild. Listings and service counts include only public service roots; an empty category stays hidden unless it has a visible subcategory. Page breadcrumbs use the API's category names and links. The editor's counts also include draft and preview services, so they can be higher than the public counts.
+
+Deployed api_v2 refuses to seed on boot. Sandbox acceptance remains in #3180: real employee sessions, conflicting edits, attributed history, public propagation, persistence after redeploy, and narrow-screen, keyboard and screen-reader checks. Local tests do not replace that walkthrough.
 
 ## Collections
 

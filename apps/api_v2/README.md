@@ -334,7 +334,8 @@ nullable `description`, `url`, `position`, `services`, `reserved_route` and
 and the same nullable author shape as editor pages. Service counts match `/services`
 roots, including unpublished work.
 Public category reads expose none of the private counts or editor metadata.
-The former taxonomy endpoint is removed without an alias.
+The former taxonomy endpoint is removed without an alias. Every category write
+requires the `approver` role; other admitted employees retain read access.
 
 Create/update send all four fields:
 `{ title, slug, parent_id, description }`. Unknown keys are refused. Titles and
@@ -366,9 +367,23 @@ The write may already have committed. Refresh and reconcile the saved slug/field
 sibling order or deleted ID first; a changed timestamp alone does not prove success.
 
 Category writes are recorded by the change history trigger against the
-signed-in employee and advance `/version`. A save that changes nothing keeps
-the category's `updated_at` and `last_edited_by`, so other editors' copies stay current. The editor's persisted category controls are
-tracked in #3178, landing integration in #3179, and sandbox acceptance in #3180.
+signed-in employee and advance `/version`, including each sibling changed by a
+reorder. A save that changes nothing keeps the category's `updated_at` and
+`last_edited_by`. The editor shows the last editor's name; seed/import writes
+show `System`.
+
+The editor saves category changes through these endpoints. In API mode, landing
+reads the saved names and order at runtime without a rebuild, with public service
+listings and API-provided page breadcrumbs. Draft and preview pages do not appear
+in its category listings or counts. Categories without public services or visible
+subcategories stay hidden. Public reads use the cache policy above, not the
+editor's private counts or attribution.
+
+Deployed environments must not set `SEED`; production startup refuses it, so a
+restart cannot re-seed deleted categories or pages. #3180 owns the sandbox
+walkthrough with two real employee identities, attributed `change_events`, public
+propagation, redeploy persistence and manual accessibility checks. Local fixtures
+and `AUTH_BYPASS` runs are not evidence for those acceptance checks.
 
 `search_chunks` holds each page's body split at its headings, as plain text, rewritten in the same transaction as every save. Rejoined, a page's chunks are exactly the text landing's search indexes today (`search-text.test.ts` checks every seeded page), so moving search onto the API does not move its ranking. The generated `tsv` column and its GIN index are there for server-side search and are not read yet.
 
