@@ -7,9 +7,9 @@ publish_date: 2026-06-04
 visibility: public
 ---
 
-<notice>
-<strong>Hurricane season</strong> runs from <strong>1 June to 30 November 2026</strong>. Prepare before the season starts — do not wait for a storm warning.
-</notice>
+:::notice
+**Hurricane season** runs from **1 June to 30 November 2026**. Prepare before the season starts — do not wait for a storm warning.
+:::
 
 ## Household checklist
 

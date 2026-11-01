@@ -19,7 +19,7 @@ The writing editor supports headings 1–6, paragraphs, bold, italic, strikethro
 Bring proof of identity.
 :::
 
-:::details{summary="What you need"}
+:::details[What you need]
 Bring your original documents.
 :::
 
@@ -36,6 +36,20 @@ A Start marker can have an explicit `href`; without one it retains the page's fo
 The original file is preserved exactly until a visual edit. Export after editing may normalize Markdown formatting while retaining text, grouping, metadata and URLs. Unsupported raw HTML, comments, specialist components, images, code blocks and other unsupported syntax make the whole page source-only, as does invalid YAML. The CMS opens such a page read-only, saying it can't be edited there, and leaves its saved content unchanged; pages have no Markdown source editing. Source-only pages have no rendered preview.
 
 The checked-in [GovBB page fixtures](../tests/fixtures/pages/README.md) retain 16 frozen regression examples: three visual and 13 source-only pages, with their original hashes. Integration tests also read current GovBB Markdown directly from `apps/landing/src/content`. Visual support remains limited to the syntax described above.
+
+### Legacy HTML conversions (#3313)
+
+The current landing content uses existing blocks rather than new HTML support:
+
+| Page | Replacement |
+| --- | --- |
+| Pension guidance (`calculate-your-pension/about-government-pensions.md`) | Raw `<details>` becomes `:::details[Summary]`; inner HTML becomes Markdown headings, paragraphs and lists. |
+| Crop Over permits (`crop-over-permits/index.md`) | The styled `<div>` callout becomes `:::notice`, with Markdown bold. |
+| StormReady (`health-and-emergency-services/stormready/index.md`) | `<notice>` becomes `:::notice`, with Markdown bold. Its other components are unchanged. |
+
+Pension guidance and Crop Over permits must open visually and retain their content through body edits and reopening. StormReady's notice is editable on its own, but the whole page remains read-only until buttons, highlights, muted text and contacts are supported or converted (#3314, #3315, #3185).
+
+Plain `<br>` tags already import as hard breaks and are left unchanged. The frozen HTML fixtures still test source-only preservation; they are not rewritten to match current content. The generated API snapshot carries the conversions for future imports, not updates to an already-imported database.
 
 ## Form Markdown, version 2
 

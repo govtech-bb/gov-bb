@@ -112,6 +112,20 @@ describe("page markdown", () => {
     }
   });
 
+  it.each([
+    "/pensions-and-gratuities/calculate-your-pension/about-government-pensions",
+    "/business-trade/crop-over-permits",
+  ])("opens converted snapshot page %s visually without changing it", (url) => {
+    const page = pages.find((page) => page.url === url);
+
+    if (!page) throw new Error(`Missing converted snapshot page: ${url}`);
+    const source = pageToMarkdown(page, categories);
+    const prepared = govbbPageCodec.prepare(source);
+
+    if (prepared.mode === "source") throw new Error(`${url}: ${prepared.diagnostics[0]?.message}`);
+    expect(govbbPageCodec.encode(prepared.state)).toBe(source);
+  });
+
   it("never marks a page unsaved just for opening it", () => {
     for (const page of pages) {
       const markdown = pageToMarkdown(page, categories);
