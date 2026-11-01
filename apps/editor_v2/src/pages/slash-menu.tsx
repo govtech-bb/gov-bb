@@ -174,7 +174,6 @@ function EditablePageSlashMenu() {
           // bar. The caret keeps the focus: typing and the arrow keys stay the editor's
           <Popover.Root open>
             <Popover.Content
-              aria-label="Insert page content"
               anchor={anchor.current}
               // Inside Lexical's anchor, which reads its options from there
               container={anchor.current}
