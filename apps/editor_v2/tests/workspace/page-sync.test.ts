@@ -2,7 +2,8 @@ import { describe, expect, it } from "vitest";
 import { ApiFailure, type ApiPage, type SavePageInput } from "../../src/api/client";
 import type { Category } from "../../src/api/categories";
 import { pageToMarkdown } from "../../src/api/page-markdown";
-import { savePageDraft, pageHasUnsavedChanges } from "../../src/workspace/page-sync";
+import { pageHasUnsavedChanges } from "../../src/workspace/page-session";
+import { savePageDraft } from "../../src/workspace/page-sync";
 import { DraftStore } from "../../src/persistence/draft-store";
 import { govbbPageCodec } from "../../src/presets/govbb-page";
 

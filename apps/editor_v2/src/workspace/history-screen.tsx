@@ -1,25 +1,20 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
+import { useLayoutEffect, useRef, useState } from "react";
 import { ApiFailure, type EditorApi, type PageHistoryEntry } from "../api/client";
-import { pageFieldLabel } from "../api/page-markdown";
+import { pageFieldLabel } from "../api/page-fields";
 import { historyQuery, pageQuery } from "../api/queries";
+import { Button } from "../ui/button";
 import { EmptyState } from "../ui/empty-state";
 import { LoadingState } from "../ui/loading-state";
 import { ScreenHeader } from "../ui/screen-header";
 import { TextLink } from "../ui/text-link";
 import { LoadFailure } from "./load-failure";
 
-/** A history screen's address: `service` is the service it was opened from, for the way back. */
-export type HistorySearch = { service?: string };
-
-/** Keeps a non-empty `service` from the address, and drops anything else. */
-export function parseHistorySearch(search: { readonly service?: unknown }): HistorySearch {
-  const { service } = search;
-
-  return String(service) === service && service ? { service } : {};
-}
-
 const when = new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeStyle: "short" });
+
+/** How many changes show at first, and how many more each Show older changes adds. */
+const SHOWN = 50;
 
 /** What each entry says happened, as an author reads it. */
 const ACTIONS: Record<PageHistoryEntry["action"], string> = {
@@ -62,6 +57,14 @@ export function HistoryScreen({
   const history = useQuery(historyQuery(api, pageId));
   const page = useQuery(pageQuery(api, pageId));
   const none = history.error instanceof ApiFailure && history.error.status === 404;
+  const entries = history.data;
+  const [shown, setShown] = useState(SHOWN);
+  const list = useRef<HTMLOListElement>(null);
+
+  // Each Show older changes moves the focus to the first change it added: after the last, the button itself is gone
+  useLayoutEffect(() => {
+    if (shown > SHOWN) list.current?.querySelectorAll("li")[shown - SHOWN]?.focus();
+  }, [shown]);
 
   return (
     <>
@@ -91,30 +94,44 @@ export function HistoryScreen({
           retrying={history.isFetching}
           retry={() => void history.refetch()}
         />
-      ) : !history.data ? (
+      ) : !entries ? (
         <LoadingState label="Loading the page’s history…" />
       ) : (
-        <ol className="divide-y divide-line rounded-sm border border-line bg-white">
-          {history.data.map((entry, index, entries) => (
-            <li key={entry.version_no} className="flex flex-col gap-1 px-4 py-3">
-              <span className="font-semibold">
-                {appliesApproval(entry, entries[index + 1])
-                  ? "Approved change published"
-                  : ACTIONS[entry.action]}{" "}
-                by {byWhom(entry)}
-              </span>
-              <time dateTime={entry.occurred_at} className="text-14 text-muted tabular-nums">
-                {when.format(new Date(entry.occurred_at))}
-              </time>
-              {entry.changed.length > 0 && (
-                <span className="text-14">
-                  Changed: {entry.changed.map(pageFieldLabel).join(", ")}
+        <>
+          <ol ref={list} className="divide-y divide-line rounded-sm border border-line bg-white">
+            {entries.slice(0, shown).map((entry, index) => (
+              <li key={entry.version_no} tabIndex={-1} className="flex flex-col gap-1 px-4 py-3">
+                <span className="font-semibold">
+                  {appliesApproval(entry, entries[index + 1])
+                    ? "Approved change published"
+                    : ACTIONS[entry.action]}{" "}
+                  by {byWhom(entry)}
                 </span>
-              )}
-              {entry.comment && <span className="text-14 wrap-break-word">Reason: {entry.comment}</span>}
-            </li>
-          ))}
-        </ol>
+                <time dateTime={entry.occurred_at} className="text-14 text-muted tabular-nums">
+                  {when.format(new Date(entry.occurred_at))}
+                </time>
+                {entry.changed.length > 0 && (
+                  <span className="text-14">
+                    Changed: {entry.changed.map(pageFieldLabel).join(", ")}
+                  </span>
+                )}
+                {entry.comment && (
+                  <span className="text-14 wrap-break-word">Reason: {entry.comment}</span>
+                )}
+              </li>
+            ))}
+          </ol>
+          {entries.length > shown && (
+            <Button
+              variant="secondary"
+              size="md"
+              className="mt-4"
+              onClick={() => setShown(shown + SHOWN)}
+            >
+              Show older changes
+            </Button>
+          )}
+        </>
       )}
     </>
   );

@@ -8,7 +8,7 @@ import {
 } from "../../api/client";
 import { apiFailureMessages } from "../../api/failure-messages";
 import { collectionQuery } from "../../api/queries";
-import { download } from "../../host/source-ui";
+import { download } from "../../host/download";
 import { Banner } from "../../ui/banner";
 import { Button } from "../../ui/button";
 import { ConfirmDialog } from "../../ui/confirm-dialog";

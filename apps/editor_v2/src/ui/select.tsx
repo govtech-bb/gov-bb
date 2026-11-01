@@ -26,15 +26,15 @@ export type SelectItem<V extends string = string> = {
 };
 
 // A field's frame, as an Input's. The pill brings its own from ./pill
-const frame = `min-w-0 cursor-pointer items-center rounded-sm text-start text-14 leading-none text-ink shadow-input outline-none transition-shadow hover:shadow-input-hover focus-visible:shadow-input-focus data-popup-open:shadow-input-focus data-disabled:cursor-not-allowed ${touchTarget}`;
+const frame = `min-w-0 cursor-pointer items-center rounded-sm text-start text-14 leading-none text-ink shadow-input outline-none transition-shadow focus-visible:outline-hidden hover:shadow-input-hover focus-visible:shadow-input-focus data-popup-open:shadow-input-focus data-disabled:cursor-not-allowed ${touchTarget}`;
 
 const looks = {
   // A settings field: the width of its column. An error edges it in red, as it does an Input
-  field: `${frame} flex w-full gap-2 bg-white px-2.5 font-normal aria-invalid:shadow-input-error aria-invalid:focus-visible:shadow-input-focus data-disabled:bg-tint data-disabled:text-muted data-disabled:shadow-none max-sm:text-16`,
+  field: `${frame} flex w-full gap-2 bg-white px-2.5 font-normal aria-invalid:shadow-input-error aria-invalid:focus-visible:shadow-input-focus data-disabled:bg-tint data-disabled:text-muted data-disabled:shadow-none pointer-coarse:text-16`,
   // A word in a sentence, such as a logic rule: as wide as its value
   pill: "cursor-pointer data-disabled:cursor-not-allowed data-disabled:opacity-50",
   // Reserve filter width to reduce layout shifts. Empty string means "all"; multi-select uses its placeholder.
-  filter: `${frame} inline-flex max-w-64 gap-2 bg-white px-2.5 font-normal not-data-placeholder:bg-highlight not-data-placeholder:text-blue-80 not-data-placeholder:shadow-none max-sm:text-16 sm:min-w-48`,
+  filter: `${frame} inline-flex max-w-64 gap-2 bg-white px-2.5 font-normal not-data-placeholder:bg-highlight not-data-placeholder:text-blue-80 not-data-placeholder:shadow-none pointer-coarse:text-16 sm:min-w-48`,
 };
 
 // Input's heights: md beside a dialog's or a panel's fields, sm in a toolbar, a popover or a sentence

@@ -7,12 +7,8 @@ import { $setPageMetadata } from "../pages/metadata";
 import { govbbPageCodec, govbbPageEditor } from "../presets/govbb-page";
 import type { Category } from "./categories";
 import type { ApiPage } from "./client";
-import {
-  markdownToPageSaveInput,
-  pageToMarkdown,
-  pickerCategories,
-  suggestedUrl,
-} from "./page-markdown";
+import { suggestedUrl } from "./page-fields";
+import { markdownToPageSaveInput, pageToMarkdown, pickerCategories } from "./page-markdown";
 
 const VISIBILITIES = ["public", "preview", "draft"] as const;
 

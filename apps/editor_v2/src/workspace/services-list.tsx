@@ -5,7 +5,7 @@ import { useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
 import { categoryLabel } from "../api/categories";
 import { ApiFailure, type EditorApi, type ServiceSummary } from "../api/client";
 import { categoriesQuery, servicesQuery } from "../api/queries";
-import { visibilityLabels, visibilityTones } from "../pages";
+import { visibilityLabels, visibilityTones } from "../pages/visibility";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { ListScreen } from "../ui/list-screen";

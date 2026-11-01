@@ -1,7 +1,7 @@
 import { useBlocker } from "@tanstack/react-router";
 import { useRef, useState } from "react";
 import { ConfirmDialog } from "../ui/confirm-dialog";
-import { pageHasUnsavedChanges, type PageSession } from "./page-sync";
+import { pageHasUnsavedChanges, type PageSession } from "./page-session";
 
 /** One guard for page navigation, browser unload and sign-out; never saves as a side effect. */
 export function usePageLeaveGuard({
