@@ -1,5 +1,6 @@
 import { Files, List } from "@phosphor-icons/react";
 import {
+  lazyRouteComponent,
   Link,
   useMatch,
   useNavigate,
@@ -8,7 +9,7 @@ import {
   useSearch,
 } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ApiFailure, type EditorApi } from "../api/client";
 import { rolesQuery, serviceQuery, servicesQuery, estateVersionQuery } from "../api/queries";
 import {
@@ -52,15 +53,13 @@ type Account = {
 
 const SIDEBAR_KEY = "govbb-editor:sidebar-collapsed";
 
-const RemotePagePane = lazy(() =>
-  loadPageEditor().then((module) => ({ default: module.RemotePagePane })),
-);
+// The router's lazy rather than React's: if a release has replaced these files since the editor loaded, it reloads the
+// page once instead of failing the whole workspace
+const RemotePagePane = lazyRouteComponent(loadPageEditor, "RemotePagePane");
 
-const ReviewQueueScreen = lazy(() =>
-  loadReviews().then((module) => ({ default: module.ReviewQueueScreen })),
-);
+const ReviewQueueScreen = lazyRouteComponent(loadReviews, "ReviewQueueScreen");
 
-const ReviewScreen = lazy(() => loadReviews().then((module) => ({ default: module.ReviewScreen })));
+const ReviewScreen = lazyRouteComponent(loadReviews, "ReviewScreen");
 
 /** What someone without the editor role is told, on every screen. */
 const READ_ONLY =
