@@ -1,4 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
+import { useLayoutEffect, useRef } from "react";
 import { ApiFailure } from "../api/client";
 import { Button } from "../ui/button";
 import { EmptyState } from "../ui/empty-state";
@@ -24,6 +25,17 @@ export function LoadFailure({
 }) {
   const href = useRouterState({ select: (state) => state.location.href });
   const status = error instanceof ApiFailure ? error.status : undefined;
+  const again = useRef<HTMLButtonElement>(null);
+
+  // Once what failed loads, this goes, and Try again with it: the screen's content takes the focus from its top
+  useLayoutEffect(() => {
+    const button = again.current;
+
+    return () => {
+      if (button && button === document.activeElement)
+        document.getElementById("workspace-content")?.focus();
+    };
+  }, []);
 
   return (
     <EmptyState
@@ -47,7 +59,7 @@ export function LoadFailure({
             Sign in again
           </Button>
         ) : (
-          <Button variant="secondary" pending={retrying} onClick={retry}>
+          <Button ref={again} variant="secondary" pending={retrying} onClick={retry}>
             Try again
           </Button>
         )

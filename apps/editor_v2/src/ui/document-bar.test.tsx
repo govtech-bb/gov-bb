@@ -4,7 +4,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { Bar } from "./bar";
 import { Button } from "./button";
-import { DocumentBar } from "./document-bar";
+import { DocumentBar, type DocumentAlert } from "./document-bar";
 import { SidePanel, useSidePanel } from "./side-panel";
 
 let host: HTMLDivElement;
@@ -145,16 +145,82 @@ test("hidden while another document is open, its notices go with it", async () =
   expect([...host.children].map((part) => part.hasAttribute("hidden"))).toEqual([true, true]);
 });
 
-test("from a tablet up it's pinned to the top as the document scrolls under it, in one row", async () => {
+test("from a tablet up it's pinned to the top as the document scrolls under it, in one row, unless the screen is short", async () => {
   await render(<DocumentBar label="Page tools" title="Renew a passport" />);
 
   const bar = host.querySelector('[role="toolbar"]')!;
 
-  // On the bar layer, above the canvas's own, such as the block rail, and named for the page's scroll padding (index.css)
+  // On the bar layer, above the canvas's own, such as the block rail, and named for the page's scroll padding (index.css).
+  // Pinned only where index.css's bar-pinned holds: a phone on its side keeps its height for the writing
   expect(bar.className.split(" ")).toEqual(
-    expect.arrayContaining(["md:sticky", "md:top-0", "md:z-bar", "md:flex-nowrap"]),
+    expect.arrayContaining([
+      "bar-pinned:sticky",
+      "bar-pinned:top-0",
+      "bar-pinned:z-bar",
+      "md:flex-nowrap",
+    ]),
   );
   expect(bar.hasAttribute("data-document-bar")).toBe(true);
+});
+
+test("a late notice comes as a few words beside where the page stands, opening what it says, and moves nothing", async () => {
+  const notice: DocumentAlert = {
+    label: "Newer version saved",
+    tone: "warning",
+    content: <p>A newer version has been saved</p>,
+  };
+
+  const screen = (alert?: DocumentAlert, hidden = false) => (
+    <>
+      <DocumentBar
+        label="Page tools"
+        title="Renew a passport"
+        save={{ status: "unsaved" }}
+        notices={<p>Waiting for review</p>}
+        alert={alert}
+        hidden={hidden}
+      />
+      <textarea aria-label="Page title" />
+    </>
+  );
+
+  const chip = () =>
+    [...host.querySelectorAll<HTMLButtonElement>("[data-document-bar] button")].find(
+      (control) => control.textContent === "Newer version saved",
+    );
+
+  const readOut = () =>
+    [...host.querySelectorAll('[aria-live="polite"]')].map((region) => region.textContent);
+
+  await render(screen());
+  const field = host.querySelector("textarea")!;
+
+  expect(chip()).toBeUndefined();
+  expect(readOut()).not.toContain("Newer version saved");
+  field.focus();
+
+  await render(screen(notice));
+
+  expect(chip()).toBeDefined();
+  expect(readOut()).toContain("Newer version saved");
+  expect(document.activeElement).toBe(field);
+  // What it says waits to be opened: the notices under the bar, and the writing under them, stay as they were
+  expect(document.body.textContent).not.toContain("A newer version has been saved");
+  expect(host.children[1]!.textContent).toBe("Waiting for review");
+
+  await act(async () => chip()!.click());
+  expect(document.querySelector('[role="dialog"]')?.textContent).toContain(
+    "A newer version has been saved",
+  );
+
+  await render(screen());
+  expect(chip()).toBeUndefined();
+  expect(readOut()).not.toContain("Newer version saved");
+
+  await render(screen(notice, true));
+  expect(host.firstElementChild!.hasAttribute("hidden")).toBe(true);
+  expect(chip()).toBeUndefined();
+  expect(document.querySelector('[role="dialog"]')).toBeNull();
 });
 
 test("every tool in its slots is one of its toolbar's controls: one Tab stop, the arrows between them", async () => {

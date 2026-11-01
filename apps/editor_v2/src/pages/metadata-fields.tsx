@@ -24,6 +24,7 @@ import {
 } from "react";
 import { parseDocument } from "yaml";
 import { HISTORY_START_TAG } from "../editor/core/history";
+import { barbadosDay, formatCalendarDay } from "../ui/dates";
 import { Field, FieldGroup, FieldText } from "../ui/field";
 import { Input } from "../ui/input";
 import { NativeSelect } from "../ui/native-select";
@@ -295,8 +296,6 @@ export type PageCategory = {
   subcategories?: readonly { slug: string; title: string }[];
 };
 
-const dateFormat = new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeZone: "UTC" });
-
 /** A value the panel can't offer a control for, such as a list where it expects text: kept as written. */
 function Preserved({ label, error }: { label: string; error?: string }) {
   return (
@@ -318,8 +317,8 @@ export type PageSettingsOptions = {
   savedVisibility?: string;
   /** Why the host refused each field, keyed by field name. */
   errors?: Readonly<Record<string, string>>;
-  /** Visibility shown but not offered, for someone who isn't an approver. */
-  visibilityLocked?: boolean;
+  /** Why visibility is shown but not offered, such as that only approvers can change it. */
+  visibilityLocked?: string;
 };
 
 /** The page's settings, in sections for its side panel: how it's published, its details and where it's filed. */
@@ -330,7 +329,7 @@ export function PageSettings({
   lastEditedBy,
   savedVisibility,
   errors = {},
-  visibilityLocked = false,
+  visibilityLocked,
 }: PageSettingsOptions) {
   const { metadata, yaml, editable, update, historyKeys } = useMetadataUpdate();
   const document = parseDocument(yaml);
@@ -351,7 +350,8 @@ export function PageSettings({
   const unusualVisibility = !["", "public", "preview", "draft"].includes(visibility);
 
   const date =
-    (publishedAt === undefined ? metadata.publish_date : publishedAt?.slice(0, 10)) ?? "";
+    (publishedAt === undefined ? metadata.publish_date : publishedAt && barbadosDay(publishedAt)) ??
+    "";
 
   const parsedDate = new Date(date);
 
@@ -397,9 +397,7 @@ export function PageSettings({
               <StatusDot tone={visibilityTones.get(visibility) ?? "neutral"} />
               {visibilityLabels.get(visibility) ?? visibility}
             </span>
-            <span className="block text-muted">
-              Only approvers can change who can see this page.
-            </span>
+            <span className="block text-muted">{visibilityLocked}</span>
           </FieldText>
         ) : (
           <Field
@@ -437,7 +435,7 @@ export function PageSettings({
         ) : publishedAt !== undefined ? (
           <FieldText label="Publication date" error={errors.publish_date}>
             {date ? (
-              dateFormat.format(parsedDate)
+              formatCalendarDay(date)
             ) : (
               <span className="text-muted">Set when the page is first made public</span>
             )}

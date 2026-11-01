@@ -1,6 +1,13 @@
+import { Warning } from "@phosphor-icons/react";
 import { Fragment, type ReactNode } from "react";
+import { cn } from "../cn";
 import { Bar } from "./bar";
+import { Button } from "./button";
+import { Popover } from "./popover";
 import { SaveState, type SaveStateProps } from "./save-state";
+
+/** A notice that arrives while the document is being written: a few words, a tone, and what it says once opened. */
+export type DocumentAlert = { label: string; tone: "warning" | "error"; content: ReactNode };
 
 type DocumentBarProps = {
   /** Names its toolbar, such as “Page tools”. */
@@ -24,8 +31,20 @@ type DocumentBarProps = {
   settings?: ReactNode;
   /** What stands in the document's way, edge to edge under the bar, such as editing that's paused. */
   notices?: ReactNode;
+  /**
+   * A notice that arrives while the document is being written, such as a newer version saved elsewhere. Its few words
+   * sit beside where the document stands and open what it says and what can be done: it comes and goes there without
+   * moving the writing or covering it.
+   */
+  alert?: DocumentAlert;
   /** Out of sight while another document is open, but still keeping count of what can be undone. */
   hidden?: boolean;
+};
+
+// A late notice: a badge's tint in its tone, kept under the pointer and edged there and while open, as a pill is
+const alertLooks = {
+  warning: "bg-yellow-20 text-ink pressable:hover:bg-yellow-20 pressable:hover:text-ink",
+  error: "bg-red-10 text-red-80 pressable:hover:bg-red-10 pressable:hover:text-red-80",
 };
 
 /**
@@ -46,6 +65,7 @@ export function DocumentBar({
   publish,
   settings,
   notices,
+  alert,
   hidden,
 }: DocumentBarProps) {
   const views = (preview || source) && (
@@ -67,18 +87,22 @@ export function DocumentBar({
 
   return (
     <>
-      {/* Pinned to the top as the document scrolls under it, from a tablet up: the save state and
-          the tools stay in reach. A phone's screen is left to the writing */}
+      {/* Pinned to the top as the document scrolls under it, from a tablet up on a screen tall enough (bar-pinned):
+          the save state and the tools stay in reach. A phone's screen, upright or on its side, is left to the writing */}
       <Bar.Root
         label={label}
         hidden={hidden}
         data-document-bar=""
-        className="md:sticky md:top-0 md:z-bar md:flex-nowrap"
+        className="bar-pinned:sticky bar-pinned:top-0 bar-pinned:z-bar md:flex-nowrap"
       >
         {/* The title is cut short to make room: for the tools beside it from a tablet up, where the bar keeps to one
             row, and for where it stands on a phone, where the tools have their own row */}
         {nav}
-        <Bar.Title render={heading ? <h1 /> : undefined} className="max-md:grow max-md:basis-0">
+        {/* The heading can take the focus when what had it goes, such as a notice's button that answered it */}
+        <Bar.Title
+          render={heading ? <h1 tabIndex={-1} /> : undefined}
+          className="max-md:grow max-md:basis-0"
+        >
           {title}
         </Bar.Title>
         {save && (
@@ -86,6 +110,33 @@ export function DocumentBar({
             <SaveState.Status {...save} />
           </Bar.Status>
         )}
+        {alert && !hidden && (
+          <Popover.Root>
+            <Popover.Trigger
+              render={
+                <Button
+                  data-document-alert=""
+                  size="xs"
+                  variant="secondary"
+                  icon={<Warning weight="fill" />}
+                  className={cn(
+                    alertLooks[alert.tone],
+                    "pressable:hover:shadow-input-hover data-popup-open:shadow-input-hover",
+                  )}
+                >
+                  {alert.label}
+                </Button>
+              }
+            />
+            <Popover.Content aria-label={alert.label} align="start" className="w-104 p-0">
+              {alert.content}
+            </Popover.Content>
+          </Popover.Root>
+        )}
+        {/* Read out as a notice arrives, as what it says waits to be opened */}
+        <span aria-live="polite" className="sr-only">
+          {!hidden && alert?.label}
+        </span>
         {/* On a phone, the tools take their own row under the title, spread across it */}
         <Bar.Actions className="max-md:w-full max-md:justify-between">
           {groups.map(({ slot, group }, index) => (

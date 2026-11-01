@@ -24,7 +24,7 @@ import { roomierSide } from "../editor/react/editor-popup";
 import { useSlashTrigger } from "../editor/react/slash-trigger";
 import { cn } from "../cn";
 import { belowBar, Popover } from "../ui/popover";
-import { listFooter } from "../ui/surface";
+import { instant, listFooter } from "../ui/surface";
 import { actionList, PageActionList } from "./action-menu";
 import { $pageInsertionTarget } from "./insertion";
 import { PageMetadataNode } from "./metadata";
@@ -185,7 +185,7 @@ function EditablePageSlashMenu() {
               collisionAvoidance={{ side: "none", align: "shift", fallbackAxisSide: "none" }}
               initialFocus={false}
               finalFocus={false}
-              className="page-insert-menu flex w-[min(21rem,calc(100vw-2rem))] flex-col overflow-hidden p-0 text-14"
+              className={`${instant} page-insert-menu flex w-[min(21rem,calc(100vw-2rem))] flex-col overflow-hidden p-0 text-14`}
             >
               {/* Lexical points aria-activedescendant at the highlighted option; this also says it aloud */}
               <p role="status" className="sr-only">

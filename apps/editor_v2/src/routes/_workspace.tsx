@@ -1,4 +1,5 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
+import { rolesQuery } from "../api/queries";
 import { App } from "../app";
 import { AuthPending } from "../auth/auth-screen";
 import { localReturnPath, workspaceAdmission } from "../auth/session";
@@ -15,7 +16,19 @@ export const Route = createFileRoute("/_workspace")({
     if (preload) return {};
     const result = await admit(cause === "stay" ? "stay" : "enter", () => context.auth.session());
 
-    if (result.ok && result.value) return { employee: result.value };
+    if (result.ok && result.value) {
+      // What the workspace offers turns on the roles, so it opens with them rather than changing as they arrive, such
+      // as a read-only banner pushing the screen down. Read once; a read that fails doesn't wait on retries, and the
+      // workspace opens saying it couldn't check them
+      await context.queryClient.prefetchQuery({
+        ...rolesQuery(context.api),
+        staleTime: Infinity,
+        retry: false,
+      });
+
+      return { employee: result.value };
+    }
+
     throw redirect({
       to: "/auth",
       search: {

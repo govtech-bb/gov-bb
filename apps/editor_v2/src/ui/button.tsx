@@ -16,13 +16,13 @@ export const blockHandle =
 // Heights match Input so adjacent controls align.
 const sizes = {
   // An icon control in a rail, a chip or a dense row
-  xs: "h-6 gap-1 px-1.5 text-12 [&>i>svg]:size-3.5",
+  xs: "h-6 gap-1 px-1.5 text-12 [&_i>svg]:size-3.5",
   // Toolbars, menus and popovers: the default
-  sm: "h-8 gap-1.5 px-2.5 text-14 [&>i>svg]:size-4",
+  sm: "h-8 gap-1.5 px-2.5 text-14 [&_i>svg]:size-4",
   // Beside a 36px field: dialogs, panels, pages
-  md: "h-9 gap-1.5 px-3 text-14 [&>i>svg]:size-4",
+  md: "h-9 gap-1.5 px-3 text-14 [&_i>svg]:size-4",
   // A page's one main action
-  lg: "h-10 gap-2 px-4 text-16 [&>i>svg]:size-4",
+  lg: "h-10 gap-2 px-4 text-16 [&_i>svg]:size-4",
 };
 
 // Open triggers retain their hover tint; active styles also provide touch feedback.
@@ -71,9 +71,12 @@ type Decoration = {
   /** Leading icon. With no label the button is square. */
   icon?: ReactNode;
   iconEnd?: ReactNode;
-  /** Blocks activation and shows a spinner without dropping focus or dimming the button. */
+  /**
+   * Blocks activation and shows a spinner without dropping focus or dimming the button. The spinner takes the icon's
+   * place; without one, it lays over the label, which keeps its room and its name.
+   */
   pending?: boolean;
-  /** Both labels reserve space, so the button's width stays fixed while pending. */
+  /** Both labels reserve space, the spinner before this one included, so the button's width stays fixed while pending. */
   pendingLabel?: ReactNode;
 };
 
@@ -105,7 +108,10 @@ export function Button({
 }: ButtonProps) {
   const inToolbar = useContext(InToolbar);
   const solo = children == null && !iconEnd;
-  const lead = pending ? <CircleNotch className="motion-safe:animate-spin" /> : icon;
+  // Turning only while it shows
+  const spinner = <CircleNotch className={pending ? "motion-safe:animate-spin" : undefined} />;
+  const lead = pending && icon != null ? spinner : icon;
+  const over = pending && icon == null && pendingLabel == null;
 
   const pressed =
     variant === "ghost" &&
@@ -118,9 +124,9 @@ export function Button({
   // Hidden labels still contribute to the grid's width.
   const label =
     pendingLabel == null ? (
-      children != null && <span>{children}</span>
+      children != null && <span className={over ? "opacity-0" : undefined}>{children}</span>
     ) : (
-      <span className="grid">
+      <span className="grid gap-[inherit]">
         <span
           aria-hidden={pending || undefined}
           className={cn("col-start-1 row-start-1", pending && "invisible")}
@@ -129,8 +135,13 @@ export function Button({
         </span>
         <span
           aria-hidden={!pending || undefined}
-          className={cn("col-start-1 row-start-1", !pending && "invisible")}
+          className={cn(
+            "col-start-1 row-start-1",
+            icon == null && "flex items-center gap-[inherit]",
+            !pending && "invisible",
+          )}
         >
+          {icon == null && <i className={cn(iconClass, "mr-[-0.1em] ml-[-0.15em]")}>{spinner}</i>}
           {pendingLabel}
         </span>
       </span>
@@ -169,6 +180,7 @@ export function Button({
             {lead && <i className={cn(iconClass, !solo && "mr-[-0.1em] ml-[-0.15em]")}>{lead}</i>}
             {label}
             {iconEnd && <i className={cn(iconClass, "mr-[-0.15em] ml-[-0.1em]")}>{iconEnd}</i>}
+            {over && <i className={cn(iconClass, "absolute inset-0")}>{spinner}</i>}
           </>
         ),
       },

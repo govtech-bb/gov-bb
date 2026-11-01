@@ -14,12 +14,15 @@ const tones = {
     status: "text-muted",
     rule: "bg-line",
     hover: "hover:bg-hover",
+    // Pressed in, as a Button is: a tap has no hover to show it
+    press: "active:bg-hover active:shadow-press",
   },
   dark: {
     bar: "bg-brand-dark text-white",
     status: "text-blue-20",
     rule: "bg-white/25",
     hover: "hover:bg-white/10",
+    press: "active:bg-white/10 active:shadow-press",
   },
 };
 
@@ -160,7 +163,7 @@ function BarCrumb({ label, render, current }: Crumb & { current: boolean }) {
         "min-w-0 max-w-100 truncate",
         render &&
           `rounded-sm px-2 py-2 underline underline-offset-4 transition-colors ${touchTarget}`,
-        render && tones[tone].hover,
+        render && [tones[tone].hover, tones[tone].press],
       ),
       children: label,
     },

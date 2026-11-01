@@ -57,7 +57,7 @@ export function LinkWarnings({
             {/* The link style has no touch target of its own: 44px tall, wrapping a long label */}
             <Button
               variant="link"
-              className="min-h-11 max-w-full touch-manipulation py-2 wrap-anywhere whitespace-normal"
+              className="min-h-11 max-w-full py-2 wrap-anywhere whitespace-normal"
               onClick={() => onSelect(link.path)}
             >
               {link.text}

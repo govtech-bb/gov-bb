@@ -11,6 +11,7 @@ import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { createEditorApi, type ApiPage, type SavePageInput } from "../../src/api/client";
 import { categoriesQuery, pageQuery } from "../../src/api/queries";
 import { govbbPageCodec } from "../../src/presets/govbb-page";
+import { SidePanel } from "../../src/ui/side-panel";
 import { Toaster } from "../../src/ui/toast";
 import { RemotePagePane } from "../../src/workspace/remote-page-pane";
 import { pageHasUnsavedChanges, type PageSession } from "../../src/workspace/page-session";
@@ -53,14 +54,17 @@ beforeEach(() => {
 
 async function mountPage(
   request: (url: string, init?: RequestInit) => Promise<Response>,
-  roles = ["editor", "approver"],
+  // null: /editor/me can't be read
+  roles: readonly string[] | null = ["editor", "approver"],
 ) {
   vi.stubGlobal(
     "fetch",
     vi.fn((url: string, init?: RequestInit) => {
       if (url.endsWith("/editor/me"))
         return Promise.resolve(
-          Response.json({ id: "me", email: "me@govtech.bb", name: "Me", roles }),
+          roles
+            ? Response.json({ id: "me", email: "me@govtech.bb", name: "Me", roles })
+            : Response.json({}, { status: 503 }),
         );
 
       if (url.endsWith("/editor/categories"))
@@ -77,14 +81,16 @@ async function mountPage(
   await renderInPage(
     <RouterContextProvider router={router}>
       <QueryClientProvider client={client}>
-        <RemotePagePane
-          api={api}
-          id={page.id}
-          active
-          onSession={(_id, current) => {
-            session = current;
-          }}
-        />
+        <main id="workspace-content" tabIndex={-1}>
+          <RemotePagePane
+            api={api}
+            id={page.id}
+            active
+            onSession={(_id, current) => {
+              session = current;
+            }}
+          />
+        </main>
         <Toaster />
       </QueryClientProvider>
     </RouterContextProvider>,
@@ -94,6 +100,14 @@ async function mountPage(
   });
 
   return { client, api, session: () => session! };
+}
+
+/** Opens the late notice beside the page's title, once it has come. */
+async function openPageAlert() {
+  await act(async () => {
+    await vi.waitFor(() => pageControl("[data-document-alert]"));
+  });
+  await act(async () => pageControl<HTMLButtonElement>("[data-document-alert]").click());
 }
 
 async function applySource(session: PageSession, source: string) {
@@ -256,6 +270,17 @@ test("someone who isn't an approver sees the page's visibility, and why they can
   expect(visibilitySelect()).toBeUndefined();
 });
 
+test("where the roles can't be read, the visibility says so rather than that it's only for approvers", async () => {
+  await mountPage(async () => Response.json(page), null);
+
+  await vi.waitFor(() =>
+    expect(document.body.textContent).toContain(
+      "We couldn’t check your permissions, so who can see this page can’t be changed until we can.",
+    ),
+  );
+  expect(document.body.textContent).not.toContain(LOCKED);
+});
+
 test("someone without the editor role can't save", async () => {
   const h = await mountPage(async () => Response.json(page), []);
 
@@ -355,8 +380,10 @@ test("a rejected saved version leaves the working copy editable and its baseline
       title: "Saved elsewhere",
       updated_at: "2026-10-07T14:00:00.000Z",
     });
-    await vi.waitFor(() => expect(document.body.textContent).toContain("A newer version"));
+    await vi.waitFor(() => expect(document.body.textContent).toContain("Newer version saved"));
   });
+
+  await openPageAlert();
 
   const loadSaved = [...document.querySelectorAll("button")].find(
     (button) => button.textContent === "Load saved version",
@@ -388,6 +415,96 @@ test("a rejected saved version leaves the working copy editable and its baseline
   await act(async () =>
     document.querySelector<HTMLButtonElement>('[aria-label="Dismiss"]')!.click(),
   );
+});
+
+test.each([
+  { preview: false, action: "Keep my version" },
+  { preview: false, action: "Load saved version" },
+  { preview: true, action: "Keep my version" },
+  { preview: true, action: "Load saved version" },
+])(
+  "$action restores focus after answering a newer version (preview: $preview)",
+  async ({ preview, action }) => {
+    vi.stubGlobal("scrollTo", () => {});
+    const h = await mountPage(async () => Response.json(page));
+    await applySource(
+      h.session(),
+      h.session().store.getSnapshot().committed + "\n\nKeep my changes.",
+    );
+
+    if (preview)
+      await act(async () => pageControl<HTMLButtonElement>("[data-site-preview-trigger]").click());
+
+    await act(async () => {
+      h.client.setQueryData(pageQuery(h.api, page.id).queryKey, {
+        ...page,
+        updated_at: "2026-10-07T14:00:00.000Z",
+      });
+      await vi.waitFor(() => expect(document.body.textContent).toContain("Newer version saved"));
+    });
+
+    await openPageAlert();
+
+    const answer = [...document.querySelectorAll("button")].find(
+      (button) => button.textContent === action,
+    )!;
+
+    answer.focus();
+    await act(async () => answer.click());
+
+    expect(answer.isConnected).toBe(false);
+    expect(document.activeElement).toBe(
+      pageControl(
+        preview ? "[data-cms-preview-host] [data-site-preview-trigger]" : "[data-document-bar] h1",
+      ),
+    );
+  },
+);
+
+test("a failed pane keeps unsaved work, and retry moves focus into the recovered screen", async () => {
+  const h = await mountPage(async () => Response.json(page));
+  const draft = h.session().store.getSnapshot().source + "\n\nKeep this unsaved edit.";
+
+  // Fail after an edit, not before the pane has a working copy to retain.
+  vi.spyOn(console, "error").mockImplementation(() => {});
+
+  const broken = vi.spyOn(SidePanel, "Root").mockImplementation(() => {
+    throw new Error("The settings couldn't be drawn");
+  });
+
+  await applySource(h.session(), draft);
+
+  await vi.waitFor(() =>
+    expect(document.body.textContent).toContain("This page couldn’t be shown"),
+  );
+  expect(h.session().store.getSnapshot().source).toBe(draft);
+  expect(pageHasUnsavedChanges(h.session())).toBe(true);
+
+  const button = (name: string) =>
+    [...document.querySelectorAll("button")].find((item) => item.textContent === name)!;
+
+  const saved: string[] = [];
+  Object.defineProperty(URL, "createObjectURL", { value: () => "blob:page", configurable: true });
+  Object.defineProperty(URL, "revokeObjectURL", { value: () => {}, configurable: true });
+  vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(function (
+    this: HTMLAnchorElement,
+  ) {
+    saved.push(this.download);
+  });
+
+  await act(async () => button("Download a copy").click());
+  expect(saved).toEqual(["page.md"]);
+
+  broken.mockRestore();
+  button("Try again").focus();
+  await act(async () => button("Try again").click());
+  await vi.waitFor(() => expect(pageControl('textarea[aria-label="Page title"]')).toBeTruthy());
+  expect(document.body.textContent).not.toContain("This page couldn’t be shown");
+  expect(document.body.textContent).toContain("Keep this unsaved edit.");
+  expect(h.session().store.getSnapshot().source).toBe(draft);
+  expect(document.activeElement).toBe(document.getElementById("workspace-content"));
+  Reflect.deleteProperty(URL, "createObjectURL");
+  Reflect.deleteProperty(URL, "revokeObjectURL");
 });
 
 test("a page preloaded just now, as its link was pointed at, opens without waiting on the content API", async () => {
@@ -504,9 +621,8 @@ test("a slow save acknowledges only its submitted snapshot; refetch cannot overw
   expect(h.session().getBaseline().page.updated_at).toBe(current.updated_at);
   expect(draftOption()).toBeNull();
   expect(h.session().store.getSnapshot().committed).toBe(second);
-  await act(async () => {
-    await vi.waitFor(() => expect(document.body.textContent).toContain("A newer version"));
-  });
+  await openPageAlert();
+  expect(document.body.textContent).toContain("A newer version");
 });
 
 test.each([0, 503, 401, 403, 404])(
@@ -532,6 +648,7 @@ test.each([0, 503, 401, 403, 404])(
     });
     expect(h.session().store).toBe(original);
     expect(original.getSnapshot().source).toContain("Keep offline edits");
+    await openPageAlert();
     await act(async () => {
       await vi.waitFor(() =>
         expect(document.body.textContent).toContain(

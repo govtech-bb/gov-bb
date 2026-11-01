@@ -76,11 +76,11 @@ test("on a wide screen, it opens beside the canvas and the toggle hides it", asy
   expect(toggle().getAttribute("aria-expanded")).toBe("false");
 });
 
-test("beside the page, it stays in view under the document's bar pinned above it", async () => {
+test("beside the page, it stays in view under the document's bar, or at the top where the bar isn't pinned", async () => {
   await render();
 
   expect(host.querySelector("aside")!.firstElementChild!.className.split(" ")).toEqual(
-    expect.arrayContaining(["sticky", "top-(--bar-height)"]),
+    expect.arrayContaining(["sticky", "top-0", "bar-pinned:top-(--bar-height)"]),
   );
 });
 

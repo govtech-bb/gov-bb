@@ -27,6 +27,12 @@ export const surface = "rounded-sm bg-white font-sans text-ink shadow-popup outl
 export const surfaceMotion =
   "origin-(--transform-origin) transition-[opacity,scale] duration-(--duration-popup-in) ease-out-quint starting:opacity-0 data-starting-style:opacity-0 data-ending-style:opacity-0 data-ending-style:duration-(--duration-popup-out) data-instant:duration-0 motion-safe:starting:scale-96 motion-safe:data-starting-style:scale-96 motion-safe:data-ending-style:scale-96";
 
+/**
+ * For a popup that typing brings, such as the slash menu or the link at the caret: it comes and goes with the
+ * keystrokes, so it appears and goes at once, as Base UI's keyboard opens do (`data-instant`), which it can't know of.
+ */
+export const instant = "transition-none";
+
 /** The popup of a list of rows: as tall as the screen allows, then it scrolls. */
 export const listPopup = `group/popup flex max-h-(--available-height) max-w-[min(28rem,calc(100vw-2rem))] flex-col overflow-y-auto overscroll-contain py-1 ${surface} ${surfaceMotion}`;
 

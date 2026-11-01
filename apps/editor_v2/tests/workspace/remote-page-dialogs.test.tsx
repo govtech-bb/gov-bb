@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { act } from "react";
+import { act, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, expect, test, vi } from "vitest";
 import type { Category } from "../../src/api/categories";
@@ -151,6 +151,7 @@ test("deleting a page asks in an alert dialog, which can't be closed while the p
           page={page}
           onClose={close}
           onDone={() => {}}
+          focusAfter={{ current: null }}
         />
       </QueryClientProvider>,
     ),
@@ -196,6 +197,47 @@ test("deleting a page asks in an alert dialog, which can't be closed while the p
       "Only approvers can change who can see a page.",
     ),
   );
+  await act(async () => root.unmount());
+});
+
+test("once the page has gone, the focus goes where the workspace says, as its Delete page may go too", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () => new Response(null, { status: 204 })),
+  );
+
+  const content = document.body.appendChild(document.createElement("main"));
+  content.tabIndex = -1;
+
+  function Deleting() {
+    const [open, setOpen] = useState(true);
+
+    return (
+      <QueryClientProvider client={new QueryClient()}>
+        <DeleteRemotePageDialog
+          api={createEditorApi("https://api.example.invalid")}
+          open={open}
+          page={page}
+          onClose={() => setOpen(false)}
+          onDone={() => setOpen(false)}
+          focusAfter={{ current: content }}
+        />
+      </QueryClientProvider>
+    );
+  }
+
+  const root = createRoot(document.body.appendChild(document.createElement("div")));
+
+  await act(async () => root.render(<Deleting />));
+
+  const confirm = [
+    ...document.querySelectorAll<HTMLButtonElement>('[role="alertdialog"] button'),
+  ].find((item) => shownText(item) === "Delete page")!;
+
+  await act(async () => confirm.click());
+  await vi.waitFor(() => expect(document.querySelector('[role="alertdialog"]')).toBeNull());
+  await vi.waitFor(() => expect(document.activeElement).toBe(content));
   await act(async () => root.unmount());
 });
 
@@ -343,5 +385,175 @@ test("a service on its way can't be cancelled, so none is made after the author 
   await act(async () => created.resolve(Response.json({ id: "register-a-birth" })));
   await vi.waitFor(() => expect(done).toHaveBeenCalledWith("register-a-birth"));
   expect(close).not.toHaveBeenCalled();
+  await act(async () => root.unmount());
+});
+
+test("each problem shows on its field, the first takes the focus, and a field's goes as it changes", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+
+  const family: Category = {
+    id: "00000000-0000-4000-8000-000000000099",
+    parent_id: null,
+    slug: "family",
+    title: "Family",
+    description: null,
+    url: "/family",
+    position: 0,
+    services: 0,
+    reserved_route: false,
+    last_edited_by: null,
+    updated_at: "2026-10-28T12:00:00.000Z",
+  };
+
+  // The API refuses the path, as one already in use
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (_url: string, init?: RequestInit) =>
+      init?.method === "POST"
+        ? Response.json(
+            {
+              error: "validation_failed",
+              message: "The page could not be created",
+              errors: [{ field: "url", message: "Another page already uses this path" }],
+            },
+            { status: 422 },
+          )
+        : Response.json({ categories: [family] }),
+    ),
+  );
+
+  const root = createRoot(document.body.appendChild(document.createElement("div")));
+
+  await act(async () =>
+    root.render(
+      <QueryClientProvider client={new QueryClient()}>
+        <CreateRemoteServiceDialog
+          api={createEditorApi("https://api.example.invalid")}
+          open
+          onClose={() => {}}
+          onDone={() => {}}
+        />
+      </QueryClientProvider>,
+    ),
+  );
+
+  const dialog = document.querySelector<HTMLElement>('[role="dialog"]')!;
+  const [name, path] = [...dialog.querySelectorAll("input")];
+  const category = dialog.querySelector("select")!;
+  const form = dialog.querySelector("form")!;
+
+  const error = (field: Element) =>
+    field.getAttribute("aria-invalid") === "true"
+      ? document.getElementById(field.getAttribute("aria-describedby") ?? "")?.textContent
+      : undefined;
+
+  const enter = (field: HTMLInputElement | HTMLSelectElement, value: string) =>
+    act(async () => {
+      const prototype = field instanceof HTMLSelectElement ? HTMLSelectElement : HTMLInputElement;
+
+      Object.getOwnPropertyDescriptor(prototype.prototype, "value")!.set!.call(field, value);
+      field.dispatchEvent(
+        new Event(field instanceof HTMLSelectElement ? "change" : "input", { bubbles: true }),
+      );
+    });
+
+  const send = () =>
+    act(async () => {
+      form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+    });
+
+  await vi.waitFor(() =>
+    expect(dialog.querySelector("option[value]:not([value=''])")).not.toBeNull(),
+  );
+  await send();
+
+  expect([name, category, path].map((field) => error(field!))).toEqual([
+    "Enter a service name",
+    "Choose a category",
+    "Enter a path that starts with / and does not end with /",
+  ]);
+  expect(document.activeElement).toBe(name);
+  // On the fields, not in a list under them
+  expect(dialog.querySelector('[role="alert"]')).toBeNull();
+
+  // The name's problem goes as it's typed, and the path's, which follows it
+  await enter(name!, "Register a birth");
+  expect(error(name!)).toBeUndefined();
+  expect(error(path!)).toBeUndefined();
+  expect(error(category)).toBe("Choose a category");
+
+  await enter(category, family.id);
+  await send();
+
+  // The API's refusal of the path is the path's
+  await vi.waitFor(() => expect(error(path!)).toBe("Another page already uses this path"));
+  expect(document.activeElement).toBe(path);
+  expect(dialog.querySelector('[role="alert"]')).toBeNull();
+
+  await enter(path!, "/family/register-a-new-birth");
+  expect(error(path!)).toBeUndefined();
+  await act(async () => root.unmount());
+});
+
+test("switching to a start page clears the replaced supporting path's error", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  const api = createEditorApi("https://api.example.invalid");
+
+  const detail: ServiceDetail = {
+    service: {
+      id: "service",
+      title: "API service",
+      url: "/family/service",
+      category: { slug: "family", title: "Family" },
+      visibility: "draft",
+      form_id: null,
+      has_start_page: false,
+      page_count: 1,
+      updated_at: "2026-10-28T00:00:00.000Z",
+    },
+    pages: [],
+  };
+
+  const root = createRoot(document.body.appendChild(document.createElement("div")));
+
+  await act(async () =>
+    root.render(
+      <QueryClientProvider client={new QueryClient()}>
+        <CreateRemotePageDialog
+          api={api}
+          open
+          detail={detail}
+          onClose={() => {}}
+          onDone={() => {}}
+        />
+      </QueryClientProvider>,
+    ),
+  );
+  const form = document.querySelector("form")!;
+  const type = form.querySelector("select")!;
+  const path = form.querySelectorAll("input")[1]!;
+
+  const chooseType = (value: string) =>
+    act(async () => {
+      type.value = value;
+      type.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+
+  await chooseType("supporting");
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(path, "bad");
+    path.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await act(async () => {
+    form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+  });
+  expect(path.getAttribute("aria-invalid")).toBe("true");
+
+  await chooseType("start");
+  expect(path.value).toBe("/family/service/start");
+  expect(path.readOnly).toBe(true);
+  expect(path.getAttribute("aria-invalid")).not.toBe("true");
+  expect(form.textContent).not.toContain("Enter a path that starts with /");
+
   await act(async () => root.unmount());
 });

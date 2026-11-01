@@ -238,6 +238,8 @@ type ItemProps = {
   icon?: ReactNode;
   /** At the row's end, level with its first line: a status, such as a labelled StatusDot. Not shown in a rail. */
   status?: ReactNode;
+  /** Under its words, quieter, such as a page's visibility where it isn't public. Not shown in a rail. */
+  detail?: ReactNode;
   /** Items for what sits under this row, listed beneath it and indented a step. Not shown in a rail. */
   nested?: ReactNode;
   /** The row's link, such as the router's own; a plain link by default. It gets the row's look and state. */
@@ -249,7 +251,15 @@ type ItemProps = {
  * A row of a group: a link, marked as the current page while its page is on screen, its words semibold and its icon
  * filled. In a rail it's the icon alone, named by its words for screen readers and in a tooltip.
  */
-function SidebarItem({ current = false, icon, status, nested, render, children }: ItemProps) {
+function SidebarItem({
+  current = false,
+  icon,
+  status,
+  detail,
+  nested,
+  render,
+  children,
+}: ItemProps) {
   const { rail, closeDrawer } = useContext(Place);
   const icons = useContext(IconContext);
   const words = useRef<HTMLSpanElement>(null);
@@ -294,11 +304,14 @@ function SidebarItem({ current = false, icon, status, nested, render, children }
               {mark}
             </span>
           )}
-          <span
-            ref={words}
-            className="grid min-w-0 flex-1 grid-cols-1 wrap-break-word after:invisible after:col-start-1 after:row-start-1 after:font-semibold after:content-[attr(data-words)]"
-          >
-            <span className="col-start-1 row-start-1">{children}</span>
+          <span className="flex min-w-0 flex-1 flex-col">
+            <span
+              ref={words}
+              className="grid grid-cols-1 wrap-break-word after:invisible after:col-start-1 after:row-start-1 after:font-semibold after:content-[attr(data-words)]"
+            >
+              <span className="col-start-1 row-start-1">{children}</span>
+            </span>
+            {detail && <span className="text-12 font-normal text-muted">{detail}</span>}
           </span>
           {status && <span className="flex h-5 shrink-0 items-center">{status}</span>}
         </>

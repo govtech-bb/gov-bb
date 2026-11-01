@@ -88,6 +88,9 @@ export function DataTable({
   const columns = table.getVisibleLeafColumns();
   const filters = useTableFilters();
   const loadingWords = `Loading ${caption.toLowerCase()}…`;
+  const search = String(table.state.globalFilter ?? "").trim();
+  // A table that learns its columns from its data, such as a collection's, still shows its loading rows in one
+  const placeholderColumns = columns.length ? columns : [undefined];
 
   // A plain click, not one that ends a selection of the row's words
   const open = (event: MouseEvent<HTMLTableRowElement>) => {
@@ -142,12 +145,12 @@ export function DataTable({
           {loading ? (
             Array.from({ length: 6 }, (_, place) => (
               <tr key={place} aria-hidden="true" className="border-t border-line">
-                {columns.map((column, index) => (
+                {placeholderColumns.map((column, index) => (
                   <td
-                    key={column.id}
+                    key={column?.id ?? "loading"}
                     className={cn(
                       "px-4 py-3.5 align-middle",
-                      column.columnDef.meta?.secondary && secondary,
+                      column?.columnDef.meta?.secondary && secondary,
                     )}
                   >
                     {index ? (
@@ -177,7 +180,16 @@ export function DataTable({
             <tr className="border-t border-line">
               <td colSpan={columns.length}>
                 {filters.filtered ? (
-                  <EmptyState kind="not-found" title="Nothing matches these filters" />
+                  // The way back is the one Clear filters, beside the search, which keeps the focus there
+                  <EmptyState
+                    kind="not-found"
+                    title={
+                      search
+                        ? `Nothing matches “${search}”${table.state.columnFilters.length ? " with these filters" : ""}`
+                        : "Nothing matches these filters"
+                    }
+                    description={`Clear the filters to see all ${caption.toLowerCase()}.`}
+                  />
                 ) : (
                   <EmptyState {...empty} />
                 )}
@@ -191,7 +203,8 @@ export function DataTable({
                 className={cn(
                   "border-t border-line transition-colors",
                   row.id === marked ? "bg-blue-10" : "hover:bg-tint",
-                  rowLink && "cursor-pointer",
+                  // A step darker while pressed, which is all a tap shows
+                  rowLink && "cursor-pointer active:bg-hover",
                 )}
               >
                 {row.getVisibleCells().map((c) => (
@@ -231,21 +244,40 @@ function pageWindow(current: number, count: number) {
   );
 }
 
-/** "1–25 of 97 services", the page size and numbered pages. `name` is the row noun, singular and plural. */
-export function Pagination({ name }: { name: [string, string] }) {
+// Narrow and to the touch, where each page is a 44px button, only the pages either side of this one show beside
+// Previous and Next, so the pager stays on the screen
+const farPage = "@max-md:pointer-coarse:hidden";
+
+/**
+ * "1–25 of 97 services", the page size and numbered pages. `name` is the row noun, singular and plural. The count is
+ * the list's live region: with nothing to count it stays, out of sight, so a search that finds nothing is read out.
+ */
+export function Pagination({
+  name,
+  loading = false,
+}: {
+  name: [string, string];
+  loading?: boolean;
+}) {
   const table = useTableContext();
+  const filters = useTableFilters();
   const { pageIndex, pageSize } = table.state.pagination;
   const total = table.getRowCount();
   const pages = table.getPageCount();
-
-  if (total === 0) return null;
   const first = pageIndex * pageSize + 1;
 
   return (
-    <div className="flex flex-wrap items-center gap-x-4 gap-y-3 border-t border-line px-4 py-3 text-14 text-muted">
+    <div
+      className={cn(
+        "flex flex-wrap items-center gap-x-4 gap-y-3 border-t border-line px-4 py-3 text-14 text-muted",
+        !total && "sr-only",
+      )}
+    >
       {/* Reserve space so the page-size control stays put as the range changes. */}
       <p aria-live="polite" className="min-w-44 tabular-nums">
-        {first}–{Math.min(total, first + pageSize - 1)} of {total} {total === 1 ? name[0] : name[1]}
+        {total > 0 &&
+          `${first}–${Math.min(total, first + pageSize - 1)} of ${total} ${total === 1 ? name[0] : name[1]}`}
+        {!total && !loading && filters.filtered && `No ${name[1]} match`}
       </p>
       {total > pageSizes[0]! && (
         <NativeSelect
@@ -263,15 +295,16 @@ export function Pagination({ name }: { name: [string, string] }) {
       )}
       {pages > 1 && (
         <nav aria-label="Pages" className="ms-auto flex items-center gap-1">
+          {/* At the first or last page, its end stays focusable, so pressing Next onto the last page keeps the focus */}
           <Button
             icon={<CaretLeft />}
             aria-label="Previous page"
-            disabled={!table.getCanPreviousPage()}
+            aria-disabled={!table.getCanPreviousPage() || undefined}
             onClick={() => table.previousPage()}
           />
           {pageWindow(pageIndex, pages).map((page, index) =>
             page === "gap" ? (
-              <span key={`gap-${index}`} aria-hidden="true" className="px-1">
+              <span key={`gap-${index}`} aria-hidden="true" className={cn("px-1", farPage)}>
                 …
               </span>
             ) : (
@@ -279,7 +312,7 @@ export function Pagination({ name }: { name: [string, string] }) {
                 key={page}
                 aria-label={`Page ${page + 1}`}
                 aria-current={page === pageIndex ? "page" : undefined}
-                className="min-w-8 tabular-nums"
+                className={cn("min-w-8 tabular-nums", Math.abs(page - pageIndex) > 1 && farPage)}
                 onClick={() => table.setPageIndex(page)}
               >
                 {page + 1}
@@ -289,7 +322,7 @@ export function Pagination({ name }: { name: [string, string] }) {
           <Button
             icon={<CaretRight />}
             aria-label="Next page"
-            disabled={!table.getCanNextPage()}
+            aria-disabled={!table.getCanNextPage() || undefined}
             onClick={() => table.nextPage()}
           />
         </nav>

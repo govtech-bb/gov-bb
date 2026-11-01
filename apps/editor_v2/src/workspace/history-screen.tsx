@@ -5,13 +5,12 @@ import { ApiFailure, type EditorApi, type PageHistoryEntry } from "../api/client
 import { pageFieldLabel } from "../api/page-fields";
 import { historyQuery, pageQuery } from "../api/queries";
 import { Button } from "../ui/button";
+import { formatDayAndTime } from "../ui/dates";
 import { EmptyState } from "../ui/empty-state";
 import { LoadingState } from "../ui/loading-state";
 import { ScreenHeader } from "../ui/screen-header";
 import { TextLink } from "../ui/text-link";
 import { LoadFailure } from "./load-failure";
-
-const when = new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeStyle: "short" });
 
 /** How many changes show at first, and how many more each Show older changes adds. */
 const SHOWN = 50;
@@ -108,7 +107,7 @@ export function HistoryScreen({
                   by {byWhom(entry)}
                 </span>
                 <time dateTime={entry.occurred_at} className="text-14 text-muted tabular-nums">
-                  {when.format(new Date(entry.occurred_at))}
+                  {formatDayAndTime(entry.occurred_at)}
                 </time>
                 {entry.changed.length > 0 && (
                   <span className="text-14">
