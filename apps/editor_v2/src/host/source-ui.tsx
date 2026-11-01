@@ -5,6 +5,7 @@ import {
   useContext,
   useEffect,
   useId,
+  useMemo,
   useRef,
   useState,
   useSyncExternalStore,
@@ -31,10 +32,11 @@ const SourceOpenContext = createContext<SourceOpen>({ open: false, setOpen: () =
 
 export function DraftProvider({ store, children }: { store: DraftStore; children: ReactNode }) {
   const [open, setOpen] = useState(false);
+  const sourceOpen = useMemo(() => ({ open, setOpen }), [open]);
 
   return (
     <DraftContext value={store}>
-      <SourceOpenContext value={{ open, setOpen }}>{children}</SourceOpenContext>
+      <SourceOpenContext value={sourceOpen}>{children}</SourceOpenContext>
     </DraftContext>
   );
 }
