@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
-import { $nodesOfType } from "lexical";
+import { $createParagraphNode, $createTextNode, $getRoot, $nodesOfType } from "lexical";
 import { parseContentMarkdown } from "@govtech-bb/govbbmarkd";
 import { createHeadlessEditor } from "../../src/editor/core/create-editor";
 import { govbbPageCodec, govbbPageEditor } from "../../src/presets/govbb-page";
@@ -22,7 +22,7 @@ const components = [
 ];
 
 describe("GovBB Markdown editor integration", () => {
-  it.each(components)("preserves bytes until an edit, then preserves the component: %s", (body) => {
+  it.each(components)("preserves component source through a details edit: %s", (body) => {
     const source = `---\ntitle: Original\n---\n\n${body}\n`;
     const prepared = govbbPageCodec.prepare(source);
     expect(prepared.mode).toBe("visual");
@@ -34,6 +34,7 @@ describe("GovBB Markdown editor integration", () => {
     try {
       editor.update(() => $setPageMetadata({ title: "Updated" }), { discrete: true });
       const encoded = govbbPageCodec.encode(editor.getEditorState().toJSON());
+      expect(encoded).toBe(`---\ntitle: Updated\n---\n\n${body}\n`);
       expect(parseContentMarkdown(encoded).errors).toEqual([]);
       const reopened = govbbPageCodec.prepare(encoded);
       expect(reopened.mode).toBe("visual");
@@ -45,7 +46,7 @@ describe("GovBB Markdown editor integration", () => {
     }
   });
 
-  it("writes legacy leaf actions and details attributes in the fenced dialect after a visual edit", () => {
+  it("writes legacy leaf actions and details attributes in the fenced dialect only after a body edit", () => {
     const source =
       ':::actions\n::action[Continue]{href="/next"}\n:::\n\n:::details{summary="Help"}\nInformation.\n:::';
 
@@ -56,7 +57,15 @@ describe("GovBB Markdown editor integration", () => {
 
     try {
       editor.update(() => $setPageMetadata({ title: "Updated" }), { discrete: true });
+      expect(govbbPageCodec.encode(editor.getEditorState().toJSON())).toBe(
+        `---\ntitle: Updated\n---\n\n${source}`,
+      );
+      editor.update(
+        () => $getRoot().append($createParagraphNode().append($createTextNode("New instructions"))),
+        { discrete: true },
+      );
       const encoded = govbbPageCodec.encode(editor.getEditorState().toJSON());
+      expect(encoded).toContain("New instructions");
       expect(encoded).toContain(':::action{href="/next"}\nContinue\n:::');
       expect(encoded).toContain(":::details[Help]");
       expect(encoded).not.toContain("::action[");

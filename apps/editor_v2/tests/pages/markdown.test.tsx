@@ -356,6 +356,23 @@ test("page details preserve unknown YAML, comments and absent fields through edi
   }
 });
 
+test.each(["", "---\ntitle: Original\n---\n\n", "---\r\ntitle: Original\r\n---\r\n\r\n"])(
+  "a title edit preserves body syntax and whitespace after %j",
+  (frontmatter) => {
+    const body = "\n_Original_  \nNext line\n\n";
+    const editor = createHeadlessEditor(govbbPageEditor, visual(frontmatter + body));
+
+    try {
+      editor.update(() => $setPageMetadata({ title: "Renamed" }), { discrete: true });
+      expect(govbbPageCodec.encode(editor.getEditorState().toJSON())).toBe(
+        `---\ntitle: Renamed\n---\n\n${body}`,
+      );
+    } finally {
+      editor.dispose();
+    }
+  },
+);
+
 test("unfamiliar page detail values survive unrelated edits without coercion", () => {
   const source =
     "---\ntitle: Original\ncategory: [custom]\ncategories: [housing, 7]\nsubcategory: false\nvisibility: { custom: true }\npublish_date: 123\n---\n\nBody\n";
