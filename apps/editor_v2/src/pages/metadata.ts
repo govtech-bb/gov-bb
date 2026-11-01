@@ -1,24 +1,10 @@
-import { $getRoot, ElementNode, type NodeKey, type SerializedElementNode } from "lexical";
-import { isMap, isScalar, isSeq, parseDocument } from "yaml";
-
-export type PageMetadata = {
-  title?: string;
-  description?: string;
-  lede?: string;
-  form_id?: string;
-  category?: string;
-  categories?: string[];
-  subcategory?: string;
-  visibility?: string;
-  publish_date?: string;
-  url?: string;
-};
-
-type SerializedPageMetadata = SerializedElementNode & {
-  yaml: string;
-  original: string;
-  fingerprint: string;
-};
+import { $getRoot, ElementNode, type NodeKey } from "lexical";
+import { isMap, parseDocument } from "yaml";
+import {
+  pageMetadataFromYaml,
+  type PageMetadata,
+  type SerializedPageMetadata,
+} from "./metadata-yaml";
 
 export class PageMetadataNode extends ElementNode {
   __yaml: string;
@@ -87,38 +73,6 @@ export function $pageMetadataNode() {
     .find((node) => node instanceof PageMetadataNode);
 
   if (!(metadata instanceof PageMetadataNode)) throw new Error("Page metadata is missing");
-
-  return metadata;
-}
-
-export function pageMetadataFromYaml(yaml: string): PageMetadata {
-  const document = parseDocument(yaml);
-  const metadata: PageMetadata = {};
-
-  for (const key of [
-    "title",
-    "description",
-    "lede",
-    "form_id",
-    "category",
-    "subcategory",
-    "visibility",
-    "publish_date",
-    "url",
-  ] as const) {
-    const value = document.get(key);
-
-    if (typeof value === "string") metadata[key] = value;
-  }
-
-  const categories = document.get("categories");
-
-  if (isSeq(categories)) {
-    const values = categories.items.map((item) => (isScalar(item) ? item.value : undefined));
-
-    if (values.every((value): value is string => typeof value === "string"))
-      metadata.categories = values;
-  }
 
   return metadata;
 }

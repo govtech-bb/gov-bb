@@ -132,8 +132,18 @@ test("the live write an approval let through reads as publishing it, not as the 
   const approvedAt = "2026-10-28T12:00:00.000Z";
 
   await render([
-    entry({ version_no: 5, ...approver, occurred_at: "2026-10-28T13:00:00.000Z", changed: ["title"] }),
-    entry({ version_no: 4, ...approver, occurred_at: approvedAt, changed: ["title", "body_markdown"] }),
+    entry({
+      version_no: 5,
+      ...approver,
+      occurred_at: "2026-10-28T13:00:00.000Z",
+      changed: ["title"],
+    }),
+    entry({
+      version_no: 4,
+      ...approver,
+      occurred_at: approvedAt,
+      changed: ["title", "body_markdown"],
+    }),
     entry({ version_no: 3, ...approver, action: "approved", occurred_at: approvedAt }),
     entry({ version_no: 2, action: "submitted" }),
     entry({ version_no: 1, action: "created" }),
@@ -148,6 +158,35 @@ test("the live write an approval let through reads as publishing it, not as the 
     "Created by Ada Editor",
   ]);
   expect(items()[1]).toContain("Changed: Title, Content");
+});
+
+test("a long history shows its latest 50 changes, then older ones 50 at a time", async () => {
+  const approver = { actor: "approver-1", actor_name: "Ben Approver" };
+  const approvedAt = "2026-10-28T12:00:00.000Z";
+  const entries = Array.from({ length: 120 }, (_, index) => entry({ version_no: 120 - index }));
+
+  // The 50th, the last shown at first, is the write an approval let through; its approval is the 51st
+  entries[49] = entry({ version_no: 71, ...approver, occurred_at: approvedAt });
+  entries[50] = entry({ version_no: 70, ...approver, action: "approved", occurred_at: approvedAt });
+  await render(entries);
+
+  const older = () =>
+    [...host.querySelectorAll("button")].find(
+      (button) => button.textContent === "Show older changes",
+    );
+
+  await until(() => expect(items()).toHaveLength(50));
+  expect(items()[49]).toMatch(/^Approved change published by Ben Approver/);
+
+  await act(async () => older()?.click());
+  expect(items()).toHaveLength(100);
+  // The first change it added takes the focus
+  expect(document.activeElement).toBe(host.querySelectorAll("li")[50]);
+
+  await act(async () => older()?.click());
+  expect(items()).toHaveLength(120);
+  expect(older()).toBeUndefined();
+  expect(document.activeElement).toBe(host.querySelectorAll("li")[100]);
 });
 
 test("a long rejection reason wraps rather than running out of its entry", async () => {

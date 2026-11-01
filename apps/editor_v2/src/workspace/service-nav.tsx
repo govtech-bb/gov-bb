@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { useId, type ReactNode } from "react";
-import { visibilityLabels, visibilityTones } from "../pages";
+import { visibilityLabels, visibilityTones } from "../pages/visibility";
 import type { DraftStore } from "../persistence/draft-store";
 import { Button } from "../ui/button";
 import type { DrawerPanel } from "../ui/drawer";

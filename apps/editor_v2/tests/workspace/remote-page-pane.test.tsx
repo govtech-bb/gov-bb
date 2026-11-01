@@ -13,7 +13,7 @@ import { categoriesQuery, pageQuery } from "../../src/api/queries";
 import { govbbPageCodec } from "../../src/presets/govbb-page";
 import { Toaster } from "../../src/ui/toast";
 import { RemotePagePane } from "../../src/workspace/remote-page-pane";
-import { pageHasUnsavedChanges, type PageSession } from "../../src/workspace/page-sync";
+import { pageHasUnsavedChanges, type PageSession } from "../../src/workspace/page-session";
 import { pageControl, renderInPage } from "../helpers/page-editor";
 
 const page: ApiPage = {

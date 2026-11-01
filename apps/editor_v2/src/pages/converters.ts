@@ -7,14 +7,15 @@ import {
 import type { Root } from "mdast";
 import { parseContentMarkdown } from "@govtech-bb/govbbmarkd";
 import { createHeadlessEditor } from "../editor/core/create-editor";
-import { SourceError, type DraftCodec, type PreparedSource } from "../persistence/types";
-import type { PageEditorDefinition } from "./definition";
 import {
-  PageMetadataNode,
-  $pageMetadataNode,
-  pageMetadataFromYaml,
-  validateMetadata,
-} from "./metadata";
+  SourceError,
+  type DraftCodec,
+  type DraftSnapshot,
+  type PreparedSource,
+} from "../persistence/types";
+import type { PageEditorDefinition } from "./definition";
+import { PageMetadataNode, $pageMetadataNode, validateMetadata } from "./metadata";
+import { pageMetadataFromYaml, stateMetadata } from "./metadata-yaml";
 import {
   blocks,
   pageConversion,
@@ -27,6 +28,18 @@ export function readPageMetadata(source: string) {
   const frontmatter = parsePageMarkdown(source).children[0];
 
   return pageMetadataFromYaml(frontmatter?.type === "yaml" ? frontmatter.value : "");
+}
+
+/**
+ * A draft's page metadata, read as every key is typed: from the YAML its editor state holds, far cheaper than parsing
+ * the page's Markdown. Without a state, or during a recovery, when the state can be ahead of the Markdown, it reads the
+ * committed Markdown.
+ */
+export function draftPageMetadata(draft: Pick<DraftSnapshot, "state" | "committed" | "recovery">) {
+  return (
+    (!draft.recovery && draft.state && stateMetadata(draft.state)) ||
+    readPageMetadata(draft.committed)
+  );
 }
 
 function $encode(definition: PageEditorDefinition) {

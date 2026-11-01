@@ -1,4 +1,5 @@
 import { expect, test } from "vitest";
+import { createEditorSession } from "../../src/editor/core/session";
 import { DocumentSessions, keptViews } from "../../src/workspace/document-views";
 
 const always = () => true;
@@ -32,25 +33,25 @@ test("a view whose draft can't be left yet stays mounted beyond the few", () => 
 
 test("a closed view's session waits for it, unless its draft changed while it was closed", () => {
   const sessions = new DocumentSessions();
-  const fees = sessions.get("fees");
+  const fees = sessions.get("fees", createEditorSession);
 
-  expect(sessions.get("fees")).toBe(fees);
+  expect(sessions.get("fees", createEditorSession)).toBe(fees);
 
   // Closed and opened on the same draft: the same session
   sessions.close("fees", "Fees draft");
   sessions.open("fees", "Fees draft");
-  expect(sessions.get("fees")).toBe(fees);
+  expect(sessions.get("fees", createEditorSession)).toBe(fees);
 
   // Opening a view that never closed changes nothing
   sessions.open("fees", "Changed in another tab");
-  expect(sessions.get("fees")).toBe(fees);
+  expect(sessions.get("fees", createEditorSession)).toBe(fees);
 
   // Changed while closed, such as by another tab: a fresh session
   sessions.close("fees", "Fees draft");
   sessions.open("fees", "Changed in another tab");
-  expect(sessions.get("fees")).not.toBe(fees);
+  expect(sessions.get("fees", createEditorSession)).not.toBe(fees);
 
-  const start = sessions.get("start");
+  const start = sessions.get("start", createEditorSession);
   sessions.forget("start");
-  expect(sessions.get("start")).not.toBe(start);
+  expect(sessions.get("start", createEditorSession)).not.toBe(start);
 });

@@ -12,20 +12,23 @@ export {
   lexicalToPageMarkdown,
   createPageDraftCodec,
   createEmptyPage,
+  draftPageMetadata,
   readPageMetadata,
 } from "./converters";
 
-export { $pageMetadata, $setPageMetadata, type PageMetadata } from "./metadata";
+export { $pageMetadata, $setPageMetadata } from "./metadata";
+
+export type { PageMetadata } from "./metadata-yaml";
 
 export { PageEditor } from "./editor";
 
 export {
   PageTitleField,
   PageSettings,
-  visibilityLabels,
-  visibilityTones,
   type PageCategory,
   type PageSettingsOptions,
 } from "./metadata-fields";
+
+export { visibilityLabels, visibilityTones } from "./visibility";
 
 export { PagePreview } from "./preview";

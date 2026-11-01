@@ -5,6 +5,7 @@ import {
   useContext,
   useEffect,
   useId,
+  useMemo,
   useRef,
   useState,
   useSyncExternalStore,
@@ -19,6 +20,7 @@ import { Field } from "../ui/field";
 import { SaveState, type SaveStateProps } from "../ui/save-state";
 import { Textarea } from "../ui/textarea";
 import type { DraftStore } from "../persistence/draft-store";
+import { download } from "./download";
 import { draftEditorConnection } from "./draft-editor";
 
 const DraftContext = createContext<DraftStore | null>(null);
@@ -30,10 +32,11 @@ const SourceOpenContext = createContext<SourceOpen>({ open: false, setOpen: () =
 
 export function DraftProvider({ store, children }: { store: DraftStore; children: ReactNode }) {
   const [open, setOpen] = useState(false);
+  const sourceOpen = useMemo(() => ({ open, setOpen }), [open]);
 
   return (
     <DraftContext value={store}>
-      <SourceOpenContext value={{ open, setOpen }}>{children}</SourceOpenContext>
+      <SourceOpenContext value={sourceOpen}>{children}</SourceOpenContext>
     </DraftContext>
   );
 }
@@ -58,20 +61,6 @@ export function useDraft() {
   const snapshot = useSyncExternalStore(store.subscribe, store.getSnapshot, store.getSnapshot);
 
   return { store, ...snapshot };
-}
-
-export function download(text: string, name = "form-source.md") {
-  const url = URL.createObjectURL(
-    new Blob([text], {
-      type: name.endsWith(".json") ? "application/json" : "text/markdown;charset=utf-8",
-    }),
-  );
-
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = name;
-  link.click();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 /** What came of acting in a dialog, shown in its body in the outcome's tone (Banner). */
