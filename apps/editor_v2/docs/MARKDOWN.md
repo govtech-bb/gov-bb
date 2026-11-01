@@ -23,10 +23,15 @@ Bring proof of identity.
 Bring your original documents.
 :::
 
-:::actions
-::action[Continue]{href="/next"}
-::action[Get help]{href="/help" variant="secondary"}
+::::actions
+:::action{href="/next"}
+Continue
 :::
+
+:::action{href="/help" variant="secondary"}
+Get help
+:::
+::::
 
 <a data-start-link>Start now</a>
 ```
@@ -36,6 +41,14 @@ A Start marker can have an explicit `href`; without one it retains the page's fo
 The original file is preserved exactly until a visual edit. Export after editing may normalize Markdown formatting while retaining text, grouping, metadata and URLs. Unsupported raw HTML, comments, specialist components, images, code blocks and other unsupported syntax make the whole page source-only, as does invalid YAML. The CMS opens such a page read-only, saying it can't be edited there, and leaves its saved content unchanged; pages have no Markdown source editing. Source-only pages have no rendered preview.
 
 The checked-in [GovBB page fixtures](../tests/fixtures/pages/README.md) retain 16 frozen regression examples: three visual and 13 source-only pages, with their original hashes. Integration tests also read current GovBB Markdown directly from `apps/landing/src/content`. Visual support remains limited to the syntax described above.
+
+### Legacy button conversions (#3314)
+
+The NIS self-employed overview uses a standalone `:::action`; its record-and-benefits page and StormReady use `::::actions` containing fenced `:::action` blocks. These replace `<link-button>` and `<buttons>` without adding HTML support: both syntaxes render through the same `LinkButton` and `ButtonGroup` components.
+
+Labels, order, primary/secondary variants and explicit URLs are retained, including the external registration URL, payment anchor and print query. An explicit URL ending in `/form` stays a URL, not a linked-form reference. Existing `<a data-start-link>` markers are unchanged.
+
+Both NIS pages open visually and retain their content through body edits and reopening. StormReady's action group round-trips independently; its whole page remains read-only until its notice (#3313), highlights/muted text (#3315) and contacts (#3185) are handled. Those components and the frozen HTML fixtures are unchanged here. The generated API snapshot updates future imports, not an already-imported database.
 
 ## Form Markdown, version 2
 

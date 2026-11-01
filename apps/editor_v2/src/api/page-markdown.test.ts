@@ -112,6 +112,20 @@ describe("page markdown", () => {
     }
   });
 
+  it.each([
+    "/money-financial-support/national-insurance-for-self-employed-workers",
+    "/money-financial-support/national-insurance-for-self-employed-workers/check-your-record",
+  ])("opens converted action page %s visually without changing it", (url) => {
+    const page = pages.find((page) => page.url === url);
+
+    if (!page) throw new Error(`Missing converted action page: ${url}`);
+    const source = pageToMarkdown(page, categories);
+    const prepared = govbbPageCodec.prepare(source);
+
+    if (prepared.mode === "source") throw new Error(`${url}: ${prepared.diagnostics[0]?.message}`);
+    expect(govbbPageCodec.encode(prepared.state)).toBe(source);
+  });
+
   it("never marks a page unsaved just for opening it", () => {
     for (const page of pages) {
       const markdown = pageToMarkdown(page, categories);

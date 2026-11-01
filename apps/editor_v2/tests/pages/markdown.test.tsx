@@ -54,6 +54,11 @@ const sourceOnly = new Set([
   "national-pledge/index.md",
 ]);
 
+const convertedActionPages = [
+  "national-insurance-for-self-employed-workers/index.md",
+  "national-insurance-for-self-employed-workers/check-your-record.md",
+];
+
 function fixture(path: string) {
   return readFileSync(new URL(`../fixtures/pages/corpus/${path}`, import.meta.url), "utf8");
 }
@@ -66,11 +71,11 @@ function visual(source: string) {
   return prepared.state;
 }
 
-function checkPagePreservation(path: string, source: string) {
+function checkPagePreservation(path: string, source: string, expectsSourceOnly: boolean) {
   const prepared = govbbPageCodec.prepare(source);
   expect(prepared.source).toBe(source);
 
-  if (sourceOnly.has(path)) {
+  if (expectsSourceOnly) {
     expect(prepared.mode).toBe("source");
     expect(prepared.state).toBeUndefined();
     expect(prepared.diagnostics[0]?.severity).toBe("warning");
@@ -87,6 +92,15 @@ function checkPagePreservation(path: string, source: string) {
     const encoded = govbbPageCodec.encode(editor.getEditorState().toJSON());
     const reopened = visual(encoded);
     expect(reopened.root.children.slice(1)).toEqual(prepared.state.root.children.slice(1));
+
+    editor.update(
+      () =>
+        $getRoot().append($createParagraphNode().append($createTextNode("An edited paragraph."))),
+      { discrete: true },
+    );
+    const edited = editor.getEditorState().toJSON();
+    const saved = visual(govbbPageCodec.encode(edited));
+    expect(saved.root.children.slice(1)).toEqual(edited.root.children.slice(1));
   } finally {
     editor.dispose();
   }
@@ -102,7 +116,7 @@ describe("frozen GovBB Markdown regressions", () => {
     test(item.path, () => {
       const source = fixture(item.path);
       expect(createHash("sha256").update(source).digest("hex")).toBe(item.sha256);
-      checkPagePreservation(item.path, source);
+      checkPagePreservation(item.path, source, sourceOnly.has(item.path));
     });
 });
 
@@ -119,8 +133,25 @@ describe("current GovBB landing content", () => {
 
   for (const path of paths)
     test(path, () => {
-      checkPagePreservation(path, readFileSync(new URL(path, directory), "utf8"));
+      checkPagePreservation(
+        path,
+        readFileSync(new URL(path, directory), "utf8"),
+        sourceOnly.has(path) && !convertedActionPages.includes(path),
+      );
     });
+
+  test("StormReady actions round-trip independently of its remaining legacy components", () => {
+    const source = readFileSync(
+      new URL("health-and-emergency-services/stormready/index.md", directory),
+      "utf8",
+    );
+
+    const actions = source.match(/^::::actions\n[\s\S]*?\n::::/m)?.[0];
+
+    if (!actions) throw new Error("StormReady must use an actions directive");
+
+    checkPagePreservation("StormReady actions", actions, false);
+  });
 });
 
 test("birth instructions keep headings, paragraphs and Start actions inside their numbered items", () => {

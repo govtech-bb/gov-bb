@@ -45,10 +45,15 @@ Each benefit has its own rules. How much you receive may depend on your earnings
 
 NIS for self-employed workers does not include unemployment benefit.
 
-<buttons>
-<link-button href="/money-financial-support/national-insurance-for-self-employed-workers/form">Estimate how much to pay</link-button>
-<link-button href="/money-financial-support/national-insurance-for-self-employed-workers#make-a-payment" variant="secondary">See how to make a payment</link-button>
-</buttons>
+::::actions
+:::action{href="/money-financial-support/national-insurance-for-self-employed-workers/form"}
+Estimate how much to pay
+:::
+
+:::action{href="/money-financial-support/national-insurance-for-self-employed-workers#make-a-payment" variant="secondary"}
+See how to make a payment
+:::
+::::
 
 ## Get help
 
