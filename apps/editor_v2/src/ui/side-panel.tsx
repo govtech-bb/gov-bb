@@ -60,8 +60,8 @@ function SidePanelRoot({ panel, label, inert, children }: RootProps) {
         inert={inert}
         className={cn("w-80 shrink-0 border-s border-line bg-white text-14 text-ink", motion)}
       >
-        {/* In view as the page scrolls, under the document's bar pinned above it */}
-        <div className="sticky top-(--bar-height) max-h-[calc(100dvh-var(--bar-height))] w-80 overflow-y-auto overscroll-contain">
+        {/* In view as the page scrolls, under the document's bar where it's pinned above it */}
+        <div className="sticky top-0 max-h-dvh w-80 overflow-y-auto overscroll-contain bar-pinned:top-(--bar-height) bar-pinned:max-h-[calc(100dvh-var(--bar-height))]">
           <SectionHeading value="h2">{children}</SectionHeading>
         </div>
       </aside>

@@ -3,6 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { ApiFailure, type EditorApi, type PageHistoryEntry } from "../api/client";
 import { pageFieldLabel } from "../api/page-markdown";
 import { historyQuery, pageQuery } from "../api/queries";
+import { formatDayAndTime } from "../ui/dates";
 import { EmptyState } from "../ui/empty-state";
 import { LoadingState } from "../ui/loading-state";
 import { ScreenHeader } from "../ui/screen-header";
@@ -18,8 +19,6 @@ export function parseHistorySearch(search: { readonly service?: unknown }): Hist
 
   return String(service) === service && service ? { service } : {};
 }
-
-const when = new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeStyle: "short" });
 
 /** What each entry says happened, as an author reads it. */
 const ACTIONS: Record<PageHistoryEntry["action"], string> = {
@@ -104,7 +103,7 @@ export function HistoryScreen({
                 by {byWhom(entry)}
               </span>
               <time dateTime={entry.occurred_at} className="text-14 text-muted tabular-nums">
-                {when.format(new Date(entry.occurred_at))}
+                {formatDayAndTime(entry.occurred_at)}
               </time>
               {entry.changed.length > 0 && (
                 <span className="text-14">

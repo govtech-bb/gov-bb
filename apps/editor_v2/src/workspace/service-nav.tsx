@@ -47,6 +47,7 @@ export function ServiceNav({
   const blocked = readOnly ?? deleteBlocked;
   const selected = pages.some((row) => row.document.id === selectedId);
 
+  // A page that isn't public says so in words under its title, which its dot only backs up
   const item = (row: ServiceNavRow, nested: ReactNode[]) => (
     <Sidebar.Item
       key={row.document.id}
@@ -55,10 +56,11 @@ export function ServiceNav({
         row.visibility && (
           <StatusDot
             tone={visibilityTones.get(row.visibility) ?? "neutral"}
-            label={visibilityLabels.get(row.visibility)}
+            label={row.visibility === "public" ? visibilityLabels.get(row.visibility) : undefined}
           />
         )
       }
+      detail={row.visibility && row.visibility !== "public" && visibilityLabels.get(row.visibility)}
       nested={nested.length > 0 ? nested : undefined}
       render={
         <Link

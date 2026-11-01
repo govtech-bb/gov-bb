@@ -21,11 +21,12 @@ const sizes = {
     description: "mt-2 text-16 text-muted",
     actions: "mt-6",
   },
-  // Centred in a table, a card or a dialog
+  // Centred in a table, a card or a dialog. Its title can hold what was searched for, such as a long address, which
+  // wraps rather than widening the table
   section: {
     frame: "flex flex-col items-center px-4 py-16 text-center",
     icon: "mb-3 [&>svg]:size-8",
-    title: "text-16 font-semibold",
+    title: "text-16 font-semibold wrap-anywhere",
     description: "mx-auto mt-1 max-w-120 text-14 text-balance text-muted",
     actions: "mt-4 justify-center",
   },

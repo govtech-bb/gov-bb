@@ -197,6 +197,56 @@ test("with a pending label, both labels share one cell, so it keeps the wider's 
   );
 });
 
+test("pending without an icon, the spinner lays over its label, which keeps the button's width and its name", () => {
+  const parts = (html: string) => [
+    ...new DOMParser().parseFromString(html, "text/html").querySelector("button")!.children,
+  ];
+
+  const [label, spinner] = parts(renderToStaticMarkup(<Button pending>Save</Button>));
+
+  // Still there, so still the button's width and its name, but out of sight under the spinner
+  expect(label!.outerHTML).toBe('<span class="opacity-0">Save</span>');
+  expect(spinner!.classList).toContain("absolute");
+  expect(spinner!.classList).toContain("inset-0");
+  expect(spinner!.querySelector("svg")!.classList).toContain("motion-safe:animate-spin");
+
+  // With an icon, the spinner takes its place and the label stays as it is
+  const withIcon = parts(
+    renderToStaticMarkup(
+      <Button pending icon={<svg />}>
+        Save
+      </Button>,
+    ),
+  );
+
+  expect(withIcon.map((part) => part.tagName)).toEqual(["I", "SPAN"]);
+  expect(withIcon[1]!.outerHTML).toBe("<span>Save</span>");
+});
+
+test("with a pending label and no icon, the spinner leads the pending label in the cell both share", () => {
+  const cell = (html: string) =>
+    new DOMParser().parseFromString(html, "text/html").querySelector("button > .grid")!;
+
+  const idle = cell(renderToStaticMarkup(<Button pendingLabel="Signing out…">Sign out</Button>));
+
+  // Kept in reserve, still, so its width counts before it shows
+  expect(idle.lastElementChild!.querySelector("i > svg")).not.toBeNull();
+  expect(idle.lastElementChild!.querySelector("svg")!.getAttribute("class")).toBeNull();
+
+  const pending = cell(
+    renderToStaticMarkup(
+      <Button pending pendingLabel="Signing out…">
+        Sign out
+      </Button>,
+    ),
+  );
+
+  expect(pending.parentElement!.firstElementChild).toBe(pending);
+  expect(pending.lastElementChild!.querySelector("svg")!.classList).toContain(
+    "motion-safe:animate-spin",
+  );
+});
+
 test("render gives its look to another element, such as the router's link, which keeps its own role", () => {
   const html = renderToStaticMarkup(
     <Button size="md" variant="accent" render={<a href="/services?category=health" />}>

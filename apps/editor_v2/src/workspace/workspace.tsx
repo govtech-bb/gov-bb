@@ -57,6 +57,9 @@ const SIDEBAR_KEY = "govbb-editor:sidebar-collapsed";
 const READ_ONLY =
   "You can read pages, categories and collections but not change them, because you don’t have the editor role. Ask an admin to give it to you.";
 
+/** Why something that needs a role is off, where the roles couldn't be read; the app's banner offers Try again. */
+const UNCHECKED = "We couldn’t check your permissions.";
+
 /** Authenticated API services and page editors; no browser-local workspace is loaded. */
 export function ServiceWorkspace({
   api,
@@ -165,6 +168,7 @@ export function ServiceWorkspace({
 
   const [error, setError] = useState("");
   const [signingOut, setSigningOut] = useState(false);
+  const content = useRef<HTMLElement>(null);
   const sidebar = useSidebar(SIDEBAR_KEY);
   // Always beside the page on a wide screen, so nothing about it is remembered
   const appNav = useSidebar();
@@ -180,7 +184,10 @@ export function ServiceWorkspace({
     (item) => item.id === location?.serviceId,
   );
 
-  const roles = useQuery(rolesQuery(api)).data;
+  const rolesRead = useQuery(rolesQuery(api));
+  const roles = rolesRead.data;
+  // They couldn't be read: what needs them says so, rather than that it needs a role this person may well have
+  const unchecked = !roles && rolesRead.errorUpdateCount > 0;
   // Until the roles load, deleting a public page and changing categories wait rather than offering what the API may
   // refuse
   const approver = roles?.includes("approver") ?? false;
@@ -354,6 +361,31 @@ export function ServiceWorkspace({
           {READ_ONLY}
         </Banner>
       )}
+      {unchecked && (
+        <Banner
+          tone="warning"
+          layout="strip"
+          actions={
+            <Button
+              variant="secondary"
+              pending={rolesRead.isFetching}
+              pendingLabel="Checking permissions…"
+              onClick={(event) => {
+                const button = event.currentTarget;
+
+                void rolesRead.refetch().then(({ data }) => {
+                  // Read, its notice goes, and this button with it: the content takes the focus
+                  if (data && document.activeElement === button) content.current?.focus();
+                });
+              }}
+            >
+              Try again
+            </Button>
+          }
+        >
+          {UNCHECKED} Changes only approvers can make are off until we can.
+        </Banner>
+      )}
       <div className="flex flex-1">
         <AppNav sidebar={appNav} rail={!!location} servicesSearch={servicesSearch} />
         {servicePages && (
@@ -373,12 +405,19 @@ export function ServiceWorkspace({
                 : !approver &&
                     remote.data?.pages.find((page) => page.id === selected?.id)?.visibility ===
                       "public"
-                  ? "Only approvers can delete a public page."
+                  ? unchecked
+                    ? UNCHECKED
+                    : "Only approvers can delete a public page."
                   : undefined
             }
           />
         )}
-        <main id="workspace-content" tabIndex={-1} className="min-w-0 flex-1 outline-none">
+        <main
+          ref={content}
+          id="workspace-content"
+          tabIndex={-1}
+          className="min-w-0 flex-1 outline-none"
+        >
           {/* Keep the sidebar toggle reachable before a page is selected. */}
           {showPages && !selected && <Bar.Root>{showPages}</Bar.Root>}
           {missing && (
@@ -431,9 +470,11 @@ export function ServiceWorkspace({
                 api={api}
                 readOnly={!approver}
                 why={
-                  roles && !approver
-                    ? "Only approvers can add, change, move or delete categories."
-                    : undefined
+                  unchecked
+                    ? UNCHECKED
+                    : roles && !approver
+                      ? "Only approvers can add, change, move or delete categories."
+                      : undefined
                 }
               />
             </section>
@@ -559,6 +600,7 @@ export function ServiceWorkspace({
           api={api}
           open={dialog === "delete"}
           page={deleting}
+          focusAfter={content}
           onClose={() => setDialog(null)}
           onDone={() => {
             setDialog(null);

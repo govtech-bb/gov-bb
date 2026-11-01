@@ -27,7 +27,11 @@ export const Route = createRootRouteWithContext<{
   head: () => ({
     meta: [
       { charSet: "utf-8" },
-      { name: "viewport", content: "width=device-width, initial-scale=1" },
+      // On Android the keyboard shrinks the page, as on iOS, rather than covering a dialog's buttons
+      {
+        name: "viewport",
+        content: "width=device-width, initial-scale=1, interactive-widget=resizes-content",
+      },
     ],
     links: [{ id: "cms-stylesheet", rel: "stylesheet", href: stylesheet }],
   }),

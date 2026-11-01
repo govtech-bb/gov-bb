@@ -13,6 +13,7 @@ import { Banner } from "../../ui/banner";
 import { Button } from "../../ui/button";
 import { ConfirmDialog } from "../../ui/confirm-dialog";
 import { Field } from "../../ui/field";
+import { pressedByTouch } from "../../ui/focus";
 import { FormDialog } from "../../ui/form-dialog";
 import { Input } from "../../ui/input";
 import { toast } from "../../ui/toast";
@@ -150,12 +151,13 @@ export function RecordDialog({
       `${recordKey || collection.key}.json`,
     );
 
-  // The stale notice goes once it's answered, taking its focused button with it: the first field takes the focus
+  // The stale notice goes once it's answered, taking its focused button with it: the first field takes the focus. After
+  // a tap, where that would bring up the keyboard, the dialog keeps it itself, as Base UI gives it the lost focus
   const body = useRef<HTMLDivElement>(null);
   const [answered, setAnswered] = useState(0);
 
   useEffect(() => {
-    if (answered) body.current?.querySelector("input")?.focus();
+    if (answered && !pressedByTouch()) body.current?.querySelector("input")?.focus();
   }, [answered]);
 
   // Save the next change over the saved version, keeping what's typed

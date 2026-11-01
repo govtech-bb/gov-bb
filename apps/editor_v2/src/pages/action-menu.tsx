@@ -60,7 +60,10 @@ export function PageActionList({
           {error}
         </p>
       )}
-      {!actions.length && <p className={listEmpty}>No content blocks match your search.</p>}
+      {/* Keep the empty live region accessible without adding a blank row. */}
+      <p role="status" className={actions.length ? "sr-only" : listEmpty}>
+        {!actions.length && "No content blocks match your search."}
+      </p>
       {searching
         ? actions.map(option)
         : sectioned(actions).map(({ group: heading, items }) => (

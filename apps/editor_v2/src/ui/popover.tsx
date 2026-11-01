@@ -1,5 +1,5 @@
 import { Popover as BasePopover } from "@base-ui/react/popover";
-import type { ReactNode } from "react";
+import type { ReactNode, Ref } from "react";
 import { cn } from "../cn";
 import { surface, surfaceMotion, type PopupName } from "./surface";
 import { InToolbar } from "./toolbar";
@@ -47,6 +47,8 @@ type ContentProps = Pick<
     container?: HTMLElement | null;
     /** A dialog unless said otherwise: `presentation` for a list the focus never enters, such as a typeahead's. */
     role?: "dialog" | "presentation";
+    /** The popup itself, such as for `initialFocus` to give it the focus. */
+    ref?: Ref<HTMLDivElement>;
     children: ReactNode;
   };
 
@@ -64,6 +66,7 @@ function PopoverContent({
   className,
   container,
   role,
+  ref,
   children,
   ...placement
 }: ContentProps) {
@@ -76,6 +79,7 @@ function PopoverContent({
         className="z-popup outline-none"
       >
         <BasePopover.Popup
+          ref={ref}
           role={role ?? "dialog"}
           initialFocus={initialFocus}
           finalFocus={finalFocus}

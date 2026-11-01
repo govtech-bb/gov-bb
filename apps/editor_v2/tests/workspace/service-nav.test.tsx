@@ -133,7 +133,7 @@ test("Delete page says why it can't run yet, instead of failing after the author
   expect(deleteButton().hasAttribute("aria-describedby")).toBe(false);
 });
 
-test("a page sits in the list under its parent, dotted with how far it's published", async () => {
+test("a page sits in the list under its parent, dotted with how far it's published, and in words where it isn't public", async () => {
   const row = (
     id: string,
     title: string,
@@ -159,15 +159,25 @@ test("a page sits in the list under its parent, dotted with how far it's publish
   });
 
   const item = (name: string) =>
-    [...host.querySelectorAll("li")].find((li) => li.firstElementChild?.textContent === name)!;
+    [...host.querySelectorAll("li")].find(
+      (li) => li.firstElementChild?.querySelector("[data-words]")?.textContent === name,
+    )!;
+
+  const link = (name: string) => item(name).firstElementChild!;
+  const names = ["Entry page", "Fees", "Refunds", "Contact"];
 
   expect(item("Refunds").parentElement?.closest("li")).toBe(item("Fees"));
   expect(item("Contact").parentElement?.closest("li")).toBeNull();
+  // Public is its dot, named; anything else is said under the title too, so its dot only backs the words up
+  expect(names.map((name) => link(name).textContent)).toEqual([
+    "Entry page",
+    "FeesPreview link only",
+    "RefundsDraft (hidden)",
+    "ContactDraft (hidden)",
+  ]);
   expect(
-    ["Entry page", "Fees", "Refunds", "Contact"].map((name) =>
-      item(name).querySelector('[role="img"]')?.getAttribute("aria-label"),
-    ),
-  ).toEqual(["Public", "Preview link only", "Draft (hidden)", "Draft (hidden)"]);
+    names.map((name) => link(name).querySelector('[role="img"]')?.getAttribute("aria-label")),
+  ).toEqual(["Public", undefined, undefined, undefined]);
 });
 
 test("while a service's pages load, its sidebar shows what's known and offers nothing yet", async () => {

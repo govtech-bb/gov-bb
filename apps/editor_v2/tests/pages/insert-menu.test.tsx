@@ -67,3 +67,30 @@ test("a search ranks one list, rows show their Markdown, and the footer describe
   );
   expect(footer()).toBe("Name part of a section, under a Heading 2.");
 });
+
+test("a search that finds no blocks is read out from a status line that was there all along", async () => {
+  await renderPageEditor("Intro\n");
+
+  const add = [...document.querySelectorAll("button")].find(
+    (button) => button.textContent === "Add content",
+  );
+
+  await act(async () => add!.click());
+  const menu = pageControl(".page-insert-menu");
+  const status = menu.querySelector('[role="status"]')!;
+
+  expect(status.textContent).toBe("");
+  expect(status.classList).toContain("sr-only");
+  expect(status.classList).not.toContain("empty:hidden");
+
+  const search = pageControl<HTMLInputElement>('[aria-label="Search page content"]');
+
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(search, "zzzz");
+    search.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  expect(menu.querySelectorAll('[role="option"]')).toHaveLength(0);
+  expect(menu.querySelector('[role="status"]')).toBe(status);
+  expect(status.textContent).toBe("No content blocks match your search.");
+  expect(status.classList).not.toContain("sr-only");
+});

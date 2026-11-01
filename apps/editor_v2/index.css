@@ -197,6 +197,16 @@
 /* Suppress hover and active feedback for disabled controls, including focusable aria-disabled buttons. */
 @custom-variant pressable (&:not(:disabled, [aria-disabled="true"]));
 
+/* Where a document's bar stays pinned to the top as the page scrolls under it: from a tablet's width, on a screen tall
+   enough to spare it. A phone on its side, about 390px tall, keeps its height for the writing */
+@custom-variant bar-pinned {
+  @variant md {
+    @media (height >= 30rem) {
+      @slot;
+    }
+  }
+}
+
 /*
  * The form on the canvas: GovBB's form controls a step denser than citizens get them (18px, not 20; 52px controls,
  * not 66; 36px radios, not 48), as GovBB's own docs run at 18px. Everything else is the citizen form's.
@@ -261,6 +271,16 @@
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
   }
+  /* No pull-to-refresh: on Android, pulling down at the top of a page would reload the editor and lose its undo
+     history. Sideways stays the browser's, for going back */
+  html,
+  body {
+    overscroll-behavior-y: none;
+  }
+  /* Two quick taps on a control, such as Undo twice or the next page and the next, are two taps rather than a zoom */
+  :is(a, button, input, select, textarea, label, summary, [role="button"]) {
+    touch-action: manipulation;
+  }
   ::selection {
     background: var(--govbb-teal-20);
     color: var(--color-ink);
@@ -281,7 +301,7 @@
   /* Under a document's bar pinned to the top, what the page brings into view, such as the next field the keyboard
      reaches, stops below the bar rather than behind it */
   html:has([data-document-bar]:not([hidden])) {
-    @variant md {
+    @variant bar-pinned {
       scroll-padding-top: var(--bar-height);
     }
   }

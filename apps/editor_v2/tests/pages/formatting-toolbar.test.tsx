@@ -2,7 +2,13 @@
 import { act } from "react";
 import { beforeEach, expect, test, vi } from "vitest";
 import { $getSelection } from "lexical";
-import { pageControl, pageEditor, renderPageEditor, selectPageWords } from "../helpers/page-editor";
+import {
+  pageControl,
+  pageEditor,
+  renderPageEditor,
+  selectPageText,
+  selectPageWords,
+} from "../helpers/page-editor";
 
 // jsdom lays nothing out, where the toolbar anchors to the selected words
 beforeEach(() => {
@@ -36,4 +42,26 @@ test("Alt+F10 takes the keyboard into the formatting toolbar, and Esc there goes
   // Back to the words, still selected. jsdom moves no focus for a selection, where a browser does
   expect(focus).toHaveBeenCalled();
   expect(pageEditor().read(() => $getSelection()?.getTextContent())).toBe("Fees for a licence");
+});
+
+test("a selection made by touch shows the toolbar, with no mouseup or keyup to wait for", async () => {
+  await renderPageEditor("Fees for a licence\n");
+  const text = pageControl(".page-editable");
+
+  const press = (pointerType: string) =>
+    act(async () => {
+      text.dispatchEvent(
+        Object.assign(new Event("pointerdown", { bubbles: true }), { pointerType }),
+      );
+    });
+
+  // A mouse's selection still waits for the button to come up
+  await press("mouse");
+  await selectPageWords("Fees for a licence");
+  expect(toolbar()).toBeNull();
+  await selectPageText("Fees for a licence");
+
+  await press("touch");
+  await selectPageWords("Fees for a licence");
+  expect(toolbar()).not.toBeNull();
 });

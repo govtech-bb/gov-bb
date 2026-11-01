@@ -3,9 +3,12 @@ import { useRender } from "@base-ui/react/use-render";
 import { ArrowUpRight } from "@phosphor-icons/react";
 import { cn } from "../cn";
 
-/** GovBB's link: teal and underlined, then ink on a teal tint under the pointer. Button's link variant looks the same. */
+/**
+ * GovBB's link: teal and underlined, then ink on a teal tint under the pointer, and on GovBB's gold while pressed, which
+ * is all a tap shows. Button's link variant looks the same.
+ */
 export const link =
-  "text-interactive underline decoration-[max(1px,0.0625em)] underline-offset-[0.1em] hover:bg-interactive-subtle hover:text-ink hover:no-underline";
+  "text-interactive underline decoration-[max(1px,0.0625em)] underline-offset-[0.1em] hover:bg-interactive-subtle hover:text-ink hover:no-underline active:bg-gold active:text-ink active:no-underline";
 
 type TextLinkProps = useRender.ComponentProps<"a"> & {
   /** Another site, opened in a new tab: an arrow shows it, and “(opens in a new tab)” tells screen readers. */
