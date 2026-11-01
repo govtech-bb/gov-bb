@@ -37,12 +37,13 @@ export const fieldList = "min-h-0 overflow-y-auto overscroll-contain py-1 outlin
 
 /**
  * A row in a menu or a select, or in a list that marks its highlighted row with `data-highlighted`. Highlighted it turns
- * navy with white text, the row you can find at a glance while arrowing through; held down, it's pressed in. A disabled
+ * navy with white text, the row you can find at a glance while arrowing through, and in forced colours, which drop the
+ * navy, it's outlined; held down, it's pressed in. A disabled
  * row fades but stays reachable from the keyboard. Where some rows in the popup have an icon, the others indent so
  * every label starts on the same line.
  */
 export const row =
-  "group/row relative mx-1 flex min-h-8 w-[calc(100%-0.5rem)] cursor-pointer items-center gap-2 rounded-sm px-2.5 py-1.5 text-start text-14 text-ink outline-none select-none data-highlighted:bg-blue-80 data-highlighted:text-white active:shadow-press data-disabled:pointer-events-none data-disabled:opacity-50 group-has-[[data-icon]]/popup:not-has-[[data-icon]]:ps-8.5 pointer-coarse:min-h-11 max-sm:text-16";
+  "group/row relative mx-1 flex min-h-8 w-[calc(100%-0.5rem)] cursor-pointer items-center gap-2 rounded-sm px-2.5 py-1.5 text-start text-14 text-ink outline-none select-none data-highlighted:outline-hidden data-highlighted:bg-blue-80 data-highlighted:text-white active:shadow-press data-disabled:pointer-events-none data-disabled:opacity-50 group-has-[[data-icon]]/popup:not-has-[[data-icon]]:ps-8.5 pointer-coarse:min-h-11 max-sm:text-16";
 
 /**
  * "No results" in a list popup, the one line for a search that finds nothing: a row's height, its text where the
@@ -55,7 +56,7 @@ export const listFooter =
   "shrink-0 border-t border-line px-3.5 py-2 text-12 leading-4 text-pretty text-muted line-clamp-2";
 
 /** A row that is a plain button rather than a menu item: it highlights on hover and keyboard focus. */
-export const buttonRow = `${row} hover:bg-blue-80 hover:text-white focus-visible:bg-blue-80 focus-visible:text-white disabled:pointer-events-none disabled:opacity-50 [&:is(:hover,:focus-visible)_[data-icon]]:text-white`;
+export const buttonRow = `${row} hover:bg-blue-80 hover:text-white focus-visible:outline-hidden focus-visible:bg-blue-80 focus-visible:text-white disabled:pointer-events-none disabled:opacity-50 [&:is(:hover,:focus-visible)_[data-icon]]:text-white`;
 
 /** The icon before a row's label. Carries `data-icon`, which lines up the rows without one. */
 export const rowIcon =
