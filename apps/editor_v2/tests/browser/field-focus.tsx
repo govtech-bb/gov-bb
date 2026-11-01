@@ -2,6 +2,7 @@ import { createRoot } from "react-dom/client";
 import { Field } from "../../src/ui/field";
 import { Input } from "../../src/ui/input";
 import { NativeSelect } from "../../src/ui/native-select";
+import { Select } from "../../src/ui/select";
 import { Textarea } from "../../src/ui/textarea";
 import "../../index.css";
 
@@ -23,5 +24,13 @@ createRoot(host).render(
     <Field label="Form ID">
       <Input defaultValue="permit-application" />
     </Field>
+    <Select
+      label="Category"
+      items={[
+        { value: "travel", label: "Travel" },
+        { value: "work", label: "Work" },
+      ]}
+      defaultValue="travel"
+    />
   </form>,
 );
