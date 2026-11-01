@@ -60,7 +60,7 @@ The reusable **JSON** dialog ([`FormJsonDialog`](../src/host/form-json-dialog.ts
 
 `DraftStore.replacePrepared` validates and prepares the candidate, checks its captured snapshot token, then applies one undoable replacement in memory. Rejected or failed replacements preserve available prior/candidate data for download. There is no journal, cleanup/retry transaction, autosave or browser recovery.
 
-The workspace's Add document operation creates API start/supporting pages only. Reusable form editors, registry creation and native import/export remain available to embedding hosts and test-only fixtures. Registry creation allocates fresh identities; ordinary JSON import preserves authored identities.
+The workspace's Add page operation creates API start/supporting pages only. Reusable form editors, registry creation and native import/export remain available to embedding hosts and test-only fixtures. Registry creation allocates fresh identities; ordinary JSON import preserves authored identities.
 
 Generic editing state receives explicit source and codec/prepared-state contracts; it imports no native schema. Content-only editors can inject a different codec. Host read-only state remains independent of source pauses.
 

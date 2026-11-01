@@ -37,6 +37,8 @@ type PageHost = {
   server?: SaveStateProps;
   /** Sends the changes on: Publish changes, or Save. */
   publish?: ReactNode;
+  /** What the page itself can do, such as its history and deleting it: a menu in its bar. */
+  actions?: ReactNode;
   notice?: ReactNode;
   /** A notice that arrives while the page is being written, beside where it stands in its bar. */
   alert?: DocumentAlert;
@@ -65,6 +67,7 @@ function PageDraft({
   settings,
   server,
   publish,
+  actions,
   notice,
   alert,
   linkPages,
@@ -89,6 +92,7 @@ function PageDraft({
           nav={nav}
           title={<SourceTitle source={draft.committed} />}
           save={server}
+          more={actions}
           notices={notice}
           alert={alert}
         />
@@ -158,6 +162,7 @@ function PageDraft({
           {tools?.about}
         </>
       }
+      more={!tools && actions}
       publish={publish}
       settings={!tools && <SidePanel.Toggle panel={panel} label="Page settings" />}
       notices={notices}

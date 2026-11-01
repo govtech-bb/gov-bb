@@ -17,6 +17,13 @@ export function DateCell(): ReactNode {
 }
 
 /**
+ * A row's name as the link that opens it: ink rather than a link's teal, so a column of them reads as titles, and
+ * underlined while its row is pointed at or it has the focus. The table's rows are its `group/row`.
+ */
+export const rowTitle =
+  "rounded-xs text-ink underline-offset-4 outline-offset-2 group-hover/row:underline focus-visible:underline focus-visible:outline-3 focus-visible:outline-focus";
+
+/**
  * A row's leading cell: its name, its address in small monospace under it, and, while the table is narrow, the
  * details its folded secondary columns would show. The row decides what each part is, such as a link to open it or
  * plain text; long names and addresses wrap rather than widen the table.

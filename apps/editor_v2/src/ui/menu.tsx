@@ -204,6 +204,21 @@ function MenuGroup({ label, children }: { label?: ReactNode; children: ReactNode
   );
 }
 
+/**
+ * Why the row above can't be chosen yet, such as a Delete that waits for the pages under it to go: under the row, level
+ * with its words. The row names it with `aria-describedby`, so its reason is read out with it.
+ */
+function MenuNote({ id, children }: { id: string; children: ReactNode }) {
+  return (
+    <p
+      id={id}
+      className="max-w-64 ps-9.5 pe-3.5 pt-0.5 pb-2 text-12 leading-4 text-pretty text-muted"
+    >
+      {children}
+    </p>
+  );
+}
+
 /** A rule between rows that aren't in groups, such as before a lone Delete. */
 function MenuSeparator() {
   return <BaseMenu.Separator className={separator} />;
@@ -223,6 +238,7 @@ export const Menu = {
   RadioGroup: BaseMenu.RadioGroup,
   RadioItem: MenuRadioItem,
   Separator: MenuSeparator,
+  Note: MenuNote,
   Sub: BaseMenu.SubmenuRoot,
   SubTrigger: MenuSubTrigger,
   SubContent: MenuSubContent,

@@ -1,5 +1,6 @@
 import { Checks, Database, Files, Folders } from "@phosphor-icons/react";
 import { Link, useRouterState } from "@tanstack/react-router";
+import type { ReactNode } from "react";
 import type { DrawerPanel } from "../ui/drawer";
 import { Sidebar } from "../ui/sidebar";
 import type { ServicesSearch } from "./services-search";
@@ -9,12 +10,15 @@ export function AppNav({
   sidebar,
   rail,
   servicesSearch,
+  account,
 }: {
   /** Whether it shows, beside the page or as a drawer: `useSidebar`. */
   sidebar: DrawerPanel;
   rail: boolean;
   /** The Services list's search, filters and page, kept as the author left them. */
   servicesSearch: ServicesSearch;
+  /** Who's signed in and Sign out: at the drawer's foot on a phone, where the app's bar has no room for them. */
+  account?: ReactNode;
 }) {
   const path = useRouterState({ select: (state) => state.location.pathname });
 
@@ -53,6 +57,9 @@ export function AppNav({
             Collections
           </Sidebar.Item>
         </Sidebar.Group>
+        {!sidebar.wide && account && (
+          <div className="mt-6 border-t border-line px-3 pt-4 sm:hidden">{account}</div>
+        )}
       </Sidebar.Content>
     </Sidebar.Root>
   );
