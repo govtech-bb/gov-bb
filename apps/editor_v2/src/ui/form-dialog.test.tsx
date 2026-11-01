@@ -60,6 +60,52 @@ test("its fields and buttons are a form, which sends without leaving, after a Ca
   await act(async () => root.unmount());
 });
 
+test("⌘ or Ctrl+Enter sends it from a textarea, where Enter is a new line, but not while it's pending", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  const onSubmit = vi.fn();
+  const root = createRoot(document.body.appendChild(document.createElement("div")));
+
+  const task = (working: boolean) => (
+    <FormDialog
+      open
+      onOpenChange={() => {}}
+      title="Request changes"
+      description="Say what needs to change before this is published."
+      pending={working}
+      onSubmit={onSubmit}
+      actions={
+        <Button type="submit" pending={working} pendingLabel="Sending…">
+          Request changes
+        </Button>
+      }
+    >
+      <textarea aria-label="What needs to change" />
+    </FormDialog>
+  );
+
+  await act(async () => root.render(task(false)));
+
+  const press = (keys: KeyboardEventInit) =>
+    act(async () => {
+      document
+        .querySelector('[aria-label="What needs to change"]')!
+        .dispatchEvent(
+          new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true, ...keys }),
+        );
+    });
+
+  await press({});
+  expect(onSubmit).not.toHaveBeenCalled();
+  await press({ metaKey: true });
+  await press({ ctrlKey: true });
+  expect(onSubmit).toHaveBeenCalledTimes(2);
+
+  await act(async () => root.render(task(true)));
+  await press({ metaKey: true });
+  expect(onSubmit).toHaveBeenCalledTimes(2);
+  await act(async () => root.unmount());
+});
+
 test("while it's pending, Cancel, its close button and Esc wait for the answer", async () => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   const onOpenChange = vi.fn();

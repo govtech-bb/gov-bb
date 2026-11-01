@@ -3,7 +3,7 @@ import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, expect, test, vi } from "vitest";
-import { Button } from "./button";
+import { blockHandle, Button } from "./button";
 
 const classes = (html: string) => /class="([^"]*)"/.exec(html)?.[1]?.split(" ") ?? [];
 
@@ -47,6 +47,19 @@ test("is at least 44px each way under a coarse pointer, except as a link in a li
 
   expect(classes(renderToStaticMarkup(<Button variant="link">Line 3</Button>))).not.toContain(
     "pointer-coarse:min-h-11",
+  );
+});
+
+test("a long press doesn't select a button's words, a rail's included, except a link's in a line of text", () => {
+  for (const html of [
+    renderToStaticMarkup(<Button size="xs" aria-label="Remove" />),
+    renderToStaticMarkup(<Button variant="accent">Publish changes</Button>),
+  ])
+    expect(classes(html)).toContain("select-none");
+
+  expect(blockHandle.split(" ")).toContain("select-none");
+  expect(classes(renderToStaticMarkup(<Button variant="link">Line 3</Button>))).not.toContain(
+    "select-none",
   );
 });
 

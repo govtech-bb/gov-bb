@@ -49,6 +49,15 @@ test("typing in the title leaves the page's selection where it is, and Cmd+Z the
   expect(title.value).toBe("Old title");
 });
 
+test("the title and introduction show the focus, with the hairline the preview's fields have", async () => {
+  await renderPageEditor("---\ntitle: Licences\n---\n\nBody text\n", <PageTitleField />);
+
+  for (const label of ["Page title", "Introduction"]) {
+    expect(field(label).classList).toContain("heading-field-focus");
+    expect(field(label).classList).not.toContain("outline-none");
+  }
+});
+
 const press = (target: Element, key: string, init: KeyboardEventInit = {}) =>
   act(async () => {
     target.dispatchEvent(

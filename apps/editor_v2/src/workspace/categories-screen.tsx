@@ -461,7 +461,7 @@ export function CategoriesScreen({
                 ? result.error.status === 401
                   ? "Your session has ended. Sign in again, then move the category."
                   : // A refusal, such as no editor role: the API's reason, since trying again won't help
-                    result.error.message
+                    result.error.message || "You do not have access to change categories."
                 : "The category could not be moved. Try again.",
           });
       }

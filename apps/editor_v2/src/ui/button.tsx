@@ -11,7 +11,7 @@ import { Tip } from "./tooltip";
 
 // A rail's buttons: tinted under the pointer and while their menu is open, and pressed in while held, as a Button is
 export const blockHandle =
-  "grid h-6 cursor-pointer place-items-center rounded-sm transition-colors hover:bg-hover active:shadow-press aria-expanded:bg-hover [&>svg]:text-muted [&>svg]:transition-colors hover:[&>svg]:text-ink aria-expanded:[&>svg]:text-ink";
+  "grid h-6 cursor-pointer place-items-center rounded-sm transition-colors select-none hover:bg-hover active:shadow-press aria-expanded:bg-hover [&>svg]:text-muted [&>svg]:transition-colors hover:[&>svg]:text-ink aria-expanded:[&>svg]:text-ink";
 
 // Heights match Input so adjacent controls align.
 const sizes = {
@@ -57,7 +57,8 @@ export type ButtonVariant = keyof typeof variants;
 const button = (size: Size = "sm", variant: ButtonVariant = "ghost") =>
   cn(
     "relative inline-flex shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-sm text-center align-middle leading-none font-semibold no-underline outline-offset-2 transition-colors focus-visible:outline-3 focus-visible:outline-focus disabled:cursor-not-allowed disabled:opacity-50 aria-disabled:not-data-pending:cursor-not-allowed aria-disabled:not-data-pending:opacity-50",
-    variant !== "link" && touchTarget,
+    // A link in a line of text keeps to the text: no touch target, and its words select with the rest
+    variant !== "link" && `select-none ${touchTarget}`,
     sizes[size],
     variants[variant],
   );

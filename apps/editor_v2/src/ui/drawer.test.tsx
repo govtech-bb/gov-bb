@@ -67,6 +67,23 @@ test("it comes from the edge it's given", async () => {
   expect(dialog()?.parentElement?.className).toContain("justify-start");
 });
 
+test("the page dims in the panel's time, so the two arrive and leave together", async () => {
+  await act(async () => root.render(<Panel side="end" />));
+
+  // The dimming behind the panel
+  const backdrop = document.querySelector('[class~="bg-ink/40"]')!;
+
+  for (const timing of [
+    "duration-(--duration-drawer-in)",
+    "data-ending-style:duration-(--duration-drawer-out)",
+  ]) {
+    expect(backdrop.classList).toContain(timing);
+    expect(dialog()?.classList).toContain(timing);
+  }
+
+  expect(backdrop.className).not.toContain("--duration-dialog");
+});
+
 test("its content can be put out of reach while the title row stays usable", async () => {
   await act(async () => root.render(<Panel side="end" inert />));
 
