@@ -180,7 +180,7 @@ test("a page sits in the list under its parent, dotted with how far it's publish
   ).toEqual(["Public", undefined, undefined, undefined]);
 });
 
-test("while a service's pages load, its sidebar shows what's known and offers nothing yet", async () => {
+test("while a service's pages load, its sidebar says so, shows what's known and offers nothing yet", async () => {
   const entry = pageDocumentFromApi({ id: "entry", title: "Severance", role: "entry" });
   await render({ rows: [top(entry)], loading: true, onDelete: () => {} });
 
@@ -189,6 +189,10 @@ test("while a service's pages load, its sidebar shows what's known and offers no
 
   expect(rows()).toEqual(["Entry page"]);
   expect(host.textContent).toContain("Loading pages…");
+  // Read out once, as loading rather than as an empty list
+  expect([...host.querySelectorAll('[role="status"]')].map((line) => line.textContent)).toEqual([
+    "Loading pages…",
+  ]);
   expect(actions()).toHaveLength(0);
 
   await render({ rows: [top(entry)], onDelete: () => {} });

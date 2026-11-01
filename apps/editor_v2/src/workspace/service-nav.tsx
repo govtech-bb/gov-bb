@@ -93,7 +93,7 @@ export function ServiceNav({
       <Sidebar.Content>
         <Sidebar.Group label="Pages">{items(pages)}</Sidebar.Group>
         {loading ? (
-          <Sidebar.Empty>Loading pages…</Sidebar.Empty>
+          <Sidebar.Loading>Loading pages…</Sidebar.Loading>
         ) : (
           pages.length === 0 && (
             <Sidebar.Empty>Add an entry page to explain this service.</Sidebar.Empty>

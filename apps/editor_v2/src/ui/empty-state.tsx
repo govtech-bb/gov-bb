@@ -17,7 +17,7 @@ const sizes = {
   page: {
     frame: "mx-auto w-full max-w-160 px-6 py-12",
     icon: "mb-4 [&>svg]:size-10",
-    title: "text-28 font-semibold",
+    title: "text-28 font-semibold text-balance",
     description: "mt-2 text-16 text-muted",
     actions: "mt-6",
   },

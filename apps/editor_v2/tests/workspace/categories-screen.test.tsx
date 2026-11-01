@@ -942,6 +942,25 @@ test("a move the API refuses (403) says why, not to try again", async () => {
   expect(names()).toEqual(["Education", "Health", "Youth and community", "Sport", "Arts"]);
 });
 
+test("a move refused (403) without the API's reason says so in words, not as a status code", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: RequestInfo | URL, init?: RequestInit) =>
+      init?.method === "PUT"
+        ? new Response("Forbidden", { status: 403 })
+        : server.fetch(input, init),
+    ),
+  );
+  await render();
+  await loaded();
+  await press("Move Health up");
+
+  await until(() =>
+    expect(document.body.textContent).toContain("You do not have access to change categories."),
+  );
+  expect(document.body.textContent).not.toMatch(/HTTP|403/);
+});
+
 test("a move whose answer was lost is checked against the list before another can be sent", async () => {
   await render();
   await loaded();
@@ -1027,6 +1046,67 @@ test("a field's problem shows on it, which takes the focus, whether the dialog o
   );
   expect(document.activeElement).toBe(control("Slug"));
   expect(control("Name").value).toBe("Schools");
+});
+
+test("a field's problem goes once the author changes that field, and the others' stay", async () => {
+  await render();
+  await loaded();
+  await press("Add category");
+  await enter("Slug", "education");
+  await submit();
+
+  const invalid = () =>
+    ["Name", "Slug"].filter((label) => control(label).getAttribute("aria-invalid") === "true");
+
+  expect(invalid()).toEqual(["Name", "Slug"]);
+  expect(document.activeElement).toBe(control("Name"));
+
+  await enter("Name", "Schools");
+
+  expect(invalid()).toEqual(["Slug"]);
+  expect(dialog()?.textContent).not.toContain("Enter a name");
+  expect(dialog()?.textContent).toContain("Another category already uses this slug");
+  // Fixing one doesn't send the focus on to the next
+  expect(document.activeElement).toBe(control("Name"));
+
+  await enter("Slug", "schools");
+
+  expect(invalid()).toEqual([]);
+  expect(server.writes).toHaveLength(0);
+});
+
+test("a new category's slug follows its name, and so does the slug's problem", async () => {
+  await render();
+  await loaded();
+  await press("Add category");
+  await submit();
+
+  expect(dialog()?.textContent).toContain("Enter a name");
+  expect(dialog()?.textContent).toContain("Enter a slug");
+
+  await enter("Name", "Dance");
+
+  expect(control("Slug").value).toBe("dance");
+  expect(dialog()?.textContent).not.toContain("Enter a slug");
+});
+
+test("a refusal without the content API's own words is told in the dialog's, never as a status code", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: RequestInfo | URL, init?: RequestInit) =>
+      init?.method === "POST" ? new Response(null, { status: 429 }) : server.fetch(input, init),
+    ),
+  );
+  await render();
+  await loaded();
+  await press("Add category");
+  await enter("Name", "Dance");
+  await submit();
+
+  await until(() =>
+    expect(dialog()?.textContent).toContain("The category could not be added. Try again."),
+  );
+  expect(dialog()?.textContent).not.toMatch(/HTTP|429/);
 });
 
 test("edits a category over the version it opened with", async () => {

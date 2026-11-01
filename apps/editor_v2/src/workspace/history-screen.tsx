@@ -88,13 +88,13 @@ export function HistoryScreen({
         <EmptyState title="No history yet" description="Changes to this page will show here." />
       ) : history.isError && !history.data ? (
         <LoadFailure
-          noun="this page's history"
+          noun="this page’s history"
           error={history.error}
           retrying={history.isFetching}
           retry={() => void history.refetch()}
         />
       ) : !entries ? (
-        <LoadingState label="Loading the page's history…" />
+        <LoadingState label="Loading the page’s history…" />
       ) : (
         <>
           <ol ref={list} className="divide-y divide-line rounded-sm border border-line bg-white">

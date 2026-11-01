@@ -175,9 +175,15 @@
   --z-index-toast: 70;
 }
 
-/* The height of every bar: the header, a document's bar and a drawer's (src/ui/bar.tsx) */
+/* The height of every bar: the header, a document's bar and a drawer's (src/ui/bar.tsx). Under a coarse pointer, 44px
+   controls (touchTarget) and their padding make a bar 60px, and a light bar's rule adds 1px: every bar takes the taller
+   height, so rules side by side line up */
 :root {
   --bar-height: 3.5rem;
+
+  @variant pointer-coarse {
+    --bar-height: calc(3.75rem + 1px);
+  }
 }
 
 /* Shared enter/exit durations. Hover feedback uses the 120ms default. */
@@ -190,7 +196,7 @@
   --duration-panel-out: 150ms;
   --duration-drawer-in: 300ms;
   --duration-drawer-out: 200ms;
-  --duration-toast-in: 400ms;
+  --duration-toast-in: 250ms;
   --duration-toast-out: 200ms;
 }
 
@@ -259,6 +265,16 @@
   background-color: var(--color-line);
 }
 
+/* The focus of a page's title and introduction, fields set as the words they edit, in the writer and the preview
+   (site-preview.css) alike: a hairline clear of the words. It replaces the global focus shadow */
+@utility heading-field-focus {
+  &:focus-visible {
+    outline: 1px solid var(--govbb-grey-60);
+    outline-offset: 6px;
+    box-shadow: none;
+  }
+}
+
 @layer base {
   /* Prevent horizontal shifts when content starts or stops scrolling. */
   html {
@@ -266,7 +282,11 @@
     line-height: 1.15;
     color: var(--color-ink);
     background: var(--color-white);
+    /* Light only: a browser's forced dark mode would darken the editor, and the preview of the site with it */
+    color-scheme: only light;
     font-family: var(--font-sans);
+    /* Every weight and italic in use is loaded: one that isn't shows plainly rather than faked */
+    font-synthesis: none;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;

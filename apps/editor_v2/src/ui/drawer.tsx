@@ -130,7 +130,13 @@ export function Drawer({
       swipeDirection={side === "start" ? "left" : "right"}
     >
       <BaseDrawer.Portal>
-        <BaseDrawer.Backdrop className={backdrop} />
+        {/* Dims in the panel's time, not a dialog's, so the two arrive and leave together */}
+        <BaseDrawer.Backdrop
+          className={cn(
+            backdrop,
+            "duration-(--duration-drawer-in) data-ending-style:duration-(--duration-drawer-out)",
+          )}
+        />
         <BaseDrawer.Viewport
           className={cn(
             "fixed inset-0 z-popup flex",

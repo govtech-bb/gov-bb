@@ -1013,7 +1013,7 @@ function ComponentSettings({
               }}
             >
               <option value="url">Link</option>
-              <option value="linked-form">Page's linked form</option>
+              <option value="linked-form">Page’s linked form</option>
               <option value="form">Registered form</option>
             </NativeSelect>
           </Field>

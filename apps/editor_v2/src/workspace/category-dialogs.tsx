@@ -88,7 +88,10 @@ function refusalMessages(error: CategoryRefusal, otherwise: string) {
     case "CategoryConflict":
     case "CategoryNotFound":
     case "CategoryRefused":
-      return [error.status === 400 || error.status >= 500 ? otherwise : error.message];
+      // The content API's own words, unless it gave none
+      return [
+        error.status === 400 || error.status >= 500 || !error.message ? otherwise : error.message,
+      ];
     default: {
       const unexpected: never = error;
 
@@ -190,6 +193,9 @@ export function CategoryDialog({
   const [parentId, setParentId] = useState(category?.parent_id ?? "");
   const [description, setDescription] = useState(category?.description ?? "");
   const [problems, setProblems] = useState<readonly CategoryProblem[]>([]);
+  // What the fields held when last checked: a field's problem, the dialog's or the API's, is about that value, so it
+  // goes once the author changes the field
+  const [checked, setChecked] = useState<CategoryFields>();
   const [attempt, setAttempt] = useState<Attempt>();
   // What was last sent, to recognise it in the list when its answer was lost
   const sent = useRef<CategoryFields>(undefined);
@@ -282,7 +288,9 @@ export function CategoryDialog({
   const refused = refusedFields(attempt);
 
   const errorOf = (field: keyof CategoryFields) =>
-    [...problems, ...refused].find((item) => item.field === field)?.message;
+    fields[field] === checked?.[field]
+      ? [...problems, ...refused].find((item) => item.field === field)?.message
+      : undefined;
 
   const messages = [
     ...(deletedMeanwhile && attempt?._tag !== "Gone"
@@ -346,6 +354,7 @@ export function CategoryDialog({
         const found = categoryProblems(fields, categories, base?.id);
 
         setProblems(found);
+        setChecked(fields);
         setAttempt(undefined);
 
         if (found.length === 0) void save(fields);
