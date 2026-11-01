@@ -33,6 +33,8 @@ test("at page size its title is the screen's heading; smaller, it is not a headi
   const section = state(<EmptyState title="No services yet" />);
 
   expect(page.querySelector("h1")?.textContent).toBe("Document not found");
+  // As a screen's heading, a title that wraps does so into even lines
+  expect(page.querySelector("h1")?.className).toContain("text-balance");
   expect(section.querySelector("h1, h2, h3")).toBeNull();
 });
 

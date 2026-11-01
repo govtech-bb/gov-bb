@@ -32,7 +32,7 @@ type FieldKind = Collection["schema"]["fields"][number]["type"];
 const NEWER = "A newer version of this record has been saved since you opened it.";
 
 const GONE =
-  "This record has been deleted, so your changes can't be saved. Download a copy to keep them.";
+  "This record has been deleted, so your changes can’t be saved. Download a copy to keep them.";
 
 /** A refusal the content API answered with its `error`, such as `conflict`. */
 const refusedWith = (error: Error | null, status: number, code?: string) =>
@@ -72,6 +72,9 @@ export function RecordDialog({
   const [base, setBase] = useState(record);
   const [values, setValues] = useState<RecordValues>(() => recordValues(collection, record));
   const [keyError, setKeyError] = useState<string>();
+  // What the fields held when last saved or checked: a field's error, the dialog's or the API's, is about that value,
+  // so it goes once the author changes the field
+  const [checked, setChecked] = useState<RecordValues>();
   const fields = collection.schema.fields;
   const keyListed = fields.some((field) => field.key === collection.record_key);
   const recordKey = base?.record_key ?? (values[collection.record_key] ?? "").trim();
@@ -136,7 +139,7 @@ export function RecordDialog({
       ? []
       : unknown
         ? [
-            "We couldn't confirm whether this record was saved. Close this, check the records, then try again if it isn't there.",
+            "We couldn’t confirm whether this record was saved. Close this, check the records, then try again if it isn’t there.",
           ]
         : apiFailureMessages(
             save.error,
@@ -181,13 +184,14 @@ export function RecordDialog({
     const problem = base ? undefined : keyProblem(recordKey);
 
     setKeyError(problem);
+    setChecked(values);
 
     if (!problem) save.mutate(recordData(collection, values));
   };
 
   const keyHint = base
     ? "A record keeps its key."
-    : "Lower-case letters, numbers and hyphens, such as barbados-drug-service. It can't be changed later.";
+    : "Lower-case letters, numbers and hyphens, such as barbados-drug-service. It can’t be changed later.";
 
   // An email address is checked by api_v2, whose reason shows under the field, not by the browser's own bubble
   const input = (
@@ -197,7 +201,12 @@ export function RecordDialog({
     hint: string | undefined,
     error: string | undefined,
   ) => (
-    <Field key={key} label={label} hint={hint} error={error}>
+    <Field
+      key={key}
+      label={label}
+      hint={hint}
+      error={values[key] === checked?.[key] ? error : undefined}
+    >
       <Input
         value={values[key] ?? ""}
         readOnly={readOnly || (key === collection.record_key && !!base)}
@@ -366,7 +375,7 @@ export function DeleteRecordDialog({
         if (!next) close();
       }}
       title={`Delete ${record.record_key}?`}
-      description={`It's removed from ${collection.title}, and from every page that shows it. This can't be undone.`}
+      description={`It’s removed from ${collection.title}, and from every page that shows it. This can’t be undone.`}
       confirmLabel="Delete record"
       pendingLabel="Deleting record…"
       pending={remove.isPending}

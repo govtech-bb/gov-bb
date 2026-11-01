@@ -221,11 +221,18 @@ describe("editor API client", () => {
       error: { _tag: "CategoryAccessDenied", status: 401 },
     });
 
+    // Without the content API's own sentence there is none at all, never a status code for a screen to show
     status = 503;
     response = "";
     expect(await createEditorApi(origin).categories()).toMatchObject({
       ok: false,
-      error: { _tag: "CategoryRefused", status: 503 },
+      error: { _tag: "CategoryRefused", status: 503, message: "" },
+    });
+
+    status = 403;
+    expect(await createEditorApi(origin).categories()).toMatchObject({
+      ok: false,
+      error: { _tag: "CategoryAccessDenied", status: 403, message: "" },
     });
 
     // A read that got no answer changed nothing: it is only unreachable

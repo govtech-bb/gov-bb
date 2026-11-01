@@ -276,14 +276,14 @@ export function PageTitleField({ error }: { error?: string }) {
         {/* Balanced only while it isn't being typed in, so its lines don't shift with every key */}
         <textarea
           {...titleProps}
-          className="block min-h-[1.2em] w-full resize-none overflow-hidden rounded-sm text-[clamp(1.875rem,3vw,2.5rem)] leading-[1.2] font-bold tracking-tight text-ink outline-none not-focus:text-balance placeholder:text-subtle"
+          className="block min-h-[1.2em] w-full resize-none overflow-hidden rounded-sm text-[clamp(1.875rem,3vw,2.5rem)] leading-[1.2] font-bold tracking-tight text-ink heading-field-focus not-focus:text-balance placeholder:text-subtle"
           aria-invalid={error ? true : undefined}
         />
       </label>
       {error && <p className="text-14 text-error">{error}</p>}
       <textarea
         {...ledeProps}
-        className="mt-5 block w-full resize-none overflow-hidden rounded-sm text-20 leading-[1.6] text-muted outline-none placeholder:text-subtle"
+        className="mt-5 block w-full resize-none overflow-hidden rounded-sm text-20 leading-[1.6] text-muted heading-field-focus placeholder:text-subtle"
       />
     </div>
   );

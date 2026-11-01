@@ -833,7 +833,7 @@ test("an editor who approves is warned that saving to a change waiting for revie
 
   await vi.waitFor(() =>
     expect(document.body.textContent).toContain(
-      "if you save changes you can't approve or reject this review",
+      "if you save changes you can’t approve or reject this review",
     ),
   );
 });

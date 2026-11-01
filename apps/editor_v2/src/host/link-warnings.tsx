@@ -49,7 +49,9 @@ export function LinkWarnings({
           : `${broken.length} links go to pages that don’t exist`
       }
     >
-      <ul className="mt-1 flex max-h-48 flex-col overflow-y-auto">
+      {/* Padding inside the scrolling list keeps its buttons' focus rings from being cut off, also as one scrolls
+          into view; the negative margin keeps the links in line with the title */}
+      <ul className="-mx-1.5 mt-1 flex max-h-48 scroll-p-1.5 flex-col overflow-y-auto p-1.5">
         {broken.map((link) => (
           <li key={link.path.join(".")} className="flex flex-wrap items-center gap-x-2">
             {/* The link style has no touch target of its own: 44px tall, wrapping a long label */}

@@ -38,8 +38,8 @@ type RootProps = Omit<ComponentProps<"div">, "aria-label"> & {
 
 /**
  * A bar across a screen, a document or a drawer: its title, a status beside it and its actions at the end. Every bar
- * is 56px (`--bar-height`) and inset like the others, so their edges line up; narrow, its actions wrap under the
- * title. With a label it's a toolbar.
+ * is `--bar-height`, 56px or, for its 44px controls under a coarse pointer, 61px, and inset like the others, so their
+ * edges line up; narrow, its actions wrap under the title. With a label it's a toolbar.
  */
 function BarRoot({ tone = "light", label, className, ...props }: RootProps) {
   const classes = cn(
