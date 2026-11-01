@@ -5,7 +5,8 @@ import type { Category } from "../api/categories";
 import { ApiFailure, type ApiPage, type EditorApi } from "../api/client";
 import { apiMessage } from "../api/failure-messages";
 import { pageLinkTargetsQuery } from "../api/page-link-targets";
-import { pageToMarkdown, pickerCategories, pageFieldLabel } from "../api/page-markdown";
+import { pageFieldLabel } from "../api/page-fields";
+import { pageToMarkdown, pickerCategories } from "../api/page-markdown";
 import {
   PRELOAD_FRESH,
   categoriesQuery,
@@ -15,9 +16,9 @@ import {
   servicesQuery,
 } from "../api/queries";
 import { PageDraftEditor } from "../host/page-editor";
-import { download } from "../host/source-ui";
+import { download } from "../host/download";
 import { collectInternalPageLinks } from "../pages/link-checks";
-import { readPageMetadata } from "../pages";
+import { draftPageMetadata, readPageMetadata } from "../pages";
 import { DraftStore } from "../persistence/draft-store";
 import { govbbPageCodec } from "../presets/govbb-page";
 import { Banner } from "../ui/banner";
@@ -29,10 +30,12 @@ import { LoadingState } from "../ui/loading-state";
 import { TextLink } from "../ui/text-link";
 import type { SaveStateProps } from "../ui/save-state";
 import { toast } from "../ui/toast";
+import { createEditorSession } from "../editor/core/session";
 import { EditorSessionProvider } from "../editor/react/composer";
 import type { DocumentSessions } from "./document-views";
 import { brokenLinks, linkConfirmation } from "./broken-links";
-import { savePageDraft, type PageSession, type ServerPageBaseline } from "./page-sync";
+import type { PageSession, ServerPageBaseline } from "./page-session";
+import { savePageDraft } from "./page-sync";
 
 type SessionListener = (id: string, session: PageSession | undefined) => void;
 
@@ -107,7 +110,11 @@ export function RemotePagePane({
   if (!sessions) return editor;
   sessions.open(id, page.data.updated_at);
 
-  return <EditorSessionProvider session={sessions.get(id)}>{editor}</EditorSessionProvider>;
+  return (
+    <EditorSessionProvider session={sessions.get(id, createEditorSession)}>
+      {editor}
+    </EditorSessionProvider>
+  );
 }
 
 function RemotePageEditor({
@@ -169,8 +176,10 @@ function RemotePageEditor({
     enabled: !!service,
   }).data;
 
+  const metadata = useMemo(() => draftPageMetadata(draft), [draft]);
+
   const previewContext = useMemo(() => {
-    const path = readPageMetadata(draft.committed).url ?? server.url;
+    const path = metadata.url ?? server.url;
     const breadcrumbs = [{ label: "Home", href: "/" }];
     const parts = path.split("/").filter(Boolean);
 
@@ -192,7 +201,7 @@ function RemotePageEditor({
     }
 
     return { breadcrumbs, publishedAt: server.published_at };
-  }, [draft.committed, server.url, server.published_at, categories, service, servicePages]);
+  }, [metadata.url, server.url, server.published_at, categories, service, servicePages]);
 
   const linkPages = useMemo(
     () => services?.map((service) => ({ title: service.title, url: service.url })),
@@ -200,7 +209,7 @@ function RemotePageEditor({
   );
 
   // Links to pages the site doesn't have warn as the page is written, and are checked again before each save
-  const pageUrl = readPageMetadata(draft.committed).url ?? server.url;
+  const pageUrl = metadata.url ?? server.url;
 
   const links = useMemo(
     () => (draft.state ? collectInternalPageLinks(draft.state, pageUrl) : []),
@@ -311,10 +320,7 @@ function RemotePageEditor({
     return () => onSession(server.id, undefined);
   }, [onSession, server.id, session]);
 
-  const visibility = useMemo(
-    () => readPageMetadata(draft.committed).visibility || "public",
-    [draft.committed],
-  );
+  const visibility = metadata.visibility || "public";
 
   // Only making a page public goes live at once; a public page's changes wait for an approver
   const publishes = visibility === "public" && server.visibility !== "public";

@@ -5,7 +5,7 @@ import { categoryLabel } from "../api/categories";
 import { ApiFailure, isText, type ApiRevision, type EditorApi } from "../api/client";
 import { apiMessage } from "../api/failure-messages";
 import { pageLinkTargetsQuery } from "../api/page-link-targets";
-import { pageFieldLabel } from "../api/page-markdown";
+import { pageFieldLabel } from "../api/page-fields";
 import {
   categoriesQuery,
   employeeIdQuery,

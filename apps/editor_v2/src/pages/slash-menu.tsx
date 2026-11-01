@@ -106,22 +106,26 @@ function EditablePageSlashMenu() {
     ),
   );
 
-  const options = editor.getEditorState().read(
-    () => {
-      const target = $pageInsertionTarget();
+  // Ranked only while the menu is open: this renders with every key typed in the page
+  const options =
+    query === null
+      ? []
+      : editor.getEditorState().read(
+          () => {
+            const target = $pageInsertionTarget();
 
-      return target
-        ? rankActions(
-            query ?? "",
-            $availableActions(editor, definition, {
-              targetKey: target.getKey(),
-              typed: `/${query ?? ""}`,
-            }),
-          ).map((action) => new PageOption(action, target.getKey()))
-        : [];
-    },
-    { editor },
-  );
+            return target
+              ? rankActions(
+                  query,
+                  $availableActions(editor, definition, {
+                    targetKey: target.getKey(),
+                    typed: `/${query}`,
+                  }),
+                ).map((action) => new PageOption(action, target.getKey()))
+              : [];
+          },
+          { editor },
+        );
 
   return (
     <LexicalTypeaheadMenuPlugin<PageOption>
@@ -170,7 +174,6 @@ function EditablePageSlashMenu() {
           // bar. The caret keeps the focus: typing and the arrow keys stay the editor's
           <Popover.Root open>
             <Popover.Content
-              aria-label="Insert page content"
               anchor={anchor.current}
               // Inside Lexical's anchor, which reads its options from there
               container={anchor.current}
