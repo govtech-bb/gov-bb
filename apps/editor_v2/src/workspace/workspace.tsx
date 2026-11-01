@@ -8,7 +8,7 @@ import {
   useSearch,
 } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ApiFailure, type EditorApi } from "../api/client";
 import { rolesQuery, serviceQuery, servicesQuery, estateVersionQuery } from "../api/queries";
 import {
@@ -16,12 +16,11 @@ import {
   CreateRemoteServiceDialog,
   DeleteRemotePageDialog,
 } from "./remote-page-dialogs";
-import { RemotePagePane } from "./remote-page-pane";
 import { AppNav } from "./app-nav";
 import { CollectionScreen, CollectionsScreen } from "./collections";
 import { CategoriesScreen } from "./categories-screen";
 import { HistoryScreen } from "./history-screen";
-import { ReviewQueueScreen, ReviewScreen } from "./review-screens";
+import { loadPageEditor, loadReviews } from "./preload";
 import { listedServiceRows, remoteServiceRows } from "./service-pages";
 import { ServiceNav } from "./service-nav";
 import { workspaceLink } from "./navigation";
@@ -40,7 +39,7 @@ import { GovbbLogo } from "./govbb-logo";
 import { ServicesList } from "./services-list";
 import type { ServicesSearch } from "./services-search";
 import type { WorkspaceLocation } from "./model";
-import { pageHasUnsavedChanges, type PageSession } from "./page-sync";
+import { pageHasUnsavedChanges, type PageSession } from "./page-session";
 import { usePageLeaveGuard } from "./page-leave-guard";
 
 type Account = {
@@ -52,6 +51,16 @@ type Account = {
 };
 
 const SIDEBAR_KEY = "govbb-editor:sidebar-collapsed";
+
+const RemotePagePane = lazy(() =>
+  loadPageEditor().then((module) => ({ default: module.RemotePagePane })),
+);
+
+const ReviewQueueScreen = lazy(() =>
+  loadReviews().then((module) => ({ default: module.ReviewQueueScreen })),
+);
+
+const ReviewScreen = lazy(() => loadReviews().then((module) => ({ default: module.ReviewScreen })));
 
 /** What someone without the editor role is told, on every screen. */
 const READ_ONLY =
@@ -456,16 +465,24 @@ export function ServiceWorkspace({
           )}
           {!location && onReviews && (
             <section className="mx-auto w-full max-w-300 px-4 py-10 sm:px-6">
-              {reviewing ? (
-                <ReviewScreen
-                  key={reviewing}
-                  api={api}
-                  pageId={reviewing}
-                  selfApproval={selfApproval}
-                />
-              ) : (
-                <ReviewQueueScreen api={api} />
-              )}
+              <Suspense
+                fallback={
+                  <LoadingState
+                    label={reviewing ? "Loading the change…" : "Loading the review queue…"}
+                  />
+                }
+              >
+                {reviewing ? (
+                  <ReviewScreen
+                    key={reviewing}
+                    api={api}
+                    pageId={reviewing}
+                    selfApproval={selfApproval}
+                  />
+                ) : (
+                  <ReviewQueueScreen api={api} />
+                )}
+              </Suspense>
             </section>
           )}
           {!location && onHistory && params.pageId && (
@@ -515,14 +532,16 @@ export function ServiceWorkspace({
                 "Page from the content API"
               }
             >
-              <RemotePagePane
-                api={api}
-                id={id}
-                active={!missing && id === selected?.id}
-                onSession={trackPageSession}
-                sessions={sessions}
-                nav={showPages}
-              />
+              <Suspense fallback={<LoadingState size="page" label="Loading page…" />}>
+                <RemotePagePane
+                  api={api}
+                  id={id}
+                  active={!missing && id === selected?.id}
+                  onSession={trackPageSession}
+                  sessions={sessions}
+                  nav={showPages}
+                />
+              </Suspense>
             </section>
           ))}
         </main>

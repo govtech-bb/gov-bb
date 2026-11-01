@@ -86,6 +86,19 @@ type RootProps = {
  */
 function SidebarRoot({ sidebar, label, rail = false, children }: RootProps) {
   const motion = useColumnMotion();
+  const column = useRef<HTMLElement>(null);
+
+  // Folding to a rail or opening out of one comes with a change of screen, so the column takes its new width at once:
+  // easing it would slide the page about as that screen loads. Only showing and hiding eases
+  useLayoutEffect(() => {
+    const node = column.current;
+
+    if (!node) return;
+    node.style.transition = "none";
+    // Reading the width applies it with no transition, and cancels one already started
+    void node.offsetWidth;
+    node.style.removeProperty("transition");
+  }, [rail]);
 
   if (!sidebar.wide)
     return (
@@ -105,6 +118,7 @@ function SidebarRoot({ sidebar, label, rail = false, children }: RootProps) {
   return (
     <Place value={{ label, rail }}>
       <nav
+        ref={column}
         id={sidebar.id}
         aria-label={label}
         hidden={!sidebar.open}

@@ -3,7 +3,7 @@ import { useState } from "react";
 import { categoryLabel, categoryRows } from "../api/categories";
 import type { EditorApi, CreatePageInput, ServiceDetail } from "../api/client";
 import { apiFailureMessages } from "../api/failure-messages";
-import { suggestedUrl, urlProblem, pageFieldLabel } from "../api/page-markdown";
+import { pageFieldLabel, suggestedUrl, urlProblem } from "../api/page-fields";
 import { categoriesQuery, pageQuery } from "../api/queries";
 import { Button } from "../ui/button";
 import { ConfirmDialog } from "../ui/confirm-dialog";

@@ -29,15 +29,11 @@ import { Input } from "../ui/input";
 import { NativeSelect } from "../ui/native-select";
 import { SidePanel } from "../ui/side-panel";
 import { Tag } from "../ui/tag";
-import { StatusDot, type StatusTone } from "../ui/status-dot";
+import { StatusDot } from "../ui/status-dot";
 import { Textarea } from "../ui/textarea";
-import {
-  $pageMetadataNode,
-  $setPageMetadata,
-  PageMetadataNode,
-  pageMetadataFromYaml,
-  type PageMetadata,
-} from "./metadata";
+import { $pageMetadataNode, $setPageMetadata, PageMetadataNode } from "./metadata";
+import { pageMetadataFromYaml, type PageMetadata } from "./metadata-yaml";
+import { visibilityLabels, visibilityTones } from "./visibility";
 
 /** The page's metadata as the editor holds it, kept current as it changes. */
 export function usePageMetadata() {
@@ -298,21 +294,6 @@ export type PageCategory = {
   title: string;
   subcategories?: readonly { slug: string; title: string }[];
 };
-
-// Live is green, link-only is amber, draft is grey; the label always travels with the colour.
-export const visibilityTones = new Map<string, StatusTone>([
-  ["", "success"],
-  ["public", "success"],
-  ["preview", "warning"],
-  ["draft", "neutral"],
-]);
-
-export const visibilityLabels = new Map([
-  ["", "Public"],
-  ["public", "Public"],
-  ["preview", "Preview link only"],
-  ["draft", "Draft (hidden)"],
-]);
 
 const dateFormat = new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeZone: "UTC" });
 

@@ -2,12 +2,16 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createMemoryHistory, createRouter, RouterProvider } from "@tanstack/react-router";
 import { act, type ReactNode } from "react";
-import { afterEach, expect, test, vi } from "vitest";
+import { afterEach, beforeAll, expect, test, vi } from "vitest";
 import { createEditorApi, type ApiPage, type ServiceDetail } from "../../src/api/client";
 import { AuthFailure, type EditorAuth } from "../../src/auth/session";
 import { routeTree } from "../../src/routeTree.gen";
+import { loadPageEditor } from "../../src/workspace/preload";
 import { renderInPage } from "../helpers/page-editor";
 import { shownText } from "../helpers/shown-text";
+
+// The page editor loads apart from the workspace: import it once up front, not within the first test to open a page
+beforeAll(() => loadPageEditor());
 
 const stamp = "2026-10-07T12:00:00.000Z";
 

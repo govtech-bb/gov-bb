@@ -16,18 +16,27 @@ import {
 // shows it's there: a service drafted in this browser never is. What was fetched just now isn't fetched again, and a
 // failure is left for the screen, which asks again and says so.
 
+// The page editor and the review screens bring Lexical and the Markdown pipeline, so they load apart from the
+// workspace: as their screen opens, or here, as a link to one is pointed at
+export const loadPageEditor = () => import("./remote-page-pane");
+
+export const loadReviews = () => import("./review-screens");
+
 const inApi = (client: QueryClient, api: EditorApi, serviceId: string) =>
   !!client.getQueryData(serviceQuery(api, serviceId).queryKey) ||
   !!client.getQueryData(servicesQuery(api).queryKey)?.some((service) => service.id === serviceId);
 
 /** Starts loading a service's pages before its screen opens, as a link to it is pointed at or followed. */
 export function primeService(client: QueryClient, api: EditorApi, serviceId: string) {
+  void loadPageEditor();
+
   if (inApi(client, api, serviceId))
     void client.prefetchQuery({ ...serviceQuery(api, serviceId), staleTime: PRELOAD_FRESH });
 }
 
 /** Starts loading a page of a service, and the categories its settings offer, before it opens. */
 export function primePage(client: QueryClient, api: EditorApi, serviceId: string, pageId: string) {
+  void loadPageEditor();
   const detail = client.getQueryData(serviceQuery(api, serviceId).queryKey);
 
   // A service's own page is its entry page; its other pages are known once the service is
@@ -57,10 +66,12 @@ export function primeCollection(client: QueryClient, api: EditorApi, key: string
 
 /** Starts loading the review queue before its screen opens. */
 export function primeReviewQueue(client: QueryClient, api: EditorApi) {
+  void loadReviews();
   void client.prefetchQuery({ ...reviewQueueQuery(api), staleTime: PRELOAD_FRESH });
 }
 
 /** Starts loading a page's change before its review screen opens. */
 export function primeRevision(client: QueryClient, api: EditorApi, pageId: string) {
+  void loadReviews();
   void client.prefetchQuery({ ...revisionQuery(api, pageId), staleTime: PRELOAD_FRESH });
 }
