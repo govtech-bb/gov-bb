@@ -2,7 +2,6 @@
 title: "Apply to use land owned by the Government of Barbados"
 description: "Use this service to ask to use land owned by the Government of Barbados, managed by the Ministry of Housing, Lands and Maintenance."
 stage: "alpha"
-featured: false
 publish_date: 2026-06-04
 category: housing
 visibility: preview
