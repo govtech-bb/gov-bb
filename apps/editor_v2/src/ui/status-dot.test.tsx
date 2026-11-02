@@ -32,3 +32,10 @@ test("off is an empty ring, so it differs from the others in shape as well as co
   expect(off).not.toMatch(/\bbg-/);
   expect(live).toMatch(/\bbg-/);
 });
+
+test("waiting is amber in the off ring, which gives it 3:1 on any row where amber alone is 2:1", () => {
+  const waiting = dot(renderToStaticMarkup(<StatusDot tone="warning" />)).className;
+
+  expect(waiting).toContain("border-grey-60");
+  expect(waiting).toContain("bg-yellow-80");
+});

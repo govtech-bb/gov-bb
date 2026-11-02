@@ -35,6 +35,7 @@ import {
 } from "react";
 import { belowBar, Popover } from "../../../ui/popover";
 import { Button } from "../../../ui/button";
+import { pressedByTouch } from "../../../ui/focus";
 import { LinkForm } from "../../../ui/link-picker";
 import { Toolbar as Controls } from "../../../ui/toolbar";
 import { Tip } from "../../../ui/tooltip";
@@ -86,7 +87,7 @@ const $link = (selection: RangeSelection) =>
     .find($isLinkNode);
 
 /**
- * Opens beneath a rich-text selection after mouseup or keyup. Supports bold, italic
+ * Opens beneath a rich-text selection after mouseup or keyup, or as it's made by touch. Supports bold, italic
  * and links; the Markdown representation does not support underline or colour.
  */
 const richText = () => false;
@@ -165,6 +166,10 @@ export function Toolbar({
       editor.registerUpdateListener(() => {
         if (!qualifies()) return (setOpen(false), setLinking(false));
         remember();
+
+        // Selecting by touch, a long press and then its handles, ends with no mouseup or keyup: the toolbar opens with
+        // the selection, as Lexical reads each selectionchange into an update
+        if (pressedByTouch()) setOpen(true);
         rerender();
       }),
       editor.registerCommand(

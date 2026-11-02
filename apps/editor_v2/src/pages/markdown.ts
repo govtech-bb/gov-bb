@@ -9,6 +9,18 @@ export function parsePageMarkdown(source: string): Root {
   return parseContentMarkdown(source).root;
 }
 
+/** Separates page metadata from its body, removing only the editor's two separator line endings. */
+export function splitPageMarkdown(source: string) {
+  const first = parsePageMarkdown(source).children[0];
+  const yaml = first?.type === "yaml" ? first : undefined;
+
+  const body = yaml
+    ? source.slice(yaml.position?.end.offset ?? 0).replace(/^(?:\r\n|\r|\n){1,2}/, "")
+    : source;
+
+  return { yaml, body };
+}
+
 export { stringifyContentMarkdown as stringifyPageMarkdown };
 
 export class UnsupportedPageContent extends Error {

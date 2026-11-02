@@ -73,6 +73,7 @@ import { altKey } from "../editor/react/shortcut";
 import { turnIntoOptions } from "../editor/react/turn-into";
 import { Button } from "../ui/button";
 import { Field } from "../ui/field";
+import { openedByTouch } from "../ui/focus";
 import { Input } from "../ui/input";
 import { Kbd } from "../ui/kbd";
 import { Menu } from "../ui/menu";
@@ -418,19 +419,23 @@ function PageInsertMenu({
 }) {
   const shown = useLatched(menu);
   const search = useRef<HTMLInputElement>(null);
+  const popup = useRef<HTMLDivElement>(null);
 
   return (
     <Popover.Root open={!!menu} onOpenChange={(open, { reason }) => !open && onDismiss(reason)}>
       {shown && (
         <Popover.Content
+          ref={popup}
           aria-label="Insert page content"
           anchor={shown.anchor}
           side={shown.side}
           align="start"
           collisionPadding={belowBar()}
           collisionAvoidance={{ side: "none", align: "shift", fallbackAxisSide: "none" }}
-          // Focus before positioning must not scroll the page.
-          initialFocus={() => {
+          // Opened by a touch, the menu takes the focus itself, as the search's would bring up the keyboard over the
+          // list. Otherwise the search does: focus before positioning must not scroll the page.
+          initialFocus={(type) => {
+            if (openedByTouch(type)) return popup.current;
             search.current?.focus({ preventScroll: true });
 
             return false;
@@ -1008,7 +1013,7 @@ function ComponentSettings({
               }}
             >
               <option value="url">Link</option>
-              <option value="linked-form">Page's linked form</option>
+              <option value="linked-form">Page’s linked form</option>
               <option value="form">Registered form</option>
             </NativeSelect>
           </Field>

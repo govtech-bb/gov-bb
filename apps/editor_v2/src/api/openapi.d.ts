@@ -66,7 +66,7 @@ export interface paths {
                             visibility: "public" | "preview";
                             /**
                              * Format: date-time
-                             * @description When the page first went public (seeded from landing's `publish_date`); null until it has.
+                             * @description Landing's `publish_date` for an imported page, else when the page first went public; null until it has one.
                              */
                             published_at: string | null;
                             /**
@@ -233,7 +233,7 @@ export interface paths {
                             slug: string;
                             /**
                              * Format: date-time
-                             * @description When the page first went public; null until it has.
+                             * @description Landing's `publish_date` for an imported page, else when the page first went public; null until it has one.
                              */
                             published_at: string | null;
                             /** Format: date-time */
@@ -1050,7 +1050,7 @@ export interface paths {
                             slug: string;
                             /**
                              * Format: date-time
-                             * @description When the page first went public; null until it has.
+                             * @description Landing's `publish_date` for an imported page, else when the page first went public; null until it has one.
                              */
                             published_at: string | null;
                             /** Format: date-time */
@@ -1247,7 +1247,7 @@ export interface paths {
                             slug: string;
                             /**
                              * Format: date-time
-                             * @description When the page first went public; null until it has.
+                             * @description Landing's `publish_date` for an imported page, else when the page first went public; null until it has one.
                              */
                             published_at: string | null;
                             /** Format: date-time */
@@ -4725,7 +4725,7 @@ export interface paths {
                             slug: string;
                             /**
                              * Format: date-time
-                             * @description When the page first went public; null until it has.
+                             * @description Landing's `publish_date` for an imported page, else when the page first went public; null until it has one.
                              */
                             published_at: string | null;
                             /** Format: date-time */

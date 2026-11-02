@@ -16,7 +16,7 @@ import {
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { RowContent } from "../../ui/menu";
 import { belowBar, Popover } from "../../ui/popover";
-import { group, groupLabel, listEmpty, listFooter, row } from "../../ui/surface";
+import { group, groupLabel, instant, listEmpty, listFooter, row } from "../../ui/surface";
 import {
   $availableActions,
   $executeAction,
@@ -197,7 +197,6 @@ export function SlashMenu() {
             // bar. The caret keeps the focus: typing and the arrow keys stay the editor's
             <Popover.Root open>
               <Popover.Content
-                aria-label="Insert block"
                 anchor={anchor.current}
                 // Inside Lexical's anchor, which reads its options from there
                 container={anchor.current}
@@ -209,7 +208,7 @@ export function SlashMenu() {
                 collisionAvoidance={{ side: "none", align: "shift", fallbackAxisSide: "none" }}
                 initialFocus={false}
                 finalFocus={false}
-                className="flex max-h-[min(32.75rem,var(--available-height))] w-75 flex-col overflow-hidden p-0"
+                className={`${instant} flex max-h-[min(32.75rem,var(--available-height))] w-75 flex-col overflow-hidden p-0`}
               >
                 {/* Lexical points aria-activedescendant at the highlighted typeahead-item-N; this also says it aloud */}
                 <p role="status" className="sr-only">

@@ -1,5 +1,5 @@
 import { Popover as BasePopover } from "@base-ui/react/popover";
-import type { ReactNode } from "react";
+import type { ReactNode, Ref } from "react";
 import { cn } from "../cn";
 import { surface, surfaceMotion, type PopupName } from "./surface";
 import { InToolbar } from "./toolbar";
@@ -27,6 +27,14 @@ export function belowBar() {
   return { top: stickyBar() + 8, right: 8, bottom: 8, left: 8 };
 }
 
+/**
+ * A dialog unless said otherwise, named like one. `presentation` is for a list the focus never enters, such as a
+ * typeahead's: the list inside carries the name, as screen readers ignore one on a presentation popup.
+ */
+type PopupRole =
+  | (PopupName & { role?: "dialog" })
+  | { role: "presentation"; "aria-label"?: never; "aria-labelledby"?: never };
+
 type ContentProps = Pick<
   BasePopover.Positioner.Props,
   | "side"
@@ -40,13 +48,13 @@ type ContentProps = Pick<
   | "positionMethod"
 > &
   Pick<BasePopover.Popup.Props, "initialFocus" | "finalFocus" | "onClick"> &
-  PopupName & {
+  PopupRole & {
     /** For the popup: its width, or less padding for content that brings its own. */
     className?: string;
     /** Where its portal goes, when not the page's body: such as a typeahead's own anchor, which the editor owns. */
     container?: HTMLElement | null;
-    /** A dialog unless said otherwise: `presentation` for a list the focus never enters, such as a typeahead's. */
-    role?: "dialog" | "presentation";
+    /** The popup itself, such as for `initialFocus` to give it the focus. */
+    ref?: Ref<HTMLDivElement>;
     children: ReactNode;
   };
 
@@ -64,6 +72,7 @@ function PopoverContent({
   className,
   container,
   role,
+  ref,
   children,
   ...placement
 }: ContentProps) {
@@ -76,6 +85,7 @@ function PopoverContent({
         className="z-popup outline-none"
       >
         <BasePopover.Popup
+          ref={ref}
           role={role ?? "dialog"}
           initialFocus={initialFocus}
           finalFocus={finalFocus}

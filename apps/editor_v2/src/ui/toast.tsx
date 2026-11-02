@@ -10,7 +10,8 @@ type ToastTone = Exclude<BannerTone, "warning">;
 
 /**
  * Confirms what an action did once its own control has gone, such as a dialog that closed or a page that was left.
- * An error is read out at once; anything else when the reader is free. Callable from anywhere: <Toaster> shows it.
+ * Errors are read out at once and stay until dismissed. Other toasts use the provider's default timeout and are read
+ * when the reader is free. Callable from anywhere: <Toaster> shows it.
  * An action, such as Undo, is a button in the toast that also dismisses it. Returns the toast's id, for `dismissToast`.
  */
 export function toast(
@@ -28,6 +29,7 @@ export function toast(
     description,
     type: tone,
     priority: tone === "error" ? "high" : "low",
+    timeout: tone === "error" ? 0 : undefined,
     actionProps: action && { children: action.label, onClick: action.onClick },
   });
 }

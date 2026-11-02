@@ -249,6 +249,36 @@ test("an item's icon leads its row, filled while the row is current", async () =
   expect(anchor("#categories").textContent).toBe("CategoriesDraft");
 });
 
+test("a row's detail sits under its words, in the row's link, and a rail leaves it out", async () => {
+  function Detailed({ rail = false }: { rail?: boolean }) {
+    const sidebar = useSidebar();
+
+    return (
+      <Sidebar.Root sidebar={sidebar} label="Menu" rail={rail}>
+        <Sidebar.Content>
+          <Sidebar.Group label="Pages">
+            <Sidebar.Item icon={<Mark />} detail="Preview link only" render={<a href="#fees" />}>
+              Fees
+            </Sidebar.Item>
+          </Sidebar.Group>
+        </Sidebar.Content>
+      </Sidebar.Root>
+    );
+  }
+
+  await act(async () => root.render(<Detailed />));
+
+  const words = anchor("#fees").querySelector<HTMLElement>("[data-words]")!;
+
+  expect(anchor("#fees").textContent).toBe("FeesPreview link only");
+  // Under the words, outside their semibold copy, so a current row keeps its detail's weight and its wrapping
+  expect(words.dataset.words).toBe("Fees");
+  expect(words.nextElementSibling?.textContent).toBe("Preview link only");
+
+  await act(async () => root.render(<Detailed rail />));
+  expect(host.textContent).not.toContain("Preview link only");
+});
+
 test("folded to a rail, a row is its icon alone, still named by its words", async () => {
   await act(async () => root.render(<Sections rail />));
 

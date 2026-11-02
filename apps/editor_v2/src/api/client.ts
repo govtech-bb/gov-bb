@@ -113,6 +113,7 @@ export class CategoryAccessDenied extends ApiFailure {
   /** Stable failure discriminator. */
   readonly _tag = "CategoryAccessDenied" as const;
 
+  /** `message` is the content API's reason, or empty when it gave none, for a screen to say in its own words. */
   constructor(
     override readonly status: 401 | 403,
     message: string,
@@ -175,8 +176,9 @@ export class CategoryRefused extends ApiFailure {
   /** Stable failure discriminator. */
   readonly _tag = "CategoryRefused" as const;
 
+  /** `message` is the content API's own sentence, or empty when it gave none, for a screen to say in its own words. */
   constructor(status: number, message?: string) {
-    super(status, [], message ?? `Category request refused: HTTP ${status}`);
+    super(status, [], message ?? "");
   }
 }
 
@@ -378,8 +380,7 @@ export function createEditorApi(apiOrigin: string, landingOrigin?: string) {
 
     const status = response.status;
 
-    if (status === 401 || status === 403)
-      return new CategoryAccessDenied(status, message ?? `Category access denied: HTTP ${status}`);
+    if (status === 401 || status === 403) return new CategoryAccessDenied(status, message ?? "");
 
     if (status === 404) return new CategoryNotFound(message ?? "Category not found");
 

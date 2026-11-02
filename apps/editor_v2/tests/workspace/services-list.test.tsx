@@ -285,7 +285,7 @@ test("with no matches, one Clear filters button clears the list and returns focu
   const onSearch = vi.fn();
 
   await show(listed(thirty, { q: "hotel", status: ["draft"] }, { onSearch }));
-  expect(host.textContent).toContain("Nothing matches these filters");
+  expect(host.textContent).toContain("Nothing matches “hotel” with these filters");
 
   const clearButtons = [...host.querySelectorAll<HTMLButtonElement>("button")].filter(
     (item) => item.textContent === "Clear filters",

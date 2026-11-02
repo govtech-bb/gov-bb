@@ -59,6 +59,37 @@ test("opens on its first field, named by its title, and closes from its close bu
   expect(trigger.getAttribute("aria-expanded")).toBe("false");
 });
 
+test("opened from state after a tap, it takes the focus itself, so its first field doesn't bring up the keyboard", async () => {
+  const dialog = (open: boolean) => (
+    <Dialog.Root open={open}>
+      <Dialog.Content>
+        <Dialog.Header>
+          <Dialog.Title>Add a page</Dialog.Title>
+        </Dialog.Header>
+        <Dialog.Body>
+          <input aria-label="Page title" />
+        </Dialog.Body>
+      </Dialog.Content>
+    </Dialog.Root>
+  );
+
+  const press = (pointerType: string) =>
+    document.body.dispatchEvent(
+      Object.assign(new Event("pointerdown", { bubbles: true }), { pointerType }),
+    );
+
+  press("touch");
+  await render(dialog(true));
+  await vi.waitFor(() => expect(document.activeElement?.getAttribute("role")).toBe("dialog"));
+
+  await render(dialog(false));
+  press("mouse");
+  await render(dialog(true));
+  await vi.waitFor(() =>
+    expect(document.activeElement?.getAttribute("aria-label")).toBe("Page title"),
+  );
+});
+
 test("leaves the close button off an alert dialog, which waits for an answer", async () => {
   await render(
     <Dialog.Root role="alertdialog" defaultOpen>

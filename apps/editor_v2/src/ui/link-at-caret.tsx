@@ -3,6 +3,7 @@ import type { ComponentProps, MouseEvent } from "react";
 import { Button } from "./button";
 import { LinkForm } from "./link-picker";
 import { belowBar, Popover } from "./popover";
+import { instant } from "./surface";
 import { Tip } from "./tooltip";
 
 // Its buttons leave the focus, and the caret, in the text
@@ -62,7 +63,7 @@ export function LinkAtCaret({
         collisionPadding={belowBar()}
         initialFocus={editing}
         finalFocus={false}
-        className="p-0"
+        className={`${instant} p-0`}
       >
         {editing ? (
           <LinkForm

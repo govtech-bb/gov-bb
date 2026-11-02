@@ -1,4 +1,4 @@
-import { createEditorSession, type EditorSession } from "../editor/core/session";
+import type { EditorSession } from "../editor/core/session";
 
 // The document on screen and the two most recently before it keep their views; a fixed bound, not a setting
 const MOUNTED_VIEWS = 3;
@@ -23,9 +23,12 @@ export const keptViews = (
 export class DocumentSessions {
   private kept = new Map<string, { session: EditorSession; closedOn?: string | null }>();
 
-  /** The document's session, begun the first time its view opens. */
-  get(id: string) {
-    const entry = this.kept.get(id) ?? { session: createEditorSession() };
+  /**
+   * The document's session, begun by `begin` the first time its view opens. The view passes `begin` because it loads
+   * the editor's code, which the workspace leaves until a page opens.
+   */
+  get(id: string, begin: () => EditorSession) {
+    const entry = this.kept.get(id) ?? { session: begin() };
     this.kept.set(id, entry);
 
     return entry.session;

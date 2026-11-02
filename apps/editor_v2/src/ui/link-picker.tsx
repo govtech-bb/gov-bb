@@ -3,7 +3,6 @@ import { Button } from "./button";
 import { Input } from "./input";
 import { ListBox, useListNavigation } from "./list-box";
 import { cn } from "../cn";
-import { rowLabel } from "./surface";
 
 /** A page a link can go to, as the host knows it: its title, and its address on the site. */
 export type LinkPage = { readonly title: string; readonly url: string };
@@ -77,6 +76,12 @@ export function LinkPicker({
   return (
     <>
       <Input
+        // An address is kept as typed: a phone mustn't capitalise or correct it, as paths are case-sensitive and it's
+        // saved into the page
+        autoCapitalize="off"
+        autoCorrect="off"
+        spellCheck={false}
+        autoComplete="off"
         {...props}
         {...(pages.length ? list.comboboxProps : undefined)}
         placeholder={placeholder}
@@ -102,9 +107,11 @@ export function LinkPicker({
               {...list.optionProps(index)}
               onClick={() => onPick(page)}
             >
-              <span className="flex min-w-0 flex-col">
-                <span className={rowLabel}>{page.title}</span>
-                <span className="truncate text-12 leading-4 text-muted group-data-highlighted/row:text-white/75">
+              {/* In full, wrapping inside the row's one-line label, so services with long and similar names can be told
+                  apart */}
+              <span className="flex min-w-0 flex-col whitespace-normal">
+                <span className="wrap-break-word">{page.title}</span>
+                <span className="text-12 leading-4 wrap-anywhere text-muted group-data-highlighted/row:text-white/75">
                   {page.url}
                 </span>
               </span>

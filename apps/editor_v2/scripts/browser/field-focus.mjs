@@ -21,6 +21,7 @@ try {
   browser = await chromium.launch();
   const errors = [];
   const results = [];
+  const rows = [];
 
   for (const forcedColors of ["none", "active"]) {
     const page = await browser.newPage({ forcedColors, viewport: { width: 800, height: 600 } });
@@ -38,7 +39,7 @@ try {
       forcedColors === "active",
     );
 
-    for (const label of ["Visibility", "Description", "Form ID"]) {
+    for (const label of ["Visibility", "Description", "Form ID", "Category"]) {
       const control = page.getByLabel(label, { exact: true });
       assert.equal(
         await control.evaluate((element) => getComputedStyle(element).outlineStyle),
@@ -46,6 +47,10 @@ try {
         `${label} has no focus outline at rest (${forcedColors})`,
       );
       await page.keyboard.press("Tab");
+      // Select's frame eases its shadow in: read the style once it settles
+      await control.evaluate((element) =>
+        Promise.all(element.getAnimations().map((animation) => animation.finished)),
+      );
 
       const style = await control.evaluate((element) => {
         const computed = getComputedStyle(element);
@@ -71,6 +76,27 @@ try {
           path: join(screenshots, `${forcedColors}-${label.replaceAll(" ", "-")}.png`),
         });
     }
+
+    // The select's list, opened from the keyboard, marks the chosen row as highlighted
+    await page.keyboard.press("ArrowDown");
+    const row = page.locator('[role="option"][data-highlighted]');
+    await row.waitFor();
+    rows.push({
+      forcedColors,
+      ...(await row.evaluate((element) => {
+        const computed = getComputedStyle(element);
+
+        return {
+          outlineStyle: computed.outlineStyle,
+          outlineWidth: computed.outlineWidth,
+          outlineColor: computed.outlineColor,
+          backgroundColor: computed.backgroundColor,
+        };
+      })),
+    });
+    console.log(JSON.stringify(rows.at(-1)));
+
+    if (screenshots) await page.screenshot({ path: join(screenshots, `${forcedColors}-row.png`) });
 
     await page.close();
   }
@@ -101,8 +127,21 @@ try {
     }
   }
 
+  for (const style of rows) {
+    const name = `The select's highlighted row (${style.forcedColors})`;
+
+    if (style.forcedColors === "active") {
+      assert.equal(style.outlineStyle, "solid", `${name} is outlined`);
+      assert.ok(parseFloat(style.outlineWidth) >= 2, `${name} has a 2px or thicker outline`);
+      assert.notEqual(style.outlineColor, "rgba(0, 0, 0, 0)", `${name} is not transparent`);
+    } else {
+      assert.equal(style.outlineStyle, "none", `${name} is marked by its navy alone`);
+      assert.notEqual(style.backgroundColor, "rgba(0, 0, 0, 0)", `${name} is filled`);
+    }
+  }
+
   console.log(
-    "PASS field focus: Input, Textarea and NativeSelect with Tab in normal and forced colours",
+    "PASS field focus: Input, Textarea, NativeSelect and Select with Tab, and a list's highlighted row, in normal and forced colours",
   );
 } finally {
   await browser?.close();

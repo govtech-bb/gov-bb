@@ -16,7 +16,7 @@ export function ScreenHeader({
   return (
     <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
       <div>
-        <h1 className="text-28 font-semibold">{title}</h1>
+        <h1 className="text-28 font-semibold text-balance">{title}</h1>
         {lead && <p className="mt-2 text-16 text-muted">{lead}</p>}
       </div>
       {action}

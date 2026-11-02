@@ -3,7 +3,7 @@ import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, expect, test, vi } from "vitest";
-import { Button } from "./button";
+import { blockHandle, Button } from "./button";
 
 const classes = (html: string) => /class="([^"]*)"/.exec(html)?.[1]?.split(" ") ?? [];
 
@@ -47,6 +47,19 @@ test("is at least 44px each way under a coarse pointer, except as a link in a li
 
   expect(classes(renderToStaticMarkup(<Button variant="link">Line 3</Button>))).not.toContain(
     "pointer-coarse:min-h-11",
+  );
+});
+
+test("a long press doesn't select a button's words, a rail's included, except a link's in a line of text", () => {
+  for (const html of [
+    renderToStaticMarkup(<Button size="xs" aria-label="Remove" />),
+    renderToStaticMarkup(<Button variant="accent">Publish changes</Button>),
+  ])
+    expect(classes(html)).toContain("select-none");
+
+  expect(blockHandle.split(" ")).toContain("select-none");
+  expect(classes(renderToStaticMarkup(<Button variant="link">Line 3</Button>))).not.toContain(
+    "select-none",
   );
 });
 
@@ -194,6 +207,56 @@ test("with a pending label, both labels share one cell, so it keeps the wider's 
   // Without one, its words are as they were
   expect(renderToStaticMarkup(<Button>Sign out</Button>)).toMatch(
     /><span>Sign out<\/span><\/button>$/,
+  );
+});
+
+test("pending without an icon, the spinner lays over its label, which keeps the button's width and its name", () => {
+  const parts = (html: string) => [
+    ...new DOMParser().parseFromString(html, "text/html").querySelector("button")!.children,
+  ];
+
+  const [label, spinner] = parts(renderToStaticMarkup(<Button pending>Save</Button>));
+
+  // Still there, so still the button's width and its name, but out of sight under the spinner
+  expect(label!.outerHTML).toBe('<span class="opacity-0">Save</span>');
+  expect(spinner!.classList).toContain("absolute");
+  expect(spinner!.classList).toContain("inset-0");
+  expect(spinner!.querySelector("svg")!.classList).toContain("motion-safe:animate-spin");
+
+  // With an icon, the spinner takes its place and the label stays as it is
+  const withIcon = parts(
+    renderToStaticMarkup(
+      <Button pending icon={<svg />}>
+        Save
+      </Button>,
+    ),
+  );
+
+  expect(withIcon.map((part) => part.tagName)).toEqual(["I", "SPAN"]);
+  expect(withIcon[1]!.outerHTML).toBe("<span>Save</span>");
+});
+
+test("with a pending label and no icon, the spinner leads the pending label in the cell both share", () => {
+  const cell = (html: string) =>
+    new DOMParser().parseFromString(html, "text/html").querySelector("button > .grid")!;
+
+  const idle = cell(renderToStaticMarkup(<Button pendingLabel="Signing out…">Sign out</Button>));
+
+  // Kept in reserve, still, so its width counts before it shows
+  expect(idle.lastElementChild!.querySelector("i > svg")).not.toBeNull();
+  expect(idle.lastElementChild!.querySelector("svg")!.getAttribute("class")).toBeNull();
+
+  const pending = cell(
+    renderToStaticMarkup(
+      <Button pending pendingLabel="Signing out…">
+        Sign out
+      </Button>,
+    ),
+  );
+
+  expect(pending.parentElement!.firstElementChild).toBe(pending);
+  expect(pending.lastElementChild!.querySelector("svg")!.classList).toContain(
+    "motion-safe:animate-spin",
   );
 });
 

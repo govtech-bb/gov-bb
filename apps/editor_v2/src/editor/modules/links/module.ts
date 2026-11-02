@@ -57,7 +57,7 @@ export function registerLinkPolicy(
   isValidLink: (url: string) => boolean,
   notify = () =>
     toast("Link removed", {
-      description: "Its address can't be used on GOV.BB, so only its text was kept.",
+      description: "Its address can’t be used on GOV.BB, so only its text was kept.",
       tone: "info",
     }),
 ) {

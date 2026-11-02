@@ -7,12 +7,8 @@ import { $setPageMetadata } from "../pages/metadata";
 import { govbbPageCodec, govbbPageEditor } from "../presets/govbb-page";
 import type { Category } from "./categories";
 import type { ApiPage } from "./client";
-import {
-  markdownToPageSaveInput,
-  pageToMarkdown,
-  pickerCategories,
-  suggestedUrl,
-} from "./page-markdown";
+import { suggestedUrl } from "./page-fields";
+import { markdownToPageSaveInput, pageToMarkdown, pickerCategories } from "./page-markdown";
 
 const VISIBILITIES = ["public", "preview", "draft"] as const;
 
@@ -115,10 +111,12 @@ describe("page markdown", () => {
   it.each([
     "/money-financial-support/national-insurance-for-self-employed-workers",
     "/money-financial-support/national-insurance-for-self-employed-workers/check-your-record",
-  ])("opens converted action page %s visually without changing it", (url) => {
+    "/pensions-and-gratuities/calculate-your-pension/about-government-pensions",
+    "/business-trade/crop-over-permits",
+  ])("opens converted snapshot page %s visually without changing it", (url) => {
     const page = pages.find((page) => page.url === url);
 
-    if (!page) throw new Error(`Missing converted action page: ${url}`);
+    if (!page) throw new Error(`Missing converted snapshot page: ${url}`);
     const source = pageToMarkdown(page, categories);
     const prepared = govbbPageCodec.prepare(source);
 
@@ -152,11 +150,9 @@ describe("page markdown", () => {
     const after = markdownToPageSaveInput(edited, entry, categories);
 
     if (!before.ok || !after.ok) throw new Error("Both versions should save");
-    // An edit re-exports the body in the editor's normal form (a hard break becomes <br>).
-    expect({ ...after.value, body_markdown: "" }).toEqual({
+    expect(after.value).toEqual({
       ...before.value,
       visibility: "preview",
-      body_markdown: "",
     });
   });
 

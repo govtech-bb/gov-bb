@@ -2,12 +2,16 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createMemoryHistory, createRouter, RouterProvider } from "@tanstack/react-router";
 import { act, type ReactNode } from "react";
-import { afterEach, expect, test, vi } from "vitest";
+import { afterEach, beforeAll, expect, test, vi } from "vitest";
 import { createEditorApi, type ApiPage, type ServiceDetail } from "../../src/api/client";
 import { AuthFailure, type EditorAuth } from "../../src/auth/session";
 import { routeTree } from "../../src/routeTree.gen";
+import { loadPageEditor } from "../../src/workspace/preload";
 import { renderInPage } from "../helpers/page-editor";
 import { shownText } from "../helpers/shown-text";
+
+// The page editor loads apart from the workspace: import it once up front, not within the first test to open a page
+beforeAll(() => loadPageEditor());
 
 const stamp = "2026-10-07T12:00:00.000Z";
 
@@ -64,7 +68,13 @@ async function mountWorkspace(
   {
     roles = ["editor", "approver"],
     publicIds = [],
-  }: { roles?: readonly string[]; publicIds?: readonly string[] } = {},
+    me,
+  }: {
+    roles?: readonly string[];
+    publicIds?: readonly string[];
+    /** How /editor/me answers, when not at once with `roles`. */
+    me?: () => Promise<Response>;
+  } = {},
 ) {
   vi.stubGlobal("matchMedia", (query: string) => ({
     matches: true,
@@ -103,7 +113,9 @@ async function mountWorkspace(
         });
 
       if (path === "/editor/me")
-        return Response.json({ id: "me", email: "author@govtech.bb", name: "Author", roles });
+        return me
+          ? me()
+          : Response.json({ id: "me", email: "author@govtech.bb", name: "Author", roles });
 
       if (path === "/editor/categories") return Response.json({ categories: [] });
 
@@ -237,6 +249,68 @@ test.each([
     );
   },
 );
+
+test("the workspace opens with the roles read, so a read-only notice is there from the start", async () => {
+  const answer = Promise.withResolvers<void>();
+
+  const mounting = mountWorkspace("/services", {
+    roles: [],
+    me: async () => {
+      await answer.promise;
+
+      return Response.json({ id: "me", email: "author@govtech.bb", name: "Author", roles: [] });
+    },
+  });
+
+  // Still checking: none of the workspace shows yet, so nothing in it moves when the roles arrive
+  await new Promise((resolve) => setTimeout(resolve, 50));
+  expect(document.querySelector("header")).toBeNull();
+
+  answer.resolve();
+  await mounting;
+  expect(document.body.textContent).toContain("you don’t have the editor role");
+});
+
+test("roles that can't be read are said to be unchecked, with Try again, never that a role is missing", async () => {
+  let reachable = false;
+
+  await mountWorkspace("/services/service/fees", {
+    publicIds: ["fees"],
+    me: async () =>
+      reachable
+        ? Response.json({
+            id: "me",
+            email: "a@govtech.bb",
+            name: "A",
+            roles: ["editor", "approver"],
+          })
+        : Response.json({}, { status: 503 }),
+  });
+
+  // By the words it shows, its pending words aside
+  const button = (name: string) =>
+    [...document.querySelectorAll("button")].find((item) => item.textContent?.startsWith(name))!;
+
+  await until(() =>
+    expect(document.body.textContent).toContain("We couldn’t check your permissions."),
+  );
+  expect(document.body.textContent).not.toContain("Only approvers can delete a public page.");
+  const reason = button("Delete page").getAttribute("aria-describedby");
+  expect(reason && document.getElementById(reason)?.textContent).toBe(
+    "We couldn’t check your permissions.",
+  );
+
+  // Read at last: the notice goes, with its focused Try again, and the content takes the focus
+  reachable = true;
+  const again = button("Try again");
+  again.focus();
+  await act(async () => again.click());
+  await until(() =>
+    expect(document.body.textContent).not.toContain("We couldn’t check your permissions."),
+  );
+  expect(button("Delete page").disabled).toBe(false);
+  expect(document.activeElement).toBe(document.getElementById("workspace-content"));
+});
 
 test("someone without the editor role is told why, and can't add, delete or create", async () => {
   const h = await mountWorkspace("/services/service/fees", { roles: [] });
