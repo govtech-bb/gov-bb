@@ -380,12 +380,37 @@ The seed is a committed snapshot of legacy markdown and the category taxonomy, s
 Each deployed database gets the estate once, by a command rather than by `SEED`. It is compiled into the image beside `main.js`, so it runs with the task's own database settings:
 
 ```sh
-node dist/src/import-estate.js [--dry-run] [--force "<reason>"]
+node dist/src/import-estate.js --forms-api <origin> [--dry-run] [--force "<reason>"]
 ```
 
-Locally, from this directory, run `pnpm import-estate --dry-run` or `pnpm import-estate`; it reads `.env` like `pnpm dev`. Do not add a `--` separator: this pnpm forwards it literally and tsx then rejects the flag.
+Locally, from this directory, run `pnpm import-estate --forms-api https://forms.api.sandbox.alpha.gov.bb --dry-run` (or without `--dry-run`); it reads `.env` like `pnpm dev`. Do not add a `--` separator: this pnpm forwards it literally and tsx then rejects the flag.
 
-The command migrates first, prints `database: <name> host: <addr>` before writing anything, then one JSON line: `{"mode":"dry-run"|"import"|"replace","source":"<content sha1>","reason":"<reason>"|null,"existing":N,"actors":{…},"categories":N,"documents":N,"collections":N,"records":N}`. It refuses, with exit code 1, when `content_pages` already has rows: `content_pages has N rows (history actors: …); refusing. Pass --force "<reason>" to replace them.` `--force` deletes every row of `search_chunks`, `page_revisions` (the pending revisions of the pages it replaces), `content_pages` and `categories` and then imports, all in one transaction, so the history records each replaced page and category as `deleted` by `system`; `change_events` is never emptied. The transaction holds a lock on `content_pages` until it commits or rolls back, so editor saves stall for the few seconds it takes; public reads keep seeing the old content until it commits. `--dry-run` does the real work and rolls it back, so its counts and errors are real. `--force` keeps `data_collections` and `collection_records`, and records are seeded only into a new collection, so a replace normally reports `"collections":0,"records":0`; that is expected. On an occupied database a plain `--dry-run` refuses, so `--dry-run --force "<reason>"` is the only way to see the JSON line before the real run. Every imported page's and category's `created` history entry is by `system`; the source hash and the `--force` reason are in the JSON line, not the history.
+Before it touches the database, the command reads that environment's `service_status` (see "Each environment's service_status" below) and prints `service_status: N rows from <url>`, then one JSON line listing every page whose visibility the overlay changed: `{"visibility_changes":[{"url":"…","from":"preview","to":"public"},…]}`. Both lines come before `database:` and so before any refusal. The command then migrates, prints `database: <name> host: <addr>` before writing anything, then one JSON line: `{"mode":"dry-run"|"import"|"replace","source":"<content sha1>","reason":"<reason>"|null,"existing":N,"actors":{…},"revisions":N,"categories":N,"documents":N,"collections":N,"records":N}`. It refuses, with exit code 1, when `content_pages` already has rows: `content_pages has N rows (history actors: …; revisions: N); refusing. Pass --force "<reason>" to replace them.` `revisions` counts the rows in `page_revisions`: pending editor saves, which write no history event, so the actor histogram cannot show them, and which `--force` deletes. `--force` deletes every row of `search_chunks`, `page_revisions` (the pending revisions of the pages it replaces), `content_pages` and `categories` and then imports, all in one transaction, so the history records each replaced page and category as `deleted` by `system`; `change_events` is never emptied. The transaction holds a lock on `content_pages` until it commits or rolls back, so editor saves stall for the few seconds it takes; public reads keep seeing the old content until it commits. `--dry-run` does the real work and rolls it back, so its counts and errors are real. `--force` keeps `data_collections` and `collection_records`, and records are seeded only into a new collection, so a replace normally reports `"collections":0,"records":0`; that is expected. On an occupied database a plain `--dry-run` refuses (after printing `visibility_changes`), so `--dry-run --force "<reason>"` is the only way to see the JSON line before the real run. Every imported page's and category's `created` history entry is by `system`; the source hash and the `--force` reason are in the JSON line, not the history.
+
+### Each environment's service_status
+
+The snapshot's visibility is the markdown frontmatter's. Each environment's admins have since set services `enabled`, `disabled` or `form_disabled` in feature flagging, and landing applies that at request time; after cutover landing ignores it for api_v2 pages (#3125), so the import applies it instead (#3188, ADR 0063's mapping):
+
+| `service_status` | Imported visibility                                      |
+| ---------------- | -------------------------------------------------------- |
+| `enabled`        | `public` (raises a `draft` or `preview` page)            |
+| `disabled`       | `preview` (lowers a `public` page, raises a `draft` one) |
+| `form_disabled`  | the frontmatter level, unchanged                         |
+| no row           | the frontmatter level, unchanged                         |
+
+A page's key is its `form_id`, or its `content_slug` (landing's registry slug) when it has no form, so a `/start` page shares its parent's row. A row that matches no page is ignored. `published_at` stays the frontmatter `publish_date` whatever the level; an undated page is dated now only if it imports `public`.
+
+`--forms-api` is required. A missing flag, a network error, a non-2xx answer or a body that is not the `{"status":"success","data":[{slug,status}]}` envelope exits 1 before the database is opened, so nothing is written.
+
+Before every run, confirm in the Amplify Console that the environment's feature_flagging branch has no `EDITOR_V2_URL` set. If it is set, stop: that environment is past cutover, where a `disabled` row hides only the form (ADR 0063, "After cutover"), and the overlay would wrongly lower the page. The importer cannot detect this.
+
+`--forms-api` is that environment's api v1 origin, the same value as its `VITE_FORMS_API_URL`:
+
+| Environment | `--forms-api`                                               |
+| ----------- | ----------------------------------------------------------- |
+| sandbox     | `https://forms.api.sandbox.alpha.gov.bb`                    |
+| staging     | `https://api.staging.alpha.gov.bb`                          |
+| prod        | prod's `VITE_FORMS_API_URL`; confirm it at #3230 before use |
 
 ### Per environment
 
@@ -403,7 +428,7 @@ Sandbox re-imports while no editor has written there (#3234). Staging (#3229) an
    aws ecs describe-task-definition --task-definition "$SERVICE" --query 'taskDefinition.containerDefinitions[0].environment'
    ```
 
-3. Run the command inside the live container with ECS Exec (needs the AWS Session Manager plugin and credentials for the account). The deployed image has no `psql`, so every database step goes through the command. First confirm the running task's image is tagged with the sha you noted in step 1 (the deploy tags images with the commit sha); an older image imports an older snapshot. Dry run first; read the `database:` line and the counts; then the real run.
+3. Run the command inside the live container with ECS Exec (needs the AWS Session Manager plugin and credentials for the account). The deployed image has no `psql`, so every database step goes through the command. First confirm the running task's image is tagged with the sha you noted in step 1 (the deploy tags images with the commit sha); an older image imports an older snapshot. Dry run first; read the `visibility_changes` line, the `database:` line and the counts; then the real run.
 
    ```sh
    TASK=$(aws ecs list-tasks --cluster "$CLUSTER" --service-name "$SERVICE" --query 'taskArns[0]' --output text)
@@ -411,25 +436,26 @@ Sandbox re-imports while no editor has written there (#3234). Staging (#3229) an
    aws ecs execute-command --cluster "$CLUSTER" --task "$TASK" --container api-v2 --interactive --command /bin/sh
    ```
 
-   Then, inside that shell, on an empty database:
+   Then, inside that shell, set the environment's origin from "Each environment's service_status" above, and on an empty database:
 
    ```sh
-   node dist/src/import-estate.js --dry-run
-   node dist/src/import-estate.js
+   FORMS_API=<origin>
+   node dist/src/import-estate.js --forms-api "$FORMS_API" --dry-run
+   node dist/src/import-estate.js --forms-api "$FORMS_API"
    ```
 
    and on a database that already has content, only after the check in "A database that already has content" below:
 
    ```sh
-   node dist/src/import-estate.js --dry-run
-   node dist/src/import-estate.js --dry-run --force "<env>: re-import from <branch> <deployed sha>"
-   node dist/src/import-estate.js --force "<env>: re-import from <branch> <deployed sha>"
+   node dist/src/import-estate.js --forms-api "$FORMS_API" --dry-run
+   node dist/src/import-estate.js --forms-api "$FORMS_API" --dry-run --force "<env>: re-import from <branch> <deployed sha>"
+   node dist/src/import-estate.js --forms-api "$FORMS_API" --force "<env>: re-import from <branch> <deployed sha>"
    ```
 
-   A one-shot form also works when the command needs no quoting, e.g. `--command "node dist/src/import-estate.js --dry-run"`; for a forced run as a one-shot, wrap it as `--command "/bin/sh -c 'node dist/src/import-estate.js --force \"<reason>\"'"` and confirm the quoting on sandbox before relying on it.
+   A one-shot form also works when the command needs no quoting, e.g. `--command "node dist/src/import-estate.js --forms-api <origin> --dry-run"`; for a forced run as a one-shot, wrap it as `--command "/bin/sh -c 'node dist/src/import-estate.js --forms-api <origin> --force \"<reason>\"'"` and confirm the quoting on sandbox before relying on it.
 
-4. Record it on the import issue (#3234, #3229 or #3230): paste the refusal line, if there was one, the dry run's JSON line and the real run's JSON line, which names the `source` hash and any `--force` reason. The `change_events` rows it wrote are by `system` and carry `occurred_at`.
-5. Smoke from your machine. Every `public` page in `estate.json` returns 200 from `GET /pages?url=`; `preview` pages return 200 only with the `x-preview-token` header (the task's `PREVIEW_SECRET`); `draft` pages are never served by that endpoint.
+4. Record it on the import issue (#3234, #3229 or #3230): paste the refusal line, if there was one, the `visibility_changes` line, the dry run's JSON line and the real run's JSON line, which names the `source` hash and any `--force` reason. The `change_events` rows it wrote are by `system` and carry `occurred_at`.
+5. Smoke from your machine. Expected visibility is the post-overlay level: `estate.json`'s, changed as the dry run's `visibility_changes` listed (#3235 scripts this check). Every `public` page in `estate.json` returns 200 from `GET /pages?url=`; `preview` pages return 200 only with the `x-preview-token` header (the task's `PREVIEW_SECRET`); `draft` pages are never served by that endpoint.
 
    ```sh
    API=https://<api origin>
@@ -449,7 +475,7 @@ Run `--dry-run`: it refuses an occupied database and shows the actor histogram o
 An editor has written if any of these holds:
 
 - **(a)** the refusal's `history actors:` lists any actor other than `system`. Only `system` is a machine actor; editors are recorded by their `auth_user` id, which `007` kept.
-- **(b)** `page_revisions` has a row. A pending save writes no history event (see "Pending revisions"), and `--force` deletes it. The import doesn't report this yet; #3188 adds a revision count. Until it does, don't run `--force`.
+- **(b)** the refusal's `revisions:` is not 0. A pending save writes no history event (see "Pending revisions"), and `--force` deletes it.
 - **(c)** on sandbox only, a category was edited between #3351 (28 Oct 2026, 00:24 UTC) and sandbox's deploy of #3340 running migration `007` (merged 28 Oct 2026, 19:21 UTC), when category edits left no event. #3234 checks this with a one-off query.
 
 If any holds, stop, record it on the import issue, and fix forward.
