@@ -116,9 +116,9 @@ async function main(): Promise<void> {
       }
       ({ access, auth } = authBypass);
     } else {
-      const github = await createBetterAuth(db, config.auth, logger);
-      access = new EditorAccess(github, roles, config.adminEmails);
-      auth = github;
+      const betterAuth = await createBetterAuth(db, config.auth, logger);
+      access = new EditorAccess(betterAuth, roles, config.adminEmails);
+      auth = betterAuth;
     }
     operation = "http";
     const pages = new PostgresPages(db);

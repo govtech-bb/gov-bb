@@ -111,8 +111,9 @@ export const AUTH_ENV = {
   BETTER_AUTH_URL: "http://127.0.0.1:3020",
   EDITOR_ORIGIN: "http://localhost:3000",
   BETTER_AUTH_SECRET: "api-v2-test-secret-at-least-thirty-two-characters",
-  GITHUB_CLIENT_ID: "api-v2-test-client",
-  GITHUB_CLIENT_SECRET: "api-v2-test-client-secret",
+  GOOGLE_CLIENT_ID: "api-v2-test-client",
+  GOOGLE_CLIENT_SECRET: "api-v2-test-client-secret",
+  GOOGLE_ALLOWED_DOMAINS: "govtech.bb",
   API_V2_ADMIN_EMAILS: "admin@govtech.bb",
 };
 
@@ -276,7 +277,7 @@ export async function createEmployeeSession(
       ),
     ).$context;
     const userId = randomUUID();
-    // The GitHub identity check is tested separately. Here the fixture inserts
+    // The Google Workspace check is tested separately. Here the fixture inserts
     // a verified employee and asks BetterAuth itself to mint and store a session.
     await pool.query(
       'insert into auth_user (id, name, email, "emailVerified") values ($1, $2, $3, $4)',
@@ -287,7 +288,8 @@ export async function createEmployeeSession(
         options.emailVerified ?? true,
       ],
     );
-    // Every employee is an editor unless a test says otherwise, as at a real first sign-in.
+    // Tests run as an editor unless they say otherwise. A real first sign-in
+    // grants no role; an admin grants one (ADR 0079).
     for (const role of options.roles ?? ["editor"])
       await pool.query(
         "insert into user_roles (user_id, role) values ($1, $2)",

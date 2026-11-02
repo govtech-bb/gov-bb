@@ -93,20 +93,33 @@ describe("editor access", () => {
       err(new AuthUnavailable({ lookup: "roles", operation: "rolesOf" })),
     );
   });
-  it("makes a listed email an admin, granted by nobody, once", async () => {
-    const listed = rolesHolding(["editor"]);
+  it("makes a listed email an admin and an editor, granted by nobody, once", async () => {
+    // A new user has no role, and editor_v2 has no roles screen yet, so a
+    // listed admin must be able to write without granting themselves editor.
+    const none = rolesHolding();
     expect(
-      await new EditorAccess(signedIn, listed.records, [
+      await new EditorAccess(signedIn, none.records, [
+        employee.email,
+      ]).requireEmployee(new Redacted("cookie")),
+    ).toEqual(ok({ ...employee, roles: ["admin", "editor"] }));
+    expect(none.granted).toEqual([
+      { role: "admin", grantedBy: null },
+      { role: "editor", grantedBy: null },
+    ]);
+
+    const editor = rolesHolding(["editor"]);
+    expect(
+      await new EditorAccess(signedIn, editor.records, [
         employee.email,
       ]).requireEmployee(new Redacted("cookie")),
     ).toEqual(ok({ ...employee, roles: ["editor", "admin"] }));
-    expect(listed.granted).toEqual([{ role: "admin", grantedBy: null }]);
+    expect(editor.granted).toEqual([{ role: "admin", grantedBy: null }]);
 
-    const already = rolesHolding(["admin"]);
-    await new EditorAccess(signedIn, already.records, [
+    const both = rolesHolding(["admin", "editor"]);
+    await new EditorAccess(signedIn, both.records, [
       employee.email,
     ]).requireEmployee(new Redacted("cookie"));
-    expect(already.granted).toEqual([]);
+    expect(both.granted).toEqual([]);
   });
   it("grants nothing to an email that is not listed", async () => {
     const unlisted = rolesHolding();

@@ -15,7 +15,7 @@ export const OPENAPI_DOCUMENT = {
     description:
       "Public markdown content, categories and search text, and " +
       "employee-authenticated editor operations. " +
-      "Editor reads, writes, and the version token require a GitHub-authenticated govtech-bb organization member session.",
+      "Editor reads, writes, and the version token require a session from a Google Workspace account on an allowed domain.",
     version: "0.0.0",
   },
   tags: [
@@ -33,7 +33,7 @@ export const OPENAPI_DOCUMENT = {
     { name: "meta", description: "Freshness" },
     {
       name: "auth",
-      description: "GitHub organization member sign-in and sessions",
+      description: "Google Workspace sign-in and sessions",
     },
     { name: "admin", description: "Who holds which role; admins only" },
   ],

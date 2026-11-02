@@ -62,7 +62,7 @@ export class EditorAccess implements EmployeeGate {
   /**
    * Reject missing, expired, revoked or unavailable sessions before editor
    * operations. Roles are read on every request, so a revocation applies to
-   * the next one; a listed admin who lacks the role is granted it here.
+   * the next one; a listed admin who lacks admin or editor is granted it here.
    */
   async requireEmployee(
     credential: Redacted<string> | undefined,
@@ -77,17 +77,17 @@ export class EditorAccess implements EmployeeGate {
       return err(
         new AuthUnavailable({ lookup: "roles", operation: "rolesOf" }),
       );
-    if (
-      this.adminEmails.includes(identity.email) &&
-      !roles.value.includes("admin")
-    ) {
-      const granted = await this.roles.grant(identity.id, "admin", null);
-      if (!granted.ok)
-        return err(
-          new AuthUnavailable({ lookup: "roles", operation: "grant" }),
-        );
-      roles.value.push("admin");
-    }
+    // A listed admin can also write: a new user has no role (ADR 0079).
+    if (this.adminEmails.includes(identity.email))
+      for (const role of ["admin", "editor"] as const) {
+        if (roles.value.includes(role)) continue;
+        const granted = await this.roles.grant(identity.id, role, null);
+        if (!granted.ok)
+          return err(
+            new AuthUnavailable({ lookup: "roles", operation: "grant" }),
+          );
+        roles.value.push(role);
+      }
     return ok({
       id: identity.id,
       email: identity.email,
