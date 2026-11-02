@@ -10,6 +10,7 @@
     "typecheck": "tsc -p tsconfig.check.json --noEmit",
     "seed-data": "tsx scripts/build-seed-data.ts",
     "import-estate": "tsx --env-file-if-exists=.env src/import-estate.ts",
+    "check-import": "tsx scripts/check-import.ts",
     "reindex-search": "tsx --env-file-if-exists=.env src/reindex-search.ts",
     "redact-change-events": "tsx --env-file-if-exists=.env src/redact-change-events.ts"
   },

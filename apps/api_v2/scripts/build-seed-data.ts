@@ -13,7 +13,8 @@
  *   as `<service>/start` hangs off its parent's url, takes its parent's
  *   category and records the parent; so do the pages landing nests without
  *   nesting their url (`NESTED_WITHOUT_URL`). A second category is dropped:
- *   a page has one `category_id`.
+ *   a page has one `category_id`. `content_slug` is the markdown path
+ *   landing's registry keys the page by, `index.md`/`.md` stripped.
  * - categories: `CATEGORY_TAXONOMY` in its order, each subcategory a
  *   category with a parent.
  *
@@ -111,6 +112,7 @@ const parsed: Parsed[] = markdownFiles(contentDir).map((path) => {
       description: data.description ?? null,
       visibility: data.visibility ?? "public",
       form_id: data.form_id || null,
+      content_slug: slug,
       published_at: asDate(data.publish_date),
       body_markdown: content.trim(),
       frontmatter,
