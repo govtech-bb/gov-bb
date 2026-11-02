@@ -12,7 +12,7 @@ import { PostgresRoles } from "./adapters/postgres-roles";
 import type { Database } from "./db";
 import type { Employee } from "./modules/auth";
 import { PostgresPages } from "./adapters/postgres-pages";
-import { withDefaults, type PageId } from "./modules/page";
+import { PageDocument, withDefaults, type PageId } from "./modules/page";
 import { Redacted } from "./modules/redacted";
 import { ok } from "./modules/result";
 import { changeEvents } from "./schema";
@@ -72,7 +72,9 @@ const as = (employee: Employee, options: InjectOptions) =>
   });
 
 const seedPage = async (overrides: Record<string, unknown> = {}) =>
-  expectOk(await services.editing.create(aPage(overrides), TEST_EMPLOYEE));
+  PageDocument.parse(
+    expectOk(await services.editing.create(aPage(overrides), TEST_EMPLOYEE)),
+  );
 
 const stored = async (id: PageId) =>
   expectOk(await new PostgresPages(db).find(id));

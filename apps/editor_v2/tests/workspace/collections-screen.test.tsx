@@ -377,6 +377,44 @@ test("a key that's taken is refused next to the key, keeping what was typed", as
   expect(dialog()).not.toBeNull();
 });
 
+test("a key's error goes once the key changes, whether the dialog or api_v2 found it", async () => {
+  await renderCollection().ready;
+  await loaded();
+  await press("Add record");
+  await submit();
+
+  expect(errorOf("Key")).toBe("Enter a key");
+  await enter("Key", "nis");
+  expect(errorOf("Key")).toBeUndefined();
+  expect(control("Key").getAttribute("aria-invalid")).not.toBe("true");
+
+  await submit();
+  await until(() => expect(errorOf("Key")).toBe("Another record already has this key"));
+  await enter("Key", "nis-barbados");
+  expect(errorOf("Key")).toBeUndefined();
+});
+
+test("a field's error from api_v2 goes once that field changes, and another's stays", async () => {
+  await renderCollection({ record: "nis" }).ready;
+  await until(() => expect(dialog()).not.toBeNull());
+  await enter("Email (optional)", "not an email");
+  server.refuse(400, {
+    error: "validation_failed",
+    message: "Not saved.",
+    errors: [
+      { field: "email", message: "Enter an email address." },
+      { field: "name", message: "Keep the name shorter." },
+    ],
+  });
+  await submit();
+  await until(() => expect(errorOf("Email (optional)")).toBe("Enter an email address."));
+
+  await enter("Email (optional)", "info@nis.gov.bb");
+
+  expect(errorOf("Email (optional)")).toBeUndefined();
+  expect(errorOf("Name (optional)")).toBe("Keep the name shorter.");
+});
+
 test("a ?record= address opens that record's dialog with its values", async () => {
   const { ready } = renderCollection({ record: "barbados-drug-service" });
 
@@ -652,7 +690,7 @@ test("a save whose answer is lost is never reported as failed", async () => {
   server.refuse(503, { error: "unavailable", message: "Down." });
   await submit();
   await until(() =>
-    expect(dialog()?.textContent).toContain("We couldn't confirm whether this record was saved."),
+    expect(dialog()?.textContent).toContain("We couldn’t confirm whether this record was saved."),
   );
 
   expect(dialog()?.textContent).not.toContain("Try again.");

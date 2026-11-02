@@ -52,6 +52,7 @@ const business: Category = {
   position: 0,
   services: 30,
   reserved_route: false,
+  last_edited_by: null,
   updated_at: "2026-10-28T12:00:00.000Z",
 };
 
@@ -284,7 +285,7 @@ test("with no matches, one Clear filters button clears the list and returns focu
   const onSearch = vi.fn();
 
   await show(listed(thirty, { q: "hotel", status: ["draft"] }, { onSearch }));
-  expect(host.textContent).toContain("Nothing matches these filters");
+  expect(host.textContent).toContain("Nothing matches “hotel” with these filters");
 
   const clearButtons = [...host.querySelectorAll<HTMLButtonElement>("button")].filter(
     (item) => item.textContent === "Clear filters",

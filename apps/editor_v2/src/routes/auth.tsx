@@ -104,7 +104,7 @@ function AuthPage() {
   return (
     <AuthScreen>
       <ScreenTitle names={[heading]} />
-      <h1 ref={title} tabIndex={-1} className="text-28 font-semibold outline-none">
+      <h1 ref={title} tabIndex={-1} className="text-28 font-semibold text-balance outline-none">
         {heading}
       </h1>
       <p className="mt-3 text-16 text-muted">

@@ -2,7 +2,8 @@ import { describe, expect, it } from "vitest";
 import { ApiFailure, type ApiPage, type SavePageInput } from "../../src/api/client";
 import type { Category } from "../../src/api/categories";
 import { pageToMarkdown } from "../../src/api/page-markdown";
-import { savePageDraft, pageHasUnsavedChanges } from "../../src/workspace/page-sync";
+import { pageHasUnsavedChanges } from "../../src/workspace/page-session";
+import { savePageDraft } from "../../src/workspace/page-sync";
 import { DraftStore } from "../../src/persistence/draft-store";
 import { govbbPageCodec } from "../../src/presets/govbb-page";
 
@@ -22,6 +23,7 @@ const page: ApiPage = {
   created_at: "2026-10-07T12:00:00.000Z",
   updated_at: "2026-10-07T12:00:00.000Z",
   pending_revision: null,
+  last_edited_by: null,
 };
 
 const newer: ApiPage = {
@@ -116,6 +118,7 @@ describe("saving a page", () => {
       position: 0,
       services: 30,
       reserved_route: false,
+      last_edited_by: null,
       updated_at: "2026-10-28T12:00:00.000Z",
     };
 

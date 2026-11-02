@@ -4,6 +4,7 @@ import type * as CategoryApiModule from '../lib/api-v2-categories'
 // Type-only, so it erases at runtime and the route still loads lazily, after
 // the mocks below are in place.
 import type * as ContentRouteModule from './$'
+import type { ViewLevel } from '../lib/frontmatter'
 import { processMarkdown } from '../utils/markdown/processor'
 
 // Mock the registry to drive the gate's throw paths deterministically. Only the
@@ -19,6 +20,10 @@ const mocks = vi.hoisted(() => ({
   isUrlVisible: vi.fn(() => true),
   urlLevel: vi.fn(() => 'public' as const),
   resolveBareSlugRedirect: vi.fn(() => undefined as string | undefined),
+  // The breadcrumb JSON-LD's title lookups; undefined falls back to the slug.
+  getCategoryTitle: vi.fn(),
+  getSubcategoryTitle: vi.fn(),
+  getPageTitle: vi.fn(),
   PAGES: [] as ContentPage[],
 }))
 
@@ -445,7 +450,7 @@ describe('$ route api_v2 pages (#2944)', () => {
     url: 'work-employment/v2-service',
     frontmatter: {
       ...fakePage.frontmatter,
-      visibility: 'public' as const,
+      visibility: 'public' as ViewLevel,
       form_id: 'get-birth-certificate',
     },
     hideStartLinks: false,
@@ -475,6 +480,51 @@ describe('$ route api_v2 pages (#2944)', () => {
     })
     // api_v2 already enforced visibility.
     expect(mocks.isVisible).not.toHaveBeenCalled()
+  })
+
+  /** What `$`'s head returns for a page loader result. */
+  const head = (loaderData: Record<string, unknown>) =>
+    // SAFETY: `$`'s head reads only `loaderData`; the router's other head
+    // arguments go unread.
+    (
+      Route.options.head as (args: { loaderData: unknown }) => {
+        meta?: Array<Record<string, string>>
+        links?: Array<Record<string, string>>
+        scripts?: Array<{ type: string; children: string }>
+      }
+    )({ loaderData })
+
+  const previewV2Page = {
+    ...v2Page,
+    frontmatter: { ...v2Page.frontmatter, visibility: 'preview' as ViewLevel },
+  }
+
+  it("takes an api_v2 page's level from its own visibility (#3246)", async () => {
+    const data = await load(previewV2Page, 'preview')
+    expect(data).toMatchObject({
+      kind: 'page',
+      level: 'preview',
+      source: 'api_v2',
+    })
+    expect(mocks.isVisible).not.toHaveBeenCalled()
+  })
+
+  it('marks a preview api_v2 page noindex, with no canonical, OG or JSON-LD (#3246)', async () => {
+    const { meta, links, scripts } = head(await load(previewV2Page, 'preview'))
+    expect(meta).toContainEqual({ name: 'robots', content: 'noindex' })
+    expect(meta).not.toContainEqual(
+      expect.objectContaining({ property: 'og:url' }),
+    )
+    expect(links).toBeUndefined()
+    expect(scripts).toBeUndefined()
+  })
+
+  it('shows a preview viewer a public api_v2 page as public (#3246)', async () => {
+    const data = await load(v2Page, 'preview')
+    expect(data.level).toBe('public')
+    const { links, scripts } = head(data)
+    expect(links).toContainEqual(expect.objectContaining({ rel: 'canonical' }))
+    expect(scripts).toHaveLength(2)
   })
 
   it('never asks api_v2 when VITE_API_V2_URL is unset, serving the registry page (#3127)', async () => {
@@ -843,7 +893,11 @@ describe('$ route loader in api_v2 category mode (ADR 0078)', () => {
         ...fakePage,
         slug: 'register-a-birth',
         url: 'family-renamed/register-a-birth',
-        frontmatter: { title: 'Register a birth', categories: [] },
+        frontmatter: {
+          title: 'Register a birth',
+          categories: [],
+          visibility: 'public',
+        },
         hideStartLinks: false,
         breadcrumbs: trail,
       },
@@ -870,7 +924,12 @@ describe('$ route loader in api_v2 category mode (ADR 0078)', () => {
         ...fakePage,
         slug: 'fees',
         url: 'family-renamed/fees',
-        frontmatter: { title, description: 'Under < over', categories: [] },
+        frontmatter: {
+          title,
+          description: 'Under < over',
+          categories: [],
+          visibility: 'public',
+        },
         hideStartLinks: false,
         breadcrumbs: [
           { name: category, url: '/family-renamed' },

@@ -4,7 +4,7 @@ import { compileContentMarkdown } from "@govtech-bb/govbbmarkd";
 import { renderMarkdownNodes } from "@govtech-bb/govbbmarkd/react";
 import type { PageEditorDefinition } from "./definition";
 import { pageMarkdownToLexical } from "./converters";
-import { pageMetadataFromYaml } from "./metadata";
+import { pageMetadataFromYaml } from "./metadata-yaml";
 import { parsePageMarkdown, renderLegacyPagePreview } from "./markdown";
 
 /** Local preview uses scoped styles; the live site preview resolves form destinations. */

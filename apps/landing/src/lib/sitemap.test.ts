@@ -105,3 +105,21 @@ describe('collectSitemapEntries in api_v2 mode', () => {
     },
   )
 })
+
+describe('collectSitemapEntries with api_v2 pages', () => {
+  it('lists each api_v2 page once, beside the static pages', () => {
+    const legacy = collectSitemapEntries()
+    const staticPage = '/family-birth-relationships/get-birth-certificate'
+    expect(legacy.map((e) => e.path)).toContain(staticPage)
+    const paths = collectSitemapEntries(undefined, undefined, [
+      '/work-employment/only-in-api-v2',
+      staticPage,
+    ]).map((e) => e.path)
+
+    expect(
+      paths.filter((p) => p === '/work-employment/only-in-api-v2'),
+    ).toEqual(['/work-employment/only-in-api-v2'])
+    expect(paths.filter((p) => p === staticPage)).toHaveLength(1)
+    expect(paths).toHaveLength(legacy.length + 1)
+  })
+})

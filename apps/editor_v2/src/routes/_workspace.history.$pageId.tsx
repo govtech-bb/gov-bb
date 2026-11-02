@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { historyQuery, PRELOAD_FRESH } from "../api/queries";
-import { parseHistorySearch } from "../workspace/history-screen";
+import { parseHistorySearch } from "../workspace/history-search";
 
 /** One page's history, read-only; `?service=` is the service it was opened from, for the way back. */
 export const Route = createFileRoute("/_workspace/history/$pageId")({

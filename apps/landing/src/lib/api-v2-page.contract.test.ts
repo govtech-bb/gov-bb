@@ -101,6 +101,7 @@ const PAGE: { [K in keyof PageResponse]-?: FieldOf<PageResponse[K]> } = {
   updated_at: optStr,
   category: { type: 'string', optional: true, nullable: true },
   subcategory: { type: 'string', optional: true, nullable: true },
+  visibility: optStr,
 }
 
 /** Every way `schema` fails to give landing what `field` expects. */

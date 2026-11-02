@@ -192,7 +192,10 @@ export const TEST_HEADERS = {
 export async function createTestApp(
   db: Database,
   options: Partial<
-    Pick<AppOptions, "auth" | "config" | "logger" | "previewSecret" | "ready">
+    Pick<
+      AppOptions,
+      "auth" | "config" | "logger" | "previewSecret" | "landingSecret" | "ready"
+    >
   > & {
     sessions?: SessionReader;
     /** Let an approver make public what they changed, as AUTH_BYPASS does. */
@@ -221,6 +224,7 @@ export async function createTestApp(
     config: options.config ?? TEST_HTTP_CONFIG,
     ...(options.logger ? { logger: options.logger } : {}),
     ...(options.previewSecret ? { previewSecret: options.previewSecret } : {}),
+    ...(options.landingSecret ? { landingSecret: options.landingSecret } : {}),
     ready: options.ready ?? (() => ping(db)),
   });
 }

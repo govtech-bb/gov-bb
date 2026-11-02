@@ -122,6 +122,14 @@ describe('fetchCategoryTree', () => {
     expect(requests[0].headers).not.toHaveProperty('cookie')
   })
 
+  it("sends landing's token only when one is configured", async () => {
+    reply = json(200, { categories: TREE })
+    await fetchCategoryTree(base)
+    await fetchCategoryTree(base, fetch, 'secret')
+    expect(requests[0].headers).not.toHaveProperty('x-landing-token')
+    expect(requests[1].headers['x-landing-token']).toBe('secret')
+  })
+
   it('keeps only the public fields of each category', async () => {
     reply = json(200, {
       categories: [{ ...TREE[0], id: 'c1', services: 4, updated_at: 'x' }],
@@ -232,6 +240,19 @@ describe('fetchCategoryListing', () => {
     expect(requests.map((request) => request.url)).toEqual([
       '/categories/money-financial-support',
     ])
+  })
+
+  it("sends landing's token only when one is configured", async () => {
+    reply = json(200, LISTING)
+    await fetchCategoryListing(base, ['money-financial-support'])
+    await fetchCategoryListing(
+      base,
+      ['money-financial-support'],
+      fetch,
+      'secret',
+    )
+    expect(requests[0].headers).not.toHaveProperty('x-landing-token')
+    expect(requests[1].headers['x-landing-token']).toBe('secret')
   })
 
   it('reads a subcategory at its two-segment public address', async () => {

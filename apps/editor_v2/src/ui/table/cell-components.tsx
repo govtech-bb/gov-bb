@@ -1,18 +1,17 @@
 import type { ReactNode } from "react";
 import { cn } from "../../cn";
+import { formatDay } from "../dates";
 import { useCellContext } from "./table-hooks";
-
-const dates = new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeZone: "UTC" });
 
 // table-hooks registers these cells and they read its cell context: stated return types keep that cycle inferable
 
-/** An ISO timestamp as its UTC calendar day, e.g. 6 Oct 2026. */
+/** An ISO timestamp as its day in Barbados, e.g. 6 Oct 2026. */
 export function DateCell(): ReactNode {
   const value = useCellContext<string>().getValue();
 
   return (
     <time dateTime={value} className="whitespace-nowrap text-muted tabular-nums">
-      {dates.format(new Date(value))}
+      {formatDay(value)}
     </time>
   );
 }

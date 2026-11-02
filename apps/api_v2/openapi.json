@@ -142,6 +142,14 @@
                       "description": "The slug of its subcategory, or null.",
                       "type": "string"
                     },
+                    "visibility": {
+                      "type": "string",
+                      "enum": [
+                        "public",
+                        "preview"
+                      ],
+                      "description": "Effective visibility: the most restrictive of the page and the pages above it. preview reaches only a reviewer; the site shows its review banner and noindex from it."
+                    },
                     "published_at": {
                       "nullable": true,
                       "description": "Landing's `publish_date` for an imported page, else when the page first went public; null until it has one.",
@@ -171,6 +179,7 @@
                     "breadcrumbs",
                     "category",
                     "subcategory",
+                    "visibility",
                     "published_at",
                     "content_updated_at",
                     "updated_at"
@@ -504,6 +513,27 @@
                       "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
                       "description": "Millisecond precision, and exactly the value to send back in `if-updated-at` on the next save."
                     },
+                    "last_edited_by": {
+                      "nullable": true,
+                      "description": "The actor of the entity's highest version_no change_event, including page review steps. Null when there is no event. Pending-revision saves are not recorded, so this is not necessarily the author of the working copy or its updated_at.",
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "description": "The event's actor id, or `system`."
+                        },
+                        "name": {
+                          "nullable": true,
+                          "description": "Their name, or null when unavailable; `System` for system events.",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "name"
+                      ],
+                      "additionalProperties": false
+                    },
                     "pending_revision": {
                       "nullable": true,
                       "description": "Set when the page is public and has a change waiting for an approver, or a rejected one that has not been replaced. The fields and `updated_at` are then the revision's, and citizens still see the live page.",
@@ -545,6 +575,7 @@
                     "published_at",
                     "created_at",
                     "updated_at",
+                    "last_edited_by",
                     "pending_revision"
                   ],
                   "additionalProperties": false
@@ -1955,6 +1986,27 @@
                       "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
                       "description": "Millisecond precision, and exactly the value to send back in `if-updated-at` on the next save."
                     },
+                    "last_edited_by": {
+                      "nullable": true,
+                      "description": "The actor of the entity's highest version_no change_event, including page review steps. Null when there is no event. Pending-revision saves are not recorded, so this is not necessarily the author of the working copy or its updated_at.",
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "description": "The event's actor id, or `system`."
+                        },
+                        "name": {
+                          "nullable": true,
+                          "description": "Their name, or null when unavailable; `System` for system events.",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "name"
+                      ],
+                      "additionalProperties": false
+                    },
                     "pending_revision": {
                       "nullable": true,
                       "description": "Set when the page is public and has a change waiting for an approver, or a rejected one that has not been replaced. The fields and `updated_at` are then the revision's, and citizens still see the live page.",
@@ -1996,6 +2048,7 @@
                     "published_at",
                     "created_at",
                     "updated_at",
+                    "last_edited_by",
                     "pending_revision"
                   ],
                   "additionalProperties": false
@@ -2375,6 +2428,27 @@
                       "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
                       "description": "Millisecond precision, and exactly the value to send back in `if-updated-at` on the next save."
                     },
+                    "last_edited_by": {
+                      "nullable": true,
+                      "description": "The actor of the entity's highest version_no change_event, including page review steps. Null when there is no event. Pending-revision saves are not recorded, so this is not necessarily the author of the working copy or its updated_at.",
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "description": "The event's actor id, or `system`."
+                        },
+                        "name": {
+                          "nullable": true,
+                          "description": "Their name, or null when unavailable; `System` for system events.",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "name"
+                      ],
+                      "additionalProperties": false
+                    },
                     "pending_revision": {
                       "nullable": true,
                       "description": "Set when the page is public and has a change waiting for an approver, or a rejected one that has not been replaced. The fields and `updated_at` are then the revision's, and citizens still see the live page.",
@@ -2416,6 +2490,7 @@
                     "published_at",
                     "created_at",
                     "updated_at",
+                    "last_edited_by",
                     "pending_revision"
                   ],
                   "additionalProperties": false
@@ -4382,6 +4457,27 @@
                             "type": "string",
                             "format": "date-time",
                             "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d\\.\\d{3}(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                          },
+                          "last_edited_by": {
+                            "nullable": true,
+                            "description": "The actor of the entity's highest version_no change_event, including page review steps. Null when there is no event. Pending-revision saves are not recorded, so this is not necessarily the author of the working copy or its updated_at.",
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "description": "The event's actor id, or `system`."
+                              },
+                              "name": {
+                                "nullable": true,
+                                "description": "Their name, or null when unavailable; `System` for system events.",
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "name"
+                            ],
+                            "additionalProperties": false
                           }
                         },
                         "required": [
@@ -4394,7 +4490,8 @@
                           "position",
                           "services",
                           "reserved_route",
-                          "updated_at"
+                          "updated_at",
+                          "last_edited_by"
                         ],
                         "additionalProperties": false
                       }
@@ -4597,6 +4694,27 @@
                       "type": "string",
                       "format": "date-time",
                       "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d\\.\\d{3}(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                    },
+                    "last_edited_by": {
+                      "nullable": true,
+                      "description": "The actor of the entity's highest version_no change_event, including page review steps. Null when there is no event. Pending-revision saves are not recorded, so this is not necessarily the author of the working copy or its updated_at.",
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "description": "The event's actor id, or `system`."
+                        },
+                        "name": {
+                          "nullable": true,
+                          "description": "Their name, or null when unavailable; `System` for system events.",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "name"
+                      ],
+                      "additionalProperties": false
                     }
                   },
                   "required": [
@@ -4609,7 +4727,8 @@
                     "position",
                     "services",
                     "reserved_route",
-                    "updated_at"
+                    "updated_at",
+                    "last_edited_by"
                   ],
                   "additionalProperties": false
                 }
@@ -4897,6 +5016,27 @@
                       "type": "string",
                       "format": "date-time",
                       "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d\\.\\d{3}(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                    },
+                    "last_edited_by": {
+                      "nullable": true,
+                      "description": "The actor of the entity's highest version_no change_event, including page review steps. Null when there is no event. Pending-revision saves are not recorded, so this is not necessarily the author of the working copy or its updated_at.",
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "description": "The event's actor id, or `system`."
+                        },
+                        "name": {
+                          "nullable": true,
+                          "description": "Their name, or null when unavailable; `System` for system events.",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "name"
+                      ],
+                      "additionalProperties": false
                     }
                   },
                   "required": [
@@ -4909,7 +5049,8 @@
                     "position",
                     "services",
                     "reserved_route",
-                    "updated_at"
+                    "updated_at",
+                    "last_edited_by"
                   ],
                   "additionalProperties": false
                 }
@@ -5493,6 +5634,27 @@
                             "type": "string",
                             "format": "date-time",
                             "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d\\.\\d{3}(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                          },
+                          "last_edited_by": {
+                            "nullable": true,
+                            "description": "The actor of the entity's highest version_no change_event, including page review steps. Null when there is no event. Pending-revision saves are not recorded, so this is not necessarily the author of the working copy or its updated_at.",
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "description": "The event's actor id, or `system`."
+                              },
+                              "name": {
+                                "nullable": true,
+                                "description": "Their name, or null when unavailable; `System` for system events.",
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "name"
+                            ],
+                            "additionalProperties": false
                           }
                         },
                         "required": [
@@ -5505,7 +5667,8 @@
                           "position",
                           "services",
                           "reserved_route",
-                          "updated_at"
+                          "updated_at",
+                          "last_edited_by"
                         ],
                         "additionalProperties": false
                       }
@@ -8592,6 +8755,27 @@
                       "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
                       "description": "Millisecond precision, and exactly the value to send back in `if-updated-at` on the next save."
                     },
+                    "last_edited_by": {
+                      "nullable": true,
+                      "description": "The actor of the entity's highest version_no change_event, including page review steps. Null when there is no event. Pending-revision saves are not recorded, so this is not necessarily the author of the working copy or its updated_at.",
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "description": "The event's actor id, or `system`."
+                        },
+                        "name": {
+                          "nullable": true,
+                          "description": "Their name, or null when unavailable; `System` for system events.",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "name"
+                      ],
+                      "additionalProperties": false
+                    },
                     "pending_revision": {
                       "nullable": true,
                       "description": "Set when the page is public and has a change waiting for an approver, or a rejected one that has not been replaced. The fields and `updated_at` are then the revision's, and citizens still see the live page.",
@@ -8633,6 +8817,7 @@
                     "published_at",
                     "created_at",
                     "updated_at",
+                    "last_edited_by",
                     "pending_revision"
                   ],
                   "additionalProperties": false

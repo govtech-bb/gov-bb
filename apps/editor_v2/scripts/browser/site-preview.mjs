@@ -60,6 +60,7 @@ let current = {
   created_at: "2026-01-13T12:00:00.000Z",
   updated_at: "2026-10-07T12:00:00.000Z",
   pending_revision: null,
+  last_edited_by: null,
 };
 
 const writes = [];

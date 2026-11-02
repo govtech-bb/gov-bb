@@ -60,6 +60,11 @@ export interface paths {
                             /** @description The slug of its subcategory, or null. */
                             subcategory: string | null;
                             /**
+                             * @description Effective visibility: the most restrictive of the page and the pages above it. preview reaches only a reviewer; the site shows its review banner and noindex from it.
+                             * @enum {string}
+                             */
+                            visibility: "public" | "preview";
+                            /**
                              * Format: date-time
                              * @description Landing's `publish_date` for an imported page, else when the page first went public; null until it has one.
                              */
@@ -238,6 +243,13 @@ export interface paths {
                              * @description Millisecond precision, and exactly the value to send back in `if-updated-at` on the next save.
                              */
                             updated_at: string;
+                            /** @description The actor of the entity's highest version_no change_event, including page review steps. Null when there is no event. Pending-revision saves are not recorded, so this is not necessarily the author of the working copy or its updated_at. */
+                            last_edited_by: {
+                                /** @description The event's actor id, or `system`. */
+                                id: string;
+                                /** @description Their name, or null when unavailable; `System` for system events. */
+                                name: string | null;
+                            } | null;
                             /** @description Set when the page is public and has a change waiting for an approver, or a rejected one that has not been replaced. The fields and `updated_at` are then the revision's, and citizens still see the live page. */
                             pending_revision: {
                                 /** @enum {string} */
@@ -1048,6 +1060,13 @@ export interface paths {
                              * @description Millisecond precision, and exactly the value to send back in `if-updated-at` on the next save.
                              */
                             updated_at: string;
+                            /** @description The actor of the entity's highest version_no change_event, including page review steps. Null when there is no event. Pending-revision saves are not recorded, so this is not necessarily the author of the working copy or its updated_at. */
+                            last_edited_by: {
+                                /** @description The event's actor id, or `system`. */
+                                id: string;
+                                /** @description Their name, or null when unavailable; `System` for system events. */
+                                name: string | null;
+                            } | null;
                             /** @description Set when the page is public and has a change waiting for an approver, or a rejected one that has not been replaced. The fields and `updated_at` are then the revision's, and citizens still see the live page. */
                             pending_revision: {
                                 /** @enum {string} */
@@ -1238,6 +1257,13 @@ export interface paths {
                              * @description Millisecond precision, and exactly the value to send back in `if-updated-at` on the next save.
                              */
                             updated_at: string;
+                            /** @description The actor of the entity's highest version_no change_event, including page review steps. Null when there is no event. Pending-revision saves are not recorded, so this is not necessarily the author of the working copy or its updated_at. */
+                            last_edited_by: {
+                                /** @description The event's actor id, or `system`. */
+                                id: string;
+                                /** @description Their name, or null when unavailable; `System` for system events. */
+                                name: string | null;
+                            } | null;
                             /** @description Set when the page is public and has a change waiting for an approver, or a rejected one that has not been replaced. The fields and `updated_at` are then the revision's, and citizens still see the live page. */
                             pending_revision: {
                                 /** @enum {string} */
@@ -2390,6 +2416,13 @@ export interface paths {
                                 reserved_route: boolean;
                                 /** Format: date-time */
                                 updated_at: string;
+                                /** @description The actor of the entity's highest version_no change_event, including page review steps. Null when there is no event. Pending-revision saves are not recorded, so this is not necessarily the author of the working copy or its updated_at. */
+                                last_edited_by: {
+                                    /** @description The event's actor id, or `system`. */
+                                    id: string;
+                                    /** @description Their name, or null when unavailable; `System` for system events. */
+                                    name: string | null;
+                                } | null;
                             }[];
                         };
                     };
@@ -2496,6 +2529,13 @@ export interface paths {
                             reserved_route: boolean;
                             /** Format: date-time */
                             updated_at: string;
+                            /** @description The actor of the entity's highest version_no change_event, including page review steps. Null when there is no event. Pending-revision saves are not recorded, so this is not necessarily the author of the working copy or its updated_at. */
+                            last_edited_by: {
+                                /** @description The event's actor id, or `system`. */
+                                id: string;
+                                /** @description Their name, or null when unavailable; `System` for system events. */
+                                name: string | null;
+                            } | null;
                         };
                     };
                 };
@@ -2651,6 +2691,13 @@ export interface paths {
                             reserved_route: boolean;
                             /** Format: date-time */
                             updated_at: string;
+                            /** @description The actor of the entity's highest version_no change_event, including page review steps. Null when there is no event. Pending-revision saves are not recorded, so this is not necessarily the author of the working copy or its updated_at. */
+                            last_edited_by: {
+                                /** @description The event's actor id, or `system`. */
+                                id: string;
+                                /** @description Their name, or null when unavailable; `System` for system events. */
+                                name: string | null;
+                            } | null;
                         };
                     };
                 };
@@ -2966,6 +3013,13 @@ export interface paths {
                                 reserved_route: boolean;
                                 /** Format: date-time */
                                 updated_at: string;
+                                /** @description The actor of the entity's highest version_no change_event, including page review steps. Null when there is no event. Pending-revision saves are not recorded, so this is not necessarily the author of the working copy or its updated_at. */
+                                last_edited_by: {
+                                    /** @description The event's actor id, or `system`. */
+                                    id: string;
+                                    /** @description Their name, or null when unavailable; `System` for system events. */
+                                    name: string | null;
+                                } | null;
                             }[];
                         };
                     };
@@ -4681,6 +4735,13 @@ export interface paths {
                              * @description Millisecond precision, and exactly the value to send back in `if-updated-at` on the next save.
                              */
                             updated_at: string;
+                            /** @description The actor of the entity's highest version_no change_event, including page review steps. Null when there is no event. Pending-revision saves are not recorded, so this is not necessarily the author of the working copy or its updated_at. */
+                            last_edited_by: {
+                                /** @description The event's actor id, or `system`. */
+                                id: string;
+                                /** @description Their name, or null when unavailable; `System` for system events. */
+                                name: string | null;
+                            } | null;
                             /** @description Set when the page is public and has a change waiting for an approver, or a rejected one that has not been replaced. The fields and `updated_at` are then the revision's, and citizens still see the live page. */
                             pending_revision: {
                                 /** @enum {string} */

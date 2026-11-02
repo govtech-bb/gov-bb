@@ -4,6 +4,7 @@ import { Heading, Link, Text } from '@govtech-bb/react'
 import { z } from 'zod'
 import { ServiceSearch } from '../components/ServiceSearch'
 import { search } from '../lib/search'
+import { loadApiV2SearchDocuments } from '../lib/api-v2-site'
 import { trackEvent } from '../lib/analytics'
 import { deriveVisibilityOverlay } from '../lib/service-status'
 
@@ -13,6 +14,9 @@ const SearchParams = z.object({
 
 export const Route = createFileRoute('/search-results')({
   validateSearch: SearchParams,
+  // Re-run per query: the browser memo answers while its documents are fresh.
+  loaderDeps: ({ search: { q } }) => ({ q }),
+  loader: () => loadApiV2SearchDocuments(),
   head: () => ({
     meta: [
       { title: 'Search Results | Government of Barbados' },
@@ -27,9 +31,10 @@ export const Route = createFileRoute('/search-results')({
 function SearchResultsPage() {
   const { q } = Route.useSearch()
   const { level, serviceStatuses } = Route.useRouteContext()
+  const apiV2Documents = Route.useLoaderData()
   const query = q.trim()
   const overlay = deriveVisibilityOverlay(serviceStatuses)
-  const hits = query ? search(query, level, overlay) : []
+  const hits = query ? search(query, level, overlay, apiV2Documents) : []
 
   useEffect(() => {
     if (!query) return
@@ -54,6 +59,7 @@ function SearchResultsPage() {
               viewer={level}
               overlay={overlay}
               defaultValue={query}
+              documents={apiV2Documents}
             />
           </div>
         </div>

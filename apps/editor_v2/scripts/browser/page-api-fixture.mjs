@@ -18,6 +18,8 @@ export const fixturePage = (id, fields) => ({
   published_at: null,
   created_at: stamp,
   updated_at: stamp,
+  pending_revision: null,
+  last_edited_by: null,
   ...fields,
 });
 
@@ -33,6 +35,7 @@ export const fixtureCategory = (id, slug, title, fields = {}, parent) => ({
   services: 0,
   reserved_route: false,
   updated_at: stamp,
+  last_edited_by: null,
   ...fields,
 });
 

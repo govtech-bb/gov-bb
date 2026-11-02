@@ -11,6 +11,7 @@ import {
 } from "react";
 import { cn } from "../cn";
 import { Button } from "./button";
+import { openedByTouch } from "./focus";
 import { InToolbar } from "./toolbar";
 
 type Role = "dialog" | "alertdialog";
@@ -102,7 +103,10 @@ type ContentProps = Pick<BaseDialog.Popup.Props, "initialFocus" | "finalFocus"> 
   children: ReactNode;
 };
 
-/** Header and Actions stay visible while Body scrolls on short screens. */
+/**
+ * Header and Actions stay visible while Body scrolls on short screens. Opened by a touch, the dialog takes the focus
+ * itself, so its first field doesn't bring up the keyboard; Base UI does that only for a dialog its Trigger opened.
+ */
 function DialogContent({
   size = "md",
   close = true,
@@ -115,6 +119,7 @@ function DialogContent({
 }: ContentProps) {
   const role = useContext(DialogRole);
   const lock = useContext(DialogPending);
+  const popup = useRef<HTMLDivElement>(null);
 
   useLayoutEffect(() => {
     lock.current = pending;
@@ -125,7 +130,8 @@ function DialogContent({
       <BaseDialog.Backdrop className={backdrop} />
       <BaseDialog.Viewport className="fixed inset-0 z-popup grid place-items-center p-4">
         <BaseDialog.Popup
-          initialFocus={initialFocus}
+          ref={popup}
+          initialFocus={initialFocus ?? ((type) => (openedByTouch(type) ? popup.current : true))}
           finalFocus={finalFocus}
           className={cn(
             "relative flex max-h-full w-full flex-col overflow-hidden rounded-sm bg-white pb-6 font-sans text-ink shadow-popup outline-none",

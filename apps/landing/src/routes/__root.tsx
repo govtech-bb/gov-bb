@@ -38,7 +38,7 @@ const ROOT_SERVICE_STATUSES_STALE_MS = 60_000
 // Cap the view-level cache at the grant cookie's own lifetime (derived from
 // preview.ts, not hardcoded, so the two can't drift). Without a cap, a reviewer
 // who leaves a tab open past the 4h cookie expiry would keep seeing
-// preview/draft content client-side after the grant has lapsed server-side.
+// preview content client-side after the grant has lapsed server-side.
 const ROOT_VIEW_LEVEL_STALE_MS = COOKIE_MAX_AGE_SECONDS * 1000
 
 // Umami analytics. The website id is a `VITE_`-prefixed var, so Vite inlines it
@@ -73,11 +73,11 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
   //
   // Isolation: the QueryClient is created per `getRouter()` call — one per
   // request on the server, one per session on the client — so a viewer's
-  // `preview`/`draft` grant is never shared across requests. The view-level
+  // `preview` grant is never shared across requests. The view-level
   // cache is capped at the grant cookie's lifetime (see below) rather than held
   // forever, so an expired grant can't linger in a long-open tab.
   //
-  // A `?preview=`/`?draft=` token bypasses the cache entirely: the grant is
+  // A `?preview=` token bypasses the cache entirely: the grant is
   // changing, so it must resolve fresh and run its cookie + redirect
   // side-effects, and must never be cached under the shared query key.
   beforeLoad: async ({ context, location }) => {
@@ -89,7 +89,7 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
     // route ignores.
     const categoryTree = queryClient.fetchQuery(categoryTreeQuery())
 
-    if (search.preview !== undefined || search.draft !== undefined) {
+    if (search.preview !== undefined) {
       const { level, redirectTo } = await resolveViewLevel()
       if (redirectTo) throw redirect({ href: redirectTo })
       const serviceStatuses = await getServiceStatuses()

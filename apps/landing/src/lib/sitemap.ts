@@ -22,13 +22,15 @@ export interface SitemapEntry {
  * Every anonymously-visible URL, in priority order: the home and services
  * pages, each public category and its subcategories (api_v2's when it is
  * configured), and each public content
- * page (excluding `/start` application entry sub-pages). Gated and preview-only
- * content is left out, mirroring what a public visitor can reach. Deduped so a
- * top-level page sharing a category slug can't appear twice.
+ * page (excluding `/start` application entry sub-pages) and api_v2 page.
+ * Gated and preview-only content is left out, mirroring what a public
+ * visitor can reach. Deduped so a top-level page sharing a category slug, or
+ * a page in both, can't appear twice.
  */
 export function collectSitemapEntries(
   overlay?: ReadonlyMap<string, ViewLevel>,
   categoryTree: CategoryTreeResult = { kind: 'disabled' },
+  apiV2Urls: readonly string[] = [],
 ): SitemapEntry[] {
   const entries: SitemapEntry[] = []
   const seen = new Set<string>()
@@ -65,6 +67,9 @@ export function collectSitemapEntries(
     if (page.slug.endsWith('/start')) continue
     add(`/${page.url}`, 0.7)
   }
+
+  // api_v2's public pages, including those with no static copy.
+  for (const url of apiV2Urls) add(sitePath(url), 0.7)
 
   // The pharmacy finder and its per-pharmacy detail pages are routes, not
   // registry pages — they enter the sitemap with the service page, once it

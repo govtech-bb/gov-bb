@@ -126,6 +126,16 @@ export function serviceTypeLabel(row: ServiceRow): string | null {
   return null;
 }
 
+/** Whether the Status select is offered. A row without a form (a page, or
+ *  a stray row) is a page toggle only, which does nothing once pages come
+ *  from api_v2 (ADR 0063, "After cutover"). */
+export function statusEditable(
+  row: ServiceRow,
+  pagesInEditor: boolean,
+): boolean {
+  return !pagesInEditor || row.hasForm;
+}
+
 /** Columns the services table can sort by. */
 export type SortKey = "service" | "category" | "type" | "status";
 export type SortDir = "asc" | "desc";

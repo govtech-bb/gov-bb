@@ -254,7 +254,7 @@ export function BlockRail({
     <div
       data-block-rail=""
       className={cn(
-        "absolute z-3 flex -translate-y-1/2 items-center justify-end gap-0.5 in-data-dragging:hidden pointer-coarse:opacity-100",
+        "absolute z-canvas flex -translate-y-1/2 items-center justify-end gap-0.5 in-data-dragging:hidden pointer-coarse:opacity-100",
         !target.pointed && "opacity-0 focus-within:opacity-100 hover:opacity-100",
         className,
       )}
@@ -290,7 +290,7 @@ export function DropLine({ line }: { line: Line | null }) {
     line && (
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute z-4 h-0.75 rounded-full bg-focus forced-colors:bg-[Highlight] forced-colors:forced-color-adjust-none"
+        className="pointer-events-none absolute z-canvas h-0.75 rounded-full bg-focus forced-colors:bg-[Highlight] forced-colors:forced-color-adjust-none"
         style={line}
       />
     )

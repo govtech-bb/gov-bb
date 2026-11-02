@@ -42,6 +42,7 @@ const seed = (): Stored[] => [
     position: 0,
     services: 2,
     reserved_route: false,
+    last_edited_by: null,
     version: 0,
   },
   {
@@ -53,6 +54,7 @@ const seed = (): Stored[] => [
     position: 1,
     services: 0,
     reserved_route: false,
+    last_edited_by: null,
     version: 0,
   },
   {
@@ -64,6 +66,7 @@ const seed = (): Stored[] => [
     position: 2,
     services: 0,
     reserved_route: false,
+    last_edited_by: null,
     version: 0,
   },
   {
@@ -75,6 +78,7 @@ const seed = (): Stored[] => [
     position: 0,
     services: 1,
     reserved_route: false,
+    last_edited_by: null,
     version: 0,
   },
   {
@@ -86,6 +90,7 @@ const seed = (): Stored[] => [
     position: 1,
     services: 0,
     reserved_route: false,
+    last_edited_by: null,
     version: 0,
   },
 ];
@@ -163,6 +168,7 @@ function contentApi() {
         position: stored.filter((other) => other.parent_id === fields.parent_id).length,
         services: 0,
         reserved_route: false,
+        last_edited_by: null,
         version: clock++,
       };
 
@@ -474,13 +480,43 @@ test("lists each category with its address and services, subcategories under the
   expect(server.fetch.mock.calls[0]?.[0]).toBe("https://api.example.test/editor/categories");
 });
 
+test("shows each category and subcategory author in its column and folded details without adding controls", async () => {
+  const longName = "A".repeat(250);
+  server.change(EDUCATION, { last_edited_by: { id: "editor", name: longName } });
+  server.change(YOUTH, { last_edited_by: { id: "system", name: "System" } });
+  server.change(SPORT, { last_edited_by: { id: "former", name: null } });
+  server.change(ARTS, { last_edited_by: { id: "unicode", name: "山田太郎 — ليلى أحمد" } });
+  await render();
+  await loaded();
+
+  for (const [index, name] of [
+    longName,
+    null,
+    "System",
+    "a former employee",
+    "山田太郎 — ليلى أحمد",
+  ].entries()) {
+    const cells = rows()[index]!.querySelectorAll("td");
+    expect(cells[2]!.textContent).toBe(name ?? "");
+    expect(cells[2]!.querySelectorAll("a, button, input, [tabindex]")).toHaveLength(0);
+    expect(cells[0]!.textContent?.includes("Edited by")).toBe(name !== null);
+
+    if (name) {
+      expect(cells[0]!.textContent).toContain(`Edited by ${name}`);
+      expect(cells[2]!.querySelector("bdi")?.classList).toContain("wrap-anywhere");
+    }
+
+    expect(rows()[index]!.querySelectorAll("button")).toHaveLength(5);
+  }
+});
+
 test("headers that can't sort sit in the sort toggle's height, end-aligned ones still at the end", async () => {
   await render();
   await loaded();
 
   const headers = [...host.querySelectorAll("thead th")];
 
-  expect(headers.map((th) => th.textContent)).toEqual(["Name", "Services", "Actions"]);
+  expect(headers.map((th) => th.textContent)).toEqual(["Name", "Services", "Edited by", "Actions"]);
 
   for (const th of headers) {
     const box = th.firstElementChild!;
@@ -496,7 +532,7 @@ test("headers that can't sort sit in the sort toggle's height, end-aligned ones 
   }
 
   expect(headers[1]!.querySelector(".text-end")?.textContent).toBe("Services");
-  expect(headers[2]!.querySelector(".text-end")?.textContent).toBe("Actions");
+  expect(headers[3]!.querySelector(".text-end")?.textContent).toBe("Actions");
 });
 
 test("the list sits in a card with a defined grey edge over the sheet's shadow", async () => {
@@ -906,6 +942,25 @@ test("a move the API refuses (403) says why, not to try again", async () => {
   expect(names()).toEqual(["Education", "Health", "Youth and community", "Sport", "Arts"]);
 });
 
+test("a move refused (403) without the API's reason says so in words, not as a status code", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: RequestInfo | URL, init?: RequestInit) =>
+      init?.method === "PUT"
+        ? new Response("Forbidden", { status: 403 })
+        : server.fetch(input, init),
+    ),
+  );
+  await render();
+  await loaded();
+  await press("Move Health up");
+
+  await until(() =>
+    expect(document.body.textContent).toContain("You do not have access to change categories."),
+  );
+  expect(document.body.textContent).not.toMatch(/HTTP|403/);
+});
+
 test("a move whose answer was lost is checked against the list before another can be sent", async () => {
   await render();
   await loaded();
@@ -991,6 +1046,67 @@ test("a field's problem shows on it, which takes the focus, whether the dialog o
   );
   expect(document.activeElement).toBe(control("Slug"));
   expect(control("Name").value).toBe("Schools");
+});
+
+test("a field's problem goes once the author changes that field, and the others' stay", async () => {
+  await render();
+  await loaded();
+  await press("Add category");
+  await enter("Slug", "education");
+  await submit();
+
+  const invalid = () =>
+    ["Name", "Slug"].filter((label) => control(label).getAttribute("aria-invalid") === "true");
+
+  expect(invalid()).toEqual(["Name", "Slug"]);
+  expect(document.activeElement).toBe(control("Name"));
+
+  await enter("Name", "Schools");
+
+  expect(invalid()).toEqual(["Slug"]);
+  expect(dialog()?.textContent).not.toContain("Enter a name");
+  expect(dialog()?.textContent).toContain("Another category already uses this slug");
+  // Fixing one doesn't send the focus on to the next
+  expect(document.activeElement).toBe(control("Name"));
+
+  await enter("Slug", "schools");
+
+  expect(invalid()).toEqual([]);
+  expect(server.writes).toHaveLength(0);
+});
+
+test("a new category's slug follows its name, and so does the slug's problem", async () => {
+  await render();
+  await loaded();
+  await press("Add category");
+  await submit();
+
+  expect(dialog()?.textContent).toContain("Enter a name");
+  expect(dialog()?.textContent).toContain("Enter a slug");
+
+  await enter("Name", "Dance");
+
+  expect(control("Slug").value).toBe("dance");
+  expect(dialog()?.textContent).not.toContain("Enter a slug");
+});
+
+test("a refusal without the content API's own words is told in the dialog's, never as a status code", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: RequestInfo | URL, init?: RequestInit) =>
+      init?.method === "POST" ? new Response(null, { status: 429 }) : server.fetch(input, init),
+    ),
+  );
+  await render();
+  await loaded();
+  await press("Add category");
+  await enter("Name", "Dance");
+  await submit();
+
+  await until(() =>
+    expect(dialog()?.textContent).toContain("The category could not be added. Try again."),
+  );
+  expect(dialog()?.textContent).not.toMatch(/HTTP|429/);
 });
 
 test("edits a category over the version it opened with", async () => {

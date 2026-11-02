@@ -15,11 +15,13 @@ const TIMEOUT_MS = 300
 export async function fetchSiteVersion(
   base: string | null,
   fetchImpl: typeof fetch = fetch,
+  landingToken?: string,
 ): Promise<string | null> {
   if (!base) return null
   try {
     const response = await fetchImpl(`${base}/site-version`, {
       signal: AbortSignal.timeout(TIMEOUT_MS),
+      ...(landingToken && { headers: { 'x-landing-token': landingToken } }),
     })
     if (!response.ok) {
       await response.body?.cancel()

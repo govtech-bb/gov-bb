@@ -107,6 +107,19 @@ describe('fetchApiV2Page', () => {
     expect(init.signal).toBeInstanceOf(AbortSignal)
   })
 
+  it("sends landing's token only when one is configured", async () => {
+    const without = stubFetch(jsonResponse(200, pageBody()))
+    await fetchApiV2Page(BASE, '/x', without)
+    expect(
+      new Headers(without.mock.calls[0][1].headers).has('x-landing-token'),
+    ).toBe(false)
+    const withToken = stubFetch(jsonResponse(200, pageBody()))
+    await fetchApiV2Page(BASE, '/x', withToken, 'secret')
+    expect(
+      new Headers(withToken.mock.calls[0][1].headers).get('x-landing-token'),
+    ).toBe('secret')
+  })
+
   it('passes Cache-Control through on a page', async () => {
     const result = await fetchApiV2Page(
       BASE,
@@ -647,6 +660,29 @@ describe('fromApiV2', () => {
       form_id: 'register-birth',
     })
   })
+
+  it("carries api_v2's preview visibility", async () => {
+    const page = await fromApiV2(pageBody({ visibility: 'preview' }))
+    expect(page.frontmatter.visibility).toBe('preview')
+  })
+
+  // draft never reaches the site (#3247): read as public, like any unknown value.
+  it.each([
+    ['preview', 'preview'],
+    ['draft', 'public'],
+    ['secret', 'public'],
+    [42, 'public'],
+  ])(
+    'reads visibility %j as %s, keeping the page',
+    async (visibility, level) => {
+      const result = await resolveApiV2Page(BASE, '/x', async () =>
+        jsonResponse(200, { ...pageBody(), visibility }),
+      )
+      expect(result.kind).toBe('page')
+      if (result.kind === 'page')
+        expect(result.page.frontmatter.visibility).toBe(level)
+    },
+  )
 
   it('maps a subcategory page to its category and subcategory', async () => {
     const page = await fromApiV2(

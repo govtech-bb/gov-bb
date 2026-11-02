@@ -19,7 +19,7 @@
         "production",
         "^production",
         {
-          "env": "DRAFT_SECRET"
+          "env": "LANDING_SECRET"
         },
         {
           "env": "PREVIEW_COOKIE_DOMAIN"

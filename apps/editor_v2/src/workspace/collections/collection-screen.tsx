@@ -200,7 +200,7 @@ export function CollectionScreen({
       <ListScreen
         ref={card}
         title={collection?.title ?? "Collection"}
-        lead="Each record is one entry pages can show, such as a department's contact details."
+        lead="Each record is one entry pages can show, such as a department’s contact details."
         action={
           <Button
             ref={add}

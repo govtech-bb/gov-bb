@@ -10,7 +10,7 @@ import type { FastifyInstance, InjectOptions } from "fastify";
 import type { Database } from "./db";
 import { UserId, type Employee } from "./modules/auth";
 import { PostgresPages } from "./adapters/postgres-pages";
-import { withDefaults, type PageId } from "./modules/page";
+import { PageDocument, withDefaults, type PageId } from "./modules/page";
 import { ok } from "./modules/result";
 import { PageEditing } from "./services/page-editing";
 import { categories, changeEvents, pageRevisions } from "./schema";
@@ -88,7 +88,8 @@ const seedPage = async (overrides: Record<string, unknown> = {}) => {
     .values({ slug: "money-financial-support", title: "Money" })
     .onConflictDoNothing()
     .returning();
-  return expectOk(
+  // Storage comparisons use the live document, not editor-only response metadata.
+  const page = expectOk(
     await services.editing.create(
       aPage({
         category_id: category?.id,
@@ -98,6 +99,7 @@ const seedPage = async (overrides: Record<string, unknown> = {}) => {
       TEST_EMPLOYEE,
     ),
   );
+  return PageDocument.parse(page);
 };
 
 const stored = async (id: PageId) =>
@@ -204,6 +206,7 @@ describe("a save to a public page", () => {
       body_markdown: aPage().body_markdown,
       updated_at: revision?.updatedAt.toISOString(),
       pending_revision: { status: "draft", comment: null },
+      last_edited_by: { id: TEST_EMPLOYEE.id, name: TEST_EMPLOYEE.name },
     });
     expect(response.json().updated_at > page.updated_at).toBe(true);
   });
@@ -316,10 +319,13 @@ describe("a page that has never been public", () => {
 
       expect(response.statusCode).toBe(200);
       expect(response.json().pending_revision).toBeNull();
-      expect(await stored(page.id)).toEqual({
-        ...response.json(),
-        pending_revision: undefined,
+      expect(response.json().last_edited_by).toEqual({
+        id: TEST_EDITOR.id,
+        name: TEST_EDITOR.name,
       });
+      expect(await stored(page.id)).toEqual(
+        PageDocument.parse(response.json()),
+      );
       expect((await stored(page.id))?.title).toBe("Severance pay");
       expect(await revisions()).toEqual([]);
       expect(await events()).toEqual([

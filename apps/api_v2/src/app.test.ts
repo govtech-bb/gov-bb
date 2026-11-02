@@ -171,6 +171,7 @@ describe("GET /pages?url=", () => {
       ],
       category: "money-financial-support",
       subcategory: null,
+      visibility: "public",
       published_at: created.published_at,
       content_updated_at: created.published_at,
       updated_at: created.updated_at,
@@ -198,6 +199,7 @@ describe("GET /pages?url=", () => {
     });
 
     expect(response.json()).toMatchObject({
+      visibility: "preview",
       published_at: null,
       updated_at: created.updated_at,
     });
@@ -330,6 +332,13 @@ describe("GET /pages?url=", () => {
     await seedPage({ url: START, parent_id: parent.id, visibility: "preview" });
 
     expect((await read(ENTRY)).json().hide_start_links).toBe(true);
+  });
+
+  it("answers preview for a public page beneath a preview page", async () => {
+    const parent = await seedPage({ visibility: "preview" });
+    await seedPage({ url: START, parent_id: parent.id });
+
+    expect((await readPreview(START)).json().visibility).toBe("preview");
   });
 
   it("sends PUBLIC_READ, on a redirect as on a page", async () => {
