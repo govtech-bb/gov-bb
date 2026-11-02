@@ -40,6 +40,7 @@ const ALL = [
   "014_data_collections",
   "015_revision_discarded",
   "016_content_updated_at",
+  "019_change_events_redaction",
 ];
 
 /** Tables whose rows are not content, so the history does not record them. */
@@ -144,6 +145,7 @@ describe("migrate", () => {
       "014_data_collections",
       "015_revision_discarded",
       "016_content_updated_at",
+      "019_change_events_redaction",
     ]);
     const pages = await exec("select count(*)::int as n from content_pages");
     expect(pages.rows).toEqual([{ n: 0 }]);
@@ -181,6 +183,7 @@ describe("migrate", () => {
       "014_data_collections",
       "015_revision_discarded",
       "016_content_updated_at",
+      "019_change_events_redaction",
     ]);
     await exec(
       `insert into categories (slug, title) values ('c', 'C');
