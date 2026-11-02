@@ -23,7 +23,7 @@ describe("applyServiceStatuses", () => {
       [page("/a", "public")],
       [["a", "disabled"]],
     );
-    expect(pages[0]!.visibility).toBe("preview");
+    expect(pages[0]?.visibility).toBe("preview");
     expect(changes).toEqual([{ url: "/a", from: "public", to: "preview" }]);
   });
 
@@ -34,7 +34,7 @@ describe("applyServiceStatuses", () => {
 
   it("enabled makes a preview page public", () => {
     const { pages } = overlay([page("/a", "preview")], [["a", "enabled"]]);
-    expect(pages[0]!.visibility).toBe("public");
+    expect(pages[0]?.visibility).toBe("public");
   });
 
   it("form_disabled and no row leave the level alone", () => {
@@ -60,7 +60,7 @@ describe("applyServiceStatuses", () => {
     const { pages } = overlay(input, [["nothing", "disabled"]]);
     expect(pages).toEqual(input);
     overlay(input, [["a", "disabled"]]);
-    expect(input[0]!.visibility).toBe("public");
+    expect(input[0]?.visibility).toBe("public");
   });
 
   it("lists only actual changes, in input order", () => {
