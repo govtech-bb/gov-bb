@@ -31,12 +31,16 @@ const TZ = "America/Barbados";
 const SLACK_POST_TIMEOUT_MS = 10_000;
 /** Slack only ever hands out response URLs on this host. */
 const SLACK_RESPONSE_HOST = "hooks.slack.com";
+/** A slash command's response_url path: /commands/<team>/<id>/<token>. */
+const SLACK_COMMAND_PATH =
+  /^\/commands\/([A-Za-z0-9]+)\/(\d+)\/([A-Za-z0-9]+)$/;
 
 /**
- * The response_url to post to, or null when it is not a Slack hooks URL. The
- * result is rebuilt on a constant `https://hooks.slack.com/` prefix, so only
- * the path and query come from the request (SSRF). The prefix keeps its
- * trailing slash: without it, CodeQL can't tell the request can't change host.
+ * The response_url to post to, or null when it is not a Slack slash command
+ * response URL. The result is rebuilt from the fixed origin and the three
+ * encoded path segments, so the request can't choose where it goes (SSRF).
+ * CodeQL's server-side SSRF query treats any request-derived path as tainted
+ * and only accepts encodeURIComponent as a barrier, hence the encoding.
  */
 export function slackResponseUrl(raw: string): string | null {
   let url: URL;
@@ -45,15 +49,21 @@ export function slackResponseUrl(raw: string): string | null {
   } catch {
     return null;
   }
+  const path = SLACK_COMMAND_PATH.exec(url.pathname);
   if (
     url.protocol !== "https:" ||
     url.host !== SLACK_RESPONSE_HOST ||
     url.username ||
-    url.password
+    url.password ||
+    url.search ||
+    !path
   ) {
     return null;
   }
-  return `https://hooks.slack.com/${url.pathname.slice(1)}${url.search}`;
+  const [, team, id, token] = path;
+  return `https://hooks.slack.com/commands/${encodeURIComponent(
+    team,
+  )}/${encodeURIComponent(id)}/${encodeURIComponent(token)}`;
 }
 
 interface UmamiConfig {

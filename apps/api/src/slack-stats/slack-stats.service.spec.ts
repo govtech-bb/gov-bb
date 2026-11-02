@@ -17,6 +17,7 @@ vi.mock("@govtech-bb/umami-analytics", async (importOriginal) => ({
   }),
 }));
 
+const SLACK_URL = "https://hooks.slack.com/commands/T1/1/abc";
 const NOW = new Date("2026-11-04T18:30:00Z");
 const env: Record<string, string> = {
   UMAMI_API_KEY: "key",
@@ -169,41 +170,22 @@ describe("SlackStatsService.buildReply — one form", () => {
 });
 
 describe("slackResponseUrl", () => {
-  it("keeps a Slack hooks URL", () => {
-    expect(
-      slackResponseUrl("https://hooks.slack.com/commands/T1/1/abc?x=1"),
-    ).toBe("https://hooks.slack.com/commands/T1/1/abc?x=1");
+  it("keeps a Slack slash command response URL", () => {
+    expect(slackResponseUrl(SLACK_URL)).toBe(SLACK_URL);
   });
 
   it.each([
     "",
     "not a url",
-    "http://hooks.slack.com/commands/1",
-    "https://hooks.slack.com.evil.example/commands/1",
-    "https://evil.example/hooks.slack.com/",
-    "https://hooks.slack.com:8443/commands/1",
-    "https://user:pass@hooks.slack.com/commands/1",
-    "https://169.254.169.254/latest/meta-data/",
-  ])("refuses %j", (raw) => {
-    expect(slackResponseUrl(raw)).toBeNull();
-  });
-});
-
-describe("slackResponseUrl", () => {
-  it("keeps a Slack hooks URL", () => {
-    expect(
-      slackResponseUrl("https://hooks.slack.com/commands/T1/1/abc?x=1"),
-    ).toBe("https://hooks.slack.com/commands/T1/1/abc?x=1");
-  });
-
-  it.each([
-    "",
-    "not a url",
-    "http://hooks.slack.com/commands/1",
-    "https://hooks.slack.com.evil.example/commands/1",
-    "https://evil.example/hooks.slack.com/",
-    "https://hooks.slack.com:8443/commands/1",
-    "https://user:pass@hooks.slack.com/commands/1",
+    "http://hooks.slack.com/commands/T1/1/abc",
+    "https://hooks.slack.com.evil.example/commands/T1/1/abc",
+    "https://evil.example/hooks.slack.com/commands/T1/1/abc",
+    "https://hooks.slack.com:8443/commands/T1/1/abc",
+    "https://user:pass@hooks.slack.com/commands/T1/1/abc",
+    "https://hooks.slack.com/commands/T1/1/abc?x=1",
+    "https://hooks.slack.com/commands/T1/1/abc/extra",
+    "https://hooks.slack.com/commands/T1/1/%2e%2e",
+    "https://hooks.slack.com/services/T1/B1/abc",
     "https://169.254.169.254/latest/meta-data/",
   ])("refuses %j", (raw) => {
     expect(slackResponseUrl(raw)).toBeNull();
@@ -223,12 +205,10 @@ describe("SlackStatsService.respond", () => {
   it("posts the reply to the response url", async () => {
     await service().respond(
       { command: "/stats", period: "week", formId: "zzz" },
-      "https://hooks.slack.com/commands/1",
+      SLACK_URL,
       NOW,
     );
-    expect(fetchMock.mock.calls[0][0]).toBe(
-      "https://hooks.slack.com/commands/1",
-    );
+    expect(fetchMock.mock.calls[0][0]).toBe(SLACK_URL);
     expect(posted()).toMatchObject({ response_type: "ephemeral" });
     expect(posted().text).toContain("No form with the ID `zzz`");
   });
@@ -238,7 +218,7 @@ describe("SlackStatsService.respond", () => {
     umami.reportFunnel.mockResolvedValue([]);
     await service().respond(
       { command: "/stats", period: "week" },
-      "https://hooks.slack.com/commands/1",
+      SLACK_URL,
       NOW,
     );
     expect(posted().text).toContain("couldn't get the stats");
@@ -248,11 +228,7 @@ describe("SlackStatsService.respond", () => {
     formDefinitions.findAll.mockRejectedValue("boom");
     fetchMock.mockRejectedValue(new Error("ECONNRESET"));
     await expect(
-      service().respond(
-        { command: "/stats", period: "today" },
-        "https://hooks.slack.com/commands/1",
-        NOW,
-      ),
+      service().respond({ command: "/stats", period: "today" }, SLACK_URL, NOW),
     ).resolves.toBeUndefined();
   });
 
@@ -261,7 +237,7 @@ describe("SlackStatsService.respond", () => {
     await expect(
       service().respond(
         { command: "/stats", period: "week", formId: "zzz" },
-        "https://hooks.slack.com/commands/1",
+        SLACK_URL,
         NOW,
       ),
     ).resolves.toBeUndefined();
@@ -283,7 +259,7 @@ describe("SlackStatsService.respond", () => {
     formDefinitions.findAll.mockRejectedValue(new Error("boom"));
     await service().respond(
       { command: "/stats", period: "week", formId: "x\n[forged] entry" },
-      "https://hooks.slack.com/commands/1",
+      SLACK_URL,
       NOW,
     );
     expect(error.mock.calls[0][0]).not.toContain("\n");
@@ -295,7 +271,7 @@ describe("SlackStatsService.respond", () => {
     await expect(
       service().respond(
         { command: "/stats", period: "week", formId: "zzz" },
-        "https://hooks.slack.com/commands/1",
+        SLACK_URL,
         NOW,
       ),
     ).resolves.toBeUndefined();
