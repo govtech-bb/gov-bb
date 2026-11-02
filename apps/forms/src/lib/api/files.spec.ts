@@ -331,7 +331,7 @@ describe("files API client", () => {
 
     await putFileToS3("https://s3/put?sig=1", file);
 
-    expect(FakeXhr.last?.headers["If-None-Match"]).toBe("*");
+    expect(FakeXhr.last.headers["If-None-Match"]).toBe("*");
   });
 
   // fetch can't report upload progress; XHR's upload.onprogress can (#2940).
