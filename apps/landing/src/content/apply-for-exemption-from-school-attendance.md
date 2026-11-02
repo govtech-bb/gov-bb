@@ -42,7 +42,7 @@ You can upload files in PDF, JPG, PNG or DOC format, up to 10 MB each.
 
 It takes about 15 minutes to apply online.
 
-<a data-start-link href="/education/apply-for-exemption-from-school-attendance/start">Start now</a>
+<a data-start-link>Start now</a>
 
 ## What the form asks for
 
