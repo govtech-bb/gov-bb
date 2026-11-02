@@ -29,6 +29,8 @@ COPY --chown=app:app packages/form-types/package.json packages/form-types/
 COPY --chown=app:app packages/form-validation/package.json packages/form-validation/
 COPY --chown=app:app packages/registry/package.json packages/registry/
 COPY --chown=app:app packages/submission-summary/package.json packages/submission-summary/
+COPY --chown=app:app packages/umami-analytics/package.json packages/umami-analytics/
+COPY --chown=app:app packages/analytics/package.json packages/analytics/
 # content is never imported by the api, but the ROOT package.json pins it
 # (workspace:*), and the root project is part of the prod-deps install below.
 COPY --chown=app:app packages/content/package.json packages/content/
