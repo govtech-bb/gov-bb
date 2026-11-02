@@ -975,6 +975,17 @@ describe("ADD_PROCESSOR", () => {
     expect(b.processors!.map((p) => p.type)).toEqual(["email", "webhook"]);
     expect(b.processors![0].id).not.toBe(b.processors![1].id);
   });
+
+  it("adds the webhook-cams preset as a mapped webhook with no url (#2684)", () => {
+    const next = recipeReducer(baseDraft(), {
+      type: "ADD_PROCESSOR",
+      processorType: "webhook-cams",
+    });
+    const added = next.processors![0];
+    expect(added.type).toBe("webhook");
+    expect(added.config).toHaveProperty("mapping");
+    expect(added.config).not.toHaveProperty("url");
+  });
 });
 
 // ── REMOVE_PROCESSOR ─────────────────────────────────────────────────────────

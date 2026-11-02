@@ -806,6 +806,8 @@ function ServiceSubmissionActions({
     // So the editor's catchment-needs-a-mapped-webhook warning (#2877) fires
     // here too; the dispatch below never writes it back.
     catchmentRouting: recipe.catchmentRouting,
+    // So the CaMS-needs-an-MDA-contact warning (#2684) sees the pending pick.
+    mdaContactId: value.pendingConfig.mdaContactId,
   };
   return (
     <ProcessorsEditor
