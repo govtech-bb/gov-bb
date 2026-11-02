@@ -292,4 +292,28 @@ describe("formatFormStats", () => {
     expect(text).not.toContain("Where people leave");
     expect(text).not.toContain("Top errors");
   });
+
+  it("caps visit → start at 100%, like the dashboard", () => {
+    const text = render(
+      formatFormStats(LAST_WEEK, {
+        formId: "x",
+        title: "X",
+        current: {
+          visits: 100,
+          starts: 104,
+          completed: 0,
+          avgDurationSeconds: null,
+        },
+        previous: {
+          visits: 100,
+          starts: 90,
+          completed: 0,
+          avgDurationSeconds: null,
+        },
+        steps: [],
+        topErrors: [],
+      }),
+    );
+    expect(text).toContain("*🚪 Visit → start*\n*100%*   🟢 ▲ 10 pts");
+  });
 });

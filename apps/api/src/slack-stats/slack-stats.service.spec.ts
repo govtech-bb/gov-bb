@@ -213,6 +213,45 @@ describe("SlackStatsService.respond", () => {
     expect(posted().text).toContain("No form with the ID `zzz`");
   });
 
+  it("runs one reply at a time, so two commands can't share the rate limit", async () => {
+    let releaseFirst!: () => void;
+    formDefinitions.findAll
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            releaseFirst = () => resolve([]);
+          }),
+      )
+      .mockRejectedValueOnce(new Error("Umami 429"));
+    const s = service();
+    const first = s.respond(
+      { command: "/stats", period: "week", formId: "zzz" },
+      SLACK_URL,
+      NOW,
+    );
+    const second = s.respond(
+      { command: "/stats", period: "week" },
+      SLACK_URL,
+      NOW,
+    );
+    await new Promise((r) => setTimeout(r, 0));
+    expect(formDefinitions.findAll).toHaveBeenCalledTimes(1);
+
+    releaseFirst();
+    await first;
+    await second;
+    expect(formDefinitions.findAll).toHaveBeenCalledTimes(2);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+
+    // A failed reply doesn't stall the queue.
+    await s.respond(
+      { command: "/stats", period: "week", formId: "zzz" },
+      SLACK_URL,
+      NOW,
+    );
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+
   it("posts an apology when Umami fails", async () => {
     umami.stats.mockRejectedValue(new Error("Umami 500"));
     umami.reportFunnel.mockResolvedValue([]);

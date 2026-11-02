@@ -76,13 +76,16 @@ interface UmamiConfig {
  * Builds the Slack /stats replies (#3491) from Umami, using the same funnel
  * definitions as the analytics dashboard. Umami requests run one at a time:
  * UmamiClient's spacing only holds for sequential calls, and the cloud API
- * allows 50 requests per 15 seconds. A site-wide reply makes one funnel call
+ * allows 50 requests per 15 seconds. So replies queue on this service and a
+ * second /stats waits for the first rather than both hitting the rate limit
+ * (the queue is per API task). A site-wide reply makes one funnel call
  * per form per period, so it takes about a minute; the controller acknowledges
  * Slack first and this posts the result to the command's response_url.
  */
 @Injectable()
 export class SlackStatsService {
   private readonly logger = new Logger(SlackStatsService.name);
+  private queue: Promise<void> = Promise.resolve();
 
   constructor(
     private readonly config: ConfigService,
@@ -94,15 +97,25 @@ export class SlackStatsService {
     return Boolean(c.apiKey && c.landingWebsiteId && c.formsWebsiteId);
   }
 
-  /** Build the reply and post it to Slack. Never throws. */
-  async respond(
+  /** Build the reply and post it to Slack, after any reply already queued. Never throws. */
+  respond(
+    request: { command: string; period: StatsPeriod; formId?: string },
+    responseUrl: string,
+    now: Date = new Date(),
+  ): Promise<void> {
+    // reply() never throws, so one failed reply can't stall the queue.
+    this.queue = this.queue.then(() => this.reply(request, responseUrl, now));
+    return this.queue;
+  }
+
+  private async reply(
     {
       command,
       period,
       formId,
     }: { command: string; period: StatsPeriod; formId?: string },
     responseUrl: string,
-    now: Date = new Date(),
+    now: Date,
   ): Promise<void> {
     let message: SlackMessage | string;
     try {

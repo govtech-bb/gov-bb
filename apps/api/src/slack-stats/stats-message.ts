@@ -306,7 +306,13 @@ export function formatFormStats(
   heading: PeriodHeading,
   { title, formId, current: c, previous: p, steps, topErrors }: FormStats,
 ): SlackMessage {
-  const visitToStart = [ratio(c.starts, c.visits), ratio(p.starts, p.visits)];
+  // Starts and visits come from different funnels, so a start with no page
+  // view in the period (a deep link) can push this past 100%. Cap it as the
+  // dashboard does (visitsToStartsPct in apps/analytics umami-server.ts).
+  const visitToStart = [
+    ratio(c.starts, c.visits),
+    ratio(p.starts, p.visits),
+  ].map((r) => (r === null ? r : Math.min(1, r)));
   const startToFinish = [
     ratio(c.completed, c.starts),
     ratio(p.completed, p.starts),
