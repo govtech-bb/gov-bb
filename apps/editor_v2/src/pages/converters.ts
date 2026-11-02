@@ -20,6 +20,7 @@ import {
   blocks,
   pageConversion,
   parsePageMarkdown,
+  splitPageMarkdown,
   stringifyPageMarkdown,
   UnsupportedPageContent,
 } from "./markdown";
@@ -65,9 +66,10 @@ function $encode(definition: PageEditorDefinition) {
   };
 
   const yaml = metadata.getYaml();
-  const canonical = `${yaml ? `---\n${yaml.trimEnd()}\n---\n\n` : ""}${stringifyPageMarkdown(body)}`;
+  const frontmatter = yaml ? `---\n${yaml.trimEnd()}\n---\n\n` : "";
+  const bodyMarkdown = stringifyPageMarkdown(body);
 
-  return { metadata, canonical };
+  return { metadata, canonical: frontmatter + bodyMarkdown, frontmatter, body: bodyMarkdown };
 }
 
 export function pageMarkdownToLexical(
@@ -162,9 +164,14 @@ export function lexicalToPageMarkdown(
   try {
     return editor.getEditorState().read(
       () => {
-        const { metadata, canonical } = $encode(definition);
+        const { metadata, canonical, frontmatter, body } = $encode(definition);
 
-        return canonical === metadata.__fingerprint ? metadata.__original : canonical;
+        if (canonical === metadata.__fingerprint) return metadata.__original;
+
+        if (body === splitPageMarkdown(metadata.__fingerprint).body)
+          return frontmatter + splitPageMarkdown(metadata.__original).body;
+
+        return canonical;
       },
       { editor },
     );

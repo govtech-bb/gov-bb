@@ -171,7 +171,8 @@ test.each([
 test.each(["", "preview"])(
   "a legacy draft can return from %j without losing edits or writing until Save",
   async (value) => {
-    let current = page;
+    const body = "\nWhat it costs.  \nBring ID.\n\n";
+    let current = { ...page, body_markdown: body };
     const writes: SavePageInput[] = [];
 
     const h = await mountPage(async (_url, init) => {
@@ -207,7 +208,11 @@ test.each(["", "preview"])(
     await act(async () => {
       await vi.waitFor(() => expect(pageHasUnsavedChanges(h.session())).toBe(false));
     });
-    expect(writes[0]).toMatchObject({ title: "Later title edit", visibility: "draft" });
+    expect(writes[0]).toMatchObject({
+      title: "Later title edit",
+      visibility: "draft",
+      body_markdown: body,
+    });
 
     await chooseVisibility(value);
     expect(writes).toHaveLength(1);
@@ -217,7 +222,7 @@ test.each(["", "preview"])(
         expect(h.session().getBaseline().page.visibility).toBe(value || "public"),
       );
     });
-    expect(writes[1]?.visibility).toBe(value || "public");
+    expect(writes[1]).toMatchObject({ visibility: value || "public", body_markdown: body });
     expect(draftOption()).toBeNull();
 
     await act(async () => pageControl<HTMLButtonElement>('button[aria-label="Undo"]').click());

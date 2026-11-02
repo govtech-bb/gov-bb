@@ -1,5 +1,5 @@
 import { isMap, isScalar, isSeq, parseDocument, stringify } from "yaml";
-import { parsePageMarkdown } from "../pages/markdown";
+import { splitPageMarkdown } from "../pages/markdown";
 import { categoryLabel, type Category } from "./categories";
 import type { ApiPage, FieldError, SavePageInput } from "./client";
 import { urlProblem } from "./page-fields";
@@ -75,8 +75,7 @@ export function markdownToPageSaveInput(
   base: ApiPage,
   categories: readonly Category[],
 ): PageSaveInputResult {
-  const first = parsePageMarkdown(markdown).children[0];
-  const yaml = first?.type === "yaml" ? first : undefined;
+  const { yaml, body } = splitPageMarkdown(markdown);
   const document = parseDocument(yaml?.value ?? "");
   const errors: FieldError[] = [];
 
@@ -169,7 +168,7 @@ export function markdownToPageSaveInput(
       description: text("description") ?? null,
       visibility,
       form_id: formId,
-      body_markdown: markdown.slice(yaml?.position?.end.offset ?? 0).trim(),
+      body_markdown: body === base.body_markdown ? body : body.trim(),
       frontmatter,
     },
   };

@@ -148,11 +148,9 @@ describe("page markdown", () => {
     const after = markdownToPageSaveInput(edited, entry, categories);
 
     if (!before.ok || !after.ok) throw new Error("Both versions should save");
-    // An edit re-exports the body in the editor's normal form (a hard break becomes <br>).
-    expect({ ...after.value, body_markdown: "" }).toEqual({
+    expect(after.value).toEqual({
       ...before.value,
       visibility: "preview",
-      body_markdown: "",
     });
   });
 
