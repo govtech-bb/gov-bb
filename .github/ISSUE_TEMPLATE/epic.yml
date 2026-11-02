@@ -1,0 +1,22 @@
+name: Epic
+description: A goal delivered through several issues and PRs
+labels: ["EPIC"]
+body:
+  - type: textarea
+    attributes:
+      label: Goal
+      description: The outcome, in a sentence or two.
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Decisions
+      description: What's been settled, and why — so sub-issues don't relitigate it.
+  - type: textarea
+    attributes:
+      label: Sub-issues (in order)
+      description: Link each one as a sub-issue too, so progress shows on the epic.
+      value: "1. #\n2. #"
+  - type: textarea
+    attributes:
+      label: Out of scope

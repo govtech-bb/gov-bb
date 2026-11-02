@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-09-09",
+  "lastUpdated": "2026-10-26",
   "pharmacies": [
     {
       "slug": "winston-scott-polyclinic",
@@ -713,7 +713,7 @@
       "pppStatus": "participating",
       "parish": "Christ Church",
       "address": "Lanterns Mall, Hastings, Christ Church",
-      "phone": "(246) 271-0346",
+      "phone": "(246) 271-3784",
       "hours": {
         "mon": [
           {
@@ -763,7 +763,6 @@
         "lat": 13.076846,
         "lon": -59.594315
       },
-      "additionalPhones": ["(246) 826-1125"],
       "bankHolidayHours": [
         {
           "opens": "10:00",
@@ -779,9 +778,9 @@
         },
         {
           "fields": ["contacts"],
-          "source": "https://www.imartstores.com/pharmacy.html",
-          "checkedOn": "2026-09-07",
-          "note": "Telephone also checked against Active.Private.Participating.Pharmacies.Aug.2026.docx."
+          "source": "Open Pharmacy feedback: IMART shared PBX",
+          "checkedOn": "2026-10-26",
+          "note": "All IMART branches use 271-3784 (DRUG); the PBX directs callers to their chosen location. WhatsApp number retained from https://www.imartstores.com/pharmacy.html (checked 2026-09-07)."
         },
         {
           "fields": ["hours"],
@@ -798,7 +797,7 @@
       "pppStatus": "participating",
       "parish": "Christ Church",
       "address": "Sheraton Centre, Sargeant's Village, Christ Church",
-      "phone": "(246) 436-1231",
+      "phone": "(246) 271-3784",
       "hours": {
         "mon": [
           {
@@ -853,9 +852,9 @@
         },
         {
           "fields": ["contacts"],
-          "source": "https://www.imartstores.com/pharmacy.html",
-          "checkedOn": "2026-09-07",
-          "note": "Telephone also checked against Active.Private.Participating.Pharmacies.Aug.2026.docx."
+          "source": "Open Pharmacy feedback: IMART shared PBX",
+          "checkedOn": "2026-10-26",
+          "note": "All IMART branches use 271-3784 (DRUG); the PBX directs callers to their chosen location. WhatsApp number retained from https://www.imartstores.com/pharmacy.html (checked 2026-09-07)."
         },
         {
           "fields": ["hours"],
@@ -922,7 +921,6 @@
         "lat": 13.108148,
         "lon": -59.578662
       },
-      "phoneExtension": "6",
       "bankHolidayHours": [
         {
           "opens": "10:00",
@@ -938,9 +936,9 @@
         },
         {
           "fields": ["contacts"],
-          "source": "https://www.imartstores.com/pharmacy.html",
-          "checkedOn": "2026-09-07",
-          "note": "Telephone also checked against Active.Private.Participating.Pharmacies.Aug.2026.docx."
+          "source": "Open Pharmacy feedback: IMART shared PBX",
+          "checkedOn": "2026-10-26",
+          "note": "All IMART branches use 271-3784 (DRUG); the PBX directs callers to their chosen location. WhatsApp number retained from https://www.imartstores.com/pharmacy.html (checked 2026-09-07)."
         },
         {
           "fields": ["hours"],
@@ -1028,9 +1026,9 @@
         },
         {
           "fields": ["contacts"],
-          "source": "https://www.imartstores.com/pharmacy.html",
-          "checkedOn": "2026-09-07",
-          "note": "Published branch WhatsApp number; telephone retained from existing directory."
+          "source": "Open Pharmacy feedback: IMART shared PBX",
+          "checkedOn": "2026-10-26",
+          "note": "All IMART branches use 271-3784 (DRUG); the PBX directs callers to their chosen location. WhatsApp number retained from https://www.imartstores.com/pharmacy.html (checked 2026-09-07)."
         }
       ]
     },
@@ -1041,7 +1039,7 @@
       "pppStatus": "participating",
       "parish": "St. Michael",
       "address": "Wildey Commercial Centre, Wildey, St. Michael",
-      "phone": "(246) 826-1127",
+      "phone": "(246) 271-3784",
       "hours": {
         "mon": [
           {
@@ -1089,9 +1087,15 @@
       "bankHolidayHours": [],
       "verification": [
         {
-          "fields": ["ppp", "contacts"],
+          "fields": ["ppp"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 55",
           "checkedOn": "2026-09-07"
+        },
+        {
+          "fields": ["contacts"],
+          "source": "Open Pharmacy feedback: IMART shared PBX",
+          "checkedOn": "2026-10-26",
+          "note": "All IMART branches use 271-3784 (DRUG); the PBX directs callers to their chosen location."
         },
         {
           "fields": ["hours"],
@@ -1116,9 +1120,15 @@
       },
       "verification": [
         {
-          "fields": ["ppp", "contacts"],
+          "fields": ["ppp"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 56",
           "checkedOn": "2026-09-07"
+        },
+        {
+          "fields": ["contacts"],
+          "source": "Open Pharmacy feedback: IMART shared PBX",
+          "checkedOn": "2026-10-26",
+          "note": "All IMART branches use 271-3784 (DRUG); the PBX directs callers to their chosen location."
         },
         {
           "fields": ["hours"],
@@ -1174,7 +1184,7 @@
       "pppStatus": "participating",
       "parish": "St. George",
       "address": "The Estates, Boarded Hall, St. George",
-      "phone": "(246) 422-4156",
+      "phone": "(246) 271-3784",
       "hours": {
         "mon": [
           {
@@ -1239,9 +1249,9 @@
         },
         {
           "fields": ["contacts"],
-          "source": "https://www.imartstores.com/pharmacy.html",
-          "checkedOn": "2026-09-07",
-          "note": "Telephone also checked against Active.Private.Participating.Pharmacies.Aug.2026.docx."
+          "source": "Open Pharmacy feedback: IMART shared PBX",
+          "checkedOn": "2026-10-26",
+          "note": "All IMART branches use 271-3784 (DRUG); the PBX directs callers to their chosen location. WhatsApp number retained from https://www.imartstores.com/pharmacy.html (checked 2026-09-07)."
         },
         {
           "fields": ["hours"],
@@ -1306,9 +1316,15 @@
       "notes": "Store hours are longer than pharmacy hours.",
       "verification": [
         {
-          "fields": ["ppp", "contacts"],
+          "fields": ["ppp"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 50",
           "checkedOn": "2026-09-07"
+        },
+        {
+          "fields": ["contacts"],
+          "source": "Open Pharmacy feedback: IMART shared PBX",
+          "checkedOn": "2026-10-26",
+          "note": "All IMART branches use 271-3784 (DRUG); the PBX directs callers to their chosen location."
         },
         {
           "fields": ["hours"],
@@ -1326,12 +1342,17 @@
       "parish": "St. Michael",
       "address": "Shop 11, Welches Plaza, St. Michael",
       "phone": "(246) 271-3784",
-      "phoneExtension": "3",
       "verification": [
         {
-          "fields": ["ppp", "contacts"],
+          "fields": ["ppp"],
           "source": "Active.Private.Participating.Pharmacies.Aug.2026.docx, row 52",
           "checkedOn": "2026-09-07"
+        },
+        {
+          "fields": ["contacts"],
+          "source": "Open Pharmacy feedback: IMART shared PBX",
+          "checkedOn": "2026-10-26",
+          "note": "All IMART branches use 271-3784 (DRUG); the PBX directs callers to their chosen location."
         },
         {
           "fields": ["hours"],

@@ -9,6 +9,8 @@ import type { AnyFieldApi, AnyFormApi } from "@tanstack/react-form";
 import { valueIsEmpty } from "./validation-methods";
 import { getVisibleFields } from "./helpers/behavior-helper";
 import { buildStepScopedValues } from "./helpers/value-tree";
+import { placeBeingLocated, ROUTING_COORDINATE } from "../api/geocode";
+import { uploadBlock, uploadBlockCode } from "../api/files";
 import {
   validate,
   validateDateField,
@@ -172,10 +174,90 @@ const formatErrors = (errors: string[], fieldName: string): string[] => {
   return out;
 };
 
+// An address that routes the application must be located — picked from the
+// suggestions or placed on the map, which writes its coordinate — not just
+// typed: a typed address the lookup cannot find may not exist. Shared by the
+// field's validator and collectStepErrorCodes, so the screen and analytics
+// judge it the same way (#3400).
+const addressNotLocated = (
+  field: ClientPrimitive,
+  value: unknown,
+  values: Record<string, unknown> | undefined,
+): boolean => {
+  const coordinatesFieldId = field.geocodeTargets?.coordinatesFieldId;
+  if (field.htmlType !== "address-lookup" || !coordinatesFieldId) return false;
+  if (typeof value !== "string" || !value.trim()) return false;
+  const coordinatesId = `${field.id.slice(0, field.id.length - field.fieldId.length)}${coordinatesFieldId}`;
+  const coordinate = values?.[coordinatesId];
+  return !(
+    typeof coordinate === "string" && ROUTING_COORDINATE.test(coordinate)
+  );
+};
+
 // This allows us to recalculate the methods after restoring from cache.
 export const buildFieldValidationProperties = (
   field: ClientPrimitive,
 ): FieldValidationProperties => {
+  const properties = buildRuleValidationProperties(field);
+  if (field.htmlType === "file") {
+    // A file still uploading, or refused, isn't a value yet: say why Continue
+    // has to wait before judging the value itself (#2940).
+    return {
+      ...properties,
+      onDynamic(input) {
+        const blocked = uploadBlock(field.id);
+        return blocked ? [blocked] : properties.onDynamic?.(input);
+      },
+    };
+  }
+  if (
+    field.htmlType !== "address-lookup" ||
+    !field.geocodeTargets?.coordinatesFieldId
+  ) {
+    return properties;
+  }
+
+  const notLocated = (
+    input: Parameters<NonNullable<FieldValidationProperties["onDynamic"]>>[0],
+  ) =>
+    addressNotLocated(
+      field,
+      input.value,
+      input.fieldApi?.form?.state?.values as Record<string, unknown>,
+    )
+      ? ["Choose the address from the list, or find it on the map"]
+      : undefined;
+  return {
+    ...properties,
+    onDynamic(input) {
+      const errors = properties.onDynamic?.(input);
+      if (errors) return errors;
+      // A pick whose coordinate is on its way is judged once it arrives.
+      if (placeBeingLocated(field.id)) return undefined;
+      return notLocated(input);
+    },
+    async onDynamicAsync(input) {
+      const pending = placeBeingLocated(field.id);
+      if (!pending) return undefined;
+      await pending;
+      return notLocated(input);
+    },
+  };
+};
+
+const buildRuleValidationProperties = (
+  field: ClientPrimitive,
+): FieldValidationProperties => {
+  // A parish filled from a located address is read-only: the address field
+  // already refuses an address that is not located, so it has nothing to check.
+  if (field.filledByAddressLookup) {
+    return {
+      onDynamic(_input) {
+        return undefined;
+      },
+    };
+  }
+
   // The show-hide toggle stores a boolean (open/closed state) and never has its
   // own validation rules; a content element carries no submission value at
   // all; fields without validations have nothing to check. Either way, return
@@ -281,36 +363,55 @@ export const collectStepErrorCodes = (
 ): { fieldId: string; codes: string[] }[] => {
   const out: { fieldId: string; codes: string[] }[] = [];
   for (const field of fields) {
-    if (
-      field.htmlType === "show-hide" ||
-      field.htmlType === "content" ||
-      !field.validations
-    )
+    // An upload that stopped Continue is the reason, as on screen — even on a
+    // file field with no rules of its own (#2940).
+    const blocked = field.htmlType === "file" && uploadBlockCode(field.id);
+    if (blocked) {
+      out.push({ fieldId: field.fieldId, codes: [blocked] });
       continue;
-    const primitive = clientPrimitiveToPrimitive(field);
-    const { stepValues, allValues } = buildValueTrees(
-      field,
-      formValues,
-      formValues[field.id],
-    );
-    const primitiveToValidate = isOptionalNow(
-      field.behaviours,
-      field.stepId,
-      allValues,
-    )
-      ? stripRequired(primitive)
-      : primitive;
-    const entries = validateFieldEntries(
-      primitiveToValidate,
-      stepValues[field.fieldId],
-      allValues,
-      stepValues,
-    );
-    if (entries.length > 0) {
-      out.push({ fieldId: field.fieldId, codes: entries.map((e) => e.code) });
     }
+    if (field.htmlType === "show-hide" || field.htmlType === "content")
+      continue;
+    const codes = field.validations ? ruleCodes(field, formValues) : [];
+    // The address gate, judged as on screen: after the field's own rules, and
+    // not while a picked place is still being located (#3400).
+    if (
+      codes.length === 0 &&
+      !placeBeingLocated(field.id) &&
+      addressNotLocated(field, formValues[field.id], formValues)
+    ) {
+      codes.push("addressNotLocated");
+    }
+    if (codes.length > 0) out.push({ fieldId: field.fieldId, codes });
   }
   return out;
+};
+
+// The codes of the recipe rules a field fails, from the same value-tree /
+// optionalIf / date orchestration the display validators use.
+const ruleCodes = (
+  field: ClientPrimitive,
+  formValues: Record<string, unknown>,
+): string[] => {
+  const primitive = clientPrimitiveToPrimitive(field);
+  const { stepValues, allValues } = buildValueTrees(
+    field,
+    formValues,
+    formValues[field.id],
+  );
+  const primitiveToValidate = isOptionalNow(
+    field.behaviours,
+    field.stepId,
+    allValues,
+  )
+    ? stripRequired(primitive)
+    : primitive;
+  return validateFieldEntries(
+    primitiveToValidate,
+    stepValues[field.fieldId],
+    allValues,
+    stepValues,
+  ).map((e) => e.code);
 };
 
 // Whether a step the applicant is NOT on still passes validation, for the

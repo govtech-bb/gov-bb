@@ -52,6 +52,8 @@ export class SqsProducerService {
       ...(event.resolvedCatchment
         ? { resolvedCatchment: event.resolvedCatchment }
         : {}),
+      ...(event.isSmokeSubmission ? { isSmokeSubmission: true } : {}),
+      ...(event.payment ? { payment: event.payment } : {}),
     };
 
     const result = await this.client.send(

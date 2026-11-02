@@ -69,7 +69,11 @@ export type { RequiredMessageDefect } from "@govtech-bb/form-validation";
 export { isFieldlessRequiredWording } from "@govtech-bb/form-validation";
 export { UnknownRefError } from "./errors";
 export type { UnknownRef } from "./errors";
-export { serializeRecipeDraft, deserializeRecipe } from "./serialization";
+export {
+  serializeRecipeDraft,
+  deserializeRecipe,
+  foldLegacyNextSteps,
+} from "./serialization";
 export { validateFormContract } from "./validation";
 export type {
   ValidationResult,

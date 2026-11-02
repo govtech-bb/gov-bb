@@ -2,6 +2,7 @@ import type {
   CatchmentRouting,
   SubmissionValues,
 } from "@govtech-bb/form-types";
+import { parishAt } from "./parish-at";
 
 /**
  * Per-parish fallback coordinate for coordinate-based catchment routing.
@@ -114,4 +115,38 @@ export function fillParishRoutingCoordinate(
   const step = values[stepId];
   const stepValues = step && !Array.isArray(step) ? step : {};
   return { ...values, [stepId]: { ...stepValues, [fieldId]: point } };
+}
+
+/**
+ * Fill an empty parish from the routing coordinate — the reverse of
+ * {@link fillParishRoutingCoordinate}.
+ *
+ * A located address's parish is read-only on the form, written by the lookup
+ * once it answers. When that answer never arrives (the address-at-the-pin
+ * lookup failed or was throttled), the coordinate is there but the parish is
+ * not, and the applicant has no way to set it. Runs before validation, so the
+ * parish's required rule judges the filled value. A parish already given, or a
+ * coordinate that is not a real one, leaves the values unchanged.
+ *
+ * Returns a new object; the input is not mutated.
+ */
+export function fillRoutingParish(
+  values: SubmissionValues,
+  routing: CatchmentRouting,
+): SubmissionValues {
+  const parish = readPath(values, routing.parishField);
+  if (typeof parish === "string" && parish !== "") return values;
+  const coordinate = readPath(values, routing.coordinatesField);
+  if (!isRoutingCoordinate(coordinate)) return values;
+
+  const [lat, lon] = (coordinate as string).split(",").map(Number);
+  const found = parishAt(lat, lon);
+  if (!found) return values;
+
+  const dot = routing.parishField.indexOf(".");
+  const stepId = routing.parishField.slice(0, dot);
+  const fieldId = routing.parishField.slice(dot + 1);
+  const step = values[stepId];
+  const stepValues = step && !Array.isArray(step) ? step : {};
+  return { ...values, [stepId]: { ...stepValues, [fieldId]: found } };
 }

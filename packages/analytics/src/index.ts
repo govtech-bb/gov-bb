@@ -1,6 +1,14 @@
 import { maskSearchQuery } from "./mask-search-query";
+import { journeyEnabled, sendJourney } from "./journey";
 
 export { maskSearchQuery } from "./mask-search-query";
+export {
+  configureJourney,
+  flushJourney,
+  installJourneyClickListener,
+  journeyEnabled,
+  sendJourney,
+} from "./journey";
 
 declare global {
   interface Window {
@@ -76,7 +84,7 @@ export function trackEvent(
   data?: Record<string, unknown>,
 ): void {
   if (typeof window === "undefined") return;
-  if (!window.umami) return;
+  if (!window.umami && !journeyEnabled()) return;
   // Redact PII from a search `query` property before it leaves for the
   // third-party analytics host (#2079). Shallow-copy so the caller's object is
   // untouched. Covers every search event centrally — no call site can forget.
@@ -84,6 +92,8 @@ export function trackEvent(
     data && typeof data.query === "string"
       ? { ...data, query: maskSearchQuery(data.query) }
       : data;
+  sendJourney(...journeyEvent(event, safe));
+  if (!window.umami) return;
   if (
     safe &&
     "form" in safe &&
@@ -244,7 +254,32 @@ export function stepFromEvent(event: string): number | null {
 
 export function trackPageview(): void {
   if (typeof window === "undefined") return;
+  sendJourney("pageview");
   window.umami?.track();
+}
+
+/**
+ * Journey events carry the plain event name with the form as a prop, not
+ * Umami's packed `<formId>:<event>` (which exists only for Umami's 50-character
+ * name limit). A packed name from a call site such as stepCompleteEventName is
+ * unpacked here: compact codes map back to canonical names and `s<n>` back to
+ * `form-step-<word>`.
+ */
+export function journeyEvent(
+  event: string,
+  data?: Record<string, unknown>,
+): [string, Record<string, unknown> | undefined] {
+  const sep = event.indexOf(":");
+  if (sep === -1) return [event, data];
+  const key = event.slice(0, sep);
+  const suffix = event.slice(sep + 1);
+  const step = stepFromEvent(suffix);
+  const name =
+    step !== null
+      ? `form-step-${stepNumberToWord(step)}`
+      : canonicalEvent(suffix);
+  const form = typeof data?.form === "string" ? data.form : key;
+  return [name, { ...data, form }];
 }
 
 export function deriveStartEventName(href: string): string {

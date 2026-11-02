@@ -3,6 +3,7 @@ import type { CatchmentResolution } from "@/catchment/catchment-routing.service"
 import type {
   SubmissionValues,
   SubmissionAuditTrail,
+  SubmissionPaymentSummary,
 } from "../submissions.types";
 
 /**
@@ -32,4 +33,9 @@ export interface SubmissionSqsMessage {
   enqueuedAt: string; // ISO-8601
   /** Resolved event-location catchment; see SubmissionCreatedEvent. */
   resolvedCatchment?: CatchmentResolution;
+  /** Smoke-matrix submission; see SubmissionCreatedEvent. */
+  isSmokeSubmission?: boolean;
+  /** Confirmed EzPay payment, rendered on the MDA email; see
+   *  SubmissionCreatedEvent. Absent on messages enqueued before #3349. */
+  payment?: SubmissionPaymentSummary;
 }

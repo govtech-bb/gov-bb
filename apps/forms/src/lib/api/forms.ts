@@ -23,13 +23,7 @@ import {
   RepeatableStepSettings,
   ClientPrimitive,
 } from "@forms/types";
-import { requireEnv } from "../../config/env";
-
-const API_URL = requireEnv(
-  import.meta.env.VITE_API_URL,
-  "VITE_API_URL",
-  "http://localhost:3001",
-);
+import { API_URL } from "../../config/api";
 
 /**
  * Thrown when a contract fetch fails. Carries the HTTP status code so callers

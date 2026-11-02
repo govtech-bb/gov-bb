@@ -18,7 +18,7 @@ Six behaviours are required:
 2. Adding the `progressing` label moves the issue to **In progress**.
 3. Opening a PR that closes an issue (via a closing keyword) moves that issue to
    **In review**.
-4. Merging such a PR into `main` moves the issue to **Done**, removes
+4. Merging such a PR into `main` (or `v2-rewrite`) moves the issue to **Done**, removes
    the `progressing` label, and closes the issue.
 5. An issue holds at most one of `ready` / `progressing` at a time; merging also
    strips `progressing`.
@@ -28,13 +28,13 @@ Six behaviours are required:
 
 ## Confirmed decisions
 
-| Decision                      | Choice                                                      |
-| ----------------------------- | ----------------------------------------------------------- |
-| Repo hosting the automation   | `govtech-bb/gov-bb` only                                    |
-| Auth to write the org project | Org-owned **GitHub App** (durable, not tied to a person)    |
-| PR → issue linkage            | GitHub **closing keywords** (`Closes #N` / `Fixes #N`) only |
-| On merge to `main`            | Move to **Done** **and close** the issue                    |
-| Architecture                  | Single custom GitHub Actions workflow (one source of truth) |
+| Decision                        | Choice                                                      |
+| ------------------------------- | ----------------------------------------------------------- |
+| Repo hosting the automation     | `govtech-bb/gov-bb` only                                    |
+| Auth to write the org project   | Org-owned **GitHub App** (durable, not tied to a person)    |
+| PR → issue linkage              | GitHub **closing keywords** (`Closes #N` / `Fixes #N`) only |
+| On merge to `main`/`v2-rewrite` | Move to **Done** **and close** the issue                    |
+| Architecture                    | Single custom GitHub Actions workflow (one source of truth) |
 
 The board's `Status` field options match the requirements exactly:
 **Backlog, Ready, In progress, In review, Done, Closed.**
@@ -105,15 +105,15 @@ Every handler first calls `ensureItemOnBoard(issueId)` — an idempotent
 `addProjectV2ItemById` — so a transition never fails on an issue not yet on the
 board (including pre-existing issues).
 
-| #   | Event                                             | Guard                                                             | Actions (ordered)                                                                        |
-| --- | ------------------------------------------------- | ----------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
-| 0   | `issues.opened`                                   | —                                                                 | ensure on board → Status=**Backlog**                                                     |
-| 1   | `issues.labeled`                                  | label == `ready`                                                  | remove `progressing` if present → ensure on board → Status=**Ready**                     |
-| 2   | `issues.labeled`                                  | label == `progressing`                                            | remove `ready` if present → ensure on board → Status=**In progress**                     |
-| 3   | `pull_request.{opened,reopened,ready_for_review}` | ≥1 closing-keyword issue                                          | per linked issue: ensure on board → Status=**In review**                                 |
-| 4   | `pull_request.closed`                             | `merged == true` AND base == `main` AND ≥1 linked issue           | per linked issue: ensure on board → Status=**Done** → remove `progressing` → close issue |
-| 5   | `issues.closed`                                   | `state_reason == completed`                                       | ensure on board → Status=**Done**                                                        |
-| 6   | `issues.closed`                                   | `state_reason != completed` (not_planned / duplicate / none)      | ensure on board → Status=**Closed**                                                      |
+| #   | Event                                             | Guard                                                                 | Actions (ordered)                                                                        |
+| --- | ------------------------------------------------- | --------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| 0   | `issues.opened`                                   | —                                                                     | ensure on board → Status=**Backlog**                                                     |
+| 1   | `issues.labeled`                                  | label == `ready`                                                      | remove `progressing` if present → ensure on board → Status=**Ready**                     |
+| 2   | `issues.labeled`                                  | label == `progressing`                                                | remove `ready` if present → ensure on board → Status=**In progress**                     |
+| 3   | `pull_request.{opened,reopened,ready_for_review}` | ≥1 closing-keyword issue                                              | per linked issue: ensure on board → Status=**In review**                                 |
+| 4   | `pull_request.closed`                             | `merged == true` AND base ∈ {`main`,`v2-rewrite`} AND ≥1 linked issue | per linked issue: ensure on board → Status=**Done** → remove `progressing` → close issue |
+| 5   | `issues.closed`                                   | `state_reason == completed`                                           | ensure on board → Status=**Done**                                                        |
+| 6   | `issues.closed`                                   | `state_reason != completed` (not_planned / duplicate / none)          | ensure on board → Status=**Closed**                                                      |
 
 ### Mutual exclusion (behaviour 5)
 
@@ -124,7 +124,7 @@ workflow does **not** subscribe to — no trigger loop.
 ### Edge cases
 
 - **PR closed without merge** → no-op.
-- **Merge to a base other than `main`** (a feature branch, or the `sandbox`/
+- **Merge to a base other than `main`/`v2-rewrite`** (a feature branch, or the `sandbox`/
   `staging`/`prod` deploy pointers) → no-op.
 - **`main` is the repo default branch**, so GitHub auto-closes the linked issue
   on a `main` merge; our explicit close is idempotent, and is still what strips

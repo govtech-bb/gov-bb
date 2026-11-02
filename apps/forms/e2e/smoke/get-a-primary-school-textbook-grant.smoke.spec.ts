@@ -168,7 +168,9 @@ test.describe("Get a Primary School Textbook Grant — Live Smoke", () => {
     // ─── Declaration ─────────────────────────────────────────────────────────
     expectStep(page, "declaration", { exact: true });
     await page
-      .getByRole("checkbox", { name: /I confirm that my information/ })
+      .getByRole("checkbox", {
+        name: /I confirm that the information I have provided is true and correct/,
+      })
       .check();
 
     // ─── Submit + Submission Confirmation ────────────────────────────────────

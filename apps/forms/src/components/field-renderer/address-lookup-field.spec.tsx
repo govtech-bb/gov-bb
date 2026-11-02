@@ -15,12 +15,42 @@ vi.mock("@forms/lib", () => ({
 
 vi.mock("../../lib/api/geocode", () => ({
   MIN_QUERY_LENGTH: 3,
+  ROUTING_COORDINATE: /^-?\d+\.\d+,-?\d+\.\d+$/,
+  locatingPlace: vi.fn(),
   searchAddresses: vi.fn(),
+  resolvePlace: vi.fn(),
+  reverseGeocode: vi.fn(),
+  lookupPolyclinic: vi.fn(),
 }));
 
-import { searchAddresses } from "../../lib/api/geocode";
+// Leaflet needs a real layout engine; stand the map in with a button that
+// places the pin the way a drag, tap or arrow key would.
+// `mapFails` stands in for a map chunk that will not load.
+let mapFails = false;
+vi.mock("./location-pin-map", () => ({
+  default: ({ onChange }: { onChange: (lat: number, lon: number) => void }) => {
+    if (mapFails)
+      throw new Error("Failed to fetch dynamically imported module");
+    return (
+      <button type="button" onClick={() => onChange(13.1, -59.6)}>
+        Place pin
+      </button>
+    );
+  },
+}));
+
+import {
+  locatingPlace,
+  lookupPolyclinic,
+  resolvePlace,
+  reverseGeocode,
+  searchAddresses,
+} from "../../lib/api/geocode";
 
 const mockSearch = searchAddresses as Mock;
+const mockResolve = resolvePlace as Mock;
+const mockReverse = reverseGeocode as Mock;
+const mockPolyclinic = lookupPolyclinic as Mock;
 
 let mockState: {
   value: unknown;
@@ -39,7 +69,11 @@ const mockFieldApi = {
   validate: vi.fn(),
 };
 
-const setFieldValue = vi.fn();
+// Sibling field values (parish, coordinate, line 2), keyed by field id.
+let formValues: Record<string, unknown> = {};
+const setFieldValue = vi.fn((id: string, value: unknown) => {
+  formValues[id] = value;
+});
 
 const mockForm = {
   Field: ({
@@ -49,11 +83,17 @@ const mockForm = {
     validators?: unknown;
     children: (f: typeof mockFieldApi) => React.ReactNode;
   }) => <>{children(mockFieldApi)}</>,
-  getFieldValue: vi.fn().mockReturnValue(undefined),
+  getFieldValue: (id: string) => formValues[id],
   setFieldValue,
 };
 
-function addressLookupField(): ClientPrimitive {
+function addressLookupField(
+  geocodeTargets: ClientPrimitive["geocodeTargets"] = {
+    line2FieldId: "event-address-line-2",
+    parishFieldId: "event-parish",
+    coordinatesFieldId: "event-address-coordinates",
+  },
+): ClientPrimitive {
   return {
     id: "step-1.event-address-line-1",
     fieldId: "event-address-line-1",
@@ -65,21 +105,13 @@ function addressLookupField(): ClientPrimitive {
     hidden: false,
     conditionallyHidden: false,
     behaviours: [],
-    geocodeTargets: {
-      line2FieldId: "event-address-line-2",
-      parishFieldId: "event-parish",
-      coordinatesFieldId: "event-address-coordinates",
-    },
+    geocodeTargets,
   } as ClientPrimitive;
 }
 
-function renderField() {
+function renderField(field = addressLookupField()) {
   return render(
-    <FieldRenderer
-      form={mockForm}
-      field={addressLookupField()}
-      validationProperties={{}}
-    />,
+    <FieldRenderer form={mockForm} field={field} validationProperties={{}} />,
   );
 }
 
@@ -87,11 +119,31 @@ describe("AddressLookupField", () => {
   beforeEach(() => {
     mockState = { value: undefined, meta: { isValid: true, errors: [] } };
     vi.clearAllMocks();
+    formValues = {};
+    mapFails = false;
+    mockReverse.mockRejectedValue(new Error("reverse lookup failed: 503"));
+    mockPolyclinic.mockRejectedValue(
+      new Error("polyclinic lookup failed: 404"),
+    );
   });
 
   it("renders an ARIA combobox input", () => {
     renderField();
     expect(screen.getByRole("combobox")).toBeTruthy();
+  });
+
+  // ARIA 1.2: the input names its listbox whether or not it is open.
+  it("keeps aria-controls on the input while the list is closed", () => {
+    renderField();
+    const input = screen.getByRole("combobox");
+    expect(input).toHaveAttribute("aria-expanded", "false");
+    expect(input).toHaveAttribute(
+      "aria-controls",
+      "step-1.event-address-line-1-listbox",
+    );
+    expect(
+      document.getElementById("step-1.event-address-line-1-listbox"),
+    ).not.toBeNull();
   });
 
   it("shows Barbados suggestions after typing past the threshold", async () => {
@@ -259,9 +311,95 @@ describe("AddressLookupField", () => {
     );
   });
 
-  it("shows a non-blocking notice when the lookup fails", async () => {
-    mockSearch.mockRejectedValue(new Error("network down"));
+  it("clears line 2, the parish and the coordinate when line 1 is cleared", async () => {
+    mockSearch.mockResolvedValue([
+      {
+        label: "Bay Street, Bridgetown, Barbados",
+        lat: "13.1",
+        lon: "-59.6",
+        line1: "Bay Street",
+        line2: "Bridgetown",
+        parish: "st-michael",
+      },
+    ]);
     renderField();
+    await userEvent.type(screen.getByRole("combobox"), "Bay");
+    await userEvent.click(await screen.findByRole("option"));
+    setFieldValue.mockClear();
+
+    await userEvent.clear(screen.getByRole("combobox"));
+
+    expect(setFieldValue).toHaveBeenCalledWith(
+      "step-1.event-address-line-2",
+      "",
+    );
+    expect(setFieldValue).toHaveBeenCalledWith("step-1.event-parish", "");
+    expect(setFieldValue).toHaveBeenCalledWith(
+      "step-1.event-address-coordinates",
+      "",
+    );
+  });
+
+  describe("once the lookup has filled the address", () => {
+    const BAY = {
+      label: "Bay Street, Bridgetown, Barbados",
+      lat: "13.1",
+      lon: "-59.6",
+      line1: "Bay Street",
+      line2: "Bridgetown",
+      parish: "st-michael",
+    };
+    const pickBay = async () => {
+      mockSearch.mockResolvedValue([BAY]);
+      renderField();
+      await userEvent.type(screen.getByRole("combobox"), "Bay");
+      await userEvent.click(await screen.findByRole("option"));
+      setFieldValue.mockClear();
+    };
+
+    it("drops the coordinate and the locked parish on an edit, keeping line 2", async () => {
+      await pickBay();
+
+      await userEvent.type(screen.getByRole("combobox"), "XY");
+
+      expect(screen.queryByRole("dialog")).toBeNull();
+      expect(screen.getByRole("combobox")).toHaveValue("Bay StreetXY");
+      expect(setFieldValue).toHaveBeenCalledWith("step-1.event-parish", "");
+      expect(setFieldValue).toHaveBeenCalledWith(
+        "step-1.event-address-coordinates",
+        "",
+      );
+      expect(setFieldValue).not.toHaveBeenCalledWith(
+        "step-1.event-address-line-2",
+        "",
+      );
+    });
+
+    it("says which polyclinic the request will be routed to, until the address changes", async () => {
+      mockPolyclinic.mockResolvedValue("Sir Winston Scott Polyclinic");
+      await pickBay();
+
+      expect(
+        await screen.findByText(
+          "Your request will be routed to Sir Winston Scott Polyclinic.",
+        ),
+      ).toBeTruthy();
+      expect(mockPolyclinic).toHaveBeenCalledWith(13.1, -59.6);
+
+      await userEvent.type(screen.getByRole("combobox"), "X");
+      expect(screen.queryByText(/Your request will be routed to/)).toBeNull();
+    });
+
+    it("says nothing when no polyclinic serves the point", async () => {
+      await pickBay();
+      await waitFor(() => expect(mockPolyclinic).toHaveBeenCalled());
+      expect(screen.queryByText(/Your request will be routed to/)).toBeNull();
+    });
+  });
+
+  it("shows a non-blocking notice when the lookup fails on a field with no coordinate", async () => {
+    mockSearch.mockRejectedValue(new Error("network down"));
+    renderField(addressLookupField({ line2FieldId: "event-address-line-2" }));
 
     await userEvent.type(screen.getByRole("combobox"), "Bridgetown");
 
@@ -270,5 +408,493 @@ describe("AddressLookupField", () => {
     ).toHaveAttribute("role", "status");
     // Input still usable.
     expect(screen.getByRole("combobox")).toBeTruthy();
+  });
+
+  it("closes the list on Escape and leaves the text alone", async () => {
+    const user = userEvent.setup();
+    mockSearch.mockResolvedValue([
+      {
+        label: "Bay Street, Bridgetown, Barbados",
+        lat: "13.1",
+        lon: "-59.6",
+        line1: "Bay Street",
+        line2: "Bridgetown",
+        parish: "st-michael",
+      },
+    ]);
+    renderField();
+
+    await user.type(screen.getByRole("combobox"), "Bay");
+    await screen.findByRole("listbox");
+    await user.keyboard("{Escape}");
+
+    expect(screen.queryByRole("listbox")).toBeNull();
+    expect(screen.getByRole("combobox")).toHaveValue("Bay");
+  });
+
+  describe("with Google place suggestions", () => {
+    const OVAL = {
+      label:
+        "Kensington Oval, President Kennedy Drive, Bridgetown, Saint Michael, Barbados",
+      placeId: "ChIJ-oval",
+      mainText: "Kensington Oval",
+      secondaryText:
+        "President Kennedy Drive, Bridgetown, Saint Michael, Barbados",
+      matches: [{ start: 0, end: 6 }],
+      line1: "Kensington Oval",
+      line2: "President Kennedy Drive, Bridgetown",
+      parish: "st-michael",
+    };
+
+    const pickOval = async () => {
+      mockSearch.mockResolvedValue([OVAL]);
+      renderField();
+      await userEvent.type(screen.getByRole("combobox"), "kensin");
+      await userEvent.click(await screen.findByRole("option"));
+    };
+
+    it("shows the name with the typed part bold, where it is, and Google's attribution", async () => {
+      mockSearch.mockResolvedValue([OVAL]);
+      renderField();
+
+      await userEvent.type(screen.getByRole("combobox"), "kensin");
+      const option = await screen.findByRole("option");
+
+      expect(option.querySelector("strong")?.textContent).toBe("Kensin");
+      expect(option.textContent).toContain("Kensington Oval");
+      expect(option.textContent).toContain("President Kennedy Drive");
+      expect(screen.getByText("Google Maps")).toHaveAttribute(
+        "translate",
+        "no",
+      );
+    });
+
+    it("fills line 1 with the name, line 2 with the street and town, and the parish", async () => {
+      mockResolve.mockResolvedValue({
+        lat: "13.105",
+        lon: "-59.6225",
+        parish: "st-michael",
+      });
+      await pickOval();
+
+      expect(handleChange).toHaveBeenLastCalledWith("Kensington Oval");
+      expect(setFieldValue).toHaveBeenCalledWith(
+        "step-1.event-address-line-2",
+        "President Kennedy Drive, Bridgetown",
+      );
+      expect(setFieldValue).toHaveBeenCalledWith(
+        "step-1.event-parish",
+        "st-michael",
+      );
+    });
+
+    it("keeps a pin placed while the pick's coordinate was still loading", async () => {
+      // Continue was refused earlier, so the map link is still offered.
+      mockState.meta = { isValid: false, errors: ["Choose the address"] };
+      let answer: (place: unknown) => void = () => {};
+      mockResolve.mockReturnValue(new Promise((resolve) => (answer = resolve)));
+      await pickOval();
+
+      await userEvent.click(
+        screen.getByRole("button", { name: "Find it on the map" }),
+      );
+      await userEvent.click(
+        await screen.findByRole("button", { name: "Place pin" }),
+      );
+      answer({ lat: "13.105", lon: "-59.6225", parish: "st-michael" });
+      await new Promise((r) => setTimeout(r, 0));
+
+      expect(formValues["step-1.event-address-coordinates"]).toBe(
+        "13.100000,-59.600000",
+      );
+    });
+
+    // Continue waits on this rather than refusing a pick as not located.
+    it("records the pick as being located until its coordinate comes back", async () => {
+      mockResolve.mockResolvedValue({
+        lat: "13.105",
+        lon: "-59.6225",
+        parish: "st-michael",
+      });
+      await pickOval();
+
+      expect(locatingPlace).toHaveBeenCalledWith(
+        "step-1.event-address-line-1",
+        expect.any(Promise),
+      );
+    });
+
+    it("looks up the coordinate of the pick in the same session as the search", async () => {
+      mockResolve.mockResolvedValue({
+        lat: "13.105",
+        lon: "-59.6225",
+        parish: "st-michael",
+      });
+      await pickOval();
+
+      await waitFor(() =>
+        expect(setFieldValue).toHaveBeenCalledWith(
+          "step-1.event-address-coordinates",
+          "13.105,-59.6225",
+        ),
+      );
+      const searchSession = mockSearch.mock.calls[0][2];
+      expect(searchSession).toEqual(expect.any(String));
+      expect(mockResolve).toHaveBeenCalledWith("ChIJ-oval", searchSession);
+    });
+
+    it("does not write a late coordinate once the address has been edited", async () => {
+      let answer: (place: unknown) => void = () => {};
+      mockResolve.mockReturnValue(new Promise((resolve) => (answer = resolve)));
+      await pickOval();
+
+      await userEvent.type(screen.getByRole("combobox"), " Stand");
+      answer({ lat: "13.105", lon: "-59.6225", parish: "st-michael" });
+      await new Promise((r) => setTimeout(r, 0));
+
+      expect(setFieldValue).not.toHaveBeenCalledWith(
+        "step-1.event-address-coordinates",
+        "13.105,-59.6225",
+      );
+    });
+
+    it("offers the map pin when the coordinate cannot be looked up", async () => {
+      mockResolve.mockRejectedValue(new Error("place lookup failed: 503"));
+      await pickOval();
+
+      expect(
+        await screen.findByRole("button", { name: "Place pin" }),
+      ).toBeTruthy();
+    });
+  });
+
+  describe("when no address matches", () => {
+    const findNoMatch = async () => {
+      mockSearch.mockResolvedValue([]);
+      renderField();
+      await userEvent.type(screen.getByRole("combobox"), "Nowhere Lane");
+      return screen.findByRole("button", {
+        name: "Find it on the map",
+      });
+    };
+
+    it("says so and offers the map behind a link, not up front", async () => {
+      const link = await findNoMatch();
+
+      const hint = link.closest("[role=status]")?.textContent;
+      expect(hint).toMatch(/We cannot find that address/);
+      // A routing address has to be located, so typing it is not offered.
+      expect(hint).not.toMatch(/type it yourself/);
+      expect(screen.queryByRole("button", { name: "Place pin" })).toBeNull();
+    });
+
+    it("opens the map when the link is clicked, with guidance to move the pin", async () => {
+      await userEvent.click(await findNoMatch());
+
+      expect(
+        await screen.findByRole("button", { name: "Place pin" }),
+      ).toBeTruthy();
+      const guidance = screen.getByText(
+        /Move the pin on the map to where the address is/,
+      );
+      expect(guidance).toHaveFocus();
+      expect(guidance.textContent).not.toMatch(/at the moment/);
+    });
+
+    it("writes the placed pin to the routing coordinate", async () => {
+      await userEvent.click(await findNoMatch());
+      await userEvent.click(
+        await screen.findByRole("button", { name: "Place pin" }),
+      );
+
+      expect(setFieldValue).toHaveBeenCalledWith(
+        "step-1.event-address-coordinates",
+        "13.100000,-59.600000",
+      );
+    });
+
+    it("drops the link once a later lookup finds a match", async () => {
+      await findNoMatch();
+      mockSearch.mockResolvedValue([
+        {
+          label: "Nowhere Lane, Bridgetown, Barbados",
+          lat: "13.1",
+          lon: "-59.6",
+          line1: "Nowhere Lane",
+          line2: "Bridgetown",
+          parish: "st-michael",
+        },
+      ]);
+
+      await userEvent.type(screen.getByRole("combobox"), "s");
+      await screen.findByRole("option");
+
+      expect(
+        screen.queryByRole("button", { name: "Find it on the map" }),
+      ).toBeNull();
+    });
+
+    it("offers no map link on a field with no coordinate to write", async () => {
+      mockSearch.mockResolvedValue([]);
+      renderField(addressLookupField({ line2FieldId: "event-address-line-2" }));
+
+      await userEvent.type(screen.getByRole("combobox"), "Nowhere Lane");
+      await waitFor(() => expect(mockSearch).toHaveBeenCalled());
+
+      expect(
+        screen.queryByRole("button", { name: "Find it on the map" }),
+      ).toBeNull();
+    });
+  });
+
+  describe("when address suggestions are unavailable", () => {
+    const failLookup = async () => {
+      mockSearch.mockRejectedValue(new Error("geocode request failed: 503"));
+      renderField();
+      await userEvent.type(screen.getByRole("combobox"), "Bridgetown");
+      return screen.findByRole("button", { name: "Place pin" });
+    };
+
+    it("offers a map pin with plain guidance instead of an error", async () => {
+      await failLookup();
+
+      const guidance = screen.getByText(
+        /Type your address, then move the pin on the map to where it is/,
+      );
+      expect(guidance).toHaveAttribute("role", "status");
+      expect(guidance.textContent).not.toMatch(
+        /google|nominatim|error|503|try again|later/i,
+      );
+      // The applicant can still type the address.
+      expect(screen.getByRole("combobox")).toBeEnabled();
+    });
+
+    it("writes the placed pin to the routing coordinate", async () => {
+      await userEvent.click(await failLookup());
+
+      expect(setFieldValue).toHaveBeenCalledWith(
+        "step-1.event-address-coordinates",
+        "13.100000,-59.600000",
+      );
+    });
+
+    // The pin is the location and the text only describes it, so correcting
+    // the address the pin filled in must not send the applicant back to it.
+    it("an edit keeps the placed pin and its parish", async () => {
+      await userEvent.click(await failLookup());
+      setFieldValue.mockClear();
+
+      await userEvent.type(screen.getByRole("combobox"), " Road");
+
+      expect(setFieldValue).not.toHaveBeenCalledWith(
+        "step-1.event-address-coordinates",
+        "",
+      );
+      expect(setFieldValue).not.toHaveBeenCalledWith("step-1.event-parish", "");
+      expect(formValues["step-1.event-address-coordinates"]).toBe(
+        "13.100000,-59.600000",
+      );
+    });
+
+    it("looks up the next thing typed after the pin wrote text already there", async () => {
+      mockReverse.mockResolvedValue({
+        label: "Bridgetown",
+        lat: "13.100000",
+        lon: "-59.600000",
+        line1: "Bridgetown",
+        line2: "",
+        parish: "st-michael",
+      });
+      await userEvent.click(await failLookup());
+      await waitFor(() => expect(mockReverse).toHaveBeenCalled());
+      await new Promise((r) => setTimeout(r, 0));
+      mockSearch.mockClear();
+      mockSearch.mockResolvedValue([]);
+
+      // One keystroke: a stuck flag would swallow exactly this lookup.
+      await userEvent.type(screen.getByRole("combobox"), "X");
+
+      await waitFor(() =>
+        expect(mockSearch).toHaveBeenCalledWith(
+          "BridgetownX",
+          expect.anything(),
+          expect.any(String),
+        ),
+      );
+    });
+
+    it("fills the address lines from the address at the pin, keeping the pin", async () => {
+      mockReverse.mockResolvedValue({
+        label: "President Kennedy Dr, Bridgetown, Saint Michael Barbados",
+        lat: "13.100000",
+        lon: "-59.600000",
+        line1: "President Kennedy Dr",
+        line2: "Bridgetown",
+        parish: "st-michael",
+      });
+      await userEvent.click(await failLookup());
+
+      await waitFor(() =>
+        expect(handleChange).toHaveBeenLastCalledWith("President Kennedy Dr"),
+      );
+      expect(mockReverse).toHaveBeenCalledWith(13.1, -59.6);
+      expect(screen.getByRole("combobox")).toHaveValue("President Kennedy Dr");
+      expect(setFieldValue).toHaveBeenCalledWith(
+        "step-1.event-address-line-2",
+        "Bridgetown",
+      );
+      expect(setFieldValue).toHaveBeenCalledWith(
+        "step-1.event-parish",
+        "st-michael",
+      );
+      // The coordinate stays the pin's own.
+      const coordinateWrites = setFieldValue.mock.calls.filter(
+        ([id]) => id === "step-1.event-address-coordinates",
+      );
+      expect(coordinateWrites.at(-1)?.[1]).toBe("13.100000,-59.600000");
+    });
+
+    it("does not overwrite an address typed while the pin's address was looked up", async () => {
+      let answer: (result: unknown) => void = () => {};
+      mockReverse.mockReturnValue(new Promise((resolve) => (answer = resolve)));
+      await userEvent.click(await failLookup());
+      await waitFor(() => expect(mockReverse).toHaveBeenCalled());
+
+      await userEvent.type(screen.getByRole("combobox"), " Gap");
+      answer({
+        label: "President Kennedy Dr, Bridgetown",
+        line1: "President Kennedy Dr",
+        line2: "Bridgetown",
+        parish: "st-michael",
+      });
+      await new Promise((r) => setTimeout(r, 0));
+
+      expect(screen.getByRole("combobox")).toHaveValue("Bridgetown Gap");
+    });
+
+    it("sets the parish from the pin even where there is no street address", async () => {
+      mockReverse.mockResolvedValue({
+        label: "",
+        lat: "13.100000",
+        lon: "-59.600000",
+        line1: "",
+        line2: "",
+        parish: "st-joseph",
+      });
+      await userEvent.click(await failLookup());
+
+      await waitFor(() =>
+        expect(setFieldValue).toHaveBeenCalledWith(
+          "step-1.event-parish",
+          "st-joseph",
+        ),
+      );
+      expect(screen.getByRole("combobox")).toHaveValue("Bridgetown");
+    });
+
+    // No parish at the pin means it is in the sea, where nothing routes.
+    it("locates nothing with a pin in the sea, and says to move it", async () => {
+      mockReverse.mockResolvedValue({
+        label: "",
+        lat: "13.100000",
+        lon: "-59.600000",
+        line1: "",
+        line2: "",
+        parish: "",
+      });
+      await userEvent.click(await failLookup());
+
+      expect(
+        await screen.findByText(
+          "The pin is in the sea. Move it to where the address is.",
+        ),
+      ).toBeTruthy();
+      expect(formValues["step-1.event-address-coordinates"]).toBe("");
+    });
+
+    it("keeps the page when the map cannot load", async () => {
+      mapFails = true;
+      const consoleError = vi
+        .spyOn(console, "error")
+        .mockImplementation(() => {});
+      try {
+        mockSearch.mockRejectedValue(new Error("geocode request failed: 503"));
+        renderField();
+        await userEvent.type(screen.getByRole("combobox"), "Bridgetown");
+
+        expect(
+          await screen.findByText(/We cannot show the map at the moment/),
+        ).toBeTruthy();
+        expect(screen.getByRole("combobox")).toBeEnabled();
+      } finally {
+        consoleError.mockRestore();
+      }
+    });
+
+    it("leaves the address alone when there is no address at the pin", async () => {
+      mockReverse.mockRejectedValue(new Error("reverse lookup failed: 404"));
+      await userEvent.click(await failLookup());
+      await waitFor(() => expect(mockReverse).toHaveBeenCalled());
+      await new Promise((r) => setTimeout(r, 0));
+
+      expect(screen.getByRole("combobox")).toHaveValue("Bridgetown");
+    });
+
+    it("hides the map when asked, keeping the placed pin", async () => {
+      await userEvent.click(await failLookup());
+      setFieldValue.mockClear();
+
+      await userEvent.click(
+        screen.getByRole("button", { name: "Hide the map" }),
+      );
+
+      expect(screen.queryByRole("button", { name: "Place pin" })).toBeNull();
+      expect(screen.getByRole("combobox")).toHaveFocus();
+      expect(setFieldValue).not.toHaveBeenCalledWith(
+        "step-1.event-address-coordinates",
+        "",
+      );
+    });
+
+    it("closes the map when a suggestion is picked", async () => {
+      await failLookup();
+      mockSearch.mockResolvedValue([
+        {
+          label: "Bay Street, Bridgetown, Barbados",
+          lat: "13.1",
+          lon: "-59.6",
+          line1: "Bay Street",
+          line2: "Bridgetown",
+          parish: "st-michael",
+        },
+      ]);
+
+      await userEvent.type(screen.getByRole("combobox"), " Bay");
+      await userEvent.click(await screen.findByRole("option"));
+
+      expect(screen.queryByRole("button", { name: "Place pin" })).toBeNull();
+    });
+
+    it("drops a placed pin when line 1 is cleared", async () => {
+      await userEvent.click(await failLookup());
+      setFieldValue.mockClear();
+
+      await userEvent.clear(screen.getByRole("combobox"));
+
+      expect(setFieldValue).toHaveBeenCalledWith(
+        "step-1.event-address-coordinates",
+        "",
+      );
+    });
+
+    it("keeps the map up when a later lookup succeeds", async () => {
+      await failLookup();
+      mockSearch.mockResolvedValue([]);
+
+      await userEvent.type(screen.getByRole("combobox"), "X");
+      await waitFor(() => expect(mockSearch).toHaveBeenCalledTimes(2));
+
+      expect(screen.getByRole("button", { name: "Place pin" })).toBeTruthy();
+    });
   });
 });

@@ -36,6 +36,7 @@ import {
   advance,
   currentStep,
   expectStep,
+  fillDate,
   fillField,
   selectRadio,
   submitAndConfirm,
@@ -69,14 +70,14 @@ test.describe("Duties Performed Exam Claim — Live Smoke", () => {
     await fillField(page, step, "supervisor", faker.person.fullName());
     await fillField(page, step, "nis-no", faker.string.numeric(9));
     await fillField(page, step, "exam-period", "May/June 2026");
-    await fillField(page, step, "claim-period-from", "2026-05-01");
-    await fillField(page, step, "claim-period-to", "2026-06-30");
+    await fillDate(page, step, "claim-period-from", 1, 5, 2026);
+    await fillDate(page, step, "claim-period-to", 30, 6, 2026);
     await advance(page, step);
 
     // ─── Section B: Duties Performed (repeatable) ────────────────────────────
     step = expectStep(page, "section-b", { exact: true });
     await fillField(page, step, "row-no", "01");
-    await fillField(page, step, "date", "2026-05-10");
+    await fillDate(page, step, "date", 10, 5, 2026);
     await fillField(page, step, "centre", "Bridgetown Centre");
     await fillField(page, step, "role", "Invigilator");
     await fillField(page, step, "rate", "50");
@@ -92,7 +93,7 @@ test.describe("Duties Performed Exam Claim — Live Smoke", () => {
 
     // ─── Section C: Practical Examination Setup (repeatable) ─────────────────
     step = expectStep(page, "section-c", { exact: true });
-    await fillField(page, step, "date", "2026-05-12");
+    await fillDate(page, step, "date", 12, 5, 2026);
     await fillField(page, step, "centre", "Bridgetown Centre");
     await fillField(page, step, "subject", "Chemistry");
     await fillField(page, step, "total-candidates", "30");
@@ -108,7 +109,7 @@ test.describe("Duties Performed Exam Claim — Live Smoke", () => {
 
     // ─── Section D: Reader/Writer/etc Duties (repeatable) ────────────────────
     step = expectStep(page, "section-d", { exact: true });
-    await fillField(page, step, "date", "2026-05-15");
+    await fillDate(page, step, "date", 15, 5, 2026);
     await fillField(page, step, "centre", "Bridgetown Centre");
     await fillField(page, step, "subject", "English A");
     await fillField(page, step, "duties", "Reader");
@@ -165,6 +166,10 @@ test.describe("Duties Performed Exam Claim — Live Smoke", () => {
 
     // ─── Declaration ─────────────────────────────────────────────────────────
     expectStep(page, "declaration", { exact: true });
+    await page
+      .locator(`fieldset[id="declaration_declaration-confirmed"]`)
+      .getByRole("checkbox")
+      .check();
 
     // ─── Submit + Submission Confirmation ────────────────────────────────────
     await submitAndConfirm(page, {

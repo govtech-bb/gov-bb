@@ -168,6 +168,18 @@ describe('pharmacy dataset', () => {
     ).toHaveLength(109)
   })
 
+  it('uses the shared PBX as the only call number for all iMart branches', () => {
+    const imartPharmacies = ALL_PHARMACIES.filter((pharmacy) =>
+      pharmacy.slug.startsWith('imart-pharmacy-'),
+    )
+    expect(imartPharmacies).toHaveLength(9)
+    for (const pharmacy of imartPharmacies) {
+      expect(pharmacy.phone, pharmacy.name).toBe('(246) 271-3784')
+      expect(pharmacy.additionalPhones, pharmacy.name).toBeUndefined()
+      expect(pharmacy.phoneExtension, pharmacy.name).toBeUndefined()
+    }
+  })
+
   it('keeps the two source-listed iMart Welches branches separate', () => {
     expect(
       ALL_PHARMACIES.find((p) => p.name === 'iMart Pharmacy, W Plaza'),
@@ -184,7 +196,6 @@ describe('pharmacy dataset', () => {
       pppStatus: 'participating',
       parish: 'St. Michael',
       address: 'Shop 11, Welches Plaza, St. Michael',
-      phoneExtension: '3',
     })
     expect(welches?.hours?.sun).toEqual([{ opens: '09:00', closes: '14:00' }])
   })

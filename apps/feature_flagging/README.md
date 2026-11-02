@@ -76,6 +76,10 @@ All three sources are fetched from `apps/api` at request time and merged in
 - forms — `GET /form-definitions`,
 - live statuses — `GET /service_status`.
 
+The first two are fetched with the signed-in user's GitHub token, so they
+include preview and draft entries — a new form with no landing page still
+appears and can be switched on (#2902).
+
 No catalogue data is baked at build time, so new landing pages appear once the
 api serves them (the api regenerates its `services-index.generated.ts` and
 redeploys) — no redeploy of this app needed. If `GET /services` is unavailable

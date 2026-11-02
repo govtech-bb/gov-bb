@@ -177,6 +177,48 @@ describe("resolveFieldIds", () => {
     expect(resolved[0].display).toBe("Start Year");
   });
 
+  // A custom component can hold a whole block (its definition has a
+  // `blockId`). Its ref still starts with "components/", so it must be read
+  // by shape, not prefix, or the builder throws on `.primitive`.
+  it("lists each field of a custom block instead of throwing", () => {
+    const customCatalog: RegistryCatalog = {
+      ...getCatalog(),
+      custom: [
+        {
+          ref: "components/acme/widget",
+          displayName: "acme/widget",
+          namespace: "acme",
+          type: "widget",
+          definition: {
+            blockId: "widget-details",
+            blockDescription: "Widget details",
+            blockVersion: "1.0.0",
+            elements: [
+              { fieldId: "widget-name", label: "Name", htmlType: "text" },
+              { fieldId: "widget-size", label: "Size", htmlType: "text" },
+            ],
+          },
+        },
+      ],
+    };
+    const draft = makeBaseDraft({
+      steps: [
+        {
+          stepId: "step-1",
+          title: "Step 1",
+          fields: [
+            f({ kind: "custom", ref: "components/acme/widget", overrides: {} }),
+          ],
+          behaviours: [],
+        },
+      ],
+    });
+
+    expect(resolveFieldIds(draft, customCatalog).map((r) => r.fieldId)).toEqual(
+      ["widget-name", "widget-size"],
+    );
+  });
+
   it("falls back to the primitive's default label (not the component displayName) when no override label", () => {
     const customCatalog: RegistryCatalog = {
       ...getCatalog(),

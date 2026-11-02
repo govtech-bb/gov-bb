@@ -112,6 +112,15 @@ const baseSchema = z
     // unset ⇒ the notifier no-ops (dev/sandbox/unconfigured envs).
     SLACK_ALERTS_WEBHOOK_URL: urlOrEmpty().optional(),
 
+    // Slack /stats slash command (#3491). The signing secret verifies requests
+    // come from Slack; unset ⇒ every request is refused. The Umami settings
+    // are the same values the analytics app uses; unset ⇒ the command replies
+    // that stats aren't set up.
+    SLACK_SIGNING_SECRET: z.string().default(""),
+    UMAMI_API_KEY: z.string().default(""),
+    UMAMI_LANDING_WEBSITE_ID: z.string().default(""),
+    UMAMI_FORMS_WEBSITE_ID: z.string().default(""),
+
     // SES delivery-events queue (optional). When set, the SesEventConsumer
     // polls it to reconcile notification_log.delivery_status; empty = disabled.
     SES_EVENTS_QUEUE_URL: urlOrEmpty().optional(),
@@ -203,6 +212,10 @@ const baseSchema = z
       .int()
       .min(60)
       .default(604800),
+    // Upload-time GuardDuty verdict at confirm-upload (#2938). Off by default:
+    // it needs s3:GetObjectTagging on the task role, granted per environment.
+    // The submit-time check (#2939) is NOT behind this switch.
+    UPLOAD_MALWARE_SCAN_ENABLED: boolFromEnv(false),
   })
   // allowUnknown: true — config factories read unknown-but-valid vars straight
   // from process.env (AWS_REGION, AWS_DEFAULT_REGION, SES_ENDPOINT,

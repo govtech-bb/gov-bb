@@ -7,8 +7,7 @@ import {
   type ServiceContract,
 } from "@govtech-bb/form-types";
 import { validateField } from "@govtech-bb/form-validation";
-import { BUILTIN_REGISTRY } from "@govtech-bb/registry";
-import { hydrateForm, type Resolver } from "../../registry/resolution";
+import { getCatalog, hydrateForm } from "@govtech-bb/form-builder";
 
 // The Environmental Health content review (#2856) rebuilt this journey around
 // one "Who are you applying for?" answer, a property step and a repeatable pool
@@ -21,16 +20,10 @@ const RECIPE_PATH = path.resolve(
   "recipes/apply-for-swimming-pool-licence.json",
 );
 
-const resolver: Resolver = async (ref) => {
-  const entry = BUILTIN_REGISTRY[ref as keyof typeof BUILTIN_REGISTRY];
-  if (!entry) throw new Error(`unresolvable ref "${ref}"`);
-  return entry;
-};
-
 async function contract(): Promise<ServiceContract> {
   const raw = JSON.parse(await fs.readFile(RECIPE_PATH, "utf8"));
   const recipe = serviceContractRecipeSchema.parse(raw);
-  return (await hydrateForm(recipe, resolver)) as unknown as ServiceContract;
+  return hydrateForm(recipe, getCatalog()) as unknown as ServiceContract;
 }
 
 async function conditions(values: Record<string, unknown>) {
@@ -115,7 +108,7 @@ it("asks for the type of property only for another type", async () => {
   }
 });
 
-// A new licence may give its Planning and Development application number; a
+// A new licence gives its Planning and Development application number; a
 // renewal gives each pool's current licence number, since there is one per pool.
 it("asks each pool for its licence number only on a renewal", async () => {
   for (const [type, renewal] of [
@@ -137,10 +130,35 @@ it("asks each pool for its licence number only on a renewal", async () => {
   }
 });
 
-// Environmental Health needs to know who runs each pool when it is not the
-// person filling in the form (for example, a clerk applying for a hotel).
-it("asks for the pool operator only when the applicant does not manage it", async () => {
+// Environmental Health's revised form (#3082) makes both of these required for
+// a new licence. Each is shown only for "new", so a renewal is never asked.
+it.each([
+  [
+    "about-application",
+    "planning-application-number",
+    "Enter your Planning and Development application number",
+  ],
+  [
+    "supporting-documents",
+    "town-country-planning-plan",
+    "Upload your Planning and Development site plan",
+  ],
+])("requires %s.%s for a new licence", async (stepId, fieldId, error) => {
+  expect(validateField(await field(stepId, fieldId), "", {})).toEqual([error]);
+  for (const type of ["new", "renewal"] as const) {
+    const active = (
+      await conditions({ "about-application": { "application-type": type } })
+    ).activeFieldIds.get(stepId)!;
+    expect(active.has(fieldId), type).toBe(type === "new");
+  }
+});
+
+// Environmental Health needs to know who runs the pools when it is not the
+// person filling in the form (for example, a clerk applying for a hotel). It is
+// asked once per application, of every applicant, not once per pool.
+it("asks for the pool operator once, only when the applicant does not manage the pool", async () => {
   const operatorFields = [
+    "pool-operator-heading",
     "pool-operator-name",
     "pool-operator-telephone",
     "pool-operator-email",
@@ -149,11 +167,21 @@ it("asks for the pool operator only when the applicant does not manage it", asyn
     ["yes", false],
     ["no", true],
   ] as const) {
-    const active = (
-      await conditions({ "pool-details": { "manages-pool": answer } })
-    ).activeFieldIds.get("pool-details")!;
+    const cond = await conditions({
+      "applying-for": { "applying-for": "yourself" },
+      "operator-details": { "manages-pool": answer },
+    });
+    expect(cond.activeStepIds.has("operator-details")).toBe(true);
+    const active = cond.activeFieldIds.get("operator-details")!;
     for (const id of operatorFields) expect(active.has(id), id).toBe(shown);
   }
+
+  const poolStep = (await contract()).steps.find(
+    (s) => s.stepId === "pool-details",
+  );
+  expect(poolStep!.elements.map((e) => e.fieldId)).not.toEqual(
+    expect.arrayContaining(["manages-pool"]),
+  );
 });
 
 // Catchment routing reads the property's coordinates and parish by one fixed

@@ -86,6 +86,70 @@ describe("SubmissionConfirmation — printed answers (#2587)", () => {
     ).not.toBeInTheDocument();
   });
 
+  // Page 1 of the printed copy is the confirmation; the answers follow on
+  // their own page, so the block must come after every confirmation block
+  // (#3041). Both variants share the same trailing sections.
+  it.each([
+    ["no-payment", { ...baseState, sections }],
+    [
+      "payment-success",
+      { ...baseState, sections, hasPayment: true, paymentSuccess: true },
+    ],
+  ])(
+    "renders the answers after the confirmation content (%s)",
+    (_variant, submissionState) => {
+      const { container } = render(
+        <SubmissionConfirmation
+          serviceTitle="Passport"
+          stepTitle="Submitted"
+          markdownContent="## What happens next"
+          contactDetails={{ title: "Passport Office" }}
+          submissionState={submissionState}
+        />,
+      );
+      const answers = container.querySelector(".form-page__printed-answers")!;
+      for (const selector of [
+        ".form-page__reference",
+        ".form-page__markdown-content",
+        ".form-page__contact",
+      ]) {
+        expect(
+          container.querySelector(selector)!.compareDocumentPosition(answers) &
+            Node.DOCUMENT_POSITION_FOLLOWING,
+        ).toBeTruthy();
+      }
+    },
+  );
+
+  it("names the service and submission ID above the answers, so a separated page still makes sense", () => {
+    const { container } = render(
+      <SubmissionConfirmation
+        serviceTitle="Passport"
+        stepTitle="Submitted"
+        submissionState={{ ...baseState, sections }}
+      />,
+    );
+    const answers = container.querySelector<HTMLElement>(
+      ".form-page__printed-answers",
+    )!;
+    expect(answers).toHaveTextContent("Passport");
+    expect(answers).toHaveTextContent("REF-001");
+  });
+
+  it("leaves the submission ID off the answers page when the form hides it", () => {
+    const { container } = render(
+      <SubmissionConfirmation
+        serviceTitle="Passport"
+        stepTitle="Submitted"
+        hideReferenceNumber
+        submissionState={{ ...baseState, sections }}
+      />,
+    );
+    expect(
+      container.querySelector(".form-page__printed-answers"),
+    ).not.toHaveTextContent("REF-001");
+  });
+
   it("adds no answers block when the list came back empty", () => {
     const { container } = render(
       <SubmissionConfirmation
@@ -296,18 +360,22 @@ describe("SubmissionConfirmation", () => {
       ).not.toBeInTheDocument();
     });
 
-    it("does not render trailing next-steps, contact or feedback sections", () => {
+    it("does not render trailing markdown, contact or feedback sections", () => {
       render(
         <SubmissionConfirmation
           serviceTitle="Passport"
           stepTitle="Submitted"
           submissionState={processingState}
-          nextSteps={[{ title: "What happens next", items: ["Step 1"] }]}
+          markdownContent="## What happens next"
           contactDetails={{ email: "help@example.com" }}
           feedbackUrl="https://forms.gov.bb/feedback"
         />,
       );
-      expect(screen.queryByText("What happens next")).not.toBeInTheDocument();
+      // ReactMarkdown only renders inside trailingSections, so its absence
+      // proves the processing branch hides the markdown block. (Asserting on
+      // the text can't fail: the passthrough mock emits the raw "## What
+      // happens next", which queryByText's exact match never finds.)
+      expect(screen.queryByTestId("react-markdown")).not.toBeInTheDocument();
       expect(screen.queryByText("help@example.com")).not.toBeInTheDocument();
       expect(
         screen.queryByRole("link", { name: /give feedback/i }),
@@ -536,73 +604,6 @@ describe("SubmissionConfirmation — payment success branch", () => {
     expect(screen.getByText("$50.00")).toBeInTheDocument();
     expect(screen.getByText("PAY-REF-999")).toBeInTheDocument();
     expect(screen.getByText("19/05/2026")).toBeInTheDocument();
-  });
-});
-
-describe("SubmissionConfirmation — nextSteps rendering", () => {
-  const successState: SubmissionState = {
-    hasPayment: false,
-    serviceName: "Test Service",
-    submissionSuccess: true,
-    paymentSuccess: false,
-    referenceNumber: "NS-REF-001",
-    date: "19/05/2026",
-  };
-
-  it("renders nextSteps section title and items", () => {
-    render(
-      <SubmissionConfirmation
-        serviceTitle="Test"
-        stepTitle="Done"
-        submissionState={successState}
-        nextSteps={[
-          { title: "What happens next", items: ["Step 1", "Step 2"] },
-        ]}
-      />,
-    );
-    expect(screen.getByText("What happens next")).toBeInTheDocument();
-    expect(screen.getByText("Step 1")).toBeInTheDocument();
-    expect(screen.getByText("Step 2")).toBeInTheDocument();
-  });
-
-  it("renders nextSteps section content paragraph when content is provided", () => {
-    render(
-      <SubmissionConfirmation
-        serviceTitle="Test"
-        stepTitle="Done"
-        submissionState={successState}
-        nextSteps={[
-          {
-            title: "Important information",
-            content: "Please allow 5 business days for processing.",
-            items: ["Check your email"],
-          },
-        ]}
-      />,
-    );
-    expect(
-      screen.getByText("Please allow 5 business days for processing."),
-    ).toBeInTheDocument();
-    expect(screen.getByText("Check your email")).toBeInTheDocument();
-  });
-
-  it("renders multiple nextSteps sections", () => {
-    render(
-      <SubmissionConfirmation
-        serviceTitle="Test"
-        stepTitle="Done"
-        submissionState={successState}
-        nextSteps={[
-          { title: "Section A", items: ["Item A1"] },
-          { title: "Section B", content: "Some content", items: ["Item B1"] },
-        ]}
-      />,
-    );
-    expect(screen.getByText("Section A")).toBeInTheDocument();
-    expect(screen.getByText("Item A1")).toBeInTheDocument();
-    expect(screen.getByText("Section B")).toBeInTheDocument();
-    expect(screen.getByText("Some content")).toBeInTheDocument();
-    expect(screen.getByText("Item B1")).toBeInTheDocument();
   });
 });
 
@@ -1050,8 +1051,11 @@ describe("SubmissionConfirmation — Print button (#2132)", () => {
         serviceTitle="Passport"
         stepTitle="Submitted"
         submissionState={baseState}
-        nextSteps={[{ title: "What happens next", items: ["We review it"] }]}
-        contactDetails={{ email: "help@example.com" }}
+        markdownContent={"## What happens next\n\nWe review it."}
+        // A real heading in the audited DOM: markdownContent renders through the
+        // passthrough react-markdown mock (no real <h*>), so the contact block's
+        // title provides the heading the audit needs.
+        contactDetails={{ title: "Help desk", email: "help@example.com" }}
         feedbackUrl="https://survey.example/feedback"
       />,
     );

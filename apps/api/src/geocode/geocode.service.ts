@@ -1,72 +1,88 @@
+import {
+  BadRequestException,
+  Inject,
+  Injectable,
+  Logger,
+  NotFoundException,
+  ServiceUnavailableException,
+} from "@nestjs/common";
 import { HttpService } from "@nestjs/axios";
-import { Injectable, Logger } from "@nestjs/common";
-import { firstValueFrom } from "rxjs";
+import { parishAt } from "@/catchment/parish-at";
+import {
+  GeocodeProvider,
+  GeocodeResult,
+  isWithinBarbados,
+  ResolvedPlace,
+} from "./geocode-result";
+import { GoogleProvider } from "./providers/google.provider";
+import { NominatimProvider } from "./providers/nominatim.provider";
 
-/** A single address suggestion returned to the client. */
-export interface GeocodeResult {
-  /** The full formatted address — shown in the suggestions dropdown. */
-  label: string;
-  lat: string;
-  lon: string;
-  /** Primary address line (name + street), for address line 1. */
-  line1: string;
-  /** Locality (town / district), for address line 2. */
-  line2: string;
-  /** Parish select value (e.g. `st-michael`), or "" when not resolved. */
-  parish: string;
-}
+export type { GeocodeResult, ResolvedPlace } from "./geocode-result";
 
-/** The subset of a Nominatim `/search` result we consume. */
-interface NominatimItem {
-  display_name?: string;
-  lat?: string;
-  lon?: string;
-  address?: Record<string, string | undefined>;
-}
+/** DI token for the ordered provider chain built by {@link buildProviders}. */
+export const GEOCODE_PROVIDERS = Symbol("GEOCODE_PROVIDERS");
 
-const DEFAULT_BASE_URL = "https://nominatim.openstreetmap.org";
-// Nominatim's usage policy requires a descriptive, identifying User-Agent.
-const USER_AGENT = "gov.bb-forms/1.0 (https://gov.bb)";
+const DEFAULT_PROVIDER_ORDER = "google,nominatim";
+// Both go into an upstream URL or body, so only plain token characters pass.
+const PLACE_ID = /^[\w-]{1,512}$/;
+// Places API (New) takes a session token of at most 36 characters.
+const SESSION_TOKEN = /^[\w-]{1,36}$/;
+
+/** The session token if well-formed; a malformed one is dropped, not fatal. */
+const validSessionToken = (session?: string): string | undefined =>
+  session && SESSION_TOKEN.test(session) ? session : undefined;
 const CACHE_TTL_MS = 60 * 60 * 1000;
 const CACHE_MAX_ENTRIES = 200;
 
-// Barbados's 11 parishes → the `components/parish` select values. Keyed by a
-// normalized name ("saint x" / "st. x" → "st x") so Nominatim's spelling
-// ("Saint Michael") maps regardless of form.
-const PARISH_VALUE_BY_NORMALIZED: Record<string, string> = {
-  "christ church": "christ-church",
-  "st andrew": "st-andrew",
-  "st george": "st-george",
-  "st james": "st-james",
-  "st john": "st-john",
-  "st joseph": "st-joseph",
-  "st lucy": "st-lucy",
-  "st michael": "st-michael",
-  "st peter": "st-peter",
-  "st philip": "st-philip",
-  "st thomas": "st-thomas",
-};
+/**
+ * Build the provider chain from `GEOCODE_PROVIDERS` — a comma-separated order,
+ * primary first (default `google,nominatim`). Which service is primary and
+ * which is the fallback is configuration, not code. Google is left out until
+ * `GOOGLE_GEOCODING_API_KEY` is set, so an environment without a key runs on
+ * the next provider in the list.
+ */
+export function buildProviders(
+  http: HttpService,
+  env: NodeJS.ProcessEnv,
+): GeocodeProvider[] {
+  const order = (env.GEOCODE_PROVIDERS ?? DEFAULT_PROVIDER_ORDER)
+    .split(",")
+    .map((name) => name.trim().toLowerCase())
+    .filter(Boolean);
 
-const normalizeParish = (raw: string): string =>
-  raw
-    .toLowerCase()
-    .replace(/\bsaint\b/g, "st")
-    .replace(/\./g, "")
-    .replace(/\s+/g, " ")
-    .trim();
-
-const parishValue = (raw: string): string =>
-  PARISH_VALUE_BY_NORMALIZED[normalizeParish(raw)] ?? "";
-
-const isPostcode = (part: string): boolean => /^bb\s?\d/i.test(part.trim());
+  const providers: GeocodeProvider[] = [];
+  for (const name of order) {
+    if (name === "google") {
+      const key = env.GOOGLE_GEOCODING_API_KEY?.trim();
+      if (key) providers.push(new GoogleProvider(http, key));
+    } else if (name === "nominatim") {
+      const baseUrl = env.NOMINATIM_BASE_URL?.trim();
+      providers.push(new NominatimProvider(http, baseUrl || undefined));
+    } else {
+      throw new Error(
+        `GEOCODE_PROVIDERS: unknown geocoding provider "${name}"`,
+      );
+    }
+  }
+  // Every lookup would answer 503 with nothing to say why, so say it here.
+  if (providers.length === 0) {
+    new Logger(GeocodeService.name).warn(
+      `[geocode] no geocoding provider is configured (GEOCODE_PROVIDERS="${env.GEOCODE_PROVIDERS ?? DEFAULT_PROVIDER_ORDER}"; Google needs GOOGLE_GEOCODING_API_KEY): every address lookup will fail`,
+    );
+  }
+  return providers;
+}
 
 /**
- * Proxies address lookups to OpenStreetMap/Nominatim, locked to Barbados
- * (`countrycodes=bb`). Keeps the outbound call server-side so we control the
- * User-Agent, can cache, and can point at a self-hosted instance by setting
- * `NOMINATIM_BASE_URL` — no client or code change. Upstream failures resolve to
- * an empty list so the address field degrades to plain text entry rather than
- * erroring.
+ * Barbados-only address lookup over an ordered chain of geocoding providers.
+ * Keeps the outbound call server-side so we control credentials, can cache, and
+ * can change provider by configuration with no client change.
+ *
+ * Each provider is tried in order until one answers; a provider that fails
+ * (outage, quota or budget reached) falls through to the next. Results outside
+ * Barbados are dropped whichever provider returned them. When no provider can
+ * answer, the lookup throws 503 so the address field can offer the applicant a
+ * map pin instead — an empty list would read as "no such address".
  */
 @Injectable()
 export class GeocodeService {
@@ -76,99 +92,123 @@ export class GeocodeService {
     { expires: number; results: GeocodeResult[] }
   >();
 
-  constructor(private readonly http: HttpService) {}
+  constructor(
+    @Inject(GEOCODE_PROVIDERS) private readonly providers: GeocodeProvider[],
+  ) {}
 
-  private get baseUrl(): string {
-    return process.env.NOMINATIM_BASE_URL ?? DEFAULT_BASE_URL;
-  }
-
-  async search(q: string): Promise<GeocodeResult[]> {
+  async search(q: string, session?: string): Promise<GeocodeResult[]> {
     const query = q?.trim() ?? "";
     if (!query) return [];
+    const sessionToken = validSessionToken(session);
 
     const key = query.toLowerCase();
     const cached = this.cache.get(key);
     if (cached && cached.expires > Date.now()) return cached.results;
 
-    try {
-      const response = await firstValueFrom(
-        this.http.get<NominatimItem[]>(`${this.baseUrl}/search`, {
-          params: {
-            q: query,
-            countrycodes: "bb",
-            format: "json",
-            addressdetails: 1,
-            limit: 5,
-          },
-          headers: { "User-Agent": USER_AGENT },
-        }),
-      );
-
-      const results = (response.data ?? [])
-        .filter(
-          (
-            item,
-          ): item is Required<Pick<NominatimItem, "display_name">> &
-            NominatimItem =>
-            typeof item.display_name === "string" &&
-            typeof item.lat === "string" &&
-            typeof item.lon === "string",
-        )
-        .map((item) => this.toResult(item));
-
-      this.remember(key, results);
-      return results;
-    } catch (error) {
-      this.logger.warn(
-        `[geocode] lookup failed for "${query}": ${(error as Error).message}`,
-      );
-      return [];
+    for (const [index, provider] of this.providers.entries()) {
+      try {
+        const results = (await provider.search(query, sessionToken))
+          .filter(
+            (r) =>
+              // A place suggestion has no coordinate yet — the provider kept it
+              // to Barbados, and resolve() checks the coordinate once picked.
+              (r.placeId !== undefined && r.lat === undefined) ||
+              isWithinBarbados(Number(r.lat), Number(r.lon)),
+          )
+          // A located address's parish is read-only, so a result placed
+          // without one (Nominatim often names none) reads it off the map.
+          .map((r) =>
+            r.lat === undefined || r.parish
+              ? r
+              : { ...r, parish: parishAt(Number(r.lat), Number(r.lon)) },
+          )
+          // Still no parish means it is offshore, as for a sea pin: it routes
+          // nowhere, so it is not offered.
+          .filter((r) => r.lat === undefined || r.parish !== "");
+        // Only the primary's answer is cached, as a fallback's would outlive
+        // the outage that caused it — and only where the provider's terms
+        // allow it (not Google's).
+        if (index === 0 && provider.cacheable) this.remember(key, results);
+        return results;
+      } catch (error) {
+        this.logger.warn(
+          // Not the query itself: an applicant's typed address is personal data.
+          `[geocode] ${provider.name} lookup failed for a ${query.length}-character query: ${(error as Error).message}`,
+        );
+      }
     }
+
+    throw new ServiceUnavailableException("Address lookup is unavailable");
   }
 
   /**
-   * Split the formatted `display_name` into line 1 / line 2 / parish. Barbados
-   * has no reliable structured street data, so this is deterministic string
-   * parsing: drop the country and postcode, pull out the part matching a known
-   * parish, treat the last remaining part as the locality (line 2) and the rest
-   * as line 1. The parish is also matched against the `address` object as a
-   * fallback.
+   * The coordinate (and parish) of a place suggestion the applicant picked.
+   * 404 when it cannot be placed in Barbados (or is offshore, with no parish);
+   * 503 when the lookup fails. Either way the address field offers the map pin.
    */
-  private toResult(item: NominatimItem): GeocodeResult {
-    const label = item.display_name as string;
-    const address = item.address ?? {};
+  async resolve(placeId: string, session?: string): Promise<ResolvedPlace> {
+    if (!PLACE_ID.test(placeId ?? "")) {
+      throw new BadRequestException("Invalid place id");
+    }
+    const provider = this.providers.find((p) => p.resolve);
+    if (!provider?.resolve) throw new NotFoundException("Place not found");
 
-    let parish =
-      Object.values(address)
-        .map((v) => (v ? parishValue(v) : ""))
-        .find(Boolean) ?? "";
+    let place: ResolvedPlace;
+    try {
+      place = await provider.resolve(placeId, validSessionToken(session));
+    } catch (error) {
+      this.logger.warn(
+        `[geocode] ${provider.name} place lookup failed for "${placeId}": ${(error as Error).message}`,
+      );
+      throw new ServiceUnavailableException("Address lookup is unavailable");
+    }
+    if (!isWithinBarbados(Number(place.lat), Number(place.lon))) {
+      throw new NotFoundException("Place not found");
+    }
+    // Some places carry no parish (Kensington Mall): read it off the map.
+    const parish =
+      place.parish || parishAt(Number(place.lat), Number(place.lon));
+    // No parish means it is offshore, as for a sea pin: it routes nowhere, so
+    // the address field offers the map instead.
+    if (!parish) throw new NotFoundException("Place not found");
+    return { ...place, parish };
+  }
 
-    const parts = label
-      .split(",")
-      .map((p) => p.trim())
-      .filter(Boolean)
-      .filter((p) => p.toLowerCase() !== "barbados" && !isPostcode(p));
-
-    const remaining: string[] = [];
-    for (const part of parts) {
-      const value = parishValue(part);
-      if (value) {
-        parish ||= value;
+  /**
+   * The address at a pin the applicant placed on the map, from the first
+   * provider that can answer. The parish always comes back — from the map when
+   * the provider names none, has no address there, or none could answer — as
+   * a located address's parish is read-only and only the pin can set it.
+   */
+  async reverse(lat: number, lon: number): Promise<GeocodeResult> {
+    if (!isWithinBarbados(lat, lon)) {
+      throw new BadRequestException("The point is not in Barbados");
+    }
+    const parish = () => parishAt(lat, lon);
+    for (const provider of this.providers) {
+      if (!provider.reverse) continue;
+      let found: GeocodeResult | null;
+      try {
+        found = await provider.reverse(lat, lon);
+      } catch (error) {
+        this.logger.warn(
+          // About 1 km: enough to debug, not the applicant's exact address.
+          `[geocode] ${provider.name} reverse lookup failed near ${lat.toFixed(2)},${lon.toFixed(2)}: ${(error as Error).message}`,
+        );
         continue;
       }
-      remaining.push(part);
+      // Unlike search, an empty answer is not final: Google often has only a
+      // plus code for a rural pin, where the next provider may name the road.
+      if (!found) continue;
+      return { ...found, parish: found.parish || parish() };
     }
-
-    const line2 = remaining.length > 1 ? (remaining.pop() as string) : "";
-    const line1 = remaining.join(", ");
-
     return {
-      label,
-      lat: item.lat as string,
-      lon: item.lon as string,
-      line1,
-      line2,
-      parish,
+      label: "",
+      lat: lat.toFixed(6),
+      lon: lon.toFixed(6),
+      line1: "",
+      line2: "",
+      parish: parish(),
     };
   }
 

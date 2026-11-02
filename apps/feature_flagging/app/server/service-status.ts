@@ -62,14 +62,16 @@ export function mapServicesIndex(
 export const listServices = createServerFn({ method: "GET" })
   .middleware([requireSession])
   .handler(async ({ context }): Promise<ServiceRow[]> => {
-    // Forward the user's GitHub token so /services returns non-public
-    // (preview/draft) services too. The other two reads are public.
+    // Forward the user's GitHub token so /services and /form-definitions
+    // return non-public (preview/draft) entries too — otherwise a new form
+    // with no landing page never appears and can't be switched on (#2902).
+    // /service_status is a public read.
     const token = context.session.accessToken;
     const [services, forms, statuses] = await Promise.all([
       api
         .get<ServiceIndexEntry[]>("/services", token)
         .catch(() => [] as ServiceIndexEntry[]),
-      api.get<FormSummary[]>("/form-definitions"),
+      api.get<FormSummary[]>("/form-definitions", token),
       api.get<StatusRow[]>("/service_status"),
     ]);
     return reconcileCatalogue({

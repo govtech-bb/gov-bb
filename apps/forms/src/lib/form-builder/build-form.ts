@@ -13,6 +13,8 @@ import { setupRepeatSteps } from "./helpers/repeatable-helper";
 import { v4 as uuidv4 } from "uuid";
 
 export const buildForm = (contract: ClientServiceContract): FormMeta => {
+  markParishesFilledByAddressLookup(contract.steps);
+
   // Build the per-field validation handlers and defaults.
   const { defaults, properties }: FormValidation = buildValidation(contract);
 
@@ -70,4 +72,23 @@ export const buildForm = (contract: ClientServiceContract): FormMeta => {
     repeatSettings,
     idempotencyKey,
   };
+};
+
+/**
+ * Flag each parish that an `address-lookup` on its step fills from a located
+ * address (one that writes a routing coordinate). The location decides the
+ * parish, so it is shown read-only rather than chosen. Before validation is
+ * built, which reads the flag.
+ */
+const markParishesFilledByAddressLookup = (steps: ClientFormStep[]): void => {
+  for (const step of steps) {
+    for (const field of step.fields) {
+      const targets = field.geocodeTargets;
+      if (!targets?.coordinatesFieldId || !targets.parishFieldId) continue;
+      const parish = step.fields.find(
+        (f) => f.fieldId === targets.parishFieldId,
+      );
+      if (parish) parish.filledByAddressLookup = true;
+    }
+  }
 };

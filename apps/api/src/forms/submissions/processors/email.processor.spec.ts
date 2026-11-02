@@ -649,6 +649,66 @@ describe("EmailProcessor — config.* recipient resolution", () => {
     expect(getSentInput().Destination?.ToAddresses).toEqual(["ops@gov.bb"]);
   });
 
+  // gov-bb #2302: mda_contact.mda_email can hold several inboxes as one
+  // comma-separated string. Passed through as a single ToAddresses entry, SES
+  // rejects the whole send ("Illegal address") and no inbox gets anything — two
+  // prod NCC notifications were lost this way on 12 and 19 Oct 2026.
+  describe("a comma-separated mda_email (#2302)", () => {
+    const processorFor = (mdaEmail: string) =>
+      new EmailProcessor(
+        makeConfig(),
+        makeMailer(),
+        makeTemplateService(),
+        makeBodyBuilder(),
+        makeFilesService(),
+        makeFormConfigService(mdaEmail),
+        makeCatchmentContactService(),
+        makeNotificationLog(),
+      );
+
+    it("sends one ToAddresses entry per inbox", async () => {
+      await processorFor(
+        "ncc@ncc.gov.bb,special@ncc.gov.bb,r.m@ncc.gov.bb",
+      ).process(makePayload({ recipientField: "config.mdaEmail" }));
+
+      expect(getSentInput().Destination?.ToAddresses).toEqual([
+        "ncc@ncc.gov.bb",
+        "special@ncc.gov.bb",
+        "r.m@ncc.gov.bb",
+      ]);
+    });
+
+    it("trims whitespace around each address", async () => {
+      await processorFor(" ncc@ncc.gov.bb ,  special@ncc.gov.bb ").process(
+        makePayload({ recipientField: "config.mdaEmail" }),
+      );
+
+      expect(getSentInput().Destination?.ToAddresses).toEqual([
+        "ncc@ncc.gov.bb",
+        "special@ncc.gov.bb",
+      ]);
+    });
+
+    it("collapses duplicates and drops empty entries", async () => {
+      await processorFor(
+        "ncc@ncc.gov.bb,,NCC@ncc.gov.bb, ncc@ncc.gov.bb,",
+      ).process(makePayload({ recipientField: "config.mdaEmail" }));
+
+      expect(getSentInput().Destination?.ToAddresses).toEqual([
+        "ncc@ncc.gov.bb",
+      ]);
+    });
+
+    it("treats a list with no addresses in it as no recipient (non-retryable, nothing sent)", async () => {
+      await expect(
+        processorFor(" , ,").process(
+          makePayload({ recipientField: "config.mdaEmail" }),
+        ),
+      ).rejects.toBeInstanceOf(NonRetryableError);
+      expect(mockSend).not.toHaveBeenCalled();
+    });
+  });
+
   it("degrades to the default on a resolved miss — the send still happens, no throw", async () => {
     const processor = new EmailProcessor(
       makeConfig(),

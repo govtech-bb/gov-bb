@@ -80,6 +80,37 @@ describe("normalizeForStorage", () => {
     expect(result).toEqual({ jobs: [{}, { employer: "Y" }] });
   });
 
+  it("drops a client-sent scanStatus from file entries, alongside url (#2939)", () => {
+    const active = new Map<string, Array<Set<string>>>();
+    active.set("docs", [new Set(["upload"])]);
+
+    const result = normalizeForStorage({
+      instances: [
+        inst("docs", 0, false, {
+          upload: [
+            {
+              key: "k",
+              name: "a.pdf",
+              size: 1,
+              type: "application/pdf",
+              url: "https://signed",
+              scanStatus: "clean",
+            },
+          ],
+        }),
+      ],
+      hiddenStepIds: new Set(),
+      activeFieldsByInstance: active,
+      fileFieldsByStep: new Map([["docs", new Set(["upload"])]]),
+    });
+
+    expect(result).toEqual({
+      docs: {
+        upload: [{ key: "k", name: "a.pdf", size: 1, type: "application/pdf" }],
+      },
+    });
+  });
+
   it("is idempotent on already-clean values", () => {
     const active = new Map<string, Array<Set<string>>>();
     active.set("personal", [new Set(["name"])]);

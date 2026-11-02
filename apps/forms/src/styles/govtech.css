@@ -182,11 +182,7 @@
   margin-top: var(--govbb-space-m);
 }
 
-/* ---- Next steps + contact details ---------------------------------------- */
-.form-page__next-steps {
-  margin-block-start: var(--govbb-space-m);
-}
-
+/* ---- Contact details ----------------------------------------------------- */
 .form-page__contact {
   margin-block-start: var(--govbb-space-m);
   display: flex;
@@ -335,7 +331,6 @@
   .govbb-grid-row,
   .govbb-service-heading,
   .govbb-payment,
-  .form-page__next-steps,
   .form-page__contact {
     display: block !important;
   }
@@ -358,8 +353,6 @@
   /* One consistent gap between every confirmation block, both variants. */
   .form-page__reference,
   .govbb-payment,
-  .form-page__next-steps,
-  .form-page__printed-answers,
   .form-page__markdown-content,
   .form-page__contact {
     margin-top: var(--govbb-space-m) !important;
@@ -376,9 +369,191 @@
   .form-page__reference,
   .form-page__contact,
   .govbb-payment__row,
-  .form-page__next-steps > div,
-  .form-page__next-steps li,
   .form-page__printed-answers-section {
     break-inside: avoid;
+  }
+
+  /* The answers follow the confirmation on their own page (#3041), so page 1
+     is the whole receipt. Their parent, form-page__confirmation, is flattened
+     to block flow above — Chrome ignores this on a flex child. */
+  .form-page__printed-answers {
+    break-before: page;
+  }
+}
+
+/* Fallback map an applicant places their address pin on when address
+   suggestions are unavailable (#2679). */
+/* Stretched like the radio reveal above: the form group would otherwise
+   shrink-wrap the map to zero width. */
+.address-pin-map {
+  align-self: stretch;
+  height: 20rem;
+  margin-top: var(--govbb-space-xs);
+  /* Leaflet stacks its panes and controls at z-index 400-1000; keep them inside
+     the map so the address suggestions (z-index 10) float over it. */
+  isolation: isolate;
+}
+
+.address-lookup__map-actions {
+  margin: var(--govbb-space-xs) 0 0;
+}
+
+/* The shape sits on an inner span: Leaflet positions the marker element itself
+   with an inline transform. */
+.address-pin span {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 3px solid var(--govbb-color-surface);
+  border-radius: 50% 50% 50% 0;
+  background: var(--govbb-color-interactive);
+  box-shadow: 0 1px 4px rgb(0 0 0 / 0.5);
+  transform: rotate(-45deg);
+}
+
+.address-pin:focus-visible {
+  outline: 3px solid var(--govbb-color-focus);
+  outline-offset: 2px;
+}
+
+/* Address suggestions (#2679): each row is a place's name, the typed part in
+   bold, then where it is in the muted colour. The popup keeps the design
+   system's .govbb-combobox__list frame; the listbox inside it scrolls and the
+   "Google Maps" attribution Google's terms require stays below the rows. */
+.address-combobox__popup {
+  display: flex;
+  flex-direction: column;
+  overflow-y: hidden;
+}
+
+.address-combobox__popup[hidden] {
+  display: none;
+}
+
+.address-combobox__options {
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.address-combobox__where {
+  color: var(--govbb-color-muted);
+}
+
+/* Google's text-attribution spec: Roboto (or sans-serif) at weight 400,
+   12-16px, grey #5E5E5E, exactly "Google Maps" and never wrapped. */
+.address-combobox__attribution {
+  margin: 0;
+  padding: var(--govbb-space-xs) var(--govbb-space-s);
+  font-family: Roboto, sans-serif;
+  font-size: 1rem;
+  font-weight: 400;
+  color: #5e5e5e;
+  text-align: end;
+  white-space: nowrap;
+}
+
+/* The no-match hint's "show where it is on a map" is a button (it opens the
+   map, it goes nowhere) styled as the link it reads as. */
+.address-lookup__map-link {
+  padding: 0;
+  font: inherit;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+/* Upload rows that are not a form value yet (#2940). The package styles only
+   the name and the row, so these are the app's: Cancel/Retry/Remove sit on
+   the name's line, and the status wraps onto its own full-width line so the
+   bar never squeezes between the text and the buttons. A tighter row gap
+   keeps the status with its file name. */
+.govbb-file-upload__item--pending {
+  row-gap: var(--govbb-space-xs);
+}
+
+.govbb-file-upload__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--govbb-space-s);
+}
+
+.govbb-file-upload__status {
+  display: flex;
+  flex-basis: 100%;
+  flex-direction: column;
+  gap: var(--govbb-space-xxs);
+  font-size: var(--govbb-font-size-body-sm);
+  line-height: var(--govbb-line-height-base);
+  color: var(--govbb-color-muted);
+}
+
+.govbb-file-upload__status--error {
+  color: var(--govbb-color-error);
+}
+
+/* Native <progress> paints in the browser's own blue or system accent. Draw
+   it in the interactive teal instead, on a white track outlined in the muted
+   grey so it stands out from the row's pale blue (teal on white is well over
+   the 3:1 WCAG 1.4.11 needs). */
+.govbb-file-upload__progress {
+  appearance: none;
+  width: 100%;
+  height: var(--govbb-space-xs);
+  overflow: hidden;
+  color: var(--govbb-color-interactive);
+  background: var(--govbb-color-surface);
+  border: 1px solid var(--govbb-color-muted);
+  border-radius: var(--govbb-radius);
+}
+
+.govbb-file-upload__progress::-webkit-progress-bar {
+  background: var(--govbb-color-surface);
+}
+
+.govbb-file-upload__progress::-webkit-progress-value {
+  background: var(--govbb-color-interactive);
+  transition: width 0.2s;
+}
+
+.govbb-file-upload__progress::-moz-progress-bar {
+  background: var(--govbb-color-interactive);
+}
+
+/* The scan reports no percentage, so the checking bar has no value: a teal
+   band slides along the track instead of standing still at 0. */
+.govbb-file-upload__progress:indeterminate {
+  background: linear-gradient(
+      var(--govbb-color-interactive),
+      var(--govbb-color-interactive)
+    )
+    no-repeat var(--govbb-color-surface);
+  background-size: 30% 100%;
+  animation: govbb-file-upload-checking 1.2s ease-in-out infinite alternate;
+}
+
+.govbb-file-upload__progress:indeterminate::-webkit-progress-bar {
+  background: transparent;
+}
+
+.govbb-file-upload__progress:indeterminate::-moz-progress-bar {
+  background: transparent;
+}
+
+@keyframes govbb-file-upload-checking {
+  from {
+    background-position: 0 0;
+  }
+  to {
+    background-position: 100% 0;
+  }
+}
+
+/* Without motion the band sits still; "Checking your file" carries the
+   meaning on its own. */
+@media (prefers-reduced-motion: reduce) {
+  .govbb-file-upload__progress:indeterminate {
+    animation: none;
   }
 }

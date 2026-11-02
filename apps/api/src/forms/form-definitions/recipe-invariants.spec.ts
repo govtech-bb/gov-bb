@@ -279,6 +279,31 @@ it("declaration steps ask for no name or date", async () => {
   expect(problems).toEqual([]);
 });
 
+// `nextSteps` was retired (#2442): the serving path (hydrateStep) never carried
+// it to citizens, so confirmation copy authored there was silently dropped. All
+// of it moved to `markdownContent`, which renders. Reject any recipe that
+// reintroduces the dead field so the copy can never go dark again.
+it("no recipe uses the retired nextSteps field (#2442)", async () => {
+  const problems: string[] = [];
+  const recipes = await readRecipeFiles();
+
+  for (const { file, raw } of recipes) {
+    // Read steps defensively: a malformed recipe (no steps array) is the
+    // "every recipe file parses" test's job to report, not ours to throw on.
+    const steps = (raw as { steps?: unknown }).steps;
+    if (!Array.isArray(steps)) continue;
+    for (const step of steps as (Step & { nextSteps?: unknown })[]) {
+      if (step.nextSteps !== undefined) {
+        problems.push(
+          `${file}: step "${step.stepId}" has the retired nextSteps field — author confirmation copy in markdownContent instead`,
+        );
+      }
+    }
+  }
+
+  expect(problems).toEqual([]);
+});
+
 // Telephone questions follow one pattern (#2917): the registry sets the hint
 // and the "not valid" error, and every "required" error reads
 // "{label} is required". The tests below stop recipes drifting from it.

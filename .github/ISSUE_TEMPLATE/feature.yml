@@ -1,0 +1,53 @@
+name: Feature / task
+description: A change to build — new behaviour, a refactor, or tooling
+type: Feature
+labels: ["enhancement"]
+body:
+  - type: textarea
+    attributes:
+      label: Why
+      description: The problem or need. What's wrong or missing today?
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: What changes
+      description: The proposed change, at the level a reviewer needs.
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Acceptance criteria
+      description: Checkable outcomes — each one a test or a visible result.
+      value: "- [ ] "
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Out of scope
+  - type: checkboxes
+    attributes:
+      label: Contributing a fix
+      description: Tick this if you plan to open a pull request. The issue will be assigned to you, so nobody else starts on the same fix.
+      options:
+        - label: I am working on a fix
+  - type: input
+    attributes:
+      label: Parent epic / depends on
+      placeholder: "#1234"
+  - type: dropdown
+    attributes:
+      label: Area
+      description: Which part of the platform? Leave empty if unsure.
+      multiple: true
+      options:
+        - Forms
+        - Form builder
+        - Landing
+        - Chat
+        - API
+        - Editor
+        - Analytics
+        - Feature flagging
+        - Shared packages
+        - Infra / CI

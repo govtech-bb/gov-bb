@@ -10,6 +10,8 @@ import {
   saveServicePage,
   saveServiceForm,
   getServiceDraft,
+  listServiceDrafts,
+  listServiceCheckpoints,
   attachServiceForm,
 } from "./service-drafts";
 vi.mock("../server/forms", () => ({
@@ -278,6 +280,107 @@ it("re-seeds a draft adopted before #2683 on refresh until the author decides", 
   const kept = await getServiceDraft({ data: { serviceId: "test-service" } });
   expect(kept.revision).toBe(decided.revision);
   expect(kept.manifest.setup.applicantEmail).toBe("none");
+});
+it("reads a browser draft saved before the nextSteps migration without throwing, folding it into markdownContent (#2442)", async () => {
+  // A pre-migration draft row: `nextSteps`, no `markdownContent`. Stored raw, so
+  // it carries the retired key `draftRecipeSchema` now rejects (z.never).
+  localStorage.setItem(
+    "service-workspace:v1:editor:test-service",
+    JSON.stringify({
+      ...snapshot,
+      recipe: {
+        title: "Application",
+        formId: "test-form",
+        steps: [
+          {
+            stepId: "submission-confirmation",
+            title: "Application submitted",
+            elements: [],
+            nextSteps: [
+              { title: "What happens next", content: "We will be in touch." },
+            ],
+          },
+        ],
+        createdAt: "2026-09-10T00:00:00.000Z",
+        updatedAt: "2026-09-10T00:00:00.000Z",
+      },
+      manifest: { ...snapshot.manifest, formId: "test-form" },
+      revision: 2,
+      updatedAt: "2026-09-14T00:00:00.000Z",
+      updatedBy: "editor",
+    }),
+  );
+
+  // localDrafts() maps read() over every key — one stale draft must not throw
+  // for the whole library.
+  const drafts = await listServiceDrafts();
+  expect(drafts).toHaveLength(1);
+  const step = drafts[0].recipe!.steps[0] as {
+    markdownContent?: string;
+    nextSteps?: unknown;
+  };
+  expect(step.markdownContent).toBe(
+    "## What happens next\n\nWe will be in touch.",
+  );
+  expect(step).not.toHaveProperty("nextSteps");
+});
+it("folds a browser version saved before the migration when listing checkpoints (#2442)", async () => {
+  // A pre-migration snapshot stored under the versions key: `nextSteps`, no
+  // `markdownContent`. Restore / retry / publish all read through
+  // listServiceCheckpoints, then parse `serviceSnapshotSchema` (which now rejects
+  // the retired key), so folding here is what stops them throwing on an old
+  // version.
+  localStorage.setItem(
+    "service-workspace:v1:editor:test-service:versions",
+    JSON.stringify([
+      {
+        id: "v1",
+        serviceId: "test-service",
+        revision: 2,
+        label: "Before the migration",
+        createdAt: "2026-09-12T00:00:00.000Z",
+        createdBy: "editor",
+        gitSha: null,
+        gitRef: null,
+        prNumber: null,
+        prUrl: null,
+        snapshot: {
+          ...snapshot,
+          recipe: {
+            title: "Application",
+            formId: "test-form",
+            steps: [
+              {
+                stepId: "submission-confirmation",
+                title: "Application submitted",
+                elements: [],
+                nextSteps: [
+                  {
+                    title: "What happens next",
+                    content: "We will be in touch.",
+                  },
+                ],
+              },
+            ],
+            createdAt: "2026-09-10T00:00:00.000Z",
+            updatedAt: "2026-09-10T00:00:00.000Z",
+          },
+        },
+      },
+    ]),
+  );
+
+  const [version] = await listServiceCheckpoints({
+    data: { serviceId: "test-service" },
+  });
+  const step = version.snapshot.recipe!.steps[0] as {
+    markdownContent?: string;
+    nextSteps?: unknown;
+  };
+  expect(step.markdownContent).toBe(
+    "## What happens next\n\nWe will be in touch.",
+  );
+  expect(step).not.toHaveProperty("nextSteps");
 });
 it("seeds a never-published manifest on save so a refresh never bumps the revision", async () => {
   vi.mocked(getRecipe).mockResolvedValue(applicantEmailOnly as never);

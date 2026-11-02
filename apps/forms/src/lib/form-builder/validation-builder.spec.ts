@@ -16,8 +16,16 @@
 import {
   buildValidation,
   buildFieldValidationProperties,
+  collectStepErrorCodes,
   stepPassesValidation,
 } from "./validation-builder";
+import { locatingPlace, placeBeingLocated } from "../api/geocode";
+import {
+  setUploadBlock,
+  UPLOAD_IN_PROGRESS_MESSAGE,
+  UPLOAD_NOT_ADDED_MESSAGE,
+  UPLOAD_REFUSED_MESSAGE,
+} from "../api/files";
 import type {
   ClientFormStep,
   ClientServiceContract,
@@ -848,6 +856,173 @@ describe("buildFieldValidationProperties", () => {
   });
 });
 
+// A routing address (one that writes a coordinate) must be located — picked
+// from the suggestions or placed on the map — not just typed.
+describe("address-lookup field that writes a routing coordinate", () => {
+  const addressField = (
+    geocodeTargets: ClientPrimitive["geocodeTargets"] = {
+      coordinatesFieldId: "event-coordinates",
+    },
+  ) =>
+    makeField("event-address", "event", {
+      htmlType: "address-lookup",
+      geocodeTargets,
+      validations: { required: { value: true, error: "Enter the address" } },
+    });
+
+  it("refuses an address that was typed but not located", () => {
+    const { onDynamic } = buildFieldValidationProperties(addressField());
+    const fieldApi = makeFieldApi({
+      "event_event-address": "Water Hall Tenantry Road",
+      "event_event-coordinates": "",
+    });
+    expect(onDynamic!({ value: "Water Hall Tenantry Road", fieldApi })).toEqual(
+      ["Choose the address from the list, or find it on the map"],
+    );
+  });
+
+  it("accepts a located address", () => {
+    const { onDynamic } = buildFieldValidationProperties(addressField());
+    const fieldApi = makeFieldApi({
+      "event_event-coordinates": "13.104995,-59.622524",
+    });
+    expect(onDynamic!({ value: "Kensington Oval", fieldApi })).toBeUndefined();
+  });
+
+  // Continue pressed while a picked place's coordinate is still on its way
+  // waits for it, rather than refusing the pick as not located.
+  it("judges a pick once its coordinate arrives", async () => {
+    const { onDynamic, onDynamicAsync } =
+      buildFieldValidationProperties(addressField());
+    const values: Record<string, unknown> = { "event_event-coordinates": "" };
+    const fieldApi = makeFieldApi(values);
+    let arrive: () => void = () => {};
+    locatingPlace(
+      "event_event-address",
+      new Promise<void>((resolve) => (arrive = resolve)),
+    );
+
+    expect(onDynamic!({ value: "Kensington Oval", fieldApi })).toBeUndefined();
+    const verdict = onDynamicAsync!({ value: "Kensington Oval", fieldApi });
+    values["event_event-coordinates"] = "13.104995,-59.622524";
+    arrive();
+    expect(await verdict).toBeUndefined();
+  });
+
+  it("refuses a pick whose coordinate could not be found", async () => {
+    const { onDynamicAsync } = buildFieldValidationProperties(addressField());
+    const fieldApi = makeFieldApi({ "event_event-coordinates": "" });
+    locatingPlace("event_event-address", Promise.reject(new Error("503")));
+
+    expect(
+      await onDynamicAsync!({ value: "Kensington Oval", fieldApi }),
+    ).toEqual(["Choose the address from the list, or find it on the map"]);
+  });
+
+  it("keeps the required message for an empty address", () => {
+    const { onDynamic } = buildFieldValidationProperties(addressField());
+    expect(onDynamic!({ value: "", fieldApi: makeFieldApi() })).toEqual([
+      "Enter the address",
+    ]);
+  });
+
+  it("lets a typed address through when the field writes no coordinate", () => {
+    const { onDynamic } = buildFieldValidationProperties(
+      addressField({ line2FieldId: "event-line-2" }),
+    );
+    expect(
+      onDynamic!({
+        value: "Water Hall Tenantry Road",
+        fieldApi: makeFieldApi(),
+      }),
+    ).toBeUndefined();
+  });
+});
+
+// The address gate's refusal reaches analytics and the return from a Change
+// through the same rule the field shows (#3400).
+describe("collectStepErrorCodes for an address that writes a routing coordinate", () => {
+  const address = (validations?: ClientPrimitive["validations"]) =>
+    makeField("event-address", "event", {
+      htmlType: "address-lookup",
+      geocodeTargets: { coordinatesFieldId: "event-coordinates" },
+      validations,
+    });
+  const required = { required: { value: true, error: "Enter the address" } };
+  const typed = {
+    "event_event-address": "Water Hall Tenantry Road",
+    "event_event-coordinates": "",
+  };
+
+  it("reports an address that was typed but not located", () => {
+    expect(collectStepErrorCodes([address(required)], typed)).toEqual([
+      { fieldId: "event-address", codes: ["addressNotLocated"] },
+    ]);
+  });
+
+  it("reports it on an address field with no rules of its own", () => {
+    expect(collectStepErrorCodes([address()], typed)).toEqual([
+      { fieldId: "event-address", codes: ["addressNotLocated"] },
+    ]);
+  });
+
+  it("reports nothing for a located address", () => {
+    expect(
+      collectStepErrorCodes([address(required)], {
+        "event_event-address": "Kensington Oval",
+        "event_event-coordinates": "13.104995,-59.622524",
+      }),
+    ).toEqual([]);
+  });
+
+  it("reports the field's own rule first, as on screen", () => {
+    expect(
+      collectStepErrorCodes([address(required)], {
+        "event_event-address": "",
+      }),
+    ).toEqual([{ fieldId: "event-address", codes: ["required"] }]);
+  });
+
+  it("reports nothing while a picked place is still being located", async () => {
+    let arrive: () => void = () => {};
+    const lookup = new Promise<void>((resolve) => (arrive = resolve));
+    locatingPlace("event_event-address", lookup);
+
+    expect(collectStepErrorCodes([address(required)], typed)).toEqual([]);
+    arrive();
+    // Await the registry's own promise, not `lookup`: it settles only after
+    // the entry is removed, so the next test starts with nothing pending.
+    await placeBeingLocated("event_event-address");
+    expect(placeBeingLocated("event_event-address")).toBeUndefined();
+  });
+
+  it("fails the step on the return from a Change", () => {
+    const step: ClientFormStep = {
+      stepId: "event",
+      title: "Event",
+      fields: [address(required)],
+    };
+    const formApi = {
+      state: { values: typed },
+      getFieldValue: (id: string) => (typed as Record<string, unknown>)[id],
+    } as unknown as AnyFormApi;
+    expect(stepPassesValidation(step, formApi)).toBe(false);
+  });
+});
+
+describe("parish filled by a located address", () => {
+  it("is not validated on its own", () => {
+    const { onDynamic } = buildFieldValidationProperties(
+      makeField("event-parish", "event", {
+        htmlType: "select",
+        filledByAddressLookup: true,
+        validations: { required: { value: true, error: "Select the parish" } },
+      }),
+    );
+    expect(onDynamic!({ value: "", fieldApi: makeFieldApi() })).toBeUndefined();
+  });
+});
+
 // ---------------------------------------------------------------------------
 // stepPassesValidation (#2812) — real visibility + validation, no mocks
 // ---------------------------------------------------------------------------
@@ -915,5 +1090,75 @@ describe("stepPassesValidation", () => {
     expect(
       stepPassesValidation(repeatable, makeFormApi({ step1_hasJob: "yes" })),
     ).toBe(true);
+  });
+});
+
+// A file not yet added — still uploading, or refused — stops Continue with a
+// reason, instead of being lost or slipping past on an optional field (#2940).
+describe("file field with an upload that is not added yet", () => {
+  const fileField = (validations: ClientPrimitive["validations"] = {}) =>
+    makeField("proof", "docs", { htmlType: "file", validations });
+
+  const noRules = makeField("proof", "docs", {
+    htmlType: "file",
+    validations: undefined,
+  });
+
+  afterEach(() => setUploadBlock("docs_proof", undefined));
+
+  // The widget records a code; the field shows that code's message.
+  const blocks = [
+    ["uploadInProgress", UPLOAD_IN_PROGRESS_MESSAGE],
+    ["uploadNotAdded", UPLOAD_NOT_ADDED_MESSAGE],
+    ["uploadRefused", UPLOAD_REFUSED_MESSAGE],
+  ] as const;
+
+  it.each(blocks)("fails an optional field for %s with %j", (code, message) => {
+    const { onDynamic } = buildFieldValidationProperties(fileField());
+    setUploadBlock("docs_proof", code);
+
+    expect(onDynamic!({ value: null, fieldApi: makeFieldApi() })).toEqual([
+      message,
+    ]);
+  });
+
+  // "Wait for it" is more useful than "this field is required" while the file
+  // the person picked is still on its way.
+  it("puts the upload reason before the field's own rules", () => {
+    const { onDynamic } = buildFieldValidationProperties(
+      fileField({ required: { value: true, error: "Upload the proof" } }),
+    );
+    setUploadBlock("docs_proof", "uploadInProgress");
+
+    expect(onDynamic!({ value: null, fieldApi: makeFieldApi() })).toEqual([
+      UPLOAD_IN_PROGRESS_MESSAGE,
+    ]);
+  });
+
+  // The `form-validation-error` event reports why Continue was refused; an
+  // upload block is a reason too, even on a field with no rules of its own.
+  // The code is the one the widget recorded, not read back from the message.
+  it.each(blocks)("reports %s to analytics", (code) => {
+    setUploadBlock("docs_proof", code);
+
+    expect(collectStepErrorCodes([noRules], {})).toEqual([
+      { fieldId: "proof", codes: [code] },
+    ]);
+  });
+
+  it("reports nothing to analytics once nothing is blocking", () => {
+    expect(collectStepErrorCodes([noRules], {})).toEqual([]);
+  });
+
+  it("falls back to the field's own rules once nothing is blocking", () => {
+    const { onDynamic } = buildFieldValidationProperties(
+      fileField({ required: { value: true, error: "Upload the proof" } }),
+    );
+    setUploadBlock("docs_proof", "uploadInProgress");
+    setUploadBlock("docs_proof", undefined);
+
+    expect(onDynamic!({ value: null, fieldApi: makeFieldApi() })).toEqual([
+      "Upload the proof",
+    ]);
   });
 });

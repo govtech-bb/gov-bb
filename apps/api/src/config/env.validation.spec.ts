@@ -219,6 +219,18 @@ describe("envValidationSchema", () => {
       expect(value?.SQS_ENABLED).toBe(false);
     });
 
+    // Off until infra has granted s3:GetObjectTagging in that environment
+    // (#2938); turning it on is a per-environment operator decision.
+    it("defaults UPLOAD_MALWARE_SCAN_ENABLED to false and parses true", () => {
+      expect(validate({ ...baseEnv }).value?.UPLOAD_MALWARE_SCAN_ENABLED).toBe(
+        false,
+      );
+      expect(
+        validate({ ...baseEnv, UPLOAD_MALWARE_SCAN_ENABLED: "true" }).value
+          ?.UPLOAD_MALWARE_SCAN_ENABLED,
+      ).toBe(true);
+    });
+
     it('parses the literal "true"/"false"', () => {
       const { value } = validate({ ...baseEnv, DB_SYNCHRONIZE: "true" });
       expect(value?.DB_SYNCHRONIZE).toBe(true);

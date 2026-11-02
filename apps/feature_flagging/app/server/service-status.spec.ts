@@ -76,12 +76,35 @@ describe("listServices", () => {
     const rows = await listServices(CTX);
 
     expect(get).toHaveBeenCalledWith("/services", "gh_tok");
+    expect(get).toHaveBeenCalledWith("/form-definitions", "gh_tok");
     expect(rows).toHaveLength(1);
     expect(rows[0]).toMatchObject({
       slug: "get-x",
       hasForm: true,
       status: "disabled",
     });
+  });
+
+  it("lists a non-public form with no landing page and no status row (#2902)", async () => {
+    // The API returns non-public forms only to the forwarded token, so a
+    // brand-new builder form reaches the catalogue and can be switched on.
+    get.mockImplementation((path: string, token?: string) => {
+      if (path === "/form-definitions" && token === "gh_tok")
+        return Promise.resolve([
+          { formId: "new-draft-form", title: "New draft form" },
+        ]);
+      return Promise.resolve([]);
+    });
+
+    const rows = await listServices(CTX);
+
+    expect(rows).toEqual([
+      expect.objectContaining({
+        slug: "new-draft-form",
+        hasForm: true,
+        status: "disabled",
+      }),
+    ]);
   });
 
   it("degrades to forms + statuses when /services fails", async () => {

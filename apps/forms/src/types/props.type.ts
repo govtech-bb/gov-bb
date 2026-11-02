@@ -74,12 +74,23 @@ export interface UploadedFile {
   size: number;
   type: string;
   url?: string;
+  /**
+   * The GuardDuty verdict from confirm-upload (#2938). Only for the upload
+   * widget's own use: it is never stored in form values. Absent from an API
+   * older than #3333, which the widget treats as clean.
+   */
+  scanStatus?: "clean" | "infected" | "unscannable" | "pending";
 }
 
 export type FileUploadProps = {
   field: ClientPrimitive;
   sharedProps: React.InputHTMLAttributes<HTMLInputElement>;
   onFileChange: (files: UploadedFile[] | null) => void;
+  /**
+   * Called when whether this field blocks Continue changes (a file starts or
+   * stops uploading, or a refused file is removed), so a shown error is re-judged.
+   */
+  onUploadsChange?: () => void;
   value?: UploadedFile[] | null;
   errorMessage?: string;
   /** id for the error element, so the input's aria-describedby resolves. */
@@ -169,7 +180,6 @@ export interface SubmissionConfirmationProps {
    * message when absent.
    */
   processingMessage?: string;
-  nextSteps?: { title: string; content?: string; items?: string[] }[];
   /**
    * Raw markdown rendered on the confirmation page (e.g. a "What you need to
    * know" section). Sourced from the confirmation step's `markdownContent`,

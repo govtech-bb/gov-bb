@@ -22,8 +22,10 @@
     "@tanstack/react-store": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
+    "leaflet": "^1.9.4",
     "react": "catalog:",
     "react-dom": "catalog:",
+    "react-leaflet": "^5.0.0",
     "react-markdown": "^9.0.0",
     "remark-gfm": "^4.0.1",
     "tailwindcss": "^4.3.0",
@@ -46,6 +48,7 @@
     "test:a11y": "playwright test --config playwright.a11y.config.ts"
   },
   "devDependencies": {
+    "@aws-sdk/client-s3": "^3.1136.0",
     "@axe-core/playwright": "^4.12.1",
     "@eslint/css": "^1.1.0",
     "@eslint/js": "^9.39.4",
@@ -55,12 +58,14 @@
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^14.6.1",
+    "@types/leaflet": "^1.9.20",
     "@vitejs/plugin-react": "^6.0.2",
     "eslint": "^9.39.4",
     "eslint-plugin-react": "^7.37.5",
     "globals": "^17.5.0",
     "jest-axe": "^10.0.0",
     "lint-staged": "^16.4.0",
+    "postal-mime": "^4.1.4",
     "prettier": "^3.8.1",
     "typescript-eslint": "^8.58.2",
     "vite": "catalog:"

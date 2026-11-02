@@ -68,6 +68,7 @@ import {
   submitAndConfirm,
   tickCheckbox,
   uploadOne,
+  mockGeocoder,
 } from "../helpers/smoke";
 import { TEST_PNG } from "../helpers/test-data";
 
@@ -274,6 +275,8 @@ export async function fillGateApplicantAndEvent(
   await advance(page, step);
 }
 
+test.beforeEach(({ page }) => mockGeocoder(page));
+
 test.describe("Request an Environmental Health Officer — Live Smoke", () => {
   test("submits the serving-food branch end-to-end and reaches the confirmation screen", async ({
     page,
@@ -352,7 +355,7 @@ test.describe("Request an Environmental Health Officer — Live Smoke", () => {
     expectStep(page, "declaration");
     await page
       .getByRole("checkbox", {
-        name: /I confirm that my information is correct/,
+        name: /I confirm that the information I have provided is true and correct/,
       })
       .check();
     await page
@@ -433,7 +436,7 @@ test.describe("Request an Environmental Health Officer — Live Smoke", () => {
     ).toBeHidden();
     await page
       .getByRole("checkbox", {
-        name: /I confirm that my information is correct/,
+        name: /I confirm that the information I have provided is true and correct/,
       })
       .check();
     await page

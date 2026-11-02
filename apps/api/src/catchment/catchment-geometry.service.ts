@@ -86,7 +86,7 @@ function polygons(feature: CatchmentFeature): Ring[][] {
 }
 
 /** Keep the legacy ray-cast tie-breaking for submission routing. */
-function inRing(lng: number, lat: number, ring: Ring): boolean {
+export function inRing(lng: number, lat: number, ring: Ring): boolean {
   let inside = false;
   for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
     const xi = ring[i][0];

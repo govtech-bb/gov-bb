@@ -384,6 +384,18 @@ async function confirmAndSubmit(page: Page): Promise<void> {
     heading: "Application submitted",
     referenceLabel: "Submission ID",
   });
+
+  // The "What happens next" copy now renders from the step's `markdownContent`
+  // (#2442 — it was authored in `nextSteps`, which the serving path dropped,
+  // so nothing showed before).
+  await expect(
+    page.getByRole("heading", { name: "What happens next" }),
+  ).toBeVisible();
+  await expect(
+    page.getByText(
+      "We have received your submission. You will receive a confirmation email at the address you provided.",
+    ),
+  ).toBeVisible();
 }
 
 test.describe("NHC Application to Purchase Land or Property — Live Smoke", () => {

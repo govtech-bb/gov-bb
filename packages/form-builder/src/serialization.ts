@@ -21,6 +21,57 @@ const withNormalizedValidations = (
     ? { ...overrides, validations: normalizeRuleValues(overrides.validations) }
     : overrides;
 
+// Legacy confirmation copy (#2442): builder state saved before the migration
+// carries a step-level `nextSteps` and no `markdownContent`. hydrateStep never
+// served `nextSteps`, so a republish that simply dropped it would lose the copy
+// with nothing to flag it. Fold it into markdown on read instead — the same
+// shape the recipe sweep used: each section is `## {title}`, then its content,
+// then its items as a bullet list. Returns undefined when there is nothing to
+// carry.
+type LegacyNextStep = { title?: string; content?: string; items?: string[] };
+function markdownFromLegacyNextSteps(step: unknown): string | undefined {
+  const sections = (step as { nextSteps?: LegacyNextStep[] }).nextSteps;
+  if (!Array.isArray(sections) || sections.length === 0) return undefined;
+  const markdown = sections
+    .map((section) =>
+      [
+        section.title ? `## ${section.title}` : "",
+        section.content ?? "",
+        Array.isArray(section.items) && section.items.length > 0
+          ? section.items.map((item) => `- ${item}`).join("\n")
+          : "",
+      ]
+        .filter(Boolean)
+        .join("\n\n"),
+    )
+    .filter(Boolean)
+    .join("\n\n");
+  return markdown || undefined;
+}
+
+/**
+ * Fold a recipe's legacy `nextSteps` into `markdownContent` and drop the retired
+ * key (#2442). Apply this to a RAW stored recipe at the point it is read, BEFORE
+ * any schema parse: `formStepSchema` now rejects `nextSteps` (`z.never`), so an
+ * old builder draft row that was never re-saved would otherwise throw on open or
+ * save in the service workbench. `deserializeRecipe` folds per step on its own;
+ * this wrapper covers the server read path that parses the row directly.
+ */
+export function foldLegacyNextSteps<T extends { steps: unknown[] }>(
+  recipe: T,
+): T {
+  return {
+    ...recipe,
+    steps: recipe.steps.map((step) => {
+      const { nextSteps: _retired, ...rest } = step as Record<string, unknown>;
+      const markdownContent =
+        (rest.markdownContent as string | undefined) ??
+        markdownFromLegacyNextSteps(step);
+      return markdownContent ? { ...rest, markdownContent } : rest;
+    }),
+  };
+}
+
 /**
  * Serialize a RecipeDraft (UI state) into a ServiceContractRecipe (persisted format).
  */
@@ -79,13 +130,9 @@ export function serializeRecipeDraft(
         elements,
         behaviours: stepDraft.behaviours,
         // Confirmation-step content (#1292). `!== undefined` keeps "absent"
-        // distinct from an explicit empty string/array. markdownContent is
-        // editable in the builder; nextSteps is carried through untouched.
+        // distinct from an explicit empty string/array.
         ...(stepDraft.markdownContent !== undefined
           ? { markdownContent: stepDraft.markdownContent }
-          : {}),
-        ...(stepDraft.nextSteps !== undefined
-          ? { nextSteps: stepDraft.nextSteps }
           : {}),
         ...(stepDraft.conditionalMarkdown !== undefined
           ? { conditionalMarkdown: stepDraft.conditionalMarkdown }
@@ -189,6 +236,12 @@ export function deserializeRecipe(
         },
       );
 
+      // Confirmation copy survives an open → deploy cycle (#1292). A
+      // pre-migration recipe with `nextSteps` and no `markdownContent` is folded
+      // into markdown here (#2442) so the republish writes markdownContent
+      // rather than silently dropping the copy.
+      const markdownContent =
+        recipeStep.markdownContent ?? markdownFromLegacyNextSteps(recipeStep);
       return {
         stepId: recipeStep.stepId,
         title: recipeStep.title,
@@ -197,14 +250,7 @@ export function deserializeRecipe(
           : {}),
         fields,
         behaviours: recipeStep.behaviours ?? [],
-        // Symmetric read so confirmation content survives an open → deploy
-        // cycle (#1292) — mirrors the serialize guard above.
-        ...(recipeStep.markdownContent !== undefined
-          ? { markdownContent: recipeStep.markdownContent }
-          : {}),
-        ...(recipeStep.nextSteps !== undefined
-          ? { nextSteps: recipeStep.nextSteps }
-          : {}),
+        ...(markdownContent !== undefined ? { markdownContent } : {}),
         ...(recipeStep.conditionalMarkdown !== undefined
           ? { conditionalMarkdown: recipeStep.conditionalMarkdown }
           : {}),

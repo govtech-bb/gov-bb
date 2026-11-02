@@ -100,11 +100,9 @@
  *    `renewal` neither field renders and the step advances on the two uploads
  *    alone (test 1); on `new` both are answered and the letter uploaded
  *    (test 2).
- *  - The confirmation step's `nextSteps` copy (fixed off "hairdresser licence"
- *    in this PR) has no `{polyclinic}` placeholder, so there is no
- *    resolved-catchment name on screen to assert. Catchment routing still
- *    runs — it just isn't surfaced to the applicant. Don't add a /Polyclinic/
- *    assertion here; it would fail.
+ *  - The confirmation step's `markdownContent` carries a `{polyclinic}`
+ *    placeholder whose resolved catchment name varies per run, so we don't
+ *    assert on it; assert the stable "Environmental Health" wording instead.
  */
 import { faker } from "@faker-js/faker";
 import { test, expect, type Page } from "@playwright/test";
@@ -120,6 +118,7 @@ import {
   submitAndConfirm,
   tickCheckbox,
   uploadOne,
+  mockGeocoder,
 } from "../helpers/smoke";
 import { TEST_PNG } from "../helpers/test-data";
 
@@ -440,10 +439,13 @@ async function confirmAndSubmit(page: Page): Promise<void> {
     referenceLabel: "Submission ID",
   });
 
-  // No {polyclinic} placeholder on this recipe's confirmation step — assert the
-  // Environmental Health nextSteps copy instead. See the header note.
+  // The resolved {polyclinic} name varies by catchment, so assert the stable
+  // "Environmental Health" wording in the confirmation copy instead. See the
+  // header note.
   await expect(page.getByText(/Environmental Health/).first()).toBeVisible();
 }
+
+test.beforeEach(({ page }) => mockGeocoder(page));
 
 test.describe("Funeral Directors Licence Application — Live Smoke", () => {
   test("submits a renewal, working at an establishment and somewhere else", async ({

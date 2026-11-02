@@ -56,18 +56,18 @@ There are 2 ways to apply.
 
    You can get a paper form from:
 
-   **National Housing Corporation**  
+   **Ministry of Housing, Lands and Maintenance**  
+   National Housing Corporation  
    "The Garden"  
    Country Road  
-   St. Michael
+   St. Michael  
+   (246) 536-5000
 
-   Complete the form by hand and return it to the National Housing Corporation at the address above.
+   Complete the form by hand and return it to the Ministry of Housing, Lands and Maintenance at the address above.
 
 ## Cost
 
-There is no cost to apply.
-
-If your application is approved, you may have to pay to use the land. The Ministry will tell you if there is a fee and how much it is.
+There is no application fee. If your application is approved, the Ministry will tell you if there is a fee and how much it is.
 
 <!-- MDA NOTE: Confirm whether a security deposit is required once permission is granted. -->
 

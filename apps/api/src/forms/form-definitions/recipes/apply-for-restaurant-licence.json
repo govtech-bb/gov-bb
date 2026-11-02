@@ -693,7 +693,7 @@
     },
     {
       "stepId": "declaration",
-      "title": "Declaration",
+      "title": "Confirm and submit your application",
       "behaviours": [],
       "elements": [
         {
@@ -709,7 +709,7 @@
             },
             "options": [
               {
-                "label": "I confirm that the information in this application is true and correct to the best of my knowledge.",
+                "label": "I confirm that the information I have provided is true and correct to the best of my knowledge.",
                 "value": "confirmed"
               }
             ]
@@ -769,7 +769,7 @@
     }
   ],
   "createdAt": "2026-08-18T19:36:35.003Z",
-  "updatedAt": "2026-10-05T17:20:45.000Z",
+  "updatedAt": "2026-10-08T21:50:00.000Z",
   "meta": {
     "visibility": "preview"
   },

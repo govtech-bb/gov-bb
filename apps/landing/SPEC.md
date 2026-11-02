@@ -241,13 +241,13 @@ A page that embeds an **external Tally form** ("Help Us Improve Government Servi
 
 ## 10. Analytics
 
-Umami Cloud is wired in with these properties:
+Events go to Umami Cloud and, while Umami is being replaced, to the forms API's first-party `POST /journey` endpoint. They are wired in with these properties:
 
-- **Opt-in by env var**: the Umami script is only injected when `VITE_UMAMI_WEBSITE_ID` is set. Local dev with the var unset emits no events, keeping dev traffic out of the dataset.
+- **Opt-in by env var**: the Umami script is only injected when `VITE_UMAMI_WEBSITE_ID` is set. Journey events are only sent when `VITE_JOURNEY_URL` is set, which is done per environment once its WAF has the per-IP rule for `/journey`. Local dev with the vars unset emits no events, keeping dev traffic out of the dataset.
 - **Auto-tracking disabled** (`data-auto-track="false"`); the app sends everything manually.
-- **Pageviews** are fired by subscribing to the router's `onResolved` lifecycle — one event per resolved route, including SPA navigations.
-- **Click and lifecycle events** use either `data-umami-event="..."` attributes or `trackEvent()` calls from React effects.
-- A typed helper in `src/lib/analytics.ts` (`trackEvent`, `trackPageview`, `deriveStartEventName`) safely no-ops when Umami isn't loaded.
+- **Pageviews** are fired by subscribing to the router's `onRendered` lifecycle: one event on the first render and one each time the resolved address changes. `onResolved` is not used because it only fires on a pending-to-idle transition, which never happens on the first, server-rendered page or on a preloaded click.
+- **Click and lifecycle events** use either `data-umami-event="..."` attributes or `trackEvent()` calls from React effects. A document click listener sends the same `data-umami-event` clicks as journey events.
+- A typed helper in `src/lib/analytics.ts` (`trackEvent`, `trackPageview`, `deriveStartEventName`) sends to each configured destination and no-ops for any that isn't configured (Umami not loaded, or `VITE_JOURNEY_URL` unset).
 - A documented naming convention covers fixed UI surfaces (`<surface>-<action>`), per-service and per-org clicks, and per-form `Start now` events.
 
 ---

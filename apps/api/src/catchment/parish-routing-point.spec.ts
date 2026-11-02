@@ -4,6 +4,7 @@ import { PARISH_DEFAULTS } from "./polyclinic-routing";
 import {
   PARISH_ROUTING_POINTS,
   fillParishRoutingCoordinate,
+  fillRoutingParish,
   isRoutingCoordinate,
 } from "./parish-routing-point";
 
@@ -157,6 +158,49 @@ describe("fillParishRoutingCoordinate", () => {
     const points = Object.values(PARISH_ROUTING_POINTS);
 
     expect(new Set(points).size).toBe(points.length);
+  });
+});
+
+// A located address's parish is read-only on the form, so when the lookup that
+// writes it fails the submission must not be refused for a missing parish.
+describe("fillRoutingParish", () => {
+  const parishOf = (values: Record<string, unknown>) =>
+    (values["event-details"] as Record<string, unknown>)["event-parish"];
+
+  it("fills an empty parish from the coordinate", () => {
+    const values = {
+      "event-details": {
+        "event-parish": "",
+        "event-address-coordinates": "13.100000,-59.600000",
+      },
+    };
+    const out = fillRoutingParish(values, routing);
+    expect(parishOf(out)).toBe("st-michael");
+    expect(parishOf(values)).toBe("");
+  });
+
+  it("leaves a parish already given", () => {
+    const values = {
+      "event-details": {
+        "event-parish": "st-james",
+        "event-address-coordinates": "13.100000,-59.600000",
+      },
+    };
+    expect(fillRoutingParish(values, routing)).toBe(values);
+  });
+
+  it("leaves the parish empty when there is no real coordinate", () => {
+    const values = {
+      "event-details": { "event-parish": "", "event-address-coordinates": "" },
+    };
+    expect(fillRoutingParish(values, routing)).toBe(values);
+  });
+
+  it("leaves the parish empty for a coordinate outside Barbados", () => {
+    const values = {
+      "event-details": { "event-address-coordinates": "51.500000,-0.120000" },
+    };
+    expect(fillRoutingParish(values, routing)).toBe(values);
   });
 });
 

@@ -8,6 +8,10 @@
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
     "strictPropertyInitialization": false,
+    // DOM types: @govtech-bb/umami-analytics re-exports @govtech-bb/analytics,
+    // whose browser helpers reference `window`, and the nx build compiles that
+    // source inside this program (#3491). Nothing here calls them at runtime.
+    "lib": ["ES2022", "DOM"],
     "types": ["node", "vitest/globals"],
     "preserveWatchOutput": true,
     "baseUrl": ".",
@@ -25,12 +29,18 @@
       "@govtech-bb/submission-summary": [
         "../../packages/submission-summary/src/index.ts"
       ],
-      "@govtech-bb/database": ["../../packages/database/src/index.ts"]
+      "@govtech-bb/database": ["../../packages/database/src/index.ts"],
+      "@govtech-bb/umami-analytics": [
+        "../../packages/umami-analytics/src/index.ts"
+      ]
     }
   },
   "references": [
     {
       "path": "../../packages/database"
+    },
+    {
+      "path": "../../packages/form-builder"
     },
     {
       "path": "../../packages/form-types"
@@ -46,6 +56,12 @@
     },
     {
       "path": "../../packages/submission-summary"
+    },
+    {
+      "path": "../../packages/umami-analytics"
+    },
+    {
+      "path": "../../packages/analytics"
     }
   ],
   "include": ["src/**/*.ts"],

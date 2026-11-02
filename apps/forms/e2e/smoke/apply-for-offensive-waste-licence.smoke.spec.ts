@@ -34,15 +34,17 @@
  *   FAKER_SEED       fix faker's RNG for a reproducible data set.
  *
  * Form-specific notes:
- *  - Authored steps, in order: `application-type` (which reveals the current
- *    licence number for a renewal), `renewal-check` (renewal only),
+ *  - Authored steps, in order: `application-type` (which reveals the Planning
+ *    and Development number for a new licence), `renewal-check` (renewal
+ *    only; "Yes" to building changes reveals its own Planning number),
  *    `applying-for`, `your-details`,
  *    `licence-holder-person` / `licence-holder-business` (one per
- *    `applying-for` answer), `business-activities`, `work-address`,
- *    `building-plans` (new licence) or `changed-building-plans` (renewal with
- *    building changes), then the platform's `check-your-answers` /
- *    `declaration` / `submission-confirmation`.
- *  - The plans are two steps because a step's `stepConditionalOn` rules are
+ *    `applying-for` answer), `business-activities` (a single-choice select),
+ *    `work-address`, `building-plans` (new licence) or `changed-building-plans`
+ *    (renewal with building changes) — both titled "Upload your documents" and
+ *    holding an optional site plan — then the platform's
+ *    `check-your-answers` / `declaration` / `submission-confirmation`.
+ *  - The upload is two steps because a step's `stepConditionalOn` rules are
  *    ANDed, so "new licence OR building changed" cannot be one step.
  *  - There is no stop page. A blocking answer — a different licence holder or a
  *    changed work address on a renewal, or no permission to apply for someone
@@ -75,7 +77,7 @@ import {
   selectDropdown,
   selectRadio,
   submitAndConfirm,
-  tickCheckbox,
+  mockGeocoder,
   uploadOne,
 } from "../helpers/smoke";
 import { TEST_PNG } from "../helpers/test-data";
@@ -163,7 +165,7 @@ export function buildData() {
     email: "testing@govtech.bb",
     phone: bbPhoneNumber(),
 
-    currentLicenceNumber: `OT/${faker.string.numeric(5)}`,
+    planningNumber: `PD/${faker.string.numeric(5)}`,
     relationship: "Manager",
 
     holderFirstName: faker.person.firstName(),
@@ -204,8 +206,8 @@ async function expectBlocked(
 }
 
 /**
- * New licence or renewal. Gates the renewal steps and which plans step shows.
- * A renewal reveals the current licence number on the same step.
+ * New licence or renewal. Gates the renewal steps and which upload step shows.
+ * A new licence reveals the Planning and Development number on the same step.
  */
 export async function fillApplicationType(
   page: Page,
@@ -214,18 +216,20 @@ export async function fillApplicationType(
 ): Promise<void> {
   const step = expectStep(page, "application-type");
   await expect(page.locator("h1")).toContainText("About your application");
-  const licenceNumber = page.locator(`[id="${step}_current-licence-number"]`);
+  const planningNumber = page.locator(
+    `[id="${step}_planning-application-number"]`,
+  );
 
   await selectRadio(page, step, "application-type", applicationType);
-  if (applicationType === "new") {
-    await expect(licenceNumber).toBeHidden();
+  if (applicationType === "renewal") {
+    await expect(planningNumber).toBeHidden();
   } else {
-    await expect(licenceNumber).toBeVisible({ timeout: STEP_TIMEOUT });
+    await expect(planningNumber).toBeVisible({ timeout: STEP_TIMEOUT });
     await fillField(
       page,
       step,
-      "current-licence-number",
-      data.currentLicenceNumber,
+      "planning-application-number",
+      data.planningNumber,
     );
   }
   await advance(page, step);
@@ -234,10 +238,12 @@ export async function fillApplicationType(
 /**
  * Renewal only. Same holder must be "yes" and address changed must be "no" —
  * the other answers are refused (see the blocked test). "yes" to building
- * changes later asks for `changed-building-plans`.
+ * changes reveals the Planning number here and later shows
+ * `changed-building-plans`.
  */
 export async function fillRenewalCheck(
   page: Page,
+  data: Data,
   buildingChanges: "yes" | "no",
 ): Promise<void> {
   const step = expectStep(page, "renewal-check");
@@ -246,7 +252,21 @@ export async function fillRenewalCheck(
   );
   await selectRadio(page, step, "same-licence-holder", "yes");
   await selectRadio(page, step, "address-changed", "no");
+  const planningNumber = page.locator(
+    `[id="${step}_changed-planning-application-number"]`,
+  );
   await selectRadio(page, step, "building-changes", buildingChanges);
+  if (buildingChanges === "no") {
+    await expect(planningNumber).toBeHidden();
+  } else {
+    await expect(planningNumber).toBeVisible({ timeout: STEP_TIMEOUT });
+    await fillField(
+      page,
+      step,
+      "changed-planning-application-number",
+      data.planningNumber,
+    );
+  }
   await advance(page, step);
 }
 
@@ -344,19 +364,17 @@ async function fillHolderAddress(
   await selectDropdown(page, step, `${prefix}-parish`, data.holderParish);
 }
 
-/** The required checkbox group of scheduled offensive trades. */
-export async function fillBusinessActivities(
+/** One licence covers one trade, so this is a single-choice select. */
+export async function fillBusinessActivity(
   page: Page,
-  activities: readonly BusinessActivity[],
+  activity: BusinessActivity,
 ): Promise<void> {
   const step = expectStep(page, "business-activities");
   await expect(page.locator("h1")).toContainText("What does the business do?");
   await expect(page.locator(".govbb-inset-text")).toContainText(
     "contact Environmental Health before you apply",
   );
-  for (const activity of activities) {
-    await tickCheckbox(page, step, "business-activities", activity);
-  }
+  await selectDropdown(page, step, "business-activities", activity);
   await advance(page, step);
 }
 
@@ -392,15 +410,17 @@ export async function fillWorkAddress(page: Page, data: Data): Promise<string> {
   return coordinates;
 }
 
-/** Upload the plans on whichever of the two plans steps this branch reached. */
-export async function uploadBuildingPlans(
+/** Upload a site plan on whichever of the two upload steps this branch reached. */
+export async function uploadSitePlan(
   page: Page,
   stepId: "building-plans" | "changed-building-plans",
 ): Promise<void> {
   const step = expectStep(page, stepId, { exact: true });
-  await expect(page.locator("h1")).toContainText("Upload your building plans");
-  await uploadOne(page, step, stepId, {
-    name: "building-plans.png",
+  await expect(page.locator("h1")).toContainText("Upload your documents");
+  const fieldId =
+    stepId === "building-plans" ? "site-plan" : "changed-site-plan";
+  await uploadOne(page, step, fieldId, {
+    name: "site-plan.png",
     mimeType: TEST_PNG.mimeType,
     buffer: TEST_PNG.buffer,
   });
@@ -425,7 +445,7 @@ async function checkAndSubmit(
   await advance(page, cya);
 
   const step = expectStep(page, "declaration");
-  await expect(page.locator("h1")).toContainText("Your agreement");
+  await expect(page.locator("h1")).toContainText("Confirm and submit");
   await page
     .locator(`fieldset[id="${step}_declaration-confirmed"]`)
     .getByRole("checkbox")
@@ -453,8 +473,10 @@ function logData(data: Data): void {
     console.log("[smoke-data]", JSON.stringify(data, null, 2));
 }
 
+test.beforeEach(({ page }) => mockGeocoder(page));
+
 test.describe("Offensive Trade Licence — Live Smoke", () => {
-  test("submits a new licence for yourself, with building plans", async ({
+  test("submits a new licence for yourself, with a site plan", async ({
     page,
   }) => {
     const data = buildData();
@@ -466,14 +488,14 @@ test.describe("Offensive Trade Licence — Live Smoke", () => {
     await fillApplyingFor(page, data, "yourself");
     await fillYourDetails(page, data);
     // "yourself" skips both licence-holder steps.
-    await fillBusinessActivities(page, ["tanning", "soap-boiling"]);
+    await fillBusinessActivity(page, "tanning");
     await fillWorkAddress(page, data);
-    await uploadBuildingPlans(page, "building-plans");
+    await uploadSitePlan(page, "building-plans");
 
     await checkAndSubmit(
       page,
-      [data.firstName, data.workAddressLine2],
-      [data.currentLicenceNumber, data.businessName],
+      [data.firstName, data.workAddressLine2, data.planningNumber],
+      [data.businessName],
     );
   });
 
@@ -485,22 +507,18 @@ test.describe("Offensive Trade Licence — Live Smoke", () => {
 
     await openForm(page);
     await fillApplicationType(page, data, "renewal");
-    await fillRenewalCheck(page, "yes");
+    await fillRenewalCheck(page, data, "yes");
     await fillApplyingFor(page, data, "another-person");
     await fillYourDetails(page, data);
     await fillLicenceHolderPerson(page, data, "no");
-    await fillBusinessActivities(page, [
-      "slaughtering",
-      "blood-offal-boiling",
-      "tallow-melting",
-    ]);
+    await fillBusinessActivity(page, "slaughtering");
     await fillWorkAddress(page, data);
-    // A changed building on a renewal asks for the plans on their own step.
-    await uploadBuildingPlans(page, "changed-building-plans");
+    // A changed building on a renewal shows the upload on its own step.
+    await uploadSitePlan(page, "changed-building-plans");
 
     await checkAndSubmit(
       page,
-      [data.currentLicenceNumber, data.holderFirstName, data.holderAddress],
+      [data.planningNumber, data.holderFirstName, data.holderAddress],
       [data.businessName],
     );
   });
@@ -513,18 +531,18 @@ test.describe("Offensive Trade Licence — Live Smoke", () => {
 
     await openForm(page);
     await fillApplicationType(page, data, "renewal");
-    await fillRenewalCheck(page, "no");
+    await fillRenewalCheck(page, data, "no");
     await fillApplyingFor(page, data, "business");
     await fillYourDetails(page, data);
     await fillLicenceHolderBusiness(page, data, "yes");
-    await fillBusinessActivities(page, ["glue"]);
+    await fillBusinessActivity(page, "glue");
     await fillWorkAddress(page, data);
-    // No building changes: neither plans step, straight to Check your answers.
+    // No building changes: neither upload step, straight to Check your answers.
 
     await checkAndSubmit(
       page,
-      [data.currentLicenceNumber, data.businessName],
-      [data.holderAddress],
+      [data.businessName],
+      [data.holderAddress, data.planningNumber],
     );
   });
 

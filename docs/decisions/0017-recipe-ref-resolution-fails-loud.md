@@ -2,6 +2,14 @@
 
 **Date:** 2026-05-28
 **Status:** Accepted
+
+> **Note 2026-10-13 ([#2024](https://github.com/govtech-bb/gov-bb/issues/2024)):**
+> `apps/api/src/registry/resolution.ts` was retired by #2044. The API now hydrates
+> recipes with the shared `hydrateForm` in `packages/form-builder/src/resolution.ts`
+> (called from `RegistryService`), the same function the builder preview uses.
+> References to the API resolver below describe the code when this decision was
+> taken; the decision still holds.
+
 **Related:** [#359](https://github.com/govtech-bb/gov-bb/issues/359). Sits alongside the catalog-dependent validate-endpoint backstop pattern from [0010](0010-form-data-fieldids-are-recipe-wide-unique.md).
 
 ## Context

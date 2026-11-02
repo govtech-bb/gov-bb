@@ -20,7 +20,7 @@ permissions:
 
 jobs:
   sync:
-    name: Sync issue to Alpha² board
+    name: Sync issue to Platform board
     # Dependabot-triggered runs see no repository secrets, so minting the App
     # token fails with "Token is not set"; its PRs link no issues anyway.
     if: github.actor != 'dependabot[bot]'

@@ -7,8 +7,10 @@ import {
 import { ConfigService } from "@nestjs/config";
 import {
   GetObjectCommand,
+  GetObjectTaggingCommand,
   HeadObjectCommand,
   PutObjectCommand,
+  PutObjectTaggingCommand,
   S3Client,
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
@@ -20,6 +22,14 @@ import {
 import { FormDefinitionsService } from "../forms/form-definitions/form-definitions.service";
 import { isValidSecretToken } from "../common/secret-token";
 import { AppError } from "../common/errors";
+import { writeBusinessLog } from "../common/business-log";
+import {
+  localScanStatusForFileName,
+  MALWARE_SCAN_TAG,
+  scanRefusalMessage,
+  scanVerdictFromTag,
+  type ScanVerdict,
+} from "./malware-scan-status";
 import { buildSubmissionKey, parseSubmissionKey } from "./submission-key";
 import type {
   SubmissionValues,
@@ -38,6 +48,32 @@ export interface SubmissionFileEntry {
   name: string;
   size: number;
   type: string;
+}
+
+/** What `getScanVerdict` found: our verdict, and the raw tag it came from. */
+export interface ScanResult {
+  verdict: ScanVerdict;
+  /** GuardDuty's tag value; undefined when absent or unreadable. */
+  tag: string | undefined;
+}
+
+/** How often confirm-upload re-reads the scan tag while it waits. */
+const SCAN_POLL_INTERVAL_MS = 400;
+
+/**
+ * How long to wait for GuardDuty, at confirm-upload and for a file still
+ * unscanned at submit. The slowest scan measured for files up to the 10MB
+ * default was 2.88s (#2839, 22 Oct 2026), and scan time grows with size:
+ * revisit this if UPLOAD_MAX_SIZE_BYTES goes above ~15MB.
+ */
+const SCAN_WAIT_MS = 4000;
+
+const sleep = (ms: number) =>
+  new Promise<void>((resolve) => setTimeout(resolve, ms));
+
+/** S3 throttling, which callers re-raise so the request backs off. */
+function isThrottle(name: string | undefined): boolean {
+  return !!name && /Throttl|SlowDown|Limit/i.test(name);
 }
 
 /**
@@ -65,6 +101,8 @@ export class FilesService {
   private readonly globalMaxSize: number;
   private readonly presignTtl: number;
   private readonly readTtl: number;
+  private readonly endpoint: string | undefined;
+  private readonly malwareScanEnabled: boolean;
   private readonly logger = new Logger(FilesService.name);
 
   constructor(
@@ -95,6 +133,10 @@ export class FilesService {
     this.globalMaxSize = this.config.get<number>("upload.maxSizeBytes")!;
     this.presignTtl = this.config.get<number>("upload.presignTtlSeconds")!;
     this.readTtl = this.config.get<number>("upload.readUrlTtlSeconds")!;
+    this.endpoint = endpoint;
+    this.malwareScanEnabled = !!this.config.get<boolean>(
+      "upload.malwareScanEnabled",
+    );
   }
 
   async presignUpload(
@@ -197,8 +239,57 @@ export class FilesService {
     }
     this.assertContentTypeAllowed(field, type, name);
 
-    const url = await this.getSignedReadUrl(dto.key);
-    return { key: dto.key, url, name, size, type };
+    const scanStatus = await this.uploadScanVerdict(dto.key, name);
+    // No preview link to a file we haven't cleared.
+    const url =
+      scanStatus === "clean" ? await this.getSignedReadUrl(dto.key) : undefined;
+    return { key: dto.key, url, name, size, type, scanStatus };
+  }
+
+  /**
+   * The verdict confirm-upload reports (#2938). With the switch off it
+   * reports `clean` without reading the tag, as before; the submit-time check
+   * still reads it. A refused file is left in the bucket, not deleted:
+   * sandbox has no s3:DeleteObject by design, and the submit check stops it.
+   */
+  private async uploadScanVerdict(
+    key: string,
+    fileName: string,
+  ): Promise<ScanVerdict> {
+    // LocalStack/MinIO have no GuardDuty, so play its part, whatever the
+    // switch says, or the submit check would refuse every local file. The tag
+    // comes from a citizen-chosen file name, so this must never run deployed:
+    // NODE_ENV=production (the API image's runtime stage) disables it even if
+    // a deployment sets S3_ENDPOINT (e.g. a VPC endpoint) and the role could
+    // write tags. Deployed roles hold no s3:PutObjectTagging besides.
+    if (this.endpoint && this.config.get<string>("NODE_ENV") !== "production") {
+      await this.s3.send(
+        new PutObjectTaggingCommand({
+          Bucket: this.bucket,
+          Key: key,
+          Tagging: {
+            TagSet: [
+              {
+                Key: MALWARE_SCAN_TAG,
+                Value: localScanStatusForFileName(fileName),
+              },
+            ],
+          },
+        }),
+      );
+    }
+    if (!this.malwareScanEnabled) return "clean";
+
+    const { verdict, tag } = await this.getScanVerdict(key, {
+      waitMs: SCAN_WAIT_MS,
+    });
+    writeBusinessLog("security_event", {
+      level: "info",
+      event: "upload.scan_verdict",
+      verdict,
+      scan_tag: tag ?? "ABSENT",
+    });
+    return verdict;
   }
 
   async verifyKeysExist(keys: string[]): Promise<Set<string>> {
@@ -218,7 +309,7 @@ export class FilesService {
           } catch (err: unknown) {
             const name = (err as { name?: string } | null)?.name;
             // Throttle → re-raise so the batch backs off (unchanged).
-            if (name && /Throttl|SlowDown|Limit/i.test(name)) throw err;
+            if (isThrottle(name)) throw err;
             // A genuine miss (object absent) stays a "missing" result so the
             // citizen still sees the field-level "Uploaded file not found".
             if (isGenuineMiss(err)) {
@@ -237,6 +328,53 @@ export class FilesService {
       );
     }
     return missing;
+  }
+
+  /**
+   * Reads GuardDuty's verdict for an uploaded object, re-reading every 400ms
+   * until it is terminal or `waitMs` runs out (then `pending`). `waitMs: 0`
+   * reads once.
+   *
+   * Fails closed: an S3 `AccessDenied` (the task role lacks
+   * s3:GetObjectTagging) reads as `unscannable`, never as clean, and logs
+   * the error line infra alarms on. That is distinct from GuardDuty writing
+   * the tag VALUE `ACCESS_DENIED`, which `scanVerdictFromTag` handles.
+   * Throttling is re-raised; any other S3 error fails the request.
+   */
+  async getScanVerdict(
+    key: string,
+    { waitMs }: { waitMs: number },
+  ): Promise<ScanResult> {
+    const deadline = Date.now() + waitMs;
+    for (;;) {
+      const result = await this.readScanTag(key);
+      const remaining = deadline - Date.now();
+      if (result.verdict !== "pending" || remaining <= 0) return result;
+      await sleep(Math.min(SCAN_POLL_INTERVAL_MS, remaining));
+    }
+  }
+
+  private async readScanTag(key: string): Promise<ScanResult> {
+    try {
+      const res = await this.s3.send(
+        new GetObjectTaggingCommand({ Bucket: this.bucket, Key: key }),
+      );
+      const tag = res.TagSet?.find((t) => t.Key === MALWARE_SCAN_TAG)?.Value;
+      return { verdict: scanVerdictFromTag(tag), tag };
+    } catch (err: unknown) {
+      const name = (err as { name?: string } | null)?.name;
+      if (isThrottle(name)) throw err;
+      // Never log the key: it embeds the citizen's file name.
+      if (name === "AccessDenied") {
+        writeBusinessLog("security_event", {
+          level: "error",
+          event: "upload.scan_tag_read_denied",
+        });
+        return { verdict: "unscannable", tag: undefined };
+      }
+      this.logger.error(`GetObjectTagging failed: ${name ?? "unknown error"}`);
+      throw AppError.internal("Could not check uploaded file");
+    }
   }
 
   /**
@@ -367,12 +505,34 @@ export class FilesService {
       locations.length > 0
         ? await this.verifyKeysExist(locations.map((l) => l.key))
         : new Set<string>();
-    if (missingKeys.size === 0 && keyless.length === 0) return {};
+    const present = locations.filter((l) => !missingKeys.has(l.key));
+    // The security control for #2939: every file must be tagged clean by
+    // GuardDuty, read from S3 now, never trusted from confirm-upload or form
+    // state. Deliberately not behind UPLOAD_MALWARE_SCAN_ENABLED.
+    const verdicts = await this.scanVerdictsFor(present.map((l) => l.key));
+    // One line per refused file (never the key), so a refusal shows up even
+    // where the upload-time verdict is switched off or was skipped by a
+    // caller posting keys directly.
+    for (const verdict of verdicts.values()) {
+      if (verdict === "clean") continue;
+      writeBusinessLog("security_event", {
+        level: "warn",
+        event: "submit.scan_refused",
+        verdict,
+      });
+    }
 
-    const errorLocs: Location[] = [
-      ...locations.filter((l) => missingKeys.has(l.key)).map((l) => l.loc),
-      ...keyless,
+    const errors: Array<{ loc: Location; message: string }> = [
+      ...locations
+        .filter((l) => missingKeys.has(l.key))
+        .map((l) => ({ loc: l.loc, message: "Uploaded file not found" })),
+      ...keyless.map((loc) => ({ loc, message: "Uploaded file not found" })),
+      ...present.flatMap((l) => {
+        const message = scanRefusalMessage(verdicts.get(l.key)!);
+        return message ? [{ loc: l.loc, message }] : [];
+      }),
     ];
+    if (errors.length === 0) return {};
 
     // Pad `{}` for clean instances based on the max index seen across all
     // locations, matching foldErrors' bundle shape for repeatable steps.
@@ -386,7 +546,7 @@ export class FilesService {
     }
 
     const bundle: ValidationErrorBundle = {};
-    const pushErr = (loc: Location) => {
+    const pushErr = (loc: Location, message: string) => {
       if (loc.isRepeatable) {
         const slot = (bundle[loc.stepId] ??= { instances: [] }) as {
           instances: Array<Record<string, string[]>>;
@@ -394,14 +554,44 @@ export class FilesService {
         const targetLen = (maxIndexByStep.get(loc.stepId) ?? 0) + 1;
         while (slot.instances.length < targetLen) slot.instances.push({});
         const inst = slot.instances[loc.instanceIndex]!;
-        (inst[loc.fieldId] ??= []).push("Uploaded file not found");
+        (inst[loc.fieldId] ??= []).push(message);
       } else {
         const slot = (bundle[loc.stepId] ??= {}) as Record<string, string[]>;
-        (slot[loc.fieldId] ??= []).push("Uploaded file not found");
+        (slot[loc.fieldId] ??= []).push(message);
       }
     };
-    for (const loc of errorLocs) pushErr(loc);
+    for (const { loc, message } of errors) pushErr(loc, message);
     return bundle;
+  }
+
+  /**
+   * The scan verdict for each key, read with the same concurrency cap as
+   * verifyKeysExist. A file uploaded seconds before submit may not be scanned
+   * yet, so keys still `pending` are re-read until ONE shared deadline for
+   * the whole submission (not one per key or per batch), keeping a GuardDuty
+   * outage to a ~4s delay however many files there are.
+   */
+  private async scanVerdictsFor(
+    keys: string[],
+  ): Promise<Map<string, ScanVerdict>> {
+    const verdicts = new Map<string, ScanVerdict>();
+    const deadline = Date.now() + SCAN_WAIT_MS;
+    let toRead = [...new Set(keys)];
+    for (;;) {
+      const CONCURRENCY = 10;
+      for (let i = 0; i < toRead.length; i += CONCURRENCY) {
+        await Promise.all(
+          toRead.slice(i, i + CONCURRENCY).map(async (key) => {
+            const { verdict } = await this.getScanVerdict(key, { waitMs: 0 });
+            verdicts.set(key, verdict);
+          }),
+        );
+      }
+      toRead = toRead.filter((key) => verdicts.get(key) === "pending");
+      const remaining = deadline - Date.now();
+      if (toRead.length === 0 || remaining <= 0) return verdicts;
+      await sleep(Math.min(SCAN_POLL_INTERVAL_MS, remaining));
+    }
   }
 
   async getSignedReadUrl(key: string, ttlSeconds?: number): Promise<string> {

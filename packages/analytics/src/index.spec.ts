@@ -1,13 +1,17 @@
 import {
   canonicalEvent,
+  configureJourney,
   deriveStartEventName,
   eventFormKey,
   eventName,
+  flushJourney,
+  journeyEvent,
   stepFromEvent,
   stepNumberToWord,
   trackEvent,
   trackPageview,
 } from "./index";
+import { resetJourneyForTests } from "./journey";
 
 describe("trackEvent", () => {
   afterEach(() => {
@@ -298,5 +302,87 @@ describe("canonicalEvent / stepFromEvent (#2682)", () => {
     expect(stepFromEvent("form-step-back")).toBeNull();
     expect(stepFromEvent("sview")).toBeNull();
     expect(stepFromEvent("form-start")).toBeNull();
+  });
+});
+
+describe("journey events from trackEvent / trackPageview", () => {
+  let beacon: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    beacon = vi.fn().mockReturnValue(true);
+    Object.defineProperty(navigator, "sendBeacon", {
+      value: beacon,
+      configurable: true,
+      writable: true,
+    });
+    configureJourney({ url: "https://api.example/journey", app: "forms" });
+  });
+
+  afterEach(() => {
+    resetJourneyForTests();
+    delete (window as { umami?: unknown }).umami;
+  });
+
+  const sent = () =>
+    beacon.mock.calls.flatMap((c) => JSON.parse(c[1] as string)) as Record<
+      string,
+      unknown
+    >[];
+
+  it("sends a journey event even when Umami is not loaded", () => {
+    trackEvent("search", { query: "jane@example.com", results: 3 });
+    trackPageview();
+    flushJourney();
+    expect(sent().map((e) => e.event)).toEqual(["search", "pageview"]);
+    // The search query is masked before it leaves, as for Umami.
+    expect((sent()[0].props as { query: string }).query).not.toContain("jane");
+  });
+
+  it("sends to both when Umami is loaded", () => {
+    const track = vi.fn();
+    window.umami = { track };
+    trackEvent("form-start", { form: "get-birth-certificate", category: "x" });
+    flushJourney();
+    expect(track).toHaveBeenCalledWith(
+      "get-birth-certificate:form-start",
+      expect.anything(),
+    );
+    expect(sent()[0]).toMatchObject({
+      event: "form-start",
+      props: { form: "get-birth-certificate" },
+    });
+  });
+
+  it("unpacks Umami's packed per-step names", () => {
+    trackEvent(eventName("get-birth-certificate", "form-step-three"), {
+      form: "get-birth-certificate",
+    });
+    const longId = "apply-for-a-very-long-named-licence-from-a-ministry-x";
+    trackEvent(eventName(longId, "form-step-three"));
+    flushJourney();
+    expect(sent()[0]).toMatchObject({
+      event: "form-step-three",
+      props: { form: "get-birth-certificate" },
+    });
+    expect(sent()[1]).toMatchObject({
+      event: "form-step-three",
+      props: { form: eventFormKey(longId) },
+    });
+  });
+});
+
+describe("journeyEvent", () => {
+  it("leaves plain names alone", () => {
+    expect(journeyEvent("search", { query: "x" })).toEqual([
+      "search",
+      { query: "x" },
+    ]);
+  });
+
+  it("maps compact codes back to canonical names", () => {
+    expect(journeyEvent("abc~123456:fconf")).toEqual([
+      "form-confirmation-view",
+      { form: "abc~123456" },
+    ]);
   });
 });

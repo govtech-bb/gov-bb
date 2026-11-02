@@ -5,6 +5,9 @@
       "path": "../../packages/database"
     },
     {
+      "path": "../../packages/form-builder"
+    },
+    {
       "path": "../../packages/form-types"
     },
     {
@@ -18,6 +21,12 @@
     },
     {
       "path": "../../packages/submission-summary"
+    },
+    {
+      "path": "../../packages/umami-analytics"
+    },
+    {
+      "path": "../../packages/analytics"
     }
   ],
   "include": ["src/**/*.ts"],

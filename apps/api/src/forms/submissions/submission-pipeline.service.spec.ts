@@ -13,6 +13,7 @@ import { FilesService } from "@/files/files.service";
 import type { ServiceContract } from "@govtech-bb/form-types";
 import type { FormDraftEntity } from "@/database/entities/form-draft.entity";
 import type { SubmitDto } from "./submissions.types";
+import { INFECTED_FILE_MESSAGE } from "@/files/malware-scan-status";
 
 const mockDraft = (overrides: Partial<FormDraftEntity> = {}): FormDraftEntity =>
   ({
@@ -96,6 +97,59 @@ describe("SubmissionPipelineService", () => {
 
   afterEach(async () => {
     if (module) await module.close();
+  });
+
+  // A located address's parish is read-only on the form; when the lookup that
+  // writes it failed, the coordinate supplies it rather than a 422 on a field
+  // the applicant cannot change.
+  describe("catchment-routed parish", () => {
+    const routedContract = () =>
+      mockContract({
+        steps: [
+          {
+            stepId: "event-details",
+            elements: [
+              primitiveText("event-parish", true),
+              primitiveText("event-address-coordinates"),
+            ],
+            behaviours: [],
+          },
+        ],
+        catchmentRouting: {
+          coordinatesField: "event-details.event-address-coordinates",
+          parishField: "event-details.event-parish",
+        },
+      } as unknown as Partial<ServiceContract>);
+    const routedDto = (parish: string, coordinate: string): SubmitDto => ({
+      ...baseDto(),
+      draftId: undefined,
+      values: {
+        "event-details": {
+          "event-parish": parish,
+          "event-address-coordinates": coordinate,
+        },
+      },
+    });
+
+    it("fills an empty parish from the coordinate before validating", async () => {
+      definitionsService.findByFormId.mockResolvedValue(routedContract());
+
+      const { normalizedValues } = await service.run(
+        routedDto("", "13.100000,-59.600000"),
+      );
+
+      expect(normalizedValues["event-details"]).toMatchObject({
+        "event-parish": "st-michael",
+      });
+    });
+
+    it("still requires the parish when there is no coordinate", async () => {
+      definitionsService.findByFormId.mockResolvedValue(routedContract());
+
+      await expect(service.run(routedDto("", ""))).rejects.toBeInstanceOf(
+        UnprocessableEntityException,
+      );
+    });
   });
 
   describe("resolveDraftAndContract", () => {
@@ -242,6 +296,22 @@ describe("SubmissionPipelineService", () => {
 
     it("does not throw when all active fields are valid", async () => {
       await expect(service.run(baseDto())).resolves.toBeDefined();
+    });
+
+    // #2939: FilesService refuses a file GuardDuty hasn't tagged clean; the
+    // pipeline must turn that into a 422 before anything is persisted.
+    it("rejects with 422 when a file fails the malware scan check", async () => {
+      const fileErrors = {
+        "personal-info": { proof: [INFECTED_FILE_MESSAGE] },
+      };
+      vi.mocked(
+        module.get(FilesService).verifySubmissionFiles,
+      ).mockResolvedValue(fileErrors);
+      const err = await service.run(baseDto()).catch((e: unknown) => e);
+      expect(err).toBeInstanceOf(UnprocessableEntityException);
+      expect(
+        JSON.stringify((err as UnprocessableEntityException).getResponse()),
+      ).toContain(INFECTED_FILE_MESSAGE);
     });
 
     it("throws UnprocessableEntityException with per-field errors when required fields empty", async () => {

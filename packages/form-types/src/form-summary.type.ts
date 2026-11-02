@@ -5,15 +5,18 @@ import type { RecipeVisibility } from "./service-contract.type";
  * consumer can't drift and the same name can't describe two incompatible shapes
  * (issue #1403 / ARCH-01). They describe two distinct list endpoints:
  *
- * - `PublicFormSummary` — apps/api's public `/form-definitions` index.
+ * - `PublicFormSummary` — apps/api's `/form-definitions` index (public, or
+ *   the authoring list with `visibility` for an authorized caller).
  * - `BuilderFormSummary` — the authoring `/builder/forms` index produced by
  *   form_builder_api and consumed by form_builder.
  */
 
 /**
- * One entry in apps/api's public `/form-definitions` index. Produced by
- * FormDefinitionsService and consumed by apps/forms (the list page) and, as a
- * `formId|title|version` subset, by form_builder_api's uniqueness backstop.
+ * One entry in apps/api's `/form-definitions` index. Produced by
+ * FormDefinitionsService and consumed by apps/forms (the list page), by
+ * Feature flagging's catalogue (with the user's GitHub token, so non-public
+ * forms are included — #2902) and, as a `formId|title|version` subset, by
+ * form_builder_api's uniqueness backstop.
  */
 export interface PublicFormSummary {
   formId: string;

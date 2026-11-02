@@ -24,7 +24,7 @@
  *  - `student-info` and `instructor-info` are repeatable (Add another? → No).
  *  - `previous-schooling.previously-in-school` = "no" keeps the conditional
  *    `previous-school-info` hidden; `following-national-curriculum` = "yes"
- *    keeps the conditional `curriculum-attachment` upload hidden.
+ *    hides the conditional `curriculum-attachment` upload ("no" reveals it).
  *  - `declaration` is the explicit final step; its single-option checkbox input
  *    is `declaration_declaration-confirmed`.
  */
@@ -100,8 +100,13 @@ test.describe("Homeschooling Application — Live Smoke", () => {
     // ─── Curriculum and Attachments ──────────────────────────────────────────
     step = expectStep(page, "curriculum-attachments", { exact: true });
     await uploadOne(page, step, "timetable-attachment", TEST_PNG);
-    // "Yes" keeps the conditional `curriculum-attachment` upload hidden.
+    // "No" reveals the conditional `curriculum-attachment` upload (optional, so
+    // nothing to upload); "Yes" hides it again.
+    const curriculum = page.locator(`[id="${step}_curriculum-attachment"]`);
+    await selectRadio(page, step, "following-national-curriculum", "no");
+    await expect(curriculum).toBeVisible({ timeout: STEP_TIMEOUT });
     await selectRadio(page, step, "following-national-curriculum", "yes");
+    await expect(curriculum).toBeHidden();
     await uploadOne(page, step, "tutor-qualifications-attachment", TEST_PNG_2);
     await advance(page, step);
 

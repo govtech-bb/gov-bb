@@ -16,7 +16,7 @@ Use this service to:
 
 **Offensive matter** is the legal name for sewage and certain animal or plant waste. This includes animal blood and organs, dead animals and rotting plant waste. It can also include used water from sinks, baths or grease traps.
 
-You can only move human waste between 10pm and 6am unless a Medical Officer of Health approves another time.
+You can only move human waste between 10 pm and 6 am unless a Medical Officer of Health approves another time.
 
 ## Who needs to apply
 
@@ -31,7 +31,6 @@ You can include more than one vehicle in the same application if the licences ar
 You will need:
 
 * the registration number for each vehicle
-* the current licence number for each vehicle you are renewing
 
 Read the [Health Services (Disposal of Offensive Matter) Regulations, 1969](https://oag.gov.bb/attachments/Health%20Services%20(Disposal%20of%20Offensive%20Matter)%20Regulations,%201969%20Cap44'J.PDF) for the full legal requirements.
 
@@ -53,7 +52,9 @@ You can apply online or use a paper form.
 
 2. **Apply using a paper form**
 
-   You can get a paper application from your Environmental Health Service office. Complete the form and return it to the office for the area where the business or operator is located.
+   You can get a paper application from your Environmental Health Service office.
+
+   Complete the form and return it to the office for the area where the business or operator is located.
 
 ## Cost
 
@@ -65,14 +66,14 @@ Environmental Health will review your application and inspect each vehicle.
 
 Each vehicle must:
 
-* be leakproof and in good working order
+* be completely sealed, leakproof and in good working order
 * have hoses in good condition
 * have fresh water for washing down
 * have a bucket, shovel and broom
 
 Environmental Health will tell you the result.
 
-## Contact
+## Get help
 
 If you need help, contact the Environmental Health Service office for your area.
 

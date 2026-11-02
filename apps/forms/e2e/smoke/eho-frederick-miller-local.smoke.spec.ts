@@ -30,6 +30,7 @@ import {
   expectStep,
   fillDate,
   fillField,
+  mockGeocoder,
   selectDropdown,
   selectRadio,
   submitAndConfirm,
@@ -119,6 +120,8 @@ function buildData() {
     wasteDisposal: "Bagged and collected daily",
   };
 }
+
+test.beforeEach(({ page }) => mockGeocoder(page));
 
 test("routes a Frederick Miller event to St. Philip and mints an MOH-EHO reference", async ({
   page,
@@ -249,7 +252,9 @@ test("routes a Frederick Miller event to St. Philip and mints an MOH-EHO referen
   // ─── Declaration ──────────────────────────────────────────────────────────
   expectStep(page, "declaration");
   await page
-    .getByRole("checkbox", { name: /I confirm that my information is correct/ })
+    .getByRole("checkbox", {
+      name: /I confirm that the information I have provided is true and correct/,
+    })
     .check();
   await page
     .getByRole("checkbox", {

@@ -389,7 +389,7 @@
           "overrides": {
             "fieldId": "operator-address-line-1",
             "label": "Address line 1",
-            "hint": "Start typing the address and choose it from the list.",
+            "hint": "Start typing the address of the property and choose it from the list.",
             "validations": {
               "required": {
                 "error": "Enter the address where the business or operator is located.",
@@ -462,7 +462,7 @@
           "ref": "components/content",
           "overrides": {
             "fieldId": "vehicle-inspection-intro",
-            "content": "You can include more than one vehicle if the licences are for the same person or business.\n\nEach vehicle will be inspected before a licence is issued. It must be leakproof, in good working order and have:\n\n- hoses in good condition\n- fresh water for washing down\n- a bucket, shovel and broom"
+            "content": "You can include more than one vehicle if the licences are for the same person or business.\n\nEach vehicle will be inspected before a licence is issued.\n\nEach vehicle must:\n\n- be completely sealed, leakproof and in good working order\n- have hoses in good condition\n- have fresh water for washing down\n- have a bucket, shovel and broom"
           }
         },
         {
@@ -504,29 +504,6 @@
               "width": "short"
             }
           }
-        },
-        {
-          "ref": "components/generic-text",
-          "overrides": {
-            "fieldId": "current-licence",
-            "label": "Current licence number",
-            "validations": {
-              "required": {
-                "value": false
-              }
-            },
-            "behaviours": [
-              {
-                "type": "fieldConditionalOn",
-                "targetFieldId": "application-type",
-                "operator": "equal",
-                "value": "renew"
-              }
-            ],
-            "ui": {
-              "width": "short"
-            }
-          }
         }
       ]
     },
@@ -539,7 +516,7 @@
     },
     {
       "stepId": "declaration",
-      "title": "Your agreement",
+      "title": "Confirm and submit your application",
       "behaviours": [],
       "elements": [
         {
@@ -549,7 +526,7 @@
             "label": "Agreement",
             "validations": {
               "required": {
-                "error": "Confirm that the information you have provided is true and correct.",
+                "error": "You must confirm the declaration to continue.",
                 "value": true
               }
             },
@@ -615,7 +592,7 @@
     }
   ],
   "createdAt": "2026-08-24T19:13:52.779Z",
-  "updatedAt": "2026-10-13T01:40:25.000Z",
+  "updatedAt": "2026-10-21T16:52:59.000Z",
   "catchmentRouting": {
     "coordinatesField": "operator-address.operator-address-coordinates",
     "parishField": "operator-address.operator-parish"

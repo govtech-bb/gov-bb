@@ -298,6 +298,12 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
     visibility: "preview",
   },
   {
+    slug: "coat-of-arms",
+    title: "Coat of arms of Barbados",
+    category: "about-barbados",
+    visibility: "preview",
+  },
+  {
     slug: "crop-over-permits",
     title: "Find the permits you need for a Crop Over event",
     category: "business-trade",
@@ -309,6 +315,24 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
     category: "education",
     formId: "bssee-form-b-defer-examination",
     visibility: "draft",
+  },
+  {
+    slug: "e2e-j2-publish-check",
+    title: "E2E publish check (test service)",
+    formId: "e2e-j2-publish-check",
+    visibility: "draft",
+  },
+  {
+    slug: "early-history",
+    title: "Barbados' early history",
+    category: "about-barbados",
+    visibility: "preview",
+  },
+  {
+    slug: "freedom-and-independence",
+    title: "Barbados' struggle for freedom and independence",
+    category: "about-barbados",
+    visibility: "preview",
   },
   {
     slug: "get-a-document-notarised",
@@ -407,9 +431,33 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
     visibility: "preview",
   },
   {
+    slug: "national-anthem",
+    title: "National anthem of Barbados",
+    category: "about-barbados",
+    visibility: "preview",
+  },
+  {
+    slug: "national-flag",
+    title: "The national flag of Barbados",
+    category: "about-barbados",
+    visibility: "preview",
+  },
+  {
+    slug: "national-flower",
+    title: "National flower of Barbados",
+    category: "about-barbados",
+    visibility: "preview",
+  },
+  {
     slug: "national-insurance-for-self-employed-workers",
     title: "Learn how to pay National Insurance when you work for yourself",
     category: "money-financial-support",
+    visibility: "preview",
+  },
+  {
+    slug: "national-pledge",
+    title: "National pledge of Barbados",
+    category: "about-barbados",
     visibility: "preview",
   },
   {

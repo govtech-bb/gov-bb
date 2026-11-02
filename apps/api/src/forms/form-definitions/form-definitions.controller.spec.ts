@@ -1,4 +1,10 @@
 import type { Mock } from "vitest";
+
+const { includeNonPublicFromAuth } = vi.hoisted(() => ({
+  includeNonPublicFromAuth: vi.fn(),
+}));
+vi.mock("@/common/include-non-public", () => ({ includeNonPublicFromAuth }));
+
 import { FormDefinitionsController } from "./form-definitions.controller";
 
 const mockService = {
@@ -31,6 +37,8 @@ describe("FormDefinitionsController", () => {
     mockOverridesService.findAllFormIds.mockResolvedValue([]);
     // Default: feature disabled (empty token) so existing tests exercise non-preview path.
     mockConfigService.get.mockReturnValue("");
+    // Default: no authorized GitHub caller.
+    includeNonPublicFromAuth.mockResolvedValue(false);
     res = { setHeader: vi.fn(), cookie: vi.fn() };
     controller = new FormDefinitionsController(
       mockService as never,
@@ -151,6 +159,53 @@ describe("FormDefinitionsController", () => {
 
         expect(mockService.findAll).toHaveBeenCalledWith(false);
         expect(res.setHeader).not.toHaveBeenCalled();
+      });
+    });
+
+    describe("forwarded GitHub token (feature flagging, #2902)", () => {
+      it("includes non-public forms and sets Cache-Control: no-store for an authorized caller", async () => {
+        includeNonPublicFromAuth.mockResolvedValue(true);
+        mockService.findAll.mockResolvedValue([
+          {
+            formId: "draft-form",
+            title: "Draft",
+            version: "1.0.0",
+            visibility: "draft",
+          },
+        ]);
+
+        const result = await controller.getAll(
+          undefined,
+          res as never,
+          "Bearer gh_token",
+        );
+
+        expect(includeNonPublicFromAuth).toHaveBeenCalledWith(
+          "Bearer gh_token",
+        );
+        expect(mockService.findAll).toHaveBeenCalledWith(true);
+        expect(res.setHeader).toHaveBeenCalledWith("Cache-Control", "no-store");
+        expect(result.data.map((f) => f.formId)).toEqual(["draft-form"]);
+      });
+
+      it("returns the public-only list and sets no Cache-Control for an unauthorized token", async () => {
+        includeNonPublicFromAuth.mockResolvedValue(false);
+        mockService.findAll.mockResolvedValue([]);
+
+        await controller.getAll(undefined, res as never, "Bearer not-real");
+
+        expect(mockService.findAll).toHaveBeenCalledWith(false);
+        expect(res.setHeader).not.toHaveBeenCalled();
+      });
+
+      it("skips the GitHub check when a valid preview token already grants the authoring list", async () => {
+        mockConfigService.get.mockReturnValue("s3cret");
+        mockService.findAll.mockResolvedValue([]);
+
+        await controller.getAll("s3cret", res as never, "Bearer gh_token");
+
+        expect(includeNonPublicFromAuth).not.toHaveBeenCalled();
+        expect(mockService.findAll).toHaveBeenCalledWith(true);
       });
     });
   });

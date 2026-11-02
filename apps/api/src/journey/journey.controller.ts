@@ -17,10 +17,11 @@ export class JourneyController {
 
   @Post()
   @HttpCode(204)
-  // No app-level throttle. apps/api does not set Express `trust proxy`, so
-  // behind the load balancer ThrottlerGuard keys on the balancer hop, not the
-  // citizen: every citizen on a task would share one bucket, and a busy hour
-  // would refuse real events and undercount (#3022 review). Abuse is bounded by
+  // No app-level throttle. It was skipped while apps/api did not set Express
+  // `trust proxy`, when ThrottlerGuard keyed on the balancer hop and every
+  // citizen on a task shared one bucket, so a busy hour would refuse real
+  // events and undercount (#3022 review). main.ts now trusts the ALB hop, so a
+  // per-citizen limit here is possible; adding one is a separate decision. Abuse is bounded by
   // the 64 KB text / 1 MB JSON body limits (main.ts) and 25 events per request
   // (schema).
   // A per-client-IP limit belongs in the WAF, which sees the real address; no

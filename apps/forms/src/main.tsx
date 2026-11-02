@@ -3,7 +3,7 @@ import ReactDOM from "react-dom/client";
 import { RouterProvider, createRouter } from "@tanstack/react-router";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "./lib/query-client";
-import { trackPageview } from "./lib/analytics";
+import { configureJourney, trackPageview } from "./lib/analytics";
 import "./styles/govtech.css";
 
 import FormError from "./components/form-error";
@@ -48,6 +48,9 @@ const router = createRouter({
   defaultErrorComponent: FormError,
 });
 
+// First-party journey events (alongside Umami). Off unless VITE_JOURNEY_URL is
+// set for the environment.
+configureJourney({ url: import.meta.env.VITE_JOURNEY_URL, app: "forms" });
 router.subscribe("onResolved", trackPageview);
 
 // Register the router instance for type safety
