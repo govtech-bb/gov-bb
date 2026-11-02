@@ -226,6 +226,34 @@ export async function runToExit(
     },
   );
 
+  return exitOf(child);
+}
+
+/**
+ * Runs a `scripts/` file from source with tsx (they are not compiled into
+ * `dist`) to completion and hands back what it said and how it left.
+ */
+export async function runScript(
+  script: string,
+  args: string[],
+  env: Record<string, string>,
+): Promise<{ code: number | null; output: string }> {
+  const child = spawn(
+    join(root, "node_modules", ".bin", "tsx"),
+    [script, ...args],
+    {
+      cwd: root,
+      env: { ...process.env, ...env },
+      stdio: ["ignore", "pipe", "pipe"],
+    },
+  );
+  return exitOf(child, 50_000);
+}
+
+async function exitOf(
+  child: ChildProcess,
+  timeout = 30_000,
+): Promise<{ code: number | null; output: string }> {
   let output = "";
   child.stdout?.on("data", (chunk) => (output += String(chunk)));
   child.stderr?.on("data", (chunk) => (output += String(chunk)));
@@ -234,7 +262,7 @@ export async function runToExit(
     const timer = setTimeout(() => {
       child.kill("SIGKILL");
       resolve(null);
-    }, 30_000);
+    }, timeout);
     child.once("exit", (exitCode) => {
       clearTimeout(timer);
       resolve(exitCode);
