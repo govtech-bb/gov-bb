@@ -443,7 +443,8 @@ Run `--dry-run`: it refuses an occupied database and shows the actor histogram o
 
 ## History protection
 
-`change_events_no_mutate` rejects updates and deletes. Migration `017` adds
+`change_events_no_mutate` rejects ordinary updates and all deletes. The
+controlled redaction exception is described below. Migration `017` adds
 `change_events_no_truncate`, a statement-level trigger that also rejects emptying
 the table with `TRUNCATE`, even when it has no rows. Ordinary inserts still work.
 
@@ -463,6 +464,65 @@ Use `entity_kind` and `action` to identify the source table, then the format num
 to interpret its row. Review actions still hold revision rows, not page rows.
 A migration that changes an audited table's row shape must bump the default.
 Do not backfill old events or assume a null label means one particular format.
+
+## Removing sensitive history snapshots
+
+Migration `019` allows one exception to the append-only history rule. An operator
+can replace an event's entire snapshot with
+`{"redacted":true,"reason":"<ticket>","by":"<operator>"}`. Its ID, entity, version
+number, action, author and timestamp stay unchanged. A removal notice cannot be
+rewritten, and events still cannot be deleted.
+
+Redaction also preserves `snapshot_version`. It describes the removed snapshot,
+not the removal notice. Readers must check `snapshot.redacted === true` before
+using `snapshot_version` to choose a parser.
+
+This is an operator command, not an API endpoint. It uses the API's configuration
+and verified database TLS settings, but does not run migrations. Use authorized
+database credentials. The `app.redacting` transaction setting is an explicit
+switch, not an administrator permission check; `--by` records the name the
+operator supplies. Database-role separation is not part of this change.
+
+Before running it:
+
+1. Remove the sensitive text from the source page or record so another save
+   cannot copy it into history again.
+2. Check retained page revisions, other history versions, search copies, caches,
+   logs and backups. This command changes none of them and is not a complete
+   data-erasure procedure.
+3. Identify each affected event by its ID. To list a page's event IDs without
+   printing its content, query `id, version_no, action, actor, occurred_at` from
+   `change_events`, filtered by `entity_kind = 'content_page'` and its
+   `entity_id`.
+4. Use a ticket reference for the reason. Do not repeat the sensitive text there.
+
+From `apps/api_v2`, inspect one event first:
+
+```sh
+pnpm redact-change-events --event-id "<event UUID>" --reason "incident-42" --by "<operator>"
+```
+
+Check the printed database and event metadata, then repeat with `--apply`:
+
+```sh
+pnpm redact-change-events --event-id "<event UUID>" --reason "incident-42" --by "<operator>" --apply
+```
+
+In the deployed image, use `node dist/src/redact-change-events.js` with the same
+arguments. Do not add a `--` separator to the pnpm command. Without `--apply`,
+nothing is written. A missing or already-redacted event exits non-zero. The
+command never prints snapshot content and commits the replacement in one
+transaction.
+
+Repeat for every affected event. Then refresh the editor's history and check that
+the content is gone. History keeps the original author, action and date, removes
+a redacted rejection's comment, and does not compare fields across a missing
+snapshot. The history count and timestamps do not change, so the version poll is
+not a redaction notification.
+
+Self-approval checks still count the author of a redacted content event. If the
+last public snapshot was removed, the check may include earlier contributors
+too. Another approver who did not contribute must publish the page.
 
 ## Operations and tests
 

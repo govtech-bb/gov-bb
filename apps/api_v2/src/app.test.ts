@@ -878,6 +878,36 @@ describe("PUT /pages/:id", () => {
     ]);
   });
 
+  it("keeps redacted history metadata without comparing across the missing snapshot", async () => {
+    const page = await seedPage({ visibility: "draft" });
+    for (const title of ["Private fixture", "Clean title"])
+      await db.execute(
+        sql`update content_pages set title = ${title} where id = ${page.id}`,
+      );
+    await db.execute(
+      sql`update content_pages set description = 'Details' where id = ${page.id}`,
+    );
+    const before = (await inject({ url: `/pages/${page.id}/history` })).json();
+
+    await db.transaction(async (tx) => {
+      await tx.execute(sql`select set_config('app.redacting', 'on', true)`);
+      await tx.execute(sql`update change_events
+        set snapshot = '{"redacted":true,"reason":"incident-42","by":"operator-test"}'
+        where entity_id = ${page.id} and version_no = 2`);
+    });
+
+    const response = await inject({ url: `/pages/${page.id}/history` });
+    expect(response.statusCode).toBe(200);
+    expect(response.json().entries).toEqual(
+      before.entries.map(
+        (entry: { version_no: number; changed: string[] }) => ({
+          ...entry,
+          changed: entry.version_no === 4 ? ["description"] : [],
+        }),
+      ),
+    );
+  });
+
   it("404s the history of a page that has none", async () => {
     const response = await inject({
       url: "/pages/22222222-2222-4222-8222-222222222222/history",
