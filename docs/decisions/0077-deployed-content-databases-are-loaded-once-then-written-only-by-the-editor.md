@@ -72,8 +72,8 @@ current. A re-import before any editor has written is the forced replace of
 point 2; after one has, it is fix-forward. "Has an editor written" is the
 runbook's three-part check (a non-`system` history actor, a pending revision,
 or on sandbox a category edit from before migration `007`), not the actor
-histogram alone. The pending-revision part needs the revision count #3188
-adds to the import; until then, no forced re-import runs.
+histogram alone. The pending-revision part reads the `revisions` count the
+import reports (#3188).
 
 Two corrections to the decision text, stated here rather than edited in
 place:

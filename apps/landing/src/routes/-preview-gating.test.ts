@@ -5,7 +5,6 @@ import type * as CategoryApiModule from '../lib/api-v2-categories'
 // Type-only, so it erases at runtime and the route still loads lazily, after
 // the mocks below are in place.
 import type * as ContentRouteModule from './$'
-import type { ViewLevel } from '../lib/frontmatter'
 import { processMarkdown } from '../utils/markdown/processor'
 
 // Mock the registry to drive the gate's throw paths deterministically. Only the

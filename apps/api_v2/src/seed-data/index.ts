@@ -33,6 +33,11 @@ const SeedPage = z.object({
   description: z.string().nullable(),
   visibility: Visibility,
   form_id: z.string().nullable(),
+  /**
+   * Landing's registry slug, the overlay key for a page without a form;
+   * not stored.
+   */
+  content_slug: z.string(),
   /** The frontmatter's `publish_date`, when it has one. */
   published_at: z.string().nullable(),
   body_markdown: z.string(),
