@@ -24,6 +24,8 @@ const FEATURE_URLS = [
   // StormReady is now fully content-tree — its landing AND its checklist (a
   // co-located `.tsx` content page) are served by the catch-all route, so
   // neither appears in the generated route tree.
+  '/government/organisations',
+  '/government/organisations/$slug',
 ]
 
 describe('co-located feature routes', () => {
