@@ -130,7 +130,11 @@ async function read(
         signal: AbortSignal.timeout(15_000),
       },
     );
-    const body = response.status === 200 ? await response.json() : undefined;
+    // A 200 that isn't JSON stays a 200; bodyProblem names it.
+    const body =
+      response.status === 200
+        ? await response.json().catch(() => undefined)
+        : undefined;
     return { status: response.status, body };
   } catch (error) {
     return { status: `ERR ${(error as Error).message}` };
@@ -139,6 +143,7 @@ async function read(
 
 /** What is wrong with a 200 body, or null. */
 function bodyProblem(body: unknown, level: Visibility): string | null {
+  if (typeof body !== "object" || body === null) return "body not JSON";
   const page = body as {
     frontmatter?: { title?: unknown };
     body_markdown?: unknown;

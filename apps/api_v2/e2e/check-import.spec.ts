@@ -62,13 +62,30 @@ describe.skipIf(!HAS_DATABASE)("check-import", () => {
   }, 60_000);
 
   it("fails a disabled public page and, by the ancestor rule, its child", async () => {
-    // The child keys on its own slug, so only the ancestor rule lowers it.
-    const parent = "/money-financial-support/calculate-severance-pay";
-    rows = [{ slug: "calculate-severance-pay", status: "disabled" }];
+    // A public parent and child with different keys, so only the ancestor
+    // rule can lower the child.
+    const key = (p: (typeof ESTATE.pages)[number]) =>
+      p.form_id ?? p.content_slug;
+    const byUrl = new Map(ESTATE.pages.map((p) => [p.url, p]));
+    const child = ESTATE.pages.find((p) => {
+      const parent = p.parent ? byUrl.get(p.parent) : undefined;
+      return (
+        p.visibility === "public" &&
+        parent?.visibility === "public" &&
+        !parent.parent &&
+        key(parent) !== key(p)
+      );
+    });
+    expect(
+      child,
+      "the snapshot has no such public parent and child",
+    ).toBeDefined();
+    const parent = byUrl.get(child!.parent!)!;
+    rows = [{ slug: key(parent), status: "disabled" }];
     const { code, output } = await check(SECRET);
     expect(code, output).toBe(1);
-    expect(output).toContain(`FAIL ${parent} expected preview`);
-    expect(output).toContain(`FAIL ${parent}/start expected preview`);
+    expect(output).toContain(`FAIL ${parent.url} expected preview`);
+    expect(output).toContain(`FAIL ${child!.url} expected preview`);
   }, 60_000);
 
   it("stops on a refused token, or none at all", async () => {
