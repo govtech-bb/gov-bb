@@ -183,6 +183,7 @@ erDiagram
     jsonb snapshot
     text actor FK
     timestamptz(3) occurred_at
+    int4 snapshot_version "nullable"
   }
   collection_records {
     uuid id PK
@@ -450,6 +451,18 @@ These guards do not stop a table owner from disabling triggers. The API currentl
 uses the same database credentials for migrations and requests. Separate owner
 and runtime roles, credentials and migration startup are follow-up work tracked
 from #2968; the runtime role should only read and insert history rows.
+
+## Snapshot formats
+
+Migration `018` adds `change_events.snapshot_version`. Existing events stay null,
+which means their format is unknown. New events default to `1`, covering both
+`record_change` and `record_review` without rewriting either trigger.
+
+Version `1` identifies the table-row formats in use when this migration lands.
+Use `entity_kind` and `action` to identify the source table, then the format number
+to interpret its row. Review actions still hold revision rows, not page rows.
+A migration that changes an audited table's row shape must bump the default.
+Do not backfill old events or assume a null label means one particular format.
 
 ## Operations and tests
 
