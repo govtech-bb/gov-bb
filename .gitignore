@@ -164,3 +164,4 @@ cicd-policy*.json
 # Playwright test output
 **/playwright-report/
 apps/forms/test-results/
+apps/landing/test-results/
