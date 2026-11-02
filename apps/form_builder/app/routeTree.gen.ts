@@ -9,28 +9,23 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as ServicesRouteImport } from './routes/services'
-import { Route as ContentRouteImport } from './routes/content'
-import { Route as BuilderRouteImport } from './routes/builder'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as ContentIndexRouteImport } from './routes/content/index'
-import { Route as BuilderIndexRouteImport } from './routes/builder/index'
-import { Route as ServicesNewRouteImport } from './routes/services_.new'
-import { Route as DevUiRouteImport } from './routes/dev.ui'
-import { Route as DevAssistantRouteImport } from './routes/dev.assistant'
-import { Route as ContentEditRouteImport } from './routes/content/edit'
-import { Route as AuthGithubRouteImport } from './routes/auth/github'
+import { Route as BuilderRouteImport } from './routes/builder'
+import { Route as ContentRouteImport } from './routes/content'
+import { Route as ServicesRouteImport } from './routes/services'
 import { Route as AuthDeniedRouteImport } from './routes/auth/denied'
+import { Route as AuthGithubRouteImport } from './routes/auth/github'
+import { Route as BuilderIndexRouteImport } from './routes/builder/index'
+import { Route as ContentIndexRouteImport } from './routes/content/index'
+import { Route as ContentEditRouteImport } from './routes/content/edit'
+import { Route as DevAssistantRouteImport } from './routes/dev.assistant'
+import { Route as DevUiRouteImport } from './routes/dev.ui'
+import { Route as ServicesNewRouteImport } from './routes/services_.new'
 import { Route as AuthGithubCallbackRouteImport } from './routes/auth/github_.callback'
 
-const ServicesRoute = ServicesRouteImport.update({
-  id: '/services',
-  path: '/services',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ContentRoute = ContentRouteImport.update({
-  id: '/content',
-  path: '/content',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const BuilderRoute = BuilderRouteImport.update({
@@ -38,24 +33,44 @@ const BuilderRoute = BuilderRouteImport.update({
   path: '/builder',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const ContentRoute = ContentRouteImport.update({
+  id: '/content',
+  path: '/content',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ContentIndexRoute = ContentIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => ContentRoute,
+const ServicesRoute = ServicesRouteImport.update({
+  id: '/services',
+  path: '/services',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthDeniedRoute = AuthDeniedRouteImport.update({
+  id: '/auth/denied',
+  path: '/auth/denied',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthGithubRoute = AuthGithubRouteImport.update({
+  id: '/auth/github',
+  path: '/auth/github',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const BuilderIndexRoute = BuilderIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => BuilderRoute,
 } as any)
-const ServicesNewRoute = ServicesNewRouteImport.update({
-  id: '/services_/new',
-  path: '/services/new',
+const ContentIndexRoute = ContentIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => ContentRoute,
+} as any)
+const ContentEditRoute = ContentEditRouteImport.update({
+  id: '/edit',
+  path: '/edit',
+  getParentRoute: () => ContentRoute,
+} as any)
+const DevAssistantRoute = DevAssistantRouteImport.update({
+  id: '/dev/assistant',
+  path: '/dev/assistant',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DevUiRoute = DevUiRouteImport.update({
@@ -63,24 +78,9 @@ const DevUiRoute = DevUiRouteImport.update({
   path: '/dev/ui',
   getParentRoute: () => rootRouteImport,
 } as any)
-const DevAssistantRoute = DevAssistantRouteImport.update({
-  id: '/dev/assistant',
-  path: '/dev/assistant',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ContentEditRoute = ContentEditRouteImport.update({
-  id: '/edit',
-  path: '/edit',
-  getParentRoute: () => ContentRoute,
-} as any)
-const AuthGithubRoute = AuthGithubRouteImport.update({
-  id: '/auth/github',
-  path: '/auth/github',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AuthDeniedRoute = AuthDeniedRouteImport.update({
-  id: '/auth/denied',
-  path: '/auth/denied',
+const ServicesNewRoute = ServicesNewRouteImport.update({
+  id: '/services_/new',
+  path: '/services/new',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthGithubCallbackRoute = AuthGithubCallbackRouteImport.update({
@@ -194,18 +194,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/services': {
-      id: '/services'
-      path: '/services'
-      fullPath: '/services'
-      preLoaderRoute: typeof ServicesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/content': {
-      id: '/content'
-      path: '/content'
-      fullPath: '/content'
-      preLoaderRoute: typeof ContentRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/builder': {
@@ -215,19 +208,33 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BuilderRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/content': {
+      id: '/content'
+      path: '/content'
+      fullPath: '/content'
+      preLoaderRoute: typeof ContentRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/content/': {
-      id: '/content/'
-      path: '/'
-      fullPath: '/content/'
-      preLoaderRoute: typeof ContentIndexRouteImport
-      parentRoute: typeof ContentRoute
+    '/services': {
+      id: '/services'
+      path: '/services'
+      fullPath: '/services'
+      preLoaderRoute: typeof ServicesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth/denied': {
+      id: '/auth/denied'
+      path: '/auth/denied'
+      fullPath: '/auth/denied'
+      preLoaderRoute: typeof AuthDeniedRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth/github': {
+      id: '/auth/github'
+      path: '/auth/github'
+      fullPath: '/auth/github'
+      preLoaderRoute: typeof AuthGithubRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/builder/': {
       id: '/builder/'
@@ -236,11 +243,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BuilderIndexRouteImport
       parentRoute: typeof BuilderRoute
     }
-    '/services_/new': {
-      id: '/services_/new'
-      path: '/services/new'
-      fullPath: '/services/new'
-      preLoaderRoute: typeof ServicesNewRouteImport
+    '/content/': {
+      id: '/content/'
+      path: '/'
+      fullPath: '/content/'
+      preLoaderRoute: typeof ContentIndexRouteImport
+      parentRoute: typeof ContentRoute
+    }
+    '/content/edit': {
+      id: '/content/edit'
+      path: '/edit'
+      fullPath: '/content/edit'
+      preLoaderRoute: typeof ContentEditRouteImport
+      parentRoute: typeof ContentRoute
+    }
+    '/dev/assistant': {
+      id: '/dev/assistant'
+      path: '/dev/assistant'
+      fullPath: '/dev/assistant'
+      preLoaderRoute: typeof DevAssistantRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/dev/ui': {
@@ -250,32 +271,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DevUiRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/dev/assistant': {
-      id: '/dev/assistant'
-      path: '/dev/assistant'
-      fullPath: '/dev/assistant'
-      preLoaderRoute: typeof DevAssistantRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/content/edit': {
-      id: '/content/edit'
-      path: '/edit'
-      fullPath: '/content/edit'
-      preLoaderRoute: typeof ContentEditRouteImport
-      parentRoute: typeof ContentRoute
-    }
-    '/auth/github': {
-      id: '/auth/github'
-      path: '/auth/github'
-      fullPath: '/auth/github'
-      preLoaderRoute: typeof AuthGithubRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/auth/denied': {
-      id: '/auth/denied'
-      path: '/auth/denied'
-      fullPath: '/auth/denied'
-      preLoaderRoute: typeof AuthDeniedRouteImport
+    '/services_/new': {
+      id: '/services_/new'
+      path: '/services/new'
+      fullPath: '/services/new'
+      preLoaderRoute: typeof ServicesNewRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/auth/github_/callback': {
