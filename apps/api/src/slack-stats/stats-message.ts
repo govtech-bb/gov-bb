@@ -84,55 +84,56 @@ export function biggestFinishDrops(
 
 // --- formatting ------------------------------------------------------------
 
+/** A Slack message: `text` is the notification fallback, `blocks` the layout. */
+export interface SlackMessage {
+  text: string;
+  blocks: unknown[];
+}
+
+type Better = "up" | "down";
+
 const num = (n: number) => n.toLocaleString("en-US");
 const ratio = (part: number, whole: number) => (whole ? part / whole : null);
 const pct = (r: number | null) =>
   r === null ? "–" : `${Math.round(r * 100)}%`;
 
+/** "45s", "6m 40s", "3h 34m". */
 export function duration(seconds: number | null): string {
   if (seconds === null) return "–";
   const s = Math.round(Math.abs(seconds));
-  const m = Math.floor(s / 60);
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  if (h) return `${h}h ${String(m).padStart(2, "0")}m`;
   return m ? `${m}m ${String(s % 60).padStart(2, "0")}s` : `${s}s`;
 }
 
-const arrow = (d: number) => (d > 0 ? "▲" : "▼");
+/** 🟢 when the change goes the `better` way, 🔴 when it doesn't. */
+function trend(delta: number, better: Better, label: string): string {
+  const good = better === "up" ? delta > 0 : delta < 0;
+  return `${good ? "🟢" : "🔴"} ${delta > 0 ? "▲" : "▼"} ${label}`;
+}
 
 export function countChange(current: number, previous: number): string {
-  if (current === previous) return "no change";
-  if (!previous) return "new";
-  return `${arrow(current - previous)} ${Math.round((Math.abs(current - previous) / previous) * 100)}%`;
+  if (current === previous) return "⚪ no change";
+  if (!previous) return "🆕 new";
+  const change = Math.round((Math.abs(current - previous) / previous) * 100);
+  return trend(current - previous, "up", `${change}%`);
 }
 
 export function rateChange(current: number | null, previous: number | null) {
   if (current === null || previous === null) return "";
   const pts = Math.round((current - previous) * 100);
-  return pts ? `${arrow(pts)} ${Math.abs(pts)} pts` : "no change";
+  return pts ? trend(pts, "up", `${Math.abs(pts)} pts`) : "⚪ no change";
 }
 
+/** Shorter is better, so a longer time is 🔴. */
 export function durationChange(
   current: number | null,
   previous: number | null,
 ) {
   if (current === null || previous === null) return "";
   const d = Math.round(current - previous);
-  return d ? `${arrow(d)} ${duration(d)}` : "no change";
-}
-
-/** Rows of `[label, value, change]` as an aligned monospace block. */
-function table(rows: string[][]): string {
-  const widths = rows[0].map((_, i) =>
-    Math.max(...rows.map((r) => r[i].length)),
-  );
-  const lines = rows.map((r) =>
-    r
-      .map((cell, i) =>
-        i === 0 ? cell.padEnd(widths[i]) : cell.padStart(widths[i]),
-      )
-      .join("   ")
-      .trimEnd(),
-  );
-  return "```\n" + lines.join("\n") + "\n```";
+  return d ? trend(d, "down", duration(d)) : "⚪ no change";
 }
 
 const dayFmt = new Intl.DateTimeFormat("en-GB", {
@@ -146,29 +147,93 @@ const monthFmt = new Intl.DateTimeFormat("en-GB", {
   year: "numeric",
 });
 
-/** e.g. "*Last week* (26 Oct – 1 Nov) compared with 19 Oct – 25 Oct". */
+/** What a period is called, and what it is compared with. */
+export interface PeriodHeading {
+  /** e.g. "Last week" */
+  title: string;
+  /** e.g. "26 Oct – 1 Nov, compared with 19 Oct – 25 Oct" */
+  detail: string;
+}
+
+const HALF_DAY_MS = 12 * 60 * 60 * 1000;
+
 export function periodHeading(
   period: StatsPeriod,
   { current, previous }: ComparisonPeriods,
-): string {
+): PeriodHeading {
+  // Format a point well inside the first and last day, so the label never
+  // depends on which side of midnight a range boundary falls.
   const days = (r: { startAt: number; endAt: number }) =>
-    `${dayFmt.format(r.startAt)} – ${dayFmt.format(r.endAt)}`;
+    `${dayFmt.format(r.startAt + HALF_DAY_MS)} – ${dayFmt.format(r.endAt - HALF_DAY_MS)}`;
   switch (period) {
     case "today":
-      return "*Today so far* compared with yesterday";
+      return { title: "Today so far", detail: "Compared with yesterday" };
     case "week":
-      return `*Last week* (${days(current)}) compared with ${days(previous)}`;
+      return {
+        title: "Last week",
+        detail: `${days(current)}, compared with ${days(previous)}`,
+      };
     case "month":
-      return `*${monthFmt.format(current.startAt)}* compared with ${monthFmt.format(previous.startAt)}`;
+      return {
+        title: monthFmt.format(current.startAt + HALF_DAY_MS),
+        detail: `Compared with ${monthFmt.format(previous.startAt + HALF_DAY_MS)}`,
+      };
   }
 }
 
+// Block Kit building blocks.
+const header = (text: string) => ({
+  type: "header",
+  text: { type: "plain_text", text, emoji: true },
+});
+const context = (text: string) => ({
+  type: "context",
+  elements: [{ type: "mrkdwn", text }],
+});
+const section = (text: string) => ({
+  type: "section",
+  text: { type: "mrkdwn", text },
+});
+const divider = { type: "divider" };
+
+/** A two-column grid of metric cards: label, value and change. */
+function metrics(rows: [string, string, string][]) {
+  return {
+    type: "section",
+    fields: rows.map(([label, value, change]) => ({
+      type: "mrkdwn",
+      text: `*${label}*\n*${value}*   ${change}`.trimEnd(),
+    })),
+  };
+}
+
+const BAR_WIDTH = 12;
+const STEP_TITLE_MAX = 34;
+
+/** Step views as a monospace bar chart, scaled to the busiest step. */
+export function stepBars(steps: { title: string; count: number }[]): string {
+  const max = Math.max(1, ...steps.map((s) => s.count));
+  const titles = steps.map((s) =>
+    s.title.length > STEP_TITLE_MAX
+      ? s.title.slice(0, STEP_TITLE_MAX - 1) + "…"
+      : s.title,
+  );
+  const width = Math.max(...titles.map((t) => t.length));
+  const countWidth = num(max).length;
+  const lines = steps.map((s, i) => {
+    const filled = Math.round((s.count / max) * BAR_WIDTH);
+    const bar = "█".repeat(filled) + "░".repeat(BAR_WIDTH - filled);
+    return `${titles[i].padEnd(width)}  ${bar}  ${num(s.count).padStart(countWidth)}`;
+  });
+  return "```\n" + lines.join("\n") + "\n```";
+}
+
 export function formatSiteStats(
-  heading: string,
+  heading: PeriodHeading,
   command: string,
   period: StatsPeriod,
   { current: c, previous: p, biggestDrops }: SiteStats,
-): string {
+): SlackMessage {
   const visitToStart = [
     ratio(c.starts, c.visitors),
     ratio(p.starts, p.visitors),
@@ -177,106 +242,118 @@ export function formatSiteStats(
     ratio(c.completed, c.starts),
     ratio(p.completed, p.starts),
   ];
-  const parts = [
-    heading,
-    table([
-      ["Site visitors", num(c.visitors), countChange(c.visitors, p.visitors)],
+  const blocks: unknown[] = [
+    header(`📊 Site and forms · ${heading.title}`),
+    context(heading.detail),
+    metrics([
       [
-        "Visit → start form",
+        "👥 Site visitors",
+        num(c.visitors),
+        countChange(c.visitors, p.visitors),
+      ],
+      [
+        "🚪 Visit → start form",
         pct(visitToStart[0]),
         rateChange(visitToStart[0], visitToStart[1]),
       ],
       [
-        "Start → finish form",
+        "🏁 Start → finish form",
         pct(startToFinish[0]),
         rateChange(startToFinish[0], startToFinish[1]),
       ],
       [
-        "Forms finished",
+        "📨 Forms finished",
         num(c.completed),
         countChange(c.completed, p.completed),
       ],
       [
-        "Avg time to finish",
+        "⏱️ Avg time to finish",
         duration(c.avgDurationSeconds),
         durationChange(c.avgDurationSeconds, p.avgDurationSeconds),
       ],
     ]),
+    divider,
   ];
   if (biggestDrops.length) {
-    parts.push(
-      "*Biggest drops in finish rate*",
-      table([
-        ["Form", "Starts", "Finish", "Change"],
-        ...biggestDrops.map((f) => [
-          f.formId,
-          num(f.starts),
-          pct(f.finishRate),
-          rateChange(f.finishRate, f.previousFinishRate),
-        ]),
-      ]),
-      `Try \`${command} ${period} ${biggestDrops[0].formId}\` for details.`,
+    blocks.push(
+      section(
+        "*📉 Biggest drops in finish rate*\n" +
+          biggestDrops
+            .map(
+              (f) =>
+                `• \`${f.formId}\`: ${num(f.starts)} starts, *${pct(f.finishRate)}* finish   ${rateChange(f.finishRate, f.previousFinishRate)}`,
+            )
+            .join("\n"),
+      ),
+      context(
+        `💡 For one form, try \`${command} ${period} ${biggestDrops[0].formId}\``,
+      ),
     );
   } else {
-    parts.push(
-      `No form with at least ${MIN_STARTS_FOR_RANKING} starts lost finish rate.`,
+    blocks.push(
+      context(
+        `✅ No form with at least ${MIN_STARTS_FOR_RANKING} starts lost finish rate.`,
+      ),
     );
   }
-  return parts.join("\n");
+  return {
+    text: `📊 ${heading.title}: ${num(c.visitors)} visitors, ${num(c.completed)} forms finished`,
+    blocks,
+  };
 }
 
 export function formatFormStats(
-  heading: string,
+  heading: PeriodHeading,
   { title, formId, current: c, previous: p, steps, topErrors }: FormStats,
-): string {
+): SlackMessage {
   const visitToStart = [ratio(c.starts, c.visits), ratio(p.starts, p.visits)];
   const startToFinish = [
     ratio(c.completed, c.starts),
     ratio(p.completed, p.starts),
   ];
-  const parts = [
-    `*${title}* (\`${formId}\`)`,
-    heading,
-    table([
-      ["Visitors to form", num(c.visits), countChange(c.visits, p.visits)],
+  const blocks: unknown[] = [
+    header(`📝 ${title}`),
+    context(`\`${formId}\` · *${heading.title}* · ${heading.detail}`),
+    metrics([
+      ["👥 Visitors to form", num(c.visits), countChange(c.visits, p.visits)],
       [
-        "Visit → start",
+        "🚪 Visit → start",
         pct(visitToStart[0]),
         rateChange(visitToStart[0], visitToStart[1]),
       ],
       [
-        "Start → finish",
+        "🏁 Start → finish",
         pct(startToFinish[0]),
         rateChange(startToFinish[0], startToFinish[1]),
       ],
-      ["Finished", num(c.completed), countChange(c.completed, p.completed)],
+      ["📨 Finished", num(c.completed), countChange(c.completed, p.completed)],
       [
-        "Avg time to finish",
+        "⏱️ Avg time to finish",
         duration(c.avgDurationSeconds),
         durationChange(c.avgDurationSeconds, p.avgDurationSeconds),
       ],
     ]),
   ];
   if (steps.length) {
-    parts.push(
-      "*Where people leave* (views of each step)",
-      table(
-        steps.map((s, i) => {
-          const before = steps[i - 1]?.count;
-          const drop =
-            before && s.count < before
-              ? `−${Math.round(((before - s.count) / before) * 100)}%`
-              : "";
-          return [s.title, num(s.count), drop];
-        }),
+    blocks.push(
+      divider,
+      section("*🚶 Where people leave*\n" + stepBars(steps)),
+      context(
+        "Views of each step. Steps that only some people see have fewer views.",
       ),
     );
   }
   if (topErrors.length) {
-    parts.push(
-      "*Top errors*: " +
-        topErrors.map((e) => `${e.label} (${num(e.count)})`).join(" · "),
+    blocks.push(
+      divider,
+      section(
+        "*🚨 Top errors*\n" +
+          topErrors.map((e) => `• ${e.label}: *${num(e.count)}*`).join("\n"),
+      ),
     );
   }
-  return parts.join("\n");
+  return {
+    text: `📝 ${title} · ${heading.title}: ${num(c.starts)} started, ${num(c.completed)} finished`,
+    blocks,
+  };
 }

@@ -23,6 +23,7 @@ import {
   periodHeading,
   type FormPeriod,
   type SitePeriod,
+  type SlackMessage,
 } from "./stats-message";
 import { suggestFormIds } from "./stats-command";
 
@@ -87,9 +88,9 @@ export class SlackStatsService {
     responseUrl: string,
     now: Date = new Date(),
   ): Promise<void> {
-    let text: string;
+    let message: SlackMessage | string;
     try {
-      text = await this.buildReply(command, period, formId, now);
+      message = await this.buildReply(command, period, formId, now);
     } catch (err) {
       this.logger.error(
         `[slack-stats] ${sanitizeForLog(command)} ${period} ${sanitizeForLog(
@@ -98,10 +99,10 @@ export class SlackStatsService {
           err instanceof Error ? err.message : String(err),
         )}`,
       );
-      text =
-        "Sorry, I couldn't get the stats from Umami. Try again in a few minutes.";
+      message =
+        "⚠️ Sorry, I couldn't get the stats from Umami. Try again in a few minutes.";
     }
-    await this.post(responseUrl, text);
+    await this.post(responseUrl, message);
   }
 
   async buildReply(
@@ -109,7 +110,7 @@ export class SlackStatsService {
     period: StatsPeriod,
     formId: string | undefined,
     now: Date,
-  ): Promise<string> {
+  ): Promise<SlackMessage | string> {
     const forms = await this.formDefinitions.findAll();
     const periods = comparisonPeriods(period, TZ, now);
     const heading = periodHeading(period, periods);
@@ -138,10 +139,10 @@ export class SlackStatsService {
         forms.map((f) => f.formId),
       );
       return suggestions.length
-        ? `No form with the ID \`${formId}\`. Did you mean ${suggestions
+        ? `🤔 No form with the ID \`${formId}\`. Did you mean ${suggestions
             .map((s) => `\`${s}\``)
             .join(", ")}?`
-        : `No form with the ID \`${formId}\`. Form IDs are the part of the form's address after /forms/.`;
+        : `🤔 No form with the ID \`${formId}\`. Form IDs are the part of the form's address after /forms/.`;
     }
 
     const websiteId = this.umamiConfig().formsWebsiteId;
@@ -316,7 +317,11 @@ export class SlackStatsService {
     }
   }
 
-  private async post(responseUrl: string, text: string): Promise<void> {
+  /** Post a reply; a plain string is sent as text only. */
+  private async post(
+    responseUrl: string,
+    message: SlackMessage | string,
+  ): Promise<void> {
     const url = slackResponseUrl(responseUrl);
     if (!url) {
       this.logger.warn("[slack-stats] refused a non-Slack response_url");
@@ -326,7 +331,10 @@ export class SlackStatsService {
       const res = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ response_type: "ephemeral", text }),
+        body: JSON.stringify({
+          response_type: "ephemeral",
+          ...(typeof message === "string" ? { text: message } : message),
+        }),
         signal: AbortSignal.timeout(SLACK_POST_TIMEOUT_MS),
       });
       if (!res.ok) {

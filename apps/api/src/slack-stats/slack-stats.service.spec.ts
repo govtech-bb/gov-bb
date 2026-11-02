@@ -33,6 +33,12 @@ const formDefinitions = {
 const funnel = (...visitors: number[]) =>
   visitors.map((v) => ({ type: "event", value: "", visitors: v }));
 
+/** buildReply's output as one searchable string. */
+async function reply(...args: Parameters<SlackStatsService["buildReply"]>) {
+  const message = await service().buildReply(...args);
+  return typeof message === "string" ? message : JSON.stringify(message.blocks);
+}
+
 function service() {
   return new SlackStatsService(
     config,
@@ -70,12 +76,12 @@ describe("SlackStatsService.buildReply — site-wide", () => {
       .mockResolvedValueOnce(funnel(50, 40, 30)); // birth before
     umami.eventDataValues.mockResolvedValue([{ value: 300, total: 2 }]);
 
-    const text = await service().buildReply("/stats", "week", undefined, NOW);
+    const text = await reply("/stats", "week", undefined, NOW);
 
-    expect(text).toMatch(/Site visitors +1,000 +no change/);
-    expect(text).toMatch(/Visit → start form +10% +▼ 5 pts/);
-    expect(text).toMatch(/Forms finished +40 +▼ 56%/);
-    expect(text).toMatch(/Avg time to finish +5m 00s +no change/);
+    expect(text).toContain("*1,000*   ⚪ no change");
+    expect(text).toContain("*10%*   🔴 ▼ 5 pts");
+    expect(text).toContain("*40*   🔴 ▼ 56%");
+    expect(text).toContain("*5m 00s*   ⚪ no change");
     expect(text).toContain("passport-renewal");
     // Durations are only fetched for forms someone finished (3 of 4 funnels).
     expect(umami.eventDataValues).toHaveBeenCalledTimes(3);
@@ -84,14 +90,14 @@ describe("SlackStatsService.buildReply — site-wide", () => {
 
 describe("SlackStatsService.buildReply — one form", () => {
   it("suggests similar ids for an unknown form", async () => {
-    const text = await service().buildReply("/stats", "week", "passport", NOW);
+    const text = await reply("/stats", "week", "passport", NOW);
     expect(text).toBe(
-      "No form with the ID `passport`. Did you mean `passport-renewal`?",
+      "🤔 No form with the ID `passport`. Did you mean `passport-renewal`?",
     );
   });
 
   it("explains form ids when nothing is similar", async () => {
-    const text = await service().buildReply("/stats", "week", "zzz", NOW);
+    const text = await reply("/stats", "week", "zzz", NOW);
     expect(text).toContain("Form IDs are the part of the form's address");
   });
 
@@ -126,19 +132,13 @@ describe("SlackStatsService.buildReply — one form", () => {
       },
     );
 
-    const text = await service().buildReply(
-      "/stats",
-      "today",
-      "passport-renewal",
-      NOW,
-    );
+    const text = await reply("/stats", "today", "passport-renewal", NOW);
 
-    expect(text).toContain("*Renew a passport* (`passport-renewal`)");
-    expect(text).toMatch(/Visit → start +20% +no change/);
-    expect(text).toMatch(/Upload photo +60 +−40%/);
-    expect(text).toContain(
-      "*Top errors*: Full name (9) · submit failed: network (4)",
-    );
+    expect(text).toContain("📝 Renew a passport");
+    expect(text).toContain("`passport-renewal` · *Today so far*");
+    expect(text).toContain("*20%*   ⚪ no change");
+    expect(text).toContain("Upload photo  ███████░░░░░   60");
+    expect(text).toContain("• Full name: *9*\\n• submit failed: network: *4*");
   });
 
   it("falls back to the field id and survives missing event data", async () => {
@@ -161,15 +161,31 @@ describe("SlackStatsService.buildReply — one form", () => {
       },
     );
 
-    const text = await service().buildReply(
-      "/stats",
-      "month",
-      "passport-renewal",
-      NOW,
-    );
+    const text = await reply("/stats", "month", "passport-renewal", NOW);
 
-    expect(text).toContain("*Top errors*: dob (2)");
-    expect(text).toMatch(/Your details +0/);
+    expect(text).toContain("• dob: *2*");
+    expect(text).toContain("Your details  ░░░░░░░░░░░░  0");
+  });
+});
+
+describe("slackResponseUrl", () => {
+  it("keeps a Slack hooks URL", () => {
+    expect(
+      slackResponseUrl("https://hooks.slack.com/commands/T1/1/abc?x=1"),
+    ).toBe("https://hooks.slack.com/commands/T1/1/abc?x=1");
+  });
+
+  it.each([
+    "",
+    "not a url",
+    "http://hooks.slack.com/commands/1",
+    "https://hooks.slack.com.evil.example/commands/1",
+    "https://evil.example/hooks.slack.com/",
+    "https://hooks.slack.com:8443/commands/1",
+    "https://user:pass@hooks.slack.com/commands/1",
+    "https://169.254.169.254/latest/meta-data/",
+  ])("refuses %j", (raw) => {
+    expect(slackResponseUrl(raw)).toBeNull();
   });
 });
 
