@@ -109,6 +109,8 @@ describe("page markdown", () => {
   });
 
   it.each([
+    "/money-financial-support/national-insurance-for-self-employed-workers",
+    "/money-financial-support/national-insurance-for-self-employed-workers/check-your-record",
     "/pensions-and-gratuities/calculate-your-pension/about-government-pensions",
     "/business-trade/crop-over-permits",
   ])("opens converted snapshot page %s visually without changing it", (url) => {

@@ -15,10 +15,15 @@ visibility: public
 
 Use this checklist to make sure your household is ready for a hurricane. It covers water, food, documents, first aid, communication, and the steps to take before a storm.
 
-<buttons>
-<link-button href="/health-and-emergency-services/stormready/checklist">Open household checklist</link-button>
-<link-button href="/health-and-emergency-services/stormready/checklist?print=1" variant="secondary">Save checklist as PDF</link-button>
-</buttons>
+::::actions
+:::action{href="/health-and-emergency-services/stormready/checklist"}
+Open household checklist
+:::
+
+:::action{href="/health-and-emergency-services/stormready/checklist?print=1" variant="secondary"}
+Save checklist as PDF
+:::
+::::
 
 <muted caption>The checklist lets you tick items off and saves your progress on this device. &ldquo;Save checklist as PDF&rdquo; opens the checklist and prompts your browser to save or print a copy.</muted>
 
