@@ -68,9 +68,17 @@ function List({
         rowLink={rowLink}
         empty={{ title: "No services yet" }}
       />
+      <table.Pagination name={["service", "services"]} loading={loading} />
     </table.AppTable>
   );
 }
+
+const many = (count: number): Service[] =>
+  Array.from({ length: count }, (_, index) => ({
+    id: `service-${index + 1}`,
+    title: `Service ${index + 1}`,
+    status: "Public",
+  }));
 
 let host: HTMLDivElement;
 
@@ -93,6 +101,22 @@ afterEach(async () => {
 const show = (list: ReturnType<typeof List>) => act(async () => root.render(list));
 
 const rows = () => [...host.querySelectorAll("tbody tr")];
+
+const count = () => host.querySelector("[aria-live]")!;
+
+const button = (name: string) =>
+  [...host.querySelectorAll("button")].find(
+    (item) => (item.getAttribute("aria-label") ?? item.textContent) === name,
+  )!;
+
+async function searchFor(words: string) {
+  const search = host.querySelector<HTMLInputElement>('input[aria-label="Search services"]')!;
+
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(search, words);
+    search.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+}
 
 const click = (target: Element, modifiers: MouseEventInit = {}) =>
   act(async () => {
@@ -194,28 +218,97 @@ test("a column sorts from its header, which says which way for screen readers", 
   expect(header("Status").getAttribute("aria-sort")).toBe("none");
 });
 
-test("a search that leaves every row out says so, where an empty list offers its first step", async () => {
+test("a search that leaves every row out says what was searched and the way back, where an empty list offers its first step", async () => {
   await show(<List />);
-
-  const search = host.querySelector<HTMLInputElement>('input[aria-label="Search services"]')!;
-
-  await act(async () => {
-    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(
-      search,
-      "passport",
-    );
-    search.dispatchEvent(new Event("input", { bubbles: true }));
-  });
+  await searchFor("passport");
 
   expect(rows()).toHaveLength(1);
-  expect(rows()[0]!.textContent).toBe("Nothing matches these filters");
+  expect(rows()[0]!.textContent).toBe(
+    "Nothing matches “passport”Clear the filters to see all services.",
+  );
 
   await show(<List data={[]} />);
-  await act(async () => {
-    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(search, "");
-    search.dispatchEvent(new Event("input", { bubbles: true }));
-  });
+  await searchFor("");
   expect(rows()[0]!.textContent).toBe("No services yet");
+});
+
+test("the count is the list's live region, which stays to say a search found nothing", async () => {
+  await show(<List loading data={[]} />);
+  const region = count();
+
+  // Nothing is said while the list loads
+  expect(region.textContent).toBe("");
+
+  await show(<List />);
+  expect(count()).toBe(region);
+  expect(region.textContent).toBe("1–2 of 2 services");
+
+  await searchFor("passport");
+  expect(count()).toBe(region);
+  expect(region.textContent).toBe("No services match");
+  // Out of sight with nothing to count, as the empty row shows it
+  expect(region.parentElement!.classList).toContain("sr-only");
+
+  await searchFor("permit");
+  expect(region.textContent).toBe("1–1 of 1 service");
+});
+
+test("at the first or the last page, Previous or Next stays focusable but does nothing", async () => {
+  // TanStack's pages hold ten rows unless the list says otherwise
+  await show(<List data={many(15)} />);
+
+  expect(button("Previous page").getAttribute("aria-disabled")).toBe("true");
+  expect(button("Previous page").hasAttribute("disabled")).toBe(false);
+
+  await click(button("Next page"));
+  expect(count().textContent).toBe("11–15 of 15 services");
+  expect(button("Next page").getAttribute("aria-disabled")).toBe("true");
+  expect(button("Next page").hasAttribute("disabled")).toBe(false);
+  expect(button("Previous page").hasAttribute("aria-disabled")).toBe(false);
+
+  await click(button("Next page"));
+  expect(count().textContent).toBe("11–15 of 15 services");
+});
+
+test("on a narrow touch screen, only the pages beside this one show between Previous and Next", async () => {
+  await show(<List data={many(100)} />);
+  await click(button("Page 2"));
+  await click(button("Page 3"));
+  await click(button("Page 4"));
+  await click(button("Page 5"));
+
+  const hidden = (element: Element) => element.classList.contains("@max-md:pointer-coarse:hidden");
+  const nav = host.querySelector('nav[aria-label="Pages"]')!;
+
+  expect(
+    [...nav.children].flatMap((item) => (hidden(item) ? [] : [item.getAttribute("aria-label")])),
+  ).toEqual(["Previous page", "Page 4", "Page 5", "Page 6", "Next page"]);
+  expect([...nav.children].flatMap((item) => (hidden(item) ? [item.textContent] : []))).toEqual([
+    "1",
+    "…",
+    "…",
+    "10",
+  ]);
+});
+
+test("a table that learns its columns from its data still shows it's loading", async () => {
+  const none: Service[] = [];
+  const unknown = column.columns([]);
+
+  function Unread() {
+    const table = useAppTable({ columns: unknown, data: none, getRowId: (row) => row.id });
+
+    return (
+      <table.AppTable>
+        <table.DataTable caption="Records" loading empty={{ title: "No records yet" }} />
+      </table.AppTable>
+    );
+  }
+
+  await act(async () => root.render(<Unread />));
+
+  expect(rows()).toHaveLength(6);
+  expect(rows()[0]!.textContent).toBe("Loading records…");
 });
 
 test("a column aligned to its end lines up its header and its cells there", async () => {

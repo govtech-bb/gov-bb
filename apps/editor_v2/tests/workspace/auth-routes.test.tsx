@@ -79,6 +79,8 @@ test("direct auth is a sign-in screen and never starts GitHub on mount or preloa
   await until(() =>
     expect(document.querySelector("h1")?.textContent).toBe("Sign in to GovBB editor"),
   );
+  // On a phone it wraps into even lines, rather than leaving “editor” alone on the last
+  expect(document.querySelector("h1")?.className).toContain("text-balance");
   expect(button("Continue with GitHub")).toBeDefined();
   await act(async () => {
     await router.preloadRoute({

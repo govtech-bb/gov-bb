@@ -17,6 +17,8 @@ test("its title is the screen's heading, the lead under it, and its action after
   );
 
   expect(categories.querySelector("h1")?.textContent).toBe("Categories");
+  // A title that wraps, as on a phone, wraps into even lines rather than leaving a word alone
+  expect(categories.querySelector("h1")?.className).toContain("text-balance");
   expect(categories.textContent).toBe(
     "CategoriesPeople browse these to find services on the site.Add category",
   );

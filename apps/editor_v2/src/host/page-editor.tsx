@@ -13,7 +13,7 @@ import { usePageMetadata } from "../pages/metadata-fields";
 import { govbbPageEditor } from "../presets/govbb-page";
 import { draftPause, type DraftStore } from "../persistence/draft-store";
 import { Bar } from "../ui/bar";
-import { DocumentBar } from "../ui/document-bar";
+import { DocumentBar, type DocumentAlert } from "../ui/document-bar";
 import { EmptyState } from "../ui/empty-state";
 import type { SaveStateProps } from "../ui/save-state";
 import type { LinkPage } from "../ui/link-picker";
@@ -38,6 +38,8 @@ type PageHost = {
   /** Sends the changes on: Publish changes, or Save. */
   publish?: ReactNode;
   notice?: ReactNode;
+  /** A notice that arrives while the page is being written, beside where it stands in its bar. */
+  alert?: DocumentAlert;
   /** The pages its links can find by title. */
   linkPages?: readonly LinkPage[];
   /** Links to pages that don't exist, or that they couldn't be checked: shown with the notices. */
@@ -64,6 +66,7 @@ function PageDraft({
   server,
   publish,
   notice,
+  alert,
   linkPages,
   linkWarnings,
   previewContext,
@@ -87,6 +90,7 @@ function PageDraft({
           title={<SourceTitle source={draft.committed} />}
           save={server}
           notices={notice}
+          alert={alert}
         />
         <EmptyState
           icon={<PencilSimpleSlash />}
@@ -157,6 +161,7 @@ function PageDraft({
       publish={publish}
       settings={!tools && <SidePanel.Toggle panel={panel} label="Page settings" />}
       notices={notices}
+      alert={alert}
     />
   );
 

@@ -82,3 +82,12 @@ test("a button without an address of its own says where it goes instead, and has
   expect(popover()?.textContent).toContain("Linked form");
   expect(button("Remove link")).toBeNull();
 });
+
+test("it comes with the caret, so it appears and goes at once rather than growing in", async () => {
+  await act(async () => root.render(<Demo />));
+
+  const classes = popover()!.className.split(" ");
+
+  expect(classes).toContain("transition-none");
+  expect(classes).not.toContain("transition-[opacity,scale]");
+});

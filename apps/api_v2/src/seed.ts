@@ -80,9 +80,13 @@ export async function seed(db: Database): Promise<{
       );
     }
     for (const page of ready) {
-      const published =
-        page.visibility === "public"
-          ? new Date(page.published_at ?? Date.now())
+      // Landing's frontmatter `publish_date` travels with every page, public
+      // or not, so going public later keeps it. An undated public page is
+      // dated now; an undated non-public page stays undated.
+      const published = page.published_at
+        ? new Date(page.published_at)
+        : page.visibility === "public"
+          ? new Date()
           : null;
       const inserted = await db.transaction(async (tx) => {
         const [row] = await tx

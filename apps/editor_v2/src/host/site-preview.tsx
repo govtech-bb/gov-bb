@@ -60,6 +60,10 @@ export function SitePreview({
     }
 
     window.scrollTo(0, 0);
+    // The writer's Preview went with the writer: its place in the preview's bar, Close preview, takes the focus
+    document
+      .querySelector<HTMLElement>("[data-cms-preview-host] [data-site-preview-trigger]")
+      ?.focus({ preventScroll: true });
 
     return () => {
       if (workspace) {
