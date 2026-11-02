@@ -40,6 +40,8 @@ const ALL = [
   "014_data_collections",
   "015_revision_discarded",
   "016_content_updated_at",
+  "017_change_events_no_truncate",
+  "018_snapshot_version",
   "019_change_events_redaction",
 ];
 
@@ -145,6 +147,8 @@ describe("migrate", () => {
       "014_data_collections",
       "015_revision_discarded",
       "016_content_updated_at",
+      "017_change_events_no_truncate",
+      "018_snapshot_version",
       "019_change_events_redaction",
     ]);
     const pages = await exec("select count(*)::int as n from content_pages");
@@ -183,6 +187,8 @@ describe("migrate", () => {
       "014_data_collections",
       "015_revision_discarded",
       "016_content_updated_at",
+      "017_change_events_no_truncate",
+      "018_snapshot_version",
       "019_change_events_redaction",
     ]);
     await exec(
@@ -224,6 +230,56 @@ describe("migrate", () => {
       throw new Error("Expected trigger rejection");
     expect(String(refused.cause)).toMatch(/append-only/);
     await close();
+  });
+
+  it.each([false, true])(
+    "refuses TRUNCATE with existing history: %s",
+    async (populated) => {
+      const { db, exec, close } = await freshDb();
+      try {
+        await migrate(db, exec);
+        if (populated)
+          await exec(`insert into change_events (entity_kind, entity_id, version_no, action, snapshot)
+            values ('content_page', 'x', 1, 'created', '{"title":"Keep this"}')`);
+        const before = (await exec("select * from change_events")).rows;
+
+        await expect(exec("truncate change_events")).rejects.toThrow(
+          "change_events is append-only (attempted TRUNCATE)",
+        );
+        expect((await exec("select * from change_events")).rows).toEqual(
+          before,
+        );
+      } finally {
+        await close();
+      }
+    },
+  );
+
+  it("keeps every history guard after replaying the truncate migration", async () => {
+    const { db, exec, close } = await freshDb();
+    try {
+      await migrate(db, exec);
+      await exec(`insert into change_events (entity_kind, entity_id, version_no, action, snapshot)
+        values ('content_page', 'x', 1, 'created', '{}');
+        delete from schema_migrations where name = '017_change_events_no_truncate'`);
+      const before = (await exec("select * from change_events")).rows;
+
+      expect(await migrate(db, exec)).toEqual([
+        "017_change_events_no_truncate",
+      ]);
+      for (const statement of [
+        "truncate change_events",
+        "update change_events set snapshot = '{}'",
+        "delete from change_events",
+      ])
+        await expect(exec(statement)).rejects.toThrow("append-only");
+      expect((await exec("select * from change_events")).rows).toEqual(before);
+      await exec(`insert into change_events (entity_kind, entity_id, version_no, action, snapshot)
+        values ('content_page', 'x', 2, 'updated', '{}')`);
+      expect((await exec("select id from change_events")).rows).toHaveLength(2);
+    } finally {
+      await close();
+    }
   });
 
   it("revokes legacy sessions while preserving users and admitted GitHub sessions", async () => {
@@ -536,6 +592,50 @@ describe("migrate", () => {
       (await exec("select email from auth_user where id = 'system'")).rows,
     ).toEqual([{ email: "system@api-v2.invalid" }]);
     await close();
+  });
+
+  it("labels only new snapshots, including after the migration replays", async () => {
+    const { db, exec, close } = await freshDb();
+    try {
+      await migrate(db, exec);
+      await exec(`alter table change_events drop column if exists snapshot_version;
+        delete from schema_migrations where name = '018_snapshot_version';
+        insert into content_pages (url, slug, title, body_markdown)
+          values ('/x', 'x', 'Before labels', '')`);
+      const legacy = (await exec("select * from change_events")).rows;
+
+      expect(await migrate(db, exec)).toEqual(["018_snapshot_version"]);
+      expect((await exec("select * from change_events")).rows).toEqual(
+        legacy.map((event) => ({ ...event, snapshot_version: null })),
+      );
+      await exec("update content_pages set title = 'Labeled'");
+      const labeled = (
+        await exec("select * from change_events order by version_no")
+      ).rows;
+      expect(labeled.map((event) => event.snapshot_version)).toEqual([null, 1]);
+
+      await exec(
+        "delete from schema_migrations where name = '018_snapshot_version'",
+      );
+      expect(await migrate(db, exec)).toEqual(["018_snapshot_version"]);
+      expect(
+        (await exec("select * from change_events order by version_no")).rows,
+      ).toEqual(labeled);
+      await exec("update content_pages set title = 'After replay'");
+      expect(
+        (
+          await exec(
+            "select snapshot_version from change_events order by version_no",
+          )
+        ).rows,
+      ).toEqual([
+        { snapshot_version: null },
+        { snapshot_version: 1 },
+        { snapshot_version: 1 },
+      ]);
+    } finally {
+      await close();
+    }
   });
 
   it("records the history of every content table", async () => {

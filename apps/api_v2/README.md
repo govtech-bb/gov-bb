@@ -183,6 +183,7 @@ erDiagram
     jsonb snapshot
     text actor FK
     timestamptz(3) occurred_at
+    int4 snapshot_version "nullable"
   }
   collection_records {
     uuid id PK
@@ -440,6 +441,30 @@ Run `--dry-run`: it refuses an occupied database and shows the actor histogram o
 
 `apps/landing/src/content` freezes at the prod import. Until then it stays editable, and the snapshot is regenerated before each environment's import (step 1). After the prod import, content changes go through the editor only; delete the directory once landing_v2 is the only reader.
 
+## History protection
+
+`change_events_no_mutate` rejects ordinary updates and all deletes. The
+controlled redaction exception is described below. Migration `017` adds
+`change_events_no_truncate`, a statement-level trigger that also rejects emptying
+the table with `TRUNCATE`, even when it has no rows. Ordinary inserts still work.
+
+These guards do not stop a table owner from disabling triggers. The API currently
+uses the same database credentials for migrations and requests. Separate owner
+and runtime roles, credentials and migration startup are follow-up work tracked
+from #2968; the runtime role should only read and insert history rows.
+
+## Snapshot formats
+
+Migration `018` adds `change_events.snapshot_version`. Existing events stay null,
+which means their format is unknown. New events default to `1`, covering both
+`record_change` and `record_review` without rewriting either trigger.
+
+Version `1` identifies the table-row formats in use when this migration lands.
+Use `entity_kind` and `action` to identify the source table, then the format number
+to interpret its row. Review actions still hold revision rows, not page rows.
+A migration that changes an audited table's row shape must bump the default.
+Do not backfill old events or assume a null label means one particular format.
+
 ## Removing sensitive history snapshots
 
 Migration `019` allows one exception to the append-only history rule. An operator
@@ -447,6 +472,10 @@ can replace an event's entire snapshot with
 `{"redacted":true,"reason":"<ticket>","by":"<operator>"}`. Its ID, entity, version
 number, action, author and timestamp stay unchanged. A removal notice cannot be
 rewritten, and events still cannot be deleted.
+
+Redaction also preserves `snapshot_version`. It describes the removed snapshot,
+not the removal notice. Readers must check `snapshot.redacted === true` before
+using `snapshot_version` to choose a parser.
 
 This is an operator command, not an API endpoint. It uses the API's configuration
 and verified database TLS settings, but does not run migrations. Use authorized
