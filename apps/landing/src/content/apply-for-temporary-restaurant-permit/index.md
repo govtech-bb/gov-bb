@@ -6,7 +6,6 @@ description: >-
   the Environmental Health Department.
 stage: alpha
 visibility: preview
-featured: false
 publish_date: '2026-08-31'
 category: business-trade
 form_id: apply-for-temporary-restaurant-permit
