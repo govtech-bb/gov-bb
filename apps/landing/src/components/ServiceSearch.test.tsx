@@ -1,22 +1,41 @@
 /**
  * @vitest-environment jsdom
  */
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { SearchHit } from '../lib/search'
 import { ServiceSearch } from './ServiceSearch'
 
-const { navigateMock, suggestMock, trackEventMock } = vi.hoisted(() => ({
-  navigateMock: vi.fn(),
-  suggestMock: vi.fn(),
-  trackEventMock: vi.fn(),
-}))
+const { loadDocumentsMock, navigateMock, suggestMock, trackEventMock } =
+  vi.hoisted(() => ({
+    loadDocumentsMock: vi.fn(),
+    navigateMock: vi.fn(),
+    suggestMock: vi.fn(),
+    trackEventMock: vi.fn(),
+  }))
 
 vi.mock('@tanstack/react-router', () => ({
   useNavigate: () => navigateMock,
 }))
 vi.mock('../lib/analytics', () => ({ trackEvent: trackEventMock }))
 vi.mock('../lib/search', () => ({ suggest: suggestMock }))
+
+const DOCUMENTS = [
+  {
+    url: '/only-in-api-v2',
+    title: 'Only in api_v2',
+    description: null,
+    digital: false,
+    keywords: [],
+    chunks: [],
+  },
+]
 
 const HITS: Array<SearchHit> = Array.from({ length: 5 }, (_, index) => ({
   id: `service:${index}`,
@@ -33,7 +52,14 @@ const HITS: Array<SearchHit> = Array.from({ length: 5 }, (_, index) => ({
 function renderSearch(
   props: Partial<React.ComponentProps<typeof ServiceSearch>> = {},
 ) {
-  return render(<ServiceSearch source="home" viewer="public" {...props} />)
+  return render(
+    <ServiceSearch
+      source="home"
+      viewer="public"
+      loadDocuments={loadDocumentsMock}
+      {...props}
+    />,
+  )
 }
 
 function listboxFor(input: HTMLElement): HTMLUListElement {
@@ -58,6 +84,8 @@ beforeEach(() => {
   navigateMock.mockReset()
   suggestMock.mockReset()
   trackEventMock.mockReset()
+  loadDocumentsMock.mockReset()
+  loadDocumentsMock.mockResolvedValue(DOCUMENTS)
   suggestMock.mockImplementation((query: string) =>
     query.trim().length >= 3 ? HITS : [],
   )
@@ -211,6 +239,47 @@ describe('ServiceSearch', () => {
       to: '/search-results',
       search: { q: '' },
     })
+  })
+
+  it('loads api_v2 documents on every edit, not before, and suggests from them', async () => {
+    renderSearch()
+    expect(loadDocumentsMock).not.toHaveBeenCalled()
+
+    const input = screen.getByRole('combobox')
+    typeInto(input, 'onl')
+    await waitFor(() =>
+      expect(suggestMock).toHaveBeenLastCalledWith(
+        'onl',
+        'public',
+        undefined,
+        DOCUMENTS,
+      ),
+    )
+
+    typeInto(input, 'only')
+    expect(loadDocumentsMock).toHaveBeenCalledTimes(2)
+  })
+
+  it('suggests from documents it is given until an edit loads fresh ones', async () => {
+    loadDocumentsMock.mockResolvedValue([])
+    renderSearch({ documents: DOCUMENTS })
+    typeInto(screen.getByRole('combobox'), 'onl')
+
+    expect(suggestMock).toHaveBeenLastCalledWith(
+      'onl',
+      'public',
+      undefined,
+      DOCUMENTS,
+    )
+    expect(loadDocumentsMock).toHaveBeenCalledOnce()
+    await waitFor(() =>
+      expect(suggestMock).toHaveBeenLastCalledWith(
+        'onl',
+        'public',
+        undefined,
+        [],
+      ),
+    )
   })
 
   it('keeps the list closed when there are no suggestions', () => {

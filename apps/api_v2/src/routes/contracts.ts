@@ -41,6 +41,7 @@ import {
   RecordBody,
   RecordKey,
 } from "../modules/collection";
+import { PageHistoryEntry } from "../modules/page-history";
 import { PublicPage } from "../modules/page-visibility";
 import { EstateVersion } from "../services/editor-index";
 
@@ -249,6 +250,19 @@ export const SCHEMAS = {
     },
   },
 
+  getSiteVersion: {
+    summary: "A token that moves whenever content changes",
+    description:
+      "Opaque. The site polls it and drops its cached pages when it moves, " +
+      "so a published change shows within seconds instead of after the " +
+      "pages' max-age. Moves on any change, drafts included.",
+    tags: ["meta"],
+    response: {
+      200: z.object({ version: z.string() }),
+      500: error,
+    },
+  },
+
   getPage: {
     summary: "Get a page by id",
     description:
@@ -330,6 +344,24 @@ export const SCHEMAS = {
     },
   },
 
+  getPageHistory: {
+    summary: "Get a page's history",
+    description:
+      "What happened to the page, newest first, from `change_events`: each " +
+      "change to the live page with the fields it changed, and each review " +
+      "step, with who did it and when. Read-only: nothing restores an " +
+      "entry. 404 when the page has no history.",
+    tags: ["pages"],
+    params: idParams,
+    security: editorSecurity,
+    response: {
+      200: z.object({ entries: z.array(PageHistoryEntry) }),
+      400: error,
+      404: error,
+      500: error,
+      ...authErrors,
+    },
+  },
   getRevision: {
     summary: "Get a page's pending revision",
     description:
@@ -476,6 +508,17 @@ export const SCHEMAS = {
       500: error,
       ...authErrors,
     },
+  },
+
+  pagePaths: {
+    summary: "List internal page link targets",
+    description:
+      "Every stored page path, including drafts, previews and uncategorised pages, " +
+      "plus unambiguous bare-slug redirects. For editor link checks, not a promise " +
+      "that a page is public. Requires an employee session.",
+    tags: ["pages"],
+    security: editorSecurity,
+    response: { 200: z.array(z.string()), 500: error, ...authErrors },
   },
 
   listServices: {

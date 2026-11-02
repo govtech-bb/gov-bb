@@ -1,14 +1,20 @@
 import { createContext, useContext } from 'react'
 import { contactBlockFor, contactDetails } from '@govtech-bb/block-kit/contact'
 import type { ContactRecords } from '../../lib/api-v2-collections'
-import { CONTACT_TILE, CONTACT_TILE_LINK, Contacts } from './Contacts'
+
+/** A record's detail: a non-emergency contact tile. */
+const CONTACT_TILE =
+  'flex flex-col gap-xxs border-teal-80 border-l-4 bg-teal-10 p-s text-current'
+
+/** A detail that is a link: tappable, so it shows hover and focus. */
+const CONTACT_TILE_LINK = `${CONTACT_TILE} no-underline transition-colors hover:bg-teal-20 focus-visible:outline focus-visible:outline-4 focus-visible:outline-teal-40 focus-visible:outline-offset-2`
 
 /** The records this page's contact blocks name, read by the route's loader. */
 export const ContactRecordsContext = createContext<ContactRecords>({})
 
 /**
  * `::contact{collection record fields}` (#3185): the record's chosen details
- * as `<contacts>` tiles, labelled by the collection. Nothing at all when the
+ * as contact tiles, labelled by the collection. Nothing at all when the
  * record is missing or couldn't be read — the page's own heading and wording
  * around the block still say how to get in touch.
  */
@@ -34,7 +40,7 @@ export function ContactRecord({
   if (details.length === 0) return null
 
   return (
-    <Contacts>
+    <div className="grid grid-cols-1 gap-s md:grid-cols-3">
       {details.map(({ field, label, text, href }) => {
         const content = (
           <>
@@ -52,6 +58,6 @@ export function ContactRecord({
           </div>
         )
       })}
-    </Contacts>
+    </div>
   )
 }

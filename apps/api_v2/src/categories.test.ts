@@ -24,6 +24,9 @@ const categoryResponse = z.strictObject({
   services: z.int().nonnegative(),
   reserved_route: z.boolean(),
   updated_at: z.iso.datetime({ precision: 3 }),
+  last_edited_by: z
+    .object({ id: z.string(), name: z.string().nullable() })
+    .nullable(),
 });
 type Category = z.infer<typeof categoryResponse>;
 let test: TestDb;

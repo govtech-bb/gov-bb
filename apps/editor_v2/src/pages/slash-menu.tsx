@@ -24,7 +24,7 @@ import { roomierSide } from "../editor/react/editor-popup";
 import { useSlashTrigger } from "../editor/react/slash-trigger";
 import { cn } from "../cn";
 import { belowBar, Popover } from "../ui/popover";
-import { listFooter } from "../ui/surface";
+import { instant, listFooter } from "../ui/surface";
 import { actionList, PageActionList } from "./action-menu";
 import { $pageInsertionTarget } from "./insertion";
 import { PageMetadataNode } from "./metadata";
@@ -106,22 +106,26 @@ function EditablePageSlashMenu() {
     ),
   );
 
-  const options = editor.getEditorState().read(
-    () => {
-      const target = $pageInsertionTarget();
+  // Ranked only while the menu is open: this renders with every key typed in the page
+  const options =
+    query === null
+      ? []
+      : editor.getEditorState().read(
+          () => {
+            const target = $pageInsertionTarget();
 
-      return target
-        ? rankActions(
-            query ?? "",
-            $availableActions(editor, definition, {
-              targetKey: target.getKey(),
-              typed: `/${query ?? ""}`,
-            }),
-          ).map((action) => new PageOption(action, target.getKey()))
-        : [];
-    },
-    { editor },
-  );
+            return target
+              ? rankActions(
+                  query,
+                  $availableActions(editor, definition, {
+                    targetKey: target.getKey(),
+                    typed: `/${query}`,
+                  }),
+                ).map((action) => new PageOption(action, target.getKey()))
+              : [];
+          },
+          { editor },
+        );
 
   return (
     <LexicalTypeaheadMenuPlugin<PageOption>
@@ -170,7 +174,6 @@ function EditablePageSlashMenu() {
           // bar. The caret keeps the focus: typing and the arrow keys stay the editor's
           <Popover.Root open>
             <Popover.Content
-              aria-label="Insert page content"
               anchor={anchor.current}
               // Inside Lexical's anchor, which reads its options from there
               container={anchor.current}
@@ -182,7 +185,7 @@ function EditablePageSlashMenu() {
               collisionAvoidance={{ side: "none", align: "shift", fallbackAxisSide: "none" }}
               initialFocus={false}
               finalFocus={false}
-              className="page-insert-menu flex w-[min(21rem,calc(100vw-2rem))] flex-col overflow-hidden p-0 text-14"
+              className={`${instant} page-insert-menu flex w-[min(21rem,calc(100vw-2rem))] flex-col overflow-hidden p-0 text-14`}
             >
               {/* Lexical points aria-activedescendant at the highlighted option; this also says it aloud */}
               <p role="status" className="sr-only">

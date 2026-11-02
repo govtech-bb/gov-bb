@@ -2,6 +2,7 @@
 /* GovBB's tokens (colour ramp, type, spacing) as --govbb-* custom properties. Only the tokens: govbb.css's global
    body, heading and link rules would fight Tailwind and the editor's own DOM. */
 @import "@govtech-bb/frontend/tokens.css";
+@source "../../packages/govbbmarkd/src";
 
 /* Figtree, the GovBB face, from the design system's package: variable 400–700, latin and latin-ext */
 @font-face {
@@ -48,6 +49,8 @@
 @theme {
   --font-sans: var(--govbb-font-sans);
   --font-mono: var(--govbb-font-mono);
+  --spacing-s: var(--govbb-space-s);
+  --spacing-xm: var(--govbb-space-xm);
 
   --color-*: initial;
   --color-white: #fff;
@@ -172,9 +175,15 @@
   --z-index-toast: 70;
 }
 
-/* The height of every bar: the header, a document's bar and a drawer's (src/ui/bar.tsx) */
+/* The height of every bar: the header, a document's bar and a drawer's (src/ui/bar.tsx). Under a coarse pointer, 44px
+   controls (touchTarget) and their padding make a bar 60px, and a light bar's rule adds 1px: every bar takes the taller
+   height, so rules side by side line up */
 :root {
   --bar-height: 3.5rem;
+
+  @variant pointer-coarse {
+    --bar-height: calc(3.75rem + 1px);
+  }
 }
 
 /* Shared enter/exit durations. Hover feedback uses the 120ms default. */
@@ -187,12 +196,22 @@
   --duration-panel-out: 150ms;
   --duration-drawer-in: 300ms;
   --duration-drawer-out: 200ms;
-  --duration-toast-in: 400ms;
+  --duration-toast-in: 250ms;
   --duration-toast-out: 200ms;
 }
 
 /* Suppress hover and active feedback for disabled controls, including focusable aria-disabled buttons. */
 @custom-variant pressable (&:not(:disabled, [aria-disabled="true"]));
+
+/* Where a document's bar stays pinned to the top as the page scrolls under it: from a tablet's width, on a screen tall
+   enough to spare it. A phone on its side, about 390px tall, keeps its height for the writing */
+@custom-variant bar-pinned {
+  @variant md {
+    @media (height >= 30rem) {
+      @slot;
+    }
+  }
+}
 
 /*
  * The form on the canvas: GovBB's form controls a step denser than citizens get them (18px, not 20; 52px controls,
@@ -246,6 +265,16 @@
   background-color: var(--color-line);
 }
 
+/* The focus of a page's title and introduction, fields set as the words they edit, in the writer and the preview
+   (site-preview.css) alike: a hairline clear of the words. It replaces the global focus shadow */
+@utility heading-field-focus {
+  &:focus-visible {
+    outline: 1px solid var(--govbb-grey-60);
+    outline-offset: 6px;
+    box-shadow: none;
+  }
+}
+
 @layer base {
   /* Prevent horizontal shifts when content starts or stops scrolling. */
   html {
@@ -253,10 +282,24 @@
     line-height: 1.15;
     color: var(--color-ink);
     background: var(--color-white);
+    /* Light only: a browser's forced dark mode would darken the editor, and the preview of the site with it */
+    color-scheme: only light;
     font-family: var(--font-sans);
+    /* Every weight and italic in use is loaded: one that isn't shows plainly rather than faked */
+    font-synthesis: none;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
+  }
+  /* No pull-to-refresh: on Android, pulling down at the top of a page would reload the editor and lose its undo
+     history. Sideways stays the browser's, for going back */
+  html,
+  body {
+    overscroll-behavior-y: none;
+  }
+  /* Two quick taps on a control, such as Undo twice or the next page and the next, are two taps rather than a zoom */
+  :is(a, button, input, select, textarea, label, summary, [role="button"]) {
+    touch-action: manipulation;
   }
   ::selection {
     background: var(--govbb-teal-20);
@@ -278,7 +321,7 @@
   /* Under a document's bar pinned to the top, what the page brings into view, such as the next field the keyboard
      reaches, stops below the bar rather than behind it */
   html:has([data-document-bar]:not([hidden])) {
-    @variant md {
+    @variant bar-pinned {
       scroll-padding-top: var(--bar-height);
     }
   }

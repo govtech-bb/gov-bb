@@ -101,3 +101,27 @@ test("a form's bar is headed by the form's name, as it's typed", async () => {
   await rename("");
   expect(heading()).toBe("Untitled form");
 });
+
+test("opening the preview takes its writer's Preview away, so the preview's Close preview takes the focus", async () => {
+  vi.stubGlobal("scrollTo", () => {});
+  const store = new DraftStore("---\ntitle: Renew a passport\n---\n\nBring it.\n", govbbPageCodec);
+
+  // In a workspace, as the editor is: the preview hides it while it shows
+  const workspace = document.body.appendChild(document.createElement("div"));
+  workspace.dataset.cmsWorkspace = "";
+  await renderInPage(<PageDraftEditor store={store} />);
+
+  const open = document.querySelector<HTMLButtonElement>("[data-site-preview-trigger]")!;
+
+  open.focus();
+  await act(async () => open.click());
+
+  const close = document.querySelector<HTMLButtonElement>(
+    "[data-cms-preview-host] [data-site-preview-trigger]",
+  );
+
+  expect(open.isConnected).toBe(false);
+  expect(close?.getAttribute("aria-label") ?? close?.textContent).toContain("Close preview");
+  expect(document.activeElement).toBe(close);
+  workspace.remove();
+});

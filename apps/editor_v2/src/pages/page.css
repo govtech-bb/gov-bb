@@ -7,6 +7,11 @@
   --page-line: var(--color-line, #b1b4b6);
   --page-blue: var(--color-interactive, #1d70b8);
 }
+.page-preview {
+  font-family: var(--govbb-font-sans);
+  font-size: var(--govbb-font-size-body);
+  line-height: var(--govbb-line-height-base);
+}
 .page-body {
   font-size: 1.125rem;
   line-height: 1.6;
@@ -92,7 +97,7 @@
 .page-table-cell-selected {
   background: color-mix(in srgb, var(--page-blue) 15%, white);
 }
-.page-body :is(.page-notice, [data-page-component="notice"]) {
+.page-body [data-page-component="notice"] {
   border-inline-start: 0.35rem solid var(--page-blue);
   padding: 1rem;
   margin-block: 1rem;
@@ -103,7 +108,7 @@
   padding: 1rem;
   margin-block: 1rem;
 }
-.page-body [data-page-component="details"]::before {
+.page-body :is([data-page-component="details"], [data-page-component="table"], [data-page-component="summary-item"])::before {
   content: attr(data-summary);
   display: block;
   font-weight: 700;
@@ -136,7 +141,7 @@
 .page-editable .page-h6:has(> br:only-child)::before {
   content: "Heading 6" / "";
 }
-.page-body :is(.page-actions, [data-page-component="actions"]) {
+.page-body [data-page-component="actions"] {
   display: flex;
   flex-wrap: wrap;
   align-items: start;
@@ -144,7 +149,7 @@
   margin-block: 1rem;
 }
 /* GovBB's buttons, drawn as the form draws its Back and Continue (index.css) */
-.page-body :is(.page-action, [data-page-component="start"], [data-page-component="action"]) {
+.page-body :is([data-page-component="start"], [data-page-component="action"]) {
   @apply govbb-button;
 }
 .page-body .page-action-secondary {

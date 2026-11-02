@@ -68,6 +68,8 @@ export interface AppOptions {
   };
   /** The site's preview token; without it, preview reads are refused. */
   readonly previewSecret?: Redacted<string>;
+  /** Landing's token; with it, site reads skip the rate limit. */
+  readonly landingSecret?: Redacted<string>;
   /** The root logger shared with database and authentication adapters. */
   readonly logger?: FastifyBaseLogger;
   /** Whether the database answers; `/health/db` reports it, never the load balancer. */
@@ -102,6 +104,9 @@ class RequestLog extends LogController {
 export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
   const { logger, config } = options;
   const app = Fastify({
+    // The ALB is the only peer with a private address, so request.ip is the
+    // client it forwards; a numeric hop count is disabled since Fastify 5.12.1.
+    trustProxy: "uniquelocal",
     logController: new RequestLog(),
     ...(logger ? { loggerInstance: logger } : {}),
   });
@@ -164,6 +169,7 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
     navigation: options.navigation,
     collections: options.collections,
     previewSecret: options.previewSecret,
+    landingSecret: options.landingSecret,
   });
   await app.register(editorRoutes, {
     editing: options.editing,

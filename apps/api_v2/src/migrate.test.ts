@@ -39,6 +39,7 @@ const ALL = [
   "013_review_history_trigger",
   "014_data_collections",
   "015_revision_discarded",
+  "016_content_updated_at",
 ];
 
 /** Tables whose rows are not content, so the history does not record them. */
@@ -142,6 +143,7 @@ describe("migrate", () => {
       "013_review_history_trigger",
       "014_data_collections",
       "015_revision_discarded",
+      "016_content_updated_at",
     ]);
     const pages = await exec("select count(*)::int as n from content_pages");
     expect(pages.rows).toEqual([{ n: 0 }]);
@@ -178,6 +180,7 @@ describe("migrate", () => {
       "013_review_history_trigger",
       "014_data_collections",
       "015_revision_discarded",
+      "016_content_updated_at",
     ]);
     await exec(
       `insert into categories (slug, title) values ('c', 'C');
@@ -441,6 +444,40 @@ describe("migrate", () => {
       exec(`insert into page_revisions (page_id, fields, live_updated_at, created_by, contributors)
               select id, '{}', updated_at, 'b', '{b}' from content_pages`),
     ).resolves.toBeDefined();
+    await close();
+  });
+
+  it("dates existing pages' content when 016 runs, without touching their history or updated_at", async () => {
+    const { db, exec, close } = await freshDb();
+    await migrate(db, exec);
+    await exec(`
+      insert into content_pages (id, url, slug, title, body_markdown, visibility, published_at)
+        values ('11111111-1111-4111-8111-111111111111', '/p', 'p', 'P', '', 'public', '2026-01-22T00:00:00Z');
+      insert into content_pages (id, url, slug, title, body_markdown)
+        values ('22222222-2222-4222-8222-222222222222', '/d', 'd', 'D', '');
+      alter table content_pages drop column content_updated_at;
+      delete from schema_migrations where name = '016_content_updated_at';
+    `);
+    const before = await exec(
+      "select id, updated_at, created_at from content_pages order by id",
+    );
+
+    expect(await migrate(db, exec)).toEqual(["016_content_updated_at"]);
+
+    const after = await exec(
+      `select id, updated_at, content_updated_at = coalesce(published_at, created_at) as dated
+         from content_pages order by id`,
+    );
+    expect(after.rows).toEqual(
+      before.rows.map((row: { id: string; updated_at: Date }) => ({
+        id: row.id,
+        updated_at: row.updated_at,
+        dated: true,
+      })),
+    );
+    expect(
+      (await exec("select action from change_events order by version_no")).rows,
+    ).toEqual([{ action: "created" }, { action: "created" }]);
     await close();
   });
 

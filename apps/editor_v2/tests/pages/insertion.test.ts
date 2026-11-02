@@ -3,6 +3,7 @@ import {
   $createParagraphNode,
   $createTextNode,
   $getRoot,
+  $nodesOfType,
   $isElementNode,
   UNDO_COMMAND,
   type LexicalNode,
@@ -89,6 +90,54 @@ test("cell insertion offers only Markdown-compatible text while root tables offe
       },
       { editor },
     );
+  } finally {
+    editor.dispose();
+  }
+});
+
+test.each([
+  "Existing text.",
+  ":::notice\nExisting text.\n:::",
+  "- Existing text.",
+  "::::summary-list\n:::summary-item[Key]\nExisting text.\n:::\n::::",
+])("Details insertion refuses nested destinations through %s", (body) => {
+  const editor = page(`:::::details[Outer]\n${body}\n:::::`);
+
+  try {
+    const targetKey = editor.getEditorState().read(() => {
+      const text = $getRoot()
+        .getAllTextNodes()
+        .find((node) => node.getTextContent() === "Existing text.");
+
+      if (!text) throw new Error("Expected details body");
+
+      return text.getParentOrThrow().getKey();
+    });
+
+    const before = editor.getEditorState().toJSON();
+    expect(
+      editor
+        .getEditorState()
+        .read(() =>
+          $availableActions(editor, govbbPageEditor, { targetKey }).map((action) => action.id),
+        ),
+    ).not.toContain("page-details");
+    expect(executeAction(editor, govbbPageEditor, "page-details", { targetKey }).executed).toBe(
+      false,
+    );
+    expect(editor.getEditorState().toJSON()).toEqual(before);
+
+    const outerKey = editor.getEditorState().read(() =>
+      $nodesOfType(PageComponentNode)
+        .find((node) => node.getKind() === "details")
+        ?.getKey(),
+    );
+
+    if (!outerKey) throw new Error("Expected outer details");
+    expect(
+      executeAction(editor, govbbPageEditor, "page-details", { targetKey: outerKey, mode: "below" })
+        .executed,
+    ).toBe(true);
   } finally {
     editor.dispose();
   }
@@ -186,8 +235,8 @@ function $emptyLineIn(type: string) {
 
 test("a block chosen on a list's empty last line goes below the list, not inside its last item", () => {
   const result = insert("- One\n- Two\n", "page-start", () => $emptyLineIn("list"));
-  expect(result.blocks).toEqual(["bullet list", "start"]);
-  expect(result.markdown).toBe("- One\n- Two\n\n<a data-start-link>Start now</a>\n");
+  expect(result.blocks).toEqual(["bullet list", "action"]);
+  expect(result.markdown).toBe('- One\n- Two\n\n:::action{target="form"}\nStart now\n:::\n');
 });
 
 test("a block chosen on an empty line inside a numbered list splits it, and the steps after keep their numbers", () => {
@@ -214,12 +263,12 @@ test("an empty last line leaves a quote or Notice, but a Details keeps the block
   expect(
     insert(":::notice\nImportant\n:::\n", "page-start", () => $emptyLineIn("page-component"))
       .blocks,
-  ).toEqual(["notice", "start"]);
+  ).toEqual(["notice", "action"]);
   expect(
     insert(':::details{summary="Help"}\nText\n:::\n', "page-bullet-list", () =>
       $emptyLineIn("page-component"),
     ).markdown,
-  ).toBe(':::details{summary="Help"}\nText\n\n-\n:::\n');
+  ).toBe(":::details[Help]\nText\n\n-\n:::\n");
 });
 
 test("an empty Notice chosen over takes the Notice's place rather than leaving it empty", () => {
@@ -242,7 +291,7 @@ test("a line with text keeps the chosen block beside it in its list item", () =>
   });
 
   expect(result.blocks).toEqual(["bullet list"]);
-  expect(result.markdown).toBe("- One\n\n  <a data-start-link>Start now</a>\n");
+  expect(result.markdown).toBe('- One\n\n  :::action{target="form"}\n  Start now\n  :::\n');
 });
 
 test("“+” adds a block below its block on the page, or above it, never inside a list item", () => {

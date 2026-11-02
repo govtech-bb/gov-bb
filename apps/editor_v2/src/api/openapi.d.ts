@@ -60,13 +60,23 @@ export interface paths {
                             /** @description The slug of its subcategory, or null. */
                             subcategory: string | null;
                             /**
+                             * @description Effective visibility: the most restrictive of the page and the pages above it. preview reaches only a reviewer; the site shows its review banner and noindex from it.
+                             * @enum {string}
+                             */
+                            visibility: "public" | "preview";
+                            /**
                              * Format: date-time
-                             * @description When the page first went public (seeded from landing's `publish_date`); null until it has.
+                             * @description Landing's `publish_date` for an imported page, else when the page first went public; null until it has one.
                              */
                             published_at: string | null;
                             /**
                              * Format: date-time
-                             * @description The page's last save, visibility changes included: the site's "Last updated" line.
+                             * @description When the title, description, body, frontmatter or form last changed, visibility changes not included: the site's "Last updated" line.
+                             */
+                            content_updated_at: string;
+                            /**
+                             * Format: date-time
+                             * @description The page's last save, visibility changes included.
                              */
                             updated_at: string;
                         };
@@ -223,7 +233,7 @@ export interface paths {
                             slug: string;
                             /**
                              * Format: date-time
-                             * @description When the page first went public; null until it has.
+                             * @description Landing's `publish_date` for an imported page, else when the page first went public; null until it has one.
                              */
                             published_at: string | null;
                             /** Format: date-time */
@@ -233,6 +243,13 @@ export interface paths {
                              * @description Millisecond precision, and exactly the value to send back in `if-updated-at` on the next save.
                              */
                             updated_at: string;
+                            /** @description The actor of the entity's highest version_no change_event, including page review steps. Null when there is no event. Pending-revision saves are not recorded, so this is not necessarily the author of the working copy or its updated_at. */
+                            last_edited_by: {
+                                /** @description The event's actor id, or `system`. */
+                                id: string;
+                                /** @description Their name, or null when unavailable; `System` for system events. */
+                                name: string | null;
+                            } | null;
                             /** @description Set when the page is public and has a change waiting for an approver, or a rejected one that has not been replaced. The fields and `updated_at` are then the revision's, and citizens still see the live page. */
                             pending_revision: {
                                 /** @enum {string} */
@@ -762,6 +779,61 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/site-version": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * A token that moves whenever content changes
+         * @description Opaque. The site polls it and drops its cached pages when it moves, so a published change shows within seconds instead of after the pages' max-age. Moves on any change, drafts included.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Default Response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            version: string;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/catalog": {
         parameters: {
             query?: never;
@@ -978,7 +1050,7 @@ export interface paths {
                             slug: string;
                             /**
                              * Format: date-time
-                             * @description When the page first went public; null until it has.
+                             * @description Landing's `publish_date` for an imported page, else when the page first went public; null until it has one.
                              */
                             published_at: string | null;
                             /** Format: date-time */
@@ -988,6 +1060,13 @@ export interface paths {
                              * @description Millisecond precision, and exactly the value to send back in `if-updated-at` on the next save.
                              */
                             updated_at: string;
+                            /** @description The actor of the entity's highest version_no change_event, including page review steps. Null when there is no event. Pending-revision saves are not recorded, so this is not necessarily the author of the working copy or its updated_at. */
+                            last_edited_by: {
+                                /** @description The event's actor id, or `system`. */
+                                id: string;
+                                /** @description Their name, or null when unavailable; `System` for system events. */
+                                name: string | null;
+                            } | null;
                             /** @description Set when the page is public and has a change waiting for an approver, or a rejected one that has not been replaced. The fields and `updated_at` are then the revision's, and citizens still see the live page. */
                             pending_revision: {
                                 /** @enum {string} */
@@ -1168,7 +1247,7 @@ export interface paths {
                             slug: string;
                             /**
                              * Format: date-time
-                             * @description When the page first went public; null until it has.
+                             * @description Landing's `publish_date` for an imported page, else when the page first went public; null until it has one.
                              */
                             published_at: string | null;
                             /** Format: date-time */
@@ -1178,6 +1257,13 @@ export interface paths {
                              * @description Millisecond precision, and exactly the value to send back in `if-updated-at` on the next save.
                              */
                             updated_at: string;
+                            /** @description The actor of the entity's highest version_no change_event, including page review steps. Null when there is no event. Pending-revision saves are not recorded, so this is not necessarily the author of the working copy or its updated_at. */
+                            last_edited_by: {
+                                /** @description The event's actor id, or `system`. */
+                                id: string;
+                                /** @description Their name, or null when unavailable; `System` for system events. */
+                                name: string | null;
+                            } | null;
                             /** @description Set when the page is public and has a change waiting for an approver, or a rejected one that has not been replaced. The fields and `updated_at` are then the revision's, and citizens still see the live page. */
                             pending_revision: {
                                 /** @enum {string} */
@@ -1443,6 +1529,147 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/pages/{id}/history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get a page's history
+         * @description What happened to the page, newest first, from `change_events`: each change to the live page with the fields it changed, and each review step, with who did it and when. Read-only: nothing restores an entry. 404 when the page has no history.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Default Response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            entries: {
+                                version_no: number;
+                                /** @enum {string} */
+                                action: "created" | "updated" | "published" | "unpublished" | "reverted" | "deleted" | "submitted" | "approved" | "rejected" | "discarded";
+                                /** @description The user id of whoever did it, or `system`. */
+                                actor: string;
+                                /** @description Their name, or null when their account is gone. */
+                                actor_name: string | null;
+                                /** Format: date-time */
+                                occurred_at: string;
+                                /** @description For a change to the live page, the fields it changed against the page's previous entry, in field order. Empty for its creation and for a review step, whose snapshot is a revision. */
+                                changed: ("url" | "category_id" | "parent_id" | "title" | "description" | "visibility" | "form_id" | "body_markdown" | "frontmatter")[];
+                                /** @description Why an approver rejected the change; null for any other entry. */
+                                comment: string | null;
+                            }[];
+                        };
+                    };
+                };
+                /** @description Default Response */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/pages/{id}/revision": {
         parameters: {
             query?: never;
@@ -1701,6 +1928,101 @@ export interface paths {
                         } & {
                             [key: string]: unknown;
                         };
+                    };
+                };
+                /** @description Default Response */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/editor/page-paths": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List internal page link targets
+         * @description Every stored page path, including drafts, previews and uncategorised pages, plus unambiguous bare-slug redirects. For editor link checks, not a promise that a page is public. Requires an employee session.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Default Response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": string[];
                     };
                 };
                 /** @description Default Response */
@@ -2094,6 +2416,13 @@ export interface paths {
                                 reserved_route: boolean;
                                 /** Format: date-time */
                                 updated_at: string;
+                                /** @description The actor of the entity's highest version_no change_event, including page review steps. Null when there is no event. Pending-revision saves are not recorded, so this is not necessarily the author of the working copy or its updated_at. */
+                                last_edited_by: {
+                                    /** @description The event's actor id, or `system`. */
+                                    id: string;
+                                    /** @description Their name, or null when unavailable; `System` for system events. */
+                                    name: string | null;
+                                } | null;
                             }[];
                         };
                     };
@@ -2200,6 +2529,13 @@ export interface paths {
                             reserved_route: boolean;
                             /** Format: date-time */
                             updated_at: string;
+                            /** @description The actor of the entity's highest version_no change_event, including page review steps. Null when there is no event. Pending-revision saves are not recorded, so this is not necessarily the author of the working copy or its updated_at. */
+                            last_edited_by: {
+                                /** @description The event's actor id, or `system`. */
+                                id: string;
+                                /** @description Their name, or null when unavailable; `System` for system events. */
+                                name: string | null;
+                            } | null;
                         };
                     };
                 };
@@ -2355,6 +2691,13 @@ export interface paths {
                             reserved_route: boolean;
                             /** Format: date-time */
                             updated_at: string;
+                            /** @description The actor of the entity's highest version_no change_event, including page review steps. Null when there is no event. Pending-revision saves are not recorded, so this is not necessarily the author of the working copy or its updated_at. */
+                            last_edited_by: {
+                                /** @description The event's actor id, or `system`. */
+                                id: string;
+                                /** @description Their name, or null when unavailable; `System` for system events. */
+                                name: string | null;
+                            } | null;
                         };
                     };
                 };
@@ -2670,6 +3013,13 @@ export interface paths {
                                 reserved_route: boolean;
                                 /** Format: date-time */
                                 updated_at: string;
+                                /** @description The actor of the entity's highest version_no change_event, including page review steps. Null when there is no event. Pending-revision saves are not recorded, so this is not necessarily the author of the working copy or its updated_at. */
+                                last_edited_by: {
+                                    /** @description The event's actor id, or `system`. */
+                                    id: string;
+                                    /** @description Their name, or null when unavailable; `System` for system events. */
+                                    name: string | null;
+                                } | null;
                             }[];
                         };
                     };
@@ -4375,7 +4725,7 @@ export interface paths {
                             slug: string;
                             /**
                              * Format: date-time
-                             * @description When the page first went public; null until it has.
+                             * @description Landing's `publish_date` for an imported page, else when the page first went public; null until it has one.
                              */
                             published_at: string | null;
                             /** Format: date-time */
@@ -4385,6 +4735,13 @@ export interface paths {
                              * @description Millisecond precision, and exactly the value to send back in `if-updated-at` on the next save.
                              */
                             updated_at: string;
+                            /** @description The actor of the entity's highest version_no change_event, including page review steps. Null when there is no event. Pending-revision saves are not recorded, so this is not necessarily the author of the working copy or its updated_at. */
+                            last_edited_by: {
+                                /** @description The event's actor id, or `system`. */
+                                id: string;
+                                /** @description Their name, or null when unavailable; `System` for system events. */
+                                name: string | null;
+                            } | null;
                             /** @description Set when the page is public and has a change waiting for an approver, or a rejected one that has not been replaced. The fields and `updated_at` are then the revision's, and citizens still see the live page. */
                             pending_revision: {
                                 /** @enum {string} */

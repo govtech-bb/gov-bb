@@ -24,20 +24,17 @@ import {
 } from "react";
 import { parseDocument } from "yaml";
 import { HISTORY_START_TAG } from "../editor/core/history";
+import { barbadosDay, formatCalendarDay } from "../ui/dates";
 import { Field, FieldGroup, FieldText } from "../ui/field";
 import { Input } from "../ui/input";
 import { NativeSelect } from "../ui/native-select";
 import { SidePanel } from "../ui/side-panel";
 import { Tag } from "../ui/tag";
-import { StatusDot, type StatusTone } from "../ui/status-dot";
+import { StatusDot } from "../ui/status-dot";
 import { Textarea } from "../ui/textarea";
-import {
-  $pageMetadataNode,
-  $setPageMetadata,
-  PageMetadataNode,
-  pageMetadataFromYaml,
-  type PageMetadata,
-} from "./metadata";
+import { $pageMetadataNode, $setPageMetadata, PageMetadataNode } from "./metadata";
+import { pageMetadataFromYaml, type PageMetadata } from "./metadata-yaml";
+import { visibilityLabels, visibilityTones } from "./visibility";
 
 /** The page's metadata as the editor holds it, kept current as it changes. */
 export function usePageMetadata() {
@@ -280,14 +277,14 @@ export function PageTitleField({ error }: { error?: string }) {
         {/* Balanced only while it isn't being typed in, so its lines don't shift with every key */}
         <textarea
           {...titleProps}
-          className="block min-h-[1.2em] w-full resize-none overflow-hidden rounded-sm text-[clamp(1.875rem,3vw,2.5rem)] leading-[1.2] font-bold tracking-tight text-ink outline-none not-focus:text-balance placeholder:text-subtle"
+          className="block min-h-[1.2em] w-full resize-none overflow-hidden rounded-sm text-[clamp(1.875rem,3vw,2.5rem)] leading-[1.2] font-bold tracking-tight text-ink heading-field-focus not-focus:text-balance placeholder:text-subtle"
           aria-invalid={error ? true : undefined}
         />
       </label>
       {error && <p className="text-14 text-error">{error}</p>}
       <textarea
         {...ledeProps}
-        className="mt-5 block w-full resize-none overflow-hidden rounded-sm text-20 leading-[1.6] text-muted outline-none placeholder:text-subtle"
+        className="mt-5 block w-full resize-none overflow-hidden rounded-sm text-20 leading-[1.6] text-muted heading-field-focus placeholder:text-subtle"
       />
     </div>
   );
@@ -298,23 +295,6 @@ export type PageCategory = {
   title: string;
   subcategories?: readonly { slug: string; title: string }[];
 };
-
-// Live is green, link-only is amber, draft is grey; the label always travels with the colour.
-export const visibilityTones = new Map<string, StatusTone>([
-  ["", "success"],
-  ["public", "success"],
-  ["preview", "warning"],
-  ["draft", "neutral"],
-]);
-
-export const visibilityLabels = new Map([
-  ["", "Public"],
-  ["public", "Public"],
-  ["preview", "Preview link only"],
-  ["draft", "Draft (hidden)"],
-]);
-
-const dateFormat = new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeZone: "UTC" });
 
 /** A value the panel can't offer a control for, such as a list where it expects text: kept as written. */
 function Preserved({ label, error }: { label: string; error?: string }) {
@@ -329,14 +309,16 @@ export type PageSettingsOptions = {
   categories?: readonly PageCategory[];
   /** A page files under one category, so the picker hides once one is chosen. */
   single?: boolean;
-  /** When the server dates publication, its date shown read-only; null until the page first goes public. */
+  /** When the server dates publication, its date shown read-only; an imported page's `publish_date`, else null until the page first goes public. */
   publishedAt?: string | null;
+  /** Latest recorded actor supplied by the host, not inferred from this working copy. */
+  lastEditedBy?: { name: string | null } | null;
   /** The accepted server visibility, so an unsaved change can return to a legacy draft. */
   savedVisibility?: string;
   /** Why the host refused each field, keyed by field name. */
   errors?: Readonly<Record<string, string>>;
-  /** Visibility shown but not offered, for someone who isn't an approver. */
-  visibilityLocked?: boolean;
+  /** Why visibility is shown but not offered, such as that only approvers can change it. */
+  visibilityLocked?: string;
 };
 
 /** The page's settings, in sections for its side panel: how it's published, its details and where it's filed. */
@@ -344,9 +326,10 @@ export function PageSettings({
   categories = [],
   single = false,
   publishedAt,
+  lastEditedBy,
   savedVisibility,
   errors = {},
-  visibilityLocked = false,
+  visibilityLocked,
 }: PageSettingsOptions) {
   const { metadata, yaml, editable, update, historyKeys } = useMetadataUpdate();
   const document = parseDocument(yaml);
@@ -367,7 +350,8 @@ export function PageSettings({
   const unusualVisibility = !["", "public", "preview", "draft"].includes(visibility);
 
   const date =
-    (publishedAt === undefined ? metadata.publish_date : publishedAt?.slice(0, 10)) ?? "";
+    (publishedAt === undefined ? metadata.publish_date : publishedAt && barbadosDay(publishedAt)) ??
+    "";
 
   const parsedDate = new Date(date);
 
@@ -413,9 +397,7 @@ export function PageSettings({
               <StatusDot tone={visibilityTones.get(visibility) ?? "neutral"} />
               {visibilityLabels.get(visibility) ?? visibility}
             </span>
-            <span className="block text-muted">
-              Only approvers can change who can see this page.
-            </span>
+            <span className="block text-muted">{visibilityLocked}</span>
           </FieldText>
         ) : (
           <Field
@@ -453,7 +435,7 @@ export function PageSettings({
         ) : publishedAt !== undefined ? (
           <FieldText label="Publication date" error={errors.publish_date}>
             {date ? (
-              dateFormat.format(parsedDate)
+              formatCalendarDay(date)
             ) : (
               <span className="text-muted">Set when the page is first made public</span>
             )}
@@ -477,6 +459,11 @@ export function PageSettings({
               />
             )}
           </Field>
+        )}
+        {lastEditedBy && (
+          <FieldText label="Edited by">
+            <bdi className="wrap-anywhere">{lastEditedBy.name ?? "a former employee"}</bdi>
+          </FieldText>
         )}
       </SidePanel.Section>
       <SidePanel.Section title="Details">

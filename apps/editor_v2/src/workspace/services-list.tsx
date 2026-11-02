@@ -5,9 +5,10 @@ import { useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
 import { categoryLabel } from "../api/categories";
 import { ApiFailure, type EditorApi, type ServiceSummary } from "../api/client";
 import { categoriesQuery, servicesQuery } from "../api/queries";
-import { visibilityLabels, visibilityTones } from "../pages";
+import { visibilityLabels, visibilityTones } from "../pages/visibility";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
+import { pressedByTouch } from "../ui/focus";
 import { ListScreen } from "../ui/list-screen";
 import { RefreshFailure } from "../ui/refresh-failure";
 import { Select, type SelectItem } from "../ui/select";
@@ -139,8 +140,10 @@ const statusItems: SelectItem[] = visibilities.map((visibility) => ({
 function ServiceFilters({ categories }: { categories: readonly SelectItem[] }) {
   const table = useTableContext();
   const filters = useTableFilters();
-  // Clear filters goes once pressed, so focus moves on to the search box
+  // Clear filters goes once pressed, so focus moves on to the search box; after a tap, where that would bring up the
+  // keyboard over the list, to the filters themselves
   const searchBox = useRef<HTMLInputElement>(null);
+  const toolbar = useRef<HTMLDivElement>(null);
 
   // SAFETY: Only these filters set the column filters, always as the string arrays oneOf reads.
   const chosen = (column: string) =>
@@ -160,9 +163,11 @@ function ServiceFilters({ categories }: { categories: readonly SelectItem[] }) {
 
   return (
     <div
+      ref={toolbar}
       role="search"
       aria-label="Filter services"
-      className="flex flex-wrap items-center gap-2 border-b border-line p-3 @xl:px-4"
+      tabIndex={-1}
+      className="flex flex-wrap items-center gap-2 border-b border-line p-3 outline-none @xl:px-4"
     >
       <table.Search
         ref={searchBox}
@@ -193,7 +198,7 @@ function ServiceFilters({ categories }: { categories: readonly SelectItem[] }) {
           icon={<X />}
           onClick={() => {
             filters.clear();
-            searchBox.current?.focus();
+            (pressedByTouch() ? toolbar : searchBox).current?.focus();
           }}
         >
           Clear filters
@@ -355,7 +360,7 @@ export function ServicesList({
             ),
           }}
         />
-        <table.Pagination name={["service", "services"]} />
+        <table.Pagination name={["service", "services"]} loading={services.isPending} />
       </ListScreen>
     </table.AppTable>
   );

@@ -15,6 +15,8 @@ pnpm dev:editor_v2
 
 Open `http://localhost:3000`. Set `PORT` to use another port, for example `PORT=3015 pnpm dev:editor_v2`. The app runs on TanStack Start and Vite in SPA mode.
 
+The public-page preview is a local React template in `src/templates`, using the GovBB design-system packages and `govbbmarkd`. Vite builds it with the editor; no landing build, renderer URL or separate asset-copy step is needed. See [Site preview](docs/SITE-PREVIEW.md) for its behavior and browser checks.
+
 Run [api_v2](../api_v2/README.md) with its GitHub authentication configuration first. Opening the editor checks your session, then offers **Continue with GitHub** if you are signed out. Only that action starts sign-in; use a GitHub account with a verified email and active membership in `govtech-bb`. The API session expires after eight hours. The editor checks it on workspace entry, window focus and expiry, reuses an unexpired admission between workspace screens, and verifies the session cookie after GitHub returns. Cancellation, denied accounts, unavailable authentication and blocked cookies stop at a recovery screen instead of restarting sign-in.
 
 `VITE_API_ORIGIN` is the public API origin, defaulting to `http://localhost:3020` during development. Production builds require an explicit HTTPS origin. Both production origins must be on the same site for the API's host-only, SameSite cookies; the API's configured editor origin must match this app's origin exactly. Browser requests include credentials. Keep GitHub credentials and the Better Auth secret exclusively in the API environment.

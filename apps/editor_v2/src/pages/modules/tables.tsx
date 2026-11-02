@@ -7,16 +7,27 @@ import {
   $isTableNode,
   $isTableRowNode,
   $isTableCellNode,
+  $isTableSelection,
+  $getNodeTriplet,
+  $insertTableColumnAtSelection,
+  $deleteTableColumnAtSelection,
   TableNode,
   TableRowNode,
   TableCellNode,
   TableCellHeaderStates,
   TableExtension,
 } from "@lexical/table";
-import { $createParagraphNode, $isParagraphNode, configExtension } from "lexical";
+import {
+  $createParagraphNode,
+  $getSelection,
+  $isRangeSelection,
+  $isParagraphNode,
+  configExtension,
+} from "lexical";
 import type { TableRow, TableCell, AlignType } from "mdast";
 import type { PageModule, PageHandler } from "../definition";
 import { pageInsertAction } from "../insertion";
+import { PageComponentNode } from "../nodes";
 import { phrasing, UnsupportedPageContent } from "../markdown";
 
 const tables: PageHandler = {
@@ -93,48 +104,41 @@ const tables: PageHandler = {
 
     throw new Error("Unsupported table node");
   },
-  render(node, context, key) {
-    if (node.type !== "table") throw new UnsupportedPageContent(node);
-
-    return (
-      <div className="page-table-scroll" key={key}>
-        <table>
-          <thead>
-            <tr>
-              {node.children[0]?.children.map((cell, index) => (
-                <th
-                  key={`${key}/head/${index}`}
-                  scope="col"
-                  style={{ textAlign: node.align?.[index] ?? undefined }}
-                >
-                  {cell.children.map((child, childIndex) =>
-                    context.render(child, `${key}/head/${index}/${childIndex}`),
-                  )}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {node.children.slice(1).map((row, rowIndex) => (
-              <tr key={`${key}/${rowIndex}`}>
-                {row.children.map((cell, index) => (
-                  <td
-                    key={`${key}/${rowIndex}/${index}`}
-                    style={{ textAlign: node.align?.[index] ?? undefined }}
-                  >
-                    {cell.children.map((child, childIndex) =>
-                      context.render(child, `${key}/${rowIndex}/${index}/${childIndex}`),
-                    )}
-                  </td>
-                ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    );
-  },
 };
+
+/** Keeps numeric column metadata attached to surviving header cells when columns change. */
+export function $changePageTableColumns(operation: "insert" | "delete"): void {
+  const selection = $getSelection();
+
+  if (!$isRangeSelection(selection) && !$isTableSelection(selection)) return;
+  const [, , table] = $getNodeTriplet(selection.anchor);
+  const parent = table.getParent();
+
+  const component =
+    parent instanceof PageComponentNode && parent.getKind() === "table" ? parent : null;
+
+  const attributes = component?.getAttributes();
+  const columns = table.getFirstChildOrThrow<TableRowNode>().getChildren();
+
+  const numericKeys = new Set(
+    columns
+      .filter((_, index) => attributes?.numericColumns?.includes(index))
+      .map((cell) => cell.getKey()),
+  );
+
+  if (operation === "insert") $insertTableColumnAtSelection(true);
+  else $deleteTableColumnAtSelection();
+
+  if (component && table.isAttached() && attributes?.numericColumns) {
+    component.setAttributes({
+      ...attributes,
+      numericColumns: table
+        .getFirstChildOrThrow<TableRowNode>()
+        .getChildren()
+        .flatMap((cell, index) => (numericKeys.has(cell.getKey()) ? [index] : [])),
+    });
+  }
+}
 
 export function PageTablesModule(): PageModule {
   return {

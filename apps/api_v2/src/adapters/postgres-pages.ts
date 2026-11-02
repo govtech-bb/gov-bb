@@ -35,6 +35,7 @@ import {
   type CategoryValues,
 } from "../modules/category";
 import type { UserId } from "../modules/auth";
+import type { LastEditedBy } from "../modules/content-attribution";
 import type { CategoryRecords } from "../services/category-editing";
 import {
   ContentStoreUnavailable,
@@ -48,6 +49,7 @@ import {
   type ReviewQueueEntry,
   type Visibility,
 } from "../modules/page";
+import type { PageChangeEvent } from "../modules/page-history";
 import type { Ancestor, ResolvablePage } from "../modules/page-visibility";
 import { err, ok, type Result } from "../modules/result";
 import type { SearchChunk } from "../modules/search-text";
@@ -73,7 +75,22 @@ import type { NavigationReads } from "../services/site-navigation";
 const categoryDatabaseRow = EditorCategory.omit({
   updated_at: true,
   reserved_route: true,
-}).extend({ updated_at: z.string().pipe(z.coerce.date()) });
+  last_edited_by: true,
+}).extend({
+  updated_at: z.string().pipe(z.coerce.date()),
+  actor: z.string().nullable(),
+  name: z.string().nullable(),
+});
+
+const attributionOf = (
+  event: { actor: string | null; name: string | null } | undefined,
+): LastEditedBy =>
+  event && event.actor !== null
+    ? {
+        id: event.actor,
+        name: event.actor === "system" ? "System" : event.name,
+      }
+    : null;
 
 type PageRow = typeof contentPages.$inferSelect;
 
@@ -338,15 +355,23 @@ export class PostgresPages
     return attempt("editorCategories", async () => {
       const rows = await this.db.execute(sql`
         select c.id, c.parent_id, c.slug, c.title, c.description, c.position, c.updated_at,
+          latest.actor, u.name,
           case when p.id is null then '/' || c.slug else '/' || p.slug || '/' || c.slug end as url,
           (select count(*)::int from content_pages pages
             where pages.category_id = c.id and pages.parent_id is null) as services
         from categories c left join categories p on p.id = c.parent_id
+        left join lateral (
+          select actor from change_events
+          where entity_kind = 'category' and entity_id = c.id::text
+          order by version_no desc limit 1
+        ) latest on true
+        left join auth_user u on u.id = latest.actor
         order by c.position, c.title, c.id`);
       return rows.rows.map((value) => {
-        const row = categoryDatabaseRow.parse(value);
+        const { actor, name, ...row } = categoryDatabaseRow.parse(value);
         return {
           ...row,
+          last_edited_by: attributionOf({ actor, name }),
           updated_at: CategoryStamp.parse(row.updated_at.toISOString()),
           reserved_route: isCategoryAnchor(row.url),
         };
@@ -902,7 +927,7 @@ export class PostgresPages
         with entries as (
           select version_no, actor,
                  snapshot->>'visibility' = 'public' as public,
-                 snapshot - array['visibility', 'published_at', 'updated_at', 'created_at']
+                 snapshot - array['visibility', 'published_at', 'content_updated_at', 'updated_at', 'created_at']
                    - case when snapshot->>'parent_id' is null then '' else 'category_id' end
                    as content
             from change_events
@@ -962,6 +987,57 @@ export class PostgresPages
         latest: row?.latest?.toISOString() ?? null,
       };
     });
+  }
+
+  /** The last recorded page change, including review steps; revision saves do not create events. */
+  async lastEditedBy(
+    id: PageId,
+  ): Promise<Result<LastEditedBy, ContentStoreUnavailable>> {
+    return attempt("lastEditedBy", async () => {
+      const rows = await this.db
+        .select({ actor: changeEvents.actor, name: authUser.name })
+        .from(changeEvents)
+        .leftJoin(authUser, eq(authUser.id, changeEvents.actor))
+        .where(
+          and(
+            eq(changeEvents.entityKind, "content_page"),
+            eq(changeEvents.entityId, id),
+          ),
+        )
+        .orderBy(desc(changeEvents.versionNo))
+        .limit(1);
+      return attributionOf(rows[0]);
+    });
+  }
+
+  /** A page's `change_events`, oldest first, with each actor's name. */
+  async pageEvents(
+    id: PageId,
+  ): Promise<Result<PageChangeEvent[], ContentStoreUnavailable>> {
+    const rows = await attempt("pageEvents", () =>
+      this.db
+        .select({ event: changeEvents, name: authUser.name })
+        .from(changeEvents)
+        .leftJoin(authUser, eq(authUser.id, changeEvents.actor))
+        .where(
+          and(
+            eq(changeEvents.entityKind, "content_page"),
+            eq(changeEvents.entityId, id),
+          ),
+        )
+        .orderBy(changeEvents.versionNo),
+    );
+    if (!rows.ok) return rows;
+    return ok(
+      rows.value.map(({ event, name }) => ({
+        versionNo: event.versionNo,
+        action: event.action,
+        actor: event.actor,
+        actorName: name,
+        occurredAt: event.occurredAt,
+        snapshot: event.snapshot as Record<string, unknown>,
+      })),
+    );
   }
 
   /** Every revision waiting for review, with its submitter's name, the longest-waiting first. */

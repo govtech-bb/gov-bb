@@ -1,9 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useLayoutEffect, useRef, useState, type Ref, type RefObject } from "react";
 import { categoryLabel, categoryRows } from "../api/categories";
-import type { EditorApi, CreatePageInput, ServiceDetail } from "../api/client";
+import {
+  ApiFailure,
+  type EditorApi,
+  type CreatePageInput,
+  type ServiceDetail,
+} from "../api/client";
 import { apiFailureMessages } from "../api/failure-messages";
-import { suggestedUrl, urlProblem, pageFieldLabel } from "../api/page-markdown";
+import { pageFieldLabel, suggestedUrl, urlProblem } from "../api/page-fields";
 import { categoriesQuery, pageQuery } from "../api/queries";
 import { Button } from "../ui/button";
 import { ConfirmDialog } from "../ui/confirm-dialog";
@@ -29,18 +34,68 @@ function useCreatePage(api: EditorApi, onDone: (id: string) => void) {
   });
 }
 
+/**
+ * A create dialog's problems, each on its field: its own check's, then the API's refusals of the same fields, until
+ * that field changes. Once a check or a refusal shows them, the first field with one takes the focus, so it's read out
+ * with its error, as CategoryDialog's are. `controls` are its fields by the API's names for them, in order.
+ */
+function useFieldProblems(
+  controls: ReadonlyMap<string, RefObject<HTMLElement | null>>,
+  error: Error | null,
+) {
+  const [found, setFound] = useState<ReadonlyMap<string, string>>(new Map());
+  const [changed, setChanged] = useState<ReadonlySet<string>>(new Set());
+  const [checks, setChecks] = useState(0);
+  const refused = error instanceof ApiFailure ? error.errors : [];
+
+  const errorOf = (field: string) =>
+    changed.has(field)
+      ? undefined
+      : (found.get(field) ?? refused.find((item) => item.field === field)?.message);
+
+  // As problems show, not as each one goes
+  useLayoutEffect(() => {
+    [...controls].find(([field]) => errorOf(field))?.[1].current?.focus();
+  }, [checks, error]);
+
+  return {
+    errorOf,
+    /** Shows a check's problems by field, in place of the last's, and says whether there were none. */
+    check: (problems: ReadonlyMap<string, string>) => {
+      setFound(problems);
+      setChanged(new Set());
+      setChecks((count) => count + 1);
+
+      return problems.size === 0;
+    },
+    /** Each of these fields has changed, so its problem goes. */
+    change: (...fields: string[]) => setChanged((old) => new Set([...old, ...fields])),
+    /** What no field shows: a refusal of another field, or of the request as a whole. */
+    unshown: refused.length
+      ? refused
+          .filter((item) => !controls.has(item.field))
+          .map((item) => `${pageFieldLabel(item.field)}: ${item.message}`)
+      : apiFailureMessages(error, "The page could not be created. Try again.", pageFieldLabel),
+  };
+}
+
 function PathField({
   value,
   onChange,
   readOnly = false,
+  error,
+  ref,
 }: {
   value: string;
   onChange: (value: string) => void;
   readOnly?: boolean;
+  error?: string;
+  ref?: Ref<HTMLInputElement>;
 }) {
   return (
-    <Field label="Path">
+    <Field label="Path" error={error}>
       <Input
+        ref={ref}
         value={value}
         readOnly={readOnly}
         spellCheck={false}
@@ -68,10 +123,24 @@ export function CreateRemoteServiceDialog({
   const [title, setTitle] = useState("");
   const [categoryId, setCategoryId] = useState("");
   const [edited, setEdited] = useState<string>();
-  const [problems, setProblems] = useState<string[]>([]);
   const create = useCreatePage(api, onDone);
   const category = categories.find((item) => item.id === categoryId);
   const path = edited ?? suggestedUrl(category?.url ?? "", title);
+  const titleControl = useRef<HTMLInputElement>(null);
+  const categoryControl = useRef<HTMLSelectElement>(null);
+  const pathControl = useRef<HTMLInputElement>(null);
+
+  const problems = useFieldProblems(
+    new Map<string, RefObject<HTMLElement | null>>([
+      ["title", titleControl],
+      ["category_id", categoryControl],
+      ["url", pathControl],
+    ]),
+    create.error,
+  );
+
+  // Until it's edited, the path follows the name and the category, so it changes with them
+  const follows = edited === undefined ? ["url"] : [];
 
   return (
     <FormDialog
@@ -83,23 +152,24 @@ export function CreateRemoteServiceDialog({
       description="The service starts in Preview. Add its start page and supporting pages once it exists."
       pending={create.isPending}
       onSubmit={() => {
+        const found = new Map<string, string>();
         const badPath = urlProblem(path);
 
-        const found = [
-          ...(title.trim() ? [] : ["Enter a service name"]),
-          ...(category ? [] : ["Choose a category"]),
-          ...(badPath ? [badPath] : []),
-        ];
+        if (!title.trim()) found.set("title", "Enter a service name");
 
-        setProblems(found);
+        if (!category) found.set("category_id", "Choose a category");
 
-        if (found.length === 0 && category)
+        if (badPath) found.set("url", badPath);
+
+        if (problems.check(found) && category)
           create.mutate({
             url: path,
             title: title.trim(),
             category_id: category.id,
             visibility: "preview",
             body_markdown: "",
+            // /services lists only alpha services (#3244).
+            frontmatter: { stage: "alpha" },
           });
       }}
       actions={
@@ -114,11 +184,25 @@ export function CreateRemoteServiceDialog({
         </Button>
       }
     >
-      <Field label="Service name">
-        <Input value={title} onChange={(event) => setTitle(event.target.value)} />
+      <Field label="Service name" error={problems.errorOf("title")}>
+        <Input
+          ref={titleControl}
+          value={title}
+          onChange={(event) => {
+            setTitle(event.target.value);
+            problems.change("title", ...follows);
+          }}
+        />
       </Field>
-      <Field label="Category">
-        <NativeSelect value={categoryId} onChange={(event) => setCategoryId(event.target.value)}>
+      <Field label="Category" error={problems.errorOf("category_id")}>
+        <NativeSelect
+          ref={categoryControl}
+          value={categoryId}
+          onChange={(event) => {
+            setCategoryId(event.target.value);
+            problems.change("category_id", ...follows);
+          }}
+        >
           <option value="">Choose a category</option>
           {categoryRows(categories).map((item) => (
             <option key={item.id} value={item.id}>
@@ -129,17 +213,16 @@ export function CreateRemoteServiceDialog({
           ))}
         </NativeSelect>
       </Field>
-      <PathField value={path} onChange={setEdited} />
-      <ApiProblems
-        messages={[
-          ...problems,
-          ...apiFailureMessages(
-            create.error,
-            "The page could not be created. Try again.",
-            pageFieldLabel,
-          ),
-        ]}
+      <PathField
+        ref={pathControl}
+        value={path}
+        error={problems.errorOf("url")}
+        onChange={(value) => {
+          setEdited(value);
+          problems.change("url");
+        }}
       />
+      <ApiProblems messages={problems.unshown} />
     </FormDialog>
   );
 }
@@ -164,11 +247,23 @@ export function CreateRemotePageDialog({
   const [kind, setKind] = useState(hasStart ? "supporting" : "start");
   const [title, setTitle] = useState("");
   const [edited, setEdited] = useState<string>();
-  const [problems, setProblems] = useState<string[]>([]);
   const create = useCreatePage(api, onDone);
   const start = kind === "start";
   const name = title.trim() || (start ? "Before you start" : "");
   const path = start ? `${entry.url}/start` : (edited ?? suggestedUrl(entry.url, title));
+  const titleControl = useRef<HTMLInputElement>(null);
+  const pathControl = useRef<HTMLInputElement>(null);
+
+  const problems = useFieldProblems(
+    new Map([
+      ["title", titleControl],
+      ["url", pathControl],
+    ]),
+    create.error,
+  );
+
+  // Until it's edited, the path follows the title and the page's type, so it changes with them
+  const follows = start || edited === undefined ? ["url"] : [];
 
   return (
     <FormDialog
@@ -180,12 +275,14 @@ export function CreateRemotePageDialog({
       description="The page starts in Preview beneath this service’s entry page."
       pending={create.isPending}
       onSubmit={() => {
+        const found = new Map<string, string>();
         const badPath = urlProblem(path);
-        const found = [...(name ? [] : ["Enter a page title"]), ...(badPath ? [badPath] : [])];
 
-        setProblems(found);
+        if (!name) found.set("title", "Enter a page title");
 
-        if (found.length === 0)
+        if (badPath) found.set("url", badPath);
+
+        if (problems.check(found))
           create.mutate({
             url: path,
             title: name,
@@ -207,25 +304,41 @@ export function CreateRemotePageDialog({
       }
     >
       <Field label="Document type">
-        <NativeSelect value={kind} onChange={(event) => setKind(event.target.value)}>
+        <NativeSelect
+          value={kind}
+          onChange={(event) => {
+            setKind(event.target.value);
+            problems.change("title", "url");
+          }}
+        >
           {!hasStart && <option value="start">Start page</option>}
           <option value="supporting">Supporting page</option>
         </NativeSelect>
       </Field>
-      <Field label={start ? "Page title (optional)" : "Page title"}>
-        <Input value={title} onChange={(event) => setTitle(event.target.value)} />
+      <Field
+        label={start ? "Page title (optional)" : "Page title"}
+        error={problems.errorOf("title")}
+      >
+        <Input
+          ref={titleControl}
+          value={title}
+          onChange={(event) => {
+            setTitle(event.target.value);
+            problems.change("title", ...follows);
+          }}
+        />
       </Field>
-      <PathField value={path} onChange={setEdited} readOnly={start} />
-      <ApiProblems
-        messages={[
-          ...problems,
-          ...apiFailureMessages(
-            create.error,
-            "The page could not be created. Try again.",
-            pageFieldLabel,
-          ),
-        ]}
+      <PathField
+        ref={pathControl}
+        value={path}
+        readOnly={start}
+        error={problems.errorOf("url")}
+        onChange={(value) => {
+          setEdited(value);
+          problems.change("url");
+        }}
       />
+      <ApiProblems messages={problems.unshown} />
     </FormDialog>
   );
 }
@@ -237,6 +350,7 @@ export function DeleteRemotePageDialog({
   page,
   onClose,
   onDone,
+  focusAfter,
 }: {
   api: EditorApi;
   /** Shown; closed, it fades away as it was. Each opening is a new dialog. */
@@ -244,12 +358,16 @@ export function DeleteRemotePageDialog({
   page: PageDocument;
   onClose: () => void;
   onDone: () => void;
+  /** Where the focus goes once the page has gone, as the editor leaves it and its Delete page may go too. */
+  focusAfter: RefObject<HTMLElement | null>;
 }) {
   const client = useQueryClient();
+  const deleted = useRef(false);
 
   const remove = useMutation({
     mutationFn: () => api.deletePage(page.id),
     onSuccess: () => {
+      deleted.current = true;
       void client.invalidateQueries({ queryKey: ["content"] });
       // The editor leaves the page, so say it went
       toast("Page deleted");
@@ -276,6 +394,7 @@ export function DeleteRemotePageDialog({
       confirmLabel={service ? "Delete service" : "Delete page"}
       pendingLabel={service ? "Deleting service…" : "Deleting page…"}
       pending={remove.isPending}
+      finalFocus={() => (deleted.current ? focusAfter.current : true)}
       error={
         remove.error && (
           <ApiProblemText

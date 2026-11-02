@@ -33,6 +33,11 @@ export type ReviewQueueEntry = Json<
   paths["/revisions"]["get"]["responses"][200]
 >["revisions"][number];
 
+/** One entry in a page's history: what happened, who did it, when, and what it changed. */
+export type PageHistoryEntry = Json<
+  paths["/pages/{id}/history"]["get"]["responses"][200]
+>["entries"][number];
+
 /** What rejecting a change sends: why, for the editor. */
 type RejectRevisionInput = Json<paths["/pages/{id}/revision/reject"]["post"]["requestBody"]>;
 
@@ -108,6 +113,7 @@ export class CategoryAccessDenied extends ApiFailure {
   /** Stable failure discriminator. */
   readonly _tag = "CategoryAccessDenied" as const;
 
+  /** `message` is the content API's reason, or empty when it gave none, for a screen to say in its own words. */
   constructor(
     override readonly status: 401 | 403,
     message: string,
@@ -170,8 +176,9 @@ export class CategoryRefused extends ApiFailure {
   /** Stable failure discriminator. */
   readonly _tag = "CategoryRefused" as const;
 
+  /** `message` is the content API's own sentence, or empty when it gave none, for a screen to say in its own words. */
   constructor(status: number, message?: string) {
-    super(status, [], message ?? `Category request refused: HTTP ${status}`);
+    super(status, [], message ?? "");
   }
 }
 
@@ -246,6 +253,14 @@ const STAMP = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}(?:Z|[+-]\d{2}:\d{2})$
 const isStamp = (value: unknown): value is string =>
   isText(value) && STAMP.test(value) && Number.isFinite(Date.parse(value));
 
+const isLastEditedBy = (value: unknown): value is ApiPage["last_edited_by"] =>
+  value === null ||
+  (value instanceof Object &&
+    "id" in value &&
+    isText(value.id) &&
+    "name" in value &&
+    (value.name === null || isText(value.name)));
+
 const isCategory = (value: unknown): value is ApiCategory =>
   value instanceof Object &&
   "id" in value &&
@@ -268,7 +283,9 @@ const isCategory = (value: unknown): value is ApiCategory =>
   "reserved_route" in value &&
   isFlag(value.reserved_route) &&
   "updated_at" in value &&
-  isStamp(value.updated_at);
+  isStamp(value.updated_at) &&
+  "last_edited_by" in value &&
+  isLastEditedBy(value.last_edited_by);
 
 const isCategoryList = (value: unknown): value is { categories: ApiCategory[] } =>
   value instanceof Object &&
@@ -363,8 +380,7 @@ export function createEditorApi(apiOrigin: string, landingOrigin?: string) {
 
     const status = response.status;
 
-    if (status === 401 || status === 403)
-      return new CategoryAccessDenied(status, message ?? `Category access denied: HTTP ${status}`);
+    if (status === 401 || status === 403) return new CategoryAccessDenied(status, message ?? "");
 
     if (status === 404) return new CategoryNotFound(message ?? "Category not found");
 
@@ -427,6 +443,8 @@ export function createEditorApi(apiOrigin: string, landingOrigin?: string) {
 
   return {
     services,
+    pagePaths: () =>
+      read<Json<paths["/editor/page-paths"]["get"]["responses"][200]>>("/editor/page-paths"),
     service: (id: string) => read<ServiceDetail>(`/services/${id}`),
     /** The one shared category list: each top-level category, then its subcategories, in their order. */
     categories: async (): Promise<
@@ -550,6 +568,9 @@ export function createEditorApi(apiOrigin: string, landingOrigin?: string) {
     reviewQueue: async () =>
       (await read<{ revisions: ReviewQueueEntry[] }>("/revisions?status=submitted")).revisions,
     revision: (id: string) => read<ApiRevision>(`/pages/${id}/revision`),
+    /** What happened to a page, newest first. */
+    history: async (id: string) =>
+      (await read<{ entries: PageHistoryEntry[] }>(`/pages/${id}/history`)).entries,
     /** Publishes the change at the version the approver reviewed, `ifUpdatedAt`. */
     publishRevision: async (id: string, ifUpdatedAt: string): Promise<ApiPage> =>
       (await send("POST", `/pages/${id}/revision/publish`, undefined, ifUpdatedAt)).json(),

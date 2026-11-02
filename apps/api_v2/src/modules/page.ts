@@ -5,6 +5,7 @@
 
 import { isDeepStrictEqual } from "node:util";
 import { z } from "zod";
+import { LastEditedBy } from "./content-attribution";
 
 /** Who may see a page, in the database enum's order. */
 export const VISIBILITIES = ["public", "preview", "draft"] as const;
@@ -89,7 +90,10 @@ export const PageDocument = PageFields.extend({
   published_at: z.iso
     .datetime()
     .nullable()
-    .describe("When the page first went public; null until it has."),
+    .describe(
+      "Landing's `publish_date` for an imported page, else when the page " +
+        "first went public; null until it has one.",
+    ),
   created_at: z.iso.datetime(),
   updated_at: z.iso
     .datetime()
@@ -213,6 +217,7 @@ export type ReviewQueueEntry = z.infer<typeof ReviewQueueEntry>;
 
 /** A page as the editor opens and saves it: the live page with its pending revision, if any, laid over it. */
 export const EditorPage = PageDocument.extend({
+  last_edited_by: LastEditedBy,
   pending_revision: z
     .object({
       status: RevisionStatus.exclude(["published", "discarded"]),
@@ -367,7 +372,7 @@ export function revisionOf(
 export function workingCopy(
   live: PageDocument,
   revision: PendingRevision | null,
-): EditorPage {
+): Omit<EditorPage, "last_edited_by"> {
   if (
     revision === null ||
     revision.status === "published" ||

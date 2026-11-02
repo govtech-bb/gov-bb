@@ -2,9 +2,13 @@ import assert from "node:assert/strict";
 import { mkdir, readFile } from "node:fs/promises";
 import { parse } from "yaml";
 import { chromium } from "./playwright.mjs";
+import { authenticatedContext, servicesFixture } from "./auth-fixture.mjs";
+import { fixturePage, installPageApi } from "./page-api-fixture.mjs";
 
 // The reference is the normal published route, never the retired preview route.
 const origin = process.argv[2] ?? "http://127.0.0.1:3040";
+
+const editorOrigin = process.argv[3] ?? "http://127.0.0.1:3060";
 
 const path = "/work-employment/apply-to-be-a-project-protege-mentor";
 
@@ -24,8 +28,8 @@ const directory = process.env.PREVIEW_SCREENSHOTS ?? "/tmp/govbb-site-preview";
 
 await mkdir(directory, { recursive: true });
 
-const measure = (page) =>
-  page.evaluate(() => {
+const measure = (page, scope = "body") =>
+  page.evaluate((scope) => {
     const selectors = [
       "header",
       "h1",
@@ -36,7 +40,7 @@ const measure = (page) =>
     ];
 
     return selectors.map((selector) => {
-      const element = document.querySelector(selector);
+      const element = document.querySelector(`${scope} ${selector}`);
 
       if (!element) throw new Error(`Missing public-page element: ${selector}`);
       const rect = element.getBoundingClientRect();
@@ -53,11 +57,15 @@ const measure = (page) =>
         color: style.color,
       };
     });
-  });
+  }, scope);
 
 try {
-  for (const width of [390, 800, 1440]) {
-    const context = await browser.newContext({ viewport: { width, height: 1000 } });
+  for (const width of [390, 800, 1000, 1440]) {
+    const context = await authenticatedContext(browser, {
+      viewport: { width, height: 1000 },
+      reducedMotion: "reduce",
+    });
+
     const reference = await context.newPage();
     await reference.goto(`${origin}${path}`);
     await reference.locator(".govbb-prose").waitFor();
@@ -72,38 +80,27 @@ try {
     );
 
     assert.ok(breadcrumbs.length, "normal page supplies its own breadcrumb reference");
-    const available = (await reference.locator(".govbb-prose a.govbb-button").count()) > 0;
+    const metadata = parse(yaml);
+    const service = { ...servicesFixture[0], title: metadata.title, url: path };
+    await installPageApi(context, service, [
+      fixturePage(service.id, {
+        title: metadata.title,
+        url: path,
+        body_markdown: body,
+        frontmatter: metadata,
+        form_id: metadata.form_id ?? null,
+        published_at: metadata.publish_date ? new Date(metadata.publish_date).toISOString() : null,
+      }),
+    ]);
     const preview = await context.newPage();
     const errors = [];
     preview.on("pageerror", (error) => errors.push(error.message));
-    await preview.route("**/__site-preview-parity", (route) =>
-      route.fulfill({
-        contentType: "text/html",
-        body: `<!doctype html><html lang="en"><head><meta name="viewport" content="width=device-width, initial-scale=1"><link rel="stylesheet" href="/cms-preview/styles.css"></head><body><div id="preview"></div></body></html>`,
-      }),
-    );
-    await preview.goto(`${origin}/__site-preview-parity`);
-    await preview.evaluate(
-      async ({ frontmatter, body, path, breadcrumbs, available }) => {
-        const { mountCmsPreview } = await import("/cms-preview/renderer.js");
-        window.previewHandle = await mountCmsPreview(
-          document.getElementById("preview"),
-          {
-            frontmatter,
-            body,
-            path,
-            breadcrumbs,
-            formStatus: available ? "available" : "unavailable",
-          },
-          location.origin,
-        );
-        await document.fonts.ready;
-      },
-      { frontmatter: parse(yaml), body, path, breadcrumbs, available },
-    );
-    await preview.locator(".govbb-prose").waitFor();
+    await preview.goto(`${editorOrigin}/services/${service.id}/${service.id}`);
+    await preview.getByRole("button", { name: "Preview page", exact: true }).click();
+    await preview.locator("[data-cms-site-preview] .govbb-prose").waitFor();
+    await preview.evaluate(() => document.fonts.ready);
     assert.deepEqual(
-      await measure(preview),
+      await measure(preview, "[data-cms-site-preview]"),
       expected,
       `public layout and typography at ${width}px`,
     );

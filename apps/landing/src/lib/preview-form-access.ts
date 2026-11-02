@@ -5,7 +5,7 @@ import { formsApiBase } from './forms-api-url'
 /**
  * Per-form preview accessibility check (#1646 Phase 3).
  *
- * A `preview`/`draft` reviewer on a not-yet-public content page should see its
+ * A `preview` reviewer on a not-yet-public content page should see its
  * "Start now" button when the linked form is reachable for them — but the form
  * is, by definition, absent from the public list `available-forms.ts` serves.
  * This does a single tokened `GET /form-definitions/:formId` with the preview

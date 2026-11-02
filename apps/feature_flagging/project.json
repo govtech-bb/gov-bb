@@ -29,6 +29,9 @@
           "env": "AWS_BRANCH"
         },
         {
+          "env": "EDITOR_V2_URL"
+        },
+        {
           "env": "FEATURE_FLAGGING_API_URL"
         },
         {

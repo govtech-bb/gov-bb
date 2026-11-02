@@ -1,6 +1,27 @@
 import { expect, test } from "vitest";
 import { boundaryIssues } from "./check-boundaries";
 
+test("prose templates use the design system without depending on workspace or persistence", () => {
+  const check = (source: string) =>
+    boundaryIssues(new Map([["src/templates/prose-page.tsx", source]]));
+
+  expect(
+    check(
+      'import { Header } from "@govtech-bb/react"; import styles from "@govtech-bb/frontend/css?inline"; document.getElementById("preview");',
+    ),
+  ).toEqual([]);
+  expect(check('import { compileContentMarkdown } from "@govtech-bb/govbbmarkd";')).toEqual([]);
+  expect(check('import { hideStartLinks } from "@govtech-bb/govbbmarkd/form-links";')).toEqual([]);
+  expect(check('import { save } from "../persistence/save";')).toHaveLength(1);
+  expect(check('import { editor } from "../host/page-editor";')).toHaveLength(1);
+  expect(
+    boundaryIssues(new Map([["src/templates/prose-page-content.ts", "document.body;"]])),
+  ).toHaveLength(1);
+  expect(
+    boundaryIssues(new Map([["src/host/site-preview.tsx", "import(location.href);"]])),
+  ).toHaveLength(1);
+});
+
 test("completed boundaries reject runtime imports, re-exports and dynamic imports of legacy UI", () => {
   for (const source of [
     'import { Widget } from "../../canvas/widgets";',
@@ -515,6 +536,14 @@ test("page modules use generic editor contracts without depending on forms, pres
   expect(
     check('import { FormattingModule } from "../../editor/modules/formatting/module";'),
   ).toEqual([]);
+  expect(check('import { parseContentMarkdown } from "@govtech-bb/govbbmarkd";')).toEqual([]);
+  expect(check('import { renderMarkdownNodes } from "@govtech-bb/govbbmarkd/react";')).toEqual([]);
+  expect(
+    check('import { parseLegacyPageStartLink } from "@govtech-bb/govbbmarkd/legacy";'),
+  ).toEqual([]);
+  expect(check('import { isSafeContentUrl } from "@govtech-bb/govbbmarkd/content-url";')).toEqual(
+    [],
+  );
 
   for (const source of [
     'import type { Settings } from "../../forms/core/settings";',
@@ -522,6 +551,7 @@ test("page modules use generic editor contracts without depending on forms, pres
     'import { govbbPageEditor } from "../../presets/govbb-page";',
     'const load = () => import("../../host/page-editor");',
     'export { savePageDraft } from "../../workspace/page-sync";',
+    'import { loadContent } from "@govtech-bb/content/load";',
   ])
     expect(check(source)).toHaveLength(1);
 });

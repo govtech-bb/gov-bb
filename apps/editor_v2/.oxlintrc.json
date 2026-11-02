@@ -847,7 +847,8 @@
     },
     {
       "files": [
-        "src/pages/metadata.ts"
+        "src/pages/metadata.ts",
+        "src/pages/metadata-yaml.ts"
       ],
       "rules": {
         "anti-slop/no-runtime-typeof": "off"

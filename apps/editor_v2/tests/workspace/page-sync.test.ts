@@ -1,10 +1,21 @@
 import { describe, expect, it } from "vitest";
+import {
+  $createParagraphNode,
+  $createTextNode,
+  $getRoot,
+  HISTORY_PUSH_TAG,
+  UNDO_COMMAND,
+  REDO_COMMAND,
+} from "lexical";
+import { createHeadlessEditor } from "../../src/editor/core/create-editor";
+import { $setPageMetadata } from "../../src/pages/metadata";
 import { ApiFailure, type ApiPage, type SavePageInput } from "../../src/api/client";
 import type { Category } from "../../src/api/categories";
 import { pageToMarkdown } from "../../src/api/page-markdown";
-import { savePageDraft, pageHasUnsavedChanges } from "../../src/workspace/page-sync";
+import { pageHasUnsavedChanges } from "../../src/workspace/page-session";
+import { savePageDraft } from "../../src/workspace/page-sync";
 import { DraftStore } from "../../src/persistence/draft-store";
-import { govbbPageCodec } from "../../src/presets/govbb-page";
+import { govbbPageCodec, govbbPageEditor } from "../../src/presets/govbb-page";
 
 const page: ApiPage = {
   id: "page-1",
@@ -22,6 +33,7 @@ const page: ApiPage = {
   created_at: "2026-10-07T12:00:00.000Z",
   updated_at: "2026-10-07T12:00:00.000Z",
   pending_revision: null,
+  last_edited_by: null,
 };
 
 const newer: ApiPage = {
@@ -47,6 +59,129 @@ it("counts both applied changes and unapplied source against an in-memory server
 
 describe("saving a page", () => {
   const base = { page, markdown };
+
+  it.each([
+    ["title", "public", { title: "Renamed" }],
+    ["details", "preview", { description: "New description" }],
+    ["publishing", "preview", { visibility: "public" }],
+    ["hiding", "public", { visibility: "preview" }],
+  ] as const)(
+    "preserves the exact body when only %s changes",
+    async (_name, visibility, details) => {
+      for (const body of [
+        "\n\nFirst line  \nSecond line\n\n",
+        "\r\nFirst line  \r\nSecond line\r\n",
+        "  \n\t ",
+        "",
+        "---\n\nInstructions\n\n---",
+      ]) {
+        const original = { ...page, visibility, body_markdown: body };
+        const markdown = pageToMarkdown(original, []);
+        const prepared = govbbPageCodec.prepare(markdown);
+
+        if (prepared.mode === "source") throw new Error("Expected a visual page");
+        const editor = createHeadlessEditor(govbbPageEditor, prepared.state);
+        const sent: SavePageInput[] = [];
+
+        try {
+          editor.update(() => $setPageMetadata(details), { discrete: true });
+
+          const outcome = await savePageDraft(
+            {
+              savePage: async (_id, fields) => {
+                sent.push(fields);
+
+                return { ...original, ...fields };
+              },
+            },
+            { page: original, markdown },
+            govbbPageCodec.encode(editor.getEditorState().toJSON()),
+            [],
+          );
+
+          expect(outcome.kind, JSON.stringify(body)).toBe("saved");
+          expect(sent, JSON.stringify(body)).toEqual([
+            expect.objectContaining({ ...details, body_markdown: body }),
+          ]);
+        } finally {
+          editor.dispose();
+        }
+      }
+    },
+  );
+
+  it("saves real body edits, shares undo with details, and keeps that body on later detail saves", async () => {
+    const original = { ...page, body_markdown: "\nFirst line  \nSecond line\n\n" };
+    let base = { page: original, markdown: pageToMarkdown(original, []) };
+    const prepared = govbbPageCodec.prepare(base.markdown);
+
+    if (prepared.mode === "source") throw new Error("Expected a visual page");
+    const editor = createHeadlessEditor(govbbPageEditor, prepared.state);
+    const sent: SavePageInput[] = [];
+
+    const save = async () => {
+      const outcome = await savePageDraft(
+        {
+          savePage: async (_id, fields) => {
+            sent.push(fields);
+
+            return { ...base.page, ...fields, updated_at: newer.updated_at };
+          },
+        },
+        base,
+        govbbPageCodec.encode(editor.getEditorState().toJSON()),
+        [],
+      );
+
+      if (outcome.kind !== "saved") throw new Error("Expected the page to save");
+      base = outcome.base;
+
+      return base.page;
+    };
+
+    try {
+      editor.update(() => $setPageMetadata({ title: "Renamed" }), {
+        discrete: true,
+        tag: HISTORY_PUSH_TAG,
+      });
+      editor.update(
+        () => $getRoot().append($createParagraphNode().append($createTextNode("New instructions"))),
+        {
+          discrete: true,
+          tag: HISTORY_PUSH_TAG,
+        },
+      );
+      editor.dispatchCommand(UNDO_COMMAND, undefined);
+      await Promise.resolve();
+      expect(await save()).toMatchObject({
+        title: "Renamed",
+        body_markdown: original.body_markdown,
+      });
+
+      editor.dispatchCommand(UNDO_COMMAND, undefined);
+      await Promise.resolve();
+      expect(await save()).toMatchObject({
+        title: original.title,
+        body_markdown: original.body_markdown,
+      });
+
+      editor.dispatchCommand(REDO_COMMAND, undefined);
+      await Promise.resolve();
+      editor.dispatchCommand(REDO_COMMAND, undefined);
+      await Promise.resolve();
+      const body = "First line<br>Second line\n\nNew instructions";
+      expect(await save()).toMatchObject({ title: "Renamed", body_markdown: body });
+
+      editor.update(() => $setPageMetadata({ description: "Changed later" }), { discrete: true });
+      expect(await save()).toMatchObject({ description: "Changed later", body_markdown: body });
+
+      editor.update(() => $getRoot().clear(), { discrete: true });
+      expect(await save()).toMatchObject({ title: "Renamed", body_markdown: "" });
+      expect(sent).toHaveLength(5);
+    } finally {
+      editor.dispose();
+    }
+  });
 
   it("saves the draft over the version it was edited from", async () => {
     const sent: { fields: SavePageInput; ifUpdatedAt: string }[] = [];
@@ -116,6 +251,7 @@ describe("saving a page", () => {
       position: 0,
       services: 30,
       reserved_route: false,
+      last_edited_by: null,
       updated_at: "2026-10-28T12:00:00.000Z",
     };
 

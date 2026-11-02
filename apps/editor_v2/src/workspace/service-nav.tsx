@@ -1,11 +1,12 @@
 import { Link } from "@tanstack/react-router";
 import { useId, type ReactNode } from "react";
-import { visibilityLabels, visibilityTones } from "../pages";
+import { visibilityLabels, visibilityTones } from "../pages/visibility";
 import type { DraftStore } from "../persistence/draft-store";
 import { Button } from "../ui/button";
 import type { DrawerPanel } from "../ui/drawer";
 import { Sidebar } from "../ui/sidebar";
 import { StatusDot } from "../ui/status-dot";
+import { TextLink } from "../ui/text-link";
 import { DocumentLabel } from "./document-label";
 import type { ServiceNavRow } from "./service-pages";
 
@@ -44,7 +45,9 @@ export function ServiceNav({
   const reason = useId();
   const pages = rows;
   const blocked = readOnly ?? deleteBlocked;
+  const selected = pages.some((row) => row.document.id === selectedId);
 
+  // A page that isn't public says so in words under its title, which its dot only backs up
   const item = (row: ServiceNavRow, nested: ReactNode[]) => (
     <Sidebar.Item
       key={row.document.id}
@@ -53,10 +56,11 @@ export function ServiceNav({
         row.visibility && (
           <StatusDot
             tone={visibilityTones.get(row.visibility) ?? "neutral"}
-            label={visibilityLabels.get(row.visibility)}
+            label={row.visibility === "public" ? visibilityLabels.get(row.visibility) : undefined}
           />
         )
       }
+      detail={row.visibility && row.visibility !== "public" && visibilityLabels.get(row.visibility)}
       nested={nested.length > 0 ? nested : undefined}
       render={
         <Link
@@ -89,7 +93,7 @@ export function ServiceNav({
       <Sidebar.Content>
         <Sidebar.Group label="Pages">{items(pages)}</Sidebar.Group>
         {loading ? (
-          <Sidebar.Empty>Loading pages…</Sidebar.Empty>
+          <Sidebar.Loading>Loading pages…</Sidebar.Loading>
         ) : (
           pages.length === 0 && (
             <Sidebar.Empty>Add an entry page to explain this service.</Sidebar.Empty>
@@ -107,7 +111,7 @@ export function ServiceNav({
             </Button>
             {onDelete && (
               <Button
-                disabled={!pages.some((row) => row.document.id === selectedId) || !!blocked}
+                disabled={!selected || !!blocked}
                 aria-describedby={blocked ? reason : undefined}
                 onClick={onDelete}
               >
@@ -120,6 +124,22 @@ export function ServiceNav({
           <p id={reason} className="mt-2 text-14 text-muted">
             {blocked}
           </p>
+        )}
+        {selectedId && selected && (
+          <TextLink
+            className="mt-4 block w-fit text-14"
+            render={
+              <Link
+                to="/history/$pageId"
+                params={{ pageId: selectedId }}
+                search={{ service: serviceId }}
+                // As a page row does, so the drawer isn't open again on the way back
+                onClick={() => !sidebar.wide && sidebar.setOpen(false)}
+              />
+            }
+          >
+            View page history
+          </TextLink>
         )}
       </Sidebar.Content>
     </Sidebar.Root>

@@ -171,7 +171,9 @@ describe("GET /pages?url=", () => {
       ],
       category: "money-financial-support",
       subcategory: null,
+      visibility: "public",
       published_at: created.published_at,
+      content_updated_at: created.published_at,
       updated_at: created.updated_at,
     });
   });
@@ -197,6 +199,7 @@ describe("GET /pages?url=", () => {
     });
 
     expect(response.json()).toMatchObject({
+      visibility: "preview",
       published_at: null,
       updated_at: created.updated_at,
     });
@@ -331,6 +334,13 @@ describe("GET /pages?url=", () => {
     expect((await read(ENTRY)).json().hide_start_links).toBe(true);
   });
 
+  it("answers preview for a public page beneath a preview page", async () => {
+    const parent = await seedPage({ visibility: "preview" });
+    await seedPage({ url: START, parent_id: parent.id });
+
+    expect((await readPreview(START)).json().visibility).toBe("preview");
+  });
+
   it("sends PUBLIC_READ, on a redirect as on a page", async () => {
     await seedPage();
 
@@ -372,6 +382,64 @@ describe("GET /pages/:id", () => {
     expect(response.statusCode).toBe(404);
     expect(response.json()).toMatchObject({ error: "not_found" });
     expect(response.body).not.toContain("at ");
+  });
+});
+
+describe("GET /editor/page-paths", () => {
+  it("lists draft, preview, nested and standalone pages without their content", async () => {
+    const category = await seedCategory();
+    const entry = await seedPage({ category_id: category.id });
+    await seedPage({ url: START, parent_id: entry.id, visibility: "preview" });
+    await seedPage({
+      url: "/fees",
+      parent_id: entry.id,
+      visibility: "draft",
+    });
+    await seedPage({ url: "/terms-conditions" });
+
+    const response = await inject({ url: "/editor/page-paths" });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.headers["cache-control"]).toBe("no-store");
+    expect(response.json()).toEqual(
+      [
+        ENTRY,
+        START,
+        "/fees",
+        "/terms-conditions",
+        "/calculate-severance-pay",
+        "/start",
+      ].sort(),
+    );
+  });
+
+  it("only includes a bare-slug redirect when its target is unambiguous", async () => {
+    await seedPage({ url: "/one/help" });
+    await seedPage({ url: "/two/help" });
+
+    const response = await inject({ url: "/editor/page-paths" });
+
+    expect(response.json()).toEqual(["/one/help", "/two/help"]);
+  });
+
+  it("does not mistake a failed lookup for an empty list", async () => {
+    const broken = await createTestDb();
+    const brokenApp = await createTestApp(broken.db);
+    try {
+      await broken.db.execute(
+        sql`alter table content_pages rename to unavailable_pages`,
+      );
+      const response = await brokenApp.inject({
+        url: "/editor/page-paths",
+        headers: TEST_HEADERS,
+      });
+
+      expect(response.statusCode).toBe(500);
+      expect(response.json()).toMatchObject({ error: "internal_error" });
+    } finally {
+      await brokenApp.close();
+      await broken.close();
+    }
   });
 });
 
@@ -754,6 +822,106 @@ describe("PUT /pages/:id", () => {
     ]);
   });
 
+  it("lists a page's history newest first, with who did it and what each change changed", async () => {
+    const draft = await seedPage({ visibility: "draft" });
+    const put = async (
+      current: typeof draft,
+      changes: Record<string, unknown>,
+    ) =>
+      (
+        await inject({
+          method: "PUT",
+          url: `/pages/${draft.id}`,
+          payload: { ...current, ...changes },
+        })
+      ).json();
+    await put(await put(draft, { title: "Renamed" }), { visibility: "public" });
+
+    const response = await inject({ url: `/pages/${draft.id}/history` });
+
+    expect(response.statusCode).toBe(200);
+    expect(
+      response
+        .json()
+        .entries.map(
+          ({
+            action,
+            actor,
+            actor_name,
+            changed,
+          }: Record<string, unknown>) => ({
+            action,
+            actor,
+            actor_name,
+            changed,
+          }),
+        ),
+    ).toEqual([
+      {
+        action: "published",
+        actor: TEST_EMPLOYEE.id,
+        actor_name: TEST_EMPLOYEE.name,
+        changed: ["visibility"],
+      },
+      {
+        action: "updated",
+        actor: TEST_EMPLOYEE.id,
+        actor_name: TEST_EMPLOYEE.name,
+        changed: ["title"],
+      },
+      {
+        action: "created",
+        actor: TEST_EMPLOYEE.id,
+        actor_name: TEST_EMPLOYEE.name,
+        changed: [],
+      },
+    ]);
+  });
+
+  it("404s the history of a page that has none", async () => {
+    const response = await inject({
+      url: "/pages/22222222-2222-4222-8222-222222222222/history",
+    });
+    expect(response.statusCode).toBe(404);
+  });
+
+  it("serves content_updated_at, moved by a content change but not by a visibility change (#3105)", async () => {
+    const draft = await seedPage({ visibility: "draft" });
+    const put = async (
+      current: typeof draft,
+      changes: Record<string, unknown>,
+    ) =>
+      (
+        await inject({
+          method: "PUT",
+          url: `/pages/${draft.id}`,
+          payload: { ...current, ...changes },
+        })
+      ).json();
+    const servedDate = async () =>
+      (await read(draft.url)).json().content_updated_at;
+
+    const editedDraft = await put(draft, { title: "Drafted" });
+    const published = await put(editedDraft, { visibility: "public" });
+    const first = await servedDate();
+    expect(new Date(first).getTime()).toBeGreaterThanOrEqual(
+      new Date(published.published_at).getTime(),
+    );
+
+    const hidden = await put(published, { visibility: "preview" });
+    const again = await put(hidden, { visibility: "public" });
+    expect(await servedDate()).toBe(first);
+
+    const edited = await put(await put(again, { visibility: "preview" }), {
+      title: "Renamed",
+    });
+    await put(edited, { visibility: "public" });
+    const moved = await servedDate();
+    expect(new Date(moved).getTime()).toBeGreaterThan(
+      new Date(first).getTime(),
+    );
+  });
+
   it("422s a page placed beneath its own sub-page", async () => {
     const parent = await seedPage();
     const child = await seedPage({ url: START, parent_id: parent.id });
@@ -908,8 +1076,9 @@ describe("PUT /pages/:id", () => {
   });
 });
 
-describe("removed page history endpoints", () => {
-  it.each(["history", "history/1"])(
+describe("removed page version endpoints", () => {
+  // The history list came back read-only; reading or restoring a version did not.
+  it.each(["history/1"])(
     "404s %s even for an employee and an existing page",
     async (path) => {
       const page = await seedPage();
@@ -1079,6 +1248,24 @@ describe("Cache-Control", () => {
   });
 });
 
+describe("GET /site-version", () => {
+  const version = async () => {
+    const response = await app.inject({ url: "/site-version" });
+    expect(response.statusCode).toBe(200);
+    expect(response.headers["cache-control"]).toBe("public, max-age=5");
+    return (response.json() as { version: string }).version;
+  };
+
+  it("needs no sign-in, holds still between changes and moves on one", async () => {
+    const before = await version();
+    expect(await version()).toBe(before);
+
+    await seedPage();
+
+    expect(await version()).not.toBe(before);
+  });
+});
+
 describe("timestamp precision", () => {
   /**
    * `updated_at` has to survive the round trip through JSON exactly, or
@@ -1173,6 +1360,7 @@ describe("employee access", () => {
     ["GET", "/pages/not-a-uuid"],
     ["HEAD", "/pages/not-a-uuid"],
     ["GET", "/services"],
+    ["GET", "/editor/page-paths"],
     ["GET", "/services/not-a-uuid"],
     ["GET", "/editor/categories"],
     ["HEAD", "/editor/categories"],
@@ -1184,6 +1372,7 @@ describe("employee access", () => {
     ["POST", "/pages"],
     ["PUT", "/pages/not-a-uuid"],
     ["DELETE", "/pages/not-a-uuid"],
+    ["GET", "/pages/not-a-uuid/history"],
   ] as const)(
     "rejects anonymous %s %s before validation or storage",
     async (method, url) => {

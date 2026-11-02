@@ -3,6 +3,8 @@ import { useNavigate } from '@tanstack/react-router'
 import { Autocomplete } from '@govtech-bb/react'
 import type { ViewLevel } from '../lib/frontmatter'
 import { suggest } from '../lib/search'
+import { loadApiV2SearchDocuments } from '../lib/api-v2-site'
+import type { ApiV2SearchDocument } from '../lib/api-v2-site'
 import { trackEvent } from '../lib/analytics'
 
 type SearchSource = 'home' | 'services' | 'results'
@@ -13,6 +15,10 @@ interface ServiceSearchProps {
   overlay?: ReadonlyMap<string, ViewLevel>
   defaultValue?: string
   emptyHref?: '/services' | '/search-results'
+  /** api_v2's search documents the page already has: a start, refreshed on edits. */
+  documents?: readonly ApiV2SearchDocument[]
+  /** Reads api_v2's search documents. */
+  loadDocuments?: () => Promise<readonly ApiV2SearchDocument[]>
 }
 
 export function ServiceSearch({
@@ -21,12 +27,15 @@ export function ServiceSearch({
   overlay,
   defaultValue = '',
   emptyHref = '/search-results',
+  documents: givenDocuments,
+  loadDocuments = loadApiV2SearchDocuments,
 }: ServiceSearchProps) {
   const navigate = useNavigate()
   const inputId = useId()
   const [inputValue, setInputValue] = useState(defaultValue)
   const [hasTyped, setHasTyped] = useState(false)
-  const items = hasTyped ? suggest(inputValue, viewer, overlay) : []
+  const [documents, setDocuments] = useState(givenDocuments)
+  const items = hasTyped ? suggest(inputValue, viewer, overlay, documents) : []
 
   const submit = (value: string) => {
     const query = value.trim()
@@ -65,6 +74,9 @@ export function ServiceSearch({
           onChange={(event) => {
             setHasTyped(true)
             setInputValue(event.currentTarget.value)
+            // api_v2's pages: the same list while it is fresh, so a failed or
+            // outdated read, or the page's own copy, is replaced on a later edit.
+            void loadDocuments().then(setDocuments)
           }}
           onSuggestionSelect={(_, index) => {
             const selectedItem = items[index]

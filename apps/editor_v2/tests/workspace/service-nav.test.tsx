@@ -20,6 +20,7 @@ const rootRoute = createRootRoute();
 const router = createRouter({
   routeTree: rootRoute.addChildren([
     createRoute({ getParentRoute: () => rootRoute, path: "/services/$serviceId/$documentId" }),
+    createRoute({ getParentRoute: () => rootRoute, path: "/history/$pageId" }),
   ]),
   history: createMemoryHistory({ initialEntries: ["/services"] }),
 });
@@ -132,7 +133,7 @@ test("Delete page says why it can't run yet, instead of failing after the author
   expect(deleteButton().hasAttribute("aria-describedby")).toBe(false);
 });
 
-test("a page sits in the list under its parent, dotted with how far it's published", async () => {
+test("a page sits in the list under its parent, dotted with how far it's published, and in words where it isn't public", async () => {
   const row = (
     id: string,
     title: string,
@@ -158,18 +159,28 @@ test("a page sits in the list under its parent, dotted with how far it's publish
   });
 
   const item = (name: string) =>
-    [...host.querySelectorAll("li")].find((li) => li.firstElementChild?.textContent === name)!;
+    [...host.querySelectorAll("li")].find(
+      (li) => li.firstElementChild?.querySelector("[data-words]")?.textContent === name,
+    )!;
+
+  const link = (name: string) => item(name).firstElementChild!;
+  const names = ["Entry page", "Fees", "Refunds", "Contact"];
 
   expect(item("Refunds").parentElement?.closest("li")).toBe(item("Fees"));
   expect(item("Contact").parentElement?.closest("li")).toBeNull();
+  // Public is its dot, named; anything else is said under the title too, so its dot only backs the words up
+  expect(names.map((name) => link(name).textContent)).toEqual([
+    "Entry page",
+    "FeesPreview link only",
+    "RefundsDraft (hidden)",
+    "ContactDraft (hidden)",
+  ]);
   expect(
-    ["Entry page", "Fees", "Refunds", "Contact"].map((name) =>
-      item(name).querySelector('[role="img"]')?.getAttribute("aria-label"),
-    ),
-  ).toEqual(["Public", "Preview link only", "Draft (hidden)", "Draft (hidden)"]);
+    names.map((name) => link(name).querySelector('[role="img"]')?.getAttribute("aria-label")),
+  ).toEqual(["Public", undefined, undefined, undefined]);
 });
 
-test("while a service's pages load, its sidebar shows what's known and offers nothing yet", async () => {
+test("while a service's pages load, its sidebar says so, shows what's known and offers nothing yet", async () => {
   const entry = pageDocumentFromApi({ id: "entry", title: "Severance", role: "entry" });
   await render({ rows: [top(entry)], loading: true, onDelete: () => {} });
 
@@ -178,6 +189,10 @@ test("while a service's pages load, its sidebar shows what's known and offers no
 
   expect(rows()).toEqual(["Entry page"]);
   expect(host.textContent).toContain("Loading pages…");
+  // Read out once, as loading rather than as an empty list
+  expect([...host.querySelectorAll('[role="status"]')].map((line) => line.textContent)).toEqual([
+    "Loading pages…",
+  ]);
   expect(actions()).toHaveLength(0);
 
   await render({ rows: [top(entry)], onDelete: () => {} });
@@ -186,4 +201,39 @@ test("while a service's pages load, its sidebar shows what's known and offers no
     "Add document",
     "Delete page",
   ]);
+});
+
+test("View page history shows only for a selected page in the list, and opens its history", async () => {
+  const fees = pageDocumentFromApi({ id: "fees", title: "Fees", role: "supporting" });
+
+  const link = () =>
+    [...host.querySelectorAll("a")].find((item) => item.textContent === "View page history");
+
+  await render({ rows: [top(fees)] });
+  expect(link()).toBeUndefined();
+
+  await render({ rows: [top(fees)], selectedId: "gone" });
+  expect(link()).toBeUndefined();
+
+  await render({ rows: [top(fees)], selectedId: "fees" });
+  expect(link()?.getAttribute("href")).toBe("/history/fees?service=service");
+});
+
+test("on a narrow screen, View page history closes the Pages drawer, so it isn't open on the way back", async () => {
+  const fees = pageDocumentFromApi({ id: "fees", title: "Fees", role: "supporting" });
+  const setOpen = vi.fn();
+
+  await render({
+    sidebar: { id: "sidebar", wide: false, open: true, setOpen },
+    rows: [top(fees)],
+    selectedId: "fees",
+  });
+
+  const link = [...document.querySelectorAll("a")].find(
+    (item) => item.textContent === "View page history",
+  );
+
+  await act(async () => link!.click());
+
+  expect(setOpen).toHaveBeenCalledWith(false);
 });

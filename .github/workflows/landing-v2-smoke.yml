@@ -1,0 +1,124 @@
+name: Landing v2 Smoke
+
+# Post-deploy smoke of landing served from api_v2 (#3305: #3140, #3144).
+# After each Amplify build of `v2-rewrite` on the sandbox landing app, it
+# checks the preview:
+#
+# - every known api_v2 page comes back `x-content-source: api_v2`, so a
+#   broken, stale or empty api_v2 can't hide behind landing's static fallback;
+# - every api_v2 page bound to a form opens that form's first step from its
+#   Start link. Nothing is submitted.
+#
+# A red run on v2-rewrite's head blocks the v2-rewrite -> main merge (#3131).
+# After that merge, #3311 retargets it at landing.sandbox.alpha.gov.bb.
+# Scripts: apps/landing/e2e/smoke.
+
+on:
+  push:
+    branches: [v2-rewrite]
+  workflow_dispatch:
+
+permissions: {}
+
+# A newer push supersedes an older run's build anyway.
+concurrency:
+  group: landing-v2-smoke
+  cancel-in-progress: true
+
+env:
+  AWS_REGION: ca-central-1
+  # Trusts gov-bb v2-rewrite and main. Not a secret (see deploy-api-v2-sandbox.yml).
+  AWS_ROLE_ARN: arn:aws:iam::672203047922:role/api-v2-github-actions-sandbox
+  SMOKE_LANDING_URL: https://v2-rewrite.d3kbl8o0ovutw4.amplifyapp.com
+  SMOKE_API_V2_URL: https://api-v2.sandbox.alpha.gov.bb
+  # Must equal the Amplify v2-rewrite branch's VITE_FORMS_URL: the walk
+  # looks for Start links to exactly <this>/forms/<form_id>.
+  SMOKE_FORMS_URL: https://forms.sandbox.alpha.gov.bb
+
+jobs:
+  wait:
+    name: Wait for Amplify build
+    # The wait and the smoke target the v2-rewrite build, so a manual run from
+    # another branch would check the wrong commit.
+    if: github.ref == 'refs/heads/v2-rewrite'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    # No `environment:` here: it would change the OIDC subject, which the
+    # role does not trust.
+    permissions:
+      id-token: write # assume the role via OIDC
+      contents: read
+      actions: read # watch this commit's api_v2 deploy
+    outputs:
+      superseded: ${{ steps.build.outputs.superseded }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          persist-credentials: false
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@254c19bd240aabef8777f48595e9d2d7b972184b # v6.2.1
+        with:
+          role-to-assume: ${{ env.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+      - id: build
+        uses: ./.github/actions/wait-for-amplify-build
+        with:
+          app-id: d3kbl8o0ovutw4
+          branch: v2-rewrite
+          sha: ${{ github.sha }}
+          url: ${{ env.SMOKE_LANDING_URL }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      # A push that changes api_v2 also deploys it (deploy-api-v2-sandbox.yml).
+      # Smoke only once that rollout has finished, or this commit's api_v2
+      # would go unchecked until the next push.
+      - name: Wait for this commit's api_v2 deploy, if any
+        if: steps.build.outputs.superseded != 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.sha }}
+        run: |
+          RUN_ID=$(gh api "repos/$REPO/actions/workflows/deploy-api-v2-sandbox.yml/runs?head_sha=$SHA" \
+            --jq '.workflow_runs[0].id // empty')
+          if [ -z "$RUN_ID" ]; then
+            echo "No api_v2 deploy for ${SHA:0:7}"
+            exit 0
+          fi
+          gh run watch "$RUN_ID" --repo "$REPO" --exit-status --interval 30
+
+  smoke:
+    name: Smoke (api_v2 source, Start links)
+    needs: wait
+    if: needs.wait.outputs.superseded != 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version-file: ".nvmrc"
+          cache: "pnpm"
+      - run: pnpm install --frozen-lockfile
+      - name: Install Playwright chromium
+        # No --with-deps: ubuntu-latest already ships chromium's libraries,
+        # and apt retries once wedged the queue (#2291, #2299).
+        timeout-minutes: 10
+        run: pnpm --filter @govtech-bb/landing exec playwright install chromium
+      - name: Self-test (the checks fail on broken pages)
+        run: pnpm --filter @govtech-bb/landing test:smoke --project selftest
+      - name: Smoke the v2-rewrite preview
+        run: pnpm --filter @govtech-bb/landing test:smoke --project live
+      - name: Upload Playwright trace on failure
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: landing-v2-smoke-traces
+          path: apps/landing/test-results/
+          retention-days: 7

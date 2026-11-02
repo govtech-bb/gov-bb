@@ -54,6 +54,16 @@ const sourceOnly = new Set([
   "national-pledge/index.md",
 ]);
 
+const convertedActionPages = [
+  "national-insurance-for-self-employed-workers/index.md",
+  "national-insurance-for-self-employed-workers/check-your-record.md",
+];
+
+const convertedHtmlPages = [
+  "calculate-your-pension/about-government-pensions.md",
+  "crop-over-permits/index.md",
+];
+
 function fixture(path: string) {
   return readFileSync(new URL(`../fixtures/pages/corpus/${path}`, import.meta.url), "utf8");
 }
@@ -66,11 +76,15 @@ function visual(source: string) {
   return prepared.state;
 }
 
-function checkPagePreservation(path: string, source: string) {
+function checkPagePreservation(
+  path: string,
+  source: string,
+  expectSourceOnly = sourceOnly.has(path),
+) {
   const prepared = govbbPageCodec.prepare(source);
   expect(prepared.source).toBe(source);
 
-  if (sourceOnly.has(path)) {
+  if (expectSourceOnly) {
     expect(prepared.mode).toBe("source");
     expect(prepared.state).toBeUndefined();
     expect(prepared.diagnostics[0]?.severity).toBe("warning");
@@ -87,6 +101,15 @@ function checkPagePreservation(path: string, source: string) {
     const encoded = govbbPageCodec.encode(editor.getEditorState().toJSON());
     const reopened = visual(encoded);
     expect(reopened.root.children.slice(1)).toEqual(prepared.state.root.children.slice(1));
+
+    editor.update(
+      () =>
+        $getRoot().append($createParagraphNode().append($createTextNode("An edited paragraph."))),
+      { discrete: true },
+    );
+    const edited = editor.getEditorState().toJSON();
+    const saved = visual(govbbPageCodec.encode(edited));
+    expect(saved.root.children.slice(1)).toEqual(edited.root.children.slice(1));
   } finally {
     editor.dispose();
   }
@@ -102,7 +125,7 @@ describe("frozen GovBB Markdown regressions", () => {
     test(item.path, () => {
       const source = fixture(item.path);
       expect(createHash("sha256").update(source).digest("hex")).toBe(item.sha256);
-      checkPagePreservation(item.path, source);
+      checkPagePreservation(item.path, source, sourceOnly.has(item.path));
     });
 });
 
@@ -119,8 +142,66 @@ describe("current GovBB landing content", () => {
 
   for (const path of paths)
     test(path, () => {
-      checkPagePreservation(path, readFileSync(new URL(path, directory), "utf8"));
+      checkPagePreservation(
+        path,
+        readFileSync(new URL(path, directory), "utf8"),
+        sourceOnly.has(path) &&
+          !convertedActionPages.includes(path) &&
+          !convertedHtmlPages.includes(path),
+      );
     });
+
+  test.each(convertedHtmlPages)(
+    "%s retains its content through a body edit and reopening",
+    (path) => {
+      const source = readFileSync(new URL(path, directory), "utf8");
+      const original = visual(source);
+      const editor = createHeadlessEditor(govbbPageEditor, original);
+
+      try {
+        editor.update(
+          () =>
+            $getRoot().append($createParagraphNode().append($createTextNode("Further guidance."))),
+          { discrete: true },
+        );
+        const reopened = visual(govbbPageCodec.encode(editor.getEditorState().toJSON()));
+        expect(reopened.root.children.slice(1, -1)).toEqual(original.root.children.slice(1));
+        expect(reopened.root.children.at(-1)).toMatchObject({
+          type: "paragraph",
+          children: [{ type: "text", text: "Further guidance." }],
+        });
+      } finally {
+        editor.dispose();
+      }
+    },
+  );
+
+  test("StormReady notice is editable independently of its remaining legacy components", () => {
+    const source = readFileSync(
+      new URL("health-and-emergency-services/stormready/index.md", directory),
+      "utf8",
+    );
+
+    const notice = source.match(/^:::notice\n[\s\S]*?\n:::/m)?.[0];
+
+    if (!notice) throw new Error("StormReady must use a notice directive");
+
+    checkPagePreservation("StormReady notice", notice, false);
+    expect(govbbPageCodec.prepare(source).mode).toBe("source");
+  });
+
+  test("StormReady actions round-trip independently of its remaining legacy components", () => {
+    const source = readFileSync(
+      new URL("health-and-emergency-services/stormready/index.md", directory),
+      "utf8",
+    );
+
+    const actions = source.match(/^::::actions\n[\s\S]*?\n::::/m)?.[0];
+
+    if (!actions) throw new Error("StormReady must use an actions directive");
+
+    checkPagePreservation("StormReady actions", actions, false);
+  });
 });
 
 test("birth instructions keep headings, paragraphs and Start actions inside their numbered items", () => {
@@ -356,6 +437,23 @@ test("page details preserve unknown YAML, comments and absent fields through edi
   }
 });
 
+test.each(["", "---\ntitle: Original\n---\n\n", "---\r\ntitle: Original\r\n---\r\n\r\n"])(
+  "a title edit preserves body syntax and whitespace after %j",
+  (frontmatter) => {
+    const body = "\n_Original_  \nNext line\n\n";
+    const editor = createHeadlessEditor(govbbPageEditor, visual(frontmatter + body));
+
+    try {
+      editor.update(() => $setPageMetadata({ title: "Renamed" }), { discrete: true });
+      expect(govbbPageCodec.encode(editor.getEditorState().toJSON())).toBe(
+        `---\ntitle: Renamed\n---\n\n${body}`,
+      );
+    } finally {
+      editor.dispose();
+    }
+  },
+);
+
 test("unfamiliar page detail values survive unrelated edits without coercion", () => {
   const source =
     "---\ntitle: Original\ncategory: [custom]\ncategories: [housing, 7]\nsubcategory: false\nvisibility: { custom: true }\npublish_date: 123\n---\n\nBody\n";
@@ -516,7 +614,7 @@ test("notices, nested details, action groups and Start labels round-trip safely"
       <PagePreview source={encoded} definition={govbbPageEditor} />,
     );
 
-    expect(preview).toContain("<summary>What you need</summary>");
+    expect(preview).toContain('<summary class="govbb-show-hide__summary">What you need</summary>');
     expect(preview).toContain('href="/help"');
   } finally {
     editor.dispose();

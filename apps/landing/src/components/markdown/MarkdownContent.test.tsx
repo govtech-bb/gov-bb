@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs'
 import { describe, expect, it, vi } from 'vitest'
 import type * as ReactRouter from '@tanstack/react-router'
 import { renderToStaticMarkup } from 'react-dom/server'
@@ -81,6 +82,44 @@ describe('MarkdownBody', () => {
     expect(html).toContain('What you need')
   })
 
+  it.each([
+    [
+      'national-insurance-for-self-employed-workers/index.md',
+      '<link-button href="https://www.nis.gov.bb/self-employment-registration/" variant="secondary">Register as self-employed</link-button>',
+    ],
+    [
+      'national-insurance-for-self-employed-workers/check-your-record.md',
+      '<buttons>\n<link-button href="/money-financial-support/national-insurance-for-self-employed-workers/form">Estimate how much to pay</link-button>\n<link-button href="/money-financial-support/national-insurance-for-self-employed-workers#make-a-payment" variant="secondary">See how to make a payment</link-button>\n</buttons>',
+    ],
+    [
+      'health-and-emergency-services/stormready/index.md',
+      '<buttons>\n<link-button href="/health-and-emergency-services/stormready/checklist">Open household checklist</link-button>\n<link-button href="/health-and-emergency-services/stormready/checklist?print=1" variant="secondary">Save checklist as PDF</link-button>\n</buttons>',
+    ],
+  ])(
+    'preserves legacy button links, styles and grouping for %s',
+    async (path, legacy) => {
+      const source = readFileSync(
+        new URL(`../../content/${path}`, import.meta.url),
+        'utf8',
+      )
+      const actions =
+        source.match(/^::::actions\n[\s\S]*?\n::::/m)?.[0] ??
+        source.match(/^:::action\{[^\n]+\}\n[\s\S]*?\n:::/m)?.[0]
+
+      if (!actions) throw new Error(`Missing action directive in ${path}`)
+
+      const before = await renderBody(legacy)
+      const after = await renderBody(actions)
+      const anchors = /<a\b[^>]*>[\s\S]*?<\/a>/g
+
+      expect(after).toContain('class="govbb-button')
+      expect(after.match(anchors)).toEqual(before.match(anchors))
+      expect(after.match(/class="govbb-button-group"/g)).toEqual(
+        before.match(/class="govbb-button-group"/g),
+      )
+    },
+  )
+
   it('leaves prose tags bare for govbb-prose to style', async () => {
     const html = await renderBody('## Heading\n\ntext\n\n- one\n- two')
 
@@ -159,9 +198,9 @@ describe('::contact (a record’s contact details, #3185)', () => {
     )
   }
 
-  it('shows the chosen details as <contacts> tiles, labelled by the collection', async () => {
+  it('shows the chosen details as contact tiles, labelled by the collection', async () => {
     const html = await render({ contacts })
-    // The `<contacts>` grid and its teal tile
+    // The contact grid and its teal tile
     expect(html).toContain('class="grid grid-cols-1 gap-s md:grid-cols-3"')
     expect(html).toContain(
       '<a href="tel:2465350021" class="flex flex-col gap-xxs border-teal-80 border-l-4 bg-teal-10 p-s text-current no-underline',
@@ -189,6 +228,6 @@ describe('::contact (a record’s contact details, #3185)', () => {
       processMarkdown(
         '::contact{collection="contacts" record="x" onclick="y"}',
       ),
-    ).rejects.toThrow('does not support the “onclick” attribute')
+    ).rejects.toThrow('The contact component does not support these attributes')
   })
 })

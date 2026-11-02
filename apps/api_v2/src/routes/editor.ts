@@ -182,6 +182,24 @@ export const editorRoutes: FastifyPluginAsyncZod<{
   });
   editor.route({
     method: "GET",
+    url: "/pages/:id/history",
+    schema: SCHEMAS.getPageHistory,
+    handler: async (request, reply) => {
+      const history = await index.history(request.params.id);
+      if (!history.ok)
+        return reply
+          .status(500)
+          .send(storageFailed(request.log, history.error));
+      return history.value.length > 0
+        ? { entries: history.value }
+        : reply.status(404).send({
+            error: "not_found",
+            message: `No history for page ${request.params.id}`,
+          });
+    },
+  });
+  editor.route({
+    method: "GET",
     url: "/pages/:id/revision",
     schema: SCHEMAS.getRevision,
     handler: async (request, reply) => {
@@ -206,6 +224,17 @@ export const editorRoutes: FastifyPluginAsyncZod<{
       return queue.ok
         ? { revisions: queue.value }
         : reply.status(500).send(storageFailed(request.log, queue.error));
+    },
+  });
+  editor.route({
+    method: "GET",
+    url: "/editor/page-paths",
+    schema: SCHEMAS.pagePaths,
+    handler: async (request, reply) => {
+      const paths = await index.pagePaths();
+      return paths.ok
+        ? paths.value
+        : reply.status(500).send(storageFailed(request.log, paths.error));
     },
   });
   editor.route({
@@ -266,11 +295,7 @@ export const editorRoutes: FastifyPluginAsyncZod<{
     config: { role: "editor" },
     handler: async (request, reply) => {
       const created = await editing.create(request.body, actor(request));
-      // A new page has no pending revision.
-      if (created.ok)
-        return reply
-          .status(201)
-          .send({ ...created.value, pending_revision: null });
+      if (created.ok) return reply.status(201).send(created.value);
       switch (created.error._tag) {
         case "PageRejected":
           return reply.status(422).send(rejected(created.error));

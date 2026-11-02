@@ -4,6 +4,8 @@ import type * as CategoryApiModule from '../lib/api-v2-categories'
 // Type-only, so it erases at runtime and the route still loads lazily, after
 // the mocks below are in place.
 import type * as ContentRouteModule from './$'
+import type { ViewLevel } from '../lib/frontmatter'
+import { processMarkdown } from '../utils/markdown/processor'
 
 // Mock the registry to drive the gate's throw paths deterministically. Only the
 // exports the routes use are stubbed.
@@ -18,6 +20,10 @@ const mocks = vi.hoisted(() => ({
   isUrlVisible: vi.fn(() => true),
   urlLevel: vi.fn(() => 'public' as const),
   resolveBareSlugRedirect: vi.fn(() => undefined as string | undefined),
+  // The breadcrumb JSON-LD's title lookups; undefined falls back to the slug.
+  getCategoryTitle: vi.fn(),
+  getSubcategoryTitle: vi.fn(),
+  getPageTitle: vi.fn(),
   PAGES: [] as ContentPage[],
 }))
 
@@ -43,9 +49,14 @@ vi.mock('../lib/preview-form-access', () => accessMocks)
 // api_v2 is asked first (#2944); a miss falls back to the registry, so the
 // static-page tests above keep their behaviour.
 const v2Mocks = vi.hoisted(() => ({
-  getApiV2Page: vi.fn(async (): Promise<unknown> => ({ kind: 'miss' })),
+  getApiV2Page: vi.fn(
+    async (): Promise<unknown> => ({ kind: 'miss', reason: 'not_found' }),
+  ),
 }))
-vi.mock('../lib/api-v2-page', () => v2Mocks)
+vi.mock('../lib/api-v2-page', async (importOriginal) => ({
+  ...(await importOriginal<object>()),
+  ...v2Mocks,
+}))
 
 const contactMocks = vi.hoisted(() => ({
   getContactRecords: vi.fn(),
@@ -94,7 +105,7 @@ beforeEach(() => {
   mocks.isUrlVisible.mockReturnValue(true)
   mocks.urlLevel.mockReturnValue('public')
   mocks.resolveBareSlugRedirect.mockReturnValue(undefined)
-  v2Mocks.getApiV2Page.mockResolvedValue({ kind: 'miss' })
+  v2Mocks.getApiV2Page.mockResolvedValue({ kind: 'miss', reason: 'not_found' })
   categoryMocks.getApiV2CategoryListing.mockResolvedValue({
     kind: 'unavailable',
   })
@@ -112,6 +123,71 @@ beforeAll(async () => {
 }, 60_000)
 
 describe('$ route loader gating', () => {
+  it.each([undefined, 'page-form'])(
+    'filters closed and disabled targets independently of page form %s',
+    async (formId) => {
+      mocks.findPage.mockReturnValue({
+        ...fakePage,
+        frontmatter: { ...fakePage.frontmatter, form_id: formId },
+      })
+      mocks.isVisible.mockReturnValue(true)
+      const publicForms = [
+        'page-form',
+        'closed-form',
+        'disabled-form',
+        'open-form',
+      ]
+      formMocks.getAvailableForms.mockResolvedValueOnce(publicForms)
+      formMocks.getClosedForms.mockResolvedValueOnce(['closed-form'])
+      const loader = Route.options.loader as (a: unknown) => Promise<unknown>
+      const result = await loader({
+        params: { _splat: 'secret-service' },
+        context: {
+          level: 'public',
+          serviceStatuses: [['disabled-form', 'form_disabled']],
+          categoryTree: STATIC,
+        },
+      })
+      expect(result).toMatchObject({
+        availableForms: ['page-form', 'open-form'],
+        applicationClosed: false,
+        underMaintenance: false,
+      })
+      expect(publicForms).toEqual([
+        'page-form',
+        'closed-form',
+        'disabled-form',
+        'open-form',
+      ])
+    },
+  )
+
+  it('checks explicit preview targets once each and excludes inaccessible forms', async () => {
+    const { hast } = await processMarkdown(
+      ':::action{form="review-form"}\nReview\n:::\n\n:::action{form="review-form"}\nAgain\n:::\n\n:::action{form="denied-form"}\nDenied\n:::',
+    )
+    mocks.findPage.mockReturnValue({ ...fakePage, hast })
+    mocks.isVisible.mockReturnValue(true)
+    accessMocks.checkFormAccessible
+      .mockResolvedValueOnce(true)
+      .mockResolvedValueOnce(false)
+    const loader = Route.options.loader as (a: unknown) => Promise<unknown>
+    const result = await loader({
+      params: { _splat: 'secret-service' },
+      context: { level: 'preview', serviceStatuses: [], categoryTree: STATIC },
+    })
+    expect(result).toMatchObject({
+      availableForms: ['get-birth-certificate', 'review-form'],
+    })
+    expect(accessMocks.checkFormAccessible).toHaveBeenCalledTimes(2)
+    expect(accessMocks.checkFormAccessible).toHaveBeenCalledWith({
+      data: 'review-form',
+    })
+    expect(accessMocks.checkFormAccessible).toHaveBeenCalledWith({
+      data: 'denied-form',
+    })
+  })
+
   it('throws notFound for a gated page the viewer cannot see', async () => {
     mocks.findPage.mockReturnValue(fakePage)
     mocks.isVisible.mockReturnValue(false)
@@ -251,6 +327,7 @@ describe('$ route loader gating', () => {
       level: 'public',
       startSubPageVisible: true,
       contactRecords: {},
+      source: 'static',
     })
     expect((data as { page?: unknown }).page).toBeUndefined()
     expect(mocks.isVisible).toHaveBeenCalledWith(fakePage, 'draft', new Map())
@@ -417,7 +494,7 @@ describe('$ route api_v2 pages (#2944)', () => {
     url: 'work-employment/v2-service',
     frontmatter: {
       ...fakePage.frontmatter,
-      visibility: 'public' as const,
+      visibility: 'public' as ViewLevel,
       form_id: 'get-birth-certificate',
     },
     hideStartLinks: false,
@@ -443,9 +520,55 @@ describe('$ route api_v2 pages (#2944)', () => {
       page: v2Page,
       level: 'public',
       startSubPageVisible: true,
+      source: 'api_v2',
     })
     // api_v2 already enforced visibility.
     expect(mocks.isVisible).not.toHaveBeenCalled()
+  })
+
+  /** What `$`'s head returns for a page loader result. */
+  const head = (loaderData: Record<string, unknown>) =>
+    // SAFETY: `$`'s head reads only `loaderData`; the router's other head
+    // arguments go unread.
+    (
+      Route.options.head as (args: { loaderData: unknown }) => {
+        meta?: Array<Record<string, string>>
+        links?: Array<Record<string, string>>
+        scripts?: Array<{ type: string; children: string }>
+      }
+    )({ loaderData })
+
+  const previewV2Page = {
+    ...v2Page,
+    frontmatter: { ...v2Page.frontmatter, visibility: 'preview' as ViewLevel },
+  }
+
+  it("takes an api_v2 page's level from its own visibility (#3246)", async () => {
+    const data = await load(previewV2Page, 'preview')
+    expect(data).toMatchObject({
+      kind: 'page',
+      level: 'preview',
+      source: 'api_v2',
+    })
+    expect(mocks.isVisible).not.toHaveBeenCalled()
+  })
+
+  it('marks a preview api_v2 page noindex, with no canonical, OG or JSON-LD (#3246)', async () => {
+    const { meta, links, scripts } = head(await load(previewV2Page, 'preview'))
+    expect(meta).toContainEqual({ name: 'robots', content: 'noindex' })
+    expect(meta).not.toContainEqual(
+      expect.objectContaining({ property: 'og:url' }),
+    )
+    expect(links).toBeUndefined()
+    expect(scripts).toBeUndefined()
+  })
+
+  it('shows a preview viewer a public api_v2 page as public (#3246)', async () => {
+    const data = await load(v2Page, 'preview')
+    expect(data.level).toBe('public')
+    const { links, scripts } = head(data)
+    expect(links).toContainEqual(expect.objectContaining({ rel: 'canonical' }))
+    expect(scripts).toHaveLength(2)
   })
 
   it('never asks api_v2 when VITE_API_V2_URL is unset, serving the registry page (#3127)', async () => {
@@ -458,7 +581,50 @@ describe('$ route api_v2 pages (#2944)', () => {
       context: { level: 'public', serviceStatuses: [], categoryTree: STATIC },
     })) as Record<string, unknown>
     expect(v2Mocks.getApiV2Page).not.toHaveBeenCalled()
-    expect(data).toMatchObject({ kind: 'page', url: fakePage.url })
+    expect(data).toMatchObject({
+      kind: 'page',
+      url: fakePage.url,
+      source: 'static',
+    })
+  })
+
+  it.each([
+    ['not_found', 'static'],
+    ['network', 'static-fallback'],
+  ])(
+    'marks a registry page served on a %s miss as %s',
+    async (reason, source) => {
+      v2Mocks.getApiV2Page.mockResolvedValue({ kind: 'miss', reason })
+      mocks.findPage.mockReturnValue(fakePage)
+      mocks.isVisible.mockReturnValue(true)
+      const loader = Route.options.loader as (a: unknown) => Promise<unknown>
+      const data = await loader({
+        params: { _splat: fakePage.url },
+        context: { level: 'public', serviceStatuses: [], categoryTree: STATIC },
+      })
+      expect(data).toMatchObject({ kind: 'page', source })
+    },
+  )
+
+  it('sends x-content-source on every response with loader data', () => {
+    const headers = Route.options.headers as (a: unknown) => unknown
+    for (const source of [
+      'api_v2',
+      'api_v2-stale',
+      'static',
+      'static-fallback',
+    ])
+      expect(headers({ loaderData: { kind: 'page', source } })).toEqual({
+        'x-content-source': source,
+      })
+    for (const kind of ['category', 'subcategory-index', 'subcategory'])
+      expect(headers({ loaderData: { kind } })).toEqual({
+        'x-content-source': 'static',
+      })
+    expect(headers({ loaderData: { kind: 'api-category' } })).toEqual({
+      'x-content-source': 'api_v2',
+    })
+    expect(headers({ loaderData: undefined })).toBeUndefined()
   })
 
   it('301-redirects to the api_v2 redirect target', async () => {
@@ -771,7 +937,11 @@ describe('$ route loader in api_v2 category mode (ADR 0078)', () => {
         ...fakePage,
         slug: 'register-a-birth',
         url: 'family-renamed/register-a-birth',
-        frontmatter: { title: 'Register a birth', categories: [] },
+        frontmatter: {
+          title: 'Register a birth',
+          categories: [],
+          visibility: 'public',
+        },
         hideStartLinks: false,
         breadcrumbs: trail,
       },
@@ -798,7 +968,12 @@ describe('$ route loader in api_v2 category mode (ADR 0078)', () => {
         ...fakePage,
         slug: 'fees',
         url: 'family-renamed/fees',
-        frontmatter: { title, description: 'Under < over', categories: [] },
+        frontmatter: {
+          title,
+          description: 'Under < over',
+          categories: [],
+          visibility: 'public',
+        },
         hideStartLinks: false,
         breadcrumbs: [
           { name: category, url: '/family-renamed' },

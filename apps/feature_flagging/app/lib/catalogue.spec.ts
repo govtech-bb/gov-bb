@@ -2,6 +2,7 @@ import {
   reconcileCatalogue,
   serviceTypeLabel,
   sortServiceRows,
+  statusEditable,
   type ServiceRow,
 } from "./catalogue";
 
@@ -169,6 +170,34 @@ describe("serviceTypeLabel", () => {
 
   it("returns null for an orphan (no page, no form)", () => {
     expect(serviceTypeLabel(row({ hasForm: false, orphan: true }))).toBeNull();
+  });
+});
+
+describe("statusEditable", () => {
+  const row = (over: Partial<ServiceRow>): ServiceRow => ({
+    slug: over.slug ?? "x",
+    title: over.title ?? "X",
+    hasForm: over.hasForm ?? false,
+    status: over.status ?? "enabled",
+    ...over,
+  });
+
+  it("withholds the select from a content-only row once pages are in the editor", () => {
+    const content = row({ landingUrl: "cat/svc" });
+    expect(statusEditable(content, true)).toBe(false);
+    expect(statusEditable(content, false)).toBe(true);
+  });
+
+  it("keeps the select on a form-backed row either way", () => {
+    const form = row({ hasForm: true, landingUrl: "cat/svc" });
+    expect(statusEditable(form, true)).toBe(true);
+    expect(statusEditable(form, false)).toBe(true);
+  });
+
+  it("withholds the select from an orphan once pages are in the editor", () => {
+    const orphan = row({ orphan: true });
+    expect(statusEditable(orphan, true)).toBe(false);
+    expect(statusEditable(orphan, false)).toBe(true);
   });
 });
 

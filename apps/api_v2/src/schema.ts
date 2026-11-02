@@ -1,5 +1,5 @@
 /**
- * The Drizzle schema, matching migrations `001_init` to `015_revision_discarded`
+ * The Drizzle schema, matching migrations `001_init` to `016_content_updated_at`
  * applied in order, table for table and column for column. BetterAuth reads
  * and writes its four `auth_*` tables through these definitions; their
  * property keys are BetterAuth's field names.
@@ -116,6 +116,13 @@ export const contentPages = pgTable(
       withTimezone: true,
       precision: 3,
     }),
+    // When the content last changed; set by a trigger (migration 016).
+    contentUpdatedAt: timestamp("content_updated_at", {
+      withTimezone: true,
+      precision: 3,
+    })
+      .notNull()
+      .defaultNow(),
     ...timestamps,
   },
   (table) => [

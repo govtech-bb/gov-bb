@@ -1,7 +1,19 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
+import { analyzeContentMarkdown } from '@govtech-bb/govbbmarkd'
+import type * as markd from '@govtech-bb/govbbmarkd'
 import { FrontmatterSchema } from './frontmatter'
 import type { ViewLevel } from './frontmatter'
 import { normalizeSearchQuery, search, suggest } from './search'
+import { PAGES } from '../content/registry'
+import type { ApiV2SearchDocument } from './api-v2-site'
+
+vi.mock('@govtech-bb/govbbmarkd', async (importOriginal) => {
+  const actual = await importOriginal<typeof markd>()
+  return {
+    ...actual,
+    analyzeContentMarkdown: vi.fn(actual.analyzeContentMarkdown),
+  }
+})
 
 describe('search metadata', () => {
   it('trims aliases and rejects blank entries', () => {
@@ -164,5 +176,105 @@ describe('autocomplete', () => {
 
   it('does not suggest a missing service from a partial word', () => {
     expect(suggest('passp', 'preview')).toEqual([])
+  })
+})
+
+describe('api_v2 search documents', () => {
+  const onlyInApiV2: ApiV2SearchDocument = {
+    url: '/work-employment/register-a-zebra-crossing-guard',
+    title: 'Register a zebra crossing guard',
+    description: 'Sign up to guard a crossing.',
+    digital: true,
+    keywords: ['lollipop'],
+    chunks: [{ heading: 'Who can apply', body: 'Anyone patient.' }],
+  }
+
+  it('finds a page only api_v2 serves', () => {
+    const extra = [onlyInApiV2]
+    expect(
+      search('zebra crossing guard', 'public', undefined, extra)[0],
+    ).toEqual({
+      id: 'service:work-employment/register-a-zebra-crossing-guard',
+      title: 'Register a zebra crossing guard',
+      description: 'Sign up to guard a crossing.',
+      href: '/work-employment/register-a-zebra-crossing-guard',
+      digital: true,
+      kind: 'service',
+    })
+    expect(search('lollipop', 'public', undefined, extra)[0]?.href).toBe(
+      onlyInApiV2.url,
+    )
+    expect(suggest('zebra', 'public', undefined, extra)[0]?.href).toBe(
+      onlyInApiV2.url,
+    )
+    expect(search('zebra crossing guard')).toEqual([])
+  })
+
+  it('shows the public an api_v2 page whose static copy is preview-only', () => {
+    const teacher = PAGES.find((page) =>
+      page.slug.endsWith('temporary-teacher'),
+    )
+    expect(teacher?.frontmatter.visibility).toBe('preview')
+    const extra: ApiV2SearchDocument[] = [
+      {
+        url: `/${teacher?.url}`,
+        title: 'Apply to be a temporary teacher',
+        description: null,
+        digital: true,
+        keywords: [],
+        chunks: [],
+      },
+    ]
+
+    expect(
+      search('temporary teacher', 'public', undefined, extra),
+    ).toHaveLength(1)
+    expect(
+      suggest('temporary teacher', 'public', undefined, extra),
+    ).toHaveLength(1)
+  })
+
+  it('replaces a public static page with its api_v2 copy, once', () => {
+    const [staticHit] = search('birth certificate')
+    expect(staticHit).toBeDefined()
+    const extra: ApiV2SearchDocument[] = [
+      {
+        // No leading slash: still the same page.
+        url: staticHit.href.slice(1),
+        title: 'Get a birth certificate from api_v2',
+        description: null,
+        digital: false,
+        keywords: [],
+        chunks: [],
+      },
+    ]
+
+    const hits = search('birth certificate', 'public', undefined, extra)
+    expect(hits.filter((hit) => hit.href === staticHit.href)).toEqual([
+      expect.objectContaining({ title: 'Get a birth certificate from api_v2' }),
+    ])
+  })
+})
+
+describe('search index', () => {
+  it('analyses the static pages once, whatever api_v2 documents come and go', () => {
+    search('birth certificate')
+    vi.mocked(analyzeContentMarkdown).mockClear()
+    const extra: ApiV2SearchDocument[] = [
+      {
+        url: '/only-in-api-v2',
+        title: 'Only in api_v2',
+        description: null,
+        digital: false,
+        keywords: [],
+        chunks: [],
+      },
+    ]
+
+    suggest('birth', 'public', undefined, [])
+    suggest('birth', 'public', undefined, extra)
+    search('birth certificate', 'public', undefined, [])
+
+    expect(analyzeContentMarkdown).not.toHaveBeenCalled()
   })
 })

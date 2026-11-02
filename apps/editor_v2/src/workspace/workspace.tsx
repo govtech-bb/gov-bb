@@ -1,5 +1,6 @@
 import { Files, List } from "@phosphor-icons/react";
 import {
+  lazyRouteComponent,
   Link,
   useMatch,
   useNavigate,
@@ -8,7 +9,7 @@ import {
   useSearch,
 } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ApiFailure, type EditorApi } from "../api/client";
 import { rolesQuery, serviceQuery, servicesQuery, estateVersionQuery } from "../api/queries";
 import {
@@ -16,11 +17,11 @@ import {
   CreateRemoteServiceDialog,
   DeleteRemotePageDialog,
 } from "./remote-page-dialogs";
-import { RemotePagePane } from "./remote-page-pane";
 import { AppNav } from "./app-nav";
 import { CollectionScreen, CollectionsScreen } from "./collections";
 import { CategoriesScreen } from "./categories-screen";
-import { ReviewQueueScreen, ReviewScreen } from "./review-screens";
+import { HistoryScreen } from "./history-screen";
+import { loadPageEditor, loadReviews } from "./preload";
 import { listedServiceRows, remoteServiceRows } from "./service-pages";
 import { ServiceNav } from "./service-nav";
 import { workspaceLink } from "./navigation";
@@ -39,7 +40,7 @@ import { GovbbLogo } from "./govbb-logo";
 import { ServicesList } from "./services-list";
 import type { ServicesSearch } from "./services-search";
 import type { WorkspaceLocation } from "./model";
-import { pageHasUnsavedChanges, type PageSession } from "./page-sync";
+import { pageHasUnsavedChanges, type PageSession } from "./page-session";
 import { usePageLeaveGuard } from "./page-leave-guard";
 
 type Account = {
@@ -52,9 +53,20 @@ type Account = {
 
 const SIDEBAR_KEY = "govbb-editor:sidebar-collapsed";
 
+// The router's lazy rather than React's: if a release has replaced these files since the editor loaded, it reloads the
+// page once instead of failing the whole workspace
+const RemotePagePane = lazyRouteComponent(loadPageEditor, "RemotePagePane");
+
+const ReviewQueueScreen = lazyRouteComponent(loadReviews, "ReviewQueueScreen");
+
+const ReviewScreen = lazyRouteComponent(loadReviews, "ReviewScreen");
+
 /** What someone without the editor role is told, on every screen. */
 const READ_ONLY =
   "You can read pages, categories and collections but not change them, because you don’t have the editor role. Ask an admin to give it to you.";
+
+/** Why something that needs a role is off, where the roles couldn't be read; the app's banner offers Try again. */
+const UNCHECKED = "We couldn’t check your permissions.";
 
 /** Authenticated API services and page editors; no browser-local workspace is loaded. */
 export function ServiceWorkspace({
@@ -71,6 +83,8 @@ export function ServiceWorkspace({
   const onCategories = !!useMatch({ from: "/_workspace/categories", shouldThrow: false });
   const onReviews = !!useMatch({ from: "/_workspace/reviews", shouldThrow: false });
   const reviewing = params.pageId;
+  const historySearch = useSearch({ from: "/_workspace/history/$pageId", shouldThrow: false });
+  const onHistory = !!historySearch;
   const onCollections = !!useMatch({ from: "/_workspace/collections", shouldThrow: false });
 
   const collectionSearch = useSearch({
@@ -162,6 +176,7 @@ export function ServiceWorkspace({
 
   const [error, setError] = useState("");
   const [signingOut, setSigningOut] = useState(false);
+  const content = useRef<HTMLElement>(null);
   const sidebar = useSidebar(SIDEBAR_KEY);
   // Always beside the page on a wide screen, so nothing about it is remembered
   const appNav = useSidebar();
@@ -177,7 +192,10 @@ export function ServiceWorkspace({
     (item) => item.id === location?.serviceId,
   );
 
-  const roles = useQuery(rolesQuery(api)).data;
+  const rolesRead = useQuery(rolesQuery(api));
+  const roles = rolesRead.data;
+  // They couldn't be read: what needs them says so, rather than that it needs a role this person may well have
+  const unchecked = !roles && rolesRead.errorUpdateCount > 0;
   // Until the roles load, deleting a public page and changing categories wait rather than offering what the API may
   // refuse
   const approver = roles?.includes("approver") ?? false;
@@ -297,7 +315,9 @@ export function ServiceWorkspace({
                 ? reviewing
                   ? ["Review change", "Review queue"]
                   : ["Review queue"]
-                : [onCategories ? "Categories" : onCollections ? "Collections" : "Services"]
+                : onHistory
+                  ? ["Page history"]
+                  : [onCategories ? "Categories" : onCollections ? "Collections" : "Services"]
         }
       />
       <a
@@ -349,6 +369,31 @@ export function ServiceWorkspace({
           {READ_ONLY}
         </Banner>
       )}
+      {unchecked && (
+        <Banner
+          tone="warning"
+          layout="strip"
+          actions={
+            <Button
+              variant="secondary"
+              pending={rolesRead.isFetching}
+              pendingLabel="Checking permissions…"
+              onClick={(event) => {
+                const button = event.currentTarget;
+
+                void rolesRead.refetch().then(({ data }) => {
+                  // Read, its notice goes, and this button with it: the content takes the focus
+                  if (data && document.activeElement === button) content.current?.focus();
+                });
+              }}
+            >
+              Try again
+            </Button>
+          }
+        >
+          {UNCHECKED} Changes only approvers can make are off until we can.
+        </Banner>
+      )}
       <div className="flex flex-1">
         <AppNav sidebar={appNav} rail={!!location} servicesSearch={servicesSearch} />
         {servicePages && (
@@ -368,12 +413,19 @@ export function ServiceWorkspace({
                 : !approver &&
                     remote.data?.pages.find((page) => page.id === selected?.id)?.visibility ===
                       "public"
-                  ? "Only approvers can delete a public page."
+                  ? unchecked
+                    ? UNCHECKED
+                    : "Only approvers can delete a public page."
                   : undefined
             }
           />
         )}
-        <main id="workspace-content" tabIndex={-1} className="min-w-0 flex-1 outline-none">
+        <main
+          ref={content}
+          id="workspace-content"
+          tabIndex={-1}
+          className="min-w-0 flex-1 outline-none"
+        >
           {/* Keep the sidebar toggle reachable before a page is selected. */}
           {showPages && !selected && <Bar.Root>{showPages}</Bar.Root>}
           {missing && (
@@ -426,9 +478,11 @@ export function ServiceWorkspace({
                 api={api}
                 readOnly={!approver}
                 why={
-                  roles && !approver
-                    ? "Only approvers can add, change, move or delete categories."
-                    : undefined
+                  unchecked
+                    ? UNCHECKED
+                    : roles && !approver
+                      ? "Only approvers can add, change, move or delete categories."
+                      : undefined
                 }
               />
             </section>
@@ -451,19 +505,37 @@ export function ServiceWorkspace({
           )}
           {!location && onReviews && (
             <section className="mx-auto w-full max-w-300 px-4 py-10 sm:px-6">
-              {reviewing ? (
-                <ReviewScreen
-                  key={reviewing}
-                  api={api}
-                  pageId={reviewing}
-                  selfApproval={selfApproval}
-                />
-              ) : (
-                <ReviewQueueScreen api={api} />
-              )}
+              <Suspense
+                fallback={
+                  <LoadingState
+                    label={reviewing ? "Loading the change…" : "Loading the review queue…"}
+                  />
+                }
+              >
+                {reviewing ? (
+                  <ReviewScreen
+                    key={reviewing}
+                    api={api}
+                    pageId={reviewing}
+                    selfApproval={selfApproval}
+                  />
+                ) : (
+                  <ReviewQueueScreen api={api} />
+                )}
+              </Suspense>
             </section>
           )}
-          {!location && !onCategories && !onCollections && !onReviews && (
+          {!location && onHistory && params.pageId && (
+            <section className="mx-auto w-full max-w-300 px-4 py-10 sm:px-6">
+              <HistoryScreen
+                key={params.pageId}
+                api={api}
+                pageId={params.pageId}
+                serviceId={historySearch.service}
+              />
+            </section>
+          )}
+          {!location && !onCategories && !onCollections && !onReviews && !onHistory && (
             <section>
               <ServicesList
                 api={api}
@@ -500,14 +572,16 @@ export function ServiceWorkspace({
                 "Page from the content API"
               }
             >
-              <RemotePagePane
-                api={api}
-                id={id}
-                active={!missing && id === selected?.id}
-                onSession={trackPageSession}
-                sessions={sessions}
-                nav={showPages}
-              />
+              <Suspense fallback={<LoadingState size="page" label="Loading page…" />}>
+                <RemotePagePane
+                  api={api}
+                  id={id}
+                  active={!missing && id === selected?.id}
+                  onSession={trackPageSession}
+                  sessions={sessions}
+                  nav={showPages}
+                />
+              </Suspense>
             </section>
           ))}
         </main>
@@ -544,6 +618,7 @@ export function ServiceWorkspace({
           api={api}
           open={dialog === "delete"}
           page={deleting}
+          focusAfter={content}
           onClose={() => setDialog(null)}
           onDone={() => {
             setDialog(null);

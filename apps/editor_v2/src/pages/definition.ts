@@ -9,6 +9,7 @@ export type MarkdownNode = RootContent | PhrasingContent;
 export type PageConversion = {
   $import(node: MarkdownNode): LexicalNode[];
   $export(node: LexicalNode): MarkdownNode[];
+  /** @deprecated Retained for custom page modules; new preview adapters use govbbmarkd/react component overrides. */
   render(node: MarkdownNode, key: string): ReactNode;
 };
 
@@ -17,7 +18,8 @@ export type PageHandler = {
   owns(node: LexicalNode): boolean;
   $import(node: MarkdownNode, context: PageConversion): LexicalNode[];
   $export(node: LexicalNode, context: PageConversion): MarkdownNode[];
-  render(node: MarkdownNode, context: PageConversion, key: string): ReactNode;
+  /** @deprecated Omit for shared GovBB rendering; retained custom callbacks still receive their recursive context. */
+  render?(node: MarkdownNode, context: PageConversion, key: string): ReactNode;
 };
 
 export type PageModule = EditorModule & { markdown?: readonly PageHandler[] };

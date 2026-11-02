@@ -1,10 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
+import { CatchBoundary, Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import type { Category } from "../api/categories";
 import { ApiFailure, type ApiPage, type EditorApi } from "../api/client";
 import { apiMessage } from "../api/failure-messages";
-import { pageToMarkdown, pickerCategories, pageFieldLabel } from "../api/page-markdown";
+import { pageLinkTargetsQuery } from "../api/page-link-targets";
+import { pageFieldLabel } from "../api/page-fields";
+import { pageToMarkdown, pickerCategories } from "../api/page-markdown";
 import {
   collectionRecordsQuery,
   PRELOAD_FRESH,
@@ -15,22 +17,27 @@ import {
   servicesQuery,
 } from "../api/queries";
 import { PageDraftEditor } from "../host/page-editor";
-import { download } from "../host/source-ui";
-import { readPageMetadata } from "../pages";
+import { download } from "../host/download";
+import { collectInternalPageLinks } from "../pages/link-checks";
+import { draftPageMetadata, readPageMetadata } from "../pages";
 import { PageCollectionsProvider, type PageCollections } from "../pages/modules/contact";
 import { DraftStore } from "../persistence/draft-store";
 import { govbbPageCodec } from "../presets/govbb-page";
 import { Banner } from "../ui/banner";
 import { Bar } from "../ui/bar";
 import { Button } from "../ui/button";
+import { ConfirmDialog } from "../ui/confirm-dialog";
 import { EmptyState } from "../ui/empty-state";
 import { LoadingState } from "../ui/loading-state";
 import { TextLink } from "../ui/text-link";
 import type { SaveStateProps } from "../ui/save-state";
 import { toast } from "../ui/toast";
+import { createEditorSession } from "../editor/core/session";
 import { EditorSessionProvider } from "../editor/react/composer";
 import type { DocumentSessions } from "./document-views";
-import { savePageDraft, type PageSession, type ServerPageBaseline } from "./page-sync";
+import { brokenLinks, linkConfirmation } from "./broken-links";
+import type { PageSession, ServerPageBaseline } from "./page-session";
+import { savePageDraft } from "./page-sync";
 
 type SessionListener = (id: string, session: PageSession | undefined) => void;
 
@@ -105,7 +112,11 @@ export function RemotePagePane({
   if (!sessions) return editor;
   sessions.open(id, page.data.updated_at);
 
-  return <EditorSessionProvider session={sessions.get(id)}>{editor}</EditorSessionProvider>;
+  return (
+    <EditorSessionProvider session={sessions.get(id, createEditorSession)}>
+      {editor}
+    </EditorSessionProvider>
+  );
 }
 
 function RemotePageEditor({
@@ -149,9 +160,12 @@ function RemotePageEditor({
   const draft = useSyncExternalStore(store.subscribe, store.getSnapshot);
   // Links find the site's services by name; the content API lists their entry pages
   const services = useQuery(servicesQuery(api)).data;
-  const roles = useQuery(rolesQuery(api)).data;
+  const rolesRead = useQuery(rolesQuery(api));
+  const roles = rolesRead.data;
   // Until the roles load, the visibility control waits rather than offering what the API may refuse
   const approver = roles?.includes("approver") ?? false;
+  // They couldn't be read: the control says so, rather than that it's only for approvers
+  const unchecked = !roles && rolesRead.errorUpdateCount > 0;
   // Someone without the editor role can't save; the workspace says why
   const readOnly = !!roles && !roles.includes("editor");
 
@@ -164,8 +178,10 @@ function RemotePageEditor({
     enabled: !!service,
   }).data;
 
+  const metadata = useMemo(() => draftPageMetadata(draft), [draft]);
+
   const previewContext = useMemo(() => {
-    const path = readPageMetadata(draft.committed).url ?? server.url;
+    const path = metadata.url ?? server.url;
     const breadcrumbs = [{ label: "Home", href: "/" }];
     const parts = path.split("/").filter(Boolean);
 
@@ -187,7 +203,7 @@ function RemotePageEditor({
     }
 
     return { breadcrumbs, publishedAt: server.published_at };
-  }, [draft.committed, server.url, server.published_at, categories, service, servicePages]);
+  }, [metadata.url, server.url, server.published_at, categories, service, servicePages]);
 
   // Contact blocks show their records' current details, and open a record on the collection's screen (#3184)
   const collections = useMemo<PageCollections>(
@@ -205,6 +221,36 @@ function RemotePageEditor({
     () => services?.map((service) => ({ title: service.title, url: service.url })),
     [services],
   );
+
+  // Links to pages the site doesn't have warn as the page is written, and are checked again before each save
+  const pageUrl = metadata.url ?? server.url;
+
+  const links = useMemo(
+    () => (draft.state ? collectInternalPageLinks(draft.state, pageUrl) : []),
+    [draft.state, pageUrl],
+  );
+
+  const known = useQuery({ ...pageLinkTargetsQuery(api), enabled: links.length > 0 });
+  // A refetch that failed keeps its last data, which is no evidence about the links now
+  const listed = known.isError ? undefined : known.data;
+  const broken = listed ? brokenLinks(links, listed, pageUrl) : [];
+  const [checking, setChecking] = useState(false);
+
+  const [confirming, setConfirming] = useState<{
+    markdown: string;
+    title: string;
+    message: string;
+  }>();
+
+  const mounted = useRef(true);
+
+  useEffect(() => {
+    mounted.current = true;
+
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
 
   const save = useMutation({
     mutationFn: (current: { base: ServerPageBaseline; markdown: string }) =>
@@ -279,7 +325,7 @@ function RemotePageEditor({
       getBaseline: () => baseline.current,
       isSaving: () => saving.current,
     }),
-    [store, base, save.isPending],
+    [store, base, save.isPending, checking],
   );
 
   useEffect(() => {
@@ -288,10 +334,7 @@ function RemotePageEditor({
     return () => onSession(server.id, undefined);
   }, [onSession, server.id, session]);
 
-  const visibility = useMemo(
-    () => readPageMetadata(draft.committed).visibility || "public",
-    [draft.committed],
-  );
+  const visibility = metadata.visibility || "public";
 
   // Only making a page public goes live at once; a public page's changes wait for an approver
   const publishes = visibility === "public" && server.visibility !== "public";
@@ -313,12 +356,78 @@ function RemotePageEditor({
     save.mutate({ base: baseline.current, markdown: snapshot.committed });
   };
 
+  // Looks the page's links up again, then saves. Only making the page public stops to ask about what it found.
+  const checkedSave = async () => {
+    const snapshot = store.getSnapshot();
+
+    if (
+      saving.current ||
+      stale ||
+      !snapshot.valid ||
+      snapshot.dirty ||
+      snapshot.status === "error" ||
+      !snapshot.state ||
+      !collectInternalPageLinks(snapshot.state, pageUrl).length
+    )
+      return saveDraft();
+
+    // Held like a save, so a second click is ignored and leaving the page waits for it
+    saving.current = true;
+    setChecking(true);
+    let fresh: readonly string[] | undefined;
+
+    try {
+      fresh = await client.fetchQuery({ ...pageLinkTargetsQuery(api), staleTime: 0 });
+    } catch {
+      fresh = undefined;
+    }
+
+    saving.current = false;
+
+    if (!mounted.current) return;
+    setChecking(false);
+
+    // What is checked is what is sent: the page as it stands now
+    const latest = store.getSnapshot();
+
+    if (!latest.state || !latest.valid || latest.dirty || latest.status === "error") return;
+    const latestUrl = readPageMetadata(latest.committed).url ?? server.url;
+    const found = collectInternalPageLinks(latest.state, latestUrl);
+
+    const makesPublic =
+      (readPageMetadata(latest.committed).visibility || "public") === "public" &&
+      server.visibility !== "public";
+
+    const asked = makesPublic
+      ? linkConfirmation(
+          fresh ? brokenLinks(found, fresh, latestUrl) : [],
+          found.length > 0 && !fresh,
+        )
+      : undefined;
+
+    if (asked) setConfirming({ markdown: latest.committed, ...asked });
+    else saveDraft();
+  };
+
+  // Preview has no heading in its bar; its Close preview control stays when an alert is answered. The other open pages
+  // are kept hidden and inert, so their headings can't take the focus
+  const restorePageFocus = () =>
+    [
+      ...document.querySelectorAll<HTMLElement>(
+        "[data-cms-preview-host] [data-site-preview-trigger], [data-document-bar]:not([hidden]) h1",
+      ),
+    ]
+      .find((element) => !element.closest("[inert]"))
+      ?.focus();
+
   const loadSaved = () => {
     const markdown = pageToMarkdown(server, categories);
     store.edit(markdown);
 
-    if (store.apply()) rebase({ page: server, markdown });
-    else {
+    if (store.apply()) {
+      rebase({ page: server, markdown });
+      restorePageFocus();
+    } else {
       // Discard the rejected source so the existing working copy remains editable.
       store.discard();
       toast("The saved version couldn’t be opened", {
@@ -333,16 +442,13 @@ function RemotePageEditor({
 
   // Source errors take precedence over the server's save state (useDraftSave).
   const standing = (): SaveStateProps => {
-    const conflict = stale ? newerVersion : undefined;
-
-    if (save.isPending) return { status: "saving", conflict };
+    if (save.isPending) return { status: "saving" };
 
     if (outcome?.kind === "missing")
       return {
         status: "failed",
         error:
           "This page has been deleted, so your changes can’t be saved. Download a copy to keep them.",
-        conflict,
         onDownload: downloadMine,
       };
 
@@ -351,8 +457,7 @@ function RemotePageEditor({
         status: "failed",
         error:
           "We could not save this page. Keep this editor open to retry, or download your changes.",
-        conflict,
-        onRetry: saveDraft,
+        onRetry: () => void checkedSave(),
         onDownload: downloadMine,
       };
 
@@ -361,7 +466,6 @@ function RemotePageEditor({
 
     return {
       status: unsaved ? (publishes ? "unpublished" : "unsaved") : live ? "published" : "saved",
-      conflict,
     };
   };
 
@@ -382,10 +486,22 @@ function RemotePageEditor({
   const readStatus = readError instanceof ApiFailure ? readError.status : undefined;
   const readRefused = readStatus === 401 || readStatus === 403 || readStatus === 404;
 
+  // Its alert beside the title says so in a word or two
+  const readLabel =
+    readStatus === 401
+      ? "Session ended"
+      : readStatus === 403
+        ? "No access"
+        : readStatus === 404
+          ? "Page unavailable"
+          : "Couldn’t refresh";
+
+  // Read out by its alert as it arrives, so the notice itself isn't
   const readNotice = readError && (
     <Banner
       tone={readRefused ? "error" : "warning"}
       layout="strip"
+      role="none"
       actions={
         <>
           {readStatus === 401 ? (
@@ -414,8 +530,8 @@ function RemotePageEditor({
     </Banner>
   );
 
-  // The save state reads out the newer version, so its notice doesn't too
-  const notice = stale ? (
+  // Read out by its alert as it arrives, so the notice itself isn't
+  const newer = stale && (
     <Banner
       tone="warning"
       layout="strip"
@@ -426,7 +542,10 @@ function RemotePageEditor({
             <Button
               variant="secondary"
               disabled={save.isPending}
-              onClick={() => rebase({ page: server, markdown: pageToMarkdown(server, categories) })}
+              onClick={() => {
+                rebase({ page: server, markdown: pageToMarkdown(server, categories) });
+                restorePageFocus();
+              }}
             >
               Keep my version
             </Button>
@@ -440,7 +559,11 @@ function RemotePageEditor({
     >
       {newerVersion}
     </Banner>
-  ) : outcome?.kind === "invalid" ? (
+  );
+
+  const invalid = outcome?.kind === "invalid";
+
+  const notice = invalid ? (
     <Banner tone="error" layout="strip" title="There is a problem">
       <ul className="mt-1 list-disc ps-5">
         {errors.map((error) => (
@@ -475,7 +598,7 @@ function RemotePageEditor({
       Waiting for review. Citizens will see these changes once an approver publishes them.
       {roles?.includes("editor") &&
         (approver
-          ? " You can keep editing, but if you save changes you can't approve or reject this review."
+          ? " You can keep editing, but if you save changes you can’t approve or reject this review."
           : " You can keep editing: changes you save are added to this review.")}
     </Banner>
   ) : server.pending_revision?.status === "rejected" ? (
@@ -496,45 +619,114 @@ function RemotePageEditor({
 
   return (
     <PageCollectionsProvider collections={collections}>
-      <PageDraftEditor
-        store={store}
-        active={active}
-        nav={nav}
-        server={standing()}
-        publish={
-          // Keep focus when a completed save leaves nothing to save, or a newer version blocks editing.
-          <Button
-            variant="accent"
-            pending={save.isPending}
-            aria-disabled={
-              !unsaved || stale || blocked || readOnly || outcome?.kind === "missing" || undefined
-            }
-            onClick={saveDraft}
-          >
-            {publishes ? "Publish changes" : "Save"}
-          </Button>
-        }
-        notice={
-          readNotice ? (
+      {/* A failure showing the page fails only its pane. Its draft is kept here, outside, as is leaving's question about
+          it: it can be downloaded, or shown again */}
+      <CatchBoundary
+        getResetKey={() => server.id}
+        errorComponent={({ reset }) =>
+          active ? (
             <>
-              {readNotice}
-              {notice}
+              {nav && <Bar.Root>{nav}</Bar.Root>}
+              <EmptyState
+                tone="error"
+                size="page"
+                title="This page couldn’t be shown"
+                description="Your changes are still here. Download a copy to keep them, then try again."
+                actions={
+                  <>
+                    <Button
+                      variant="secondary"
+                      onClick={() => {
+                        document.getElementById("workspace-content")?.focus();
+                        reset();
+                      }}
+                    >
+                      Try again
+                    </Button>
+                    <Button onClick={downloadMine}>Download a copy</Button>
+                  </>
+                }
+              />
             </>
-          ) : (
-            notice
-          )
+          ) : null
         }
-        linkPages={linkPages}
-        previewContext={previewContext}
-        settings={{
-          ...(server.parent_id === null && {
-            categories: pickerCategories(categories),
-            single: true,
-          }),
-          publishedAt: server.published_at,
-          savedVisibility: base.page.visibility,
-          visibilityLocked: !approver,
-          errors: Object.fromEntries(errors.map((error) => [error.field, error.message])),
+      >
+        <PageDraftEditor
+          store={store}
+          active={active}
+          nav={nav}
+          server={standing()}
+          publish={
+            // Keep focus when a completed save leaves nothing to save, or a newer version blocks editing.
+            <Button
+              variant="accent"
+              pending={save.isPending || checking}
+              aria-disabled={
+                !unsaved || stale || blocked || readOnly || outcome?.kind === "missing" || undefined
+              }
+              onClick={() => void checkedSave()}
+            >
+              {publishes ? "Publish changes" : "Save"}
+            </Button>
+          }
+          notice={notice}
+          alert={
+            readNotice
+              ? {
+                  label: readLabel,
+                  tone: readRefused ? "error" : "warning",
+                  content: (
+                    <>
+                      {readNotice}
+                      {newer}
+                    </>
+                  ),
+                }
+              : newer
+                ? { label: "Newer version saved", tone: "warning", content: newer }
+                : undefined
+          }
+          linkPages={linkPages}
+          linkWarnings={{
+            broken,
+            unavailable: links.length > 0 && known.isError,
+            retrying: known.isFetching,
+            onRetry: () => void known.refetch(),
+          }}
+          previewContext={previewContext}
+          settings={{
+            ...(server.parent_id === null && {
+              categories: pickerCategories(categories),
+              single: true,
+            }),
+            publishedAt: server.published_at,
+            lastEditedBy: server.last_edited_by,
+            savedVisibility: base.page.visibility,
+            visibilityLocked: approver
+              ? undefined
+              : unchecked
+                ? "We couldn’t check your permissions, so who can see this page can’t be changed until we can."
+                : "Only approvers can change who can see this page.",
+            errors: Object.fromEntries(errors.map((error) => [error.field, error.message])),
+          }}
+        />
+      </CatchBoundary>
+      <ConfirmDialog
+        open={!!confirming}
+        onOpenChange={(next) => {
+          if (!next) setConfirming(undefined);
+        }}
+        title={confirming?.title ?? ""}
+        description={`${confirming?.message ?? ""} Citizens will see this page straight away.`}
+        confirmLabel="Publish changes"
+        variant="accent"
+        onConfirm={() => {
+          const asked = confirming;
+          setConfirming(undefined);
+
+          // Only the page that was shown is published
+          if (asked?.markdown === store.getSnapshot().committed) saveDraft();
+          else toast("The page changed", { description: "Publish it again to check its links." });
         }}
       />
     </PageCollectionsProvider>

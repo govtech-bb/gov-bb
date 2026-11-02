@@ -16,6 +16,15 @@ government service**, backed by the `service_status` API on `apps/api`. Built fo
   (`GET /service_status/audit`).
 - Gates access behind GitHub org/team membership (or repo write access).
 
+After cutover — once an environment's landing reads its pages from api_v2 —
+page visibility is set in the content editor (editor_v2), not here (ADR 0063,
+"After cutover"). Set **`EDITOR_V2_URL`** (the editor's origin, no trailing
+slash) on that environment's branch and rebuild: rows without a form then show
+no status select, a line above the table links to the editor, and the statuses
+left change forms only. Unset (local dev, and every environment before its
+cutover) keeps today's behaviour. Like `LANDING_URL`, it is baked at build
+time, so setting it is a **rebuild**.
+
 ## Stack
 
 TanStack Start + Nitro SSR + React + Vite, deployed to AWS Amplify — the same
@@ -139,4 +148,7 @@ requires one-time infra, done outside the codebase:
 - [ ] Ensure `apps/api` has `GITHUB_ORG` + `GITHUB_TEAM_SLUG` set so it can
       authorize the forwarded GitHub tokens in prod (no shared admin token
       needed — see the `apps/api` GitHub-auth change).
+- [ ] At the start of an environment's cutover window, before the #3188 import:
+      set `EDITOR_V2_URL` to that environment's editor_v2 origin and rebuild
+      (see [What it does](#what-it-does)). Leave it unset until then.
 ```

@@ -24,7 +24,7 @@ export function SortButton() {
     <button
       type="button"
       className={cn(
-        "group/sort -mx-1.5 inline-flex min-h-8 cursor-pointer items-center gap-1 rounded-sm px-1.5 transition-colors hover:bg-tint hover:text-ink",
+        "group/sort -mx-1.5 inline-flex min-h-8 cursor-pointer items-center gap-1 rounded-sm px-1.5 transition-colors hover:bg-tint hover:text-ink active:bg-hover active:text-ink active:shadow-press",
         touchTarget,
         sorted && "text-ink",
       )}

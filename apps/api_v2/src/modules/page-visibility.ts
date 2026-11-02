@@ -42,6 +42,7 @@ export interface ResolvablePage {
   readonly bodyMarkdown: string;
   readonly frontmatter: Frontmatter;
   readonly publishedAt: Date | null;
+  readonly contentUpdatedAt: Date;
   readonly updatedAt: Date;
 }
 
@@ -101,19 +102,29 @@ export const PublicPage = z.object({
     .string()
     .nullable()
     .describe("The slug of its subcategory, or null."),
+  visibility: z
+    .enum(["public", "preview"])
+    .describe(
+      "Effective visibility: the most restrictive of the page and the pages " +
+        "above it. preview reaches only a reviewer; the site shows its review " +
+        "banner and noindex from it.",
+    ),
   published_at: z.iso
     .datetime()
     .nullable()
     .describe(
-      "When the page first went public (seeded from landing's " +
-        "`publish_date`); null until it has.",
+      "Landing's `publish_date` for an imported page, else when the page " +
+        "first went public; null until it has one.",
+    ),
+  content_updated_at: z.iso
+    .datetime()
+    .describe(
+      "When the title, description, body, frontmatter or form last changed, " +
+        'visibility changes not included: the site\'s "Last updated" line.',
     ),
   updated_at: z.iso
     .datetime()
-    .describe(
-      "The page's last save, visibility changes included: the site's " +
-        '"Last updated" line.',
-    ),
+    .describe("The page's last save, visibility changes included."),
 });
 
 /** A page as the site reads it. */
@@ -168,7 +179,11 @@ export function toPublicPage(
     ],
     category: view.category,
     subcategory: view.subcategory,
+    visibility: hiddenFrom("public", page, view.ancestors)
+      ? "preview"
+      : "public",
     published_at: page.publishedAt?.toISOString() ?? null,
+    content_updated_at: page.contentUpdatedAt.toISOString(),
     updated_at: page.updatedAt.toISOString(),
   };
 }

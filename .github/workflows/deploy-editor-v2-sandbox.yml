@@ -13,10 +13,8 @@ name: Deploy editor_v2 to Sandbox
 # Lives on v2-rewrite for the same reason as the api_v2 workflow: the file has
 # to exist on the branch that is pushed.
 #
-# Paths: the editor's own folder, plus everything else its Amplify build reads
-# (amplify.yml runs `nvm use $(cat .nvmrc)`, installs pnpm from package.json's
-# packageManager, then `pnpm install --frozen-lockfile`). The editor has no
-# workspace-package dependencies, only published ones, so no packages/** path.
+# The editor's prose template uses the shared Markdown dialect and the
+# design-system packages installed from the lockfile.
 #
 # Role: api-v2-github-actions-sandbox, which trusts gov-bb v2-rewrite and main
 # and may start/read jobs on this one Amplify branch only (alpha-infra#738).
@@ -26,6 +24,10 @@ on:
     branches: [v2-rewrite]
     paths:
       - "apps/editor_v2/**"
+      - "packages/govbbmarkd/**"
+      - "nx.json"
+      - "tsconfig.base.json"
+      - "tsconfig.json"
       - "amplify.yml"
       - "pnpm-lock.yaml"
       - "pnpm-workspace.yaml"
@@ -35,7 +37,6 @@ on:
   workflow_dispatch:
 
 permissions:
-  id-token: write # assume the deploy role via OIDC
   contents: read
 
 # Queue deploys; never cancel one mid-flight. Amplify also refuses a second
@@ -55,6 +56,9 @@ jobs:
   deploy:
     name: Build editor_v2 on Amplify
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write # assume the deploy role via OIDC
+      contents: read
     # No `environment:` here: it would change the OIDC subject to
     # repo:...:environment:<name>, which the deploy role does not trust.
     # No checkout either: Amplify clones the commit itself.
@@ -110,3 +114,30 @@ jobs:
           done
           echo "::error::$APP_URL did not answer 200 after the build."
           exit 1
+
+  preview-smoke:
+    name: Open and close page preview
+    needs: deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version-file: ".nvmrc"
+          cache: "pnpm"
+      - run: pnpm install --frozen-lockfile
+      - name: Install Chromium
+        timeout-minutes: 5
+        run: pnpm --filter @govtech-bb/forms exec playwright install chromium
+      # Real deployed UI/assets and CSP; fixture authentication/API, with all mutations blocked.
+      - name: Verify prose preview and unsaved edits
+        run: |
+          PLAYWRIGHT_MODULE_PATH="$(pnpm --filter @govtech-bb/forms exec node -p "require.resolve('playwright', { paths: [require.resolve('@playwright/test')] })")"
+          export PLAYWRIGHT_MODULE_PATH
+          pnpm --dir apps/editor_v2 exec node scripts/browser/site-preview-smoke.mjs "$APP_URL"

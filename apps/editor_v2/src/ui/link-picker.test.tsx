@@ -127,3 +127,18 @@ test("the form checks the address with the link policy, and a page picked applie
     ["checked:/travel/passport-fees", "Passport fees"],
   ]);
 });
+
+test("an address is kept as typed, and a page found shows its title and address in full", async () => {
+  await render(<Picker onPick={() => {}} />);
+
+  // A phone neither capitalises nor corrects it, and the browser offers no old entries over the list
+  expect(field().getAttribute("autocapitalize")).toBe("off");
+  expect(field().getAttribute("autocorrect")).toBe("off");
+  expect(field().getAttribute("spellcheck")).toBe("false");
+  expect(field().getAttribute("autocomplete")).toBe("off");
+
+  await type("passp");
+  expect(options()[0]!.querySelector(".whitespace-normal")!.textContent).toBe(
+    "Passport fees/travel/passport-fees",
+  );
+});

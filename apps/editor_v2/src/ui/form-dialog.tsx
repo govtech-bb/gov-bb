@@ -8,7 +8,7 @@ type FormDialogProps = {
   onOpenChange: (open: boolean) => void;
   title: string;
   description: ReactNode;
-  /** Sends the form, from its submit button or from Enter in a field. */
+  /** Sends the form, from its submit button, from Enter in a field or from ⌘ or Ctrl+Enter in a textarea. */
   onSubmit: () => void;
   /** Blocks dismissal until the request finishes, preserving the form and its result. */
   pending?: boolean;
@@ -50,6 +50,19 @@ export function FormDialog(props: FormDialogProps) {
           onSubmit={(event) => {
             event.preventDefault();
             onSubmit();
+          }}
+          // Enter starts a new line in a textarea, so ⌘ or Ctrl+Enter sends from one; not again while it's pending
+          onKeyDown={(event) => {
+            if (
+              event.key === "Enter" &&
+              (event.metaKey || event.ctrlKey) &&
+              event.target instanceof HTMLTextAreaElement &&
+              !event.nativeEvent.isComposing &&
+              !pending
+            ) {
+              event.preventDefault();
+              event.currentTarget.requestSubmit();
+            }
           }}
         >
           <Dialog.Body>{children}</Dialog.Body>

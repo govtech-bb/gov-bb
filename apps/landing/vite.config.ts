@@ -12,17 +12,6 @@ export default defineConfig({
     extensions: ['.mjs', '.js', '.mts', '.ts', '.jsx', '.tsx', '.json'],
   },
   plugins: [
-    {
-      name: 'cms-preview-assets',
-      configureServer(server) {
-        // Nitro serves public assets before Vite's own CORS middleware.
-        server.middlewares.use((request, response, next) => {
-          if (request.url?.startsWith('/cms-preview/'))
-            response.setHeader('Access-Control-Allow-Origin', '*')
-          next()
-        })
-      },
-    },
     tailwindcss(),
     devtools(),
     markdown(),
@@ -32,8 +21,7 @@ export default defineConfig({
         // @ts-expect-error - Lambda supports nodejs24.x; Nitro types lag.
         runtime: 'nodejs24.x',
       },
-      // Bake PREVIEW_SECRET and DRAFT_SECRET into the server runtime config
-      // at build time.
+      // Bake PREVIEW_SECRET into the server runtime config at build time.
       //
       // The preview gate reads this secret per-request in a `createServerFn`
       // handler (src/lib/preview.ts). On Amplify this app deploys as a Nitro
@@ -48,12 +36,9 @@ export default defineConfig({
       // Unlike a Vite `define`, this can never leak into a client chunk — the
       // virtual module is never part of the client graph. A runtime
       // `NITRO_PREVIEW_SECRET` env var still overrides it if ever set.
-      // Trade-off: rotating a secret needs a redeploy. `draftSecret` is the
-      // higher-privilege grant (`?draft=`) and must be a different value than
-      // `previewSecret`, or a preview reviewer could reach draft content.
+      // Trade-off: rotating a secret needs a redeploy.
       runtimeConfig: {
         previewSecret: process.env.PREVIEW_SECRET ?? '',
-        draftSecret: process.env.DRAFT_SECRET ?? '',
         // Parent domain the shared `preview` cookie is scoped to, so landing,
         // forms and the API share ONE grant (#1646 Phase 3). Build-baked like
         // the secrets above (the SSR Lambda never sees Console env vars). Empty
@@ -66,6 +51,8 @@ export default defineConfig({
         formsApiUrl: process.env.VITE_FORMS_API_URL ?? '',
         // Optional api_v2 base for pages (src/lib/api-v2-page.ts, #2944); empty → static only.
         apiV2Url: process.env.VITE_API_V2_URL ?? '',
+        // api_v2's LANDING_SECRET, sent as x-landing-token to skip its rate limit (#3129).
+        landingSecret: process.env.LANDING_SECRET ?? '',
       },
     }),
     tanstackStart(),

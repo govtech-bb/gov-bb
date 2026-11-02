@@ -104,7 +104,40 @@ describe("seed", () => {
     await close();
   }, 60_000);
 
-  it("serves a seeded subcategory page only in preview with its taxonomy", async ({
+  it("crumbs the seeded pharmacy sub-pages through their parent page", async () => {
+    const { db, close } = await createTestDb();
+    await seed(db);
+    const { resolution } = createTestServices(db);
+    const title = (url: string) =>
+      ESTATE.pages.find((page) => page.url === url)?.title;
+    const slug = "health-and-emergency-services";
+    const category = `/${slug}`;
+    const parent = `${category}/find-an-open-pharmacy`;
+
+    for (const url of [
+      `${category}/prescription-colours`,
+      `${category}/free-or-subsidised-medication`,
+    ]) {
+      const resolved = expectOk(await resolution.resolve(url, "public"));
+      expect(resolved).toMatchObject({
+        kind: "page",
+        page: {
+          breadcrumbs: [
+            {
+              name: ESTATE.categories.find((c) => c.slug === slug)?.title,
+              url: category,
+            },
+            { name: title(parent), url: parent },
+            { name: title(url), url },
+          ],
+        },
+      });
+    }
+
+    await close();
+  }, 60_000);
+
+  it("serves a seeded subcategory page only in preview with its taxonomy and publish date", async ({
     onTestFinished,
   }) => {
     const { db, close } = await createTestDb();
@@ -128,6 +161,27 @@ describe("seed", () => {
       category: "youth-and-community",
       subcategory: "arts-culture",
     });
+
+    // A preview page keeps its frontmatter date, so it shows the static
+    // page's "Last updated" and keeps that date when it goes public.
+    const preview = ESTATE.pages.filter(
+      (page) => page.visibility === "preview",
+    );
+    const dated = preview.find((page) => page.published_at)!;
+    const undated = preview.find((page) => !page.published_at)!;
+    const served = async (pageUrl: string) =>
+      (
+        await app.inject({
+          url: `/pages?url=${encodeURIComponent(pageUrl)}`,
+          headers: { [PREVIEW_TOKEN]: "preview" },
+        })
+      ).json();
+
+    expect(await served(dated.url)).toMatchObject({
+      published_at: dated.published_at,
+      content_updated_at: dated.published_at,
+    });
+    expect(await served(undated.url)).toMatchObject({ published_at: null });
   }, 60_000);
 
   it("files subcategories, sub-pages and the pages landing nests by hand", async () => {

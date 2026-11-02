@@ -1,3 +1,4 @@
+import { parseContentMarkdown } from "@govtech-bb/govbbmarkd";
 import {
   NotApprover,
   SelfApproval,
@@ -26,13 +27,14 @@ import {
   type PageDocument,
   type PageFields,
   type PageId,
-  type PageRejected,
+  PageRejected,
   type PageValues,
   type PendingRevision,
   type RevisionView,
   type SaveFields,
 } from "../modules/page";
 import { err, ok, type Result } from "../modules/result";
+import type { LastEditedBy } from "../modules/content-attribution";
 import { chunkMarkdown, type SearchChunk } from "../modules/search-text";
 import {
   NO_REVIEW_NOTIFICATIONS,
@@ -91,6 +93,10 @@ export interface PageRecords {
     actorId: UserId,
     work: (records: PageRecords) => Promise<R>,
   ): Promise<R | Result<never, ContentStoreUnavailable>>;
+  /** The actor of the page's highest-version event, including review steps; null without history. */
+  lastEditedBy(
+    id: PageId,
+  ): Promise<Result<LastEditedBy, ContentStoreUnavailable>>;
   /** The page with this id, or null. */
   find(
     id: PageId,
@@ -195,8 +201,8 @@ export class PageEditing {
 
   /**
    * The page with this id as the editor works on it: with its pending
-   * revision laid over it. Two reads rather than one snapshot: a save between
-   * them leaves this with a version no save matches, so the next save is a
+   * revision laid over it. Separate reads rather than one snapshot: a save
+   * between them leaves this with a version no save matches, so the next save is a
    * conflict, never a lost write.
    */
   async open(
@@ -207,7 +213,7 @@ export class PageEditing {
     if (live.value === null) return ok(null);
     const revision = await this.records.currentRevision(id);
     if (!revision.ok) return revision;
-    return ok(workingCopy(live.value, revision.value));
+    return attributedPage(this.records, live.value, revision.value);
   }
 
   /** The page's current revision and what it changes, or null when it has none. */
@@ -232,7 +238,7 @@ export class PageEditing {
     actor: Employee,
   ): Promise<
     Result<
-      PageDocument,
+      EditorPage,
       PageRejected | NotApprover | SelfApproval | ContentStoreUnavailable
     >
   > {
@@ -242,9 +248,12 @@ export class PageEditing {
       // Its author wrote all of it, so another approver makes it public.
       if (page.visibility === "public" && !this.review.allowSelfApproval)
         return err(new SelfApproval(CREATED_PUBLIC));
+      const fields = withDefaults(page);
+      const invalidContent = markdownRejection(fields);
+      if (invalidContent) return err(invalidContent);
       const available = await records.checkPageUrl(page.url);
       if (!available.ok) return available;
-      const placed = await place(records, page.id, withDefaults(page));
+      const placed = await place(records, page.id, fields);
       if (!placed.ok) return placed;
       const created = await records.insert(
         creationOf(page.id, placed.value, this.clock()),
@@ -254,7 +263,9 @@ export class PageEditing {
         created.value.id,
         chunkMarkdown(created.value.body_markdown),
       );
-      return indexed.ok ? created : indexed;
+      return indexed.ok
+        ? attributedPage(records, created.value, null)
+        : indexed;
     });
   }
 
@@ -324,6 +335,12 @@ export class PageEditing {
       )
         return err(new NotApprover());
 
+      const invalidContent = markdownRejection(
+        current.visibility === "public" && fields.visibility !== "public"
+          ? { ...fieldsOf(current), visibility: fields.visibility }
+          : fields,
+      );
+      if (invalidContent) return err(invalidContent);
       // Past the pending revision's version too, which can run ahead of the
       // clock, so no client holding it matches the page's new one.
       const now = new Date(
@@ -351,9 +368,11 @@ export class PageEditing {
         );
         if (!hidden.ok) return hidden;
         if (pending.value?.status !== "draft")
-          return ok(workingCopy(hidden.value, null));
+          return attributedPage(records, hidden.value, null);
         const dropped = await records.dropRevision(id);
-        return dropped.ok ? ok(workingCopy(hidden.value, null)) : dropped;
+        return dropped.ok
+          ? attributedPage(records, hidden.value, null)
+          : dropped;
       }
 
       if (fields.url !== current.url) {
@@ -388,7 +407,7 @@ export class PageEditing {
           ),
         );
         return proposed.ok
-          ? ok(workingCopy(current, proposed.value))
+          ? attributedPage(records, current, proposed.value)
           : proposed;
       }
       if (fields.visibility === "public" && !this.review.allowSelfApproval) {
@@ -407,7 +426,7 @@ export class PageEditing {
       }
       // Only a public page has a revision, so there is none to close here.
       const saved = await writeLive(records, current, placed.value, now);
-      return saved.ok ? ok(workingCopy(saved.value, null)) : saved;
+      return saved.ok ? attributedPage(records, saved.value, null) : saved;
     });
   }
 
@@ -576,6 +595,8 @@ export class PageEditing {
         if (!reviewing.ok) return reviewing;
         const { live, revision } = reviewing.value;
         if (this.isOwn(revision, actor)) return err(new SelfApproval());
+        const invalidContent = markdownRejection(revision.fields);
+        if (invalidContent) return err(invalidContent);
         if (revision.fields.url !== live.url) {
           const available = await records.checkPageUrl(revision.fields.url);
           if (!available.ok) return available;
@@ -595,12 +616,11 @@ export class PageEditing {
         });
         if (!marked.ok) return marked;
         const saved = await writeLive(records, live, placed.value, now);
-        return saved.ok
-          ? ok({
-              page: workingCopy(saved.value, null),
-              submittedBy: marked.value.submitted_by,
-            })
-          : saved;
+        if (!saved.ok) return saved;
+        const page = await attributedPage(records, saved.value, null);
+        return page.ok
+          ? ok({ page: page.value, submittedBy: marked.value.submitted_by })
+          : page;
       },
     );
     if (!published.ok) return published;
@@ -645,6 +665,22 @@ export class PageEditing {
   }
 }
 
+function markdownRejection(fields: SaveFields): PageRejected | null {
+  // Drafts retain incomplete or unsupported source; public and preview pages must compile.
+  if (fields.visibility === "draft") return null;
+  const { errors } = parseContentMarkdown(fields.body_markdown, {
+    frontmatter: false,
+  });
+  return errors.length
+    ? new PageRejected(
+        errors.map((error) => ({
+          field: "body_markdown",
+          message: `Line ${error.line}, column ${error.column}: ${error.message}`,
+        })),
+      )
+    : null;
+}
+
 /** Why an approver can't create a page as Public (ADR 0079, #3201). */
 const CREATED_PUBLIC =
   "Another approver needs to make a page you wrote public. Create it as Preview or Draft.";
@@ -652,6 +688,18 @@ const CREATED_PUBLIC =
 /** Why an approver can't make public a page they changed (ADR 0079, #3201). */
 const CHANGED_SINCE_PUBLIC =
   "You changed this page since it was last public, so another approver needs to make it public.";
+
+/** Read attribution after writes, inside their transaction, so no-ops keep the previous actor. */
+async function attributedPage(
+  records: PageRecords,
+  live: PageDocument,
+  revision: PendingRevision | null,
+): Promise<Result<EditorPage, ContentStoreUnavailable>> {
+  const author = await records.lastEditedBy(live.id);
+  return author.ok
+    ? ok({ ...workingCopy(live, revision), last_edited_by: author.value })
+    : author;
+}
 
 /** A revision with what it changes against the live page. */
 function viewOf(live: PageDocument, revision: PendingRevision): RevisionView {

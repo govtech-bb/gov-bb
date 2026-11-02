@@ -1,16 +1,14 @@
 import { describe, expect, it } from "vitest";
+import { compileContentMarkdown } from "@govtech-bb/govbbmarkd";
+import { sitePreviewDocument } from "../host/site-preview-renderer";
 import estate from "../../../api_v2/src/seed-data/estate.json";
 import { createHeadlessEditor } from "../editor/core/create-editor";
 import { $setPageMetadata } from "../pages/metadata";
 import { govbbPageCodec, govbbPageEditor } from "../presets/govbb-page";
 import type { Category } from "./categories";
 import type { ApiPage } from "./client";
-import {
-  markdownToPageSaveInput,
-  pageToMarkdown,
-  pickerCategories,
-  suggestedUrl,
-} from "./page-markdown";
+import { suggestedUrl } from "./page-fields";
+import { markdownToPageSaveInput, pageToMarkdown, pickerCategories } from "./page-markdown";
 
 const VISIBILITIES = ["public", "preview", "draft"] as const;
 
@@ -26,6 +24,7 @@ const categories: Category[] = estate.categories.map((category, position) => ({
   position,
   services: 0,
   reserved_route: false,
+  last_edited_by: null,
   updated_at: "2026-10-26T12:00:00.000Z",
 }));
 
@@ -45,6 +44,7 @@ const pages: ApiPage[] = estate.pages.map((page) => ({
   created_at: "2026-10-07T12:00:00.000Z",
   updated_at: "2026-10-07T12:00:00.000Z",
   pending_revision: null,
+  last_edited_by: null,
 }));
 
 const entry = pages.find((page) => page.url === "/money-financial-support/calculate-severance-pay");
@@ -58,6 +58,27 @@ if (!entry || !start) throw new Error("The seed no longer has the severance page
 const markdownOf = (yaml: string) => `---\n${yaml}\n---\n\nBody`;
 
 describe("page markdown", () => {
+  it("keeps leading body rules and instructions through saving and both preview paths", () => {
+    const body = "---\n\nYou must submit before Friday.\n\n---\n\nApply below.";
+    const source = pageToMarkdown({ ...entry, body_markdown: body }, categories);
+    const saved = markdownToPageSaveInput(source, entry, categories);
+
+    if (!saved.ok) throw new Error("Expected valid page save");
+    expect(saved.value.body_markdown).toBe(body);
+    const publicPage = compileContentMarkdown(saved.value.body_markdown, { frontmatter: false });
+    const localPreview = compileContentMarkdown(source);
+
+    const sitePreview = compileContentMarkdown(sitePreviewDocument(source).body, {
+      frontmatter: false,
+    });
+
+    expect(publicPage.ok && publicPage.value.text).toBe(
+      "You must submit before Friday. Apply below.",
+    );
+    expect(localPreview.ok && localPreview.value.text).toBe(publicPage.ok && publicPage.value.text);
+    expect(sitePreview.ok && sitePreview.value.text).toBe(publicPage.ok && publicPage.value.text);
+  });
+
   it("saves every seeded service page as the API holds it", () => {
     for (const page of pages) {
       const saved = markdownToPageSaveInput(pageToMarkdown(page, categories), page, categories);
@@ -87,6 +108,22 @@ describe("page markdown", () => {
     }
   });
 
+  it.each([
+    "/money-financial-support/national-insurance-for-self-employed-workers",
+    "/money-financial-support/national-insurance-for-self-employed-workers/check-your-record",
+    "/pensions-and-gratuities/calculate-your-pension/about-government-pensions",
+    "/business-trade/crop-over-permits",
+  ])("opens converted snapshot page %s visually without changing it", (url) => {
+    const page = pages.find((page) => page.url === url);
+
+    if (!page) throw new Error(`Missing converted snapshot page: ${url}`);
+    const source = pageToMarkdown(page, categories);
+    const prepared = govbbPageCodec.prepare(source);
+
+    if (prepared.mode === "source") throw new Error(`${url}: ${prepared.diagnostics[0]?.message}`);
+    expect(govbbPageCodec.encode(prepared.state)).toBe(source);
+  });
+
   it("never marks a page unsaved just for opening it", () => {
     for (const page of pages) {
       const markdown = pageToMarkdown(page, categories);
@@ -113,11 +150,9 @@ describe("page markdown", () => {
     const after = markdownToPageSaveInput(edited, entry, categories);
 
     if (!before.ok || !after.ok) throw new Error("Both versions should save");
-    // An edit re-exports the body in the editor's normal form (a hard break becomes <br>).
-    expect({ ...after.value, body_markdown: "" }).toEqual({
+    expect(after.value).toEqual({
       ...before.value,
       visibility: "preview",
-      body_markdown: "",
     });
   });
 
@@ -223,6 +258,7 @@ describe("page markdown", () => {
       position: 0,
       services: 0,
       reserved_route: false,
+      last_edited_by: null,
       updated_at: "2026-10-26T12:00:00.000Z",
     });
 

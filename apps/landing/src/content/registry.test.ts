@@ -23,7 +23,7 @@ import { hideStartLinks } from '../utils/markdown/plugins'
 import {
   isDataStartLink,
   isWaysParagraph,
-} from '../utils/markdown/plugins/hideStartLinks'
+} from '@govtech-bb/govbbmarkd/form-links'
 import type { ViewLevel } from '../lib/frontmatter'
 
 // The tests below walk loosely typed hast; ask the plugin what a start link is

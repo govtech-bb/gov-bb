@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useMemo, useRef, useState, type ReactNode } from "react";
 import { Eye, PencilSimpleSlash, X } from "@phosphor-icons/react";
 import { EditorComposer } from "../editor";
 import { UndoRedo } from "../editor/react/undo-redo";
@@ -13,11 +13,12 @@ import { usePageMetadata } from "../pages/metadata-fields";
 import { govbbPageEditor } from "../presets/govbb-page";
 import { draftPause, type DraftStore } from "../persistence/draft-store";
 import { Bar } from "../ui/bar";
-import { DocumentBar } from "../ui/document-bar";
+import { DocumentBar, type DocumentAlert } from "../ui/document-bar";
 import { EmptyState } from "../ui/empty-state";
 import type { SaveStateProps } from "../ui/save-state";
 import type { LinkPage } from "../ui/link-picker";
 import { SidePanel, useSidePanel } from "../ui/side-panel";
+import { LinkSelection, LinkWarnings, type LinkWarningProps } from "./link-warnings";
 import { SitePreview, type SitePreviewTools } from "./site-preview";
 import type { SitePreviewContext } from "./site-preview-renderer";
 import { DraftEditorBinding, DraftProvider, useDraft, useDraftSave } from "./source-ui";
@@ -37,8 +38,12 @@ type PageHost = {
   /** Sends the changes on: Publish changes, or Save. */
   publish?: ReactNode;
   notice?: ReactNode;
+  /** A notice that arrives while the page is being written, beside where it stands in its bar. */
+  alert?: DocumentAlert;
   /** The pages its links can find by title. */
   linkPages?: readonly LinkPage[];
+  /** Links to pages that don't exist, or that they couldn't be checked: shown with the notices. */
+  linkWarnings?: LinkWarningProps;
   previewContext?: SitePreviewContext;
 };
 
@@ -61,13 +66,17 @@ function PageDraft({
   server,
   publish,
   notice,
+  alert,
   linkPages,
+  linkWarnings,
   previewContext,
 }: { active: boolean } & PageHost) {
   const draft = useDraft();
   const save = useDraftSave("page.md", server);
   const [preview, setPreview] = useState(false);
   const [inlineEditing, setInlineEditing] = useState(false);
+  const [selecting, setSelecting] = useState<readonly number[]>();
+  const clearSelecting = useCallback(() => setSelecting(undefined), []);
   const writerScrollY = useRef(0);
   const panel = useSidePanel();
 
@@ -81,6 +90,7 @@ function PageDraft({
           title={<SourceTitle source={draft.committed} />}
           save={server}
           notices={notice}
+          alert={alert}
         />
         <EmptyState
           icon={<PencilSimpleSlash />}
@@ -91,6 +101,26 @@ function PageDraft({
     ) : null;
 
   const paused = !!draftPause(draft);
+
+  const notices = (
+    <>
+      {notice}
+      {linkWarnings && (
+        <LinkWarnings
+          {...linkWarnings}
+          onSelect={(path) => {
+            // Back to writing first: the link is in the page, not in its preview
+            if (preview) {
+              setInlineEditing(false);
+              setPreview(false);
+            }
+
+            setSelecting(path);
+          }}
+        />
+      )}
+    </>
+  );
 
   // Reuse the document bar in preview without exposing inactive writer controls.
   const controls = (tools?: SitePreviewTools) => (
@@ -130,7 +160,8 @@ function PageDraft({
       }
       publish={publish}
       settings={!tools && <SidePanel.Toggle panel={panel} label="Page settings" />}
-      notices={notice}
+      notices={notices}
+      alert={alert}
     />
   );
 
@@ -142,6 +173,7 @@ function PageDraft({
       linkPages={linkPages}
     >
       <DraftEditorBinding />
+      <LinkSelection path={selecting} ready={active && !preview} onDone={clearSelecting} />
       <div className={shell}>
         {!preview && controls()}
         <div className="flex flex-1">

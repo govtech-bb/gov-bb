@@ -64,9 +64,11 @@ test.each([
 test.each([
   ['<a data-start-link href="/apply">Start now</a>\n\nAfter\n', "Start now"],
   [
-    ':::actions\n::action[Continue]{href="/next"}\n::action[Back]{href="/back"}\n:::\n\nAfter\n',
+    ':::actions\n::action[Continue]{href="/next"}\n::action[Back]{href="/back" variant="secondary"}\n:::\n\nAfter\n',
     "Continue",
   ],
+  [':::action{target="form"}\nStart now\n:::\n\nAfter\n', "Start now"],
+  ['::::actions\n:::action{href="/next"}\nContinue\n:::\n::::\n\nAfter\n', "Continue"],
 ])("Enter in a button goes on below it, its label whole", async (source, label) => {
   const editor = await renderPageEditor(source);
   await selectPageText(label);

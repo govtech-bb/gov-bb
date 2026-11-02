@@ -6,7 +6,6 @@ import {
   CategoryNotFound,
   CategoryRejected,
   CategoryStamp,
-  isCategoryAnchor,
   nextCategoryStamp,
   parseCategoryFields,
   parseCategoryOrder,
@@ -165,15 +164,7 @@ export class CategoryEditing implements ICategoryEditing {
         stamp,
       );
       return inserted.ok
-        ? ok({
-            ...parsed.value,
-            id: inserted.value,
-            url: url.value,
-            position,
-            services: 0,
-            reserved_route: isCategoryAnchor(url.value),
-            updated_at: stamp,
-          })
+        ? readSavedCategory(records, inserted.value)
         : inserted;
     });
   }
@@ -197,7 +188,6 @@ export class CategoryEditing implements ICategoryEditing {
       const moves =
         current.slug !== parsed.value.slug ||
         current.parent_id !== fields.parent_id;
-      let url = current.url;
       if (moves) {
         const blockers = await records.categoryBlockers(id);
         if (!blockers.ok) return blockers;
@@ -220,26 +210,18 @@ export class CategoryEditing implements ICategoryEditing {
         if (!address.ok) return address;
         const available = await availableAddress(records, address.value);
         if (!available.ok) return available;
-        url = address.value;
       }
-      const saved = {
-        ...current,
-        ...parsed.value,
-        url,
-        reserved_route: isCategoryAnchor(url),
-        position:
-          current.parent_id === fields.parent_id
-            ? current.position
-            : appendPosition(rows.value, fields.parent_id),
-        updated_at: nextCategoryStamp(current.updated_at, this.clock()),
-      };
+      const position =
+        current.parent_id === fields.parent_id
+          ? current.position
+          : appendPosition(rows.value, fields.parent_id);
       const written = await records.replaceCategory(
         id,
         parsed.value,
-        saved.position,
-        saved.updated_at,
+        position,
+        nextCategoryStamp(current.updated_at, this.clock()),
       );
-      return written.ok ? ok({ ...saved, updated_at: written.value }) : written;
+      return written.ok ? readSavedCategory(records, id) : written;
     });
   }
 
@@ -287,30 +269,23 @@ export class CategoryEditing implements ICategoryEditing {
         )
       )
         return err(new CategoryConflict());
-      const saved: EditorCategory[] = [];
       for (const [position, id] of order.ordered_ids.entries()) {
         const current = siblings.find((row) => row.id === id);
         if (!current)
           throw new Error("Category reorder lost a checked sibling");
-        if (current.position === position) {
-          saved.push(current);
-          continue;
-        }
-        const row = {
-          ...current,
-          position,
-          updated_at: nextCategoryStamp(current.updated_at, this.clock()),
-        };
+        if (current.position === position) continue;
         const written = await records.replaceCategory(
           id,
           current,
           position,
-          row.updated_at,
+          nextCategoryStamp(current.updated_at, this.clock()),
         );
         if (!written.ok) return written;
-        saved.push({ ...row, updated_at: written.value });
       }
-      return ok(saved);
+      const saved = await records.editorCategories();
+      return saved.ok
+        ? ok(saved.value.filter((row) => row.parent_id === order.parent_id))
+        : saved;
     });
   }
 
@@ -342,6 +317,19 @@ export class CategoryEditing implements ICategoryEditing {
       return records.removeCategory(id);
     });
   }
+}
+
+/** Read back trigger-authored metadata, including attribution retained by a no-op. */
+async function readSavedCategory(
+  records: CategoryRecords,
+  id: CategoryId,
+): Promise<Result<EditorCategory, ContentStoreUnavailable>> {
+  const rows = await records.editorCategories();
+  if (!rows.ok) return rows;
+  const saved = rows.value.find((row) => row.id === id);
+  if (!saved)
+    throw new Error("Saved category missing inside its write transaction");
+  return ok(saved);
 }
 
 function sameStamp(a: CategoryStamp, b: CategoryStamp): boolean {

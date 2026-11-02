@@ -50,8 +50,6 @@ export const seedFormSource = (target, source = demoSource) =>
 
 /** Open a reusable page canvas without changing the API's metadata contract. */
 export async function openPageFixture(page, base) {
-  // Intercepted documents have no network address space; allow their local renderer fixture.
-  await page.context().grantPermissions(["local-network-access"], { origin: new URL(base).origin });
   await seedEditorSource(page, "---\ntitle: Writer interactions\n---\n\n", "page");
   await page.goto(formFixtureUrl(base));
 }

@@ -47,6 +47,34 @@ describe('createApiV2Cache', () => {
     expect(resolve).toHaveBeenCalledTimes(2)
   })
 
+  it('marks a kept page stale when a refetch fails or the breaker is open', async () => {
+    const cache = createApiV2Cache()
+    const page = {
+      kind: 'page',
+      page: {} as ApiV2Page,
+      cacheControl: PAGE_CC,
+    } as const
+    const resolve = resolver(page, { kind: 'miss', reason: 'network' })
+    await cache.get('/x', resolve, 0)
+    // Fresh, and stale-while-revalidate with no failure yet: plain api_v2.
+    expect(await cache.get('/x', resolve, 1)).toBe(page)
+    expect(await cache.get('/x', resolve, 60_000)).toBe(page)
+    await new Promise((r) => setTimeout(r)) // let the background refetch land
+    // Past the SWR window, the refetch fails: the kept copy, marked.
+    expect(await cache.get('/x', resolve, 360_000)).toEqual({
+      ...page,
+      stale: true,
+    })
+    // Breaker open (three failures): the kept copy without a call, marked.
+    const failing = resolver({ kind: 'miss', reason: 'network' })
+    for (const url of ['/a', '/b']) await cache.get(url, failing, 360_000)
+    expect(await cache.get('/x', resolve, 360_001)).toEqual({
+      ...page,
+      stale: true,
+    })
+    expect(resolve).toHaveBeenCalledTimes(3)
+  })
+
   it('keeps the cached page when a refetch is a status failure (e.g. a 429)', async () => {
     const cache = createApiV2Cache()
     const old = redirect('/old')
@@ -115,6 +143,20 @@ describe('createApiV2Cache', () => {
 
     await cache.get('/d', failing, 31_000)
     expect(failing).toHaveBeenCalledTimes(4)
+  })
+
+  it('logs one api_v2_circuit_open error when the breaker trips, not per short-circuited read', async () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const cache = createApiV2Cache()
+    const failing = resolver({ kind: 'miss', reason: 'network' })
+    for (const url of ['/a', '/b', '/c']) await cache.get(url, failing, 0)
+    for (const url of ['/d', '/e']) await cache.get(url, failing, 1)
+    expect(error).toHaveBeenCalledTimes(1)
+    expect(JSON.parse(error.mock.calls[0][0] as string)).toEqual({
+      event: 'api_v2_circuit_open',
+      url: '/c',
+    })
+    error.mockRestore()
   })
 
   it('resets the failure count on a success', async () => {
@@ -212,5 +254,38 @@ describe('createApiV2Cache', () => {
     expect(page).toHaveBeenCalledTimes(1)
     await cache.get('/junk-0', notFound, 1)
     expect(notFound).toHaveBeenCalledTimes(MAX_ENTRIES + 1)
+  })
+
+  describe('expire', () => {
+    it('makes the next read within max-age wait for a fresh copy', async () => {
+      const cache = createApiV2Cache()
+      const resolve = resolver(redirect('/old'), redirect('/new'))
+      await cache.get('/x', resolve, 0)
+      cache.expire()
+      expect(await cache.get('/x', resolve, 1)).toMatchObject({ to: '/new' })
+      expect(await cache.get('/x', resolve, 2)).toMatchObject({ to: '/new' })
+      expect(resolve).toHaveBeenCalledTimes(2)
+    })
+
+    it('still serves the old copy when the fresh read fails', async () => {
+      const cache = createApiV2Cache()
+      const old = redirect('/old')
+      await cache.get('/x', resolver(old), 0)
+      cache.expire()
+      const failing = resolver({ kind: 'miss', reason: 'timeout' })
+      expect(await cache.get('/x', failing, 1)).toBe(old)
+    })
+
+    it("doesn't keep an answer fetched before it as fresh", async () => {
+      const cache = createApiV2Cache()
+      let finish!: (r: ApiV2Result) => void
+      const slow = vi.fn(() => new Promise<ApiV2Result>((r) => (finish = r)))
+      const first = cache.get('/x', slow, 0)
+      cache.expire()
+      finish(redirect('/old'))
+      await first
+      const resolve = resolver(redirect('/new'))
+      expect(await cache.get('/x', resolve, 1)).toMatchObject({ to: '/new' })
+    })
   })
 })

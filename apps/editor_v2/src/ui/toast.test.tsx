@@ -76,3 +76,32 @@ test("its action is a kit Button, a finger's size on a touch screen, in teal apa
   expect(undo.classList).toContain("text-interactive");
   expect(undo.getAttribute("type")).toBe("button");
 });
+
+test("an error stays until dismissed, while other toasts keep the default timeout", async () => {
+  vi.useFakeTimers();
+
+  const long =
+    "Its unpublished changes were discarded, but your open copy still contains them, so check it carefully against the live page before you save it again, or download a copy first.";
+
+  await act(async () => {
+    toast("This change couldn’t be submitted for review", {
+      tone: "error",
+      description: "Check you are still signed in, then try again.",
+    });
+    toast("Changes published");
+    toast("The page is no longer public", { tone: "info", description: long });
+  });
+
+  await act(async () => vi.advanceTimersByTime(6000));
+  expect(document.body.textContent).not.toContain("Changes published");
+  expect(document.body.textContent).not.toContain("The page is no longer public");
+
+  await act(async () => vi.advanceTimersByTime(60_000));
+  expect(document.body.textContent).toContain("This change couldn’t be submitted for review");
+
+  await act(async () => document.querySelector<HTMLElement>('[aria-label="Dismiss"]')!.click());
+  await act(async () => vi.advanceTimersByTime(1000));
+  expect(document.body.textContent).not.toContain("This change couldn’t be submitted for review");
+
+  vi.useRealTimers();
+});

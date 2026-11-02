@@ -63,9 +63,17 @@ const revision: ApiRevision = {
 type Sent = { method: string; path: string; ifUpdatedAt: string | null; body: unknown };
 
 /** The content API's review routes; `decision` answers a publish or reject. */
-function contentApi(roles: string[]) {
+function contentApi(
+  roles: string[],
+  body?: string,
+  paths: () => Promise<Response> = async () => Response.json(["/money/severance-pay"]),
+) {
   const sent: Sent[] = [];
-  let current: ApiRevision | null = revision;
+
+  let current: ApiRevision | null = body
+    ? { ...revision, fields: { ...revision.fields, body_markdown: body } }
+    : revision;
+
   let decision: () => Response = () => Response.json({});
 
   const fetch = vi.fn(async (url: string, init?: RequestInit) => {
@@ -85,6 +93,8 @@ function contentApi(roles: string[]) {
 
     if (path === "/editor/me")
       return Response.json({ id: "me", email: "me@govtech.bb", name: "Me", roles });
+
+    if (path === "/editor/page-paths") return paths();
 
     if (path === "/editor/categories") return Response.json({ categories: [] });
 
@@ -130,8 +140,13 @@ afterEach(async () => {
   vi.unstubAllGlobals();
 });
 
-async function render(screen: "queue" | "review", roles = ["editor", "approver"]) {
-  const server = contentApi(roles);
+async function render(
+  screen: "queue" | "review",
+  roles = ["editor", "approver"],
+  body?: string,
+  paths?: () => Promise<Response>,
+) {
+  const server = contentApi(roles, body, paths);
   vi.stubGlobal("fetch", server.fetch);
   const rootRoute = createRootRoute();
 
@@ -478,4 +493,77 @@ test("a change that can't be published as it stands keeps the dialog open, namin
   await act(async () => [...dialog()!.querySelectorAll("button")].at(-1)!.click());
 
   await until(() => expect(dialog()?.textContent).toContain("Parent page: No page with that id."));
+});
+
+const OLD = "See [the old page](/gone).";
+
+test("publishing a change with a broken link says which one", async () => {
+  await render("review", ["editor", "approver"], OLD);
+  await shown();
+  await press("Approve and publish");
+  await until(() => expect(dialog()?.textContent).toContain("“the old page”"));
+});
+
+test("publishing a change whose links all exist adds no warning", async () => {
+  await render("review", ["editor", "approver"], "See [home](/money/severance-pay).");
+  await shown();
+  await press("Approve and publish");
+  await until(() => expect(dialog()).not.toBeNull());
+  expect(dialog()?.textContent).not.toContain("exist");
+});
+
+test("the publish dialog can't be confirmed until the page list has been read", async () => {
+  let release: () => void = () => {};
+
+  const gate = new Promise<void>((resolve) => (release = resolve));
+
+  const { server } = await render("review", ["editor", "approver"], OLD, async () => {
+    await gate;
+
+    return Response.json(["/money/severance-pay"]);
+  });
+
+  await shown();
+  await press("Approve and publish");
+  await until(() => expect(dialog()?.textContent).toContain("Checking its links"));
+
+  const confirm = () =>
+    [...dialog()!.querySelectorAll("button")].find(
+      (item) => item.textContent?.startsWith("Approve and publish") ?? false,
+    )!;
+
+  expect(confirm().disabled).toBe(true);
+  expect(server.sent).toHaveLength(0);
+
+  await act(async () => release());
+  await until(() => expect(dialog()?.textContent).toContain("“the old page”"));
+  expect(confirm().disabled).toBe(false);
+});
+
+test("a failed page list after an earlier good one says the links weren't checked, not that they're fine", async () => {
+  let fail = false;
+
+  await render("review", ["editor", "approver"], OLD, async () =>
+    fail
+      ? Response.json({ error: "down" }, { status: 500 })
+      : Response.json(["/money/severance-pay", "/gone"]),
+  );
+  await shown();
+  await press("Approve and publish");
+  await until(() => expect(dialog()?.textContent).not.toContain("Checking"));
+  expect(dialog()?.textContent).not.toContain("exist");
+  await act(async () => dialog()!.querySelector<HTMLButtonElement>("button")!.click());
+  await until(() => expect(dialog()).toBeNull());
+
+  fail = true;
+  await press("Approve and publish");
+  await until(() => expect(dialog()?.textContent).toContain("could not check"));
+  expect(dialog()?.textContent).not.toContain("doesn’t exist");
+});
+
+test("a change whose content can't be read as a page says its links weren't checked", async () => {
+  await render("review", ["editor", "approver"], "<div>raw html</div>");
+  await shown();
+  await press("Approve and publish");
+  await until(() => expect(dialog()?.textContent).toContain("could not check"));
 });

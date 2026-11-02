@@ -40,6 +40,8 @@ export interface AppConfig {
   readonly seed: boolean;
   /** The site's preview token; without it, every preview read is refused. */
   readonly previewSecret?: Redacted<string>;
+  /** Landing's token; without it, landing is rate-limited like any client. */
+  readonly landingSecret?: Redacted<string>;
   readonly database: DatabaseConfig;
   readonly auth: AuthConfig;
   /** Emails, lowercased, granted the admin role whenever they sign in. */
@@ -103,6 +105,7 @@ const environment = z
     GITHUB_CLIENT_SECRET: z.string().min(1),
     AUTH_BYPASS: z.enum(["true", "false"]).optional(),
     PREVIEW_SECRET: z.string().min(1).optional(),
+    LANDING_SECRET: z.string().min(1).optional(),
     // Comma-separated; how an environment always has an admin (ADR 0079).
     API_V2_ADMIN_EMAILS: z
       .string()
@@ -198,6 +201,9 @@ export function parseConfig(
     seed: env.SEED,
     ...(env.PREVIEW_SECRET
       ? { previewSecret: new Redacted(env.PREVIEW_SECRET) }
+      : {}),
+    ...(env.LANDING_SECRET
+      ? { landingSecret: new Redacted(env.LANDING_SECRET) }
       : {}),
     database: {
       host: env.DB_HOST,
