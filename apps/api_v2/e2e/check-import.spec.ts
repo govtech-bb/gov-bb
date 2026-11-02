@@ -53,21 +53,22 @@ describe.skipIf(!HAS_DATABASE)("check-import", () => {
     rows = [];
     const { code, output } = await check(SECRET);
     expect(code, output).toBe(0);
-    // No snapshot page is hidden by an ancestor today, so own levels are the totals.
     for (const level of ["public", "preview", "draft"]) {
-      const count = ESTATE.pages.filter((p) => p.visibility === level).length;
-      expect(output).toContain(`${level}: ${count} pages, 0 failing`);
+      expect(output).toMatch(
+        new RegExp(`^${level}: \\d+ pages, 0 failing$`, "m"),
+      );
     }
+    expect(output).toContain(`0 failing of ${ESTATE.pages.length} pages`);
   }, 60_000);
 
-  it("fails a public page the environment's service_status disables", async () => {
-    const page = ESTATE.pages.find(
-      (p) => p.visibility === "public" && !p.parent,
-    )!;
-    rows = [{ slug: page.form_id ?? page.content_slug, status: "disabled" }];
+  it("fails a disabled public page and, by the ancestor rule, its child", async () => {
+    // The child keys on its own slug, so only the ancestor rule lowers it.
+    const parent = "/money-financial-support/calculate-severance-pay";
+    rows = [{ slug: "calculate-severance-pay", status: "disabled" }];
     const { code, output } = await check(SECRET);
     expect(code, output).toBe(1);
-    expect(output).toContain(`FAIL ${page.url} expected preview`);
+    expect(output).toContain(`FAIL ${parent} expected preview`);
+    expect(output).toContain(`FAIL ${parent}/start expected preview`);
   }, 60_000);
 
   it("stops on a refused token, or none at all", async () => {

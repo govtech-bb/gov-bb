@@ -459,6 +459,7 @@ Sandbox re-imports while no editor has written there (#3234). Staging (#3229) an
 
    ```sh
    read -rs PREVIEW_SECRET; export PREVIEW_SECRET
+   FORMS_API=<origin>   # the same origin as step 3, set again on your machine
    pnpm --filter @govtech-bb/api-v2 check-import --base-url https://<api origin> --forms-api "$FORMS_API"
    ```
 
