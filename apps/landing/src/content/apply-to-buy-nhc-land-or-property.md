@@ -5,7 +5,6 @@ description: >-
   not already own land or property. Use this service to apply to buy an NHC lot
   or house.
 stage: alpha
-featured: false
 publish_date: '2026-08-05'
 category: housing
 visibility: preview

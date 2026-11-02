@@ -77,8 +77,6 @@ const FRONTMATTER: {
 } = {
   lede: optStr,
   stage: optStr,
-  featured: { type: 'boolean', optional: true },
-  section: optStr,
   service_type: optStr,
   keywords: { type: 'array', optional: true, items: str },
   source_url: optStr,

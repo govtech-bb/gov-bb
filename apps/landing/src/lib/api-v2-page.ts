@@ -71,8 +71,6 @@ const PageResponse = z
       .object({
         lede: lenient(z.string()),
         stage: lenient(z.string()),
-        featured: lenient(z.boolean()),
-        section: lenient(z.string()),
         service_type: lenient(z.string()),
         keywords: lenient(z.array(z.string())),
         source_url: lenient(z.string()),

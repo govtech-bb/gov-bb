@@ -5,7 +5,6 @@ description: >-
   Service, what to bring to the pharmacy, and what it costs.
 stage: alpha
 visibility: public
-featured: false
 publish_date: '2026-08-18'
 category: health-and-emergency-services
 service_type: information
