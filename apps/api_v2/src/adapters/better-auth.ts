@@ -1,14 +1,12 @@
 import { betterAuth, type BetterAuthOptions } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { github } from "better-auth/social-providers";
 import type { Logger } from "pino";
 import type { AuthConfig } from "../config";
 import type { Database } from "../db";
 import {
-  admitGitHubIdentity,
+  admitWorkspaceIdentity,
   AuthUnavailable,
   parseEmployee,
-  GITHUB_ORGANIZATION,
   type Identity,
   type Forbidden,
 } from "../modules/auth";
@@ -20,7 +18,6 @@ import {
   authSession,
   authUser,
   authVerification,
-  userRoles,
 } from "../schema";
 import type { SessionReader } from "../services/editor-access";
 
@@ -32,20 +29,13 @@ const AUTH_SCHEMA = {
   auth_verification: authVerification,
 };
 
-/** BetterAuth's configuration: GitHub sign-in admitted by organization membership, sessions in Postgres through Drizzle. */
+/** BetterAuth's configuration: Google sign-in admitted by Workspace domain, sessions in Postgres through Drizzle. */
 export function betterAuthOptions(
   db: Database,
   config: AuthConfig,
   logger: Pick<Logger, "error" | "warn">,
 ) {
-  const githubOptions = {
-    clientId: config.githubClientId,
-    clientSecret: config.githubClientSecret.reveal(),
-    scope: ["read:org"],
-    disableIdTokenSignIn: true,
-  };
-  const githubProvider = github(githubOptions);
-  // Membership is checked during sign-in; subsequent requests need only the local session.
+  // The Workspace is checked during sign-in; subsequent requests need only the local session.
   const discardOAuthTokens = async () => ({
     data: {
       accessToken: null,
@@ -70,43 +60,22 @@ export function betterAuthOptions(
     trustedOrigins: [config.editorOrigin],
     emailAndPassword: { enabled: false },
     socialProviders: {
-      github: {
-        ...githubOptions,
-        async getUserInfo(tokens) {
-          const identity = await githubProvider.getUserInfo(tokens);
-          if (!identity) return null;
-          const membership = await fetch(
-            `https://api.github.com/user/memberships/orgs/${GITHUB_ORGANIZATION}`,
-            {
-              headers: {
-                Authorization: `Bearer ${tokens.accessToken}`,
-                Accept: "application/vnd.github+json",
-                "User-Agent": "gov-bb-editor",
-                "X-GitHub-Api-Version": "2022-11-28",
-              },
-              signal: AbortSignal.timeout(15_000),
-            },
-          );
-          return {
-            ...identity,
-            data: {
-              ...identity.data,
-              organizationMembership: membership.ok
-                ? await membership.json()
-                : null,
-            },
-          };
-        },
+      google: {
+        clientId: config.googleClientId,
+        clientSecret: config.googleClientSecret.reveal(),
+        // Default scopes only: openid, email and profile.
+        // A hint for Google's account chooser; admission checks the claim.
+        hd: config.allowedDomains.length === 1 ? config.allowedDomains[0] : "*",
+        disableIdTokenSignIn: true,
       },
     },
     user: {
       modelName: "auth_user",
       validateUserInfo: ({ user, source }) => {
-        const admitted = admitGitHubIdentity({
-          email: user.email,
-          emailVerified: user.emailVerified,
-          source,
-        });
+        const admitted = admitWorkspaceIdentity(
+          { email: user.email, emailVerified: user.emailVerified, source },
+          config.allowedDomains,
+        );
         if (!admitted.ok)
           return {
             error: "organization_access_denied",
@@ -122,35 +91,11 @@ export function betterAuthOptions(
     },
     account: {
       modelName: "auth_account",
-      // Admit org membership first, then preserve existing users with the same verified email.
+      // Admit the Workspace account first, then preserve existing users with the same verified email.
       accountLinking: { enabled: true, trustedProviders: [] },
     },
     databaseHooks: {
-      user: {
-        create: {
-          // Every employee is an editor by default (ADR 0079). The grant is
-          // made once, when the user is created, so a revocation outlasts
-          // their next sign-in. BetterAuth runs it after the sign-in's
-          // transaction commits, so it writes through `db`; if it
-          // fails, sign-in still succeeds without the role, which an admin
-          // can grant.
-          after: async (user) => {
-            try {
-              await db
-                .insert(userRoles)
-                .values({ userId: user.id, role: "editor" })
-                .onConflictDoNothing();
-            } catch {
-              // The driver's message can carry SQL parameters. The user id
-              // tells an operator whom to grant `editor` to.
-              logger.error(
-                { failure: "default_role_grant_failed", userId: user.id },
-                "could not make a new user an editor",
-              );
-            }
-          },
-        },
-      },
+      // A new user gets no role; an admin grants one (ADR 0079).
       account: {
         create: { before: discardOAuthTokens },
         update: { before: discardOAuthTokens },

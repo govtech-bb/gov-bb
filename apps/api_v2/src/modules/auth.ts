@@ -1,9 +1,6 @@
 import { z } from "zod";
 import { err, ok, type Result } from "./result";
 
-/** Only active members of this GitHub organization can provision editor sessions. */
-export const GITHUB_ORGANIZATION = "govtech-bb";
-
 /** What an employee may do, as `user_roles` stores it. */
 export const ROLES = ["editor", "approver", "admin"] as const;
 
@@ -52,7 +49,7 @@ export class Unauthenticated extends Error {
   readonly _tag = "Unauthenticated";
   /** Explain how a caller can recover without exposing credentials. */
   constructor() {
-    super("Sign in with your GitHub account.");
+    super("Sign in with your Google Workspace account.");
   }
 }
 
@@ -60,11 +57,9 @@ export class Unauthenticated extends Error {
 export class Forbidden extends Error {
   /** Stable protocol-projection discriminator. */
   readonly _tag = "Forbidden";
-  /** Describe the required organization without exposing rejected profile data. */
+  /** Describe the required account without exposing rejected profile data. */
   constructor() {
-    super(
-      "Use a GitHub account with a verified email and active govtech-bb membership.",
-    );
+    super("Use a Google Workspace account on an allowed domain.");
   }
 }
 
@@ -146,30 +141,39 @@ export function parseEmployee(input: unknown): Result<Identity, Forbidden> {
     : err(new Forbidden());
 }
 
-const githubIdentity = z.object({
+const workspaceIdentity = z.object({
   email: employeeEmail,
   emailVerified: z.literal(true),
   source: z.object({
     method: z.literal("oauth"),
     oauth: z.object({
-      providerId: z.literal("github"),
+      providerId: z.literal("google"),
       profile: z.object({
         email: employeeEmail,
-        organizationMembership: z.object({
-          state: z.literal("active"),
-          organization: z.object({ login: z.literal(GITHUB_ORGANIZATION) }),
-        }),
+        email_verified: z.literal(true),
+        hd: z.string().transform((domain) => domain.toLowerCase()),
       }),
     }),
   }),
 });
 
-/** Admit fresh GitHub claims on both provisioning and returning OAuth sign-ins. */
-export function admitGitHubIdentity(input: unknown): Result<void, Forbidden> {
-  const parsed = githubIdentity.safeParse(input);
+/**
+ * Admit fresh Google claims on both provisioning and returning OAuth sign-ins:
+ * a verified email on an allowed Workspace domain, issued by that Workspace.
+ * The `hd` authorize parameter is only a hint, so the claim is checked here.
+ */
+export function admitWorkspaceIdentity(
+  input: unknown,
+  allowedDomains: readonly string[],
+): Result<void, Forbidden> {
+  const parsed = workspaceIdentity.safeParse(input);
+  if (!parsed.success) return err(new Forbidden());
+  const { email, source } = parsed.data;
+  const { profile } = source.oauth;
   if (
-    !parsed.success ||
-    parsed.data.email !== parsed.data.source.oauth.profile.email
+    email !== profile.email ||
+    !allowedDomains.includes(profile.hd) ||
+    email.split("@")[1] !== profile.hd
   )
     return err(new Forbidden());
   return ok(undefined);

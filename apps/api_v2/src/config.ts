@@ -18,8 +18,10 @@ export interface AuthConfig {
   readonly apiOrigin: string;
   readonly editorOrigin: string;
   readonly secret: Redacted<string>;
-  readonly githubClientId: string;
-  readonly githubClientSecret: Redacted<string>;
+  readonly googleClientId: string;
+  readonly googleClientSecret: Redacted<string>;
+  /** Workspace domains, lowercased, whose verified accounts may sign in. */
+  readonly allowedDomains: readonly string[];
 }
 
 /**
@@ -101,8 +103,28 @@ const environment = z
     BETTER_AUTH_URL: origin,
     EDITOR_ORIGIN: origin,
     BETTER_AUTH_SECRET: z.string().min(32),
-    GITHUB_CLIENT_ID: z.string().min(1),
-    GITHUB_CLIENT_SECRET: z.string().min(1),
+    GOOGLE_CLIENT_ID: z.string().min(1),
+    GOOGLE_CLIENT_SECRET: z.string().min(1),
+    // Comma-separated Workspace domains whose accounts may sign in.
+    GOOGLE_ALLOWED_DOMAINS: z
+      .string()
+      .transform((value) =>
+        value
+          .split(",")
+          .map((domain) => domain.trim().toLowerCase())
+          .filter(Boolean),
+      )
+      .pipe(
+        z
+          .array(
+            z
+              .string()
+              .regex(
+                /^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/,
+              ),
+          )
+          .min(1),
+      ),
     AUTH_BYPASS: z.enum(["true", "false"]).optional(),
     PREVIEW_SECRET: z.string().min(1).optional(),
     LANDING_SECRET: z.string().min(1).optional(),
@@ -218,8 +240,9 @@ export function parseConfig(
       apiOrigin: env.BETTER_AUTH_URL,
       editorOrigin: env.EDITOR_ORIGIN,
       secret: new Redacted(env.BETTER_AUTH_SECRET),
-      githubClientId: env.GITHUB_CLIENT_ID,
-      githubClientSecret: new Redacted(env.GITHUB_CLIENT_SECRET),
+      googleClientId: env.GOOGLE_CLIENT_ID,
+      googleClientSecret: new Redacted(env.GOOGLE_CLIENT_SECRET),
+      allowedDomains: env.GOOGLE_ALLOWED_DOMAINS,
     },
     adminEmails: env.API_V2_ADMIN_EMAILS,
     authBypass: env.AUTH_BYPASS === "true",

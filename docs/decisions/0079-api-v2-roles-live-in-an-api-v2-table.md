@@ -1,7 +1,9 @@
 # 0079. api_v2 roles live in an api_v2 table
 
 **Date:** 2026-10-28
-**Status:** Accepted
+**Status:** Accepted (amended 2026-11-02: sign-in moves to Google Workspace
+and a new user gets no role, see the amendments under Decision;
+[#3412](https://github.com/govtech-bb/gov-bb/issues/3412))
 
 ## Context
 
@@ -36,12 +38,27 @@ can hold any of three roles:
 Sign-in itself doesn't change: GitHub org membership still decides who can
 sign in. Roles decide what a signed-in user can do.
 
+> **Amended 2026-11-02 ([#3412](https://github.com/govtech-bb/gov-bb/issues/3412)).**
+> Sign-in moves from GitHub to Google Workspace, because content editors and
+> approvers outside engineering have no GitHub accounts. A Google account is
+> admitted when its email is verified, its `hd` claim is on
+> `GOOGLE_ALLOWED_DOMAINS` (`govtech.bb` for now), and its email's domain
+> matches `hd`. Roles are unchanged: they still decide what a signed-in user
+> can do.
+
 **Every org member is an editor by default.** api_v2 grants an `editor` row
 once, when it creates the user at their first sign-in. A migration grants the
 same row to every user who already exists. Because the grant happens once,
 an admin can revoke it to take write access away from one person who stays in
 the organisation, and it doesn't come back at their next sign-in. A signed-in
 user with no role can read the editor but can't write anything.
+
+> **Amended 2026-11-02 ([#3412](https://github.com/govtech-bb/gov-bb/issues/3412)).**
+> A new user gets **no role** at first sign-in; an admin grants `editor` or
+> `approver`. The org was a small gate, but every account on an allowed
+> Workspace domain can sign in, so a default editor role would let everyone at
+> GovTech write. Users who already exist keep their roles, including the
+> `editor` rows granted by default before this amendment.
 
 **Admins manage roles through admin-only api_v2 routes.** There is no admin
 screen in editor_v2 yet; that is a follow-up. The first admins come from an
