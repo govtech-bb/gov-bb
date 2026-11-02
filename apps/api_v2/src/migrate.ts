@@ -31,6 +31,7 @@ import { SQL as REVIEW_HISTORY_SQL } from "./migrations/013_review_history_trigg
 import { SQL as DATA_COLLECTIONS_SQL } from "./migrations/014_data_collections";
 import { SQL as REVISION_DISCARDED_SQL } from "./migrations/015_revision_discarded";
 import { SQL as CONTENT_UPDATED_AT_SQL } from "./migrations/016_content_updated_at";
+import { SQL as NO_TRUNCATE_SQL } from "./migrations/017_change_events_no_truncate";
 import { SQL as SNAPSHOT_VERSION_SQL } from "./migrations/018_snapshot_version";
 import type { Database } from "./db";
 
@@ -52,6 +53,7 @@ const MIGRATIONS = [
   ["014_data_collections", DATA_COLLECTIONS_SQL],
   ["015_revision_discarded", REVISION_DISCARDED_SQL],
   ["016_content_updated_at", CONTENT_UPDATED_AT_SQL],
+  ["017_change_events_no_truncate", NO_TRUNCATE_SQL],
   ["018_snapshot_version", SNAPSHOT_VERSION_SQL],
 ] as const;
 

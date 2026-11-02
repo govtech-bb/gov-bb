@@ -441,6 +441,17 @@ Run `--dry-run`: it refuses an occupied database and shows the actor histogram o
 
 `apps/landing/src/content` freezes at the prod import. Until then it stays editable, and the snapshot is regenerated before each environment's import (step 1). After the prod import, content changes go through the editor only; delete the directory once landing_v2 is the only reader.
 
+## History protection
+
+`change_events_no_mutate` rejects updates and deletes. Migration `017` adds
+`change_events_no_truncate`, a statement-level trigger that also rejects emptying
+the table with `TRUNCATE`, even when it has no rows. Ordinary inserts still work.
+
+These guards do not stop a table owner from disabling triggers. The API currently
+uses the same database credentials for migrations and requests. Separate owner
+and runtime roles, credentials and migration startup are follow-up work tracked
+from #2968; the runtime role should only read and insert history rows.
+
 ## Snapshot formats
 
 Migration `018` adds `change_events.snapshot_version`. Existing events stay null,

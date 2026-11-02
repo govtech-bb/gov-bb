@@ -40,6 +40,7 @@ const ALL = [
   "014_data_collections",
   "015_revision_discarded",
   "016_content_updated_at",
+  "017_change_events_no_truncate",
   "018_snapshot_version",
 ];
 
@@ -145,6 +146,7 @@ describe("migrate", () => {
       "014_data_collections",
       "015_revision_discarded",
       "016_content_updated_at",
+      "017_change_events_no_truncate",
       "018_snapshot_version",
     ]);
     const pages = await exec("select count(*)::int as n from content_pages");
@@ -183,6 +185,7 @@ describe("migrate", () => {
       "014_data_collections",
       "015_revision_discarded",
       "016_content_updated_at",
+      "017_change_events_no_truncate",
       "018_snapshot_version",
     ]);
     await exec(
@@ -224,6 +227,56 @@ describe("migrate", () => {
       throw new Error("Expected trigger rejection");
     expect(String(refused.cause)).toMatch(/append-only/);
     await close();
+  });
+
+  it.each([false, true])(
+    "refuses TRUNCATE with existing history: %s",
+    async (populated) => {
+      const { db, exec, close } = await freshDb();
+      try {
+        await migrate(db, exec);
+        if (populated)
+          await exec(`insert into change_events (entity_kind, entity_id, version_no, action, snapshot)
+            values ('content_page', 'x', 1, 'created', '{"title":"Keep this"}')`);
+        const before = (await exec("select * from change_events")).rows;
+
+        await expect(exec("truncate change_events")).rejects.toThrow(
+          "change_events is append-only (attempted TRUNCATE)",
+        );
+        expect((await exec("select * from change_events")).rows).toEqual(
+          before,
+        );
+      } finally {
+        await close();
+      }
+    },
+  );
+
+  it("keeps every history guard after replaying the truncate migration", async () => {
+    const { db, exec, close } = await freshDb();
+    try {
+      await migrate(db, exec);
+      await exec(`insert into change_events (entity_kind, entity_id, version_no, action, snapshot)
+        values ('content_page', 'x', 1, 'created', '{}');
+        delete from schema_migrations where name = '017_change_events_no_truncate'`);
+      const before = (await exec("select * from change_events")).rows;
+
+      expect(await migrate(db, exec)).toEqual([
+        "017_change_events_no_truncate",
+      ]);
+      for (const statement of [
+        "truncate change_events",
+        "update change_events set snapshot = '{}'",
+        "delete from change_events",
+      ])
+        await expect(exec(statement)).rejects.toThrow("append-only");
+      expect((await exec("select * from change_events")).rows).toEqual(before);
+      await exec(`insert into change_events (entity_kind, entity_id, version_no, action, snapshot)
+        values ('content_page', 'x', 2, 'updated', '{}')`);
+      expect((await exec("select id from change_events")).rows).toHaveLength(2);
+    } finally {
+      await close();
+    }
   });
 
   it("revokes legacy sessions while preserving users and admitted GitHub sessions", async () => {
