@@ -30,7 +30,7 @@ import { createEmptyPage } from "../../src/pages/converters";
 import { parsePageMarkdown } from "../../src/pages/markdown";
 import manifest from "../fixtures/pages/manifest.json";
 
-const sourceOnly = new Set([
+const frozenSourceOnly = new Set([
   "apply-to-use-state-land.md",
   "apply-for-an-nhc-rental-unit-or-lot.md",
   "tenant-notice-to-buy-freehold.md",
@@ -44,20 +44,16 @@ const sourceOnly = new Set([
   "post-office-redirection-business/index.md",
   "post-office-redirection-business/start.md",
   "get-death-certificate/start.md",
-  // About Barbados pages open with an image, which needs Markdown source editing
-  "archaeological-history/index.md",
+]);
+
+const currentSourceOnly = new Set([
+  "health-and-emergency-services/stormready/index.md",
   "coat-of-arms/index.md",
-  "flag-etiquette/index.md",
   "national-anthem/index.md",
   "national-flag/index.md",
   "national-flower/index.md",
   "national-pledge/index.md",
 ]);
-
-const convertedActionPages = [
-  "national-insurance-for-self-employed-workers/index.md",
-  "national-insurance-for-self-employed-workers/check-your-record.md",
-];
 
 const convertedHtmlPages = [
   "calculate-your-pension/about-government-pensions.md",
@@ -76,15 +72,11 @@ function visual(source: string) {
   return prepared.state;
 }
 
-function checkPagePreservation(
-  path: string,
-  source: string,
-  expectSourceOnly = sourceOnly.has(path),
-) {
+function checkPagePreservation(path: string, source: string, expectsSourceOnly: boolean) {
   const prepared = govbbPageCodec.prepare(source);
   expect(prepared.source).toBe(source);
 
-  if (expectSourceOnly) {
+  if (expectsSourceOnly) {
     expect(prepared.mode).toBe("source");
     expect(prepared.state).toBeUndefined();
     expect(prepared.diagnostics[0]?.severity).toBe("warning");
@@ -118,14 +110,14 @@ function checkPagePreservation(
 describe("frozen GovBB Markdown regressions", () => {
   test("contains three visual regression pages and all 13 source-only pages", () => {
     expect(manifest).toHaveLength(16);
-    expect(manifest.filter((item) => sourceOnly.has(item.path))).toHaveLength(13);
+    expect(manifest.filter((item) => frozenSourceOnly.has(item.path))).toHaveLength(13);
   });
 
   for (const item of manifest)
     test(item.path, () => {
       const source = fixture(item.path);
       expect(createHash("sha256").update(source).digest("hex")).toBe(item.sha256);
-      checkPagePreservation(item.path, source, sourceOnly.has(item.path));
+      checkPagePreservation(item.path, source, frozenSourceOnly.has(item.path));
     });
 });
 
@@ -145,9 +137,7 @@ describe("current GovBB landing content", () => {
       checkPagePreservation(
         path,
         readFileSync(new URL(path, directory), "utf8"),
-        sourceOnly.has(path) &&
-          !convertedActionPages.includes(path) &&
-          !convertedHtmlPages.includes(path),
+        currentSourceOnly.has(path),
       );
     });
 
