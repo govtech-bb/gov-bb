@@ -917,7 +917,8 @@ export class PostgresPages
    * in more than visibility and stamps. A sub-page's category is left out
    * too: it follows its parent's, so a write above it that carries it along
    * changes nothing of its own. Review events are left out, since their
-   * snapshot is a revision row.
+   * snapshot is a revision row. A redacted event still counts as a change:
+   * identical removal notices must not erase their actors from this check.
    */
   async changedSincePublic(
     id: PageId,
@@ -926,6 +927,7 @@ export class PostgresPages
       this.db.execute<{ actor: string }>(sql`
         with entries as (
           select version_no, actor,
+                 snapshot->'redacted' = 'true'::jsonb as redacted,
                  snapshot->>'visibility' = 'public' as public,
                  snapshot - array['visibility', 'published_at', 'content_updated_at', 'updated_at', 'created_at']
                    - case when snapshot->>'parent_id' is null then '' else 'category_id' end
@@ -938,7 +940,7 @@ export class PostgresPages
         )
         select distinct actor from history
          where version_no > coalesce((select max(version_no) from history where public), 0)
-           and content is distinct from before`),
+           and (redacted or content is distinct from before)`),
     );
     return rows.ok ? ok(rows.value.rows.map((row) => row.actor)) : rows;
   }

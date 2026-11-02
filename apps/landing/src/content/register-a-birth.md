@@ -3,7 +3,6 @@ title: "Register a birth"
 description: "Register a birth in Barbados online. All births must be legally registered within 28 days. A birth registration is required before a birth certificate can be issued."
 category: "family-birth-relationships"
 stage: "alpha"
-featured: true
 publish_date: 2025-11-14
 ---
 

@@ -225,7 +225,8 @@ describe("page markdown", () => {
     ["a publication date", "publish_date: 2026-01-01", entry, "publish_date"],
     ["two categories", "categories: [money-financial-support, work-employment]", entry, "category"],
     ["a category on a sub-page", "category: money-financial-support", start, "category"],
-    ["a featured flag that is not true or false", "featured: often", entry, "featured"],
+    ["a featured flag", "featured: true", entry, "featured"],
+    ["a section", "section: Travel", entry, "section"],
     ["keywords that are not a list", "keywords: severance", entry, "keywords"],
     ["a visibility the API does not have", "visibility: secret", entry, "visibility"],
   ])("refuses %s rather than dropping it", (_name, line, base, field) => {

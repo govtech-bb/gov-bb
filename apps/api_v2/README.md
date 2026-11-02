@@ -183,6 +183,7 @@ erDiagram
     jsonb snapshot
     text actor FK
     timestamptz(3) occurred_at
+    int4 snapshot_version "nullable"
   }
   collection_records {
     uuid id PK
@@ -372,54 +373,89 @@ tracked in #3178, landing integration in #3179, and sandbox acceptance in #3180.
 
 `search_chunks` holds each page's body split at its headings, as plain text, rewritten in the same transaction as every save. Rejoined, a page's chunks are exactly the text landing's search indexes today (`search-text.test.ts` checks every seeded page), so moving search onto the API does not move its ranking. The generated `tsv` column and its GIN index are there for server-side search and are not read yet.
 
-The seed is a committed snapshot of legacy markdown and the category taxonomy, subcategories included, with each sub-page's parent. Every page keeps its frontmatter `publish_date` as `published_at`, public or not, so going public later keeps that date. Inserts are additive and idempotent and never replace authored changes. It runs only with `SEED=true`, because an additive insert also brings back a page an editor deleted. Each page and category it adds gets a `created` entry by `system` in the audit log, which also moves the editor's change token. Regenerate it with `pnpm seed-data` (or `pnpm generate:seed-data` from the root) when intentionally updating the snapshot. The one-time import (see "Importing the estate" below) reports `source`, a sha1 of the snapshot's categories and pages computed at import time. It is not stored in `estate.json`, so content PRs don't all rewrite one shared line and conflict. CI's "Generated Files Up To Date" job regenerates the snapshot on every PR and, when it differs, commits the regen back to the PR branch, or fails when it can't push. So a content change can't merge with a stale `estate.json`.
+The seed is a committed snapshot of legacy markdown and the category taxonomy, subcategories included, with each sub-page's parent. Every page keeps its frontmatter `publish_date` as `published_at`, public or not, so going public later keeps that date. Inserts are additive and idempotent and never replace authored changes. It runs only with `SEED=true`, because an additive insert also brings back a page an editor deleted. Each page and category it adds gets a `created` entry by `system` in the audit log, which also moves the editor's change token. Regenerate it with `pnpm seed-data` (or `pnpm generate:seed-data` from the root) when intentionally updating the snapshot. The import (see "Importing the estate" below) reports `source`, a sha1 of the snapshot's categories and pages computed at import time. It is not stored in `estate.json`, so content PRs don't all rewrite one shared line and conflict. CI's "Generated Files Up To Date" job regenerates the snapshot on every PR and, when it differs, commits the regen back to the PR branch, or fails when it can't push. So a content change can't merge with a stale `estate.json`.
 
-## Importing the estate (one-time)
+## Importing the estate (once per environment)
 
-Deployed databases get the estate once, by a command rather than by `SEED`. It is compiled into the image beside `main.js`, so it runs with the task's own database settings:
+Each deployed database gets the estate once, by a command rather than by `SEED`. It is compiled into the image beside `main.js`, so it runs with the task's own database settings:
 
 ```sh
-node dist/src/import-estate.js [--dry-run] [--force "<reason>"]
+node dist/src/import-estate.js --forms-api <origin> [--dry-run] [--force "<reason>"]
 ```
 
-Locally, from this directory, run `pnpm import-estate --dry-run` or `pnpm import-estate`; it reads `.env` like `pnpm dev`. Do not add a `--` separator: this pnpm forwards it literally and tsx then rejects the flag.
+Locally, from this directory, run `pnpm import-estate --forms-api https://forms.api.sandbox.alpha.gov.bb --dry-run` (or without `--dry-run`); it reads `.env` like `pnpm dev`. Do not add a `--` separator: this pnpm forwards it literally and tsx then rejects the flag.
 
-The command migrates first, prints `database: <name> host: <addr>` before writing anything, then one JSON line: `{"mode":"dry-run"|"import"|"replace","source":"<content sha1>","reason":"<reason>"|null,"existing":N,"actors":{…},"categories":N,"documents":N}`. It refuses, with exit code 1, when `content_pages` already has rows: `content_pages has N rows (history actors: …); refusing. Pass --force "<reason>" to replace them.` `--force` deletes every row of `search_chunks`, `page_revisions` (the pending revisions of the pages it replaces), `content_pages` and `categories` and then imports, all in one transaction, so the history records each replaced page and category as `deleted` by `system`; `change_events` is never emptied. The transaction holds a lock on `content_pages` until it commits or rolls back, so editor saves stall for the few seconds it takes; public reads keep seeing the old content until it commits. `--dry-run` does the real work and rolls it back, so its counts and errors are real. Every imported page's and category's `created` history entry is by `system`; the source hash and the `--force` reason are in the JSON line, not the history.
+Before it touches the database, the command reads that environment's `service_status` (see "Each environment's service_status" below) and prints `service_status: N rows from <url>`, then one JSON line listing every page whose visibility the overlay changed: `{"visibility_changes":[{"url":"…","from":"preview","to":"public"},…]}`. Both lines come before `database:` and so before any refusal. The command then migrates, prints `database: <name> host: <addr>` before writing anything, then one JSON line: `{"mode":"dry-run"|"import"|"replace","source":"<content sha1>","reason":"<reason>"|null,"existing":N,"actors":{…},"revisions":N,"categories":N,"documents":N,"collections":N,"records":N}`. It refuses, with exit code 1, when `content_pages` already has rows: `content_pages has N rows (history actors: …; revisions: N); refusing. Pass --force "<reason>" to replace them.` `revisions` counts the rows in `page_revisions`: pending editor saves, which write no history event, so the actor histogram cannot show them, and which `--force` deletes. `--force` deletes every row of `search_chunks`, `page_revisions` (the pending revisions of the pages it replaces), `content_pages` and `categories` and then imports, all in one transaction, so the history records each replaced page and category as `deleted` by `system`; `change_events` is never emptied. The transaction holds a lock on `content_pages` until it commits or rolls back, so editor saves stall for the few seconds it takes; public reads keep seeing the old content until it commits. `--dry-run` does the real work and rolls it back, so its counts and errors are real. `--force` keeps `data_collections` and `collection_records`, and records are seeded only into a new collection, so a replace normally reports `"collections":0,"records":0`; that is expected. On an occupied database a plain `--dry-run` refuses (after printing `visibility_changes`), so `--dry-run --force "<reason>"` is the only way to see the JSON line before the real run. Every imported page's and category's `created` history entry is by `system`; the source hash and the `--force` reason are in the JSON line, not the history.
+
+### Each environment's service_status
+
+The snapshot's visibility is the markdown frontmatter's. Each environment's admins have since set services `enabled`, `disabled` or `form_disabled` in feature flagging, and landing applies that at request time; after cutover landing ignores it for api_v2 pages (#3125), so the import applies it instead (#3188, ADR 0063's mapping):
+
+| `service_status` | Imported visibility                                      |
+| ---------------- | -------------------------------------------------------- |
+| `enabled`        | `public` (raises a `draft` or `preview` page)            |
+| `disabled`       | `preview` (lowers a `public` page, raises a `draft` one) |
+| `form_disabled`  | the frontmatter level, unchanged                         |
+| no row           | the frontmatter level, unchanged                         |
+
+A page's key is its `form_id`, or its `content_slug` (landing's registry slug) when it has no form. A `/start` page that carries its parent's `form_id` shares its parent's row; one without a form (e.g. `calculate-severance-pay/start`) keys on its own slug, keeps its own level and is not listed in `visibility_changes`, but is still hidden whenever its parent is, because a page is served at the most restrictive level of itself and its ancestors. A row that matches no page is ignored. `published_at` stays the frontmatter `publish_date` whatever the level; an undated page is dated now only if it imports `public`.
+
+`--forms-api` is required. A missing flag, a network error, a non-2xx answer or a body that is not the `{"status":"success","data":[{slug,status}]}` envelope exits 1 before the database is opened, so nothing is written.
+
+Before every run, confirm in the Amplify Console that the environment's feature_flagging branch has no `EDITOR_V2_URL` set. If it is set, stop: that environment is past cutover, where a `disabled` row hides only the form (ADR 0063, "After cutover"), and the overlay would wrongly lower the page. The importer cannot detect this.
+
+`--forms-api` is that environment's api v1 origin, the same value as its `VITE_FORMS_API_URL`:
+
+| Environment | `--forms-api`                                               |
+| ----------- | ----------------------------------------------------------- |
+| sandbox     | `https://forms.api.sandbox.alpha.gov.bb`                    |
+| staging     | `https://api.staging.alpha.gov.bb`                          |
+| prod        | prod's `VITE_FORMS_API_URL`; confirm it at #3230 before use |
 
 ### Per environment
 
-Do sandbox first, then staging and prod once their api_v2 services exist.
+Sandbox re-imports while no editor has written there (#3234). Staging (#3229) and prod (#3230) import after `v2-rewrite` merges into `main` (#3131), inside the #3164 cutover windows. Every run imports the snapshot on the deploying branch at the deployed commit.
 
-1. Refresh the snapshot: merge `main` into `v2-rewrite`, run `pnpm seed-data`, commit `estate.json`, merge, and let the deploy build the image. The `source` the import reports is a sha1 of that commit's parsed `estate.json` (`ESTATE_SOURCE` in `src/seed-data/index.ts`), not of the file's bytes, so `sha1sum estate.json` will not match it.
-2. Confirm the task definition does not set `SEED`: `aws ecs describe-task-definition --task-definition api-v2-<env> --query 'taskDefinition.containerDefinitions[0].environment'`. If it does, see #3052.
-3. Run the command inside the live container with ECS Exec (needs the AWS Session Manager plugin and credentials for the account). The deployed image has no `psql`, so every database step goes through the command. Dry run first; read the `database:` line and the counts; then the real run.
+1. Pick the snapshot: the content you want is merged, and the api_v2 deploy of that commit has finished, so the running image carries its `estate.json`. Note the commit sha. The `source` the import reports is a sha1 of that commit's parsed `estate.json` (`ESTATE_SOURCE` in `src/seed-data/index.ts`), not of the file's bytes, so `sha1sum estate.json` will not match it.
+2. Set up the shell for the environment, then confirm the task definition does not set `SEED`. Sandbox's no longer does (since revision `api-v2-sandbox:9`, alpha-infra#748); staging's and prod's (#3130) must never set it. If it does, stop: production mode refuses to boot with it (#3052). The staging and prod cluster and service names follow sandbox's pattern; confirm them against #3130's task definitions.
 
    ```sh
    export AWS_PROFILE=<your profile>
    export AWS_REGION=ca-central-1
-   CLUSTER=modular-forms-sandbox
-   SERVICE=api-v2-sandbox
+   ENV=sandbox
+   CLUSTER=modular-forms-$ENV
+   SERVICE=api-v2-$ENV
+   aws ecs describe-task-definition --task-definition "$SERVICE" --query 'taskDefinition.containerDefinitions[0].environment'
+   ```
+
+3. Run the command inside the live container with ECS Exec (needs the AWS Session Manager plugin and credentials for the account). The deployed image has no `psql`, so every database step goes through the command. First confirm the running task's image is tagged with the sha you noted in step 1 (the deploy tags images with the commit sha); an older image imports an older snapshot. Dry run first; read the `visibility_changes` line, the `database:` line and the counts; then the real run.
+
+   ```sh
    TASK=$(aws ecs list-tasks --cluster "$CLUSTER" --service-name "$SERVICE" --query 'taskArns[0]' --output text)
+   aws ecs describe-tasks --cluster "$CLUSTER" --tasks "$TASK" --query 'tasks[0].containers[?name==`api-v2`].image' --output text
    aws ecs execute-command --cluster "$CLUSTER" --task "$TASK" --container api-v2 --interactive --command /bin/sh
    ```
 
-   Then, inside that shell:
+   Then, inside that shell, set the environment's origin from "Each environment's service_status" above, and on an empty database:
 
    ```sh
-   node dist/src/import-estate.js --dry-run
-   node dist/src/import-estate.js
+   FORMS_API=<origin>
+   node dist/src/import-estate.js --forms-api "$FORMS_API" --dry-run
+   node dist/src/import-estate.js --forms-api "$FORMS_API"
    ```
 
-   and for a forced run inside the same shell:
+   and on a database that already has content, only after the check in "A database that already has content" below:
 
    ```sh
-   node dist/src/import-estate.js --force "sandbox rehearsal: replace SEED=true content"
+   node dist/src/import-estate.js --forms-api "$FORMS_API" --dry-run
+   node dist/src/import-estate.js --forms-api "$FORMS_API" --dry-run --force "<env>: re-import from <branch> <deployed sha>"
+   node dist/src/import-estate.js --forms-api "$FORMS_API" --force "<env>: re-import from <branch> <deployed sha>"
    ```
 
-   A one-shot form also works when the command needs no quoting, e.g. `--command "node dist/src/import-estate.js --dry-run"`; for a forced run as a one-shot, wrap it as `--command "/bin/sh -c 'node dist/src/import-estate.js --force \"<reason>\"'"` and confirm the quoting on the sandbox rehearsal before relying on it.
+   A one-shot form also works when the command needs no quoting, e.g. `--command "node dist/src/import-estate.js --forms-api <origin> --dry-run"`; for a forced run as a one-shot, wrap it as `--command "/bin/sh -c 'node dist/src/import-estate.js --forms-api <origin> --force \"<reason>\"'"` and confirm the quoting on sandbox before relying on it.
 
-4. Record it: keep the real run's JSON line, which names the `source` hash and any `--force` reason. The `change_events` rows it wrote are by `system` and carry `occurred_at`.
-5. Smoke from your machine. Every `public` page in `estate.json` returns 200 from `GET /pages?url=`; `preview` pages return 200 only with the `x-preview-token` header (the task's `PREVIEW_SECRET`); `draft` pages are never served by that endpoint.
+4. Record it on the import issue (#3234, #3229 or #3230): paste the refusal line, if there was one, the `visibility_changes` line, the dry run's JSON line and the real run's JSON line, which names the `source` hash and any `--force` reason. The `change_events` rows it wrote are by `system` and carry `occurred_at`.
+5. Smoke from your machine. Expected visibility is the post-overlay level: `estate.json`'s, changed as the dry run's `visibility_changes` listed, and a page is served at the most restrictive level of itself and its ancestors (#3235 scripts this check). A page that is `public` after the overlay, with every ancestor `public` too, returns 200 from `GET /pages?url=`; one whose effective level is `preview` returns 200 only with the `x-preview-token` header (the task's `PREVIEW_SECRET`); `draft` is never served by that endpoint. The loop below checks the `public` pages in `estate.json`, so a 404 from a page lowered in `visibility_changes`, or from a child of one, is expected.
 
    ```sh
    API=https://<api origin>
@@ -436,9 +472,109 @@ Do sandbox first, then staging and prod once their api_v2 services exist.
 
 Run `--dry-run`: it refuses an occupied database and shows the actor histogram of every recorded page and category event. A histogram containing only `system` does not prove that no editor has changed content: category edits made before migration `007` left no events, and migration `007` rewrites legacy non-user actors to `system`. Do not use the histogram alone as permission to replace an estate. Only run `--force "<reason>"` after separately verifying that no editor-owned content will be overwritten and obtaining approval for the replacement. If editors have written, or that cannot be established, do not replace: preserve editor-owned data; fix forward in the editor, or use an approved RDS point-in-time recovery to a moment before the bad import. The same rule is the rollback rule after a bad import.
 
+An editor has written if any of these holds:
+
+- **(a)** the refusal's `history actors:` lists any actor other than `system`. Only `system` is a machine actor; editors are recorded by their `auth_user` id, which `007` kept.
+- **(b)** the refusal's `revisions:` is not 0. A pending save writes no history event (see "Pending revisions"), and `--force` deletes it.
+- **(c)** on sandbox only, a category was edited between #3351 (28 Oct 2026, 00:24 UTC) and sandbox's deploy of #3340 running migration `007` (merged 28 Oct 2026, 19:21 UTC), when category edits left no event. #3234 checks this with a one-off query.
+
+If any holds, stop, record it on the import issue, and fix forward.
+
 ### The markdown freeze
 
-`apps/landing/src/content` freezes at the prod import. Until then it stays editable, and the snapshot is regenerated before each environment's import (step 1). After the prod import, content changes go through the editor only; delete the directory once landing_v2 is the only reader.
+`apps/landing/src/content` freezes at the prod import. Until then it stays editable, and CI keeps `estate.json` current on every PR. `apps/landing` reads api_v2 when `VITE_API_V2_URL` is set and falls back to the markdown otherwise; deleting the directory is part of retiring the v1 content path (#3165).
+
+There is one switch: the GitHub repository variable `CONTENT_FREEZE=true`. #3236 adds the check that, while it is set, fails any PR into `main` that edits `apps/landing/src/content/**/*.md` or either `categories.ts`, including the PRs the v1 form builder opens. Turn it on as step 0 of the prod import, **before** the prod deploy whose snapshot is imported; a content PR merged in between is otherwise lost. A repository admin runs:
+
+```sh
+gh variable set CONTENT_FREEZE --body true   # on
+gh variable delete CONTENT_FREEZE            # off
+```
+
+The "Generated Files Up To Date" job (#3136) stays on: it also regenerates two v1 files (`services-index.generated.ts`, `form-categories.generated.ts`) and writes only generated files, so the freeze check never trips on it, and with the markdown frozen its `estate.json` regen is a no-op. From then on `estate.json` no longer tracks the prod database; it is read only by local `SEED` and fresh imports. After the prod import, content changes go through the editor only.
+
+## History protection
+
+`change_events_no_mutate` rejects ordinary updates and all deletes. The
+controlled redaction exception is described below. Migration `017` adds
+`change_events_no_truncate`, a statement-level trigger that also rejects emptying
+the table with `TRUNCATE`, even when it has no rows. Ordinary inserts still work.
+
+These guards do not stop a table owner from disabling triggers. The API currently
+uses the same database credentials for migrations and requests. Separate owner
+and runtime roles, credentials and migration startup are follow-up work tracked
+from #2968; the runtime role should only read and insert history rows.
+
+## Snapshot formats
+
+Migration `018` adds `change_events.snapshot_version`. Existing events stay null,
+which means their format is unknown. New events default to `1`, covering both
+`record_change` and `record_review` without rewriting either trigger.
+
+Version `1` identifies the table-row formats in use when this migration lands.
+Use `entity_kind` and `action` to identify the source table, then the format number
+to interpret its row. Review actions still hold revision rows, not page rows.
+A migration that changes an audited table's row shape must bump the default.
+Do not backfill old events or assume a null label means one particular format.
+
+## Removing sensitive history snapshots
+
+Migration `019` allows one exception to the append-only history rule. An operator
+can replace an event's entire snapshot with
+`{"redacted":true,"reason":"<ticket>","by":"<operator>"}`. Its ID, entity, version
+number, action, author and timestamp stay unchanged. A removal notice cannot be
+rewritten, and events still cannot be deleted.
+
+Redaction also preserves `snapshot_version`. It describes the removed snapshot,
+not the removal notice. Readers must check `snapshot.redacted === true` before
+using `snapshot_version` to choose a parser.
+
+This is an operator command, not an API endpoint. It uses the API's configuration
+and verified database TLS settings, but does not run migrations. Use authorized
+database credentials. The `app.redacting` transaction setting is an explicit
+switch, not an administrator permission check; `--by` records the name the
+operator supplies. Database-role separation is not part of this change.
+
+Before running it:
+
+1. Remove the sensitive text from the source page or record so another save
+   cannot copy it into history again.
+2. Check retained page revisions, other history versions, search copies, caches,
+   logs and backups. This command changes none of them and is not a complete
+   data-erasure procedure.
+3. Identify each affected event by its ID. To list a page's event IDs without
+   printing its content, query `id, version_no, action, actor, occurred_at` from
+   `change_events`, filtered by `entity_kind = 'content_page'` and its
+   `entity_id`.
+4. Use a ticket reference for the reason. Do not repeat the sensitive text there.
+
+From `apps/api_v2`, inspect one event first:
+
+```sh
+pnpm redact-change-events --event-id "<event UUID>" --reason "incident-42" --by "<operator>"
+```
+
+Check the printed database and event metadata, then repeat with `--apply`:
+
+```sh
+pnpm redact-change-events --event-id "<event UUID>" --reason "incident-42" --by "<operator>" --apply
+```
+
+In the deployed image, use `node dist/src/redact-change-events.js` with the same
+arguments. Do not add a `--` separator to the pnpm command. Without `--apply`,
+nothing is written. A missing or already-redacted event exits non-zero. The
+command never prints snapshot content and commits the replacement in one
+transaction.
+
+Repeat for every affected event. Then refresh the editor's history and check that
+the content is gone. History keeps the original author, action and date, removes
+a redacted rejection's comment, and does not compare fields across a missing
+snapshot. The history count and timestamps do not change, so the version poll is
+not a redaction notification.
+
+Self-approval checks still count the author of a redacted content event. If the
+last public snapshot was removed, the check may include earlier contributors
+too. Another approver who did not contribute must publish the page.
 
 ## Operations and tests
 

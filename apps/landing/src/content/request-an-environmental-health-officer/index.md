@@ -5,7 +5,6 @@ description: >-
   attend an event where food or drink is served to the public.
 stage: alpha
 visibility: preview
-featured: false
 publish_date: '2026-08-11'
 category: business-trade
 form_id: request-an-environmental-health-officer

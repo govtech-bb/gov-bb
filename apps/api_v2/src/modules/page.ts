@@ -24,8 +24,6 @@ export type Visibility = z.infer<typeof Visibility>;
 export const Frontmatter = z.object({
   lede: z.string().optional(),
   stage: z.string().optional(),
-  featured: z.boolean().optional(),
-  section: z.string().optional(),
   service_type: z.string().optional(),
   keywords: z.array(z.string()).optional(),
   source_url: z.string().optional(),

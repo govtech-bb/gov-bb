@@ -2,7 +2,6 @@
 title: 'Apply for an NHC rental unit or lot'
 description: 'Use this service to apply to rent a unit or a lot from the National Housing Corporation (NHC). You must have a monthly income of BDS $3,000 or less to apply.'
 stage: 'alpha'
-featured: false
 publish_date: 2026-04-16
 category: housing
 visibility: preview

@@ -2,7 +2,6 @@
 title: "Redirect my business mail"
 description: ""
 publish_date: 2026-01-30
-section: "Travel, ID and citizenship"
 form_id: post-office-redirection-business
 ---
 

@@ -2,7 +2,6 @@
 title: 'About Government pensions and gratuities'
 description: 'How your Government pension, reduced pension, and gratuity are calculated, plus the things that affect your pension.'
 stage: 'alpha'
-featured: false
 service_type: information
 visibility: preview
 publish_date: 2026-05-13

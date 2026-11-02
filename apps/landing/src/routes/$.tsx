@@ -184,8 +184,10 @@ export const Route = createFileRoute('/$')({
     const v2Page = v2.kind === 'page' ? v2.page : undefined
     const page = v2Page ?? findPage(splat)
     if (page) {
-      // api_v2 already enforced visibility, and the status overlay never
-      // changes an api_v2 page's; the form-level state below still applies.
+      // api_v2 already enforced visibility. A service_status row never changes
+      // an api_v2 page's: content_pages.visibility is the only page-level switch
+      // in v2 (#3125); #3248 decides what replaces the feature_flagging page
+      // toggles. The form-level state below still applies.
       if (!v2Page && !isVisible(page, level, overlay)) throw notFound()
       // Only content pages render Start now buttons, so the forms list is
       // resolved here (server-side, cached) and nowhere else.
