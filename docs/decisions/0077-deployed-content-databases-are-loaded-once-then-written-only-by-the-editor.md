@@ -1,7 +1,7 @@
 # 0077 — Deployed content databases are loaded once, then written only by the editor
 
 **Date:** 2026-10-13
-**Status:** Accepted
+**Status:** Accepted (amended 2026-11-02 — once per environment, #3238)
 
 ## Context
 
@@ -55,11 +55,43 @@ through an explicit command. After that, the editor is the only writer.**
 - A proposal to re-run the import to "pick up" markdown edits, to add a
   content migration, or to set `SEED` in staging or prod is a change to this
   decision, not an operational shortcut.
-- Sandbox currently violates point 1 (#3052 removes `SEED=true` from its task
-  definition); until that lands, sandbox's import is a `--force` rehearsal
-  and each boot re-adds deleted pages.
+- Sandbox no longer sets `SEED` (alpha-infra#748), its import was rehearsed
+  on 22 Oct 2026 (#3095), and production mode refuses to boot with `SEED`
+  set (#3052, PR #3153).
 - Recovering from a bad import on a database editors have written to is
   point-in-time recovery or fixing forward in the editor, never a forced
   re-import.
 - The runbook lives in `apps/api_v2/README.md` under "Importing the estate
-  (one-time)".
+  (once per environment)".
+
+## Amendment (2026-11-02) — the import runs once per environment (#3238)
+
+"Once" is once per database. Sandbox, staging and prod each import the
+snapshot on the deploying branch at the deployed commit, which CI keeps
+current. A re-import before any editor has written is the forced replace of
+point 2; after one has, it is fix-forward. "Has an editor written" is the
+runbook's three-part check (a non-`system` history actor, a pending revision,
+or on sandbox a category edit from before migration `007`), not the actor
+histogram alone. The pending-revision part needs the revision count #3188
+adds to the import; until then, no forced re-import runs.
+
+Two corrections to the decision text, stated here rather than edited in
+place:
+
+- **Point 2:** `--force` _deletes_ (not truncates) every row of
+  `search_chunks`, `page_revisions`, `content_pages` and `categories`, so the
+  history records each replaced page and category as `deleted` by `system`. `change_events`
+  is still never emptied, and since migration `017` it rejects `TRUNCATE` as
+  well as row deletes.
+- **Point 3:** the snapshot no longer records `source`, and history is not
+  written as `import:<source>`. Since migration `007` (#3340) every imported
+  row's history is by `system`, and since #3396 `source` is a sha1 of the
+  parsed snapshot (`ESTATE_SOURCE`), printed in the import's JSON line with
+  the `--force` reason. The ledger is that JSON line, pasted on the import
+  issue, plus the database's history.
+
+Visibility at import is the frontmatter plus that environment's
+`service_status` overlay (#3188), so `estate.json` stays
+environment-neutral. The freeze in point 4 is switched on with the repository
+variable `CONTENT_FREEZE=true` (#3236), before the prod deploy whose snapshot
+is imported.
