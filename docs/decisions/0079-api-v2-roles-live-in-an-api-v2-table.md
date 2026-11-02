@@ -58,7 +58,9 @@ user with no role can read the editor but can't write anything.
 > `approver`. The org was a small gate, but every account on an allowed
 > Workspace domain can sign in, so a default editor role would let everyone at
 > GovTech write. Users who already exist keep their roles, including the
-> `editor` rows granted by default before this amendment.
+> `editor` rows granted by default before this amendment. A user whose email
+> `API_V2_ADMIN_EMAILS` lists is granted `editor` as well as `admin`, so a
+> listed admin can write without first granting themselves a role.
 
 **Admins manage roles through admin-only api_v2 routes.** There is no admin
 screen in editor_v2 yet; that is a follow-up. The first admins come from an

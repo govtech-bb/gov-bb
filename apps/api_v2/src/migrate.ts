@@ -34,6 +34,7 @@ import { SQL as CONTENT_UPDATED_AT_SQL } from "./migrations/016_content_updated_
 import { SQL as NO_TRUNCATE_SQL } from "./migrations/017_change_events_no_truncate";
 import { SQL as SNAPSHOT_VERSION_SQL } from "./migrations/018_snapshot_version";
 import { SQL as REDACTION_SQL } from "./migrations/019_change_events_redaction";
+import { SQL as GOOGLE_SESSIONS_SQL } from "./migrations/020_google_sessions";
 import type { Database } from "./db";
 
 /** The migrations, in the order they apply. Each is idempotent by rule. */
@@ -57,6 +58,7 @@ const MIGRATIONS = [
   ["017_change_events_no_truncate", NO_TRUNCATE_SQL],
   ["018_snapshot_version", SNAPSHOT_VERSION_SQL],
   ["019_change_events_redaction", REDACTION_SQL],
+  ["020_google_sessions", GOOGLE_SESSIONS_SQL],
 ] as const;
 
 /** Serialises instances that boot together; released when its transaction ends. */

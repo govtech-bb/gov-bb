@@ -43,6 +43,7 @@ const ALL = [
   "017_change_events_no_truncate",
   "018_snapshot_version",
   "019_change_events_redaction",
+  "020_google_sessions",
 ];
 
 /** Tables whose rows are not content, so the history does not record them. */
@@ -150,6 +151,7 @@ describe("migrate", () => {
       "017_change_events_no_truncate",
       "018_snapshot_version",
       "019_change_events_redaction",
+      "020_google_sessions",
     ]);
     const pages = await exec("select count(*)::int as n from content_pages");
     expect(pages.rows).toEqual([{ n: 0 }]);
@@ -190,6 +192,7 @@ describe("migrate", () => {
       "017_change_events_no_truncate",
       "018_snapshot_version",
       "019_change_events_redaction",
+      "020_google_sessions",
     ]);
     await exec(
       `insert into categories (slug, title) values ('c', 'C');
@@ -280,6 +283,36 @@ describe("migrate", () => {
     } finally {
       await close();
     }
+  });
+
+  it("revokes every session without a linked Google account, keeping users, accounts and roles", async () => {
+    const { db, exec, close } = await freshDb();
+    await migrate(db, exec);
+    await exec(`
+      delete from schema_migrations where name = '020_google_sessions';
+      insert into auth_user (id, name, email, "emailVerified") values
+        ('github-user', 'GitHub user', 'member@gmail.com', true),
+        ('google-user', 'Google user', 'member@govtech.bb', true);
+      insert into auth_account (id, "accountId", "providerId", "userId", "updatedAt") values
+        ('github-account', 'github-id', 'github', 'github-user', now()),
+        ('google-account', 'google-id', 'google', 'google-user', now());
+      insert into user_roles (user_id, role) values ('github-user', 'editor');
+      insert into auth_session (id, token, "userId", "expiresAt", "updatedAt") values
+        ('github-session', 'github-token', 'github-user', now() + interval '1 hour', now()),
+        ('google-session', 'google-token', 'google-user', now() + interval '1 hour', now());
+    `);
+    expect(await migrate(db, exec)).toEqual(["020_google_sessions"]);
+    expect((await exec("select id from auth_session")).rows).toEqual([
+      { id: "google-session" },
+    ]);
+    // Only sessions go: #3418 moves these users to their Workspace accounts.
+    expect(
+      (await exec("select id from auth_account order by id")).rows,
+    ).toEqual([{ id: "github-account" }, { id: "google-account" }]);
+    expect((await exec("select user_id, role from user_roles")).rows).toEqual([
+      { user_id: "github-user", role: "editor" },
+    ]);
+    await close();
   });
 
   it("revokes legacy sessions while preserving users and admitted GitHub sessions", async () => {

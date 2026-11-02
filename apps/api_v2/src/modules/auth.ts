@@ -170,6 +170,8 @@ export function admitWorkspaceIdentity(
   if (!parsed.success) return err(new Forbidden());
   const { email, source } = parsed.data;
   const { profile } = source.oauth;
+  // `hd` is the Workspace's primary domain, so an account on a secondary
+  // domain or subdomain of an allowed Workspace is refused too.
   if (
     email !== profile.email ||
     !allowedDomains.includes(profile.hd) ||
