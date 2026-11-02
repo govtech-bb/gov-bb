@@ -21,7 +21,7 @@ You can claim one grant per child per school year, and you can only apply once f
 
 You can apply online. It takes about 10 minutes.
 
-<a data-start-link href="/education/apply-for-a-school-uniform-grant/start">Start now</a>
+<a data-start-link>Start now</a>
 
 ## What the form asks for
 
