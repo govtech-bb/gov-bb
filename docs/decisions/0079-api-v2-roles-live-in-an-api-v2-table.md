@@ -60,7 +60,9 @@ user with no role can read the editor but can't write anything.
 > GovTech write. Users who already exist keep their roles, including the
 > `editor` rows granted by default before this amendment. A user whose email
 > `API_V2_ADMIN_EMAILS` lists is granted `editor` as well as `admin`, so a
-> listed admin can write without first granting themselves a role.
+> listed admin can write without first granting themselves a role. As with
+> `admin`, a listed admin's `editor` comes back on their next request if
+> revoked; take them off the list first.
 
 **Admins manage roles through admin-only api_v2 routes.** There is no admin
 screen in editor_v2 yet; that is a follow-up. The first admins come from an
