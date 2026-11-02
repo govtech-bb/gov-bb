@@ -19,7 +19,7 @@ import {
   collectStepErrorCodes,
   stepPassesValidation,
 } from "./validation-builder";
-import { locatingPlace } from "../api/geocode";
+import { locatingPlace, placeBeingLocated } from "../api/geocode";
 import {
   setUploadBlock,
   UPLOAD_IN_PROGRESS_MESSAGE,
@@ -990,7 +990,10 @@ describe("collectStepErrorCodes for an address that writes a routing coordinate"
 
     expect(collectStepErrorCodes([address(required)], typed)).toEqual([]);
     arrive();
-    await lookup;
+    // Await the registry's own promise, not `lookup`: it settles only after
+    // the entry is removed, so the next test starts with nothing pending.
+    await placeBeingLocated("event_event-address");
+    expect(placeBeingLocated("event_event-address")).toBeUndefined();
   });
 
   it("fails the step on the return from a Change", () => {
