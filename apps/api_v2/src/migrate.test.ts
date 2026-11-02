@@ -40,6 +40,7 @@ const ALL = [
   "014_data_collections",
   "015_revision_discarded",
   "016_content_updated_at",
+  "018_snapshot_version",
 ];
 
 /** Tables whose rows are not content, so the history does not record them. */
@@ -144,6 +145,7 @@ describe("migrate", () => {
       "014_data_collections",
       "015_revision_discarded",
       "016_content_updated_at",
+      "018_snapshot_version",
     ]);
     const pages = await exec("select count(*)::int as n from content_pages");
     expect(pages.rows).toEqual([{ n: 0 }]);
@@ -181,6 +183,7 @@ describe("migrate", () => {
       "014_data_collections",
       "015_revision_discarded",
       "016_content_updated_at",
+      "018_snapshot_version",
     ]);
     await exec(
       `insert into categories (slug, title) values ('c', 'C');
@@ -533,6 +536,50 @@ describe("migrate", () => {
       (await exec("select email from auth_user where id = 'system'")).rows,
     ).toEqual([{ email: "system@api-v2.invalid" }]);
     await close();
+  });
+
+  it("labels only new snapshots, including after the migration replays", async () => {
+    const { db, exec, close } = await freshDb();
+    try {
+      await migrate(db, exec);
+      await exec(`alter table change_events drop column if exists snapshot_version;
+        delete from schema_migrations where name = '018_snapshot_version';
+        insert into content_pages (url, slug, title, body_markdown)
+          values ('/x', 'x', 'Before labels', '')`);
+      const legacy = (await exec("select * from change_events")).rows;
+
+      expect(await migrate(db, exec)).toEqual(["018_snapshot_version"]);
+      expect((await exec("select * from change_events")).rows).toEqual(
+        legacy.map((event) => ({ ...event, snapshot_version: null })),
+      );
+      await exec("update content_pages set title = 'Labeled'");
+      const labeled = (
+        await exec("select * from change_events order by version_no")
+      ).rows;
+      expect(labeled.map((event) => event.snapshot_version)).toEqual([null, 1]);
+
+      await exec(
+        "delete from schema_migrations where name = '018_snapshot_version'",
+      );
+      expect(await migrate(db, exec)).toEqual(["018_snapshot_version"]);
+      expect(
+        (await exec("select * from change_events order by version_no")).rows,
+      ).toEqual(labeled);
+      await exec("update content_pages set title = 'After replay'");
+      expect(
+        (
+          await exec(
+            "select snapshot_version from change_events order by version_no",
+          )
+        ).rows,
+      ).toEqual([
+        { snapshot_version: null },
+        { snapshot_version: 1 },
+        { snapshot_version: 1 },
+      ]);
+    } finally {
+      await close();
+    }
   });
 
   it("records the history of every content table", async () => {
