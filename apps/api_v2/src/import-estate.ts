@@ -17,6 +17,7 @@ import { connect, createPool } from "./db";
 import { migrate } from "./migrate";
 import { ESTATE } from "./seed-data";
 import {
+  type ServiceStatus,
   ServiceStatuses,
   applyServiceStatuses,
 } from "./modules/service-status";
@@ -48,10 +49,19 @@ async function main(): Promise<void> {
   const config = parsed.value;
 
   const url = `${formsApi.replace(/\/+$/, "")}/service_status`;
-  const response = await fetch(url, { signal: AbortSignal.timeout(15_000) });
-  if (!response.ok)
-    throw new Error(`service_status: HTTP ${response.status} from ${url}`);
-  const statuses = ServiceStatuses.parse(await response.json());
+  let statuses: Map<string, ServiceStatus>;
+  try {
+    const response = await fetch(url, { signal: AbortSignal.timeout(15_000) });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    statuses = ServiceStatuses.parse(await response.json());
+  } catch (error) {
+    // fetch hides the network reason in `cause` ("fetch failed").
+    const { message, cause } = error as Error;
+    const why = cause instanceof Error ? ` (${cause.message})` : "";
+    throw new Error(`service_status: ${message}${why} from ${url}`, {
+      cause: error,
+    });
+  }
   console.log(`service_status: ${statuses.size} rows from ${url}`);
   const { pages, changes } = applyServiceStatuses(ESTATE.pages, statuses);
   console.log(JSON.stringify({ visibility_changes: changes }));

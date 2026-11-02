@@ -53,6 +53,20 @@ describe.skipIf(!HAS_DATABASE)("import-estate", () => {
       expect(unreadable.output).not.toContain('"mode"');
       fail = false;
 
+      // A refused connection names the endpoint and the cause, not just "fetch failed".
+      const closed = createServer();
+      await new Promise<void>((resolve) =>
+        closed.listen(0, "127.0.0.1", resolve),
+      );
+      const closedApi = `http://127.0.0.1:${(closed.address() as AddressInfo).port}`;
+      await new Promise((resolve) => closed.close(resolve));
+      const refused = await run(["--forms-api", closedApi]);
+      expect(refused.code, refused.output).toBe(1);
+      expect(refused.output).toContain(
+        `service_status: fetch failed (connect ECONNREFUSED`,
+      );
+      expect(refused.output).toContain(`from ${closedApi}/service_status`);
+
       const dry = await run(["--dry-run", "--forms-api", formsApi]);
       expect(dry.code, dry.output).toBe(0);
       expect(dry.output).toContain('"visibility_changes":[{"url":');
