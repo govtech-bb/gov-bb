@@ -37,8 +37,6 @@ const target = join(__dirname, "..", "src", "seed-data", "estate.json");
 const FRONTMATTER_KEYS = [
   "lede",
   "stage",
-  "featured",
-  "section",
   "service_type",
   "keywords",
   "source_url",

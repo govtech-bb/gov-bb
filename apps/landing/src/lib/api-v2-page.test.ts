@@ -419,7 +419,7 @@ describe('fetchApiV2Page', () => {
   it.each([
     ['stage', { stage: null }],
     ['keywords', { keywords: ['baby', 1] }],
-    ['featured', { featured: 'yes' }],
+    ['source_url', { source_url: 7 }],
   ])(
     'drops a frontmatter %s of the wrong type, keeping the page',
     async (key, field) => {

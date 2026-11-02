@@ -68,12 +68,6 @@
                         "stage": {
                           "type": "string"
                         },
-                        "featured": {
-                          "type": "boolean"
-                        },
-                        "section": {
-                          "type": "string"
-                        },
                         "service_type": {
                           "type": "string"
                         },
@@ -364,12 +358,6 @@
                       "stage": {
                         "type": "string"
                       },
-                      "featured": {
-                        "type": "boolean"
-                      },
-                      "section": {
-                        "type": "string"
-                      },
                       "service_type": {
                         "type": "string"
                       },
@@ -463,12 +451,6 @@
                           "type": "string"
                         },
                         "stage": {
-                          "type": "string"
-                        },
-                        "featured": {
-                          "type": "boolean"
-                        },
-                        "section": {
                           "type": "string"
                         },
                         "service_type": {
@@ -1938,12 +1920,6 @@
                         "stage": {
                           "type": "string"
                         },
-                        "featured": {
-                          "type": "boolean"
-                        },
-                        "section": {
-                          "type": "string"
-                        },
                         "service_type": {
                           "type": "string"
                         },
@@ -2256,12 +2232,6 @@
                       "stage": {
                         "type": "string"
                       },
-                      "featured": {
-                        "type": "boolean"
-                      },
-                      "section": {
-                        "type": "string"
-                      },
                       "service_type": {
                         "type": "string"
                       },
@@ -2378,12 +2348,6 @@
                           "type": "string"
                         },
                         "stage": {
-                          "type": "string"
-                        },
-                        "featured": {
-                          "type": "boolean"
-                        },
-                        "section": {
                           "type": "string"
                         },
                         "service_type": {
@@ -3273,12 +3237,6 @@
                               "type": "string"
                             },
                             "stage": {
-                              "type": "string"
-                            },
-                            "featured": {
-                              "type": "boolean"
-                            },
-                            "section": {
                               "type": "string"
                             },
                             "service_type": {
@@ -7777,12 +7735,6 @@
                             "stage": {
                               "type": "string"
                             },
-                            "featured": {
-                              "type": "boolean"
-                            },
-                            "section": {
-                              "type": "string"
-                            },
                             "service_type": {
                               "type": "string"
                             },
@@ -8253,12 +8205,6 @@
                             "stage": {
                               "type": "string"
                             },
-                            "featured": {
-                              "type": "boolean"
-                            },
-                            "section": {
-                              "type": "string"
-                            },
                             "service_type": {
                               "type": "string"
                             },
@@ -8705,12 +8651,6 @@
                           "type": "string"
                         },
                         "stage": {
-                          "type": "string"
-                        },
-                        "featured": {
-                          "type": "boolean"
-                        },
-                        "section": {
                           "type": "string"
                         },
                         "service_type": {
