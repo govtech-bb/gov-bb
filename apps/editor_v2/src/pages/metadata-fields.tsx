@@ -309,7 +309,7 @@ export type PageSettingsOptions = {
   categories?: readonly PageCategory[];
   /** A page files under one category, so the picker hides once one is chosen. */
   single?: boolean;
-  /** When the server dates publication, its date shown read-only; null until the page first goes public. */
+  /** When the server dates publication, its date shown read-only; an imported page's `publish_date`, else null until the page first goes public. */
   publishedAt?: string | null;
   /** Latest recorded actor supplied by the host, not inferred from this working copy. */
   lastEditedBy?: { name: string | null } | null;
