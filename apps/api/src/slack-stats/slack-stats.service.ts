@@ -30,12 +30,13 @@ import { suggestFormIds } from "./stats-command";
 const TZ = "America/Barbados";
 const SLACK_POST_TIMEOUT_MS = 10_000;
 /** Slack only ever hands out response URLs on this host. */
-const SLACK_RESPONSE_ORIGIN = "https://hooks.slack.com";
+const SLACK_RESPONSE_HOST = "hooks.slack.com";
 
 /**
  * The response_url to post to, or null when it is not a Slack hooks URL. The
- * result is rebuilt on the fixed Slack origin, so only the path and query come
- * from the request (SSRF).
+ * result is rebuilt on a constant `https://hooks.slack.com/` prefix, so only
+ * the path and query come from the request (SSRF). The prefix keeps its
+ * trailing slash: without it, CodeQL can't tell the request can't change host.
  */
 export function slackResponseUrl(raw: string): string | null {
   let url: URL;
@@ -44,10 +45,15 @@ export function slackResponseUrl(raw: string): string | null {
   } catch {
     return null;
   }
-  if (url.origin !== SLACK_RESPONSE_ORIGIN || url.username || url.password) {
+  if (
+    url.protocol !== "https:" ||
+    url.host !== SLACK_RESPONSE_HOST ||
+    url.username ||
+    url.password
+  ) {
     return null;
   }
-  return `${SLACK_RESPONSE_ORIGIN}${url.pathname}${url.search}`;
+  return `https://hooks.slack.com/${url.pathname.slice(1)}${url.search}`;
 }
 
 interface UmamiConfig {
