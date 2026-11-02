@@ -54,6 +54,11 @@ const sourceOnly = new Set([
   "national-pledge/index.md",
 ]);
 
+const convertedHtmlPages = [
+  "calculate-your-pension/about-government-pensions.md",
+  "crop-over-permits/index.md",
+];
+
 function fixture(path: string) {
   return readFileSync(new URL(`../fixtures/pages/corpus/${path}`, import.meta.url), "utf8");
 }
@@ -66,11 +71,15 @@ function visual(source: string) {
   return prepared.state;
 }
 
-function checkPagePreservation(path: string, source: string) {
+function checkPagePreservation(
+  path: string,
+  source: string,
+  expectSourceOnly = sourceOnly.has(path),
+) {
   const prepared = govbbPageCodec.prepare(source);
   expect(prepared.source).toBe(source);
 
-  if (sourceOnly.has(path)) {
+  if (expectSourceOnly) {
     expect(prepared.mode).toBe("source");
     expect(prepared.state).toBeUndefined();
     expect(prepared.diagnostics[0]?.severity).toBe("warning");
@@ -119,8 +128,51 @@ describe("current GovBB landing content", () => {
 
   for (const path of paths)
     test(path, () => {
-      checkPagePreservation(path, readFileSync(new URL(path, directory), "utf8"));
+      checkPagePreservation(
+        path,
+        readFileSync(new URL(path, directory), "utf8"),
+        sourceOnly.has(path) && !convertedHtmlPages.includes(path),
+      );
     });
+
+  test.each(convertedHtmlPages)(
+    "%s retains its content through a body edit and reopening",
+    (path) => {
+      const source = readFileSync(new URL(path, directory), "utf8");
+      const original = visual(source);
+      const editor = createHeadlessEditor(govbbPageEditor, original);
+
+      try {
+        editor.update(
+          () =>
+            $getRoot().append($createParagraphNode().append($createTextNode("Further guidance."))),
+          { discrete: true },
+        );
+        const reopened = visual(govbbPageCodec.encode(editor.getEditorState().toJSON()));
+        expect(reopened.root.children.slice(1, -1)).toEqual(original.root.children.slice(1));
+        expect(reopened.root.children.at(-1)).toMatchObject({
+          type: "paragraph",
+          children: [{ type: "text", text: "Further guidance." }],
+        });
+      } finally {
+        editor.dispose();
+      }
+    },
+  );
+
+  test("StormReady notice is editable independently of its remaining legacy components", () => {
+    const source = readFileSync(
+      new URL("health-and-emergency-services/stormready/index.md", directory),
+      "utf8",
+    );
+
+    const notice = source.match(/^:::notice\n[\s\S]*?\n:::/m)?.[0];
+
+    if (!notice) throw new Error("StormReady must use a notice directive");
+
+    checkPagePreservation("StormReady notice", notice, false);
+    expect(govbbPageCodec.prepare(source).mode).toBe("source");
+  });
 });
 
 test("birth instructions keep headings, paragraphs and Start actions inside their numbered items", () => {
