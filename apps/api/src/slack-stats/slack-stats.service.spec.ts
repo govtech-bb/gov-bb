@@ -1,6 +1,7 @@
 import type { ConfigService } from "@nestjs/config";
 import type { FormDefinitionsService } from "@/forms/form-definitions/form-definitions.service";
-import { SlackStatsService } from "./slack-stats.service";
+import { Logger } from "@nestjs/common";
+import { SlackStatsService, slackResponseUrl } from "./slack-stats.service";
 
 // A fake Umami client: funnel rows and event values keyed by event name, the
 // same for every period unless a test overrides `funnels` per call.
@@ -172,6 +173,27 @@ describe("SlackStatsService.buildReply — one form", () => {
   });
 });
 
+describe("slackResponseUrl", () => {
+  it("keeps a Slack hooks URL", () => {
+    expect(
+      slackResponseUrl("https://hooks.slack.com/commands/T1/1/abc?x=1"),
+    ).toBe("https://hooks.slack.com/commands/T1/1/abc?x=1");
+  });
+
+  it.each([
+    "",
+    "not a url",
+    "http://hooks.slack.com/commands/1",
+    "https://hooks.slack.com.evil.example/commands/1",
+    "https://evil.example/hooks.slack.com/",
+    "https://hooks.slack.com:8443/commands/1",
+    "https://user:pass@hooks.slack.com/commands/1",
+    "https://169.254.169.254/latest/meta-data/",
+  ])("refuses %j", (raw) => {
+    expect(slackResponseUrl(raw)).toBeNull();
+  });
+});
+
 describe("SlackStatsService.respond", () => {
   const fetchMock = vi.fn();
   beforeEach(() => {
@@ -227,6 +249,29 @@ describe("SlackStatsService.respond", () => {
         NOW,
       ),
     ).resolves.toBeUndefined();
+  });
+
+  it("never posts to a response url that isn't Slack's", async () => {
+    await service().respond(
+      { command: "/stats", period: "week", formId: "zzz" },
+      "https://169.254.169.254/latest/meta-data/",
+      NOW,
+    );
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("strips line breaks from user input before logging it", async () => {
+    const error = vi
+      .spyOn(Logger.prototype, "error")
+      .mockImplementation(() => {});
+    formDefinitions.findAll.mockRejectedValue(new Error("boom"));
+    await service().respond(
+      { command: "/stats", period: "week", formId: "x\n[forged] entry" },
+      "https://hooks.slack.com/commands/1",
+      NOW,
+    );
+    expect(error.mock.calls[0][0]).not.toContain("\n");
+    error.mockRestore();
   });
 
   it("logs a non-Error delivery failure", async () => {

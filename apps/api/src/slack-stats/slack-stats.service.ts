@@ -14,6 +14,7 @@ import {
   type Range,
   type StatsPeriod,
 } from "@govtech-bb/umami-analytics";
+import { sanitizeForLog } from "@/common/log-sanitize";
 import { FormDefinitionsService } from "@/forms/form-definitions/form-definitions.service";
 import {
   biggestFinishDrops,
@@ -27,6 +28,26 @@ import { suggestFormIds } from "./stats-command";
 
 const TZ = "America/Barbados";
 const SLACK_POST_TIMEOUT_MS = 10_000;
+/** Slack only ever hands out response URLs on this host. */
+const SLACK_RESPONSE_ORIGIN = "https://hooks.slack.com";
+
+/**
+ * The response_url to post to, or null when it is not a Slack hooks URL. The
+ * result is rebuilt on the fixed Slack origin, so only the path and query come
+ * from the request (SSRF).
+ */
+export function slackResponseUrl(raw: string): string | null {
+  let url: URL;
+  try {
+    url = new URL(raw);
+  } catch {
+    return null;
+  }
+  if (url.origin !== SLACK_RESPONSE_ORIGIN || url.username || url.password) {
+    return null;
+  }
+  return `${SLACK_RESPONSE_ORIGIN}${url.pathname}${url.search}`;
+}
 
 interface UmamiConfig {
   apiKey: string;
@@ -71,9 +92,11 @@ export class SlackStatsService {
       text = await this.buildReply(command, period, formId, now);
     } catch (err) {
       this.logger.error(
-        `[slack-stats] ${command} ${period} ${formId ?? ""} failed: ${
-          err instanceof Error ? err.message : String(err)
-        }`,
+        `[slack-stats] ${sanitizeForLog(command)} ${period} ${sanitizeForLog(
+          formId ?? "",
+        )} failed: ${sanitizeForLog(
+          err instanceof Error ? err.message : String(err),
+        )}`,
       );
       text =
         "Sorry, I couldn't get the stats from Umami. Try again in a few minutes.";
@@ -294,8 +317,13 @@ export class SlackStatsService {
   }
 
   private async post(responseUrl: string, text: string): Promise<void> {
+    const url = slackResponseUrl(responseUrl);
+    if (!url) {
+      this.logger.warn("[slack-stats] refused a non-Slack response_url");
+      return;
+    }
     try {
-      const res = await fetch(responseUrl, {
+      const res = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ response_type: "ephemeral", text }),
@@ -306,9 +334,9 @@ export class SlackStatsService {
       }
     } catch (err) {
       this.logger.warn(
-        `[slack-stats] reply delivery failed: ${
-          err instanceof Error ? err.message : String(err)
-        }`,
+        `[slack-stats] reply delivery failed: ${sanitizeForLog(
+          err instanceof Error ? err.message : String(err),
+        )}`,
       );
     }
   }

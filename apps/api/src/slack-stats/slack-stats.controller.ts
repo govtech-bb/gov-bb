@@ -14,7 +14,7 @@ import { ConfigService } from "@nestjs/config";
 import type { Request } from "express";
 import { verifySlackSignature } from "./slack-signature";
 import { parseStatsCommand, usageText } from "./stats-command";
-import { SlackStatsService } from "./slack-stats.service";
+import { SlackStatsService, slackResponseUrl } from "./slack-stats.service";
 
 interface SlashCommandBody {
   command?: string;
@@ -26,9 +26,6 @@ interface SlackReply {
   response_type: "ephemeral";
   text: string;
 }
-
-/** Slack only ever hands out response URLs on this host. */
-const SLACK_RESPONSE_URL_PREFIX = "https://hooks.slack.com/";
 
 /**
  * Slack slash command `/stats <today|week|month> [form-id]` (#3491). Slack
@@ -73,8 +70,8 @@ export class SlackStatsController {
     if (!this.stats.isConfigured()) {
       return reply("Stats are not set up in this environment yet.");
     }
-    const responseUrl = body.response_url ?? "";
-    if (!responseUrl.startsWith(SLACK_RESPONSE_URL_PREFIX)) {
+    const responseUrl = slackResponseUrl(body.response_url ?? "");
+    if (!responseUrl) {
       this.logger.warn("[slack-stats] refused a non-Slack response_url");
       return reply("Slack didn't send a reply address, so I can't answer.");
     }
