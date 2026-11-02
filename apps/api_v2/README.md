@@ -455,16 +455,15 @@ Sandbox re-imports while no editor has written there (#3234). Staging (#3229) an
    A one-shot form also works when the command needs no quoting, e.g. `--command "node dist/src/import-estate.js --forms-api <origin> --dry-run"`; for a forced run as a one-shot, wrap it as `--command "/bin/sh -c 'node dist/src/import-estate.js --forms-api <origin> --force \"<reason>\"'"` and confirm the quoting on sandbox before relying on it.
 
 4. Record it on the import issue (#3234, #3229 or #3230): paste the refusal line, if there was one, the `visibility_changes` line, the dry run's JSON line and the real run's JSON line, which names the `source` hash and any `--force` reason. The `change_events` rows it wrote are by `system` and carry `occurred_at`.
-5. Smoke from your machine. Expected visibility is the post-overlay level: `estate.json`'s, changed as the dry run's `visibility_changes` listed, and a page is served at the most restrictive level of itself and its ancestors (#3235 scripts this check). A page that is `public` after the overlay, with every ancestor `public` too, returns 200 from `GET /pages?url=`; one whose effective level is `preview` returns 200 only with the `x-preview-token` header (the task's `PREVIEW_SECRET`); `draft` is never served by that endpoint. The loop below checks the `public` pages in `estate.json`, so a 404 from a page lowered in `visibility_changes`, or from a child of one, is expected.
+5. Check every page from your machine, on a checkout of the sha from step 1 (the check reads that checkout's `estate.json`). Each page's expected level is its `estate.json` level, overlaid with the environment's `service_status` as the import did, then made as restrictive as any page above it. Per page, `GET /pages?url=` without and with the `x-preview-token` header must give 200/200 for `public`, 404/200 for `preview` and 404/404 for `draft`, and every 200 must carry a title, a body and that `visibility`. The token is the task's `PREVIEW_SECRET`; read it into the environment so it stays out of shell history and the process list:
 
    ```sh
-   API=https://<api origin>
-   jq -r '.pages[] | select(.visibility == "public") | .url' apps/api_v2/src/seed-data/estate.json |
-     while read -r url; do
-       code=$(curl -s -o /dev/null -w '%{http_code}' --get --data-urlencode "url=$url" "$API/pages")
-       [ "$code" = 200 ] || echo "$code $url"
-     done
+   read -rs PREVIEW_SECRET; export PREVIEW_SECRET
+   FORMS_API=<origin>   # the same origin as step 3, set again on your machine
+   pnpm --filter @govtech-bb/api-v2 check-import --base-url https://<api origin> --forms-api "$FORMS_API"
    ```
+
+   No `--` before the flags (pnpm forwards it and tsx rejects it). Each failing page prints `FAIL <url> expected <level>: no token <status>, token <status>`, with the problem in brackets after a 200 whose body is wrong (a status of `ERR …` is a network error). Then one `<level>: <n> pages, <n> failing` line per level, and a last line with the failure count and the snapshot's `source` hash, which must match the import's. It exits 1 on any failure. `preview token refused` means `PREVIEW_SECRET` is wrong, or unset on the API, and `rate limited` means the site routes' 1,000-requests-a-minute limit was hit; both stop the run at once. Paste the output on the import issue with step 4's lines.
 
 ### A database that already has content
 
