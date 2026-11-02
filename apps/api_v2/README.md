@@ -398,7 +398,7 @@ The snapshot's visibility is the markdown frontmatter's. Each environment's admi
 | `form_disabled`  | the frontmatter level, unchanged                         |
 | no row           | the frontmatter level, unchanged                         |
 
-A page's key is its `form_id`, or its `content_slug` (landing's registry slug) when it has no form, so a `/start` page shares its parent's row. A row that matches no page is ignored. `published_at` stays the frontmatter `publish_date` whatever the level; an undated page is dated now only if it imports `public`.
+A page's key is its `form_id`, or its `content_slug` (landing's registry slug) when it has no form. A `/start` page that carries its parent's `form_id` shares its parent's row; one without a form (e.g. `calculate-severance-pay/start`) keys on its own slug, keeps its own level and is not listed in `visibility_changes`, but is still hidden whenever its parent is, because a page is served at the most restrictive level of itself and its ancestors. A row that matches no page is ignored. `published_at` stays the frontmatter `publish_date` whatever the level; an undated page is dated now only if it imports `public`.
 
 `--forms-api` is required. A missing flag, a network error, a non-2xx answer or a body that is not the `{"status":"success","data":[{slug,status}]}` envelope exits 1 before the database is opened, so nothing is written.
 
@@ -455,7 +455,7 @@ Sandbox re-imports while no editor has written there (#3234). Staging (#3229) an
    A one-shot form also works when the command needs no quoting, e.g. `--command "node dist/src/import-estate.js --forms-api <origin> --dry-run"`; for a forced run as a one-shot, wrap it as `--command "/bin/sh -c 'node dist/src/import-estate.js --forms-api <origin> --force \"<reason>\"'"` and confirm the quoting on sandbox before relying on it.
 
 4. Record it on the import issue (#3234, #3229 or #3230): paste the refusal line, if there was one, the `visibility_changes` line, the dry run's JSON line and the real run's JSON line, which names the `source` hash and any `--force` reason. The `change_events` rows it wrote are by `system` and carry `occurred_at`.
-5. Smoke from your machine. Expected visibility is the post-overlay level: `estate.json`'s, changed as the dry run's `visibility_changes` listed (#3235 scripts this check). Every `public` page in `estate.json` returns 200 from `GET /pages?url=`; `preview` pages return 200 only with the `x-preview-token` header (the task's `PREVIEW_SECRET`); `draft` pages are never served by that endpoint.
+5. Smoke from your machine. Expected visibility is the post-overlay level: `estate.json`'s, changed as the dry run's `visibility_changes` listed, and a page is served at the most restrictive level of itself and its ancestors (#3235 scripts this check). A page that is `public` after the overlay, with every ancestor `public` too, returns 200 from `GET /pages?url=`; one whose effective level is `preview` returns 200 only with the `x-preview-token` header (the task's `PREVIEW_SECRET`); `draft` is never served by that endpoint. The loop below checks the `public` pages in `estate.json`, so a 404 from a page lowered in `visibility_changes`, or from a child of one, is expected.
 
    ```sh
    API=https://<api origin>
