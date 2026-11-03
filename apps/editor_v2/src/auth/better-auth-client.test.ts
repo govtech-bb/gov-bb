@@ -54,20 +54,20 @@ describe("Better Auth HTTP client", () => {
     status = 200;
   });
 
-  it("initiates GitHub OAuth with safe explicit success and error callbacks", async () => {
+  it("initiates Google OAuth with safe explicit success and error callbacks", async () => {
     response = JSON.stringify({
-      url: "https://github.com/login/oauth/authorize?state=test",
+      url: "https://accounts.google.com/o/oauth2/v2/auth?state=test",
       redirect: true,
     });
     const auth = createEditorAuth(origin, Date.now);
     expect(await auth.signIn("https://editor.govtech.bb", "/services/a/b")).toEqual({
       ok: true,
-      value: "https://github.com/login/oauth/authorize?state=test",
+      value: "https://accounts.google.com/o/oauth2/v2/auth?state=test",
     });
     const request = requests.at(-1);
     expect(request?.method).toBe("POST");
     expect(JSON.parse(request?.body ?? "null")).toEqual({
-      provider: "github",
+      provider: "google",
       disableRedirect: true,
       callbackURL: "https://editor.govtech.bb/auth?state=complete&returnTo=%2Fservices%2Fa%2Fb",
       errorCallbackURL: "https://editor.govtech.bb/auth?state=error&returnTo=%2Fservices%2Fa%2Fb",
@@ -75,11 +75,11 @@ describe("Better Auth HTTP client", () => {
 
     for (const url of [
       "https://evil.example",
-      "https://accounts.google.com/o/oauth2/v2/auth",
-      "https://github.com/other",
-      "https://github.com:8443/login/oauth/authorize",
-      "https://user:pass@github.com/login/oauth/authorize",
-      "http://github.com/login/oauth/authorize",
+      "https://github.com/login/oauth/authorize",
+      "https://accounts.google.com/other",
+      "https://accounts.google.com:8443/o/oauth2/v2/auth",
+      "https://user:pass@accounts.google.com/o/oauth2/v2/auth",
+      "http://accounts.google.com/o/oauth2/v2/auth",
     ]) {
       response = JSON.stringify({ url, redirect: true });
       expect(await auth.signIn("https://editor.govtech.bb", "/services")).toMatchObject({

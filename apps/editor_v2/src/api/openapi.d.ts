@@ -4886,7 +4886,7 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * GitHub sign-in and session protocol
+         * Google Workspace sign-in and session protocol
          * @description Better Auth owns the endpoints under this prefix. Responses are never cached.
          */
         get: {
@@ -4911,7 +4911,7 @@ export interface paths {
         };
         put?: never;
         /**
-         * GitHub sign-in and session protocol
+         * Google Workspace sign-in and session protocol
          * @description Better Auth owns the endpoints under this prefix. Responses are never cached.
          */
         post: {
