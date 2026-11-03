@@ -18,6 +18,7 @@ import type { SubmitDto } from "./submissions.types";
 import { makeSubmissionEntity as makeEntity } from "./__fixtures__/form-submission";
 import type { ExpressionsService } from "@/expressions/expressions.service";
 import type { CatchmentRoutingService } from "@/catchment/catchment-routing.service";
+import type { FormDefinitionsService } from "@/forms/form-definitions/form-definitions.service";
 import { PARISH_ROUTING_POINTS } from "@/catchment/parish-routing-point";
 
 function makeExpressions(
@@ -94,10 +95,13 @@ function makeMocks(options: MakeMocksOptions = {}) {
       contract: { processors },
       auditTrail: AUDIT_TRAIL,
     }),
-    // Only the idempotency-replay path calls this, to re-derive the polyclinic
-    // from the stored values. Defaults to a non-routed contract.
-    resolveContract: vi.fn().mockResolvedValue({ processors }),
   } as unknown as SubmissionPipelineService;
+
+  // Only the idempotency-replay path reads the recipe here, to re-derive the
+  // polyclinic and trackable. Defaults to a non-routed contract.
+  const formDefs = {
+    findByFormId: vi.fn().mockResolvedValue({ processors }),
+  } as unknown as FormDefinitionsService;
 
   const eventEmitter = {
     emit: vi.fn(),
@@ -114,11 +118,13 @@ function makeMocks(options: MakeMocksOptions = {}) {
     processorFactory,
     expressions,
     catchmentRouting,
+    formDefs,
   );
   return {
     txRepo,
     submissionRepo,
     pipeline,
+    formDefs,
     eventEmitter,
     processorFactory,
     catchmentRouting,
@@ -286,6 +292,7 @@ describe("SubmissionsService", () => {
         } as unknown as ProcessorFactory,
         expressions,
         makeCatchmentRouting(),
+        {} as FormDefinitionsService,
       );
 
       const result = await service.submit(BASE_DTO);
@@ -328,6 +335,7 @@ describe("SubmissionsService", () => {
         processorFactory,
         customExpressions,
         makeCatchmentRouting(),
+        {} as FormDefinitionsService,
       );
 
       await service.submit(BASE_DTO);
@@ -370,11 +378,11 @@ describe("SubmissionsService", () => {
         polyclinicContact:
           "Randal Phillips Polyclinic - [(246) 536-4338](tel:+12465364338), [RPPC.EHD@health.gov.bb](mailto:RPPC.EHD@health.gov.bb)",
       }));
-      const { pipeline, service } = makeMocks({
+      const { formDefs, service } = makeMocks({
         existingEntity: existing,
         catchmentRouting,
       });
-      pipeline.resolveContract = vi.fn().mockResolvedValue({
+      formDefs.findByFormId = vi.fn().mockResolvedValue({
         processors: [],
         catchmentRouting: {
           coordinatesField: "event-details.event-address-coordinates",
@@ -396,8 +404,8 @@ describe("SubmissionsService", () => {
     // and warn, rather than turning a refresh into an error.
     it("still replays when the recipe can no longer be resolved", async () => {
       const existing = makeEntity({ status: FormSubmissionStatus.SUBMITTED });
-      const { pipeline, service } = makeMocks({ existingEntity: existing });
-      pipeline.resolveContract = vi
+      const { formDefs, service } = makeMocks({ existingEntity: existing });
+      formDefs.findByFormId = vi
         .fn()
         .mockRejectedValue(new Error("recipe gone"));
 
@@ -590,6 +598,7 @@ describe("SubmissionsService", () => {
         processorFactory,
         expressions,
         makeCatchmentRouting(),
+        {} as FormDefinitionsService,
       );
       return { txRepo, service, eventEmitter, processorFactory };
     }
@@ -1255,5 +1264,76 @@ describe("reference-code prefix from the recipe (#2318)", () => {
 
     // formId "test-form" → TF
     expect(mintedReference(txRepo)).toMatch(/^TF-\d{4}-[0-9A-HJKMNP-TV-Z]{7}$/);
+  });
+});
+
+// Whether the form sends to CaMS, so the chat's receipt can offer tracking
+// (#3419, govbb-chatbot#175). Read from the recipe, never from which processors
+// happened to fire, so a smoke or payment-pending submission reports its form.
+describe("trackable on the submit result (#3419)", () => {
+  const CAMS = [
+    { type: "webhook", config: { mapping: { programmeCode: "MOH" } } },
+  ];
+  const NOT_CAMS = [{ type: "webhook", config: { url: "https://hook" } }];
+
+  it("is true for a new submission to a CaMS form", async () => {
+    const { service } = makeMocks({ processors: CAMS });
+    const result = await service.submit(BASE_DTO);
+    expect(result.trackable).toBe(true);
+  });
+
+  it("is false for a new submission to any other form", async () => {
+    const { service } = makeMocks({ processors: NOT_CAMS });
+    const result = await service.submit(BASE_DTO);
+    expect(result.trackable).toBe(false);
+  });
+
+  it("follows the recipe for a smoke submission, whose processors are dropped", async () => {
+    const { service } = makeMocks({ processors: CAMS });
+    const result = await service.submit({
+      ...BASE_DTO,
+      isSmokeSubmission: true,
+    });
+    expect(result.trackable).toBe(true);
+  });
+
+  it("is true for a CaMS form waiting on payment", async () => {
+    const gating = {
+      type: "payment",
+      gatesPipeline: true,
+      process: vi.fn().mockResolvedValue({ kind: "completed" }),
+    } as unknown as ISubmissionProcessor;
+    const { service } = makeMocks({ processors: CAMS, gating: [gating] });
+    const result = await service.submit(BASE_DTO);
+    expect(result.message).toBe("Payment required");
+    expect(result.trackable).toBe(true);
+  });
+
+  it("is re-derived on an idempotency replay, so a retry shows the same receipt", async () => {
+    const { formDefs, service } = makeMocks({
+      existingEntity: makeEntity({ status: FormSubmissionStatus.SUBMITTED }),
+      processors: CAMS,
+    });
+    const result = await service.submit(BASE_DTO);
+    expect(result.outcome).toBe("duplicate");
+    expect(result.trackable).toBe(true);
+    // The submission was already accepted, so the visibility gate for new
+    // submissions doesn't apply: a preview-only form (how CaMS forms are tested
+    // in sandbox) must still resolve on a retry. Found end to end.
+    expect(formDefs.findByFormId as Mock).toHaveBeenCalledWith({
+      formId: "test-form",
+      includeProcessors: true,
+      bypassVisibility: true,
+    });
+  });
+
+  it("is left out of a replay whose recipe no longer resolves: unknown, not false", async () => {
+    const { formDefs, service } = makeMocks({
+      existingEntity: makeEntity({ status: FormSubmissionStatus.SUBMITTED }),
+    });
+    formDefs.findByFormId = vi.fn().mockRejectedValue(new Error("recipe gone"));
+    const result = await service.submit(BASE_DTO);
+    expect(result.outcome).toBe("duplicate");
+    expect("trackable" in result).toBe(false);
   });
 });

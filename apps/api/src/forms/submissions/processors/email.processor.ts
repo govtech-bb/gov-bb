@@ -24,6 +24,7 @@ import type { SubmissionCreatedEvent } from "../submissions.types";
 import { FormConfigService } from "@/forms/form-config/form-config.service";
 import { CatchmentContactService } from "@/catchment/catchment-contact.service";
 import { NonRetryableError } from "./non-retryable-error";
+import { sendsToCams } from "./webhook-mapping";
 import { redactPii } from "@/common/log-sanitize";
 import { NotificationLogRepository } from "../notification-log.repository";
 import { NotificationOutcome } from "@/database/entities/notification-log.entity";
@@ -522,9 +523,7 @@ export class EmailProcessor implements ISubmissionProcessor {
       // them only for that template.
       ctx.coatOfArmsUrl = this.mailer.coatOfArmsUrl;
       if (templateId === RECEIVED_TEMPLATE) {
-        ctx.trackable = payload.processors.some(
-          (p) => p.type === "webhook" && Boolean(p.config.mapping),
-        );
+        ctx.trackable = sendsToCams(payload.processors);
         ctx.departmentName =
           (await this.formConfigService.resolveDepartmentName(
             payload.formId,

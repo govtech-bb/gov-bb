@@ -137,6 +137,13 @@ const baseSchema = z
     // a root-relative link, which would be dead in the applicant's email.
     LANDING_BASE_URL: urlOrEmpty().default(""),
 
+    // The application tracker's lookup API (alpha-infra
+    // `lookup_api_endpoint`), read for CaMS statuses by the chat's status
+    // lookup (#3419). AWS_IAM-authorised, so requests are SigV4-signed, except
+    // to a local address (the tracker's `pnpm local:api`). Empty = CaMS
+    // lookups answer 503.
+    TRACKER_LOOKUP_API_URL: urlOrEmpty().default(""),
+
     // EzPay (EZPAY_WEBHOOK_SECRET required only when verify-signature is on)
     EZPAY_BASE_URL: z.url(),
     EZPAY_DEPARTMENT_API_KEYS: requiredStr(),

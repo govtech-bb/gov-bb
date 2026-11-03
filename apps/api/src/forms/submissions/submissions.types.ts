@@ -186,6 +186,13 @@ export interface SubmitResult {
    * reads the shared all-clinics fallback.
    */
   resolvedPolyclinicContact?: string;
+  /**
+   * Whether the form sends to CaMS, so the application tracker can find this
+   * reference and the chat's receipt can offer tracking (#3419). Read from the
+   * recipe. Always set on a new submission; absent on a replay whose recipe no
+   * longer resolves (unknown, not false).
+   */
+  trackable?: boolean;
   deferred?: {
     paymentUrl: string;
     paymentId: string;

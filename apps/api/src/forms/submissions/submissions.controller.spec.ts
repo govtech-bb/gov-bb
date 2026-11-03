@@ -161,6 +161,44 @@ describe("SubmissionsController", () => {
       expect("meta" in result).toBe(false);
     });
 
+    it("includes meta.trackable when the service says the form is trackable (#3419)", async () => {
+      (service.submit as Mock).mockResolvedValue({
+        data: makeEntity(),
+        message: "Submission created",
+        statusCode: HttpStatus.CREATED,
+        trackable: true,
+      });
+
+      const result = await controller.create(
+        "key-abc",
+        undefined,
+        undefined,
+        baseDto,
+      );
+
+      expect(result.meta).toEqual({ trackable: true });
+    });
+
+    // false is an answer ("this form isn't tracked"), so it is sent, unlike an
+    // absent value, which means the service could not tell.
+    it("includes meta.trackable when it is false", async () => {
+      (service.submit as Mock).mockResolvedValue({
+        data: makeEntity(),
+        message: "Submission created",
+        statusCode: HttpStatus.CREATED,
+        trackable: false,
+      });
+
+      const result = await controller.create(
+        "key-abc",
+        undefined,
+        undefined,
+        baseDto,
+      );
+
+      expect(result.meta).toEqual({ trackable: false });
+    });
+
     it("does NOT include meta when deferred is undefined/falsy", async () => {
       const entity = makeEntity();
       (service.submit as Mock).mockResolvedValue({

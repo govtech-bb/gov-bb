@@ -87,6 +87,7 @@ export class SubmissionsController {
       deferred,
       resolvedPolyclinic,
       resolvedPolyclinicContact,
+      trackable,
     } = await this.submissionsService.submit({
       ...body,
       idempotencyKey,
@@ -97,11 +98,15 @@ export class SubmissionsController {
     // Extra outcome data rides on `meta` (like `deferred`): the resolved
     // polyclinic name and its contact line let the confirmation page name the
     // Environmental Health Department the request went to and show only its
-    // contact details. Only attach `meta` when there is something to carry.
+    // contact details. `trackable` tells the chat's receipt whether to offer
+    // tracking (#3419); `false` is an answer and is sent, while an absent value
+    // means the service could not tell. Only attach `meta` when there is
+    // something to carry.
     const meta = {
       ...(deferred && { deferred }),
       ...(resolvedPolyclinic && { resolvedPolyclinic }),
       ...(resolvedPolyclinicContact && { resolvedPolyclinicContact }),
+      ...(trackable !== undefined && { trackable }),
     };
 
     // `statusCode` is the outcome the service computed (201 new / 200 replay /
