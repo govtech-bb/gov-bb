@@ -26,6 +26,7 @@ export const FORM_CATEGORIES: Record<string, string> = {
   "csec-private-candidate-registration": "education",
   "cyber-security-training": "youth-and-community",
   "duties-performed-exam-claim": "education",
+  "e2e-maintenance-check": "business-trade",
   "get-a-primary-school-textbook-grant": "money-financial-support",
   "get-birth-certificate": "family-birth-relationships",
   "get-death-certificate": "family-birth-relationships",
