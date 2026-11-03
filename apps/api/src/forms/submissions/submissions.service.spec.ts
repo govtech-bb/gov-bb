@@ -1301,13 +1301,20 @@ describe("trackable on the submit result (#3419)", () => {
   });
 
   it("is re-derived on an idempotency replay, so a retry shows the same receipt", async () => {
-    const { service } = makeMocks({
+    const { pipeline, service } = makeMocks({
       existingEntity: makeEntity({ status: FormSubmissionStatus.SUBMITTED }),
       processors: CAMS,
     });
     const result = await service.submit(BASE_DTO);
     expect(result.outcome).toBe("duplicate");
     expect(result.trackable).toBe(true);
+    // The submission was already accepted, so the visibility gate for new
+    // submissions doesn't apply: a preview-only form (how CaMS forms are tested
+    // in sandbox) must still resolve on a retry. Found end to end.
+    expect(pipeline.resolveContract as Mock).toHaveBeenCalledWith(
+      "test-form",
+      true,
+    );
   });
 
   it("is left out of a replay whose recipe no longer resolves: unknown, not false", async () => {

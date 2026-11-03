@@ -317,7 +317,12 @@ export class SubmissionsService {
     trackable?: boolean;
   }> {
     try {
-      const contract = await this.pipeline.resolveContract(submission.formId);
+      // bypassVisibility: the submission was already accepted, so the gate for
+      // new submissions doesn't apply. A preview-only form must still resolve.
+      const contract = await this.pipeline.resolveContract(
+        submission.formId,
+        true,
+      );
       const trackable = sendsToCams(contract.processors ?? []);
       const routing = contract.catchmentRouting;
       if (!routing) return { trackable };
