@@ -30,8 +30,6 @@ export const FrontmatterSchema = z.object({
   source_url: z.url().optional(),
   stage: z.enum(['alpha']).optional(),
   visibility: z.enum(VIEW_LEVELS).optional().default('public'),
-  featured: z.boolean().optional(),
-  section: z.string().optional(),
   service_type: z.enum(['digital', 'information']).optional(),
   form_id: z.string().optional(),
   keywords: SearchKeywordsSchema.optional(),

@@ -2,7 +2,6 @@
 title: "Tenant's Notice of Intention to Purchase Freehold"
 description: "If you rent a lot in a tenantry, the Tenantries Freehold Purchase Act (Cap. 239B) gives you the right to buy the freehold of that lot from your landlord. The first step is to send your landlord a written notice."
 stage: "alpha"
-featured: false
 publish_date: 2026-06-04
 category: housing
 visibility: preview

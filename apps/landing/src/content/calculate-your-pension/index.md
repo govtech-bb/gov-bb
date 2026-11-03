@@ -2,7 +2,6 @@
 title: 'Calculate your Government pension'
 description: 'Estimate your government or public sector pension. Choose between a full pension or a gratuity and a reduced pension.'
 stage: 'alpha'
-featured: false
 service_type: digital
 visibility: preview
 publish_date: 2026-05-13

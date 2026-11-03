@@ -2,7 +2,6 @@
 title: "Register for a Youth Development Programme (YDP) Community Sports Training programme"
 description: "Register for a government-run Youth Development Programme (YDP) community sports training programme in Barbados. Open to residents aged 30 and under."
 stage: "alpha"
-featured: false
 publish_date: 2026-02-06
 category: work-employment
 form_id: sports-training-programme-form-schema

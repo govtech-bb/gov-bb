@@ -36,7 +36,7 @@ You can also include proof of income for the past 3 months, but this is optional
 
 You can apply online.
 
-<a data-start-link href="/education/apply-for-a-special-education-bursary/start">Start now</a>
+<a data-start-link>Start now</a>
 
 ## What the form asks for
 

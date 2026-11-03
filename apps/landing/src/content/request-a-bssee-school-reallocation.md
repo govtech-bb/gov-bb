@@ -23,7 +23,7 @@ Submit your request within the window the Ministry announces after the BSSEE res
 
 You can complete the online form.
 
-<a data-start-link href="/education/request-a-bssee-school-reallocation/start">Start now</a>
+<a data-start-link>Start now</a>
 
 ## What the form asks for
 

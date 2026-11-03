@@ -5,7 +5,6 @@ lede: 'Working for yourself? You can be covered. Find out how much to pay, how t
 stage: 'alpha'
 visibility: preview
 service_type: digital
-featured: false
 publish_date: 2026-07-22
 categories:
   - money-financial-support
