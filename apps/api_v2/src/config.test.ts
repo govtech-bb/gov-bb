@@ -208,6 +208,54 @@ describe("admin emails", () => {
   });
 });
 
+describe("email moves", () => {
+  const moves = (value: string) => {
+    const parsed = parseConfig({ ...required, API_V2_EMAIL_MOVES: value });
+    return parsed.ok ? parsed.value.emailMoves : parsed.error.fields;
+  };
+
+  it("are none by default", () => {
+    const parsed = parseConfig(required);
+    if (!parsed.ok) throw parsed.error;
+    expect(parsed.value.emailMoves).toEqual([]);
+  });
+
+  it("reads comma-separated old=new pairs, lowercased", () => {
+    expect(
+      moves(
+        " Ada@Gmail.com = Ada@govtech.bb, ,grace@icloud.com=grace@govtech.bb",
+      ),
+    ).toEqual([
+      { from: "ada@gmail.com", to: "ada@govtech.bb" },
+      { from: "grace@icloud.com", to: "grace@govtech.bb" },
+    ]);
+  });
+
+  it.each([
+    "ada@gmail.com",
+    "ada=ada@govtech.bb",
+    "ada@gmail.com=ada@gmail.org",
+    "ada@gmail.com=ada@govtech.bb=junk",
+    // The same user on both sides would be found twice and deleted.
+    "ada@govtech.bb=ada@govtech.bb",
+    "Ada@govtech.bb=ada@GovTech.bb",
+  ])("refuses %s", (value) => {
+    expect(moves(value)).toEqual(["API_V2_EMAIL_MOVES"]);
+  });
+
+  it("keeps the addresses out of the reasons it gives", () => {
+    for (const value of [
+      "ada@gmail.com=ada@gmail.org",
+      "ada@govtech.bb=ada@govtech.bb",
+    ]) {
+      const parsed = parseConfig({ ...required, API_V2_EMAIL_MOVES: value });
+      expect(parsed.ok).toBe(false);
+      if (!parsed.ok)
+        expect(parsed.error.reasons.join(" ")).not.toMatch(/ada@/);
+    }
+  });
+});
+
 describe("review notifications", () => {
   const production = {
     ...required,
