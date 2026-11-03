@@ -52,6 +52,10 @@ export async function moveEmails(
                or ${current} = any(contributors)
             limit 1`);
           if (history.rows.length > 0) return "conflict";
+          // granted_by has no foreign key, so clear it rather than dangle.
+          await tx.execute(
+            sql`update user_roles set granted_by = null where granted_by = ${current}`,
+          );
           await tx.execute(sql`delete from auth_user where id = ${current}`);
         }
         await tx.execute(

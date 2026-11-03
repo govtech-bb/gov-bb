@@ -61,8 +61,20 @@ describe("moveEmails", () => {
         ('new-user', 'Member', 'member@govtech.bb', true);
       insert into auth_account (id, "accountId", "providerId", "userId", "updatedAt") values
         ('google-account', 'google-id', 'google', 'new-user', now());
-      insert into user_roles (user_id, role) values ('new-user', 'editor');`);
+      insert into user_roles (user_id, role) values ('new-user', 'editor');
+      insert into user_roles (user_id, role, granted_by) values ('old-user', 'editor', 'new-user');`);
     expect(await moveEmails(db, [MOVE])).toEqual(["moved"]);
+    // Its grants no longer name a user that is gone.
+    expect(
+      (
+        await db.execute(
+          sql`select role, granted_by from user_roles where user_id = 'old-user' order by role`,
+        )
+      ).rows,
+    ).toEqual([
+      { role: "approver", granted_by: null },
+      { role: "editor", granted_by: null },
+    ]);
     expect(await users()).toEqual([
       { id: "old-user", email: "member@govtech.bb" },
     ]);
