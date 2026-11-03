@@ -87,10 +87,11 @@ export async function openSmokeForm(
 }
 
 /**
- * Open a landing start page, check its "Start now" link targets `formId` on
- * `formsOrigin`, then follow it. The link is checked BEFORE the click: a
- * landing build pointing at another environment's forms host would otherwise
- * carry the smoke into that environment and submit a real application there.
+ * Open a landing start page, check its Start link ("Start now", or "Start"
+ * on the certificate pages) targets `formId` on `formsOrigin`, then follow
+ * it. The link is checked BEFORE the click: a landing build pointing at
+ * another environment's forms host would otherwise carry the smoke into that
+ * environment and submit a real application there.
  */
 export async function startFromLanding(
   page: Page,
@@ -105,10 +106,10 @@ export async function startFromLanding(
     response?.ok(),
     `${startPageUrl} returned HTTP ${response?.status()}`,
   ).toBe(true);
-  const start = page.getByRole("link", { name: /^Start now$/ });
+  const start = page.getByRole("link", { name: /^Start( now)?$/ });
   await expect(
     start,
-    `no "Start now" link on ${startPageUrl} — landing hides it when ` +
+    `no Start link on ${startPageUrl} — landing hides it when ` +
       `"${formId}" is unavailable (not public, closed or disabled)`,
   ).toBeVisible({ timeout: STEP_TIMEOUT });
 
@@ -116,7 +117,7 @@ export async function startFromLanding(
   const expected = `${formsOrigin}/forms/${formId}`;
   expect(
     `${target.origin}${target.pathname}`,
-    `"Start now" on ${startPageUrl} points at ${target.href}`,
+    `the Start link on ${startPageUrl} points at ${target.href}`,
   ).toBe(expected);
 
   await start.click();

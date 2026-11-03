@@ -19,9 +19,13 @@ const START_PATH = "/work-employment/master/start";
 const START_URL = `${LANDING}${START_PATH}`;
 
 /** Serve a landing start page whose only button is `link` (or none). */
-async function serveStartPage(page: Page, link: string | null): Promise<void> {
+async function serveStartPage(
+  page: Page,
+  link: string | null,
+  label = "Start now",
+): Promise<void> {
   const button = link
-    ? `<a class="govbb-button" href="${link}">Start now</a>`
+    ? `<a class="govbb-button" href="${link}">${label}</a>`
     : "";
   await page.route(`${LANDING}/**`, (route) =>
     route.fulfill({
@@ -43,6 +47,19 @@ test.describe("smoke landing hop", () => {
 
     expect(new URL(page.url()).pathname).toBe("/forms/master");
     await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+  });
+
+  // The certificate start pages label the button "Start" (#3398).
+  test("also follows a button labelled just Start", async ({
+    page,
+    baseURL,
+  }) => {
+    const formsOrigin = new URL(baseURL!).origin;
+    await serveStartPage(page, `${formsOrigin}/forms/master`, "Start");
+
+    await startFromLanding(page, START_URL, formsOrigin, "master");
+
+    expect(new URL(page.url()).pathname).toBe("/forms/master");
   });
 
   test("fails on a Start link to another host, without following it", async ({
