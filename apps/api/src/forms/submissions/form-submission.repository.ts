@@ -24,18 +24,10 @@ export class FormSubmissionRepository extends BaseRepository<FormSubmissionEntit
    */
   findByReference(
     referenceCode: string,
-  ): Promise<Pick<
-    FormSubmissionEntity,
-    "referenceCode" | "formId" | "status" | "submittedAt"
-  > | null> {
+  ): Promise<Pick<FormSubmissionEntity, "formId" | "submittedAt"> | null> {
     return this.findOne({
       where: { referenceCode },
-      select: {
-        referenceCode: true,
-        formId: true,
-        status: true,
-        submittedAt: true,
-      },
+      select: { formId: true, submittedAt: true },
     });
   }
 }

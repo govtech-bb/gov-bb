@@ -145,9 +145,7 @@ describe("FormSubmissionRepository", () => {
       const repo = new FormSubmissionRepository(dataSource);
 
       const row = {
-        referenceCode: "MOH-TRL-2610-47E4AD6",
         formId: "food-handlers-permit",
-        status: "submitted",
         submittedAt: new Date("2026-10-21T18:28:00Z"),
       };
       const findOne = vi.fn().mockResolvedValue(row);
@@ -159,12 +157,7 @@ describe("FormSubmissionRepository", () => {
       // Never `values` or `meta`: they hold the applicant's answers.
       expect(findOne).toHaveBeenCalledWith({
         where: { referenceCode: "MOH-TRL-2610-47E4AD6" },
-        select: {
-          referenceCode: true,
-          formId: true,
-          status: true,
-          submittedAt: true,
-        },
+        select: { formId: true, submittedAt: true },
       });
     });
 

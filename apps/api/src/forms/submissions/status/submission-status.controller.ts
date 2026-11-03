@@ -10,7 +10,8 @@ import {
 /**
  * Where an application has got to, for the chat (#3419). An unauthenticated
  * public read, like the application tracker: the reference is the access.
- * Always 200 with an answer; 503 when the answer can't be worked out.
+ * 200 with an answer; 503 when the tracker can't answer. Anything unexpected
+ * (the database is down) is a 500. The chat treats every non-2xx the same.
  */
 @ApiTags("Submissions")
 @Controller("submissions")
