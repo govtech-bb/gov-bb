@@ -157,12 +157,14 @@ const environment = z
           .split(",")
           .map((pair) => pair.trim().toLowerCase())
           .filter(Boolean)
-          .map((pair) => {
-            const [from, to] = pair.split("=").map((email) => email.trim());
-            return { from, to };
-          }),
+          .map((pair) => pair.split("=").map((email) => email.trim())),
       )
-      .pipe(z.array(z.object({ from: z.email(), to: z.email() }))),
+      // Exactly one "=" per pair, so a pasted typo is refused, not trimmed.
+      .pipe(
+        z
+          .array(z.tuple([z.email(), z.email()]))
+          .transform((pairs) => pairs.map(([from, to]) => ({ from, to }))),
+      ),
     // Off by default: an environment turns review emails on (#3267).
     REVIEW_NOTIFICATIONS: z.enum(["off", "log", "ses"]).default("off"),
     // The same sender settings as apps/api's SES mailer.
@@ -193,14 +195,6 @@ const environment = z
         message:
           "Auth can only be bypassed for a local editor outside production",
       });
-    // A move to an address Google won't admit would strand the user.
-    for (const { to } of value.API_V2_EMAIL_MOVES)
-      if (!value.GOOGLE_ALLOWED_DOMAINS.includes(to.slice(to.indexOf("@") + 1)))
-        context.addIssue({
-          code: "custom",
-          path: ["API_V2_EMAIL_MOVES"],
-          message: `Move users to an address on GOOGLE_ALLOWED_DOMAINS, not ${to}`,
-        });
     if (value.REVIEW_NOTIFICATIONS === "ses" && !value.SES_FROM_ADDRESS)
       context.addIssue({
         code: "custom",
@@ -232,7 +226,33 @@ const environment = z
           message: "Production origins require HTTPS",
         });
     }
-  });
+  })
+  .superRefine(
+    (value, context) => {
+      // The messages name no address: they reach the boot log.
+      for (const { from, to } of value.API_V2_EMAIL_MOVES) {
+        // Both sides would find the same user, and the move would delete it.
+        if (from === to)
+          context.addIssue({
+            code: "custom",
+            path: ["API_V2_EMAIL_MOVES"],
+            message:
+              "Each API_V2_EMAIL_MOVES pair needs two different addresses",
+          });
+        // A move to an address Google won't admit would strand the user.
+        if (
+          !value.GOOGLE_ALLOWED_DOMAINS.includes(to.slice(to.indexOf("@") + 1))
+        )
+          context.addIssue({
+            code: "custom",
+            path: ["API_V2_EMAIL_MOVES"],
+            message: "Move users only to an address on GOOGLE_ALLOWED_DOMAINS",
+          });
+      }
+    },
+    // Only once every pair parsed: a malformed one has no addresses to check.
+    { when: (payload) => payload.issues.length === 0 },
+  );
 
 /** Parse the root's environment once and retain only typed, redacted settings. */
 export function parseConfig(

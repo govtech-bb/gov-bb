@@ -235,8 +235,24 @@ describe("email moves", () => {
     "ada@gmail.com",
     "ada=ada@govtech.bb",
     "ada@gmail.com=ada@gmail.org",
+    "ada@gmail.com=ada@govtech.bb=junk",
+    // The same user on both sides would be found twice and deleted.
+    "ada@govtech.bb=ada@govtech.bb",
+    "Ada@govtech.bb=ada@GovTech.bb",
   ])("refuses %s", (value) => {
     expect(moves(value)).toEqual(["API_V2_EMAIL_MOVES"]);
+  });
+
+  it("keeps the addresses out of the reasons it gives", () => {
+    for (const value of [
+      "ada@gmail.com=ada@gmail.org",
+      "ada@govtech.bb=ada@govtech.bb",
+    ]) {
+      const parsed = parseConfig({ ...required, API_V2_EMAIL_MOVES: value });
+      expect(parsed.ok).toBe(false);
+      if (!parsed.ok)
+        expect(parsed.error.reasons.join(" ")).not.toMatch(/ada@/);
+    }
   });
 });
 
