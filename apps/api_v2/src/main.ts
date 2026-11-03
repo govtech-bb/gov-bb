@@ -8,6 +8,7 @@ import { PostgresCollections } from "./adapters/postgres-collections";
 import { mailerFor } from "./adapters/mail";
 import { PostgresPages } from "./adapters/postgres-pages";
 import { PostgresReviewRecipients } from "./adapters/postgres-review-recipients";
+import { moveEmails } from "./adapters/postgres-email-moves";
 import { PostgresRoles } from "./adapters/postgres-roles";
 import { parseConfig } from "./config";
 import { connect, createPool, ping, type DatabaseFailure } from "./db";
@@ -95,6 +96,13 @@ async function main(): Promise<void> {
       const counts = await seed(db);
       if (Object.values(counts).some((n) => n > 0))
         logger.info(counts, "seeded the estate");
+    }
+    if (config.emailMoves.length > 0) {
+      operation = "email moves";
+      // In API_V2_EMAIL_MOVES order; no emails in the log.
+      const outcomes = await moveEmails(db, config.emailMoves);
+      const level = outcomes.includes("conflict") ? "error" : "info";
+      logger[level]({ outcomes }, "applied API_V2_EMAIL_MOVES");
     }
     if (shutdown.signal.aborted) return;
     operation = "auth";

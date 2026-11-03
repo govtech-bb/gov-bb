@@ -44,6 +44,7 @@ const ALL = [
   "018_snapshot_version",
   "019_change_events_redaction",
   "020_google_sessions",
+  "021_github_accounts",
 ];
 
 /** Tables whose rows are not content, so the history does not record them. */
@@ -152,6 +153,7 @@ describe("migrate", () => {
       "018_snapshot_version",
       "019_change_events_redaction",
       "020_google_sessions",
+      "021_github_accounts",
     ]);
     const pages = await exec("select count(*)::int as n from content_pages");
     expect(pages.rows).toEqual([{ n: 0 }]);
@@ -193,6 +195,7 @@ describe("migrate", () => {
       "018_snapshot_version",
       "019_change_events_redaction",
       "020_google_sessions",
+      "021_github_accounts",
     ]);
     await exec(
       `insert into categories (slug, title) values ('c', 'C');
@@ -311,6 +314,38 @@ describe("migrate", () => {
     ).toEqual([{ id: "github-account" }, { id: "google-account" }]);
     expect((await exec("select user_id, role from user_roles")).rows).toEqual([
       { user_id: "github-user", role: "editor" },
+    ]);
+    await close();
+  });
+
+  it("deletes GitHub account links, keeping users, Google accounts, roles and sessions", async () => {
+    const { db, exec, close } = await freshDb();
+    await migrate(db, exec);
+    await exec(`
+      delete from schema_migrations where name = '021_github_accounts';
+      insert into auth_user (id, name, email, "emailVerified") values
+        ('github-user', 'GitHub user', 'member@gmail.com', true),
+        ('google-user', 'Google user', 'member@govtech.bb', true);
+      insert into auth_account (id, "accountId", "providerId", "userId", "updatedAt") values
+        ('github-account', 'github-id', 'github', 'github-user', now()),
+        ('google-account', 'google-id', 'google', 'google-user', now());
+      insert into user_roles (user_id, role) values ('github-user', 'editor');
+      insert into auth_session (id, token, "userId", "expiresAt", "updatedAt") values
+        ('google-session', 'google-token', 'google-user', now() + interval '1 hour', now());
+    `);
+    expect(await migrate(db, exec)).toEqual(["021_github_accounts"]);
+    expect((await exec("select id from auth_account")).rows).toEqual([
+      { id: "google-account" },
+    ]);
+    expect(
+      (await exec("select id from auth_user where id <> 'system' order by id"))
+        .rows,
+    ).toEqual([{ id: "github-user" }, { id: "google-user" }]);
+    expect((await exec("select user_id from user_roles")).rows).toEqual([
+      { user_id: "github-user" },
+    ]);
+    expect((await exec("select id from auth_session")).rows).toEqual([
+      { id: "google-session" },
     ]);
     await close();
   });

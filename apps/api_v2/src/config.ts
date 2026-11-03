@@ -2,6 +2,12 @@ import { z } from "zod";
 import { Redacted } from "./modules/redacted";
 import { err, ok, type Result } from "./modules/result";
 
+/** A user's old email and the Workspace address they sign in with now. */
+export interface EmailMove {
+  readonly from: string;
+  readonly to: string;
+}
+
 /** Explicit database settings, unwrapped only by the Postgres adapter. */
 export interface DatabaseConfig {
   readonly host: string;
@@ -48,6 +54,8 @@ export interface AppConfig {
   readonly auth: AuthConfig;
   /** Emails, lowercased, granted the admin role whenever they sign in. */
   readonly adminEmails: readonly string[];
+  /** GitHub-era users to move to their Workspace address on boot (#3418). */
+  readonly emailMoves: readonly EmailMove[];
   /**
    * Local development only: skip sign-in and run every editor request as a
    * fixed developer. Refused in production and unless the editor is local.
@@ -139,6 +147,22 @@ const environment = z
           .filter(Boolean),
       )
       .pipe(z.array(z.email())),
+    // Comma-separated old=new pairs: a GitHub-era user's email and their
+    // Workspace address. Applied on every boot; remove once everyone has moved.
+    API_V2_EMAIL_MOVES: z
+      .string()
+      .default("")
+      .transform((value) =>
+        value
+          .split(",")
+          .map((pair) => pair.trim().toLowerCase())
+          .filter(Boolean)
+          .map((pair) => {
+            const [from, to] = pair.split("=").map((email) => email.trim());
+            return { from, to };
+          }),
+      )
+      .pipe(z.array(z.object({ from: z.email(), to: z.email() }))),
     // Off by default: an environment turns review emails on (#3267).
     REVIEW_NOTIFICATIONS: z.enum(["off", "log", "ses"]).default("off"),
     // The same sender settings as apps/api's SES mailer.
@@ -169,6 +193,14 @@ const environment = z
         message:
           "Auth can only be bypassed for a local editor outside production",
       });
+    // A move to an address Google won't admit would strand the user.
+    for (const { to } of value.API_V2_EMAIL_MOVES)
+      if (!value.GOOGLE_ALLOWED_DOMAINS.includes(to.slice(to.indexOf("@") + 1)))
+        context.addIssue({
+          code: "custom",
+          path: ["API_V2_EMAIL_MOVES"],
+          message: `Move users to an address on GOOGLE_ALLOWED_DOMAINS, not ${to}`,
+        });
     if (value.REVIEW_NOTIFICATIONS === "ses" && !value.SES_FROM_ADDRESS)
       context.addIssue({
         code: "custom",
@@ -245,6 +277,7 @@ export function parseConfig(
       allowedDomains: env.GOOGLE_ALLOWED_DOMAINS,
     },
     adminEmails: env.API_V2_ADMIN_EMAILS,
+    emailMoves: env.API_V2_EMAIL_MOVES,
     authBypass: env.AUTH_BYPASS === "true",
     // The refinement above refuses ses without a sender.
     notifications:
