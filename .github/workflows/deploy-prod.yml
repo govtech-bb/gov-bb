@@ -92,7 +92,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write # fast-forward the prod branch ref
-      actions: read # read staging's Journey 5 result (#3012)
+      actions: read # read staging's Journey 5 (#3012) and forms smoke (#3008) results
     outputs:
       # The SHA prod was serving BEFORE this deploy. `setup` uses it as the
       # affected base — see the rationale on its "Derive base/head SHAs" step.

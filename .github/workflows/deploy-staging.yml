@@ -541,14 +541,17 @@ jobs:
   # wrong host or form fails the run. Runs on every staging deploy, even when
   # nothing changed, because Deploy Production only ships a commit whose staging
   # run passed it (see deploy-prod.yml). Same forms and throttle budget as the
-  # sandbox matrix; keep the two lists in step.
+  # sandbox matrix, not every public form; keep the two lists in step.
   #
   # SMOKE_SUBMISSION_TOKEN_STAGING must match the staging API's
   # SMOKE_SUBMISSION_TOKEN (#3324). With a mismatch the API ignores the header
   # and every processor fires, sending real emails from staging.
   smoke-test-forms:
     name: Smoke test forms
-    needs: [setup, deploy-api, amplify-forms, amplify-landing]
+    # ssr-smoke is listed directly: when it fails, amplify-landing is skipped
+    # (not failed), so without it this would smoke the previous landing build
+    # and the prod guard would accept a commit whose landing never deployed.
+    needs: [setup, deploy-api, ssr-smoke, amplify-forms, amplify-landing]
     if: |
       always() &&
       needs.setup.result == 'success' &&
