@@ -9,6 +9,7 @@ import { AppError } from "@/common/errors";
 import { writeBusinessLog } from "@/common/business-log";
 import { isFormClosed } from "@govtech-bb/form-types";
 import { ExpressionsService } from "@/expressions/expressions.service";
+import { FormDefinitionsService } from "@/forms/form-definitions/form-definitions.service";
 import {
   CatchmentRoutingService,
   type CatchmentResolution,
@@ -47,6 +48,7 @@ export class SubmissionsService {
     private readonly processorFactory: ProcessorFactory,
     private readonly expressions: ExpressionsService,
     private readonly catchmentRouting: CatchmentRoutingService,
+    private readonly formDefs: FormDefinitionsService,
   ) {}
 
   async submit(dto: SubmitDto): Promise<SubmitResult> {
@@ -317,12 +319,14 @@ export class SubmissionsService {
     trackable?: boolean;
   }> {
     try {
-      // bypassVisibility: the submission was already accepted, so the gate for
-      // new submissions doesn't apply. A preview-only form must still resolve.
-      const contract = await this.pipeline.resolveContract(
-        submission.formId,
-        true,
-      );
+      // Read the published recipe the way the status lookup does, not through
+      // the submit path: the submission was already accepted, so neither the
+      // visibility gate nor the builder-draft check for new submissions applies.
+      const contract = await this.formDefs.findByFormId({
+        formId: submission.formId,
+        includeProcessors: true,
+        bypassVisibility: true,
+      });
       const trackable = sendsToCams(contract.processors ?? []);
       const routing = contract.catchmentRouting;
       if (!routing) return { trackable };
