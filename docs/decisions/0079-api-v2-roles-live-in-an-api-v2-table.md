@@ -71,8 +71,8 @@ user whose verified email is listed is granted `admin` whenever they sign in.
 The allowlist is how an environment always has an admin, so an admin can't
 revoke a listed admin for good; to remove one, take them off the list and
 then revoke the row. Each grant records the admin who made it. Grants that
-api_v2 makes itself (the default editor role and the allowlist) record no
-grantor.
+api_v2 makes itself (the allowlist, and the default editor role before
+#3412) record no grantor.
 
 **Roles are read on every request**, not frozen into the session at sign-in,
 so a revocation takes effect on the user's next request.
@@ -140,6 +140,12 @@ can try the whole flow.
   hours. Someone who leaves `govtech-bb` keeps their access until their
   session ends, and their role rows come back if they rejoin. Offboarding
   someone means revoking their roles as well as removing them from the org.
+
+  > **Amended 2026-11-03 ([#3412](https://github.com/govtech-bb/gov-bb/issues/3412)).**
+  > Google Workspace replaces the org: offboarding someone means suspending
+  > or deleting their Workspace account and revoking their roles. Until
+  > their session ends they keep their access, and their role rows come
+  > back if the account is restored.
 - An approver who writes a new page needs a second approver to make it
   public, as they do for a change to a public page.
 - An editor who isn't an approver can no longer change categories. They ask
