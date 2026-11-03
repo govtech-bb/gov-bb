@@ -261,6 +261,7 @@ describe("envValidationSchema", () => {
     it("defaults the allow-empty token + URL vars to empty string", () => {
       const { value } = validate({ ...baseEnv });
       expect(value?.FORMS_BASE_URL).toBe("");
+      expect(value?.TRACKER_LOOKUP_API_URL).toBe("");
       expect(value?.WEBHOOK_URL).toBe("");
       expect(value?.S3_BUCKET).toBe("");
       expect(value?.RECIPE_PREVIEW_TOKEN).toBe("");

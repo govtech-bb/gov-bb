@@ -37,6 +37,7 @@ import { CatchmentModule } from "@/catchment/catchment.module";
 import { NotificationsModule } from "@/notifications/notifications.module";
 import { SubmissionStatusController } from "./status/submission-status.controller";
 import { SubmissionStatusService } from "./status/submission-status.service";
+import { TrackerLookupClient } from "./status/tracker-lookup.client";
 
 @Module({
   imports: [
@@ -57,6 +58,7 @@ import { SubmissionStatusService } from "./status/submission-status.service";
   providers: [
     SubmissionsService,
     SubmissionStatusService,
+    TrackerLookupClient,
     ReferencePrefixAuditService,
     FormSubmissionRepository,
     NotificationLogRepository,
