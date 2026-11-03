@@ -1257,3 +1257,68 @@ describe("reference-code prefix from the recipe (#2318)", () => {
     expect(mintedReference(txRepo)).toMatch(/^TF-\d{4}-[0-9A-HJKMNP-TV-Z]{7}$/);
   });
 });
+
+// Whether the form sends to CaMS, so the chat's receipt can offer tracking
+// (#3419, govbb-chatbot#175). Read from the recipe, never from which processors
+// happened to fire, so a smoke or payment-pending submission reports its form.
+describe("trackable on the submit result (#3419)", () => {
+  const CAMS = [
+    { type: "webhook", config: { mapping: { programmeCode: "MOH" } } },
+  ];
+  const NOT_CAMS = [{ type: "webhook", config: { url: "https://hook" } }];
+
+  it("is true for a new submission to a CaMS form", async () => {
+    const { service } = makeMocks({ processors: CAMS });
+    const result = await service.submit(BASE_DTO);
+    expect(result.trackable).toBe(true);
+  });
+
+  it("is false for a new submission to any other form", async () => {
+    const { service } = makeMocks({ processors: NOT_CAMS });
+    const result = await service.submit(BASE_DTO);
+    expect(result.trackable).toBe(false);
+  });
+
+  it("follows the recipe for a smoke submission, whose processors are dropped", async () => {
+    const { service } = makeMocks({ processors: CAMS });
+    const result = await service.submit({
+      ...BASE_DTO,
+      isSmokeSubmission: true,
+    });
+    expect(result.trackable).toBe(true);
+  });
+
+  it("is true for a CaMS form waiting on payment", async () => {
+    const gating = {
+      type: "payment",
+      gatesPipeline: true,
+      process: vi.fn().mockResolvedValue({ kind: "completed" }),
+    } as unknown as ISubmissionProcessor;
+    const { service } = makeMocks({ processors: CAMS, gating: [gating] });
+    const result = await service.submit(BASE_DTO);
+    expect(result.message).toBe("Payment required");
+    expect(result.trackable).toBe(true);
+  });
+
+  it("is re-derived on an idempotency replay, so a retry shows the same receipt", async () => {
+    const { service } = makeMocks({
+      existingEntity: makeEntity({ status: FormSubmissionStatus.SUBMITTED }),
+      processors: CAMS,
+    });
+    const result = await service.submit(BASE_DTO);
+    expect(result.outcome).toBe("duplicate");
+    expect(result.trackable).toBe(true);
+  });
+
+  it("is left out of a replay whose recipe no longer resolves: unknown, not false", async () => {
+    const { pipeline, service } = makeMocks({
+      existingEntity: makeEntity({ status: FormSubmissionStatus.SUBMITTED }),
+    });
+    pipeline.resolveContract = vi
+      .fn()
+      .mockRejectedValue(new Error("recipe gone"));
+    const result = await service.submit(BASE_DTO);
+    expect(result.outcome).toBe("duplicate");
+    expect("trackable" in result).toBe(false);
+  });
+});

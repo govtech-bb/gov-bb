@@ -27,6 +27,7 @@ import {
 import {
   programmeCodeFromProcessors,
   readPath,
+  sendsToCams,
 } from "./processors/webhook-mapping";
 import type {
   SubmitDto,
@@ -65,8 +66,10 @@ export class SubmissionsService {
       // it has to name the same polyclinic (and show the same contact line) the
       // first response did — otherwise the confirmation page falls back to the
       // generic phrase for a submission that went somewhere specific. Re-derived
-      // from the stored values, which is why the coordinate is persisted.
-      const resolvedCatchment = await this.catchmentForStored(existing);
+      // from the stored values, which is why the coordinate is persisted. The
+      // same holds for `trackable`: a retry must show the same receipt.
+      const { resolvedCatchment, trackable } =
+        await this.replayOutcome(existing);
       return {
         outcome: isProcessing ? "in_progress" : "duplicate",
         data: existing,
@@ -74,6 +77,7 @@ export class SubmissionsService {
           ? "Submission is currently being processed"
           : "Submission already exists",
         statusCode: isProcessing ? HttpStatus.ACCEPTED : HttpStatus.OK,
+        ...(trackable !== undefined && { trackable }),
         ...(resolvedCatchment && {
           resolvedPolyclinic: resolvedCatchment.polyclinic,
           resolvedPolyclinicContact: resolvedCatchment.polyclinicContact,
@@ -226,6 +230,11 @@ export class SubmissionsService {
         }) ?? undefined)
       : undefined;
 
+    // Whether the chat's receipt can offer tracking (#3419). From the recipe,
+    // like the programme code above, so a smoke submission (processors dropped)
+    // or one waiting on payment (CaMS not called yet) still reports its form.
+    const trackable = sendsToCams(contract.processors ?? []);
+
     const event: SubmissionCreatedEvent = {
       submissionId: saved.id,
       referenceCode: saved.referenceCode,
@@ -273,6 +282,7 @@ export class SubmissionsService {
         message: "Payment required",
         statusCode: HttpStatus.OK,
         deferred,
+        trackable,
         ...(resolvedCatchment && {
           resolvedPolyclinic: resolvedCatchment.polyclinic,
           resolvedPolyclinicContact: resolvedCatchment.polyclinicContact,
@@ -287,6 +297,7 @@ export class SubmissionsService {
       data: saved,
       message: "Submission created",
       statusCode: HttpStatus.CREATED,
+      trackable,
       ...(resolvedCatchment && {
         resolvedPolyclinic: resolvedCatchment.polyclinic,
         resolvedPolyclinicContact: resolvedCatchment.polyclinicContact,
@@ -295,34 +306,38 @@ export class SubmissionsService {
   }
 
   /**
-   * The catchment an already-persisted submission routed to, or undefined when
-   * its form is not catchment-routed (or the recipe can no longer be resolved —
-   * a replay must not fail just because the routing lookup did).
+   * What a replay re-derives from the recipe for an already-persisted
+   * submission: the catchment it routed to (undefined when the form is not
+   * catchment-routed) and whether it is trackable. Both are undefined when the
+   * recipe can no longer be resolved — a replay must not fail just because the
+   * lookup did, and an unknown `trackable` is left out rather than sent as false.
    */
-  private async catchmentForStored(
-    submission: FormSubmissionEntity,
-  ): Promise<CatchmentResolution | undefined> {
+  private async replayOutcome(submission: FormSubmissionEntity): Promise<{
+    resolvedCatchment?: CatchmentResolution;
+    trackable?: boolean;
+  }> {
     try {
       const contract = await this.pipeline.resolveContract(submission.formId);
+      const trackable = sendsToCams(contract.processors ?? []);
       const routing = contract.catchmentRouting;
-      if (!routing) return undefined;
+      if (!routing) return { trackable };
       const values = submission.values as SubmissionValues;
-      return (
+      const resolvedCatchment =
         this.catchmentRouting.resolve({
           formId: submission.formId,
           programmeCode: programmeCodeFromProcessors(contract.processors ?? []),
           coordinates: readPath(values, routing.coordinatesField) ?? undefined,
           parish: readPath(values, routing.parishField) ?? undefined,
-        }) ?? undefined
-      );
+        }) ?? undefined;
+      return { resolvedCatchment, trackable };
     } catch (err) {
       // Degrade to the generic confirmation copy rather than failing a replay of
       // a submission the API has already accepted — but say so, because it means
       // the recipe no longer resolves for a form that has live submissions.
       this.logger.warn(
-        `[catchment] replay could not re-derive the polyclinic for submission "${submission.id}" (form "${submission.formId}"): ${String(err)}`,
+        `[replay] could not re-derive the polyclinic or trackable for submission "${submission.id}" (form "${submission.formId}"): ${String(err)}`,
       );
-      return undefined;
+      return {};
     }
   }
 
