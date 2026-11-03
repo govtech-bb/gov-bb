@@ -61,3 +61,53 @@ test proving a smoke event is suppressed.
 - Independent of all this, the bypass is inert until `SMOKE_SUBMISSION_TOKEN` is
   set on **both** the API runtime env and the GitHub Actions secret; when unset
   the header is ignored (fail-closed) and processors fire as normal.
+
+## Amendment — a smoke submission MAY webhook to a test programme (#3533)
+
+E2E Journey 4 (#3011) must follow a real submission into case-management (CaMS)
+and back. Under the decision above it cannot: a smoke submission fires no
+webhook at all. This amends the rule with **one narrow, safe exception** — it
+does not relax "zero real side-effects".
+
+**Exception.** A smoke submission may dispatch a mapped (CaMS) webhook **if, and
+only if, its recipe `mapping.programmeCode` is a reserved _test_ programme
+code** — one prefixed `E2E_` (`TEST_PROGRAMME_CODE_PREFIX`, see
+`isTestProgrammeCode` / `smokeAllowedProcessors` in `webhook-mapping.ts`). Every
+other side-effect stays suppressed for a smoke submission: email, payment, and
+**any webhook on a real programme code**.
+
+**Invariant (unchanged in spirit): a smoke submission can never create a real
+case, email a citizen, or open a payment.** It holds because:
+
+- No real MDA programme code uses the `E2E_` prefix (the convention predates this
+  — `E2E_PUBLISH_CHECK`), so the classifier cannot match a live programme.
+- The exception keys on the **static recipe `mapping.programmeCode`**, never a
+  catchment-resolved override — a catchment-routed (real health) form composes
+  its per-polyclinic code from a real base code, so it never classifies as test.
+- The gate is still the single `rawProcessors` choke point: for a smoke
+  submission, `smokeAllowedProcessors` keeps only test-programme webhooks and
+  drops everything else, so the `SubmissionProcessorListener` dispatch loop sees
+  nothing else to run.
+
+**Cross-repo dependency.** The safety of "test programme ⇒ no real case" is a
+contract with CaMS: every `E2E_`-prefixed programme code MUST be registered on
+the CaMS side as an `isTest` programme (removable via `removeTestCase`). If CaMS
+treats an `E2E_` code as a real programme, this exception would create a real
+case. Keep the two sides' definition of "test programme code" aligned.
+
+**Environment scope.** A mapped webhook resolves its URL from
+`MDA_WEBHOOK_DESTINATIONS` for the test form's ministry, so an `E2E_` smoke
+submission reaches **whatever CaMS that ministry points at in the environment
+where `SMOKE_SUBMISSION_TOKEN` is set**. J4 (#3011) runs on **staging**, whose
+destination must point at a **non-prod CaMS**. Do **not** enable the smoke token
+in prod expecting zero CaMS traffic — in prod an `E2E_` submission would post to
+the prod CaMS destination (relying solely on CaMS's `isTest` handling as the
+boundary).
+
+**Still required of every consumer.** The original obligation stands: a
+`submission.created` consumer that fires off `formId`/config rather than
+`processors[]` is not covered by the choke point. Today the only side-effect
+dispatcher is `SubmissionProcessorListener` (driven by `processors[]`), so the
+`rawProcessors` filter is sufficient; the youth-opportunity listener named above
+no longer exists. A future such consumer must honour both the smoke gate and
+this test-programme exception.
