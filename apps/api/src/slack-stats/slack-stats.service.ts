@@ -85,7 +85,7 @@ interface UmamiConfig {
 @Injectable()
 export class SlackStatsService {
   private readonly logger = new Logger(SlackStatsService.name);
-  private queue: Promise<void> = Promise.resolve();
+  private queue: Promise<unknown> = Promise.resolve();
 
   constructor(
     private readonly config: ConfigService,
@@ -111,9 +111,13 @@ export class SlackStatsService {
   /**
    * Post last week's site-wide stats to a channel's incoming webhook (the
    * Monday digest, #3491). The URL comes from config, not a request, so it
-   * isn't held to the slash-command response_url shape. Never throws.
+   * isn't held to the slash-command response_url shape. Resolves to whether
+   * Slack accepted the post. Never throws.
    */
-  postWeeklyDigest(webhookUrl: string, now: Date = new Date()): Promise<void> {
+  postWeeklyDigest(
+    webhookUrl: string,
+    now: Date = new Date(),
+  ): Promise<boolean> {
     return this.enqueue(() =>
       this.reply(
         { command: "/stats", period: "week" },
@@ -128,20 +132,21 @@ export class SlackStatsService {
   }
 
   /** Run after any reply already queued; `job` must never throw. */
-  private enqueue(job: () => Promise<void>): Promise<void> {
-    this.queue = this.queue.then(job);
-    return this.queue;
+  private enqueue<T>(job: () => Promise<T>): Promise<T> {
+    const run = this.queue.then(job);
+    this.queue = run;
+    return run;
   }
 
-  private async reply(
+  private async reply<T>(
     {
       command,
       period,
       formId,
     }: { command: string; period: StatsPeriod; formId?: string },
-    deliver: (message: SlackMessage | string) => Promise<void>,
+    deliver: (message: SlackMessage | string) => Promise<T>,
     now: Date,
-  ): Promise<void> {
+  ): Promise<T> {
     let message: SlackMessage | string;
     try {
       message = await this.buildReply(command, period, formId, now);
@@ -156,7 +161,7 @@ export class SlackStatsService {
       message =
         "⚠️ Sorry, I couldn't get the stats from Umami. Try again in a few minutes.";
     }
-    await deliver(message);
+    return deliver(message);
   }
 
   async buildReply(
@@ -387,8 +392,8 @@ export class SlackStatsService {
     });
   }
 
-  /** POST a JSON payload to Slack. Logs failures; never throws. */
-  private async send(url: string, payload: object): Promise<void> {
+  /** POST a JSON payload to Slack. Logs failures and returns whether Slack accepted it; never throws. */
+  private async send(url: string, payload: object): Promise<boolean> {
     try {
       const res = await fetch(url, {
         method: "POST",
@@ -399,12 +404,14 @@ export class SlackStatsService {
       if (!res.ok) {
         this.logger.warn(`[slack-stats] reply rejected: HTTP ${res.status}`);
       }
+      return res.ok;
     } catch (err) {
       this.logger.warn(
         `[slack-stats] reply delivery failed: ${sanitizeForLog(
           err instanceof Error ? err.message : String(err),
         )}`,
       );
+      return false;
     }
   }
 

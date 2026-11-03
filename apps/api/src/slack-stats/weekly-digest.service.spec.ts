@@ -22,7 +22,7 @@ function setup({
   };
   const stats = {
     isConfigured: vi.fn().mockReturnValue(configured),
-    postWeeklyDigest: vi.fn().mockResolvedValue(undefined),
+    postWeeklyDigest: vi.fn().mockResolvedValue(true),
   };
   const service = new WeeklyDigestService(
     { createQueryRunner: () => runner } as unknown as DataSource,
@@ -35,16 +35,53 @@ function setup({
   return { service, runner, stats };
 }
 
+/** Run the job, letting the minimum lock hold elapse. */
+async function run(service: WeeklyDigestService) {
+  const done = service.scheduled();
+  await vi.advanceTimersByTimeAsync(60_000);
+  await done;
+}
+
 describe("WeeklyDigestService.scheduled", () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
+
   it("posts the digest under the advisory lock, then releases it", async () => {
     const { service, runner, stats } = setup();
-    await service.scheduled();
+    await run(service);
     expect(stats.postWeeklyDigest).toHaveBeenCalledWith(WEBHOOK);
     expect(runner.query).toHaveBeenCalledWith(
       "SELECT pg_advisory_unlock($1)",
       expect.any(Array),
     );
     expect(runner.release).toHaveBeenCalled();
+  });
+
+  it("holds the lock for a minute even when the post is quick", async () => {
+    const { service, runner } = setup();
+    const done = service.scheduled();
+    const unlocked = () =>
+      runner.query.mock.calls.some(([sql]) => sql.includes("unlock"));
+    await vi.advanceTimersByTimeAsync(59_999);
+    expect(unlocked()).toBe(false);
+    await vi.advanceTimersByTimeAsync(1);
+    await done;
+    expect(unlocked()).toBe(true);
+  });
+
+  it("logs that the digest wasn't posted when Slack refused it", async () => {
+    const log = vi.spyOn(Logger.prototype, "log").mockImplementation(() => {});
+    const warn = vi
+      .spyOn(Logger.prototype, "warn")
+      .mockImplementation(() => {});
+    const { service, stats } = setup();
+    stats.postWeeklyDigest.mockResolvedValue(false);
+    await run(service);
+    expect(warn).toHaveBeenCalledWith("weekly stats digest not posted");
+    expect(log).not.toHaveBeenCalled();
   });
 
   it("skips when another task holds the lock", async () => {
@@ -74,6 +111,5 @@ describe("WeeklyDigestService.scheduled", () => {
     expect(stats.postWeeklyDigest).not.toHaveBeenCalled();
     expect(error).toHaveBeenCalled();
     expect(runner.release).toHaveBeenCalled();
-    error.mockRestore();
   });
 });

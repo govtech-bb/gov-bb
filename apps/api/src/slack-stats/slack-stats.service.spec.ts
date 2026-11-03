@@ -330,7 +330,7 @@ describe("SlackStatsService.postWeeklyDigest", () => {
   const posted = () => JSON.parse(fetchMock.mock.calls[0][1].body as string);
 
   it("posts last week's site-wide stats to the channel webhook", async () => {
-    await service().postWeeklyDigest(WEBHOOK, NOW);
+    await expect(service().postWeeklyDigest(WEBHOOK, NOW)).resolves.toBe(true);
     expect(fetchMock.mock.calls[0][0]).toBe(WEBHOOK);
     expect(posted().text).toMatch(/^📊 Last week:/);
     expect(posted().blocks[0].text.text).toBe("📊 Site and forms · Last week");
@@ -341,5 +341,19 @@ describe("SlackStatsService.postWeeklyDigest", () => {
     umami.stats.mockRejectedValue(new Error("Umami 500"));
     await service().postWeeklyDigest(WEBHOOK, NOW);
     expect(posted().text).toContain("couldn't get the stats");
+  });
+
+  it.each([
+    [
+      "Slack rejects the post",
+      () => fetchMock.mockResolvedValue({ ok: false, status: 404 }),
+    ],
+    [
+      "Slack is unreachable",
+      () => fetchMock.mockRejectedValue(new Error("ECONNRESET")),
+    ],
+  ])("resolves false when %s", async (_, fail) => {
+    fail();
+    await expect(service().postWeeklyDigest(WEBHOOK, NOW)).resolves.toBe(false);
   });
 });
