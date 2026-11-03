@@ -6,7 +6,7 @@ import {
 } from "@nestjs/common";
 import { FormSubmissionStatus } from "@/database/entities/form-submission.entity";
 import type { FormSubmissionRepository } from "../form-submission.repository";
-import type { SubmissionPipelineService } from "../submission-pipeline.service";
+import type { FormDefinitionsService } from "@/forms/form-definitions/form-definitions.service";
 import { SubmissionStatusService } from "./submission-status.service";
 import {
   TrackerLookupError,
@@ -28,17 +28,17 @@ function makeService(
   const repo = {
     findByReference: vi.fn().mockResolvedValue(row),
   } as unknown as FormSubmissionRepository;
-  const pipeline = {
-    resolveContract: vi.fn().mockImplementation(contract),
-  } as unknown as SubmissionPipelineService;
+  const formDefs = {
+    findByFormId: vi.fn().mockImplementation(contract),
+  } as unknown as FormDefinitionsService;
   const tracker = {
     lookup: vi.fn().mockImplementation(trackerAnswer),
   } as unknown as TrackerLookupClient;
   return {
     repo,
-    pipeline,
+    formDefs,
     tracker,
-    service: new SubmissionStatusService(repo, pipeline, tracker),
+    service: new SubmissionStatusService(repo, formDefs, tracker),
   };
 }
 
@@ -78,7 +78,7 @@ describe("SubmissionStatusService (#3419)", () => {
 
     // Waiting on payment: nothing has reached the department yet (Tarika, 3 Nov).
     it("answers not_found for a submission that was never completed", async () => {
-      const { pipeline, service } = makeService({
+      const { formDefs, service } = makeService({
         ...SUBMITTED,
         status: FormSubmissionStatus.PENDING_PAYMENT,
         submittedAt: null,
@@ -87,7 +87,7 @@ describe("SubmissionStatusService (#3419)", () => {
         kind: "not_found",
         reference: "NRA-2609-7QK2M4D",
       });
-      expect(pipeline.resolveContract as Mock).not.toHaveBeenCalled();
+      expect(formDefs.findByFormId as Mock).not.toHaveBeenCalled();
     });
   });
 
@@ -106,18 +106,21 @@ describe("SubmissionStatusService (#3419)", () => {
     // formId (#3434) lets the chat name the service and link its page, which
     // carries the department's contact details.
     it("answers untracked with the date received and the form, for a form not sent to CaMS", async () => {
-      const { pipeline, service } = makeService(SUBMITTED);
+      const { formDefs, service } = makeService(SUBMITTED);
       await expect(service.lookup("NRA-2609-7QK2M4D")).resolves.toEqual({
         kind: "untracked",
         reference: "NRA-2609-7QK2M4D",
         receivedAt: "2026-09-12T14:04:00.000Z",
         formId: "apply-for-a-thing",
       });
-      // A form taken offline still has its recipe and its submissions.
-      expect(pipeline.resolveContract as Mock).toHaveBeenCalledWith(
-        "apply-for-a-thing",
-        true,
-      );
+      // The published recipe, past the visibility gate (a form taken offline
+      // still has submissions), and never the submit path's draft check: a
+      // builder draft of a deleted form used to turn the answer into a 400.
+      expect(formDefs.findByFormId as Mock).toHaveBeenCalledWith({
+        formId: "apply-for-a-thing",
+        includeProcessors: true,
+        bypassVisibility: true,
+      });
     });
   });
 

@@ -47,7 +47,14 @@ tracker decides.
 
 **No format check on the reference.** A malformed reference takes the same
 path as an unknown one, so a guess learns nothing extra. The repository reads
-only four columns, never `values` or `meta`.
+only `form_id` and `submitted_at`, never `values` or `meta`.
+
+**The recipe comes from `FormDefinitionsService.findByFormId`, not the submit
+path.** Found in review: `SubmissionPipelineService.resolveContract` checks for
+a builder draft when the published recipe is missing, and throws a 400 if one
+exists. A deleted form that was ever opened in the builder then never reached
+the tracker. The lookup reads the published recipe the way the payment webhook
+does for an existing submission.
 
 **`trackable` is in `meta`, not `data`.** `data` is the stored submission;
 `meta` carries facts about the request, as `deferred` and `resolvedPolyclinic`

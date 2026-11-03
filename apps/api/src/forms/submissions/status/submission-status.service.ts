@@ -5,7 +5,7 @@ import {
   ServiceUnavailableException,
 } from "@nestjs/common";
 import { FormSubmissionRepository } from "../form-submission.repository";
-import { SubmissionPipelineService } from "../submission-pipeline.service";
+import { FormDefinitionsService } from "@/forms/form-definitions/form-definitions.service";
 import { sendsToCams } from "../processors/webhook-mapping";
 import {
   TrackerLookupClient,
@@ -47,7 +47,7 @@ export class SubmissionStatusService {
 
   constructor(
     private readonly submissions: FormSubmissionRepository,
-    private readonly pipeline: SubmissionPipelineService,
+    private readonly formDefs: FormDefinitionsService,
     private readonly tracker: TrackerLookupClient,
   ) {}
 
@@ -71,11 +71,15 @@ export class SubmissionStatusService {
 
     let recipeSendsToCams: boolean;
     try {
-      // bypassVisibility: a form taken offline still has live submissions.
-      const contract = await this.pipeline.resolveContract(
-        submission.formId,
-        true,
-      );
+      // The published recipe, as the payment webhook reads it for an existing
+      // submission: past the visibility gate (a form taken offline still has
+      // live submissions), and not through the submit path, whose draft check
+      // turns a deleted form that has a builder draft into a 400.
+      const contract = await this.formDefs.findByFormId({
+        formId: submission.formId,
+        includeProcessors: true,
+        bypassVisibility: true,
+      });
       recipeSendsToCams = sendsToCams(contract.processors ?? []);
     } catch (err) {
       if (!(err instanceof NotFoundException)) throw err;
