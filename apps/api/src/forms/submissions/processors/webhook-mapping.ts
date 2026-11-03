@@ -169,6 +169,50 @@ export function programmeCodeFromProcessors(
   return undefined;
 }
 
+/**
+ * Programme codes reserved for end-to-end test services (#3533). A code with
+ * this prefix must be registered on the CaMS side as an `isTest` programme, so a
+ * submission mapped to it creates a REMOVABLE test case, never a real one. No
+ * real MDA programme code uses the prefix (the convention already exists —
+ * `E2E_PUBLISH_CHECK`), so the classifier cannot match a live programme.
+ *
+ * This is the single source of truth for "is this a test programme code",
+ * consumed by the smoke-submission webhook exception (see
+ * `smokeAllowedProcessors`).
+ */
+export const TEST_PROGRAMME_CODE_PREFIX = "E2E_";
+
+/** Whether `code` is a reserved test programme code (#3533). */
+export function isTestProgrammeCode(code: string | undefined): boolean {
+  return (
+    typeof code === "string" && code.startsWith(TEST_PROGRAMME_CODE_PREFIX)
+  );
+}
+
+/**
+ * The processors a SMOKE submission is allowed to run (#3533, amends ADR 0052).
+ * A smoke submission still produces zero real side-effects — EXCEPT a mapped
+ * (CaMS) webhook whose `mapping.programmeCode` is a reserved test code
+ * ({@link isTestProgrammeCode}), so E2E J4 (#3011) can follow a submission into
+ * a CaMS test programme. Everything else — email, payment, and any webhook on a
+ * real programme — is still dropped. A smoke submission can therefore never
+ * create a real case, email a citizen, or open a payment.
+ *
+ * Keyed on the static recipe `mapping.programmeCode`, not a catchment-resolved
+ * override: a catchment-routed form composes its per-polyclinic code from a real
+ * base code, so it never classifies as test and stays suppressed.
+ */
+export function smokeAllowedProcessors<
+  T extends { type: string; config?: unknown },
+>(processors: readonly T[]): T[] {
+  return processors.filter((processor) => {
+    if (processor.type !== "webhook") return false;
+    const mapping = (processor.config as { mapping?: unknown } | undefined)
+      ?.mapping as { programmeCode?: string } | undefined;
+    return isTestProgrammeCode(mapping?.programmeCode);
+  });
+}
+
 export interface MappedCasePayload {
   code: string;
   programme_code: string;

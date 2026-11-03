@@ -1,4 +1,9 @@
-import { buildMappedCasePayload, readPath } from "./webhook-mapping";
+import {
+  buildMappedCasePayload,
+  readPath,
+  isTestProgrammeCode,
+  smokeAllowedProcessors,
+} from "./webhook-mapping";
 import type { ServiceContract, WebhookMapping } from "@govtech-bb/form-types";
 import type { SubmissionValues } from "../submissions.types";
 
@@ -483,6 +488,46 @@ describe("webhook-mapping", () => {
         "your-interest",
       ]);
       expect(payload.form_data).not.toHaveProperty("declaration");
+    });
+  });
+
+  describe("isTestProgrammeCode (#3533)", () => {
+    it("matches the reserved E2E_ prefix", () => {
+      expect(isTestProgrammeCode("E2E_MAINTENANCE_CHECK")).toBe(true);
+      expect(isTestProgrammeCode("E2E_PUBLISH_CHECK")).toBe(true);
+    });
+
+    it("does not match real MDA programme codes or missing codes", () => {
+      expect(isTestProgrammeCode("BYAC")).toBe(false);
+      expect(isTestProgrammeCode("FOOD_BUSINESS_LICENCE")).toBe(false);
+      expect(isTestProgrammeCode("")).toBe(false);
+      expect(isTestProgrammeCode(undefined)).toBe(false);
+    });
+  });
+
+  describe("smokeAllowedProcessors (#3533)", () => {
+    it("keeps only a webhook on a test programme code, dropping all else", () => {
+      const testWebhook = {
+        type: "webhook",
+        config: { mapping: { programmeCode: "E2E_X" } },
+      };
+      const kept = smokeAllowedProcessors([
+        { type: "email", config: {} },
+        { type: "payment", config: {} },
+        { type: "webhook", config: { mapping: { programmeCode: "BYAC" } } },
+        { type: "webhook", config: { url: "https://hook" } }, // no mapping
+        testWebhook,
+      ]);
+      expect(kept).toEqual([testWebhook]);
+    });
+
+    it("returns nothing when no webhook targets a test programme", () => {
+      expect(
+        smokeAllowedProcessors([
+          { type: "email", config: {} },
+          { type: "webhook", config: { mapping: { programmeCode: "BYAC" } } },
+        ]),
+      ).toEqual([]);
     });
   });
 });
