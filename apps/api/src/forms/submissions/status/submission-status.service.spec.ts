@@ -83,12 +83,15 @@ describe("SubmissionStatusService (#3419)", () => {
   describe("untracked", () => {
     // Exact equality: a field beyond the contract fails the test, so nothing
     // else about the application can leak through this answer.
-    it("answers untracked with the date received for a form not sent to CaMS", async () => {
+    // formId (#3434) lets the chat name the service and link its page, which
+    // carries the department's contact details.
+    it("answers untracked with the date received and the form, for a form not sent to CaMS", async () => {
       const { pipeline, service } = makeService(SUBMITTED);
       await expect(service.lookup("NRA-2609-7QK2M4D")).resolves.toEqual({
         kind: "untracked",
         reference: "NRA-2609-7QK2M4D",
         receivedAt: "2026-09-12T14:04:00.000Z",
+        formId: "apply-for-a-thing",
       });
       // A form taken offline still has its recipe and its submissions.
       expect(pipeline.resolveContract as Mock).toHaveBeenCalledWith(

@@ -13,7 +13,13 @@ import { sendsToCams } from "../processors/webhook-mapping";
  * applicant data, no form values.
  */
 export type SubmissionStatusAnswer =
-  | { kind: "untracked"; reference: string; receivedAt: string }
+  | {
+      kind: "untracked";
+      reference: string;
+      receivedAt: string;
+      /** So the chat can name the service and link its page (#3434). */
+      formId: string;
+    }
   | { kind: "not_found"; reference: string };
 
 /**
@@ -59,6 +65,7 @@ export class SubmissionStatusService {
       kind: "untracked",
       reference,
       receivedAt: submission.submittedAt.toISOString(),
+      formId: submission.formId,
     };
   }
 }
