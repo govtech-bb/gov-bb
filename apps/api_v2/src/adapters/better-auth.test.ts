@@ -3,15 +3,7 @@ import { sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 import pino from "pino";
-import {
-  afterAll,
-  afterEach,
-  beforeAll,
-  describe,
-  expect,
-  it,
-  vi,
-} from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { parseConfig, type AuthConfig } from "../config";
 import type { Database } from "../db";
 import { createTestDb } from "../test-db";
@@ -28,138 +20,180 @@ beforeAll(() => {
     BETTER_AUTH_URL: "http://localhost:3020",
     EDITOR_ORIGIN: "http://localhost:3000",
     BETTER_AUTH_SECRET: "test-secret-with-at-least-32-characters",
-    GITHUB_CLIENT_ID: "test-client",
-    GITHUB_CLIENT_SECRET: "test-client-secret",
+    GOOGLE_CLIENT_ID: "test-client",
+    GOOGLE_CLIENT_SECRET: "test-client-secret",
+    GOOGLE_ALLOWED_DOMAINS: "govtech.bb",
     API_V2_ADMIN_EMAILS: "admin@govtech.bb",
   });
   if (!config.ok) throw config.error;
   authConfig = config.value.auth;
   auth = authWith(authConfig);
 });
-afterEach(() => vi.unstubAllGlobals());
 afterAll(() => pool.end());
 
-describe("GitHub provider boundary", () => {
+// An unsigned ID token: getUserInfo only decodes it, because it came straight
+// from Google's token endpoint during the code exchange.
+const idToken = (claims: object) =>
+  [{ alg: "none" }, claims, "signature"]
+    .map((part) =>
+      typeof part === "string"
+        ? part
+        : Buffer.from(JSON.stringify(part)).toString("base64url"),
+    )
+    .join(".");
+
+describe("Google provider boundary", () => {
   it.each([
-    { status: 200, state: "active", verified: true, admitted: true },
-    { status: 200, state: "pending", verified: true, admitted: false },
-    { status: 200, state: "active", verified: false, admitted: false },
-    { status: 404, state: "active", verified: true, admitted: false },
-    { status: 403, state: "active", verified: true, admitted: false },
-    { status: 503, state: "active", verified: true, admitted: false },
+    {
+      hd: "govtech.bb",
+      email: "member@govtech.bb",
+      verified: true,
+      admitted: true,
+    },
+    {
+      hd: "govtech.bb",
+      email: "member@govtech.bb",
+      verified: false,
+      admitted: false,
+    },
+    {
+      hd: undefined,
+      email: "member@gmail.com",
+      verified: true,
+      admitted: false,
+    },
+    {
+      hd: "example.com",
+      email: "member@example.com",
+      verified: true,
+      admitted: false,
+    },
   ])(
-    "checks private email and active membership: %j",
-    async ({ status, state, verified, admitted }) => {
-      const fetch = vi.fn(
-        async (input: string | URL | Request, init?: RequestInit) => {
-          const url = String(input);
-          expect(new Headers(init?.headers).get("authorization")).toBe(
-            "Bearer test-token",
-          );
-          if (url === "https://api.github.com/user")
-            return Response.json({
-              id: 123,
-              login: "member",
-              name: "Member",
-              email: null,
-            });
-          if (url === "https://api.github.com/user/emails")
-            return Response.json([
-              { email: "member@example.com", primary: true, verified },
-            ]);
-          expect(url).toBe(
-            "https://api.github.com/user/memberships/orgs/govtech-bb",
-          );
-          return Response.json(
-            { state, organization: { login: "govtech-bb" } },
-            { status },
-          );
-        },
+    "admits only a verified account on an allowed Workspace domain: %j",
+    async ({ hd, email, verified, admitted }) => {
+      const provider = (await auth.$context).socialProviders.find(
+        (provider) => provider.id === "google",
       );
-      vi.stubGlobal("fetch", fetch);
-      const identity = await auth.options.socialProviders.github.getUserInfo({
-        accessToken: "test-token",
+      if (!provider) throw new Error("Google provider is missing");
+      const identity = await provider.getUserInfo({
+        idToken: idToken({
+          sub: "123",
+          email,
+          email_verified: verified,
+          hd,
+          name: "Member",
+        }),
         tokenType: "bearer",
       });
-      expect(identity?.user).toMatchObject({
-        email: "member@example.com",
-        emailVerified: verified,
-      });
-      if (!identity) throw new Error("Expected a GitHub identity");
       for (const action of [
         "create-user",
         "sign-in",
         "link-account",
       ] as const) {
-        const result = auth.options.user.validateUserInfo({
-          user: {
-            email: identity.user.email ?? undefined,
-            emailVerified: identity.user.emailVerified,
-          },
-          source: {
-            method: "oauth",
-            action,
-            oauth: { providerId: "github", profile: identity.data },
-          },
-        });
+        const result = identity
+          ? auth.options.user.validateUserInfo({
+              user: {
+                email: identity.user.email ?? undefined,
+                emailVerified: identity.user.emailVerified,
+              },
+              source: {
+                method: "oauth",
+                action,
+                oauth: {
+                  providerId: "google",
+                  profile: identity.data as Record<string, unknown>,
+                },
+              },
+            })
+          : { error: "provider_refused" };
         if (admitted) expect(result).toBeUndefined();
-        else
-          expect(result).toMatchObject({ error: "organization_access_denied" });
+        else expect(result).toHaveProperty("error");
       }
-      expect(fetch).toHaveBeenCalledTimes(3);
     },
   );
 
-  it("requests email and org access with PKCE and the GitHub callback", async () => {
+  it("refuses an account outside the allowed domains even if the provider returns it", () => {
+    const result = auth.options.user.validateUserInfo({
+      user: { email: "member@example.com", emailVerified: true },
+      source: {
+        method: "oauth",
+        action: "create-user",
+        oauth: {
+          providerId: "google",
+          profile: {
+            email: "member@example.com",
+            email_verified: true,
+            hd: "example.com",
+          },
+        },
+      },
+    });
+    expect(result).toMatchObject({ error: "organization_access_denied" });
+  });
+
+  it("requests only openid, email and profile with PKCE, the Google callback and the domain hint", async () => {
     const context = await auth.$context;
     const provider = context.socialProviders.find(
-      (provider) => provider.id === "github",
+      (provider) => provider.id === "google",
     );
-    if (!provider) throw new Error("GitHub provider is missing");
+    if (!provider) throw new Error("Google provider is missing");
     const url = await provider.createAuthorizationURL({
       state: "test-state",
       codeVerifier: "test-code-verifier",
-      redirectURI: "http://localhost:3020/api/auth/callback/github",
+      redirectURI: "http://localhost:3020/api/auth/callback/google",
     });
     expect(url.origin + url.pathname).toBe(
-      "https://github.com/login/oauth/authorize",
+      "https://accounts.google.com/o/oauth2/v2/auth",
     );
-    expect(url.searchParams.get("scope")?.split(" ")).toEqual(
-      expect.arrayContaining(["read:user", "user:email", "read:org"]),
-    );
+    expect(url.searchParams.get("scope")?.split(" ").sort()).toEqual([
+      "email",
+      "openid",
+      "profile",
+    ]);
     expect(url.searchParams.get("code_challenge")).toBeTruthy();
     expect(url.searchParams.get("code_challenge_method")).toBe("S256");
     expect(url.searchParams.get("redirect_uri")).toBe(
-      "http://localhost:3020/api/auth/callback/github",
+      "http://localhost:3020/api/auth/callback/google",
     );
+    expect(url.searchParams.get("hd")).toBe("govtech.bb");
     expect(context.socialProviders.map((provider) => provider.id)).toEqual([
-      "github",
+      "google",
     ]);
+  });
+
+  it("hints any Workspace domain when more than one is allowed", async () => {
+    const context = await authWith({
+      ...authConfig,
+      allowedDomains: ["govtech.bb", "health.gov.bb"],
+    }).$context;
+    const provider = context.socialProviders.find(
+      (provider) => provider.id === "google",
+    );
+    if (!provider) throw new Error("Google provider is missing");
+    const url = await provider.createAuthorizationURL({
+      state: "test-state",
+      codeVerifier: "test-code-verifier",
+      redirectURI: "http://localhost:3020/api/auth/callback/google",
+    });
+    expect(url.searchParams.get("hd")).toBe("*");
   });
 });
 
 describe("a new user", () => {
-  it("is made an editor when created, and only then, so a revocation outlasts later sign-ins", async () => {
+  it("gets no role at first sign-in; an admin grants one (ADR 0079)", async () => {
     const { db, close } = await createTestDb();
     try {
-      const auth = authWith(authConfig, db);
-      const { databaseHooks } = auth.options;
-      // Creating a user runs this hook; a returning sign-in creates none.
-      expect(Object.keys(databaseHooks)).toEqual(["user", "account"]);
-      expect(Object.keys(databaseHooks.user)).toEqual(["create"]);
-      expect(Object.keys(databaseHooks.user.create)).toEqual(["after"]);
-      const context = await auth.$context;
+      const context = await authWith(authConfig, db).$context;
 
-      // BetterAuth runs the hook once the user and account have committed.
       const { user } = await context.internalAdapter.createOAuthUser(
         { email: "new@govtech.bb", name: "New", emailVerified: true },
-        { accountId: "12345", providerId: "github" },
+        { accountId: "12345", providerId: "google" },
       );
 
       const { rows } = await db.execute(
-        sql`select role, granted_by from user_roles where user_id = ${user.id}`,
+        sql`select role from user_roles where user_id = ${user.id}`,
       );
-      expect(rows).toEqual([{ role: "editor", granted_by: null }]);
+      expect(rows).toEqual([]);
     } finally {
       await close();
     }
@@ -176,7 +210,7 @@ describe("first sign-in", () => {
         context.internalAdapter.createOAuthUser(
           { email: "new@govtech.bb", name: "New", emailVerified: true },
           // auth_account.accountId is not null, so the second insert fails.
-          { accountId: null as unknown as string, providerId: "github" },
+          { accountId: null as unknown as string, providerId: "google" },
         ),
       ).rejects.toThrow();
 

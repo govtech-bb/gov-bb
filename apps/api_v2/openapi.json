@@ -2,7 +2,7 @@
   "openapi": "3.0.3",
   "info": {
     "title": "api_v2",
-    "description": "Public markdown content, categories and search text, and employee-authenticated editor operations. Editor reads, writes, and the version token require a GitHub-authenticated govtech-bb organization member session.",
+    "description": "Public markdown content, categories and search text, and employee-authenticated editor operations. Editor reads, writes, and the version token require a session from a Google Workspace account on an allowed domain.",
     "version": "0.0.0"
   },
   "components": {
@@ -9025,7 +9025,7 @@
     },
     "/api/auth/{*}": {
       "get": {
-        "summary": "GitHub sign-in and session protocol",
+        "summary": "Google Workspace sign-in and session protocol",
         "tags": [
           "auth"
         ],
@@ -9047,7 +9047,7 @@
         }
       },
       "post": {
-        "summary": "GitHub sign-in and session protocol",
+        "summary": "Google Workspace sign-in and session protocol",
         "tags": [
           "auth"
         ],
@@ -9093,7 +9093,7 @@
     },
     {
       "name": "auth",
-      "description": "GitHub organization member sign-in and sessions"
+      "description": "Google Workspace sign-in and sessions"
     },
     {
       "name": "admin",

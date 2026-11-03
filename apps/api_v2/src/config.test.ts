@@ -6,12 +6,50 @@ const required = {
   BETTER_AUTH_URL: "http://localhost:3020",
   EDITOR_ORIGIN: "http://localhost:3000",
   BETTER_AUTH_SECRET: "test-only-secret-with-at-least-32-characters",
-  GITHUB_CLIENT_ID: "test-client",
-  GITHUB_CLIENT_SECRET: "test-client-secret",
+  GOOGLE_CLIENT_ID: "test-client",
+  GOOGLE_CLIENT_SECRET: "test-client-secret",
+  GOOGLE_ALLOWED_DOMAINS: "govtech.bb",
   API_V2_ADMIN_EMAILS: "admin@govtech.bb",
 };
 
 describe("auth configuration", () => {
+  it("reads the Google client and the allowed Workspace domains, lowercased", () => {
+    const result = parseConfig({
+      ...required,
+      GOOGLE_ALLOWED_DOMAINS: " GovTech.bb , health.gov.bb ",
+    });
+    if (!result.ok) throw result.error;
+    expect(result.value.auth.googleClientId).toBe("test-client");
+    expect(result.value.auth.googleClientSecret.reveal()).toBe(
+      "test-client-secret",
+    );
+    expect(result.value.auth.allowedDomains).toEqual([
+      "govtech.bb",
+      "health.gov.bb",
+    ]);
+  });
+  it.each([
+    ["GOOGLE_CLIENT_ID", undefined],
+    ["GOOGLE_CLIENT_SECRET", undefined],
+    ["GOOGLE_ALLOWED_DOMAINS", undefined],
+    ["GOOGLE_ALLOWED_DOMAINS", " , "],
+    ["GOOGLE_ALLOWED_DOMAINS", "@govtech.bb"],
+    ["GOOGLE_ALLOWED_DOMAINS", "govtech"],
+  ])("refuses to start with %s set to %j", (field, value) => {
+    const result = parseConfig({ ...required, [field]: value });
+    expect(result.ok).toBe(false);
+    if (!result.ok)
+      expect(result.error.message).toBe(`Invalid configuration: ${field}`);
+  });
+  it("no longer reads GitHub OAuth settings", () => {
+    const result = parseConfig({
+      ...required,
+      GITHUB_CLIENT_ID: "github-client",
+      GITHUB_CLIENT_SECRET: "github-secret",
+    });
+    if (!result.ok) throw result.error;
+    expect(JSON.stringify(result.value)).not.toContain("github");
+  });
   it("fails closed without required settings and never prints their values", () => {
     const missing = parseConfig({});
     expect(missing.ok).toBe(false);
@@ -77,7 +115,7 @@ describe("auth configuration", () => {
       String(result.value.auth.secret),
     ]) {
       expect(rendered).not.toContain(required.BETTER_AUTH_SECRET);
-      expect(rendered).not.toContain(required.GITHUB_CLIENT_SECRET);
+      expect(rendered).not.toContain(required.GOOGLE_CLIENT_SECRET);
     }
   });
 });
