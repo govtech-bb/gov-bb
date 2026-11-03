@@ -1,5 +1,5 @@
 name: Feature / task
-description: A change to build — new behaviour, a refactor, or tooling
+description: A change to build — new behaviour, a refactor, tooling, or an ops task
 type: Feature
 labels: ["enhancement"]
 body:

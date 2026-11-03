@@ -4,10 +4,14 @@ labels: ["EPIC"]
 body:
   - type: textarea
     attributes:
-      label: Goal
-      description: The outcome, in a sentence or two.
+      label: Outcome
+      description: The goal, in a sentence or two.
     validations:
       required: true
+  - type: textarea
+    attributes:
+      label: Where we are today
+      description: What already exists, so the sub-issues start from the real state.
   - type: textarea
     attributes:
       label: Decisions
@@ -20,3 +24,10 @@ body:
   - type: textarea
     attributes:
       label: Out of scope
+  - type: textarea
+    attributes:
+      label: Done when
+      description: Checkable outcomes that close the epic.
+      value: "- [ ] "
+    validations:
+      required: true
