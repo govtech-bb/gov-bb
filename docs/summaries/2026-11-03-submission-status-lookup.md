@@ -50,11 +50,12 @@ path as an unknown one, so a guess learns nothing extra. The repository reads
 only `form_id` and `submitted_at`, never `values` or `meta`.
 
 **The recipe comes from `FormDefinitionsService.findByFormId`, not the submit
-path.** Found in review: `SubmissionPipelineService.resolveContract` checks for
-a builder draft when the published recipe is missing, and throws a 400 if one
-exists. A deleted form that was ever opened in the builder then never reached
-the tracker. The lookup reads the published recipe the way the payment webhook
-does for an existing submission.
+path.** Found in review: the submit path checks for a builder draft when the
+published recipe is missing, and throws a 400 if one exists. A deleted form
+that was ever opened in the builder then never reached the tracker. The lookup
+and the replay both read the published recipe the way the payment webhook
+does for an existing submission, so there is one rule for submissions that
+already exist.
 
 **`trackable` is in `meta`, not `data`.** `data` is the stored submission;
 `meta` carries facts about the request, as `deferred` and `resolvedPolyclinic`
@@ -86,10 +87,18 @@ the AWS SDK clients, so nothing new is downloaded.
 
 ## Open questions
 
-- `GlobalExceptionFilter` logs the full URL of every error response, so a
-  503 or 429 on this endpoint logs the reference. This endpoint's own log
-  line never does. Raised as a follow-up rather than changed here, because the
-  filter is shared by every endpoint.
+- The reference is in the URL, so it reaches more than our own log line,
+  which never includes it:
+  - `GlobalExceptionFilter` logs the full URL of every error response, so a
+    503 or 429 on this endpoint logs the reference.
+  - When `OTEL_EXPORTER_OTLP_ENDPOINT` is set, the HTTP and undici
+    auto-instrumentations (`tracing.ts`) put it in every trace: the incoming
+    path on every lookup, 200s included, and the tracker call's `url.full`.
+
+  "Don't log references" needs one decision across both: redact the path in
+  the filter and the instrumentations, or move the reference out of the URL
+  (a request body), which changes the chat's contract. Raised as a follow-up
+  rather than changed here, because both are shared by every endpoint.
 - The signed call to the deployed tracker is untested until alpha-infra#763
   grants the API task role `execute-api:Invoke` and sets
   `TRACKER_LOOKUP_API_URL`.
