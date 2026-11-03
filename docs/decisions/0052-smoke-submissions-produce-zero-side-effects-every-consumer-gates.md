@@ -95,6 +95,15 @@ the CaMS side as an `isTest` programme (removable via `removeTestCase`). If CaMS
 treats an `E2E_` code as a real programme, this exception would create a real
 case. Keep the two sides' definition of "test programme code" aligned.
 
+**Environment scope.** A mapped webhook resolves its URL from
+`MDA_WEBHOOK_DESTINATIONS` for the test form's ministry, so an `E2E_` smoke
+submission reaches **whatever CaMS that ministry points at in the environment
+where `SMOKE_SUBMISSION_TOKEN` is set**. J4 (#3011) runs on **staging**, whose
+destination must point at a **non-prod CaMS**. Do **not** enable the smoke token
+in prod expecting zero CaMS traffic — in prod an `E2E_` submission would post to
+the prod CaMS destination (relying solely on CaMS's `isTest` handling as the
+boundary).
+
 **Still required of every consumer.** The original obligation stands: a
 `submission.created` consumer that fires off `formId`/config rather than
 `processors[]` is not covered by the choke point. Today the only side-effect
