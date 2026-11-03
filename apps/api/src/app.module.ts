@@ -18,6 +18,7 @@ import { GeocodeModule } from "./geocode/geocode.module";
 import { CatchmentGeometryModule } from "./catchment/catchment-geometry.module";
 import { WaterAlertsModule } from "./water-alerts/water-alerts.module";
 import { MonitoringModule } from "./monitoring/monitoring.module";
+import { SlackStatsModule } from "./slack-stats/slack-stats.module";
 import { TelemetryModule } from "./telemetry/telemetry.module";
 import { configs } from "./config";
 import { envValidationSchema } from "./config/env.validation";
@@ -60,6 +61,7 @@ import { envValidationSchema } from "./config/env.validation";
     CatchmentGeometryModule,
     WaterAlertsModule,
     MonitoringModule,
+    SlackStatsModule,
   ],
   controllers: [AppController],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],

@@ -61,12 +61,17 @@ import {
 } from "../helpers/smoke";
 
 const FORM_ID = "get-birth-certificate";
+// Entered through here when SMOKE_LANDING_URL is set (#3008).
+const LANDING_START_PATH =
+  "/family-birth-relationships/get-birth-certificate/start";
 
 test.describe("Get a Birth Certificate — Live Smoke", () => {
   test("submits the real form end-to-end and reaches the confirmation screen", async ({
     page,
   }) => {
-    await openSmokeForm(page, FORM_ID);
+    await openSmokeForm(page, FORM_ID, {
+      landingStartPath: LANDING_START_PATH,
+    });
     await page.waitForURL((url) => !!url.searchParams.get("step"), {
       timeout: STEP_TIMEOUT,
     });

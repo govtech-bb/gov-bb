@@ -1,0 +1,50 @@
+name: Content Freeze
+
+# After the prod estate import the api_v2 database is the source of truth for
+# landing pages (#3154; ADR
+# 0077-deployed-content-databases-are-loaded-once-then-written-only-by-the-editor),
+# so a markdown edit in the repo is silently lost. This fails any PR that adds, edits, renames or deletes
+# apps/landing/src/content/**/*.md or either categories.ts (landing's and
+# packages/content's) while the repository Actions variable
+# CONTENT_FREEZE is "true". Unset (or anything else) the job is skipped, which
+# counts as a pass for a required check. Flip it with
+# `gh variable set CONTENT_FREEZE --body true`; the runbook is "The markdown
+# freeze" in apps/api_v2/README.md (#3238). It also stops the v1 form
+# builder, which only opens PRs here.
+#
+# Its own workflow: ci.yml also runs on push to main, where there is no PR to
+# diff. No `paths:` filter on purpose: a path-filtered required check never
+# reports on unrelated PRs and blocks them. main only: v2-rewrite markdown is
+# the source of the estate snapshot and stays editable there. The changed-file
+# list comes from the API, so nothing is checked out.
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  pull-requests: read
+
+jobs:
+  content-freeze:
+    name: Content freeze
+    if: vars.CONTENT_FREEZE == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Fail on landing markdown changes
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          # Own line so `bash -e` fails on an API error (no pipefail by default).
+          # previous_filename: a page renamed out of the tree still counts.
+          files=$(gh api --paginate "repos/$GITHUB_REPOSITORY/pulls/$PR/files?per_page=100" --jq '.[] | .filename, (.previous_filename // empty)')
+          frozen=$(printf '%s\n' "$files" | grep -E '^(apps/landing/src/content/.*\.md|apps/landing/src/content/categories\.ts|packages/content/src/categories\.ts)$' || true)
+          if [ -z "$frozen" ]; then
+            echo "No frozen landing content changed. OK."
+            exit 0
+          fi
+          echo "::error::CONTENT_FREEZE is on: landing markdown and categories are no longer the source of truth. Make this change in editor_v2 instead (apps/api_v2/README.md, 'The markdown freeze')."
+          echo "$frozen"
+          exit 1

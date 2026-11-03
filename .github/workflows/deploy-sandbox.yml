@@ -642,11 +642,15 @@ jobs:
   # Live end-to-end smoke tests of the deployed forms app: each drives a real
   # form on sandbox (uploading files via the presign → S3 → confirm flow where
   # the form has uploads), SUBMITS FOR REAL, and asserts the confirmation
-  # screen. `needs: amplify-forms` so they run only after that build succeeds —
-  # and are skipped whenever forms wasn't deployed (a skipped/failed dependency
-  # skips these too). No AWS creds: the reusable workflow drives a headless
-  # browser against the public deployed URL, and uploads use presigned URLs
-  # issued server-side. Steps live in .github/workflows/forms-smoke.yml.
+  # screen. Each spec enters its form the way a citizen does: from the landing
+  # start page, through "Start now" — so a Start link to the wrong host or form
+  # fails the run (#3008). Runs once forms OR landing has deployed (either one
+  # can break that journey) and neither failed; `!cancelled()` stops a skipped
+  # dependency from skipping the smoke, and listing amplify-landing makes the
+  # smoke wait for an in-flight landing deploy. No AWS creds: the reusable
+  # workflow drives a headless browser against the public deployed URL, and
+  # uploads use presigned URLs issued server-side. Steps live in
+  # .github/workflows/forms-smoke.yml.
   #
   # Run as ONE matrix with a bounded `max-parallel` so the real
   # POST /submissions calls stay under the API's submission throttle
@@ -673,7 +677,8 @@ jobs:
   # submission email is broken. Re-add each once it returns to `public`.
   smoke-test-forms:
     name: Smoke test forms
-    needs: amplify-forms
+    needs: [amplify-forms, amplify-landing]
+    if: ${{ !cancelled() && !contains(needs.*.result, 'failure') && (needs.amplify-forms.result == 'success' || needs.amplify-landing.result == 'success') }}
     strategy:
       fail-fast: false
       max-parallel: 3
@@ -688,7 +693,8 @@ jobs:
           # barbados-secondary were dropped when that default flipped — they now
           # 404 to the public. Re-add each once it returns to `public` (or once a
           # preview-token bypass is wired into the smoke). The first four below
-          # are in the public-10 allowlist.
+          # are in the public-10 allowlist. A spec added here must also pass its
+          # landing start path to openSmokeForm, or the landing run throws.
           - spec: project-protege-mentor.smoke.spec.ts
             artifact_name: project-protege-mentor-smoke-trace
           - spec: sports-training-programme-form-schema.smoke.spec.ts
@@ -708,10 +714,103 @@ jobs:
     uses: ./.github/workflows/forms-smoke.yml
     with:
       base_url: https://forms.sandbox.alpha.gov.bb
+      landing_url: https://landing.sandbox.alpha.gov.bb
       spec: ${{ matrix.spec }}
       artifact_name: ${{ matrix.artifact_name }}
     secrets:
       smoke_submission_token: ${{ secrets.SMOKE_SUBMISSION_TOKEN }}
+
+  # Journey 3 (#3010): proves a feature-flag change reaches landing AND forms —
+  # the propagation a misconfigured deploy once broke silently (#2029). Flips a
+  # DEDICATED non-public test service (`e2e-maintenance-check`) to maintenance and
+  # back via `PUT /service_status`, asserting both apps, then resets it to its
+  # hidden (`disabled` → preview) seeded state. Wired into `promote-to-staging`'s
+  # needs — plus the summary and failure-notifier below — so a FAILURE blocks and
+  # is announced, never silently stops staging.
+  #
+  # `if: always() && !failure() && !cancelled()` runs it on EVERY push deploy, not
+  # only when all three apps were nx-affected: a forms-only or landing-only merge
+  # still re-checks propagation, which can break in one app — or at the domain
+  # layer with no code change at all, as in #2029. Skipped only if an upstream
+  # deploy actually failed.
+  #
+  # Auth: `PUT /service_status` requires a GitHub *user* token (classic PAT) for
+  # an identity that is a team member / repo writer — the default GITHUB_TOKEN
+  # (a bot) does NOT qualify. Provision E2E_SERVICE_STATUS_TOKEN (a dedicated
+  # machine account's PAT with read:org) BEFORE merging, or this fails closed
+  # and blocks every staging promotion (by design — a gate must not pass blind).
+  journey-feature-flag:
+    name: Journey 3 — feature-flag reaches landing + forms
+    needs: [deploy-api, amplify-forms, amplify-landing]
+    if: ${{ github.event_name == 'push' && always() && !failure() && !cancelled() }}
+    runs-on: ubuntu-latest
+    # The E2E_SERVICE_STATUS_TOKEN lives in this GitHub Environment (#3363), not a
+    # repo secret — scoped to `main` and to a sandbox-only admin team, so a leak
+    # can't touch prod service_status. An environment secret is only visible to a
+    # job that declares the environment. This job assumes no AWS role, so the
+    # environment adds no OIDC behaviour.
+    environment: sandbox-e2e
+    # The journey polls past landing's 60s status cache across two flips, so it is
+    # budgeted to ~3.5 min (see the spec); this 15m is a backstop against a hang
+    # (install + browser), not a performance budget.
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version-file: ".nvmrc"
+          cache: "pnpm"
+      - run: pnpm install --frozen-lockfile
+      - name: Resolve Playwright version
+        id: playwright-version
+        run: |
+          version="$(pnpm --filter @govtech-bb/forms exec playwright --version | awk '{print $2}')"
+          test -n "$version" || { echo "could not resolve playwright version"; exit 1; }
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+      - name: Cache Playwright browsers
+        id: playwright-cache
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-chromium-${{ runner.os }}-${{ steps.playwright-version.outputs.version }}
+      - name: Install Playwright chromium
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        timeout-minutes: 10
+        run: pnpm --filter @govtech-bb/forms exec playwright install chromium
+      - name: Run Journey 3
+        env:
+          # All via env (not inline ${{ }}) so nothing is interpolated into the
+          # shell. The token is a GitHub user PAT; the others are fixed sandbox
+          # URLs. A clear fail if the token is unset (see the note above).
+          E2E_API_BASE_URL: https://forms.api.sandbox.alpha.gov.bb
+          E2E_LANDING_URL: https://landing.sandbox.alpha.gov.bb
+          SMOKE_BASE_URL: https://forms.sandbox.alpha.gov.bb
+          E2E_SERVICE_STATUS_TOKEN: ${{ secrets.E2E_SERVICE_STATUS_TOKEN }}
+        run: |
+          # TEMPORARY soft-skip (#3363): the secret is not provisioned yet. Fail-
+          # closed (exit 1) would block EVERY sandbox→staging promotion, since this
+          # job gates promote-to-staging. So skip (exit 0, loud warning) while the
+          # token is absent, keeping staging flowing. This self-heals: the moment
+          # infra populates E2E_SERVICE_STATUS_TOKEN the branch below is never taken,
+          # the real journey runs, and the gate is fail-closed again. Revert this to
+          # `exit 1` once #3363 lands so a future missing/expired token fails closed.
+          if [ -z "$E2E_SERVICE_STATUS_TOKEN" ]; then
+            echo "::warning::E2E_SERVICE_STATUS_TOKEN not provisioned yet (#3363) — SKIPPING the J3 gate so staging is not blocked. Revert the soft-skip to exit 1 once the secret lands."
+            exit 0
+          fi
+          pnpm --filter @govtech-bb/forms exec playwright test \
+            --config playwright.journey.config.ts
+      - name: Upload Playwright trace on failure
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: journey-3-feature-flag-trace
+          path: apps/forms/test-results/
+          retention-days: 7
 
   amplify-analytics:
     name: Amplify build (analytics)
@@ -945,7 +1044,7 @@ jobs:
 
   summary:
     name: Deployment summary
-    needs: [setup, deploy-api, deploy-form-builder, amplify-forms, amplify-landing, amplify-form-builder, amplify-feature-flagging]
+    needs: [setup, deploy-api, deploy-form-builder, amplify-forms, amplify-landing, amplify-form-builder, amplify-feature-flagging, amplify-analytics, smoke-test-forms, journey-feature-flag]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -957,6 +1056,8 @@ jobs:
           LANDING_RESULT: ${{ needs.amplify-landing.result }}
           FB_APP_RESULT: ${{ needs.amplify-form-builder.result }}
           FF_APP_RESULT: ${{ needs.amplify-feature-flagging.result }}
+          ANALYTICS_RESULT: ${{ needs.amplify-analytics.result }}
+          SMOKE_RESULT: ${{ needs.smoke-test-forms.result }}
           MIGRATIONS_GATE: ${{ needs.setup.outputs.migrations }}
         run: |
           # Report each target's ACTUAL job result, not just the
@@ -997,6 +1098,8 @@ jobs:
             echo "| Amplify landing | $(outcome "$LANDING_RESULT") |"
             echo "| Amplify form-builder | $(outcome "$FB_APP_RESULT") |"
             echo "| Amplify feature-flagging | $(outcome "$FF_APP_RESULT") |"
+            echo "| Amplify analytics | $(outcome "$ANALYTICS_RESULT") |"
+            echo "| Forms live smoke | $(outcome "$SMOKE_RESULT" | sed 's/deployed/passed/') |"
             echo ""
             echo "**API URL:** https://forms.api.sandbox.alpha.gov.bb"
             echo "**Landing URL:** https://landing.sandbox.alpha.gov.bb"
@@ -1007,7 +1110,7 @@ jobs:
 
   notify-failure:
     name: Notify Slack on failure
-    needs: [deploy-api, deploy-form-builder, amplify-forms, amplify-landing, amplify-form-builder, amplify-feature-flagging]
+    needs: [deploy-api, deploy-form-builder, amplify-forms, amplify-landing, amplify-form-builder, amplify-feature-flagging, amplify-analytics, smoke-test-forms, promote-to-staging, journey-feature-flag]
     if: always() && contains(needs.*.result, 'failure')
     runs-on: ubuntu-latest
     steps:
@@ -1025,17 +1128,29 @@ jobs:
   # Runs only on a real trunk merge (not a manual sandbox re-run) and only when
   # every affected target deployed cleanly — a skipped/unaffected job is fine,
   # but any failure or cancellation stops the chain, so staging never receives
-  # code sandbox couldn't ship.
+  # code sandbox couldn't ship. That includes the live forms smoke and the
+  # analytics build (#2756).
+  #
+  # Staging deploys the exact commit sandbox proved: this job fast-forwards the
+  # `staging` branch to it and dispatches deploy-staging ON `staging`, so every
+  # checkout, image tag and Amplify build in that run is this commit — not
+  # whatever main's HEAD has moved on to. It joins deploy-staging's concurrency
+  # group so it waits for an in-flight staging deploy before moving the branch
+  # that deploy's Amplify jobs build — which keeps this sandbox run open until
+  # that staging deploy finishes.
   promote-to-staging:
     name: Promote to staging (on sandbox green)
-    needs: [setup, deploy-api, deploy-form-builder, amplify-forms, amplify-landing, amplify-form-builder, amplify-feature-flagging]
+    needs: [setup, deploy-api, deploy-form-builder, amplify-forms, amplify-landing, amplify-form-builder, amplify-feature-flagging, amplify-analytics, smoke-test-forms, journey-feature-flag]
     if: ${{ github.event_name == 'push' && !failure() && !cancelled() }}
     runs-on: ubuntu-latest
+    concurrency:
+      group: deploy-staging
+      cancel-in-progress: false
     permissions:
       actions: write # dispatch deploy-staging via the built-in token
-      contents: read
+      contents: write # fast-forward the staging branch ref
     steps:
-      - name: Dispatch deploy-staging for ${{ github.sha }}
+      - name: Promote ${{ github.sha }} to staging
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # This job has no checkout, so gh can't infer the repo from a local
@@ -1043,10 +1158,21 @@ jobs:
           # --repo flag.
           GH_REPO: ${{ github.repository }}
         run: |
+          # A manual Deploy Staging from main can already have carried staging
+          # past this commit; it has nothing to promote then, and a backwards
+          # PATCH would fail a green sandbox run.
+          STATUS=$(gh api "repos/$GH_REPO/compare/$GITHUB_SHA...staging" --jq .status)
+          if [ "$STATUS" = "ahead" ]; then
+            echo "staging already contains $GITHUB_SHA — nothing to promote."
+            exit 0
+          fi
+          # force=false → fast-forward only, so a diverged staging fails this
+          # job, and notify-failure alerts Slack. An identical tip
+          # still dispatches: a re-run after a failed dispatch must deploy.
+          if [ "$STATUS" != "identical" ]; then
+            gh api -X PATCH "repos/$GH_REPO/git/refs/heads/staging" \
+              -f sha="$GITHUB_SHA" -F force=false
+          fi
           # Built-in GITHUB_TOKEN: workflow_dispatch is exempt from the token's
           # no-recursion guard, so this fires deploy-staging with NO PAT.
-          # --ref main runs main's deploy-staging.yml regardless of the default
-          # branch, and passes the exact commit sandbox proved so staging
-          # advances to the same SHA.
-          gh workflow run deploy-staging.yml --ref main \
-            -f promoted_sha="${{ github.sha }}"
+          gh workflow run deploy-staging.yml --ref staging

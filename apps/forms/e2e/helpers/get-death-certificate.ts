@@ -21,12 +21,17 @@ import {
 } from "./smoke";
 
 export const DEATH_CERTIFICATE_FORM_ID = "get-death-certificate";
+// Entered through here when SMOKE_LANDING_URL is set (#3008).
+const DEATH_CERTIFICATE_LANDING_START =
+  "/family-birth-relationships/get-death-certificate/start";
 
 export async function fillDeathCertificate(
   page: Page,
   { email }: { email: string },
 ): Promise<void> {
-  await openSmokeForm(page, DEATH_CERTIFICATE_FORM_ID);
+  await openSmokeForm(page, DEATH_CERTIFICATE_FORM_ID, {
+    landingStartPath: DEATH_CERTIFICATE_LANDING_START,
+  });
   await page.waitForURL((url) => !!url.searchParams.get("step"), {
     timeout: STEP_TIMEOUT,
   });
