@@ -103,8 +103,33 @@ export class SlackStatsService {
     responseUrl: string,
     now: Date = new Date(),
   ): Promise<void> {
-    // reply() never throws, so one failed reply can't stall the queue.
-    this.queue = this.queue.then(() => this.reply(request, responseUrl, now));
+    return this.enqueue(() =>
+      this.reply(request, (message) => this.post(responseUrl, message), now),
+    );
+  }
+
+  /**
+   * Post last week's site-wide stats to a channel's incoming webhook (the
+   * Monday digest, #3491). The URL comes from config, not a request, so it
+   * isn't held to the slash-command response_url shape. Never throws.
+   */
+  postWeeklyDigest(webhookUrl: string, now: Date = new Date()): Promise<void> {
+    return this.enqueue(() =>
+      this.reply(
+        { command: "/stats", period: "week" },
+        (message) =>
+          this.send(
+            webhookUrl,
+            typeof message === "string" ? { text: message } : message,
+          ),
+        now,
+      ),
+    );
+  }
+
+  /** Run after any reply already queued; `job` must never throw. */
+  private enqueue(job: () => Promise<void>): Promise<void> {
+    this.queue = this.queue.then(job);
     return this.queue;
   }
 
@@ -114,7 +139,7 @@ export class SlackStatsService {
       period,
       formId,
     }: { command: string; period: StatsPeriod; formId?: string },
-    responseUrl: string,
+    deliver: (message: SlackMessage | string) => Promise<void>,
     now: Date,
   ): Promise<void> {
     let message: SlackMessage | string;
@@ -131,7 +156,7 @@ export class SlackStatsService {
       message =
         "⚠️ Sorry, I couldn't get the stats from Umami. Try again in a few minutes.";
     }
-    await this.post(responseUrl, message);
+    await deliver(message);
   }
 
   async buildReply(
@@ -356,14 +381,19 @@ export class SlackStatsService {
       this.logger.warn("[slack-stats] refused a non-Slack response_url");
       return;
     }
+    await this.send(url, {
+      response_type: "ephemeral",
+      ...(typeof message === "string" ? { text: message } : message),
+    });
+  }
+
+  /** POST a JSON payload to Slack. Logs failures; never throws. */
+  private async send(url: string, payload: object): Promise<void> {
     try {
       const res = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          response_type: "ephemeral",
-          ...(typeof message === "string" ? { text: message } : message),
-        }),
+        body: JSON.stringify(payload),
         signal: AbortSignal.timeout(SLACK_POST_TIMEOUT_MS),
       });
       if (!res.ok) {
