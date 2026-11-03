@@ -2,7 +2,7 @@
 # Form Builder API — lightweight Express server for form CRUD + AI/Bedrock calls.
 # Runs behind the existing ALB at /builder/*.
 
-FROM node:24.21-alpine3.23@sha256:9ec4a2e289874ed0d722e1772ec2de45d2801541db8612f3638b26f128c69ac2 AS builder
+FROM node:24.22-alpine3.23@sha256:9b69af715c7f9d038150b54ccccbaeffa9064bbc93e2904c29591ca097316af1 AS builder
 
 RUN corepack enable && corepack prepare pnpm@11.6.0 --activate
 RUN addgroup -S -g 1001 app && adduser -S -u 1001 -G app app
@@ -58,7 +58,7 @@ RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store,uid=1001,gid=1001 \
 
 # ---- runner ----------------------------------------------------------------
 # Matches the main API's runner pattern exactly.
-FROM node:24.21-alpine3.23@sha256:9ec4a2e289874ed0d722e1772ec2de45d2801541db8612f3638b26f128c69ac2 AS runner
+FROM node:24.22-alpine3.23@sha256:9b69af715c7f9d038150b54ccccbaeffa9064bbc93e2904c29591ca097316af1 AS runner
 
 # Pick up Alpine security patches ahead of the base image's rebuild cadence
 # (e.g. openssl 3.5.8-r0 fixing CVE-2026-75803/CVE-2026-63073 while the base
