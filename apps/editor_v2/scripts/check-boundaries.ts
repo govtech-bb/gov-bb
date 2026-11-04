@@ -42,7 +42,12 @@ const hostLayer = (file: string) => within(file, "src/host");
 const pageBrowserLayer = (file: string) =>
   within(file, "src/pages") &&
   (file.endsWith(".tsx") ||
-    ["src/pages/nodes.ts", "src/pages/metadata.ts", "src/pages/index.ts"].includes(file));
+    [
+      "src/pages/nodes.ts",
+      "src/pages/blocks/node.ts",
+      "src/pages/metadata.ts",
+      "src/pages/index.ts",
+    ].includes(file));
 
 const checked = (file: string) =>
   !/\.test\.tsx?$/.test(file) &&

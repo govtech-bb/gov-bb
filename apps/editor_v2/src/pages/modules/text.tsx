@@ -33,7 +33,11 @@ import { blocks, phrasing, UnsupportedPageContent } from "../markdown";
 import { registerPageBlockExit } from "../block-exit";
 import { pageInsertAction } from "../insertion";
 import { pageTurnInto } from "../turn-into";
-import { PageComponentNode, PageRuleNode } from "../nodes";
+import { PageRuleNode } from "../nodes";
+import { $hasTrait } from "../blocks/node";
+
+// A line break written as HTML, as a page writes one outside a button's label
+const isBreak = (node: MarkdownNode) => node.type === "html" && /^<br\s*\/?\s*>$/i.test(node.value);
 
 /** Visual editing additionally excludes whitespace and scheme-relative destinations; empty links remain editable. */
 export function safePageUrl(value: string): boolean {
@@ -74,7 +78,7 @@ const text: PageHandler = {
       "heading",
       "blockquote",
       "thematicBreak",
-    ].includes(node.type),
+    ].includes(node.type) || isBreak(node),
   owns: (node) =>
     $isTextNode(node) ||
     $isLineBreakNode(node) ||
@@ -90,6 +94,9 @@ const text: PageHandler = {
       case "inlineCode":
         return [$createTextNode(node.value).toggleFormat("code")];
       case "break":
+      case "html":
+        if (node.type === "html" && !isBreak(node)) throw new UnsupportedPageContent(node);
+
         return [$createLineBreakNode()];
       case "strong":
       case "emphasis":
@@ -168,9 +175,7 @@ const text: PageHandler = {
     }
 
     if ($isLineBreakNode(node))
-      return node
-        .getParents()
-        .some((parent) => parent instanceof PageComponentNode && parent.getKind() === "action")
+      return node.getParents().some((parent) => $hasTrait(parent, "button"))
         ? [{ type: "break" }]
         : [{ type: "html", value: "<br>" }];
 

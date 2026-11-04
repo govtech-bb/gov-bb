@@ -15,6 +15,7 @@ import { lineHint } from "../../editor/react/block-dom";
 import { PageListItemNode } from "../list-item";
 import { pageInsertAction } from "../insertion";
 import { blocks, phrasing, UnsupportedPageContent } from "../markdown";
+import { PageMutedNode } from "./muted";
 
 /** Find the nearest page list, not an outer list containing it. */
 export function $nearestPageList(node: LexicalNode | null): ListNode | null {
@@ -61,9 +62,14 @@ const lists: PageHandler = {
       // Lexical edits trailing sublists as wrapper siblings, separate from the item's text.
       while ($isListNode(imported.at(-1))) nested.unshift(imported.pop()!);
 
-      // A single paragraph uses Lexical's usual inline item shape; multiple blocks retain their hierarchy.
+      // A single paragraph uses Lexical's usual inline item shape; multiple blocks retain their hierarchy. Muted text
+      // stays a paragraph, which keeps its <muted>
       for (const child of imported) {
-        if (node.children.length === 1 && $isParagraphNode(child))
+        if (
+          node.children.length === 1 &&
+          $isParagraphNode(child) &&
+          !(child instanceof PageMutedNode)
+        )
           item.append(...child.getChildren());
         else item.append(child);
       }
@@ -131,7 +137,9 @@ const lists: PageHandler = {
             "containerDirective",
             "leafDirective",
           ].includes(child.type) ||
-          (child.type === "html" && child.value.startsWith("<a data-start-link"))
+          (child.type === "html" &&
+            (child.value.startsWith("<a data-start-link") ||
+              child.value.startsWith("<highlights>")))
         ) {
           flush();
           // SAFETY: The block variants above are valid mdast list-item children.

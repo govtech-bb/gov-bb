@@ -422,3 +422,8 @@ export {
   parseLegacyPageStartLink,
   serializeLegacyPageStartLink,
 } from "#govbbmarkd/legacy-start-link";
+export {
+  parseLegacyHighlights,
+  serializeLegacyHighlights,
+  type LegacyHighlight,
+} from "#govbbmarkd/legacy-highlights-html";

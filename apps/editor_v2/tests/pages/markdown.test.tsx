@@ -25,7 +25,7 @@ import { createHeadlessEditor } from "../../src/editor/core/create-editor";
 import { govbbPageCodec, govbbPageEditor } from "../../src/presets/govbb-page";
 import { $pageMetadata, $setPageMetadata } from "../../src/pages/metadata";
 import { PagePreview } from "../../src/pages/preview";
-import { PageComponentNode } from "../../src/pages/nodes";
+import { PageComponentNode } from "../../src/pages/blocks/node";
 import { createEmptyPage } from "../../src/pages/converters";
 import { parsePageMarkdown } from "../../src/pages/markdown";
 import manifest from "../fixtures/pages/manifest.json";
@@ -192,6 +192,154 @@ describe("current GovBB landing content", () => {
 
     checkPagePreservation("StormReady actions", actions, false);
   });
+
+  test("StormReady's highlights and muted text round-trip, leaving only its contacts source-only", () => {
+    const source = readFileSync(
+      new URL("health-and-emergency-services/stormready/index.md", directory),
+      "utf8",
+    );
+
+    const contacts = source.match(/^<contacts>\n[\s\S]*?\n<\/contacts>\n/m)?.[0];
+
+    if (!contacts) throw new Error("StormReady's contacts are #3185's to convert");
+
+    expect(govbbPageCodec.prepare(source).diagnostics[0]?.line).toBe(
+      source.slice(0, source.indexOf(contacts)).split("\n").length,
+    );
+    checkPagePreservation("StormReady without its contacts", source.replace(contacts, ""), false);
+  });
+});
+
+test("muted text keeps whether it's a caption, and highlights their titles and plain text", () => {
+  const source =
+    '<muted caption>Small print</muted>\n\n<muted>Keep **trying**.</muted>\n\n<highlights>\n<highlight title="Water">Store 3 gallons<br>per person.</highlight>\n<highlight title="Documents">Keep your ID dry.</highlight>\n</highlights>\n';
+
+  expect(visual(source).root.children.slice(1)).toMatchObject([
+    { type: "page-muted", caption: true, children: [{ text: "Small print" }] },
+    {
+      type: "page-muted",
+      caption: false,
+      children: [{ text: "Keep " }, { text: "trying", format: 1 }, { text: "." }],
+    },
+    {
+      type: "page-component",
+      kind: "highlights",
+      children: [
+        {
+          kind: "highlight",
+          children: [
+            { kind: "highlight-title", children: [{ text: "Water" }] },
+            {
+              kind: "highlight-text",
+              children: [
+                { text: "Store 3 gallons" },
+                { type: "linebreak" },
+                { text: "per person." },
+              ],
+            },
+          ],
+        },
+        {
+          kind: "highlight",
+          children: [
+            { kind: "highlight-title", children: [{ text: "Documents" }] },
+            { kind: "highlight-text", children: [{ text: "Keep your ID dry." }] },
+          ],
+        },
+      ],
+    },
+  ]);
+  checkPagePreservation("muted text and highlights", source, false);
+});
+
+test.each([
+  "- <muted>Small print</muted>\n- Plain\n",
+  '1. Prepare\n\n   <highlights>\n   <highlight title="Water">Store 3 gallons.</highlight>\n   </highlights>\n',
+  ':::notice\n<muted>Small print</muted>\n\n<highlights>\n<highlight title="Water">Store 3 gallons.</highlight>\n</highlights>\n:::\n',
+])(
+  "muted text and highlights inside another block keep their HTML through an edit: %j",
+  (source) => {
+    const editor = createHeadlessEditor(govbbPageEditor, visual(source));
+
+    try {
+      editor.update(
+        () => $getRoot().append($createParagraphNode().append($createTextNode("Added."))),
+        { discrete: true },
+      );
+      expect(govbbPageCodec.encode(editor.getEditorState().toJSON())).toBe(`${source}\nAdded.\n`);
+    } finally {
+      editor.dispose();
+    }
+  },
+);
+
+test("highlights added after a list item's text are a block of the item, as “/” adds them", () => {
+  const editor = createHeadlessEditor(govbbPageEditor, visual("- Prepare\n"));
+
+  try {
+    editor.update(
+      () => {
+        const list = $getRoot().getChildAtIndex(1);
+        const item = $isListNode(list) ? list.getFirstChild() : null;
+
+        if (!$isListItemNode(item)) throw new Error("Expected the list item");
+        item.append(
+          new PageComponentNode("highlights").append(
+            new PageComponentNode("highlight").append(
+              new PageComponentNode("highlight-title").append($createTextNode("Water")),
+              new PageComponentNode("highlight-text").append($createTextNode("Store 3 gallons.")),
+            ),
+          ),
+        );
+      },
+      { discrete: true },
+    );
+    const saved = govbbPageCodec.encode(editor.getEditorState().toJSON());
+    expect(saved).toBe(
+      '- Prepare\n\n  <highlights>\n  <highlight title="Water">Store 3 gallons.</highlight>\n  </highlights>\n',
+    );
+    expect(visual(saved).root.children[1]).toMatchObject({
+      type: "list",
+      children: [{ children: [{ type: "paragraph" }, { kind: "highlights" }] }],
+    });
+  } finally {
+    editor.dispose();
+  }
+});
+
+test("edited muted text and highlights are written back as the HTML landing renders", () => {
+  const editor = createHeadlessEditor(
+    govbbPageEditor,
+    visual(
+      '<muted caption>Small print</muted>\n\n<highlights>\n<highlight title="Water">Store 3 gallons.</highlight>\n</highlights>\n',
+    ),
+  );
+
+  try {
+    editor.update(
+      () => {
+        const [, muted, highlights] = $getRoot().getChildren();
+        const highlight = $isElementNode(highlights) ? highlights.getFirstChild() : null;
+        const [title, text] = $isElementNode(highlight) ? highlight.getChildren() : [];
+
+        if (!$isElementNode(muted) || !$isElementNode(title) || !$isElementNode(text))
+          throw new Error("Expected muted text and a highlight");
+        muted.append($createTextNode(" & more"));
+        title.getFirstChild()?.replace($createTextNode('Food & "water"'));
+        text.getFirstChild()?.replace($createTextNode("Store <3> gallons."));
+      },
+      { discrete: true },
+    );
+    const saved = govbbPageCodec.encode(editor.getEditorState().toJSON());
+    expect(saved).toBe(
+      '<muted caption>Small print & more</muted>\n\n<highlights>\n<highlight title="Food &amp; &quot;water&quot;">Store &lt;3&gt; gallons.</highlight>\n</highlights>\n',
+    );
+    expect(visual(saved).root.children.slice(1)).toEqual(
+      editor.getEditorState().toJSON().root.children.slice(1),
+    );
+  } finally {
+    editor.dispose();
+  }
 });
 
 test("birth instructions keep headings, paragraphs and Start actions inside their numbered items", () => {

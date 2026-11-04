@@ -28,7 +28,7 @@ import { instant, listFooter } from "../ui/surface";
 import { actionList, PageActionList } from "./action-menu";
 import { $pageInsertionTarget } from "./insertion";
 import { PageMetadataNode } from "./metadata";
-import { PageComponentNode } from "./nodes";
+import { $blockKind } from "./blocks/node";
 
 /** What an empty line on a page says, and the editor's description for screen readers. */
 export const startWriting = "Start writing, or type / to add content.";
@@ -56,10 +56,10 @@ function $pageHint(focused: boolean): readonly [ElementNode, string] | null {
 
   if ($isQuoteNode(holder)) return [line, "Quote"];
 
-  if (holder instanceof PageComponentNode)
-    return [line, holder.getKind() === "details" ? "Details" : "Notice"];
+  // A component that holds lines is named by its block
+  const name = $blockKind(holder)?.name;
 
-  return [line, startWriting];
+  return [line, name ?? startWriting];
 }
 
 class PageOption extends MenuOption {
