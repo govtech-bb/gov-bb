@@ -265,7 +265,9 @@ export function trackPageview(): void {
  * reloads the page, which breaks TanStack <Link> navigation (#3502). So this
  * listener must never call preventDefault. Prop keys arrive in camelCase, as
  * dataset gives them (data-umami-event-form-id becomes formId), because
- * /journey rejects hyphens in prop keys. Returns a function that removes it.
+ * /journey rejects hyphens in prop keys. Name a form id prop formId, never form:
+ * trackEvent packs the event name as <form>:<event> when it sees a form prop.
+ * Returns a function that removes it.
  */
 export function installClickListener(): () => void {
   if (typeof document === "undefined") return () => undefined;
