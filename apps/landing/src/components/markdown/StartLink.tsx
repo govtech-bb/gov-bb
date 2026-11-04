@@ -47,7 +47,8 @@ export function StartLink({ href, formId, children, ...rest }: StartLinkProps) {
       <LinkButton
         href={`${FORMS_BASE_URL}/forms/${formId}`}
         {...rest}
-        data-umami-event={`${formId}-start`}
+        data-umami-event="start-click"
+        data-umami-event-form-id={formId}
         data-umami-event-from={pathname}
       >
         {children}

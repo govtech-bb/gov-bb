@@ -154,7 +154,7 @@ A documented convention links the landing site to the **forms app**:
 - A marker anchor `<a data-start-link>Start now</a>` is placed where the button should appear in the body.
 - A **build-time script** (`scripts/fetch-form-manifest.mjs`) hits `${VITE_FORMS_API_URL}/form-definitions` during `predev` and `prebuild`, validates the response, and writes a generated module `src/content/available-forms.gen.ts` exporting the set of available form IDs. The build **fails** if the API is unreachable.
 - At render time the Markdown component only renders the button if `form_id` ∈ `AVAILABLE_FORMS`. Otherwise the button is silently suppressed (with a `console.warn` in dev to catch authoring typos).
-- The button links to `${VITE_FORMS_URL}/forms/<form_id>` and emits an analytics event `<form_id>-start`.
+- The button links to `${VITE_FORMS_URL}/forms/<form_id>` and emits an analytics event `start-click` with the form id as `formId` data.
 
 This is governed by **ADR-0005** in the monorepo docs.
 
