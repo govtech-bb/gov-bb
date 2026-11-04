@@ -17,6 +17,20 @@ declare global {
   }
 }
 
+/**
+ * Attributes every app puts on its Umami <script> tag, besides the website id.
+ * - data-auto-track="false": page views come from each app's router, and
+ *   Umami's own click handler stays off, because it cancels data-umami-event
+ *   link clicks and reloads the page (#3502).
+ * - data-exclude-search="true": Umami records URLs without the query string,
+ *   which can hold water alert tokens, search text and forms preview tokens
+ *   (#3503).
+ */
+export const UMAMI_SCRIPT_ATTRIBUTES = {
+  "data-auto-track": "false",
+  "data-exclude-search": "true",
+} as const;
+
 export interface TrackingData {
   "form-start": { form: string; category: string };
   "form-step-back": { form: string; category: string; step: string };

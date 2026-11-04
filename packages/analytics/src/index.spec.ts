@@ -11,6 +11,7 @@ import {
   stepNumberToWord,
   trackEvent,
   trackPageview,
+  UMAMI_SCRIPT_ATTRIBUTES,
 } from "./index";
 import { resetJourneyForTests } from "./journey";
 
@@ -478,5 +479,17 @@ describe("installClickListener", () => {
     remove = installClickListener();
     vi.unstubAllGlobals();
     expect(remove).toBeTypeOf("function");
+  });
+});
+
+describe("UMAMI_SCRIPT_ATTRIBUTES", () => {
+  it("keeps Umami's auto-tracking off", () => {
+    expect(UMAMI_SCRIPT_ATTRIBUTES["data-auto-track"]).toBe("false");
+  });
+
+  // #3503: without it Umami records the full URL, so water alert tokens, search
+  // text and forms preview tokens in the query string reach Umami Cloud.
+  it("strips the query string from the URLs Umami records", () => {
+    expect(UMAMI_SCRIPT_ATTRIBUTES["data-exclude-search"]).toBe("true");
   });
 });
