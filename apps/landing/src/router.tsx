@@ -4,7 +4,7 @@ import { setupRouterSsrQueryIntegration } from '@tanstack/react-router-ssr-query
 import { routeTree } from './routeTree.gen'
 import {
   configureJourney,
-  installJourneyClickListener,
+  installClickListener,
   trackPageview,
 } from './lib/analytics'
 
@@ -31,7 +31,7 @@ export function getRouter() {
     url: import.meta.env.VITE_JOURNEY_URL as string | undefined,
     app: 'landing',
   })
-  installJourneyClickListener()
+  installClickListener()
   // onRendered, not onResolved: onResolved only fires when the router goes from
   // pending to idle, which never happens on the first, server-rendered page or
   // on a click whose loader data the `intent` preload already fetched, so most

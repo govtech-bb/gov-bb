@@ -153,38 +153,6 @@ function byteLength(s: string): number {
   return new TextEncoder().encode(s).length;
 }
 
-/**
- * Landing tags clicks with data-umami-event="<name>" plus
- * data-umami-event-<key>="<value>". Umami's script reads those itself; this
- * sends the same clicks as journey events. Returns a function that removes the
- * listener.
- */
-export function installJourneyClickListener(): () => void {
-  if (typeof document === "undefined" || !config) return () => undefined;
-  const onClick = (e: MouseEvent) => {
-    const target = e.target instanceof Element ? e.target : null;
-    const el = target?.closest<HTMLElement>("[data-umami-event]");
-    if (!el) return;
-    const name = el.dataset.umamiEvent;
-    if (!name) return;
-    const props: Record<string, string> = {};
-    for (const [key, value] of Object.entries(el.dataset)) {
-      if (
-        key.startsWith("umamiEvent") &&
-        key !== "umamiEvent" &&
-        value !== undefined
-      ) {
-        const prop = key.slice("umamiEvent".length);
-        props[prop.charAt(0).toLowerCase() + prop.slice(1)] = value;
-      }
-    }
-    sendJourney(name, props);
-  };
-  document.addEventListener("click", onClick, { capture: true });
-  return () =>
-    document.removeEventListener("click", onClick, { capture: true });
-}
-
 /** For tests: forget configuration and anything queued. */
 export function resetJourneyForTests(): void {
   if (timer) clearTimeout(timer);

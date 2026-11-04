@@ -1,7 +1,6 @@
 import {
   configureJourney,
   flushJourney,
-  installJourneyClickListener,
   journeyEnabled,
   resetJourneyForTests,
   sendJourney,
@@ -220,47 +219,6 @@ describe("journey events", () => {
     it("does nothing when flushed with an empty queue", () => {
       flushJourney();
       expect(beacon).not.toHaveBeenCalled();
-    });
-  });
-
-  describe("installJourneyClickListener", () => {
-    it("does nothing while journey events are off", () => {
-      const remove = installJourneyClickListener();
-      expect(remove).toBeTypeOf("function");
-      remove();
-    });
-
-    it("does nothing during SSR", () => {
-      configureJourney({ url: URL_, app: "landing" });
-      vi.stubGlobal("document", undefined);
-      const remove = installJourneyClickListener();
-      vi.unstubAllGlobals();
-      remove();
-    });
-
-    it("sends data-umami-event clicks with their data-umami-event-* props", () => {
-      configureJourney({ url: URL_, app: "landing" });
-      const remove = installJourneyClickListener();
-      document.body.innerHTML = `
-        <a data-umami-event="breadcrumb" data-umami-event-to="/money" data-umami-event-depth="2"><span id="inner">Money</span></a>
-        <a data-umami-event="" id="empty">x</a>
-        <p id="plain">y</p>`;
-      document.getElementById("inner")!.click();
-      document.getElementById("empty")!.click();
-      document.getElementById("plain")!.click();
-      document.dispatchEvent(new MouseEvent("click"));
-      flushJourney();
-      const events = sentBodies(beacon)[0] as Record<string, unknown>[];
-      expect(events).toHaveLength(1);
-      expect(events[0]).toMatchObject({
-        event: "breadcrumb",
-        props: { to: "/money", depth: "2" },
-      });
-
-      remove();
-      document.getElementById("inner")!.click();
-      flushJourney();
-      expect(beacon).toHaveBeenCalledTimes(1);
     });
   });
 });

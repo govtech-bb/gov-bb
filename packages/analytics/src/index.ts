@@ -5,7 +5,6 @@ export { maskSearchQuery } from "./mask-search-query";
 export {
   configureJourney,
   flushJourney,
-  installJourneyClickListener,
   journeyEnabled,
   sendJourney,
 } from "./journey";
