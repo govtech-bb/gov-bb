@@ -19,7 +19,6 @@ import {
   CaretDown,
   LinkBreak,
   LinkSimple,
-  Palette,
   TextB,
   TextItalic,
   TextTSlash,
@@ -34,10 +33,8 @@ import {
   type ReactElement,
   type ReactNode,
 } from "react";
-import { cn } from "../../../cn";
 import { belowBar, Popover } from "../../../ui/popover";
 import { Button } from "../../../ui/button";
-import { Menu } from "../../../ui/menu";
 import { pressedByTouch } from "../../../ui/focus";
 import { LinkForm } from "../../../ui/link-picker";
 import { Toolbar as Controls } from "../../../ui/toolbar";
@@ -45,6 +42,7 @@ import { Tip } from "../../../ui/tooltip";
 import { TurnIntoMenu } from "../../../ui/turn-into";
 import { useLatched } from "../../../ui/use-latched";
 import { useEditorDefinition, useLinkPages } from "../../react/composer";
+import { EditorSlot } from "../../react/contributions";
 import { turnIntoOptions } from "../../react/turn-into";
 import { composing } from "./editing";
 import { isSafeLinkUrl, linkAddress } from "../links/url";
@@ -90,40 +88,27 @@ const $link = (selection: RangeSelection) =>
     .find($isLinkNode);
 
 /**
- * Opens beneath a rich-text selection after mouseup or keyup, or as it's made by touch. Supports bold, italic,
- * links and the colours an editor offers; the Markdown representation does not support underline.
+ * Opens beneath a rich-text selection after mouseup or keyup, or as it's made by touch. Supports bold, italic and
+ * links, and the controls modules add to it (SELECTION_TOOLBAR); the Markdown representation does not support underline.
  */
 const richText = () => false;
 
-/** A colour the toolbar offers for text, with the class that draws its swatch. */
-export type TextColour = {
-  readonly value: string;
-  readonly label: string;
-  readonly swatch: string;
-};
-
 /**
- * An editor's colours for text: the selection's colour (null when it's mixed, undefined where it can't take one), and
- * giving it one. Its callbacks run in the editor's Lexical context.
+ * The slot where a module adds its own controls to the selection toolbar, after its formatting, such as a colour menu
+ * (see TextColourMenu). A control reads the selection itself, and keeps it with keepSelection.
  */
-export type TextColours = {
-  readonly choices: readonly TextColour[];
-  readonly $value: () => string | null | undefined;
-  readonly $colour: (value: string) => void;
-};
+export const SELECTION_TOOLBAR = "editor.selection-toolbar";
 
 export type ToolbarPolicy = {
   isPlainText?: (node: LexicalNode) => boolean;
   linksEnabled?: boolean;
   isValidLink?: (url: string) => boolean;
-  colours?: TextColours;
 };
 
 export function Toolbar({
   isPlainText = richText,
   linksEnabled = true,
   isValidLink = isSafeLinkUrl,
-  colours,
 }: ToolbarPolicy = {}) {
   const [editor] = useLexicalComposerContext();
   const { turnInto } = useEditorDefinition();
@@ -261,7 +246,6 @@ export function Toolbar({
                 italic: selection.hasFormat("italic"),
                 link: $link(selection)?.getURL() ?? null,
                 turnInto: turnInto?.$choices() ?? null,
-                colour: colours?.$value(),
               }
             );
           },
@@ -282,12 +266,6 @@ export function Toolbar({
   const turn = (value: string) => {
     if (!editor.isEditable()) return;
     editor.update(() => turnInto?.$turnInto(value), { tag: HISTORY_PUSH_TAG });
-  };
-
-  // As is each change of colour
-  const colour = (value: string) => {
-    if (editor.isEditable())
-      editor.update(() => colours?.$colour(value), { tag: HISTORY_PUSH_TAG });
   };
 
   // A step of its own in the undo history, as a format change is
@@ -368,45 +346,7 @@ export function Toolbar({
             onClick={format("italic")}
           />
           <Action tip="Clear formatting" icon={<TextTSlash />} onClick={clear} />
-          {colours && state.colour !== undefined && (
-            <Menu.Root>
-              <Tip content="Text colour">
-                <Menu.Trigger
-                  render={
-                    <Button
-                      aria-label="Text colour"
-                      icon={<Palette />}
-                      iconEnd={<CaretDown />}
-                      onMouseDown={keepSelection}
-                      className="my-1"
-                    />
-                  }
-                />
-              </Tip>
-              {/* Back to the text, with its selection, rather than the button */}
-              <Menu.Content aria-label="Text colour" finalFocus={() => editor.focus()}>
-                <Menu.RadioGroup
-                  value={state.colour}
-                  onValueChange={(value: string) => colour(value)}
-                >
-                  {colours.choices.map((choice) => (
-                    <Menu.RadioItem
-                      key={choice.value}
-                      value={choice.value}
-                      icon={
-                        <span
-                          className={cn("size-4 rounded-sm border border-line", choice.swatch)}
-                        />
-                      }
-                      closeOnClick
-                    >
-                      {choice.label}
-                    </Menu.RadioItem>
-                  ))}
-                </Menu.RadioGroup>
-              </Menu.Content>
-            </Menu.Root>
-          )}
+          <EditorSlot name={SELECTION_TOOLBAR} props={{}} />
           {linksEnabled && (
             <>
               <Controls.Separator />
@@ -454,8 +394,8 @@ export function Toolbar({
   );
 }
 
-// Buttons keep the editor's focus, and with it the selection
-const keepSelection = (e: MouseEvent) => e.preventDefault();
+/** Buttons keep the editor's focus, and with it the selection, as a control added to the toolbar should too. */
+export const keepSelection = (e: MouseEvent) => e.preventDefault();
 
 function Action({
   tip,

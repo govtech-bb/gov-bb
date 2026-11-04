@@ -12,7 +12,9 @@ import {
   type SerializedParagraphNode,
 } from "lexical";
 import type { Paragraph } from "mdast";
-import type { TextColours } from "../../editor/modules/formatting/toolbar";
+import { TextColourMenu, type TextColours } from "../../editor/modules/formatting/colour-menu";
+import { SELECTION_TOOLBAR } from "../../editor/modules/formatting/toolbar";
+import { defineSlot } from "../../editor/react/contributions";
 import type { PageHandler, PageModule } from "../definition";
 import { phrasing, UnsupportedPageContent } from "../markdown";
 import "./muted.css";
@@ -115,13 +117,21 @@ const muted: PageHandler = {
   },
 };
 
-/** @deprecated Keeps existing muted text editable; see PageMutedNode. It comes before the text module, which would read muted text as ordinary paragraphs. */
+/**
+ * @deprecated Keeps existing muted text editable, and adds the selection toolbar's colour menu, which also takes it off;
+ * see PageMutedNode. It comes before the text module, which would read muted text as ordinary paragraphs.
+ */
 export function PageMutedModule(): PageModule {
   return {
     key: "page-muted",
     requires: ["text"],
     nodes: [{ type: "page-muted", node: PageMutedNode }],
     markdown: [muted],
+    slots: [
+      defineSlot("page-text-colour", SELECTION_TOOLBAR, () => (
+        <TextColourMenu colours={pageTextColours} />
+      )),
+    ],
   };
 }
 
@@ -150,8 +160,8 @@ function $selectedParagraphs(): ParagraphNode[] | null {
   return lines.length ? lines : null;
 }
 
-/** @deprecated The selection toolbar's colours for a page: its text's own, or the legacy muted grey (see PageMutedNode). */
-export const pageTextColours: TextColours = {
+// The colours for a page's text: its own, or the legacy muted grey (see PageMutedNode)
+const pageTextColours: TextColours = {
   choices: [
     { value: "default", label: "Default", swatch: "bg-ink" },
     { value: "muted", label: "Muted", swatch: "bg-muted" },

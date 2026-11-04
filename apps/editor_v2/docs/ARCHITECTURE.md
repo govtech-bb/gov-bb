@@ -79,6 +79,8 @@ Actions supply stable IDs, labels, grouping, optional numeric order, availabilit
 
 `RendererHost` resolves a named renderer in the current editor; `EditorSlot` renders that editor's ordered slot contributions. Missing renderer contributions fail explicitly. Names include their role, such as `field-preview:text` and `widget:file-upload`, so unrelated content and answer kinds cannot collide.
 
+The selection toolbar has a slot of its own, `SELECTION_TOOLBAR`: a module adds a control to it without editing the toolbar, as the page's Muted text adds its colour menu (`TextColourMenu`). A control reads the selection itself and keeps it with `keepSelection`; [the extension test](../tests/extensions/selection-toolbar.test.tsx) adds one using only the public API.
+
 Form composition adds typed field/content/source capabilities. The default structural module requires Pages and Repetition; omitting either fails composition before a draft is loaded. Capability removal is deliberate: an unavailable saved subtype is rejected before Lexical can turn it into a fallback node. Recovery retains the original source bytes.
 
 ## Persistence and conversion
