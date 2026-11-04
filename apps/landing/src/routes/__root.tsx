@@ -9,7 +9,7 @@ import { Footer, FooterLink, SkipLink } from '@govtech-bb/react'
 import { BreadcrumbRegion } from '../components/BreadcrumbRegion'
 import Header from '../components/Header'
 import { ErrorPage } from '../components/ErrorPage'
-import { trackEvent } from '../lib/analytics'
+import { trackEvent, UMAMI_SCRIPT_ATTRIBUTES } from '../lib/analytics'
 import { COOKIE_MAX_AGE_SECONDS, resolveViewLevel } from '../lib/preview'
 import { getServiceStatuses } from '../lib/service-status'
 import { SITE_URL } from '../lib/site-url'
@@ -180,7 +180,7 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
               src: UMAMI_SRC,
               defer: true,
               'data-website-id': UMAMI_WEBSITE_ID,
-              'data-auto-track': 'false',
+              ...UMAMI_SCRIPT_ATTRIBUTES,
             },
           ]
         : []),
