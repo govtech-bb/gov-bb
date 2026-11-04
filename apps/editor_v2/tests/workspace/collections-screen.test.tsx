@@ -320,6 +320,9 @@ const submit = () =>
 
 const closed = () => until(() => expect(dialog()).toBeNull());
 
+/** The dialog's form, not its placeholder while the record loads. */
+const opened = () => until(() => expect(dialog()?.querySelector("input")).toBeTruthy());
+
 test("Collections lists each collection with its record count, its name opening its records", async () => {
   await mount(<CollectionsScreen api={api()} />);
   await until(() => expect(host.querySelector("tbody a")).not.toBeNull());
@@ -432,7 +435,7 @@ test("a key's error goes once the key changes, whether the dialog or api_v2 foun
 
 test("a field's error from api_v2 goes once that field changes, and another's stays", async () => {
   await renderCollection({ record: "nis" }).ready;
-  await until(() => expect(dialog()).not.toBeNull());
+  await opened();
   await enter("Email (optional)", "not an email");
   server.refuse(400, {
     error: "validation_failed",
@@ -455,7 +458,8 @@ test("a ?record= address opens that record's dialog with its values", async () =
   const { ready } = renderCollection({ record: "barbados-drug-service" });
 
   await ready;
-  await until(() => expect(dialog()?.textContent).toContain("Edit barbados-drug-service"));
+  await opened();
+  expect(dialog()?.textContent).toContain("Edit barbados-drug-service");
 
   expect(control("Name (optional)").value).toBe("Barbados Drug Service");
   expect(control("Email (optional)").inputMode).toBe("email");
@@ -488,7 +492,7 @@ test("Edit asks the address for the record, and closing clears it", async () => 
 
 test("saving replaces the record over the version read, a cleared field removed", async () => {
   await renderCollection({ record: "barbados-drug-service" }).ready;
-  await until(() => expect(dialog()).not.toBeNull());
+  await opened();
   await enter("Telephone (optional)", "");
   await enter("Name (optional)", "Drug Service");
   await submit();
@@ -515,7 +519,7 @@ test("saving replaces the record over the version read, a cleared field removed"
 
 test("a field api_v2 refuses shows its reason next to it, and the input is kept", async () => {
   await renderCollection({ record: "nis" }).ready;
-  await until(() => expect(dialog()).not.toBeNull());
+  await opened();
   await enter("Email (optional)", "not an email");
   server.refuse(400, {
     error: "validation_failed",
@@ -543,7 +547,7 @@ test("while a save is out, Esc, Cancel and the close button wait, so a refusal s
     return server.fetch(input, init);
   });
   await renderCollection({ record: "nis" }).ready;
-  await until(() => expect(dialog()).not.toBeNull());
+  await opened();
   await enter("Email (optional)", "not an email");
   server.refuse(400, {
     error: "validation_failed",
@@ -567,7 +571,7 @@ test("while a save is out, Esc, Cancel and the close button wait, so a refusal s
 
 test("Add record after an edit opens an empty record, not the one just edited", async () => {
   await renderCollection({ record: "barbados-drug-service" }).ready;
-  await until(() => expect(dialog()).not.toBeNull());
+  await opened();
   await submit();
   await closed();
   await press("Add record");
@@ -578,7 +582,7 @@ test("Add record after an edit opens an empty record, not the one just edited", 
 
 test("a 400 that isn't validation_failed is no field's fault", async () => {
   await renderCollection({ record: "nis" }).ready;
-  await until(() => expect(dialog()).not.toBeNull());
+  await opened();
   server.refuse(400, { statusCode: 400, error: "Bad Request", message: "body must be object" });
   await submit();
   await until(() =>
@@ -590,7 +594,7 @@ test("a 400 that isn't validation_failed is no field's fault", async () => {
 
 test("closing a record opened from the address gives the focus to its row's Edit", async () => {
   await renderCollection({ record: "nis" }).ready;
-  await until(() => expect(dialog()).not.toBeNull());
+  await opened();
   await press("Cancel");
   await closed();
 
@@ -600,7 +604,7 @@ test("closing a record opened from the address gives the focus to its row's Edit
 
 test("a stale save offers to keep mine, load the saved version or download mine", async () => {
   await renderCollection({ record: "nis" }).ready;
-  await until(() => expect(dialog()).not.toBeNull());
+  await opened();
   await enter("Name (optional)", "Mine");
   server.change("nis", { name: "Theirs" });
   await submit();
@@ -623,20 +627,19 @@ test("a stale save offers to keep mine, load the saved version or download mine"
 
   expect(button("Keep my version")).toBeUndefined();
   await press("Discard my changes and reload");
-  expect(control("Name (optional)").value).toBe("Theirs");
+  await until(() => expect(control("Name (optional)").value).toBe("Theirs"));
   expect(server.writes).toHaveLength(sent);
 });
 
 test("Load saved version puts the newer values in the dialog", async () => {
   await renderCollection({ record: "nis" }).ready;
-  await until(() => expect(dialog()).not.toBeNull());
+  await opened();
   await enter("Name (optional)", "Mine");
   server.change("nis", { name: "Theirs" });
   await submit();
   await until(() => expect(button("Discard my changes and reload")?.disabled).toBe(false));
   await press("Discard my changes and reload");
-
-  expect(control("Name (optional)").value).toBe("Theirs");
+  await until(() => expect(control("Name (optional)").value).toBe("Theirs"));
   // The notice and its button have gone, so the focus moves into the form, not to the page behind
   await until(() => expect(document.activeElement).toBe(control("Name (optional)")));
   expect(dialog()?.textContent).not.toContain("A newer version");
@@ -644,7 +647,7 @@ test("Load saved version puts the newer values in the dialog", async () => {
 
 test("a record deleted meanwhile can't be saved, and offers a download", async () => {
   await renderCollection({ record: "nis" }).ready;
-  await until(() => expect(dialog()).not.toBeNull());
+  await opened();
   await enter("Name (optional)", "Mine");
   server.remove("nis");
   await submit();
@@ -664,6 +667,9 @@ test("Delete asks first, then deletes the version read", async () => {
   expect(server.writes).toEqual([]);
   // Cancel comes first, so a stray Enter keeps the record
   await until(() => expect(document.activeElement?.textContent).toBe("Cancel"));
+  await until(() =>
+    expect(dialog()?.querySelector("pre")?.textContent).toContain("National Insurance"),
+  );
   await press("Delete record");
   await closed();
 
@@ -695,7 +701,7 @@ test("a stale delete is refused in the dialog", async () => {
 
 test("without the editor role, records can be read but not added, saved or deleted", async () => {
   await renderCollection({ readOnly: true, record: "nis" }).ready;
-  await until(() => expect(dialog()).not.toBeNull());
+  await opened();
 
   expect(control("Name (optional)").readOnly).toBe(true);
   expect(dialog()!.querySelector('button[type="submit"]')).toBeNull();
@@ -707,7 +713,7 @@ test("without the editor role, records can be read but not added, saved or delet
 test("a value for a field the collection no longer lists is named, then removed on save", async () => {
   server.change("nis", { fax: "431-0000" });
   await renderCollection({ record: "nis" }).ready;
-  await until(() => expect(dialog()).not.toBeNull());
+  await opened();
 
   expect(dialog()?.textContent).toContain(
     "Saving removes values for fields this collection no longer has: fax.",
@@ -741,7 +747,7 @@ test("a confirmed record save keeps values typed after dispatch", async () => {
 
 test("a save whose answer is lost is never reported as failed", async () => {
   await renderCollection({ record: "nis" }).ready;
-  await until(() => expect(dialog()).not.toBeNull());
+  await opened();
   server.refuse(503, { error: "unavailable", message: "Down." });
   await submit();
   await until(() =>
