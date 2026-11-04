@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { LastEditedBy } from "./content-attribution";
+import { EditVersion } from "./edit-concurrency";
 import type { FieldError } from "./page";
 import { err, ok, type Result } from "./result";
 
@@ -41,6 +42,7 @@ export type CategoryValues = z.infer<typeof categoryValues>;
 
 /** Editor-only category metadata; services counts directly filed roots of every visibility. */
 export const EditorCategory = categoryValues.extend({
+  version: EditVersion,
   id: CategoryId,
   url: z.string(),
   position: z.int().nonnegative(),

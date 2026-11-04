@@ -10,6 +10,7 @@
  */
 
 import { z } from "zod";
+import { EditVersion } from "./edit-concurrency";
 import type { FieldError } from "./page";
 import { err, ok, type Result } from "./result";
 
@@ -63,7 +64,11 @@ export const CollectionView = z.object({
 /** A collection's definition. */
 export type CollectionView = z.infer<typeof CollectionView>;
 
-export const CollectionSummary = CollectionView.extend({
+/** Definition baseline for authenticated editors, never the public record list. */
+export const EditorCollection = CollectionView.extend({ version: EditVersion });
+export type EditorCollection = z.infer<typeof EditorCollection>;
+
+export const CollectionSummary = EditorCollection.extend({
   record_count: z.int().nonnegative(),
 });
 /** A collection with how many records it holds, for the editor's list. */
@@ -78,6 +83,19 @@ export const CollectionRecord = z.object({
 });
 /** One record of a collection. */
 export type CollectionRecord = z.infer<typeof CollectionRecord>;
+
+/** Record baseline for authenticated reads and mutation acknowledgements. */
+export const EditorCollectionRecord = CollectionRecord.extend({
+  version: EditVersion,
+});
+export type EditorCollectionRecord = z.infer<typeof EditorCollectionRecord>;
+
+/** Definition and record captured together for editing. */
+export const RecordEnvelope = z.object({
+  collection: EditorCollection,
+  record: EditorCollectionRecord,
+});
+export type RecordEnvelope = z.infer<typeof RecordEnvelope>;
 
 /** What a record write sends; `data` is checked against the field list. */
 export const RecordBody = z.strictObject({

@@ -210,6 +210,9 @@ export async function importEstate(
   try {
     await db.transaction(async (tx) => {
       await tx.execute(
+        sql`select pg_advisory_xact_lock(hashtext('content_pages.parent_id'))`,
+      );
+      await tx.execute(
         sql`lock table content_pages in share row exclusive mode`,
       );
       const [total] = await tx.select({ n: count() }).from(contentPages);

@@ -174,6 +174,7 @@ erDiagram
     timestamptz(3) updated_at
     uuid parent_id FK "nullable"
     int4 position
+    int8 version
   }
   change_event_counters {
     varchar(40) entity_kind PK
@@ -198,6 +199,7 @@ erDiagram
     jsonb data
     timestamptz(3) created_at
     timestamptz(3) updated_at
+    int8 version
   }
   content_pages {
     uuid id PK "unique (id, category_id)"
@@ -215,6 +217,7 @@ erDiagram
     timestamptz(3) published_at "nullable"
     uuid parent_id FK "nullable"
     timestamptz(3) content_updated_at
+    int8 version
   }
   data_collections {
     uuid id PK
@@ -225,6 +228,7 @@ erDiagram
     int4 schema_version
     timestamptz(3) created_at
     timestamptz(3) updated_at
+    int8 version
   }
   page_revisions {
     uuid id PK
@@ -587,7 +591,13 @@ SIGINT/SIGTERM drain HTTP requests before closing the shared pool; startup failu
 
 The site routes (`/pages`, `/categories…`, `/collections/:key/records`, `/site-version`, `/catalog`, `/search/documents`) are limited to 1,000 requests a minute per client, answering 429 beyond it; editor, auth and `/docs` routes are not limited. `trustProxy` trusts only private-address peers (the ALB), so the client is the address the ALB forwards and a client's own `X-Forwarded-For` entries are ignored. Buckets are in memory, per task. Landing is exempt: its server sends `LANDING_SECRET` as `x-landing-token`, and such requests skip the limit and carry no `x-ratelimit-*` headers. It has to be, because landing reads `/pages` on every uncached page view (and a category listing on every category page view, and `/site-version` on its poll) from a few shared egress addresses, so its rate follows citizen and bot traffic and no limit can be sized above it (#3129). With `LANDING_SECRET` unset, nobody is exempt.
 
-Migrations run at boot. Each script commits with its `schema_migrations` row under a PostgreSQL advisory lock, so instances that boot together apply them one at a time; every script must be safe to replay, because an instance that waited on the lock runs it again.
+Migrations run at boot. Each script checks `schema_migrations` after acquiring the PostgreSQL advisory lock, then conditionally executes and records completion in the same transaction on the same connection. Each migration commits separately so later scripts can use newly added enum values. A runner with an outdated ledger read skips scripts another runner completed; scripts must still tolerate replay after lost bookkeeping.
+
+Migration `023` gives pages, categories, collection definitions and records numeric edit versions from one noncycling sequence, capped at JavaScript's maximum safe integer. These identities are separate from timestamps and audit event numbers. Editor snapshots include them; public projections and audit snapshots do not. This additive stage still accepts the existing timestamp write preconditions.
+
+PageEditing bumps a locked page after revision edits and review transitions. Revision-only maintenance outside PageEditing must explicitly bump each surviving page in the same transaction (`UPDATE content_pages SET version = version + 1 WHERE ...`); stopping editors alone does not invalidate baselines held by old tabs. Replacement imports acquire the content advisory lock before table locks and recreate roots with fresh versions. Never reset the sequence below an issued identity, including during recovery.
+
+Before any deployment, inventory live editors and shared migration histories. Migration `023` rejects incompatible existing version columns or sequence settings; it does not adopt experimental PR #3370 schemas. Such databases need an explicitly approved recovery/migration plan, not an automatic reset. Drain old migration processes before rollout: a binary without the locked-ledger guard can still replay an older function body. Preserve unsaved drafts and gate writers during incompatible changes or recovery. Rollback must retain the version sequence and version-aware functions; deploying an old migration runner is not a safe rollback. If migration bookkeeping is partially lost, inspect and repair it before restarting writers: replaying only an old function migration while keeping newer ledger rows can reinstall an obsolete body. The locked recheck prevents concurrent stale-runner replay, not repair of a damaged ledger.
 
 ```sh
 pnpm exec nx run api_v2:build

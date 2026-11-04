@@ -28,7 +28,8 @@ const categories: Category[] = estate.categories.map((category, position) => ({
   updated_at: "2026-10-26T12:00:00.000Z",
 }));
 
-const pages: ApiPage[] = estate.pages.map((page) => ({
+const pages: ApiPage[] = estate.pages.map((page, index) => ({
+  version: index + 1,
   id: idOf(page.url),
   url: page.url,
   slug: page.url.split("/").at(-1) ?? "",

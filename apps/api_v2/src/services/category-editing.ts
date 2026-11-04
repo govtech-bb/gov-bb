@@ -185,6 +185,13 @@ export class CategoryEditing implements ICategoryEditing {
       if (!current) return err(new CategoryNotFound(id));
       if (!sameStamp(current.updated_at, expected))
         return err(new CategoryConflict());
+      if (
+        current.title === parsed.value.title &&
+        current.slug === parsed.value.slug &&
+        current.parent_id === parsed.value.parent_id &&
+        current.description === parsed.value.description
+      )
+        return ok(current);
       const moves =
         current.slug !== parsed.value.slug ||
         current.parent_id !== fields.parent_id;

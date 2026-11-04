@@ -16,10 +16,11 @@ beforeAll(() => loadPageEditor());
 const stamp = "2026-10-07T12:00:00.000Z";
 
 const pages = new Map(
-  ["service", "fees", "other", "fourth"].map((id) => [
+  ["service", "fees", "other", "fourth"].map((id, index) => [
     id,
     {
       id,
+      version: index + 1,
       title: id,
       url: `/family/service/${id}`,
       slug: id,

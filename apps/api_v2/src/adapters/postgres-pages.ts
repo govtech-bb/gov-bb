@@ -36,6 +36,7 @@ import {
 } from "../modules/category";
 import type { UserId } from "../modules/auth";
 import type { LastEditedBy } from "../modules/content-attribution";
+import { EditVersion } from "../modules/edit-concurrency";
 import type { CategoryRecords } from "../services/category-editing";
 import {
   ContentStoreUnavailable,
@@ -65,6 +66,7 @@ import type { EstateVersion, IndexReads } from "../services/editor-index";
 import type {
   NewPageRecord,
   PageRecords,
+  PageEditorSnapshot,
   PageRevision,
   PendingRevisionRecord,
   RevisionMark,
@@ -78,6 +80,7 @@ const categoryDatabaseRow = EditorCategory.omit({
   last_edited_by: true,
 }).extend({
   updated_at: z.string().pipe(z.coerce.date()),
+  version: z.coerce.number().pipe(EditVersion),
   actor: z.string().nullable(),
   name: z.string().nullable(),
 });
@@ -354,7 +357,7 @@ export class PostgresPages
   > {
     return attempt("editorCategories", async () => {
       const rows = await this.db.execute(sql`
-        select c.id, c.parent_id, c.slug, c.title, c.description, c.position, c.updated_at,
+        select c.id, c.parent_id, c.slug, c.title, c.description, c.position, c.updated_at, c.version,
           latest.actor, u.name,
           case when p.id is null then '/' || c.slug else '/' || p.slug || '/' || c.slug end as url,
           (select count(*)::int from content_pages pages
@@ -778,19 +781,30 @@ export class PostgresPages
   async currentRevision(
     pageId: PageId,
   ): Promise<Result<PendingRevision | null, ContentStoreUnavailable>> {
-    const rows = await attempt("currentRevision", () =>
-      this.db
-        .select({ revision: pageRevisions })
+    const snapshot = await this.editorSnapshot(pageId);
+    return snapshot.ok ? ok(snapshot.value?.revision ?? null) : snapshot;
+  }
+
+  /** Live fields, working revision and latest attribution share one statement snapshot. */
+  editorSnapshot(
+    id: PageId,
+  ): Promise<Result<PageEditorSnapshot | null, ContentStoreUnavailable>> {
+    return attempt("editorSnapshot", async () => {
+      const revision = this.db
+        .select()
         .from(pageRevisions)
-        .innerJoin(contentPages, eq(contentPages.id, pageRevisions.pageId))
         .where(
           and(
-            eq(pageRevisions.pageId, pageId),
+            eq(pageRevisions.pageId, contentPages.id),
             or(
               isOpen,
               and(
                 eq(pageRevisions.status, "rejected"),
                 eq(pageRevisions.liveUpdatedAt, contentPages.updatedAt),
+                // Closing a newer revision must not revive a rejection when live content is unchanged.
+                sql`not exists (select 1 from page_revisions newer
+                  where newer.page_id = ${contentPages.id}
+                    and newer.created_at > ${pageRevisions.createdAt})`,
               ),
             ),
           ),
@@ -799,11 +813,70 @@ export class PostgresPages
           sql`${pageRevisions.status} = 'rejected'`,
           desc(pageRevisions.decidedAt),
         )
-        .limit(1),
-    );
-    if (!rows.ok) return rows;
-    const [row] = rows.value;
-    return ok(row ? toRevision(row.revision) : null);
+        .limit(1)
+        .as("current_revision");
+      const latest = this.db
+        .select({ actor: changeEvents.actor, name: authUser.name })
+        .from(changeEvents)
+        .leftJoin(authUser, eq(authUser.id, changeEvents.actor))
+        .where(
+          and(
+            eq(changeEvents.entityKind, "content_page"),
+            eq(changeEvents.entityId, sql`${contentPages.id}::text`),
+          ),
+        )
+        .orderBy(desc(changeEvents.versionNo))
+        .limit(1)
+        .as("latest_actor");
+      const [row] = await this.db
+        .select({
+          live: contentPages,
+          revision: {
+            id: revision.id,
+            pageId: revision.pageId,
+            fields: revision.fields,
+            status: revision.status,
+            liveUpdatedAt: revision.liveUpdatedAt,
+            createdBy: revision.createdBy,
+            contributors: revision.contributors,
+            submittedBy: revision.submittedBy,
+            submittedAt: revision.submittedAt,
+            decidedBy: revision.decidedBy,
+            decidedAt: revision.decidedAt,
+            comment: revision.comment,
+            createdAt: revision.createdAt,
+            updatedAt: revision.updatedAt,
+          },
+          actor: latest.actor,
+          name: latest.name,
+        })
+        .from(contentPages)
+        .leftJoinLateral(revision, sql`true`)
+        .leftJoinLateral(latest, sql`true`)
+        .where(eq(contentPages.id, id));
+      return row
+        ? {
+            live: toDocument(row.live),
+            revision: row.revision ? toRevision(row.revision) : null,
+            version: EditVersion.parse(row.live.version),
+            last_edited_by: attributionOf(row),
+          }
+        : null;
+    });
+  }
+
+  /** Revision-only writes invalidate the locked root without changing its content dates or history. */
+  bumpPageVersion(
+    id: PageId,
+  ): Promise<Result<EditVersion, ContentStoreUnavailable>> {
+    return attempt("bumpPageVersion", async () => {
+      const [row] = await this.db
+        .update(contentPages)
+        .set({ version: sql`${contentPages.version} + 1` })
+        .where(eq(contentPages.id, id))
+        .returning({ version: contentPages.version });
+      return EditVersion.parse(row?.version);
+    });
   }
 
   /** Start a page's open revision, or overwrite it, keeping who started it. */
@@ -929,7 +1002,7 @@ export class PostgresPages
           select version_no, actor,
                  snapshot->'redacted' = 'true'::jsonb as redacted,
                  snapshot->>'visibility' = 'public' as public,
-                 snapshot - array['visibility', 'published_at', 'content_updated_at', 'updated_at', 'created_at']
+                 snapshot - array['visibility', 'published_at', 'content_updated_at', 'updated_at', 'created_at', 'version']
                    - case when snapshot->>'parent_id' is null then '' else 'category_id' end
                    as content
             from change_events
@@ -988,27 +1061,6 @@ export class PostgresPages
         count: row?.count ?? 0,
         latest: row?.latest?.toISOString() ?? null,
       };
-    });
-  }
-
-  /** The last recorded page change, including review steps; revision saves do not create events. */
-  async lastEditedBy(
-    id: PageId,
-  ): Promise<Result<LastEditedBy, ContentStoreUnavailable>> {
-    return attempt("lastEditedBy", async () => {
-      const rows = await this.db
-        .select({ actor: changeEvents.actor, name: authUser.name })
-        .from(changeEvents)
-        .leftJoin(authUser, eq(authUser.id, changeEvents.actor))
-        .where(
-          and(
-            eq(changeEvents.entityKind, "content_page"),
-            eq(changeEvents.entityId, id),
-          ),
-        )
-        .orderBy(desc(changeEvents.versionNo))
-        .limit(1);
-      return attributionOf(rows[0]);
     });
   }
 

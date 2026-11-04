@@ -60,6 +60,7 @@ describe("record writes", () => {
     expect(created.json()).toEqual({
       record_key: "drug-service",
       data: { ...DRUG_SERVICE, key: "drug-service" },
+      version: expect.any(Number),
       updated_at: expect.any(String),
     });
 
@@ -74,7 +75,13 @@ describe("record writes", () => {
         schema_version: 1,
         updated_at: expect.any(String),
       },
-      records: [created.json()],
+      records: [
+        {
+          record_key: created.json().record_key,
+          data: created.json().data,
+          updated_at: created.json().updated_at,
+        },
+      ],
     });
 
     const saved = await editor({

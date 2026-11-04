@@ -18,6 +18,7 @@ import { pageHasUnsavedChanges, type PageSession } from "../../src/workspace/pag
 import { pageControl, renderInPage } from "../helpers/page-editor";
 
 const page: ApiPage = {
+  version: 1,
   id: "44444444-4444-4444-8444-444444444444",
   url: "/family/birth-certificate/fees",
   slug: "fees",

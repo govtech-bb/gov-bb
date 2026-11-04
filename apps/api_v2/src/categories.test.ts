@@ -14,6 +14,7 @@ import { AuthUnavailable, Forbidden } from "./modules/auth";
 import { err } from "./modules/result";
 
 const categoryResponse = z.strictObject({
+  version: z.number().int().positive().max(Number.MAX_SAFE_INTEGER),
   id: z.guid(),
   parent_id: z.guid().nullable(),
   title: z.string(),

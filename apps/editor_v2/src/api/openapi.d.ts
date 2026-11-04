@@ -237,6 +237,7 @@ export interface paths {
                              * @description Millisecond precision, and exactly the value to send back in `if-updated-at` on the next save.
                              */
                             updated_at: string;
+                            version: number;
                             /** @description The actor of the entity's highest version_no change_event, including page review steps. Null when there is no event. Pending-revision saves are not recorded, so this is not necessarily the author of the working copy or its updated_at. */
                             last_edited_by: {
                                 /** @description The event's actor id, or `system`. */
@@ -1052,6 +1053,7 @@ export interface paths {
                              * @description Millisecond precision, and exactly the value to send back in `if-updated-at` on the next save.
                              */
                             updated_at: string;
+                            version: number;
                             /** @description The actor of the entity's highest version_no change_event, including page review steps. Null when there is no event. Pending-revision saves are not recorded, so this is not necessarily the author of the working copy or its updated_at. */
                             last_edited_by: {
                                 /** @description The event's actor id, or `system`. */
@@ -1245,6 +1247,7 @@ export interface paths {
                              * @description Millisecond precision, and exactly the value to send back in `if-updated-at` on the next save.
                              */
                             updated_at: string;
+                            version: number;
                             /** @description The actor of the entity's highest version_no change_event, including page review steps. Null when there is no event. Pending-revision saves are not recorded, so this is not necessarily the author of the working copy or its updated_at. */
                             last_edited_by: {
                                 /** @description The event's actor id, or `system`. */
@@ -1744,6 +1747,7 @@ export interface paths {
                              * @description Moves when its content is saved, not when it is submitted or rejected. Send it in `if-updated-at` to act on this version.
                              */
                             updated_at: string;
+                            version: number;
                             /** @description The fields whose proposed value differs from the live page's, in field order. Empty when the revision matches the live page. */
                             changes: {
                                 /** @enum {string} */
@@ -2394,6 +2398,7 @@ export interface paths {
                                 /** Format: uuid */
                                 parent_id: string | null;
                                 description: string | null;
+                                version: number;
                                 /** Format: uuid */
                                 id: string;
                                 url: string;
@@ -2507,6 +2512,7 @@ export interface paths {
                             /** Format: uuid */
                             parent_id: string | null;
                             description: string | null;
+                            version: number;
                             /** Format: uuid */
                             id: string;
                             url: string;
@@ -2669,6 +2675,7 @@ export interface paths {
                             /** Format: uuid */
                             parent_id: string | null;
                             description: string | null;
+                            version: number;
                             /** Format: uuid */
                             id: string;
                             url: string;
@@ -2991,6 +2998,7 @@ export interface paths {
                                 /** Format: uuid */
                                 parent_id: string | null;
                                 description: string | null;
+                                version: number;
                                 /** Format: uuid */
                                 id: string;
                                 url: string;
@@ -3164,6 +3172,7 @@ export interface paths {
                                 schema_version: number;
                                 /** Format: date-time */
                                 updated_at: string;
+                                version: number;
                                 record_count: number;
                             }[];
                         };
@@ -3242,7 +3251,155 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /** A record and its definition from one editor snapshot */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    key: string;
+                    recordKey: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Default Response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            collection: {
+                                key: string;
+                                title: string;
+                                /** @description The field whose value is each record's `record_key`. */
+                                record_key: string;
+                                schema: {
+                                    fields: {
+                                        key: string;
+                                        label: string;
+                                        /** @enum {string} */
+                                        type: "text" | "slug" | "email";
+                                    }[];
+                                };
+                                schema_version: number;
+                                /** Format: date-time */
+                                updated_at: string;
+                                version: number;
+                            };
+                            record: {
+                                record_key: string;
+                                data: {
+                                    [key: string]: string;
+                                };
+                                /**
+                                 * Format: date-time
+                                 * @description Send it back in `if-updated-at` to save or delete this version.
+                                 */
+                                updated_at: string;
+                                version: number;
+                            };
+                        };
+                    };
+                };
+                /** @description Default Response */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": ({
+                            /** @enum {string} */
+                            error: "validation_failed";
+                            message: string;
+                            errors: {
+                                field: string;
+                                message: string;
+                            }[];
+                        } & {
+                            [key: string]: unknown;
+                        }) | ({
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        });
+                    };
+                };
+                /** @description Default Response */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+        };
         /**
          * Replace a record's data
          * @description Needs the editor role (403 otherwise). Send every field to keep: the record becomes `data`. Checked as a create is. Send the `updated_at` you last read in `if-updated-at`; if the record has changed since, the save is refused with a 409 `conflict`. 404 when there is no such collection or record.
@@ -3287,6 +3444,7 @@ export interface paths {
                              * @description Send it back in `if-updated-at` to save or delete this version.
                              */
                             updated_at: string;
+                            version: number;
                         };
                     };
                 };
@@ -3440,6 +3598,7 @@ export interface paths {
                              * @description Send it back in `if-updated-at` to save or delete this version.
                              */
                             updated_at: string;
+                            version: number;
                         };
                     };
                 };
@@ -4285,6 +4444,7 @@ export interface paths {
                              * @description Moves when its content is saved, not when it is submitted or rejected. Send it in `if-updated-at` to act on this version.
                              */
                             updated_at: string;
+                            version: number;
                             /** @description The fields whose proposed value differs from the live page's, in field order. Empty when the revision matches the live page. */
                             changes: {
                                 /** @enum {string} */
@@ -4506,6 +4666,7 @@ export interface paths {
                              * @description Moves when its content is saved, not when it is submitted or rejected. Send it in `if-updated-at` to act on this version.
                              */
                             updated_at: string;
+                            version: number;
                             /** @description The fields whose proposed value differs from the live page's, in field order. Empty when the revision matches the live page. */
                             changes: {
                                 /** @enum {string} */
@@ -4715,6 +4876,7 @@ export interface paths {
                              * @description Millisecond precision, and exactly the value to send back in `if-updated-at` on the next save.
                              */
                             updated_at: string;
+                            version: number;
                             /** @description The actor of the entity's highest version_no change_event, including page review steps. Null when there is no event. Pending-revision saves are not recorded, so this is not necessarily the author of the working copy or its updated_at. */
                             last_edited_by: {
                                 /** @description The event's actor id, or `system`. */

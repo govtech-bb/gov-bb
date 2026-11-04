@@ -36,6 +36,8 @@ import {
 import {
   CollectionKey,
   CollectionRecord,
+  EditorCollectionRecord,
+  RecordEnvelope,
   CollectionSummary,
   CollectionView,
   RecordBody,
@@ -655,6 +657,14 @@ export const SCHEMAS = {
     },
   },
 
+  getRecord: {
+    summary: "A record and its definition from one editor snapshot",
+    tags: ["collections"],
+    security: editorSecurity,
+    params: recordParams,
+    response: { 200: RecordEnvelope, ...recordErrors },
+  },
+
   createRecord: {
     summary: "Add a record to a collection",
     description:
@@ -667,7 +677,11 @@ export const SCHEMAS = {
     security: editorSecurity,
     params: recordParams,
     body: RecordBody,
-    response: { 201: CollectionRecord, 409: recordConflict, ...recordErrors },
+    response: {
+      201: EditorCollectionRecord,
+      409: recordConflict,
+      ...recordErrors,
+    },
   },
 
   saveRecord: {
@@ -683,7 +697,11 @@ export const SCHEMAS = {
     params: recordParams,
     headers: ifUpdatedAt(""),
     body: RecordBody,
-    response: { 200: CollectionRecord, 409: recordConflict, ...recordErrors },
+    response: {
+      200: EditorCollectionRecord,
+      409: recordConflict,
+      ...recordErrors,
+    },
   },
 
   deleteRecord: {

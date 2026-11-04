@@ -205,6 +205,7 @@ describe("a save to a public page", () => {
       title: "Severance pay",
       body_markdown: aPage().body_markdown,
       updated_at: revision?.updatedAt.toISOString(),
+      version: expect.any(Number),
       pending_revision: { status: "draft", comment: null },
       last_edited_by: { id: TEST_EMPLOYEE.id, name: TEST_EMPLOYEE.name },
     });

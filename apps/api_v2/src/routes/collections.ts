@@ -1,7 +1,7 @@
 import type { FastifyReply, FastifyRequest } from "fastify";
 import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
 import type { Employee } from "../modules/auth";
-import { CollectionNotFound } from "../modules/collection";
+import { CollectionNotFound, RecordNotFound } from "../modules/collection";
 import type { Viewer } from "../modules/page-visibility";
 import type {
   CollectionEditing,
@@ -59,6 +59,21 @@ export const editorCollectionRoutes: FastifyPluginAsyncZod<{
       return listed.ok
         ? { collections: listed.value }
         : reply.status(500).send(storageFailed(request.log, listed.error));
+    },
+  });
+  editor.route({
+    method: "GET",
+    url: "/collections/:key/records/:recordKey",
+    schema: SCHEMAS.getRecord,
+    handler: async (request, reply) => {
+      const { key, recordKey } = request.params;
+      const detail = await collections.detail(key, recordKey);
+      if (!detail.ok)
+        return reply.status(500).send(storageFailed(request.log, detail.error));
+      return (
+        detail.value ??
+        recordRefused(new RecordNotFound(key, recordKey), request, reply)
+      );
     },
   });
   editor.route({

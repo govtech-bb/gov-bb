@@ -18,6 +18,7 @@ import { DraftStore } from "../../src/persistence/draft-store";
 import { govbbPageCodec, govbbPageEditor } from "../../src/presets/govbb-page";
 
 const page: ApiPage = {
+  version: 1,
   id: "page-1",
   url: "/money-financial-support/severance/how-it-is-worked-out",
   slug: "how-it-is-worked-out",

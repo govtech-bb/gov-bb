@@ -30,6 +30,7 @@ const entry: ReviewQueueEntry = {
 };
 
 const revision: ApiRevision = {
+  version: 1,
   id: entry.id,
   page_id: PAGE,
   status: "submitted",

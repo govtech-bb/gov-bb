@@ -379,12 +379,12 @@ const GATED_IN_PAGE_EDITING = new Set([
   "DELETE /pages/:id",
 ]);
 
-/** What citizens see of each page by id: a public page's whole row, otherwise only its visibility. */
+/** Public rows exclude the private edit identity; non-public rows expose only visibility here. */
 const citizenView = async () =>
   new Map(
     (
       await db.execute<{ id: string; seen: string }>(
-        sql`select id, case when visibility = 'public' then row_to_json(p)::text
+        sql`select id, case when visibility = 'public' then (to_jsonb(p) - 'version')::text
                             else visibility::text end as seen
             from content_pages p`,
       )

@@ -1,3 +1,4 @@
+import { isDeepStrictEqual } from "node:util";
 import type { Employee, UserId } from "../modules/auth";
 import {
   CollectionNotFound,
@@ -6,6 +7,9 @@ import {
   RecordExists,
   RecordNotFound,
   type CollectionRecord,
+  type EditorCollection,
+  type EditorCollectionRecord,
+  type RecordEnvelope,
   type CollectionSummary,
   type CollectionView,
   type RecordData,
@@ -30,6 +34,15 @@ export interface CollectionStore {
   collection(
     key: string,
   ): Promise<Result<CollectionView | null, ContentStoreUnavailable>>;
+  /** Definition-first lock for writes that interpret record data. */
+  lockCollection(
+    key: string,
+  ): Promise<Result<EditorCollection | null, ContentStoreUnavailable>>;
+  /** One coherent private edit snapshot. */
+  recordEnvelope(
+    key: string,
+    recordKey: string,
+  ): Promise<Result<RecordEnvelope | null, ContentStoreUnavailable>>;
   /** A collection's records, by record key. */
   records(
     key: string,
@@ -38,19 +51,19 @@ export interface CollectionStore {
   lockRecord(
     key: string,
     recordKey: string,
-  ): Promise<Result<CollectionRecord | null, ContentStoreUnavailable>>;
+  ): Promise<Result<EditorCollectionRecord | null, ContentStoreUnavailable>>;
   /** Insert a record; null when the collection already has one by that key. */
   insertRecord(
     key: string,
     recordKey: string,
     data: RecordData,
-  ): Promise<Result<CollectionRecord | null, ContentStoreUnavailable>>;
+  ): Promise<Result<EditorCollectionRecord | null, ContentStoreUnavailable>>;
   /** Replace a record's data. */
   updateRecord(
     key: string,
     recordKey: string,
     data: RecordData,
-  ): Promise<Result<CollectionRecord, ContentStoreUnavailable>>;
+  ): Promise<Result<EditorCollectionRecord, ContentStoreUnavailable>>;
   /** Delete a record. */
   deleteRecord(
     key: string,
@@ -100,15 +113,26 @@ export class CollectionEditing {
       : records;
   }
 
+  /** Private detail uses the same definition and record snapshot. */
+  detail(
+    key: string,
+    recordKey: string,
+  ): Promise<Result<RecordEnvelope | null, ContentStoreUnavailable>> {
+    return this.store.recordEnvelope(key, recordKey);
+  }
+
   /** Add a record the collection does not have yet. */
   create(
     key: string,
     recordKey: string,
     data: Readonly<Record<string, unknown>>,
     actor: Employee,
-  ): Promise<Result<CollectionRecord, RecordWriteFailure>> {
+  ): Promise<Result<EditorCollectionRecord, RecordWriteFailure>> {
     return this.store.atomically(actor.id, async (store) => {
-      const parsed = await checked(store, key, recordKey, data);
+      const collection = await store.lockCollection(key);
+      if (!collection.ok) return collection;
+      if (!collection.value) return err(new CollectionNotFound(key));
+      const parsed = parseRecord(collection.value, recordKey, data);
       if (!parsed.ok) return parsed;
       const inserted = await store.insertRecord(key, recordKey, parsed.value);
       if (!inserted.ok) return inserted;
@@ -125,13 +149,18 @@ export class CollectionEditing {
     data: Readonly<Record<string, unknown>>,
     expectedUpdatedAt: Date | null,
     actor: Employee,
-  ): Promise<Result<CollectionRecord, RecordWriteFailure>> {
+  ): Promise<Result<EditorCollectionRecord, RecordWriteFailure>> {
     return this.store.atomically(actor.id, async (store) => {
-      // The record first, so a save to a missing record is a 404 whatever it sends.
+      const collection = await store.lockCollection(key);
+      if (!collection.ok) return collection;
+      if (!collection.value) return err(new CollectionNotFound(key));
+      // Check existence and the original timestamp before field validation.
       const current = await unchanged(store, key, recordKey, expectedUpdatedAt);
       if (!current.ok) return current;
-      const parsed = await checked(store, key, recordKey, data);
+      const parsed = parseRecord(collection.value, recordKey, data);
       if (!parsed.ok) return parsed;
+      if (isDeepStrictEqual(current.value.data, parsed.value))
+        return ok(current.value);
       return store.updateRecord(key, recordKey, parsed.value);
     });
   }
@@ -154,24 +183,6 @@ export class CollectionEditing {
   }
 }
 
-/** The record's data checked against its collection's field list. */
-async function checked(
-  store: CollectionStore,
-  key: string,
-  recordKey: string,
-  data: Readonly<Record<string, unknown>>,
-): Promise<
-  Result<
-    RecordData,
-    CollectionNotFound | RecordRejected | ContentStoreUnavailable
-  >
-> {
-  const collection = await store.collection(key);
-  if (!collection.ok) return collection;
-  if (collection.value === null) return err(new CollectionNotFound(key));
-  return parseRecord(collection.value, recordKey, data);
-}
-
 /** The stored record, locked, if it is still the version the caller read. */
 async function unchanged(
   store: CollectionStore,
@@ -180,7 +191,7 @@ async function unchanged(
   expectedUpdatedAt: Date | null,
 ): Promise<
   Result<
-    CollectionRecord,
+    EditorCollectionRecord,
     RecordNotFound | RecordConflict | ContentStoreUnavailable
   >
 > {

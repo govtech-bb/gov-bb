@@ -35,6 +35,7 @@ import {
 } from "../modules/page";
 import { err, ok, type Result } from "../modules/result";
 import type { LastEditedBy } from "../modules/content-attribution";
+import type { EditVersion } from "../modules/edit-concurrency";
 import { chunkMarkdown, type SearchChunk } from "../modules/search-text";
 import {
   NO_REVIEW_NOTIFICATIONS,
@@ -82,6 +83,14 @@ export type RevisionMark =
       readonly at: Date;
     };
 
+/** Live content, working revision, attribution and root version from one database snapshot. */
+export interface PageEditorSnapshot {
+  readonly live: PageDocument;
+  readonly revision: PendingRevision | null;
+  readonly version: EditVersion;
+  readonly last_edited_by: LastEditedBy;
+}
+
 /** The persistence the editor's page operations need. */
 export interface PageRecords {
   /**
@@ -93,10 +102,14 @@ export interface PageRecords {
     actorId: UserId,
     work: (records: PageRecords) => Promise<R>,
   ): Promise<R | Result<never, ContentStoreUnavailable>>;
-  /** The actor of the page's highest-version event, including review steps; null without history. */
-  lastEditedBy(
+  /** One coherent editor snapshot, or null when the page is missing. */
+  editorSnapshot(
     id: PageId,
-  ): Promise<Result<LastEditedBy, ContentStoreUnavailable>>;
+  ): Promise<Result<PageEditorSnapshot | null, ContentStoreUnavailable>>;
+  /** Invalidate the root after revision writes, while its row lock is held. */
+  bumpPageVersion(
+    id: PageId,
+  ): Promise<Result<EditVersion, ContentStoreUnavailable>>;
   /** The page with this id, or null. */
   find(
     id: PageId,
@@ -199,33 +212,24 @@ export class PageEditing {
     private readonly notifier: ReviewNotifier = NO_REVIEW_NOTIFICATIONS,
   ) {}
 
-  /**
-   * The page with this id as the editor works on it: with its pending
-   * revision laid over it. Separate reads rather than one snapshot: a save
-   * between them leaves this with a version no save matches, so the next save is a
-   * conflict, never a lost write.
-   */
+  /** The working copy and its baseline, read from one database snapshot. */
   async open(
     id: PageId,
   ): Promise<Result<EditorPage | null, ContentStoreUnavailable>> {
-    const live = await this.records.find(id);
-    if (!live.ok) return live;
-    if (live.value === null) return ok(null);
-    const revision = await this.records.currentRevision(id);
-    if (!revision.ok) return revision;
-    return attributedPage(this.records, live.value, revision.value);
+    const snapshot = await this.records.editorSnapshot(id);
+    return snapshot.ok
+      ? ok(snapshot.value && editorPageOf(snapshot.value))
+      : snapshot;
   }
 
-  /** The page's current revision and what it changes, or null when it has none. */
+  /** The current revision, its live comparison and enclosing page version from one snapshot. */
   async revision(
     id: PageId,
   ): Promise<Result<RevisionView | null, ContentStoreUnavailable>> {
-    const live = await this.records.find(id);
-    if (!live.ok) return live;
-    if (live.value === null) return ok(null);
-    const revision = await this.records.currentRevision(id);
-    if (!revision.ok) return revision;
-    return ok(revision.value && viewOf(live.value, revision.value));
+    const snapshot = await this.records.editorSnapshot(id);
+    return snapshot.ok
+      ? ok(snapshot.value && revisionViewOf(snapshot.value))
+      : snapshot;
   }
 
   /**
@@ -263,9 +267,7 @@ export class PageEditing {
         created.value.id,
         chunkMarkdown(created.value.body_markdown),
       );
-      return indexed.ok
-        ? attributedPage(records, created.value, null)
-        : indexed;
+      return indexed.ok ? savedPage(records, created.value.id) : indexed;
     });
   }
 
@@ -359,6 +361,8 @@ export class PageEditing {
             at: now,
           });
           if (!discarded.ok) return discarded;
+          const bumped = await records.bumpPageVersion(id);
+          if (!bumped.ok) return bumped;
         }
         const hidden = await writeLive(
           records,
@@ -367,12 +371,13 @@ export class PageEditing {
           now,
         );
         if (!hidden.ok) return hidden;
-        if (pending.value?.status !== "draft")
-          return attributedPage(records, hidden.value, null);
-        const dropped = await records.dropRevision(id);
-        return dropped.ok
-          ? attributedPage(records, hidden.value, null)
-          : dropped;
+        if (pending.value?.status === "draft") {
+          const dropped = await records.dropRevision(id);
+          if (!dropped.ok) return dropped;
+          const bumped = await records.bumpPageVersion(id);
+          if (!bumped.ok) return bumped;
+        }
+        return savedPage(records, id);
       }
 
       if (fields.url !== current.url) {
@@ -389,6 +394,11 @@ export class PageEditing {
             : fields.parent_id,
       });
       if (!placed.ok) return placed;
+      if (
+        changesOf(workingCopy(current, pending.value), placed.value).length ===
+        0
+      )
+        return savedPage(records, id);
       if (current.visibility === "public" && fields.visibility === "public") {
         // Refused now for what publishing it would be refused for today.
         const valid = await records.checkReplace(
@@ -406,9 +416,9 @@ export class PageEditing {
             this.clock(),
           ),
         );
-        return proposed.ok
-          ? attributedPage(records, current, proposed.value)
-          : proposed;
+        if (!proposed.ok) return proposed;
+        const bumped = await records.bumpPageVersion(id);
+        return bumped.ok ? savedPage(records, id) : bumped;
       }
       if (fields.visibility === "public" && !this.review.allowSelfApproval) {
         // Making it public approves every change since it was last public,
@@ -426,7 +436,7 @@ export class PageEditing {
       }
       // Only a public page has a revision, so there is none to close here.
       const saved = await writeLive(records, current, placed.value, now);
-      return saved.ok ? attributedPage(records, saved.value, null) : saved;
+      return saved.ok ? savedPage(records, id) : saved;
     });
   }
 
@@ -483,7 +493,9 @@ export class PageEditing {
           by: actor.id,
           at: this.clock(),
         });
-        return marked.ok ? ok(viewOf(live, marked.value)) : marked;
+        if (!marked.ok) return marked;
+        const bumped = await records.bumpPageVersion(id);
+        return bumped.ok ? savedRevision(records, id) : bumped;
       },
     );
     if (submitted.ok)
@@ -531,7 +543,7 @@ export class PageEditing {
           "decide",
         );
         if (!reviewing.ok) return reviewing;
-        const { live, revision } = reviewing.value;
+        const { revision } = reviewing.value;
         if (this.isOwn(revision, actor)) return err(new SelfApproval());
         const marked = await records.markRevision(revision.id, {
           status: "rejected",
@@ -544,7 +556,9 @@ export class PageEditing {
           ),
           comment,
         });
-        return marked.ok ? ok(viewOf(live, marked.value)) : marked;
+        if (!marked.ok) return marked;
+        const bumped = await records.bumpPageVersion(id);
+        return bumped.ok ? savedRevision(records, id) : bumped;
       },
     );
     if (rejected.ok && rejected.value.submitted_by !== null)
@@ -615,9 +629,11 @@ export class PageEditing {
           at: now,
         });
         if (!marked.ok) return marked;
+        const bumped = await records.bumpPageVersion(id);
+        if (!bumped.ok) return bumped;
         const saved = await writeLive(records, live, placed.value, now);
         if (!saved.ok) return saved;
-        const page = await attributedPage(records, saved.value, null);
+        const page = await savedPage(records, id);
         return page.ok
           ? ok({ page: page.value, submittedBy: marked.value.submitted_by })
           : page;
@@ -689,21 +705,46 @@ const CREATED_PUBLIC =
 const CHANGED_SINCE_PUBLIC =
   "You changed this page since it was last public, so another approver needs to make it public.";
 
-/** Read attribution after writes, inside their transaction, so no-ops keep the previous actor. */
-async function attributedPage(
-  records: PageRecords,
-  live: PageDocument,
-  revision: PendingRevision | null,
-): Promise<Result<EditorPage, ContentStoreUnavailable>> {
-  const author = await records.lastEditedBy(live.id);
-  return author.ok
-    ? ok({ ...workingCopy(live, revision), last_edited_by: author.value })
-    : author;
+function editorPageOf(snapshot: PageEditorSnapshot): EditorPage {
+  return {
+    ...workingCopy(snapshot.live, snapshot.revision),
+    version: snapshot.version,
+    last_edited_by: snapshot.last_edited_by,
+  };
 }
 
-/** A revision with what it changes against the live page. */
-function viewOf(live: PageDocument, revision: PendingRevision): RevisionView {
-  return { ...revision, changes: changesOf(live, revision.fields) };
+function revisionViewOf(snapshot: PageEditorSnapshot): RevisionView | null {
+  return (
+    snapshot.revision && {
+      ...snapshot.revision,
+      version: snapshot.version,
+      changes: changesOf(snapshot.live, snapshot.revision.fields),
+    }
+  );
+}
+
+/** Read final persisted versions after every write in the locked transaction. */
+async function savedPage(
+  records: PageRecords,
+  id: PageId,
+): Promise<Result<EditorPage, ContentStoreUnavailable>> {
+  const snapshot = await records.editorSnapshot(id);
+  if (!snapshot.ok) return snapshot;
+  if (!snapshot.value)
+    throw new Error("Saved page missing inside its write transaction");
+  return ok(editorPageOf(snapshot.value));
+}
+
+async function savedRevision(
+  records: PageRecords,
+  id: PageId,
+): Promise<Result<RevisionView, ContentStoreUnavailable>> {
+  const snapshot = await records.editorSnapshot(id);
+  if (!snapshot.ok) return snapshot;
+  const revision = snapshot.value && revisionViewOf(snapshot.value);
+  if (!revision)
+    throw new Error("Saved revision missing inside its write transaction");
+  return ok(revision);
 }
 
 /**
@@ -776,6 +817,7 @@ async function writeLive(
   fields: PageFields,
   now: Date,
 ): Promise<Result<PageDocument, PageRejected | ContentStoreUnavailable>> {
+  if (changesOf(current, fields).length === 0) return ok(current);
   const saved = await records.replace(
     current.id,
     revisionOf(current, fields, now),

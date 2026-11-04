@@ -6,6 +6,7 @@
 import { isDeepStrictEqual } from "node:util";
 import { z } from "zod";
 import { LastEditedBy } from "./content-attribution";
+import { EditVersion } from "./edit-concurrency";
 
 /** Who may see a page, in the database enum's order. */
 export const VISIBILITIES = ["public", "preview", "draft"] as const;
@@ -182,6 +183,7 @@ export type FieldChange = z.infer<typeof FieldChange>;
 
 /** A pending revision, with what it changes against the live page. */
 export const RevisionView = PendingRevision.extend({
+  version: EditVersion,
   changes: z
     .array(FieldChange)
     .describe(
@@ -215,6 +217,7 @@ export type ReviewQueueEntry = z.infer<typeof ReviewQueueEntry>;
 
 /** A page as the editor opens and saves it: the live page with its pending revision, if any, laid over it. */
 export const EditorPage = PageDocument.extend({
+  version: EditVersion,
   last_edited_by: LastEditedBy,
   pending_revision: z
     .object({
@@ -370,7 +373,7 @@ export function revisionOf(
 export function workingCopy(
   live: PageDocument,
   revision: PendingRevision | null,
-): Omit<EditorPage, "last_edited_by"> {
+): Omit<EditorPage, "last_edited_by" | "version"> {
   if (
     revision === null ||
     revision.status === "published" ||
