@@ -427,3 +427,4 @@ export {
   serializeLegacyHighlights,
   type LegacyHighlight,
 } from "#govbbmarkd/legacy-highlights-html";
+export { isHtmlBreak } from "#govbbmarkd/html-break";

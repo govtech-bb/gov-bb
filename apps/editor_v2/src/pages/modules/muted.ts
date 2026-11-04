@@ -1,5 +1,6 @@
 import {
   $createParagraphNode,
+  $findMatchingParent,
   $getSelection,
   $isParagraphNode,
   $isRangeSelection,
@@ -124,7 +125,8 @@ export function PageMutedModule(): PageModule {
   };
 }
 
-// The paragraphs a selection touches, when all are directly on the page: the only paragraphs landing's pages mute
+// The paragraphs a selection touches, when all are directly on the page, the only paragraphs landing's pages mute, or
+// are muted text elsewhere, as in a list item or Notice, which can only be taken off
 function $selectedParagraphs(): ParagraphNode[] | null {
   const selection = $getSelection();
 
@@ -132,9 +134,15 @@ function $selectedParagraphs(): ParagraphNode[] | null {
   const lines: ParagraphNode[] = [];
 
   for (const node of selection.getNodes()) {
-    const line = node.getTopLevelElement();
+    const line =
+      $findMatchingParent(node, (parent) => parent instanceof PageMutedNode) ??
+      node.getTopLevelElement();
 
-    if (!$isParagraphNode(line) || !$isRootNode(line.getParent())) return null;
+    if (
+      !$isParagraphNode(line) ||
+      !(line instanceof PageMutedNode || $isRootNode(line.getParent()))
+    )
+      return null;
 
     if (!lines.some((known) => known.is(line))) lines.push(line);
   }

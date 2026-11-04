@@ -80,6 +80,23 @@ test("only a page's own paragraphs take a colour, as only they are muted on land
   }
 });
 
+test("muted text in a list item or Notice can be taken off, but not put back", async () => {
+  const editor = await renderPageEditor(
+    "- <muted>Small print</muted>\n- Plain\n\n:::notice\n<muted>Apply by Friday</muted>\n:::\n",
+  );
+
+  for (const words of ["Small print", "Apply by Friday"]) {
+    await selectWords(words);
+    await act(async () => colourMenu()!.click());
+    expect(colour("Muted").getAttribute("aria-checked")).toBe("true");
+    await act(async () => colour("Default").click());
+    await selectWords(words);
+    expect(colourMenu()).toBeNull();
+  }
+
+  expect(body(editor)).toBe("- Small print\n- Plain\n\n:::notice\nApply by Friday\n:::\n");
+});
+
 test("nothing inserts muted text: neither the insert menu nor “/” offers it", () => {
   expect(
     govbbPageEditor.actions.filter((action) =>

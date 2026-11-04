@@ -1,12 +1,15 @@
 /** @vitest-environment jsdom */
 import { beforeEach, expect, test } from "vitest";
 import { act } from "react";
+import { $createLinkNode } from "@lexical/link";
 import {
+  $createTextNode,
   $getRoot,
   $getSelection,
   $isElementNode,
   $isRangeSelection,
   $isTextNode,
+  INSERT_LINE_BREAK_COMMAND,
   INSERT_PARAGRAPH_COMMAND,
   KEY_BACKSPACE_COMMAND,
   KEY_DELETE_COMMAND,
@@ -196,4 +199,30 @@ test("a highlight's text stays plain, as landing shows it", async () => {
     if ($isTextNode(text)) text.toggleFormat("bold");
   });
   expect(body(editor)).toBe(water);
+});
+
+test("a link typed or pasted into a highlight leaves its words, and the page still saves", async () => {
+  const editor = await renderPageEditor(water);
+  await caret(editor, "Store 3 gallons.", "end");
+  await type(editor, " [Get help](/help");
+  await type(editor, ")");
+  expect(body(editor)).toBe(water.replace("Store 3 gallons.", "Store 3 gallons. Get help"));
+
+  await run(editor, () => {
+    const title = $getRoot().getAllTextNodes()[0]!.getParentOrThrow();
+    title.append($createLinkNode("/food").append($createTextNode(" and food")));
+  });
+  expect(body(editor)).toBe(
+    water
+      .replace("Water", "Water and food")
+      .replace("Store 3 gallons.", "Store 3 gallons. Get help"),
+  );
+});
+
+test("a line break in a highlight's title is a space, as landing shows it", async () => {
+  const editor = await renderPageEditor(water);
+  await caret(editor, "Water", "end");
+  await run(editor, () => editor.dispatchCommand(INSERT_LINE_BREAK_COMMAND, false));
+  await type(editor, "food");
+  expect(body(editor)).toBe(water.replace("Water", "Water food"));
 });

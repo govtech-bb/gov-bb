@@ -5,6 +5,7 @@ import {
   escapeText,
 } from "entities";
 import type { PhrasingContent, RootContent } from "mdast";
+import { HTML_BREAK, isHtmlBreak } from "#govbbmarkd/html-break";
 
 /** A retained highlight: its title, and its text with any line breaks. */
 export interface LegacyHighlight {
@@ -12,15 +13,16 @@ export interface LegacyHighlight {
   readonly text: PhrasingContent[];
 }
 
-const HIGHLIGHT =
-  /<highlight\s+title="([^"]*)"\s*>((?:[^<]|<br\s*\/?\s*>)*)<\/highlight>/gi;
-const BREAK = /<br\s*\/?\s*>/i;
+const HIGHLIGHT = new RegExp(
+  String.raw`<highlight\s+title="([^"]*)"\s*>((?:[^<]|${HTML_BREAK.source})*)<\/highlight>`,
+  "gi",
+);
 
 // HTML collapses these, as landing draws the text; a non-breaking space stays
 const collapse = (value: string) => value.replace(/[\t\n\f\r ]+/g, " ");
 
 function highlightText(body: string): PhrasingContent[] {
-  return body.split(BREAK).flatMap((part, index) => {
+  return body.split(HTML_BREAK).flatMap((part, index) => {
     const value = collapse(decodeHTMLStrict(part));
     const text: PhrasingContent[] = value ? [{ type: "text", value }] : [];
 
@@ -56,11 +58,7 @@ export function parseLegacyHighlights(
 function highlightHtml(node: RootContent): string {
   if (node.type === "text") return escapeText(collapse(node.value));
 
-  if (
-    node.type === "break" ||
-    (node.type === "html" && /^<br\s*\/?\s*>$/i.test(node.value))
-  )
-    return "<br>";
+  if (node.type === "break" || isHtmlBreak(node)) return "<br>";
 
   throw new Error("A highlight can only hold plain text and line breaks");
 }

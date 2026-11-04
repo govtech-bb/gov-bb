@@ -28,6 +28,7 @@ import { $createLinkNode, $isLinkNode } from "@lexical/link";
 import { TextModule } from "../../editor/modules/text/module";
 import { lineHint } from "../../editor/react/block-dom";
 import { isSafeContentUrl } from "@govtech-bb/govbbmarkd/content-url";
+import { isHtmlBreak } from "@govtech-bb/govbbmarkd/legacy";
 import type { MarkdownNode, PageHandler, PageModule } from "../definition";
 import { blocks, phrasing, UnsupportedPageContent } from "../markdown";
 import { registerPageBlockExit } from "../block-exit";
@@ -35,9 +36,6 @@ import { pageInsertAction } from "../insertion";
 import { pageTurnInto } from "../turn-into";
 import { PageRuleNode } from "../nodes";
 import { $hasTrait } from "../blocks/node";
-
-// A line break written as HTML, as a page writes one outside a button's label
-const isBreak = (node: MarkdownNode) => node.type === "html" && /^<br\s*\/?\s*>$/i.test(node.value);
 
 /** Visual editing additionally excludes whitespace and scheme-relative destinations; empty links remain editable. */
 export function safePageUrl(value: string): boolean {
@@ -78,7 +76,7 @@ const text: PageHandler = {
       "heading",
       "blockquote",
       "thematicBreak",
-    ].includes(node.type) || isBreak(node),
+    ].includes(node.type) || isHtmlBreak(node),
   owns: (node) =>
     $isTextNode(node) ||
     $isLineBreakNode(node) ||
@@ -95,7 +93,7 @@ const text: PageHandler = {
         return [$createTextNode(node.value).toggleFormat("code")];
       case "break":
       case "html":
-        if (node.type === "html" && !isBreak(node)) throw new UnsupportedPageContent(node);
+        if (node.type === "html" && !isHtmlBreak(node)) throw new UnsupportedPageContent(node);
 
         return [$createLineBreakNode()];
       case "strong":

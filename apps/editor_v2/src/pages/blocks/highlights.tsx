@@ -2,6 +2,8 @@ import { Plus, SquaresFour } from "@phosphor-icons/react";
 import { parseLegacyHighlights, serializeLegacyHighlights } from "@govtech-bb/govbbmarkd/legacy";
 import {
   $createTextNode,
+  $isElementNode,
+  $isLineBreakNode,
   COMMAND_PRIORITY_NORMAL,
   INSERT_PARAGRAPH_COMMAND,
   KEY_BACKSPACE_COMMAND,
@@ -65,13 +67,24 @@ function $highlightParts(highlight: LexicalNode) {
 }
 
 /**
- * A highlight keeps its title and then its text, both plain: formatting pasted in comes off, rather than showing until
- * it fails to save, and a highlight that deleting a selection has left with one part gets the other back.
+ * A highlight keeps its title and then its text, both plain: formatting and links typed or pasted in come off, rather
+ * than showing until they fail to save, a line break in a title is the space landing shows, and a highlight that
+ * deleting a selection has left with one part gets the other back.
  */
 function registerHighlightParts(editor: LexicalEditor) {
   return mergeRegister(
     editor.registerNodeTransform(TextNode, (node) => {
       if (node.getFormat() && $isHighlightPart(node.getParent())) node.setFormat(0);
+    }),
+    editor.registerNodeTransform(PageComponentNode, (node) => {
+      if (!$isHighlightPart(node)) return;
+
+      for (const child of node.getChildren())
+        if ($isElementNode(child) && child.isInline()) {
+          for (const inner of child.getChildren()) child.insertBefore(inner);
+          child.remove();
+        } else if ($isLineBreakNode(child) && node.getKind() === "highlight-title")
+          child.replace($createTextNode(" "));
     }),
     editor.registerNodeTransform(PageComponentNode, (node) => {
       if (node.getKind() !== "highlight") return;
