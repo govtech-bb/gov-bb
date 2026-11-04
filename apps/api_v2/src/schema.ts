@@ -297,6 +297,17 @@ export const changeEvents = pgTable(
   ],
 );
 
+/** Persistent audit counters survive deletion and recreation of their content entity. */
+export const changeEventCounters = pgTable(
+  "change_event_counters",
+  {
+    entityKind: varchar("entity_kind", { length: 40 }).notNull(),
+    entityId: text("entity_id").notNull(),
+    lastVersion: integer("last_version").notNull(),
+  },
+  (table) => [primaryKey({ columns: [table.entityKind, table.entityId] })],
+);
+
 /**
  * An employee's roles, a row each. `user_id` references `auth_user`, which
  * BetterAuth owns, so the key is in the migration only.

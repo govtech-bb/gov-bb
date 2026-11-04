@@ -175,6 +175,11 @@ erDiagram
     uuid parent_id FK "nullable"
     int4 position
   }
+  change_event_counters {
+    varchar(40) entity_kind PK
+    text entity_id PK
+    int4 last_version
+  }
   change_events {
     uuid id PK
     varchar(40) entity_kind "unique (entity_kind, entity_id, version_no)"
