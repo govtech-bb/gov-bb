@@ -22,6 +22,14 @@
 > minutes per run, processors dropped per ADR 0052); and a failed landing
 > deploy skips the forms smoke for that run — the run is already red.
 
+> **Amended 2026-11-03 ([#3008](https://github.com/govtech-bb/gov-bb/issues/3008)):**
+> the same landing-first smoke now also runs after **every staging deploy**
+> (`deploy-staging.yml`, with `SMOKE_SUBMISSION_TOKEN_STAGING`), even when
+> nothing changed, and **Deploy Production refuses a commit** unless a staging
+> run for that exact commit passed every smoke leg. This extends the decision
+> below from sandbox to staging and makes the smoke a release gate.
+> `allow_non_staging` still skips the guard for a deliberate rollback.
+
 ## Context
 
 The forms app has two distinct kinds of end-to-end test:
