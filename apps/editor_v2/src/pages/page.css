@@ -97,24 +97,6 @@
 .page-table-cell-selected {
   background: color-mix(in srgb, var(--page-blue) 15%, white);
 }
-.page-body [data-page-component="notice"] {
-  border-inline-start: 0.35rem solid var(--page-blue);
-  padding: 1rem;
-  margin-block: 1rem;
-  background: color-mix(in srgb, var(--page-blue) 5%, white);
-}
-.page-body [data-page-component="details"] {
-  border: 1px solid var(--page-line);
-  padding: 1rem;
-  margin-block: 1rem;
-}
-.page-body :is([data-page-component="details"], [data-page-component="table"], [data-page-component="summary-item"])::before {
-  content: attr(data-summary);
-  display: block;
-  font-weight: 700;
-  margin-block-end: 1rem;
-  color: var(--page-blue);
-}
 /* Float with zero height keeps the caret at the start of the empty heading. */
 .page-editable
   :is(.page-h1, .page-h2, .page-h3, .page-h4, .page-h5, .page-h6):has(> br:only-child)::before {
@@ -140,20 +122,6 @@
 }
 .page-editable .page-h6:has(> br:only-child)::before {
   content: "Heading 6" / "";
-}
-.page-body [data-page-component="actions"] {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: start;
-  gap: 0.75rem;
-  margin-block: 1rem;
-}
-/* GovBB's buttons, drawn as the form draws its Back and Continue (index.css) */
-.page-body :is([data-page-component="start"], [data-page-component="action"]) {
-  @apply govbb-button;
-}
-.page-body .page-action-secondary {
-  @apply govbb-button-secondary;
 }
 .page-body .page-details {
   margin-block: 1rem;

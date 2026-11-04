@@ -5,14 +5,13 @@ import {
   type LexicalNode,
   type NodeKey,
 } from "lexical";
-import { CaretLinkPopover } from "../editor/react/caret-link";
-import { linkAddress } from "../editor/modules/links/url";
-import { safePageUrl } from "./modules/text";
-import { PageComponentNode } from "./nodes";
+import { CaretLinkPopover } from "../../editor/react/caret-link";
+import { linkAddress } from "../../editor/modules/links/url";
+import { safePageUrl } from "../modules/text";
+import { $hasTrait } from "./node";
 
 // A Start button or an Action button: the page's buttons with an address
-const $isButton = (node: LexicalNode | null): node is PageComponentNode =>
-  node instanceof PageComponentNode && (node.getKind() === "start" || node.getKind() === "action");
+const $isButton = (node: LexicalNode | null) => $hasTrait(node, "button");
 
 function $findButton(node: LexicalNode) {
   const button = $findMatchingParent(node, $isButton);

@@ -10,7 +10,6 @@ import {
 } from "@lexical/table";
 import {
   $createParagraphNode,
-  $createTextNode,
   $getNearestNodeFromDOMNode,
   $getNodeByKey,
   $getRoot,
@@ -41,15 +40,7 @@ import {
   ListBullets,
   ListNumbers,
 } from "@phosphor-icons/react";
-import {
-  useEffect,
-  useId,
-  useRef,
-  useState,
-  type ComponentProps,
-  type MouseEvent,
-  type RefObject,
-} from "react";
+import { useEffect, useId, useRef, useState, type MouseEvent, type RefObject } from "react";
 import {
   $availableActions,
   $executeAction,
@@ -66,18 +57,16 @@ import {
   useBlockDrag,
   useRailTarget,
 } from "../editor/react/block-rail";
-import { useEditorDefinition, useLinkPages } from "../editor/react/composer";
+import { EditorSlot } from "../editor/react/contributions";
+import { useEditorDefinition } from "../editor/react/composer";
 import { $validPoint, roomierSide, useCaretReturn } from "../editor/react/editor-popup";
 import { cn } from "../cn";
 import { altKey } from "../editor/react/shortcut";
 import { turnIntoOptions } from "../editor/react/turn-into";
 import { Button } from "../ui/button";
-import { Field } from "../ui/field";
 import { openedByTouch } from "../ui/focus";
-import { Input } from "../ui/input";
 import { Kbd } from "../ui/kbd";
 import { Menu } from "../ui/menu";
-import { NativeSelect } from "../ui/native-select";
 import { belowBar, Popover } from "../ui/popover";
 import { groupLabel, listFooter } from "../ui/surface";
 import { Tip } from "../ui/tooltip";
@@ -89,13 +78,11 @@ import { $blockLines, $pageChoices, $turnPageLines } from "./turn-into";
 import { $rootBlock, type PagePlace } from "./insertion";
 import { startWriting } from "./slash-menu";
 import { PageMetadataNode } from "./metadata";
-import { PageComponentNode, type PageComponentAttributes } from "./nodes";
+import { PageComponentNode } from "./blocks/node";
 import { $nearestPageList, $setPageListType } from "./modules/lists";
 import { $changePageTableColumns } from "./modules/tables";
-import { linkAddress } from "../editor/modules/links/url";
-import { safePageUrl } from "./modules/text";
-import { LinkPicker } from "../ui/link-picker";
 import { $dropPageBlock, $pageDropAt, PAGE_BLOCK_DRAG } from "./block-drag";
+import { BLOCK_OPTIONS, BlockMenuItem, type BlockOptionsProps } from "./blocks/block-options";
 
 function $blockSelection(selection: BaseSelection | null, block: LexicalNode) {
   if (
@@ -595,11 +582,6 @@ function PageBlockMenu({ menu, onDone }: { menu: BlockMenu | null; onDone: () =>
   );
 }
 
-/** A row of the block menu: it acts, then closes the menu itself, so a failure can stay in view. */
-function BlockMenuItem(props: ComponentProps<typeof Menu.Item>) {
-  return <Menu.Item closeOnClick={false} {...props} />;
-}
-
 function BlockMenuRows({ menu, onDone }: { menu: BlockMenu; onDone: () => void }) {
   const [editor] = useLexicalComposerContext();
   const [error, setError] = useState<string>();
@@ -651,6 +633,7 @@ function BlockMenuRows({ menu, onDone }: { menu: BlockMenu; onDone: () => void }
   );
 
   if (!model) return null;
+  const { component } = model;
 
   const change = (apply: (block: LexicalNode) => void, close = true) => {
     if (!editor.isEditable()) return;
@@ -690,71 +673,24 @@ function BlockMenuRows({ menu, onDone }: { menu: BlockMenu; onDone: () => void }
           {error}
         </p>
       )}
-      {(model.component || model.turnInto) && (
+      {(component || model.turnInto) && (
         <Menu.Group>
-          {model.component && (
-            <ComponentSettings
-              key={model.component.key}
-              component={model.component}
-              onChange={(patch) =>
-                change((block) => {
-                  const node = $pageBlockDescendant(model.component!.key, block);
+          {/* The component's own options, from the module that owns its kind; another component's start afresh */}
+          {component && (
+            <EditorSlot<BlockOptionsProps>
+              key={component.key}
+              name={BLOCK_OPTIONS}
+              props={{
+                component,
+                change: (apply, close) =>
+                  change((block) => {
+                    const node = $pageBlockDescendant(component.key, block);
 
-                  if (node instanceof PageComponentNode)
-                    node.setAttributes({ ...node.getAttributes(), ...patch });
-                }, false)
-              }
+                    if (node instanceof PageComponentNode) apply(node);
+                  }, close),
+              }}
             />
           )}
-          {model.component &&
-            (model.component.kind === "summary-list" ||
-              model.component.kind === "summary-item") && (
-              <BlockMenuItem
-                icon={<Plus />}
-                onClick={() =>
-                  change((block) => {
-                    if (!model.component) return;
-                    const node = $pageBlockDescendant(model.component.key, block);
-
-                    if (!(node instanceof PageComponentNode)) return;
-
-                    const item = new PageComponentNode("summary-item", {
-                      summaryKey: "Key",
-                    }).append($createParagraphNode());
-
-                    if (node.getKind() === "summary-list") node.append(item);
-                    else node.insertAfter(item);
-                    item.selectStart();
-                  })
-                }
-              >
-                Add summary item
-              </BlockMenuItem>
-            )}
-          {model.component &&
-            (model.component.kind === "action" || model.component.kind === "actions") && (
-              <BlockMenuItem
-                icon={<Plus />}
-                onClick={() =>
-                  change((block) => {
-                    const node = $pageBlockDescendant(model.component!.key, block);
-
-                    if (!(node instanceof PageComponentNode)) return;
-
-                    const button = new PageComponentNode("action", {
-                      href: "#",
-                      variant: "secondary",
-                    }).append($createTextNode("Get help"));
-
-                    if (node.getKind() === "actions") node.append(button);
-                    else node.insertAfter(button);
-                    button.selectStart();
-                  })
-                }
-              >
-                Add another button
-              </BlockMenuItem>
-            )}
           {model.turnInto && (
             <TurnIntoSubmenu
               value={model.turnInto.value}
@@ -906,157 +842,5 @@ function BlockMenuRows({ menu, onDone }: { menu: BlockMenu; onDone: () => void }
         </BlockMenuItem>
       </Menu.Group>
     </>
-  );
-}
-
-/** Action target fields are applied together; legacy Start destinations stay at the caret. */
-function ComponentSettings({
-  component,
-  onChange,
-}: {
-  component: {
-    key: string;
-    kind: string;
-    attributes: PageComponentAttributes;
-  };
-  onChange: (patch: PageComponentAttributes) => void;
-}) {
-  const data = component.attributes;
-  const [label, setLabel] = useState(data.summary ?? data.caption ?? data.summaryKey ?? "");
-  const [href, setHref] = useState(data.href ?? "");
-  const [form, setForm] = useState(data.form ?? "");
-
-  const [target, setTarget] = useState<"url" | "form" | "linked-form">(
-    data.form !== undefined ? "form" : data.href !== undefined ? "url" : "linked-form",
-  );
-
-  const [error, setError] = useState<string>();
-  const pages = useLinkPages();
-
-  const labelName =
-    component.kind === "details"
-      ? "Details summary"
-      : component.kind === "table"
-        ? "Table caption"
-        : component.kind === "summary-item"
-          ? "Summary key"
-          : undefined;
-
-  if (!labelName && component.kind !== "action") return null;
-
-  const keepSettings = () => {
-    if (labelName) {
-      if (!label.trim()) {
-        setError(`Enter a ${labelName.toLowerCase()}.`);
-
-        return;
-      }
-
-      if (label !== (data.summary ?? data.caption ?? data.summaryKey ?? ""))
-        onChange(
-          component.kind === "details"
-            ? { summary: label }
-            : component.kind === "table"
-              ? { caption: label }
-              : { summaryKey: label },
-        );
-    } else {
-      const destination = target === "url" ? linkAddress(href, safePageUrl) : undefined;
-
-      if (destination === null) {
-        setError("Enter a relative link, or an http, https, email or telephone link.");
-
-        return;
-      }
-
-      onChange({
-        href: destination,
-        form: target === "form" ? form : undefined,
-        target: target === "linked-form" ? "form" : undefined,
-      });
-
-      if (destination) setHref(destination);
-    }
-
-    setError(undefined);
-  };
-
-  return (
-    <form
-      className="page-component-settings grid gap-4 px-3.5 pt-1 pb-3"
-      onKeyDown={(event) => event.key !== "Escape" && event.stopPropagation()}
-      onSubmit={(event) => {
-        event.preventDefault();
-        keepSettings();
-      }}
-    >
-      {labelName ? (
-        <Field size="sm" label={labelName} error={error}>
-          <Input
-            size="sm"
-            value={label}
-            onChange={(event) => setLabel(event.target.value)}
-            onBlur={keepSettings}
-          />
-        </Field>
-      ) : (
-        <>
-          <Field size="sm" label="Destination type">
-            <NativeSelect
-              size="sm"
-              value={target}
-              onChange={(event) => {
-                const value = event.target.value;
-
-                if (value === "url" || value === "form" || value === "linked-form")
-                  setTarget(value);
-              }}
-            >
-              <option value="url">Link</option>
-              <option value="linked-form">Page’s linked form</option>
-              <option value="form">Registered form</option>
-            </NativeSelect>
-          </Field>
-          {target === "url" && (
-            <Field size="sm" label="Button destination">
-              <LinkPicker size="sm" value={href} pages={pages} onValueChange={setHref} />
-            </Field>
-          )}
-          {target === "form" && (
-            <Field size="sm" label="Form identifier">
-              <Input
-                size="sm"
-                value={form}
-                autoComplete="off"
-                autoCapitalize="none"
-                spellCheck={false}
-                required
-                pattern="[a-zA-Z0-9][a-zA-Z0-9_-]*"
-                title="Use letters, numbers, hyphens or underscores; start with a letter or number."
-                onChange={(event) => setForm(event.target.value)}
-              />
-            </Field>
-          )}
-          <Field size="sm" label="Button style">
-            <NativeSelect
-              size="sm"
-              value={data.variant ?? "primary"}
-              onChange={(event) => onChange({ variant: event.target.value })}
-            >
-              <option value="primary">Primary</option>
-              <option value="secondary">Secondary</option>
-            </NativeSelect>
-          </Field>
-          {error && (
-            <p className="text-error" role="alert">
-              {error}
-            </p>
-          )}
-          <Button type="submit" variant="secondary" className="justify-self-start">
-            Apply settings
-          </Button>
-        </>
-      )}
-    </form>
   );
 }

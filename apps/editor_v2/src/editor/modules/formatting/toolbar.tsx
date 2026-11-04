@@ -19,6 +19,7 @@ import {
   CaretDown,
   LinkBreak,
   LinkSimple,
+  Palette,
   TextB,
   TextItalic,
   TextTSlash,
@@ -33,8 +34,10 @@ import {
   type ReactElement,
   type ReactNode,
 } from "react";
+import { cn } from "../../../cn";
 import { belowBar, Popover } from "../../../ui/popover";
 import { Button } from "../../../ui/button";
+import { Menu } from "../../../ui/menu";
 import { pressedByTouch } from "../../../ui/focus";
 import { LinkForm } from "../../../ui/link-picker";
 import { Toolbar as Controls } from "../../../ui/toolbar";
@@ -87,21 +90,40 @@ const $link = (selection: RangeSelection) =>
     .find($isLinkNode);
 
 /**
- * Opens beneath a rich-text selection after mouseup or keyup, or as it's made by touch. Supports bold, italic
- * and links; the Markdown representation does not support underline or colour.
+ * Opens beneath a rich-text selection after mouseup or keyup, or as it's made by touch. Supports bold, italic,
+ * links and the colours an editor offers; the Markdown representation does not support underline.
  */
 const richText = () => false;
+
+/** A colour the toolbar offers for text, with the class that draws its swatch. */
+export type TextColour = {
+  readonly value: string;
+  readonly label: string;
+  readonly swatch: string;
+};
+
+/**
+ * An editor's colours for text: the selection's colour (null when it's mixed, undefined where it can't take one), and
+ * giving it one. Its callbacks run in the editor's Lexical context.
+ */
+export type TextColours = {
+  readonly choices: readonly TextColour[];
+  readonly $value: () => string | null | undefined;
+  readonly $colour: (value: string) => void;
+};
 
 export type ToolbarPolicy = {
   isPlainText?: (node: LexicalNode) => boolean;
   linksEnabled?: boolean;
   isValidLink?: (url: string) => boolean;
+  colours?: TextColours;
 };
 
 export function Toolbar({
   isPlainText = richText,
   linksEnabled = true,
   isValidLink = isSafeLinkUrl,
+  colours,
 }: ToolbarPolicy = {}) {
   const [editor] = useLexicalComposerContext();
   const { turnInto } = useEditorDefinition();
@@ -239,6 +261,7 @@ export function Toolbar({
                 italic: selection.hasFormat("italic"),
                 link: $link(selection)?.getURL() ?? null,
                 turnInto: turnInto?.$choices() ?? null,
+                colour: colours?.$value(),
               }
             );
           },
@@ -259,6 +282,12 @@ export function Toolbar({
   const turn = (value: string) => {
     if (!editor.isEditable()) return;
     editor.update(() => turnInto?.$turnInto(value), { tag: HISTORY_PUSH_TAG });
+  };
+
+  // As is each change of colour
+  const colour = (value: string) => {
+    if (editor.isEditable())
+      editor.update(() => colours?.$colour(value), { tag: HISTORY_PUSH_TAG });
   };
 
   // A step of its own in the undo history, as a format change is
@@ -339,6 +368,45 @@ export function Toolbar({
             onClick={format("italic")}
           />
           <Action tip="Clear formatting" icon={<TextTSlash />} onClick={clear} />
+          {colours && state.colour !== undefined && (
+            <Menu.Root>
+              <Tip content="Text colour">
+                <Menu.Trigger
+                  render={
+                    <Button
+                      aria-label="Text colour"
+                      icon={<Palette />}
+                      iconEnd={<CaretDown />}
+                      onMouseDown={keepSelection}
+                      className="my-1"
+                    />
+                  }
+                />
+              </Tip>
+              {/* Back to the text, with its selection, rather than the button */}
+              <Menu.Content aria-label="Text colour" finalFocus={() => editor.focus()}>
+                <Menu.RadioGroup
+                  value={state.colour}
+                  onValueChange={(value: string) => colour(value)}
+                >
+                  {colours.choices.map((choice) => (
+                    <Menu.RadioItem
+                      key={choice.value}
+                      value={choice.value}
+                      icon={
+                        <span
+                          className={cn("size-4 rounded-sm border border-line", choice.swatch)}
+                        />
+                      }
+                      closeOnClick
+                    >
+                      {choice.label}
+                    </Menu.RadioItem>
+                  ))}
+                </Menu.RadioGroup>
+              </Menu.Content>
+            </Menu.Root>
+          )}
           {linksEnabled && (
             <>
               <Controls.Separator />

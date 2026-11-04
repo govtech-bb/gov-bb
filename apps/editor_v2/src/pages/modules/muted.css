@@ -1,0 +1,7 @@
+/* Legacy muted text, grey as landing draws it, and a caption at landing's small size. See muted.ts */
+.page-body [data-muted] {
+  color: var(--govbb-color-muted);
+}
+.page-body [data-muted="caption"] {
+  font-size: var(--govbb-font-size-body-sm);
+}

@@ -15,7 +15,7 @@ import { $isListItemNode, $isListNode } from "@lexical/list";
 import { $isQuoteNode } from "@lexical/rich-text";
 import type { ActionRequest, EditorAction } from "../editor/core/actions";
 import { PageMetadataNode } from "./metadata";
-import { PageComponentNode } from "./nodes";
+import { $hasTrait, PageComponentNode, type PageComponentKind } from "./blocks/node";
 
 /**
  * Where a chosen block goes, as an action request's mode. "line", the default, is the caret's line, from the "/"
@@ -40,7 +40,8 @@ export function $pageInsertionTarget(): ElementNode | null {
   while (node && !$isRootNode(node)) {
     if (
       $isElementNode(node) &&
-      (node.getType() === "paragraph" || node.getType() === "heading" || $isListItemNode(node))
+      // Muted text is a paragraph of its own type
+      ($isParagraphNode(node) || node.getType() === "heading" || $isListItemNode(node))
     )
       return node;
     node = node.getParent();
@@ -51,10 +52,7 @@ export function $pageInsertionTarget(): ElementNode | null {
 
 // The blocks an empty line leaves before a block takes its place. A Details and a table cell keep theirs
 const $leavable = (node: LexicalNode) =>
-  $isListNode(node) ||
-  $isListItemNode(node) ||
-  $isQuoteNode(node) ||
-  (node instanceof PageComponentNode && node.getKind() === "notice");
+  $isListNode(node) || $isListItemNode(node) || $isQuoteNode(node) || $hasTrait(node, "leavable");
 
 /** The caret's line holds nothing once what was typed to open the menu has gone. */
 const $emptyLine = (target: LexicalNode, request: ActionRequest) =>
@@ -134,10 +132,16 @@ export function pageInsertAction(
   id: string,
   title: string,
   create: () => ElementNode,
-  presentation: Pick<
+  {
+    notInside = [],
+    ...presentation
+  }: Pick<
     EditorAction,
     "group" | "description" | "icon" | "order" | "searchOnly" | "aliases" | "markdown"
-  > = { group: "Text" },
+  > & {
+    /** The kinds of component the block can't go in, as a Details can't go in another. */
+    readonly notInside?: readonly PageComponentKind[];
+  } = { group: "Text" },
 ): EditorAction {
   return {
     id,
@@ -150,11 +154,7 @@ export function pageInsertAction(
       for (const parent of destination ? [destination, ...destination.getParents()] : []) {
         if (parent.getType() === "tablecell" && id !== "page-paragraph") return false;
 
-        if (
-          id === "page-details" &&
-          parent instanceof PageComponentNode &&
-          parent.getKind() === "details"
-        )
+        if (parent instanceof PageComponentNode && notInside.includes(parent.getKind()))
           return false;
 
         if ($isQuoteNode(parent) && !quotable.has(id)) return false;
