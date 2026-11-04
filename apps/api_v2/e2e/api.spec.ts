@@ -13,7 +13,6 @@ import {
   AUTH_ENV,
   createEmployeeSession,
   createScratchDatabase,
-  databaseQuery,
   dropScratchDatabase,
   HAS_DATABASE,
   startServer,
@@ -26,6 +25,7 @@ const pageSchema = z
     url: z.string(),
     title: z.string(),
     updated_at: z.string(),
+    version: z.number().int().positive().max(Number.MAX_SAFE_INTEGER),
     body_markdown: z.string(),
     visibility: z.enum(["public", "preview", "draft"]),
   })
@@ -92,16 +92,19 @@ describe.skipIf(!HAS_DATABASE)("api_v2 over HTTP", () => {
     return pageSchema.parse(await response.json());
   };
 
-  const put = (page: { id: string; updated_at: string }, changes: object) =>
+  const put = (page: { id: string; version: number }, changes: object) =>
     fetch(`${server.url}/pages/${page.id}`, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
         cookie,
         origin: AUTH_ENV.EDITOR_ORIGIN,
-        "if-updated-at": page.updated_at,
       },
-      body: JSON.stringify({ ...page, ...changes }),
+      body: JSON.stringify({
+        ...page,
+        ...changes,
+        expected_version: page.version,
+      }),
     });
 
   it("migrates and seeds an empty database on first boot", async () => {
@@ -185,13 +188,7 @@ describe.skipIf(!HAS_DATABASE)("api_v2 over HTTP", () => {
     expect(Object.keys(objectSchema.parse(body.paths))).toContain("/pages");
   });
 
-  /**
-   * The bug PGlite could not find. Postgres stores `timestamptz` to
-   * microseconds and `toISOString()` emits milliseconds, so a bare
-   * `timestamptz` made every save look like a conflict — against a real
-   * server, through the real driver, which is exactly this path.
-   */
-  it("round-trips updated_at through node-postgres well enough to save twice", async () => {
+  it("round-trips edit versions through node-postgres to save twice", async () => {
     let current = await createPage("/e2e/round-trip");
 
     for (const title of ["First edit", "Second edit"]) {
@@ -204,15 +201,8 @@ describe.skipIf(!HAS_DATABASE)("api_v2 over HTTP", () => {
     expect(current.updated_at).toMatch(/\.\d{3}Z$/);
   });
 
-  it("refuses a save whose if-updated-at has been overtaken", async () => {
+  it("refuses a save whose edit version has been overtaken", async () => {
     const page = await createPage("/e2e/overtaken");
-    // A create and edit can share one millisecond; give the prior version a
-    // distinct timestamp without changing the application's version policy.
-    await databaseQuery(
-      database,
-      "update content_pages set updated_at = $2 where id = $1",
-      [page.id, new Date(Date.now() - 60_000)],
-    );
     const stale = pageSchema.parse((await get(`/pages/${page.id}`)).body);
 
     const first = await put(stale, { title: "Whoever got there first" });

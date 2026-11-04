@@ -98,7 +98,7 @@ The writer fixture bundles the same local template and needs no preview setting 
 
 ## Persistence and recovery
 
-Unsaved edits exist only in memory. Save/Publish validates and sends the applied snapshot with the baseline's `updated_at` as `if-updated-at`. Failed requests preserve work for retry or download. HTTP 409 requires an explicit conflict choice; background reads never silently advance the write token.
+Unsaved edits exist only in memory. Save/Publish validates and sends the applied snapshot with the baseline's numeric `version` as `expected_version`. Failed requests preserve work for retry or download. HTTP 409 `version_conflict` preserves the draft and baseline until explicit discard-and-reload; uncertain retries retain the exact original request; background reads never silently advance the write token.
 
 Apply is not Save. Invalid/unapplied source and serialization errors also count as unsaved work. Cancelled navigation/sign-out retains edits and undo. Pending saves block departure. A crash, refresh, closed tab or confirmed departure loses unsaved work; unload warnings are best-effort, not recovery.
 

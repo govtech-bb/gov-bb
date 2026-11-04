@@ -20,6 +20,7 @@ import {
 
 let test: TestDb;
 let app: FastifyInstance;
+let collectionVersion: number;
 
 beforeEach(async () => {
   test = await createTestDb();
@@ -28,6 +29,9 @@ beforeEach(async () => {
         values ('contacts', 'Contacts', 'key', ${JSON.stringify(CONTACTS.schema)}::jsonb)`,
   );
   app = await createTestApp(test.db);
+  collectionVersion = (
+    await app.inject({ url: "/collections", headers: TEST_HEADERS })
+  ).json().collections[0].version;
 });
 afterEach(async () => {
   await app.close();
@@ -42,7 +46,7 @@ const create = (recordKey: string, data: object, collection = "contacts") =>
   editor({
     method: "POST",
     url: recordUrl(recordKey, collection),
-    payload: { data },
+    payload: { data, expected_collection_version: collectionVersion },
   });
 const read = (collection = "contacts") =>
   app.inject({ url: `/collections/${collection}/records` });
@@ -87,20 +91,22 @@ describe("record writes", () => {
     const saved = await editor({
       method: "PUT",
       url: recordUrl("drug-service"),
-      headers: { "if-updated-at": created.json().updated_at },
-      payload: { data: { name: "Drug Service" } },
+      payload: {
+        data: { name: "Drug Service" },
+        expected_version: created.json().version,
+        expected_collection_version: collectionVersion,
+      },
     });
     expect(saved.statusCode, saved.body).toBe(200);
-    expect(saved.json().data).toEqual({
+    expect(saved.json().record.data).toEqual({
       name: "Drug Service",
       key: "drug-service",
     });
-    expect(saved.json().updated_at).not.toBe(created.json().updated_at);
+    expect(saved.json().record.updated_at).not.toBe(created.json().updated_at);
 
     const deleted = await editor({
       method: "DELETE",
-      url: recordUrl("drug-service"),
-      headers: { "if-updated-at": saved.json().updated_at },
+      url: `${recordUrl("drug-service")}?expected_version=${saved.json().record.version}`,
     });
     expect(deleted.statusCode).toBe(204);
     expect((await read()).json().records).toEqual([]);
@@ -159,11 +165,15 @@ describe("record writes", () => {
     const saved = await editor({
       method: "PUT",
       url: recordUrl("missing"),
-      payload: { data: {} },
+      payload: {
+        data: {},
+        expected_version: 1,
+        expected_collection_version: collectionVersion,
+      },
     });
     const deleted = await editor({
       method: "DELETE",
-      url: recordUrl("missing"),
+      url: `${recordUrl("missing")}?expected_version=1`,
     });
     expect([saved.statusCode, deleted.statusCode]).toEqual([404, 404]);
   });
@@ -173,37 +183,47 @@ describe("record writes", () => {
     const first = await editor({
       method: "PUT",
       url: recordUrl("drug-service"),
-      headers: { "if-updated-at": created.updated_at },
-      payload: { data: { name: "First" } },
+      payload: {
+        data: { name: "First" },
+        expected_version: created.version,
+        expected_collection_version: collectionVersion,
+      },
     });
     expect(first.statusCode).toBe(200);
 
-    const stale = { "if-updated-at": created.updated_at };
     const second = await editor({
       method: "PUT",
       url: recordUrl("drug-service"),
-      headers: stale,
-      payload: { data: { name: "Second" } },
+      payload: {
+        data: { name: "Second" },
+        expected_version: created.version,
+        expected_collection_version: collectionVersion,
+      },
     });
     const deleted = await editor({
       method: "DELETE",
-      url: recordUrl("drug-service"),
-      headers: stale,
+      url: `${recordUrl("drug-service")}?expected_version=${created.version}`,
     });
     expect([second.statusCode, deleted.statusCode]).toEqual([409, 409]);
-    expect(second.json().error).toBe("conflict");
+    expect(second.json().error).toBe("version_conflict");
     expect((await read()).json().records[0].data.name).toBe("First");
   });
 
   it("records each write in the history against the employee", async () => {
     const created = (await create("drug-service", DRUG_SERVICE)).json();
-    await editor({
+    const saved = await editor({
       method: "PUT",
       url: recordUrl("drug-service"),
-      headers: { "if-updated-at": created.updated_at },
-      payload: { data: { name: "Drug Service" } },
+      payload: {
+        data: { name: "Drug Service" },
+        expected_version: created.version,
+        expected_collection_version: collectionVersion,
+      },
     });
-    await editor({ method: "DELETE", url: recordUrl("drug-service") });
+    await editor({
+      method: "DELETE",
+      url: `${recordUrl("drug-service")}?expected_version=${saved.json().record.version}`,
+    });
 
     const { rows } = await test.db.execute<{
       action: string;
@@ -292,10 +312,17 @@ describe("the seeded contacts", () => {
       schema: CONTACTS.schema,
     });
     for (const record of response.json().records) {
+      const detail = (
+        await editor({ url: recordUrl(record.record_key) })
+      ).json();
       const saved = await editor({
         method: "PUT",
         url: recordUrl(record.record_key),
-        payload: { data: record.data },
+        payload: {
+          data: record.data,
+          expected_version: detail.record.version,
+          expected_collection_version: detail.collection.version,
+        },
       });
       expect(saved.statusCode, saved.body).toBe(200);
     }

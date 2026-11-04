@@ -216,7 +216,7 @@ describe("page editor versions", () => {
           await editing.save(
             page.id,
             fieldsOf(page),
-            new Date(page.updated_at),
+            page.version,
             TEST_EDITOR,
           ),
         );
@@ -231,7 +231,7 @@ describe("page editor versions", () => {
         await editing.save(
           page.id,
           { ...fieldsOf(page), visibility: "public" },
-          new Date(page.updated_at),
+          page.version,
           TEST_EMPLOYEE,
         ),
       );
@@ -240,14 +240,12 @@ describe("page editor versions", () => {
         await editing.save(
           page.id,
           { ...fieldsOf(page), title: "Pending" },
-          new Date(page.updated_at),
+          page.version,
           TEST_EMPLOYEE,
         ),
       );
       await noOp();
-      expectOk(
-        await editing.submit(page.id, new Date(page.updated_at), TEST_EMPLOYEE),
-      );
+      expectOk(await editing.submit(page.id, page.version, TEST_EMPLOYEE));
       const submittedPage = expectOk(await editing.open(page.id));
       assert(submittedPage);
       page = submittedPage;
@@ -256,7 +254,7 @@ describe("page editor versions", () => {
         await editing.reject(
           page.id,
           "Needs work",
-          new Date(page.updated_at),
+          page.version,
           TEST_EMPLOYEE,
         ),
       );
@@ -285,7 +283,7 @@ describe("page editor versions", () => {
         await editing.save(
           page.id,
           { ...fieldsOf(page), title: "Pending" },
-          new Date(page.updated_at),
+          page.version,
           TEST_EMPLOYEE,
         ),
       );
@@ -294,48 +292,35 @@ describe("page editor versions", () => {
         await editing.save(
           page.id,
           { ...fieldsOf(page), title: "Edited" },
-          new Date(page.updated_at),
+          page.version,
           TEST_EMPLOYEE,
         ),
       );
       await moved(page.version);
       let revision = expectOk(
-        await editing.submit(page.id, new Date(page.updated_at), TEST_EMPLOYEE),
+        await editing.submit(page.id, page.version, TEST_EMPLOYEE),
       );
       await moved(revision.version);
       page = expectOk(
         await editing.save(
           page.id,
           { ...fieldsOf(page), title: "Submitted edit" },
-          new Date(revision.updated_at),
+          revision.version,
           TEST_EMPLOYEE,
         ),
       );
       await moved(page.version);
       revision = expectOk(
-        await editing.reject(
-          page.id,
-          "Try again",
-          new Date(page.updated_at),
-          TEST_EMPLOYEE,
-        ),
+        await editing.reject(page.id, "Try again", page.version, TEST_EMPLOYEE),
       );
       await moved(revision.version);
       revision = expectOk(
-        await editing.submit(
-          page.id,
-          new Date(revision.updated_at),
-          TEST_EMPLOYEE,
-        ),
+        await editing.submit(page.id, revision.version, TEST_EMPLOYEE),
       );
       await moved(revision.version);
       expect(expectOk(await editing.revision(page.id))).toEqual(revision);
       page = expectOk(
-        await editing.publish(
-          page.id,
-          new Date(revision.updated_at),
-          TEST_EMPLOYEE,
-        ),
+        await editing.publish(page.id, revision.version, TEST_EMPLOYEE),
       );
       await moved(page.version);
       expect(page.pending_revision).toBeNull();
@@ -354,22 +339,18 @@ describe("page editor versions", () => {
         await editing.save(
           live.id,
           { ...fieldsOf(live), title: "Rejected" },
-          new Date(live.updated_at),
+          live.version,
           TEST_EMPLOYEE,
         ),
       );
       const submitted = expectOk(
-        await editing.submit(
-          live.id,
-          new Date(draft.updated_at),
-          TEST_EMPLOYEE,
-        ),
+        await editing.submit(live.id, draft.version, TEST_EMPLOYEE),
       );
       const rejected = expectOk(
         await editing.reject(
           live.id,
           "Keep the live copy",
-          new Date(submitted.updated_at),
+          submitted.version,
           TEST_EMPLOYEE,
         ),
       );
@@ -377,23 +358,15 @@ describe("page editor versions", () => {
         await editing.save(
           live.id,
           fieldsOf(live),
-          new Date(rejected.updated_at),
+          rejected.version,
           TEST_EMPLOYEE,
         ),
       );
       const again = expectOk(
-        await editing.submit(
-          live.id,
-          new Date(restored.updated_at),
-          TEST_EMPLOYEE,
-        ),
+        await editing.submit(live.id, restored.version, TEST_EMPLOYEE),
       );
       const published = expectOk(
-        await editing.publish(
-          live.id,
-          new Date(again.updated_at),
-          TEST_EMPLOYEE,
-        ),
+        await editing.publish(live.id, again.version, TEST_EMPLOYEE),
       );
       expect(published.pending_revision).toBeNull();
       expect(published.title).toBe(live.title);
@@ -416,24 +389,18 @@ describe("page editor versions", () => {
           await editing.save(
             page.id,
             { ...fieldsOf(page), title: "Not live" },
-            new Date(page.updated_at),
+            page.version,
             TEST_EMPLOYEE,
           ),
         );
         if (status === "submitted")
-          expectOk(
-            await editing.submit(
-              page.id,
-              new Date(page.updated_at),
-              TEST_EMPLOYEE,
-            ),
-          );
+          expectOk(await editing.submit(page.id, page.version, TEST_EMPLOYEE));
         const before = await storedVersion(pool, "content_pages");
         const hidden = expectOk(
           await editing.save(
             page.id,
             { ...fieldsOf(page), visibility: "preview" },
-            new Date(page.updated_at),
+            before,
             TEST_EMPLOYEE,
           ),
         );
@@ -477,7 +444,7 @@ describe("page editor versions", () => {
         await editing.save(
           page.id,
           { ...fieldsOf(page), title: "Pending" },
-          new Date(page.updated_at),
+          page.version,
           TEST_EMPLOYEE,
         ),
       );
@@ -523,7 +490,7 @@ describe("private collection and category versions", () => {
             parent_id: category.parent_id,
             description: "  ",
           },
-          category.updated_at,
+          category.version,
           TEST_EDITOR,
         ),
       );
@@ -533,7 +500,7 @@ describe("private collection and category versions", () => {
           {
             parent_id: null,
             ordered_ids: [category.id],
-            expected: [{ id: category.id, updated_at: category.updated_at }],
+            expected: [{ id: category.id, version: category.version }],
           },
           TEST_EDITOR,
         ),
@@ -543,11 +510,12 @@ describe("private collection and category versions", () => {
           "contacts",
           "first",
           { key: "first", name: " First " },
-          new Date(record.record.updated_at),
+          record.record.version,
+          record.collection.version,
           TEST_EDITOR,
         ),
       );
-      expect(savedRecord).toEqual(record.record);
+      expect(savedRecord).toEqual(record);
       expect((await pool.query(stateQuery)).rows).toEqual(before);
     } finally {
       await close();
@@ -642,6 +610,10 @@ describe("private collection and category versions", () => {
       | undefined;
     try {
       await pool.query(ROOT_FIXTURES);
+      const baseline = expectOk(
+        await createTestServices(db).collections.detail("contacts", "first"),
+      );
+      assert(baseline);
       await gate.query("begin; set local statement_timeout = '10s'");
       const pid = (await gate.query("select pg_backend_pid() as pid")).rows[0]
         ?.pid;
@@ -652,7 +624,8 @@ describe("private collection and category versions", () => {
         "contacts",
         "first",
         { name: "Under old definition" },
-        null,
+        baseline.record.version,
+        baseline.collection.version,
         TEST_EMPLOYEE,
       );
       await expect
@@ -672,7 +645,7 @@ describe("private collection and category versions", () => {
       await gate.query("commit");
       const result = await saving;
       expect(result.ok).toBe(false);
-      if (!result.ok) expect(result.error._tag).toBe("RecordRejected");
+      if (!result.ok) expect(result.error._tag).toBe("RecordConflict");
       expect(
         (await pool.query("select data from collection_records")).rows,
       ).toEqual([{ data: { key: "first", name: "First" } }]);

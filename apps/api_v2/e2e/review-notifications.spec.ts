@@ -77,7 +77,7 @@ describe.skipIf(!HAS_DATABASE)("review emails over HTTP", () => {
       cookie: "",
     },
   };
-  let page: Record<string, unknown> & { id: string; updated_at: string };
+  let page: Record<string, unknown> & { id: string; version: number };
 
   beforeAll(async () => {
     database = await createScratchDatabase();
@@ -100,22 +100,30 @@ describe.skipIf(!HAS_DATABASE)("review emails over HTTP", () => {
     as: keyof typeof people,
     method: string,
     path: string,
-    { body, stamp }: { body?: object; stamp?: string } = {},
+    { body, version }: { body?: object; version?: number } = {},
   ) => {
     const response = await fetch(server.url + path, {
       method,
       headers: {
         cookie: people[as].cookie,
         origin: AUTH_ENV.EDITOR_ORIGIN,
-        ...(body ? { "content-type": "application/json" } : {}),
-        ...(stamp ? { "if-updated-at": stamp } : {}),
+        ...(body || version !== undefined
+          ? { "content-type": "application/json" }
+          : {}),
       },
-      ...(body ? { body: JSON.stringify(body) } : {}),
+      ...(body || version !== undefined
+        ? {
+            body: JSON.stringify({
+              ...body,
+              ...(version === undefined ? {} : { expected_version: version }),
+            }),
+          }
+        : {}),
     });
     expect(response.status, `${method} ${path}`).toBeLessThan(300);
     return (await response.json()) as Record<string, unknown> & {
       id: string;
-      updated_at: string;
+      version: number;
     };
   };
 
@@ -123,9 +131,11 @@ describe.skipIf(!HAS_DATABASE)("review emails over HTTP", () => {
   const submitChange = async (title: string) => {
     const saved = await send("editor", "PUT", `/pages/${page.id}`, {
       body: { ...page, title, body_markdown: `${title} body, never emailed` },
-      stamp: page.updated_at,
+      version: page.version,
     });
-    await send("editor", "POST", `/pages/${page.id}/revision/submit`);
+    await send("editor", "POST", `/pages/${page.id}/revision/submit`, {
+      version: saved.version,
+    });
     return saved;
   };
 
@@ -133,7 +143,7 @@ describe.skipIf(!HAS_DATABASE)("review emails over HTTP", () => {
   const decide = async (step: "publish" | "reject") => {
     const revision = await send("first", "GET", `/pages/${page.id}/revision`);
     return send("first", "POST", `/pages/${page.id}/revision/${step}`, {
-      stamp: revision.updated_at,
+      version: revision.version,
       ...(step === "reject" ? { body: { comment: "Check the fees." } } : {}),
     });
   };
@@ -162,7 +172,7 @@ describe.skipIf(!HAS_DATABASE)("review emails over HTTP", () => {
     // An approver can't make public a page they wrote, so another does.
     page = await send("second", "PUT", `/pages/${created.id}`, {
       body: { ...fields, visibility: "public" },
-      stamp: created.updated_at,
+      version: created.version,
     });
     const link = `${AUTH_ENV.EDITOR_ORIGIN}/services/${page.id}/${page.id}`;
 
@@ -179,7 +189,7 @@ describe.skipIf(!HAS_DATABASE)("review emails over HTTP", () => {
       `${AUTH_ENV.EDITOR_ORIGIN}/reviews/${page.id}`,
     );
 
-    await decide("reject");
+    const decision = await decide("reject");
     const rejected = (await settled(server, { count: 3 })).slice(2);
     expect(rejected).toEqual([
       {
@@ -190,7 +200,9 @@ describe.skipIf(!HAS_DATABASE)("review emails over HTTP", () => {
     ]);
 
     // Sent again as it is, then published.
-    await send("editor", "POST", `/pages/${page.id}/revision/submit`);
+    await send("editor", "POST", `/pages/${page.id}/revision/submit`, {
+      version: decision.version,
+    });
     await settled(server, { count: 5 });
     page = await decide("publish");
     const published = (await settled(server, { count: 6 })).slice(5);

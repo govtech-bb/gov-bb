@@ -71,8 +71,7 @@ describe("category rules", () => {
     const ids = [1, 2, 3].map((n) =>
       CategoryId.parse(`00000000-0000-4000-8000-00000000000${n}`),
     );
-    const updated_at = CategoryStamp.parse("2026-10-26T12:00:00.000Z");
-    const expected = ids.map((id) => ({ id, updated_at }));
+    const expected = ids.map((id, index) => ({ id, version: index + 1 }));
     for (const a of ids)
       for (const b of ids)
         for (const c of ids) {

@@ -1,5 +1,6 @@
 import { isDeepStrictEqual } from "node:util";
 import type { Employee, UserId } from "../modules/auth";
+import type { EditVersion } from "../modules/edit-concurrency";
 import {
   CollectionNotFound,
   parseRecord,
@@ -83,9 +84,8 @@ export type RecordWriteFailure =
 /**
  * Reading collections, and editors' changes to their records. Each write is
  * checked against the collection's field list and recorded against the
- * employee. Like a page save, a write that sends the `updated_at` it read is
- * refused when the record has moved on since; one that sends none accepts
- * whatever is stored.
+ * employee. Required record and definition versions refuse writes based on
+ * content or a schema the editor has not read.
  */
 export class CollectionEditing {
   constructor(private readonly store: CollectionStore) {}
@@ -126,12 +126,15 @@ export class CollectionEditing {
     key: string,
     recordKey: string,
     data: Readonly<Record<string, unknown>>,
+    expectedCollectionVersion: EditVersion,
     actor: Employee,
   ): Promise<Result<EditorCollectionRecord, RecordWriteFailure>> {
     return this.store.atomically(actor.id, async (store) => {
       const collection = await store.lockCollection(key);
       if (!collection.ok) return collection;
       if (!collection.value) return err(new CollectionNotFound(key));
+      if (collection.value.version !== expectedCollectionVersion)
+        return err(new RecordConflict());
       const parsed = parseRecord(collection.value, recordKey, data);
       if (!parsed.ok) return parsed;
       const inserted = await store.insertRecord(key, recordKey, parsed.value);
@@ -147,21 +150,30 @@ export class CollectionEditing {
     key: string,
     recordKey: string,
     data: Readonly<Record<string, unknown>>,
-    expectedUpdatedAt: Date | null,
+    expectedVersion: EditVersion,
+    expectedCollectionVersion: EditVersion,
     actor: Employee,
-  ): Promise<Result<EditorCollectionRecord, RecordWriteFailure>> {
+  ): Promise<Result<RecordEnvelope, RecordWriteFailure>> {
     return this.store.atomically(actor.id, async (store) => {
       const collection = await store.lockCollection(key);
       if (!collection.ok) return collection;
       if (!collection.value) return err(new CollectionNotFound(key));
-      // Check existence and the original timestamp before field validation.
-      const current = await unchanged(store, key, recordKey, expectedUpdatedAt);
+      // Check existence and the original version before field validation.
+      const current = await unchanged(store, key, recordKey, expectedVersion);
       if (!current.ok) return current;
+      if (collection.value.version !== expectedCollectionVersion)
+        return err(new RecordConflict());
       const parsed = parseRecord(collection.value, recordKey, data);
       if (!parsed.ok) return parsed;
-      if (isDeepStrictEqual(current.value.data, parsed.value))
-        return ok(current.value);
-      return store.updateRecord(key, recordKey, parsed.value);
+      if (!isDeepStrictEqual(current.value.data, parsed.value)) {
+        const saved = await store.updateRecord(key, recordKey, parsed.value);
+        if (!saved.ok) return saved;
+      }
+      const snapshot = await store.recordEnvelope(key, recordKey);
+      if (!snapshot.ok) return snapshot;
+      if (!snapshot.value)
+        throw new Error("Saved record missing inside its write transaction");
+      return ok(snapshot.value);
     });
   }
 
@@ -169,14 +181,14 @@ export class CollectionEditing {
   delete(
     key: string,
     recordKey: string,
-    expectedUpdatedAt: Date | null,
+    expectedVersion: EditVersion,
     actor: Employee,
   ): Promise<Result<void, RecordWriteFailure>> {
     return this.store.atomically(actor.id, async (store) => {
       const collection = await store.collection(key);
       if (!collection.ok) return collection;
       if (collection.value === null) return err(new CollectionNotFound(key));
-      const current = await unchanged(store, key, recordKey, expectedUpdatedAt);
+      const current = await unchanged(store, key, recordKey, expectedVersion);
       if (!current.ok) return current;
       return store.deleteRecord(key, recordKey);
     });
@@ -188,7 +200,7 @@ async function unchanged(
   store: CollectionStore,
   key: string,
   recordKey: string,
-  expectedUpdatedAt: Date | null,
+  expectedVersion: EditVersion,
 ): Promise<
   Result<
     EditorCollectionRecord,
@@ -198,10 +210,7 @@ async function unchanged(
   const locked = await store.lockRecord(key, recordKey);
   if (!locked.ok) return locked;
   if (locked.value === null) return err(new RecordNotFound(key, recordKey));
-  if (
-    expectedUpdatedAt !== null &&
-    locked.value.updated_at !== expectedUpdatedAt.toISOString()
-  )
+  if (locked.value.version !== expectedVersion)
     return err(new RecordConflict());
   return ok(locked.value);
 }

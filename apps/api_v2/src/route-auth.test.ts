@@ -212,25 +212,30 @@ async function pageWrite(
         values (${id}, ${`/existing-${n}`}, 'existing', 'Existing', '')`,
   );
   // Publishing needs a submitted revision, by someone else, and the version reviewed.
-  const reviewed = url.endsWith("/revision/publish")
-    ? (
-        await db.execute<{ version: string }>(
-          sql`insert into page_revisions
+  if (url.endsWith("/revision/publish"))
+    await db.execute(
+      sql`insert into page_revisions
                 (page_id, status, fields, live_updated_at, created_by, contributors, submitted_by)
               select id, 'submitted', ${JSON.stringify(fields)}::jsonb, updated_at,
                      'other-author', '{other-author}', 'other-author'
               from content_pages where id = ${id}
-              returning to_json(updated_at)#>>'{}' as version`,
-        )
-      ).rows[0]?.version
-    : undefined;
+              `,
+    );
+  const version = (
+    await app.inject({ url: `/pages/${id}`, headers: TEST_HEADERS })
+  ).json().version;
   return {
     method: method as InjectOptions["method"],
-    url: url.replace(/:\w+/g, id),
-    payload: fields,
-    headers: reviewed
-      ? { ...TEST_HEADERS, "if-updated-at": reviewed }
-      : TEST_HEADERS,
+    url:
+      url.replace(/:\w+/g, id) +
+      (method === "DELETE" ? `?expected_version=${version}` : ""),
+    payload: url.includes("/revision/")
+      ? { expected_version: version }
+      : {
+          ...fields,
+          ...(method === "PUT" ? { expected_version: version } : {}),
+        },
+    headers: TEST_HEADERS,
   };
 }
 
@@ -253,7 +258,7 @@ async function categoryWrite(
         id: string;
         slug: string;
         parent_id: string | null;
-        updated_at: string;
+        version: number;
       }[];
     }>()
     .categories.filter((row) => row.parent_id === null);
@@ -261,19 +266,21 @@ async function categoryWrite(
   const fields = { slug: target.slug, parent_id: null, description: null };
   return {
     method: method as InjectOptions["method"],
-    url: url.replace(/:\w+/g, target.id),
-    headers: { ...TEST_HEADERS, "if-updated-at": target.updated_at },
+    url:
+      url.replace(/:\w+/g, target.id) +
+      (method === "DELETE" ? `?expected_version=${target.version}` : ""),
+    headers: TEST_HEADERS,
     payload:
       url === "/editor/categories/order"
         ? {
             parent_id: null,
-            expected: roots.map(({ id, updated_at }) => ({ id, updated_at })),
+            expected: roots.map(({ id, version }) => ({ id, version })),
             ordered_ids: roots.map((row) => row.id).reverse(),
           }
         : method === "POST"
           ? { ...fields, slug: `written-${n}`, title: "Written" }
           : method === "PUT"
-            ? { ...fields, title: "Renamed" }
+            ? { ...fields, title: "Renamed", expected_version: target.version }
             : undefined,
   };
 }
@@ -294,16 +301,35 @@ async function recordWrite(
     sql`insert into collection_records (collection_key, record_key, data)
         values ('contacts', ${`existing-${n}`}, '{"name":"Existing"}')`,
   );
+  const baseline = (
+    await app.inject({
+      url: `/collections/contacts/records/existing-${n}`,
+      headers: TEST_HEADERS,
+    })
+  ).json();
   return {
     method: method as InjectOptions["method"],
-    url: url
-      .replace(":key", "contacts")
-      .replace(
-        ":recordKey",
-        method === "POST" ? `written-${n}` : `existing-${n}`,
-      ),
+    url:
+      url
+        .replace(":key", "contacts")
+        .replace(
+          ":recordKey",
+          method === "POST" ? `written-${n}` : `existing-${n}`,
+        ) +
+      (method === "DELETE"
+        ? `?expected_version=${baseline.record.version}`
+        : ""),
     headers: TEST_HEADERS,
-    payload: method === "DELETE" ? undefined : { data: { name: "Written" } },
+    payload:
+      method === "DELETE"
+        ? undefined
+        : {
+            data: { name: "Written" },
+            expected_collection_version: baseline.collection.version,
+            ...(method === "PUT"
+              ? { expected_version: baseline.record.version }
+              : {}),
+          },
   };
 }
 
@@ -428,28 +454,39 @@ async function routesChangingWhatCitizensSee(employee: Employee) {
           sql`insert into content_pages (id, url, slug, title, visibility, body_markdown)
               values (${target}, ${`/existing-${n}`}, 'existing', 'Existing', ${from}, '')`,
         );
-        // A decision names the version reviewed, so the probe sends the revision's.
-        const reviewed = url.includes("/revision/")
-          ? (
-              await db.execute<{ version: string }>(
-                sql`insert into page_revisions
+        // Read the page root after setting up its revision.
+        if (url.includes("/revision/"))
+          await db.execute(
+            sql`insert into page_revisions
                       (page_id, status, fields, live_updated_at, created_by, contributors, submitted_by)
                     select id, ${url.endsWith("/submit") ? "draft" : "submitted"},
                            ${JSON.stringify(fields)}::jsonb, updated_at,
                            'probe-author', '{probe-author}', 'probe-author'
                     from content_pages where id = ${target}
-                    returning to_json(updated_at)#>>'{}' as version`,
-              )
-            ).rows[0]?.version
-          : undefined;
+                    `,
+          );
+        const version = (
+          await signedIn.inject({
+            url: `/pages/${target}`,
+            headers: TEST_HEADERS,
+          })
+        ).json().version;
         const before = await citizenView();
         const response = await signedIn.inject({
           method: method as InjectOptions["method"],
-          url: url.replace(/:\w+/g, target).replace("*", "x"),
-          payload: { ...fields, comment: "Probed" },
-          headers: reviewed
-            ? { ...TEST_HEADERS, "if-updated-at": reviewed }
-            : TEST_HEADERS,
+          url:
+            url.replace(/:\w+/g, target).replace("*", "x") +
+            (method === "DELETE" ? `?expected_version=${version}` : ""),
+          payload: url.includes("/revision/")
+            ? {
+                expected_version: version,
+                ...(url.endsWith("/reject") ? { comment: "Probed" } : {}),
+              }
+            : {
+                ...fields,
+                ...(method === "PUT" ? { expected_version: version } : {}),
+              },
+          headers: TEST_HEADERS,
         });
         const route = `${method} ${url}`;
         if (response.statusCode >= 300 && !(route in NOT_PAGE_VISIBILITY))

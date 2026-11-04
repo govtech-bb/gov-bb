@@ -3,6 +3,7 @@ import { useLayoutEffect, useRef, useState, type Ref, type RefObject } from "rea
 import { categoryLabel, categoryRows } from "../api/categories";
 import {
   ApiFailure,
+  outcomeUnknown,
   type EditorApi,
   type CreatePageInput,
   type ServiceDetail,
@@ -21,17 +22,72 @@ import { ApiProblems, ApiProblemText } from "./api-problems";
 import { documentLabel, type PageDocument } from "./model";
 
 /** Create a page in Preview, then hand its id over once the API has it. */
-function useCreatePage(api: EditorApi, onDone: (id: string) => void) {
+function useCreatePage(api: EditorApi, onDone: (id: string) => void, input: string) {
   const client = useQueryClient();
 
-  return useMutation({
-    mutationFn: (page: CreatePageInput) => api.createPage(page),
-    onSuccess: (page) => {
+  const uncertain = useRef<CreatePageInput>(undefined);
+  const current = useRef(input);
+  current.current = input;
+  const gate = useRef(false);
+  const [created, setCreated] = useState<string>();
+
+  const mutation = useMutation({
+    mutationFn: async ({ page }: { page: CreatePageInput; snapshot: string }) => {
+      if (uncertain.current) {
+        const sent = uncertain.current;
+
+        const list = sent.parent_id
+          ? (await api.service(sent.parent_id)).pages
+          : await api.services();
+
+        const found = list.some((item) => item.url === sent.url);
+
+        if (!found) uncertain.current = undefined;
+        throw new ApiFailure(
+          409,
+          [],
+          found
+            ? "A page already exists at the submitted path. Close this dialog and inspect it before creating another page."
+            : "The submitted page is not listed. Check the path and submit again if you still want to create it.",
+          "create_checked",
+        );
+      }
+
+      const sent = structuredClone(page);
+
+      try {
+        return await api.createPage(sent);
+      } catch (error) {
+        if (outcomeUnknown(error)) uncertain.current = sent;
+        throw error;
+      }
+    },
+    onSuccess: (page, sent) => {
+      setCreated(page.id);
       client.setQueryData(pageQuery(api, page.id).queryKey, page);
       void client.invalidateQueries({ queryKey: ["content"] });
-      onDone(page.id);
+
+      if (current.current === sent.snapshot) onDone(page.id);
+    },
+    onSettled: () => {
+      gate.current = false;
     },
   });
+
+  return {
+    ...mutation,
+    mutate: (page: CreatePageInput) => {
+      if (gate.current || created) return;
+      gate.current = true;
+      mutation.mutate({ page: structuredClone(page), snapshot: current.current });
+    },
+    createdNotice: created && (
+      <div role="status">
+        The page was created. Your newer input is still here and has not been saved. Copy it before
+        opening the page.<Button onClick={() => onDone(created)}>Open created page</Button>
+      </div>
+    ),
+  };
 }
 
 /**
@@ -123,7 +179,7 @@ export function CreateRemoteServiceDialog({
   const [title, setTitle] = useState("");
   const [categoryId, setCategoryId] = useState("");
   const [edited, setEdited] = useState<string>();
-  const create = useCreatePage(api, onDone);
+  const create = useCreatePage(api, onDone, JSON.stringify({ title, categoryId, edited }));
   const category = categories.find((item) => item.id === categoryId);
   const path = edited ?? suggestedUrl(category?.url ?? "", title);
   const titleControl = useRef<HTMLInputElement>(null);
@@ -222,6 +278,7 @@ export function CreateRemoteServiceDialog({
           problems.change("url");
         }}
       />
+      {create.createdNotice}
       <ApiProblems messages={problems.unshown} />
     </FormDialog>
   );
@@ -247,7 +304,7 @@ export function CreateRemotePageDialog({
   const [kind, setKind] = useState(hasStart ? "supporting" : "start");
   const [title, setTitle] = useState("");
   const [edited, setEdited] = useState<string>();
-  const create = useCreatePage(api, onDone);
+  const create = useCreatePage(api, onDone, JSON.stringify({ title, kind, edited }));
   const start = kind === "start";
   const name = title.trim() || (start ? "Before you start" : "");
   const path = start ? `${entry.url}/start` : (edited ?? suggestedUrl(entry.url, title));
@@ -338,6 +395,7 @@ export function CreateRemotePageDialog({
           problems.change("url");
         }}
       />
+      {create.createdNotice}
       <ApiProblems messages={problems.unshown} />
     </FormDialog>
   );
@@ -355,7 +413,7 @@ export function DeleteRemotePageDialog({
   api: EditorApi;
   /** Shown; closed, it fades away as it was. Each opening is a new dialog. */
   open: boolean;
-  page: PageDocument;
+  page: PageDocument & { version: number };
   onClose: () => void;
   onDone: () => void;
   /** Where the focus goes once the page has gone, as the editor leaves it and its Delete page may go too. */
@@ -365,7 +423,7 @@ export function DeleteRemotePageDialog({
   const deleted = useRef(false);
 
   const remove = useMutation({
-    mutationFn: () => api.deletePage(page.id),
+    mutationFn: () => api.deletePage(page.id, page.version),
     onSuccess: () => {
       deleted.current = true;
       void client.invalidateQueries({ queryKey: ["content"] });

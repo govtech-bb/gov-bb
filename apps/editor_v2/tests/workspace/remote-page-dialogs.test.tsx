@@ -26,6 +26,26 @@ const page: PageDocument = {
   role: "supporting",
 };
 
+const createdPage = {
+  id: "register-a-birth",
+  version: 1,
+  title: "Birth",
+  url: "/family/birth",
+  slug: "birth",
+  parent_id: null,
+  category_id: null,
+  description: null,
+  form_id: null,
+  visibility: "preview",
+  body_markdown: "",
+  frontmatter: {},
+  pending_revision: null,
+  last_edited_by: null,
+  created_at: "2026-10-07T12:00:00.000Z",
+  updated_at: "2026-10-07T12:00:00.000Z",
+  published_at: null,
+};
+
 test.each(["service", "start", "supporting"] as const)(
   "creating a %s starts in Preview with an empty body",
   async (kind) => {
@@ -40,6 +60,7 @@ test.each(["service", "start", "supporting"] as const)(
       description: null,
       position: 0,
       services: 0,
+      version: 1,
       reserved_route: false,
       last_edited_by: null,
       updated_at: "2026-10-07T12:00:00.000Z",
@@ -60,7 +81,7 @@ test.each(["service", "start", "supporting"] as const)(
     const send = vi.fn(async (_url: string, init?: RequestInit) =>
       Response.json(
         init?.method === "POST"
-          ? { ...JSON.parse(String(init.body)), id: page.id }
+          ? { ...createdPage, ...JSON.parse(String(init.body)), id: page.id }
           : { categories: [category] },
       ),
     );
@@ -148,7 +169,7 @@ test("deleting a page asks in an alert dialog, which can't be closed while the p
         <DeleteRemotePageDialog
           api={createEditorApi("https://api.example.invalid")}
           open
-          page={page}
+          page={{ ...page, version: 1 }}
           onClose={close}
           onDone={() => {}}
           focusAfter={{ current: null }}
@@ -218,7 +239,7 @@ test("once the page has gone, the focus goes where the workspace says, as its De
         <DeleteRemotePageDialog
           api={createEditorApi("https://api.example.invalid")}
           open={open}
-          page={page}
+          page={{ ...page, version: 1 }}
           onClose={() => setOpen(false)}
           onDone={() => setOpen(false)}
           focusAfter={{ current: content }}
@@ -314,6 +335,7 @@ test("a service on its way can't be cancelled, so none is made after the author 
     url: "/family",
     position: 0,
     services: 0,
+    version: 1,
     reserved_route: false,
     last_edited_by: null,
     updated_at: "2026-10-28T12:00:00.000Z",
@@ -382,7 +404,7 @@ test("a service on its way can't be cancelled, so none is made after the author 
   });
   expect(close).not.toHaveBeenCalled();
 
-  await act(async () => created.resolve(Response.json({ id: "register-a-birth" })));
+  await act(async () => created.resolve(Response.json(createdPage)));
   await vi.waitFor(() => expect(done).toHaveBeenCalledWith("register-a-birth"));
   expect(close).not.toHaveBeenCalled();
   await act(async () => root.unmount());
@@ -400,6 +422,7 @@ test("each problem shows on its field, the first takes the focus, and a field's 
     url: "/family",
     position: 0,
     services: 0,
+    version: 1,
     reserved_route: false,
     last_edited_by: null,
     updated_at: "2026-10-28T12:00:00.000Z",

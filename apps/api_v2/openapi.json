@@ -493,7 +493,7 @@
                       "type": "string",
                       "format": "date-time",
                       "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
-                      "description": "Millisecond precision, and exactly the value to send back in `if-updated-at` on the next save."
+                      "description": "Content timestamp at millisecond precision; use version for write preconditions."
                     },
                     "version": {
                       "type": "integer",
@@ -1432,7 +1432,7 @@
                             "type": "string",
                             "format": "date-time",
                             "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d\\.\\d{3}(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$",
-                            "description": "Send it back in `if-updated-at` to save or delete this version."
+                            "description": "Content timestamp; authenticated editors use version for write preconditions."
                           }
                         },
                         "required": [
@@ -1967,7 +1967,7 @@
                       "type": "string",
                       "format": "date-time",
                       "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
-                      "description": "Millisecond precision, and exactly the value to send back in `if-updated-at` on the next save."
+                      "description": "Content timestamp at millisecond precision; use version for write preconditions."
                     },
                     "version": {
                       "type": "integer",
@@ -2185,7 +2185,7 @@
         "tags": [
           "pages"
         ],
-        "description": "Requires an employee session, the editor's Origin header and the editor role (403 otherwise). Send every field: a save replaces the page and defaults none, except that leaving `parent_id` out keeps the page's parent. Send the `updated_at` you last read in the `if-updated-at` header. If the stored row, or the page's pending revision, has moved on since, the save is refused with a 409 rather than silently discarding whoever wrote first. Changing `url` moves this page alone: its sub-pages keep their urls and stay beneath it by `parent_id`, and nothing redirects from the old url. Changing `visibility` needs the approver role (403 otherwise). Making a page public is refused (403) to an approver who changed its content since it was last public, in this save or before: another approver makes it public. A save that keeps a `public` page public, whoever sends it, goes into the page's pending revision: citizens keep seeing the live page until an approver publishes it. An approver's save that takes a `public` page out of public view changes only its `visibility`: the other fields sent are ignored, the live content stays, and the page's open revision is discarded: a draft is dropped, and one waiting for review is closed as `discarded`, which the page's history records. A save to a page whose revision is waiting for review updates that revision, which stays waiting; the saver joins its `contributors`, so may not approve it. Such a save needs `if-updated-at` (428 without it). Returns the page as the editor now works on it.",
+        "description": "Requires an employee session, the editor's Origin header and the editor role (403 otherwise). Send every field: a save replaces the page and defaults none, except that leaving `parent_id` out keeps the page's parent. Send the page version you last read as `expected_version` (428 if missing). If the stored row, or the page's pending revision, has moved on since, the save is refused with a 409 rather than silently discarding whoever wrote first. Changing `url` moves this page alone: its sub-pages keep their urls and stay beneath it by `parent_id`, and nothing redirects from the old url. Changing `visibility` needs the approver role (403 otherwise). Making a page public is refused (403) to an approver who changed its content since it was last public, in this save or before: another approver makes it public. A save that keeps a `public` page public, whoever sends it, goes into the page's pending revision: citizens keep seeing the live page until an approver publishes it. An approver's save that takes a `public` page out of public view changes only its `visibility`: the other fields sent are ignored, the live content stays, and the page's open revision is discarded: a draft is dropped, and one waiting for review is closed as `discarded`, which the page's history records. A save to a page whose revision is waiting for review updates that revision, which stays waiting; the saver joins its `contributors`, so may not approve it. A stale version receives 409 `version_conflict`. Returns the page as the editor now works on it.",
         "requestBody": {
           "required": true,
           "content": {
@@ -2259,6 +2259,12 @@
                         "type": "string"
                       }
                     }
+                  },
+                  "expected_version": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "exclusiveMinimum": true,
+                    "maximum": 9007199254740991
                   }
                 },
                 "required": [
@@ -2285,17 +2291,6 @@
             "in": "path",
             "name": "id",
             "required": true
-          },
-          {
-            "schema": {
-              "type": "string",
-              "format": "date-time",
-              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
-            },
-            "in": "header",
-            "name": "if-updated-at",
-            "required": false,
-            "description": "The `updated_at` this client last read. Omit to accept whatever is stored."
           }
         ],
         "security": [
@@ -2404,7 +2399,7 @@
                       "type": "string",
                       "format": "date-time",
                       "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
-                      "description": "Millisecond precision, and exactly the value to send back in `if-updated-at` on the next save."
+                      "description": "Content timestamp at millisecond precision; use version for write preconditions."
                     },
                     "version": {
                       "type": "integer",
@@ -2581,7 +2576,7 @@
                     "error": {
                       "type": "string",
                       "enum": [
-                        "conflict"
+                        "version_conflict"
                       ]
                     },
                     "message": {
@@ -2721,8 +2716,17 @@
         "tags": [
           "pages"
         ],
-        "description": "Requires an employee session, the editor's Origin header and the editor role (403 otherwise). A page with sub-pages is refused (422) until they are moved or deleted. Deleting a `public` page needs the approver role (403 otherwise). Its pending revision goes with it.",
+        "description": "Requires an employee session, the editor's Origin header and the editor role (403 otherwise). A page with sub-pages is refused (422) until they are moved or deleted. Deleting a `public` page needs the approver role (403 otherwise). Its pending revision goes with it. Send `expected_version` in the query string: missing is 428, stale is 409 `version_conflict`, and absent is 404.",
         "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]{0,15}$"
+            },
+            "in": "query",
+            "name": "expected_version",
+            "required": false
+          },
           {
             "schema": {
               "type": "string",
@@ -2809,6 +2813,60 @@
               }
             }
           },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": {}
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "enum": [
+                        "version_conflict"
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "documentId": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$"
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "message",
+                    "documentId"
+                  ],
+                  "additionalProperties": {}
+                }
+              }
+            }
+          },
           "422": {
             "description": "Default Response",
             "content": {
@@ -2848,6 +2906,28 @@
                   "required": [
                     "error",
                     "errors"
+                  ],
+                  "additionalProperties": {}
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
                   ],
                   "additionalProperties": {}
                 }
@@ -3343,7 +3423,7 @@
                       "type": "string",
                       "format": "date-time",
                       "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
-                      "description": "Moves when its content is saved, not when it is submitted or rejected. Send it in `if-updated-at` to act on this version."
+                      "description": "Revision content timestamp; use the enclosing page version for write preconditions."
                     },
                     "version": {
                       "type": "integer",
@@ -4923,6 +5003,12 @@
                   "description": {
                     "nullable": true,
                     "type": "string"
+                  },
+                  "expected_version": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "exclusiveMinimum": true,
+                    "maximum": 9007199254740991
                   }
                 },
                 "required": [
@@ -4945,16 +5031,6 @@
             },
             "in": "path",
             "name": "id",
-            "required": true
-          },
-          {
-            "schema": {
-              "type": "string",
-              "format": "date-time",
-              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d\\.\\d{3}(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
-            },
-            "in": "header",
-            "name": "if-updated-at",
             "required": true
           }
         ],
@@ -5162,7 +5238,7 @@
                     "error": {
                       "type": "string",
                       "enum": [
-                        "conflict"
+                        "version_conflict"
                       ]
                     },
                     "message": {
@@ -5218,6 +5294,28 @@
                     "error",
                     "message",
                     "errors"
+                  ],
+                  "additionalProperties": {}
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
                   ],
                   "additionalProperties": {}
                 }
@@ -5280,21 +5378,20 @@
           {
             "schema": {
               "type": "string",
+              "pattern": "^[1-9][0-9]{0,15}$"
+            },
+            "in": "query",
+            "name": "expected_version",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string",
               "format": "uuid",
               "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$"
             },
             "in": "path",
             "name": "id",
-            "required": true
-          },
-          {
-            "schema": {
-              "type": "string",
-              "format": "date-time",
-              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d\\.\\d{3}(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
-            },
-            "in": "header",
-            "name": "if-updated-at",
             "required": true
           }
         ],
@@ -5407,7 +5504,7 @@
                         "error": {
                           "type": "string",
                           "enum": [
-                            "conflict"
+                            "version_conflict"
                           ]
                         },
                         "message": {
@@ -5465,6 +5562,28 @@
                       "additionalProperties": false
                     }
                   ]
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": {}
                 }
               }
             }
@@ -5546,15 +5665,15 @@
                           "format": "uuid",
                           "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$"
                         },
-                        "updated_at": {
-                          "type": "string",
-                          "format": "date-time",
-                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d\\.\\d{3}(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                        "version": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "exclusiveMinimum": true,
+                          "maximum": 9007199254740991
                         }
                       },
                       "required": [
-                        "id",
-                        "updated_at"
+                        "id"
                       ],
                       "additionalProperties": false
                     }
@@ -5570,7 +5689,6 @@
                 },
                 "required": [
                   "parent_id",
-                  "expected",
                   "ordered_ids"
                 ],
                 "additionalProperties": false
@@ -5772,7 +5890,7 @@
                     "error": {
                       "type": "string",
                       "enum": [
-                        "conflict"
+                        "version_conflict"
                       ]
                     },
                     "message": {
@@ -5828,6 +5946,28 @@
                     "error",
                     "message",
                     "errors"
+                  ],
+                  "additionalProperties": {}
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
                   ],
                   "additionalProperties": {}
                 }
@@ -6235,7 +6375,7 @@
                           "type": "string",
                           "format": "date-time",
                           "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d\\.\\d{3}(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$",
-                          "description": "Send it back in `if-updated-at` to save or delete this version."
+                          "description": "Content timestamp; authenticated editors use version for write preconditions."
                         },
                         "version": {
                           "type": "integer",
@@ -6444,7 +6584,7 @@
         "tags": [
           "collections"
         ],
-        "description": "Needs the editor role (403 otherwise). `data` is checked against the collection's field list: a field it does not have, or a value of the wrong kind, is a 400 `validation_failed` naming the field. 404 when there is no such collection; 409 `record_exists` when the record key is taken.",
+        "description": "Needs the editor role (403 otherwise). `data` is checked against the collection's field list: a field it does not have, or a value of the wrong kind, is a 400 `validation_failed` naming the field. 404 when there is no such collection; 409 `record_exists` when the record key is taken. Send `expected_collection_version` from the displayed definition: missing is 428, stale is 409 `version_conflict`.",
         "requestBody": {
           "required": true,
           "content": {
@@ -6456,6 +6596,12 @@
                     "type": "object",
                     "additionalProperties": {},
                     "description": "A value for each field to set, by field key. The record key field is filled from the url when left out."
+                  },
+                  "expected_collection_version": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "exclusiveMinimum": true,
+                    "maximum": 9007199254740991
                   }
                 },
                 "required": [
@@ -6516,7 +6662,7 @@
                       "type": "string",
                       "format": "date-time",
                       "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d\\.\\d{3}(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$",
-                      "description": "Send it back in `if-updated-at` to save or delete this version."
+                      "description": "Content timestamp; authenticated editors use version for write preconditions."
                     },
                     "version": {
                       "type": "integer",
@@ -6677,7 +6823,7 @@
                     "error": {
                       "type": "string",
                       "enum": [
-                        "conflict",
+                        "version_conflict",
                         "record_exists"
                       ]
                     },
@@ -6690,6 +6836,28 @@
                     "message"
                   ],
                   "additionalProperties": false
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": {}
                 }
               }
             }
@@ -6745,7 +6913,7 @@
         "tags": [
           "collections"
         ],
-        "description": "Needs the editor role (403 otherwise). Send every field to keep: the record becomes `data`. Checked as a create is. Send the `updated_at` you last read in `if-updated-at`; if the record has changed since, the save is refused with a 409 `conflict`. 404 when there is no such collection or record.",
+        "description": "Needs the editor role (403 otherwise). Send every field to keep: the record becomes `data`. Checked as a create is. Send the record `expected_version` and definition `expected_collection_version`; missing is 428, stale is 409 `version_conflict`. 404 when there is no such collection or record.",
         "requestBody": {
           "required": true,
           "content": {
@@ -6757,6 +6925,18 @@
                     "type": "object",
                     "additionalProperties": {},
                     "description": "A value for each field to set, by field key. The record key field is filled from the url when left out."
+                  },
+                  "expected_version": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "exclusiveMinimum": true,
+                    "maximum": 9007199254740991
+                  },
+                  "expected_collection_version": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "exclusiveMinimum": true,
+                    "maximum": 9007199254740991
                   }
                 },
                 "required": [
@@ -6787,17 +6967,6 @@
             "in": "path",
             "name": "recordKey",
             "required": true
-          },
-          {
-            "schema": {
-              "type": "string",
-              "format": "date-time",
-              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
-            },
-            "in": "header",
-            "name": "if-updated-at",
-            "required": false,
-            "description": "The `updated_at` this client last read. Omit to accept whatever is stored."
           }
         ],
         "security": [
@@ -6813,35 +6982,128 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "record_key": {
-                      "type": "string",
-                      "maxLength": 200,
-                      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
-                    },
-                    "data": {
+                    "collection": {
                       "type": "object",
-                      "additionalProperties": {
-                        "type": "string"
-                      }
+                      "properties": {
+                        "key": {
+                          "type": "string",
+                          "maxLength": 100,
+                          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+                        },
+                        "title": {
+                          "type": "string"
+                        },
+                        "record_key": {
+                          "type": "string",
+                          "description": "The field whose value is each record's `record_key`."
+                        },
+                        "schema": {
+                          "type": "object",
+                          "properties": {
+                            "fields": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "key": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "label": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "type": {
+                                    "type": "string",
+                                    "enum": [
+                                      "text",
+                                      "slug",
+                                      "email"
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "key",
+                                  "label",
+                                  "type"
+                                ],
+                                "additionalProperties": false
+                              }
+                            }
+                          },
+                          "required": [
+                            "fields"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "schema_version": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "exclusiveMinimum": true,
+                          "maximum": 9007199254740991
+                        },
+                        "updated_at": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d\\.\\d{3}(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "exclusiveMinimum": true,
+                          "maximum": 9007199254740991
+                        }
+                      },
+                      "required": [
+                        "key",
+                        "title",
+                        "record_key",
+                        "schema",
+                        "schema_version",
+                        "updated_at",
+                        "version"
+                      ],
+                      "additionalProperties": false
                     },
-                    "updated_at": {
-                      "type": "string",
-                      "format": "date-time",
-                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d\\.\\d{3}(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$",
-                      "description": "Send it back in `if-updated-at` to save or delete this version."
-                    },
-                    "version": {
-                      "type": "integer",
-                      "minimum": 0,
-                      "exclusiveMinimum": true,
-                      "maximum": 9007199254740991
+                    "record": {
+                      "type": "object",
+                      "properties": {
+                        "record_key": {
+                          "type": "string",
+                          "maxLength": 200,
+                          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+                        },
+                        "data": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "type": "string"
+                          }
+                        },
+                        "updated_at": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d\\.\\d{3}(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$",
+                          "description": "Content timestamp; authenticated editors use version for write preconditions."
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "exclusiveMinimum": true,
+                          "maximum": 9007199254740991
+                        }
+                      },
+                      "required": [
+                        "record_key",
+                        "data",
+                        "updated_at",
+                        "version"
+                      ],
+                      "additionalProperties": false
                     }
                   },
                   "required": [
-                    "record_key",
-                    "data",
-                    "updated_at",
-                    "version"
+                    "collection",
+                    "record"
                   ],
                   "additionalProperties": false
                 }
@@ -6989,7 +7251,7 @@
                     "error": {
                       "type": "string",
                       "enum": [
-                        "conflict",
+                        "version_conflict",
                         "record_exists"
                       ]
                     },
@@ -7002,6 +7264,28 @@
                     "message"
                   ],
                   "additionalProperties": false
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": {}
                 }
               }
             }
@@ -7057,8 +7341,17 @@
         "tags": [
           "collections"
         ],
-        "description": "Needs the editor role (403 otherwise). With `if-updated-at`, a record that has changed since is refused with a 409 `conflict`. 404 when there is no such collection or record.",
+        "description": "Needs the editor role (403 otherwise). Send the record `expected_version` in the query: missing is 428, stale is 409 `version_conflict`. 404 when there is no such collection or record.",
         "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]{0,15}$"
+            },
+            "in": "query",
+            "name": "expected_version",
+            "required": false
+          },
           {
             "schema": {
               "type": "string",
@@ -7078,17 +7371,6 @@
             "in": "path",
             "name": "recordKey",
             "required": true
-          },
-          {
-            "schema": {
-              "type": "string",
-              "format": "date-time",
-              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
-            },
-            "in": "header",
-            "name": "if-updated-at",
-            "required": false,
-            "description": "The `updated_at` this client last read. Omit to accept whatever is stored."
           }
         ],
         "security": [
@@ -7241,7 +7523,7 @@
                     "error": {
                       "type": "string",
                       "enum": [
-                        "conflict",
+                        "version_conflict",
                         "record_exists"
                       ]
                     },
@@ -7254,6 +7536,28 @@
                     "message"
                   ],
                   "additionalProperties": false
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": {}
                 }
               }
             }
@@ -8044,7 +8348,26 @@
         "tags": [
           "pages"
         ],
-        "description": "Needs the editor role (403 otherwise). Records the submitter, who may not then approve it. 404 when the page has no draft revision; 409 `under_review` when it is already submitted, or `conflict` when the draft has been saved since `if-updated-at`. Saves made while it waits update it, and it keeps waiting. A rejected revision can be submitted again as it is: it is copied into a new submitted revision with the same `updated_at`, and the rejected one keeps its comment. The copy's `contributors` gain the rejected round's submitter, who may not approve it either.",
+        "description": "Needs the editor role (403 otherwise). Records the submitter, who may not then approve it. 404 when the page has no draft revision; 409 `under_review` when it is already submitted, or `version_conflict` when the required page `expected_version` is stale (428 if missing). Saves made while it waits update it, and it keeps waiting. A rejected revision can be submitted again as it is: it is copied into a new submitted revision with the same `updated_at`, and the rejected one keeps its comment. The copy's `contributors` gain the rejected round's submitter, who may not approve it either.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "nullable": true,
+                "type": "object",
+                "properties": {
+                  "expected_version": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "exclusiveMinimum": true,
+                    "maximum": 9007199254740991
+                  }
+                }
+              }
+            }
+          }
+        },
         "parameters": [
           {
             "schema": {
@@ -8055,17 +8378,6 @@
             "in": "path",
             "name": "id",
             "required": true
-          },
-          {
-            "schema": {
-              "type": "string",
-              "format": "date-time",
-              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
-            },
-            "in": "header",
-            "name": "if-updated-at",
-            "required": false,
-            "description": "The `updated_at` this client last read for the revision. Omit to accept whatever is stored."
           }
         ],
         "security": [
@@ -8240,7 +8552,7 @@
                       "type": "string",
                       "format": "date-time",
                       "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
-                      "description": "Moves when its content is saved, not when it is submitted or rejected. Send it in `if-updated-at` to act on this version."
+                      "description": "Revision content timestamp; use the enclosing page version for write preconditions."
                     },
                     "version": {
                       "type": "integer",
@@ -8403,7 +8715,7 @@
                         "error": {
                           "type": "string",
                           "enum": [
-                            "conflict"
+                            "version_conflict"
                           ]
                         },
                         "message": {
@@ -8443,6 +8755,28 @@
                       "additionalProperties": false
                     }
                   ]
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": {}
                 }
               }
             }
@@ -8500,7 +8834,7 @@
         "tags": [
           "pages"
         ],
-        "description": "Needs the approver role, and the approver must not have changed or submitted the revision (403 otherwise). The live page is unchanged; the revision is kept with the comment, and the next save starts a new draft from it. Rejecting moves the revision's `updated_at`, so an editor holding the earlier one reloads and sees why. `if-updated-at` is required (428 without it). 404 when nothing is waiting for review; 409 `not_submitted` for a draft, or `conflict` when the revision is no longer the version in `if-updated-at`.",
+        "description": "Needs the approver role, and the approver must not have changed or submitted the revision (403 otherwise). The live page is unchanged; the revision is kept with the comment, and the next save starts a new draft from it. Rejecting moves the page version, so an editor holding the earlier one reloads and sees why. The page `expected_version` is required (428 without it). 404 when nothing is waiting for review; 409 `not_submitted` for a draft, or `version_conflict` when the page is no longer the version reviewed.",
         "requestBody": {
           "required": true,
           "content": {
@@ -8508,6 +8842,12 @@
               "schema": {
                 "type": "object",
                 "properties": {
+                  "expected_version": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "exclusiveMinimum": true,
+                    "maximum": 9007199254740991
+                  },
                   "comment": {
                     "type": "string",
                     "minLength": 1,
@@ -8532,17 +8872,6 @@
             "in": "path",
             "name": "id",
             "required": true
-          },
-          {
-            "schema": {
-              "type": "string",
-              "format": "date-time",
-              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
-            },
-            "in": "header",
-            "name": "if-updated-at",
-            "required": false,
-            "description": "Required: the revision's `updated_at` the approver reviewed. Without it the decision is refused with a 428."
           }
         ],
         "security": [
@@ -8717,7 +9046,7 @@
                       "type": "string",
                       "format": "date-time",
                       "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
-                      "description": "Moves when its content is saved, not when it is submitted or rejected. Send it in `if-updated-at` to act on this version."
+                      "description": "Revision content timestamp; use the enclosing page version for write preconditions."
                     },
                     "version": {
                       "type": "integer",
@@ -8880,7 +9209,7 @@
                         "error": {
                           "type": "string",
                           "enum": [
-                            "conflict"
+                            "version_conflict"
                           ]
                         },
                         "message": {
@@ -8999,7 +9328,26 @@
         "tags": [
           "pages"
         ],
-        "description": "Needs the approver role, and the approver must not have changed or submitted the revision (403 otherwise). Writes the revision to the live page as a save would, re-indexes it and records the approver in `change_events`, all in one transaction. A revision that has gone stale while it waited (its parent or category gone, or its url taken) is refused with a 422 naming the field, and nothing changes. `if-updated-at` is required (428 without it). 404 when nothing is waiting for review; 409 `not_submitted` for a draft, or `conflict` when the revision is no longer the version in `if-updated-at`. Returns the page as it now stands.",
+        "description": "Needs the approver role, and the approver must not have changed or submitted the revision (403 otherwise). Writes the revision to the live page as a save would, re-indexes it and records the approver in `change_events`, all in one transaction. A revision that has gone stale while it waited (its parent or category gone, or its url taken) is refused with a 422 naming the field, and nothing changes. The page `expected_version` is required (428 without it). 404 when nothing is waiting for review; 409 `not_submitted` for a draft, or `version_conflict` when the page is no longer the version reviewed. Returns the page as it now stands.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "nullable": true,
+                "type": "object",
+                "properties": {
+                  "expected_version": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "exclusiveMinimum": true,
+                    "maximum": 9007199254740991
+                  }
+                }
+              }
+            }
+          }
+        },
         "parameters": [
           {
             "schema": {
@@ -9010,17 +9358,6 @@
             "in": "path",
             "name": "id",
             "required": true
-          },
-          {
-            "schema": {
-              "type": "string",
-              "format": "date-time",
-              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
-            },
-            "in": "header",
-            "name": "if-updated-at",
-            "required": false,
-            "description": "Required: the revision's `updated_at` the approver reviewed. Without it the decision is refused with a 428."
           }
         ],
         "security": [
@@ -9129,7 +9466,7 @@
                       "type": "string",
                       "format": "date-time",
                       "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
-                      "description": "Millisecond precision, and exactly the value to send back in `if-updated-at` on the next save."
+                      "description": "Content timestamp at millisecond precision; use version for write preconditions."
                     },
                     "version": {
                       "type": "integer",
@@ -9308,7 +9645,7 @@
                         "error": {
                           "type": "string",
                           "enum": [
-                            "conflict"
+                            "version_conflict"
                           ]
                         },
                         "message": {

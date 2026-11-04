@@ -1,4 +1,5 @@
 import type { Employee, UserId } from "../modules/auth";
+import type { EditVersion } from "../modules/edit-concurrency";
 import {
   categoryAddress,
   CategoryConflict,
@@ -96,7 +97,7 @@ export interface ICategoryEditing {
   update(
     id: CategoryId,
     fields: CategoryFields,
-    expected: CategoryStamp,
+    expected: EditVersion,
     actor: Employee,
   ): Promise<Result<EditorCategory, CategoryUpdateFailure>>;
   /** Replace a complete sibling order if every expected ID and stamp still matches. */
@@ -112,7 +113,7 @@ export interface ICategoryEditing {
   /** Refuse stale or occupied deletion without moving any content. */
   delete(
     id: CategoryId,
-    expected: CategoryStamp,
+    expected: EditVersion,
     actor: Employee,
   ): Promise<Result<void, CategoryDeleteFailure>>;
 }
@@ -173,18 +174,17 @@ export class CategoryEditing implements ICategoryEditing {
   async update(
     id: CategoryId,
     fields: CategoryFields,
-    expected: CategoryStamp,
+    expected: EditVersion,
     actor: Employee,
   ): Promise<Result<EditorCategory, CategoryUpdateFailure>> {
-    const parsed = parseCategoryFields(fields);
-    if (!parsed.ok) return parsed;
     return this.records.atomically(actor.id, async (records) => {
       const rows = await records.editorCategories();
       if (!rows.ok) return rows;
       const current = rows.value.find((row) => row.id === id);
       if (!current) return err(new CategoryNotFound(id));
-      if (!sameStamp(current.updated_at, expected))
-        return err(new CategoryConflict());
+      if (current.version !== expected) return err(new CategoryConflict());
+      const parsed = parseCategoryFields(fields);
+      if (!parsed.ok) return parsed;
       if (
         current.title === parsed.value.title &&
         current.slug === parsed.value.slug &&
@@ -270,8 +270,7 @@ export class CategoryEditing implements ICategoryEditing {
           (expected) =>
             !siblings.some(
               (row) =>
-                row.id === expected.id &&
-                sameStamp(row.updated_at, expected.updated_at),
+                row.id === expected.id && row.version === expected.version,
             ),
         )
       )
@@ -299,7 +298,7 @@ export class CategoryEditing implements ICategoryEditing {
   /** Check the original version before reporting all deletion blockers. */
   async delete(
     id: CategoryId,
-    expected: CategoryStamp,
+    expected: EditVersion,
     actor: Employee,
   ): Promise<Result<void, CategoryDeleteFailure>> {
     return this.records.atomically(actor.id, async (records) => {
@@ -307,8 +306,7 @@ export class CategoryEditing implements ICategoryEditing {
       if (!rows.ok) return rows;
       const current = rows.value.find((row) => row.id === id);
       if (!current) return err(new CategoryNotFound(id));
-      if (!sameStamp(current.updated_at, expected))
-        return err(new CategoryConflict());
+      if (current.version !== expected) return err(new CategoryConflict());
       const usage = await records.categoryBlockers(id);
       if (!usage.ok) return usage;
       const blockers = {
@@ -337,10 +335,6 @@ async function readSavedCategory(
   if (!saved)
     throw new Error("Saved category missing inside its write transaction");
   return ok(saved);
-}
-
-function sameStamp(a: CategoryStamp, b: CategoryStamp): boolean {
-  return Date.parse(a) === Date.parse(b);
 }
 
 function appendPosition(

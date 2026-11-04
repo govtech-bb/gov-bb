@@ -13,7 +13,7 @@ import { sql } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { FastifyInstance, InjectOptions } from "fastify";
 import pino from "pino";
-import { IF_UPDATED_AT } from "./routes/contracts";
+
 import { PUBLIC_READ } from "./routes/responses";
 import type { Database } from "./db";
 import { PostgresPages } from "./adapters/postgres-pages";
@@ -724,8 +724,11 @@ describe("PUT /pages/:id", () => {
     const response = await inject({
       method: "PUT",
       url: `/pages/${created.id}`,
-      headers: { [IF_UPDATED_AT]: created.updated_at },
-      payload: { ...created, title: "Severance pay" },
+      payload: {
+        ...created,
+        expected_version: created.version,
+        title: "Severance pay",
+      },
     });
 
     expect(response.statusCode).toBe(200);
@@ -733,20 +736,26 @@ describe("PUT /pages/:id", () => {
     expect(response.json().updated_at).not.toBe(created.updated_at);
   });
 
-  it("409s on a stale if-updated-at and leaves the row untouched", async () => {
+  it("409s on a stale expected_version and leaves the row untouched", async () => {
     const created = await seedPage({ visibility: "preview" });
     await inject({
       method: "PUT",
       url: `/pages/${created.id}`,
-      headers: { [IF_UPDATED_AT]: created.updated_at },
-      payload: { ...created, title: "First writer wins" },
+      payload: {
+        ...created,
+        expected_version: created.version,
+        title: "First writer wins",
+      },
     });
 
     const response = await inject({
       method: "PUT",
       url: `/pages/${created.id}`,
-      headers: { [IF_UPDATED_AT]: created.updated_at },
-      payload: { ...created, title: "Second writer clobbers" },
+      payload: {
+        ...created,
+        expected_version: created.version,
+        title: "Second writer clobbers",
+      },
     });
 
     expect(response.statusCode).toBe(409);
@@ -769,13 +778,16 @@ describe("PUT /pages/:id", () => {
     );
   });
 
-  it("400s an if-updated-at that is not a timestamp, rather than saving unconditionally", async () => {
+  it("400s an expected_version that is not a number, rather than saving unconditionally", async () => {
     const created = await seedPage();
     const response = await inject({
       method: "PUT",
       url: `/pages/${created.id}`,
-      headers: { [IF_UPDATED_AT]: "yesterday" },
-      payload: { ...created, title: "Saved by accident" },
+      payload: {
+        ...created,
+        expected_version: "yesterday",
+        title: "Saved by accident",
+      },
     });
 
     expect(response.statusCode).toBe(400);
@@ -786,7 +798,7 @@ describe("PUT /pages/:id", () => {
     const response = await inject({
       method: "PUT",
       url: "/pages/22222222-2222-4222-8222-222222222222",
-      payload: withDefaults(aPage()),
+      payload: { ...withDefaults(aPage()), expected_version: 1 },
     });
     expect(response.statusCode).toBe(404);
   });
@@ -798,7 +810,11 @@ describe("PUT /pages/:id", () => {
         await inject({
           method: "PUT",
           url: `/pages/${draft.id}`,
-          payload: { ...current, visibility },
+          payload: {
+            ...current,
+            expected_version: current.version,
+            visibility,
+          },
         })
       ).json();
 
@@ -832,7 +848,11 @@ describe("PUT /pages/:id", () => {
         await inject({
           method: "PUT",
           url: `/pages/${draft.id}`,
-          payload: { ...current, ...changes },
+          payload: {
+            ...current,
+            expected_version: current.version,
+            ...changes,
+          },
         })
       ).json();
     await put(await put(draft, { title: "Renamed" }), { visibility: "public" });
@@ -925,7 +945,11 @@ describe("PUT /pages/:id", () => {
         await inject({
           method: "PUT",
           url: `/pages/${draft.id}`,
-          payload: { ...current, ...changes },
+          payload: {
+            ...current,
+            expected_version: current.version,
+            ...changes,
+          },
         })
       ).json();
     const servedDate = async () =>
@@ -959,7 +983,11 @@ describe("PUT /pages/:id", () => {
     const response = await inject({
       method: "PUT",
       url: `/pages/${parent.id}`,
-      payload: { ...parent, parent_id: child.id },
+      payload: {
+        ...parent,
+        expected_version: parent.version,
+        parent_id: child.id,
+      },
     });
 
     expect(response.statusCode).toBe(422);
@@ -978,7 +1006,11 @@ describe("PUT /pages/:id", () => {
     const response = await inject({
       method: "PUT",
       url: `/pages/${child.id}`,
-      payload: { ...unplaced, title: "Renamed" },
+      payload: {
+        ...unplaced,
+        expected_version: child.version,
+        title: "Renamed",
+      },
     });
 
     expect(response.statusCode).toBe(200);
@@ -998,7 +1030,7 @@ describe("PUT /pages/:id", () => {
     const response = await inject({
       method: "PUT",
       url: `/pages/${parent.id}`,
-      payload: { ...parent, url: moved },
+      payload: { ...parent, expected_version: parent.version, url: moved },
     });
 
     expect(response.statusCode).toBe(200);
@@ -1054,7 +1086,11 @@ describe("PUT /pages/:id", () => {
     const response = await inject({
       method: "PUT",
       url: `/pages/${parent.id}`,
-      payload: { ...parent, category_id: to.id },
+      payload: {
+        ...parent,
+        expected_version: parent.version,
+        category_id: to.id,
+      },
     });
 
     expect(response.statusCode).toBe(200);
@@ -1073,7 +1109,11 @@ describe("PUT /pages/:id", () => {
     await inject({
       method: "PUT",
       url: `/pages/${parent.id}`,
-      payload: { ...parent, category_id: category.id },
+      payload: {
+        ...parent,
+        expected_version: parent.version,
+        category_id: category.id,
+      },
     });
 
     expect(expectOk(await live(start.id))?.category_id).toBe(category.id);
@@ -1092,7 +1132,11 @@ describe("PUT /pages/:id", () => {
     await inject({
       method: "PUT",
       url: `/pages/${created.id}`,
-      payload: { ...created, body_markdown: "Intro\n\n## Fees\n\nTen dollars" },
+      payload: {
+        ...created,
+        expected_version: created.version,
+        body_markdown: "Intro\n\n## Fees\n\nTen dollars",
+      },
     });
 
     const rows = await db
@@ -1125,7 +1169,7 @@ describe("DELETE /pages/:id", () => {
     const created = await seedPage();
     const response = await inject({
       method: "DELETE",
-      url: `/pages/${created.id}`,
+      url: `/pages/${created.id}?expected_version=${created.version}`,
     });
 
     expect(response.statusCode).toBe(204);
@@ -1134,7 +1178,10 @@ describe("DELETE /pages/:id", () => {
 
   it("records who deleted the page, which moves the version", async () => {
     const created = await seedPage();
-    await inject({ method: "DELETE", url: `/pages/${created.id}` });
+    await inject({
+      method: "DELETE",
+      url: `/pages/${created.id}?expected_version=${created.version}`,
+    });
 
     const events = await db
       .select({ action: changeEvents.action, actor: changeEvents.actor })
@@ -1153,7 +1200,7 @@ describe("DELETE /pages/:id", () => {
 
     const response = await inject({
       method: "DELETE",
-      url: `/pages/${parent.id}`,
+      url: `/pages/${parent.id}?expected_version=${parent.version}`,
     });
 
     expect(response.statusCode).toBe(422);
@@ -1311,7 +1358,7 @@ describe("timestamp precision", () => {
     expect(fetched.updated_at).toMatch(/\.\d{3}Z$/);
   });
 
-  it("accepts the updated_at it just handed out, twice in a row", async () => {
+  it("accepts the version it just handed out, twice in a row", async () => {
     const created = await seedPage();
 
     let current = created;
@@ -1319,8 +1366,7 @@ describe("timestamp precision", () => {
       const response = await inject({
         method: "PUT",
         url: `/pages/${current.id}`,
-        headers: { [IF_UPDATED_AT]: current.updated_at },
-        payload: { ...current, title },
+        payload: { ...current, expected_version: current.version, title },
       });
       expect(response.statusCode).toBe(200);
       current = response.json();
@@ -1479,7 +1525,10 @@ describe("employee access", () => {
     const saved = await inject({
       method: "PUT",
       url: `/pages/${created.json().id}`,
-      payload: withDefaults(aPage({ title: "Updated", visibility: "preview" })),
+      payload: {
+        ...withDefaults(aPage({ title: "Updated", visibility: "preview" })),
+        expected_version: created.json().version,
+      },
     });
     expect(saved.statusCode).toBe(200);
     const events = await db

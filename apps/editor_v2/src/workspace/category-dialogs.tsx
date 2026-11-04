@@ -9,7 +9,6 @@ import {
   categorySlug,
   categoryUrl,
   deleteBlocker,
-  holdsFields,
   siblingsOf,
   type Category,
   type CategoryBlockers,
@@ -27,6 +26,8 @@ import { NativeSelect } from "../ui/native-select";
 import { Textarea } from "../ui/textarea";
 import { toast } from "../ui/toast";
 import { ApiProblems, ApiProblemText } from "./api-problems";
+import { ContentDiff } from "./review-screens";
+import { download } from "../host/download";
 
 /**
  * Where a category change stands once it has been sent, short of done: refused for a reason the author can act on,
@@ -111,7 +112,7 @@ function attemptMessages(attempt: Attempt | undefined, otherwise: string, noun: 
       return refusalMessages(attempt.error, otherwise);
     case "Superseded":
       return [
-        `Someone changed this ${noun} after you opened it. Load their version, then try again: what you typed stays.`,
+        `Someone changed this ${noun} after you opened it. Copy your changes or discard them and reload.`,
       ];
     case "Gone":
       return [
@@ -185,9 +186,9 @@ export function CategoryDialog({
   onClose: () => void;
 }) {
   const contentChanged = useContentChanged();
-  const words = category ? editWords : addWords;
   // The version this edit saves over: the one the dialog opened with until the author loads a newer one
   const [base, setBase] = useState(category);
+  const words = base ? editWords : addWords;
   const [title, setTitle] = useState(category?.title ?? "");
   const [slug, setSlug] = useState(category?.slug);
   const [parentId, setParentId] = useState(category?.parent_id ?? "");
@@ -198,7 +199,10 @@ export function CategoryDialog({
   const [checked, setChecked] = useState<CategoryFields>();
   const [attempt, setAttempt] = useState<Attempt>();
   // What was last sent, to recognise it in the list when its answer was lost
-  const sent = useRef<CategoryFields>(undefined);
+  const sent = useRef<{ fields: CategoryFields; base?: Category }>(undefined);
+  const gate = useRef(false);
+  const [latest, setLatest] = useState<Category>();
+  const currentFields = useRef<CategoryFields>(undefined);
   const titleControl = useRef<HTMLInputElement>(null);
   const slugControl = useRef<HTMLInputElement>(null);
   const parentControl = useRef<HTMLSelectElement>(null);
@@ -209,6 +213,8 @@ export function CategoryDialog({
     parent_id: parentId || null,
     description: description.trim() ? description : null,
   };
+
+  currentFields.current = fields;
 
   // Only a top-level category can be a parent
   const parents = siblingsOf(categories, null).filter((item) => item.id !== base?.id);
@@ -225,9 +231,10 @@ export function CategoryDialog({
 
   // A save whose answer was lost: done if the list now holds what was sent, else it may be sent again
   const reconcile = async () => {
-    const values = sent.current;
+    const request = sent.current;
 
-    if (!values) return;
+    if (!request) return;
+    const values = request.fields;
     setAttempt(CHECKING);
     const result = await api.categories();
 
@@ -237,31 +244,52 @@ export function CategoryDialog({
       ? result.value.find((item) => item.id === base.id)
       : result.value.find((item) => item.slug === values.slug);
 
-    if (saved && holdsFields(saved, values)) return done();
+    setLatest(saved);
     contentChanged();
 
     if (base && !saved) return setAttempt({ _tag: "Gone" });
 
     // Someone else's version, where this one was saved over
-    if (base && saved && saved.updated_at !== base.updated_at)
-      return setAttempt({ _tag: "Superseded" });
+    if (base && saved && saved.version !== base.version) return setAttempt({ _tag: "Superseded" });
+
+    if (!base && !saved) sent.current = undefined;
     setAttempt({ _tag: "Unconfirmed" });
   };
 
-  const save = async (values: CategoryFields) => {
-    sent.current = values;
+  const save = async (values: CategoryFields, retry = false) => {
+    if (gate.current) return;
+    gate.current = true;
+
+    if (!retry) sent.current = structuredClone({ fields: values, base });
+    const request = sent.current!;
     setAttempt({ _tag: "Saving" });
 
-    const result = base
-      ? await api.updateCategory(base.id, values, base.updated_at)
-      : await api.createCategory(values);
+    const result = request.base
+      ? await api.updateCategory(request.base.id, request.fields, request.base.version)
+      : await api.createCategory(request.fields);
 
-    if (result.ok) return done();
+    gate.current = false;
+
+    if (result.ok) {
+      setBase(result.value);
+      sent.current = undefined;
+      setAttempt(undefined);
+
+      if (JSON.stringify(currentFields.current) === JSON.stringify(request.fields)) return done();
+      contentChanged();
+
+      return;
+    }
 
     switch (result.error._tag) {
       case "CategoryOutcomeUnknown":
-        return reconcile();
+        return request.base ? setAttempt(UNCLEAR) : reconcile();
       case "CategoryConflict":
+        contentChanged();
+        void api.categories().then((result) => {
+          if (result.ok) setLatest(result.value.find((item) => item.id === request.base?.id));
+        });
+
         return setAttempt({ _tag: "Superseded" });
       case "CategoryNotFound":
         return setAttempt({ _tag: "Gone" });
@@ -270,17 +298,28 @@ export function CategoryDialog({
     }
   };
 
-  // Takes the newer version to save over, keeping what the author typed
+  // Replace fields and baseline together only after a successful read with no newer typing.
   const loadLatest = async () => {
+    if (gate.current) return;
+    gate.current = true;
+    const before = JSON.stringify(currentFields.current);
     setAttempt(CHECKING);
     const result = await api.categories();
 
-    if (!result.ok) return setAttempt(UNCLEAR);
+    gate.current = false;
+
+    if (!result.ok || JSON.stringify(currentFields.current) !== before)
+      return setAttempt({ _tag: "Superseded" });
     contentChanged();
     const latest = result.value.find((item) => item.id === base?.id);
 
     if (!latest) return setAttempt({ _tag: "Gone" });
     setBase(latest);
+    setTitle(latest.title);
+    setSlug(latest.slug);
+    setParentId(latest.parent_id ?? "");
+    setDescription(latest.description ?? "");
+    sent.current = undefined;
     setAttempt(undefined);
   };
 
@@ -319,8 +358,8 @@ export function CategoryDialog({
 
   const action =
     attempt?._tag === "Superseded" ? (
-      <Button type="button" variant="accent" size="md" onClick={() => void loadLatest()}>
-        Load their version
+      <Button type="button" variant="danger" size="md" onClick={() => void loadLatest()}>
+        Discard my changes and reload
       </Button>
     ) : (
       <Button
@@ -333,7 +372,7 @@ export function CategoryDialog({
           attempt?._tag === "Checking" || unsettled ? "Checking category…" : words.pending
         }
       >
-        {unsettled ? "Check again" : words.action}
+        {unsettled ? (base ? "Retry same save" : "Check again") : words.action}
       </Button>
     );
 
@@ -350,7 +389,9 @@ export function CategoryDialog({
       onSubmit={() => {
         if (working || attempt?._tag === "Superseded") return;
 
-        if (unsettled) return void reconcile();
+        if (unsettled) return void (base ? save(sent.current!.fields, true) : reconcile());
+
+        if (!base && sent.current) return void reconcile();
         const found = categoryProblems(fields, categories, base?.id);
 
         setProblems(found);
@@ -412,6 +453,30 @@ export function CategoryDialog({
           onChange={(event) => setDescription(event.target.value)}
         />
       </Field>
+      {latest && (
+        <>
+          <p className="text-14 text-muted">
+            Struck-through lines are only in the latest saved version, shown here read-only.
+            Highlighted lines are only in your open copy.
+          </p>
+          <ContentDiff
+            live={JSON.stringify(latest, null, 2)}
+            proposed={JSON.stringify(fields, null, 2)}
+          />
+        </>
+      )}
+      {(attempt?._tag === "Superseded" || unsettled || attempt?._tag === "Unconfirmed") && (
+        <Button
+          variant="secondary"
+          onClick={() =>
+            void navigator.clipboard
+              .writeText(JSON.stringify(fields, null, 2))
+              .catch(() => download(JSON.stringify(fields, null, 2), "category.json"))
+          }
+        >
+          Copy my version
+        </Button>
+      )}
       <ApiProblems messages={messages} />
     </FormDialog>
   );
@@ -442,8 +507,9 @@ export function DeleteCategoryDialog({
   focusAfter: RefObject<HTMLElement | null>;
 }) {
   const contentChanged = useContentChanged();
-  const [base, setBase] = useState(category);
+  const [base] = useState(category);
   const [attempt, setAttempt] = useState<Attempt>();
+  const gate = useRef(false);
   const deleted = useRef(false);
   const blocked = deleteBlocker(base, categories);
   const working = attempt?._tag === "Saving" || attempt?._tag === "Checking";
@@ -464,16 +530,18 @@ export function DeleteCategoryDialog({
     if (!result.ok) return setAttempt(UNCLEAR);
     const still = result.value.find((item) => item.id === base.id);
 
-    if (!still) return done("Category deleted");
+    if (!still) return done("Category is no longer present");
     contentChanged();
-    setAttempt(
-      still.updated_at === base.updated_at ? { _tag: "Unconfirmed" } : { _tag: "Superseded" },
-    );
+    setAttempt(still.version === base.version ? { _tag: "Unconfirmed" } : { _tag: "Superseded" });
   };
 
   const remove = async () => {
     setAttempt({ _tag: "Saving" });
-    const result = await api.deleteCategory(base.id, base.updated_at);
+
+    if (gate.current) return;
+    gate.current = true;
+    const result = await api.deleteCategory(base.id, base.version);
+    gate.current = false;
 
     if (result.ok) return done("Category deleted");
 
@@ -487,19 +555,6 @@ export function DeleteCategoryDialog({
       default:
         return setAttempt({ _tag: "Refused", error: result.error });
     }
-  };
-
-  const loadLatest = async () => {
-    setAttempt(CHECKING);
-    const result = await api.categories();
-
-    if (!result.ok) return setAttempt(UNCLEAR);
-    const latest = result.value.find((item) => item.id === base.id);
-
-    if (!latest) return done("Category already deleted");
-    contentChanged();
-    setBase(latest);
-    setAttempt(undefined);
   };
 
   // Nothing to confirm: why not, and the way to what's in the way
@@ -550,7 +605,11 @@ export function DeleteCategoryDialog({
       title={`Delete ${base.title}?`}
       description="Services can no longer be filed under it. This can’t be undone."
       confirmLabel={
-        superseded ? "Load their version" : unsettled ? "Check again" : "Delete category"
+        superseded
+          ? "Cancel and review the category"
+          : unsettled
+            ? "Check again"
+            : "Delete category"
       }
       variant={superseded || unsettled ? "accent" : "danger"}
       // Loading their version and Check again check the list; deleting otherwise
@@ -562,7 +621,7 @@ export function DeleteCategoryDialog({
       pending={working}
       error={refusal.length > 0 && <ApiProblemText messages={refusal} />}
       finalFocus={() => (deleted.current ? focusAfter.current : true)}
-      onConfirm={() => void (superseded ? loadLatest() : unsettled ? reconcile() : remove())}
+      onConfirm={() => void (superseded ? onClose() : unsettled ? reconcile() : remove())}
     />
   );
 }

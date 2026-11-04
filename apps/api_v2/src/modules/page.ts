@@ -97,8 +97,7 @@ export const PageDocument = PageFields.extend({
   updated_at: z.iso
     .datetime()
     .describe(
-      "Millisecond precision, and exactly the value to send back in " +
-        "`if-updated-at` on the next save.",
+      "Content timestamp at millisecond precision; use version for write preconditions.",
     ),
 });
 
@@ -160,8 +159,7 @@ export const PendingRevision = z.object({
   updated_at: z.iso
     .datetime()
     .describe(
-      "Moves when its content is saved, not when it is submitted or " +
-        "rejected. Send it in `if-updated-at` to act on this version.",
+      "Revision content timestamp; use the enclosing page version for write preconditions.",
     ),
 });
 
@@ -495,17 +493,6 @@ export class PageConflict extends Error {
   constructor(readonly documentId: PageId) {
     super(
       "This page was changed somewhere else since you opened it. Reload to see the current version.",
-    );
-  }
-}
-
-/** A save to a revision waiting for review named no version, so it could overwrite another editor's change unseen. */
-export class PageVersionRequired extends Error {
-  /** Stable protocol-projection discriminator. */
-  readonly _tag = "PageVersionRequired" as const;
-  constructor() {
-    super(
-      "This change is waiting for review. Send the updated_at you last read in the if-updated-at header.",
     );
   }
 }

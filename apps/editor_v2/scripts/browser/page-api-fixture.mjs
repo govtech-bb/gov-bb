@@ -5,6 +5,7 @@ const stamp = "2026-10-07T12:00:00.000Z";
 
 export const fixturePage = (id, fields) => ({
   id,
+  version: 1,
   title: id,
   url: "/business-trade/service/" + id,
   slug: id,
@@ -33,6 +34,7 @@ export const fixtureCategory = (id, slug, title, fields = {}, parent) => ({
   url: parent ? `${parent.url}/${slug}` : `/${slug}`,
   position: 0,
   services: 0,
+  version: 1,
   reserved_route: false,
   updated_at: stamp,
   last_edited_by: null,
@@ -86,7 +88,7 @@ export async function installPageApi(context, service, initialPages) {
       "access-control-allow-origin": request.headers().origin ?? "*",
       "access-control-allow-credentials": "true",
       "access-control-allow-methods": "GET, POST, PUT, DELETE, OPTIONS",
-      "access-control-allow-headers": "content-type, if-updated-at",
+      "access-control-allow-headers": "content-type",
       "cache-control": "no-store",
     };
 
@@ -154,6 +156,8 @@ export async function installPageApi(context, service, initialPages) {
     if (request.method() === "GET") return reply(page);
 
     if (request.method() === "DELETE") {
+      if (Number(new URL(request.url()).searchParams.get("expected_version")) !== page.version)
+        return reply({ error: "version_conflict" }, 409);
       pages.delete(id);
       services.delete(id);
       version++;
@@ -163,12 +167,19 @@ export async function installPageApi(context, service, initialPages) {
     }
 
     const fields = request.postDataJSON(),
-      ifUpdatedAt = request.headers()["if-updated-at"];
+      expectedVersion = fields.expected_version;
 
-    writes.push({ method: "PUT", id, fields, ifUpdatedAt });
+    writes.push({ method: "PUT", id, fields, expectedVersion });
 
-    if (ifUpdatedAt !== page.updated_at) return reply({ error: "conflict" }, 409);
-    const saved = { ...page, ...fields, updated_at: new Date(++version).toISOString() };
+    if (expectedVersion !== page.version) return reply({ error: "version_conflict" }, 409);
+
+    const saved = {
+      ...page,
+      ...fields,
+      version: page.version + 1,
+      updated_at: new Date(++version).toISOString(),
+    };
+
     pages.set(id, saved);
 
     return reply(saved);

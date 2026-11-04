@@ -1,5 +1,125 @@
 import { describe, expect, it } from "vitest";
-import { EditVersion } from "./edit-concurrency";
+import { z } from "zod";
+import { CategoryOrderBody } from "./category";
+import {
+  EditVersion,
+  ExpectedVersionQuery,
+  VersionCommandBody,
+  expectedVersionFields,
+  expectedCollectionVersionFields,
+} from "./edit-concurrency";
+
+const versionBody = z.object({
+  ...expectedVersionFields,
+  ...expectedCollectionVersionFields,
+});
+const A = "11111111-1111-4111-8111-111111111111";
+const B = "22222222-2222-4222-8222-222222222222";
+
+describe("write preconditions", () => {
+  it("keeps missing body/query/command versions distinct from malformed values", () => {
+    expect(versionBody.parse({})).toEqual({});
+    expect(ExpectedVersionQuery.parse({})).toEqual({});
+    expect(VersionCommandBody.parse(undefined)).toBeUndefined();
+    expect(VersionCommandBody.parse({})).toEqual({});
+    expect(VersionCommandBody.parse(null)).toBeNull();
+    expect(
+      VersionCommandBody.safeParse({ expected_version: null }).success,
+    ).toBe(false);
+    expect(VersionCommandBody.safeParse([]).success).toBe(false);
+  });
+
+  it.each(["1", "9007199254740991"])(
+    "parses the canonical query boundary %s",
+    (expected_version) => {
+      expect(ExpectedVersionQuery.parse({ expected_version })).toEqual({
+        expected_version: Number(expected_version),
+      });
+    },
+  );
+
+  it.each([
+    "",
+    "0",
+    "01",
+    "-1",
+    "+1",
+    "1.0",
+    "1e3",
+    " 1",
+    "1 ",
+    "9007199254740992",
+    "10000000000000000",
+    ["1", "2"],
+    null,
+    1,
+  ])("rejects malformed query precondition %s", (expected_version) => {
+    expect(ExpectedVersionQuery.safeParse({ expected_version }).success).toBe(
+      false,
+    );
+  });
+
+  it.each([0, -1, 1.5, "1", null, Number.MAX_SAFE_INTEGER + 1])(
+    "rejects malformed record/body preconditions %s",
+    (version) => {
+      expect(versionBody.safeParse({ expected_version: version }).success).toBe(
+        false,
+      );
+      expect(
+        versionBody.safeParse({ expected_collection_version: version }).success,
+      ).toBe(false);
+    },
+  );
+
+  it("allows a missing reorder baseline to reach 428 but validates membership representations first", () => {
+    expect(
+      CategoryOrderBody.safeParse({ parent_id: null, ordered_ids: [A] })
+        .success,
+    ).toBe(true);
+    expect(
+      CategoryOrderBody.safeParse({
+        parent_id: null,
+        ordered_ids: [A],
+        expected: [{ id: A }],
+      }).success,
+    ).toBe(true);
+    expect(
+      CategoryOrderBody.safeParse({ parent_id: null, ordered_ids: [A, A] })
+        .success,
+    ).toBe(false);
+    for (const body of [
+      {
+        ordered_ids: [A, B],
+        expected: [
+          { id: A, version: 1 },
+          { id: A, version: 2 },
+        ],
+      },
+      {
+        ordered_ids: [A, A],
+        expected: [
+          { id: A, version: 1 },
+          { id: B, version: 2 },
+        ],
+      },
+      { ordered_ids: [A], expected: [{ id: B, version: 2 }] },
+      { ordered_ids: [A], expected: [{ id: A, version: "1" }] },
+    ])
+      expect(
+        CategoryOrderBody.safeParse({ parent_id: null, ...body }).success,
+      ).toBe(false);
+    expect(
+      CategoryOrderBody.safeParse({
+        parent_id: null,
+        ordered_ids: [B, A],
+        expected: [
+          { id: A, version: 1 },
+          { id: B, version: 2 },
+        ],
+      }).success,
+    ).toBe(true);
+  });
+});
 
 describe("EditVersion", () => {
   it.each([1, Number.MAX_SAFE_INTEGER])(

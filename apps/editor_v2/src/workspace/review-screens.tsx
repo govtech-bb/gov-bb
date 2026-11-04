@@ -2,7 +2,13 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { categoryLabel } from "../api/categories";
-import { ApiFailure, isText, type ApiRevision, type EditorApi } from "../api/client";
+import {
+  ApiFailure,
+  outcomeUnknown,
+  isText,
+  type ApiRevision,
+  type EditorApi,
+} from "../api/client";
 import { apiMessage } from "../api/failure-messages";
 import { pageLinkTargetsQuery } from "../api/page-link-targets";
 import { pageFieldLabel } from "../api/page-fields";
@@ -107,12 +113,12 @@ function valueText(
 }
 
 /** The page's content, line by line: what the change removes struck through, what it adds marked, in words too. */
-function ContentDiff({ live, proposed }: { live: string; proposed: string }) {
+export function ContentDiff({ live, proposed }: { live: string; proposed: string }) {
   // Not again on each keystroke in a dialog over it: it is quadratic in the lines
   const lines = useMemo(() => lineDiff(live, proposed), [live, proposed]);
 
   return (
-    <pre className="overflow-x-auto rounded-sm border border-line bg-white py-2 font-mono text-12 leading-5 whitespace-pre-wrap">
+    <pre className="overflow-x-auto rounded-sm border border-line bg-white py-2 font-mono text-12 leading-5 whitespace-pre-wrap wrap-anywhere">
       {lines.map((line, index) =>
         line.kind === "same" ? (
           <div key={index} className="px-3">
@@ -195,10 +201,30 @@ type Decision = "publish" | "reject";
 /** Why a decision was refused, and whether the change must be read again before deciding. */
 type Refusal = { message: string; reload: boolean };
 
-/** Why a decision was refused, in words the approver can act on; `reload` when the change must be read again first. */
-function refusal(error: Error, decision: Decision): Refusal {
+/**
+ * Why a decision was refused, in words the approver can act on; `reload` when the change must be read again first.
+ * `afterUnknown` when an earlier attempt got no answer: that attempt may be what moved the change on.
+ */
+function refusal(error: Error, decision: Decision, afterUnknown = false): Refusal {
   const status = error instanceof ApiFailure ? error.status : 0;
   const message = error instanceof ApiFailure ? apiMessage(error) : undefined;
+  const done = decision === "publish" ? "published" : "rejected";
+
+  if (outcomeUnknown(error))
+    return {
+      message: `We didn't get an answer, so we don't know if the change was ${done}. Try again to send the same decision. If the first one went through, it won't be applied twice.`,
+      reload: false,
+    };
+
+  if (
+    afterUnknown &&
+    (status === 404 ||
+      (status === 409 && error instanceof ApiFailure && error.code === "version_conflict"))
+  )
+    return {
+      message: `We still can't confirm your earlier attempt. The change has moved on since you opened it, either from that attempt or from someone else. Check where it stands before deciding again.`,
+      reload: true,
+    };
 
   switch (status) {
     case 403:
@@ -206,11 +232,29 @@ function refusal(error: Error, decision: Decision): Refusal {
         message: message ?? `You can't ${decision} this change.`,
         reload: true,
       };
-    case 404:
-    case 409:
+    case 428:
       return {
         message:
-          "This change was updated or decided on after you opened it. We've loaded it again: check it before you decide.",
+          decision === "reject"
+            ? "This editor is out of date, so nothing was rejected. Copy your comment, then reload the page."
+            : "This editor is out of date, so nothing was published. Reload the page, then try again.",
+        reload: false,
+      };
+    case 409:
+      if (error instanceof ApiFailure && error.code !== "version_conflict")
+        return {
+          message: message ?? "This change is not in the state required for that decision.",
+          reload: true,
+        };
+
+      return {
+        message:
+          "This change was edited after you opened it, so nothing was decided. Review the latest version below before deciding.",
+        reload: true,
+      };
+    case 404:
+      return {
+        message: "This change is no longer available. Check the review queue before deciding.",
         reload: true,
       };
     case 401:
@@ -263,7 +307,12 @@ export function ReviewScreen({
   )?.submitted_by_name;
 
   // The version the approver opened the decision on, so a change that moves underneath it is refused, not decided
-  const [deciding, setDeciding] = useState<{ decision: Decision; reviewed: string }>();
+  const [deciding, setDeciding] = useState<{
+    decision: Decision;
+    reviewed: number;
+    snapshot: ApiRevision;
+  }>();
+
   const [comment, setComment] = useState("");
   const [commentError, setCommentError] = useState("");
   const commentField = useRef<HTMLTextAreaElement>(null);
@@ -275,10 +324,30 @@ export function ReviewScreen({
   }, [refusals]);
   const [screenError, setScreenError] = useState("");
 
+  const decisionGate = useRef(false);
+
+  const decisionAttempt = useRef<{ decision: Decision; reviewed: number; comment: string }>(
+    undefined,
+  );
+
+  // An attempt went unanswered since the dialog opened, so a later refusal may be that attempt having landed
+  const unanswered = useRef(false);
+
   const decide = useMutation({
-    mutationFn: async ({ decision, reviewed }: { decision: Decision; reviewed: string }) => {
+    mutationFn: async ({
+      decision,
+      reviewed,
+      comment,
+    }: {
+      decision: Decision;
+      reviewed: number;
+      comment: string;
+    }) => {
       if (decision === "publish") await api.publishRevision(pageId, reviewed);
-      else await api.rejectRevision(pageId, comment.trim(), reviewed);
+      else await api.rejectRevision(pageId, comment, reviewed);
+    },
+    onSettled: () => {
+      decisionGate.current = false;
     },
     onSuccess: async (_result, { decision }) => {
       toast(decision === "publish" ? "Change published" : "Change rejected", {
@@ -287,6 +356,7 @@ export function ReviewScreen({
             ? "Citizens now see it on the live page."
             : "The editor sees your comment with the change.",
       });
+      decisionAttempt.current = undefined;
       setDeciding(undefined);
       // Off the queue before it shows, and not read again by this screen as it goes
       client.setQueryData(reviewQueueQuery(api).queryKey, (queue) =>
@@ -298,7 +368,11 @@ export function ReviewScreen({
       void client.invalidateQueries({ queryKey: ["content"] });
     },
     onError: (error, { decision }) => {
-      const refused = refusal(error, decision);
+      const afterUnknown = unanswered.current;
+
+      if (outcomeUnknown(error)) unanswered.current = true;
+      else decisionAttempt.current = undefined;
+      const refused = refusal(error, decision, afterUnknown);
 
       if (!refused.reload) return;
       // Closed, so nothing is decided on a version the approver hasn't seen
@@ -361,12 +435,28 @@ export function ReviewScreen({
     if (!revision.data) return;
     decide.reset();
     setScreenError("");
-    setComment("");
+    decisionAttempt.current = undefined;
+    unanswered.current = false;
     setCommentError("");
-    setDeciding({ decision, reviewed: revision.data.updated_at });
+    setDeciding({
+      decision,
+      reviewed: revision.data.version,
+      snapshot: structuredClone(revision.data),
+    });
 
     if (decision === "publish")
       void checkLinks(revision.data.fields.body_markdown, revision.data.fields.url);
+  };
+
+  const sendDecision = () => {
+    if (!deciding || decisionGate.current) return;
+    decisionGate.current = true;
+    decisionAttempt.current ??= {
+      decision: deciding.decision,
+      reviewed: deciding.reviewed,
+      comment: comment.trim(),
+    };
+    decide.mutate(decisionAttempt.current);
   };
 
   const close = () => {
@@ -377,6 +467,9 @@ export function ReviewScreen({
     decide.error && deciding && !refusal(decide.error, deciding.decision).reload
       ? refusal(decide.error, deciding.decision).message
       : undefined;
+
+  // Trying again sends the request as first sent, so its comment can't change underneath it
+  const resending = !!decide.error && outcomeUnknown(decide.error);
 
   const back = (
     <TextLink render={<Link to="/reviews" />} className="text-14">
@@ -409,7 +502,7 @@ export function ReviewScreen({
 
   if (!revision.data) return <LoadingState label="Loading the change…" />;
 
-  const change = revision.data;
+  const change = deciding?.snapshot ?? revision.data;
   const status = STATUS[change.status];
 
   // The API refuses anyone who worked on the change, unless it allows self-approval
@@ -494,7 +587,7 @@ export function ReviewScreen({
         pending={decide.isPending}
         variant="accent"
         error={dialogError}
-        onConfirm={() => deciding && decide.mutate(deciding)}
+        onConfirm={sendDecision}
       />
       <FormDialog
         open={deciding?.decision === "reject"}
@@ -517,7 +610,7 @@ export function ReviewScreen({
 
           if (problem) return setRefusals((count) => count + 1);
 
-          if (deciding) decide.mutate(deciding);
+          sendDecision();
         }}
         actions={
           <Button
@@ -533,12 +626,17 @@ export function ReviewScreen({
       >
         <Field
           label="Why are you rejecting it?"
-          hint="Say what the editor needs to change."
+          hint={
+            resending
+              ? "Trying again sends this comment as you first sent it."
+              : "Say what the editor needs to change."
+          }
           error={commentError}
         >
           <Textarea
             ref={commentField}
             rows={5}
+            readOnly={resending}
             value={comment}
             onChange={(event) => setComment(event.target.value)}
           />

@@ -234,7 +234,7 @@ export interface paths {
                             created_at: string;
                             /**
                              * Format: date-time
-                             * @description Millisecond precision, and exactly the value to send back in `if-updated-at` on the next save.
+                             * @description Content timestamp at millisecond precision; use version for write preconditions.
                              */
                             updated_at: string;
                             version: number;
@@ -701,7 +701,7 @@ export interface paths {
                                 };
                                 /**
                                  * Format: date-time
-                                 * @description Send it back in `if-updated-at` to save or delete this version.
+                                 * @description Content timestamp; authenticated editors use version for write preconditions.
                                  */
                                 updated_at: string;
                             }[];
@@ -1050,7 +1050,7 @@ export interface paths {
                             created_at: string;
                             /**
                              * Format: date-time
-                             * @description Millisecond precision, and exactly the value to send back in `if-updated-at` on the next save.
+                             * @description Content timestamp at millisecond precision; use version for write preconditions.
                              */
                             updated_at: string;
                             version: number;
@@ -1159,15 +1159,12 @@ export interface paths {
         };
         /**
          * Save a page
-         * @description Requires an employee session, the editor's Origin header and the editor role (403 otherwise). Send every field: a save replaces the page and defaults none, except that leaving `parent_id` out keeps the page's parent. Send the `updated_at` you last read in the `if-updated-at` header. If the stored row, or the page's pending revision, has moved on since, the save is refused with a 409 rather than silently discarding whoever wrote first. Changing `url` moves this page alone: its sub-pages keep their urls and stay beneath it by `parent_id`, and nothing redirects from the old url. Changing `visibility` needs the approver role (403 otherwise). Making a page public is refused (403) to an approver who changed its content since it was last public, in this save or before: another approver makes it public. A save that keeps a `public` page public, whoever sends it, goes into the page's pending revision: citizens keep seeing the live page until an approver publishes it. An approver's save that takes a `public` page out of public view changes only its `visibility`: the other fields sent are ignored, the live content stays, and the page's open revision is discarded: a draft is dropped, and one waiting for review is closed as `discarded`, which the page's history records. A save to a page whose revision is waiting for review updates that revision, which stays waiting; the saver joins its `contributors`, so may not approve it. Such a save needs `if-updated-at` (428 without it). Returns the page as the editor now works on it.
+         * @description Requires an employee session, the editor's Origin header and the editor role (403 otherwise). Send every field: a save replaces the page and defaults none, except that leaving `parent_id` out keeps the page's parent. Send the page version you last read as `expected_version` (428 if missing). If the stored row, or the page's pending revision, has moved on since, the save is refused with a 409 rather than silently discarding whoever wrote first. Changing `url` moves this page alone: its sub-pages keep their urls and stay beneath it by `parent_id`, and nothing redirects from the old url. Changing `visibility` needs the approver role (403 otherwise). Making a page public is refused (403) to an approver who changed its content since it was last public, in this save or before: another approver makes it public. A save that keeps a `public` page public, whoever sends it, goes into the page's pending revision: citizens keep seeing the live page until an approver publishes it. An approver's save that takes a `public` page out of public view changes only its `visibility`: the other fields sent are ignored, the live content stays, and the page's open revision is discarded: a draft is dropped, and one waiting for review is closed as `discarded`, which the page's history records. A save to a page whose revision is waiting for review updates that revision, which stays waiting; the saver joins its `contributors`, so may not approve it. A stale version receives 409 `version_conflict`. Returns the page as the editor now works on it.
          */
         put: {
             parameters: {
                 query?: never;
-                header?: {
-                    /** @description The `updated_at` this client last read. Omit to accept whatever is stored. */
-                    "if-updated-at"?: string;
-                };
+                header?: never;
                 path: {
                     id: string;
                 };
@@ -1198,6 +1195,7 @@ export interface paths {
                             keywords?: string[];
                             source_url?: string;
                         };
+                        expected_version?: number;
                     };
                 };
             };
@@ -1244,7 +1242,7 @@ export interface paths {
                             created_at: string;
                             /**
                              * Format: date-time
-                             * @description Millisecond precision, and exactly the value to send back in `if-updated-at` on the next save.
+                             * @description Content timestamp at millisecond precision; use version for write preconditions.
                              */
                             updated_at: string;
                             version: number;
@@ -1329,7 +1327,7 @@ export interface paths {
                     content: {
                         "application/json": {
                             /** @enum {string} */
-                            error: "conflict";
+                            error: "version_conflict";
                             message: string;
                             /** Format: uuid */
                             documentId: string;
@@ -1404,11 +1402,13 @@ export interface paths {
         post?: never;
         /**
          * Delete a page
-         * @description Requires an employee session, the editor's Origin header and the editor role (403 otherwise). A page with sub-pages is refused (422) until they are moved or deleted. Deleting a `public` page needs the approver role (403 otherwise). Its pending revision goes with it.
+         * @description Requires an employee session, the editor's Origin header and the editor role (403 otherwise). A page with sub-pages is refused (422) until they are moved or deleted. Deleting a `public` page needs the approver role (403 otherwise). Its pending revision goes with it. Send `expected_version` in the query string: missing is 428, stale is 409 `version_conflict`, and absent is 404.
          */
         delete: {
             parameters: {
-                query?: never;
+                query?: {
+                    expected_version?: string;
+                };
                 header?: never;
                 path: {
                     id: string;
@@ -1467,6 +1467,37 @@ export interface paths {
                     };
                 };
                 /** @description Default Response */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @enum {string} */
+                            error: "version_conflict";
+                            message: string;
+                            /** Format: uuid */
+                            documentId: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
                 422: {
                     headers: {
                         [name: string]: unknown;
@@ -1480,6 +1511,20 @@ export interface paths {
                                 field: string;
                                 message: string;
                             }[];
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                428: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
                         } & {
                             [key: string]: unknown;
                         };
@@ -1744,7 +1789,7 @@ export interface paths {
                             created_at: string;
                             /**
                              * Format: date-time
-                             * @description Moves when its content is saved, not when it is submitted or rejected. Send it in `if-updated-at` to act on this version.
+                             * @description Revision content timestamp; use the enclosing page version for write preconditions.
                              */
                             updated_at: string;
                             version: number;
@@ -2643,9 +2688,7 @@ export interface paths {
         put: {
             parameters: {
                 query?: never;
-                header: {
-                    "if-updated-at": string;
-                };
+                header?: never;
                 path: {
                     id: string;
                 };
@@ -2659,6 +2702,7 @@ export interface paths {
                         /** Format: uuid */
                         parent_id: string | null;
                         description: string | null;
+                        expected_version?: number;
                     };
                 };
             };
@@ -2758,7 +2802,7 @@ export interface paths {
                     content: {
                         "application/json": {
                             /** @enum {string} */
-                            error: "conflict";
+                            error: "version_conflict";
                             message: string;
                         };
                     };
@@ -2777,6 +2821,20 @@ export interface paths {
                                 field: string;
                                 message: string;
                             }[];
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                428: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
                         } & {
                             [key: string]: unknown;
                         };
@@ -2819,10 +2877,10 @@ export interface paths {
          */
         delete: {
             parameters: {
-                query?: never;
-                header: {
-                    "if-updated-at": string;
+                query?: {
+                    expected_version?: string;
                 };
+                header?: never;
                 path: {
                     id: string;
                 };
@@ -2901,7 +2959,7 @@ export interface paths {
                     content: {
                         "application/json": {
                             /** @enum {string} */
-                            error: "conflict";
+                            error: "version_conflict";
                             message: string;
                         } | {
                             /** @enum {string} */
@@ -2912,6 +2970,20 @@ export interface paths {
                                 subcategories: number;
                                 reserved_route: boolean;
                             };
+                        };
+                    };
+                };
+                /** @description Default Response */
+                428: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
                         };
                     };
                 };
@@ -2974,11 +3046,10 @@ export interface paths {
                     "application/json": {
                         /** Format: uuid */
                         parent_id: string | null;
-                        expected: {
+                        expected?: {
                             /** Format: uuid */
                             id: string;
-                            /** Format: date-time */
-                            updated_at: string;
+                            version?: number;
                         }[];
                         ordered_ids: string[];
                     };
@@ -3068,7 +3139,7 @@ export interface paths {
                     content: {
                         "application/json": {
                             /** @enum {string} */
-                            error: "conflict";
+                            error: "version_conflict";
                             message: string;
                         };
                     };
@@ -3087,6 +3158,20 @@ export interface paths {
                                 field: string;
                                 message: string;
                             }[];
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                428: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
                         } & {
                             [key: string]: unknown;
                         };
@@ -3296,7 +3381,7 @@ export interface paths {
                                 };
                                 /**
                                  * Format: date-time
-                                 * @description Send it back in `if-updated-at` to save or delete this version.
+                                 * @description Content timestamp; authenticated editors use version for write preconditions.
                                  */
                                 updated_at: string;
                                 version: number;
@@ -3402,15 +3487,12 @@ export interface paths {
         };
         /**
          * Replace a record's data
-         * @description Needs the editor role (403 otherwise). Send every field to keep: the record becomes `data`. Checked as a create is. Send the `updated_at` you last read in `if-updated-at`; if the record has changed since, the save is refused with a 409 `conflict`. 404 when there is no such collection or record.
+         * @description Needs the editor role (403 otherwise). Send every field to keep: the record becomes `data`. Checked as a create is. Send the record `expected_version` and definition `expected_collection_version`; missing is 428, stale is 409 `version_conflict`. 404 when there is no such collection or record.
          */
         put: {
             parameters: {
                 query?: never;
-                header?: {
-                    /** @description The `updated_at` this client last read. Omit to accept whatever is stored. */
-                    "if-updated-at"?: string;
-                };
+                header?: never;
                 path: {
                     key: string;
                     recordKey: string;
@@ -3424,6 +3506,8 @@ export interface paths {
                         data: {
                             [key: string]: unknown;
                         };
+                        expected_version?: number;
+                        expected_collection_version?: number;
                     };
                 };
             };
@@ -3435,16 +3519,36 @@ export interface paths {
                     };
                     content: {
                         "application/json": {
-                            record_key: string;
-                            data: {
-                                [key: string]: string;
+                            collection: {
+                                key: string;
+                                title: string;
+                                /** @description The field whose value is each record's `record_key`. */
+                                record_key: string;
+                                schema: {
+                                    fields: {
+                                        key: string;
+                                        label: string;
+                                        /** @enum {string} */
+                                        type: "text" | "slug" | "email";
+                                    }[];
+                                };
+                                schema_version: number;
+                                /** Format: date-time */
+                                updated_at: string;
+                                version: number;
                             };
-                            /**
-                             * Format: date-time
-                             * @description Send it back in `if-updated-at` to save or delete this version.
-                             */
-                            updated_at: string;
-                            version: number;
+                            record: {
+                                record_key: string;
+                                data: {
+                                    [key: string]: string;
+                                };
+                                /**
+                                 * Format: date-time
+                                 * @description Content timestamp; authenticated editors use version for write preconditions.
+                                 */
+                                updated_at: string;
+                                version: number;
+                            };
                         };
                     };
                 };
@@ -3522,8 +3626,22 @@ export interface paths {
                     content: {
                         "application/json": {
                             /** @enum {string} */
-                            error: "conflict" | "record_exists";
+                            error: "version_conflict" | "record_exists";
                             message: string;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                428: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
                         };
                     };
                 };
@@ -3559,7 +3677,7 @@ export interface paths {
         };
         /**
          * Add a record to a collection
-         * @description Needs the editor role (403 otherwise). `data` is checked against the collection's field list: a field it does not have, or a value of the wrong kind, is a 400 `validation_failed` naming the field. 404 when there is no such collection; 409 `record_exists` when the record key is taken.
+         * @description Needs the editor role (403 otherwise). `data` is checked against the collection's field list: a field it does not have, or a value of the wrong kind, is a 400 `validation_failed` naming the field. 404 when there is no such collection; 409 `record_exists` when the record key is taken. Send `expected_collection_version` from the displayed definition: missing is 428, stale is 409 `version_conflict`.
          */
         post: {
             parameters: {
@@ -3578,6 +3696,7 @@ export interface paths {
                         data: {
                             [key: string]: unknown;
                         };
+                        expected_collection_version?: number;
                     };
                 };
             };
@@ -3595,7 +3714,7 @@ export interface paths {
                             };
                             /**
                              * Format: date-time
-                             * @description Send it back in `if-updated-at` to save or delete this version.
+                             * @description Content timestamp; authenticated editors use version for write preconditions.
                              */
                             updated_at: string;
                             version: number;
@@ -3676,8 +3795,22 @@ export interface paths {
                     content: {
                         "application/json": {
                             /** @enum {string} */
-                            error: "conflict" | "record_exists";
+                            error: "version_conflict" | "record_exists";
                             message: string;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                428: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
                         };
                     };
                 };
@@ -3713,15 +3846,14 @@ export interface paths {
         };
         /**
          * Delete a record
-         * @description Needs the editor role (403 otherwise). With `if-updated-at`, a record that has changed since is refused with a 409 `conflict`. 404 when there is no such collection or record.
+         * @description Needs the editor role (403 otherwise). Send the record `expected_version` in the query: missing is 428, stale is 409 `version_conflict`. 404 when there is no such collection or record.
          */
         delete: {
             parameters: {
-                query?: never;
-                header?: {
-                    /** @description The `updated_at` this client last read. Omit to accept whatever is stored. */
-                    "if-updated-at"?: string;
+                query?: {
+                    expected_version?: string;
                 };
+                header?: never;
                 path: {
                     key: string;
                     recordKey: string;
@@ -3811,8 +3943,22 @@ export interface paths {
                     content: {
                         "application/json": {
                             /** @enum {string} */
-                            error: "conflict" | "record_exists";
+                            error: "version_conflict" | "record_exists";
                             message: string;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                428: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
                         };
                     };
                 };
@@ -4364,21 +4510,24 @@ export interface paths {
         put?: never;
         /**
          * Submit a page's draft revision for review
-         * @description Needs the editor role (403 otherwise). Records the submitter, who may not then approve it. 404 when the page has no draft revision; 409 `under_review` when it is already submitted, or `conflict` when the draft has been saved since `if-updated-at`. Saves made while it waits update it, and it keeps waiting. A rejected revision can be submitted again as it is: it is copied into a new submitted revision with the same `updated_at`, and the rejected one keeps its comment. The copy's `contributors` gain the rejected round's submitter, who may not approve it either.
+         * @description Needs the editor role (403 otherwise). Records the submitter, who may not then approve it. 404 when the page has no draft revision; 409 `under_review` when it is already submitted, or `version_conflict` when the required page `expected_version` is stale (428 if missing). Saves made while it waits update it, and it keeps waiting. A rejected revision can be submitted again as it is: it is copied into a new submitted revision with the same `updated_at`, and the rejected one keeps its comment. The copy's `contributors` gain the rejected round's submitter, who may not approve it either.
          */
         post: {
             parameters: {
                 query?: never;
-                header?: {
-                    /** @description The `updated_at` this client last read for the revision. Omit to accept whatever is stored. */
-                    "if-updated-at"?: string;
-                };
+                header?: never;
                 path: {
                     id: string;
                 };
                 cookie?: never;
             };
-            requestBody?: never;
+            requestBody: {
+                content: {
+                    "application/json": {
+                        expected_version?: number;
+                    } | null;
+                };
+            };
             responses: {
                 /** @description Default Response */
                 200: {
@@ -4441,7 +4590,7 @@ export interface paths {
                             created_at: string;
                             /**
                              * Format: date-time
-                             * @description Moves when its content is saved, not when it is submitted or rejected. Send it in `if-updated-at` to act on this version.
+                             * @description Revision content timestamp; use the enclosing page version for write preconditions.
                              */
                             updated_at: string;
                             version: number;
@@ -4519,7 +4668,7 @@ export interface paths {
                     content: {
                         "application/json": ({
                             /** @enum {string} */
-                            error: "conflict";
+                            error: "version_conflict";
                             message: string;
                             /** Format: uuid */
                             documentId: string;
@@ -4529,6 +4678,20 @@ export interface paths {
                             /** @enum {string} */
                             error: "under_review" | "not_submitted";
                             message: string;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                428: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
                         };
                     };
                 };
@@ -4579,15 +4742,12 @@ export interface paths {
         put?: never;
         /**
          * Reject a submitted revision with a comment
-         * @description Needs the approver role, and the approver must not have changed or submitted the revision (403 otherwise). The live page is unchanged; the revision is kept with the comment, and the next save starts a new draft from it. Rejecting moves the revision's `updated_at`, so an editor holding the earlier one reloads and sees why. `if-updated-at` is required (428 without it). 404 when nothing is waiting for review; 409 `not_submitted` for a draft, or `conflict` when the revision is no longer the version in `if-updated-at`.
+         * @description Needs the approver role, and the approver must not have changed or submitted the revision (403 otherwise). The live page is unchanged; the revision is kept with the comment, and the next save starts a new draft from it. Rejecting moves the page version, so an editor holding the earlier one reloads and sees why. The page `expected_version` is required (428 without it). 404 when nothing is waiting for review; 409 `not_submitted` for a draft, or `version_conflict` when the page is no longer the version reviewed.
          */
         post: {
             parameters: {
                 query?: never;
-                header?: {
-                    /** @description Required: the revision's `updated_at` the approver reviewed. Without it the decision is refused with a 428. */
-                    "if-updated-at"?: string;
-                };
+                header?: never;
                 path: {
                     id: string;
                 };
@@ -4596,6 +4756,7 @@ export interface paths {
             requestBody: {
                 content: {
                     "application/json": {
+                        expected_version?: number;
                         /** @description Why, for the editor. */
                         comment: string;
                     };
@@ -4663,7 +4824,7 @@ export interface paths {
                             created_at: string;
                             /**
                              * Format: date-time
-                             * @description Moves when its content is saved, not when it is submitted or rejected. Send it in `if-updated-at` to act on this version.
+                             * @description Revision content timestamp; use the enclosing page version for write preconditions.
                              */
                             updated_at: string;
                             version: number;
@@ -4741,7 +4902,7 @@ export interface paths {
                     content: {
                         "application/json": ({
                             /** @enum {string} */
-                            error: "conflict";
+                            error: "version_conflict";
                             message: string;
                             /** Format: uuid */
                             documentId: string;
@@ -4815,21 +4976,24 @@ export interface paths {
         put?: never;
         /**
          * Approve a submitted revision and publish it
-         * @description Needs the approver role, and the approver must not have changed or submitted the revision (403 otherwise). Writes the revision to the live page as a save would, re-indexes it and records the approver in `change_events`, all in one transaction. A revision that has gone stale while it waited (its parent or category gone, or its url taken) is refused with a 422 naming the field, and nothing changes. `if-updated-at` is required (428 without it). 404 when nothing is waiting for review; 409 `not_submitted` for a draft, or `conflict` when the revision is no longer the version in `if-updated-at`. Returns the page as it now stands.
+         * @description Needs the approver role, and the approver must not have changed or submitted the revision (403 otherwise). Writes the revision to the live page as a save would, re-indexes it and records the approver in `change_events`, all in one transaction. A revision that has gone stale while it waited (its parent or category gone, or its url taken) is refused with a 422 naming the field, and nothing changes. The page `expected_version` is required (428 without it). 404 when nothing is waiting for review; 409 `not_submitted` for a draft, or `version_conflict` when the page is no longer the version reviewed. Returns the page as it now stands.
          */
         post: {
             parameters: {
                 query?: never;
-                header?: {
-                    /** @description Required: the revision's `updated_at` the approver reviewed. Without it the decision is refused with a 428. */
-                    "if-updated-at"?: string;
-                };
+                header?: never;
                 path: {
                     id: string;
                 };
                 cookie?: never;
             };
-            requestBody?: never;
+            requestBody: {
+                content: {
+                    "application/json": {
+                        expected_version?: number;
+                    } | null;
+                };
+            };
             responses: {
                 /** @description Default Response */
                 200: {
@@ -4873,7 +5037,7 @@ export interface paths {
                             created_at: string;
                             /**
                              * Format: date-time
-                             * @description Millisecond precision, and exactly the value to send back in `if-updated-at` on the next save.
+                             * @description Content timestamp at millisecond precision; use version for write preconditions.
                              */
                             updated_at: string;
                             version: number;
@@ -4958,7 +5122,7 @@ export interface paths {
                     content: {
                         "application/json": ({
                             /** @enum {string} */
-                            error: "conflict";
+                            error: "version_conflict";
                             message: string;
                             /** Format: uuid */
                             documentId: string;

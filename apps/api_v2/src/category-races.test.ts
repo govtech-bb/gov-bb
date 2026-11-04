@@ -54,22 +54,21 @@ const save = (row: EditorCategory, changes: object = {}) =>
     method: "PUT",
     url: `/editor/categories/${row.id}`,
     payload: {
+      expected_version: row.version,
       ...fields(row.slug, row.parent_id),
       title: row.title,
       description: row.description,
       ...changes,
     },
-    headers: { "if-updated-at": row.updated_at },
   });
 const remove = (row: EditorCategory) =>
   request({
     method: "DELETE",
-    url: `/editor/categories/${row.id}`,
-    headers: { "if-updated-at": row.updated_at },
+    url: `/editor/categories/${row.id}?expected_version=${row.version}`,
   });
 const orderBody = (rows: EditorCategory[]): CategoryOrder => ({
   parent_id: rows[0]?.parent_id ?? null,
-  expected: rows.map(({ id, updated_at }) => ({ id, updated_at })),
+  expected: rows.map(({ id, version }) => ({ id, version })),
   ordered_ids: rows.map((row) => row.id).reverse(),
 });
 const reorder = (rows: EditorCategory[]) =>
@@ -334,7 +333,11 @@ describe("serialized category and page writes", () => {
           : request({
               method: "PUT",
               url: `/pages/${existing.id}`,
-              payload: { ...existing, category_id: category.id },
+              payload: {
+                ...existing,
+                expected_version: existing.version,
+                category_id: category.id,
+              },
             });
       const [assigned, blocked] = await race(assign, () => remove(category));
       expect(assigned.statusCode).toBe(action === "create" ? 201 : 200);
@@ -373,7 +376,11 @@ describe("serialized category and page writes", () => {
     const category = await create("category");
     const occupying = (await page("/occupying", category.id)).json();
     const [deletedPage, deletedCategory] = await race(
-      () => request({ method: "DELETE", url: `/pages/${occupying.id}` }),
+      () =>
+        request({
+          method: "DELETE",
+          url: `/pages/${occupying.id}?expected_version=${occupying.version}`,
+        }),
       () => remove(category),
     );
     expect([deletedPage.statusCode, deletedCategory.statusCode]).toEqual([
@@ -402,7 +409,11 @@ describe("serialized category and page writes", () => {
         request({
           method: "PUT",
           url: `/pages/${existing.id}`,
-          payload: { ...existing, url: "/claimed" },
+          payload: {
+            ...existing,
+            expected_version: existing.version,
+            url: "/claimed",
+          },
         });
       const [first, second] = await race(
         categoryFirst ? moveCategory : movePage,
@@ -439,7 +450,7 @@ describe("serialized category and page writes", () => {
         await editing.update(
           category.id,
           { ...fields("frozen"), title: `Frozen ${n}` },
-          previous,
+          category.version,
           TEST_EMPLOYEE,
         ),
       );
@@ -448,12 +459,13 @@ describe("serialized category and page writes", () => {
     const equivalent = CategoryStamp.parse(
       category.updated_at.replace("12:00", "13:00").replace("Z", "+01:00"),
     );
+    expect(Date.parse(equivalent)).toBe(Date.parse(category.updated_at));
     expect(
       (
         await editing.update(
           category.id,
           { ...fields("frozen"), title: "Frozen again" },
-          equivalent,
+          category.version,
           TEST_EMPLOYEE,
         )
       ).ok,

@@ -10,7 +10,7 @@ import {
 import { act, useState, type ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { createEditorApi, type CollectionRecord } from "../../src/api/client";
+import { createEditorApi, type RecordDetail } from "../../src/api/client";
 import { CollectionScreen, CollectionsScreen } from "../../src/workspace/collections";
 import { Toaster } from "../../src/ui/toast";
 
@@ -40,16 +40,17 @@ type Refusal = {
   statusCode?: number;
 };
 
-type Write = { method: string; path: string; body: unknown; ifUpdatedAt: string | null };
+type Write = { method: string; path: string; body: unknown; expectedVersion: number | null };
 
 /**
  * api_v2's collection routes over one in-memory collection, checked as api_v2 checks them: versions, record keys and
  * each field's type. `refuse` answers the next write with a status and body of the test's choosing.
  */
 function contentApi() {
-  let clock = 1;
+  let clock = 2;
+  const definition = { ...COLLECTION, version: 100 };
 
-  let records: CollectionRecord[] = [
+  let records: RecordDetail["record"][] = [
     {
       record_key: "barbados-drug-service",
       data: {
@@ -58,11 +59,13 @@ function contentApi() {
         phone: "(246) 535-4300",
         email: "management@drugservice.gov.bb",
       },
+      version: 1,
       updated_at: stamp(0),
     },
     {
       record_key: "nis",
       data: { key: "nis", name: "National Insurance" },
+      version: 1,
       updated_at: stamp(0),
     },
   ];
@@ -77,18 +80,32 @@ function contentApi() {
     const method = init?.method ?? "GET";
 
     if (path === "/collections")
-      return json({ collections: [{ ...COLLECTION, record_count: records.length }] });
+      return json({ collections: [{ ...definition, record_count: records.length }] });
 
     if (path === "/collections/missing/records")
       return json({ error: "not_found", message: "No collection missing." }, { status: 404 });
 
-    if (path === "/collections/contacts/records") return json({ collection: COLLECTION, records });
+    if (path === "/collections/contacts/records")
+      return json({
+        collection: COLLECTION,
+        records: records.map(({ version: _version, ...record }) => record),
+      });
 
     const recordKey = path.replace("/collections/contacts/records/", "");
     const body = init?.body ? JSON.parse(String(init.body)) : undefined;
-    const ifUpdatedAt = new Headers(init?.headers).get("if-updated-at");
 
-    writes.push({ method, path, body, ifUpdatedAt });
+    const expectedVersion =
+      method === "DELETE"
+        ? Number(new URL(String(input)).searchParams.get("expected_version"))
+        : (body?.expected_version ?? null);
+
+    const target = records.find((record) => record.record_key === recordKey);
+
+    if (method === "GET")
+      return target
+        ? json({ collection: definition, record: target })
+        : json({ error: "not_found" }, { status: 404 });
+    writes.push({ method, path, body, expectedVersion });
 
     if (refusal) {
       const { status, body: answer } = refusal;
@@ -98,16 +115,23 @@ function contentApi() {
       return json(answer, { status });
     }
 
-    const target = records.find((record) => record.record_key === recordKey);
-
     if (method === "POST" && target)
       return json({ error: "record_exists", message: "Taken." }, { status: 409 });
 
     if (method !== "POST" && !target)
       return json({ error: "not_found", message: "Gone." }, { status: 404 });
 
-    if (target && ifUpdatedAt && target.updated_at !== ifUpdatedAt)
-      return json({ error: "conflict", message: "Changed." }, { status: 409 });
+    if (
+      (method !== "POST" && target?.version !== expectedVersion) ||
+      (method !== "DELETE" && body.expected_collection_version !== definition.version)
+    )
+      return json(
+        {
+          error: "version_conflict",
+          message: "This record or its definition has changed since you opened it.",
+        },
+        { status: 409 },
+      );
 
     if (method === "DELETE") {
       records = records.filter((record) => record !== target);
@@ -118,6 +142,7 @@ function contentApi() {
     const saved = {
       record_key: recordKey,
       data: { ...body.data, key: recordKey },
+      version: clock,
       updated_at: stamp(clock++),
     };
 
@@ -125,7 +150,9 @@ function contentApi() {
       a.record_key.localeCompare(b.record_key),
     );
 
-    return json(saved, { status: method === "POST" ? 201 : 200 });
+    return json(method === "POST" ? saved : { collection: definition, record: saved }, {
+      status: method === "POST" ? 201 : 200,
+    });
   });
 
   return {
@@ -133,16 +160,21 @@ function contentApi() {
     writes,
     refuse: (status: number, body: Refusal) => void (refusal = { status, body }),
     /** Someone else's save, made straight in the content API. */
-    change: (recordKey: string, data: CollectionRecord["data"]) => {
+    change: (recordKey: string, data: RecordDetail["record"]["data"]) => {
       records = records.map((record) =>
         record.record_key === recordKey
           ? {
               ...record,
               data: { ...record.data, ...data },
+              version: clock,
               updated_at: stamp(clock++),
             }
           : record,
       );
+    },
+    changeDefinition: () => {
+      definition.version++;
+      definition.title = "Updated definition";
     },
     remove: (recordKey: string) =>
       void (records = records.filter((record) => record.record_key !== recordKey)),
@@ -275,14 +307,23 @@ const errorOf = (label: string) => {
 
 const enter = (label: string, value: string) =>
   act(async () => {
-    const field = control(label);
+    const field = await vi.waitFor(() => control(label));
 
     Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(field, value);
     field.dispatchEvent(new Event("input", { bubbles: true }));
   });
 
 const submit = () =>
-  act(async () => dialog()!.querySelector<HTMLButtonElement>('button[type="submit"]')!.click());
+  act(async () =>
+    (
+      await vi.waitFor(() => {
+        const button = dialog()?.querySelector<HTMLButtonElement>('button[type="submit"]');
+        expect(button).toBeTruthy();
+
+        return button!;
+      })
+    ).click(),
+  );
 
 const closed = () => until(() => expect(dialog()).toBeNull());
 
@@ -341,8 +382,11 @@ test("Add record saves a new record to api_v2, leaving blank fields out", async 
     {
       method: "POST",
       path: "/collections/contacts/records/barbados-revenue-authority",
-      body: { data: { key: "barbados-revenue-authority", name: "Barbados Revenue Authority" } },
-      ifUpdatedAt: null,
+      body: {
+        data: { key: "barbados-revenue-authority", name: "Barbados Revenue Authority" },
+        expected_collection_version: 100,
+      },
+      expectedVersion: null,
     },
   ]);
   await loaded(3);
@@ -463,13 +507,15 @@ test("saving replaces the record over the version read, a cleared field removed"
       method: "PUT",
       path: "/collections/contacts/records/barbados-drug-service",
       body: {
+        expected_version: 1,
+        expected_collection_version: 100,
         data: {
           key: "barbados-drug-service",
           name: "Drug Service",
           email: "management@drugservice.gov.bb",
         },
       },
-      ifUpdatedAt: stamp(0),
+      expectedVersion: 1,
     },
   ]);
   await until(() => expect(cells(rows()[0]!)[1]).toBe("Drug Service"));
@@ -569,10 +615,10 @@ test("a stale save offers to keep mine, load the saved version or download mine"
   await submit();
   await until(() =>
     expect(dialog()?.textContent).toContain(
-      "A newer version of this record has been saved since you opened it.",
+      "The record or its definition changed since you opened it.",
     ),
   );
-  await until(() => expect(button("Load saved version").disabled).toBe(false));
+  await until(() => expect(button("Discard my changes and reload").disabled).toBe(false));
 
   expect(button("Download my version")).toBeDefined();
   // Nothing is overwritten until the author chooses. Save can't be used, but stays focusable, so a refused save
@@ -586,15 +632,10 @@ test("a stale save offers to keep mine, load the saved version or download mine"
   expect(server.writes).toHaveLength(sent);
   expect(control("Name (optional)").value).toBe("Mine");
 
-  await press("Keep my version");
-  await submit();
-  await closed();
-
-  const last = server.writes.at(-1)!;
-
-  expect(last.method).toBe("PUT");
-  expect(last.body).toEqual({ data: { key: "nis", name: "Mine" } });
-  expect(last.ifUpdatedAt).toBe(stamp(1));
+  expect(button("Keep my version")).toBeUndefined();
+  await press("Discard my changes and reload");
+  expect(control("Name (optional)").value).toBe("Theirs");
+  expect(server.writes).toHaveLength(sent);
 });
 
 test("Load saved version puts the newer values in the dialog", async () => {
@@ -603,8 +644,8 @@ test("Load saved version puts the newer values in the dialog", async () => {
   await enter("Name (optional)", "Mine");
   server.change("nis", { name: "Theirs" });
   await submit();
-  await until(() => expect(button("Load saved version")?.disabled).toBe(false));
-  await press("Load saved version");
+  await until(() => expect(button("Discard my changes and reload")?.disabled).toBe(false));
+  await press("Discard my changes and reload");
 
   expect(control("Name (optional)").value).toBe("Theirs");
   // The notice and its button have gone, so the focus moves into the form, not to the page behind
@@ -642,7 +683,7 @@ test("Delete asks first, then deletes the version read", async () => {
       method: "DELETE",
       path: "/collections/contacts/records/nis",
       body: undefined,
-      ifUpdatedAt: stamp(0),
+      expectedVersion: 1,
     },
   ]);
   await loaded(1);
@@ -653,10 +694,15 @@ test("a stale delete is refused in the dialog", async () => {
   await renderCollection().ready;
   await loaded();
   await press("Delete nis");
+  await until(() =>
+    expect(dialog()?.querySelector("pre")?.textContent).toContain("National Insurance"),
+  );
   server.change("nis", { name: "Theirs" });
   await press("Delete record");
   await until(() =>
-    expect(dialog()?.textContent).toContain("This record has changed since you opened it."),
+    expect(dialog()?.textContent).toContain(
+      "This record or its definition has changed since you opened it.",
+    ),
   );
 });
 
@@ -681,7 +727,45 @@ test("a value for a field the collection no longer lists is named, then removed 
   );
   await submit();
   await closed();
-  expect(server.writes.at(-1)?.body).toEqual({ data: { key: "nis", name: "National Insurance" } });
+  expect(server.writes.at(-1)?.body).toMatchObject({
+    data: { key: "nis", name: "National Insurance" },
+  });
+});
+
+test("a definition-only change refuses a save without replacing local values", async () => {
+  await renderCollection({ record: "nis" }).ready;
+  await enter("Name (optional)", "My draft");
+  server.changeDefinition();
+  await submit();
+  await until(() =>
+    expect(dialog()?.textContent).toContain("The record or its definition changed"),
+  );
+  expect(control("Name (optional)").value).toBe("My draft");
+  expect(server.writes.at(-1)?.body).toMatchObject({
+    expected_version: 1,
+    expected_collection_version: 100,
+  });
+  expect(dialog()?.textContent).not.toContain("Keep my version");
+});
+
+test("a confirmed record save keeps values typed after dispatch", async () => {
+  await renderCollection({ record: "nis" }).ready;
+  await enter("Name (optional)", "Submitted");
+  const original = server.fetch.getMockImplementation()!;
+  const pending = Promise.withResolvers<Response>();
+  server.fetch.mockImplementationOnce(async (url, init) => {
+    const result = await original(url, init);
+    pendingResponse = result;
+
+    return pending.promise;
+  });
+  let pendingResponse: Response | undefined;
+  await submit();
+  await enter("Name (optional)", "Newer typing");
+  await act(async () => pending.resolve(pendingResponse!));
+  await until(() => expect(document.body.textContent).toContain("Record saved"));
+  expect(dialog()).not.toBeNull();
+  expect(control("Name (optional)").value).toBe("Newer typing");
 });
 
 test("a save whose answer is lost is never reported as failed", async () => {

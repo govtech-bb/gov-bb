@@ -18,8 +18,17 @@ export function apiFailureMessages(
 
   if (error.status === 401) return ["Your session has ended. Sign in again, then try again."];
 
+  if (error.status === 428)
+    return ["This editor needs a fresh version. Copy your changes, then reload before saving."];
+
   // A refusal such as "Only approvers can…" says what the author can't do; trying again won't help
   if (error.status === 403 && error.errors.length === 0) return [apiMessage(error) ?? otherwise];
+
+  if (error.status === 409)
+    return [
+      apiMessage(error) ??
+        "This item changed. Cancel and review the latest version before trying again.",
+    ];
 
   if (error.errors.length === 0) return [otherwise];
 

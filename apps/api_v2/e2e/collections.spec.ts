@@ -1,6 +1,10 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { z } from "zod";
-import { CollectionRecord } from "../src/modules/collection";
+import {
+  CollectionRecord,
+  EditorCollectionRecord,
+  RecordEnvelope,
+} from "../src/modules/collection";
 import {
   AUTH_ENV,
   createEmployeeSession,
@@ -22,6 +26,7 @@ describe.skipIf(!HAS_DATABASE)("data collections over HTTP", () => {
   let database: string;
   let cookie: string;
   let userId: string;
+  let collectionVersion: number;
   beforeAll(async () => {
     database = await createScratchDatabase();
     server = await startServer({ DB_NAME: database, SEED: "false" });
@@ -40,23 +45,46 @@ describe.skipIf(!HAS_DATABASE)("data collections over HTTP", () => {
         }),
       ],
     );
+    collectionVersion = (
+      await (
+        await fetch(`${server.url}/collections`, { headers: { cookie } })
+      ).json()
+    ).collections[0].version;
   });
   afterAll(async () => {
     await server?.stop();
     if (database) await dropScratchDatabase(database);
   });
 
-  const send = (method: string, path: string, body?: object, stamp?: string) =>
-    fetch(server.url + path, {
-      method,
-      headers: {
-        cookie,
-        origin: AUTH_ENV.EDITOR_ORIGIN,
-        ...(body ? { "content-type": "application/json" } : {}),
-        ...(stamp ? { "if-updated-at": stamp } : {}),
+  const send = (
+    method: string,
+    path: string,
+    body?: object,
+    version?: number,
+  ) =>
+    fetch(
+      server.url +
+        path +
+        (method === "DELETE" && version !== undefined
+          ? `?expected_version=${version}`
+          : ""),
+      {
+        method,
+        headers: {
+          cookie,
+          origin: AUTH_ENV.EDITOR_ORIGIN,
+          ...(body ? { "content-type": "application/json" } : {}),
+        },
+        ...(body
+          ? {
+              body: JSON.stringify({
+                ...body,
+                ...(version === undefined ? {} : { expected_version: version }),
+              }),
+            }
+          : {}),
       },
-      ...(body ? { body: JSON.stringify(body) } : {}),
-    });
+    );
   const publicRead = async (key: string) => {
     const response = await fetch(`${server.url}/collections/${key}/records`);
     expect(response.status).toBe(200);
@@ -65,34 +93,45 @@ describe.skipIf(!HAS_DATABASE)("data collections over HTTP", () => {
 
   it("creates, reads, updates and deletes a record, each recorded against the employee", async () => {
     const created = await send("POST", "/collections/offices/records/north", {
+      expected_collection_version: collectionVersion,
       data: { name: "North office", email: "north@example.gov.bb" },
     });
     expect(created.status).toBe(201);
     expect(created.headers.get("cache-control")).toBe("no-store");
-    const record = CollectionRecord.parse(await created.json());
+    const record = EditorCollectionRecord.parse(await created.json());
     expect(record.data).toEqual({
       key: "north",
       name: "North office",
       email: "north@example.gov.bb",
     });
-    expect(await publicRead("offices")).toEqual([record]);
+    expect(await publicRead("offices")).toEqual([
+      CollectionRecord.parse(record),
+    ]);
 
     const saved = await send(
       "PUT",
       "/collections/offices/records/north",
-      { data: { name: "Northern office" } },
-      record.updated_at,
+      {
+        data: { name: "Northern office" },
+        expected_collection_version: collectionVersion,
+      },
+      record.version,
     );
     expect(saved.status).toBe(200);
-    const updated = CollectionRecord.parse(await saved.json());
+    const updated = RecordEnvelope.parse(await saved.json()).record;
     expect(updated.data).toEqual({ key: "north", name: "Northern office" });
-    expect(await publicRead("offices")).toEqual([updated]);
+    expect(await publicRead("offices")).toEqual([
+      CollectionRecord.parse(updated),
+    ]);
 
     const stale = await send(
       "PUT",
       "/collections/offices/records/north",
-      { data: { name: "Lost" } },
-      record.updated_at,
+      {
+        data: { name: "Lost" },
+        expected_collection_version: collectionVersion,
+      },
+      record.version,
     );
     expect(stale.status).toBe(409);
 
@@ -100,7 +139,7 @@ describe.skipIf(!HAS_DATABASE)("data collections over HTTP", () => {
       "DELETE",
       "/collections/offices/records/north",
       undefined,
-      updated.updated_at,
+      updated.version,
     );
     expect(deleted.status).toBe(204);
     expect(await publicRead("offices")).toEqual([]);
@@ -121,6 +160,7 @@ describe.skipIf(!HAS_DATABASE)("data collections over HTTP", () => {
 
   it("refuses a field the collection does not have, naming it", async () => {
     const response = await send("POST", "/collections/offices/records/south", {
+      expected_collection_version: collectionVersion,
       data: { name: "South office", fax: "123" },
     });
     expect(response.status).toBe(400);
@@ -133,6 +173,7 @@ describe.skipIf(!HAS_DATABASE)("data collections over HTTP", () => {
 
   it("refuses a record for a collection that does not exist", async () => {
     const response = await send("POST", "/collections/nowhere/records/x", {
+      expected_collection_version: collectionVersion,
       data: { name: "X" },
     });
     expect(response.status).toBe(404);
@@ -160,6 +201,7 @@ describe.skipIf(!HAS_DATABASE)("data collections over HTTP", () => {
     expect(
       (
         await send("POST", "/collections/offices/records/west", {
+          expected_collection_version: collectionVersion,
           data: { name: "West office" },
         })
       ).status,

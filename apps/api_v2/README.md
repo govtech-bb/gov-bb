@@ -81,11 +81,40 @@ Unpublishing a page and deleting a `public` page stay direct approver actions: t
 
 Under `AUTH_BYPASS` the local developer holds every role. `GET /editor/me` returns the signed-in employee and their roles, which the editor uses to hide what they cannot do.
 
+### Write preconditions and cutover
+
+All existing-content writes require the version displayed by the editor. Versions
+are positive JavaScript-safe integers issued by the database; compare them for
+equality, never increment or derive them from timestamps. Page/category PUTs and
+review commands send `expected_version` in JSON. Page/category/record DELETEs
+send it as a canonical decimal query value. Category reorder and record writes
+use the additional baselines documented below.
+
+Authentication, Origin and role checks still run first. Malformed input returns
+400; missing baselines return 428 `precondition_required`, without looking up the
+target. With valid input, missing targets return 404 and stale versions return
+409 `version_conflict`, including stale no-ops. Business conflicts such as
+`under_review`, `not_submitted`, `record_exists` and `category_in_use` retain
+their existing codes.
+
+Before release, establish whether there are live editors and which migrations
+are installed on the target database. Pause editing and drain old API writers
+before reopening the matching API and editor; do not assume their deployments
+are atomic. Keep a database backup and verify the migration ledger. Do not roll
+back to an API that accepts unversioned writes while editing is enabled.
+Old tabs sending only `if-updated-at` cannot write; the header remains
+CORS-allowed but is ignored. Do not restore timestamp fallback or write ETags. Keep unsaved
+content before updating an old tab, then explicitly reload/discard to establish
+a new baseline. If a response is lost, retry only the immutable original request
+with its original versions. A matching server value does not prove that this
+client's earlier request succeeded; never silently adopt a fresh version and
+resubmit. Public representations and public ETags remain version-free.
+
 ### Pending revisions
 
 A save that keeps a `public` page public, whoever sends it, approvers included, goes into the page's pending revision in `page_revisions` (migration `010_page_revisions`, #3198). The live row, its search chunks and every site read stay as they were until an approver publishes the revision (#3199). A page has at most one open revision, and a later save updates it. The revision keeps the fields as the save sent them, the live `updated_at` it was saved over, who started it, and everyone who saved to it, since none of them may approve it (ADR 0079). It is refused with the same field-level 422s as a live save, and it goes when its page is deleted.
 
-The editor reads and saves the working copy: `GET /pages/:id` and the save's response lay the revision over the live page, set `pending_revision`, and give the revision's `updated_at`, which is what the next save sends in `if-updated-at`. `GET /pages/:id/revision` returns the revision itself, or 404 when there is none.
+The editor reads and saves the working copy. `GET /pages/:id` and the save response lay the revision over the live page, set `pending_revision`, and return the enclosing page's numeric `version`. Send that version as `expected_version` on the next write. `updated_at` remains a display timestamp. `GET /pages/:id/revision` returns the revision with the page's version, or 404 when there is none.
 
 Editor page responses also include `last_edited_by: { id, name } | null` (#3171), from the page's highest `version_no` change event joined to `auth_user`. Review steps count; pending-revision saves do not create events, so this may not identify the working copy's last saver or the author of its `updated_at`. A system event returns `{ id: "system", name: "System" }`. No event returns null; an event whose actor's name is unavailable keeps its id with `name: null`, as history does. Public page, category, catalog and search reads never include attribution, even for signed-in callers.
 
@@ -96,14 +125,14 @@ A save to a page that is not public writes the page as before. Changing `visibil
 Migration `011_revision_review` (#3199) adds the review statuses and who moved a revision through them. A revision goes `draft` → `submitted` → `rejected` or `published`, or `discarded` when an approver unpublishes the page while it waits (`015`, #3203):
 
 - `POST /pages/:id/revision/submit` (editor role) sends the page's draft for review and records the submitter. With no draft it is a 404; already submitted, a 409 `under_review`. A rejected revision can be submitted again as it is: it is copied into a new submitted revision with the same `updated_at` (its content hasn't changed), and the rejected one keeps its comment as history. The copy's `contributors` are the rejected round's plus its submitter, and a new draft saved over a rejected revision inherits them the same way, so whoever submitted an earlier round still can't approve it.
-- `POST /pages/:id/revision/reject` (approver role) takes `{ comment }`, 1 to 2000 characters after trimming. The live page is unchanged. The rejected revision is kept with its comment and the rejecter, and the editor keeps working from it: `GET /pages/:id` lays it over the live page with `pending_revision: { status: "rejected", comment }`. The next save starts a new draft beside it, carrying its contributors over, since it starts from their content. A live write retires a rejection: it no longer shows once the live page has moved past the version it was saved over.
+- `POST /pages/:id/revision/reject` (approver role) takes `{ comment, expected_version }`, with a comment of 1 to 2000 characters after trimming. The live page is unchanged. The rejected revision is kept with its comment and the rejecter, and the editor keeps working from it: `GET /pages/:id` lays it over the live page with `pending_revision: { status: "rejected", comment }`. The next save starts a new draft beside it, carrying its contributors over, since it starts from their content. A live write retires a rejection: it no longer shows once the live page has moved past the version it was saved over.
 - `POST /pages/:id/revision/publish` (approver role) approves and publishes in one transaction: the revision's fields are checked again as a save checks them (placement, a url a category owns, and the database's own refusals), since its parent, its category or its url can have changed while it waited. A stale revision is a 422 naming the field, and nothing changes. Otherwise the revision is marked `published` with the approver and the time (an `approved` `change_events` entry), then the live row is written, its search chunks re-cut and an `updated` (or `published`) entry appended, both by the approver.
 
-Publish and reject are a 404 when nothing waits for review, and a 409 `not_submitted` for a draft. They **require** `if-updated-at`, the revision's `updated_at` the approver reviewed: without it the answer is a 428 `precondition_required`, and when the revision is no longer that version, a 409 `conflict`, so an approver never decides on a version they didn't read. Submit takes it optionally. A content save moves a revision's `updated_at`, and so does a rejection, so an editor's tab opened before the rejection gets a 409 on save, reloads and sees the comment; submitting a draft doesn't move it. Each runs under the page's row lock, as a save does.
+Submit and publish take `{ expected_version }`; reject takes `{ comment, expected_version }`. Every command checks the page's version under its row lock before review-state rules. Missing versions return 428 `precondition_required`; stale versions return 409 `version_conflict`. With a current version, publish and reject return 404 when nothing waits for review and 409 `not_submitted` for a draft. Submit, reject, publish and revision saves all advance the page version, even when the live content is unchanged.
 
 **Self-approval** (ADR 0079): the approver who publishes or rejects a revision must not be its submitter or one of its `contributors`; otherwise it is a 403. It is allowed only under `AUTH_BYPASS`, where `main.ts` passes `allowSelfApproval` to `PageEditing` so one developer can try the whole flow.
 
-**One open revision.** A page has at most one revision that is `draft` or `submitted` (`page_revisions_open_page_id_key`). Editors keep working while a change waits (#3203): a save to a page whose revision is `submitted` updates that revision in place, and it stays `submitted` in the review queue. Such a save must send `if-updated-at`, the revision's `updated_at` (a 428 `precondition_required` without it, a 409 `conflict` when stale), and the saver joins its `contributors`, so whoever changes a waiting revision can't approve it. The save moves the revision's `updated_at`, so an approver holding the version from before it gets a 409 `conflict` on publish or reject, reloads, and decides on the latest version.
+**One open revision.** A page has at most one revision that is `draft` or `submitted` (`page_revisions_open_page_id_key`). Editors keep working while a change waits (#3203). A save to a submitted revision updates it in place and it stays in the review queue. Like every save, it requires the page's `expected_version`. The saver joins its `contributors`, so whoever changes a waiting revision cannot approve it. The page version advances, and an approver holding the earlier version receives 409 `version_conflict` on publish or reject.
 
 `GET /pages/:id/revision`, and the submit and reject responses, carry `changes`: `{ field, live, proposed }` for each page field whose proposed value differs from the live page's, in field order. Publish returns the page as it now stands.
 
@@ -286,7 +315,7 @@ erDiagram
 | GET      | `/catalog`                             | Every visible page (sitemap, service lists)                            |
 | GET      | `/site-version`                        | Opaque token that moves on any content change; the site polls it       |
 | GET      | `/search/documents`                    | Every visible page with its search text in chunks                      |
-| GET      | `/collections/:key/records`            | A data collection and its records (public; the editor reads it too)    |
+| GET      | `/collections/:key/records`            | A data collection and its records (public, without edit versions)    |
 | GET      | `/docs`                                | Public API reference (Scalar)                                          |
 | GET      | `/docs/openapi.json`                   | Public OpenAPI document                                                |
 | GET      | `/health`                              | Load balancer check: 200 while the process serves; never hits the DB   |
@@ -299,16 +328,17 @@ erDiagram
 | GET      | `/services/:id`                        | Employee; one service's pages with their roles, entry first            |
 | GET      | `/editor/categories`                   | Employee; every shared category, counts, address protection and stamps |
 | POST     | `/editor/categories`                   | Approver; append a category or subcategory                             |
-| PUT      | `/editor/categories/:id`               | Approver; edit with mandatory `if-updated-at`                          |
+| PUT      | `/editor/categories/:id`               | Approver; edit with body `expected_version`                          |
 | PUT      | `/editor/categories/order`             | Approver; reorder a complete expected sibling snapshot                 |
-| DELETE   | `/editor/categories/:id`               | Approver; delete an empty category with `if-updated-at`                |
+| DELETE   | `/editor/categories/:id`               | Approver; delete an empty category with query `expected_version`                |
 | GET      | `/collections`                         | Employee; every data collection with its field list and record count   |
-| POST     | `/collections/:key/records/:recordKey` | Editor; add a record, checked against the collection's field list      |
-| PUT      | `/collections/:key/records/:recordKey` | Editor; replace a record's data, optional `if-updated-at`              |
-| DELETE   | `/collections/:key/records/:recordKey` | Editor; delete a record, optional `if-updated-at`                      |
+| GET      | `/collections/:key/records/:recordKey` | Employee; coherent versioned `{ collection, record }` snapshot |
+| POST     | `/collections/:key/records/:recordKey` | Editor; add a record with `expected_collection_version`      |
+| PUT      | `/collections/:key/records/:recordKey` | Editor; replace data with record and collection versions              |
+| DELETE   | `/collections/:key/records/:recordKey` | Editor; delete a record with query `expected_version`                      |
 | GET      | `/version`                             | Employee change token                                                  |
 | POST     | `/pages`                               | Employee create; as `public`, refused (approver under `AUTH_BYPASS`)   |
-| PUT      | `/pages/:id`                           | Editor save, optional `if-updated-at`; public pages save to a revision |
+| PUT      | `/pages/:id`                           | Editor save with body `expected_version`; public pages save to a revision |
 | DELETE   | `/pages/:id`                           | Employee delete; a `public` page, approver only                        |
 | POST     | `/pages/:id/revision/submit`           | Editor; submit the draft revision for review                           |
 | POST     | `/pages/:id/revision/reject`           | Approver, not its author or submitter; reject with a `comment`         |
@@ -327,13 +357,13 @@ Review is recorded the same way (`record_review`, migration `013`): when a page'
 
 Public site reads (`/pages?url=`, `/categories…`, `/catalog`, `/search/documents`, `/collections/:key/records`) send `public, max-age=60, stale-while-revalidate=300, stale-if-error=86400`; unknown public URLs send `public, max-age=10`. `/site-version` sends `public, max-age=5`: landing checks it at most every 5 s and expires its cached pages when it moves, so a publish shows within seconds rather than after the pages' max-age. ETags and 304s remain available for public reads. These routes do not look up or refresh employee sessions.
 
-The editor reads a collection's records through that same public route, fetching with `cache: "no-store"`, and sends a record's `updated_at` back in `if-updated-at` when it saves or deletes it. That depends on no shared cache (a CDN, or a server-side fetch cache) sitting between the editor and api_v2: a cached read up to six minutes old would turn the editor's next save into a 409 against its own earlier write. Put a cache in front of api_v2 and the editor needs an uncached, editor-scope read of records first.
+The editor loads record detail through authenticated `GET /collections/:key/records/:recordKey`, which returns `{ collection, record }` from one database snapshot with both versions. It never derives a write baseline from the public record list. PUT sends `{ data, expected_version, expected_collection_version }` and returns the same envelope, including for a no-op. POST sends `{ data, expected_collection_version }` from the displayed collection definition and returns the created versioned record. DELETE needs only the record's `expected_version` query parameter. The definition's edit `version` is separate from `schema_version`.
 
 Preview: the site's server sends its `PREVIEW_SECRET` as `x-preview-token`, and the same reads then include `preview` content. Those responses are `no-store` with no ETag, so preview content never enters a shared cache. A wrong token, or any token when `PREVIEW_SECRET` is unset here, is a 401 rather than a quiet fall-back to the public view. `draft` content is only ever served to the editor.
 
 The hierarchy is `parent_id`, not the url. A page is served only when it and every page above it are visible; its breadcrumbs are its category (and parent category, for a subcategory), then the pages above it; a category lists only the pages at its root (`parent_id` null), so `start` steps and sub-pages never appear in a listing. A sub-page must share its parent's category (moving the parent moves its sub-pages), a page cannot sit beneath itself, and a page with sub-pages cannot be deleted: each is a field-specific 422.
 
-`GET /pages?url=` returns `{url, frontmatter, body_markdown, form_id, hide_start_links, breadcrumbs, category, subcategory}`. `category` and `subcategory` are slugs, null when the page has none. `hide_start_links` is true when the page's `start` sub-page is hidden from the viewer. `visibility` is `preview` when the page or any page above it is preview; the site shows its review banner and `noindex` from it (#3246). Whether a form is open is the forms API's to say: `form_id` is a name, and the site asks the forms API for the form's status. The API serves markdown as written; the site owns sanitization and rendering. Editor writes return field-specific 422s for invalid references or duplicates, 409 for a stale supplied version, and stamp `published_at` only on first publication. `content_updated_at`, the site's "Last updated" line, is moved by a trigger only when the title, description, body, frontmatter or form changes, so a visibility change or a move keeps it (migration `016_content_updated_at`, #3105). A save replaces the page, so it sends every field; only `parent_id` may be left out, which keeps the page's parent. Changing `url` moves that page alone: its sub-pages keep theirs, and nothing redirects from the old url. Each write still records an append-only audit snapshot (see above); `GET /pages/:id/history` lists them read-only, newest first, with who made each change and which fields it changed (#3423); nothing restores an earlier version. A request its route's schema refuses (a missing field, an id that is not a UUID, an `if-updated-at` that is not a timestamp, a url over 512 characters, a title over 300) is a 400; Fastify's own refusals keep their status (a body that is not JSON is a 415), and an unknown route is a JSON 404.
+`GET /pages?url=` returns `{url, frontmatter, body_markdown, form_id, hide_start_links, breadcrumbs, category, subcategory}`. `category` and `subcategory` are slugs, null when the page has none. `hide_start_links` is true when the page's `start` sub-page is hidden from the viewer. `visibility` is `preview` when the page or any page above it is preview; the site shows its review banner and `noindex` from it (#3246). Whether a form is open is the forms API's to say: `form_id` is a name, and the site asks the forms API for the form's status. The API serves markdown as written; the site owns sanitization and rendering. Editor writes return field-specific 422s for invalid references or duplicates, 409 for a stale supplied version, and stamp `published_at` only on first publication. `content_updated_at`, the site's "Last updated" line, is moved by a trigger only when the title, description, body, frontmatter or form changes, so a visibility change or a move keeps it (migration `016_content_updated_at`, #3105). A save replaces the page, so it sends every field; only `parent_id` may be left out, which keeps the page's parent. Changing `url` moves that page alone: its sub-pages keep theirs, and nothing redirects from the old url. Each write still records an append-only audit snapshot (see above); `GET /pages/:id/history` lists them read-only, newest first, with who made each change and which fields it changed (#3423); nothing restores an earlier version. A request its route's schema refuses (a missing field, an id that is not a UUID, an explicitly malformed version, a url over 512 characters, a title over 300) is a 400; Fastify's own refusals keep their status (a body that is not JSON is a 415), and an unknown route is a JSON 404.
 
 ### Category management
 
@@ -341,14 +371,14 @@ The one shared list serves category management, every page picker and every cont
 type. `GET /editor/categories` returns `{ categories: [...] }` with each parent
 followed by its ordered children. Rows contain `id`, `parent_id`, `title`, `slug`,
 nullable `description`, `url`, `position`, `services`, `reserved_route` and
-`updated_at` and `last_edited_by`. Attribution uses the category's latest change event
+`updated_at`, `version` and `last_edited_by`. Attribution uses the category's latest change event
 and the same nullable author shape as editor pages. Service counts match `/services`
 roots, including unpublished work.
 Public category reads expose none of the private counts or editor metadata.
 The former taxonomy endpoint is removed without an alias.
 
 Create/update send all four fields:
-`{ title, slug, parent_id, description }`. Unknown keys are refused. Titles and
+`{ title, slug, parent_id, description }`; update also requires `expected_version`. Unknown keys are refused. Titles and
 descriptions are trimmed; blank descriptions become null. Names need not be
 unique; slugs must be globally unique, lower-case hyphenated words of at most
 100 characters. Renaming a title never changes the slug. Empty categories may
@@ -356,11 +386,11 @@ change slug/parent, but any assigned page, subcategory or reserved app-route
 anchor blocks address changes. Names and descriptions remain editable at anchors.
 
 Create and reparent append to the current destination under the shared content
-write lock. Update/delete require the original millisecond `if-updated-at`.
-Reorder sends `{ parent_id, expected: [{ id, updated_at }], ordered_ids }` for the
+write lock. Update requires `expected_version` in its body; delete requires it in the query.
+Reorder sends `{ parent_id, expected: [{ id, version }], ordered_ids }` for the
 complete sibling group and returns `{ categories: [...] }` in saved order.
-Missing/malformed fields or versions are 400; field rules are 422; stale writes
-are 409 `conflict`. Occupied deletion is 409 `category_in_use` with
+Missing versions are 428; malformed fields, versions or ID sets are 400;
+field rules are 422; stale membership or versions are 409 `version_conflict`. Occupied deletion is 409 `category_in_use` with
 `blockers: { pages, subcategories, reserved_route }`. The page blocker counts
 all pages, not just services. No operation cascades deletion or moves page URLs.
 A missing category target is 404; successful deletion is 204.

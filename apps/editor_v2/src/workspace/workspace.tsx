@@ -39,7 +39,7 @@ import { DocumentSessions, keptViews } from "./document-views";
 import { GovbbLogo } from "./govbb-logo";
 import { ServicesList } from "./services-list";
 import type { ServicesSearch } from "./services-search";
-import type { WorkspaceLocation } from "./model";
+import type { PageDocument, WorkspaceLocation } from "./model";
 import { pageHasUnsavedChanges, type PageSession } from "./page-session";
 import { usePageLeaveGuard } from "./page-leave-guard";
 
@@ -155,7 +155,7 @@ export function ServiceWorkspace({
     for (const id of panes.filter((id) => !kept.includes(id))) {
       const page = pageSessions.get(id);
 
-      if (page) sessions.close(id, page.getBaseline().page.updated_at);
+      if (page) sessions.close(id, page.getBaseline().page.version);
     }
 
     setPanes(kept);
@@ -169,7 +169,19 @@ export function ServiceWorkspace({
   // Remount on each opening to clear the previous form and request state.
   const [opened, setOpened] = useState(0);
 
+  const [deleteSnapshot, setDeleteSnapshot] = useState<(PageDocument & { version: number }) | null>(
+    null,
+  );
+
   const openDialog = (kind: "service" | "page" | "delete") => {
+    if (kind === "delete") {
+      const session = selected && pageSessionsRef.current.get(selected.id);
+
+      if (!selected || !session || session.isSaving()) return;
+      const page = session.getBaseline().page;
+      setDeleteSnapshot({ ...selected, title: page.title, version: page.version });
+    }
+
     setOpened((count) => count + 1);
     setDialog(kind);
   };
@@ -206,7 +218,7 @@ export function ServiceWorkspace({
   const rows = useMemo(() => (remote.data ? remoteServiceRows(remote.data) : []), [remote.data]);
   const selected = rows.find((row) => row.document.id === documentId)?.document;
   // The page being deleted, kept while its dialog fades away after the page itself has gone
-  const deleting = useLatched(dialog === "delete" ? (selected ?? null) : null);
+  const deleting = useLatched(dialog === "delete" ? deleteSnapshot : null);
 
   const missing =
     !!location &&

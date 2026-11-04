@@ -51,6 +51,7 @@ const business: Category = {
   url: "/business-trade",
   position: 0,
   services: 30,
+  version: 1,
   reserved_route: false,
   last_edited_by: null,
   updated_at: "2026-10-28T12:00:00.000Z",

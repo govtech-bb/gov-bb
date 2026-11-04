@@ -11,7 +11,6 @@ import {
   cycleOf,
   PageConflict,
   PageNotFound,
-  PageVersionRequired,
   pendingRevisionOf,
   fieldsOf,
   inheritedFrom,
@@ -273,10 +272,8 @@ export class PageEditing {
 
   /**
    * Replace a page's fields, and return the page as the editor now works on
-   * it. With `expectedUpdatedAt`, a page that has moved on since the caller
-   * read it is refused rather than silently discarding whoever wrote first;
-   * without it the caller accepts whatever is stored. A public page's version
-   * is its pending revision's, when it has one.
+   * it. The required root version covers live content and the pending revision;
+   * a stale baseline is refused before any write or no-op acknowledgement.
    *
    * A save that keeps a public page public goes into its pending revision.
    * A save to a page that is not public writes the page, as it always has.
@@ -302,7 +299,7 @@ export class PageEditing {
   save(
     id: PageId,
     fields: SaveFields,
-    expectedUpdatedAt: Date | null,
+    expectedVersion: EditVersion,
     actor: Employee,
   ): Promise<
     Result<
@@ -310,27 +307,15 @@ export class PageEditing {
       | PageRejected
       | PageNotFound
       | PageConflict
-      | PageVersionRequired
       | NotApprover
       | SelfApproval
       | ContentStoreUnavailable
     >
   > {
     return this.records.atomically(actor.id, async (records) => {
-      const locked = await records.lock(id);
-      if (!locked.ok) return locked;
-      const current = locked.value;
-      if (current === null) return err(new PageNotFound(id));
-      const pending = await records.currentRevision(id);
-      if (!pending.ok) return pending;
-      if (expectedUpdatedAt === null && pending.value?.status === "submitted")
-        return err(new PageVersionRequired());
-      if (
-        expectedUpdatedAt !== null &&
-        (pending.value ?? current).updated_at !==
-          expectedUpdatedAt.toISOString()
-      )
-        return err(new PageConflict(id));
+      const checked = await versionedPage(records, id, expectedVersion);
+      if (!checked.ok) return checked;
+      const { live: current, revision: pending } = checked.value;
       if (
         fields.visibility !== current.visibility &&
         !actor.roles.includes("approver")
@@ -348,14 +333,14 @@ export class PageEditing {
       const now = new Date(
         Math.max(
           this.clock().getTime(),
-          pending.value === null ? 0 : Date.parse(pending.value.updated_at) + 1,
+          pending === null ? 0 : Date.parse(pending.updated_at) + 1,
         ),
       );
       if (current.visibility === "public" && fields.visibility !== "public") {
         // Marked first, so the page's history reads the discard before the
         // unpublish, as it reads an approval before the change it lets live.
-        if (pending.value?.status === "submitted") {
-          const discarded = await records.markRevision(pending.value.id, {
+        if (pending?.status === "submitted") {
+          const discarded = await records.markRevision(pending.id, {
             status: "discarded",
             by: actor.id,
             at: now,
@@ -371,7 +356,7 @@ export class PageEditing {
           now,
         );
         if (!hidden.ok) return hidden;
-        if (pending.value?.status === "draft") {
+        if (pending?.status === "draft") {
           const dropped = await records.dropRevision(id);
           if (!dropped.ok) return dropped;
           const bumped = await records.bumpPageVersion(id);
@@ -390,14 +375,11 @@ export class PageEditing {
         ...fields,
         parent_id:
           fields.parent_id === undefined
-            ? (pending.value?.fields ?? current).parent_id
+            ? (pending?.fields ?? current).parent_id
             : fields.parent_id,
       });
       if (!placed.ok) return placed;
-      if (
-        changesOf(workingCopy(current, pending.value), placed.value).length ===
-        0
-      )
+      if (changesOf(workingCopy(current, pending), placed.value).length === 0)
         return savedPage(records, id);
       if (current.visibility === "public" && fields.visibility === "public") {
         // Refused now for what publishing it would be refused for today.
@@ -410,7 +392,7 @@ export class PageEditing {
           id,
           pendingRevisionOf(
             current,
-            pending.value,
+            pending,
             placed.value,
             actor.id,
             this.clock(),
@@ -442,8 +424,8 @@ export class PageEditing {
 
   /**
    * Send a page's draft revision for review. The submitter is recorded, and
-   * none may approve their own submission. With `expectedUpdatedAt`, a draft
-   * saved since the caller read it is refused. Once it commits, the
+   * none may approve their own submission. A root version that changed since
+   * the caller read it is refused. Once it commits, the
    * approvers hear a change waits for them.
    *
    * A rejected revision can be submitted again as it is: it is copied into a
@@ -453,7 +435,7 @@ export class PageEditing {
    */
   async submit(
     id: PageId,
-    expectedUpdatedAt: Date | null,
+    expectedVersion: EditVersion,
     actor: Employee,
   ): Promise<
     Result<
@@ -471,7 +453,7 @@ export class PageEditing {
         const reviewing = await underReview(
           records,
           id,
-          expectedUpdatedAt,
+          expectedVersion,
           "submit",
         );
         if (!reviewing.ok) return reviewing;
@@ -520,7 +502,7 @@ export class PageEditing {
   async reject(
     id: PageId,
     comment: string,
-    expectedUpdatedAt: Date,
+    expectedVersion: EditVersion,
     actor: Employee,
   ): Promise<
     Result<
@@ -539,7 +521,7 @@ export class PageEditing {
         const reviewing = await underReview(
           records,
           id,
-          expectedUpdatedAt,
+          expectedVersion,
           "decide",
         );
         if (!reviewing.ok) return reviewing;
@@ -583,7 +565,7 @@ export class PageEditing {
    */
   async publish(
     id: PageId,
-    expectedUpdatedAt: Date,
+    expectedVersion: EditVersion,
     actor: Employee,
   ): Promise<
     Result<
@@ -603,7 +585,7 @@ export class PageEditing {
         const reviewing = await underReview(
           records,
           id,
-          expectedUpdatedAt,
+          expectedVersion,
           "decide",
         );
         if (!reviewing.ok) return reviewing;
@@ -660,18 +642,26 @@ export class PageEditing {
     );
   }
 
-  /** Delete a page; one with sub-pages is refused, and one already gone is not an error. */
+  /** Delete only the displayed identity; a missing target is not a successful deletion. */
   delete(
     id: PageId,
+    expectedVersion: EditVersion,
     actor: Employee,
   ): Promise<
-    Result<void, PageRejected | NotApprover | ContentStoreUnavailable>
+    Result<
+      void,
+      | PageNotFound
+      | PageConflict
+      | PageRejected
+      | NotApprover
+      | ContentStoreUnavailable
+    >
   > {
     return this.records.atomically(actor.id, async (records) => {
-      const locked = await records.lock(id);
-      if (!locked.ok) return locked;
+      const checked = await versionedPage(records, id, expectedVersion);
+      if (!checked.ok) return checked;
       if (
-        locked.value?.visibility === "public" &&
+        checked.value.live.visibility === "public" &&
         !actor.roles.includes("approver")
       )
         return err(new NotApprover());
@@ -747,16 +737,38 @@ async function savedRevision(
   return ok(revision);
 }
 
+/** Lock and check the root before examining revisions or applying business rules. */
+async function versionedPage(
+  records: PageRecords,
+  id: PageId,
+  expectedVersion: EditVersion,
+): Promise<
+  Result<
+    PageEditorSnapshot,
+    PageNotFound | PageConflict | ContentStoreUnavailable
+  >
+> {
+  const locked = await records.lock(id);
+  if (!locked.ok) return locked;
+  if (!locked.value) return err(new PageNotFound(id));
+  const snapshot = await records.editorSnapshot(id);
+  if (!snapshot.ok) return snapshot;
+  if (!snapshot.value)
+    throw new Error("Locked page missing inside its transaction");
+  return snapshot.value.version === expectedVersion
+    ? ok(snapshot.value)
+    : err(new PageConflict(id));
+}
+
 /**
  * The locked live page and the revision a review step acts on, when it is in
- * the state the step needs and, with `expectedUpdatedAt`, still the version
- * the caller read. Submitting takes a draft, or a rejected revision to send
+ * the state the step needs and still the root version the caller read. Submitting takes a draft, or a rejected revision to send
  * again; deciding takes a submitted one.
  */
 async function underReview(
   records: PageRecords,
   id: PageId,
-  expectedUpdatedAt: Date | null,
+  expectedVersion: EditVersion,
   step: "submit" | "decide",
 ): Promise<
   Result<
@@ -768,14 +780,12 @@ async function underReview(
     | ContentStoreUnavailable
   >
 > {
-  const locked = await records.lock(id);
-  if (!locked.ok) return locked;
-  if (locked.value === null) return err(new PageNotFound(id));
-  const revision = await records.currentRevision(id);
-  if (!revision.ok) return revision;
+  const checked = await versionedPage(records, id, expectedVersion);
+  if (!checked.ok) return checked;
+  const revision = checked.value.revision;
   if (
-    revision.value === null ||
-    (step === "decide" && revision.value.status === "rejected")
+    revision === null ||
+    (step === "decide" && revision.status === "rejected")
   )
     return err(
       new RevisionNotFound(
@@ -784,26 +794,21 @@ async function underReview(
           : "This page has no change waiting for review.",
       ),
     );
-  if (
-    expectedUpdatedAt !== null &&
-    revision.value.updated_at !== expectedUpdatedAt.toISOString()
-  )
-    return err(new PageConflict(id));
-  if (step === "submit" && revision.value.status === "submitted")
+  if (step === "submit" && revision.status === "submitted")
     return err(
       new RevisionStateConflict(
         "under_review",
         "This change is already waiting for review.",
       ),
     );
-  if (step === "decide" && revision.value.status !== "submitted")
+  if (step === "decide" && revision.status !== "submitted")
     return err(
       new RevisionStateConflict(
         "not_submitted",
         "This change hasn't been submitted for review yet.",
       ),
     );
-  return ok({ live: locked.value, revision: revision.value });
+  return ok({ live: checked.value.live, revision: revision });
 }
 
 /**

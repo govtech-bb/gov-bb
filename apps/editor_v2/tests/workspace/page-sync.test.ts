@@ -185,13 +185,13 @@ describe("saving a page", () => {
   });
 
   it("saves the draft over the version it was edited from", async () => {
-    const sent: { fields: SavePageInput; ifUpdatedAt: string }[] = [];
+    const sent: { fields: SavePageInput; expectedVersion: number }[] = [];
     const edited = markdown.replace("Hello", "Hello again");
 
     const outcome = await savePageDraft(
       {
-        savePage: async (_id, fields, ifUpdatedAt) => {
-          sent.push({ fields, ifUpdatedAt });
+        savePage: async (_id, fields, expectedVersion) => {
+          sent.push({ fields, expectedVersion });
 
           return { ...newer, body_markdown: fields.body_markdown };
         },
@@ -204,7 +204,7 @@ describe("saving a page", () => {
     expect(sent).toEqual([
       {
         fields: expect.objectContaining({ body_markdown: "Hello again" }),
-        ifUpdatedAt: page.updated_at,
+        expectedVersion: page.version,
       },
     ]);
     expect(outcome).toEqual({
@@ -251,6 +251,7 @@ describe("saving a page", () => {
       url: "/business-trade",
       position: 0,
       services: 30,
+      version: 1,
       reserved_route: false,
       last_edited_by: null,
       updated_at: "2026-10-28T12:00:00.000Z",
@@ -351,7 +352,7 @@ describe("saving a page", () => {
       new ApiFailure(422, [{ field: "url", message: "Taken" }]),
       { kind: "invalid", errors: [{ field: "url", message: "Taken" }] },
     ],
-    [new ApiFailure(409), { kind: "conflict" }],
+    [new ApiFailure(409, [], undefined, "version_conflict"), { kind: "conflict" }],
     [new ApiFailure(404), { kind: "missing" }],
     [new ApiFailure(401), { kind: "signed-out" }],
     [
@@ -362,8 +363,8 @@ describe("saving a page", () => {
       new ApiFailure(403),
       { kind: "forbidden", message: "You don’t have permission to save this change." },
     ],
-    [new ApiFailure(503), { kind: "failed" }],
-    [new ApiFailure(0), { kind: "failed" }],
+    [new ApiFailure(503), { kind: "unknown" }],
+    [new ApiFailure(0), { kind: "unknown" }],
   ])("turns a %s refusal into what the editor does about it", async (failure, expected) => {
     const outcome = await savePageDraft(
       {

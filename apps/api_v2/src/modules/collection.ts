@@ -78,7 +78,7 @@ export const CollectionRecord = z.object({
   record_key: RecordKey,
   data: RecordData,
   updated_at: Stamp.describe(
-    "Send it back in `if-updated-at` to save or delete this version.",
+    "Content timestamp; authenticated editors use version for write preconditions.",
   ),
 });
 /** One record of a collection. */
