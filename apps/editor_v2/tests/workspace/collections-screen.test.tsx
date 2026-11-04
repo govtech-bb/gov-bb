@@ -48,7 +48,7 @@ type Write = { method: string; path: string; body: unknown; expectedVersion: num
  */
 function contentApi() {
   let clock = 2;
-  const definition = { ...COLLECTION, version: 100 };
+  const definition = COLLECTION;
 
   let records: RecordDetail["record"][] = [
     {
@@ -121,14 +121,11 @@ function contentApi() {
     if (method !== "POST" && !target)
       return json({ error: "not_found", message: "Gone." }, { status: 404 });
 
-    if (
-      (method !== "POST" && target?.version !== expectedVersion) ||
-      (method !== "DELETE" && body.expected_collection_version !== definition.version)
-    )
+    if (method !== "POST" && target?.version !== expectedVersion)
       return json(
         {
           error: "version_conflict",
-          message: "This record or its definition has changed since you opened it.",
+          message: "This record has changed since you opened it.",
         },
         { status: 409 },
       );
@@ -171,10 +168,6 @@ function contentApi() {
             }
           : record,
       );
-    },
-    changeDefinition: () => {
-      definition.version++;
-      definition.title = "Updated definition";
     },
     remove: (recordKey: string) =>
       void (records = records.filter((record) => record.record_key !== recordKey)),
@@ -384,7 +377,6 @@ test("Add record saves a new record to api_v2, leaving blank fields out", async 
       path: "/collections/contacts/records/barbados-revenue-authority",
       body: {
         data: { key: "barbados-revenue-authority", name: "Barbados Revenue Authority" },
-        expected_collection_version: 100,
       },
       expectedVersion: null,
     },
@@ -508,7 +500,6 @@ test("saving replaces the record over the version read, a cleared field removed"
       path: "/collections/contacts/records/barbados-drug-service",
       body: {
         expected_version: 1,
-        expected_collection_version: 100,
         data: {
           key: "barbados-drug-service",
           name: "Drug Service",
@@ -614,9 +605,7 @@ test("a stale save offers to keep mine, load the saved version or download mine"
   server.change("nis", { name: "Theirs" });
   await submit();
   await until(() =>
-    expect(dialog()?.textContent).toContain(
-      "The record or its definition changed since you opened it.",
-    ),
+    expect(dialog()?.textContent).toContain("The record changed since you opened it."),
   );
   await until(() => expect(button("Discard my changes and reload").disabled).toBe(false));
 
@@ -700,9 +689,7 @@ test("a stale delete is refused in the dialog", async () => {
   server.change("nis", { name: "Theirs" });
   await press("Delete record");
   await until(() =>
-    expect(dialog()?.textContent).toContain(
-      "This record or its definition has changed since you opened it.",
-    ),
+    expect(dialog()?.textContent).toContain("This record has changed since you opened it."),
   );
 });
 
@@ -730,22 +717,6 @@ test("a value for a field the collection no longer lists is named, then removed 
   expect(server.writes.at(-1)?.body).toMatchObject({
     data: { key: "nis", name: "National Insurance" },
   });
-});
-
-test("a definition-only change refuses a save without replacing local values", async () => {
-  await renderCollection({ record: "nis" }).ready;
-  await enter("Name (optional)", "My draft");
-  server.changeDefinition();
-  await submit();
-  await until(() =>
-    expect(dialog()?.textContent).toContain("The record or its definition changed"),
-  );
-  expect(control("Name (optional)").value).toBe("My draft");
-  expect(server.writes.at(-1)?.body).toMatchObject({
-    expected_version: 1,
-    expected_collection_version: 100,
-  });
-  expect(dialog()?.textContent).not.toContain("Keep my version");
 });
 
 test("a confirmed record save keeps values typed after dispatch", async () => {

@@ -379,7 +379,6 @@ const isRevision = (value: unknown): value is ApiRevision =>
 
 const isEditorCollection = (value: unknown): value is RecordDetail["collection"] =>
   isObject(value) &&
-  isEditVersion(value.version) &&
   isText(value.key) &&
   isText(value.title) &&
   isText(value.record_key) &&
@@ -643,37 +642,21 @@ export function createEditorApi(apiOrigin: string, landingOrigin?: string) {
     /** A collection and its records; a 404 when there is no such collection. */
     collection: (key: string) =>
       read<CollectionDetail>(`/collections/${encodeURIComponent(key)}/records`),
-    /** A private editing snapshot with both record and definition versions. */
+    /** A private editing snapshot: the record's version and the definition its form uses. */
     record: async (key: string, recordKey: string) =>
       checkedReply(await send("GET", recordPath(key, recordKey)), isRecordDetail),
-    /** Adds a record against the definition displayed by its form. */
-    createRecord: async (
-      key: string,
-      recordKey: string,
-      data: RecordInput["data"],
-      expectedCollectionVersion: number,
-    ) =>
-      checkedReply(
-        await send("POST", recordPath(key, recordKey), {
-          data,
-          expected_collection_version: expectedCollectionVersion,
-        }),
-        isEditorRecord,
-      ),
-    /** Replaces a record only if both displayed versions still match. */
+    /** Adds a record. */
+    createRecord: async (key: string, recordKey: string, data: RecordInput["data"]) =>
+      checkedReply(await send("POST", recordPath(key, recordKey), { data }), isEditorRecord),
+    /** Replaces a record only if its displayed version still matches. */
     saveRecord: async (
       key: string,
       recordKey: string,
       data: RecordInput["data"],
       expectedVersion: number,
-      expectedCollectionVersion: number,
     ) =>
       checkedReply(
-        await send("PUT", recordPath(key, recordKey), {
-          data,
-          expected_version: expectedVersion,
-          expected_collection_version: expectedCollectionVersion,
-        }),
+        await send("PUT", recordPath(key, recordKey), { data, expected_version: expectedVersion }),
         isRecordDetail,
       ),
     /** Deletes the record displayed in the confirmation, never a replacement at the same key. */

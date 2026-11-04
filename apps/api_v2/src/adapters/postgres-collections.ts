@@ -11,7 +11,6 @@ import type { Database } from "../db";
 import type { UserId } from "../modules/auth";
 import {
   CollectionSchema,
-  type EditorCollection,
   type EditorCollectionRecord,
   type RecordEnvelope,
   type CollectionRecord,
@@ -105,7 +104,6 @@ export class PostgresCollections implements CollectionStore {
           .orderBy(asc(dataCollections.key))
       ).map((row) => ({
         ...toView(row.collection),
-        version: row.collection.version,
         record_count: row.records,
       })),
     );
@@ -120,20 +118,6 @@ export class PostgresCollections implements CollectionStore {
         .from(dataCollections)
         .where(eq(dataCollections.key, key));
       return row ? toView(row) : null;
-    });
-  }
-
-  /** Hold the definition stable before checking or writing dependent record data. */
-  lockCollection(
-    key: string,
-  ): Promise<Result<EditorCollection | null, ContentStoreUnavailable>> {
-    return attempt("lockCollection", async () => {
-      const [row] = await this.db
-        .select()
-        .from(dataCollections)
-        .where(eq(dataCollections.key, key))
-        .for("share");
-      return row ? { ...toView(row), version: row.version } : null;
     });
   }
 
@@ -158,10 +142,7 @@ export class PostgresCollections implements CollectionStore {
         );
       return row
         ? {
-            collection: {
-              ...toView(row.collection),
-              version: row.collection.version,
-            },
+            collection: toView(row.collection),
             record: { ...toRecord(row.record), version: row.record.version },
           }
         : null;

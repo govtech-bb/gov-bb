@@ -8,8 +8,6 @@ import {
 import {
   createTestApp,
   createTestDb,
-  expectOk,
-  TEST_EMPLOYEE,
   TEST_HEADERS,
   type TestDb,
 } from "./test-db";

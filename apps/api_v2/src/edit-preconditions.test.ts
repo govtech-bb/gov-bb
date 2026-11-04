@@ -289,15 +289,11 @@ describe("HTTP edit preconditions", () => {
     await test.pool.query(
       `insert into data_collections (key, title, record_key, schema) values ('contacts', 'Contacts', 'key', '{"fields":[{"key":"key","label":"Key","type":"slug"}]}')`,
     );
-    const definition = (await request({ url: "/collections" })).json()
-      .collections[0];
-    const record = (
-      await request({
-        method: "POST",
-        url: "/collections/contacts/records/one",
-        payload: { data: {}, expected_collection_version: definition.version },
-      })
-    ).json();
+    await request({
+      method: "POST",
+      url: "/collections/contacts/records/one",
+      payload: { data: {} },
+    });
     const before = await state();
     for (const version of [
       undefined,
@@ -334,27 +330,9 @@ describe("HTTP edit preconditions", () => {
           },
         },
         {
-          method: "POST",
-          url: "/collections/contacts/records/two",
-          payload: { data: {}, expected_collection_version: version },
-        },
-        {
           method: "PUT",
           url: "/collections/contacts/records/one",
-          payload: {
-            data: {},
-            expected_version: version,
-            expected_collection_version: definition.version,
-          },
-        },
-        {
-          method: "PUT",
-          url: "/collections/contacts/records/one",
-          payload: {
-            data: {},
-            expected_version: record.version,
-            expected_collection_version: version,
-          },
+          payload: { data: {}, expected_version: version },
         },
       ];
       for (const options of bodies) {
@@ -395,59 +373,22 @@ describe("HTTP edit preconditions", () => {
     expect(await state()).toEqual(before);
   });
 
-  it("checks record create and update against the displayed definition, and delete against the record only", async () => {
+  it("checks record updates and deletes against the record's version only", async () => {
     await test.pool.query(
       `insert into data_collections (key, title, record_key, schema) values ('contacts', 'Contacts', 'key', '{"fields":[{"key":"key","label":"Key","type":"slug"}]}')`,
     );
-    const definition = (await request({ url: "/collections" })).json()
-      .collections[0];
     const url = "/collections/contacts/records/one";
     const record = (
-      await request({
-        method: "POST",
-        url,
-        payload: { data: {}, expected_collection_version: definition.version },
-      })
+      await request({ method: "POST", url, payload: { data: {} } })
     ).json();
-    await test.pool.query(
-      "update data_collections set title = 'Changed definition'",
-    );
     const before = await state();
-    for (const options of [
-      {
-        method: "POST" as const,
-        url: "/collections/contacts/records/two",
-        payload: { data: {}, expected_collection_version: definition.version },
-      },
-      {
-        method: "PUT" as const,
-        url,
-        payload: {
-          data: {},
-          expected_version: record.version,
-          expected_collection_version: definition.version,
-        },
-      },
-    ]) {
-      const response = await request(options);
-      expect(response.statusCode).toBe(409);
-      expect(response.json().error).toBe("version_conflict");
-    }
-    expect(await state()).toEqual(before);
-    const current = (await request({ url })).json();
-    expect(current.collection.version).not.toBe(definition.version);
-    expect(current.record.version).toBe(record.version);
     const noOp = await request({
       method: "PUT",
       url,
-      payload: {
-        data: {},
-        expected_version: record.version,
-        expected_collection_version: current.collection.version,
-      },
+      payload: { data: {}, expected_version: record.version },
     });
     expect(noOp.statusCode).toBe(200);
-    expect(noOp.json()).toEqual(current);
+    expect(noOp.json().record).toEqual(record);
     expect(await state()).toEqual(before);
     expect(
       (
@@ -458,23 +399,25 @@ describe("HTTP edit preconditions", () => {
       ).statusCode,
     ).toBe(204);
     const replacement = (
-      await request({
-        method: "POST",
-        url,
-        payload: {
-          data: {},
-          expected_collection_version: current.collection.version,
-        },
-      })
+      await request({ method: "POST", url, payload: { data: {} } })
     ).json();
     expect(replacement.version).not.toBe(record.version);
     const recreated = await state();
-    const stale = await request({
-      method: "DELETE",
-      url: `${url}?expected_version=${record.version}`,
-    });
-    expect(stale.statusCode).toBe(409);
-    expect(stale.json().error).toBe("version_conflict");
+    for (const options of [
+      {
+        method: "PUT" as const,
+        url,
+        payload: { data: {}, expected_version: record.version },
+      },
+      {
+        method: "DELETE" as const,
+        url: `${url}?expected_version=${record.version}`,
+      },
+    ]) {
+      const stale = await request(options);
+      expect(stale.statusCode).toBe(409);
+      expect(stale.json().error).toBe("version_conflict");
+    }
     expect(await state()).toEqual(recreated);
   });
 });

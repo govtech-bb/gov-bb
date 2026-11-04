@@ -19,12 +19,7 @@ import {
   TEST_HEADERS,
 } from "./test-db";
 
-const ROOTS = [
-  "content_pages",
-  "categories",
-  "data_collections",
-  "collection_records",
-] as const;
+const ROOTS = ["content_pages", "categories", "collection_records"] as const;
 const ROOT_FIXTURES = `
   insert into content_pages (url, slug, title, body_markdown) values ('/x', 'x', 'X', '');
   insert into categories (slug, title) values ('category', 'Category');
@@ -60,7 +55,7 @@ describe("database edit identities", () => {
       const initial = await Promise.all(
         ROOTS.map((table) => storedVersion(pool, table)),
       );
-      expect(new Set(initial).size).toBe(4);
+      expect(new Set(initial).size).toBe(ROOTS.length);
       for (const [i, table] of ROOTS.entries()) {
         const before = (
           await pool.query(
@@ -142,7 +137,7 @@ describe("database edit identities", () => {
       const versions = await Promise.all(
         ROOTS.map((table) => storedVersion(pool, table)),
       );
-      expect(new Set(versions).size).toBe(4);
+      expect(new Set(versions).size).toBe(ROOTS.length);
       const sequence = (await exec("select * from content_edit_version_seq"))
         .rows;
       const state = (await exec(stateQuery)).rows;
@@ -523,7 +518,6 @@ describe("private collection and category versions", () => {
           "first",
           { key: "first", name: " First " },
           record.record.version,
-          record.collection.version,
           TEST_EDITOR,
         ),
       );
@@ -545,9 +539,6 @@ describe("private collection and category versions", () => {
       });
       expect(privateRead.statusCode).toBe(200);
       const envelope = privateRead.json();
-      expect(EditVersion.safeParse(envelope.collection.version).success).toBe(
-        true,
-      );
       expect(EditVersion.safeParse(envelope.record.version).success).toBe(true);
       expect(
         (await app.inject({ url: "/collections/contacts/records/first" }))
@@ -561,13 +552,6 @@ describe("private collection and category versions", () => {
           })
         ).statusCode,
       ).toBe(404);
-      const summaries = await app.inject({
-        url: "/collections",
-        headers: TEST_HEADERS,
-      });
-      expect(summaries.json().collections[0].version).toBe(
-        envelope.collection.version,
-      );
       const queries: string[] = [];
       const storage = new PostgresCollections(
         drizzle(pool, {
@@ -584,9 +568,7 @@ describe("private collection and category versions", () => {
       expect(queries).toHaveLength(1);
       const first = await app.inject({ url: "/collections/contacts/records" });
       expect(first.body).not.toContain('"version"');
-      await pool.query(
-        "update data_collections set version = version + 1; update collection_records set version = version + 1",
-      );
+      await pool.query("update collection_records set version = version + 1");
       const again = await app.inject({ url: "/collections/contacts/records" });
       expect(again.body).toBe(first.body);
       expect(again.headers.etag).toBe(first.headers.etag);
@@ -610,61 +592,6 @@ describe("private collection and category versions", () => {
       expect(sameCategories.headers.etag).toBe(publicCategories.headers.etag);
     } finally {
       await app.close();
-      await close();
-    }
-  });
-
-  it("waits for the definition before validating a record save", async () => {
-    const { db, pool, close } = await createTestDb();
-    const gate = await pool.connect();
-    let saving:
-      | ReturnType<ReturnType<typeof createTestServices>["collections"]["save"]>
-      | undefined;
-    try {
-      await pool.query(ROOT_FIXTURES);
-      const baseline = expectOk(
-        await createTestServices(db).collections.detail("contacts", "first"),
-      );
-      assert(baseline);
-      await gate.query("begin; set local statement_timeout = '10s'");
-      const pid = (await gate.query("select pg_backend_pid() as pid")).rows[0]
-        ?.pid;
-      await gate.query(
-        `update data_collections set schema = '{"fields":[{"key":"key","label":"Key","type":"slug"}]}' where key = 'contacts'`,
-      );
-      saving = createTestServices(db).collections.save(
-        "contacts",
-        "first",
-        { name: "Under old definition" },
-        baseline.record.version,
-        baseline.collection.version,
-        TEST_EMPLOYEE,
-      );
-      await expect
-        .poll(
-          async () => {
-            const blocked = await pool.query(
-              "select count(*)::int as n from pg_stat_activity where $1::int = any(pg_blocking_pids(pid))",
-              [pid],
-            );
-            return blocked.rows[0]?.n;
-          },
-          { timeout: 5000, interval: 10 },
-        )
-        .toBe(1);
-      // The waiting save has not locked the dependent row before the definition.
-      await gate.query("select id from collection_records for update nowait");
-      await gate.query("commit");
-      const result = await saving;
-      expect(result.ok).toBe(false);
-      if (!result.ok) expect(result.error._tag).toBe("RecordConflict");
-      expect(
-        (await pool.query("select data from collection_records")).rows,
-      ).toEqual([{ data: { key: "first", name: "First" } }]);
-    } finally {
-      await gate.query("rollback");
-      gate.release();
-      if (saving) await saving;
       await close();
     }
   });

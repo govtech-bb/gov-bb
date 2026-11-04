@@ -20,7 +20,6 @@ import {
 
 let test: TestDb;
 let app: FastifyInstance;
-let collectionVersion: number;
 
 beforeEach(async () => {
   test = await createTestDb();
@@ -29,9 +28,6 @@ beforeEach(async () => {
         values ('contacts', 'Contacts', 'key', ${JSON.stringify(CONTACTS.schema)}::jsonb)`,
   );
   app = await createTestApp(test.db);
-  collectionVersion = (
-    await app.inject({ url: "/collections", headers: TEST_HEADERS })
-  ).json().collections[0].version;
 });
 afterEach(async () => {
   await app.close();
@@ -46,7 +42,7 @@ const create = (recordKey: string, data: object, collection = "contacts") =>
   editor({
     method: "POST",
     url: recordUrl(recordKey, collection),
-    payload: { data, expected_collection_version: collectionVersion },
+    payload: { data },
   });
 const read = (collection = "contacts") =>
   app.inject({ url: `/collections/${collection}/records` });
@@ -94,7 +90,6 @@ describe("record writes", () => {
       payload: {
         data: { name: "Drug Service" },
         expected_version: created.json().version,
-        expected_collection_version: collectionVersion,
       },
     });
     expect(saved.statusCode, saved.body).toBe(200);
@@ -168,7 +163,6 @@ describe("record writes", () => {
       payload: {
         data: {},
         expected_version: 1,
-        expected_collection_version: collectionVersion,
       },
     });
     const deleted = await editor({
@@ -186,7 +180,6 @@ describe("record writes", () => {
       payload: {
         data: { name: "First" },
         expected_version: created.version,
-        expected_collection_version: collectionVersion,
       },
     });
     expect(first.statusCode).toBe(200);
@@ -197,7 +190,6 @@ describe("record writes", () => {
       payload: {
         data: { name: "Second" },
         expected_version: created.version,
-        expected_collection_version: collectionVersion,
       },
     });
     const deleted = await editor({
@@ -217,7 +209,6 @@ describe("record writes", () => {
       payload: {
         data: { name: "Drug Service" },
         expected_version: created.version,
-        expected_collection_version: collectionVersion,
       },
     });
     await editor({
@@ -321,7 +312,6 @@ describe("the seeded contacts", () => {
         payload: {
           data: record.data,
           expected_version: detail.record.version,
-          expected_collection_version: detail.collection.version,
         },
       });
       expect(saved.statusCode, saved.body).toBe(200);

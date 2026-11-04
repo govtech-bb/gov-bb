@@ -2,7 +2,6 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState, type RefObject } from "react";
 import {
   ApiFailure,
-  isEditVersion,
   outcomeUnknown,
   type Collection,
   type CollectionRecord,
@@ -56,7 +55,7 @@ export function RecordDialog(props: RecordDialogProps) {
 
   const error = props.record ? detail.error : definitions.error;
 
-  if (!collection || !isEditVersion(collection.version) || (props.record && !detail.data))
+  if (!collection || (props.record && !detail.data))
     return (
       <FormDialog
         open={props.open ?? true}
@@ -140,21 +139,10 @@ function RecordEditor({
   const save = useMutation({
     mutationFn: async (sent: RecordAttempt): Promise<RecordDetail> =>
       sent.record
-        ? api.saveRecord(
-            sent.collection.key,
-            sent.key,
-            sent.data,
-            sent.record.version,
-            sent.collection.version,
-          )
+        ? api.saveRecord(sent.collection.key, sent.key, sent.data, sent.record.version)
         : {
             collection: sent.collection,
-            record: await api.createRecord(
-              sent.collection.key,
-              sent.key,
-              sent.data,
-              sent.collection.version,
-            ),
+            record: await api.createRecord(sent.collection.key, sent.key, sent.data),
           },
     onSuccess: (saved, sent) => {
       setBase(saved);
@@ -190,11 +178,7 @@ function RecordEditor({
     (base.record && current.error instanceof ApiFailure && current.error.status === 404);
 
   const stale =
-    conflict ||
-    (!!base.record &&
-      !!latest &&
-      (latest.record.version !== base.record.version ||
-        latest.collection.version !== definition.version));
+    conflict || (!!base.record && !!latest && latest.record.version !== base.record.version);
 
   const unknown = outcomeUnknown(save.error);
   const rejected = failure?.status === 400 && failure.code === "validation_failed";
@@ -405,7 +389,7 @@ function RecordEditor({
             {gone
               ? "This record has been deleted. Your values are still here."
               : stale
-                ? "The record or its definition changed since you opened it."
+                ? "The record changed since you opened it."
                 : "Check the saved version before making another change."}
             {latest && (
               <>

@@ -3187,7 +3187,6 @@ export interface paths {
                                 schema_version: number;
                                 /** Format: date-time */
                                 updated_at: string;
-                                version: number;
                                 record_count: number;
                             }[];
                         };
@@ -3302,7 +3301,6 @@ export interface paths {
                                 schema_version: number;
                                 /** Format: date-time */
                                 updated_at: string;
-                                version: number;
                             };
                             record: {
                                 record_key: string;
@@ -3417,7 +3415,7 @@ export interface paths {
         };
         /**
          * Replace a record's data
-         * @description Needs the editor role (403 otherwise). Send every field to keep: the record becomes `data`. Checked as a create is. Send the record `expected_version` and definition `expected_collection_version`; stale is 409 `version_conflict`. 404 when there is no such collection or record.
+         * @description Needs the editor role (403 otherwise). Send every field to keep: the record becomes `data`. Checked as a create is. Send the record's `expected_version`; stale is 409 `version_conflict`. 404 when there is no such collection or record.
          */
         put: {
             parameters: {
@@ -3437,7 +3435,6 @@ export interface paths {
                             [key: string]: unknown;
                         };
                         expected_version: number;
-                        expected_collection_version: number;
                     };
                 };
             };
@@ -3465,7 +3462,6 @@ export interface paths {
                                 schema_version: number;
                                 /** Format: date-time */
                                 updated_at: string;
-                                version: number;
                             };
                             record: {
                                 record_key: string;
@@ -3593,7 +3589,7 @@ export interface paths {
         };
         /**
          * Add a record to a collection
-         * @description Needs the editor role (403 otherwise). `data` is checked against the collection's field list: a field it does not have, or a value of the wrong kind, is a 400 `validation_failed` naming the field. 404 when there is no such collection; 409 `record_exists` when the record key is taken. Send `expected_collection_version` from the displayed definition: stale is 409 `version_conflict`.
+         * @description Needs the editor role (403 otherwise). `data` is checked against the collection's field list: a field it does not have, or a value of the wrong kind, is a 400 `validation_failed` naming the field. 404 when there is no such collection; 409 `record_exists` when the record key is taken.
          */
         post: {
             parameters: {
@@ -3612,7 +3608,6 @@ export interface paths {
                         data: {
                             [key: string]: unknown;
                         };
-                        expected_collection_version: number;
                     };
                 };
             };

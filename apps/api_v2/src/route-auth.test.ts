@@ -325,7 +325,6 @@ async function recordWrite(
         ? undefined
         : {
             data: { name: "Written" },
-            expected_collection_version: baseline.collection.version,
             ...(method === "PUT"
               ? { expected_version: baseline.record.version }
               : {}),

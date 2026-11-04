@@ -64,11 +64,7 @@ export const CollectionView = z.object({
 /** A collection's definition. */
 export type CollectionView = z.infer<typeof CollectionView>;
 
-/** Definition baseline for authenticated editors, never the public record list. */
-export const EditorCollection = CollectionView.extend({ version: EditVersion });
-export type EditorCollection = z.infer<typeof EditorCollection>;
-
-export const CollectionSummary = EditorCollection.extend({
+export const CollectionSummary = CollectionView.extend({
   record_count: z.int().nonnegative(),
 });
 /** A collection with how many records it holds, for the editor's list. */
@@ -90,9 +86,9 @@ export const EditorCollectionRecord = CollectionRecord.extend({
 });
 export type EditorCollectionRecord = z.infer<typeof EditorCollectionRecord>;
 
-/** Definition and record captured together for editing. */
+/** A record with the definition its form is rendered from. */
 export const RecordEnvelope = z.object({
-  collection: EditorCollection,
+  collection: CollectionView,
   record: EditorCollectionRecord,
 });
 export type RecordEnvelope = z.infer<typeof RecordEnvelope>;

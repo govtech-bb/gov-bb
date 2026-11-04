@@ -47,7 +47,6 @@ import { PublicPage } from "../modules/page-visibility";
 import { EstateVersion } from "../services/editor-index";
 import {
   expectedVersionFields,
-  expectedCollectionVersionFields,
   ExpectedVersionQuery,
   VersionCommandBody,
 } from "../modules/edit-concurrency";
@@ -644,12 +643,11 @@ export const SCHEMAS = {
       "collection's field list: a field it does not have, or a value of the " +
       "wrong kind, is a 400 `validation_failed` naming the field. 404 when " +
       "there is no such collection; 409 `record_exists` when the record key " +
-      "is taken. Send `expected_collection_version` from the displayed definition: " +
-      "stale is 409 `version_conflict`.",
+      "is taken.",
     tags: ["collections"],
     security: editorSecurity,
     params: recordParams,
-    body: RecordBody.extend(expectedCollectionVersionFields),
+    body: RecordBody,
     response: {
       201: EditorCollectionRecord,
       409: recordConflict,
@@ -662,16 +660,12 @@ export const SCHEMAS = {
     description:
       "Needs the editor role (403 otherwise). Send every field to keep: " +
       "the record becomes `data`. Checked as a create is. Send the " +
-      "record `expected_version` and definition `expected_collection_version`; " +
-      "stale is 409 `version_conflict`. 404 when " +
+      "record's `expected_version`; stale is 409 `version_conflict`. 404 when " +
       "there is no such collection or record.",
     tags: ["collections"],
     security: editorSecurity,
     params: recordParams,
-    body: RecordBody.extend({
-      ...expectedVersionFields,
-      ...expectedCollectionVersionFields,
-    }),
+    body: RecordBody.extend(expectedVersionFields),
     response: {
       200: RecordEnvelope,
       409: recordConflict,

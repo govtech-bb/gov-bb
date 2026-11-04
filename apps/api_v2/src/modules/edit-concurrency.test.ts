@@ -6,13 +6,9 @@ import {
   ExpectedVersionQuery,
   VersionCommandBody,
   expectedVersionFields,
-  expectedCollectionVersionFields,
 } from "./edit-concurrency";
 
-const versionBody = z.object({
-  ...expectedVersionFields,
-  ...expectedCollectionVersionFields,
-});
+const versionBody = z.object(expectedVersionFields);
 const A = "11111111-1111-4111-8111-111111111111";
 const B = "22222222-2222-4222-8222-222222222222";
 
@@ -60,9 +56,6 @@ describe("write preconditions", () => {
       expect(versionBody.safeParse({ expected_version: version }).success).toBe(
         false,
       );
-      expect(
-        versionBody.safeParse({ expected_collection_version: version }).success,
-      ).toBe(false);
     },
   );
 

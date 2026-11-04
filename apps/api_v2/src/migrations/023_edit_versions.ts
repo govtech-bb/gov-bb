@@ -6,7 +6,6 @@ create sequence if not exists content_edit_version_seq as bigint
 -- Volatile defaults backfill distinct identities without firing row triggers.
 alter table content_pages add column if not exists version bigint not null default nextval('content_edit_version_seq');
 alter table categories add column if not exists version bigint not null default nextval('content_edit_version_seq');
-alter table data_collections add column if not exists version bigint not null default nextval('content_edit_version_seq');
 alter table collection_records add column if not exists version bigint not null default nextval('content_edit_version_seq');
 
 create or replace function assign_edit_version() returns trigger as $$
@@ -28,9 +27,6 @@ create trigger zz_edit_version before insert or update on content_pages
   for each row execute function assign_edit_version();
 drop trigger if exists zz_edit_version on categories;
 create trigger zz_edit_version before insert or update on categories
-  for each row execute function assign_edit_version();
-drop trigger if exists zz_edit_version on data_collections;
-create trigger zz_edit_version before insert or update on data_collections
   for each row execute function assign_edit_version();
 drop trigger if exists zz_edit_version on collection_records;
 create trigger zz_edit_version before insert or update on collection_records

@@ -6002,12 +6002,6 @@
                             "format": "date-time",
                             "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d\\.\\d{3}(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
                           },
-                          "version": {
-                            "type": "integer",
-                            "minimum": 0,
-                            "exclusiveMinimum": true,
-                            "maximum": 9007199254740991
-                          },
                           "record_count": {
                             "type": "integer",
                             "minimum": 0,
@@ -6021,7 +6015,6 @@
                           "schema",
                           "schema_version",
                           "updated_at",
-                          "version",
                           "record_count"
                         ],
                         "additionalProperties": false
@@ -6232,12 +6225,6 @@
                           "type": "string",
                           "format": "date-time",
                           "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d\\.\\d{3}(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
-                        },
-                        "version": {
-                          "type": "integer",
-                          "minimum": 0,
-                          "exclusiveMinimum": true,
-                          "maximum": 9007199254740991
                         }
                       },
                       "required": [
@@ -6246,8 +6233,7 @@
                         "record_key",
                         "schema",
                         "schema_version",
-                        "updated_at",
-                        "version"
+                        "updated_at"
                       ],
                       "additionalProperties": false
                     },
@@ -6478,7 +6464,7 @@
         "tags": [
           "collections"
         ],
-        "description": "Needs the editor role (403 otherwise). `data` is checked against the collection's field list: a field it does not have, or a value of the wrong kind, is a 400 `validation_failed` naming the field. 404 when there is no such collection; 409 `record_exists` when the record key is taken. Send `expected_collection_version` from the displayed definition: stale is 409 `version_conflict`.",
+        "description": "Needs the editor role (403 otherwise). `data` is checked against the collection's field list: a field it does not have, or a value of the wrong kind, is a 400 `validation_failed` naming the field. 404 when there is no such collection; 409 `record_exists` when the record key is taken.",
         "requestBody": {
           "required": true,
           "content": {
@@ -6490,17 +6476,10 @@
                     "type": "object",
                     "additionalProperties": {},
                     "description": "A value for each field to set, by field key. The record key field is filled from the url when left out."
-                  },
-                  "expected_collection_version": {
-                    "type": "integer",
-                    "minimum": 0,
-                    "exclusiveMinimum": true,
-                    "maximum": 9007199254740991
                   }
                 },
                 "required": [
-                  "data",
-                  "expected_collection_version"
+                  "data"
                 ],
                 "additionalProperties": false
               }
@@ -6786,7 +6765,7 @@
         "tags": [
           "collections"
         ],
-        "description": "Needs the editor role (403 otherwise). Send every field to keep: the record becomes `data`. Checked as a create is. Send the record `expected_version` and definition `expected_collection_version`; stale is 409 `version_conflict`. 404 when there is no such collection or record.",
+        "description": "Needs the editor role (403 otherwise). Send every field to keep: the record becomes `data`. Checked as a create is. Send the record's `expected_version`; stale is 409 `version_conflict`. 404 when there is no such collection or record.",
         "requestBody": {
           "required": true,
           "content": {
@@ -6804,18 +6783,11 @@
                     "minimum": 0,
                     "exclusiveMinimum": true,
                     "maximum": 9007199254740991
-                  },
-                  "expected_collection_version": {
-                    "type": "integer",
-                    "minimum": 0,
-                    "exclusiveMinimum": true,
-                    "maximum": 9007199254740991
                   }
                 },
                 "required": [
                   "data",
-                  "expected_version",
-                  "expected_collection_version"
+                  "expected_version"
                 ],
                 "additionalProperties": false
               }
@@ -6921,12 +6893,6 @@
                           "type": "string",
                           "format": "date-time",
                           "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d\\.\\d{3}(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
-                        },
-                        "version": {
-                          "type": "integer",
-                          "minimum": 0,
-                          "exclusiveMinimum": true,
-                          "maximum": 9007199254740991
                         }
                       },
                       "required": [
@@ -6935,8 +6901,7 @@
                         "record_key",
                         "schema",
                         "schema_version",
-                        "updated_at",
-                        "version"
+                        "updated_at"
                       ],
                       "additionalProperties": false
                     },

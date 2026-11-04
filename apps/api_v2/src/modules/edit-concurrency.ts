@@ -11,9 +11,6 @@ export type EditVersion = z.infer<typeof EditVersion>;
 export const expectedVersionFields = {
   expected_version: EditVersion,
 };
-export const expectedCollectionVersionFields = {
-  expected_collection_version: EditVersion,
-};
 
 /** DELETE baselines use canonical decimal strings, without coercing malformed input. */
 export const ExpectedVersionQuery = z.object({

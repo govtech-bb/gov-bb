@@ -248,7 +248,6 @@ erDiagram
     int4 schema_version
     timestamptz(3) created_at
     timestamptz(3) updated_at
-    int8 version
   }
   page_revisions {
     uuid id PK
@@ -324,7 +323,7 @@ erDiagram
 | DELETE   | `/editor/categories/:id`               | Approver; delete an empty category with query `expected_version`                |
 | GET      | `/collections`                         | Employee; every data collection with its field list and record count   |
 | GET      | `/collections/:key/records/:recordKey` | Employee; coherent versioned `{ collection, record }` snapshot |
-| POST     | `/collections/:key/records/:recordKey` | Editor; add a record with `expected_collection_version`      |
+| POST     | `/collections/:key/records/:recordKey` | Editor; add a record                                         |
 | PUT      | `/collections/:key/records/:recordKey` | Editor; replace data with record and collection versions              |
 | DELETE   | `/collections/:key/records/:recordKey` | Editor; delete a record with query `expected_version`                      |
 | GET      | `/version`                             | Employee change token                                                  |
@@ -348,7 +347,7 @@ Review is recorded the same way (`record_review`, migration `013`): when a page'
 
 Public site reads (`/pages?url=`, `/categories…`, `/catalog`, `/search/documents`, `/collections/:key/records`) send `public, max-age=60, stale-while-revalidate=300, stale-if-error=86400`; unknown public URLs send `public, max-age=10`. `/site-version` sends `public, max-age=5`: landing checks it at most every 5 s and expires its cached pages when it moves, so a publish shows within seconds rather than after the pages' max-age. ETags and 304s remain available for public reads. These routes do not look up or refresh employee sessions.
 
-The editor loads record detail through authenticated `GET /collections/:key/records/:recordKey`, which returns `{ collection, record }` from one database snapshot with both versions. It never derives a write baseline from the public record list. PUT sends `{ data, expected_version, expected_collection_version }` and returns the same envelope, including for a no-op. POST sends `{ data, expected_collection_version }` from the displayed collection definition and returns the created versioned record. DELETE needs only the record's `expected_version` query parameter. The definition's edit `version` is separate from `schema_version`.
+The editor loads record detail through authenticated `GET /collections/:key/records/:recordKey`, which returns `{ collection, record }` from one database snapshot, with the record's version. It never derives a write baseline from the public record list. PUT sends `{ data, expected_version }` and returns the same envelope, including for a no-op. POST sends `{ data }` and returns the created versioned record. DELETE needs the record's `expected_version` query parameter. Collection definitions have no edit version: editors can't change them, so a record write is validated against the current definition.
 
 Preview: the site's server sends its `PREVIEW_SECRET` as `x-preview-token`, and the same reads then include `preview` content. Those responses are `no-store` with no ETag, so preview content never enters a shared cache. A wrong token, or any token when `PREVIEW_SECRET` is unset here, is a 401 rather than a quiet fall-back to the public view. `draft` content is only ever served to the editor.
 

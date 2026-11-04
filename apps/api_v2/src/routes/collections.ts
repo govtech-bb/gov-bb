@@ -83,12 +83,10 @@ export const editorCollectionRoutes: FastifyPluginAsyncZod<{
     config: { role: "editor" },
     handler: async (request, reply) => {
       const { key, recordKey } = request.params;
-      const expectedCollection = request.body.expected_collection_version;
       const created = await collections.create(
         key,
         recordKey,
         request.body.data,
-        expectedCollection,
         actor(request),
       );
       return created.ok
@@ -104,13 +102,11 @@ export const editorCollectionRoutes: FastifyPluginAsyncZod<{
     handler: async (request, reply) => {
       const { key, recordKey } = request.params;
       const expected = request.body.expected_version;
-      const expectedCollection = request.body.expected_collection_version;
       const saved = await collections.save(
         key,
         recordKey,
         request.body.data,
         expected,
-        expectedCollection,
         actor(request),
       );
       return saved.ok

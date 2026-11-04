@@ -405,9 +405,6 @@ export const dataCollections = pgTable("data_collections", {
   recordKey: varchar("record_key", { length: 100 }).notNull(),
   schema: jsonb("schema").$type<CollectionSchema>().notNull(),
   schemaVersion: integer("schema_version").notNull().default(1),
-  version: bigint("version", { mode: "number" })
-    .notNull()
-    .default(sql`nextval('content_edit_version_seq')`),
   ...timestamps,
 });
 

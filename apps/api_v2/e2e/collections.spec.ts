@@ -26,7 +26,6 @@ describe.skipIf(!HAS_DATABASE)("data collections over HTTP", () => {
   let database: string;
   let cookie: string;
   let userId: string;
-  let collectionVersion: number;
   beforeAll(async () => {
     database = await createScratchDatabase();
     server = await startServer({ DB_NAME: database, SEED: "false" });
@@ -45,11 +44,6 @@ describe.skipIf(!HAS_DATABASE)("data collections over HTTP", () => {
         }),
       ],
     );
-    collectionVersion = (
-      await (
-        await fetch(`${server.url}/collections`, { headers: { cookie } })
-      ).json()
-    ).collections[0].version;
   });
   afterAll(async () => {
     await server?.stop();
@@ -93,7 +87,6 @@ describe.skipIf(!HAS_DATABASE)("data collections over HTTP", () => {
 
   it("creates, reads, updates and deletes a record, each recorded against the employee", async () => {
     const created = await send("POST", "/collections/offices/records/north", {
-      expected_collection_version: collectionVersion,
       data: { name: "North office", email: "north@example.gov.bb" },
     });
     expect(created.status).toBe(201);
@@ -113,7 +106,6 @@ describe.skipIf(!HAS_DATABASE)("data collections over HTTP", () => {
       "/collections/offices/records/north",
       {
         data: { name: "Northern office" },
-        expected_collection_version: collectionVersion,
       },
       record.version,
     );
@@ -129,7 +121,6 @@ describe.skipIf(!HAS_DATABASE)("data collections over HTTP", () => {
       "/collections/offices/records/north",
       {
         data: { name: "Lost" },
-        expected_collection_version: collectionVersion,
       },
       record.version,
     );
@@ -160,7 +151,6 @@ describe.skipIf(!HAS_DATABASE)("data collections over HTTP", () => {
 
   it("refuses a field the collection does not have, naming it", async () => {
     const response = await send("POST", "/collections/offices/records/south", {
-      expected_collection_version: collectionVersion,
       data: { name: "South office", fax: "123" },
     });
     expect(response.status).toBe(400);
@@ -173,7 +163,6 @@ describe.skipIf(!HAS_DATABASE)("data collections over HTTP", () => {
 
   it("refuses a record for a collection that does not exist", async () => {
     const response = await send("POST", "/collections/nowhere/records/x", {
-      expected_collection_version: collectionVersion,
       data: { name: "X" },
     });
     expect(response.status).toBe(404);
@@ -201,7 +190,6 @@ describe.skipIf(!HAS_DATABASE)("data collections over HTTP", () => {
     expect(
       (
         await send("POST", "/collections/offices/records/west", {
-          expected_collection_version: collectionVersion,
           data: { name: "West office" },
         })
       ).status,

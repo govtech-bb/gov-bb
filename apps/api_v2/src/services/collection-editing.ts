@@ -8,7 +8,6 @@ import {
   RecordExists,
   RecordNotFound,
   type CollectionRecord,
-  type EditorCollection,
   type EditorCollectionRecord,
   type RecordEnvelope,
   type CollectionSummary,
@@ -35,10 +34,6 @@ export interface CollectionStore {
   collection(
     key: string,
   ): Promise<Result<CollectionView | null, ContentStoreUnavailable>>;
-  /** Definition-first lock for writes that interpret record data. */
-  lockCollection(
-    key: string,
-  ): Promise<Result<EditorCollection | null, ContentStoreUnavailable>>;
   /** One coherent private edit snapshot. */
   recordEnvelope(
     key: string,
@@ -84,8 +79,8 @@ export type RecordWriteFailure =
 /**
  * Reading collections, and editors' changes to their records. Each write is
  * checked against the collection's field list and recorded against the
- * employee. Required record and definition versions refuse writes based on
- * content or a schema the editor has not read.
+ * employee. A required record version refuses writes based on content the
+ * editor has not read.
  */
 export class CollectionEditing {
   constructor(private readonly store: CollectionStore) {}
@@ -126,15 +121,12 @@ export class CollectionEditing {
     key: string,
     recordKey: string,
     data: Readonly<Record<string, unknown>>,
-    expectedCollectionVersion: EditVersion,
     actor: Employee,
   ): Promise<Result<EditorCollectionRecord, RecordWriteFailure>> {
     return this.store.atomically(actor.id, async (store) => {
-      const collection = await store.lockCollection(key);
+      const collection = await store.collection(key);
       if (!collection.ok) return collection;
       if (!collection.value) return err(new CollectionNotFound(key));
-      if (collection.value.version !== expectedCollectionVersion)
-        return err(new RecordConflict());
       const parsed = parseRecord(collection.value, recordKey, data);
       if (!parsed.ok) return parsed;
       const inserted = await store.insertRecord(key, recordKey, parsed.value);
@@ -151,18 +143,15 @@ export class CollectionEditing {
     recordKey: string,
     data: Readonly<Record<string, unknown>>,
     expectedVersion: EditVersion,
-    expectedCollectionVersion: EditVersion,
     actor: Employee,
   ): Promise<Result<RecordEnvelope, RecordWriteFailure>> {
     return this.store.atomically(actor.id, async (store) => {
-      const collection = await store.lockCollection(key);
+      const collection = await store.collection(key);
       if (!collection.ok) return collection;
       if (!collection.value) return err(new CollectionNotFound(key));
       // Check existence and the original version before field validation.
       const current = await unchanged(store, key, recordKey, expectedVersion);
       if (!current.ok) return current;
-      if (collection.value.version !== expectedCollectionVersion)
-        return err(new RecordConflict());
       const parsed = parseRecord(collection.value, recordKey, data);
       if (!parsed.ok) return parsed;
       if (!isDeepStrictEqual(current.value.data, parsed.value)) {

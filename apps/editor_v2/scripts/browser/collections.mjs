@@ -75,7 +75,7 @@ const serveCollections = async (route) => {
   if (request.method() === "OPTIONS") return route.fulfill({ status: 204, headers });
 
   if (path === "/collections")
-    return reply({ collections: [{ ...collection, version: 100, record_count: records.length }] });
+    return reply({ collections: [{ ...collection, record_count: records.length }] });
 
   if (path === "/collections/contacts/records")
     return reply({
@@ -94,9 +94,7 @@ const serveCollections = async (route) => {
   const target = records.find((record) => record.record_key === recordKey);
 
   if (request.method() === "GET")
-    return target
-      ? reply({ collection: { ...collection, version: 100 }, record: target })
-      : reply({ error: "not_found" }, 404);
+    return target ? reply({ collection, record: target }) : reply({ error: "not_found" }, 404);
   writes.push({ method: request.method(), recordKey, body, expectedVersion });
 
   if (request.method() === "POST" && target)
@@ -104,10 +102,7 @@ const serveCollections = async (route) => {
 
   if (request.method() !== "POST" && !target) return reply({ error: "not_found" }, 404);
 
-  if (
-    (request.method() !== "POST" && expectedVersion !== target?.version) ||
-    (request.method() !== "DELETE" && body.expected_collection_version !== 100)
-  )
+  if (request.method() !== "POST" && expectedVersion !== target?.version)
     return reply({ error: "version_conflict", message: "Changed." }, 409);
 
   if (request.method() === "DELETE") {
@@ -138,9 +133,7 @@ const serveCollections = async (route) => {
   records = [...records.filter((record) => record !== target), saved];
 
   return reply(
-    request.method() === "POST"
-      ? saved
-      : { collection: { ...collection, version: 100 }, record: saved },
+    request.method() === "POST" ? saved : { collection, record: saved },
     request.method() === "POST" ? 201 : 200,
   );
 };
@@ -269,7 +262,7 @@ try {
       : record,
   );
   await dialog.getByRole("button", { name: "Save changes" }).click();
-  await dialog.getByText("The record or its definition changed since you opened it.").waitFor();
+  await dialog.getByText("The record changed since you opened it.").waitFor();
 
   for (const name of ["Copy my version", "Discard my changes and reload", "Download my version"])
     await dialog.getByRole("button", { name }).waitFor();
