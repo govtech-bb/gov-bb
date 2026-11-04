@@ -72,9 +72,9 @@ interface UmamiEvent {
 
 /**
  * Record every custom event the page sends to Umami's `/api/send`, and the URL
- * and referrer of every request, page views included.
+ * of every request, page views included.
  */
-function captureUmamiEvents(page: Page): {
+function captureUmamiRequests(page: Page): {
   events: UmamiEvent[];
   urls: string[];
 } {
@@ -89,7 +89,6 @@ function captureUmamiEvents(page: Page): {
         name?: string;
         data?: Record<string, unknown>;
         url?: string;
-        referrer?: string;
       };
     } | null;
     try {
@@ -98,7 +97,6 @@ function captureUmamiEvents(page: Page): {
       return;
     }
     if (body?.payload?.url) urls.push(body.payload.url);
-    if (body?.payload?.referrer) urls.push(body.payload.referrer);
     // Pageviews are `type: "event"` too, but carry no name.
     if (body?.type === "event" && body.payload?.name) {
       events.push({ name: body.payload.name, data: body.payload.data ?? {} });
@@ -146,7 +144,7 @@ test.describe("Journey 7 — forms analytics reach Umami and the dashboard", () 
     const before = await test.step("read the dashboard baseline", () =>
       readFunnel(dashboard, dashboardUrl));
 
-    const { events, urls } = captureUmamiEvents(page);
+    const { events, urls } = captureUmamiRequests(page);
 
     await test.step("walk and submit the test form", async () => {
       await openSmokeForm(page, FORM_ID);
@@ -200,12 +198,15 @@ test.describe("Journey 7 — forms analytics reach Umami and the dashboard", () 
     });
 
     await test.step("Umami requests carry no query string", async () => {
-      // #3503: this walk's URLs hold ?step= and the preview token. The Umami
-      // script's data-exclude-search must strip them before they leave.
+      // #3503: the walk opens the form with ?preview=<token>, and Umami's
+      // tracker reports that first URL on every request (auto-track is off,
+      // so it never follows the ?step= changes). data-exclude-search must
+      // strip the query before it leaves. The message shows paths only, so a
+      // failure doesn't print the token.
       expect(urls.length, "Umami requests captured").toBeGreaterThan(0);
       expect(
-        urls.filter((u) => u.includes("?")),
-        "Umami URLs with a query string",
+        urls.filter((u) => u.includes("?")).map((u) => u.split("?")[0]),
+        "Umami URLs that kept their query string",
       ).toEqual([]);
     });
 

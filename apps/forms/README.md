@@ -58,7 +58,7 @@ Set `VITE_UMAMI_WEBSITE_ID` (and optionally `VITE_UMAMI_SRC`) in the deploy envi
 ### How it works
 
 - **Script injection** happens in `src/main.tsx`, gated on `VITE_UMAMI_WEBSITE_ID`. `loadUmamiScript` (`src/lib/umami-script.ts`) adds it with `UMAMI_SCRIPT_ATTRIBUTES` from `@govtech-bb/analytics`: `data-auto-track="false"` so pageviews come from a single deterministic source — the TanStack Router subscriber — and `data-exclude-search="true"` so Umami records URLs without the query string, which carries `?draft=` and `?preview=` tokens.
-- **Pageviews** fire from `router.subscribe('onResolved', trackPageview)` in `src/main.tsx` — one event per resolved route, including step changes via the `?step=` search param.
+- **Pageviews** fire from `router.subscribe('onResolved', trackPageview)` in `src/main.tsx` — one event per resolved route, including step changes via the `?step=` search param. Umami records each with the URL the page first loaded on, not the current one: its tracker only follows `pushState` when auto-track is on. Step progress reaches Umami through the `form-step-*` events.
 - **Form-funnel events** are fired from React effects and event handlers, never from `data-umami-event` attributes. See the helper at [`src/lib/analytics.ts`](./src/lib/analytics.ts) (`trackEvent`, `trackPageview`) — both no-op when `window.umami` is absent.
 
 ### Event taxonomy
