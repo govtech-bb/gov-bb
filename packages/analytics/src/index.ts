@@ -259,6 +259,39 @@ export function trackPageview(): void {
 }
 
 /**
+ * Landing tags clicks with data-umami-event="<name>" plus
+ * data-umami-event-<key>="<value>". This sends each one through trackEvent,
+ * so it reaches Umami and /journey alike. Umami's own handler for these
+ * attributes stays off (data-auto-track="false"): it cancels the click and
+ * reloads the page, which breaks TanStack <Link> navigation (#3502). So this
+ * listener must never call preventDefault. Returns a function that removes it.
+ */
+export function installClickListener(): () => void {
+  if (typeof document === "undefined") return () => undefined;
+  const onClick = (e: MouseEvent) => {
+    const target = e.target instanceof Element ? e.target : null;
+    const el = target?.closest<HTMLElement>("[data-umami-event]");
+    const name = el?.dataset.umamiEvent;
+    if (!el || !name) return;
+    const props: Record<string, string> = {};
+    for (const [key, value] of Object.entries(el.dataset)) {
+      if (
+        key.startsWith("umamiEvent") &&
+        key !== "umamiEvent" &&
+        value !== undefined
+      ) {
+        const prop = key.slice("umamiEvent".length);
+        props[prop.charAt(0).toLowerCase() + prop.slice(1)] = value;
+      }
+    }
+    trackEvent(name, props);
+  };
+  document.addEventListener("click", onClick, { capture: true });
+  return () =>
+    document.removeEventListener("click", onClick, { capture: true });
+}
+
+/**
  * Journey events carry the plain event name with the form as a prop, not
  * Umami's packed `<formId>:<event>` (which exists only for Umami's 50-character
  * name limit). A packed name from a call site such as stepCompleteEventName is
