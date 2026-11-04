@@ -21,6 +21,8 @@ const statusMocks = vi.hoisted(() => ({
 }))
 vi.mock('../lib/service-status', () => statusMocks)
 
+type Head = () => { scripts?: Record<string, unknown>[] }
+
 type BeforeLoad = (arg: {
   context: { queryClient: QueryClient }
   location: { search: Record<string, unknown> }
@@ -34,9 +36,15 @@ type BeforeLoad = (arg: {
 // together. The hook gets its own generous timeout and every test then sees a
 // warm module.
 let beforeLoad: BeforeLoad
+let head: Head
 beforeAll(async () => {
+  // __root reads the Umami website id when it loads; set one so its head
+  // includes the Umami script tag.
+  vi.stubEnv('VITE_UMAMI_WEBSITE_ID', 'test-website-id')
   const { Route } = await import('./__root')
   beforeLoad = Route.options.beforeLoad as unknown as BeforeLoad
+  head = Route.options.head as unknown as Head
+  vi.unstubAllEnvs()
 }, 60_000)
 
 const freshClient = () =>
@@ -147,5 +155,20 @@ describe('root beforeLoad context resolution', () => {
     expect(statusMocks.getServiceStatuses).toHaveBeenCalledTimes(1)
     serverClient.clear()
     queryClient.clear()
+  })
+})
+
+describe('root head Umami script', () => {
+  // #3502: with auto-track on (or auto-pageview off instead), Umami's own click
+  // handler cancels each data-umami-event link click and reloads the page, so
+  // TanStack <Link> stops navigating in place. Clicks go through
+  // installClickListener instead.
+  it('keeps Umami auto-track off', () => {
+    const umami = head().scripts?.find((s) => 'data-website-id' in s)
+    expect(umami).toMatchObject({
+      'data-website-id': 'test-website-id',
+      'data-auto-track': 'false',
+    })
+    expect(umami).not.toHaveProperty('data-auto-pageview')
   })
 })

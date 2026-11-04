@@ -5,6 +5,7 @@ import {
   eventFormKey,
   eventName,
   flushJourney,
+  installClickListener,
   journeyEvent,
   stepFromEvent,
   stepNumberToWord,
@@ -384,5 +385,98 @@ describe("journeyEvent", () => {
       "form-confirmation-view",
       { form: "abc~123456" },
     ]);
+  });
+});
+
+describe("installClickListener", () => {
+  const track = vi.fn();
+  let remove: () => void = () => undefined;
+
+  beforeEach(() => {
+    track.mockReset();
+    window.umami = { track };
+  });
+
+  afterEach(() => {
+    remove();
+    resetJourneyForTests();
+    document.body.innerHTML = "";
+    delete (window as { umami?: unknown }).umami;
+    vi.unstubAllGlobals();
+  });
+
+  // #3502: Umami's script loads with data-auto-track="false", so it never reads
+  // data-umami-event itself, and in production /journey is off too.
+  it("sends a tagged click to Umami when /journey is not configured", () => {
+    remove = installClickListener();
+    document.body.innerHTML = `<a data-umami-event="breadcrumb" data-umami-event-to="/money" data-umami-event-depth="2">Money</a>`;
+    document.querySelector("a")!.click();
+    expect(track).toHaveBeenCalledWith("breadcrumb", {
+      to: "/money",
+      depth: "2",
+    });
+  });
+
+  it("also queues the click for /journey when it is configured", () => {
+    const beacon = vi.fn().mockReturnValue(true);
+    Object.defineProperty(navigator, "sendBeacon", {
+      value: beacon,
+      configurable: true,
+      writable: true,
+    });
+    configureJourney({ url: "https://api.example/journey", app: "landing" });
+    remove = installClickListener();
+    document.body.innerHTML = `<a data-umami-event="helpful-feedback" data-umami-event-path="/money">x</a>`;
+    document.querySelector("a")!.click();
+    flushJourney();
+    const events = JSON.parse(beacon.mock.calls[0][1] as string);
+    expect(events).toHaveLength(1);
+    expect(events[0]).toMatchObject({
+      event: "helpful-feedback",
+      props: { path: "/money" },
+    });
+    expect(track).toHaveBeenCalledTimes(1);
+  });
+
+  it("resolves a click on a child to the tagged ancestor", () => {
+    remove = installClickListener();
+    document.body.innerHTML = `<a data-umami-event="breadcrumb"><span id="inner">Money</span></a>`;
+    document.getElementById("inner")!.click();
+    expect(track).toHaveBeenCalledWith("breadcrumb", {});
+  });
+
+  it("ignores untagged elements and an empty event name", () => {
+    remove = installClickListener();
+    document.body.innerHTML = `<a data-umami-event="" id="empty">x</a><p id="plain">y</p>`;
+    document.getElementById("empty")!.click();
+    document.getElementById("plain")!.click();
+    document.dispatchEvent(new MouseEvent("click"));
+    expect(track).not.toHaveBeenCalled();
+  });
+
+  // TanStack <Link> skips client-side navigation once defaultPrevented is set,
+  // so cancelling the click here would turn every tagged link into a reload.
+  it("never cancels the click", () => {
+    remove = installClickListener();
+    document.body.innerHTML = `<a href="/money" data-umami-event="breadcrumb">x</a>`;
+    const click = new MouseEvent("click", { bubbles: true, cancelable: true });
+    document.querySelector("a")!.dispatchEvent(click);
+    expect(track).toHaveBeenCalledTimes(1);
+    expect(click.defaultPrevented).toBe(false);
+  });
+
+  it("stops sending once removed", () => {
+    remove = installClickListener();
+    document.body.innerHTML = `<a data-umami-event="breadcrumb">x</a>`;
+    remove();
+    document.querySelector("a")!.click();
+    expect(track).not.toHaveBeenCalled();
+  });
+
+  it("does nothing during SSR", () => {
+    vi.stubGlobal("document", undefined);
+    remove = installClickListener();
+    vi.unstubAllGlobals();
+    expect(remove).toBeTypeOf("function");
   });
 });

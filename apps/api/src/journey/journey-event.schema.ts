@@ -4,7 +4,7 @@ import { z } from "zod";
 // (replacing Umami, see journey.controller.ts).
 //
 // Event names are built at runtime (`<formId>:form-step-three`,
-// `service-<slug>`, `data-umami-event` values), so they are checked by SHAPE,
+// `data-umami-event` values), so they are checked by SHAPE,
 // not against a fixed list: a fixed list would silently drop real events.
 
 // Lower-case slug characters plus `:` (form-scoped names) and `~` (hashed long
