@@ -51,13 +51,20 @@ export const updateAttributes = (
   patch: PageComponentAttributes,
 ) => change((node) => node.setAttributes({ ...node.getAttributes(), ...patch }), false);
 
+/** The attributes that hold any text, whichever blocks declare them. */
+type TextAttribute = {
+  [Key in keyof PageComponentAttributes]-?: string extends PageComponentAttributes[Key]
+    ? Key
+    : never;
+}[keyof PageComponentAttributes];
+
 /** A component's plain-text label, such as a Details summary, kept as its field loses the focus. */
 export function LabelSettings({
   component,
   change,
   name,
   attribute,
-}: BlockOptionsProps & { name: string; attribute: "summary" | "caption" | "summaryKey" }) {
+}: BlockOptionsProps & { name: string; attribute: TextAttribute }) {
   const current = component.attributes[attribute] ?? "";
   const [label, setLabel] = useState(current);
   const [error, setError] = useState<string>();
