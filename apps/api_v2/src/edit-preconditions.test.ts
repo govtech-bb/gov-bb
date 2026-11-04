@@ -1,4 +1,3 @@
-import { randomUUID } from "node:crypto";
 import type { FastifyInstance, InjectOptions } from "fastify";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { EditorPage, fieldsOf } from "./modules/page";
@@ -361,10 +360,8 @@ describe("HTTP edit preconditions", () => {
       for (const options of bodies) {
         const response = await request(options);
         expect(response.statusCode, `${options.url}: ${response.body}`).toBe(
-          version === undefined ? 428 : 400,
+          400,
         );
-        if (version === undefined)
-          expect(response.json().error).toBe("precondition_required");
       }
     }
     for (const suffix of [
@@ -385,29 +382,9 @@ describe("HTTP edit preconditions", () => {
           method: "DELETE",
           url: path + suffix,
         });
-        expect(response.statusCode, response.body).toBe(suffix ? 400 : 428);
+        expect(response.statusCode, response.body).toBe(400);
       }
     }
-    for (const step of ["submit", "publish"]) {
-      const old = await request({
-        method: "POST",
-        url: `/pages/${page.id}/revision/${step}`,
-        headers: { "if-updated-at": page.updated_at },
-      });
-      expect(old.statusCode, old.body).toBe(428);
-    }
-    const oldSave = await request({
-      method: "PUT",
-      url: `/pages/${page.id}`,
-      payload: fieldsOf(page),
-      headers: { "if-updated-at": page.updated_at },
-    });
-    expect(oldSave.statusCode).toBe(428);
-    const absent = await request({
-      method: "DELETE",
-      url: `/pages/${randomUUID()}`,
-    });
-    expect(absent.statusCode).toBe(428);
     const malformed = await request({
       method: "POST",
       url: `/pages/${page.id}/revision/submit`,

@@ -291,7 +291,7 @@ describe.skipIf(!HAS_DATABASE)("category management over HTTP", () => {
     const anchor = await create("health-and-emergency-services");
     expect(anchor.reserved_route).toBe(true);
     const missing = await send("DELETE", `/editor/categories/${anchor.id}`);
-    expect(missing.status).toBe(428);
+    expect(missing.status).toBe(400);
     const blocked = await send(
       "DELETE",
       `/editor/categories/${anchor.id}`,

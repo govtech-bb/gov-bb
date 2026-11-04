@@ -967,7 +967,7 @@ describe("a rejected revision submitted again", () => {
 
 describe("a decision without the version reviewed", () => {
   it.each(["publish", "reject"] as const)(
-    "is refused to %s with a 428, and nothing changes",
+    "is refused to %s with a 400, and nothing changes",
     async (step) => {
       const { page } = await submitted();
       const before = await revisions();
@@ -976,10 +976,7 @@ describe("a decision without the version reviewed", () => {
         version: null,
       });
 
-      expect(response.statusCode).toBe(428);
-      expect(response.json()).toMatchObject({
-        error: "precondition_required",
-      });
+      expect(response.statusCode).toBe(400);
       expect(await revisions()).toEqual(before);
       expect(await stored(page.id)).toEqual(PageDocument.parse(page));
     },
@@ -1092,7 +1089,7 @@ describe("saving a page whose revision is waiting for review (#3203)", () => {
     expect(await revisions()).toEqual(before);
   });
 
-  it("is refused with a 428 without the version the editor read, and nothing changes", async () => {
+  it("is refused with a 400 without the version the editor read, and nothing changes", async () => {
     const { page } = await submitted();
     const before = await revisions();
 
@@ -1104,11 +1101,7 @@ describe("saving a page whose revision is waiting for review (#3203)", () => {
       ),
     });
 
-    expect(response.statusCode).toBe(428);
-    expect(response.json()).toEqual({
-      error: "precondition_required",
-      message: "Send the required version fields from the item you loaded.",
-    });
+    expect(response.statusCode).toBe(400);
     expect(await revisions()).toEqual(before);
   });
 

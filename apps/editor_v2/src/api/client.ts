@@ -75,6 +75,11 @@ export type RecordInput = Json<
   paths["/collections/{key}/records/{recordKey}"]["put"]["requestBody"]
 >;
 
+/** What creating a record sends: its values, against the displayed definition version. */
+type CreateRecordInput = Json<
+  paths["/collections/{key}/records/{recordKey}"]["post"]["requestBody"]
+>;
+
 /** The estate's change token. */
 export type EstateVersion = Json<paths["/version"]["get"]["responses"][200]>;
 
@@ -439,6 +444,7 @@ export function createEditorApi(apiOrigin: string, landingOrigin?: string) {
       | CategoryFields
       | CategoryOrder
       | RecordInput
+      | CreateRecordInput
       | { expected_version: number; comment?: string },
   ) {
     const headers = new Headers();

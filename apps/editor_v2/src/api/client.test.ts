@@ -133,7 +133,6 @@ describe("editor API client", () => {
       },
     });
     expect(JSON.parse(requests.at(-1)?.body ?? "null")).toEqual({ ...fields, expected_version: 1 });
-    expect(requests.at(-1)?.headers["if-updated-at"]).toBeUndefined();
   });
 
   it("reads the review queue, and decides on a change at the version the approver reviewed", async () => {
@@ -284,7 +283,6 @@ describe("editor API client", () => {
       method: "POST",
       headers: { "content-type": "application/json" },
     });
-    expect(requests.at(-1)?.headers["if-updated-at"]).toBeUndefined();
     expect(JSON.parse(requests.at(-1)?.body ?? "null")).toEqual(categoryFields);
 
     status = 200;

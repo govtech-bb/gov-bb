@@ -232,14 +232,6 @@ function refusal(error: Error, decision: Decision, afterUnknown = false): Refusa
         message: message ?? `You can't ${decision} this change.`,
         reload: true,
       };
-    case 428:
-      return {
-        message:
-          decision === "reject"
-            ? "This editor is out of date, so nothing was rejected. Copy your comment, then reload the page."
-            : "This editor is out of date, so nothing was published. Reload the page, then try again.",
-        reload: false,
-      };
     case 409:
       if (error instanceof ApiFailure && error.code !== "version_conflict")
         return {

@@ -106,11 +106,6 @@ export async function sendPageSave(
           kind: "forbidden",
           message: apiMessage(error) ?? "You don’t have permission to save this change.",
         };
-      case 428:
-        return {
-          kind: "refused",
-          message: "Copy your changes, then reload this editor before saving.",
-        };
       default:
         return {
           kind: "refused",

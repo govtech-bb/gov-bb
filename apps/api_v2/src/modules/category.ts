@@ -63,21 +63,11 @@ export const CategoryOrder = z.strictObject({
 /** The sibling snapshot and permutation originally read by the editor. */
 export type CategoryOrder = z.infer<typeof CategoryOrder>;
 
-/** Missing versions reach 428; malformed permutations are rejected at the schema boundary. */
-export const CategoryOrderBody = CategoryOrder.extend({
-  expected: z
-    .array(
-      z.strictObject({
-        id: CategoryId,
-        version: EditVersion.optional(),
-      }),
-    )
-    .optional(),
-}).superRefine((order, ctx) => {
+/** Malformed permutations are rejected at the schema boundary. */
+export const CategoryOrderBody = CategoryOrder.superRefine((order, ctx) => {
   if (
     new Set(order.ordered_ids).size !== order.ordered_ids.length ||
-    (order.expected &&
-      !sameCategoryOrderIds({ ...order, expected: order.expected }))
+    !sameCategoryOrderIds(order)
   ) {
     ctx.addIssue({
       code: "custom",

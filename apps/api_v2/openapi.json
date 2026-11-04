@@ -2185,7 +2185,7 @@
         "tags": [
           "pages"
         ],
-        "description": "Requires an employee session, the editor's Origin header and the editor role (403 otherwise). Send every field: a save replaces the page and defaults none, except that leaving `parent_id` out keeps the page's parent. Send the page version you last read as `expected_version` (428 if missing). If the stored row, or the page's pending revision, has moved on since, the save is refused with a 409 rather than silently discarding whoever wrote first. Changing `url` moves this page alone: its sub-pages keep their urls and stay beneath it by `parent_id`, and nothing redirects from the old url. Changing `visibility` needs the approver role (403 otherwise). Making a page public is refused (403) to an approver who changed its content since it was last public, in this save or before: another approver makes it public. A save that keeps a `public` page public, whoever sends it, goes into the page's pending revision: citizens keep seeing the live page until an approver publishes it. An approver's save that takes a `public` page out of public view changes only its `visibility`: the other fields sent are ignored, the live content stays, and the page's open revision is discarded: a draft is dropped, and one waiting for review is closed as `discarded`, which the page's history records. A save to a page whose revision is waiting for review updates that revision, which stays waiting; the saver joins its `contributors`, so may not approve it. A stale version receives 409 `version_conflict`. Returns the page as the editor now works on it.",
+        "description": "Requires an employee session, the editor's Origin header and the editor role (403 otherwise). Send every field: a save replaces the page and defaults none, except that leaving `parent_id` out keeps the page's parent. Send the page version you last read as `expected_version`. If the stored row, or the page's pending revision, has moved on since, the save is refused with a 409 rather than silently discarding whoever wrote first. Changing `url` moves this page alone: its sub-pages keep their urls and stay beneath it by `parent_id`, and nothing redirects from the old url. Changing `visibility` needs the approver role (403 otherwise). Making a page public is refused (403) to an approver who changed its content since it was last public, in this save or before: another approver makes it public. A save that keeps a `public` page public, whoever sends it, goes into the page's pending revision: citizens keep seeing the live page until an approver publishes it. An approver's save that takes a `public` page out of public view changes only its `visibility`: the other fields sent are ignored, the live content stays, and the page's open revision is discarded: a draft is dropped, and one waiting for review is closed as `discarded`, which the page's history records. A save to a page whose revision is waiting for review updates that revision, which stays waiting; the saver joins its `contributors`, so may not approve it. A stale version receives 409 `version_conflict`. Returns the page as the editor now works on it.",
         "requestBody": {
           "required": true,
           "content": {
@@ -2275,7 +2275,8 @@
                   "visibility",
                   "form_id",
                   "body_markdown",
-                  "frontmatter"
+                  "frontmatter",
+                  "expected_version"
                 ]
               }
             }
@@ -2643,28 +2644,6 @@
               }
             }
           },
-          "428": {
-            "description": "Default Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "type": "string"
-                    },
-                    "message": {
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "error"
-                  ],
-                  "additionalProperties": {}
-                }
-              }
-            }
-          },
           "500": {
             "description": "Default Response",
             "content": {
@@ -2716,7 +2695,7 @@
         "tags": [
           "pages"
         ],
-        "description": "Requires an employee session, the editor's Origin header and the editor role (403 otherwise). A page with sub-pages is refused (422) until they are moved or deleted. Deleting a `public` page needs the approver role (403 otherwise). Its pending revision goes with it. Send `expected_version` in the query string: missing is 428, stale is 409 `version_conflict`, and absent is 404.",
+        "description": "Requires an employee session, the editor's Origin header and the editor role (403 otherwise). A page with sub-pages is refused (422) until they are moved or deleted. Deleting a `public` page needs the approver role (403 otherwise). Its pending revision goes with it. Send `expected_version` in the query string: stale is 409 `version_conflict`, and absent is 404.",
         "parameters": [
           {
             "schema": {
@@ -2725,7 +2704,7 @@
             },
             "in": "query",
             "name": "expected_version",
-            "required": false
+            "required": true
           },
           {
             "schema": {
@@ -2906,28 +2885,6 @@
                   "required": [
                     "error",
                     "errors"
-                  ],
-                  "additionalProperties": {}
-                }
-              }
-            }
-          },
-          "428": {
-            "description": "Default Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "type": "string"
-                    },
-                    "message": {
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "error"
                   ],
                   "additionalProperties": {}
                 }
@@ -5015,7 +4972,8 @@
                   "title",
                   "slug",
                   "parent_id",
-                  "description"
+                  "description",
+                  "expected_version"
                 ],
                 "additionalProperties": false
               }
@@ -5300,28 +5258,6 @@
               }
             }
           },
-          "428": {
-            "description": "Default Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "type": "string"
-                    },
-                    "message": {
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "error"
-                  ],
-                  "additionalProperties": {}
-                }
-              }
-            }
-          },
           "500": {
             "description": "Default Response",
             "content": {
@@ -5382,7 +5318,7 @@
             },
             "in": "query",
             "name": "expected_version",
-            "required": false
+            "required": true
           },
           {
             "schema": {
@@ -5566,28 +5502,6 @@
               }
             }
           },
-          "428": {
-            "description": "Default Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "type": "string"
-                    },
-                    "message": {
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "error"
-                  ],
-                  "additionalProperties": {}
-                }
-              }
-            }
-          },
           "500": {
             "description": "Default Response",
             "content": {
@@ -5673,7 +5587,8 @@
                         }
                       },
                       "required": [
-                        "id"
+                        "id",
+                        "version"
                       ],
                       "additionalProperties": false
                     }
@@ -5689,6 +5604,7 @@
                 },
                 "required": [
                   "parent_id",
+                  "expected",
                   "ordered_ids"
                 ],
                 "additionalProperties": false
@@ -5946,28 +5862,6 @@
                     "error",
                     "message",
                     "errors"
-                  ],
-                  "additionalProperties": {}
-                }
-              }
-            }
-          },
-          "428": {
-            "description": "Default Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "type": "string"
-                    },
-                    "message": {
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "error"
                   ],
                   "additionalProperties": {}
                 }
@@ -6584,7 +6478,7 @@
         "tags": [
           "collections"
         ],
-        "description": "Needs the editor role (403 otherwise). `data` is checked against the collection's field list: a field it does not have, or a value of the wrong kind, is a 400 `validation_failed` naming the field. 404 when there is no such collection; 409 `record_exists` when the record key is taken. Send `expected_collection_version` from the displayed definition: missing is 428, stale is 409 `version_conflict`.",
+        "description": "Needs the editor role (403 otherwise). `data` is checked against the collection's field list: a field it does not have, or a value of the wrong kind, is a 400 `validation_failed` naming the field. 404 when there is no such collection; 409 `record_exists` when the record key is taken. Send `expected_collection_version` from the displayed definition: stale is 409 `version_conflict`.",
         "requestBody": {
           "required": true,
           "content": {
@@ -6605,7 +6499,8 @@
                   }
                 },
                 "required": [
-                  "data"
+                  "data",
+                  "expected_collection_version"
                 ],
                 "additionalProperties": false
               }
@@ -6840,28 +6735,6 @@
               }
             }
           },
-          "428": {
-            "description": "Default Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "type": "string"
-                    },
-                    "message": {
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "error"
-                  ],
-                  "additionalProperties": {}
-                }
-              }
-            }
-          },
           "500": {
             "description": "Default Response",
             "content": {
@@ -6913,7 +6786,7 @@
         "tags": [
           "collections"
         ],
-        "description": "Needs the editor role (403 otherwise). Send every field to keep: the record becomes `data`. Checked as a create is. Send the record `expected_version` and definition `expected_collection_version`; missing is 428, stale is 409 `version_conflict`. 404 when there is no such collection or record.",
+        "description": "Needs the editor role (403 otherwise). Send every field to keep: the record becomes `data`. Checked as a create is. Send the record `expected_version` and definition `expected_collection_version`; stale is 409 `version_conflict`. 404 when there is no such collection or record.",
         "requestBody": {
           "required": true,
           "content": {
@@ -6940,7 +6813,9 @@
                   }
                 },
                 "required": [
-                  "data"
+                  "data",
+                  "expected_version",
+                  "expected_collection_version"
                 ],
                 "additionalProperties": false
               }
@@ -7268,28 +7143,6 @@
               }
             }
           },
-          "428": {
-            "description": "Default Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "type": "string"
-                    },
-                    "message": {
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "error"
-                  ],
-                  "additionalProperties": {}
-                }
-              }
-            }
-          },
           "500": {
             "description": "Default Response",
             "content": {
@@ -7341,7 +7194,7 @@
         "tags": [
           "collections"
         ],
-        "description": "Needs the editor role (403 otherwise). Send the record `expected_version` in the query: missing is 428, stale is 409 `version_conflict`. 404 when there is no such collection or record.",
+        "description": "Needs the editor role (403 otherwise). Send the record `expected_version` in the query: stale is 409 `version_conflict`. 404 when there is no such collection or record.",
         "parameters": [
           {
             "schema": {
@@ -7350,7 +7203,7 @@
             },
             "in": "query",
             "name": "expected_version",
-            "required": false
+            "required": true
           },
           {
             "schema": {
@@ -7536,28 +7389,6 @@
                     "message"
                   ],
                   "additionalProperties": false
-                }
-              }
-            }
-          },
-          "428": {
-            "description": "Default Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "type": "string"
-                    },
-                    "message": {
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "error"
-                  ],
-                  "additionalProperties": {}
                 }
               }
             }
@@ -8348,13 +8179,12 @@
         "tags": [
           "pages"
         ],
-        "description": "Needs the editor role (403 otherwise). Records the submitter, who may not then approve it. 404 when the page has no draft revision; 409 `under_review` when it is already submitted, or `version_conflict` when the required page `expected_version` is stale (428 if missing). Saves made while it waits update it, and it keeps waiting. A rejected revision can be submitted again as it is: it is copied into a new submitted revision with the same `updated_at`, and the rejected one keeps its comment. The copy's `contributors` gain the rejected round's submitter, who may not approve it either.",
+        "description": "Needs the editor role (403 otherwise). Records the submitter, who may not then approve it. 404 when the page has no draft revision; 409 `under_review` when it is already submitted, or `version_conflict` when the required page `expected_version` is stale. Saves made while it waits update it, and it keeps waiting. A rejected revision can be submitted again as it is: it is copied into a new submitted revision with the same `updated_at`, and the rejected one keeps its comment. The copy's `contributors` gain the rejected round's submitter, who may not approve it either.",
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
               "schema": {
-                "nullable": true,
                 "type": "object",
                 "properties": {
                   "expected_version": {
@@ -8363,7 +8193,10 @@
                     "exclusiveMinimum": true,
                     "maximum": 9007199254740991
                   }
-                }
+                },
+                "required": [
+                  "expected_version"
+                ]
               }
             }
           }
@@ -8759,28 +8592,6 @@
               }
             }
           },
-          "428": {
-            "description": "Default Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "type": "string"
-                    },
-                    "message": {
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "error"
-                  ],
-                  "additionalProperties": {}
-                }
-              }
-            }
-          },
           "500": {
             "description": "Default Response",
             "content": {
@@ -8834,7 +8645,7 @@
         "tags": [
           "pages"
         ],
-        "description": "Needs the approver role, and the approver must not have changed or submitted the revision (403 otherwise). The live page is unchanged; the revision is kept with the comment, and the next save starts a new draft from it. Rejecting moves the page version, so an editor holding the earlier one reloads and sees why. The page `expected_version` is required (428 without it). 404 when nothing is waiting for review; 409 `not_submitted` for a draft, or `version_conflict` when the page is no longer the version reviewed.",
+        "description": "Needs the approver role, and the approver must not have changed or submitted the revision (403 otherwise). The live page is unchanged; the revision is kept with the comment, and the next save starts a new draft from it. Rejecting moves the page version, so an editor holding the earlier one reloads and sees why. The page `expected_version` is required. 404 when nothing is waiting for review; 409 `not_submitted` for a draft, or `version_conflict` when the page is no longer the version reviewed.",
         "requestBody": {
           "required": true,
           "content": {
@@ -8856,6 +8667,7 @@
                   }
                 },
                 "required": [
+                  "expected_version",
                   "comment"
                 ]
               }
@@ -9253,28 +9065,6 @@
               }
             }
           },
-          "428": {
-            "description": "Default Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "type": "string"
-                    },
-                    "message": {
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "error"
-                  ],
-                  "additionalProperties": {}
-                }
-              }
-            }
-          },
           "500": {
             "description": "Default Response",
             "content": {
@@ -9328,13 +9118,12 @@
         "tags": [
           "pages"
         ],
-        "description": "Needs the approver role, and the approver must not have changed or submitted the revision (403 otherwise). Writes the revision to the live page as a save would, re-indexes it and records the approver in `change_events`, all in one transaction. A revision that has gone stale while it waited (its parent or category gone, or its url taken) is refused with a 422 naming the field, and nothing changes. The page `expected_version` is required (428 without it). 404 when nothing is waiting for review; 409 `not_submitted` for a draft, or `version_conflict` when the page is no longer the version reviewed. Returns the page as it now stands.",
+        "description": "Needs the approver role, and the approver must not have changed or submitted the revision (403 otherwise). Writes the revision to the live page as a save would, re-indexes it and records the approver in `change_events`, all in one transaction. A revision that has gone stale while it waited (its parent or category gone, or its url taken) is refused with a 422 naming the field, and nothing changes. The page `expected_version` is required. 404 when nothing is waiting for review; 409 `not_submitted` for a draft, or `version_conflict` when the page is no longer the version reviewed. Returns the page as it now stands.",
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
               "schema": {
-                "nullable": true,
                 "type": "object",
                 "properties": {
                   "expected_version": {
@@ -9343,7 +9132,10 @@
                     "exclusiveMinimum": true,
                     "maximum": 9007199254740991
                   }
-                }
+                },
+                "required": [
+                  "expected_version"
+                ]
               }
             }
           }
@@ -9728,28 +9520,6 @@
                   "required": [
                     "error",
                     "errors"
-                  ],
-                  "additionalProperties": {}
-                }
-              }
-            }
-          },
-          "428": {
-            "description": "Default Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "type": "string"
-                    },
-                    "message": {
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "error"
                   ],
                   "additionalProperties": {}
                 }

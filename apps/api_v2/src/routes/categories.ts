@@ -9,8 +9,6 @@ import type {
 } from "../services/category-editing";
 import type { SiteNavigation } from "../services/site-navigation";
 import { SCHEMAS } from "./contracts";
-import { CategoryOrder } from "../modules/category";
-import { preconditionRequired } from "../modules/edit-concurrency";
 import { siteNotFoundCache, siteReadCache, storageFailed } from "./responses";
 
 function categoryFailed(
@@ -83,8 +81,6 @@ export const editorCategoryRoutes: FastifyPluginAsyncZod<{
     config: { role: "approver" },
     handler: async (request, reply) => {
       const { expected_version: expected, ...fields } = request.body;
-      if (expected === undefined)
-        return reply.status(428).send(preconditionRequired);
       const result = await categories.update(
         request.params.id,
         fields,
@@ -102,15 +98,7 @@ export const editorCategoryRoutes: FastifyPluginAsyncZod<{
     schema: SCHEMAS.orderCategories,
     config: { role: "approver" },
     handler: async (request, reply) => {
-      if (
-        request.body.expected === undefined ||
-        request.body.expected.some((row) => row.version === undefined)
-      )
-        return reply.status(428).send(preconditionRequired);
-      const result = await categories.reorder(
-        CategoryOrder.parse(request.body),
-        actor(request),
-      );
+      const result = await categories.reorder(request.body, actor(request));
       return result.ok
         ? { categories: result.value }
         : categoryFailed(result.error, request, reply);
@@ -123,8 +111,6 @@ export const editorCategoryRoutes: FastifyPluginAsyncZod<{
     config: { role: "approver" },
     handler: async (request, reply) => {
       const expected = request.query.expected_version;
-      if (expected === undefined)
-        return reply.status(428).send(preconditionRequired);
       const result = await categories.delete(
         request.params.id,
         expected,

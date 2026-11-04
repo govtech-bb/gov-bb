@@ -90,22 +90,13 @@ review commands send `expected_version` in JSON. Page/category/record DELETEs
 send it as a canonical decimal query value. Category reorder and record writes
 use the additional baselines documented below.
 
-Authentication, Origin and role checks still run first. Malformed input returns
-400; missing baselines return 428 `precondition_required`, without looking up the
-target. With valid input, missing targets return 404 and stale versions return
+Authentication, Origin and role checks still run first. Missing or malformed
+versions return 400, without looking up the target. With valid input, missing targets return 404 and stale versions return
 409 `version_conflict`, including stale no-ops. Business conflicts such as
 `under_review`, `not_submitted`, `record_exists` and `category_in_use` retain
 their existing codes.
 
-Before release, establish whether there are live editors and which migrations
-are installed on the target database. Pause editing and drain old API writers
-before reopening the matching API and editor; do not assume their deployments
-are atomic. Keep a database backup and verify the migration ledger. Do not roll
-back to an API that accepts unversioned writes while editing is enabled.
-Old tabs sending only `if-updated-at` cannot write; the header remains
-CORS-allowed but is ignored. Do not restore timestamp fallback or write ETags. Keep unsaved
-content before updating an old tab, then explicitly reload/discard to establish
-a new baseline. If a response is lost, retry only the immutable original request
+Do not restore timestamp fallback or write ETags. If a response is lost, retry only the immutable original request
 with its original versions. A matching server value does not prove that this
 client's earlier request succeeded; never silently adopt a fresh version and
 resubmit. Public representations and public ETags remain version-free.
@@ -128,7 +119,7 @@ Migration `011_revision_review` (#3199) adds the review statuses and who moved a
 - `POST /pages/:id/revision/reject` (approver role) takes `{ comment, expected_version }`, with a comment of 1 to 2000 characters after trimming. The live page is unchanged. The rejected revision is kept with its comment and the rejecter, and the editor keeps working from it: `GET /pages/:id` lays it over the live page with `pending_revision: { status: "rejected", comment }`. The next save starts a new draft beside it, carrying its contributors over, since it starts from their content. A live write retires a rejection: it no longer shows once the live page has moved past the version it was saved over.
 - `POST /pages/:id/revision/publish` (approver role) approves and publishes in one transaction: the revision's fields are checked again as a save checks them (placement, a url a category owns, and the database's own refusals), since its parent, its category or its url can have changed while it waited. A stale revision is a 422 naming the field, and nothing changes. Otherwise the revision is marked `published` with the approver and the time (an `approved` `change_events` entry), then the live row is written, its search chunks re-cut and an `updated` (or `published`) entry appended, both by the approver.
 
-Submit and publish take `{ expected_version }`; reject takes `{ comment, expected_version }`. Every command checks the page's version under its row lock before review-state rules. Missing versions return 428 `precondition_required`; stale versions return 409 `version_conflict`. With a current version, publish and reject return 404 when nothing waits for review and 409 `not_submitted` for a draft. Submit, reject, publish and revision saves all advance the page version, even when the live content is unchanged.
+Submit and publish take `{ expected_version }`; reject takes `{ comment, expected_version }`. Every command checks the page's version under its row lock before review-state rules. Missing versions return 400; stale versions return 409 `version_conflict`. With a current version, publish and reject return 404 when nothing waits for review and 409 `not_submitted` for a draft. Submit, reject, publish and revision saves all advance the page version, even when the live content is unchanged.
 
 **Self-approval** (ADR 0079): the approver who publishes or rejects a revision must not be its submitter or one of its `contributors`; otherwise it is a 403. It is allowed only under `AUTH_BYPASS`, where `main.ts` passes `allowSelfApproval` to `PageEditing` so one developer can try the whole flow.
 
@@ -389,7 +380,7 @@ Create and reparent append to the current destination under the shared content
 write lock. Update requires `expected_version` in its body; delete requires it in the query.
 Reorder sends `{ parent_id, expected: [{ id, version }], ordered_ids }` for the
 complete sibling group and returns `{ categories: [...] }` in saved order.
-Missing versions are 428; malformed fields, versions or ID sets are 400;
+Missing or malformed fields, versions or ID sets are 400;
 field rules are 422; stale membership or versions are 409 `version_conflict`. Occupied deletion is 409 `category_in_use` with
 `blockers: { pages, subcategories, reserved_route }`. The page blocker counts
 all pages, not just services. No operation cascades deletion or moves page URLs.

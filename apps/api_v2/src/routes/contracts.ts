@@ -52,9 +52,6 @@ import {
   VersionCommandBody,
 } from "../modules/edit-concurrency";
 
-/** Accepted by CORS only so old tabs receive 428; never used as a write precondition. */
-export const IF_UPDATED_AT = "if-updated-at";
-
 /** No credentials, or the preview token. */
 const previewSecurity: Array<Record<string, string[]>> = [
   {},
@@ -284,7 +281,7 @@ export const SCHEMAS = {
       "editor role (403 otherwise). " +
       "Send every field: a save replaces the page and defaults none, except " +
       "that leaving `parent_id` out keeps the page's parent. " +
-      "Send the page version you last read as `expected_version` (428 if missing). " +
+      "Send the page version you last read as `expected_version`. " +
       "If the stored row, or the page's pending revision, has moved on since, " +
       "the save is refused with a 409 rather than silently discarding " +
       "whoever wrote first. Changing `url` " +
@@ -315,7 +312,6 @@ export const SCHEMAS = {
       404: error,
       409: conflict,
       422: validationFailed,
-      428: error,
       500: error,
       ...authErrors,
     },
@@ -389,7 +385,7 @@ export const SCHEMAS = {
       "Needs the editor role (403 otherwise). Records the submitter, who " +
       "may not then approve it. 404 when the page has no draft revision; " +
       "409 `under_review` when it is already submitted, or `version_conflict` when " +
-      "the required page `expected_version` is stale (428 if missing). Saves made while it " +
+      "the required page `expected_version` is stale. Saves made while it " +
       "waits update it, and it keeps waiting. A rejected revision can be submitted again " +
       "as it is: it is copied into a new submitted revision with the same " +
       "`updated_at`, and the rejected one keeps its comment. The copy's " +
@@ -403,7 +399,6 @@ export const SCHEMAS = {
       200: RevisionView,
       400: error,
       404: error,
-      428: error,
       409: z.union([conflict, revisionState]),
       500: error,
       ...authErrors,
@@ -418,7 +413,7 @@ export const SCHEMAS = {
       "the revision is kept with the comment, and the next save starts a " +
       "new draft from it. Rejecting moves the page version, so " +
       "an editor holding the earlier one reloads and sees why. " +
-      "The page `expected_version` is required (428 without it). 404 when nothing is " +
+      "The page `expected_version` is required. 404 when nothing is " +
       "waiting for review; 409 `not_submitted` for a draft, or `version_conflict` " +
       "when the page is no longer the version reviewed.",
     tags: ["pages"],
@@ -433,7 +428,6 @@ export const SCHEMAS = {
       400: error,
       404: error,
       409: z.union([conflict, revisionState]),
-      428: error,
       500: error,
       ...authErrors,
     },
@@ -448,7 +442,7 @@ export const SCHEMAS = {
       "in `change_events`, all in one transaction. A revision that has gone " +
       "stale while it waited (its parent or category gone, or its url " +
       "taken) is refused with a 422 naming the field, and nothing changes. " +
-      "The page `expected_version` is required (428 without it). 404 when nothing is " +
+      "The page `expected_version` is required. 404 when nothing is " +
       "waiting for review; 409 `not_submitted` for a draft, or `version_conflict` " +
       "when the page is no longer the version reviewed. " +
       "Returns the page as it now stands.",
@@ -461,7 +455,6 @@ export const SCHEMAS = {
       400: error,
       404: error,
       409: z.union([conflict, revisionState]),
-      428: error,
       422: validationFailed,
       500: error,
       ...authErrors,
@@ -476,7 +469,7 @@ export const SCHEMAS = {
       "until they are moved or deleted. " +
       "Deleting a `public` page needs the approver role (403 otherwise). " +
       "Its pending revision goes with it. Send `expected_version` in the query " +
-      "string: missing is 428, stale is 409 `version_conflict`, and absent is 404.",
+      "string: stale is 409 `version_conflict`, and absent is 404.",
     tags: ["pages"],
     params: idParams,
     querystring: ExpectedVersionQuery,
@@ -486,7 +479,6 @@ export const SCHEMAS = {
       400: error,
       404: error,
       409: conflict,
-      428: error,
       422: validationFailed,
       500: error,
       ...authErrors,
@@ -565,7 +557,6 @@ export const SCHEMAS = {
     response: {
       200: EditorCategory,
       404: error,
-      428: error,
       409: categoryConflict,
       ...categoryErrors,
     },
@@ -581,7 +572,6 @@ export const SCHEMAS = {
     response: {
       200: z.object({ categories: z.array(EditorCategory) }),
       409: categoryConflict,
-      428: error,
       ...categoryErrors,
     },
   },
@@ -598,7 +588,6 @@ export const SCHEMAS = {
       204: z.undefined(),
       400: error,
       404: error,
-      428: error,
       409: z.union([categoryConflict, categoryInUse]),
       500: error,
       ...authErrors,
@@ -656,7 +645,7 @@ export const SCHEMAS = {
       "wrong kind, is a 400 `validation_failed` naming the field. 404 when " +
       "there is no such collection; 409 `record_exists` when the record key " +
       "is taken. Send `expected_collection_version` from the displayed definition: " +
-      "missing is 428, stale is 409 `version_conflict`.",
+      "stale is 409 `version_conflict`.",
     tags: ["collections"],
     security: editorSecurity,
     params: recordParams,
@@ -664,7 +653,6 @@ export const SCHEMAS = {
     response: {
       201: EditorCollectionRecord,
       409: recordConflict,
-      428: error,
       ...recordErrors,
     },
   },
@@ -675,7 +663,7 @@ export const SCHEMAS = {
       "Needs the editor role (403 otherwise). Send every field to keep: " +
       "the record becomes `data`. Checked as a create is. Send the " +
       "record `expected_version` and definition `expected_collection_version`; " +
-      "missing is 428, stale is 409 `version_conflict`. 404 when " +
+      "stale is 409 `version_conflict`. 404 when " +
       "there is no such collection or record.",
     tags: ["collections"],
     security: editorSecurity,
@@ -687,7 +675,6 @@ export const SCHEMAS = {
     response: {
       200: RecordEnvelope,
       409: recordConflict,
-      428: error,
       ...recordErrors,
     },
   },
@@ -696,7 +683,7 @@ export const SCHEMAS = {
     summary: "Delete a record",
     description:
       "Needs the editor role (403 otherwise). Send the record `expected_version` " +
-      "in the query: missing is 428, stale is 409 `version_conflict`. 404 " +
+      "in the query: stale is 409 `version_conflict`. 404 " +
       "when there is no such collection or record.",
     tags: ["collections"],
     security: editorSecurity,
@@ -705,7 +692,6 @@ export const SCHEMAS = {
     response: {
       204: z.undefined(),
       409: recordConflict,
-      428: error,
       ...recordErrors,
     },
   },

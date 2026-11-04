@@ -8,7 +8,6 @@ import type {
   RecordWriteFailure,
 } from "../services/collection-editing";
 import { SCHEMAS } from "./contracts";
-import { preconditionRequired } from "../modules/edit-concurrency";
 import { siteNotFoundCache, siteReadCache, storageFailed } from "./responses";
 
 /** Why a record write was refused, as its response. */
@@ -85,8 +84,6 @@ export const editorCollectionRoutes: FastifyPluginAsyncZod<{
     handler: async (request, reply) => {
       const { key, recordKey } = request.params;
       const expectedCollection = request.body.expected_collection_version;
-      if (expectedCollection === undefined)
-        return reply.status(428).send(preconditionRequired);
       const created = await collections.create(
         key,
         recordKey,
@@ -108,8 +105,6 @@ export const editorCollectionRoutes: FastifyPluginAsyncZod<{
       const { key, recordKey } = request.params;
       const expected = request.body.expected_version;
       const expectedCollection = request.body.expected_collection_version;
-      if (expected === undefined || expectedCollection === undefined)
-        return reply.status(428).send(preconditionRequired);
       const saved = await collections.save(
         key,
         recordKey,
@@ -131,8 +126,6 @@ export const editorCollectionRoutes: FastifyPluginAsyncZod<{
     handler: async (request, reply) => {
       const { key, recordKey } = request.params;
       const expected = request.query.expected_version;
-      if (expected === undefined)
-        return reply.status(428).send(preconditionRequired);
       const deleted = await collections.delete(
         key,
         recordKey,

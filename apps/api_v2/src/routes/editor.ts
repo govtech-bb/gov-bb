@@ -18,7 +18,6 @@ import type { PageEditing } from "../services/page-editing";
 import { editorCategoryRoutes } from "./categories";
 import { editorCollectionRoutes } from "./collections";
 import { SCHEMAS } from "./contracts";
-import { preconditionRequired } from "../modules/edit-concurrency";
 import { EDITOR_READ, rejected, storageFailed } from "./responses";
 import { editorRoleRoutes } from "./roles";
 
@@ -316,8 +315,6 @@ export const editorRoutes: FastifyPluginAsyncZod<{
     config: { role: "editor" },
     handler: async (request, reply) => {
       const { expected_version: expected, ...fields } = request.body;
-      if (expected === undefined)
-        return reply.status(428).send(preconditionRequired);
       const saved = await editing.save(
         request.params.id,
         fields,
@@ -338,9 +335,7 @@ export const editorRoutes: FastifyPluginAsyncZod<{
     schema: SCHEMAS.submitRevision,
     config: { role: "editor" },
     handler: async (request, reply) => {
-      const expected = request.body?.expected_version;
-      if (expected === undefined)
-        return reply.status(428).send(preconditionRequired);
+      const expected = request.body.expected_version;
       const submitted = await editing.submit(
         request.params.id,
         expected,
@@ -358,8 +353,6 @@ export const editorRoutes: FastifyPluginAsyncZod<{
     config: { role: "approver" },
     handler: async (request, reply) => {
       const expected = request.body.expected_version;
-      if (expected === undefined)
-        return reply.status(428).send(preconditionRequired);
       const decided = await editing.reject(
         request.params.id,
         request.body.comment,
@@ -377,9 +370,7 @@ export const editorRoutes: FastifyPluginAsyncZod<{
     schema: SCHEMAS.publishRevision,
     config: { role: "approver" },
     handler: async (request, reply) => {
-      const expected = request.body?.expected_version;
-      if (expected === undefined)
-        return reply.status(428).send(preconditionRequired);
+      const expected = request.body.expected_version;
       const published = await editing.publish(
         request.params.id,
         expected,
@@ -397,8 +388,6 @@ export const editorRoutes: FastifyPluginAsyncZod<{
     config: { role: "editor" },
     handler: async (request, reply) => {
       const expected = request.query.expected_version;
-      if (expected === undefined)
-        return reply.status(428).send(preconditionRequired);
       const deleted = await editing.delete(
         request.params.id,
         expected,

@@ -61,7 +61,7 @@ const revision: ApiRevision = {
   ],
 };
 
-type Sent = { method: string; path: string; ifUpdatedAt: string | null; body: unknown };
+type Sent = { method: string; path: string; body: unknown };
 
 /** The content API's review routes; `decision` answers a publish or reject. */
 function contentApi(
@@ -85,7 +85,6 @@ function contentApi(
       sent.push({
         method,
         path,
-        ifUpdatedAt: new Headers(init?.headers).get("if-updated-at"),
         body: init?.body ? JSON.parse(String(init.body)) : undefined,
       });
 
@@ -269,7 +268,6 @@ test("an approver publishes the change at the version they reviewed, and returns
     {
       method: "POST",
       path: `/pages/${PAGE}/revision/publish`,
-      ifUpdatedAt: null,
       body: { expected_version: revision.version },
     },
   ]);
@@ -325,7 +323,6 @@ test("a rejection needs a comment, which goes to the editor with the version rev
   expect(server.sent[0]).toEqual({
     method: "POST",
     path: `/pages/${PAGE}/revision/reject`,
-    ifUpdatedAt: null,
     body: { comment: "Check the fees.", expected_version: revision.version },
   });
 });

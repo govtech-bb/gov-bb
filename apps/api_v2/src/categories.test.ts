@@ -276,9 +276,7 @@ describe("editor categories", () => {
             ? { payload: { ...fields("root"), expected_version: version } }
             : {}),
         });
-        expect(response.statusCode, response.body).toBe(
-          version === undefined ? 428 : 400,
-        );
+        expect(response.statusCode, response.body).toBe(400);
       }
       expect(await list()).toEqual([category]);
     },
@@ -403,7 +401,7 @@ describe("editor categories", () => {
             payload,
           })
         ).statusCode,
-      ).toBe("expected" in payload ? 400 : 428);
+      ).toBe(400);
   });
 
   it("counts service roots like /services but blocks deletion on every page", async () => {

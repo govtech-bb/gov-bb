@@ -17,16 +17,11 @@ const A = "11111111-1111-4111-8111-111111111111";
 const B = "22222222-2222-4222-8222-222222222222";
 
 describe("write preconditions", () => {
-  it("keeps missing body/query/command versions distinct from malformed values", () => {
-    expect(versionBody.parse({})).toEqual({});
-    expect(ExpectedVersionQuery.parse({})).toEqual({});
-    expect(VersionCommandBody.parse(undefined)).toBeUndefined();
-    expect(VersionCommandBody.parse({})).toEqual({});
-    expect(VersionCommandBody.parse(null)).toBeNull();
-    expect(
-      VersionCommandBody.safeParse({ expected_version: null }).success,
-    ).toBe(false);
-    expect(VersionCommandBody.safeParse([]).success).toBe(false);
+  it("requires body, query and command versions", () => {
+    for (const body of [undefined, null, {}, [], { expected_version: null }])
+      expect(VersionCommandBody.safeParse(body).success).toBe(false);
+    expect(versionBody.safeParse({}).success).toBe(false);
+    expect(ExpectedVersionQuery.safeParse({}).success).toBe(false);
   });
 
   it.each(["1", "9007199254740991"])(
@@ -71,18 +66,18 @@ describe("write preconditions", () => {
     },
   );
 
-  it("allows a missing reorder baseline to reach 428 but validates membership representations first", () => {
+  it("requires a complete versioned reorder baseline", () => {
     expect(
       CategoryOrderBody.safeParse({ parent_id: null, ordered_ids: [A] })
         .success,
-    ).toBe(true);
+    ).toBe(false);
     expect(
       CategoryOrderBody.safeParse({
         parent_id: null,
         ordered_ids: [A],
         expected: [{ id: A }],
       }).success,
-    ).toBe(true);
+    ).toBe(false);
     expect(
       CategoryOrderBody.safeParse({ parent_id: null, ordered_ids: [A, A] })
         .success,
