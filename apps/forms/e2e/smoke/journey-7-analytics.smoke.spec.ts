@@ -70,27 +70,41 @@ interface UmamiEvent {
   data: Record<string, unknown>;
 }
 
-/** Record every custom event the page sends to Umami's `/api/send`. */
-function captureUmamiEvents(page: Page): UmamiEvent[] {
+/**
+ * Record every custom event the page sends to Umami's `/api/send`, and the URL
+ * and referrer of every request, page views included.
+ */
+function captureUmamiEvents(page: Page): {
+  events: UmamiEvent[];
+  urls: string[];
+} {
   const events: UmamiEvent[] = [];
+  const urls: string[] = [];
   page.on("request", (req) => {
     if (req.method() !== "POST") return;
     if (!new URL(req.url()).pathname.endsWith("/api/send")) return;
     let body: {
       type?: string;
-      payload?: { name?: string; data?: Record<string, unknown> };
+      payload?: {
+        name?: string;
+        data?: Record<string, unknown>;
+        url?: string;
+        referrer?: string;
+      };
     } | null;
     try {
       body = req.postDataJSON();
     } catch {
       return;
     }
+    if (body?.payload?.url) urls.push(body.payload.url);
+    if (body?.payload?.referrer) urls.push(body.payload.referrer);
     // Pageviews are `type: "event"` too, but carry no name.
     if (body?.type === "event" && body.payload?.name) {
       events.push({ name: body.payload.name, data: body.payload.data ?? {} });
     }
   });
-  return events;
+  return { events, urls };
 }
 
 async function readFunnel(
@@ -132,7 +146,7 @@ test.describe("Journey 7 — forms analytics reach Umami and the dashboard", () 
     const before = await test.step("read the dashboard baseline", () =>
       readFunnel(dashboard, dashboardUrl));
 
-    const events = captureUmamiEvents(page);
+    const { events, urls } = captureUmamiEvents(page);
 
     await test.step("walk and submit the test form", async () => {
       await openSmokeForm(page, FORM_ID);
@@ -183,6 +197,16 @@ test.describe("Journey 7 — forms analytics reach Umami and the dashboard", () 
           FORM_ID,
         );
       }
+    });
+
+    await test.step("Umami requests carry no query string", async () => {
+      // #3503: this walk's URLs hold ?step= and the preview token. The Umami
+      // script's data-exclude-search must strip them before they leave.
+      expect(urls.length, "Umami requests captured").toBeGreaterThan(0);
+      expect(
+        urls.filter((u) => u.includes("?")),
+        "Umami URLs with a query string",
+      ).toEqual([]);
     });
 
     await test.step("the dashboard shows the new events", async () => {
