@@ -120,6 +120,9 @@ const baseSchema = z
     UMAMI_API_KEY: z.string().default(""),
     UMAMI_LANDING_WEBSITE_ID: z.string().default(""),
     UMAMI_FORMS_WEBSITE_ID: z.string().default(""),
+    // Incoming webhook for the channel that gets last week's stats every
+    // Monday at 8am Barbados time; unset ⇒ no weekly digest.
+    SLACK_STATS_WEBHOOK_URL: urlOrEmpty().optional(),
 
     // SES delivery-events queue (optional). When set, the SesEventConsumer
     // polls it to reconcile notification_log.delivery_status; empty = disabled.
