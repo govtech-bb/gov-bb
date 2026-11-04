@@ -30,6 +30,14 @@ export { defineRenderer, defineSlot, RendererHost, EditorSlot } from "./react/co
 
 export { FormattingModule } from "./modules/formatting/module";
 
+export { SELECTION_TOOLBAR, keepSelection } from "./modules/formatting/toolbar";
+
+export {
+  TextColourMenu,
+  type TextColour,
+  type TextColours,
+} from "./modules/formatting/colour-menu";
+
 export { LinksModule } from "./modules/links/module";
 
 export { HeadingsModule } from "./modules/headings/module";
