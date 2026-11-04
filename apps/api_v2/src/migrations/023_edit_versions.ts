@@ -1,28 +1,7 @@
 /** Content edit versions are sequence identities, separate from timestamps and audit numbers. */
 export const SQL = `
-do $$ begin
-  if exists (
-    select 1 from information_schema.columns
-    where table_schema = current_schema()
-      and table_name in ('content_pages', 'categories', 'data_collections', 'collection_records')
-      and column_name = 'version'
-      and (data_type <> 'bigint' or is_nullable <> 'NO'
-        or column_default is distinct from 'nextval(''content_edit_version_seq''::regclass)')
-  ) then
-    raise exception 'Edit version preflight: incompatible existing version columns; inspect experimental migration history before upgrading';
-  end if;
-end $$;
-
 create sequence if not exists content_edit_version_seq as bigint
   maxvalue 9007199254740991 no cycle;
-
-do $$ begin
-  if exists (select 1 from pg_sequence
-    where seqrelid = 'content_edit_version_seq'::regclass
-      and (seqmax <> 9007199254740991 or seqcycle or seqincrement <> 1)) then
-    raise exception 'Edit version preflight: incompatible content_edit_version_seq';
-  end if;
-end $$;
 
 -- Volatile defaults backfill distinct identities without firing row triggers.
 alter table content_pages add column if not exists version bigint not null default nextval('content_edit_version_seq');
@@ -43,6 +22,7 @@ begin
 end;
 $$ language plpgsql;
 
+-- BEFORE triggers fire in name order; zz_ runs after the touch_* triggers.
 drop trigger if exists zz_edit_version on content_pages;
 create trigger zz_edit_version before insert or update on content_pages
   for each row execute function assign_edit_version();
@@ -55,6 +35,20 @@ create trigger zz_edit_version before insert or update on data_collections
 drop trigger if exists zz_edit_version on collection_records;
 create trigger zz_edit_version before insert or update on collection_records
   for each row execute function assign_edit_version();
+
+-- Revision writes change what the editor shows for a page, so they invalidate its version.
+create or replace function bump_page_version() returns trigger as $$
+begin
+  update content_pages set version = nextval('content_edit_version_seq')
+   where id = coalesce(new.page_id, old.page_id);
+  return null;
+end;
+$$ language plpgsql;
+
+drop trigger if exists page_revisions_bump_page_version on page_revisions;
+create trigger page_revisions_bump_page_version
+  after insert or update or delete on page_revisions
+  for each row execute function bump_page_version();
 
 create or replace function touch_updated_at() returns trigger as $$
 begin

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
-import { CategoryOrderBody } from "./category";
+import { CategoryOrder } from "./category";
 import {
   EditVersion,
   ExpectedVersionQuery,
@@ -68,19 +68,17 @@ describe("write preconditions", () => {
 
   it("requires a complete versioned reorder baseline", () => {
     expect(
-      CategoryOrderBody.safeParse({ parent_id: null, ordered_ids: [A] })
-        .success,
+      CategoryOrder.safeParse({ parent_id: null, ordered_ids: [A] }).success,
     ).toBe(false);
     expect(
-      CategoryOrderBody.safeParse({
+      CategoryOrder.safeParse({
         parent_id: null,
         ordered_ids: [A],
         expected: [{ id: A }],
       }).success,
     ).toBe(false);
     expect(
-      CategoryOrderBody.safeParse({ parent_id: null, ordered_ids: [A, A] })
-        .success,
+      CategoryOrder.safeParse({ parent_id: null, ordered_ids: [A, A] }).success,
     ).toBe(false);
     for (const body of [
       {
@@ -101,10 +99,10 @@ describe("write preconditions", () => {
       { ordered_ids: [A], expected: [{ id: A, version: "1" }] },
     ])
       expect(
-        CategoryOrderBody.safeParse({ parent_id: null, ...body }).success,
+        CategoryOrder.safeParse({ parent_id: null, ...body }).success,
       ).toBe(false);
     expect(
-      CategoryOrderBody.safeParse({
+      CategoryOrder.safeParse({
         parent_id: null,
         ordered_ids: [B, A],
         expected: [

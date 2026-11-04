@@ -1,13 +1,10 @@
 import type { FastifyInstance, InjectOptions } from "fastify";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
-  CategoryStamp,
   EditorCategory,
   type CategoryId,
   type CategoryOrder,
 } from "./modules/category";
-import { PostgresPages } from "./adapters/postgres-pages";
-import { CategoryEditing } from "./services/category-editing";
 import {
   createTestApp,
   createTestDb,
@@ -433,43 +430,5 @@ describe("serialized category and page writes", () => {
     expect(response.statusCode).toBe(500);
     expect(response.json()).toEqual({ error: "internal_error" });
     expect(await rows()).toEqual([a, b]);
-  });
-
-  it("persists strictly increasing stamps with a frozen clock and compares timezone-equivalent versions", async () => {
-    const editing = new CategoryEditing(
-      new PostgresPages(test.db),
-      () => new Date("2026-10-26T12:00:00.000Z"),
-    );
-    let category = expectOk(
-      await editing.create(fields("frozen"), TEST_EMPLOYEE),
-    );
-    for (let n = 0; n < 5; n++) {
-      const previous = category.updated_at;
-      category = expectOk(
-        // A real change each time: a save that changes nothing keeps its stamp.
-        await editing.update(
-          category.id,
-          { ...fields("frozen"), title: `Frozen ${n}` },
-          category.version,
-          TEST_EMPLOYEE,
-        ),
-      );
-      expect(Date.parse(category.updated_at) - Date.parse(previous)).toBe(1);
-    }
-    const equivalent = CategoryStamp.parse(
-      category.updated_at.replace("12:00", "13:00").replace("Z", "+01:00"),
-    );
-    expect(Date.parse(equivalent)).toBe(Date.parse(category.updated_at));
-    expect(
-      (
-        await editing.update(
-          category.id,
-          { ...fields("frozen"), title: "Frozen again" },
-          category.version,
-          TEST_EMPLOYEE,
-        )
-      ).ok,
-    ).toBe(true);
-    expect((await rows())[0]?.updated_at).toBe("2026-10-26T12:00:00.006Z");
   });
 });

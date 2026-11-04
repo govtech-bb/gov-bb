@@ -29,7 +29,6 @@ import {
   CategoryBlockers,
   CategoryId,
   CategoryRejected,
-  CategoryStamp,
   EditorCategory,
   isCategoryAnchor,
   type CategoryValues,
@@ -375,7 +374,7 @@ export class PostgresPages
         return {
           ...row,
           last_edited_by: attributionOf({ actor, name }),
-          updated_at: CategoryStamp.parse(row.updated_at.toISOString()),
+          updated_at: row.updated_at.toISOString(),
           reserved_route: isCategoryAnchor(row.url),
         };
       });
@@ -433,11 +432,10 @@ export class PostgresPages
       : ok(undefined);
   }
 
-  /** Insert an appended category with its server-generated id and millisecond version. */
+  /** Insert an appended category with its server-generated id. */
   insertCategory(
     fields: CategoryValues,
     position: number,
-    stamp: CategoryStamp,
   ): Promise<Result<CategoryId, CategoryRejected | ContentStoreUnavailable>> {
     return attempt(
       "insertCategory",
@@ -450,7 +448,6 @@ export class PostgresPages
             parentId: fields.parent_id,
             description: fields.description,
             position,
-            updatedAt: new Date(stamp),
           })
           .returning({ id: categories.id });
         return CategoryId.parse(rows[0]?.id);
@@ -464,14 +461,11 @@ export class PostgresPages
     id: CategoryId,
     fields: CategoryValues,
     position: number,
-    stamp: CategoryStamp,
-  ): Promise<
-    Result<CategoryStamp, CategoryRejected | ContentStoreUnavailable>
-  > {
+  ): Promise<Result<void, CategoryRejected | ContentStoreUnavailable>> {
     return attempt(
       "replaceCategory",
       async () => {
-        const rows = await this.db
+        await this.db
           .update(categories)
           .set({
             title: fields.title,
@@ -479,11 +473,8 @@ export class PostgresPages
             parentId: fields.parent_id,
             description: fields.description,
             position,
-            updatedAt: new Date(stamp),
           })
-          .where(eq(categories.id, id))
-          .returning({ updatedAt: categories.updatedAt });
-        return CategoryStamp.parse(rows[0]?.updatedAt.toISOString());
+          .where(eq(categories.id, id));
       },
       categoryRejectionOf,
     );
@@ -773,18 +764,6 @@ export class PostgresPages
     return filed.ok ? ok(undefined) : filed;
   }
 
-  /**
-   * A page's open revision; otherwise its latest rejected one, while the live
-   * page is still the version it was saved over; or null. A live write after
-   * the rejection (an unpublish, or another revision published) retires it.
-   */
-  async currentRevision(
-    pageId: PageId,
-  ): Promise<Result<PendingRevision | null, ContentStoreUnavailable>> {
-    const snapshot = await this.editorSnapshot(pageId);
-    return snapshot.ok ? ok(snapshot.value?.revision ?? null) : snapshot;
-  }
-
   /** Live fields, working revision and latest attribution share one statement snapshot. */
   editorSnapshot(
     id: PageId,
@@ -862,20 +841,6 @@ export class PostgresPages
             last_edited_by: attributionOf(row),
           }
         : null;
-    });
-  }
-
-  /** Revision-only writes invalidate the locked root without changing its content dates or history. */
-  bumpPageVersion(
-    id: PageId,
-  ): Promise<Result<EditVersion, ContentStoreUnavailable>> {
-    return attempt("bumpPageVersion", async () => {
-      const [row] = await this.db
-        .update(contentPages)
-        .set({ version: sql`${contentPages.version} + 1` })
-        .where(eq(contentPages.id, id))
-        .returning({ version: contentPages.version });
-      return EditVersion.parse(row?.version);
     });
   }
 

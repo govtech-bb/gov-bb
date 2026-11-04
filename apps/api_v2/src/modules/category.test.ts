@@ -4,11 +4,7 @@ import { describe, expect, expectTypeOf, it } from "vitest";
 import {
   CategoryFields,
   CategoryId,
-  CategoryOrder,
-  CategoryStamp,
-  nextCategoryStamp,
   parseCategoryFields,
-  parseCategoryOrder,
   RESERVED_CATEGORY_PATHS,
   type CategoryValues,
   type CategoryRejected,
@@ -26,9 +22,6 @@ describe("category rules", () => {
   it("preserves the complete parser contracts without widening their error channels", () => {
     expectTypeOf(parseCategoryFields).toEqualTypeOf<
       (fields: CategoryFields) => Result<CategoryValues, CategoryRejected>
-    >();
-    expectTypeOf(parseCategoryOrder).toEqualTypeOf<
-      (order: CategoryOrder) => Result<CategoryOrder, CategoryRejected>
     >();
   });
 
@@ -52,45 +45,6 @@ describe("category rules", () => {
     expect(parseCategoryFields({ ...result, slug: "Not-normalized" }).ok).toBe(
       false,
     );
-  });
-
-  it("advances and round-trips stamps with frozen and backward clocks", () => {
-    let stamp = CategoryStamp.parse("2026-10-26T12:00:00.000Z");
-    for (let milliseconds = 0; milliseconds < 50; milliseconds++) {
-      const next = nextCategoryStamp(
-        stamp,
-        new Date("2026-10-25T12:00:00.000Z"),
-      );
-      expect(Date.parse(next) - Date.parse(stamp)).toBe(1);
-      expect(CategoryStamp.parse(JSON.parse(JSON.stringify(next)))).toBe(next);
-      stamp = next;
-    }
-  });
-
-  it("accepts every small permutation, refusing duplicates and omissions", () => {
-    const ids = [1, 2, 3].map((n) =>
-      CategoryId.parse(`00000000-0000-4000-8000-00000000000${n}`),
-    );
-    const expected = ids.map((id, index) => ({ id, version: index + 1 }));
-    for (const a of ids)
-      for (const b of ids)
-        for (const c of ids) {
-          const order = CategoryOrder.parse({
-            parent_id: null,
-            expected,
-            ordered_ids: [a, b, c],
-          });
-          expect(parseCategoryOrder(order).ok).toBe(
-            new Set([a, b, c]).size === 3,
-          );
-        }
-    expect(
-      parseCategoryOrder({
-        parent_id: null,
-        expected,
-        ordered_ids: ids.slice(1),
-      }).ok,
-    ).toBe(false);
   });
 
   it("accounts for every landing file route and top-level asset directory", () => {

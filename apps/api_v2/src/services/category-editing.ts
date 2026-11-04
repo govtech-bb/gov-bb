@@ -6,10 +6,7 @@ import {
   CategoryInUse,
   CategoryNotFound,
   CategoryRejected,
-  CategoryStamp,
-  nextCategoryStamp,
   parseCategoryFields,
-  parseCategoryOrder,
   type CategoryBlockers,
   type CategoryFields,
   type CategoryId,
@@ -19,7 +16,6 @@ import {
 } from "../modules/category";
 import type { ContentStoreUnavailable } from "../modules/page";
 import { err, ok, type Result } from "../modules/result";
-import type { Clock } from "./page-editing";
 
 /** Content persistence; every write transaction takes the shared content lock before any other locks. */
 export interface CategoryRecords {
@@ -50,18 +46,13 @@ export interface CategoryRecords {
   insertCategory(
     fields: CategoryValues,
     position: number,
-    stamp: CategoryStamp,
   ): Promise<Result<CategoryId, CategoryRejected | ContentStoreUnavailable>>;
-  /**
-   * Replace category fields without changing any page or sibling. Returns the
-   * stored stamp, which stays the old one when nothing else changed.
-   */
+  /** Replace category fields without changing any page or sibling. */
   replaceCategory(
     id: CategoryId,
     fields: CategoryValues,
     position: number,
-    stamp: CategoryStamp,
-  ): Promise<Result<CategoryStamp, CategoryRejected | ContentStoreUnavailable>>;
+  ): Promise<Result<void, CategoryRejected | ContentStoreUnavailable>>;
   /** Delete an already-checked empty category. */
   removeCategory(
     id: CategoryId,
@@ -100,7 +91,7 @@ export interface ICategoryEditing {
     expected: EditVersion,
     actor: Employee,
   ): Promise<Result<EditorCategory, CategoryUpdateFailure>>;
-  /** Replace a complete sibling order if every expected ID and stamp still matches. */
+  /** Replace a complete sibling order if every expected ID and version still matches. */
   reorder(
     order: CategoryOrder,
     actor: Employee,
@@ -120,11 +111,7 @@ export interface ICategoryEditing {
 
 /** Category workflow owner; every write is recorded against the acting employee. */
 export class CategoryEditing implements ICategoryEditing {
-  /** The composition root supplies content storage and time. */
-  constructor(
-    private readonly records: CategoryRecords,
-    private readonly clock: Clock,
-  ) {}
+  constructor(private readonly records: CategoryRecords) {}
 
   /** All categories, each parent immediately followed by its ordered children. */
   async list(): Promise<Result<EditorCategory[], ContentStoreUnavailable>> {
@@ -158,19 +145,18 @@ export class CategoryEditing implements ICategoryEditing {
       const available = await availableAddress(records, url.value);
       if (!available.ok) return available;
       const position = appendPosition(rows.value, fields.parent_id);
-      const stamp = CategoryStamp.parse(this.clock().toISOString());
-      const inserted = await records.insertCategory(
-        parsed.value,
-        position,
-        stamp,
-      );
+      const inserted = await records.insertCategory(parsed.value, position);
       return inserted.ok
         ? readSavedCategory(records, inserted.value)
         : inserted;
     });
   }
 
-  /** Only an empty, unanchored category may change its slug or parent. */
+  /**
+   * Only an empty, unanchored category may change its slug or parent.
+   * Version checks here read without row locks; they rely on `atomically`'s
+   * shared advisory lock serializing every category write.
+   */
   async update(
     id: CategoryId,
     fields: CategoryFields,
@@ -222,12 +208,7 @@ export class CategoryEditing implements ICategoryEditing {
         current.parent_id === fields.parent_id
           ? current.position
           : appendPosition(rows.value, fields.parent_id);
-      const written = await records.replaceCategory(
-        id,
-        parsed.value,
-        position,
-        nextCategoryStamp(current.updated_at, this.clock()),
-      );
+      const written = await records.replaceCategory(id, parsed.value, position);
       return written.ok ? readSavedCategory(records, id) : written;
     });
   }
@@ -242,8 +223,6 @@ export class CategoryEditing implements ICategoryEditing {
       CategoryRejected | CategoryConflict | ContentStoreUnavailable
     >
   > {
-    const parsed = parseCategoryOrder(order);
-    if (!parsed.ok) return parsed;
     return this.records.atomically(actor.id, async (records) => {
       const rows = await records.editorCategories();
       if (!rows.ok) return rows;
@@ -280,12 +259,7 @@ export class CategoryEditing implements ICategoryEditing {
         if (!current)
           throw new Error("Category reorder lost a checked sibling");
         if (current.position === position) continue;
-        const written = await records.replaceCategory(
-          id,
-          current,
-          position,
-          nextCategoryStamp(current.updated_at, this.clock()),
-        );
+        const written = await records.replaceCategory(id, current, position);
         if (!written.ok) return written;
       }
       const saved = await records.editorCategories();

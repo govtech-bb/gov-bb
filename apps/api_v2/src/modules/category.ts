@@ -9,13 +9,6 @@ export const CategoryId = z.guid().toLowerCase().brand<"CategoryId">();
 /** A parsed category identifier. */
 export type CategoryId = z.infer<typeof CategoryId>;
 
-/** Category versions round-trip at the database's millisecond precision. */
-export const CategoryStamp = z.iso
-  .datetime({ offset: true, precision: 3 })
-  .brand<"CategoryStamp">();
-/** A category version, compared by instant rather than timezone spelling. */
-export type CategoryStamp = z.infer<typeof CategoryStamp>;
-
 const categorySlug = z
   .string()
   .max(100)
@@ -48,34 +41,36 @@ export const EditorCategory = categoryValues.extend({
   position: z.int().nonnegative(),
   services: z.int().nonnegative(),
   reserved_route: z.boolean(),
-  updated_at: CategoryStamp,
+  updated_at: z.iso.datetime(),
   last_edited_by: LastEditedBy,
 });
 /** One category shared by management and every page picker. */
 export type EditorCategory = z.infer<typeof EditorCategory>;
 
 /** A reorder replaces one complete sibling order, never a subset. */
-export const CategoryOrder = z.strictObject({
-  parent_id: CategoryId.nullable(),
-  expected: z.array(z.strictObject({ id: CategoryId, version: EditVersion })),
-  ordered_ids: z.array(CategoryId),
-});
-/** The sibling snapshot and permutation originally read by the editor. */
-export type CategoryOrder = z.infer<typeof CategoryOrder>;
-
-/** Malformed permutations are rejected at the schema boundary. */
-export const CategoryOrderBody = CategoryOrder.superRefine((order, ctx) => {
-  if (
-    new Set(order.ordered_ids).size !== order.ordered_ids.length ||
-    !sameCategoryOrderIds(order)
-  ) {
-    ctx.addIssue({
-      code: "custom",
+export const CategoryOrder = z
+  .strictObject({
+    parent_id: CategoryId.nullable(),
+    expected: z.array(z.strictObject({ id: CategoryId, version: EditVersion })),
+    ordered_ids: z.array(CategoryId),
+  })
+  .refine(
+    ({ expected, ordered_ids }) => {
+      const ids = new Set(expected.map(({ id }) => id));
+      return (
+        ids.size === expected.length &&
+        new Set(ordered_ids).size === ordered_ids.length &&
+        ids.size === ordered_ids.length &&
+        ordered_ids.every((id) => ids.has(id))
+      );
+    },
+    {
       path: ["ordered_ids"],
       message: "Send every expected sibling exactly once.",
-    });
-  }
-});
+    },
+  );
+/** The sibling snapshot and permutation originally read by the editor. */
+export type CategoryOrder = z.infer<typeof CategoryOrder>;
 
 /** Deletion checks all pages, not merely the service count shown in the editor. */
 export const CategoryBlockers = z.object({
@@ -231,43 +226,4 @@ export function categoryAddress(
       ]),
     );
   return ok(url);
-}
-
-/** Reject malformed permutations before comparing the snapshot with storage. */
-export function parseCategoryOrder(
-  order: CategoryOrder,
-): Result<CategoryOrder, CategoryRejected> {
-  if (!sameCategoryOrderIds(order))
-    return err(
-      new CategoryRejected([
-        {
-          field: "ordered_ids",
-          message: "Send every expected sibling exactly once.",
-        },
-      ]),
-    );
-  return ok(order);
-}
-
-function sameCategoryOrderIds(order: {
-  expected: readonly { id: string }[];
-  ordered_ids: readonly string[];
-}): boolean {
-  const expected = new Set(order.expected.map(({ id }) => id));
-  return (
-    expected.size === order.expected.length &&
-    new Set(order.ordered_ids).size === order.ordered_ids.length &&
-    expected.size === order.ordered_ids.length &&
-    order.ordered_ids.every((id) => expected.has(id))
-  );
-}
-
-/** Advance a category timestamp even when two writes share a millisecond or the clock goes backward. */
-export function nextCategoryStamp(
-  previous: CategoryStamp,
-  now: Date,
-): CategoryStamp {
-  return CategoryStamp.parse(
-    new Date(Math.max(now.getTime(), Date.parse(previous) + 1)).toISOString(),
-  );
 }

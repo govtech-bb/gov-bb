@@ -105,14 +105,6 @@ export interface PageRecords {
   editorSnapshot(
     id: PageId,
   ): Promise<Result<PageEditorSnapshot | null, ContentStoreUnavailable>>;
-  /** Invalidate the root after revision writes, while its row lock is held. */
-  bumpPageVersion(
-    id: PageId,
-  ): Promise<Result<EditVersion, ContentStoreUnavailable>>;
-  /** The page with this id, or null. */
-  find(
-    id: PageId,
-  ): Promise<Result<PageDocument | null, ContentStoreUnavailable>>;
   /** The page with this id, held against other writers until the transaction ends, or null. */
   lock(
     id: PageId,
@@ -148,13 +140,6 @@ export interface PageRecords {
     id: PageId,
     categoryId: string,
   ): Promise<Result<void, ContentStoreUnavailable>>;
-  /**
-   * A page's open revision, draft or submitted; otherwise its latest rejected
-   * one while the live page has not moved since it was saved over; or null.
-   */
-  currentRevision(
-    pageId: PageId,
-  ): Promise<Result<PendingRevision | null, ContentStoreUnavailable>>;
   /** Start a page's open revision, or overwrite it, keeping who started it. */
   writeRevision(
     pageId: PageId,
@@ -346,8 +331,6 @@ export class PageEditing {
             at: now,
           });
           if (!discarded.ok) return discarded;
-          const bumped = await records.bumpPageVersion(id);
-          if (!bumped.ok) return bumped;
         }
         const hidden = await writeLive(
           records,
@@ -359,8 +342,6 @@ export class PageEditing {
         if (pending?.status === "draft") {
           const dropped = await records.dropRevision(id);
           if (!dropped.ok) return dropped;
-          const bumped = await records.bumpPageVersion(id);
-          if (!bumped.ok) return bumped;
         }
         return savedPage(records, id);
       }
@@ -398,9 +379,7 @@ export class PageEditing {
             this.clock(),
           ),
         );
-        if (!proposed.ok) return proposed;
-        const bumped = await records.bumpPageVersion(id);
-        return bumped.ok ? savedPage(records, id) : bumped;
+        return proposed.ok ? savedPage(records, id) : proposed;
       }
       if (fields.visibility === "public" && !this.review.allowSelfApproval) {
         // Making it public approves every change since it was last public,
@@ -475,9 +454,7 @@ export class PageEditing {
           by: actor.id,
           at: this.clock(),
         });
-        if (!marked.ok) return marked;
-        const bumped = await records.bumpPageVersion(id);
-        return bumped.ok ? savedRevision(records, id) : bumped;
+        return marked.ok ? savedRevision(records, id) : marked;
       },
     );
     if (submitted.ok)
@@ -538,9 +515,7 @@ export class PageEditing {
           ),
           comment,
         });
-        if (!marked.ok) return marked;
-        const bumped = await records.bumpPageVersion(id);
-        return bumped.ok ? savedRevision(records, id) : bumped;
+        return marked.ok ? savedRevision(records, id) : marked;
       },
     );
     if (rejected.ok && rejected.value.submitted_by !== null)
@@ -611,8 +586,6 @@ export class PageEditing {
           at: now,
         });
         if (!marked.ok) return marked;
-        const bumped = await records.bumpPageVersion(id);
-        if (!bumped.ok) return bumped;
         const saved = await writeLive(records, live, placed.value, now);
         if (!saved.ok) return saved;
         const page = await savedPage(records, id);

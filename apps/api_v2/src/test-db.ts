@@ -133,7 +133,7 @@ export function createTestServices(
     navigation: new SiteNavigation(pages),
     editing: new PageEditing(pages, () => new Date(), review, notifier),
     index: new EditorIndex(pages),
-    categories: new CategoryEditing(pages, () => new Date()),
+    categories: new CategoryEditing(pages),
     collections: new CollectionEditing(new PostgresCollections(db)),
   };
 }

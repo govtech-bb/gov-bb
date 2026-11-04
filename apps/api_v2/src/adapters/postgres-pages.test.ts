@@ -4,11 +4,7 @@ import { err } from "../modules/result";
 import { contentPages } from "../schema";
 import { aPage, createTestDb, expectOk, TEST_EMPLOYEE } from "../test-db";
 import { PostgresPages } from "./postgres-pages";
-import {
-  CategoryId,
-  CategoryStamp,
-  parseCategoryFields,
-} from "../modules/category";
+import { CategoryId, parseCategoryFields } from "../modules/category";
 
 describe("PostgresPages category constraints", () => {
   it("translates unique slug and parent foreign-key refusals without partial writes", async () => {
@@ -23,14 +19,13 @@ describe("PostgresPages category constraints", () => {
           description: null,
         }),
       );
-      const stamp = CategoryStamp.parse("2026-10-26T12:00:00.000Z");
       const id = expectOk(
         await records.atomically(TEST_EMPLOYEE.id, (tx) =>
-          tx.insertCategory(fields, 0, stamp),
+          tx.insertCategory(fields, 0),
         ),
       );
       const duplicate = await records.atomically(TEST_EMPLOYEE.id, (tx) =>
-        tx.insertCategory(fields, 1, stamp),
+        tx.insertCategory(fields, 1),
       );
       expect(duplicate).toMatchObject({
         ok: false,
@@ -40,12 +35,7 @@ describe("PostgresPages category constraints", () => {
         "00000000-0000-4000-8000-000000000000",
       );
       const invalidParent = await records.atomically(TEST_EMPLOYEE.id, (tx) =>
-        tx.replaceCategory(
-          id,
-          { ...fields, parent_id: missingParent },
-          0,
-          stamp,
-        ),
+        tx.replaceCategory(id, { ...fields, parent_id: missingParent }, 0),
       );
       expect(invalidParent).toMatchObject({
         ok: false,

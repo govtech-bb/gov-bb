@@ -159,17 +159,29 @@ describe("database edit identities", () => {
     }
   });
 
-  it("rejects experimental version columns instead of silently adopting their identities", async () => {
-    const { db, pool, close } = await createTestDb();
+  it("bumps the page version on any revision write, without touching its dates or history", async () => {
+    const { pool, close } = await createTestDb();
     try {
-      await pool.query(`${ROOT_FIXTURES}
-        alter table content_pages alter column version drop default;
-        delete from schema_migrations where name = '023_edit_versions'`);
-      const before = (await pool.query(stateQuery)).rows;
-      await expect(migrate(db, (script) => pool.query(script))).rejects.toThrow(
-        "Edit version preflight",
-      );
-      expect((await pool.query(stateQuery)).rows).toEqual(before);
+      await pool.query(ROOT_FIXTURES);
+      const page = async () =>
+        (
+          await pool.query(
+            "select version::int, updated_at, (select count(*)::int from change_events where entity_kind = 'content_page' and action = 'updated') as events from content_pages",
+          )
+        ).rows[0];
+      let before = await page();
+      for (const write of [
+        `insert into page_revisions (page_id, fields, live_updated_at, created_by, contributors)
+           select id, '{}', updated_at, 'system', '{}' from content_pages`,
+        "update page_revisions set status = 'submitted'",
+        "delete from page_revisions",
+      ]) {
+        await pool.query(write);
+        const after = await page();
+        expect(after.version).not.toBe(before.version);
+        expect({ ...after, version: 0 }).toEqual({ ...before, version: 0 });
+        before = after;
+      }
     } finally {
       await close();
     }

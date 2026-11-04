@@ -29,7 +29,7 @@ import {
   CategoryBlockers,
   CategoryFields,
   CategoryId,
-  CategoryOrderBody,
+  CategoryOrder,
   EditorCategory,
 } from "../modules/category";
 import {
@@ -568,7 +568,7 @@ export const SCHEMAS = {
       "category changes an approver made.",
     tags: ["categories"],
     security: editorSecurity,
-    body: CategoryOrderBody,
+    body: CategoryOrder,
     response: {
       200: z.object({ categories: z.array(EditorCategory) }),
       409: categoryConflict,

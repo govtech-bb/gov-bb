@@ -150,7 +150,7 @@ async function main(): Promise<void> {
         notifier,
       ),
       index: new EditorIndex(pages),
-      categories: new CategoryEditing(pages, () => new Date()),
+      categories: new CategoryEditing(pages),
       collections: new CollectionEditing(new PostgresCollections(db)),
       access,
       roles,
