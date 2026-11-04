@@ -21,6 +21,8 @@ const statusMocks = vi.hoisted(() => ({
 }))
 vi.mock('../lib/service-status', () => statusMocks)
 
+type Head = () => { scripts?: Record<string, unknown>[] }
+
 type BeforeLoad = (arg: {
   context: { queryClient: QueryClient }
   location: { search: Record<string, unknown> }
@@ -33,8 +35,6 @@ type BeforeLoad = (arg: {
 // `clearAllMocks`, so the cold import failed this file's first two tests
 // together. The hook gets its own generous timeout and every test then sees a
 // warm module.
-type Head = () => { scripts?: Record<string, unknown>[] }
-
 let beforeLoad: BeforeLoad
 let head: Head
 beforeAll(async () => {
