@@ -13,6 +13,11 @@ declare module "./node" {
   interface PageComponentKinds {
     start: true;
   }
+
+  /** Without an href, a Start marker goes to the page's linked form. */
+  interface PageComponentAttributes {
+    href?: string;
+  }
 }
 
 /**

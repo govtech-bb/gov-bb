@@ -5,6 +5,14 @@ declare module "./node" {
   interface PageComponentKinds {
     table: true;
   }
+
+  interface PageComponentAttributes {
+    caption?: string;
+    /** Whether each row's first cell heads the row. */
+    rowHeaders?: "first" | "none";
+    /** The columns, counted from 0, whose values are numbers and line up on the right. */
+    numericColumns?: readonly number[];
+  }
 }
 
 /**

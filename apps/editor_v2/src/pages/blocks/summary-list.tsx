@@ -10,6 +10,11 @@ declare module "./node" {
     "summary-list": true;
     "summary-item": true;
   }
+
+  interface PageComponentAttributes {
+    /** The fact a summary item names, such as "Fee". */
+    summaryKey?: string;
+  }
 }
 
 function AddSummaryItem({ change }: BlockOptionsProps) {

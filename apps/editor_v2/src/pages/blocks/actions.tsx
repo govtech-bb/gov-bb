@@ -29,6 +29,14 @@ declare module "./node" {
     actions: true;
     action: true;
   }
+
+  /** A button goes to an address, a registered form, or the page's linked form (`target: "form"`). */
+  interface PageComponentAttributes {
+    href?: string;
+    form?: string;
+    target?: "form";
+    variant?: string;
+  }
 }
 
 /** Where a button goes, on its editing surface, and its style; Start markers share it (see ./start-link). */

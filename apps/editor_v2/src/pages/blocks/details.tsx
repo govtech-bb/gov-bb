@@ -10,6 +10,11 @@ declare module "./node" {
   interface PageComponentKinds {
     details: true;
   }
+
+  interface PageComponentAttributes {
+    /** What a Details says before it's expanded. */
+    summary?: string;
+  }
 }
 
 /** `:::details[Summary]`: supporting information readers can expand. */

@@ -37,6 +37,7 @@ src/forms/react              form canvas and shared controls
 src/forms/features           each field, pages, repetition, logic and mentions
 src/forms/registry            developer-defined template contracts and builders
 src/pages                    page composition, metadata, Markdown handlers, writing and preview
+src/pages/blocks             each page component a file of its own, made with defineBlock (see its README)
 src/converters               Markdown, native form import/export, explicit legacy SSB export
 src/presets                  selected modules and built-in Form registry data
 src/persistence              storage-independent draft state machine
@@ -98,7 +99,7 @@ A `DraftStore` receives explicit source and a codec: `new DraftStore(source, cod
 
 Authoring controls share the form builder's visual primitives in `src/ui`: buttons, block grips, menu rows, popup panels and settings fields. Page layout, content spacing and insertion choices are specific to writing. Page drag/drop moves whole root content blocks; form drag/drop retains its question grouping and nesting rules. Neither editor imports the other's document structure.
 
-`definePageEditor` extends the kernel definition with installed Markdown handlers. Each page module supplies its supported syntax and Lexical import/export. Default previews use the shared `@govtech-bb/govbbmarkd/react` renderer. Existing `PageHandler.render` and recursive `PageConversion.render` callbacks remain supported but are deprecated; new preview adapters use the shared renderer's HAST component overrides. The GovBB preset combines page metadata, text, components, native Lexical lists/tables and shared history, links and formatting. A list-item subclass preserves separate paragraphs within numbered instructions; form list nodes remain unchanged.
+`definePageEditor` extends the kernel definition with installed Markdown handlers. Each page module supplies its supported syntax and Lexical import/export. Default previews use the shared `@govtech-bb/govbbmarkd/react` renderer. Existing `PageHandler.render` and recursive `PageConversion.render` callbacks remain supported but are deprecated; new preview adapters use the shared renderer's HAST component overrides. The GovBB preset combines page metadata, the page blocks, text, native Lexical lists/tables and shared history, links and formatting. Each block declares its kinds, attributes, Markdown, insert entries and Block options in its own file, so adding one edits no shared code. A list-item subclass preserves separate paragraphs within numbered instructions; form list nodes remain unchanged.
 
 Page metadata lives in a hidden document node, retaining its YAML document, original source and initial canonical fingerprint. Editing the title shares the body's undo and save operation. Export returns original bytes until content or metadata changes; afterwards it normalizes Markdown without discarding unknown YAML fields, link targets or body structure. Unsupported content makes the whole page source-only, so conversion cannot silently flatten part of it; the page editor opens such a page read-only, with no Markdown source tool.
 
