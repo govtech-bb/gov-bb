@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { contactDetails } from "@govtech-bb/govbbmarkd/contact-record";
+import { recordDetails } from "@govtech-bb/govbbmarkd/record-details";
 
 const contacts = {
   schema: {
@@ -18,7 +18,7 @@ describe("a contact block's details, read from a record", () => {
   it("labels each chosen field as its collection does, in the chosen order", () => {
     // `fax` isn't a field of the collection, so it is left out
     expect(
-      contactDetails(contacts, ["hours", "phone", "fax"], {
+      recordDetails(contacts, ["hours", "phone", "fax"], {
         hours: "8:30am to 4:30pm",
         phone: "(246) 535-0021",
         fax: "(246) 535-0022",
@@ -31,7 +31,7 @@ describe("a contact block's details, read from a record", () => {
 
   it("links phone, email and website, and leaves other details as text", () => {
     expect(
-      contactDetails(contacts, ["phone", "email", "website", "hours", "name"], {
+      recordDetails(contacts, ["phone", "email", "website", "hours", "name"], {
         phone: "(246) 535-0021",
         email: "drugservice@health.gov.bb",
         website: "health.gov.bb",
@@ -68,7 +68,7 @@ describe("a contact block's details, read from a record", () => {
 
   it("adds https only to a website without a scheme", () => {
     const href = (website: string) =>
-      contactDetails(contacts, ["website"], { website })[0]?.href;
+      recordDetails(contacts, ["website"], { website })[0]?.href;
 
     expect(href("http-services.gov.bb")).toBe("https://http-services.gov.bb");
     expect(href("HTTP://gov.bb")).toBe("HTTP://gov.bb");
@@ -77,12 +77,12 @@ describe("a contact block's details, read from a record", () => {
   it("puts every link through the content URL check, and shows one that fails as text", () => {
     // A script address is never a script link: it is read as a site name
     expect(
-      contactDetails(contacts, ["website"], {
+      recordDetails(contacts, ["website"], {
         website: "javascript:alert(1)",
       })[0]?.href,
     ).toBe("https://javascript:alert(1)");
     expect(
-      contactDetails(contacts, ["website"], {
+      recordDetails(contacts, ["website"], {
         website: " java\tscript:alert(1)",
       })[0],
     ).toMatchObject({ text: " java\tscript:alert(1)", href: null });

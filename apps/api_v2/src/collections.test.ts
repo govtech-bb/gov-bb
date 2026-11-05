@@ -299,3 +299,92 @@ describe("the seeded contacts", () => {
     ).toEqual(["barbados-drug-service", "nis-severance-payment-department"]);
   }, 60_000);
 });
+
+describe("the pages that show a record", () => {
+  const SERVICE = "11111111-1111-4111-8111-111111111111";
+  const FACT = "22222222-2222-4222-8222-222222222222";
+  const CONTACT = "33333333-3333-4333-8333-333333333333";
+  const DRAFTED = "44444444-4444-4444-8444-444444444444";
+  const DISCARDED = "55555555-5555-4555-8555-555555555555";
+  const ELSEWHERE = "66666666-6666-4666-8666-666666666666";
+
+  const page = (
+    id: string,
+    slug: string,
+    title: string,
+    body: string,
+    parent: string | null = SERVICE,
+  ) =>
+    test.db.execute(
+      sql`insert into content_pages (id, url, slug, parent_id, title, body_markdown)
+          values (${id}, ${`/drug-licence${parent ? `/${slug}` : ""}`}, ${slug},
+                  ${parent}, ${title}, ${body})`,
+    );
+  const revision = (id: string, status: string, body: string) =>
+    test.db.execute(
+      sql`insert into page_revisions (page_id, status, fields, live_updated_at, created_by, contributors)
+          values (${id}, ${status}, ${JSON.stringify({ body_markdown: body })}::jsonb,
+                  now(), ${TEST_EMPLOYEE.id}, array[${TEST_EMPLOYEE.id}])`,
+    );
+  const fact = (record: string, collection = "contacts") =>
+    `Call :fact{collection="${collection}" record="${record}" field="phone"}.`;
+
+  it("lists those naming it in a fact or a contact block, live or in an open revision, under their service", async () => {
+    await page(SERVICE, "drug-licence", "Get a drug licence", "Apply.", null);
+    await page(FACT, "call-us", "Call us", fact("drug-service"));
+    await page(
+      CONTACT,
+      "contact",
+      "Contact the service",
+      '::contact{collection="contacts" record="drug-service" fields="phone"}',
+    );
+    await page(DRAFTED, "fees", "Fees", "No contact yet.");
+    await revision(DRAFTED, "draft", `Fees. ${fact("drug-service")}`);
+    await page(DISCARDED, "forms", "Forms", "No contact.");
+    await revision(DISCARDED, "discarded", fact("drug-service"));
+    // Mentions, but not of this record: another record, and another collection's
+    await page(
+      ELSEWHERE,
+      "elsewhere",
+      "Elsewhere",
+      `${fact("drug-services")} ${fact("drug-service", "offices")}`,
+    );
+
+    const response = await editor({
+      url: "/collections/contacts/records/drug-service/pages",
+    });
+    expect(response.statusCode, response.body).toBe(200);
+    expect(response.json()).toEqual({
+      pages: [
+        {
+          id: FACT,
+          title: "Call us",
+          url: "/drug-licence/call-us",
+          visibility: "draft",
+          service_id: SERVICE,
+        },
+        {
+          id: CONTACT,
+          title: "Contact the service",
+          url: "/drug-licence/contact",
+          visibility: "draft",
+          service_id: SERVICE,
+        },
+        {
+          id: DRAFTED,
+          title: "Fees",
+          url: "/drug-licence/fees",
+          visibility: "draft",
+          service_id: SERVICE,
+        },
+      ],
+    });
+  });
+
+  it("is for signed-in editors only", async () => {
+    const response = await app.inject({
+      url: "/collections/contacts/records/drug-service/pages",
+    });
+    expect(response.statusCode).toBe(401);
+  });
+});

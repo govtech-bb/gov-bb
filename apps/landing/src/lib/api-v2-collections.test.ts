@@ -1,9 +1,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { processMarkdown } from '../utils/markdown/processor'
 import {
-  contactRefs,
+  recordRefs,
   fetchCollectionRecords,
-  resolveContactRecords,
+  resolvePageRecords,
 } from './api-v2-collections'
 
 const BASE = 'http://api.example'
@@ -55,7 +55,7 @@ const json = (status: number, body: unknown) =>
 
 afterEach(() => vi.restoreAllMocks())
 
-describe('contactRefs', () => {
+describe('recordRefs', () => {
   it('finds each record a page’s contact blocks name, once', async () => {
     const { hast } = await processMarkdown(
       [
@@ -66,8 +66,22 @@ describe('contactRefs', () => {
         ':::',
       ].join('\n\n'),
     )
-    expect(contactRefs(hast)).toEqual([
+    expect(recordRefs(hast)).toEqual([
       { collection: 'contacts', record: 'barbados-drug-service' },
+    ])
+  })
+
+  it('finds the records facts name too, leaving out one still being chosen', async () => {
+    const { hast } = await processMarkdown(
+      [
+        'Call :fact{collection="contacts" record="barbados-drug-service" field="phone"} or write to :fact{collection="offices" record="bridgetown" field="email"}.',
+        '::contact{collection="contacts" record="barbados-drug-service" fields="phone"}',
+        'Not yet :fact{collection="contacts"}.',
+      ].join('\n\n'),
+    )
+    expect(recordRefs(hast)).toEqual([
+      { collection: 'contacts', record: 'barbados-drug-service' },
+      { collection: 'offices', record: 'bridgetown' },
     ])
   })
 })
@@ -103,9 +117,9 @@ describe('fetchCollectionRecords', () => {
   })
 })
 
-describe('resolveContactRecords', () => {
+describe('resolvePageRecords', () => {
   it('keeps only the records the page names', async () => {
-    const records = await resolveContactRecords(
+    const records = await resolvePageRecords(
       BASE,
       [{ collection: 'contacts', record: 'barbados-drug-service' }],
       stubFetch(json(200, CONTACTS)),
@@ -119,20 +133,20 @@ describe('resolveContactRecords', () => {
   it('reads nothing when api_v2 is not configured or nothing is named', async () => {
     const fetchImpl = stubFetch(json(200, CONTACTS))
     expect(
-      await resolveContactRecords(
+      await resolvePageRecords(
         null,
         [{ collection: 'contacts', record: 'x' }],
         fetchImpl,
       ),
     ).toEqual({})
-    expect(await resolveContactRecords(BASE, [], fetchImpl)).toEqual({})
+    expect(await resolvePageRecords(BASE, [], fetchImpl)).toEqual({})
     expect(fetchImpl).not.toHaveBeenCalled()
   })
 
   it('leaves out a collection that can’t be read', async () => {
     vi.spyOn(console, 'warn').mockImplementation(() => {})
     expect(
-      await resolveContactRecords(
+      await resolvePageRecords(
         BASE,
         [{ collection: 'contacts', record: 'barbados-drug-service' }],
         stubFetch(new Error('timeout')),

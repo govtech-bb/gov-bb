@@ -1,18 +1,11 @@
 import { AddressBook, ArrowRight, Warning } from "@phosphor-icons/react";
-import { contactDetails } from "@govtech-bb/govbbmarkd/contact-record";
+import { recordDetails } from "@govtech-bb/govbbmarkd/record-details";
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
 import { useLexicalEditable } from "@lexical/react/useLexicalEditable";
 import { DecoratorNode, type LexicalNode, type NodeKey, type SerializedLexicalNode } from "lexical";
-import {
-  createContext,
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-  useSyncExternalStore,
-  type ReactNode,
-} from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import { OPEN_BLOCK_OPTIONS_COMMAND } from "../block-options";
+import { findRecord, useCollection, usePageCollections } from "../page-collections";
 import type { PageHandler, PageModule } from "../definition";
 import { UnsupportedPageContent } from "../markdown";
 import { pageInsertAction } from "../insertion";
@@ -26,105 +19,6 @@ import { NativeSelect } from "../../ui/native-select";
  * `::contact{collection="contacts" record="barbados-drug-service" fields="phone,email,hours"}`. The page keeps its own
  * heading and wording around it; the details are the record's, so changing the record changes every page showing it.
  */
-
-/** A collection and its records, as api_v2's public `GET /collections/:key/records` answers. */
-export type CollectionRecords = {
-  collection: {
-    key: string;
-    title: string;
-    record_key: string;
-    schema: { fields: readonly { key: string; label: string }[] };
-  };
-  records: readonly { record_key: string; data: Readonly<Record<string, string>> }[];
-};
-
-/** What the host lets a contact block read and open; without a host, blocks show which record they name. */
-export type PageCollections = {
-  /** The collection, or null when there is no such collection. */
-  read: (key: string) => Promise<CollectionRecords | null>;
-  /** Opens the record's editing, such as the collection's screen. */
-  openRecord?: (collection: string, record: string) => void;
-};
-
-type CollectionState =
-  | { status: "unavailable" | "loading" | "failed" }
-  | { status: "read"; value: CollectionRecords | null };
-
-/**
- * The page's latest read of each collection. Every block and Block options showing a collection share it, so a read
- * made as the options open, which may find a record added since, updates the blocks too.
- */
-function collectionStore(host: PageCollections) {
-  const states = new Map<string, CollectionState>();
-  const latest = new Map<string, number>();
-  const listeners = new Set<() => void>();
-  let reads = 0;
-
-  return {
-    host,
-    subscribe: (listener: () => void) => {
-      listeners.add(listener);
-
-      return () => listeners.delete(listener);
-    },
-    get: (key: string) => states.get(key),
-    read(key: string) {
-      const read = ++reads;
-      latest.set(key, read);
-
-      const settle = (state: CollectionState) => {
-        // An earlier read answering late never replaces a later one
-        if (latest.get(key) !== read) return;
-        states.set(key, state);
-        listeners.forEach((listener) => listener());
-      };
-
-      host.read(key).then(
-        (value) => settle({ status: "read", value }),
-        () => settle({ status: "failed" }),
-      );
-    },
-  };
-}
-
-const PageCollectionsContext = createContext<ReturnType<typeof collectionStore> | null>(null);
-
-export function PageCollectionsProvider({
-  collections,
-  children,
-}: {
-  collections: PageCollections;
-  children: ReactNode;
-}) {
-  const store = useMemo(() => collectionStore(collections), [collections]);
-
-  return <PageCollectionsContext value={store}>{children}</PageCollectionsContext>;
-}
-
-export const usePageCollections = () => useContext(PageCollectionsContext)?.host ?? null;
-
-const NO_STORE = () => () => {};
-
-/** A collection as the host last read it, read again whenever a block or its options showing it appear. */
-export function useCollection(key: string): CollectionState {
-  const store = useContext(PageCollectionsContext);
-
-  const state = useSyncExternalStore(store?.subscribe ?? NO_STORE, () =>
-    key ? store?.get(key) : undefined,
-  );
-
-  useEffect(() => {
-    if (store && key) store.read(key);
-  }, [store, key]);
-
-  if (!store || !key) return { status: "unavailable" };
-
-  return state ?? { status: "loading" };
-}
-
-/** The record a block names, from a read collection; undefined when it has gone. */
-export const findRecord = (collection: CollectionRecords, record: string) =>
-  collection.records.find((row) => row.record_key === record);
 
 export type ContactSettings = { collection: string; record: string; fields: readonly string[] };
 
@@ -182,7 +76,7 @@ export function ContactPreview({
       true,
     );
 
-  const details = contactDetails(value.collection, fields, found.data);
+  const details = recordDetails(value.collection, fields, found.data);
 
   if (!details.length) return status("This record has none of the chosen details.", true);
 

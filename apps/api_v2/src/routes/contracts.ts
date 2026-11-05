@@ -40,6 +40,7 @@ import {
   CollectionView,
   RecordBody,
   RecordKey,
+  RecordPage,
 } from "../modules/collection";
 import { PageHistoryEntry } from "../modules/page-history";
 import { PublicPage } from "../modules/page-visibility";
@@ -700,6 +701,23 @@ export const SCHEMAS = {
       204: z.undefined(),
       409: recordConflict,
       ...recordErrors,
+    },
+  },
+
+  recordPages: {
+    summary: "The pages that show a record",
+    description:
+      "Pages whose body, live or in an open revision, shows the record in a " +
+      "fact or a contact block, by title, so whoever changes a record sees " +
+      "every page it changes. `service_id` is the root page each is under. " +
+      "A record that has gone, or never existed, can still be shown.",
+    tags: ["collections"],
+    security: editorSecurity,
+    params: recordParams,
+    response: {
+      200: z.object({ pages: z.array(RecordPage) }),
+      500: error,
+      ...authErrors,
     },
   },
 

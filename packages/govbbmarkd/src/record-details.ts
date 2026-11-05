@@ -1,15 +1,16 @@
 import { isSafeContentUrl } from "./content-url";
 
 /**
- * A `::contact{collection record fields}` block's details, without React.
+ * A record's details as a page shows them, without React: a contact block's
+ * tiles (`::contact`) and a fact in a line of text (`:fact`).
  *
- * The editor's preview and landing's page both show a contact block, each in
- * its own markup. What a detail says, what it is labelled, and whether it is
- * a link (and to where) is decided once, here, so the two cannot drift.
+ * The editor and landing each show them in their own markup. What a detail
+ * says, what it is labelled, and whether it is a link (and to where) is
+ * decided once, here, so the two cannot drift.
  */
 
-/** One detail of a contact record, ready to show. */
-export interface ContactDetail {
+/** One detail of a record, ready to show. */
+export interface RecordDetail {
   field: string;
   label: string;
   text: string;
@@ -18,7 +19,7 @@ export interface ContactDetail {
 }
 
 /** A collection's fields, as the API describes them: enough to label a record's details. */
-export interface ContactCollection {
+export interface CollectionFields {
   schema: { fields: ReadonlyArray<{ key: string; label: string }> };
 }
 
@@ -31,7 +32,7 @@ export interface ContactCollection {
  * asking an author to declare that `phone` is a telephone number, which they
  * would get wrong exactly as often as the naming convention would.
  */
-export function contactLink(field: string, value: string): string | null {
+export function detailLink(field: string, value: string): string | null {
   if (field.includes("phone") || field.includes("telephone")) {
     return `tel:${value.replace(/[^\d+]/g, "")}`;
   }
@@ -43,16 +44,16 @@ export function contactLink(field: string, value: string): string | null {
 }
 
 /**
- * The details of `record` a contact block shows: each of the block's `fields`
- * labelled as its collection labels it, in the block's order. A field the
+ * The details of `record` a page shows: each of `fields` labelled as its
+ * collection labels it, in that order. A field the
  * collection doesn't have, or the record leaves empty, is left out. A link
  * that fails the content URL check is shown as text.
  */
-export function contactDetails(
-  collection: ContactCollection,
+export function recordDetails(
+  collection: CollectionFields,
   fields: readonly string[],
   record: Record<string, unknown>,
-): ContactDetail[] {
+): RecordDetail[] {
   const labels = new Map(
     collection.schema.fields.map((field) => [field.key, field.label]),
   );
@@ -68,7 +69,7 @@ export function contactDetails(
       return [];
     }
     const text = String(value);
-    const link = contactLink(field, text);
+    const link = detailLink(field, text);
     return [
       {
         field,

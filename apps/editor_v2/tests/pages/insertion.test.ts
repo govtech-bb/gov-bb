@@ -84,9 +84,10 @@ test("cell insertion offers only Markdown-compatible text while root tables offe
             (action) => action.id,
           ),
         ).toEqual(["page-paragraph"]);
+        // Every block: a fact goes in at a caret in text, from "/", not beside a table
         expect(
           $availableActions(editor, govbbPageEditor, { targetKey: table.getKey() }).length,
-        ).toBe(govbbPageEditor.actions.length);
+        ).toBe(govbbPageEditor.actions.filter((action) => action.id !== "page-fact").length);
       },
       { editor },
     );

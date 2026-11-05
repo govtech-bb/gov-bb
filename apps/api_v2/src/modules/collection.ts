@@ -10,7 +10,7 @@
  */
 
 import { z } from "zod";
-import type { FieldError } from "./page";
+import { PageId, Visibility, type FieldError } from "./page";
 import { err, ok, type Result } from "./result";
 
 const key = (max: number) =>
@@ -80,6 +80,21 @@ export const CollectionRecord = z.object({
 export type CollectionRecord = z.infer<typeof CollectionRecord>;
 
 /** What a record write sends; `data` is checked against the field list. */
+/**
+ * A page that shows a record, in a fact or a contact block, live or in its
+ * open revision: what the record's "used on" lists (#3590). `service_id` is
+ * the root page the editor opens it under.
+ */
+export const RecordPage = z.object({
+  id: PageId,
+  title: z.string(),
+  url: z.string(),
+  visibility: Visibility,
+  service_id: PageId,
+});
+/** A page that shows a record (see `RecordPage`). */
+export type RecordPage = z.infer<typeof RecordPage>;
+
 export const RecordBody = z.strictObject({
   data: z
     .record(z.string(), z.unknown())

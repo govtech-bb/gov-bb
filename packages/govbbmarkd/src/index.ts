@@ -7,6 +7,10 @@ export {
   type MarkdownCompileOptions,
   type LegacyMarkdownHtml,
 } from "#govbbmarkd/compile-markdown";
+export {
+  recordReferences,
+  type RecordReference,
+} from "#govbbmarkd/record-references";
 export type {
   MarkdownDocument,
   MarkdownHeading,

@@ -9,6 +9,7 @@ import { pageFieldLabel } from "../api/page-fields";
 import { pageToMarkdown, pickerCategories } from "../api/page-markdown";
 import {
   collectionRecordsQuery,
+  collectionsQuery,
   PRELOAD_FRESH,
   categoriesQuery,
   rolesQuery,
@@ -20,7 +21,7 @@ import { PageDraftEditor } from "../host/page-editor";
 import { download } from "../host/download";
 import { collectInternalPageLinks } from "../pages/link-checks";
 import { draftPageMetadata, readPageMetadata } from "../pages";
-import { PageCollectionsProvider, type PageCollections } from "../pages/modules/contact";
+import { PageCollectionsProvider, type PageCollections } from "../pages/page-collections";
 import { DraftStore } from "../persistence/draft-store";
 import { govbbPageCodec } from "../presets/govbb-page";
 import { Banner } from "../ui/banner";
@@ -205,10 +206,12 @@ function RemotePageEditor({
     return { breadcrumbs, publishedAt: server.published_at };
   }, [metadata.url, server.url, server.published_at, categories, service, servicePages]);
 
-  // Contact blocks show their records' current details, and open a record on the collection's screen (#3184)
+  // Contact blocks and facts show their records' current values, and open a record on the collection's screen (#3184)
   const collections = useMemo<PageCollections>(
     () => ({
       read: (key) => client.fetchQuery(collectionRecordsQuery(api, key)),
+      list: async () =>
+        (await client.fetchQuery(collectionsQuery(api))).map(({ key, title }) => ({ key, title })),
       openRecord: (collection, record) =>
         void navigate({
           href: `/collections/${encodeURIComponent(collection)}?record=${encodeURIComponent(record)}`,

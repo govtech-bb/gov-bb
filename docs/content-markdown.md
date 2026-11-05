@@ -95,6 +95,20 @@ BBD **50**
 
 A summary list contains only summary items. Each item needs a plain-text key and belongs directly inside a summary list. Values accept Markdown. This is for authored facts; application-generated check-your-answers data remains application-owned.
 
+## Facts from a data collection
+
+```md
+Call :fact[the Barbados Drug Service]{collection="contacts" record="barbados-drug-service" field="phone"} for advice.
+```
+
+A fact is one value from a record in a data collection, such as a department's phone number, in a line of text. Change the record and every page that shows it changes, with no page edit. A fact goes in any text except an action's label. The text in its brackets is optional: it shows in place of the value if the record or field has gone, and without it nothing shows. Phone numbers, email addresses and websites are links, except inside link text.
+
+To show several of a record's details as contact tiles, use a contact block:
+
+```md
+::contact{collection="contacts" record="barbados-drug-service" fields="phone,email,hours"}
+```
+
 ## Validation and editing
 
 Unknown components, unsupported attributes, unsafe action URLs, invalid nesting and unclosed fences produce diagnostics with a code, line and column. Attributes are not arbitrary React props: authors cannot set classes, styles or event handlers through these directives.

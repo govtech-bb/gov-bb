@@ -67,6 +67,11 @@ export type Collection = CollectionDetail["collection"];
 /** One record of a collection: a value for some or all of its fields, every one a string. */
 export type CollectionRecord = CollectionDetail["records"][number];
 
+/** A page that shows a record, in a fact or a contact block, live or in an open revision (#3590). */
+export type RecordPage = Json<
+  paths["/collections/{key}/records/{recordKey}/pages"]["get"]["responses"][200]
+>["pages"][number];
+
 /** What saving a record sends: every value to keep, by field key. */
 export type RecordInput = Json<
   paths["/collections/{key}/records/{recordKey}"]["put"]["requestBody"]
@@ -536,6 +541,9 @@ export function createEditorApi(apiOrigin: string, landingOrigin?: string) {
     /** A collection and its records; a 404 when there is no such collection. */
     collection: (key: string) =>
       read<CollectionDetail>(`/collections/${encodeURIComponent(key)}/records`),
+    /** The pages that show a record, by title, each with the service it opens under. */
+    recordPages: async (key: string, recordKey: string) =>
+      (await read<{ pages: RecordPage[] }>(`${recordPath(key, recordKey)}/pages`)).pages,
     /** Adds a record; a 409 `record_exists` when its key is taken. */
     createRecord: async (
       key: string,

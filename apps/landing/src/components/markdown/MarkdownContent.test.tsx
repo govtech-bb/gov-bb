@@ -5,7 +5,7 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { processMarkdown } from '../../utils/markdown/processor'
 import { bakeStartLinkFormId } from '../../utils/markdown/plugins'
 import { MarkdownBody } from './MarkdownContent'
-import type { ContactRecords } from '../../lib/api-v2-collections'
+import type { PageRecords } from '../../lib/api-v2-collections'
 
 // StartLink reads useLocation for analytics; stub it so form CTAs render
 // without a router context.
@@ -191,10 +191,10 @@ describe('::contact (a record’s contact details, #3185)', () => {
     },
   }
 
-  async function render(records: ContactRecords = {}) {
+  async function render(records: PageRecords = {}) {
     const { hast } = await processMarkdown(md)
     return renderToStaticMarkup(
-      <MarkdownBody hast={hast} contactRecords={records} />,
+      <MarkdownBody hast={hast} pageRecords={records} />,
     )
   }
 
@@ -229,5 +229,68 @@ describe('::contact (a record’s contact details, #3185)', () => {
         '::contact{collection="contacts" record="x" onclick="y"}',
       ),
     ).rejects.toThrow('The contact component does not support these attributes')
+  })
+})
+
+describe(':fact (one value from a record, #3590)', () => {
+  const contacts = {
+    collection: {
+      key: 'contacts',
+      schema: {
+        fields: [
+          { key: 'phone', label: 'Telephone' },
+          { key: 'hours', label: 'Opening hours' },
+        ],
+      },
+    },
+    records: {
+      'barbados-drug-service': {
+        phone: '(246) 535-0021',
+        hours: '8:30am to 4:30pm',
+      },
+    },
+  }
+
+  async function render(md: string, records: PageRecords = { contacts }) {
+    const { hast } = await processMarkdown(md)
+    return renderToStaticMarkup(
+      <MarkdownBody hast={hast} pageRecords={records} />,
+    )
+  }
+
+  it('shows the value in its sentence, a phone number as a link that dials', async () => {
+    const html = await render(
+      'Call :fact{collection="contacts" record="barbados-drug-service" field="phone"} today. Open :fact{collection="contacts" record="barbados-drug-service" field="hours"}.',
+    )
+    expect(html).toContain('href="tel:2465350021"')
+    expect(html).toContain('>(246) 535-0021</a> today.')
+    expect(html).not.toContain('target="_blank"')
+    expect(html).toContain('Open 8:30am to 4:30pm.')
+  })
+
+  it('shows the value as plain text inside link text', async () => {
+    const html = await render(
+      '[Ring :fact{collection="contacts" record="barbados-drug-service" field="phone"}](/contact)',
+    )
+    expect(html).toContain('Ring (246) 535-0021</a>')
+    expect(html).not.toContain('tel:')
+  })
+
+  it('shows its fallback when the record or field has gone, and otherwise nothing', async () => {
+    expect(
+      await render(
+        'Call :fact[the service]{collection="contacts" record="gone" field="phone"} today.',
+      ),
+    ).toContain('Call the service today.')
+    expect(
+      await render(
+        'Call :fact[the service]{collection="contacts" record="barbados-drug-service" field="fax"} today.',
+      ),
+    ).toContain('Call the service today.')
+    expect(
+      await render(
+        'Call :fact{collection="contacts" record="gone" field="phone"} today.',
+      ),
+    ).toContain('Call  today.')
   })
 })

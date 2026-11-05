@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useRef, useState, type RefObject } from "react";
+import { Link } from "@tanstack/react-router";
+import { useEffect, useId, useRef, useState, type RefObject } from "react";
 import {
   ApiFailure,
   type Collection,
@@ -7,7 +8,7 @@ import {
   type EditorApi,
 } from "../../api/client";
 import { apiFailureMessages } from "../../api/failure-messages";
-import { collectionQuery } from "../../api/queries";
+import { collectionQuery, recordPagesQuery } from "../../api/queries";
 import { download } from "../../host/download";
 import { Banner } from "../../ui/banner";
 import { Button } from "../../ui/button";
@@ -16,6 +17,7 @@ import { Field } from "../../ui/field";
 import { pressedByTouch } from "../../ui/focus";
 import { FormDialog } from "../../ui/form-dialog";
 import { Input } from "../../ui/input";
+import { TextLink } from "../../ui/text-link";
 import { toast } from "../../ui/toast";
 import { ApiProblems, ApiProblemText } from "../api-problems";
 import {
@@ -314,8 +316,56 @@ export function RecordDialog({
           );
         })}
         <ApiProblems messages={[...unshown, ...otherProblems]} />
+        {base && <RecordPages api={api} collection={collection.key} record={base.record_key} />}
       </div>
     </FormDialog>
+  );
+}
+
+/** The pages that show a record (#3590): what saving it changes, each opening in the editor. */
+function RecordPages({
+  api,
+  collection,
+  record,
+}: {
+  api: EditorApi;
+  collection: string;
+  record: string;
+}) {
+  const pages = useQuery(recordPagesQuery(api, collection, record));
+  const heading = useId();
+
+  return (
+    <section aria-labelledby={heading} className="flex flex-col gap-1.5 border-t border-line pt-4">
+      <h3 id={heading} className="text-14 font-semibold text-ink">
+        Used on
+      </h3>
+      {pages.isPending ? (
+        <p className="text-14 text-muted">Finding the pages that show it…</p>
+      ) : pages.isError ? (
+        <p className="text-14 text-error">The pages that show it couldn't be loaded.</p>
+      ) : pages.data.length === 0 ? (
+        <p className="text-14 text-muted">No page shows this record yet.</p>
+      ) : (
+        <ul className="flex flex-col gap-1">
+          {pages.data.map((page) => (
+            <li key={page.id} className="flex min-w-0 flex-wrap items-baseline gap-x-2">
+              <TextLink
+                render={
+                  <Link
+                    to="/services/$serviceId/$documentId"
+                    params={{ serviceId: page.service_id, documentId: page.id }}
+                  />
+                }
+              >
+                {page.title}
+              </TextLink>
+              <span className="min-w-0 truncate text-12 text-muted">{page.url}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   );
 }
 

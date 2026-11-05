@@ -21,6 +21,18 @@ const FIELDS = [
   { key: "phone", label: "Telephone", type: "text" },
 ] as const;
 
+const SERVICE_ID = "11111111-1111-4111-8111-111111111111";
+
+const PAGES = [
+  {
+    id: "22222222-2222-4222-8222-222222222222",
+    title: "Call us",
+    url: "/drug-licence/call-us",
+    visibility: "public",
+    service_id: SERVICE_ID,
+  },
+];
+
 const COLLECTION = {
   key: "contacts",
   title: "Ministries and departments",
@@ -83,6 +95,12 @@ function contentApi() {
       return json({ error: "not_found", message: "No collection missing." }, { status: 404 });
 
     if (path === "/collections/contacts/records") return json({ collection: COLLECTION, records });
+
+    // The pages that show a record: one shows the Drug Service, none the others
+    if (path.endsWith("/pages"))
+      return json({
+        pages: path === "/collections/contacts/records/barbados-drug-service/pages" ? PAGES : [],
+      });
 
     const recordKey = path.replace("/collections/contacts/records/", "");
     const body = init?.body ? JSON.parse(String(init.body)) : undefined;
@@ -694,4 +712,24 @@ test("a save whose answer is lost is never reported as failed", async () => {
   );
 
   expect(dialog()?.textContent).not.toContain("Try again.");
+});
+
+test("a record's dialog lists the pages that show it, each opening in the editor", async () => {
+  const { ready } = renderCollection({ record: "barbados-drug-service" });
+
+  await ready;
+  await until(() => expect(dialog()?.querySelector("section a")?.textContent).toBe("Call us"));
+
+  expect(dialog()?.querySelector("section h3")?.textContent).toBe("Used on");
+  expect(dialog()?.querySelector("section a")?.getAttribute("href")).toBe(
+    `/services/${SERVICE_ID}/${PAGES[0]!.id}`,
+  );
+  expect(dialog()?.textContent).toContain("/drug-licence/call-us");
+});
+
+test("a record no page shows says so", async () => {
+  const { ready } = renderCollection({ record: "nis" });
+
+  await ready;
+  await until(() => expect(dialog()?.textContent).toContain("No page shows this record yet."));
 });

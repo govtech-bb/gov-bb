@@ -62,6 +62,18 @@ export const editorCollectionRoutes: FastifyPluginAsyncZod<{
     },
   });
   editor.route({
+    method: "GET",
+    url: "/collections/:key/records/:recordKey/pages",
+    schema: SCHEMAS.recordPages,
+    handler: async (request, reply) => {
+      const { key, recordKey } = request.params;
+      const found = await collections.pages(key, recordKey);
+      return found.ok
+        ? { pages: found.value }
+        : reply.status(500).send(storageFailed(request.log, found.error));
+    },
+  });
+  editor.route({
     method: "POST",
     url: "/collections/:key/records/:recordKey",
     schema: SCHEMAS.createRecord,
