@@ -35,7 +35,8 @@ const get = (url: string, token?: string) =>
 /**
  * Youth (listed first) has a subcategory, Arts, whose Canvas page has its
  * form on its start step; Money lists three public pages, a preview one, a
- * start step and a sub-page; Housing lists nothing.
+ * start step, a preview start step holding a form, and a sub-page; Housing
+ * lists nothing.
  */
 beforeAll(async () => {
   test = await createTestDb();
@@ -78,10 +79,18 @@ beforeAll(async () => {
     category_id: money.id,
     parent_id: apply.id,
   });
-  await page({
+  const budget = await page({
     url: "/money/budget",
     title: "Budget guide",
     category_id: money.id,
+  });
+  await page({
+    url: "/money/budget/start",
+    title: "Start",
+    category_id: money.id,
+    parent_id: budget.id,
+    form_id: "budget-form",
+    visibility: "preview",
   });
   await page({
     url: "/money/draft-idea",
@@ -371,6 +380,17 @@ describe("GET /catalog", () => {
       form_id: null,
       visibility: "preview",
     });
+  });
+
+  it("gives a page its preview start step's form only for the preview token", async () => {
+    const formOf = (response: {
+      json(): { pages: { url: string; form_id: string | null }[] };
+    }) =>
+      response.json().pages.find((page) => page.url === "/money/budget")
+        ?.form_id;
+
+    expect(formOf(await get("/catalog"))).toBeNull();
+    expect(formOf(await get("/catalog", SECRET))).toBe("budget-form");
   });
 });
 

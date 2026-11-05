@@ -278,8 +278,14 @@ export function catalogOf(
   pages: readonly ListablePage[],
   categories: readonly CategoryRecord[],
 ): CatalogEntry[] {
-  const startOf = (entry: ListablePage) =>
-    pages.find((page) => isStartOf(page, entry));
+  // One pass, so the public route stays linear in the estate's size.
+  const startFormOf = new Map(
+    pages.flatMap((page) =>
+      page.parentId !== null && isStartOf(page, { id: page.parentId })
+        ? [[page.parentId, page.formId] as const]
+        : [],
+    ),
+  );
   return inCatalog(pages)
     .map((page) => {
       const { category, subcategory } = pageCategory(
@@ -292,7 +298,7 @@ export function catalogOf(
         slug: page.slug,
         category,
         subcategory,
-        form_id: page.formId ?? startOf(page)?.formId ?? null,
+        form_id: page.formId ?? startFormOf.get(page.id) ?? null,
         visibility: page.visibility,
       };
     })
