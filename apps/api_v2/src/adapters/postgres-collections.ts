@@ -16,10 +16,17 @@ import {
   type CollectionView,
   type RecordData,
 } from "../modules/collection";
-import { ContentStoreUnavailable } from "../modules/page";
+import {
+  ContentStoreUnavailable,
+  type PageId,
+  type Visibility,
+} from "../modules/page";
 import { err, ok, type Result } from "../modules/result";
 import { collectionRecords, dataCollections } from "../schema";
-import type { CollectionStore } from "../services/collection-editing";
+import type {
+  CollectionStore,
+  PageMentioning,
+} from "../services/collection-editing";
 
 type CollectionRow = typeof dataCollections.$inferSelect;
 type RecordRow = typeof collectionRecords.$inferSelect;
@@ -105,6 +112,60 @@ export class PostgresCollections implements CollectionStore {
         record_count: row.records,
       })),
     );
+  }
+
+  /**
+   * Pages whose live body or open revision mentions `text`, each with the
+   * root page above it, as the editor opens pages under their service.
+   */
+  async pagesMentioning(
+    text: string,
+  ): Promise<Result<PageMentioning[], ContentStoreUnavailable>> {
+    // LIKE's own wildcards in the text are matched as themselves
+    const pattern = `%${text.replace(/[\\%_]/g, (wild) => `\\${wild}`)}%`;
+    const rows = await attempt("pagesMentioning", () =>
+      this.db.execute<{
+        id: PageId;
+        title: string;
+        url: string;
+        visibility: Visibility;
+        live: string;
+        open: string | null;
+        service_id: PageId;
+      }>(sql`
+        with recursive mentioning as (
+          select p.id, p.title, p.url, p.visibility, p.body_markdown as live,
+                 r.fields->>'body_markdown' as open
+            from content_pages p
+            left join page_revisions r
+              on r.page_id = p.id and r.status in ('draft', 'submitted')
+           where p.body_markdown like ${pattern}
+              or r.fields->>'body_markdown' like ${pattern}
+        ), chain as (
+          select mentioning.id as page_id, p.id, p.parent_id
+            from mentioning join content_pages p on p.id = mentioning.id
+          union all
+          select chain.page_id, p.id, p.parent_id
+            from content_pages p join chain on p.id = chain.parent_id
+        ) cycle id set is_cycle using path
+        select mentioning.id, mentioning.title, mentioning.url,
+               mentioning.visibility, mentioning.live, mentioning.open,
+               coalesce(
+                 (select chain.id from chain
+                   where chain.page_id = mentioning.id
+                     and chain.parent_id is null and not chain.is_cycle
+                   limit 1),
+                 mentioning.id) as service_id
+          from mentioning`),
+    );
+    return rows.ok
+      ? ok(
+          rows.value.rows.map(({ live, open, ...page }) => ({
+            ...page,
+            bodies: open === null ? [live] : [live, open],
+          })),
+        )
+      : rows;
   }
 
   async collection(

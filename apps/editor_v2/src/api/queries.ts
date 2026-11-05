@@ -120,6 +120,13 @@ export const estateVersionQuery = (api: Pick<EditorApi, "version">, client: Quer
 export const collectionsQuery = (api: EditorApi) =>
   queryOptions({ queryKey: ["content", "collections"], queryFn: () => api.collections() });
 
+/** The pages that show a record, for its dialog: what saving the record changes (#3590). */
+export const recordPagesQuery = (api: EditorApi, key: string, recordKey: string) =>
+  queryOptions({
+    queryKey: ["content", "collection", key, "pages", recordKey],
+    queryFn: () => api.recordPages(key, recordKey),
+  });
+
 /** One collection and its records, shared by its screen and the record dialogs over it. */
 export const collectionQuery = (api: EditorApi, key: string) =>
   queryOptions({ queryKey: ["content", "collection", key], queryFn: () => api.collection(key) });
