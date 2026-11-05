@@ -103,8 +103,15 @@ export async function fetchCollectionRecords(
 }
 
 /**
+ * Collections one call reads. The server fn is public and its reads carry
+ * landing's rate-limit exemption, so a caller must not fan them out.
+ */
+const MAX_COLLECTIONS = 5
+
+/**
  * The named records, trimmed to just those: the client only needs what the
- * page shows. A record or collection that can't be read is left out.
+ * page shows. A record or collection that can't be read, or one past the
+ * first MAX_COLLECTIONS, is left out.
  */
 export async function resolveContactRecords(
   base: string | null,
@@ -113,7 +120,10 @@ export async function resolveContactRecords(
   landingToken?: string,
 ): Promise<ContactRecords> {
   if (!base || refs.length === 0) return {}
-  const keys = [...new Set(refs.map((ref) => ref.collection))]
+  const keys = [...new Set(refs.map((ref) => ref.collection))].slice(
+    0,
+    MAX_COLLECTIONS,
+  )
   const read = await Promise.all(
     keys.map((key) =>
       fetchCollectionRecords(base, key, fetchImpl, landingToken),

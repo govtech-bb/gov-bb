@@ -123,6 +123,20 @@ describe('resolveContactRecords', () => {
     expect(init.headers).toEqual({ 'x-landing-token': 'landing-secret' })
   })
 
+  it('reads at most five collections per call, however many are named', async () => {
+    const fetchImpl = stubFetch(json(404, {}))
+    await resolveContactRecords(
+      BASE,
+      Array.from({ length: 50 }, (_, i) => ({
+        collection: `c${i}`,
+        record: 'x',
+      })),
+      fetchImpl,
+      'landing-secret',
+    )
+    expect(fetchImpl).toHaveBeenCalledTimes(5)
+  })
+
   it('keeps only the records the page names', async () => {
     const records = await resolveContactRecords(
       BASE,
