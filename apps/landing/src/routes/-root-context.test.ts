@@ -171,4 +171,10 @@ describe('root head Umami script', () => {
     })
     expect(umami).not.toHaveProperty('data-auto-pageview')
   })
+
+  // #3503: the query string can hold water alert tokens and search text.
+  it('keeps query strings out of the URLs Umami records', () => {
+    const umami = head().scripts?.find((s) => 'data-website-id' in s)
+    expect(umami).toMatchObject({ 'data-exclude-search': 'true' })
+  })
 })
