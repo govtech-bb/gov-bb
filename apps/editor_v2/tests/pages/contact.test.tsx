@@ -7,12 +7,12 @@ import { createHeadlessEditor } from "../../src/editor/core/create-editor";
 import { $availableActions, executeAction, rankActions } from "../../src/editor/core/actions";
 import { EditorComposer } from "../../src/editor/react/composer";
 import { PageEditor } from "../../src/pages/editor";
+import { $isPageContactNode } from "../../src/pages/modules/contact";
 import {
-  $isPageContactNode,
   PageCollectionsProvider,
   type CollectionRecords,
   type PageCollections,
-} from "../../src/pages/modules/contact";
+} from "../../src/pages/page-collections";
 import { govbbPageCodec, govbbPageEditor } from "../../src/presets/govbb-page";
 import { hoverPageMenu, pageControl, renderInPage } from "../helpers/page-editor";
 

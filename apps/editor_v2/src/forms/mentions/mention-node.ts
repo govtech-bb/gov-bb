@@ -10,6 +10,7 @@ import {
   type LexicalNode,
 } from "lexical";
 import type { DisplayReference } from "../formats/native/schema/types";
+import { referenceChip } from "../../ui/reference-chip";
 
 export const fieldState = createState("field", { parse: (v) => (typeof v === "string" ? v : "") });
 
@@ -44,15 +45,7 @@ export class MentionNode extends TextNode {
   }
   override createDOM(config: EditorConfig, editor?: LexicalEditor) {
     const dom = super.createDOM(config, editor);
-    dom.classList.add(
-      "cursor-pointer",
-      "rounded-xs",
-      "bg-interactive-subtle",
-      "px-0.5",
-      "text-interactive",
-      "box-decoration-clone",
-      "hover:bg-teal-20",
-    );
+    dom.classList.add(...referenceChip.split(" "));
     dom.spellcheck = false;
 
     return dom;
