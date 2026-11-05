@@ -23,6 +23,7 @@ const entry = (overrides: Partial<PageHistoryEntry>): PageHistoryEntry => ({
   occurred_at: "2026-10-28T11:00:00.000Z",
   changed: [],
   comment: null,
+  restored_from: null,
   ...overrides,
 });
 

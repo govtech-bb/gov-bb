@@ -49,7 +49,7 @@ import {
   type ReviewQueueEntry,
   type Visibility,
 } from "../modules/page";
-import type { PageChangeEvent } from "../modules/page-history";
+import type { PageChangeEvent, PageEvent } from "../modules/page-history";
 import type { Ancestor, ResolvablePage } from "../modules/page-visibility";
 import { err, ok, type Result } from "../modules/result";
 import type { SearchChunk } from "../modules/search-text";
@@ -1038,8 +1038,53 @@ export class PostgresPages
         actorName: name,
         occurredAt: event.occurredAt,
         snapshot: event.snapshot as Record<string, unknown>,
+        restoredFrom: event.restoredFrom,
       })),
     );
+  }
+
+  /** One of a page's `change_events`, by version, or null. */
+  async pageEvent(
+    id: PageId,
+    versionNo: number,
+  ): Promise<Result<PageEvent | null, ContentStoreUnavailable>> {
+    const rows = await attempt("pageEvent", () =>
+      this.db
+        .select({
+          versionNo: changeEvents.versionNo,
+          action: changeEvents.action,
+          snapshot: changeEvents.snapshot,
+        })
+        .from(changeEvents)
+        .where(
+          and(
+            eq(changeEvents.entityKind, "content_page"),
+            eq(changeEvents.entityId, id),
+            eq(changeEvents.versionNo, versionNo),
+          ),
+        ),
+    );
+    if (!rows.ok) return rows;
+    const row = rows.value[0];
+    return ok(
+      row
+        ? { ...row, snapshot: row.snapshot as Record<string, unknown> }
+        : null,
+    );
+  }
+
+  /** Record this transaction's update of the page as restoring that version. */
+  async markRestore(
+    id: PageId,
+    versionNo: number,
+  ): Promise<Result<void, ContentStoreUnavailable>> {
+    const set = await attempt("markRestore", () =>
+      this.db.execute(
+        sql`select set_config('app.restored_page', ${id}, true),
+                   set_config('app.restored_from', ${String(versionNo)}, true)`,
+      ),
+    );
+    return set.ok ? ok(undefined) : set;
   }
 
   /** Every revision waiting for review, with its submitter's name, the longest-waiting first. */
