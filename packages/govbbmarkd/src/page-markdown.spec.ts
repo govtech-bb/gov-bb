@@ -157,6 +157,10 @@ describe("GovBB Markdown", () => {
     ['::contact{record="bridgetown"}', "invalid-attributes"],
     ['::contact{collection="offices" colour="red"}', "invalid-attributes"],
     [':::contact{collection="offices"}\n:::', "unsupported-component"],
+    [':fact[**us**]{collection="offices" field="phone"}', "invalid-content"],
+    [':fact{record="bridgetown" field="phone"}', "invalid-attributes"],
+    [':fact{collection="offices" colour="red"}', "invalid-attributes"],
+    ['::fact{collection="offices" field="phone"}', "unsupported-component"],
   ])("reports a located diagnostic for %s", (source, code) => {
     const parsed = parseContentMarkdown(`Intro\n\n${source}`);
     expect(parsed.errors).toEqual(
@@ -182,6 +186,40 @@ describe("GovBB Markdown", () => {
       collection: "offices",
       record: "",
       fields: [],
+    });
+  });
+
+  it("reads a fact in a line of text with its fallback, including one still to be chosen", () => {
+    const fact = (source: string) => {
+      const parsed = parseContentMarkdown(source);
+      expect(parsed.errors).toEqual([]);
+      const paragraph = parsed.root.children[0];
+      const node =
+        paragraph?.type === "paragraph"
+          ? paragraph.children.find((child) => child.type === "textDirective")
+          : undefined;
+      if (!node) throw new Error("Expected a fact");
+      const result = parsePageComponent(node);
+      if (!result.ok) throw result.error;
+      return result.value;
+    };
+    expect(
+      fact(
+        'Call :fact[the office]{collection="offices" record="bridgetown" field="phone"} today.',
+      ),
+    ).toEqual({
+      kind: "fact",
+      collection: "offices",
+      record: "bridgetown",
+      field: "phone",
+      fallback: "the office",
+    });
+    expect(fact(':fact{collection="offices"}')).toEqual({
+      kind: "fact",
+      collection: "offices",
+      record: "",
+      field: "",
+      fallback: "",
     });
   });
 

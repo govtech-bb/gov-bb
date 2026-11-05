@@ -6,7 +6,8 @@ import type { Plugin } from "unified";
 /** Annotates valid components; callers retain diagnostics and decide whether the tree may be rendered. */
 const componentDirectives: Plugin<[handlers?: Handlers | undefined], Root> =
   (handlers) => (tree) => {
-    function visit(node: Root | RootContent): void {
+    // Inside link text a fact's value can't be a link of its own
+    function visit(node: Root | RootContent, inLink = false): void {
       if (node.type !== "root" && isPageDirective(node)) {
         const parsed = parsePageComponent(node);
         // Text analysis also accepts incomplete drafts, leaving invalid components uninterpreted.
@@ -63,6 +64,15 @@ const componentDirectives: Plugin<[handlers?: Handlers | undefined], Root> =
               fields: component.fields.join(","),
             };
             break;
+          case "fact":
+            node.data.hName = "collection-fact";
+            node.data.hProperties = {
+              collection: component.collection,
+              record: component.record,
+              field: component.field,
+              ...(inLink && { plain: "true" }),
+            };
+            break;
           case "table":
             node.data.hName = "div";
             component.table.data = {
@@ -80,7 +90,9 @@ const componentDirectives: Plugin<[handlers?: Handlers | undefined], Root> =
               child.type !== "paragraph" || child.data?.directiveLabel !== true,
           );
       }
-      if ("children" in node) for (const child of node.children) visit(child);
+      if ("children" in node)
+        for (const child of node.children)
+          visit(child, inLink || node.type === "link");
     }
     visit(tree);
   };
