@@ -86,3 +86,26 @@ describe("ContentService.list", () => {
     expect(await service.list(false)).toEqual([]);
   });
 });
+
+describe("ContentService.categoryForForm", () => {
+  const service = new ContentService({ list: vi.fn() } as never);
+
+  it("returns the category of the service that links the form", () => {
+    vi.spyOn(service, "index").mockReturnValue([
+      { slug: "info", title: "Info", category: "travel", visibility: "public" },
+      {
+        slug: "education/x",
+        title: "X",
+        category: "education",
+        formId: "form-x",
+        visibility: "public",
+      },
+    ]);
+    expect(service.categoryForForm("form-x")).toBe("education");
+  });
+
+  it("returns undefined when no service links the form", () => {
+    vi.spyOn(service, "index").mockReturnValue([]);
+    expect(service.categoryForForm("unknown")).toBeUndefined();
+  });
+});

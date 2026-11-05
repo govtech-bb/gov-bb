@@ -149,6 +149,14 @@ describe("fetchFormDefinition", () => {
     expect(Array.isArray(result.steps)).toBe(true);
   });
 
+  it("keeps the analytics category the API adds to the contract (#3250)", async () => {
+    mockFetch.mockResolvedValue(
+      makeOkResponse({ ...minimalServiceContract, category: "education" }),
+    );
+    const result = await fetchFormDefinition("test-form");
+    expect(result.category).toBe("education");
+  });
+
   it("calls fetch with the correct URL", async () => {
     mockFetch.mockResolvedValue(makeOkResponse(minimalServiceContract));
     await fetchFormDefinition("my-contract");
