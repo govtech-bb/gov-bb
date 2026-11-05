@@ -1,6 +1,10 @@
 // Ingest CLI. Run via `pnpm ingest` (env loaded by the pnpm script's
 // --env-file-if-exists flags). Needs DATABASE_URL + AWS creds for Bedrock.
 //
+// Source: when API_V2_URL is set, content comes from api_v2 (/catalog + /pages,
+// public pages only); otherwise from the landing markdown. A failed api_v2 read
+// fails the run, keeping the last snapshot — it never falls back to markdown.
+//
 //   pnpm ingest                     # full reconcile (prune orphans)
 //   pnpm ingest --dry-run           # print the plan, no writes
 //   pnpm ingest --report            # coverage stats by kind
@@ -9,12 +13,13 @@
 
 import { randomUUID } from "node:crypto";
 import { count, sql } from "drizzle-orm";
-import { loadContent } from "@govtech-bb/content";
+import { loadContent, type ServiceEntity } from "@govtech-bb/content";
 import { getDb, hasDatabase, schema } from "#/lib/db";
 import { MODEL_ID } from "#/lib/rag/embed";
 import { chunkService, type PlannedEntity } from "./chunker";
 import { planIngest, summarise, withoutPruning } from "./plan";
 import { applyDeletes, applyPlan, fetchExistingState } from "./write";
+import { loadApiV2Content } from "./api-v2-source";
 
 interface Args {
   dryRun: boolean;
@@ -114,6 +119,23 @@ function logProgress(start: number) {
   };
 }
 
+async function loadServices(contentDir?: string): Promise<ServiceEntity[]> {
+  const apiV2Url = process.env.API_V2_URL;
+  if (apiV2Url) {
+    if (contentDir) {
+      throw new Error(
+        "--content-dir reads markdown; unset API_V2_URL to use it",
+      );
+    }
+    console.log(`[ingest] source=api_v2 ${apiV2Url}`);
+    return loadApiV2Content(apiV2Url);
+  }
+  console.log("[ingest] source=markdown");
+  const content = await loadContent({ contentDir });
+  for (const w of content.warnings) console.warn(`[content] ${w}`);
+  return content.services;
+}
+
 async function main() {
   const args = parseArgs(process.argv.slice(2));
   if (!hasDatabase()) throw new Error("DATABASE_URL not set");
@@ -126,11 +148,10 @@ async function main() {
   console.log(`[ingest] embedding_model=${MODEL_ID}`);
   await preflight(args.resetEmbeddings, args.force);
 
-  const content = await loadContent({ contentDir: args.contentDir });
-  for (const w of content.warnings) console.warn(`[content] ${w}`);
-  console.log(`[ingest] loaded ${content.services.length} services`);
+  const services = await loadServices(args.contentDir);
+  console.log(`[ingest] loaded ${services.length} services`);
 
-  let planned: PlannedEntity[] = content.services.map(chunkService);
+  let planned: PlannedEntity[] = services.map(chunkService);
   if (args.limit !== undefined) {
     planned = planned.slice(0, args.limit);
     console.log(`[ingest] --limit=${args.limit} → ${planned.length} entities`);
@@ -170,8 +191,10 @@ async function main() {
     .values({ id: runId, status: "running", summary: { ...summary } });
 
   try {
-    await applyDeletes(plan);
+    // Upsert first, prune last: the ids are disjoint, so a run that fails
+    // mid-embed keeps the old rows instead of leaving a half-empty index.
     await applyPlan(plan, MODEL_ID, { onProgress: logProgress(Date.now()) });
+    await applyDeletes(plan);
     await db
       .update(schema.ingestRuns)
       .set({
