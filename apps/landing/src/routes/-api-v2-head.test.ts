@@ -1,14 +1,24 @@
-import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
+import {
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vitest'
 import type * as ApiV2PageModule from '../lib/api-v2-page'
 import type * as CategoryApiModule from '../lib/api-v2-categories'
 import { SITE_URL } from '../lib/site-url'
+import { findPage } from '../content/registry'
 // Type-only, so it erases at runtime and the routes load after the mocks.
 import type * as ContentRouteModule from './$'
 import fixture from './-api-v2-head.fixture.json'
 
 /**
  * The <head> landing writes for an api_v2 page (#3257): JSON-LD on a public
- * page, none on a preview page, and robots behaviour as for any other page.
+ * page, none on a preview page, and the same robots meta as a static page.
+ * robots.txt is in -api-v2-robots.test.ts, which needs its own module graph.
  *
  * The real path from `GET /pages` to head tags: the fixture is the wire
  * response, read by `resolveApiV2Page` (schema parse and `fromApiV2`), then
@@ -19,7 +29,7 @@ import fixture from './-api-v2-head.fixture.json'
 const BASE = 'http://api.example'
 
 /** `GET /pages?url=` against the fixture: a page, or api_v2's 404. */
-const fixtureFetch = vi.fn(async (input: string | URL | Request) => {
+const fixtureFetch: typeof fetch = async (input) => {
   const url = new URL(String(input)).searchParams.get('url')
   const page = Object.values(fixture).find((p) => p.url === url)
   return page
@@ -28,7 +38,7 @@ const fixtureFetch = vi.fn(async (input: string | URL | Request) => {
         headers: { 'content-type': 'application/json' },
       })
     : new Response(null, { status: 404 })
-}) as unknown as typeof fetch
+}
 
 vi.mock('../lib/api-v2-page', async (importOriginal) => {
   const real = await importOriginal<typeof ApiV2PageModule>()
@@ -78,13 +88,16 @@ type Head = {
 let Route: typeof ContentRouteModule.Route
 
 beforeAll(async () => {
-  // The loader asks api_v2 only when it is configured (#3127).
-  vi.stubEnv('VITE_API_V2_URL', BASE)
   ;({ Route } = await import('./$'))
 }, 60_000)
 
 beforeEach(() => {
+  // The loader asks api_v2 only when it is configured (#3127).
   vi.stubEnv('VITE_API_V2_URL', BASE)
+})
+
+afterEach(() => {
+  vi.unstubAllEnvs()
 })
 
 /** `$`'s head for the page api_v2 serves at `url`, as `level` sees it. */
@@ -109,6 +122,8 @@ const jsonLd = (head: Head) =>
 describe('JSON-LD on api_v2 pages (#3257)', () => {
   it('a public page has GovernmentService and BreadcrumbList', async () => {
     const page = fixture.public
+    // No static twin, so nothing but api_v2 can supply this page.
+    expect(findPage(page.url.slice(1))).toBeUndefined()
     const ld = jsonLd(await headFor(page.url, 'public'))
 
     expect(ld.map((l) => l['@type'])).toEqual([
@@ -120,7 +135,8 @@ describe('JSON-LD on api_v2 pages (#3257)', () => {
       description: page.frontmatter.description,
       url: `${SITE_URL}${page.url}`,
     })
-    // api_v2's own trail, Home first.
+    // api_v2's own trail, Home first. Its names differ from the page title
+    // and from TREE, so a trail rebuilt from either would fail here.
     expect(ld[1].itemListElement).toEqual([
       { '@type': 'ListItem', position: 1, name: 'Home', item: SITE_URL },
       ...page.breadcrumbs.map((crumb, i) => ({
@@ -135,11 +151,10 @@ describe('JSON-LD on api_v2 pages (#3257)', () => {
   it('a preview page has neither', async () => {
     const head = await headFor(fixture.preview.url, 'preview')
     expect(head.scripts).toBeUndefined()
-    expect(jsonLd(head)).toEqual([])
   })
 })
 
-describe('robots on api_v2 pages (#3257)', () => {
+describe('robots meta on api_v2 pages (#3257)', () => {
   it('a public page is indexable: no robots meta, a canonical link', async () => {
     const page = fixture.public
     const head = await headFor(page.url, 'public')
@@ -156,23 +171,4 @@ describe('robots on api_v2 pages (#3257)', () => {
     expect(head.meta).toContainEqual({ name: 'robots', content: 'noindex' })
     expect(head.links).toBeUndefined()
   })
-
-  it.each([
-    ['false', 'User-agent: *\nDisallow: /\n'],
-    ['true', `User-agent: *\nAllow: /\nSitemap: ${SITE_URL}/sitemap.xml\n`],
-  ])(
-    'robots.txt follows VITE_ALLOW_INDEXING=%s with api_v2 configured',
-    async (allow, body) => {
-      vi.resetModules()
-      vi.stubEnv('VITE_ALLOW_INDEXING', allow)
-      // The flag is read when the route module loads.
-      const { Route: RobotsRoute } = await import('./robots[.]txt')
-      // SAFETY: the route declares a GET handler that takes no arguments.
-      const handlers = RobotsRoute.options.server?.handlers as {
-        GET: () => Response
-      }
-      const response = handlers.GET()
-      expect(await response.text()).toBe(body)
-    },
-  )
 })
