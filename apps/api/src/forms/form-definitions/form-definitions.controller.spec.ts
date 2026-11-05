@@ -321,10 +321,11 @@ describe("FormDefinitionsController", () => {
       });
     });
 
-    it("leaves category off when no service page links the form", async () => {
+    it("drops a recipe's own category when no service page links the form", async () => {
       mockService.findByFormId.mockResolvedValue({
         formId: "passport-renewal",
         title: "Passport Renewal",
+        category: "set-in-recipe",
       });
 
       const result = await controller.get(
@@ -334,7 +335,7 @@ describe("FormDefinitionsController", () => {
         res as never,
       );
 
-      expect(result.data).not.toHaveProperty("category");
+      expect(result.data.category).toBeUndefined();
     });
 
     it("propagates errors from service.findByFormId", async () => {

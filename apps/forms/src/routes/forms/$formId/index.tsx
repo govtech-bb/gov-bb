@@ -84,7 +84,7 @@ export const Route = createFileRoute("/forms/$formId/")({
       contractQueryOptions(params.formId, deps.preview, deps.draft),
     );
     // Analytics events tag the form with the category the API sends (#3250).
-    rememberFormCategory(params.formId, clientContract.category);
+    rememberFormCategory(clientContract.formId, clientContract.category);
 
     // Tier 2: get or build the FormMeta for this specific
     // (version, preview, draft) combination.

@@ -198,10 +198,15 @@ export class FormDefinitionsController {
       draft,
     });
     // The forms app tags its analytics events with this category (#3250). It
-    // comes from the services index, so the form needs no copy of it.
+    // comes from the services index, so the form needs no copy of it. Always
+    // set, so a `category` written into a recipe can't override it; undefined
+    // (no page links the form) is dropped from the JSON.
     const category = this.contentService.categoryForForm(formId);
-    return AppApiResponse.success(category ? { ...data, category } : data, {
-      message: "Form definition retrieved",
-    });
+    return AppApiResponse.success(
+      { ...data, category },
+      {
+        message: "Form definition retrieved",
+      },
+    );
   }
 }
