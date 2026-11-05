@@ -913,7 +913,7 @@ export class PostgresPages
   /**
    * Who changed a page's content since it was last public, or ever when it
    * never was, from its history: the actors of each created, updated,
-   * published or unpublished entry whose row differs from the one before it
+   * published, unpublished or reverted entry whose row differs from the one before it
    * in more than visibility and stamps. A sub-page's category is left out
    * too: it follows its parent's, so a write above it that carries it along
    * changes nothing of its own. Review events are left out, since their
@@ -934,7 +934,7 @@ export class PostgresPages
                    as content
             from change_events
            where entity_kind = 'content_page' and entity_id = ${id}
-             and action in ('created', 'updated', 'published', 'unpublished')
+             and action in ('created', 'updated', 'published', 'unpublished', 'reverted')
         ), history as (
           select *, lag(content) over (order by version_no) as before from entries
         )

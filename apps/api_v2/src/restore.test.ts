@@ -246,6 +246,31 @@ describe("POST /pages/:id/history/:version/restore", () => {
     expect(response.json()).toMatchObject({ error: "not_restorable" });
   });
 
+  it("counts a restore as the restorer's change, so they can't then make the page public themselves", async () => {
+    // Written and edited by the system, so only the restore is the approver's.
+    const id = "66666666-6666-4666-8666-666666666666";
+    await db.execute(
+      sql`insert into content_pages (id, url, slug, title, visibility, body_markdown)
+          values (${id}, '/restored', 'restored', 'First', 'preview', 'Body')`,
+    );
+    await db.execute(
+      sql`update content_pages set title = 'Second' where id = ${id}`,
+    );
+    const page = (
+      await as(TEST_EMPLOYEE, { url: `/pages/${id}` })
+    ).json() as Page;
+    const restored = (await restore(TEST_EMPLOYEE, page, 1)).json() as Page;
+
+    const response = await as(TEST_EMPLOYEE, {
+      method: "PUT",
+      url: `/pages/${id}`,
+      headers: { [IF_UPDATED_AT]: restored.updated_at },
+      payload: { ...restored, visibility: "public" },
+    });
+
+    expect(response.statusCode).toBe(403);
+  });
+
   it("refuses an employee without the editor role", async () => {
     const created = await create({ visibility: "draft" });
     await db.execute(
