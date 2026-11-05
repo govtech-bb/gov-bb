@@ -1,11 +1,11 @@
 import { expect, test } from "vitest";
 import { $createTextNode, $getRoot } from "lexical";
 import { createHeadlessEditor } from "../../src/editor/core/create-editor";
-import { $settings, $setSettings } from "../../src/editor/core/document-state";
-import { $createNumberNode } from "../../src/editor/modules/lists/nodes";
-import { $createDrawnInput } from "../../src/forms/editor/field-nodes";
-import { $describe } from "../../src/forms/react/gutter";
-import { $createFormTitleNode } from "../../src/forms/editor/nodes";
+import { $settings, $setSettings } from "../../src/forms/canvas/block-state";
+import { $createNumberNode } from "../../src/forms/content/list-nodes";
+import { $createDrawnInput } from "../../src/forms/canvas/field-nodes";
+import { $describe } from "../../src/forms/canvas/form-gutter";
+import { $createFormTitleNode } from "../../src/forms/canvas/form-nodes";
 import { govbbFormEditor } from "../../src/presets/govbb-form";
 import { lexicalToFormMarkdown } from "../../src/converters/lexical-to-form-markdown";
 import { formMarkdownToLexical } from "../../src/converters/form-markdown-to-lexical";

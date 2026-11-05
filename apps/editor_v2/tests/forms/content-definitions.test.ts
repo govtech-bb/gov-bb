@@ -2,16 +2,16 @@ import type { ContentReadContext } from "../../src/forms/legacy";
 import { defineLegacyContent } from "../../src/forms/legacy";
 import { expect, test } from "vitest";
 import { ElementNode, type LexicalNode } from "lexical";
-import { defineContent } from "../../src/forms/content";
+import { defineContent } from "../../src/forms/content/define-content";
 import { defineFormEditor } from "../../src/forms/definition";
 import { createHeadlessEditor } from "../../src/editor/core/create-editor";
-import { createFormRuntime } from "../../src/forms/editor/runtime";
-import { createFormSourceDialect } from "../../src/forms/source/dialect";
+import { createFormRuntime } from "../../src/forms/canvas/form-runtime";
+import { createFormSourceDialect } from "../../src/forms/formats/markdown/dialect";
 import { govbbFormModules } from "../../src/presets/govbb-form";
 import { lexicalToLegacySsb } from "../../src/converters/lexical-to-legacy-ssb";
 import { formMarkdownToLexical } from "../../src/converters/form-markdown-to-lexical";
 import { createFormDraftCodec, DraftStore } from "../helpers/default-form";
-import type { ContentSourceHandler } from "../../src/forms/source/content";
+import type { ContentSourceHandler } from "../../src/forms/formats/markdown/content";
 
 class NoticeNode extends ElementNode {
   override $config() {

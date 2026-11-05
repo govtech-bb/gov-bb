@@ -12,7 +12,7 @@ import {
   type SerializedParagraphNode,
 } from "lexical";
 import type { Paragraph } from "mdast";
-import type { TextColours } from "../../editor/modules/formatting/toolbar";
+import type { TextColours } from "@/editor/modules";
 import type { PageHandler, PageModule } from "../definition";
 import { phrasing, UnsupportedPageContent } from "../markdown";
 import "./muted.css";

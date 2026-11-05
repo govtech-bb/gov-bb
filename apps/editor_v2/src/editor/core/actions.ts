@@ -53,6 +53,7 @@ export type EditorAction = ActionMetadata &
       }
   );
 
+/** Whether an action ran, with what it asks of its menu once that closes, or why it didn't run, if it says. */
 export type ActionOutcome = { executed: boolean; result?: ActionResult; error?: string };
 
 function $context(editor: LexicalEditor, request: ActionRequest): ActionContext | undefined {
@@ -208,6 +209,7 @@ export function rankActions<T extends Searchable>(query: string, actions: readon
     .map((entry) => entry.action);
 }
 
+/** Splits items into runs that share a group, for a menu's sections; each keeps its index in the whole list. */
 export function sectioned<T extends { group: string }>(items: readonly T[]) {
   const out: { group: string; items: { item: T; index: number }[] }[] = [];
   items.forEach((item, index) => {

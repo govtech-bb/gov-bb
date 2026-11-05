@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { compileContentMarkdown } from "@govtech-bb/govbbmarkd";
 import { sitePreviewDocument } from "../host/site-preview-renderer";
 import estate from "../../../api_v2/src/seed-data/estate.json";
-import { createHeadlessEditor } from "../editor/core/create-editor";
+import { createHeadlessEditor } from "@/editor";
 import { $setPageMetadata } from "../pages/metadata";
 import { govbbPageCodec, govbbPageEditor } from "../presets/govbb-page";
 import type { Category } from "./categories";

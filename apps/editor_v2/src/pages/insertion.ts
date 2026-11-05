@@ -13,7 +13,7 @@ import {
 } from "lexical";
 import { $isListItemNode, $isListNode } from "@lexical/list";
 import { $isQuoteNode } from "@lexical/rich-text";
-import type { ActionRequest, EditorAction } from "../editor/core/actions";
+import type { ActionRequest, EditorAction } from "@/editor";
 import { PageMetadataNode } from "./metadata";
 import { $hasTrait, PageComponentNode, type PageComponentKind } from "./blocks/node";
 

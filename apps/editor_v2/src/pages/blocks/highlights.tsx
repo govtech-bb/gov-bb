@@ -14,7 +14,7 @@ import {
   type LexicalEditor,
   type LexicalNode,
 } from "lexical";
-import { $atEdge, $caretBlock } from "../../editor/modules/formatting/editing";
+import { $atEdge, $caretBlock } from "@/editor";
 import { $lineAfter } from "../block-exit";
 import { pageInsertAction } from "../insertion";
 import { BlockMenuItem, type BlockOptionsProps } from "./block-options";

@@ -4,10 +4,13 @@ import {
   type PageMarkdownComponent,
 } from "@govtech-bb/govbbmarkd";
 import { $createParagraphNode } from "lexical";
-import type { EditorAction } from "../../editor/core/actions";
-import type { EditorSlotContribution } from "../../editor/core/contributions";
-import type { DocumentNodeDefinition, EditorRegistration } from "../../editor/core/module";
-import { defineSlot } from "../../editor/react/contributions";
+import type {
+  EditorAction,
+  EditorSlotContribution,
+  DocumentNodeDefinition,
+  EditorRegistration,
+} from "@/editor";
+import { defineSlot } from "@/editor/react";
 import type { MarkdownNode, PageHandler, PageModule } from "../definition";
 import { blocks, UnsupportedPageContent } from "../markdown";
 import { BLOCK_OPTIONS, type BlockOption, type BlockOptionsProps } from "./block-options";

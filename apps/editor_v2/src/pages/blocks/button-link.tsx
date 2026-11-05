@@ -5,8 +5,8 @@ import {
   type LexicalNode,
   type NodeKey,
 } from "lexical";
-import { CaretLinkPopover } from "../../editor/react/caret-link";
-import { linkAddress } from "../../editor/modules/links/url";
+import { CaretLinkPopover } from "@/editor/react";
+import { linkAddress } from "@/editor/modules";
 import { safePageUrl } from "../modules/text";
 import { $hasTrait } from "./node";
 

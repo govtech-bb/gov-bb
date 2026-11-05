@@ -2,7 +2,7 @@ import { createEditor, defaultMessage, messagesFor, rulesFor } from "../helpers/
 import { $createHeadingNode, HeadingNode } from "@lexical/rich-text";
 import { expect, test } from "vitest";
 import { $createTextNode, $getRoot } from "lexical";
-import { legacyFieldAdapter } from "../../src/forms/editor/legacy-mappings";
+import { legacyFieldAdapter } from "../../src/forms/formats/legacy-ssb/legacy-mappings";
 import { govbbFormEditor } from "../../src/presets/govbb-form";
 import {
   $createFormTitleNode,
@@ -10,28 +10,28 @@ import {
   $ensureBlockIds,
   $ensureQuestionFields,
   $questionKey,
-} from "../../src/forms/editor/nodes";
+} from "../../src/forms/canvas/form-nodes";
 import {
   $createInputNode,
   $createOptionNode,
   $createWidgetNode,
-} from "../../src/forms/editor/answer-nodes";
-import { $setSettings } from "../../src/editor/core/document-state";
+} from "../../src/forms/canvas/answer-nodes";
+import { $setSettings } from "../../src/forms/canvas/block-state";
 import { formNodes } from "../helpers/default-form";
-import { $ssbIds } from "../../src/forms/editor/ssb";
+import { $ssbIds } from "../../src/forms/formats/legacy-ssb/legacy-ssb-rules";
 import {
   autoId,
   checkId,
   RESERVED_PAGE_IDS,
   resolveIds,
   slug,
-} from "../../src/forms/core/identities";
+} from "../../src/forms/model/identities";
 import {
   DEFAULT_FILE_TYPES,
   FILE_TYPES,
   fileTypesOf,
-} from "../../src/forms/features/file-upload/files";
-import { isFieldless, type RuleName } from "../../src/forms/adapters/ssb/rules";
+} from "../../src/forms/fields/file-upload-file-types";
+import { isFieldless, type RuleName } from "../../src/forms/formats/legacy-ssb/projection/rules";
 
 test("SSB slugs normalise labels, shorten at a boundary, and prefix numbers", () => {
   expect(slug("Event name")).toBe("event-name");

@@ -12,12 +12,12 @@ import {
   $duplicateQuestion,
   $removeBlocks,
   $restoreCopiedOptionValues,
-} from "../../src/forms/editor/structure/blocks";
-import { $native } from "../../src/forms/editor/native-state";
-import { $deepCopy, $isQuestionNode, $setSettings } from "../../src/forms/editor/nodes";
-import { $remapCopies } from "../../src/forms/features/mentions/editor";
-import { $nativeTargets } from "../../src/forms/features/logic/native-authoring";
-import type { AnyFormDefinition, QuestionBase } from "../../src/forms/schema";
+} from "../../src/forms/canvas/structure/structure-blocks";
+import { $native } from "../../src/forms/formats/native/native-state";
+import { $deepCopy, $isQuestionNode, $setSettings } from "../../src/forms/canvas/form-nodes";
+import { $remapCopies } from "../../src/forms/mentions/mention-editor";
+import { $nativeTargets } from "../../src/forms/conditional-logic/logic-native-authoring";
+import type { AnyFormDefinition, QuestionBase } from "../../src/forms/formats/native/schema";
 import repeat from "../fixtures/forms/v2/examples/repeat-example.json";
 
 function example(): AnyFormDefinition {

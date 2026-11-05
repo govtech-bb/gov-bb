@@ -1,6 +1,14 @@
 # Adding a field
 
-A field module adds an answer type and its behavior. Use a [Form registry entry](FORM-REGISTRY.md) to reuse already installed types, such as a National ID question. Use a field module when you need a new answer control.
+A field adds an answer type and its behavior. Use a [Form registry entry](FORM-REGISTRY.md) to reuse already installed types, such as a National ID question. Add a field when you need a new answer control.
+
+## Where a field lives
+
+A field is one file in `src/forms/fields`, named as the insert menu names it. Date input is [`date-input.tsx`](../src/forms/fields/date-input.tsx): its field (`dateInputField`), its insert entry and its module (`DateInputModule`). Its other files share that prefix, such as `date-input-controls.tsx` for its settings panel and `date-limits.ts` for its own settings. [`email-address.tsx`](../src/forms/fields/email-address.tsx) is the smallest complete field.
+
+To install it, add its module to `formFields` in [`fields/index.ts`](../src/forms/fields/index.ts). The GovBB preset installs that list, so nothing shared changes. A field on a kind the native format already has, such as `text`, declares it with `nativeField(kind, { kind, valueType })`; a field with a kind of its own declares its JSON with `defineNativeField`, below. Either way, give its native capability a row in the [capability matrix](../tests/fixtures/forms/v2/capabilities.json), which `pnpm check:coverage` holds to the installed fields.
+
+## A field from outside the app
 
 The complete public-API example is [ReferenceFieldModule](../tests/extensions/reference-field.ts). Its [integration tests](../tests/extensions/external-extensions.test.ts) exercise insertion, conversion, copying and capability removal. [The extension browser fixture](../tests/browser/external-extensions.tsx) installs it next to built-in fields without editing a central kind switch. It is a test extension; the [basic embedding example](examples/editor-system.tsx) uses the app's installed page and form presets.
 
@@ -31,9 +39,20 @@ Provide only the capabilities the control supports: comparisons, repetition, hid
 
 `source.attributes` declares the type of concise Markdown attributes for this field. Those names are scoped to the field, so another field can use the same attribute name with another type. `properties` plus paired `fromNode`/`toNode` hooks cover owned serialized properties that require adaptation. Preserve all unrelated raw properties. The source format's retained state supports unfinished settings without introducing a second full document.
 
-A `native` handler created with `defineNativeField<K, Config>` owns the JSON kind/configuration, validation, references and import/export mapping. The import callback can use `context.importQuestion(block, editorKind)`. The export callback reads current data using `context.exportQuestion(editorKind)` and `context.nodes` for custom settings. It must preserve unknown draft data or report a located error; do not coerce an invalid draft into valid output.
+A `native` handler created with `defineNativeField<K, Config>` owns the JSON kind, value type, validation and references. Its import and export default to the question's settings, shared and own, as a built-in field's do, so a field whose settings are declared in `settings.own` writes neither. Write them only for a shape settings can't express: the import callback can use `context.importQuestion(block, editorKind)`, and the export callback `context.exportQuestion(editorKind)` and `context.nodes`. Either must preserve unknown draft data or report a located error; do not coerce an invalid draft into valid output.
 
-The Reference example declares its custom config and structured `peer` reference, imports editable settings and exports the current reference code after UI edits. No SSB import or handler is required. Optional SSB mappings belong to the explicitly selected `forms/legacy` adapter, outside native declarations.
+The Reference example declares its custom config and structured `peer` reference, and keeps `code` and `peer` in its config with `configSetting`, so edits reach its export with no import or export of its own. No SSB import or handler is required. Optional SSB mappings belong to the explicitly selected `forms/legacy` adapter, outside native declarations.
+
+## Declare the settings only your field has
+
+Each setting only your field has is declared once with `defineSetting` and listed in the field's `settings.own`. It names the editor settings it owns, reads them from the field's native question and writes an edit back, usually as a validation rule or config. The shared native code finds a question's own settings through the installed definition, and the lists of settings a question may own take them from its field, so a new setting changes nothing shared.
+
+- `ruleLimit(toggle, key, rule)` is a limit the author switches on, kept as one rule, such as a minimum age.
+- `configSetting(key, { json, number })` keeps a setting in the native config, under its own name or another, such as the Time input's step, kept as `stepSeconds`.
+- [`field-rule-settings.ts`](../src/forms/fields/field-rule-settings.ts) declares the settings several fields share: character and choice limits, and an answer pattern.
+- [`date-limits.ts`](../src/forms/fields/date-limits.ts) maps its own way: past or future, before or after a day, a range or set days, kept as date rules.
+
+Settings every question has, such as required, hidden, the default answer, width and error messages, are declared once in [`shared-settings.ts`](../src/forms/settings/shared-settings.ts); a field's own setting with the same key replaces one. A default answer converts by the field's `valueType`.
 
 ## Declare reference semantics
 
@@ -52,7 +71,7 @@ The Reference example maps `peer` as a field reference. It leaves an opaque `lit
 
 `Controls` receives `{ m: BlockMenuModel, a: BlockMenuActions }`; use `a.onSettings` for edits. The common form controls are exported, but there is no settings-form DSL. Without a `Preview`, the insert dialog shows the field as the canvas draws it: the box its `draw` makes, or its `choice` options, so the two cannot disagree. Draw with the GovBB kit in `src/ui/govbb.ts`. A field the canvas draws in React, or not at all, brings its own `Preview`, which receives optional width, mask and option samples; decorator `Renderer` receives `WidgetProps`. Keep renderers editor-scoped and do not install another history owner.
 
-Install the module through `defineFormEditor({ modules: [...] })`. The same resolved definition must be used by the live editor, headless operations and converters. In the [extension browser fixture](../tests/browser/external-extensions.tsx), `ReferenceFieldModule()` is appended to `govbbFormModules` and the developer's registry can then use `kind: "reference-code"`.
+A built-in field is installed through `formFields`; a field from outside the app is installed through `defineFormEditor({ modules: [...] })`. The same resolved definition must be used by the live editor, headless operations and converters. In the [extension browser fixture](../tests/browser/external-extensions.tsx), `ReferenceFieldModule()` is appended to `govbbFormModules` and the developer's registry can then use `kind: "reference-code"`.
 
 ## Verification
 

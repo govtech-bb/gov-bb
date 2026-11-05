@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { createHeadlessEditor } from "../../src/editor";
+import { createHeadlessEditor } from "@/editor";
 import { draftEditorConnection } from "../../src/host/draft-editor";
 import { DraftStore } from "../../src/persistence";
 import { govbbFormCodec, govbbFormEditor, govbbFormRuntime } from "../../src/presets/govbb-form";

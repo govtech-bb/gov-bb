@@ -1,8 +1,8 @@
 import { jsonSetting } from "../helpers/serialized-test-data";
-import { $isOptionNode } from "../../src/forms/editor/answer-nodes";
+import { $isOptionNode } from "../../src/forms/canvas/answer-nodes";
 import { nativeRegistryEditor, nativeRegistryForm } from "../helpers/native-registry-editor";
-import { $native } from "../../src/forms/editor/native-state";
-import { visitNativeReferences } from "../../src/forms/schema";
+import { $native } from "../../src/forms/formats/native/native-state";
+import { visitNativeReferences } from "../../src/forms/formats/native/schema";
 import { createEditor } from "../helpers/default-form";
 import { expect, test } from "vitest";
 import {
@@ -22,8 +22,8 @@ import {
   $logicNodes,
   $setLogicActions,
   $showTargetBlocks,
-} from "../../src/forms/features/logic/authoring";
-import { $blockId, $depth, $setSettings, $settings } from "../../src/editor/core/document-state";
+} from "../../src/forms/conditional-logic/logic-authoring";
+import { $blockId, $depth, $setSettings, $settings } from "../../src/forms/canvas/block-state";
 import {
   $createFormTitleNode,
   $createPageTitleNode,
@@ -32,21 +32,21 @@ import {
   $ensureQuestionFields,
   $formBlocks,
   $questionKey,
-} from "../../src/forms/editor/nodes";
+} from "../../src/forms/canvas/form-nodes";
 import {
   $createInputNode,
   $createOptionNode,
   $createWidgetNode,
   type OptionNode,
-} from "../../src/forms/editor/answer-nodes";
+} from "../../src/forms/canvas/answer-nodes";
 import { formNodes } from "../helpers/default-form";
-import { $addFollowUp } from "../../src/forms/editor/nesting";
-import { $registryBlocks as $govbbField } from "../../src/forms/editor/registry-module";
-import { $insertBlocks } from "../../src/forms/editor/insertion";
-import { $duplicateQuestion } from "../../src/forms/editor/structure/blocks";
+import { $addFollowUp } from "../../src/forms/canvas/nesting";
+import { $registryBlocks as $govbbField } from "../../src/forms/canvas/form-registry-module";
+import { $insertBlocks } from "../../src/forms/canvas/form-insertion";
+import { $duplicateQuestion } from "../../src/forms/canvas/structure/structure-blocks";
 import { registerEditorHistory } from "../../src/editor/core/history";
 import { compileForm, type Action } from "../helpers/default-form";
-import { $blockTree, $fields } from "../../src/forms/features/logic/queries";
+import { $blockTree, $fields } from "../../src/forms/conditional-logic/logic-queries";
 
 const editorForTest = () =>
   createEditor({

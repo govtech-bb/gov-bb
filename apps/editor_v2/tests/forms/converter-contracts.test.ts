@@ -3,16 +3,16 @@ import { expect, test } from "vitest";
 import { $getRoot, createEditor } from "lexical";
 import { createHeadlessEditor } from "../../src/editor/core/create-editor";
 import { defineFormEditor } from "../../src/forms/definition";
-import { createFormRuntime } from "../../src/forms/editor/runtime";
-import { createFormDraftCodec } from "../../src/forms/editor/codec";
-import { $installedFields } from "../../src/forms/editor/field-context";
-import { $isInput } from "../../src/forms/editor/nodes";
+import { createFormRuntime } from "../../src/forms/canvas/form-runtime";
+import { createFormDraftCodec } from "../../src/forms/canvas/form-codec";
+import { $installedFields } from "../../src/forms/canvas/field-context";
+import { $isInput } from "../../src/forms/canvas/form-nodes";
 import {
   $fieldArrayMenu,
   $hasRepetition,
   $pageRepeat,
-} from "../../src/forms/features/repetition/queries";
-import { validateContentSyntax } from "../../src/forms/source/content";
+} from "../../src/forms/repetition/repetition-queries";
+import { validateContentSyntax } from "../../src/forms/formats/markdown/content";
 import { lexicalToFormMarkdown } from "../../src/converters/lexical-to-form-markdown";
 import { formMarkdownToLexical } from "../../src/converters/form-markdown-to-lexical";
 import { govbbFormEditor, govbbFormModules } from "../../src/presets/govbb-form";

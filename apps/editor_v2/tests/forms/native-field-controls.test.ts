@@ -11,11 +11,11 @@ import {
   nativeErrorMessages,
   optionValueError,
   parseOptionValue,
-} from "../../src/forms/editor/native-field-controls";
-import { $native } from "../../src/forms/editor/native-state";
-import { $describe } from "../../src/forms/react/gutter";
-import { $setFormSettings } from "../../src/forms/editor/native-settings";
-import type { AnyFormDefinition, QuestionBase } from "../../src/forms/schema/types";
+} from "../../src/forms/formats/native/native-field-controls";
+import { $native } from "../../src/forms/formats/native/native-state";
+import { $describe } from "../../src/forms/canvas/form-gutter";
+import { $setFormSettings } from "../../src/forms/formats/native/native-settings";
+import type { AnyFormDefinition, QuestionBase } from "../../src/forms/formats/native/schema/types";
 
 function setup(question: QuestionBase) {
   const form: AnyFormDefinition = {

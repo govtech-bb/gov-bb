@@ -19,7 +19,7 @@ import {
   type QuestionBase,
   type RichText,
   type JsonValue,
-} from "../../src/forms/schema";
+} from "../../src/forms/formats/native/schema";
 import passport from "../fixtures/forms/v2/examples/passport-example.json";
 import repeats from "../fixtures/forms/v2/examples/repeat-example.json";
 import identity from "../fixtures/forms/v2/examples/identity-registry-example.json";

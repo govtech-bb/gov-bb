@@ -11,7 +11,7 @@ import {
 import { $isParagraphNode, type LexicalNode } from "lexical";
 import type { BlockContent, ListItem } from "mdast";
 import type { PageModule, PageHandler } from "../definition";
-import { lineHint } from "../../editor/react/block-dom";
+import { lineHint } from "@/editor/react";
 import { PageListItemNode } from "../list-item";
 import { pageInsertAction } from "../insertion";
 import { blocks, phrasing, UnsupportedPageContent } from "../markdown";

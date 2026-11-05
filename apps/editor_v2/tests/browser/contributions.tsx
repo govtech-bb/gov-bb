@@ -21,7 +21,7 @@ import {
   defineRenderer,
   defineSlot,
 } from "../../src/editor/react/contributions";
-import { InsertModal } from "../../src/editor/react/insert-modal";
+import { InsertDialog } from "../../src/editor/react/action-pickers/insert-dialog";
 import type { ActionRequest } from "../../src/editor/core/actions";
 
 class ProofNode extends DecoratorNode<ReactNode> {
@@ -151,7 +151,7 @@ function Surfaces({ name }: { name: string }) {
       >
         Open {name} insertion
       </button>
-      <InsertModal request={request} onClose={() => setRequest(null)} />
+      <InsertDialog request={request} onClose={() => setRequest(null)} />
       <EditorSlot name="test.inspector" props={{ label: "owned controls" }} />
     </>
   );

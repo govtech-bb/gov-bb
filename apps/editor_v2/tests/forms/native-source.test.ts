@@ -1,20 +1,20 @@
 import { jsonSettings } from "../helpers/serialized-test-data";
 import { expect, test } from "vitest";
 import { $getRoot } from "lexical";
-import { $native } from "../../src/forms/editor/native-state";
-import { $toggleHidden } from "../../src/forms/editor/nodes";
+import { $native } from "../../src/forms/formats/native/native-state";
+import { $toggleHidden } from "../../src/forms/canvas/form-nodes";
 import { createHeadlessEditor } from "../../src/editor/core/create-editor";
 import { govbbFormEditor } from "../../src/presets/govbb-form";
 import {
   nativeFormToSerialized,
   serializedToNativeForm,
-} from "../../src/forms/editor/native-bindings";
-import { rawNative } from "../../src/forms/editor/native-state";
-import { syncNativeSource } from "../../src/forms/editor/native-source";
-import { nativeSemanticEqual } from "../../src/forms/schema/semantics";
+} from "../../src/forms/formats/native/native-bindings";
+import { rawNative } from "../../src/forms/formats/native/native-state";
+import { syncNativeSource } from "../../src/forms/formats/native/native-source";
+import { nativeSemanticEqual } from "../../src/forms/formats/native/schema/semantics";
 import { lexicalToFormMarkdown } from "../../src/converters/lexical-to-form-markdown";
 import { formMarkdownToLexical } from "../../src/converters/form-markdown-to-lexical";
-import type { AnyFormDefinition } from "../../src/forms/schema/types";
+import type { AnyFormDefinition } from "../../src/forms/formats/native/schema/types";
 
 const form: AnyFormDefinition = {
   schemaVersion: 2,
@@ -73,7 +73,7 @@ test("source sync preserves native omissions and false/zero values without modif
   const state = nativeFormToSerialized(form, govbbFormEditor),
     before = structuredClone(state);
 
-  const synced = syncNativeSource(state);
+  const synced = syncNativeSource(state, govbbFormEditor);
   expect(state).toEqual(before);
   expect(nativeSemanticEqual(serializedToNativeForm(synced, govbbFormEditor), form)).toBe(true);
 });
@@ -111,7 +111,12 @@ test("editable source settings update native payloads while preserving identitie
       ],
     },
   };
-  const exported = serializedToNativeForm(syncNativeSource(state), govbbFormEditor);
+
+  const exported = serializedToNativeForm(
+    syncNativeSource(state, govbbFormEditor),
+    govbbFormEditor,
+  );
+
   expect(exported.blocks.find((block) => block.id === "amount")).toMatchObject({
     id: "amount",
     key: "amount",
@@ -142,12 +147,12 @@ test("omitting the source field alias preserves a submitted key while an explici
   question.$!.settings = settings;
   delete settings.fieldId;
   expect(
-    serializedToNativeForm(syncNativeSource(state), govbbFormEditor).blocks.find(
+    serializedToNativeForm(syncNativeSource(state, govbbFormEditor), govbbFormEditor).blocks.find(
       (block) => block.id === "amount",
     ),
   ).toMatchObject({ key: "amount" });
   settings.fieldId = "";
-  const synced = syncNativeSource(state);
+  const synced = syncNativeSource(state, govbbFormEditor);
   expect(
     rawNative(synced.root.children.find((node) => rawNative(node).question?.id === "amount")!)
       .question?.key,
@@ -158,7 +163,7 @@ test("malformed native source fences stay visible instead of reviving cached val
   const state = nativeFormToSerialized(form, govbbFormEditor);
   const logic = state.root.children.find((node) => rawNative(node).logic)!;
   logic.$!.settings = { native: { rules: null, inactiveFutureValue: false } };
-  const result = syncNativeSource(state);
+  const result = syncNativeSource(state, govbbFormEditor);
 
   const retained = result.root.children.find((node) => node.$?.id === logic.$!.id)!;
 
@@ -188,7 +193,12 @@ test("editing readable Markdown attributes changes the exported native question"
     expect(parsed.state).toBeDefined();
 
     if (!parsed.state) return;
-    const result = serializedToNativeForm(syncNativeSource(parsed.state), govbbFormEditor);
+
+    const result = serializedToNativeForm(
+      syncNativeSource(parsed.state, govbbFormEditor),
+      govbbFormEditor,
+    );
+
     expect(result.blocks.find((block) => block.id === "amount")).toMatchObject({
       config: { width: "long" },
     });

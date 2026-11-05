@@ -3,26 +3,26 @@ import { expect, test } from "vitest";
 import { $getRoot, type LexicalNode } from "lexical";
 import { createHeadlessEditor } from "../../src/editor/core/create-editor";
 import { executeAction } from "../../src/editor/core/actions";
-import { $settings, $setSettings } from "../../src/editor/core/document-state";
+import { $settings, $setSettings } from "../../src/forms/canvas/block-state";
 import { govbbFormEditor } from "../../src/presets/govbb-form";
-import { createFormRuntime } from "../../src/forms/editor/runtime";
+import { createFormRuntime } from "../../src/forms/canvas/form-runtime";
 import { createFormDraftCodec, readMarkdown, toEditor } from "../helpers/default-form";
 import { lexicalToLegacySsb } from "../../src/converters/lexical-to-legacy-ssb";
-import { openingHoursField } from "../../src/forms/features/opening-hours/definition";
+import { openingHoursField } from "../../src/forms/fields/opening-hours";
 import {
   OPENING_HOURS_PATTERN,
   OPENING_HOURS_ERROR,
-} from "../../src/forms/features/opening-hours/defaults";
-import { checkboxAccordionField } from "../../src/forms/features/checkbox-accordion/definition";
+} from "../../src/forms/fields/opening-hours-defaults";
+import { groupedCheckboxesField } from "../../src/forms/fields/grouped-checkboxes";
 import {
   newGroup,
   copyGroups,
   groupedChoices,
-} from "../../src/forms/features/checkbox-accordion/groups";
-import { $native } from "../../src/forms/editor/native-state";
-import { $setFormSettings } from "../../src/forms/editor/native-settings";
-import { serializedToNativeForm } from "../../src/forms/editor/native-bindings";
-import type { ChoiceConfig, QuestionOption } from "../../src/forms/schema/types";
+} from "../../src/forms/fields/grouped-checkboxes-groups";
+import { $native } from "../../src/forms/formats/native/native-state";
+import { $setFormSettings } from "../../src/forms/formats/native/native-settings";
+import { serializedToNativeForm } from "../../src/forms/formats/native/native-bindings";
+import type { ChoiceConfig, QuestionOption } from "../../src/forms/formats/native/schema/types";
 
 const emptySource =
   '---\nformat: govbb-form\nformatVersion: 2\ntitle: Apply\n---\n\n# Application\n\n::page{#application}\n\n::empty\n\n---\n\n# Declaration\n\n::page{#declaration type="declaration"}\n\n::checkboxes[Declaration]{#legal required}\n- I confirm the information I have given is correct\n\n---\n\n# Complete\n\n::page{#complete type="confirmation"}\n';
@@ -91,7 +91,7 @@ test("grouped field projection preserves category and local option IDs, risk and
     maxChoices: 2,
   };
 
-  const projected = legacyFieldAdapter(checkboxAccordionField)!.project!(raw);
+  const projected = legacyFieldAdapter(groupedCheckboxesField)!.project!(raw);
   expect(projected.groups).toEqual([
     {
       id: group.id,
@@ -105,7 +105,7 @@ test("grouped field projection preserves category and local option IDs, risk and
     [group.options[1]!.id, "training"],
   ]);
   expect(
-    legacyFieldAdapter(checkboxAccordionField)!
+    legacyFieldAdapter(groupedCheckboxesField)!
       .rules(raw)
       .map((rule) => [rule.rule, rule.value]),
   ).toEqual([
@@ -113,12 +113,12 @@ test("grouped field projection preserves category and local option IDs, risk and
     ["minSelection", 1],
     ["maxSelection", 2],
   ]);
-  expect(legacyFieldAdapter(checkboxAccordionField)!.settings(raw).groups).toBeUndefined();
+  expect(legacyFieldAdapter(groupedCheckboxesField)!.settings(raw).groups).toBeUndefined();
   const duplicate = copyGroups([group]);
   expect(duplicate[0]!.id).not.toBe(group.id);
   expect(duplicate[0]!.options[0]!.id).not.toBe(group.options[0]!.id);
   expect(
-    legacyFieldAdapter(checkboxAccordionField)!.project!({ groups: duplicate }).options.map(
+    legacyFieldAdapter(groupedCheckboxesField)!.project!({ groups: duplicate }).options.map(
       (option) => option.value,
     ),
   ).toEqual(["approved", "training"]);

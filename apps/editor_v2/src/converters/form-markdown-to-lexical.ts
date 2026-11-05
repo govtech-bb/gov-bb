@@ -1,9 +1,9 @@
 import type { SerializedEditorState } from "lexical";
 import type { FormEditorDefinition } from "../forms/definition";
-import { createFormSourceDialect } from "../forms/source/dialect";
-import { createFormRuntime } from "../forms/editor/runtime";
-import { syncNativeSource } from "../forms/editor/native-source";
-import type { Diagnostic, FormDocument } from "../forms/source/model";
+import { createFormSourceDialect } from "../forms/formats/markdown/dialect";
+import { createFormRuntime } from "../forms/canvas/form-runtime";
+import { syncNativeSource } from "../forms/formats/native/native-source";
+import type { Diagnostic, FormDocument } from "../forms/formats/markdown/model";
 
 type PreparedMarkdown = {
   state?: SerializedEditorState;
@@ -42,6 +42,7 @@ export function formMarkdownToLexical(
 
     const legacyState = syncNativeSource(
       legacyMigrated ? runtime.prepare(hydrated, undefined, "markdown") : hydrated,
+      definition,
     );
 
     const native = runtime.prepareNative(legacyState);

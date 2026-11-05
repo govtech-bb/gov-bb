@@ -1,17 +1,17 @@
 import type { SerializedEditorState } from "lexical";
 import type { FormEditorDefinition } from "../forms/definition";
-import { createHeadlessEditor } from "../editor/core/create-editor";
+import { createHeadlessEditor } from "@/editor";
 import {
   $withDefaultFormMessages,
   nativeFormToSerialized,
   NativeBindingError,
-} from "../forms/editor/native-bindings";
+} from "../forms/formats/native/native-bindings";
 import { lexicalToFormSchema } from "./lexical-to-form-schema";
 import {
   validateFormDefinition,
   nativeSemanticEqual,
   type NativeDiagnostic,
-} from "../forms/schema";
+} from "../forms/formats/native/schema";
 
 export type NativeImportResult =
   | { status: "ready"; state: SerializedEditorState; diagnostics: NativeDiagnostic[] }

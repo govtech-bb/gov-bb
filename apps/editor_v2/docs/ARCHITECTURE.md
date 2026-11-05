@@ -10,32 +10,42 @@ This guide describes the installed module system. [Architecture decision records
 
 | Import | Responsibility |
 | --- | --- |
-| `src/editor` | Module definitions, live/headless editors, actions, renderers, slots and content modules |
+| `@/editor` | Headless: module definitions, headless editors, actions, Turn into, history and caret helpers |
+| `@/editor/react` | The composer and editor surface, renderers and slots, the block rail, menus and shortcuts |
+| `@/editor/modules` | The modules both editors install: text, history, links and formatting |
 | `src/forms` | Typed fields/content adapters, form composition, Form registry builders, form canvas and converters |
-| `src/forms/modules` | Supported built-in form modules and content adapters for application-owned presets |
+| `src/forms/modules` | Supported built-in form modules and content blocks for application-owned presets |
 | `src/pages` | Page module composition, Markdown conversion, title editing, writing canvas and preview |
 | `src/persistence` | In-memory source/canvas state, codec/connection contracts and failure preservation |
 | `src/host` | Optional React draft provider, source controls and Lexical connection |
-| `src/presets/content` | Ready-made content editor definition |
+| `src/presets/content` | An editor of the form’s content blocks alone, which the tests use |
 | `src/presets/govbb-form` | GovBB module list, form definition, runtime and Markdown codec |
 | `src/presets/govbb-page` | GovBB page definition and Markdown codec |
 
 These are repository entry points, not separately published packages. Internal modules import their owners directly, never their own public barrel or a default preset. The preset is the place to aggregate built-in capabilities and registry entries.
+
+`@/` is `src/` (in the TypeScript, Vite and Vitest configuration). Outside `src/editor`, code imports the editor only through its three entry points, and the boundary check fails on a deeper import; tests may still reach inside. `@/editor` re-exports only `src/editor/core`, so converters and pure form layers can use it without React.
 
 ## Ownership
 
 ```text
 src/editor/core              definitions, document validation, history, actions, state
 src/editor/react             composition, focused-editor routing, menus, renderer/slot hosts
-src/editor/modules           text, formatting, headings, lists, links, callouts, disclosure
-src/forms/core               pure form settings, identities, references and readers
-src/forms/schema             native v2 JSON types, validation, semantics and references
-src/forms/source             Markdown dialect, source model and frozen migration data
-src/forms/adapters/ssb        existing SSB projection contracts and validation
-src/forms/editor             form structure, node families, configured queries and runtime
-src/forms/react              form canvas and shared controls
-src/forms/features           each field, pages, repetition, logic and mentions
-src/forms/registry            developer-defined template contracts and builders
+src/editor/modules           text, history, links and formatting: what both editors install
+src/forms/model                  the form’s pure rules and data: settings, dates, formulas, logic, references
+src/forms/fields                 each answer type, named as the insert menu names it, such as date-input.tsx (listed in formFields)
+src/forms/settings               settings declared once with their native JSON: defineSetting, and those every question shares
+src/forms/content                the form’s content blocks: text, headings, lists, callouts and Details
+src/forms/form-pages             pages within a form: headings, Continue, Check answers and Confirmation
+src/forms/conditional-logic      Conditional logic: rules, actions, pickers and wording
+src/forms/calculated-fields      Calculated fields and their formulas
+src/forms/repetition             questions and pages answered more than once
+src/forms/mentions               answers mentioned in other text
+src/forms/form-registry          Form registry contracts and builders for reusable questions and pages
+src/forms/canvas                 the editing surface: nodes, structure, block state, gutter, menus and runtime
+src/forms/formats/markdown       the form’s Markdown dialect, source model and frozen migration data
+src/forms/formats/native         binding the canvas to native FormDefinitionV2 JSON; its contract in native/schema
+src/forms/formats/legacy-ssb     the old SSB export; its projection contract in legacy-ssb/projection
 src/pages                    page composition, metadata, Markdown handlers, writing and preview
 src/pages/blocks             each page component a file of its own, made with defineBlock (see its README)
 src/converters               Markdown, native form import/export, explicit legacy SSB export
@@ -75,7 +85,13 @@ A registration returns its cleanup function. Each editor owns its history and li
 
 ## Contributions and actions
 
-Actions supply stable IDs, labels, grouping, optional numeric order, availability and execution callbacks. Slash and insertion-dialog surfaces read the installed actions. An action's preview draws the block alone: the insertion dialog puts every preview on one `PreviewSheet`, and `PreviewQuestion` sets a question's label, hint and “(optional)” (`src/ui/preview-sheet.tsx`). `executeAction(editor, definition, id, request)` opens an update; `$executeAction(...)` is for an existing update. Both enforce editor ownership and recheck availability before trigger removal or mutation. A `$prepare` callback can validate an insertion before returning its commit callback.
+Actions supply stable IDs, labels, grouping, optional numeric order, availability and execution callbacks. Both editors list the installed actions with the same pickers, in `src/editor/react/action-pickers`, so an action is searched, listed and refused the same way in each:
+
+- **`SlashMenu`** is the "/" menu. The page editor says where "/" opens it and what an empty line says.
+- **`InsertDialog`** is the form's insert dialog.
+- **`ActionPicker`** supplies the Root, Search, List and Description parts. The page's "+" menu is built from them.
+
+An action's preview draws the block alone: the insertion dialog puts every preview on one `PreviewSheet`, and `PreviewQuestion` sets a question's label, hint and “(optional)” (`src/ui/preview-sheet.tsx`). `executeAction(editor, definition, id, request)` opens an update; `$executeAction(...)` is for an existing update. Both enforce editor ownership and recheck availability before trigger removal or mutation. A `$prepare` callback can validate an insertion before returning its commit callback.
 
 `RendererHost` resolves a named renderer in the current editor; `EditorSlot` renders that editor's ordered slot contributions. Missing renderer contributions fail explicitly. Names include their role, such as `field-preview:text` and `widget:file-upload`, so unrelated content and answer kinds cannot collide.
 

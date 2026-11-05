@@ -134,7 +134,7 @@ Paths below are relative to `src`. Symbols not listed as renamed keep their name
 | `converters/lexicalToLegacySsb/index.ts` | `converters/lexical-to-legacy-ssb.ts` |
 | `converters/pageMarkdownToLexical/index.ts` | `converters/page-markdown-to-lexical.ts`; still re-exports the page implementation |
 | `converters/lexicalToPageMarkdown/index.ts` | `converters/lexical-to-page-markdown.ts`; still re-exports the page implementation |
-| `forms/editor/codec.ts` | `createDraftCodec` → `createFormDraftCodec` |
+| `forms/canvas/form-codec.ts` | `createDraftCodec` → `createFormDraftCodec` |
 | `host/form-schema-ui.tsx` | `host/form-json-dialog.tsx`: `FormSchemaEditor` → `FormJsonDialog` |
 | `ui/table/hook.ts` | `ui/table/table-hooks.ts`; exports unchanged |
 

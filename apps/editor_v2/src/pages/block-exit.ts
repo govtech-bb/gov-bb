@@ -15,7 +15,7 @@ import {
   type LexicalEditor,
   type LexicalNode,
 } from "lexical";
-import { $paragraphAfter } from "../editor/core/blocks";
+import { $paragraphAfter } from "@/editor";
 import { $hasTrait } from "./blocks/node";
 
 /** The line of text after a block: an empty one already there, or a new one. */

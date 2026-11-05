@@ -3,10 +3,10 @@ import { createHeadlessEditor } from "../../src/editor/core/create-editor";
 import { defineFormEditor } from "../../src/forms/definition";
 import { govbbFormEditor, govbbFormModules } from "../../src/presets/govbb-form";
 import { formMarkdownToLexical } from "../../src/converters/form-markdown-to-lexical";
-import { $setFormSettings } from "../../src/forms/editor/form-metadata";
+import { $setFormSettings } from "../../src/forms/canvas/form-metadata";
 import { TextModule } from "../../src/editor/modules/text/module";
-import { WidgetNode } from "../../src/forms/editor/answer-nodes";
-import { createFormRuntime } from "../../src/forms/editor/runtime";
+import { WidgetNode } from "../../src/forms/canvas/answer-nodes";
+import { createFormRuntime } from "../../src/forms/canvas/form-runtime";
 import { createFormDraftCodec, initialDraft } from "../helpers/default-form";
 
 const source =

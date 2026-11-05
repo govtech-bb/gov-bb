@@ -3,12 +3,18 @@ import { LinkNode } from "@lexical/link";
 import { HeadingNode } from "@lexical/rich-text";
 import { expect, test } from "vitest";
 import { $createTextNode, $getRoot } from "lexical";
-import { capabilityWarnings, logicIssues } from "../../src/forms/editor/capabilities";
+import {
+  capabilityWarnings,
+  logicIssues,
+} from "../../src/forms/formats/legacy-ssb/legacy-ssb-capabilities";
 import { compileForm, type FormLogic, type FormBlock } from "../helpers/default-form";
-import { $migrateLegacyConditions } from "../../src/forms/features/logic/migration";
-import { logicActionKey, projectLogicRules } from "../../src/forms/adapters/ssb/logic-rules";
-import { MentionNode } from "../../src/forms/features/mentions/node";
-import { $blockId, $setDepth, $setSettings, $settings } from "../../src/editor/core/document-state";
+import { $migrateLegacyConditions } from "../../src/forms/conditional-logic/logic-migration";
+import {
+  logicActionKey,
+  projectLogicRules,
+} from "../../src/forms/formats/legacy-ssb/projection/logic-rules";
+import { MentionNode } from "../../src/forms/mentions/mention-node";
+import { $blockId, $setDepth, $setSettings, $settings } from "../../src/forms/canvas/block-state";
 import {
   $blockKind,
   $createFormTitleNode,
@@ -20,15 +26,15 @@ import {
   $isInput,
   $questionKey,
   $shareQuestionSettings,
-} from "../../src/forms/editor/nodes";
-import { $createBulletNode } from "../../src/editor/modules/lists/nodes";
+} from "../../src/forms/canvas/form-nodes";
+import { $createBulletNode } from "../../src/forms/content/list-nodes";
 import {
   $createInputNode,
   $createOptionNode,
   $createWidgetNode,
   $isWidgetNode,
-} from "../../src/forms/editor/answer-nodes";
-import { $createShowHideNode } from "../../src/editor/modules/disclosure/nodes";
+} from "../../src/forms/canvas/answer-nodes";
+import { $createShowHideNode } from "../../src/forms/content/details-node";
 import { formNodes } from "../helpers/default-form";
 
 function question(blocks: FormBlock[], id: string): Extract<FormBlock, { type: "question" }> {

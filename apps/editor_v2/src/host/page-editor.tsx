@@ -1,7 +1,6 @@
 import { useCallback, useMemo, useRef, useState, type ReactNode } from "react";
 import { Eye, PencilSimpleSlash, X } from "@phosphor-icons/react";
-import { EditorComposer } from "../editor";
-import { UndoRedo } from "../editor/react/undo-redo";
+import { EditorComposer, UndoRedo } from "@/editor/react";
 import {
   PageEditor,
   PageSettings,

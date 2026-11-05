@@ -108,7 +108,7 @@ Ordinary text supports links, italic, bold, strikethrough, inline code, hard bre
 
 Historical Markdown presets such as `preset="country"` expand into editable copies. Current Form registry entries are declared in native JSON; this preset syntax remains a compatibility reader.
 
-Both source versions use the immutable `src/forms/source/legacy/profiles-v1.json` settings and option lists, with copied field IDs, labels and exceptional option values in `src/forms/source/legacy/preset-defaults-v1.json`. The remaining option values use the frozen version 1 spelling algorithm. The installed component registry cannot change those defaults.
+Both source versions use the immutable `src/forms/formats/markdown/legacy/profiles-v1.json` settings and option lists, with copied field IDs, labels and exceptional option values in `src/forms/formats/markdown/legacy/preset-defaults-v1.json`. The remaining option values use the frozen version 1 spelling algorithm. The installed component registry cannot change those defaults.
 
 The retained `ref` identifies the definition the copy was based on; it does not synchronize the copy. `sourceFieldId`, `sourceLabel` and `sourceOptionValue` retain copied defaults. Edited labels can change automatic field IDs, and explicit `fieldId` or `optionValue` pins override them. Explicit overrides remain explicit, and removed inherited settings are recorded below.
 
