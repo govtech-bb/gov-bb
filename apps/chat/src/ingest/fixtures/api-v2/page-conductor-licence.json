@@ -1,0 +1,28 @@
+{
+  "url": "/work-employment/apply-for-conductor-licence",
+  "frontmatter": {
+    "stage": "alpha",
+    "service_type": "digital",
+    "title": "Apply for a conductor's licence",
+    "description": "Apply for a conductor's licence to work on a Public Service Vehicle (PSV) in Barbados. You must be 18 years or older to apply."
+  },
+  "body_markdown": "If you are 18 years old or older, you can use this service to apply for a licence to become a conductor on a Public Service Vehicle (PSV).\n\n## How to apply\n\n### Complete the form\n\nThere are 2 ways to apply for a conductor's licence. You can:\n\n1. Apply online\n\n   You can complete the application online\n\n   <a data-start-link href=\"/work-employment/apply-for-conductor-licence/start\">Apply online</a>\n\n2. Get a paper application form from the Ministry of Transport and Works.\n\n   You must complete it by hand and return it to the department.\n\n   \\\n   Ministry of Transport and Works\n   \\\n   2nd Floor\n   \\\n   The Goddard Building\n   \\\n   Haggatt Hall\n   \\\n   St. Michael\n   \\\n   Bridgetown\n\n### What you will need to share\n\nAlong with your personal details, the application form will ask for information about your licences, driving history, and any relevant convictions.\n\nYou will also need to provide a copy of your [Police Certificate of Character](https://forms.gov.bb/CertificateOfCharacter)\n\n### After you apply\n\nWe will review your application.\n\nYou must contact the department (246-536-0282) to schedule your in-person oral test.",
+  "form_id": "apply-for-conductor-licence",
+  "hide_start_links": false,
+  "breadcrumbs": [
+    {
+      "name": "Work and employment",
+      "url": "/work-employment"
+    },
+    {
+      "name": "Apply for a conductor's licence",
+      "url": "/work-employment/apply-for-conductor-licence"
+    }
+  ],
+  "category": "work-employment",
+  "subcategory": null,
+  "visibility": "public",
+  "published_at": "2026-03-06T00:00:00.000Z",
+  "content_updated_at": "2026-03-06T00:00:00.000Z",
+  "updated_at": "2026-10-22T18:56:44.337Z"
+}
