@@ -70,7 +70,9 @@ async function getJson(
   try {
     return await res.json();
   } catch (err) {
-    throw new Error(`api_v2 GET ${url} returned invalid JSON: ${err}`);
+    throw new Error(`api_v2 GET ${url} returned invalid JSON: ${err}`, {
+      cause: err,
+    });
   }
 }
 
