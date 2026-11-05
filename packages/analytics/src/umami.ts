@@ -36,3 +36,20 @@ export function sendUmamiPageview(): void {
     referrer: current.referrer ?? payload.referrer,
   }));
 }
+
+/** Send an event from the current path, with the referrer of the page view it
+ *  happens on (the tracker's own before any page view). */
+export function sendUmamiEvent(
+  name: string,
+  data?: Record<string, unknown>,
+): void {
+  const url = location.pathname;
+  const referrer = page?.referrer;
+  window.umami?.track((payload) => ({
+    ...payload,
+    url,
+    referrer: referrer ?? payload.referrer,
+    name,
+    data,
+  }));
+}

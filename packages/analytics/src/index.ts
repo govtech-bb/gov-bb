@@ -1,6 +1,6 @@
 import { maskSearchQuery } from "./mask-search-query";
 import { journeyEnabled, sendJourney } from "./journey";
-import { sendUmamiPageview, type UmamiPayload } from "./umami";
+import { sendUmamiEvent, sendUmamiPageview, type UmamiPayload } from "./umami";
 
 export { maskSearchQuery } from "./mask-search-query";
 export {
@@ -117,11 +117,9 @@ export function trackEvent(
     typeof safe.form === "string" &&
     !event.includes(":")
   ) {
-    window.umami.track(eventName(safe.form, event), safe);
-  } else if (safe === undefined) {
-    window.umami.track(event);
+    sendUmamiEvent(eventName(safe.form, event), safe);
   } else {
-    window.umami.track(event, safe);
+    sendUmamiEvent(event, safe);
   }
 }
 
