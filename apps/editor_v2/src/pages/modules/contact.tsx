@@ -1,5 +1,5 @@
 import { AddressBook, ArrowRight, Warning } from "@phosphor-icons/react";
-import { contactBlockFor, contactDetails } from "@govtech-bb/block-kit/contact";
+import { contactDetails } from "@govtech-bb/govbbmarkd/contact-record";
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
 import { useLexicalEditable } from "@lexical/react/useLexicalEditable";
 import { DecoratorNode, type LexicalNode, type NodeKey, type SerializedLexicalNode } from "lexical";
@@ -182,7 +182,7 @@ export function ContactPreview({
       true,
     );
 
-  const details = contactDetails(contactBlockFor(value.collection, record, fields), found.data);
+  const details = contactDetails(value.collection, fields, found.data);
 
   if (!details.length) return status("This record has none of the chosen details.", true);
 

@@ -238,12 +238,12 @@ function permitted(from: string, to: string, typeOnly: boolean) {
         "react-dom",
         "@phosphor-icons/react",
         "@govtech-bb/govbbmarkd",
+        "@govtech-bb/govbbmarkd/contact-record",
         "@govtech-bb/govbbmarkd/content-url",
         "@govtech-bb/govbbmarkd/legacy",
         "@govtech-bb/govbbmarkd/react",
         "@govtech-bb/react",
         "yaml",
-        "@govtech-bb/block-kit/contact",
       ].includes(to) ||
       to.startsWith("@lexical/") ||
       to.startsWith("@base-ui/") ||

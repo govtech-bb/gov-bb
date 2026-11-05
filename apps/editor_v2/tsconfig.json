@@ -19,11 +19,7 @@
     "noUnusedLocals": false,
     "noUnusedParameters": false,
     "noPropertyAccessFromIndexSignature": false,
-    // block-kit's source, as Vite and Vitest resolve tsconfig paths: no prior build needed
-    "paths": {
-      "@/*": ["./src/*"],
-      "@govtech-bb/block-kit/contact": ["../../packages/block-kit/src/contact.ts"]
-    }
+    "paths": { "@/*": ["./src/*"] }
   },
   "include": ["*.config.ts", "src/**/*", "tests/**/*", "scripts/**/*", "docs/examples/**/*"],
   "exclude": ["node_modules", "reference", "plans", "dist", "out"]

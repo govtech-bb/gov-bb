@@ -8,6 +8,7 @@
     "./react": "./src/markdown-react.tsx",
     "./legacy": "./src/legacy-markdown.ts",
     "./content-url": "./src/content-url.ts",
+    "./contact-record": "./src/contact-record.ts",
     "./form-links": "./src/form-links.ts"
   },
   "imports": {

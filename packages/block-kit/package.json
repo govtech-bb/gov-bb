@@ -13,10 +13,6 @@
       "types": "./dist/src/document.d.ts",
       "default": "./dist/src/document.js"
     },
-    "./contact": {
-      "types": "./dist/src/contact.d.ts",
-      "default": "./dist/src/contact.js"
-    },
     "./styles.css": "./src/render/styles.css"
   },
   "scripts": {

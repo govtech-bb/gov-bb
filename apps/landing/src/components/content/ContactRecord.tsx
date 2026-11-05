@@ -1,5 +1,5 @@
 import { createContext, useContext } from 'react'
-import { contactBlockFor, contactDetails } from '@govtech-bb/block-kit/contact'
+import { contactDetails } from '@govtech-bb/govbbmarkd/contact-record'
 import type { ContactRecords } from '../../lib/api-v2-collections'
 
 /** A record's detail: a non-emergency contact tile. */
@@ -31,12 +31,11 @@ export function ContactRecord({
   const data = record ? source?.records[record] : undefined
   if (!source || !record || !data) return null
 
-  const block = contactBlockFor(
+  const details = contactDetails(
     source.collection,
-    record,
     (fields ?? '').split(',').map((field) => field.trim()),
+    data,
   )
-  const details = contactDetails(block, data)
   if (details.length === 0) return null
 
   return (
