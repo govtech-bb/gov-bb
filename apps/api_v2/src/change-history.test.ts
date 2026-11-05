@@ -168,6 +168,57 @@ describe("the change history trigger", () => {
     await close();
   });
 
+  it("labels page saves, other content writes and every review action", async () => {
+    const { db, close } = await createTestDb();
+    try {
+      const { editing } = createTestServices(db, SELF_APPROVAL);
+      const page = expectOk(await editing.create(aLivePage(), TEST_EMPLOYEE));
+      expectOk(
+        await editing.save(
+          page.id,
+          { ...withDefaults(aLivePage()), title: "Changed" },
+          null,
+          TEST_EMPLOYEE,
+        ),
+      );
+      await db.execute(
+        sql`insert into categories (slug, title) values ('c', 'C')`,
+      );
+      await db.execute(sql`insert into data_collections (key, title, record_key, schema)
+        values ('contacts', 'Contacts', 'name', '{"fields":[]}')`);
+      await db.execute(sql`insert into collection_records (collection_key, record_key, data)
+        values ('contacts', 'name', '{}')`);
+      await db.execute(sql`insert into page_revisions (page_id, fields, live_updated_at, created_by, contributors)
+        values (${page.id}, '{}', now(), 'system', '{system}')`);
+      for (const status of ["submitted", "rejected", "published", "discarded"])
+        await db.execute(sql`update page_revisions set status = ${status}`);
+
+      const { rows } = await db.execute(
+        sql`select entity_kind, action, snapshot_version from change_events
+          order by entity_kind, version_no`,
+      );
+      expect(rows).toEqual(
+        [
+          ["category", "created"],
+          ["collection_record", "created"],
+          ["content_page", "created"],
+          ["content_page", "updated"],
+          ["content_page", "submitted"],
+          ["content_page", "rejected"],
+          ["content_page", "approved"],
+          ["content_page", "discarded"],
+          ["data_collection", "created"],
+        ].map(([entity_kind, action]) => ({
+          entity_kind,
+          action,
+          snapshot_version: 1,
+        })),
+      );
+    } finally {
+      await close();
+    }
+  });
+
   it("snapshots the row as stored, and the row as it stood on delete", async () => {
     const { db, close } = await createTestDb();
     await db.execute(

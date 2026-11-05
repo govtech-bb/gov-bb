@@ -1,15 +1,15 @@
 import { expect, test } from "vitest";
 import { $createTextNode, $getRoot } from "lexical";
-import { $duplicateQuestion } from "../../src/forms/editor/structure/blocks";
-import { $registryBlocks as $govbbField } from "../../src/forms/editor/registry-module";
+import { $duplicateQuestion } from "../../src/forms/canvas/structure/structure-blocks";
+import { $registryBlocks as $govbbField } from "../../src/forms/canvas/form-registry-module";
 import {
   $createQuestionNode,
   $isQuestionNode,
   $setSettings,
   $turnInto,
-} from "../../src/forms/editor/nodes";
-import { $createOptionNode, $isOptionNode } from "../../src/forms/editor/answer-nodes";
-import { $native } from "../../src/forms/editor/native-state";
+} from "../../src/forms/canvas/form-nodes";
+import { $createOptionNode, $isOptionNode } from "../../src/forms/canvas/answer-nodes";
+import { $native } from "../../src/forms/formats/native/native-state";
 import { COMPONENTS } from "../../src/presets/form-registry/components";
 import {
   nativeQuestions,

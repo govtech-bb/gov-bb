@@ -1,16 +1,16 @@
 import { legacyFieldAdapter } from "../../src/forms/legacy";
 import { expect, test } from "vitest";
-import { longAnswerField } from "../../src/forms/features/long-answer/definition";
-import { emailField } from "../../src/forms/features/email/definition";
-import { phoneField } from "../../src/forms/features/phone/definition";
-import { numberField } from "../../src/forms/features/number/definition";
-import { dateField } from "../../src/forms/features/date/definition";
-import { timeField } from "../../src/forms/features/time/definition";
-import { multipleChoiceField } from "../../src/forms/features/multiple-choice/definition";
-import { checkboxesField } from "../../src/forms/features/checkboxes/definition";
-import { dropdownField } from "../../src/forms/features/dropdown/definition";
-import { addressLookupField } from "../../src/forms/features/address-lookup/definition";
-import type { Settings } from "../../src/forms/core/settings";
+import { textareaField } from "../../src/forms/fields/textarea";
+import { emailAddressField } from "../../src/forms/fields/email-address";
+import { phoneNumberField } from "../../src/forms/fields/phone-number";
+import { numberField } from "../../src/forms/fields/number";
+import { dateInputField } from "../../src/forms/fields/date-input";
+import { timeField } from "../../src/forms/fields/time";
+import { radiosField } from "../../src/forms/fields/radios";
+import { checkboxesField } from "../../src/forms/fields/checkboxes";
+import { selectField } from "../../src/forms/fields/select";
+import { addressLookupField } from "../../src/forms/fields/address-lookup";
+import type { Settings } from "../../src/forms/model/settings";
 
 test("written fields retain raw unfinished limits and project only their existing SSB rules", () => {
   const raw: Settings = {
@@ -30,21 +30,21 @@ test("written fields retain raw unfinished limits and project only their existin
   };
 
   const before = JSON.stringify(raw);
-  expect(legacyFieldAdapter(longAnswerField)!.rules(raw)).toEqual([
+  expect(legacyFieldAdapter(textareaField)!.rules(raw)).toEqual([
     { rule: "required", label: "When it's empty" },
     { rule: "minLength", label: "Too few characters", value: 0 },
     { rule: "maxLength", label: "Too many characters", value: "unfinished" },
   ]);
-  expect(legacyFieldAdapter(emailField)!.rules(raw)).toEqual([
+  expect(legacyFieldAdapter(emailAddressField)!.rules(raw)).toEqual([
     { rule: "required", label: "When it's empty" },
     { rule: "email", label: "Invalid email address" },
   ]);
-  expect(legacyFieldAdapter(phoneField)!.rules(raw)).toEqual([
+  expect(legacyFieldAdapter(phoneNumberField)!.rules(raw)).toEqual([
     { rule: "required", label: "When it's empty" },
     { rule: "phone", label: "Invalid telephone number" },
   ]);
 
-  for (const field of [longAnswerField, emailField, phoneField]) {
+  for (const field of [textareaField, emailAddressField, phoneNumberField]) {
     const projected = legacyFieldAdapter(field)!.settings(raw);
 
     for (const key of ["step", "pattern", "mask", "ref", "relativeDate", "isDisabled"])
@@ -63,7 +63,7 @@ test("written fields retain raw unfinished limits and project only their existin
 
   expect(JSON.stringify(raw)).toBe(before);
   expect(
-    legacyFieldAdapter(longAnswerField)!.rules({
+    legacyFieldAdapter(textareaField)!.rules({
       hasMinCharacters: false,
       minCharacters: 3,
       hasMaxCharacters: true,
@@ -73,17 +73,20 @@ test("written fields retain raw unfinished limits and project only their existin
 });
 
 test("email and phone retain their native format rules when optional and their existing messages", () => {
-  expect(legacyFieldAdapter(emailField)!.rules({ required: false })).toEqual([
+  expect(legacyFieldAdapter(emailAddressField)!.rules({ required: false })).toEqual([
     { rule: "email", label: "Invalid email address" },
   ]);
-  expect(legacyFieldAdapter(phoneField)!.rules({ required: false })).toEqual([
+  expect(legacyFieldAdapter(phoneNumberField)!.rules({ required: false })).toEqual([
     { rule: "phone", label: "Invalid telephone number" },
   ]);
   expect(
-    legacyFieldAdapter(emailField)!.message!("email", { label: "Work email", optionCount: 0 }),
+    legacyFieldAdapter(emailAddressField)!.message!("email", {
+      label: "Work email",
+      optionCount: 0,
+    }),
   ).toBe("Enter an email address in the correct format, like name@example.com");
   expect(
-    legacyFieldAdapter(phoneField)!.message!("phone", { label: "Telephone", optionCount: 0 }),
+    legacyFieldAdapter(phoneNumberField)!.message!("phone", { label: "Telephone", optionCount: 0 }),
   ).toBe("Enter a telephone number, like 246 123 4567");
 });
 
@@ -139,7 +142,7 @@ test("date field retains simultaneous imported date constraints and age limits w
   };
 
   const before = JSON.stringify(raw);
-  expect(legacyFieldAdapter(dateField)!.rules(raw)).toEqual([
+  expect(legacyFieldAdapter(dateInputField)!.rules(raw)).toEqual([
     { rule: "required", label: "When it's empty" },
     { rule: "pastOrToday", label: "After today" },
     { rule: "before", label: "After the allowed date", value: "2040-01-01" },
@@ -149,11 +152,11 @@ test("date field retains simultaneous imported date constraints and age limits w
     { rule: "min", label: "Younger than the minimum age", value: 0 },
     { rule: "max", label: "Older than the maximum age", value: "unfinished" },
   ]);
-  const projected = legacyFieldAdapter(dateField)!.settings(raw);
+  const projected = legacyFieldAdapter(dateInputField)!.settings(raw);
 
   for (const key of ["step", "width", "pattern", "mask"]) expect(projected[key]).toBeUndefined();
   expect(projected.relativeDate).toBe("pastOrToday");
-  expect(dateField.capabilities.repeat).toBe(false);
+  expect(dateInputField.capabilities.repeat).toBe(false);
   expect(JSON.stringify(raw)).toBe(before);
 });
 
@@ -162,7 +165,7 @@ test("choice modules retain declaration and question-shaped required wording plu
     legacyFieldAdapter(checkboxesField)!.message!("required", { label: "Agree?", optionCount: 1 }),
   ).toBe("You must confirm the declaration to continue");
 
-  for (const field of [multipleChoiceField, checkboxesField, dropdownField]) {
+  for (const field of [radiosField, checkboxesField, selectField]) {
     expect(
       legacyFieldAdapter(field)!.message!("required", {
         label: "Where do you live?",
@@ -198,8 +201,8 @@ test("choice modules retain declaration and question-shaped required wording plu
     width: "medium",
   };
 
-  expect(legacyFieldAdapter(dropdownField)!.settings(raw)).toEqual(raw);
-  expect(legacyFieldAdapter(multipleChoiceField)!.settings(raw)).toEqual({
+  expect(legacyFieldAdapter(selectField)!.settings(raw)).toEqual(raw);
+  expect(legacyFieldAdapter(radiosField)!.settings(raw)).toEqual({
     optionValue: "Keep My Value",
     sourceOptionValue: "Old Value",
     hasOtherOption: false,
@@ -214,21 +217,21 @@ test("choice modules retain declaration and question-shaped required wording plu
     maxChoices: 3,
   };
 
-  expect(legacyFieldAdapter(multipleChoiceField)!.settings(staleSettings)).toEqual({});
-  expect(legacyFieldAdapter(dropdownField)!.settings(staleSettings)).toEqual({});
+  expect(legacyFieldAdapter(radiosField)!.settings(staleSettings)).toEqual({});
+  expect(legacyFieldAdapter(selectField)!.settings(staleSettings)).toEqual({});
   expect(legacyFieldAdapter(checkboxesField)!.settings(staleSettings)).toEqual({
     hasMinChoices: true,
     minChoices: 2,
     hasMaxChoices: true,
     maxChoices: 3,
   });
-  expect(legacyFieldAdapter(dropdownField)!.placeholder!({ placeholder: "Choose a parish" })).toBe(
+  expect(legacyFieldAdapter(selectField)!.placeholder!({ placeholder: "Choose a parish" })).toBe(
     "Choose a parish",
   );
-  expect(legacyFieldAdapter(dropdownField)!.placeholder!({})).toBe("");
-  expect(multipleChoiceField.choice!.multiple).toBe(false);
+  expect(legacyFieldAdapter(selectField)!.placeholder!({})).toBe("");
+  expect(radiosField.choice!.multiple).toBe(false);
   expect(checkboxesField.choice!.multiple).toBe(true);
-  expect(dropdownField.choice!.multiple).toBe(false);
+  expect(selectField.choice!.multiple).toBe(false);
 });
 
 test("address lookup retains its registry provenance, pinned messages and native draft limits", () => {

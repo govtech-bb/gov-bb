@@ -1,16 +1,16 @@
 import type { EditorState, LexicalEditor } from "lexical";
 import type { FormEditorDefinition } from "../forms/definition";
-import { readFormState } from "../forms/editor/context";
+import { readFormState } from "../forms/canvas/form-context";
 import {
   $withDefaultFormMessages,
   NativeBindingError,
   serializedToNativeForm,
-} from "../forms/editor/native-bindings";
+} from "../forms/formats/native/native-bindings";
 import {
   validateFormDefinition,
   type NativeValidationResult,
   type NativeDiagnostic,
-} from "../forms/schema";
+} from "../forms/formats/native/schema";
 
 /**
  * Export reads the owning editor without normalizing or allocating identities. A message nobody wrote is worded from

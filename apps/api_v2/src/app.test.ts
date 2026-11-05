@@ -878,6 +878,36 @@ describe("PUT /pages/:id", () => {
     ]);
   });
 
+  it("keeps redacted history metadata without comparing across the missing snapshot", async () => {
+    const page = await seedPage({ visibility: "draft" });
+    for (const title of ["Private fixture", "Clean title"])
+      await db.execute(
+        sql`update content_pages set title = ${title} where id = ${page.id}`,
+      );
+    await db.execute(
+      sql`update content_pages set description = 'Details' where id = ${page.id}`,
+    );
+    const before = (await inject({ url: `/pages/${page.id}/history` })).json();
+
+    await db.transaction(async (tx) => {
+      await tx.execute(sql`select set_config('app.redacting', 'on', true)`);
+      await tx.execute(sql`update change_events
+        set snapshot = '{"redacted":true,"reason":"incident-42","by":"operator-test"}'
+        where entity_id = ${page.id} and version_no = 2`);
+    });
+
+    const response = await inject({ url: `/pages/${page.id}/history` });
+    expect(response.statusCode).toBe(200);
+    expect(response.json().entries).toEqual(
+      before.entries.map(
+        (entry: { version_no: number; changed: string[] }) => ({
+          ...entry,
+          changed: entry.version_no === 4 ? ["description"] : [],
+        }),
+      ),
+    );
+  });
+
   it("404s the history of a page that has none", async () => {
     const response = await inject({
       url: "/pages/22222222-2222-4222-8222-222222222222/history",
@@ -1496,7 +1526,7 @@ describe("authentication HTTP bridge", () => {
     });
     try {
       const response = await authApp.inject({
-        url: "/api/auth/callback/github?code=sensitive-code&state=sensitive-state",
+        url: "/api/auth/callback/google?code=sensitive-code&state=sensitive-state",
         headers: { cookie: "session=sensitive-cookie" },
       });
       expect(response.statusCode).toBe(500);
@@ -1516,7 +1546,7 @@ describe("authentication HTTP bridge", () => {
         handle: async (request) => {
           received.push(request);
           const headers = new Headers({
-            location: "https://github.com/example",
+            location: "https://accounts.google.com/example",
             "cache-control": "public, max-age=60",
           });
           headers.append("set-cookie", "state=one; Path=/; HttpOnly");
@@ -1529,7 +1559,7 @@ describe("authentication HTTP bridge", () => {
       const response = await authApp.inject({
         method: "POST",
         url: "/api/auth/sign-in/social",
-        payload: { provider: "github" },
+        payload: { provider: "google" },
         headers: { ...TEST_HEADERS, host: "untrusted.example" },
       });
       expect(received).toHaveLength(1);
@@ -1540,9 +1570,11 @@ describe("authentication HTTP bridge", () => {
         `${TEST_HTTP_CONFIG.apiOrigin}/api/auth/sign-in/social`,
       );
       expect(request.headers.get("cookie")).toBe(TEST_HEADERS.cookie);
-      expect(await request.json()).toEqual({ provider: "github" });
+      expect(await request.json()).toEqual({ provider: "google" });
       expect(response.statusCode).toBe(302);
-      expect(response.headers.location).toBe("https://github.com/example");
+      expect(response.headers.location).toBe(
+        "https://accounts.google.com/example",
+      );
       expect(response.headers["set-cookie"]).toEqual([
         "state=one; Path=/; HttpOnly",
         "session=two; Path=/; HttpOnly",

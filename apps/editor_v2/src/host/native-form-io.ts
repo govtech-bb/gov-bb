@@ -1,5 +1,5 @@
 import type { LexicalEditor } from "lexical";
-import { createHeadlessEditor } from "../editor/core/create-editor";
+import { createHeadlessEditor } from "@/editor";
 import type { FormEditorDefinition } from "../forms/definition";
 import { formSchemaToLexical } from "../converters/form-schema-to-lexical";
 import { lexicalToFormSchema } from "../converters/lexical-to-form-schema";
@@ -7,8 +7,8 @@ import {
   nativeSemanticEqual,
   type AnyFormDefinition,
   type NativeDiagnostic,
-} from "../forms/schema";
-import { $withDefaultFormMessages } from "../forms/editor/native-bindings";
+} from "../forms/formats/native/schema";
+import { $withDefaultFormMessages } from "../forms/formats/native/native-bindings";
 import type { DraftStore } from "../persistence/draft-store";
 import type {
   DraftCodec,

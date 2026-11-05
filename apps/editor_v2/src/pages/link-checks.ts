@@ -19,7 +19,25 @@ type PageLinkNode = SerializedLexicalNode & {
 const linkText = (node: PageLinkNode): string =>
   node.text ?? (node.type === "linebreak" ? " " : (node.children ?? []).map(linkText).join(""));
 
-/** Collect internal links and Start buttons recursively; fragments and external destinations need no page lookup. */
+/**
+ * The site pathname a link goes to, or undefined when it needs no page lookup, as fragments and external destinations
+ * don't. A bare `#`, which a new button starts with, goes nowhere: its target is no page at all.
+ */
+function internalTarget(url: string, base: URL) {
+  if (url === "#") return "";
+
+  if (/^[#?]/.test(url)) return undefined;
+  const target = URL.parse(url, base);
+
+  return target &&
+    (target.protocol === "https:" || target.protocol === "http:") &&
+    (target.hostname === "www.gov.bb" || target.hostname === "gov.bb") &&
+    !target.port
+    ? target.pathname.replace(/\/+$/, "") || "/"
+    : undefined;
+}
+
+/** Collect internal links and Start buttons recursively, and any left at `#`. */
 export function collectInternalPageLinks(
   state: SerializedEditorState,
   pageUrl: string,
@@ -35,21 +53,11 @@ export function collectInternalPageLinks(
           ? node.attributes?.href
           : undefined;
 
-    if (url && !/^[#?]/.test(url)) {
-      const target = URL.parse(url, base);
+    if (url) {
+      const target = internalTarget(url, base);
 
-      if (
-        target &&
-        (target.protocol === "https:" || target.protocol === "http:") &&
-        (target.hostname === "www.gov.bb" || target.hostname === "gov.bb") &&
-        !target.port
-      )
-        links.push({
-          path,
-          text: linkText(node).replace(/\s+/g, " ").trim() || url,
-          url,
-          target: target.pathname.replace(/\/+$/, "") || "/",
-        });
+      if (target !== undefined)
+        links.push({ path, text: linkText(node).replace(/\s+/g, " ").trim() || url, url, target });
     }
 
     node.children?.forEach((child, index) => visit(child, [...path, index]));

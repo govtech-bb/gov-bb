@@ -1,4 +1,7 @@
-import { validateFormDefinition, type NativeSchemaCapabilities } from "../../src/forms/schema";
+import {
+  validateFormDefinition,
+  type NativeSchemaCapabilities,
+} from "../../src/forms/formats/native/schema";
 
 export function nativeDefinition(value: unknown, capabilities?: NativeSchemaCapabilities) {
   const result = validateFormDefinition(value, capabilities);

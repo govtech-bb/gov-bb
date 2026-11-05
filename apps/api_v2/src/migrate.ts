@@ -31,6 +31,11 @@ import { SQL as REVIEW_HISTORY_SQL } from "./migrations/013_review_history_trigg
 import { SQL as DATA_COLLECTIONS_SQL } from "./migrations/014_data_collections";
 import { SQL as REVISION_DISCARDED_SQL } from "./migrations/015_revision_discarded";
 import { SQL as CONTENT_UPDATED_AT_SQL } from "./migrations/016_content_updated_at";
+import { SQL as NO_TRUNCATE_SQL } from "./migrations/017_change_events_no_truncate";
+import { SQL as SNAPSHOT_VERSION_SQL } from "./migrations/018_snapshot_version";
+import { SQL as REDACTION_SQL } from "./migrations/019_change_events_redaction";
+import { SQL as GOOGLE_SESSIONS_SQL } from "./migrations/020_google_sessions";
+import { SQL as GITHUB_ACCOUNTS_SQL } from "./migrations/021_github_accounts";
 import type { Database } from "./db";
 
 /** The migrations, in the order they apply. Each is idempotent by rule. */
@@ -51,6 +56,11 @@ const MIGRATIONS = [
   ["014_data_collections", DATA_COLLECTIONS_SQL],
   ["015_revision_discarded", REVISION_DISCARDED_SQL],
   ["016_content_updated_at", CONTENT_UPDATED_AT_SQL],
+  ["017_change_events_no_truncate", NO_TRUNCATE_SQL],
+  ["018_snapshot_version", SNAPSHOT_VERSION_SQL],
+  ["019_change_events_redaction", REDACTION_SQL],
+  ["020_google_sessions", GOOGLE_SESSIONS_SQL],
+  ["021_github_accounts", GITHUB_ACCOUNTS_SQL],
 ] as const;
 
 /** Serialises instances that boot together; released when its transaction ends. */

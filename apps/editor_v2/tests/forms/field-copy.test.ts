@@ -3,9 +3,9 @@ import { $getRoot } from "lexical";
 import { createHeadlessEditor } from "../../src/editor/core/create-editor";
 import { defineField } from "../../src/forms/field";
 import { defineFormEditor } from "../../src/forms/definition";
-import { $createDrawnInput } from "../../src/forms/editor/field-nodes";
+import { $createDrawnInput } from "../../src/forms/canvas/field-nodes";
 import { govbbFormModules } from "../../src/presets/govbb-form";
-import { $blockId, $setSettings, $settings } from "../../src/editor/core/document-state";
+import { $blockId, $setSettings, $settings } from "../../src/forms/canvas/block-state";
 import {
   $createFormTitleNode,
   $createQuestionNode,
@@ -13,9 +13,9 @@ import {
   $ensureBlockIds,
   $ensureQuestionFields,
   $questionKey,
-} from "../../src/forms/editor/nodes";
-import { $remapCopies } from "../../src/forms/features/mentions/editor";
-import { referencesInSettings } from "../../src/forms/core/references";
+} from "../../src/forms/canvas/form-nodes";
+import { $remapCopies } from "../../src/forms/mentions/mention-editor";
+import { referencesInSettings } from "../../src/forms/model/references";
 
 test("custom field references share source enumeration and duplicate remapping without changing literal settings", () => {
   const field = defineField({

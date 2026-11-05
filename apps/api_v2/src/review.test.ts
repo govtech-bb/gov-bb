@@ -712,6 +712,31 @@ describe("the page's history (#3200)", () => {
     ]);
   });
 
+  it("does not expose a rejection comment after its snapshot is redacted", async () => {
+    const { page } = await submitted();
+    await review(APPROVER, page.id, "reject", { comment: "Private fixture" });
+    const before = (
+      await as(APPROVER, { url: `/pages/${page.id}/history` })
+    ).json();
+
+    await db.transaction(async (tx) => {
+      await tx.execute(sql`select set_config('app.redacting', 'on', true)`);
+      await tx.execute(sql`update change_events
+        set snapshot = '{"redacted":true,"reason":"incident-42","by":"operator-test"}'
+        where entity_id = ${page.id} and action = 'rejected'`);
+    });
+
+    const response = await as(APPROVER, { url: `/pages/${page.id}/history` });
+    expect(response.statusCode).toBe(200);
+    expect(response.json().entries).toEqual(
+      before.entries.map((entry: { comment: string | null }) => ({
+        ...entry,
+        comment: null,
+      })),
+    );
+    expect(response.body).not.toContain("Private fixture");
+  });
+
   // editor_v2 tells the live write an approval let through from an edit by this: the same
   // transaction, so the same `occurred_at`, straight after the approval and by its approver.
   it("lists an approval's live write straight after it, by the approver, at the same moment", async () => {
@@ -1327,6 +1352,44 @@ describe("making a page public (#3201)", () => {
       actor: TEST_EMPLOYEE.id,
     });
   });
+
+  it.each([false, true])(
+    "keeps contributors with identical redaction notices, including the public snapshot: %s",
+    async (redactPublic) => {
+      const page = await seedPage();
+      expect(
+        (await edit(TEST_EMPLOYEE, page.id, { visibility: "draft" }))
+          .statusCode,
+      ).toBe(200);
+      expect(
+        (await edit(TEST_EDITOR, page.id, { title: "First private edit" }))
+          .statusCode,
+      ).toBe(200);
+      expect(
+        (await edit(APPROVER, page.id, { title: "Second private edit" }))
+          .statusCode,
+      ).toBe(200);
+      const before = await stored(page.id);
+
+      await db.transaction(async (tx) => {
+        await tx.execute(sql`select set_config('app.redacting', 'on', true)`);
+        await tx.execute(sql`update change_events
+          set snapshot = '{"redacted":true,"reason":"incident-42","by":"operator-test"}'
+          where entity_id = ${page.id}
+            and (version_no in (3, 4) or (${redactPublic} and version_no = 1))`);
+      });
+
+      const refused = await edit(APPROVER, page.id, { visibility: "public" });
+      expect(refused.statusCode).toBe(403);
+      expect(refused.json()).toEqual(CHANGED_SINCE_PUBLIC);
+      expect(await stored(page.id)).toEqual(before);
+      // Without the public snapshot, its author's contribution is unknown too.
+      expect(
+        (await edit(TEST_EMPLOYEE, page.id, { visibility: "public" }))
+          .statusCode,
+      ).toBe(redactPublic ? 403 : 200);
+    },
+  );
 
   it("refuses content changed in the save that makes it public, and writes nothing", async () => {
     const page = PageDocument.parse(

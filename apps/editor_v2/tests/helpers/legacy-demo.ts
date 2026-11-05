@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { $getRoot, $parseSerializedNode } from "lexical";
-import { createFormSourceDialect } from "../../src/forms/source/dialect";
+import { createFormSourceDialect } from "../../src/forms/formats/markdown/dialect";
 import { govbbFormEditor } from "../../src/presets/govbb-form";
 
 // Frozen legacy evidence keeps compatibility assertions independent of the native demo catalog.

@@ -23,18 +23,18 @@ import {
   $duplicateQuestion,
   $moveBlocks,
   $removeBlocks,
-} from "../../src/forms/editor/structure/blocks";
-import { $enter } from "../../src/forms/editor/structure/editing";
-import { shortcuts } from "../../src/forms/editor/structure/keyboard";
+} from "../../src/forms/canvas/structure/structure-blocks";
+import { $enter } from "../../src/forms/canvas/structure/structure-editing";
+import { shortcuts } from "../../src/forms/canvas/structure/structure-keyboard";
 import { registerEditorHistory } from "../../src/editor/core/history";
-import { $insertBlocks } from "../../src/forms/editor/insertion";
-import { pageEntries } from "../../src/forms/features/pages/insertion";
+import { $insertBlocks } from "../../src/forms/canvas/form-insertion";
+import { pageEntries } from "../../src/forms/form-pages/form-page-insertion";
 import { compileForm, preflight } from "../helpers/default-form";
 import { $legacyDemo as $demo } from "../helpers/legacy-demo";
-import { $pageButtons } from "../../src/forms/features/pages/buttons";
-import { $fields } from "../../src/forms/features/logic/queries";
-import { MentionNode } from "../../src/forms/features/mentions/node";
-import { $normalizeDepths } from "../../src/forms/editor/nesting";
+import { $pageButtons } from "../../src/forms/form-pages/form-page-buttons";
+import { $fields } from "../../src/forms/conditional-logic/logic-queries";
+import { MentionNode } from "../../src/forms/mentions/mention-node";
+import { $normalizeDepths } from "../../src/forms/canvas/nesting";
 import {
   $autoPageTitle,
   $blockGroup,
@@ -59,13 +59,13 @@ import {
   $typedPageTitle,
   $wholePage,
   CHECK_ANSWERS_DESCRIPTION,
-} from "../../src/forms/editor/nodes";
-import { $createInputNode, $createWidgetNode } from "../../src/forms/editor/answer-nodes";
-import { $setSettings, $settings } from "../../src/editor/core/document-state";
+} from "../../src/forms/canvas/form-nodes";
+import { $createInputNode, $createWidgetNode } from "../../src/forms/canvas/answer-nodes";
+import { $setSettings, $settings } from "../../src/forms/canvas/block-state";
 import { formNodes } from "../helpers/default-form";
-import { $deleteAtHead, $normalizePageHeads } from "../../src/forms/features/pages/headings";
-import { $ssbIds } from "../../src/forms/editor/ssb";
-import { $pagePreview } from "../../src/forms/features/pages/queries";
+import { $deleteAtHead, $normalizePageHeads } from "../../src/forms/form-pages/form-page-headings";
+import { $ssbIds } from "../../src/forms/formats/legacy-ssb/legacy-ssb-rules";
+import { $pagePreview } from "../../src/forms/form-pages/form-page-queries";
 
 const newEditor = () =>
   createEditor({

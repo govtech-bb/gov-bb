@@ -2,6 +2,7 @@ import type { SerializedLexicalNode } from "lexical";
 import { expect, test } from "vitest";
 import { collectInternalPageLinks } from "../../src/pages/link-checks";
 import { govbbPageCodec } from "../../src/presets/govbb-page";
+import { brokenLinks } from "../../src/workspace/broken-links";
 
 const pageUrl = "/family/birth-certificate/fees";
 
@@ -79,6 +80,19 @@ test.each([
   "irc:help",
 ])("does not check %s against internal pages", (url) => {
   expect(collectInternalPageLinks(pageState(`[Go](${url})`), pageUrl)).toEqual([]);
+});
+
+test("a button or a link left at # goes nowhere, so it's checked as a page that doesn't exist", () => {
+  const links = collectInternalPageLinks(
+    pageState(':::actions\n::action[Continue]{href="#"}\n:::\n\nRead [the fees](#).'),
+    pageUrl,
+  );
+
+  expect(links).toMatchObject([
+    { text: "Continue", url: "#", target: "" },
+    { text: "the fees", url: "#", target: "" },
+  ]);
+  expect(brokenLinks(links, ["/", pageUrl], pageUrl)).toHaveLength(2);
 });
 
 test("a Start button without an address opens its associated form, not a missing page", () => {

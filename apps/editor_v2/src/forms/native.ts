@@ -19,7 +19,7 @@ import type {
   Expression,
   LogicAction,
   PageRole,
-} from "./schema";
+} from "./formats/native/schema";
 
 export type NativeContentBlock = ContentBase | LogicBlock | CalculatedBlock;
 
@@ -81,8 +81,10 @@ export type NativeFieldDeclaration<K extends string, C extends object> = {
     block: NativeQuestion<K, C>,
     visit: NativeModuleReferenceVisitor,
   ) => NativeQuestion<K, C>;
-  import(block: NativeQuestion<K, C>, context: NativeFieldImportContext): SerializedLexicalNode[];
-  export(context: NativeFieldExportContext): NativeQuestion<K, C>;
+  /** By default the question imports through its field's settings (settings.own), as a built-in field's does. */
+  import?(block: NativeQuestion<K, C>, context: NativeFieldImportContext): SerializedLexicalNode[];
+  /** By default the question exports through its field's settings, keeping config it doesn't own. */
+  export?(context: NativeFieldExportContext): NativeQuestion<K, C>;
 };
 
 export type NativeContentDeclaration<K extends string, C extends object> = {
@@ -102,7 +104,12 @@ export function defineNativeField<K extends string, C extends object>(
   handler: NativeFieldDeclaration<K, C>,
 ): NativeFieldHandler {
   // SAFETY: configured dispatch checks this handler’s kind/config before calling the unchanged callbacks.
-  return freezeHandler(handler) as NativeFieldHandler;
+  return freezeHandler({
+    import: (block: QuestionBase, context: NativeFieldImportContext) =>
+      context.importQuestion(block, handler.kind),
+    export: (context: NativeFieldExportContext) => context.exportQuestion(handler.kind),
+    ...handler,
+  }) as NativeFieldHandler;
 }
 
 export function defineNativeContent<K extends string, C extends object>(
@@ -179,7 +186,10 @@ function matches(
   return Object.entries(capability.config ?? {}).every(([key, value]) => config[key] === value);
 }
 
-export function resolveNativeField(block: QuestionBase, definition: FormEditorDefinition) {
+export function resolveNativeField(
+  block: Pick<QuestionBase, "kind" | "config">,
+  definition: FormEditorDefinition,
+) {
   return definition.nativeFields.find((field) => matches(field.native!, block));
 }
 

@@ -8,7 +8,7 @@
         "kind": "text",
         "valueType": "string"
       },
-      "owner": "src/forms/features/short-answer/definition.ts",
+      "owner": "src/forms/fields/text-input.tsx",
       "status": "complete",
       "tests": [
         "tests/forms/native-form-bindings.test.ts",
@@ -33,7 +33,7 @@
         "kind": "long-text",
         "valueType": "string"
       },
-      "owner": "src/forms/features/long-answer/definition.ts",
+      "owner": "src/forms/fields/textarea.tsx",
       "status": "complete",
       "tests": [
         "tests/forms/native-form-bindings.test.ts",
@@ -50,7 +50,7 @@
         "kind": "number",
         "valueType": "number"
       },
-      "owner": "src/forms/features/number/definition.ts",
+      "owner": "src/forms/fields/number.tsx",
       "status": "complete",
       "tests": [
         "tests/forms/native-form-bindings.test.ts",
@@ -67,7 +67,7 @@
         "kind": "email",
         "valueType": "string"
       },
-      "owner": "src/forms/features/email/definition.ts",
+      "owner": "src/forms/fields/email-address.tsx",
       "status": "complete",
       "tests": [
         "tests/forms/native-form-bindings.test.ts",
@@ -84,7 +84,7 @@
         "kind": "phone",
         "valueType": "string"
       },
-      "owner": "src/forms/features/phone/definition.ts",
+      "owner": "src/forms/fields/phone-number.tsx",
       "status": "complete",
       "tests": [
         "tests/forms/native-form-bindings.test.ts",
@@ -101,7 +101,7 @@
         "kind": "date",
         "valueType": "date"
       },
-      "owner": "src/forms/features/date/definition.ts",
+      "owner": "src/forms/fields/date-input.tsx",
       "status": "complete",
       "tests": [
         "tests/forms/native-form-bindings.test.ts",
@@ -118,7 +118,7 @@
         "kind": "time",
         "valueType": "time"
       },
-      "owner": "src/forms/features/time/definition.ts",
+      "owner": "src/forms/fields/time.tsx",
       "status": "complete",
       "tests": [
         "tests/forms/native-form-bindings.test.ts",
@@ -135,7 +135,7 @@
         "kind": "file",
         "valueType": "file[]"
       },
-      "owner": "src/forms/features/file-upload/definition.ts",
+      "owner": "src/forms/fields/file-upload.tsx",
       "status": "complete",
       "tests": [
         "tests/forms/native-form-bindings.test.ts",
@@ -152,7 +152,7 @@
         "kind": "address-lookup",
         "valueType": "string"
       },
-      "owner": "src/forms/features/address-lookup/definition.ts",
+      "owner": "src/forms/fields/address-lookup.tsx",
       "status": "complete",
       "tests": [
         "tests/forms/native-form-bindings.test.ts",
@@ -169,7 +169,7 @@
         "kind": "opening-hours",
         "valueType": "string[]"
       },
-      "owner": "src/forms/features/opening-hours/definition.ts",
+      "owner": "src/forms/fields/opening-hours.tsx",
       "status": "complete",
       "tests": [
         "tests/forms/native-form-bindings.test.ts",
@@ -190,7 +190,7 @@
         },
         "valueType": "string"
       },
-      "owner": "src/forms/features/multiple-choice/definition.ts",
+      "owner": "src/forms/fields/radios.tsx",
       "status": "complete",
       "tests": [
         "tests/forms/native-form-bindings.test.ts",
@@ -211,7 +211,7 @@
         },
         "valueType": "string[]"
       },
-      "owner": "src/forms/features/checkboxes/definition.ts",
+      "owner": "src/forms/fields/checkboxes.tsx",
       "status": "complete",
       "tests": [
         "tests/forms/native-form-bindings.test.ts",
@@ -232,7 +232,7 @@
         },
         "valueType": "string"
       },
-      "owner": "src/forms/features/dropdown/definition.ts",
+      "owner": "src/forms/fields/select.tsx",
       "status": "complete",
       "tests": [
         "tests/forms/native-form-bindings.test.ts",
@@ -253,7 +253,7 @@
         },
         "valueType": "string[]"
       },
-      "owner": "src/forms/features/checkbox-accordion/definition.ts",
+      "owner": "src/forms/fields/grouped-checkboxes.tsx",
       "status": "complete",
       "tests": [
         "tests/forms/native-form-bindings.test.ts",
@@ -270,7 +270,7 @@
         "kind": "boolean",
         "valueType": "boolean"
       },
-      "owner": "src/forms/features/boolean/module.tsx",
+      "owner": "src/forms/fields/yes-or-no.tsx",
       "status": "complete",
       "tests": [
         "tests/forms/native-form-bindings.test.ts",
@@ -287,7 +287,7 @@
         "blockType": "content",
         "kind": "paragraph"
       },
-      "owner": "src/forms/editor/content-adapters.ts",
+      "owner": "src/forms/content/paragraphs.tsx",
       "status": "complete",
       "tests": [
         "tests/forms/native-form-bindings.test.ts",
@@ -307,7 +307,7 @@
           "level": 1
         }
       },
-      "owner": "src/forms/editor/content-adapters.ts",
+      "owner": "src/forms/content/headings.tsx",
       "status": "complete",
       "tests": [
         "tests/forms/native-form-bindings.test.ts",
@@ -327,7 +327,7 @@
           "level": 2
         }
       },
-      "owner": "src/forms/editor/content-adapters.ts",
+      "owner": "src/forms/content/headings.tsx",
       "status": "complete",
       "tests": [
         "tests/forms/native-form-bindings.test.ts",
@@ -347,7 +347,7 @@
           "level": 3
         }
       },
-      "owner": "src/forms/editor/content-adapters.ts",
+      "owner": "src/forms/content/headings.tsx",
       "status": "complete",
       "tests": [
         "tests/forms/native-form-bindings.test.ts",
@@ -367,7 +367,7 @@
           "ordered": false
         }
       },
-      "owner": "src/forms/editor/content-adapters.ts",
+      "owner": "src/forms/content/lists.tsx",
       "status": "complete",
       "tests": [
         "tests/forms/native-form-bindings.test.ts",
@@ -387,7 +387,7 @@
           "ordered": true
         }
       },
-      "owner": "src/forms/editor/content-adapters.ts",
+      "owner": "src/forms/content/lists.tsx",
       "status": "complete",
       "tests": [
         "tests/forms/native-form-bindings.test.ts",
@@ -407,7 +407,7 @@
           "tone": "inset"
         }
       },
-      "owner": "src/forms/editor/content-adapters.ts",
+      "owner": "src/forms/content/callouts.tsx",
       "status": "complete",
       "tests": [
         "tests/forms/native-form-bindings.test.ts",
@@ -427,7 +427,7 @@
           "tone": "warning"
         }
       },
-      "owner": "src/forms/editor/content-adapters.ts",
+      "owner": "src/forms/content/callouts.tsx",
       "status": "complete",
       "tests": [
         "tests/forms/native-form-bindings.test.ts",
@@ -444,7 +444,7 @@
         "blockType": "content",
         "kind": "expandable"
       },
-      "owner": "src/forms/editor/content-adapters.ts",
+      "owner": "src/forms/content/details.tsx",
       "status": "complete",
       "tests": [
         "tests/forms/native-form-bindings.test.ts",
@@ -461,7 +461,7 @@
         "blockType": "content",
         "kind": "question-label"
       },
-      "owner": "src/forms/editor/structure/insertion.tsx",
+      "owner": "src/forms/canvas/structure/structure-insertion.tsx",
       "status": "complete",
       "tests": [
         "tests/forms/native-form-bindings.test.ts",
@@ -478,7 +478,7 @@
         "blockType": "logic",
         "kind": "logic"
       },
-      "owner": "src/forms/features/logic/definition.tsx",
+      "owner": "src/forms/conditional-logic/logic-definition.tsx",
       "status": "complete",
       "tests": [
         "tests/forms/native-form-bindings.test.ts",
@@ -495,7 +495,7 @@
         "blockType": "calculated",
         "kind": "calculated"
       },
-      "owner": "src/forms/features/calculations/definition.tsx",
+      "owner": "src/forms/calculated-fields/calculated-field-definition.tsx",
       "status": "complete",
       "tests": [
         "tests/forms/native-form-bindings.test.ts",
@@ -511,7 +511,7 @@
       "native": {
         "role": "questions"
       },
-      "owner": "src/forms/features/pages/module.tsx",
+      "owner": "src/forms/form-pages/form-pages-module.tsx",
       "status": "complete",
       "tests": [
         "tests/forms/native-form-fixtures.test.ts",
@@ -527,7 +527,7 @@
       "native": {
         "role": "review"
       },
-      "owner": "src/forms/features/pages/module.tsx",
+      "owner": "src/forms/form-pages/form-pages-module.tsx",
       "status": "complete",
       "tests": [
         "tests/forms/native-form-fixtures.test.ts",
@@ -543,7 +543,7 @@
       "native": {
         "role": "declaration"
       },
-      "owner": "src/forms/features/pages/module.tsx",
+      "owner": "src/forms/form-pages/form-pages-module.tsx",
       "status": "complete",
       "tests": [
         "tests/forms/native-form-fixtures.test.ts",
@@ -559,7 +559,7 @@
       "native": {
         "role": "confirmation"
       },
-      "owner": "src/forms/features/pages/module.tsx",
+      "owner": "src/forms/form-pages/form-pages-module.tsx",
       "status": "complete",
       "tests": [
         "tests/forms/native-form-fixtures.test.ts",
@@ -575,7 +575,7 @@
       "native": {
         "role": "result"
       },
-      "owner": "src/forms/features/pages/module.tsx",
+      "owner": "src/forms/form-pages/form-pages-module.tsx",
       "status": "complete",
       "tests": [
         "tests/forms/native-form-fixtures.test.ts",
@@ -591,7 +591,7 @@
       "native": {
         "type": "setVisible"
       },
-      "owner": "src/forms/features/logic/module.tsx",
+      "owner": "src/forms/conditional-logic/conditional-logic-module.tsx",
       "status": "complete",
       "tests": [
         "tests/forms/native-form-fixtures.test.ts",
@@ -607,7 +607,7 @@
       "native": {
         "type": "setRequired"
       },
-      "owner": "src/forms/features/logic/module.tsx",
+      "owner": "src/forms/conditional-logic/conditional-logic-module.tsx",
       "status": "complete",
       "tests": [
         "tests/forms/native-form-fixtures.test.ts",
@@ -623,7 +623,7 @@
       "native": {
         "type": "setLabel"
       },
-      "owner": "src/forms/features/logic/module.tsx",
+      "owner": "src/forms/conditional-logic/conditional-logic-module.tsx",
       "status": "complete",
       "tests": [
         "tests/forms/native-form-fixtures.test.ts",
@@ -639,7 +639,7 @@
       "native": {
         "type": "setTitle"
       },
-      "owner": "src/forms/features/logic/module.tsx",
+      "owner": "src/forms/conditional-logic/conditional-logic-module.tsx",
       "status": "complete",
       "tests": [
         "tests/forms/native-form-fixtures.test.ts",
@@ -655,7 +655,7 @@
       "native": {
         "type": "error"
       },
-      "owner": "src/forms/features/logic/module.tsx",
+      "owner": "src/forms/conditional-logic/conditional-logic-module.tsx",
       "status": "complete",
       "tests": [
         "tests/forms/native-form-fixtures.test.ts",
@@ -671,7 +671,7 @@
       "native": {
         "type": "goTo"
       },
-      "owner": "src/forms/features/logic/module.tsx",
+      "owner": "src/forms/conditional-logic/conditional-logic-module.tsx",
       "status": "complete",
       "tests": [
         "tests/forms/native-form-fixtures.test.ts",
@@ -687,7 +687,7 @@
       "native": {
         "type": "setCompletionEnabled"
       },
-      "owner": "src/forms/features/logic/module.tsx",
+      "owner": "src/forms/conditional-logic/conditional-logic-module.tsx",
       "status": "complete",
       "tests": [
         "tests/forms/native-form-fixtures.test.ts",
@@ -703,7 +703,7 @@
       "native": {
         "type": "setValue"
       },
-      "owner": "src/forms/features/calculations/module.tsx",
+      "owner": "src/forms/calculated-fields/calculated-fields-module.tsx",
       "status": "complete",
       "tests": [
         "tests/forms/native-form-fixtures.test.ts",
@@ -719,7 +719,7 @@
       "native": {
         "op": "add"
       },
-      "owner": "src/forms/features/calculations/module.tsx",
+      "owner": "src/forms/calculated-fields/calculated-fields-module.tsx",
       "status": "complete",
       "tests": [
         "tests/forms/native-form-fixtures.test.ts",
@@ -735,7 +735,7 @@
       "native": {
         "op": "subtract"
       },
-      "owner": "src/forms/features/calculations/module.tsx",
+      "owner": "src/forms/calculated-fields/calculated-fields-module.tsx",
       "status": "complete",
       "tests": [
         "tests/forms/native-form-fixtures.test.ts",
@@ -751,7 +751,7 @@
       "native": {
         "op": "multiply"
       },
-      "owner": "src/forms/features/calculations/module.tsx",
+      "owner": "src/forms/calculated-fields/calculated-fields-module.tsx",
       "status": "complete",
       "tests": [
         "tests/forms/native-form-fixtures.test.ts",
@@ -767,7 +767,7 @@
       "native": {
         "op": "divide"
       },
-      "owner": "src/forms/features/calculations/module.tsx",
+      "owner": "src/forms/calculated-fields/calculated-fields-module.tsx",
       "status": "complete",
       "tests": [
         "tests/forms/native-form-fixtures.test.ts",
@@ -783,7 +783,7 @@
       "native": {
         "op": "min"
       },
-      "owner": "src/forms/features/calculations/module.tsx",
+      "owner": "src/forms/calculated-fields/calculated-fields-module.tsx",
       "status": "complete",
       "tests": [
         "tests/forms/native-form-fixtures.test.ts",
@@ -799,7 +799,7 @@
       "native": {
         "op": "max"
       },
-      "owner": "src/forms/features/calculations/module.tsx",
+      "owner": "src/forms/calculated-fields/calculated-fields-module.tsx",
       "status": "complete",
       "tests": [
         "tests/forms/native-form-fixtures.test.ts",
@@ -815,7 +815,7 @@
       "native": {
         "op": "round"
       },
-      "owner": "src/forms/features/calculations/module.tsx",
+      "owner": "src/forms/calculated-fields/calculated-fields-module.tsx",
       "status": "complete",
       "tests": [
         "tests/forms/native-form-fixtures.test.ts",
@@ -831,7 +831,7 @@
       "native": {
         "op": "coalesce"
       },
-      "owner": "src/forms/features/calculations/module.tsx",
+      "owner": "src/forms/calculated-fields/calculated-fields-module.tsx",
       "status": "complete",
       "tests": [
         "tests/forms/native-form-fixtures.test.ts",
@@ -847,7 +847,7 @@
       "native": {
         "op": "year"
       },
-      "owner": "src/forms/features/calculations/module.tsx",
+      "owner": "src/forms/calculated-fields/calculated-fields-module.tsx",
       "status": "complete",
       "tests": [
         "tests/forms/native-form-fixtures.test.ts",
@@ -863,7 +863,7 @@
       "native": {
         "op": "monthsBetween"
       },
-      "owner": "src/forms/features/calculations/module.tsx",
+      "owner": "src/forms/calculated-fields/calculated-fields-module.tsx",
       "status": "complete",
       "tests": [
         "tests/forms/native-form-fixtures.test.ts",
@@ -879,7 +879,7 @@
       "native": {
         "op": "wholeYearsBetween"
       },
-      "owner": "src/forms/features/calculations/module.tsx",
+      "owner": "src/forms/calculated-fields/calculated-fields-module.tsx",
       "status": "complete",
       "tests": [
         "tests/forms/native-form-fixtures.test.ts",
@@ -895,7 +895,7 @@
       "native": {
         "op": "daysBetween"
       },
-      "owner": "src/forms/features/calculations/module.tsx",
+      "owner": "src/forms/calculated-fields/calculated-fields-module.tsx",
       "status": "complete",
       "tests": [
         "tests/forms/native-form-fixtures.test.ts",
@@ -911,7 +911,7 @@
       "native": {
         "op": "concat"
       },
-      "owner": "src/forms/features/calculations/module.tsx",
+      "owner": "src/forms/calculated-fields/calculated-fields-module.tsx",
       "status": "complete",
       "tests": [
         "tests/forms/native-form-fixtures.test.ts",
@@ -927,7 +927,7 @@
       "native": {
         "op": "toText"
       },
-      "owner": "src/forms/features/calculations/module.tsx",
+      "owner": "src/forms/calculated-fields/calculated-fields-module.tsx",
       "status": "complete",
       "tests": [
         "tests/forms/native-form-fixtures.test.ts",
@@ -943,7 +943,7 @@
       "native": {
         "op": "lookup"
       },
-      "owner": "src/forms/features/calculations/module.tsx",
+      "owner": "src/forms/calculated-fields/calculated-fields-module.tsx",
       "status": "complete",
       "tests": [
         "tests/forms/native-form-fixtures.test.ts",
@@ -959,7 +959,7 @@
       "native": {
         "type": "number"
       },
-      "owner": "src/forms/features/mentions/module.tsx",
+      "owner": "src/forms/mentions/mentions-module.tsx",
       "status": "complete",
       "tests": [
         "tests/forms/native-form-fixtures.test.ts",
@@ -975,7 +975,7 @@
       "native": {
         "type": "currency"
       },
-      "owner": "src/forms/features/mentions/module.tsx",
+      "owner": "src/forms/mentions/mentions-module.tsx",
       "status": "complete",
       "tests": [
         "tests/forms/native-form-fixtures.test.ts",
@@ -991,7 +991,7 @@
       "native": {
         "type": "date"
       },
-      "owner": "src/forms/features/mentions/module.tsx",
+      "owner": "src/forms/mentions/mentions-module.tsx",
       "status": "complete",
       "tests": [
         "tests/forms/native-form-fixtures.test.ts",
@@ -1007,7 +1007,7 @@
       "native": {
         "type": "choice-label"
       },
-      "owner": "src/forms/features/mentions/module.tsx",
+      "owner": "src/forms/mentions/mentions-module.tsx",
       "status": "complete",
       "tests": [
         "tests/forms/native-form-fixtures.test.ts",
@@ -1023,7 +1023,7 @@
       "native": {
         "type": "boolean-label"
       },
-      "owner": "src/forms/features/mentions/module.tsx",
+      "owner": "src/forms/mentions/mentions-module.tsx",
       "status": "complete",
       "tests": [
         "tests/forms/native-form-fixtures.test.ts",
@@ -1391,7 +1391,7 @@
       "native": {
         "op": "all"
       },
-      "owner": "src/forms/features/logic/module.tsx",
+      "owner": "src/forms/conditional-logic/conditional-logic-module.tsx",
       "status": "complete",
       "tests": [
         "tests/forms/native-form-fixtures.test.ts",
@@ -1407,7 +1407,7 @@
       "native": {
         "op": "any"
       },
-      "owner": "src/forms/features/logic/module.tsx",
+      "owner": "src/forms/conditional-logic/conditional-logic-module.tsx",
       "status": "complete",
       "tests": [
         "tests/forms/native-form-fixtures.test.ts",
@@ -1423,7 +1423,7 @@
       "native": {
         "op": "not"
       },
-      "owner": "src/forms/features/logic/module.tsx",
+      "owner": "src/forms/conditional-logic/conditional-logic-module.tsx",
       "status": "complete",
       "tests": [
         "tests/forms/native-form-fixtures.test.ts",
@@ -1439,7 +1439,7 @@
       "native": {
         "op": "eq"
       },
-      "owner": "src/forms/features/logic/module.tsx",
+      "owner": "src/forms/conditional-logic/conditional-logic-module.tsx",
       "status": "complete",
       "tests": [
         "tests/forms/native-form-fixtures.test.ts",
@@ -1455,7 +1455,7 @@
       "native": {
         "op": "ne"
       },
-      "owner": "src/forms/features/logic/module.tsx",
+      "owner": "src/forms/conditional-logic/conditional-logic-module.tsx",
       "status": "complete",
       "tests": [
         "tests/forms/native-form-fixtures.test.ts",
@@ -1471,7 +1471,7 @@
       "native": {
         "op": "gt"
       },
-      "owner": "src/forms/features/logic/module.tsx",
+      "owner": "src/forms/conditional-logic/conditional-logic-module.tsx",
       "status": "complete",
       "tests": [
         "tests/forms/native-form-fixtures.test.ts",
@@ -1487,7 +1487,7 @@
       "native": {
         "op": "gte"
       },
-      "owner": "src/forms/features/logic/module.tsx",
+      "owner": "src/forms/conditional-logic/conditional-logic-module.tsx",
       "status": "complete",
       "tests": [
         "tests/forms/native-form-fixtures.test.ts",
@@ -1503,7 +1503,7 @@
       "native": {
         "op": "lt"
       },
-      "owner": "src/forms/features/logic/module.tsx",
+      "owner": "src/forms/conditional-logic/conditional-logic-module.tsx",
       "status": "complete",
       "tests": [
         "tests/forms/native-form-fixtures.test.ts",
@@ -1519,7 +1519,7 @@
       "native": {
         "op": "lte"
       },
-      "owner": "src/forms/features/logic/module.tsx",
+      "owner": "src/forms/conditional-logic/conditional-logic-module.tsx",
       "status": "complete",
       "tests": [
         "tests/forms/native-form-fixtures.test.ts",
@@ -1535,7 +1535,7 @@
       "native": {
         "op": "contains"
       },
-      "owner": "src/forms/features/logic/module.tsx",
+      "owner": "src/forms/conditional-logic/conditional-logic-module.tsx",
       "status": "complete",
       "tests": [
         "tests/forms/native-form-fixtures.test.ts",
@@ -1551,7 +1551,7 @@
       "native": {
         "op": "startsWith"
       },
-      "owner": "src/forms/features/logic/module.tsx",
+      "owner": "src/forms/conditional-logic/conditional-logic-module.tsx",
       "status": "complete",
       "tests": [
         "tests/forms/native-form-fixtures.test.ts",
@@ -1567,7 +1567,7 @@
       "native": {
         "op": "endsWith"
       },
-      "owner": "src/forms/features/logic/module.tsx",
+      "owner": "src/forms/conditional-logic/conditional-logic-module.tsx",
       "status": "complete",
       "tests": [
         "tests/forms/native-form-fixtures.test.ts",
@@ -1583,7 +1583,7 @@
       "native": {
         "op": "empty"
       },
-      "owner": "src/forms/features/logic/module.tsx",
+      "owner": "src/forms/conditional-logic/conditional-logic-module.tsx",
       "status": "complete",
       "tests": [
         "tests/forms/native-form-fixtures.test.ts",
@@ -1599,7 +1599,7 @@
       "native": {
         "op": "selected"
       },
-      "owner": "src/forms/features/logic/module.tsx",
+      "owner": "src/forms/conditional-logic/conditional-logic-module.tsx",
       "status": "complete",
       "tests": [
         "tests/forms/native-form-fixtures.test.ts",

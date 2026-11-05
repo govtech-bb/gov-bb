@@ -1,5 +1,5 @@
 /**
- * The Drizzle schema, matching migrations `001_init` to `016_content_updated_at`
+ * The Drizzle schema, matching migrations `001_init` to `018_snapshot_version`
  * applied in order, table for table and column for column. BetterAuth reads
  * and writes its four `auth_*` tables through these definitions; their
  * property keys are BetterAuth's field names.
@@ -278,6 +278,8 @@ export const changeEvents = pgTable(
     versionNo: integer("version_no").notNull(),
     action: changeAction("action").notNull(),
     snapshot: jsonb("snapshot").notNull(),
+    // Null for history written before format labels were introduced.
+    snapshotVersion: integer("snapshot_version").default(1),
     actor: text("actor")
       .notNull()
       .default("system")
@@ -304,8 +306,9 @@ export const userRoles = pgTable(
   {
     userId: text("user_id").notNull(),
     role: text("role", { enum: ROLES }).notNull(),
-    // The admin who granted it; null when api_v2 granted it itself: the
-    // default editor role, or admin from API_V2_ADMIN_EMAILS.
+    // The admin who granted it; null when api_v2 granted it itself: admin
+    // and editor from API_V2_ADMIN_EMAILS, or the default editor role that
+    // first sign-in granted before #3412.
     grantedBy: text("granted_by"),
     grantedAt: timestamp("granted_at", { withTimezone: true, precision: 3 })
       .notNull()

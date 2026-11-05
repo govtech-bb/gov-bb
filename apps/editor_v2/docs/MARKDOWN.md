@@ -34,11 +34,15 @@ Get help
 ::::
 
 <a data-start-link>Start now</a>
+
+<highlights>
+<highlight title="Water">Store 3 gallons per person.</highlight>
+</highlights>
 ```
 
 The single-line `::action[Label]{href="/next"}` form is also accepted; fenced actions are the canonical form.
 
-A Start marker can have an explicit `href`; without one it retains the page's form association. Import does not invent a destination or change the linked form. Action labels and destinations remain editable. Notice and Details bodies can contain supported Markdown blocks.
+A Start marker can have an explicit `href`; without one it retains the page's form association. Import does not invent a destination or change the linked form. Action labels and destinations remain editable. Notice and Details bodies can contain supported Markdown blocks. Highlights keep landing's HTML; see [Legacy highlights and muted text](#legacy-highlights-and-muted-text-3315).
 
 The original file is preserved exactly until a visual edit. Changes to page details preserve the original body Markdown, including whitespace, through Save and Publish. Export after a body edit may normalize Markdown formatting while retaining text, grouping, metadata and URLs. Unsupported raw HTML, comments, specialist components, images, code blocks and other unsupported syntax make the whole page source-only, as does invalid YAML. The CMS opens such a page read-only, saying it can't be edited there, and leaves its saved content unchanged; pages have no Markdown source editing. Source-only pages have no rendered preview.
 
@@ -50,7 +54,7 @@ The NIS self-employed overview uses a standalone `:::action`; its record-and-ben
 
 Labels, order, primary/secondary variants and explicit URLs are retained, including the external registration URL, payment anchor and print query. An explicit URL ending in `/form` stays a URL, not a linked-form reference. Existing `<a data-start-link>` markers are unchanged.
 
-Both NIS pages open visually and retain their content through body edits and reopening. StormReady's action group and converted notice (#3313) round-trip independently; its whole page remains read-only until highlights/muted text (#3315) and contacts (#3185) are handled. Those remaining components and the frozen HTML fixtures are unchanged here. The generated API snapshot updates future imports, not an already-imported database.
+Both NIS pages open visually and retain their content through body edits and reopening. StormReady's action group and converted notice (#3313) round-trip independently; its whole page remains read-only until its contacts (#3185) are handled. Those remaining components and the frozen HTML fixtures are unchanged here. The generated API snapshot updates future imports, not an already-imported database.
 
 ### Legacy HTML conversions (#3313)
 
@@ -62,9 +66,17 @@ The current landing content uses existing blocks rather than new HTML support:
 | Crop Over permits (`crop-over-permits/index.md`) | The styled `<div>` callout becomes `:::notice`, with Markdown bold. |
 | StormReady (`health-and-emergency-services/stormready/index.md`) | `<notice>` becomes `:::notice`, with Markdown bold. Its other components are unchanged. |
 
-Pension guidance and Crop Over permits must open visually and retain their content through body edits and reopening. StormReady's notice and converted actions (#3314) are editable on their own, but the whole page remains read-only until highlights, muted text and contacts are supported or converted (#3315, #3185).
+Pension guidance and Crop Over permits must open visually and retain their content through body edits and reopening. StormReady's notice and converted actions (#3314) are editable on their own, but the whole page remains read-only until its contacts are converted (#3185).
 
 Plain `<br>` tags already import as hard breaks and are left unchanged. The frozen HTML fixtures still test source-only preservation; they are not rewritten to match current content. The generated API snapshot carries the conversions for future imports, not updates to an already-imported database.
+
+### Legacy highlights and muted text (#3315)
+
+StormReady uses both. They keep landing's HTML, which has no directive form, so the page renders as before; its highlights and muted text open visually and round-trip, and the page stays read-only only for its contacts (#3185).
+
+**Highlights** is a block in the insert and `/` menus. It reads and writes `<highlights>` holding `<highlight title="…">` elements, and looks as landing draws it: teal cards, each a title over its text, two to a row on wider screens. A highlight's title and text are both written in place, and the block menu adds highlights. Enter goes from a title to its text, and from the text to a new highlight; on an empty last highlight it goes on writing below the block. Backspace and Delete stop at the edges of a title and its text rather than joining them, and Backspace in an empty highlight removes it. Titles and text are plain, and text can have line breaks: landing lays a highlight out as a column, which would put formatted words on lines of their own, so the selection toolbar offers no formatting there, and formatting or links typed or pasted in are removed. A line break in a title becomes a space, as landing shows it. Other HTML in a highlight keeps the page source-only.
+
+**Muted text is retained, not supported.** Landing's `<muted>` only turns a paragraph grey, and small with `caption`; it carries no meaning of its own, so new content should use ordinary paragraphs. The editor reads and writes paragraphs wrapped in `<muted>` or `<muted caption>` so that existing pages stay editable, and keeps `caption` without offering it. Muted text isn't a block: nothing inserts it. The selection toolbar's Text colour menu (Default or Muted) turns a page's own paragraphs grey or back. It also takes muted text off where it can't put it on, as in a list item or Notice, so this menu is how existing muted text is taken off anywhere. Enter within muted text keeps both halves muted; at its end, writing goes on in ordinary text. `<muted>` in any other form keeps the page source-only.
 
 ## Form Markdown, version 2
 
@@ -96,7 +108,7 @@ Ordinary text supports links, italic, bold, strikethrough, inline code, hard bre
 
 Historical Markdown presets such as `preset="country"` expand into editable copies. Current Form registry entries are declared in native JSON; this preset syntax remains a compatibility reader.
 
-Both source versions use the immutable `src/forms/source/legacy/profiles-v1.json` settings and option lists, with copied field IDs, labels and exceptional option values in `src/forms/source/legacy/preset-defaults-v1.json`. The remaining option values use the frozen version 1 spelling algorithm. The installed component registry cannot change those defaults.
+Both source versions use the immutable `src/forms/formats/markdown/legacy/profiles-v1.json` settings and option lists, with copied field IDs, labels and exceptional option values in `src/forms/formats/markdown/legacy/preset-defaults-v1.json`. The remaining option values use the frozen version 1 spelling algorithm. The installed component registry cannot change those defaults.
 
 The retained `ref` identifies the definition the copy was based on; it does not synchronize the copy. `sourceFieldId`, `sourceLabel` and `sourceOptionValue` retain copied defaults. Edited labels can change automatic field IDs, and explicit `fieldId` or `optionValue` pins override them. Explicit overrides remain explicit, and removed inherited settings are recorded below.
 

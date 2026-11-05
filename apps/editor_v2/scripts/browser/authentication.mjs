@@ -66,7 +66,7 @@ await context.route("**/api/auth/**", async (route) => {
   if (path === "/api/auth/sign-in/social") {
     signIns++;
     const body = request.postDataJSON();
-    assert.equal(body.provider, "github");
+    assert.equal(body.provider, "google");
     assert.equal(body.disableRedirect, true);
     callback = body.callbackURL;
     assert.equal(new URL(callback).origin, base.origin);
@@ -75,7 +75,7 @@ await context.route("**/api/auth/**", async (route) => {
     await signInGate;
 
     return route.fulfill({
-      json: { url: "https://github.com/login/oauth/authorize?state=fixture", redirect: false },
+      json: { url: "https://accounts.google.com/o/oauth2/v2/auth?state=fixture", redirect: false },
       headers,
     });
   }
@@ -90,8 +90,8 @@ await context.route("**/api/auth/**", async (route) => {
   throw new Error(`Unexpected auth endpoint: ${path}`);
 });
 
-await context.route("https://github.com/**", (route) =>
-  route.fulfill({ contentType: "text/html", body: "<h1>GitHub sign-in fixture</h1>" }),
+await context.route("https://accounts.google.com/**", (route) =>
+  route.fulfill({ contentType: "text/html", body: "<h1>Google sign-in fixture</h1>" }),
 );
 
 await installPageApi(context, { ...servicesFixture[0], id: "team", title: "Team" }, [
@@ -125,7 +125,7 @@ try {
   assert.equal(await page.locator("header").count(), 0, "no workspace before admission");
   admission.resolve();
   sessionGate = undefined;
-  const continueButton = page.getByRole("button", { name: "Continue with GitHub", exact: true });
+  const continueButton = page.getByRole("button", { name: "Continue with Google", exact: true });
   await continueButton.waitFor();
   assert.equal(signIns, 0, "anonymous entry waits for consent");
   await page.setViewportSize({ width: 320, height: 740 });
@@ -161,15 +161,15 @@ try {
 
   await page.keyboard.press("Enter");
   await started;
-  const opening = page.getByRole("button", { name: "Opening GitHub…", exact: true });
+  const opening = page.getByRole("button", { name: "Opening Google…", exact: true });
   await opening.waitFor();
   assert.equal(await opening.getAttribute("aria-disabled"), "true");
   await page.keyboard.press("Enter");
   assert.equal(signIns, 1, "a second press does not start another OAuth request");
   oauth.resolve();
   signInGate = undefined;
-  await page.waitForURL("https://github.com/**", { waitUntil: "commit" });
-  assert.equal(signIns, 1, "only the explicit action starts GitHub");
+  await page.waitForURL("https://accounts.google.com/**", { waitUntil: "commit" });
+  assert.equal(signIns, 1, "only the explicit action starts Google");
   assert.equal(new URL(callback).searchParams.get("returnTo"), target);
 
   session = employeeSession();
@@ -229,7 +229,7 @@ try {
   await continueButton.waitFor();
   assert.equal(signIns, 1, "session recovery does not start OAuth");
   await continueButton.click();
-  await page.waitForURL("https://github.com/**", { waitUntil: "commit" });
+  await page.waitForURL("https://accounts.google.com/**", { waitUntil: "commit" });
   assert.equal(signIns, 2, "recovery starts OAuth only when requested");
 
   session = employeeSession();
@@ -246,7 +246,7 @@ try {
   assert.equal(signIns, 2, "direct auth never starts OAuth on mount");
   assert.deepEqual(errors, [], "no transient framework error screen or uncaught errors");
   console.log(
-    "PASS explicit GitHub sign-in, delayed admission/callback, recovery, sign-out and blocked-draft preservation",
+    "PASS explicit Google sign-in, delayed admission/callback, recovery, sign-out and blocked-draft preservation",
   );
 } finally {
   await browser.close();

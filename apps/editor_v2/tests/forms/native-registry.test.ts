@@ -9,16 +9,19 @@ import { $createParagraphNode, $getRoot } from "lexical";
 import { createHeadlessEditor } from "../../src/editor/core/create-editor";
 import { executeAction, $availableActions } from "../../src/editor/core/actions";
 import { defineFormEditor } from "../../src/forms/definition";
-import { defineFormRegistry, defineFormRegistryEntry } from "../../src/forms/registry/definition";
-import { FormRegistryModule } from "../../src/forms/editor/registry-module";
+import {
+  defineFormRegistry,
+  defineFormRegistryEntry,
+} from "../../src/forms/form-registry/definition";
+import { FormRegistryModule } from "../../src/forms/canvas/form-registry-module";
 import {
   prepareRegistryEntry,
   $instantiateRegistryEntry,
   createRegistryForm,
-} from "../../src/forms/editor/registry";
-import { $insertBlocks } from "../../src/forms/editor/insertion";
-import { question, content, option, rule } from "../../src/forms/registry/builders";
-import { validateFormDefinition } from "../../src/forms/schema";
+} from "../../src/forms/canvas/form-registry-insertion";
+import { $insertBlocks } from "../../src/forms/canvas/form-insertion";
+import { question, content, option, rule } from "../../src/forms/form-registry/builders";
+import { validateFormDefinition } from "../../src/forms/formats/native/schema";
 import { formSchemaToLexical } from "../../src/converters/form-schema-to-lexical";
 import { govbbFormEditor, govbbFormModules } from "../../src/presets/govbb-form";
 import { demoForm, demoFormEntry } from "../../src/presets/form-registry/demo";

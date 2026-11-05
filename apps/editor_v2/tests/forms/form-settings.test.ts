@@ -13,12 +13,12 @@ import {
 import { registerEditorHistory } from "../../src/editor/core/history";
 import { compileForm, preflight } from "../helpers/default-form";
 import { $legacyDemo as $demo } from "../helpers/legacy-demo";
-import { $formSettings, $setFormSettings } from "../../src/forms/editor/form-metadata";
+import { $formSettings, $setFormSettings } from "../../src/forms/canvas/form-metadata";
 import {
   answerPath,
   formSettingsIssues,
   serviceContract,
-} from "../../src/forms/adapters/ssb/form-settings";
+} from "../../src/forms/formats/legacy-ssb/projection/form-settings";
 import {
   APPLICANT_LABEL,
   autoFormId,
@@ -30,9 +30,9 @@ import {
   formSettingsOf,
   MDA_EMAIL,
   type FormSettings,
-} from "../../src/forms/core/form-settings";
-import { closingWorks } from "../../src/forms/core/closing";
-import { MentionNode } from "../../src/forms/features/mentions/node";
+} from "../../src/forms/model/form-settings";
+import { closingWorks } from "../../src/forms/model/closing";
+import { MentionNode } from "../../src/forms/mentions/mention-node";
 import {
   $createFormTitleNode,
   $createQuestionNode,
@@ -42,13 +42,13 @@ import {
   $shareQuestionSettings,
   $turnInto,
   type QuestionNode,
-} from "../../src/forms/editor/nodes";
+} from "../../src/forms/canvas/form-nodes";
 import {
   $createInputNode,
   $createOptionNode,
   $createWidgetNode,
-} from "../../src/forms/editor/answer-nodes";
-import { $setDepth, $setSettings, $settings } from "../../src/editor/core/document-state";
+} from "../../src/forms/canvas/answer-nodes";
+import { $setDepth, $setSettings, $settings } from "../../src/forms/canvas/block-state";
 import { formNodes } from "../helpers/default-form";
 
 const newEditor = () =>

@@ -1,5 +1,5 @@
 import { createEditor, rulesFor } from "../helpers/default-form";
-import { legacyFieldAdapter } from "../../src/forms/editor/legacy-mappings";
+import { legacyFieldAdapter } from "../../src/forms/formats/legacy-ssb/legacy-mappings";
 import { govbbFormEditor } from "../../src/presets/govbb-form";
 import { HeadingNode } from "@lexical/rich-text";
 import { expect, test } from "vitest";
@@ -10,11 +10,11 @@ import {
   $isParagraphNode,
   $isRangeSelection,
 } from "lexical";
-import { $enter } from "../../src/forms/editor/structure/editing";
+import { $enter } from "../../src/forms/canvas/structure/structure-editing";
 import { compileForm, type FormQuestion, type FormSchema } from "../helpers/default-form";
-import { $describe } from "../../src/forms/react/gutter";
-import { $fields } from "../../src/forms/features/logic/queries";
-import { $mentionTargets } from "../../src/forms/features/mentions/editor";
+import { $describe } from "../../src/forms/canvas/form-gutter";
+import { $fields } from "../../src/forms/conditional-logic/logic-queries";
+import { $mentionTargets } from "../../src/forms/mentions/mention-editor";
 import {
   $blockKind,
   $createFormTitleNode,
@@ -22,16 +22,16 @@ import {
   $ensureBlockIds,
   $ensureQuestionFields,
   $questionKey,
-} from "../../src/forms/editor/nodes";
+} from "../../src/forms/canvas/form-nodes";
 import {
   $createInputNode,
   $createLongAnswerNode,
   $createOptionNode,
   choiceKinds,
-} from "../../src/forms/editor/answer-nodes";
-import { $setSettings } from "../../src/editor/core/document-state";
+} from "../../src/forms/canvas/answer-nodes";
+import { $setSettings } from "../../src/forms/canvas/block-state";
 import { formNodes } from "../helpers/default-form";
-import { type Settings } from "../../src/editor/core/settings";
+import type { Settings } from "../../src/forms/model/settings";
 
 const newEditor = () =>
   createEditor({

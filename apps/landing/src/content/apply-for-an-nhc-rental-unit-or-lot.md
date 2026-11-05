@@ -2,7 +2,6 @@
 title: 'Apply for an NHC rental unit or lot'
 description: 'Use this service to apply to rent a unit or a lot from the National Housing Corporation (NHC). You must have a monthly income of BDS $3,000 or less to apply.'
 stage: 'alpha'
-featured: false
 publish_date: 2026-04-16
 category: housing
 visibility: preview
@@ -57,5 +56,3 @@ Submitting an application does not mean that you have been offered a rental unit
 ## Contact
 
 If you need help with your application, contact the National Housing Corporation.
-
-<!-- MDA NOTE: Confirm the telephone number, email address and opening hours for rental enquiries, then add them here. The purchase service lists PBX (246) 536-5300 and nhc.customerservice@barbados.gov.bb for Customer Service (Property Sales), which is likely to be the wrong team for rentals. -->

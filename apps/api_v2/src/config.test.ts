@@ -6,12 +6,50 @@ const required = {
   BETTER_AUTH_URL: "http://localhost:3020",
   EDITOR_ORIGIN: "http://localhost:3000",
   BETTER_AUTH_SECRET: "test-only-secret-with-at-least-32-characters",
-  GITHUB_CLIENT_ID: "test-client",
-  GITHUB_CLIENT_SECRET: "test-client-secret",
+  GOOGLE_CLIENT_ID: "test-client",
+  GOOGLE_CLIENT_SECRET: "test-client-secret",
+  GOOGLE_ALLOWED_DOMAINS: "govtech.bb",
   API_V2_ADMIN_EMAILS: "admin@govtech.bb",
 };
 
 describe("auth configuration", () => {
+  it("reads the Google client and the allowed Workspace domains, lowercased", () => {
+    const result = parseConfig({
+      ...required,
+      GOOGLE_ALLOWED_DOMAINS: " GovTech.bb , health.gov.bb ",
+    });
+    if (!result.ok) throw result.error;
+    expect(result.value.auth.googleClientId).toBe("test-client");
+    expect(result.value.auth.googleClientSecret.reveal()).toBe(
+      "test-client-secret",
+    );
+    expect(result.value.auth.allowedDomains).toEqual([
+      "govtech.bb",
+      "health.gov.bb",
+    ]);
+  });
+  it.each([
+    ["GOOGLE_CLIENT_ID", undefined],
+    ["GOOGLE_CLIENT_SECRET", undefined],
+    ["GOOGLE_ALLOWED_DOMAINS", undefined],
+    ["GOOGLE_ALLOWED_DOMAINS", " , "],
+    ["GOOGLE_ALLOWED_DOMAINS", "@govtech.bb"],
+    ["GOOGLE_ALLOWED_DOMAINS", "govtech"],
+  ])("refuses to start with %s set to %j", (field, value) => {
+    const result = parseConfig({ ...required, [field]: value });
+    expect(result.ok).toBe(false);
+    if (!result.ok)
+      expect(result.error.message).toBe(`Invalid configuration: ${field}`);
+  });
+  it("no longer reads GitHub OAuth settings", () => {
+    const result = parseConfig({
+      ...required,
+      GITHUB_CLIENT_ID: "github-client",
+      GITHUB_CLIENT_SECRET: "github-secret",
+    });
+    if (!result.ok) throw result.error;
+    expect(JSON.stringify(result.value)).not.toContain("github");
+  });
   it("fails closed without required settings and never prints their values", () => {
     const missing = parseConfig({});
     expect(missing.ok).toBe(false);
@@ -77,7 +115,7 @@ describe("auth configuration", () => {
       String(result.value.auth.secret),
     ]) {
       expect(rendered).not.toContain(required.BETTER_AUTH_SECRET);
-      expect(rendered).not.toContain(required.GITHUB_CLIENT_SECRET);
+      expect(rendered).not.toContain(required.GOOGLE_CLIENT_SECRET);
     }
   });
 });
@@ -167,6 +205,54 @@ describe("admin emails", () => {
     expect(admins({ API_V2_ADMIN_EMAILS: "ada" })).toEqual([
       "API_V2_ADMIN_EMAILS",
     ]);
+  });
+});
+
+describe("email moves", () => {
+  const moves = (value: string) => {
+    const parsed = parseConfig({ ...required, API_V2_EMAIL_MOVES: value });
+    return parsed.ok ? parsed.value.emailMoves : parsed.error.fields;
+  };
+
+  it("are none by default", () => {
+    const parsed = parseConfig(required);
+    if (!parsed.ok) throw parsed.error;
+    expect(parsed.value.emailMoves).toEqual([]);
+  });
+
+  it("reads comma-separated old=new pairs, lowercased", () => {
+    expect(
+      moves(
+        " Ada@Gmail.com = Ada@govtech.bb, ,grace@icloud.com=grace@govtech.bb",
+      ),
+    ).toEqual([
+      { from: "ada@gmail.com", to: "ada@govtech.bb" },
+      { from: "grace@icloud.com", to: "grace@govtech.bb" },
+    ]);
+  });
+
+  it.each([
+    "ada@gmail.com",
+    "ada=ada@govtech.bb",
+    "ada@gmail.com=ada@gmail.org",
+    "ada@gmail.com=ada@govtech.bb=junk",
+    // The same user on both sides would be found twice and deleted.
+    "ada@govtech.bb=ada@govtech.bb",
+    "Ada@govtech.bb=ada@GovTech.bb",
+  ])("refuses %s", (value) => {
+    expect(moves(value)).toEqual(["API_V2_EMAIL_MOVES"]);
+  });
+
+  it("keeps the addresses out of the reasons it gives", () => {
+    for (const value of [
+      "ada@gmail.com=ada@gmail.org",
+      "ada@govtech.bb=ada@govtech.bb",
+    ]) {
+      const parsed = parseConfig({ ...required, API_V2_EMAIL_MOVES: value });
+      expect(parsed.ok).toBe(false);
+      if (!parsed.ok)
+        expect(parsed.error.reasons.join(" ")).not.toMatch(/ada@/);
+    }
   });
 });
 

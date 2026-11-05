@@ -1,5 +1,8 @@
 import { type SerializedEditorState } from "lexical";
-import { capabilityWarnings, logicIssues } from "../../src/forms/editor/capabilities";
+import {
+  capabilityWarnings,
+  logicIssues,
+} from "../../src/forms/formats/legacy-ssb/legacy-ssb-capabilities";
 import { compileForm, preflight } from "./default-form";
 import { prepareSource } from "./default-form";
 import { createHeadlessEditor } from "../../src/editor/core/create-editor";

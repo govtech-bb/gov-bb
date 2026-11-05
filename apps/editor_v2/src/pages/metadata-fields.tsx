@@ -23,7 +23,7 @@ import {
   type KeyboardEvent,
 } from "react";
 import { parseDocument } from "yaml";
-import { HISTORY_START_TAG } from "../editor/core/history";
+import { HISTORY_START_TAG } from "@/editor";
 import { barbadosDay, formatCalendarDay } from "../ui/dates";
 import { Field, FieldGroup, FieldText } from "../ui/field";
 import { Input } from "../ui/input";

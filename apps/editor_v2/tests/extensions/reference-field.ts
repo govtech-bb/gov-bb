@@ -1,7 +1,7 @@
-import { jsonSettings, settingText } from "../helpers/serialized-test-data";
 import { createElement } from "react";
 import {
   $createDrawnInput,
+  configSetting,
   defineField,
   defineNativeField,
   fieldModule,
@@ -17,28 +17,6 @@ const read = (raw: Settings): ReferenceSettings => ({
   peer: typeof raw.peer === "string" ? raw.peer : undefined,
   required: !!raw.required,
 });
-
-type ReferenceConfig = {
-  code?: string;
-  peer?: string;
-  opaque?: { literal: string; token: string };
-};
-
-const configOf = (value: unknown): ReferenceConfig => {
-  const raw = jsonSettings(value ?? {});
-  const result: ReferenceConfig = {};
-
-  if (raw.code !== undefined) result.code = settingText(raw.code);
-
-  if (raw.peer !== undefined) result.peer = settingText(raw.peer);
-
-  if (raw.opaque !== undefined) {
-    const opaque = jsonSettings(raw.opaque);
-    result.opaque = { literal: settingText(opaque.literal), token: settingText(opaque.token) };
-  }
-
-  return result;
-};
 
 export const referenceField = defineField({
   native: defineNativeField<
@@ -67,45 +45,6 @@ export const referenceField = defineField({
         }),
       },
     }),
-    import: (block, context) =>
-      context.importQuestion(block, "reference-code").map((node) => {
-        return "kind" in node && node.kind === "reference-code"
-          ? {
-              ...node,
-              $: {
-                ...node.$,
-                settings: { ...jsonSettings(node.$?.settings ?? {}), ...block.config },
-              },
-            }
-          : node;
-      }),
-    export: (context) => {
-      const block = context.exportQuestion("reference-code");
-      const raw = context.nodes.find((node) => "kind" in node && node.kind === "reference-code");
-      const { default: defaultValue, ...rest } = block;
-
-      if (
-        defaultValue !== undefined &&
-        defaultValue !== null &&
-        typeof defaultValue === "object" &&
-        !Array.isArray(defaultValue)
-      )
-        throw Error("Reference code does not support date defaults");
-      const config = configOf(block.config);
-      const settings = jsonSettings(raw?.$?.settings ?? {});
-
-      if (settings.code !== undefined) config.code = settingText(settings.code);
-
-      const result: import("../../src/forms").NativeQuestion<"reference-code", ReferenceConfig> = {
-        ...rest,
-        kind: "reference-code",
-        config,
-      };
-
-      if (defaultValue !== undefined) result.default = defaultValue;
-
-      return result;
-    },
   }),
   kind: "reference-code",
   label: "Reference code",
@@ -116,7 +55,11 @@ export const referenceField = defineField({
     storage: { type: "input", property: "kind", value: "reference-code" },
     attributes: { code: "string" },
   },
-  settings: { read, defaults: { code: "REF" } },
+  settings: {
+    read,
+    defaults: { code: "REF" },
+    own: [configSetting("code"), configSetting("peer")],
+  },
   capabilities: {
     hideLabel: true,
     repeat: true,

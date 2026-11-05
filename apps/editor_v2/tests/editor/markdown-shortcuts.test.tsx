@@ -13,7 +13,7 @@ import {
 } from "lexical";
 import { EditorComposer } from "../../src/editor/react/composer";
 import { Editor } from "../../src/editor/react/editor";
-import { FormEditor } from "../../src/forms/react/form-editor";
+import { FormEditor } from "../../src/forms/canvas/form-editor";
 import { contentEditor } from "../../src/presets/content";
 import { govbbFormCodec, govbbFormEditor } from "../../src/presets/govbb-form";
 import { govbbPageCodec } from "../../src/presets/govbb-page";

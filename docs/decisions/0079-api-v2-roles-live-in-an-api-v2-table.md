@@ -1,7 +1,9 @@
 # 0079. api_v2 roles live in an api_v2 table
 
 **Date:** 2026-10-28
-**Status:** Accepted
+**Status:** Accepted (amended 2026-11-02: sign-in moves to Google Workspace
+and a new user gets no role, see the amendments under Decision;
+[#3412](https://github.com/govtech-bb/gov-bb/issues/3412))
 
 ## Context
 
@@ -36,12 +38,31 @@ can hold any of three roles:
 Sign-in itself doesn't change: GitHub org membership still decides who can
 sign in. Roles decide what a signed-in user can do.
 
+> **Amended 2026-11-02 ([#3412](https://github.com/govtech-bb/gov-bb/issues/3412)).**
+> Sign-in moves from GitHub to Google Workspace, because content editors and
+> approvers outside engineering have no GitHub accounts. A Google account is
+> admitted when its email is verified, its `hd` claim is on
+> `GOOGLE_ALLOWED_DOMAINS` (`govtech.bb` for now), and its email's domain
+> matches `hd`. Roles are unchanged: they still decide what a signed-in user
+> can do.
+
 **Every org member is an editor by default.** api_v2 grants an `editor` row
 once, when it creates the user at their first sign-in. A migration grants the
 same row to every user who already exists. Because the grant happens once,
 an admin can revoke it to take write access away from one person who stays in
 the organisation, and it doesn't come back at their next sign-in. A signed-in
 user with no role can read the editor but can't write anything.
+
+> **Amended 2026-11-02 ([#3412](https://github.com/govtech-bb/gov-bb/issues/3412)).**
+> A new user gets **no role** at first sign-in; an admin grants `editor` or
+> `approver`. The org was a small gate, but every account on an allowed
+> Workspace domain can sign in, so a default editor role would let everyone at
+> GovTech write. Users who already exist keep their roles, including the
+> `editor` rows granted by default before this amendment. A user whose email
+> `API_V2_ADMIN_EMAILS` lists is granted `editor` as well as `admin`, so a
+> listed admin can write without first granting themselves a role. As with
+> `admin`, a listed admin's `editor` comes back on their next request if
+> revoked; take them off the list first.
 
 **Admins manage roles through admin-only api_v2 routes.** There is no admin
 screen in editor_v2 yet; that is a follow-up. The first admins come from an
@@ -50,8 +71,8 @@ user whose verified email is listed is granted `admin` whenever they sign in.
 The allowlist is how an environment always has an admin, so an admin can't
 revoke a listed admin for good; to remove one, take them off the list and
 then revoke the row. Each grant records the admin who made it. Grants that
-api_v2 makes itself (the default editor role and the allowlist) record no
-grantor.
+api_v2 makes itself (the allowlist, and the default editor role before
+#3412) record no grantor.
 
 **Roles are read on every request**, not frozen into the session at sign-in,
 so a revocation takes effect on the user's next request.
@@ -119,6 +140,12 @@ can try the whole flow.
   hours. Someone who leaves `govtech-bb` keeps their access until their
   session ends, and their role rows come back if they rejoin. Offboarding
   someone means revoking their roles as well as removing them from the org.
+
+  > **Amended 2026-11-03 ([#3412](https://github.com/govtech-bb/gov-bb/issues/3412)).**
+  > Google Workspace replaces the org: offboarding someone means suspending
+  > or deleting their Workspace account and revoking their roles. Until
+  > their session ends they keep their access, and their role rows come
+  > back if the account is restored.
 - An approver who writes a new page needs a second approver to make it
   public, as they do for a change to a public page.
 - An editor who isn't an approver can no longer change categories. They ask

@@ -1,4 +1,4 @@
-import { createEditableGate } from "../editor/core/editability";
+import { createEditableGate } from "@/editor";
 import { HISTORY_PUSH_TAG, type LexicalEditor } from "lexical";
 import type { DraftConnection } from "../persistence/types";
 

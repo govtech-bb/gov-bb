@@ -11,7 +11,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import type { EditorDefinition } from "../../src/editor/core/definition";
 import { EditorComposer } from "../../src/editor/react/composer";
-import { InsertModal } from "../../src/editor/react/insert-modal";
+import { InsertDialog } from "../../src/editor/react/action-pickers/insert-dialog";
 import { formSchemaToLexical } from "../../src/converters/form-schema-to-lexical";
 import { contentEditor } from "../../src/presets/content";
 import { govbbFormEditor } from "../../src/presets/govbb-form";
@@ -53,7 +53,7 @@ async function previewSheets(definition: EditorDefinition, initialState?: Serial
       root.render(
         <EditorComposer definition={definition} initialState={initialState}>
           <Capture />
-          <InsertModal
+          <InsertDialog
             request={targetKey ? { targetKey, mode: "insert" } : null}
             onClose={() => {}}
           />

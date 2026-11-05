@@ -4,7 +4,7 @@ import { categoryLabel, type Category } from "./categories";
 import type { ApiPage, FieldError, SavePageInput } from "./client";
 import { urlProblem } from "./page-fields";
 
-const TEXT_FRONTMATTER = ["stage", "section", "service_type", "source_url"] as const;
+const TEXT_FRONTMATTER = ["stage", "service_type", "source_url"] as const;
 
 const KNOWN_KEYS = new Set([
   "title",
@@ -16,7 +16,6 @@ const KNOWN_KEYS = new Set([
   "subcategory",
   "visibility",
   "form_id",
-  "featured",
   "keywords",
   "publish_date",
   ...TEXT_FRONTMATTER,
@@ -53,8 +52,6 @@ export function pageToMarkdown(page: ApiPage, categories: readonly Category[]) {
 
     if (value !== undefined) values.set(key, value);
   }
-
-  if (page.frontmatter.featured !== undefined) values.set("featured", page.frontmatter.featured);
 
   if (page.frontmatter.keywords !== undefined) values.set("keywords", page.frontmatter.keywords);
 
@@ -138,12 +135,6 @@ export function markdownToPageSaveInput(
 
     if (value !== undefined) frontmatter[key] = value;
   }
-
-  const featured = document.get("featured");
-
-  if (typeof featured === "boolean") frontmatter.featured = featured;
-  else if (featured !== undefined && featured !== null)
-    errors.push({ field: "featured", message: "Enter true or false" });
 
   const keywords = document.get("keywords");
 

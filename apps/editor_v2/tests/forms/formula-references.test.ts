@@ -1,9 +1,9 @@
 import { expect, test } from "vitest";
-import { formulaReferences, mapFormulaReferences } from "../../src/forms/core/formula";
-import { referencesInSettings, remapKnownSettings } from "../../src/forms/core/references";
-import { logicIssues } from "../../src/forms/adapters/ssb/capabilities";
-import { finalizeLegacySsb } from "../../src/forms/adapters/ssb/finalize";
-import type { Settings } from "../../src/forms/core/settings";
+import { formulaReferences, mapFormulaReferences } from "../../src/forms/model/formula";
+import { referencesInSettings, remapKnownSettings } from "../../src/forms/model/references";
+import { logicIssues } from "../../src/forms/formats/legacy-ssb/projection/capabilities";
+import { finalizeLegacySsb } from "../../src/forms/formats/legacy-ssb/projection/finalize";
+import type { Settings } from "../../src/forms/model/settings";
 
 test("formula reference edits preserve quoted text, escapes and all non-reference bytes", () => {
   const expression = String.raw` "{{original-field}}" + '{{original-field}}' + "escaped \" {{original-field}}" + {{original-field}}  + {{score:total}} `;

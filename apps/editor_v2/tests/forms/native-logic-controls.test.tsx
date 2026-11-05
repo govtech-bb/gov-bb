@@ -5,7 +5,7 @@ import { createHeadlessEditor } from "../../src/editor/core/create-editor";
 import { govbbFormEditor } from "../../src/presets/govbb-form";
 import { formSchemaToLexical } from "../../src/converters/form-schema-to-lexical";
 import { lexicalToFormSchema } from "../../src/converters/lexical-to-form-schema";
-import { $native } from "../../src/forms/editor/native-state";
+import { $native } from "../../src/forms/formats/native/native-state";
 import {
   $nativeTargets,
   $setNativeWidget,
@@ -14,26 +14,26 @@ import {
   newExpression,
   type NativeTargets,
   type ConditionKind,
-} from "../../src/forms/features/logic/native-authoring";
+} from "../../src/forms/conditional-logic/logic-native-authoring";
 import {
   NativeActionEditor,
   NativeConditionEditor,
   NativeDisplayReferenceEditor,
   NativeExpressionEditor,
   NativeRichTextEditor,
-} from "../../src/forms/features/logic/native-controls";
+} from "../../src/forms/conditional-logic/logic-native-controls";
 import {
   $mentionsIn,
   $nativeReference,
   $setNativeReference,
-} from "../../src/forms/features/mentions/node";
+} from "../../src/forms/mentions/mention-node";
 import type {
   AnyFormDefinition,
   Expression,
   Condition,
   LogicAction,
   RichText,
-} from "../../src/forms/schema/types";
+} from "../../src/forms/formats/native/schema/types";
 
 const targets: NativeTargets = {
   questions: [

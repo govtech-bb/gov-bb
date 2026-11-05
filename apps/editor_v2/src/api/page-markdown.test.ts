@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { compileContentMarkdown } from "@govtech-bb/govbbmarkd";
 import { sitePreviewDocument } from "../host/site-preview-renderer";
 import estate from "../../../api_v2/src/seed-data/estate.json";
-import { createHeadlessEditor } from "../editor/core/create-editor";
+import { createHeadlessEditor } from "@/editor";
 import { $setPageMetadata } from "../pages/metadata";
 import { govbbPageCodec, govbbPageEditor } from "../presets/govbb-page";
 import type { Category } from "./categories";
@@ -58,6 +58,10 @@ if (!entry || !start) throw new Error("The seed no longer has the severance page
 const markdownOf = (yaml: string) => `---\n${yaml}\n---\n\nBody`;
 
 describe("page markdown", () => {
+  it("keeps HTML comments out of every imported page body (#3312)", () => {
+    for (const page of pages) expect(page.body_markdown, page.url).not.toContain("<!--");
+  });
+
   it("keeps leading body rules and instructions through saving and both preview paths", () => {
     const body = "---\n\nYou must submit before Friday.\n\n---\n\nApply below.";
     const source = pageToMarkdown({ ...entry, body_markdown: body }, categories);
@@ -221,7 +225,8 @@ describe("page markdown", () => {
     ["a publication date", "publish_date: 2026-01-01", entry, "publish_date"],
     ["two categories", "categories: [money-financial-support, work-employment]", entry, "category"],
     ["a category on a sub-page", "category: money-financial-support", start, "category"],
-    ["a featured flag that is not true or false", "featured: often", entry, "featured"],
+    ["a featured flag", "featured: true", entry, "featured"],
+    ["a section", "section: Travel", entry, "section"],
     ["keywords that are not a list", "keywords: severance", entry, "keywords"],
     ["a visibility the API does not have", "visibility: secret", entry, "visibility"],
   ])("refuses %s rather than dropping it", (_name, line, base, field) => {

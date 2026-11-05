@@ -14,25 +14,25 @@ import {
   type ElementNode,
   type LexicalNode,
 } from "lexical";
-import { $enter } from "../../src/forms/editor/structure/editing";
-import { $registryBlocks as $govbbField } from "../../src/forms/editor/registry-module";
-import { $insertBlocks } from "../../src/forms/editor/insertion";
+import { $enter } from "../../src/forms/canvas/structure/structure-editing";
+import { $registryBlocks as $govbbField } from "../../src/forms/canvas/form-registry-module";
+import { $insertBlocks } from "../../src/forms/canvas/form-insertion";
 import { $insertionGroups } from "../helpers/insertion";
 import { $executeAction } from "../../src/editor/core/actions";
 import { govbbFormEditor } from "../../src/presets/govbb-form";
 import { compileForm, preflight, type FormSchema } from "../helpers/default-form";
-import { $describe } from "../../src/forms/react/gutter";
-import { MentionNode } from "../../src/forms/features/mentions/node";
-import { $normalizeDepths } from "../../src/forms/editor/nesting";
-import { $migrateLegacyConditions } from "../../src/forms/features/logic/migration";
-import { logicIssues } from "../../src/forms/editor/capabilities";
+import { $describe } from "../../src/forms/canvas/form-gutter";
+import { MentionNode } from "../../src/forms/mentions/mention-node";
+import { $normalizeDepths } from "../../src/forms/canvas/nesting";
+import { $migrateLegacyConditions } from "../../src/forms/conditional-logic/logic-migration";
+import { logicIssues } from "../../src/forms/formats/legacy-ssb/legacy-ssb-capabilities";
 import {
   $blockId,
   $depth,
   $setDepth,
   $setSettings,
   $settings,
-} from "../../src/editor/core/document-state";
+} from "../../src/forms/canvas/block-state";
 import {
   $blockKind,
   $canBeConfirmationPage,
@@ -45,28 +45,28 @@ import {
   $normalizePages,
   $questionKey,
   $shareQuestionSettings,
-  $toText,
   $turnInto,
-} from "../../src/forms/editor/nodes";
+} from "../../src/forms/canvas/form-nodes";
+import { $toText } from "../../src/forms/content/content-editing";
 import {
   $createBulletNode,
   $createListLine,
   $createNumberNode,
   $isListLine,
   listIndexState,
-} from "../../src/editor/modules/lists/nodes";
+} from "../../src/forms/content/list-nodes";
 import {
   $createInputNode,
   $createOptionNode,
   $createWidgetNode,
   $isOptionNode,
-} from "../../src/forms/editor/answer-nodes";
-import { $createInsetNode, $createWarningNode } from "../../src/editor/modules/callouts/nodes";
-import { $createShowHideNode, $toggleShowHide } from "../../src/editor/modules/disclosure/nodes";
+} from "../../src/forms/canvas/answer-nodes";
+import { $createInsetNode, $createWarningNode } from "../../src/forms/content/callout-nodes";
+import { $createShowHideNode, $toggleShowHide } from "../../src/forms/content/details-node";
 import { formNodes } from "../helpers/default-form";
-import { $ssbIds } from "../../src/forms/editor/ssb";
-import { $pagePreview } from "../../src/forms/features/pages/queries";
-import { $native } from "../../src/forms/editor/native-state";
+import { $ssbIds } from "../../src/forms/formats/legacy-ssb/legacy-ssb-rules";
+import { $pagePreview } from "../../src/forms/form-pages/form-page-queries";
+import { $native } from "../../src/forms/formats/native/native-state";
 
 const newEditor = () =>
   createEditor({

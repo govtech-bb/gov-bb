@@ -15,7 +15,7 @@ export const authRoutes: FastifyPluginAsync<{
     method: ["GET", "POST"],
     url: "/api/auth/*",
     schema: {
-      summary: "GitHub sign-in and session protocol",
+      summary: "Google Workspace sign-in and session protocol",
       description:
         "Better Auth owns the endpoints under this prefix. Responses are never cached.",
       tags: ["auth"],

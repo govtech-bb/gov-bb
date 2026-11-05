@@ -354,8 +354,9 @@ describe("with review emails off", () => {
       BETTER_AUTH_URL: "http://localhost:3020",
       EDITOR_ORIGIN: "http://localhost:3000",
       BETTER_AUTH_SECRET: "test-only-secret-with-at-least-32-characters",
-      GITHUB_CLIENT_ID: "test-client",
-      GITHUB_CLIENT_SECRET: "test-client-secret",
+      GOOGLE_CLIENT_ID: "test-client",
+      GOOGLE_CLIENT_SECRET: "test-client-secret",
+      GOOGLE_ALLOWED_DOMAINS: "govtech.bb",
       API_V2_ADMIN_EMAILS: "admin@govtech.bb",
     });
     if (!config.ok) throw config.error;

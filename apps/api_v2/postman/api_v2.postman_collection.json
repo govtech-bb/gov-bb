@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "api_v2",
-    "description": "Requests for apps/api_v2. Full reference: {{baseUrl}}/docs (spec at {{baseUrl}}/docs/openapi.json).\n\nPublic and Navigation requests work with no setup. Preview requests send the `previewToken` variable as `x-preview-token`; it must equal the API's PREVIEW_SECRET (`local-preview-secret` in the README's local run). Editor requests need an employee session. Locally, run the API with `AUTH_BYPASS=true` and they work with no sign-in. Otherwise sign in to the editor with GitHub as a govtech-bb organization member, then copy the `better-auth.session_token` cookie value into the `sessionToken` collection variable. Writes also send `Origin: {{editorOrigin}}`, which must match the API's EDITOR_ORIGIN.\n\nRun the Editor folder top to bottom: Create stores `pageId`, `pageUrl` and `updatedAt`; Create a sub-page stores `subPageId`; the deletes clean both up.",
+    "description": "Requests for apps/api_v2. Full reference: {{baseUrl}}/docs (spec at {{baseUrl}}/docs/openapi.json).\n\nPublic and Navigation requests work with no setup. Preview requests send the `previewToken` variable as `x-preview-token`; it must equal the API's PREVIEW_SECRET (`local-preview-secret` in the README's local run). Editor requests need an employee session. Locally, run the API with `AUTH_BYPASS=true` and they work with no sign-in. Otherwise sign in to the editor with a Google Workspace account on an allowed domain, then copy the `better-auth.session_token` cookie value into the `sessionToken` collection variable. Writes also send `Origin: {{editorOrigin}}`, which must match the API's EDITOR_ORIGIN.\n\nRun the Editor folder top to bottom: Create stores `pageId`, `pageUrl` and `updatedAt`; Create a sub-page stores `subPageId`; the deletes clean both up.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -415,7 +415,7 @@
       "name": "Auth",
       "item": [
         {
-          "name": "Start GitHub sign-in",
+          "name": "Start Google sign-in",
           "request": {
             "method": "POST",
             "header": [
@@ -427,9 +427,9 @@
             "url": "{{baseUrl}}/api/auth/sign-in/social",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"provider\": \"github\",\n  \"callbackURL\": \"{{editorOrigin}}\"\n}"
+              "raw": "{\n  \"provider\": \"google\",\n  \"callbackURL\": \"{{editorOrigin}}\"\n}"
             },
-            "description": "Returns the GitHub URL to open in a browser. Postman cannot complete the OAuth redirect itself; after signing in, copy the better-auth.session_token cookie from the browser into the sessionToken variable."
+            "description": "Returns the Google URL to open in a browser. Postman cannot complete the OAuth redirect itself; after signing in, copy the better-auth.session_token cookie from the browser into the sessionToken variable."
           }
         },
         {

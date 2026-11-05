@@ -10,7 +10,7 @@ import {
 } from "@lexical/table";
 import { parseContentMarkdown } from "@govtech-bb/govbbmarkd";
 import { govbbPageCodec } from "../../src/presets/govbb-page";
-import { PageComponentNode } from "../../src/pages/nodes";
+import { PageComponentNode } from "../../src/pages/blocks/node";
 import { hoverPageMenu, pageControl, renderPageEditor } from "../helpers/page-editor";
 
 async function selectColumns(editor: LexicalEditor, from: number, to: number) {

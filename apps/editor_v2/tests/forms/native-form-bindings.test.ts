@@ -1,17 +1,25 @@
 import { nativeDefinition } from "../helpers/native-definition";
 import { expect, test } from "vitest";
 import { $createTextNode, $getRoot, $isElementNode, $setState, createState } from "lexical";
-import { $setSettings as $setRawSettings } from "../../src/editor/core/document-state";
+import { $setSettings as $setRawSettings } from "../../src/forms/canvas/block-state";
 import { createHeadlessEditor } from "../../src/editor/core/create-editor";
 import { govbbFormEditor } from "../../src/presets/govbb-form";
 import { formSchemaToLexical } from "../../src/converters/form-schema-to-lexical";
 import { lexicalToFormSchema } from "../../src/converters/lexical-to-form-schema";
 import { lexicalToFormMarkdown } from "../../src/converters/lexical-to-form-markdown";
 import { formMarkdownToLexical } from "../../src/converters/form-markdown-to-lexical";
-import { $native, rawNative } from "../../src/forms/editor/native-state";
-import { $setFormSettings, nativeQuestionSettings } from "../../src/forms/editor/native-settings";
-import { $depth, $setDepth, $updateSettings, listIndexState } from "../../src/forms/editor/nodes";
-import { nativeSemanticEqual } from "../../src/forms/schema/semantics";
+import { $native, rawNative } from "../../src/forms/formats/native/native-state";
+import {
+  $setFormSettings,
+  nativeQuestionSettings,
+} from "../../src/forms/formats/native/native-settings";
+import {
+  $depth,
+  $setDepth,
+  $updateSettings,
+  listIndexState,
+} from "../../src/forms/canvas/form-nodes";
+import { nativeSemanticEqual } from "../../src/forms/formats/native/schema/semantics";
 
 import fixture from "../fixtures/forms/v2/bindings.json";
 
@@ -300,7 +308,7 @@ test("projected rule controls retain date bounds, typed defaults and explicit fa
   const date = form.blocks.find((block) => block.type === "question" && block.id === "date")!;
 
   if (date.type !== "question") throw Error("Missing date question");
-  expect(nativeQuestionSettings(date)).toMatchObject({
+  expect(nativeQuestionSettings(date, govbbFormEditor)).toMatchObject({
     relativeDate: "pastOrToday",
     specificDates: ["2026-10-04"],
     defaultAnswer: { field: "utility::today()" },
@@ -308,7 +316,7 @@ test("projected rule controls retain date bounds, typed defaults and explicit fa
   const file = form.blocks.find((block) => block.type === "question" && block.id === "file")!;
 
   if (file.type !== "question") throw Error("Missing file question");
-  expect(nativeQuestionSettings(file)).toMatchObject({
+  expect(nativeQuestionSettings(file, govbbFormEditor)).toMatchObject({
     hasMultipleFiles: true,
     allowedFiles: ["application/pdf"],
     maxFileSize: 5,

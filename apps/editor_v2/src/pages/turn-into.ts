@@ -22,11 +22,10 @@ import {
   type ElementNode,
   type LexicalNode,
 } from "lexical";
-import { editorDefinition } from "../editor/core/context";
-import type { TurnInto, TurnIntoChoice } from "../editor/core/turn-into";
+import { editorDefinition, type TurnInto, type TurnIntoChoice } from "@/editor";
 import { $liftLine } from "./insertion";
 import { $nearestPageList, $setPageListType } from "./modules/lists";
-import { PageComponentNode } from "./nodes";
+import { $hasTrait } from "./blocks/node";
 
 // A page's text blocks, by the ids of the actions that insert them, with their shortcuts. Text comes first
 const shortcuts = new Map<string, readonly string[]>([
@@ -51,10 +50,7 @@ const $isLine = (node: LexicalNode): node is ElementNode =>
     node.getChildren().every((child) => !$isElementNode(child) || child.isInline()));
 
 // Buttons and table cells hold text that can't turn into anything else
-const $fixed = (node: LexicalNode) =>
-  node.getType() === "tablecell" ||
-  (node instanceof PageComponentNode &&
-    (node.getKind() === "start" || node.getKind() === "action"));
+const $fixed = (node: LexicalNode) => node.getType() === "tablecell" || $hasTrait(node, "button");
 
 /** The line a node is in, null if none, or undefined where its text can't turn. */
 function $lineOf(node: LexicalNode): ElementNode | null | undefined {

@@ -2,6 +2,12 @@ import { z } from "zod";
 import { Redacted } from "./modules/redacted";
 import { err, ok, type Result } from "./modules/result";
 
+/** A user's old email and the Workspace address they sign in with now. */
+export interface EmailMove {
+  readonly from: string;
+  readonly to: string;
+}
+
 /** Explicit database settings, unwrapped only by the Postgres adapter. */
 export interface DatabaseConfig {
   readonly host: string;
@@ -18,8 +24,10 @@ export interface AuthConfig {
   readonly apiOrigin: string;
   readonly editorOrigin: string;
   readonly secret: Redacted<string>;
-  readonly githubClientId: string;
-  readonly githubClientSecret: Redacted<string>;
+  readonly googleClientId: string;
+  readonly googleClientSecret: Redacted<string>;
+  /** Workspace domains, lowercased, whose verified accounts may sign in. */
+  readonly allowedDomains: readonly string[];
 }
 
 /**
@@ -46,6 +54,8 @@ export interface AppConfig {
   readonly auth: AuthConfig;
   /** Emails, lowercased, granted the admin role whenever they sign in. */
   readonly adminEmails: readonly string[];
+  /** GitHub-era users to move to their Workspace address on boot (#3418). */
+  readonly emailMoves: readonly EmailMove[];
   /**
    * Local development only: skip sign-in and run every editor request as a
    * fixed developer. Refused in production and unless the editor is local.
@@ -101,8 +111,28 @@ const environment = z
     BETTER_AUTH_URL: origin,
     EDITOR_ORIGIN: origin,
     BETTER_AUTH_SECRET: z.string().min(32),
-    GITHUB_CLIENT_ID: z.string().min(1),
-    GITHUB_CLIENT_SECRET: z.string().min(1),
+    GOOGLE_CLIENT_ID: z.string().min(1),
+    GOOGLE_CLIENT_SECRET: z.string().min(1),
+    // Comma-separated Workspace domains whose accounts may sign in.
+    GOOGLE_ALLOWED_DOMAINS: z
+      .string()
+      .transform((value) =>
+        value
+          .split(",")
+          .map((domain) => domain.trim().toLowerCase())
+          .filter(Boolean),
+      )
+      .pipe(
+        z
+          .array(
+            z
+              .string()
+              .regex(
+                /^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/,
+              ),
+          )
+          .min(1),
+      ),
     AUTH_BYPASS: z.enum(["true", "false"]).optional(),
     PREVIEW_SECRET: z.string().min(1).optional(),
     LANDING_SECRET: z.string().min(1).optional(),
@@ -117,6 +147,24 @@ const environment = z
           .filter(Boolean),
       )
       .pipe(z.array(z.email())),
+    // Comma-separated old=new pairs: a GitHub-era user's email and their
+    // Workspace address. Applied on every boot; remove once everyone has moved.
+    API_V2_EMAIL_MOVES: z
+      .string()
+      .default("")
+      .transform((value) =>
+        value
+          .split(",")
+          .map((pair) => pair.trim().toLowerCase())
+          .filter(Boolean)
+          .map((pair) => pair.split("=").map((email) => email.trim())),
+      )
+      // Exactly one "=" per pair, so a pasted typo is refused, not trimmed.
+      .pipe(
+        z
+          .array(z.tuple([z.email(), z.email()]))
+          .transform((pairs) => pairs.map(([from, to]) => ({ from, to }))),
+      ),
     // Off by default: an environment turns review emails on (#3267).
     REVIEW_NOTIFICATIONS: z.enum(["off", "log", "ses"]).default("off"),
     // The same sender settings as apps/api's SES mailer.
@@ -178,7 +226,33 @@ const environment = z
           message: "Production origins require HTTPS",
         });
     }
-  });
+  })
+  .superRefine(
+    (value, context) => {
+      // The messages name no address: they reach the boot log.
+      for (const { from, to } of value.API_V2_EMAIL_MOVES) {
+        // Both sides would find the same user, and the move would delete it.
+        if (from === to)
+          context.addIssue({
+            code: "custom",
+            path: ["API_V2_EMAIL_MOVES"],
+            message:
+              "Each API_V2_EMAIL_MOVES pair needs two different addresses",
+          });
+        // A move to an address Google won't admit would strand the user.
+        if (
+          !value.GOOGLE_ALLOWED_DOMAINS.includes(to.slice(to.indexOf("@") + 1))
+        )
+          context.addIssue({
+            code: "custom",
+            path: ["API_V2_EMAIL_MOVES"],
+            message: "Move users only to an address on GOOGLE_ALLOWED_DOMAINS",
+          });
+      }
+    },
+    // Only once every pair parsed: a malformed one has no addresses to check.
+    { when: (payload) => payload.issues.length === 0 },
+  );
 
 /** Parse the root's environment once and retain only typed, redacted settings. */
 export function parseConfig(
@@ -218,10 +292,12 @@ export function parseConfig(
       apiOrigin: env.BETTER_AUTH_URL,
       editorOrigin: env.EDITOR_ORIGIN,
       secret: new Redacted(env.BETTER_AUTH_SECRET),
-      githubClientId: env.GITHUB_CLIENT_ID,
-      githubClientSecret: new Redacted(env.GITHUB_CLIENT_SECRET),
+      googleClientId: env.GOOGLE_CLIENT_ID,
+      googleClientSecret: new Redacted(env.GOOGLE_CLIENT_SECRET),
+      allowedDomains: env.GOOGLE_ALLOWED_DOMAINS,
     },
     adminEmails: env.API_V2_ADMIN_EMAILS,
+    emailMoves: env.API_V2_EMAIL_MOVES,
     authBypass: env.AUTH_BYPASS === "true",
     // The refinement above refuses ses without a sender.
     notifications:

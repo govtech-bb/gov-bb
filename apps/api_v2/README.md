@@ -1,6 +1,6 @@
 # api_v2
 
-The markdown content API uses Node, Fastify, Drizzle and its own PostgreSQL database. Citizen page resolution stays public. The editor's reads and writes require a GitHub account with a verified email and active membership in `govtech-bb`, authenticated by BetterAuth.
+The markdown content API uses Node, Fastify, Drizzle and its own PostgreSQL database. Citizen page resolution stays public. The editor's reads and writes require a Google Workspace account with a verified email on an allowed domain, authenticated by BetterAuth.
 
 ## Run locally
 
@@ -10,38 +10,39 @@ Create `gov_bb_v2`, then copy `.env.example` to `.env` and fill in the authentic
 pnpm dev
 ```
 
-Create a [GitHub OAuth App](https://github.com/settings/developers) with homepage URL `http://localhost:3000` and this authorization callback URL:
+In the Workspace's Google Cloud project, under **Google Auth Platform**, create a **Web application** OAuth client. The consent screen's audience must be **Internal**. Add this authorized redirect URI:
 
 ```text
-http://localhost:3020/api/auth/callback/github
+http://localhost:3020/api/auth/callback/google
 ```
 
-Use `http://localhost:3000` for the editor and set its public `VITE_API_ORIGIN` to `http://localhost:3020`. Use `localhost` consistently; mixing it with `127.0.0.1` changes the browser's cookie context. The editor offers unauthenticated visitors **Continue with GitHub** and starts OAuth only when they choose it, then returns them to their original editor URL. Authentication does not move or clear existing browser drafts.
+Use `http://localhost:3000` for the editor and set its public `VITE_API_ORIGIN` to `http://localhost:3020`. Use `localhost` consistently; mixing it with `127.0.0.1` changes the browser's cookie context. The editor offers unauthenticated visitors **Continue with Google** and starts OAuth only when they choose it, then returns them to their original editor URL. Authentication does not move or clear existing browser drafts.
 
-Generate `BETTER_AUTH_SECRET` with `openssl rand -base64 32` and keep it stable. Set `GITHUB_CLIENT_ID` and `GITHUB_CLIENT_SECRET` from the GitHub OAuth App. The provider requests `read:user`, `user:email`, and `read:org`; grant the app access to `govtech-bb` if the organization restricts OAuth apps. Missing credentials prevent startup in every environment.
+Generate `BETTER_AUTH_SECRET` with `openssl rand -base64 32` and keep it stable. Set `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` from the OAuth client, and `GOOGLE_ALLOWED_DOMAINS` to the Workspace domains whose accounts may sign in (`govtech.bb`). The provider requests only `openid`, `email` and `profile`. Missing credentials or an empty domain list prevent startup in every environment.
 
 For local development only, `AUTH_BYPASS=true` skips sign-in. BetterAuth is not started, so the credentials above are unused and placeholders will do, and every editor request runs as a fixed local developer. Pair it with the editor's `VITE_AUTH_BYPASS=true`. Under the bypass `API_V2_ADMIN_EMAILS` may be left empty, since the local developer holds every role; otherwise startup refuses without it. Because a bypassed API admits any caller, startup refuses it in production and whenever `EDITOR_ORIGIN` is not `localhost` or `127.0.0.1`, and a bypassed API listens on `127.0.0.1` only. The developer is added to `auth_user` at startup, so their edits are recorded against them. #3342 replaces the bypass with a real local session.
 
-| Variable                                           | Purpose/default                                                                                                                                                                                                        |
-| -------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `DB_HOST`, `DB_PORT`, `DB_USERNAME`, `DB_PASSWORD` | `localhost`, `5432`, `postgres`, `postgres`                                                                                                                                                                            |
-| `DB_NAME`                                          | `gov_bb_v2`                                                                                                                                                                                                            |
-| `DB_SSL_CA`                                        | Optional PEM contents or CA file path; production uses verified TLS                                                                                                                                                    |
-| `PORT`                                             | `3020`                                                                                                                                                                                                                 |
-| `SEED`                                             | `true` loads the committed estate snapshot on boot. Local development only: an additive seed on every boot brings back a page an editor deleted, so no deployed environment may set it, and production refuses to boot |
-| `BETTER_AUTH_URL`                                  | Required public API origin                                                                                                                                                                                             |
-| `EDITOR_ORIGIN`                                    | Required editor origin; the exact credentialed CORS and write-origin allowlist                                                                                                                                         |
-| `BETTER_AUTH_SECRET`                               | Required secret of at least 32 characters                                                                                                                                                                              |
-| `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`         | Required server-side GitHub OAuth credentials                                                                                                                                                                          |
-| `AUTH_BYPASS`                                      | Local development only: `true` skips sign-in (see above)                                                                                                                                                               |
-| `PREVIEW_SECRET`                                   | Optional; the site's preview token. Unset, every preview read is refused                                                                                                                                               |
-| `LANDING_SECRET`                                   | Optional; landing's token. Landing sends it as `x-landing-token` and is then not rate-limited. Unset, nobody is exempt                                                                                                 |
-| `API_V2_ADMIN_EMAILS`                              | Required unless `AUTH_BYPASS=true`: comma-separated emails granted the `admin` role whenever they sign in (see Roles). Startup refuses an empty list, since without an admin nobody can grant `approver` (ADR 0079)    |
-| `REVIEW_NOTIFICATIONS`                             | `off` (default), `log` or `ses`: whether review steps email people (see Review emails). `log` writes each email to the log instead, for local runs and tests; production refuses it                                    |
-| `SES_FROM_ADDRESS`                                 | Required when `REVIEW_NOTIFICATIONS=ses`: the verified SES sender, as apps/api's `SES_FROM_ADDRESS`. Startup refuses `ses` without it                                                                                  |
-| `SES_REGION`                                       | Optional SES region; falls back to `AWS_DEFAULT_REGION`, then `us-east-1`                                                                                                                                              |
+| Variable                                           | Purpose/default                                                                                                                                                                                                         |
+| -------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `DB_HOST`, `DB_PORT`, `DB_USERNAME`, `DB_PASSWORD` | `localhost`, `5432`, `postgres`, `postgres`                                                                                                                                                                             |
+| `DB_NAME`                                          | `gov_bb_v2`                                                                                                                                                                                                             |
+| `DB_SSL_CA`                                        | Optional PEM contents or CA file path; production uses verified TLS                                                                                                                                                     |
+| `PORT`                                             | `3020`                                                                                                                                                                                                                  |
+| `SEED`                                             | `true` loads the committed estate snapshot on boot. Local development only: an additive seed on every boot brings back a page an editor deleted, so no deployed environment may set it, and production refuses to boot  |
+| `BETTER_AUTH_URL`                                  | Required public API origin                                                                                                                                                                                              |
+| `EDITOR_ORIGIN`                                    | Required editor origin; the exact credentialed CORS and write-origin allowlist                                                                                                                                          |
+| `BETTER_AUTH_SECRET`                               | Required secret of at least 32 characters                                                                                                                                                                               |
+| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`         | Required server-side Google OAuth client credentials                                                                                                                                                                    |
+| `GOOGLE_ALLOWED_DOMAINS`                           | Required comma-separated Workspace domains whose verified accounts may sign in, such as `govtech.bb`                                                                                                                    |
+| `AUTH_BYPASS`                                      | Local development only: `true` skips sign-in (see above)                                                                                                                                                                |
+| `PREVIEW_SECRET`                                   | Optional; the site's preview token. Unset, every preview read is refused                                                                                                                                                |
+| `LANDING_SECRET`                                   | Optional; landing's token. Landing sends it as `x-landing-token` and is then not rate-limited. Unset, nobody is exempt                                                                                                  |
+| `API_V2_ADMIN_EMAILS`                              | Required unless `AUTH_BYPASS=true`: comma-separated emails granted `admin` and `editor` whenever they sign in (see Roles). Startup refuses an empty list, since without an admin nobody can grant `approver` (ADR 0079) |
+| `REVIEW_NOTIFICATIONS`                             | `off` (default), `log` or `ses`: whether review steps email people (see Review emails). `log` writes each email to the log instead, for local runs and tests; production refuses it                                     |
+| `SES_FROM_ADDRESS`                                 | Required when `REVIEW_NOTIFICATIONS=ses`: the verified SES sender, as apps/api's `SES_FROM_ADDRESS`. Startup refuses `ses` without it                                                                                   |
+| `SES_REGION`                                       | Optional SES region; falls back to `AWS_DEFAULT_REGION`, then `us-east-1`                                                                                                                                               |
 
-Production requires HTTPS API/editor origins on the same site, such as separate subdomains of the same organizational domain. Cookies are host-only, HttpOnly, Secure on HTTPS, and SameSite=Lax; API requests from the editor include credentials. Do not enable broad cookie domains or permissive CORS. Register the production API's exact `/api/auth/callback/github` URI in GitHub. Forwarded Host headers do not determine callback URLs; the configured origin does. This change does not configure hosting, DNS, or a reverse proxy.
+Production requires HTTPS API/editor origins on the same site, such as separate subdomains of the same organizational domain. Cookies are host-only, HttpOnly, Secure on HTTPS, and SameSite=Lax; API requests from the editor include credentials. Do not enable broad cookie domains or permissive CORS. Register the production API's exact `/api/auth/callback/google` URI on that environment's OAuth client, and no other environment's. Forwarded Host headers do not determine callback URLs; the configured origin does. This change does not configure hosting, DNS, or a reverse proxy.
 
 ## Boundaries
 
@@ -58,17 +59,17 @@ Category HTTP handlers live in `src/routes/categories.ts`. Its editor plugin is 
 
 Route plugins receive their services and request identity readers explicitly through plugin options; nothing is decorated onto the Fastify instance and nothing is autoloaded, so dependencies are visible at registration. Expected failures are `Result` values that routes map to status codes; only defects throw. ESLint enforces the direction: domain and services cannot import Fastify, drizzle, pg, BetterAuth, adapters or routes, and routes cannot import infrastructure.
 
-Better Auth verifies the GitHub email, and the API checks `GET /user/memberships/orgs/govtech-bb` using the sign-in token on both first and returning sign-ins. Only `state: active` membership in `govtech-bb` is admitted; pending invitations, missing membership, and failed checks deny access. Any verified email domain is allowed. Password login and client-supplied ID-token sign-in are disabled. Existing users can link GitHub through the same verified email only after passing the membership check; provider trust never bypasses email verification. OAuth tokens are discarded before account persistence. Sessions expire absolutely after eight hours; reads do not extend them. Session cookies are checked against PostgreSQL on every protected request, so revocation takes effect immediately. Organization membership changes are checked on the next GitHub sign-in; existing application sessions must be revoked when immediate removal is required.
+On both first and returning sign-ins, the API admits a Google account only when the ID token's `email_verified` is true, its `hd` (hosted domain) claim is on `GOOGLE_ALLOWED_DOMAINS`, and the email's domain matches `hd`. A personal Gmail account has no `hd` and is refused. The `hd` authorize parameter only steers Google's account chooser, so the claim is checked on the server. Password login and client-supplied ID-token sign-in are disabled. Existing users can link Google through the same verified email only after passing the Workspace check; provider trust never bypasses email verification. OAuth tokens are discarded before account persistence. Sessions expire absolutely after eight hours; reads do not extend them. Session cookies are checked against PostgreSQL on every protected request, so revocation takes effect immediately. Workspace changes, such as a suspended account, are checked on the next Google sign-in; existing application sessions must be revoked when immediate removal is required.
 
-Migration `003_auth` adds BetterAuth's four core tables: `auth_user`, `auth_session`, `auth_account`, and `auth_verification`. It does not replace content tables or author data. BetterAuth reads and writes them through its Drizzle adapter, over the same tables defined in `schema.ts` (where `schema.test.ts` checks them column for column); migrations stay hand-written and replay-safe, never generated. The migration is checked against the installed BetterAuth schema in the PostgreSQL integration suite. Migration `004_github_sessions` revokes sessions without a linked GitHub account, forcing existing Google users through the new membership check. User IDs, accounts, content, audit history, and browser drafts are preserved. Use the same verified email on GitHub to retain an existing user ID.
+Migration `003_auth` adds BetterAuth's four core tables: `auth_user`, `auth_session`, `auth_account`, and `auth_verification`. It does not replace content tables or author data. BetterAuth reads and writes them through its Drizzle adapter, over the same tables defined in `schema.ts` (where `schema.test.ts` checks them column for column); migrations stay hand-written and replay-safe, never generated. The migration is checked against the installed BetterAuth schema in the PostgreSQL integration suite. Migration `004_github_sessions` revoked sessions without a linked GitHub account when sign-in briefly moved from Google to GitHub (6 Oct 2026). User IDs, accounts, content, audit history, and browser drafts were preserved. Migration `020_google_sessions` revokes every session without a linked Google account when sign-in moves to Google (#3412), so nobody keeps a session the Workspace check never admitted; users, accounts and roles stay. A Google sign-in links to an existing user, keeping their user ID, roles and history, only when their verified Google email equals the user's email. Migration `021_github_accounts` deletes the GitHub account links, which can never sign in again. A GitHub-era user whose email isn't their Workspace address is moved by `API_V2_EMAIL_MOVES` (#3418): comma-separated `old=new` pairs, applied on every boot before sign-in is served. A move keeps the user ID; if the person already signed in with Google, that new user is dropped when it has no history, and both are left alone (logged as `conflict`) when it has. Set it per environment, outside this public repo, and remove it once everyone has moved.
 
 ### Roles
 
 Signing in decides who is an employee; roles decide what they can do (ADR 0079). Roles are rows in `user_roles` (migration `008_user_roles`, numbered after #3340's 006 and 007), read on every request, so a revocation applies to the employee's next request.
 
-- `editor` writes: creating, saving and deleting pages. Every employee is an editor by default: api_v2 grants the role, with no grantor, when it creates the user at their first sign-in, and migration `009_default_editor_role` granted it once to everyone who had signed in before. It is never granted again, so an admin can revoke it to stop one person writing without removing them from the organisation.
+- `editor` writes: creating, saving and deleting pages. A new user has no role at their first sign-in: they can read the editor but not write until an admin grants `editor` (ADR 0079, amended for #3412). Under GitHub sign-in api_v2 granted it by default, and migration `009_default_editor_role` granted it once to everyone who had signed in before; those grants stay.
 - `approver` changes what citizens see: changing a page's `visibility`, deleting a `public` page, rejecting or publishing a pending revision, and creating, editing, reordering and deleting categories, so landing shows only category changes an approver made (#3201). These are direct actions, with no request waiting for a second approver, except that an approver can't make public content they changed (see Making a page public). An editor who isn't an approver can make every other edit, and submit a revision for review.
-- `admin` lists employees and grants and revokes roles (`/editor/employees…`), recording who granted each. A signed-in employee whose email `API_V2_ADMIN_EMAILS` lists is granted `admin`, with no grantor, if they lack it; so an admin cannot revoke a listed admin for good.
+- `admin` lists employees and grants and revokes roles (`/editor/employees…`), recording who granted each. A signed-in employee whose email `API_V2_ADMIN_EMAILS` lists is granted `admin` and `editor`, with no grantor, if they lack them, so a listed admin can write as well as grant roles; an admin cannot revoke a listed admin's roles for good.
 
 A refusal is a 403 `{error: "forbidden", message}` and the database is unchanged. Reads stay open to every signed-in employee, roles or not. Each write route names the role it needs in its route options (`config: { role: "editor" }`, or `"approver"` for publishing and rejecting revisions and for every category write), and the editor scope's `onRequest` hook enforces it; a write route that names none is refused to everyone, and `src/route-auth.test.ts` fails until it names one. That test also fails when a route that changes what citizens see names neither `approver` nor is one of the page writes (`POST`, `PUT` and `DELETE /pages…`) whose approver check sits in `PageEditing`, because only some of their writes need one.
 
@@ -183,6 +184,7 @@ erDiagram
     jsonb snapshot
     text actor FK
     timestamptz(3) occurred_at
+    int4 snapshot_version "nullable"
   }
   collection_records {
     uuid id PK
@@ -306,9 +308,9 @@ erDiagram
 | GET      | `/editor/employees`                    | Admin; everyone who has signed in, with their roles                    |
 | PUT      | `/editor/employees/:id/roles/:role`    | Admin; grant a role                                                    |
 | DELETE   | `/editor/employees/:id/roles/:role`    | Admin; revoke a role                                                   |
-| GET/POST | `/api/auth/*`                          | BetterAuth's GitHub/session protocol                                   |
+| GET/POST | `/api/auth/*`                          | BetterAuth's Google/session protocol                                   |
 
-Missing, expired, or revoked sessions produce JSON 401 responses; disallowed employees or write origins produce 403; unavailable session verification produces 503. The API does not redirect protected content requests to GitHub. The editor handles navigation. Authenticated writes require `Origin: <EDITOR_ORIGIN>`. Auth/session/editor responses use `Cache-Control: no-store` and do not receive ETags. Page, category and collection record write audit rows record the authenticated user ID, never a caller-supplied actor, and commit with the write they record.
+Missing, expired, or revoked sessions produce JSON 401 responses; disallowed employees or write origins produce 403; unavailable session verification produces 503. The API does not redirect protected content requests to Google. The editor handles navigation. Authenticated writes require `Origin: <EDITOR_ORIGIN>`. Auth/session/editor responses use `Cache-Control: no-store` and do not receive ETags. Page, category and collection record write audit rows record the authenticated user ID, never a caller-supplied actor, and commit with the write they record.
 
 The database writes the history itself: a trigger (`record_change`, migration `007`) adds a `change_events` row for every insert, update and delete of a content table (`content_pages`, `categories`, `data_collections`, `collection_records`), including the sub-pages a parent's move carries with it. Its `actor` is the transaction's `app.user_id`, which the editor's writes set (transaction-local, so a pooled connection never carries it into the next request), or `system`, a user with no account, when nothing set it: the seed, the import, raw SQL. `actor` references `auth_user`, so a user with history cannot be deleted. An update that changes nothing but `updated_at` is not recorded; a page going public is `published` and one leaving public is `unpublished`. The snapshot is the row as stored. A new content table attaches `record_change` in the migration that creates it, or `migrate.test.ts` fails.
 
@@ -372,63 +374,97 @@ tracked in #3178, landing integration in #3179, and sandbox acceptance in #3180.
 
 `search_chunks` holds each page's body split at its headings, as plain text, rewritten in the same transaction as every save. Rejoined, a page's chunks are exactly the text landing's search indexes today (`search-text.test.ts` checks every seeded page), so moving search onto the API does not move its ranking. The generated `tsv` column and its GIN index are there for server-side search and are not read yet.
 
-The seed is a committed snapshot of legacy markdown and the category taxonomy, subcategories included, with each sub-page's parent. Every page keeps its frontmatter `publish_date` as `published_at`, public or not, so going public later keeps that date. Inserts are additive and idempotent and never replace authored changes. It runs only with `SEED=true`, because an additive insert also brings back a page an editor deleted. Each page and category it adds gets a `created` entry by `system` in the audit log, which also moves the editor's change token. Regenerate it with `pnpm seed-data` (or `pnpm generate:seed-data` from the root) when intentionally updating the snapshot. The one-time import (see "Importing the estate" below) reports `source`, a sha1 of the snapshot's categories and pages computed at import time. It is not stored in `estate.json`, so content PRs don't all rewrite one shared line and conflict. CI's "Generated Files Up To Date" job regenerates the snapshot on every PR and, when it differs, commits the regen back to the PR branch, or fails when it can't push. So a content change can't merge with a stale `estate.json`.
+The seed is a committed snapshot of legacy markdown and the category taxonomy, subcategories included, with each sub-page's parent. Every page keeps its frontmatter `publish_date` as `published_at`, public or not, so going public later keeps that date. Inserts are additive and idempotent and never replace authored changes. It runs only with `SEED=true`, because an additive insert also brings back a page an editor deleted. Each page and category it adds gets a `created` entry by `system` in the audit log, which also moves the editor's change token. Regenerate it with `pnpm seed-data` (or `pnpm generate:seed-data` from the root) when intentionally updating the snapshot. The import (see "Importing the estate" below) reports `source`, a sha1 of the snapshot's categories and pages computed at import time. It is not stored in `estate.json`, so content PRs don't all rewrite one shared line and conflict. CI's "Generated Files Up To Date" job regenerates the snapshot on every PR and, when it differs, commits the regen back to the PR branch, or fails when it can't push. So a content change can't merge with a stale `estate.json`.
 
-## Importing the estate (one-time)
+## Importing the estate (once per environment)
 
-Deployed databases get the estate once, by a command rather than by `SEED`. It is compiled into the image beside `main.js`, so it runs with the task's own database settings:
+Each deployed database gets the estate once, by a command rather than by `SEED`. It is compiled into the image beside `main.js`, so it runs with the task's own database settings:
 
 ```sh
-node dist/src/import-estate.js [--dry-run] [--force "<reason>"]
+node dist/src/import-estate.js --forms-api <origin> [--dry-run] [--force "<reason>"]
 ```
 
-Locally, from this directory, run `pnpm import-estate --dry-run` or `pnpm import-estate`; it reads `.env` like `pnpm dev`. Do not add a `--` separator: this pnpm forwards it literally and tsx then rejects the flag.
+Locally, from this directory, run `pnpm import-estate --forms-api https://forms.api.sandbox.alpha.gov.bb --dry-run` (or without `--dry-run`); it reads `.env` like `pnpm dev`. Do not add a `--` separator: this pnpm forwards it literally and tsx then rejects the flag.
 
-The command migrates first, prints `database: <name> host: <addr>` before writing anything, then one JSON line: `{"mode":"dry-run"|"import"|"replace","source":"<content sha1>","reason":"<reason>"|null,"existing":N,"actors":{…},"categories":N,"documents":N}`. It refuses, with exit code 1, when `content_pages` already has rows: `content_pages has N rows (history actors: …); refusing. Pass --force "<reason>" to replace them.` `--force` deletes every row of `search_chunks`, `page_revisions` (the pending revisions of the pages it replaces), `content_pages` and `categories` and then imports, all in one transaction, so the history records each replaced page and category as `deleted` by `system`; `change_events` is never emptied. The transaction holds a lock on `content_pages` until it commits or rolls back, so editor saves stall for the few seconds it takes; public reads keep seeing the old content until it commits. `--dry-run` does the real work and rolls it back, so its counts and errors are real. Every imported page's and category's `created` history entry is by `system`; the source hash and the `--force` reason are in the JSON line, not the history.
+Before it touches the database, the command reads that environment's `service_status` (see "Each environment's service_status" below) and prints `service_status: N rows from <url>`, then one JSON line listing every page whose visibility the overlay changed: `{"visibility_changes":[{"url":"…","from":"preview","to":"public"},…]}`. Both lines come before `database:` and so before any refusal. The command then migrates, prints `database: <name> host: <addr>` before writing anything, then one JSON line: `{"mode":"dry-run"|"import"|"replace","source":"<content sha1>","reason":"<reason>"|null,"existing":N,"actors":{…},"revisions":N,"categories":N,"documents":N,"collections":N,"records":N}`. It refuses, with exit code 1, when `content_pages` already has rows: `content_pages has N rows (history actors: …; revisions: N); refusing. Pass --force "<reason>" to replace them.` `revisions` counts the rows in `page_revisions`: pending editor saves, which write no history event, so the actor histogram cannot show them, and which `--force` deletes. `--force` deletes every row of `search_chunks`, `page_revisions` (the pending revisions of the pages it replaces), `content_pages` and `categories` and then imports, all in one transaction, so the history records each replaced page and category as `deleted` by `system`; `change_events` is never emptied. The transaction holds a lock on `content_pages` until it commits or rolls back, so editor saves stall for the few seconds it takes; public reads keep seeing the old content until it commits. `--dry-run` does the real work and rolls it back, so its counts and errors are real. `--force` keeps `data_collections` and `collection_records`, and records are seeded only into a new collection, so a replace normally reports `"collections":0,"records":0`; that is expected. On an occupied database a plain `--dry-run` refuses (after printing `visibility_changes`), so `--dry-run --force "<reason>"` is the only way to see the JSON line before the real run. Every imported page's and category's `created` history entry is by `system`; the source hash and the `--force` reason are in the JSON line, not the history.
+
+### Each environment's service_status
+
+The snapshot's visibility is the markdown frontmatter's. Each environment's admins have since set services `enabled`, `disabled` or `form_disabled` in feature flagging, and landing applies that at request time; after cutover landing ignores it for api_v2 pages (#3125), so the import applies it instead (#3188, ADR 0063's mapping):
+
+| `service_status` | Imported visibility                                      |
+| ---------------- | -------------------------------------------------------- |
+| `enabled`        | `public` (raises a `draft` or `preview` page)            |
+| `disabled`       | `preview` (lowers a `public` page, raises a `draft` one) |
+| `form_disabled`  | the frontmatter level, unchanged                         |
+| no row           | the frontmatter level, unchanged                         |
+
+A page's key is its `form_id`, or its `content_slug` (landing's registry slug) when it has no form. A `/start` page that carries its parent's `form_id` shares its parent's row; one without a form (e.g. `calculate-severance-pay/start`) keys on its own slug, keeps its own level and is not listed in `visibility_changes`, but is still hidden whenever its parent is, because a page is served at the most restrictive level of itself and its ancestors. A row that matches no page is ignored. `published_at` stays the frontmatter `publish_date` whatever the level; an undated page is dated now only if it imports `public`.
+
+`--forms-api` is required. A missing flag, a network error, a non-2xx answer or a body that is not the `{"status":"success","data":[{slug,status}]}` envelope exits 1 before the database is opened, so nothing is written.
+
+Before every run, confirm in the Amplify Console that the environment's feature_flagging branch has no `EDITOR_V2_URL` set. If it is set, stop: that environment is past cutover, where a `disabled` row hides only the form (ADR 0063, "After cutover"), and the overlay would wrongly lower the page. The importer cannot detect this.
+
+`--forms-api` is that environment's api v1 origin, the same value as its `VITE_FORMS_API_URL`:
+
+| Environment | `--forms-api`                                               |
+| ----------- | ----------------------------------------------------------- |
+| sandbox     | `https://forms.api.sandbox.alpha.gov.bb`                    |
+| staging     | `https://api.staging.alpha.gov.bb`                          |
+| prod        | prod's `VITE_FORMS_API_URL`; confirm it at #3230 before use |
 
 ### Per environment
 
-Do sandbox first, then staging and prod once their api_v2 services exist.
+Sandbox re-imports while no editor has written there (#3234). Staging (#3229) and prod (#3230) import after `v2-rewrite` merges into `main` (#3131), inside the #3164 cutover windows. Every run imports the snapshot on the deploying branch at the deployed commit.
 
-1. Refresh the snapshot: merge `main` into `v2-rewrite`, run `pnpm seed-data`, commit `estate.json`, merge, and let the deploy build the image. The `source` the import reports is a sha1 of that commit's parsed `estate.json` (`ESTATE_SOURCE` in `src/seed-data/index.ts`), not of the file's bytes, so `sha1sum estate.json` will not match it.
-2. Confirm the task definition does not set `SEED`: `aws ecs describe-task-definition --task-definition api-v2-<env> --query 'taskDefinition.containerDefinitions[0].environment'`. If it does, see #3052.
-3. Run the command inside the live container with ECS Exec (needs the AWS Session Manager plugin and credentials for the account). The deployed image has no `psql`, so every database step goes through the command. Dry run first; read the `database:` line and the counts; then the real run.
+1. Pick the snapshot: the content you want is merged, and the api_v2 deploy of that commit has finished, so the running image carries its `estate.json`. Note the commit sha. The `source` the import reports is a sha1 of that commit's parsed `estate.json` (`ESTATE_SOURCE` in `src/seed-data/index.ts`), not of the file's bytes, so `sha1sum estate.json` will not match it.
+2. Set up the shell for the environment, then confirm the task definition does not set `SEED`. Sandbox's no longer does (since revision `api-v2-sandbox:9`, alpha-infra#748); staging's and prod's (#3130) must never set it. If it does, stop: production mode refuses to boot with it (#3052). The staging and prod cluster and service names follow sandbox's pattern; confirm them against #3130's task definitions.
 
    ```sh
    export AWS_PROFILE=<your profile>
    export AWS_REGION=ca-central-1
-   CLUSTER=modular-forms-sandbox
-   SERVICE=api-v2-sandbox
+   ENV=sandbox
+   CLUSTER=modular-forms-$ENV
+   SERVICE=api-v2-$ENV
+   aws ecs describe-task-definition --task-definition "$SERVICE" --query 'taskDefinition.containerDefinitions[0].environment'
+   ```
+
+3. Run the command inside the live container with ECS Exec (needs the AWS Session Manager plugin and credentials for the account). The deployed image has no `psql`, so every database step goes through the command. First confirm the running task's image is tagged with the sha you noted in step 1 (the deploy tags images with the commit sha); an older image imports an older snapshot. Dry run first; read the `visibility_changes` line, the `database:` line and the counts; then the real run.
+
+   ```sh
    TASK=$(aws ecs list-tasks --cluster "$CLUSTER" --service-name "$SERVICE" --query 'taskArns[0]' --output text)
+   aws ecs describe-tasks --cluster "$CLUSTER" --tasks "$TASK" --query 'tasks[0].containers[?name==`api-v2`].image' --output text
    aws ecs execute-command --cluster "$CLUSTER" --task "$TASK" --container api-v2 --interactive --command /bin/sh
    ```
 
-   Then, inside that shell:
+   Then, inside that shell, set the environment's origin from "Each environment's service_status" above, and on an empty database:
 
    ```sh
-   node dist/src/import-estate.js --dry-run
-   node dist/src/import-estate.js
+   FORMS_API=<origin>
+   node dist/src/import-estate.js --forms-api "$FORMS_API" --dry-run
+   node dist/src/import-estate.js --forms-api "$FORMS_API"
    ```
 
-   and for a forced run inside the same shell:
+   and on a database that already has content, only after the check in "A database that already has content" below:
 
    ```sh
-   node dist/src/import-estate.js --force "sandbox rehearsal: replace SEED=true content"
+   node dist/src/import-estate.js --forms-api "$FORMS_API" --dry-run
+   node dist/src/import-estate.js --forms-api "$FORMS_API" --dry-run --force "<env>: re-import from <branch> <deployed sha>"
+   node dist/src/import-estate.js --forms-api "$FORMS_API" --force "<env>: re-import from <branch> <deployed sha>"
    ```
 
-   A one-shot form also works when the command needs no quoting, e.g. `--command "node dist/src/import-estate.js --dry-run"`; for a forced run as a one-shot, wrap it as `--command "/bin/sh -c 'node dist/src/import-estate.js --force \"<reason>\"'"` and confirm the quoting on the sandbox rehearsal before relying on it.
+   A one-shot form also works when the command needs no quoting, e.g. `--command "node dist/src/import-estate.js --forms-api <origin> --dry-run"`; for a forced run as a one-shot, wrap it as `--command "/bin/sh -c 'node dist/src/import-estate.js --forms-api <origin> --force \"<reason>\"'"` and confirm the quoting on sandbox before relying on it.
 
-4. Record it: keep the real run's JSON line, which names the `source` hash and any `--force` reason. The `change_events` rows it wrote are by `system` and carry `occurred_at`.
-5. Smoke from your machine. Every `public` page in `estate.json` returns 200 from `GET /pages?url=`; `preview` pages return 200 only with the `x-preview-token` header (the task's `PREVIEW_SECRET`); `draft` pages are never served by that endpoint.
+4. Record it on the import issue (#3234, #3229 or #3230): paste the refusal line, if there was one, the `visibility_changes` line, the dry run's JSON line and the real run's JSON line, which names the `source` hash and any `--force` reason. The `change_events` rows it wrote are by `system` and carry `occurred_at`.
+5. Check every page from your machine, on a checkout of the sha from step 1 (the check reads that checkout's `estate.json`). Each page's expected level is its `estate.json` level, overlaid with the environment's `service_status` as the import did, then made as restrictive as any page above it. Per page, `GET /pages?url=` without and with the `x-preview-token` header must give 200/200 for `public`, 404/200 for `preview` and 404/404 for `draft`, and every 200 must carry a title, a body and that `visibility`. The token is the task's `PREVIEW_SECRET`; read it into the environment so it stays out of shell history and the process list:
 
    ```sh
-   API=https://<api origin>
-   jq -r '.pages[] | select(.visibility == "public") | .url' apps/api_v2/src/seed-data/estate.json |
-     while read -r url; do
-       code=$(curl -s -o /dev/null -w '%{http_code}' --get --data-urlencode "url=$url" "$API/pages")
-       [ "$code" = 200 ] || echo "$code $url"
-     done
+   read -rs PREVIEW_SECRET; export PREVIEW_SECRET
+   FORMS_API=<origin>   # the same origin as step 3, set again on your machine
+   pnpm --filter @govtech-bb/api-v2 check-import --base-url https://<api origin> --forms-api "$FORMS_API"
    ```
+
+   No `--` before the flags (pnpm forwards it and tsx rejects it). Each failing page prints `FAIL <url> expected <level>: no token <status>, token <status>`, with the problem in brackets after a 200 whose body is wrong (a status of `ERR …` is a network error). Then one `<level>: <n> pages, <n> failing` line per level, and a last line with the failure count and the snapshot's `source` hash, which must match the import's. It exits 1 on any failure. `preview token refused` means `PREVIEW_SECRET` is wrong, or unset on the API, and `rate limited` means the site routes' 1,000-requests-a-minute limit was hit; both stop the run at once. Paste the output on the import issue with step 4's lines.
 
 ### A database that already has content
 
@@ -436,9 +472,109 @@ Do sandbox first, then staging and prod once their api_v2 services exist.
 
 Run `--dry-run`: it refuses an occupied database and shows the actor histogram of every recorded page and category event. A histogram containing only `system` does not prove that no editor has changed content: category edits made before migration `007` left no events, and migration `007` rewrites legacy non-user actors to `system`. Do not use the histogram alone as permission to replace an estate. Only run `--force "<reason>"` after separately verifying that no editor-owned content will be overwritten and obtaining approval for the replacement. If editors have written, or that cannot be established, do not replace: preserve editor-owned data; fix forward in the editor, or use an approved RDS point-in-time recovery to a moment before the bad import. The same rule is the rollback rule after a bad import.
 
+An editor has written if any of these holds:
+
+- **(a)** the refusal's `history actors:` lists any actor other than `system`. Only `system` is a machine actor; editors are recorded by their `auth_user` id, which `007` kept.
+- **(b)** the refusal's `revisions:` is not 0. A pending save writes no history event (see "Pending revisions"), and `--force` deletes it.
+- **(c)** on sandbox only, a category was edited between #3351 (28 Oct 2026, 00:24 UTC) and sandbox's deploy of #3340 running migration `007` (merged 28 Oct 2026, 19:21 UTC), when category edits left no event. #3234 checks this with a one-off query.
+
+If any holds, stop, record it on the import issue, and fix forward.
+
 ### The markdown freeze
 
-`apps/landing/src/content` freezes at the prod import. Until then it stays editable, and the snapshot is regenerated before each environment's import (step 1). After the prod import, content changes go through the editor only; delete the directory once landing_v2 is the only reader.
+`apps/landing/src/content` freezes at the prod import. Until then it stays editable, and CI keeps `estate.json` current on every PR. `apps/landing` reads api_v2 when `VITE_API_V2_URL` is set and falls back to the markdown otherwise; deleting the directory is part of retiring the v1 content path (#3165).
+
+There is one switch: the GitHub repository variable `CONTENT_FREEZE=true`. #3236 adds the check that, while it is set, fails any PR into `main` that edits `apps/landing/src/content/**/*.md` or either `categories.ts`, including the PRs the v1 form builder opens. Turn it on as step 0 of the prod import, **before** the prod deploy whose snapshot is imported; a content PR merged in between is otherwise lost. A repository admin runs:
+
+```sh
+gh variable set CONTENT_FREEZE --body true   # on
+gh variable delete CONTENT_FREEZE            # off
+```
+
+The "Generated Files Up To Date" job (#3136) stays on: it also regenerates two v1 files (`services-index.generated.ts`, `form-categories.generated.ts`) and writes only generated files, so the freeze check never trips on it, and with the markdown frozen its `estate.json` regen is a no-op. From then on `estate.json` no longer tracks the prod database; it is read only by local `SEED` and fresh imports. After the prod import, content changes go through the editor only.
+
+## History protection
+
+`change_events_no_mutate` rejects ordinary updates and all deletes. The
+controlled redaction exception is described below. Migration `017` adds
+`change_events_no_truncate`, a statement-level trigger that also rejects emptying
+the table with `TRUNCATE`, even when it has no rows. Ordinary inserts still work.
+
+These guards do not stop a table owner from disabling triggers. The API currently
+uses the same database credentials for migrations and requests. Separate owner
+and runtime roles, credentials and migration startup are follow-up work tracked
+from #2968; the runtime role should only read and insert history rows.
+
+## Snapshot formats
+
+Migration `018` adds `change_events.snapshot_version`. Existing events stay null,
+which means their format is unknown. New events default to `1`, covering both
+`record_change` and `record_review` without rewriting either trigger.
+
+Version `1` identifies the table-row formats in use when this migration lands.
+Use `entity_kind` and `action` to identify the source table, then the format number
+to interpret its row. Review actions still hold revision rows, not page rows.
+A migration that changes an audited table's row shape must bump the default.
+Do not backfill old events or assume a null label means one particular format.
+
+## Removing sensitive history snapshots
+
+Migration `019` allows one exception to the append-only history rule. An operator
+can replace an event's entire snapshot with
+`{"redacted":true,"reason":"<ticket>","by":"<operator>"}`. Its ID, entity, version
+number, action, author and timestamp stay unchanged. A removal notice cannot be
+rewritten, and events still cannot be deleted.
+
+Redaction also preserves `snapshot_version`. It describes the removed snapshot,
+not the removal notice. Readers must check `snapshot.redacted === true` before
+using `snapshot_version` to choose a parser.
+
+This is an operator command, not an API endpoint. It uses the API's configuration
+and verified database TLS settings, but does not run migrations. Use authorized
+database credentials. The `app.redacting` transaction setting is an explicit
+switch, not an administrator permission check; `--by` records the name the
+operator supplies. Database-role separation is not part of this change.
+
+Before running it:
+
+1. Remove the sensitive text from the source page or record so another save
+   cannot copy it into history again.
+2. Check retained page revisions, other history versions, search copies, caches,
+   logs and backups. This command changes none of them and is not a complete
+   data-erasure procedure.
+3. Identify each affected event by its ID. To list a page's event IDs without
+   printing its content, query `id, version_no, action, actor, occurred_at` from
+   `change_events`, filtered by `entity_kind = 'content_page'` and its
+   `entity_id`.
+4. Use a ticket reference for the reason. Do not repeat the sensitive text there.
+
+From `apps/api_v2`, inspect one event first:
+
+```sh
+pnpm redact-change-events --event-id "<event UUID>" --reason "incident-42" --by "<operator>"
+```
+
+Check the printed database and event metadata, then repeat with `--apply`:
+
+```sh
+pnpm redact-change-events --event-id "<event UUID>" --reason "incident-42" --by "<operator>" --apply
+```
+
+In the deployed image, use `node dist/src/redact-change-events.js` with the same
+arguments. Do not add a `--` separator to the pnpm command. Without `--apply`,
+nothing is written. A missing or already-redacted event exits non-zero. The
+command never prints snapshot content and commits the replacement in one
+transaction.
+
+Repeat for every affected event. Then refresh the editor's history and check that
+the content is gone. History keeps the original author, action and date, removes
+a redacted rejection's comment, and does not compare fields across a missing
+snapshot. The history count and timestamps do not change, so the version poll is
+not a redaction notification.
+
+Self-approval checks still count the author of a redacted content event. If the
+last public snapshot was removed, the check may include earlier contributors
+too. Another approver who did not contribute must publish the page.
 
 ## Operations and tests
 
@@ -455,7 +591,7 @@ pnpm exec nx run api_v2:test
 DB_HOST=localhost pnpm exec nx run api_v2:e2e
 ```
 
-Unit/integration tests run against PostgreSQL (`DB_HOST` etc., defaulting to `localhost:5432` as `postgres`/`postgres`): the global setup migrates one template database per run and each test clones it, dropping it afterwards. There is no skip; with no database the run fails and says so. CI's Test job provides a `postgres` service. PostgreSQL e2e creates and drops uniquely named scratch databases and exercises the compiled Node process, migrations, cookie sessions, session expiry/revocation, origin protection, audit identity, pool recovery and shutdown. Test sessions are created through the real BetterAuth internal adapter in test code; no production login bypass exists. The e2e suite skips when `DB_HOST` is unset. OAuth provider admission and the sign-in handshake are tested without live GitHub credentials; deployment still requires a real GitHub sign-in and TLS smoke check.
+Unit/integration tests run against PostgreSQL (`DB_HOST` etc., defaulting to `localhost:5432` as `postgres`/`postgres`): the global setup migrates one template database per run and each test clones it, dropping it afterwards. There is no skip; with no database the run fails and says so. CI's Test job provides a `postgres` service. PostgreSQL e2e creates and drops uniquely named scratch databases and exercises the compiled Node process, migrations, cookie sessions, session expiry/revocation, origin protection, audit identity, pool recovery and shutdown. Test sessions are created through the real BetterAuth internal adapter in test code; no production login bypass exists. The e2e suite skips when `DB_HOST` is unset. OAuth provider admission and the sign-in handshake are tested without live Google credentials; deployment still requires a real Google sign-in and TLS smoke check.
 
 `openapi.json` is a file snapshot of the document the running app generates from its route schemas (`src/routes/contracts.ts`), so `src/openapi.test.ts` fails when the two differ. It is served at `/docs/openapi.json`, with a browsable reference at `/docs`. Update it from this directory with `pnpm exec vitest run src/openapi.test.ts -u`.
 

@@ -9,7 +9,10 @@ import {
   REDO_COMMAND,
   UNDO_COMMAND,
 } from "lexical";
-import { $duplicateBlocks, $duplicateQuestion } from "../../src/forms/editor/structure/blocks";
+import {
+  $duplicateBlocks,
+  $duplicateQuestion,
+} from "../../src/forms/canvas/structure/structure-blocks";
 import { registerEditorHistory } from "../../src/editor/core/history";
 import { compileForm } from "../helpers/default-form";
 import { fromEditor, readMarkdown, toEditor, writeMarkdown } from "../helpers/default-form";
@@ -18,8 +21,8 @@ import {
   $isMentionNode,
   $mentionField,
   MentionNode,
-} from "../../src/forms/features/mentions/node";
-import { $blockId, $setSettings, $settings } from "../../src/editor/core/document-state";
+} from "../../src/forms/mentions/mention-node";
+import { $blockId, $setSettings, $settings } from "../../src/forms/canvas/block-state";
 import {
   $blockKind,
   $createFormTitleNode,
@@ -30,15 +33,15 @@ import {
   $isQuestionNode,
   $questionKey,
   $shareQuestionSettings,
-} from "../../src/forms/editor/nodes";
+} from "../../src/forms/canvas/form-nodes";
 import {
   $createOptionNode,
   $createWidgetNode,
   $isOptionNode,
   type ChoiceKind,
-} from "../../src/forms/editor/answer-nodes";
+} from "../../src/forms/canvas/answer-nodes";
 import { formNodes } from "../helpers/default-form";
-import { $ssbIds } from "../../src/forms/editor/ssb";
+import { $ssbIds } from "../../src/forms/formats/legacy-ssb/legacy-ssb-rules";
 
 const makeEditor = () =>
   createEditor({

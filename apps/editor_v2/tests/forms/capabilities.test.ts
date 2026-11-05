@@ -3,17 +3,20 @@ import { LinkNode } from "@lexical/link";
 import { HeadingNode } from "@lexical/rich-text";
 import { expect, test } from "vitest";
 import { $createParagraphNode, $getRoot } from "lexical";
-import { capabilityWarnings, logicIssues } from "../../src/forms/editor/capabilities";
+import {
+  capabilityWarnings,
+  logicIssues,
+} from "../../src/forms/formats/legacy-ssb/legacy-ssb-capabilities";
 import { compileForm, type FormLogic } from "../helpers/default-form";
 import { $legacyDemo as $demo } from "../helpers/legacy-demo";
-import { $createMentionNode, MentionNode } from "../../src/forms/features/mentions/node";
-import { $blockId, $setSettings } from "../../src/editor/core/document-state";
-import { $createOptionNode } from "../../src/forms/editor/answer-nodes";
+import { $createMentionNode, MentionNode } from "../../src/forms/mentions/mention-node";
+import { $blockId, $setSettings } from "../../src/forms/canvas/block-state";
+import { $createOptionNode } from "../../src/forms/canvas/answer-nodes";
 import {
   $ensureBlockIds,
   $ensureQuestionFields,
   $shareQuestionSettings,
-} from "../../src/forms/editor/nodes";
+} from "../../src/forms/canvas/form-nodes";
 import { formNodes } from "../helpers/default-form";
 
 const editor = () =>

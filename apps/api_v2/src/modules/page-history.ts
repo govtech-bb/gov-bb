@@ -72,8 +72,9 @@ export function historyOf(
   let previous: Readonly<Record<string, unknown>> | null = null;
   const entries = events.map((event): PageHistoryEntry => {
     const review = REVIEW_STEPS.has(event.action);
+    const redacted = event.snapshot.redacted === true;
     const before = previous;
-    if (!review) previous = event.snapshot;
+    if (!review) previous = redacted ? null : event.snapshot;
     return {
       version_no: event.versionNo,
       action: event.action,
@@ -81,7 +82,7 @@ export function historyOf(
       actor_name: event.actorName,
       occurred_at: event.occurredAt.toISOString(),
       changed:
-        review || before === null
+        review || redacted || before === null
           ? []
           : PageFields.keyof().options.filter(
               (field) =>

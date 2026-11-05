@@ -4,11 +4,11 @@ import { expect, test } from "vitest";
 import { $createParagraphNode, $createTextNode, $getRoot, type LexicalNode } from "lexical";
 import { createHeadlessEditor } from "../../src/editor/core/create-editor";
 import { govbbFormEditor } from "../../src/presets/govbb-form";
-import { createFormRuntime } from "../../src/forms/editor/runtime";
+import { createFormRuntime } from "../../src/forms/canvas/form-runtime";
 import { createFormDraftCodec } from "../helpers/default-form";
-import { $duplicateBlocks } from "../../src/forms/editor/structure/blocks";
-import { $fields } from "../../src/forms/features/logic/queries";
-import { $blockId, $setDepth, $setSettings, $settings } from "../../src/editor/core/document-state";
+import { $duplicateBlocks } from "../../src/forms/canvas/structure/structure-blocks";
+import { $fields } from "../../src/forms/conditional-logic/logic-queries";
+import { $blockId, $setDepth, $setSettings, $settings } from "../../src/forms/canvas/block-state";
 import {
   $blockKind,
   $createFormTitleNode,
@@ -17,14 +17,11 @@ import {
   $ensureBlockIds,
   $ensureQuestionFields,
   $questionKey,
-} from "../../src/forms/editor/nodes";
-import { $createWidgetNode } from "../../src/forms/editor/answer-nodes";
-import { checkboxAccordionField } from "../../src/forms/features/checkbox-accordion/definition";
-import {
-  groupedChoices,
-  type GroupDraft,
-} from "../../src/forms/features/checkbox-accordion/groups";
-import type { Settings } from "../../src/forms/core/settings";
+} from "../../src/forms/canvas/form-nodes";
+import { $createWidgetNode } from "../../src/forms/canvas/answer-nodes";
+import { groupedCheckboxesField } from "../../src/forms/fields/grouped-checkboxes";
+import { groupedChoices, type GroupDraft } from "../../src/forms/fields/grouped-checkboxes-groups";
+import type { Settings } from "../../src/forms/model/settings";
 
 const groups: GroupDraft[] = [
   {
@@ -228,7 +225,7 @@ function assertCopy(nodes: LexicalNode[]) {
     opaque: literal,
   });
   expect(
-    legacyFieldAdapter(checkboxAccordionField)!.project!($settings(answer)).options.map(
+    legacyFieldAdapter(groupedCheckboxesField)!.project!($settings(answer)).options.map(
       (option) => option.value,
     ),
   ).toEqual(["approved", "declined", "advice-option", "guidance"]);
@@ -303,7 +300,7 @@ function assertCopy(nodes: LexicalNode[]) {
   });
   expect(paragraph.getTextContent()).toBe("Keep advice-option as ordinary prose");
 
-  return [...nodes.map($blockId), field, ...checkboxAccordionField.ownedIds!($settings(answer))];
+  return [...nodes.map($blockId), field, ...groupedCheckboxesField.ownedIds!($settings(answer))];
 }
 
 test("two grouped question copies get independent identities and remap inactive references without rewriting values", () => {
@@ -382,8 +379,8 @@ test("field copy hooks isolate unknown nested group, option and field settings",
     futureField: { labels: ["retained"] },
   };
 
-  const first = checkboxAccordionField.copySettings!(original);
-  const second = checkboxAccordionField.copySettings!(original);
+  const first = groupedCheckboxesField.copySettings!(original);
+  const second = groupedCheckboxesField.copySettings!(original);
   const firstGroup = settingsObject(settingsArray(first.groups)[0]);
   settingsArray(settingsObject(firstGroup.futureGroup).labels)[0] = "changed";
   settingsArray(

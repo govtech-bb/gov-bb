@@ -1,4 +1,3 @@
-import type { BaseUIEvent } from "@base-ui/react/types";
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
 import { useLexicalEditable } from "@lexical/react/useLexicalEditable";
 import {
@@ -10,7 +9,6 @@ import {
 } from "@lexical/table";
 import {
   $createParagraphNode,
-  $createTextNode,
   $getNearestNodeFromDOMNode,
   $getNodeByKey,
   $getRoot,
@@ -23,7 +21,6 @@ import {
   HISTORY_PUSH_TAG,
   SKIP_SELECTION_FOCUS_TAG,
   INDENT_CONTENT_COMMAND,
-  KEY_DOWN_COMMAND,
   OUTDENT_CONTENT_COMMAND,
   type BaseSelection,
   type LexicalEditor,
@@ -32,8 +29,6 @@ import {
 import {
   ArrowDown,
   ArrowUp,
-  DotsSixVertical,
-  MagnifyingGlass,
   Plus,
   TextIndent,
   TextOutdent,
@@ -42,49 +37,32 @@ import {
   ListBullets,
   ListNumbers,
 } from "@phosphor-icons/react";
-import {
-  useEffect,
-  useId,
-  useRef,
-  useState,
-  type ComponentProps,
-  type MouseEvent,
-  type RefObject,
-} from "react";
-import {
-  $availableActions,
-  $executeAction,
-  rankActions,
-  type EditorAction,
-} from "../editor/core/actions";
+import { useEffect, useId, useRef, useState } from "react";
 import {
   BlockRail,
   DropLine,
   firstLineMiddle,
   menuKey,
   RailButton,
-  railGrip,
-  useBlockDrag,
-  useRailTarget,
-} from "../editor/react/block-rail";
-import { useEditorDefinition, useLinkPages } from "../editor/react/composer";
-import { $validPoint, roomierSide, useCaretReturn } from "../editor/react/editor-popup";
-import { cn } from "../cn";
-import { altKey } from "../editor/react/shortcut";
-import { turnIntoOptions } from "../editor/react/turn-into";
+  useBlockControls,
+  BlockMenuRoot,
+  BlockGrip,
+  EditorSlot,
+  $validPoint,
+  roomierSide,
+  useCaretReturn,
+  altKey,
+  turnIntoOptions,
+} from "@/editor/react";
 import { Button } from "../ui/button";
-import { Field } from "../ui/field";
-import { openedByTouch } from "../ui/focus";
-import { Input } from "../ui/input";
 import { Kbd } from "../ui/kbd";
 import { Menu } from "../ui/menu";
-import { NativeSelect } from "../ui/native-select";
-import { belowBar, Popover } from "../ui/popover";
-import { groupLabel, listFooter } from "../ui/surface";
+import { belowBar } from "../ui/popover";
+import { groupLabel } from "../ui/surface";
 import { Tip } from "../ui/tooltip";
 import { TurnIntoSubmenu } from "../ui/turn-into";
 import { useLatched } from "../ui/use-latched";
-import { actionList, PageActionList } from "./action-menu";
+import { PageInsertMenu, type PageInsertMenuState } from "./insert-menu";
 import { $writeAtEnd } from "./block-exit";
 import { $blockLines, $pageChoices, $turnPageLines } from "./turn-into";
 import { $rootBlock, type PagePlace } from "./insertion";
@@ -92,13 +70,11 @@ import { OPEN_BLOCK_OPTIONS_COMMAND } from "./block-options";
 import { $isPageContactNode, ContactBlockSettings, type PageContactNode } from "./modules/contact";
 import { startWriting } from "./slash-menu";
 import { PageMetadataNode } from "./metadata";
-import { PageComponentNode, type PageComponentAttributes } from "./nodes";
+import { PageComponentNode } from "./blocks/node";
 import { $nearestPageList, $setPageListType } from "./modules/lists";
 import { $changePageTableColumns } from "./modules/tables";
-import { linkAddress } from "../editor/modules/links/url";
-import { safePageUrl } from "./modules/text";
-import { LinkPicker } from "../ui/link-picker";
 import { $dropPageBlock, $pageDropAt, PAGE_BLOCK_DRAG } from "./block-drag";
+import { BLOCK_OPTIONS, BlockMenuItem, type BlockOptionsProps } from "./blocks/block-options";
 
 function $blockSelection(selection: BaseSelection | null, block: LexicalNode) {
   if (
@@ -147,16 +123,6 @@ function $pageBlockAt(editor: LexicalEditor, y: number) {
   })!.key;
 }
 
-type InsertMenu = {
-  anchor: HTMLElement;
-  /** The block it inserts beside, or null at the end of the page. */
-  key: string | null;
-  /** Where the new block goes beside its block. */
-  place: PagePlace;
-  selection: BaseSelection | null;
-  side: "top" | "bottom";
-};
-
 type BlockMenu = { key: string; contextKey: string | null; selection: BaseSelection | null };
 
 export function PageBlockControls({ anchor, hintId }: { anchor: HTMLElement; hintId: string }) {
@@ -167,56 +133,63 @@ export function PageBlockControls({ anchor, hintId }: { anchor: HTMLElement; hin
 
 function EditablePageControls({ anchor, hintId }: { anchor: HTMLElement; hintId: string }) {
   const [editor] = useLexicalComposerContext();
-  const [insert, setInsert] = useState<InsertMenu | null>(null);
-  const [blockMenu, setBlockMenu] = useState<BlockMenu | null>(null);
+  const [insert, setInsert] = useState<PageInsertMenuState | null>(null);
   const caret = useRef<string | null>(null);
   const savedSelection = useRef<BaseSelection | null>(null);
-  const grip = useRef<HTMLButtonElement>(null);
+  // Where the caret was as the block menu opened, for closing it to put the caret back
+  const menuSelection = useRef<BaseSelection | null>(null);
   const returnCaret = useCaretReturn();
   // Add content opens the insert menu at the page's end; the rail's Insert, at its block
   const addContent = useId();
   const insertOpen = !!insert && insert.anchor.id !== addContent;
-  // The block menu came from ⌘/: closing it lets the pointer lead the rail again
-  const byKeyboard = useRef(false);
 
-  const { target, pin, release } = useRailTarget(anchor, {
-    // Keep the rail anchored while interacting with its menu.
-    held: !!insert || !!blockMenu,
-    $blockAt: (element, point) => {
-      const root = editor.getRootElement();
+  const controls = useBlockControls(anchor, {
+    // Keep the rail anchored while interacting with its insert menu, as with its block menu
+    held: !!insert,
+    target: {
+      $blockAt: (element, point) => {
+        const root = editor.getRootElement();
 
-      if (!root) return undefined;
-      const block = root.contains(element) && $rootBlock($getNearestNodeFromDOMNode(element));
+        if (!root) return undefined;
+        const block = root.contains(element) && $rootBlock($getNearestNodeFromDOMNode(element));
 
-      if (block) return block.getKey();
+        if (block) return block.getKey();
 
-      return root.contains(element) || element === anchor
-        ? $pageBlockAt(editor, point.y + anchor.getBoundingClientRect().top)
-        : undefined;
+        return root.contains(element) || element === anchor
+          ? $pageBlockAt(editor, point.y + anchor.getBoundingClientRect().top)
+          : undefined;
+      },
+      // The caret's block, kept while the selection is somewhere else for a moment
+      $caretBlock: () => {
+        const selection = $getSelection();
+
+        const block =
+          $isRangeSelection(selection) || $isTableSelection(selection)
+            ? $rootBlock(selection.anchor.getNode())
+            : null;
+
+        if (block) caret.current = block.getKey();
+
+        return caret.current && $getNodeByKey(caret.current)?.isAttached() ? caret.current : null;
+      },
+      $place: (key) => firstLineMiddle(editor, anchor, key),
     },
-    // The caret's block, kept while the selection is somewhere else for a moment
-    $caretBlock: () => {
-      const selection = $getSelection();
-
-      const block =
-        $isRangeSelection(selection) || $isTableSelection(selection)
-          ? $rootBlock(selection.anchor.getNode())
-          : null;
-
-      if (block) caret.current = block.getKey();
-
-      return caret.current && $getNodeByKey(caret.current)?.isAttached() ? caret.current : null;
+    drag: {
+      type: PAGE_BLOCK_DRAG,
+      $at: (key, point) => $pageDropAt(editor, anchor, key, point),
+      $drop: $dropPageBlock,
     },
-    $place: (key) => firstLineMiddle(editor, anchor, key),
+    onMenuOpen: () => {
+      setInsert(null);
+      menuSelection.current = savedSelection.current?.clone() ?? null;
+    },
+    // Esc, a press outside or the grip again puts the caret back; an option's own action places it
+    onMenuClose: (reason) => {
+      if (reason && reason !== "item-press") returnCaret(menuSelection.current, reason);
+    },
   });
 
-  const drag = useBlockDrag(anchor, {
-    type: PAGE_BLOCK_DRAG,
-    $at: (key, point) => $pageDropAt(editor, anchor, key, point),
-    $drop: $dropPageBlock,
-    onEnd: release,
-    onNudge: (key) => openBlockMenu(key, target?.key === key ? target.context : null),
-  });
+  const { target, menu, openMenu } = controls;
 
   useEffect(() => {
     const update = () =>
@@ -236,7 +209,8 @@ function EditablePageControls({ anchor, hintId }: { anchor: HTMLElement; hintId:
 
   const openInsert = (element: HTMLElement, key: string | null, place: PagePlace = "below") => {
     if (!editor.isEditable()) return;
-    setBlockMenu(null);
+
+    if (menu) controls.closeMenu();
     setInsert({
       anchor: element,
       key,
@@ -246,48 +220,11 @@ function EditablePageControls({ anchor, hintId }: { anchor: HTMLElement; hintId:
     });
   };
 
-  const openBlockMenu = (key: string, contextKey: string | null = null) => {
-    if (!editor.isEditable()) return;
-    setInsert(null);
-    setBlockMenu({ key, contextKey, selection: savedSelection.current?.clone() ?? null });
+  const blockMenu: BlockMenu | null = menu && {
+    key: menu.key,
+    contextKey: menu.context,
+    selection: menuSelection.current,
   };
-
-  const closeBlockMenu = () => {
-    setBlockMenu(null);
-
-    if (!byKeyboard.current) return;
-    byKeyboard.current = false;
-    release();
-  };
-
-  // ⌘/ opens the caret's block menu, as in the form editor
-  useEffect(
-    () =>
-      editor.registerCommand(
-        KEY_DOWN_COMMAND,
-        (event) => {
-          if (
-            !editor.isEditable() ||
-            !(event.metaKey || event.ctrlKey) ||
-            event.altKey ||
-            event.key !== "/"
-          )
-            return false;
-          const key = caret.current;
-
-          if (!key || !grip.current) return false;
-          event.preventDefault();
-          byKeyboard.current = true;
-          pin(key);
-          openBlockMenu(key);
-
-          return true;
-        },
-        COMMAND_PRIORITY_LOW,
-      ),
-    // openBlockMenu reads only refs and state setters
-    [editor, pin],
-  );
 
   // A block that still needs setting up opens its own Block options, such as a contact block once it's inserted
   useEffect(
@@ -303,33 +240,18 @@ function EditablePageControls({ anchor, hintId }: { anchor: HTMLElement; hintId:
 
           if (!root) return false;
           // Pinned, the menu stays on its block; closing it lets the pointer lead the rail again
-          byKeyboard.current = true;
-          pin(root);
-          openBlockMenu(root, key);
+          openMenu(root, key, { pin: true });
 
           return true;
         },
         COMMAND_PRIORITY_LOW,
       ),
-    // openBlockMenu reads only refs and state setters
-    [editor, pin],
+    [editor, openMenu],
   );
 
   return (
-    <Menu.Root
-      open={!!blockMenu}
-      onOpenChange={(open, { reason }) => {
-        if (open) {
-          if (!blockMenu && target) openBlockMenu(target.key, target.context);
-
-          return;
-        }
-
-        if (blockMenu && reason !== "item-press") returnCaret(blockMenu.selection, reason);
-        closeBlockMenu();
-      }}
-    >
-      <DropLine line={drag.line} />
+    <BlockMenuRoot controls={controls}>
+      <DropLine line={controls.drag.line} />
       <p id={hintId} className="sr-only">
         {startWriting}
       </p>
@@ -362,42 +284,17 @@ function EditablePageControls({ anchor, hintId }: { anchor: HTMLElement; hintId:
               <Plus />
             </RailButton>
           </Tip>
-          <Tip
-            hint
-            content={
+          <BlockGrip
+            controls={controls}
+            label="Block options"
+            tip={
               <>
                 <em>Drag</em> to move
                 <br />
                 <em>Click</em> or <Kbd>{menuKey}</Kbd> for block options
               </>
             }
-          >
-            <Menu.Trigger
-              render={
-                <RailButton
-                  ref={grip}
-                  aria-label="Block options"
-                  draggable
-                  className={railGrip}
-                  onDragStart={(event) => {
-                    setBlockMenu(null);
-                    drag.start(event, target.key);
-                  }}
-                  // Base UI opens a menu on mousedown, which would swallow the drag: it opens on click instead
-                  onMouseDown={(event: BaseUIEvent<MouseEvent<HTMLButtonElement>>) =>
-                    event.preventBaseUIHandler()
-                  }
-                  onClick={() => {
-                    if (!blockMenu) return openBlockMenu(target.key, target.context);
-                    returnCaret(blockMenu.selection, "trigger-press");
-                    closeBlockMenu();
-                  }}
-                >
-                  <DotsSixVertical />
-                </RailButton>
-              }
-            />
-          </Tip>
+          />
         </BlockRail>
       )}
       {/* Below the last block, a click goes on writing at the end of the page */}
@@ -430,180 +327,8 @@ function EditablePageControls({ anchor, hintId }: { anchor: HTMLElement; hintId:
           setInsert(null);
         }}
       />
-      <PageBlockMenu menu={blockMenu} onDone={closeBlockMenu} />
-    </Menu.Root>
-  );
-}
-
-/** Keeps the last menu state through its exit transition and fixes placement while filtering. */
-function PageInsertMenu({
-  menu,
-  onDone,
-  onDismiss,
-}: {
-  menu: InsertMenu | null;
-  onDone: () => void;
-  /** Esc, or a press outside. */
-  onDismiss: (reason: string) => void;
-}) {
-  const shown = useLatched(menu);
-  const search = useRef<HTMLInputElement>(null);
-  const popup = useRef<HTMLDivElement>(null);
-
-  return (
-    <Popover.Root open={!!menu} onOpenChange={(open, { reason }) => !open && onDismiss(reason)}>
-      {shown && (
-        <Popover.Content
-          ref={popup}
-          aria-label="Insert page content"
-          anchor={shown.anchor}
-          side={shown.side}
-          align="start"
-          collisionPadding={belowBar()}
-          collisionAvoidance={{ side: "none", align: "shift", fallbackAxisSide: "none" }}
-          // Opened by a touch, the menu takes the focus itself, as the search's would bring up the keyboard over the
-          // list. Otherwise the search does: focus before positioning must not scroll the page.
-          initialFocus={(type) => {
-            if (openedByTouch(type)) return popup.current;
-            search.current?.focus({ preventScroll: true });
-
-            return false;
-          }}
-          finalFocus={false}
-          className="page-insert-menu flex w-[min(21rem,calc(100vw-2rem))] flex-col overflow-hidden p-0 text-14"
-        >
-          <InsertList menu={shown} search={search} onDone={onDone} />
-        </Popover.Content>
-      )}
-    </Popover.Root>
-  );
-}
-
-/** The insert menu's search and list, fresh each time the menu opens. */
-function InsertList({
-  menu,
-  search,
-  onDone,
-}: {
-  menu: InsertMenu;
-  search: RefObject<HTMLInputElement | null>;
-  onDone: () => void;
-}) {
-  const [editor] = useLexicalComposerContext();
-  const definition = useEditorDefinition();
-  const [query, setQuery] = useState("");
-  const [index, setIndex] = useState(0);
-  const [error, setError] = useState<string>();
-  const ids = useId();
-  const list = useRef<HTMLDivElement>(null);
-
-  const actions = editor.getEditorState().read(
-    () => {
-      const target = menu.key ? $getNodeByKey(menu.key) : $getRoot().getLastChild();
-
-      return target
-        ? rankActions(
-            query,
-            $availableActions(editor, definition, { targetKey: target.getKey(), mode: menu.place }),
-          )
-        : [];
-    },
-    { editor },
-  );
-
-  const selected = actions[index];
-  const shownIndex = useRef(index);
-
-  // Scroll only after the highlight moves; the popup may not be positioned on its first render.
-  useEffect(() => {
-    if (shownIndex.current === index) return;
-    shownIndex.current = index;
-    list.current?.querySelector("[aria-selected=true]")?.scrollIntoView({ block: "nearest" });
-  }, [index]);
-
-  const insert = (action: EditorAction) => {
-    if (!editor.isEditable()) return;
-    editor.update(
-      () => {
-        let target = menu.key ? $getNodeByKey(menu.key) : $getRoot().getLastChild();
-
-        if (!target || target instanceof PageMetadataNode) {
-          target = $createParagraphNode();
-          $getRoot().append(target);
-        }
-
-        const result = $executeAction(editor, definition, action.id, {
-          targetKey: target.getKey(),
-          mode: menu.place,
-        });
-
-        if (result.executed) {
-          onDone();
-          result.result?.afterClose?.();
-        } else setError(result.error ?? "This block cannot be inserted here.");
-      },
-      { tag: HISTORY_PUSH_TAG },
-    );
-    editor.focus();
-  };
-
-  return (
-    <>
-      <label className="mx-1.5 mt-1.5 flex items-center gap-2.5 border-b border-line px-2 pt-2.5 pb-3.5 text-muted [&>svg]:size-4 [&>svg]:shrink-0">
-        <MagnifyingGlass aria-hidden="true" />
-        <input
-          ref={search}
-          role="combobox"
-          aria-label="Search page content"
-          placeholder="Search content…"
-          value={query}
-          aria-expanded
-          aria-controls={`${ids}-list`}
-          aria-activedescendant={selected ? `${ids}-${index}` : undefined}
-          className="w-full min-w-0 text-16 text-ink outline-offset-4"
-          onChange={(event) => {
-            setQuery(event.target.value);
-            setIndex(0);
-            setError(undefined);
-          }}
-          onKeyDown={(event) => {
-            if ((event.key === "ArrowDown" || event.key === "ArrowUp") && actions.length) {
-              event.preventDefault();
-              setIndex(
-                (current) =>
-                  (current + (event.key === "ArrowDown" ? 1 : -1) + actions.length) %
-                  actions.length,
-              );
-            } else if (event.key === "Enter" && selected) {
-              event.preventDefault();
-              insert(selected);
-            }
-          }}
-        />
-      </label>
-      <div
-        ref={list}
-        id={`${ids}-list`}
-        className={cn(actionList, "max-h-[34rem] min-h-0")}
-        role="listbox"
-        aria-label="Insert page content"
-      >
-        <PageActionList
-          actions={actions}
-          searching={!!query.trim()}
-          selectedIndex={index}
-          onHighlight={setIndex}
-          onSelect={insert}
-          optionId={(i) => `${ids}-${i}`}
-          error={error}
-        />
-      </div>
-      {selected?.description && (
-        <p className={listFooter} aria-hidden="true">
-          {selected.description}
-        </p>
-      )}
-    </>
+      <PageBlockMenu menu={blockMenu} onDone={() => controls.closeMenu()} />
+    </BlockMenuRoot>
   );
 }
 
@@ -622,11 +347,6 @@ function PageBlockMenu({ menu, onDone }: { menu: BlockMenu | null; onDone: () =>
       {shown && <BlockMenuRows menu={shown} onDone={onDone} />}
     </Menu.Content>
   );
-}
-
-/** A row of the block menu: it acts, then closes the menu itself, so a failure can stay in view. */
-function BlockMenuItem(props: ComponentProps<typeof Menu.Item>) {
-  return <Menu.Item closeOnClick={false} {...props} />;
 }
 
 function BlockMenuRows({ menu, onDone }: { menu: BlockMenu; onDone: () => void }) {
@@ -685,6 +405,7 @@ function BlockMenuRows({ menu, onDone }: { menu: BlockMenu; onDone: () => void }
   );
 
   if (!model) return null;
+  const { component } = model;
 
   const change = (apply: (block: LexicalNode) => void, close = true) => {
     if (!editor.isEditable()) return;
@@ -743,71 +464,24 @@ function BlockMenuRows({ menu, onDone }: { menu: BlockMenu; onDone: () => void }
           />
         </div>
       )}
-      {(model.component || model.turnInto) && (
+      {(component || model.turnInto) && (
         <Menu.Group>
-          {model.component && (
-            <ComponentSettings
-              key={model.component.key}
-              component={model.component}
-              onChange={(patch) =>
-                change((block) => {
-                  const node = $pageBlockDescendant(model.component!.key, block);
+          {/* The component's own options, from the module that owns its kind; another component's start afresh */}
+          {component && (
+            <EditorSlot<BlockOptionsProps>
+              key={component.key}
+              name={BLOCK_OPTIONS}
+              props={{
+                component,
+                change: (apply, close) =>
+                  change((block) => {
+                    const node = $pageBlockDescendant(component.key, block);
 
-                  if (node instanceof PageComponentNode)
-                    node.setAttributes({ ...node.getAttributes(), ...patch });
-                }, false)
-              }
+                    if (node instanceof PageComponentNode) apply(node);
+                  }, close),
+              }}
             />
           )}
-          {model.component &&
-            (model.component.kind === "summary-list" ||
-              model.component.kind === "summary-item") && (
-              <BlockMenuItem
-                icon={<Plus />}
-                onClick={() =>
-                  change((block) => {
-                    if (!model.component) return;
-                    const node = $pageBlockDescendant(model.component.key, block);
-
-                    if (!(node instanceof PageComponentNode)) return;
-
-                    const item = new PageComponentNode("summary-item", {
-                      summaryKey: "Key",
-                    }).append($createParagraphNode());
-
-                    if (node.getKind() === "summary-list") node.append(item);
-                    else node.insertAfter(item);
-                    item.selectStart();
-                  })
-                }
-              >
-                Add summary item
-              </BlockMenuItem>
-            )}
-          {model.component &&
-            (model.component.kind === "action" || model.component.kind === "actions") && (
-              <BlockMenuItem
-                icon={<Plus />}
-                onClick={() =>
-                  change((block) => {
-                    const node = $pageBlockDescendant(model.component!.key, block);
-
-                    if (!(node instanceof PageComponentNode)) return;
-
-                    const button = new PageComponentNode("action", {
-                      href: "#",
-                      variant: "secondary",
-                    }).append($createTextNode("Get help"));
-
-                    if (node.getKind() === "actions") node.append(button);
-                    else node.insertAfter(button);
-                    button.selectStart();
-                  })
-                }
-              >
-                Add another button
-              </BlockMenuItem>
-            )}
           {model.turnInto && (
             <TurnIntoSubmenu
               value={model.turnInto.value}
@@ -959,157 +633,5 @@ function BlockMenuRows({ menu, onDone }: { menu: BlockMenu; onDone: () => void }
         </BlockMenuItem>
       </Menu.Group>
     </>
-  );
-}
-
-/** Action target fields are applied together; legacy Start destinations stay at the caret. */
-function ComponentSettings({
-  component,
-  onChange,
-}: {
-  component: {
-    key: string;
-    kind: string;
-    attributes: PageComponentAttributes;
-  };
-  onChange: (patch: PageComponentAttributes) => void;
-}) {
-  const data = component.attributes;
-  const [label, setLabel] = useState(data.summary ?? data.caption ?? data.summaryKey ?? "");
-  const [href, setHref] = useState(data.href ?? "");
-  const [form, setForm] = useState(data.form ?? "");
-
-  const [target, setTarget] = useState<"url" | "form" | "linked-form">(
-    data.form !== undefined ? "form" : data.href !== undefined ? "url" : "linked-form",
-  );
-
-  const [error, setError] = useState<string>();
-  const pages = useLinkPages();
-
-  const labelName =
-    component.kind === "details"
-      ? "Details summary"
-      : component.kind === "table"
-        ? "Table caption"
-        : component.kind === "summary-item"
-          ? "Summary key"
-          : undefined;
-
-  if (!labelName && component.kind !== "action") return null;
-
-  const keepSettings = () => {
-    if (labelName) {
-      if (!label.trim()) {
-        setError(`Enter a ${labelName.toLowerCase()}.`);
-
-        return;
-      }
-
-      if (label !== (data.summary ?? data.caption ?? data.summaryKey ?? ""))
-        onChange(
-          component.kind === "details"
-            ? { summary: label }
-            : component.kind === "table"
-              ? { caption: label }
-              : { summaryKey: label },
-        );
-    } else {
-      const destination = target === "url" ? linkAddress(href, safePageUrl) : undefined;
-
-      if (destination === null) {
-        setError("Enter a relative link, or an http, https, email or telephone link.");
-
-        return;
-      }
-
-      onChange({
-        href: destination,
-        form: target === "form" ? form : undefined,
-        target: target === "linked-form" ? "form" : undefined,
-      });
-
-      if (destination) setHref(destination);
-    }
-
-    setError(undefined);
-  };
-
-  return (
-    <form
-      className="page-component-settings grid gap-4 px-3.5 pt-1 pb-3"
-      onKeyDown={(event) => event.key !== "Escape" && event.stopPropagation()}
-      onSubmit={(event) => {
-        event.preventDefault();
-        keepSettings();
-      }}
-    >
-      {labelName ? (
-        <Field size="sm" label={labelName} error={error}>
-          <Input
-            size="sm"
-            value={label}
-            onChange={(event) => setLabel(event.target.value)}
-            onBlur={keepSettings}
-          />
-        </Field>
-      ) : (
-        <>
-          <Field size="sm" label="Destination type">
-            <NativeSelect
-              size="sm"
-              value={target}
-              onChange={(event) => {
-                const value = event.target.value;
-
-                if (value === "url" || value === "form" || value === "linked-form")
-                  setTarget(value);
-              }}
-            >
-              <option value="url">Link</option>
-              <option value="linked-form">Page’s linked form</option>
-              <option value="form">Registered form</option>
-            </NativeSelect>
-          </Field>
-          {target === "url" && (
-            <Field size="sm" label="Button destination">
-              <LinkPicker size="sm" value={href} pages={pages} onValueChange={setHref} />
-            </Field>
-          )}
-          {target === "form" && (
-            <Field size="sm" label="Form identifier">
-              <Input
-                size="sm"
-                value={form}
-                autoComplete="off"
-                autoCapitalize="none"
-                spellCheck={false}
-                required
-                pattern="[a-zA-Z0-9][a-zA-Z0-9_-]*"
-                title="Use letters, numbers, hyphens or underscores; start with a letter or number."
-                onChange={(event) => setForm(event.target.value)}
-              />
-            </Field>
-          )}
-          <Field size="sm" label="Button style">
-            <NativeSelect
-              size="sm"
-              value={data.variant ?? "primary"}
-              onChange={(event) => onChange({ variant: event.target.value })}
-            >
-              <option value="primary">Primary</option>
-              <option value="secondary">Secondary</option>
-            </NativeSelect>
-          </Field>
-          {error && (
-            <p className="text-error" role="alert">
-              {error}
-            </p>
-          )}
-          <Button type="submit" variant="secondary" className="justify-self-start">
-            Apply settings
-          </Button>
-        </>
-      )}
-    </form>
   );
 }
