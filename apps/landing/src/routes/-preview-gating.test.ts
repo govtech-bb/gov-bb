@@ -59,7 +59,7 @@ vi.mock('../lib/api-v2-page', async (importOriginal) => ({
 }))
 
 const contactMocks = vi.hoisted(() => ({
-  getContactRecords: vi.fn(),
+  getPageRecords: vi.fn(),
 }))
 vi.mock('../lib/api-v2-collections', async (importOriginal) => ({
   ...(await importOriginal<object>()),
@@ -326,18 +326,18 @@ describe('$ route loader gating', () => {
       applicationClosed: false,
       level: 'public',
       startSubPageVisible: true,
-      contactRecords: {},
+      pageRecords: {},
       source: 'static',
     })
     expect((data as { page?: unknown }).page).toBeUndefined()
     expect(mocks.isVisible).toHaveBeenCalledWith(fakePage, 'draft', new Map())
     // No `::contact` block, so no collection is read
-    expect(contactMocks.getContactRecords).not.toHaveBeenCalled()
+    expect(contactMocks.getPageRecords).not.toHaveBeenCalled()
   })
 
   it('reads the records its contact blocks name at request time (#3185)', async () => {
     const records = { contacts: { collection: {}, records: {} } }
-    contactMocks.getContactRecords.mockResolvedValue(records)
+    contactMocks.getPageRecords.mockResolvedValue(records)
     mocks.findPage.mockReturnValue({
       ...fakePage,
       hast: {
@@ -362,10 +362,10 @@ describe('$ route loader gating', () => {
       params: { _splat: 'secret-service' },
       context: { level: 'public', serviceStatuses: [], categoryTree: STATIC },
     })
-    expect(contactMocks.getContactRecords).toHaveBeenCalledWith({
+    expect(contactMocks.getPageRecords).toHaveBeenCalledWith({
       data: [{ collection: 'contacts', record: 'barbados-drug-service' }],
     })
-    expect(data).toMatchObject({ kind: 'page', contactRecords: records })
+    expect(data).toMatchObject({ kind: 'page', pageRecords: records })
   })
 
   it('flags a page whose form is under maintenance', async () => {

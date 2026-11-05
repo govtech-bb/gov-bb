@@ -238,7 +238,7 @@ function permitted(from: string, to: string, typeOnly: boolean) {
         "react-dom",
         "@phosphor-icons/react",
         "@govtech-bb/govbbmarkd",
-        "@govtech-bb/govbbmarkd/contact-record",
+        "@govtech-bb/govbbmarkd/record-details",
         "@govtech-bb/govbbmarkd/content-url",
         "@govtech-bb/govbbmarkd/legacy",
         "@govtech-bb/govbbmarkd/react",

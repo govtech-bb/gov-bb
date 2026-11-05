@@ -1,6 +1,6 @@
-import { createContext, useContext } from 'react'
-import { contactDetails } from '@govtech-bb/govbbmarkd/contact-record'
-import type { ContactRecords } from '../../lib/api-v2-collections'
+import { useContext } from 'react'
+import { recordDetails } from '@govtech-bb/govbbmarkd/record-details'
+import { PageRecordsContext } from './PageRecords'
 
 /** A record's detail: a non-emergency contact tile. */
 const CONTACT_TILE =
@@ -8,9 +8,6 @@ const CONTACT_TILE =
 
 /** A detail that is a link: tappable, so it shows hover and focus. */
 const CONTACT_TILE_LINK = `${CONTACT_TILE} no-underline transition-colors hover:bg-teal-20 focus-visible:outline focus-visible:outline-4 focus-visible:outline-teal-40 focus-visible:outline-offset-2`
-
-/** The records this page's contact blocks name, read by the route's loader. */
-export const ContactRecordsContext = createContext<ContactRecords>({})
 
 /**
  * `::contact{collection record fields}` (#3185): the record's chosen details
@@ -27,11 +24,11 @@ export function ContactRecord({
   record?: string
   fields?: string
 }) {
-  const source = useContext(ContactRecordsContext)[collection ?? '']
+  const source = useContext(PageRecordsContext)[collection ?? '']
   const data = record ? source?.records[record] : undefined
   if (!source || !record || !data) return null
 
-  const details = contactDetails(
+  const details = recordDetails(
     source.collection,
     (fields ?? '').split(',').map((field) => field.trim()),
     data,
