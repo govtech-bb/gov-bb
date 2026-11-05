@@ -145,11 +145,13 @@ async function main() {
     process.exit(0);
   }
 
-  console.log(`[ingest] embedding_model=${MODEL_ID}`);
-  await preflight(args.resetEmbeddings, args.force);
-
+  // Read the content before anything destructive: a failed api_v2 read (or a
+  // bad flag) must leave the store as it was, even with --reset-embeddings.
   const services = await loadServices(args.contentDir);
   console.log(`[ingest] loaded ${services.length} services`);
+
+  console.log(`[ingest] embedding_model=${MODEL_ID}`);
+  await preflight(args.resetEmbeddings, args.force);
 
   let planned: PlannedEntity[] = services.map(chunkService);
   if (args.limit !== undefined) {

@@ -240,6 +240,29 @@ test("fails when a page response is malformed", async () => {
   await assert.rejects(loadApiV2Content(BASE, fetchImpl), /apply-financial/);
 });
 
+test("fails, naming the url, when a 200 is not JSON", async () => {
+  const routes = happyRoutes();
+  const fetchImpl = (async (input: string | URL) =>
+    String(input) === `${BASE}/catalog`
+      ? new Response("<html>proxy error</html>", { status: 200 })
+      : stubFetch(routes).fetchImpl(input)) as typeof fetch;
+  await assert.rejects(
+    loadApiV2Content(BASE, fetchImpl),
+    /catalog returned invalid JSON/,
+  );
+});
+
+test("a shape error names the failing field", async () => {
+  const routes = happyRoutes();
+  const page = fixture("page-financial-assistance.json") as object;
+  routes[pageUrl(ASSISTANCE)] = {
+    status: 200,
+    body: { ...page, frontmatter: {} },
+  };
+  const { fetchImpl } = stubFetch(routes);
+  await assert.rejects(loadApiV2Content(BASE, fetchImpl), /frontmatter\.title/);
+});
+
 test("fails when the network call itself throws", async () => {
   const fetchImpl = (async () => {
     throw new TypeError("fetch failed");

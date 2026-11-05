@@ -85,6 +85,9 @@ Flags use `1`/`true` for on; anything else (incl. unset) is off.
   reads the landing markdown baked into the image. Set it per environment only
   after that environment's api_v2 import. A failed api_v2 read fails the run
   and keeps the last snapshot; a successful run prunes rows not in it.
+  Document ids change with the source, so the first api_v2 run re-embeds every
+  page, and until it finishes old and new rows can both be cited. Run it
+  off-peak and check that `ingest_runs` shows `success`.
 - Embeddings must use the **same** `BEDROCK_EMBED_MODEL` the app queries with.
 
 ## Health checks (deploy gating + probes)

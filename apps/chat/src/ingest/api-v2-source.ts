@@ -61,18 +61,24 @@ async function getJson(
     headers: { accept: "application/json" },
     signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
   });
-  if (res.status === 404 && allowNotFound) return null;
   if (res.status !== 200) {
+    // Release the socket; the body of a non-200 is never read.
+    await res.body?.cancel();
+    if (res.status === 404 && allowNotFound) return null;
     throw new Error(`api_v2 GET ${url} answered ${res.status}`);
   }
-  return res.json();
+  try {
+    return await res.json();
+  } catch (err) {
+    throw new Error(`api_v2 GET ${url} returned invalid JSON: ${err}`);
+  }
 }
 
 function parse<T>(schema: z.ZodType<T>, data: unknown, what: string): T {
   const parsed = schema.safeParse(data);
   if (!parsed.success) {
     throw new Error(
-      `api_v2 ${what}: unexpected response shape: ${parsed.error.issues[0]?.message}`,
+      `api_v2 ${what}: unexpected response shape: ${z.prettifyError(parsed.error)}`,
     );
   }
   return parsed.data;
