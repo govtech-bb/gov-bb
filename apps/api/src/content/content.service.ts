@@ -46,6 +46,14 @@ export class ContentService {
   }
 
   /**
+   * The category of the service page that links `formId`, for the forms app's
+   * analytics events (#3250). Undefined when no service links the form.
+   */
+  categoryForForm(formId: string): string | undefined {
+    return this.index().find((e) => e.formId === formId)?.category;
+  }
+
+  /**
    * The services index with visibility derived from the runtime `service_status`
    * table (keyed by the canonical slug — `formId` when the service has a form,
    * else the content slug). `includeNonPublic` gates preview services — the

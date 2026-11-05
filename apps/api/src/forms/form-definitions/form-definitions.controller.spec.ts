@@ -27,6 +27,11 @@ const mockConfigService = {
   get: vi.fn(),
 };
 
+const mockContentService = {
+  // Default: the form is linked from no service page.
+  categoryForForm: vi.fn().mockReturnValue(undefined),
+};
+
 describe("FormDefinitionsController", () => {
   let controller: FormDefinitionsController;
   let res: { setHeader: Mock; cookie: Mock };
@@ -39,11 +44,13 @@ describe("FormDefinitionsController", () => {
     mockConfigService.get.mockReturnValue("");
     // Default: no authorized GitHub caller.
     includeNonPublicFromAuth.mockResolvedValue(false);
+    mockContentService.categoryForForm.mockReturnValue(undefined);
     res = { setHeader: vi.fn(), cookie: vi.fn() };
     controller = new FormDefinitionsController(
       mockService as never,
       mockOverridesService as never,
       mockConfigService as never,
+      mockContentService as never,
     );
   });
 
@@ -286,6 +293,48 @@ describe("FormDefinitionsController", () => {
       });
       expect(res.setHeader).not.toHaveBeenCalled();
       expect(result).toMatchObject({ status: "success", data: contract });
+    });
+
+    it("adds the form's analytics category from the services index (#3250)", async () => {
+      mockService.findByFormId.mockResolvedValue({
+        formId: "passport-renewal",
+        title: "Passport Renewal",
+      });
+      mockContentService.categoryForForm.mockReturnValue(
+        "travel-id-citizenship",
+      );
+
+      const result = await controller.get(
+        "passport-renewal",
+        undefined,
+        undefined,
+        res as never,
+      );
+
+      expect(mockContentService.categoryForForm).toHaveBeenCalledWith(
+        "passport-renewal",
+      );
+      expect(result.data).toEqual({
+        formId: "passport-renewal",
+        title: "Passport Renewal",
+        category: "travel-id-citizenship",
+      });
+    });
+
+    it("leaves category off when no service page links the form", async () => {
+      mockService.findByFormId.mockResolvedValue({
+        formId: "passport-renewal",
+        title: "Passport Renewal",
+      });
+
+      const result = await controller.get(
+        "passport-renewal",
+        undefined,
+        undefined,
+        res as never,
+      );
+
+      expect(result.data).not.toHaveProperty("category");
     });
 
     it("propagates errors from service.findByFormId", async () => {

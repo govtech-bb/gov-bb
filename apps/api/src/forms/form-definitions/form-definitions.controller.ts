@@ -14,6 +14,7 @@ import type { Response } from "express";
 import { FormDefinitionsService } from "./form-definitions.service";
 import { FormDisabledOverridesService } from "../form-disabled-overrides/form-disabled-overrides.service";
 import { GetFormDefinitionDocs } from "./form-definitions.docs";
+import { ContentService } from "@/content/content.service";
 import { ApiResponse as AppApiResponse } from "@/common/response";
 import { isValidSecretToken } from "@/common/secret-token";
 import { includeNonPublicFromAuth } from "@/common/include-non-public";
@@ -50,6 +51,7 @@ export class FormDefinitionsController {
     private readonly formDefinitionsService: FormDefinitionsService,
     private readonly disabledOverridesService: FormDisabledOverridesService,
     private readonly configService: ConfigService,
+    private readonly contentService: ContentService,
   ) {}
 
   @Get()
@@ -195,7 +197,10 @@ export class FormDefinitionsController {
       bypassVisibility,
       draft,
     });
-    return AppApiResponse.success(data, {
+    // The forms app tags its analytics events with this category (#3250). It
+    // comes from the services index, so the form needs no copy of it.
+    const category = this.contentService.categoryForForm(formId);
+    return AppApiResponse.success(category ? { ...data, category } : data, {
       message: "Form definition retrieved",
     });
   }

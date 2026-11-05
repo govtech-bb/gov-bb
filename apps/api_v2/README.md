@@ -491,7 +491,7 @@ gh variable set CONTENT_FREEZE --body true   # on
 gh variable delete CONTENT_FREEZE            # off
 ```
 
-The "Generated Files Up To Date" job (#3136) stays on: it also regenerates two v1 files (`services-index.generated.ts`, `form-categories.generated.ts`) and writes only generated files, so the freeze check never trips on it, and with the markdown frozen its `estate.json` regen is a no-op. From then on `estate.json` no longer tracks the prod database; it is read only by local `SEED` and fresh imports. After the prod import, content changes go through the editor only.
+The "Generated Files Up To Date" job (#3136) stays on: it also regenerates a v1 file (`services-index.generated.ts`) and writes only generated files, so the freeze check never trips on it, and with the markdown frozen its `estate.json` regen is a no-op. From then on `estate.json` no longer tracks the prod database; it is read only by local `SEED` and fresh imports. After the prod import, content changes go through the editor only.
 
 ## History protection
 
