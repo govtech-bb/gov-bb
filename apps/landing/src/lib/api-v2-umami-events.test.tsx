@@ -5,6 +5,7 @@ import { cleanup, render } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ComponentPropsWithoutRef } from 'react'
 import type * as ReactRouter from '@tanstack/react-router'
+import estate from '@api-v2-seed/estate.json'
 import { Breadcrumbs } from '../components/Breadcrumbs'
 import { HelpfulBox } from '../components/HelpfulBox'
 import { MarkdownContent } from '../components/markdown'
@@ -23,6 +24,13 @@ import { sitePath } from './breadcrumb-trail'
  * (`<form_id>-start`), the breadcrumbs (`breadcrumb`) and the feedback link
  * (`helpful-feedback`). No network: api_v2's `GET /pages` answer is a fixture
  * read through `resolveApiV2Page`, and `window.umami` is a stub.
+ *
+ * Scope: `events` calls `pageViewEvent` and `trackEvent` as `$.tsx`'s
+ * PageView effect does, without rendering the route. Both sides get the
+ * page's form as available and its Start links shown; whether the route
+ * hides them (`hide_start_links` vs `shouldHideStartLink`) is not compared.
+ * The static twin renders as landing does with api_v2 unset, so its
+ * breadcrumbs come from the static taxonomy.
  */
 
 const location = vi.hoisted(() => ({ pathname: '/' }))
@@ -125,7 +133,25 @@ const crumb = (to: string) => ({
   data: { to, depth: String(to.split('/').filter(Boolean).length) },
 })
 
+const startLinks = (markdown: string) =>
+  markdown.match(/<a data-start-link[^>]*>[^<]*<\/a>/g)
+
 describe('Umami events on api_v2 pages (#3258)', () => {
+  // The fixture is hand-written; tie the fields that drive events to api_v2's
+  // seed snapshot, so the fixture can't claim what api_v2 doesn't send.
+  it.each([SERVICE_PAGE, START_PAGE])(
+    "the fixture for $url agrees with api_v2's seed",
+    (response) => {
+      const seed = estate.pages.find((page) => page.url === response.url)
+      if (!seed) throw new Error(`${response.url} is not seeded`)
+      expect(response.category).toBe(seed.category)
+      expect(response.form_id).toBe(seed.form_id)
+      expect(startLinks(response.body_markdown)).toEqual(
+        startLinks(seed.body_markdown),
+      )
+    },
+  )
+
   it('a service page sends the same events as its static twin', async () => {
     const url = SERVICE_PAGE.url
     const expected = [

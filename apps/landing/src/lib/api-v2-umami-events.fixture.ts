@@ -3,9 +3,11 @@ import type { PageResponse } from './api-v2-page'
 /**
  * `GET /pages` responses for the conductor's licence service page and its
  * `/start` page, shaped as api_v2's `toPublicPage` returns them
- * (apps/api_v2/src/modules/page-visibility.ts). The bodies keep only the parts
- * of the static markdown that carry Umami events: the service page's
- * "Apply online" link and the start page's "Start now" button.
+ * (apps/api_v2/src/modules/page-visibility.ts). The bodies keep only the
+ * Start links: the service page's "Apply online" link, which has an href and
+ * so carries no Umami event, and the start page's "Start now" button, which
+ * sends `<form_id>-start`. The test checks the category, form and Start links
+ * against api_v2's seed snapshot.
  */
 
 const SERVICE_URL = '/work-employment/apply-for-conductor-licence'
