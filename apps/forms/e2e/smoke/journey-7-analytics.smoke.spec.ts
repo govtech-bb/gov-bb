@@ -198,11 +198,11 @@ test.describe("Journey 7 — forms analytics reach Umami and the dashboard", () 
     });
 
     await test.step("Umami requests carry no query string", async () => {
-      // #3503: the walk opens the form with ?preview=<token>, and Umami's
-      // tracker reports that first URL on every request (auto-track is off,
-      // so it never follows the ?step= changes). data-exclude-search must
-      // strip the query before it leaves. The message shows paths only, so a
-      // failure doesn't print the token.
+      // #3503: the walk's URLs carry ?preview=<token>. trackPageview and
+      // trackEvent send Umami location.pathname (#3586), and
+      // data-exclude-search covers what the tracker builds itself. This fails
+      // if either regresses, e.g. someone passes location.href. The message
+      // shows paths only, so a failure doesn't print the token.
       expect(urls.length, "Umami requests captured").toBeGreaterThan(0);
       expect(
         urls.filter((u) => u.includes("?")).map((u) => u.split("?")[0]),
