@@ -83,6 +83,13 @@ describe('fetchCollectionRecords', () => {
     expect(init.headers).toBeUndefined()
   })
 
+  it('sends landing’s rate-limit exemption token, and still no preview token', async () => {
+    const fetchImpl = stubFetch(json(200, CONTACTS))
+    await fetchCollectionRecords(BASE, 'contacts', fetchImpl, 'landing-secret')
+    const [, init] = fetchImpl.mock.calls[0] as [string, RequestInit]
+    expect(init.headers).toEqual({ 'x-landing-token': 'landing-secret' })
+  })
+
   it('is a silent miss on a 404', async () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
     const fetchImpl = stubFetch(json(404, { error: 'not_found' }))
@@ -104,6 +111,18 @@ describe('fetchCollectionRecords', () => {
 })
 
 describe('resolveContactRecords', () => {
+  it('passes landing’s token to each collection read', async () => {
+    const fetchImpl = stubFetch(json(200, CONTACTS))
+    await resolveContactRecords(
+      BASE,
+      [{ collection: 'contacts', record: 'barbados-drug-service' }],
+      fetchImpl,
+      'landing-secret',
+    )
+    const [, init] = fetchImpl.mock.calls[0] as [string, RequestInit]
+    expect(init.headers).toEqual({ 'x-landing-token': 'landing-secret' })
+  })
+
   it('keeps only the records the page names', async () => {
     const records = await resolveContactRecords(
       BASE,

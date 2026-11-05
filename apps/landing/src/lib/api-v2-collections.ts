@@ -1,7 +1,7 @@
 import { createServerFn } from '@tanstack/react-start'
 import type { Root, RootContent } from 'hast'
 import { z } from 'zod'
-import { API_V2_TIMEOUT_MS, apiV2Base } from './api-v2-page'
+import { API_V2_TIMEOUT_MS, apiV2Base, landingToken } from './api-v2-page'
 
 /**
  * Contact details read from api_v2's data collections (#3185). A page names a
@@ -71,13 +71,17 @@ export async function fetchCollectionRecords(
   base: string,
   key: string,
   fetchImpl: typeof fetch = fetch,
+  landingToken?: string,
 ): Promise<CollectionRecords | null> {
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), API_V2_TIMEOUT_MS)
   try {
     const response = await fetchImpl(
       `${base}/collections/${encodeURIComponent(key)}/records`,
-      { signal: controller.signal },
+      {
+        signal: controller.signal,
+        ...(landingToken && { headers: { 'x-landing-token': landingToken } }),
+      },
     )
     if (response.status !== 200) {
       if (response.status !== 404)
@@ -106,11 +110,14 @@ export async function resolveContactRecords(
   base: string | null,
   refs: ContactRef[],
   fetchImpl: typeof fetch = fetch,
+  landingToken?: string,
 ): Promise<ContactRecords> {
   if (!base || refs.length === 0) return {}
   const keys = [...new Set(refs.map((ref) => ref.collection))]
   const read = await Promise.all(
-    keys.map((key) => fetchCollectionRecords(base, key, fetchImpl)),
+    keys.map((key) =>
+      fetchCollectionRecords(base, key, fetchImpl, landingToken),
+    ),
   )
   const result: ContactRecords = {}
   keys.forEach((key, index) => {
@@ -134,4 +141,6 @@ const ContactRefs = z
 /** Server function: `resolveContactRecords` against the configured api_v2. */
 export const getContactRecords = createServerFn()
   .validator((refs: ContactRef[]) => ContactRefs.parse(refs))
-  .handler(({ data: refs }) => resolveContactRecords(apiV2Base(), refs))
+  .handler(({ data: refs }) =>
+    resolveContactRecords(apiV2Base(), refs, fetch, landingToken()),
+  )
