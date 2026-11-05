@@ -33,8 +33,10 @@ const get = (url: string, token?: string) =>
   });
 
 /**
- * Youth (listed first) has a subcategory, Arts; Money lists three public
- * pages, a preview one, a start step and a sub-page; Housing lists nothing.
+ * Youth (listed first) has a subcategory, Arts, whose Canvas page has its
+ * form on its start step; Money lists three public pages, a preview one, a
+ * start step, a preview start step holding a form, and a sub-page; Housing
+ * lists nothing.
  */
 beforeAll(async () => {
   test = await createTestDb();
@@ -77,10 +79,18 @@ beforeAll(async () => {
     category_id: money.id,
     parent_id: apply.id,
   });
-  await page({
+  const budget = await page({
     url: "/money/budget",
     title: "Budget guide",
     category_id: money.id,
+  });
+  await page({
+    url: "/money/budget/start",
+    title: "Start",
+    category_id: money.id,
+    parent_id: budget.id,
+    form_id: "budget-form",
+    visibility: "preview",
   });
   await page({
     url: "/money/draft-idea",
@@ -88,11 +98,18 @@ beforeAll(async () => {
     category_id: money.id,
     visibility: "preview",
   });
-  await page({
+  const canvas = await page({
     url: "/youth/arts/canvas",
     title: "Canvas",
     category_id: arts.id,
     frontmatter: { service_type: "digital" },
+  });
+  await page({
+    url: "/youth/arts/canvas/start",
+    title: "Start",
+    category_id: arts.id,
+    parent_id: canvas.id,
+    form_id: "canvas-form",
   });
 
   app = await createTestApp(test.db, {
@@ -291,6 +308,7 @@ describe("GET /catalog", () => {
     const response = await get("/catalog");
 
     expect(response.statusCode).toBe(200);
+    expect(response.headers["cache-control"]).toBe(PUBLIC_READ);
     expect(response.json().pages).toEqual([
       {
         url: "/money/apply/notes",
@@ -298,6 +316,11 @@ describe("GET /catalog", () => {
         description: null,
         digital: false,
         stage: null,
+        slug: "notes",
+        category: "money",
+        subcategory: null,
+        form_id: null,
+        visibility: "public",
       },
       {
         url: "/money/apply",
@@ -305,6 +328,11 @@ describe("GET /catalog", () => {
         description: null,
         digital: true,
         stage: "alpha",
+        slug: "apply",
+        category: "money",
+        subcategory: null,
+        form_id: "grant",
+        visibility: "public",
       },
       {
         url: "/money/budget",
@@ -312,6 +340,11 @@ describe("GET /catalog", () => {
         description: null,
         digital: false,
         stage: null,
+        slug: "budget",
+        category: "money",
+        subcategory: null,
+        form_id: null,
+        visibility: "public",
       },
       {
         url: "/youth/arts/canvas",
@@ -319,8 +352,45 @@ describe("GET /catalog", () => {
         description: null,
         digital: true,
         stage: null,
+        slug: "canvas",
+        category: "youth",
+        subcategory: "arts",
+        form_id: "canvas-form",
+        visibility: "public",
       },
     ]);
+  });
+
+  it("adds preview pages, with their visibility, only for the preview token", async () => {
+    const urls = (response: { json(): { pages: { url: string }[] } }) =>
+      response.json().pages.map((page) => page.url);
+
+    expect(urls(await get("/catalog"))).not.toContain("/money/draft-idea");
+    const preview = await get("/catalog", SECRET);
+    expect(preview.headers["cache-control"]).toBe(EDITOR_READ);
+    expect(preview.json().pages).toContainEqual({
+      url: "/money/draft-idea",
+      title: "Coming soon",
+      description: null,
+      digital: false,
+      stage: null,
+      slug: "draft-idea",
+      category: "money",
+      subcategory: null,
+      form_id: null,
+      visibility: "preview",
+    });
+  });
+
+  it("gives a page its preview start step's form only for the preview token", async () => {
+    const formOf = (response: {
+      json(): { pages: { url: string; form_id: string | null }[] };
+    }) =>
+      response.json().pages.find((page) => page.url === "/money/budget")
+        ?.form_id;
+
+    expect(formOf(await get("/catalog"))).toBeNull();
+    expect(formOf(await get("/catalog", SECRET))).toBe("budget-form");
   });
 });
 
