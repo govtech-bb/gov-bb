@@ -1,0 +1,55 @@
+{
+  "public": {
+    "url": "/family-birth-relationships/register-a-birth",
+    "frontmatter": {
+      "title": "Register a birth",
+      "description": "How to register a birth in Barbados",
+      "stage": "alpha",
+      "service_type": "information"
+    },
+    "body_markdown": "## Who can register\n\nA parent can register the birth.",
+    "form_id": null,
+    "hide_start_links": false,
+    "breadcrumbs": [
+      {
+        "name": "Family, birth and relationships",
+        "url": "/family-birth-relationships"
+      },
+      {
+        "name": "Register a birth",
+        "url": "/family-birth-relationships/register-a-birth"
+      }
+    ],
+    "published_at": "2026-01-15T00:00:00.000Z",
+    "content_updated_at": "2026-01-15T00:00:00.000Z",
+    "updated_at": "2026-01-15T00:00:00.000Z",
+    "category": "family-birth-relationships",
+    "subcategory": null,
+    "visibility": "public"
+  },
+  "preview": {
+    "url": "/family-birth-relationships/register-a-stillbirth",
+    "frontmatter": {
+      "title": "Register a stillbirth",
+      "description": "How to register a stillbirth in Barbados"
+    },
+    "body_markdown": "## Who can register\n\nA parent can register the stillbirth.",
+    "form_id": null,
+    "hide_start_links": false,
+    "breadcrumbs": [
+      {
+        "name": "Family, birth and relationships",
+        "url": "/family-birth-relationships"
+      },
+      {
+        "name": "Register a stillbirth",
+        "url": "/family-birth-relationships/register-a-stillbirth"
+      }
+    ],
+    "published_at": null,
+    "updated_at": "2026-01-15T00:00:00.000Z",
+    "category": "family-birth-relationships",
+    "subcategory": null,
+    "visibility": "preview"
+  }
+}
