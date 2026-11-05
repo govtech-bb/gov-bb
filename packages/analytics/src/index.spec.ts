@@ -14,6 +14,7 @@ import {
   UMAMI_SCRIPT_ATTRIBUTES,
 } from "./index";
 import { resetJourneyForTests } from "./journey";
+import type { Mock } from "vitest";
 
 describe("trackEvent", () => {
   afterEach(() => {
@@ -84,12 +85,92 @@ describe("trackPageview", () => {
     expect(() => trackPageview()).not.toThrow();
   });
 
-  it("calls umami.track() with no arguments to fire a pageview", () => {
+  it("calls umami.track() once to fire a pageview", () => {
     const track = vi.fn();
     window.umami = { track };
     trackPageview();
     expect(track).toHaveBeenCalledTimes(1);
-    expect(track).toHaveBeenCalledWith();
+  });
+});
+
+// The payload Umami's tracker builds itself. With auto-track off, its url and
+// referrer are the ones it read when the page first loaded (#3586).
+const TRACKER_PAYLOAD = {
+  website: "site-id",
+  title: "Page title",
+  url: "/entry",
+  referrer: "https://www.google.com/",
+};
+
+type Track = NonNullable<Window["umami"]>["track"];
+
+/** What Umami would send for one track() call: runs the function we passed. */
+function sentPayload(track: Mock<Track>, call = 0) {
+  const arg = track.mock.calls[call][0];
+  if (typeof arg !== "function") {
+    throw new Error(`track() got ${typeof arg}, not a function`);
+  }
+  return arg(TRACKER_PAYLOAD);
+}
+
+describe("Umami url and referrer (#3586)", () => {
+  // A fresh module per test, so the remembered page doesn't leak between tests.
+  let analytics: typeof import("./index");
+  let track: Mock<Track>;
+
+  beforeEach(async () => {
+    vi.resetModules();
+    analytics = await import("./index");
+    track = vi.fn<Track>();
+    window.umami = { track };
+    history.replaceState(null, "", "/entry");
+  });
+
+  afterEach(() => {
+    delete (window as { umami?: unknown }).umami;
+    history.replaceState(null, "", "/");
+  });
+
+  it("a page view sends the current path, not the URL the page loaded on", () => {
+    history.pushState(null, "", "/services");
+    analytics.trackPageview();
+    expect(sentPayload(track)).toMatchObject({
+      url: "/services",
+      website: "site-id",
+      title: "Page title",
+    });
+  });
+
+  it("sends the path only, never the query string or hash (#3503)", () => {
+    history.pushState(null, "", "/water/confirm?token=secret-token#top");
+    analytics.trackPageview();
+    const payload = sentPayload(track);
+    expect(payload.url).toBe("/water/confirm");
+    expect(JSON.stringify(payload)).not.toContain("secret-token");
+  });
+
+  it("the first page view keeps the tracker's own referrer", () => {
+    analytics.trackPageview();
+    expect(sentPayload(track).referrer).toBe("https://www.google.com/");
+  });
+
+  it("the next page view names the previous path as its referrer", () => {
+    analytics.trackPageview();
+    history.pushState(null, "", "/services");
+    analytics.trackPageview();
+    expect(sentPayload(track, 1)).toMatchObject({
+      url: "/services",
+      referrer: "/entry",
+    });
+  });
+
+  it("a page view before Umami loads still counts as the next referrer", () => {
+    delete (window as { umami?: unknown }).umami;
+    analytics.trackPageview();
+    window.umami = { track };
+    history.pushState(null, "", "/services");
+    analytics.trackPageview();
+    expect(sentPayload(track).referrer).toBe("/entry");
   });
 });
 

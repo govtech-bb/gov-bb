@@ -1,5 +1,6 @@
 import { maskSearchQuery } from "./mask-search-query";
 import { journeyEnabled, sendJourney } from "./journey";
+import { sendUmamiPageview, type UmamiPayload } from "./umami";
 
 export { maskSearchQuery } from "./mask-search-query";
 export {
@@ -12,7 +13,10 @@ export {
 declare global {
   interface Window {
     umami?: {
-      track: (name?: string, data?: Record<string, unknown>) => void;
+      track: (
+        name?: string | ((payload: UmamiPayload) => UmamiPayload),
+        data?: Record<string, unknown>,
+      ) => void;
     };
   }
 }
@@ -268,7 +272,7 @@ export function stepFromEvent(event: string): number | null {
 export function trackPageview(): void {
   if (typeof window === "undefined") return;
   sendJourney("pageview");
-  window.umami?.track();
+  sendUmamiPageview();
 }
 
 /**
