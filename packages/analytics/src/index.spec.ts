@@ -177,6 +177,39 @@ describe("Umami url and referrer (#3586)", () => {
     expect(sentPayload(track).referrer).toBe("/entry");
   });
 
+  // Forms sends a page view on every ?step= change, on the same path. Umami
+  // itself skips those; ours must not become their own referrer.
+  it("a page view on the same path keeps the page's referrer", () => {
+    analytics.trackPageview();
+    history.pushState(null, "", "/services");
+    analytics.trackPageview();
+    history.pushState(null, "", "/services?step=two");
+    analytics.trackPageview();
+    expect(sentPayload(track, 2)).toMatchObject({
+      url: "/services",
+      referrer: "/entry",
+    });
+  });
+
+  it("the first page's same-path page views keep the tracker's referrer", () => {
+    analytics.trackPageview();
+    history.pushState(null, "", "/entry?step=two");
+    analytics.trackPageview();
+    analytics.trackEvent("form-step-two");
+    expect(sentPayload(track, 1).referrer).toBe("https://www.google.com/");
+    expect(sentPayload(track, 2).referrer).toBe("https://www.google.com/");
+  });
+
+  it("an event before its page's page view names the last page", () => {
+    analytics.trackPageview();
+    history.pushState(null, "", "/services");
+    analytics.trackEvent("search", { results: 0 });
+    expect(sentPayload(track, 1)).toMatchObject({
+      url: "/services",
+      referrer: "/entry",
+    });
+  });
+
   it("an event sends the current path and its page view's referrer", () => {
     analytics.trackPageview();
     history.pushState(null, "", "/services");

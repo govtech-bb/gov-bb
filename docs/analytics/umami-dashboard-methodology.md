@@ -20,7 +20,8 @@ auto-track off, its tracker never updated the URL it read at load. So for any
 window that includes earlier days, entry pages are over-counted, inner pages
 under-counted, the journeys report is mostly single-page visits, and per-page
 referrers repeat the entry source. Stored data can't be corrected. Forms is
-unaffected: it has one route.
+unaffected: it has one route. From the fix on, an inner page's referrer is the
+page before it, so its top sources are mostly internal paths.
 
 ## Overview summary cards
 

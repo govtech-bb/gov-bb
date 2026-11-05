@@ -20,36 +20,44 @@ export interface UmamiPayload {
   [key: string]: unknown;
 }
 
-// The current page and the path before it. The previous path is undefined on
-// the first page view, which keeps the tracker's own (external) referrer, as
-// Umami does itself with auto-track on.
-let page: { url: string; referrer?: string } | undefined;
+// The page of the last page view: its path, and the path before it. The
+// previous path is undefined on the first page, which keeps the tracker's own
+// (external) referrer, as Umami does itself with auto-track on.
+type Page = { url: string; referrer?: string };
 
-/** Record the page view and send it. Recorded even before Umami loads, so the
- *  next page still names this one as its referrer. */
-export function sendUmamiPageview(): void {
-  const current = { url: location.pathname, referrer: page?.url };
-  page = current;
+let page: Page | undefined;
+
+// The page the visitor is on now. The same path is the same page: forms sends
+// a page view on every ?step= change, and Umami itself only counts a new page
+// when the path changes. A new path names the last page view as its referrer.
+function currentPage(): Page {
+  const url = location.pathname;
+  return url === page?.url ? page : { url, referrer: page?.url };
+}
+
+function send(
+  current: Page,
+  event?: { name: string; data?: Record<string, unknown> },
+): void {
   window.umami?.track((payload) => ({
     ...payload,
+    ...event,
     url: current.url,
     referrer: current.referrer ?? payload.referrer,
   }));
 }
 
-/** Send an event from the current path, with the referrer of the page view it
- *  happens on (the tracker's own before any page view). */
+/** Record the page view and send it. Recorded even before Umami loads, so the
+ *  next page still names this one as its referrer. */
+export function sendUmamiPageview(): void {
+  page = currentPage();
+  send(page);
+}
+
+/** Send an event from the current path, with that page's referrer. */
 export function sendUmamiEvent(
   name: string,
   data?: Record<string, unknown>,
 ): void {
-  const url = location.pathname;
-  const referrer = page?.referrer;
-  window.umami?.track((payload) => ({
-    ...payload,
-    url,
-    referrer: referrer ?? payload.referrer,
-    name,
-    data,
-  }));
+  send(currentPage(), { name, data });
 }
