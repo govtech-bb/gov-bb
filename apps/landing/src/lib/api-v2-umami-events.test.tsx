@@ -161,8 +161,10 @@ describe('Umami events on api_v2 pages (#3258)', () => {
     ]
     // Known difference: a static `/start` page names no category, so it
     // reports 'uncategorised'; api_v2 files it under its parent's category
-    // (see KNOWN in api-v2-render-parity.test.tsx). When the two agree, this
-    // test fails: assert one category for both.
+    // (see KNOWN in api-v2-render-parity.test.tsx). #3258's "Done when"
+    // accepts api_v2's value as correct, so start-page analytics move from
+    // 'uncategorised' to the real category at cutover. When the two agree,
+    // this test fails: assert one category for both.
     expect(staticTwin(START_PAGE)).toEqual(expected('uncategorised'))
     expect(await apiV2(START_PAGE)).toEqual(expected('work-employment'))
   })
