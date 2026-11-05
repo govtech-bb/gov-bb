@@ -10,7 +10,7 @@ import {
 } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ApiFailure, type EditorApi } from "../api/client";
+import { ApiFailure, type EditorApi, type ServiceSummary } from "../api/client";
 import { rolesQuery, serviceQuery, servicesQuery, estateVersionQuery } from "../api/queries";
 import {
   CreateRemotePageDialog,
@@ -21,6 +21,7 @@ import { AppNav } from "./app-nav";
 import { CollectionScreen, CollectionsScreen } from "./collections";
 import { CategoriesScreen } from "./categories-screen";
 import { HistoryScreen } from "./history-screen";
+import { PageActions } from "./page-actions";
 import { loadPageEditor, loadReviews } from "./preload";
 import { listedServiceRows, remoteServiceRows } from "./service-pages";
 import { ServiceNav } from "./service-nav";
@@ -39,7 +40,7 @@ import { DocumentSessions, keptViews } from "./document-views";
 import { GovbbLogo } from "./govbb-logo";
 import { ServicesList } from "./services-list";
 import type { ServicesSearch } from "./services-search";
-import type { WorkspaceLocation } from "./model";
+import type { PageDocument, WorkspaceLocation } from "./model";
 import { pageHasUnsavedChanges, type PageSession } from "./page-session";
 import { usePageLeaveGuard } from "./page-leave-guard";
 
@@ -188,7 +189,7 @@ export function ServiceWorkspace({
     enabled: !!location,
   });
 
-  const listed = useQuery({ ...servicesQuery(api), enabled: false }).data?.find(
+  const listedService = useQuery({ ...servicesQuery(api), enabled: false }).data?.find(
     (item) => item.id === location?.serviceId,
   );
 
@@ -205,8 +206,13 @@ export function ServiceWorkspace({
 
   const rows = useMemo(() => (remote.data ? remoteServiceRows(remote.data) : []), [remote.data]);
   const selected = rows.find((row) => row.document.id === documentId)?.document;
+  // A service whose row's menu asked to delete it, from the Services list
+  const [listed, setListed] = useState<PageDocument>();
+
   // The page being deleted, kept while its dialog fades away after the page itself has gone
-  const deleting = useLatched(dialog === "delete" ? (selected ?? null) : null);
+  const deleting = useLatched(
+    dialog === "delete" ? (location ? (selected ?? null) : (listed ?? null)) : null,
+  );
 
   const missing =
     !!location &&
@@ -219,8 +225,51 @@ export function ServiceWorkspace({
     documentId ? stores.get(documentId) : undefined,
   );
 
-  const serviceName = place.service ?? listed?.title;
+  const serviceName = place.service ?? listedService?.title;
   const servicePages = !!location && !missing && (!!remote.data || remote.isPending);
+
+  // Why the open page can't be deleted yet: the pages under it, or a public page for someone who isn't an approver
+  const deleteBlocked = readOnly
+    ? "You need the editor role to delete pages."
+    : selected && remote.data?.pages.some((page) => page.parent_id === selected.id)
+      ? "Delete or move the pages under this page first."
+      : !approver &&
+          remote.data?.pages.find((page) => page.id === selected?.id)?.visibility === "public"
+        ? unchecked
+          ? UNCHECKED
+          : "Only approvers can delete a public page."
+        : undefined;
+
+  // A service in the list: its entry page goes with it, so it can't while it has other pages
+  const serviceDeleteBlocked = useCallback(
+    (service: ServiceSummary) =>
+      readOnly
+        ? "You need the editor role to delete services."
+        : service.page_count > 1
+          ? "Delete its other pages first."
+          : !approver && service.visibility === "public"
+            ? unchecked
+              ? UNCHECKED
+              : "Only approvers can delete a public service."
+            : undefined,
+    [readOnly, approver, unchecked],
+  );
+
+  const deleteListed = useCallback((service: ServiceSummary) => {
+    setListed({ id: service.id, title: service.title, kind: "page", role: "entry" });
+    setOpened((count) => count + 1);
+    setDialog("delete");
+  }, []);
+
+  const pageActions = location && selected && (
+    <PageActions
+      pageId={selected.id}
+      serviceId={location.serviceId}
+      entry={selected.role === "entry"}
+      deleteBlocked={deleteBlocked}
+      onDelete={() => openDialog("delete")}
+    />
+  );
 
   // When the sidebar is hidden, move its toggle into the page bar so it stays reachable.
   const showPages =
@@ -338,16 +387,21 @@ export function ServiceWorkspace({
             </Sidebar.Toggle>
           )}
           <GovbbLogo fit="height" className="h-6 shrink-0" />
-          <Bar.Crumbs crumbs={crumbs} />
+          {/* On a phone the bar keeps to one row: the page's own bar says where you are, and Menu leads back */}
+          <div className="min-w-0 max-md:hidden">
+            <Bar.Crumbs crumbs={crumbs} />
+          </div>
           <Bar.Actions>
             <Bar.Status className="max-w-64 truncate font-normal max-lg:hidden" title={email}>
               {email}
             </Bar.Status>
+            {/* The logo and Menu fill a phone's bar: there it's in the menu */}
             <Button
               variant="inverse"
               pending={signingOut}
               pendingLabel="Signing out…"
               onClick={leave.requestSignOut}
+              className="max-sm:hidden"
             >
               Sign out
             </Button>
@@ -395,29 +449,36 @@ export function ServiceWorkspace({
         </Banner>
       )}
       <div className="flex flex-1">
-        <AppNav sidebar={appNav} rail={!!location} servicesSearch={servicesSearch} />
+        <AppNav
+          sidebar={appNav}
+          rail={!!location}
+          servicesSearch={servicesSearch}
+          account={
+            <>
+              <p className="truncate text-12 text-muted">{email}</p>
+              <Button
+                variant="secondary"
+                className="mt-2"
+                pending={signingOut}
+                pendingLabel="Signing out…"
+                onClick={leave.requestSignOut}
+              >
+                Sign out
+              </Button>
+            </>
+          }
+        />
         {servicePages && (
           <ServiceNav
             sidebar={sidebar}
             serviceId={location.serviceId}
-            rows={remote.data ? rows : listed ? listedServiceRows(listed) : []}
+            title={serviceName}
+            rows={remote.data ? rows : listedService ? listedServiceRows(listedService) : []}
             loading={!remote.data}
             selectedId={documentId}
             stores={stores}
             onAdd={() => openDialog("page")}
-            onDelete={() => openDialog("delete")}
-            readOnly={readOnly ? "You need the editor role to add or delete pages." : undefined}
-            deleteBlocked={
-              selected && remote.data?.pages.some((page) => page.parent_id === selected.id)
-                ? "Delete or move the pages under this page first."
-                : !approver &&
-                    remote.data?.pages.find((page) => page.id === selected?.id)?.visibility ===
-                      "public"
-                  ? unchecked
-                    ? UNCHECKED
-                    : "Only approvers can delete a public page."
-                  : undefined
-            }
+            readOnly={readOnly ? "You need the editor role to add pages." : undefined}
           />
         )}
         <main
@@ -545,6 +606,8 @@ export function ServiceWorkspace({
                   void routerNavigate({ to: "/services", search, replace: true });
                 }}
                 onCreate={() => openDialog("service")}
+                onDelete={deleteListed}
+                deleteBlocked={serviceDeleteBlocked}
                 readOnly={readOnly}
               />
             </section>
@@ -554,10 +617,10 @@ export function ServiceWorkspace({
               size="page"
               icon={<Files />}
               title={remote.data.service.title}
-              description="Choose a document or add one to this service."
+              description="Choose a page or add one to this service."
               actions={
                 <Button variant="accent" disabled={readOnly} onClick={() => openDialog("page")}>
-                  Add document
+                  Add page
                 </Button>
               }
             />
@@ -580,6 +643,7 @@ export function ServiceWorkspace({
                   onSession={trackPageSession}
                   sessions={sessions}
                   nav={showPages}
+                  actions={id === selected?.id ? pageActions : undefined}
                 />
               </Suspense>
             </section>

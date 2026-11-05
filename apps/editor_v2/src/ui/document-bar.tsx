@@ -18,13 +18,15 @@ type DocumentBarProps = {
   title: ReactNode;
   /** Use false when the content already supplies the page heading. */
   heading?: boolean;
-  /** Where its work stands: beside the title, and a failed save's message first among the notices. */
+  /** Where its work stands: right beside publishing, and a failed save's message first among the notices. */
   save?: SaveStateProps;
   /** Undo and redo. */
   undo?: ReactNode;
   preview?: ReactNode;
   /** The document's source: its Markdown, and a form's JSON. */
   source?: ReactNode;
+  /** What the document itself can do that needs no button of its own, such as its history and deleting it: a menu. */
+  more?: ReactNode;
   /** Sends the changes on for everyone: Publish changes, or Save. */
   publish?: ReactNode;
   /** Shows and hides the document's settings: at the far end, right above the panel it opens. */
@@ -49,9 +51,10 @@ const alertLooks = {
 
 /**
  * The bar over every document: the same slots in the same order for a page
- * and a form, so the author finds each thing where they left it. The title, where it stands, undo and redo, the ways
- * to look at it, publishing, then its settings; each group ruled off from the next. A panel's toggle sits at the bar's
- * edge on the panel's side: the list of pages before the title, the settings at the end. Its notices sit under it.
+ * and a form, so the author finds each thing where they left it. The title, then undo and redo, the ways to look at
+ * it and its menu, then where it stands right beside publishing, then its settings; each group ruled off from the
+ * next. A panel's toggle sits at the bar's edge on the panel's side: the list of pages before the title, the settings
+ * at the end. Its notices sit under it.
  */
 export function DocumentBar({
   label,
@@ -62,16 +65,53 @@ export function DocumentBar({
   undo,
   preview,
   source,
+  more,
   publish,
   settings,
   notices,
   alert,
   hidden,
 }: DocumentBarProps) {
-  const views = (preview || source) && (
+  const views = (preview || source || more) && (
     <>
       {preview}
       {source}
+      {more}
+    </>
+  );
+
+  // Where the work stands, and a notice that arrived while it was written, beside what sends it on: read together
+  const standing = (save || publish || (alert && !hidden)) && (
+    <>
+      {alert && !hidden && (
+        <Popover.Root>
+          <Popover.Trigger
+            render={
+              <Button
+                data-document-alert=""
+                size="xs"
+                variant="secondary"
+                icon={<Warning weight="fill" />}
+                className={cn(
+                  alertLooks[alert.tone],
+                  "pressable:hover:shadow-input-hover data-popup-open:shadow-input-hover",
+                )}
+              >
+                {alert.label}
+              </Button>
+            }
+          />
+          <Popover.Content aria-label={alert.label} align="end" className="w-104 p-0">
+            {alert.content}
+          </Popover.Content>
+        </Popover.Root>
+      )}
+      {save && (
+        <Bar.Status className="me-2">
+          <SaveState.Status {...save} />
+        </Bar.Status>
+      )}
+      {publish}
     </>
   );
 
@@ -80,7 +120,7 @@ export function DocumentBar({
     [
       ["undo", undo],
       ["views", views],
-      ["publish", publish],
+      ["publish", standing],
       ["settings", settings],
     ] as const
   ).flatMap(([slot, group]) => (group ? [{ slot, group }] : []));
@@ -95,8 +135,8 @@ export function DocumentBar({
         data-document-bar=""
         className="bar-pinned:sticky bar-pinned:top-0 bar-pinned:z-bar md:flex-nowrap"
       >
-        {/* The title is cut short to make room: for the tools beside it from a tablet up, where the bar keeps to one
-            row, and for where it stands on a phone, where the tools have their own row */}
+        {/* The title is cut short to make room for the tools beside it from a tablet up, where the bar keeps to one
+            row. On a phone the tools, where the work stands among them, have their own row */}
         {nav}
         {/* The heading can take the focus when what had it goes, such as a notice's button that answered it */}
         <Bar.Title
@@ -105,34 +145,6 @@ export function DocumentBar({
         >
           {title}
         </Bar.Title>
-        {save && (
-          <Bar.Status>
-            <SaveState.Status {...save} />
-          </Bar.Status>
-        )}
-        {alert && !hidden && (
-          <Popover.Root>
-            <Popover.Trigger
-              render={
-                <Button
-                  data-document-alert=""
-                  size="xs"
-                  variant="secondary"
-                  icon={<Warning weight="fill" />}
-                  className={cn(
-                    alertLooks[alert.tone],
-                    "pressable:hover:shadow-input-hover data-popup-open:shadow-input-hover",
-                  )}
-                >
-                  {alert.label}
-                </Button>
-              }
-            />
-            <Popover.Content aria-label={alert.label} align="start" className="w-104 p-0">
-              {alert.content}
-            </Popover.Content>
-          </Popover.Root>
-        )}
         {/* Read out as a notice arrives, as what it says waits to be opened */}
         <span aria-live="polite" className="sr-only">
           {!hidden && alert?.label}

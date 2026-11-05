@@ -8,6 +8,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type ComponentProps,
   type ReactNode,
 } from "react";
 import { cn } from "../cn";
@@ -179,14 +180,18 @@ function SidebarToggle({
  * The title row, the sidebar's label as tall as a toolbar, with anything else it needs at its end. A drawer has its
  * own title row instead.
  */
-function SidebarHeader({ children }: { children?: ReactNode }) {
+function SidebarHeader({ title, children }: { title?: string; children?: ReactNode }) {
   const { label, closeDrawer } = useContext(Place);
 
   if (closeDrawer) return null;
+  const text = title ?? label;
 
+  // A long title, such as a service's, takes two lines at most, so the header stays as tall as the bar beside it
   return (
     <div className="flex min-h-(--bar-height) items-center justify-between gap-2 border-b border-line px-4 text-14 font-semibold">
-      {label}
+      <span className="line-clamp-2 min-w-0 text-pretty" title={text}>
+        {text}
+      </span>
       {children}
     </div>
   );
@@ -345,6 +350,36 @@ function SidebarLoading({ children }: { children: string }) {
   return <LoadingState size="inline" label={children} className="px-3 py-1.5" />;
 }
 
+/**
+ * The last row of a group, to add another to it, such as Add page: quiet, in the rows' place and with their height, so
+ * it reads as part of the list. In a drawer, choosing it closes the drawer.
+ */
+function SidebarAction({
+  icon,
+  onClick,
+  children,
+  ...props
+}: Omit<ComponentProps<"button">, "type"> & { icon: ReactNode }) {
+  const { closeDrawer } = useContext(Place);
+
+  return (
+    <button
+      type="button"
+      {...props}
+      onClick={(event) => {
+        onClick?.(event);
+        closeDrawer?.();
+      }}
+      className={`mt-1 flex w-full cursor-pointer items-center gap-2 rounded-sm px-3 py-1.5 text-start text-14 text-muted transition-colors outline-offset-2 hover:bg-hover hover:text-ink focus-visible:outline-3 focus-visible:outline-focus active:bg-hover active:shadow-press disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-muted ${touchTarget}`}
+    >
+      <span aria-hidden="true" className="flex h-5 shrink-0 items-center [&_svg]:size-4">
+        {icon}
+      </span>
+      {children}
+    </button>
+  );
+}
+
 /** Buttons for what the column's things can do, under its groups. In a drawer, choosing one closes it. */
 function SidebarActions({ children }: { children: ReactNode }) {
   const { closeDrawer } = useContext(Place);
@@ -374,6 +409,7 @@ export const Sidebar = {
   Group: SidebarGroup,
   Item: SidebarItem,
   Separator: SidebarSeparator,
+  Action: SidebarAction,
   Empty: SidebarEmpty,
   Loading: SidebarLoading,
   Actions: SidebarActions,

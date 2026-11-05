@@ -174,6 +174,41 @@ const until = (ready: () => void) =>
     await vi.waitFor(ready);
   });
 
+/** The open page's Delete, from the More menu in its bar; the menu renders in a portal outside the root. */
+async function deleteRow() {
+  if (!document.querySelector('[role="menu"][aria-label="Page actions"]')) {
+    const more = document.querySelector<HTMLButtonElement>(
+      '[data-document-bar]:not([hidden]) [aria-label="More page actions"]',
+    );
+
+    if (!more) throw new Error("The page's bar has no More page actions yet");
+    await act(async () => more.click());
+  }
+
+  const row = [...document.querySelectorAll<HTMLElement>('[role="menuitem"]')].find((item) =>
+    item.textContent?.startsWith("Delete"),
+  );
+
+  if (!row) throw new Error("The page's menu has no Delete");
+
+  return row;
+}
+
+/** Why a menu row can't be chosen: its note, by its description. */
+const reasonFor = (row: HTMLElement) => {
+  const id = row.getAttribute("aria-describedby");
+
+  return id ? (document.getElementById(id)?.textContent ?? null) : null;
+};
+
+/** Closes an open menu, as Esc does, handing the focus back to its button. */
+const closeMenu = () =>
+  act(async () => {
+    document
+      .querySelector('[role="menu"]')
+      ?.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+  });
+
 test.each([0, 503, 401, 403, 404])(
   "a service refresh failure (%s) preserves the shell and draft without showing a second full-page state",
   async (status) => {
@@ -233,18 +268,14 @@ test.each([
   [["editor"], true],
   [["editor", "approver"], false],
 ])(
-  "Delete page on a public page, for someone with roles %j, is held back with the reason: %s",
+  "Delete on a public page, for someone with roles %j, is held back in the page's menu with the reason: %s",
   async (roles, blocked) => {
     await mountWorkspace("/services/service/fees", { roles, publicIds: ["fees"] });
 
-    const deleteButton = () =>
-      [...document.querySelectorAll("button")].find(
-        (button) => button.textContent === "Delete page",
-      )!;
-
-    await until(() => expect(deleteButton().disabled).toBe(blocked));
-    const reason = deleteButton().getAttribute("aria-describedby");
-    expect(reason && document.getElementById(reason)?.textContent).toBe(
+    await until(async () =>
+      expect((await deleteRow()).getAttribute("aria-disabled") === "true").toBe(blocked),
+    );
+    expect(reasonFor(await deleteRow())).toBe(
       blocked ? "Only approvers can delete a public page." : null,
     );
   },
@@ -295,10 +326,10 @@ test("roles that can't be read are said to be unchecked, with Try again, never t
     expect(document.body.textContent).toContain("We couldn’t check your permissions."),
   );
   expect(document.body.textContent).not.toContain("Only approvers can delete a public page.");
-  const reason = button("Delete page").getAttribute("aria-describedby");
-  expect(reason && document.getElementById(reason)?.textContent).toBe(
-    "We couldn’t check your permissions.",
+  await until(async () =>
+    expect(reasonFor(await deleteRow())).toBe("We couldn’t check your permissions."),
   );
+  await closeMenu();
 
   // Read at last: the notice goes, with its focused Try again, and the content takes the focus
   reachable = true;
@@ -308,8 +339,10 @@ test("roles that can't be read are said to be unchecked, with Try again, never t
   await until(() =>
     expect(document.body.textContent).not.toContain("We couldn’t check your permissions."),
   );
-  expect(button("Delete page").disabled).toBe(false);
   expect(document.activeElement).toBe(document.getElementById("workspace-content"));
+  await until(async () =>
+    expect((await deleteRow()).getAttribute("aria-disabled")).not.toBe("true"),
+  );
 });
 
 test("someone without the editor role is told why, and can't add, delete or create", async () => {
@@ -319,13 +352,15 @@ test("someone without the editor role is told why, and can't add, delete or crea
     [...document.querySelectorAll("button")].find((item) => item.textContent === name)!;
 
   await until(() => expect(document.body.textContent).toContain("you don’t have the editor role"));
-  await until(() => expect(button("Delete page").disabled).toBe(true));
-  expect(button("Add document").disabled).toBe(true);
-  const reason = button("Add document").getAttribute("aria-describedby");
+  await until(() => expect(button("Add page").disabled).toBe(true));
+  const reason = button("Add page").getAttribute("aria-describedby");
   expect(reason && document.getElementById(reason)?.textContent).toBe(
-    "You need the editor role to add or delete pages.",
+    "You need the editor role to add pages.",
   );
-  expect(button("Delete page").getAttribute("aria-describedby")).toBe(reason);
+  await until(async () =>
+    expect(reasonFor(await deleteRow())).toBe("You need the editor role to delete pages."),
+  );
+  await closeMenu();
 
   await act(async () => {
     await h.router.navigate({ to: "/services" });
@@ -339,8 +374,10 @@ test("an editor is offered adding and creating, with no read-only notice", async
   const button = (name: string) =>
     [...document.querySelectorAll("button")].find((item) => item.textContent === name)!;
 
-  await until(() => expect(button("Delete page").disabled).toBe(false));
-  expect(button("Add document").disabled).toBe(false);
+  await until(() => expect(button("Add page").disabled).toBe(false));
+  await until(async () =>
+    expect((await deleteRow()).getAttribute("aria-disabled")).not.toBe("true"),
+  );
   expect(document.body.textContent).not.toContain("you don’t have the editor role");
 });
 
@@ -556,7 +593,7 @@ test("the menu names the editor's screens, folded to icons beside a service's ow
   // Inside a service: a rail of icons, each still named, and the bar's way back to the list
   expect(menuLink("Services")?.getAttribute("aria-current")).toBe("page");
   expect(menuLink("Categories")?.querySelector(".sr-only")?.textContent).toBe("Categories");
-  expect(document.querySelector('nav[aria-label="Service documents"]')).not.toBeNull();
+  expect(document.querySelector('nav[aria-label="Service pages"]')).not.toBeNull();
   expect(document.querySelector("header a")?.textContent).toBe("Services");
 
   await act(async () => h.router.navigate({ to: "/categories" }));
@@ -566,7 +603,7 @@ test("the menu names the editor's screens, folded to icons beside a service's ow
   expect(menuLink("Categories")?.getAttribute("aria-current")).toBe("page");
   expect(menuLink("Categories")?.querySelector(".sr-only")).toBeNull();
   expect(menuLink("Services")?.hasAttribute("aria-current")).toBe(false);
-  expect(document.querySelector('nav[aria-label="Service documents"]')).toBeNull();
+  expect(document.querySelector('nav[aria-label="Service pages"]')).toBeNull();
   expect(document.querySelector("header a")?.textContent).toBe("Categories");
   await until(() => expect(document.body.textContent).toContain("No categories yet"));
 });

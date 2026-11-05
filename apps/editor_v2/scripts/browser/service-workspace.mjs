@@ -148,12 +148,12 @@ try {
   assert.equal(new URL(page.url()).pathname, `/services/${created.id}/${created.id}`);
   assert.equal(await page.getByRole("link", { name: "Application form", exact: true }).count(), 0);
 
-  await button("Add document").click();
+  await button("Add page").click();
   const add = page.getByRole("dialog", { name: "Add a page", exact: true });
   await add
     .getByText("The page starts in Preview beneath this service’s entry page.", { exact: true })
     .waitFor();
-  assert.deepEqual(await add.getByLabel("Document type").locator("option").allTextContents(), [
+  assert.deepEqual(await add.getByLabel("Page type").locator("option").allTextContents(), [
     "Start page",
     "Supporting page",
   ]);
@@ -170,8 +170,8 @@ try {
   assert.equal(start.fields.visibility, "preview");
   assert.equal(start.fields.body_markdown, "");
 
-  await button("Add document").click();
-  await add.getByLabel("Document type").selectOption("supporting");
+  await button("Add page").click();
+  await add.getByLabel("Page type").selectOption("supporting");
   await add.getByLabel("Page title", { exact: true }).fill("Fees");
   await add.getByRole("button", { name: "Add page", exact: true }).click();
   await page.waitForFunction(
@@ -195,11 +195,17 @@ try {
   await page.locator("[data-cms-preview-article]").waitFor();
   await button("Close preview").click();
 
-  await button("Delete page").click();
+  // Deleting is in the page's own menu, in its bar
+  const deletePage = async () => {
+    await button("More page actions").click();
+    await page.getByRole("menuitem", { name: "Delete page…", exact: true }).click();
+  };
+
+  await deletePage();
   const question = page.getByRole("alertdialog");
   await question.getByRole("button", { name: "Cancel", exact: true }).click();
   assert.equal(api.pages.has(child.id), true);
-  await button("Delete page").click();
+  await deletePage();
   await question.getByRole("button", { name: "Delete page", exact: true }).click();
   await page.waitForURL(new URL(`/services/${created.id}/${created.id}`, base).href);
   assert.equal(api.pages.has(child.id), false);

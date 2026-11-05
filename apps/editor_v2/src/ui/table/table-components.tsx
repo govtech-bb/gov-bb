@@ -74,6 +74,7 @@ export function DataTable({
   empty,
   marked,
   rowLink = false,
+  compact = false,
 }: {
   caption: string;
   loading?: boolean;
@@ -82,6 +83,8 @@ export function DataTable({
   marked?: string;
   /** Each row opens with its first link, such as its name's. */
   rowLink?: boolean;
+  /** Rows 8px shorter, for a long list read down its titles, such as Services. */
+  compact?: boolean;
 }) {
   const table = useTableContext();
   const rows = table.getRowModel().rows;
@@ -149,7 +152,8 @@ export function DataTable({
                   <td
                     key={column?.id ?? "loading"}
                     className={cn(
-                      "px-4 py-3.5 align-middle",
+                      "px-4 align-middle",
+                      compact ? "py-2.5" : "py-3.5",
                       column?.columnDef.meta?.secondary && secondary,
                     )}
                   >
@@ -201,7 +205,7 @@ export function DataTable({
                 key={row.id}
                 onClick={rowLink ? open : undefined}
                 className={cn(
-                  "border-t border-line transition-colors",
+                  "group/row border-t border-line transition-colors",
                   row.id === marked ? "bg-blue-10" : "hover:bg-tint",
                   // A step darker while pressed, which is all a tap shows
                   rowLink && "cursor-pointer active:bg-hover",
@@ -212,7 +216,8 @@ export function DataTable({
                     {(cell) => (
                       <td
                         className={cn(
-                          "px-4 py-3.5 align-middle",
+                          "px-4 align-middle",
+                          compact ? "py-2.5" : "py-3.5",
                           cell.column.columnDef.meta?.align === "end" && "text-end",
                           cell.column.columnDef.meta?.secondary && secondary,
                         )}

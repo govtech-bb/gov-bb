@@ -47,6 +47,7 @@ export function RemotePagePane({
   onSession,
   sessions,
   nav,
+  actions,
 }: {
   api: EditorApi;
   id: string;
@@ -55,6 +56,8 @@ export function RemotePagePane({
   sessions?: DocumentSessions;
   /** What shows the service's pages while they're hidden: at the start of the page's bar. */
   nav?: ReactNode;
+  /** What the page itself can do, such as its history and deleting it: a menu in its bar. */
+  actions?: ReactNode;
 }) {
   const opened = useRef(false);
   const page = useQuery({ ...pageQuery(api, id), staleTime: PRELOAD_FRESH });
@@ -98,6 +101,7 @@ export function RemotePagePane({
       active={active}
       onSession={onSession}
       nav={nav}
+      actions={actions}
       readError={page.error ?? categories.error}
       reading={page.isFetching || categories.isFetching}
       retryRead={() => {
@@ -124,6 +128,7 @@ function RemotePageEditor({
   active,
   onSession,
   nav,
+  actions,
   readError,
   reading,
   retryRead,
@@ -134,6 +139,7 @@ function RemotePageEditor({
   active: boolean;
   onSession: SessionListener;
   nav?: ReactNode;
+  actions?: ReactNode;
   readError: Error | null;
   reading: boolean;
   retryRead: () => void;
@@ -641,9 +647,11 @@ function RemotePageEditor({
           store={store}
           active={active}
           nav={nav}
+          actions={actions}
           server={standing()}
           publish={
-            // Keep focus when a completed save leaves nothing to save, or a newer version blocks editing.
+            // Keep focus when a completed save leaves nothing to save, or a newer version blocks editing. Waiting so,
+            // it's a quiet grey rather than a faded teal, which reads as broken beside where the page stands
             <Button
               variant="accent"
               pending={save.isPending || checking}
@@ -651,6 +659,7 @@ function RemotePageEditor({
                 !unsaved || stale || blocked || readOnly || outcome?.kind === "missing" || undefined
               }
               onClick={() => void checkedSave()}
+              className="aria-disabled:not-data-pending:bg-tint aria-disabled:not-data-pending:text-muted aria-disabled:not-data-pending:opacity-100"
             >
               {publishes ? "Publish changes" : "Save"}
             </Button>

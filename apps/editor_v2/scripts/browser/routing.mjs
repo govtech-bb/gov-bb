@@ -37,7 +37,7 @@ const url = (id) => new URL(path(id), base).href;
 
 const title = page.getByRole("textbox", { name: "Page title", exact: true });
 
-const navigation = page.getByRole("navigation", { name: "Service documents" });
+const navigation = page.getByRole("navigation", { name: "Service pages" });
 
 const question = page.getByRole("alertdialog");
 

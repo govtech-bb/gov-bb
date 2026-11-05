@@ -14,6 +14,7 @@ import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import type { Category } from "../../src/api/categories";
 import { ApiFailure, createEditorApi, type ServiceSummary } from "../../src/api/client";
 import { categoriesQuery, servicesQuery } from "../../src/api/queries";
+import { formatDay } from "../../src/ui/dates";
 import { ServicesList } from "../../src/workspace/services-list";
 import type { ServicesSearch } from "../../src/workspace/services-search";
 
@@ -112,7 +113,7 @@ test("lists API services newest change first, a page at a time, opening each in 
   expect(html).toContain("All statuses");
 });
 
-test("each service's name is a link in the shared name cell, its address the site's, its status folded under it", () => {
+test("each service's name is an ink link in the shared name cell, its address the site's, its status, category and day folded under it", () => {
   const html = renderToStaticMarkup(listed([service(1)], {}));
   const cell = new DOMParser().parseFromString(html, "text/html").querySelector("tbody td")!;
   const [name, path, details] = [...cell.firstElementChild!.children];
@@ -121,6 +122,9 @@ test("each service's name is a link in the shared name cell, its address the sit
     `/services/${service(1).id}/${service(1).id}`,
   );
   expect(name!.className).toContain("font-semibold");
+  // A column of titles in ink rather than links' teal, underlined while its row is pointed at
+  expect(name!.querySelector("a")?.classList).toContain("text-ink");
+  expect(name!.querySelector("a")?.classList).toContain("group-hover/row:underline");
   expect(path!.querySelector("a")?.getAttribute("href")).toBe(
     "https://alpha.gov.bb/business-trade/service-1",
   );
@@ -128,7 +132,9 @@ test("each service's name is a link in the shared name cell, its address the sit
   expect(path!.className).toContain("font-mono");
   // Only while the secondary columns are folded away
   expect(details!.className).toContain("@max-3xl:flex");
-  expect(details!.textContent).toBe("Preview link onlyBusiness and trade");
+  expect(details!.textContent).toBe(
+    `Preview link onlyBusiness and trade${formatDay(service(1).updated_at)}`,
+  );
   // Its sortable headers stay buttons
   expect(html).toMatch(/<th[^>]*aria-sort="descending"[^>]*><button/);
 });
@@ -152,7 +158,7 @@ test("its heading has a line under the title, as Categories' has, so the table s
   );
 });
 
-test("its columns keep their widths whatever the rows hold, the service taking the rest", () => {
+test("its columns keep their widths whatever the rows hold, the service taking the rest, the day and actions at the end", () => {
   const html = renderToStaticMarkup(listed(thirty, {}));
   const page = new DOMParser().parseFromString(html, "text/html");
 
@@ -161,7 +167,12 @@ test("its columns keep their widths whatever the rows hold, the service taking t
   );
 
   expect(page.querySelector("table")!.classList).toContain("table-fixed");
-  expect(widths).toEqual(["", "w-48", "w-36", "w-44"]);
+  expect(widths).toEqual(["", "w-64", "w-44", "w-36", "w-16"]);
+  // The day lines up at its end, so its digits stack, and each row has its actions
+  expect(
+    [...page.querySelectorAll("thead th")].map((th) => th.classList.contains("text-end")),
+  ).toEqual([false, false, false, true, true]);
+  expect(page.querySelector('tbody tr button[aria-label^="Actions for"]')).not.toBeNull();
 });
 
 let host: HTMLDivElement;

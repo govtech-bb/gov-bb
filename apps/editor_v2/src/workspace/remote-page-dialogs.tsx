@@ -303,7 +303,7 @@ export function CreateRemotePageDialog({
         </Button>
       }
     >
-      <Field label="Document type">
+      <Field label="Page type">
         <NativeSelect
           value={kind}
           onChange={(event) => {
