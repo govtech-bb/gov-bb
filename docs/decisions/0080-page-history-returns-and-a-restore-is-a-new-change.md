@@ -101,5 +101,5 @@ save.
   public view first.
 - Versions recorded before the page's current fields existed can't be
   restored. The history still lists them.
-- editor_v2 needs a "Restore this version" action on the history screen.
-  It is a follow-up: the API is ready for it.
+- editor_v2's history screen offers "Restore this version" on each earlier
+  version of the page, to editors. It comes with the API in #3595.
