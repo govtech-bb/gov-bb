@@ -1,6 +1,10 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { z } from "zod";
-import { CollectionRecord } from "../src/modules/collection";
+import {
+  CollectionRecord,
+  EditorCollectionRecord,
+  RecordEnvelope,
+} from "../src/modules/collection";
 import {
   AUTH_ENV,
   createEmployeeSession,
@@ -46,17 +50,35 @@ describe.skipIf(!HAS_DATABASE)("data collections over HTTP", () => {
     if (database) await dropScratchDatabase(database);
   });
 
-  const send = (method: string, path: string, body?: object, stamp?: string) =>
-    fetch(server.url + path, {
-      method,
-      headers: {
-        cookie,
-        origin: AUTH_ENV.EDITOR_ORIGIN,
-        ...(body ? { "content-type": "application/json" } : {}),
-        ...(stamp ? { "if-updated-at": stamp } : {}),
+  const send = (
+    method: string,
+    path: string,
+    body?: object,
+    version?: number,
+  ) =>
+    fetch(
+      server.url +
+        path +
+        (method === "DELETE" && version !== undefined
+          ? `?expected_version=${version}`
+          : ""),
+      {
+        method,
+        headers: {
+          cookie,
+          origin: AUTH_ENV.EDITOR_ORIGIN,
+          ...(body ? { "content-type": "application/json" } : {}),
+        },
+        ...(body
+          ? {
+              body: JSON.stringify({
+                ...body,
+                ...(version === undefined ? {} : { expected_version: version }),
+              }),
+            }
+          : {}),
       },
-      ...(body ? { body: JSON.stringify(body) } : {}),
-    });
+    );
   const publicRead = async (key: string) => {
     const response = await fetch(`${server.url}/collections/${key}/records`);
     expect(response.status).toBe(200);
@@ -69,30 +91,38 @@ describe.skipIf(!HAS_DATABASE)("data collections over HTTP", () => {
     });
     expect(created.status).toBe(201);
     expect(created.headers.get("cache-control")).toBe("no-store");
-    const record = CollectionRecord.parse(await created.json());
+    const record = EditorCollectionRecord.parse(await created.json());
     expect(record.data).toEqual({
       key: "north",
       name: "North office",
       email: "north@example.gov.bb",
     });
-    expect(await publicRead("offices")).toEqual([record]);
+    expect(await publicRead("offices")).toEqual([
+      CollectionRecord.parse(record),
+    ]);
 
     const saved = await send(
       "PUT",
       "/collections/offices/records/north",
-      { data: { name: "Northern office" } },
-      record.updated_at,
+      {
+        data: { name: "Northern office" },
+      },
+      record.version,
     );
     expect(saved.status).toBe(200);
-    const updated = CollectionRecord.parse(await saved.json());
+    const updated = RecordEnvelope.parse(await saved.json()).record;
     expect(updated.data).toEqual({ key: "north", name: "Northern office" });
-    expect(await publicRead("offices")).toEqual([updated]);
+    expect(await publicRead("offices")).toEqual([
+      CollectionRecord.parse(updated),
+    ]);
 
     const stale = await send(
       "PUT",
       "/collections/offices/records/north",
-      { data: { name: "Lost" } },
-      record.updated_at,
+      {
+        data: { name: "Lost" },
+      },
+      record.version,
     );
     expect(stale.status).toBe(409);
 
@@ -100,7 +130,7 @@ describe.skipIf(!HAS_DATABASE)("data collections over HTTP", () => {
       "DELETE",
       "/collections/offices/records/north",
       undefined,
-      updated.updated_at,
+      updated.version,
     );
     expect(deleted.status).toBe(204);
     expect(await publicRead("offices")).toEqual([]);

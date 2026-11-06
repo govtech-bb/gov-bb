@@ -50,7 +50,7 @@ afterEach(async () => {
 });
 
 /** The page's version, as the restore must name it. */
-const READ = "2026-10-28T14:00:00.000Z";
+const READ = 7;
 
 /** What the restore route answers, and every request that reached it. */
 let restored: Response;
@@ -75,9 +75,22 @@ async function render(
       if (path === `/pages/${PAGE}`)
         return Response.json({
           id: PAGE,
+          slug: "severance-pay",
+          url: "/severance-pay",
           title: "Severance pay",
+          description: null,
+          category_id: null,
+          parent_id: null,
+          form_id: null,
           visibility,
-          updated_at: READ,
+          body_markdown: "",
+          frontmatter: {},
+          published_at: null,
+          created_at: "2026-10-01T12:00:00.000Z",
+          updated_at: "2026-10-28T14:00:00.000Z",
+          version: READ,
+          last_edited_by: null,
+          pending_revision: null,
         });
 
       if (path === "/editor/me") return Response.json({ roles });
@@ -306,7 +319,7 @@ test("restoring confirms first, then sends the version and the page's version it
   await until(() => expect(restores).toHaveLength(1));
   expect(restores[0]?.url).toBe(`/pages/${PAGE}/history/1/restore`);
   expect(restores[0]?.init?.method).toBe("POST");
-  expect(new Headers(restores[0]?.init?.headers).get("if-updated-at")).toBe(READ);
+  expect(JSON.parse(String(restores[0]?.init?.body))).toEqual({ expected_version: READ });
 });
 
 test("on a public page, the dialog says the restore waits for review", async () => {

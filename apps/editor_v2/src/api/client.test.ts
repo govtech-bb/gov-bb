@@ -59,6 +59,19 @@ const fields: SavePageInput = {
   frontmatter: {},
 };
 
+const savedPage = {
+  ...fields,
+  id: "page-1",
+  version: 2,
+  parent_id: null,
+  slug: "calculate-severance-pay",
+  published_at: null,
+  created_at: "2026-10-07T12:00:00.000Z",
+  updated_at: "2026-10-07T12:00:00.000Z",
+  pending_revision: null,
+  last_edited_by: null,
+};
+
 async function failureOf<Value>(promise: Promise<Value>) {
   try {
     await promise;
@@ -78,6 +91,7 @@ const health: Category = {
   url: "/health",
   position: 0,
   services: 2,
+  version: 1,
   reserved_route: false,
   last_edited_by: null,
   updated_at: "2026-10-26T12:00:00.123Z",
@@ -103,12 +117,12 @@ const categoryFields: CategoryFields = {
 };
 
 describe("editor API client", () => {
-  it("saves with the page's last updated_at, as JSON", async () => {
+  it("saves with the page's numeric version, as JSON", async () => {
     status = 200;
-    response = JSON.stringify({ ...fields, id: "page-1" });
+    response = JSON.stringify(savedPage);
     const api = createEditorApi(origin);
 
-    expect(await api.savePage("page-1", fields, "2026-10-07T12:00:00.000Z")).toMatchObject({
+    expect(await api.savePage("page-1", fields, 1)).toMatchObject({
       id: "page-1",
     });
     expect(requests.at(-1)).toMatchObject({
@@ -116,45 +130,61 @@ describe("editor API client", () => {
       method: "PUT",
       headers: {
         "content-type": "application/json",
-        "if-updated-at": "2026-10-07T12:00:00.000Z",
       },
     });
-    expect(JSON.parse(requests.at(-1)?.body ?? "null")).toEqual(fields);
+    expect(JSON.parse(requests.at(-1)?.body ?? "null")).toEqual({ ...fields, expected_version: 1 });
   });
 
   it("reads the review queue, and decides on a change at the version the approver reviewed", async () => {
     const api = createEditorApi(origin);
-    const reviewed = "2026-10-07T12:00:00.000Z";
+    const reviewed = 1;
     status = 200;
     response = JSON.stringify({ revisions: [{ page_id: "page-1" }] });
 
     expect(await api.reviewQueue()).toEqual([{ page_id: "page-1" }]);
     expect(requests.at(-1)).toMatchObject({ url: "/revisions?status=submitted", method: "GET" });
 
-    response = JSON.stringify({ id: "page-1" });
+    response = JSON.stringify(savedPage);
     await api.publishRevision("page-1", reviewed);
     expect(requests.at(-1)).toMatchObject({
       url: "/pages/page-1/revision/publish",
       method: "POST",
-      headers: { "if-updated-at": reviewed },
+      headers: { "content-type": "application/json" },
     });
-    expect(requests.at(-1)?.headers["content-type"]).toBeUndefined();
+    expect(JSON.parse(requests.at(-1)!.body)).toEqual({ expected_version: reviewed });
+    response = JSON.stringify({
+      id: "revision-1",
+      page_id: "page-1",
+      version: 3,
+      status: "rejected",
+      comment: "Check the fees.",
+      fields: savedPage,
+      updated_at: savedPage.updated_at,
+      contributors: [],
+      changes: [],
+    });
 
     await api.rejectRevision("page-1", "Check the fees.", reviewed);
     expect(requests.at(-1)).toMatchObject({
       url: "/pages/page-1/revision/reject",
       method: "POST",
-      headers: { "if-updated-at": reviewed, "content-type": "application/json" },
+      headers: { "content-type": "application/json" },
     });
-    expect(JSON.parse(requests.at(-1)?.body ?? "null")).toEqual({ comment: "Check the fees." });
+    expect(JSON.parse(requests.at(-1)?.body ?? "null")).toEqual({
+      comment: "Check the fees.",
+      expected_version: reviewed,
+    });
   });
 
   it("sends no content type with a request that has no body", async () => {
     status = 204;
     response = "";
-    await createEditorApi(origin).deletePage("page-1");
+    await createEditorApi(origin).deletePage("page-1", 1);
 
-    expect(requests.at(-1)).toMatchObject({ url: "/pages/page-1", method: "DELETE" });
+    expect(requests.at(-1)).toMatchObject({
+      url: "/pages/page-1?expected_version=1",
+      method: "DELETE",
+    });
     expect(requests.at(-1)?.headers["content-type"]).toBeUndefined();
   });
 
@@ -253,23 +283,22 @@ describe("editor API client", () => {
       method: "POST",
       headers: { "content-type": "application/json" },
     });
-    expect(requests.at(-1)?.headers["if-updated-at"]).toBeUndefined();
     expect(JSON.parse(requests.at(-1)?.body ?? "null")).toEqual(categoryFields);
 
     status = 200;
-    expect(await api.updateCategory(clinics.id, categoryFields, clinics.updated_at)).toEqual({
+    expect(await api.updateCategory(clinics.id, categoryFields, clinics.version)).toEqual({
       ok: true,
       value: clinics,
     });
     expect(requests.at(-1)).toMatchObject({
       url: `/editor/categories/${clinics.id}`,
       method: "PUT",
-      headers: { "if-updated-at": clinics.updated_at },
+      body: JSON.stringify({ ...categoryFields, expected_version: clinics.version }),
     });
 
     const order = {
       parent_id: null,
-      expected: [{ id: health.id, updated_at: health.updated_at }],
+      expected: [{ id: health.id, version: health.version }],
       ordered_ids: [health.id],
     };
 
@@ -280,14 +309,13 @@ describe("editor API client", () => {
 
     status = 204;
     response = "";
-    expect(await api.deleteCategory(clinics.id, clinics.updated_at)).toEqual({
+    expect(await api.deleteCategory(clinics.id, clinics.version)).toEqual({
       ok: true,
       value: undefined,
     });
     expect(requests.at(-1)).toMatchObject({
-      url: `/editor/categories/${clinics.id}`,
+      url: `/editor/categories/${clinics.id}?expected_version=${clinics.version}`,
       method: "DELETE",
-      headers: { "if-updated-at": clinics.updated_at },
     });
     expect(requests.at(-1)?.headers["content-type"]).toBeUndefined();
   });
@@ -296,9 +324,9 @@ describe("editor API client", () => {
     const api = createEditorApi(origin);
 
     status = 409;
-    response = JSON.stringify({ error: "conflict", message: "These categories changed." });
+    response = JSON.stringify({ error: "version_conflict", message: "These categories changed." });
 
-    const stale = await api.updateCategory(health.id, categoryFields, health.updated_at);
+    const stale = await api.updateCategory(health.id, categoryFields, health.version);
 
     expect(stale.ok || stale.error).toBeInstanceOf(CategoryConflict);
     expect(stale).toMatchObject({
@@ -309,7 +337,7 @@ describe("editor API client", () => {
     const blockers = { pages: 3, subcategories: 1, reserved_route: false };
 
     response = JSON.stringify({ error: "category_in_use", message: "Still in use.", blockers });
-    const inUse = await api.deleteCategory(health.id, health.updated_at);
+    const inUse = await api.deleteCategory(health.id, health.version);
 
     expect(inUse.ok || inUse.error).toBeInstanceOf(CategoryInUse);
     expect(inUse).toMatchObject({
@@ -318,21 +346,21 @@ describe("editor API client", () => {
     });
 
     // An order's stale snapshot is a conflict too
-    response = JSON.stringify({ error: "conflict", message: "These categories changed." });
+    response = JSON.stringify({ error: "version_conflict", message: "These categories changed." });
     expect(
       await api.orderCategories({ parent_id: null, expected: [], ordered_ids: [] }),
     ).toMatchObject({ ok: false, error: { _tag: "CategoryConflict" } });
 
     // Without its discriminator, a 409 is only a refusal
     response = JSON.stringify({ message: "No." });
-    expect(await api.deleteCategory(health.id, health.updated_at)).toMatchObject({
+    expect(await api.deleteCategory(health.id, health.version)).toMatchObject({
       ok: false,
       error: { _tag: "CategoryRefused", status: 409, message: "No." },
     });
 
     // In use is a deletion's refusal only: an update can't be refused that way
     response = JSON.stringify({ error: "category_in_use", message: "Still in use.", blockers });
-    expect(await api.updateCategory(health.id, categoryFields, health.updated_at)).toMatchObject({
+    expect(await api.updateCategory(health.id, categoryFields, health.version)).toMatchObject({
       ok: false,
       error: { _tag: "CategoryRefused", status: 409 },
     });
@@ -351,11 +379,11 @@ describe("editor API client", () => {
 
     status = 404;
     response = JSON.stringify({ error: "not_found", message: "No category." });
-    expect(await api.updateCategory(health.id, categoryFields, health.updated_at)).toMatchObject({
+    expect(await api.updateCategory(health.id, categoryFields, health.version)).toMatchObject({
       ok: false,
       error: { _tag: "CategoryNotFound", status: 404 },
     });
-    expect(await api.deleteCategory(health.id, health.updated_at)).toMatchObject({
+    expect(await api.deleteCategory(health.id, health.version)).toMatchObject({
       ok: false,
       error: { _tag: "CategoryNotFound" },
     });
@@ -372,7 +400,7 @@ describe("editor API client", () => {
     // A request the API couldn't read: refused
     status = 400;
     response = "";
-    expect(await api.updateCategory(health.id, categoryFields, health.updated_at)).toMatchObject({
+    expect(await api.updateCategory(health.id, categoryFields, health.version)).toMatchObject({
       ok: false,
       error: { _tag: "CategoryRefused", status: 400 },
     });
@@ -383,9 +411,9 @@ describe("editor API client", () => {
 
     const writes: [CategoryOutcomeUnknown["operation"], Promise<{ ok: boolean }>][] = [
       ["create", lost.createCategory(categoryFields)],
-      ["update", lost.updateCategory(health.id, categoryFields, health.updated_at)],
+      ["update", lost.updateCategory(health.id, categoryFields, health.version)],
       ["order", lost.orderCategories({ parent_id: null, expected: [], ordered_ids: [] })],
-      ["delete", lost.deleteCategory(health.id, health.updated_at)],
+      ["delete", lost.deleteCategory(health.id, health.version)],
     ];
 
     for (const [operation, write] of writes)
@@ -403,9 +431,9 @@ describe("editor API client", () => {
 
       const answers: [CategoryOutcomeUnknown["operation"], { ok: boolean }][] = [
         ["create", await api.createCategory(categoryFields)],
-        ["update", await api.updateCategory(health.id, categoryFields, health.updated_at)],
+        ["update", await api.updateCategory(health.id, categoryFields, health.version)],
         ["order", await api.orderCategories({ parent_id: null, expected: [], ordered_ids: [] })],
-        ["delete", await api.deleteCategory(health.id, health.updated_at)],
+        ["delete", await api.deleteCategory(health.id, health.version)],
       ];
 
       for (const [operation, answer] of answers)

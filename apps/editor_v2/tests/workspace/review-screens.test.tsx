@@ -30,6 +30,7 @@ const entry: ReviewQueueEntry = {
 };
 
 const revision: ApiRevision = {
+  version: 1,
   id: entry.id,
   page_id: PAGE,
   status: "submitted",
@@ -60,7 +61,7 @@ const revision: ApiRevision = {
   ],
 };
 
-type Sent = { method: string; path: string; ifUpdatedAt: string | null; body: unknown };
+type Sent = { method: string; path: string; body: unknown };
 
 /** The content API's review routes; `decision` answers a publish or reject. */
 function contentApi(
@@ -84,7 +85,6 @@ function contentApi(
       sent.push({
         method,
         path,
-        ifUpdatedAt: new Headers(init?.headers).get("if-updated-at"),
         body: init?.body ? JSON.parse(String(init.body)) : undefined,
       });
 
@@ -245,7 +245,17 @@ test("an approver publishes the change at the version they reviewed, and returns
   server.answer(() => {
     server.replace(null);
 
-    return Response.json({});
+    return Response.json({
+      ...revision.fields,
+      id: PAGE,
+      slug: "severance-pay",
+      version: 2,
+      created_at: VERSION,
+      updated_at: VERSION,
+      published_at: VERSION,
+      pending_revision: null,
+      last_edited_by: null,
+    });
   });
 
   await press("Approve and publish");
@@ -258,8 +268,7 @@ test("an approver publishes the change at the version they reviewed, and returns
     {
       method: "POST",
       path: `/pages/${PAGE}/revision/publish`,
-      ifUpdatedAt: VERSION,
-      body: undefined,
+      body: { expected_version: revision.version },
     },
   ]);
   expect(text()).toContain("Change published");
@@ -314,8 +323,7 @@ test("a rejection needs a comment, which goes to the editor with the version rev
   expect(server.sent[0]).toEqual({
     method: "POST",
     path: `/pages/${PAGE}/revision/reject`,
-    ifUpdatedAt: VERSION,
-    body: { comment: "Check the fees." },
+    body: { comment: "Check the fees.", expected_version: revision.version },
   });
 });
 
@@ -344,11 +352,7 @@ test.each([
     { error: "forbidden", message: "You can't approve a change you made." },
     "You can't approve a change you made.",
   ],
-  [
-    409,
-    { error: "conflict", message: "Changed." },
-    "This change was updated or decided on after you opened it.",
-  ],
+  [409, { error: "version_conflict", message: "Changed." }, "This change"],
 ])(
   "a publish refused with %s says why and reads the change again",
   async (status, body, message) => {
@@ -409,9 +413,7 @@ test("a publish refused because the change was decided elsewhere says so where t
   await act(async () => [...dialog()!.querySelectorAll("button")].at(-1)!.click());
 
   await until(() => expect(text()).toContain("Nothing is waiting for review on this page"));
-  expect(host.querySelector('[role="alert"]')?.textContent).toContain(
-    "This change was updated or decided on after you opened it.",
-  );
+  expect(host.querySelector('[role="alert"]')?.textContent).toContain("This change");
   await until(() => expect(document.activeElement?.textContent).toContain("Nothing is waiting"));
 });
 

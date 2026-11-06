@@ -16,6 +16,7 @@
 import {
   type AnyPgColumn,
   boolean,
+  bigint,
   check,
   customType,
   index,
@@ -80,6 +81,9 @@ export const categories = pgTable("categories", {
   }),
   // The order the site lists categories (and a category's subcategories) in.
   position: integer("position").notNull().default(0),
+  version: bigint("version", { mode: "number" })
+    .notNull()
+    .default(sql`nextval('content_edit_version_seq')`),
   ...timestamps,
 });
 
@@ -123,6 +127,9 @@ export const contentPages = pgTable(
     })
       .notNull()
       .defaultNow(),
+    version: bigint("version", { mode: "number" })
+      .notNull()
+      .default(sql`nextval('content_edit_version_seq')`),
     ...timestamps,
   },
   (table) => [
@@ -299,6 +306,17 @@ export const changeEvents = pgTable(
   ],
 );
 
+/** Persistent audit counters survive deletion and recreation of their content entity. */
+export const changeEventCounters = pgTable(
+  "change_event_counters",
+  {
+    entityKind: varchar("entity_kind", { length: 40 }).notNull(),
+    entityId: text("entity_id").notNull(),
+    lastVersion: integer("last_version").notNull(),
+  },
+  (table) => [primaryKey({ columns: [table.entityKind, table.entityId] })],
+);
+
 /**
  * An employee's roles, a row each. `user_id` references `auth_user`, which
  * BetterAuth owns, so the key is in the migration only.
@@ -404,6 +422,9 @@ export const collectionRecords = pgTable(
       .references(() => dataCollections.key, { onDelete: "restrict" }),
     recordKey: varchar("record_key", { length: 200 }).notNull(),
     data: jsonb("data").$type<RecordData>().notNull(),
+    version: bigint("version", { mode: "number" })
+      .notNull()
+      .default(sql`nextval('content_edit_version_seq')`),
     ...timestamps,
   },
   (table) => [

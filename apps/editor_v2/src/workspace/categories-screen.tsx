@@ -74,6 +74,12 @@ type ListDialog = { kind: "add" } | { kind: "edit" | "delete"; category: Categor
 // A sibling group's key: its parent's id, or the top level's
 const groupOf = (category: Pick<Category, "parent_id">) => category.parent_id ?? "";
 
+// A lost move's order found in the list: someone may have made it, so it isn't reported as saved
+const UNCONFIRMED_MOVE = {
+  tone: "warning",
+  text: "We didn’t get an answer for that move. The list now shows it in that order, but we can’t confirm your move made it. Check the order before moving again.",
+} as const;
+
 /**
  * Its name and address; narrow, its count too, where its column was. A subcategory hangs from an elbow under its
  * parent, its name in the regular weight where a parent's is semibold, and tells a screen reader whose subcategory it
@@ -391,8 +397,10 @@ export function CategoriesScreen({
         setPressed({ group, id: row.id, by });
         const list = await checkMove(group, unsettled);
 
-        if (list && inOrder(list, unsettled)) setMoved("The last move was saved.");
-        else if (list) {
+        if (list && inOrder(list, unsettled)) {
+          setMoved("");
+          setProblem(UNCONFIRMED_MOVE);
+        } else if (list) {
           setMoved("");
           setProblem({
             tone: "warning",
@@ -429,8 +437,10 @@ export function CategoriesScreen({
         case "CategoryOutcomeUnknown": {
           const list = await checkMove(group, order);
 
-          if (list && inOrder(list, order)) showMoved(list, row.id, by, from);
-          else if (list) {
+          if (list && inOrder(list, order)) {
+            setMoved("");
+            setProblem(UNCONFIRMED_MOVE);
+          } else if (list) {
             setMoved("");
             setProblem({
               tone: "warning",

@@ -46,10 +46,13 @@ const ALL = [
   "020_google_sessions",
   "021_github_accounts",
   "022_restored_from",
+  "023_change_event_counters",
+  "024_edit_versions",
 ];
 
 /** Tables whose rows are not content, so the history does not record them. */
 const UNAUDITED = new Set([
+  "change_event_counters",
   "change_events",
   "schema_migrations",
   "search_chunks",
@@ -85,6 +88,7 @@ describe("migrate", () => {
       "auth_user",
       "auth_verification",
       "categories",
+      "change_event_counters",
       "change_events",
       "collection_records",
       "content_pages",
@@ -156,6 +160,8 @@ describe("migrate", () => {
       "020_google_sessions",
       "021_github_accounts",
       "022_restored_from",
+      "023_change_event_counters",
+      "024_edit_versions",
     ]);
     const pages = await exec("select count(*)::int as n from content_pages");
     expect(pages.rows).toEqual([{ n: 0 }]);
@@ -199,6 +205,8 @@ describe("migrate", () => {
       "020_google_sessions",
       "021_github_accounts",
       "022_restored_from",
+      "023_change_event_counters",
+      "024_edit_versions",
     ]);
     await exec(
       `insert into categories (slug, title) values ('c', 'C');

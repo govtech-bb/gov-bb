@@ -11,6 +11,8 @@ import type { Database } from "../db";
 import type { UserId } from "../modules/auth";
 import {
   CollectionSchema,
+  type EditorCollectionRecord,
+  type RecordEnvelope,
   type CollectionRecord,
   type CollectionSummary,
   type CollectionView,
@@ -119,6 +121,34 @@ export class PostgresCollections implements CollectionStore {
     });
   }
 
+  /** Definition and record share one statement snapshot. */
+  recordEnvelope(
+    key: string,
+    recordKey: string,
+  ): Promise<Result<RecordEnvelope | null, ContentStoreUnavailable>> {
+    return attempt("recordEnvelope", async () => {
+      const [row] = await this.db
+        .select({ collection: dataCollections, record: collectionRecords })
+        .from(dataCollections)
+        .innerJoin(
+          collectionRecords,
+          eq(collectionRecords.collectionKey, dataCollections.key),
+        )
+        .where(
+          and(
+            eq(dataCollections.key, key),
+            eq(collectionRecords.recordKey, recordKey),
+          ),
+        );
+      return row
+        ? {
+            collection: toView(row.collection),
+            record: { ...toRecord(row.record), version: row.record.version },
+          }
+        : null;
+    });
+  }
+
   async records(
     key: string,
   ): Promise<Result<CollectionRecord[], ContentStoreUnavailable>> {
@@ -135,7 +165,7 @@ export class PostgresCollections implements CollectionStore {
   async lockRecord(
     key: string,
     recordKey: string,
-  ): Promise<Result<CollectionRecord | null, ContentStoreUnavailable>> {
+  ): Promise<Result<EditorCollectionRecord | null, ContentStoreUnavailable>> {
     const rows = await attempt("lockRecord", () =>
       this.db
         .select()
@@ -145,14 +175,14 @@ export class PostgresCollections implements CollectionStore {
     );
     if (!rows.ok) return rows;
     const [row] = rows.value;
-    return ok(row ? toRecord(row) : null);
+    return ok(row ? { ...toRecord(row), version: row.version } : null);
   }
 
   async insertRecord(
     key: string,
     recordKey: string,
     data: RecordData,
-  ): Promise<Result<CollectionRecord | null, ContentStoreUnavailable>> {
+  ): Promise<Result<EditorCollectionRecord | null, ContentStoreUnavailable>> {
     const rows = await attempt("insertRecord", () =>
       this.db
         .insert(collectionRecords)
@@ -162,14 +192,14 @@ export class PostgresCollections implements CollectionStore {
     );
     if (!rows.ok) return rows;
     const [row] = rows.value;
-    return ok(row ? toRecord(row) : null);
+    return ok(row ? { ...toRecord(row), version: row.version } : null);
   }
 
   async updateRecord(
     key: string,
     recordKey: string,
     data: RecordData,
-  ): Promise<Result<CollectionRecord, ContentStoreUnavailable>> {
+  ): Promise<Result<EditorCollectionRecord, ContentStoreUnavailable>> {
     // `touch_updated_at` moves `updated_at` when the data changes, and keeps
     // it when nothing did, as for a page.
     const rows = await attempt("updateRecord", () =>
@@ -182,7 +212,7 @@ export class PostgresCollections implements CollectionStore {
     if (!rows.ok) return rows;
     const [row] = rows.value;
     if (!row) throw new Error("A locked record was not there to update");
-    return ok(toRecord(row));
+    return ok({ ...toRecord(row), version: row.version });
   }
 
   async deleteRecord(

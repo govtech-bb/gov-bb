@@ -1,13 +1,13 @@
 import type { FastifyReply, FastifyRequest } from "fastify";
 import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
 import type { Employee } from "../modules/auth";
-import { CollectionNotFound } from "../modules/collection";
+import { CollectionNotFound, RecordNotFound } from "../modules/collection";
 import type { Viewer } from "../modules/page-visibility";
 import type {
   CollectionEditing,
   RecordWriteFailure,
 } from "../services/collection-editing";
-import { IF_UPDATED_AT, SCHEMAS } from "./contracts";
+import { SCHEMAS } from "./contracts";
 import { siteNotFoundCache, siteReadCache, storageFailed } from "./responses";
 
 /** Why a record write was refused, as its response. */
@@ -31,7 +31,7 @@ function recordRefused(
     case "RecordConflict":
       return reply
         .status(409)
-        .send({ error: "conflict", message: error.message });
+        .send({ error: "version_conflict", message: error.message });
     case "RecordExists":
       return reply
         .status(409)
@@ -62,6 +62,21 @@ export const editorCollectionRoutes: FastifyPluginAsyncZod<{
     },
   });
   editor.route({
+    method: "GET",
+    url: "/collections/:key/records/:recordKey",
+    schema: SCHEMAS.getRecord,
+    handler: async (request, reply) => {
+      const { key, recordKey } = request.params;
+      const detail = await collections.detail(key, recordKey);
+      if (!detail.ok)
+        return reply.status(500).send(storageFailed(request.log, detail.error));
+      return (
+        detail.value ??
+        recordRefused(new RecordNotFound(key, recordKey), request, reply)
+      );
+    },
+  });
+  editor.route({
     method: "POST",
     url: "/collections/:key/records/:recordKey",
     schema: SCHEMAS.createRecord,
@@ -86,11 +101,12 @@ export const editorCollectionRoutes: FastifyPluginAsyncZod<{
     config: { role: "editor" },
     handler: async (request, reply) => {
       const { key, recordKey } = request.params;
+      const expected = request.body.expected_version;
       const saved = await collections.save(
         key,
         recordKey,
         request.body.data,
-        request.headers[IF_UPDATED_AT] ?? null,
+        expected,
         actor(request),
       );
       return saved.ok
@@ -105,10 +121,11 @@ export const editorCollectionRoutes: FastifyPluginAsyncZod<{
     config: { role: "editor" },
     handler: async (request, reply) => {
       const { key, recordKey } = request.params;
+      const expected = request.query.expected_version;
       const deleted = await collections.delete(
         key,
         recordKey,
-        request.headers[IF_UPDATED_AT] ?? null,
+        expected,
         actor(request),
       );
       return deleted.ok

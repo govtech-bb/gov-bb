@@ -96,7 +96,7 @@ describe("editor last_edited_by", () => {
       method: "PUT",
       url: `/pages/${page.id}`,
       headers: TEST_HEADERS,
-      payload: fields,
+      payload: { ...fields, expected_version: page.version },
     });
     expect(saved.statusCode, saved.body).toBe(200);
     expect(saved.json().last_edited_by).toEqual(otherAuthor);
@@ -110,7 +110,7 @@ describe("editor last_edited_by", () => {
       method: "PUT",
       url: `/pages/${page.id}`,
       headers: TEST_HEADERS,
-      payload: fields,
+      payload: { ...fields, expected_version: saved.json().version },
     });
     expect(unchanged.statusCode).toBe(200);
     expect(unchanged.json().last_edited_by).toEqual(otherAuthor);
@@ -229,7 +229,11 @@ describe("editor last_edited_by", () => {
       method: "PUT",
       url: `/pages/${page.id}`,
       headers: TEST_HEADERS,
-      payload: { ...PageFields.parse(page), title: "Pending content" },
+      payload: {
+        ...PageFields.parse(page),
+        expected_version: page.version,
+        title: "Pending content",
+      },
     });
     expect(saved.statusCode, saved.body).toBe(200);
     expect(saved.json().pending_revision.status).toBe("draft");
@@ -240,7 +244,8 @@ describe("editor last_edited_by", () => {
     const submitted = await app.inject({
       method: "POST",
       url: `/pages/${page.id}/revision/submit`,
-      headers: { ...TEST_HEADERS, "if-updated-at": saved.json().updated_at },
+      headers: TEST_HEADERS,
+      payload: { expected_version: saved.json().version },
     });
     expect(submitted.statusCode, submitted.body).toBe(200);
     const afterSubmit = await readPage(page.id);
@@ -251,11 +256,11 @@ describe("editor last_edited_by", () => {
     const rejected = await app.inject({
       method: "POST",
       url: `/pages/${page.id}/revision/reject`,
-      headers: {
-        ...TEST_HEADERS,
-        "if-updated-at": submitted.json().updated_at,
+      headers: TEST_HEADERS,
+      payload: {
+        comment: "Needs another edit",
+        expected_version: submitted.json().version,
       },
-      payload: { comment: "Needs another edit" },
     });
     expect(rejected.statusCode, rejected.body).toBe(200);
     const afterReject = await readPage(page.id);
@@ -297,8 +302,9 @@ describe("editor last_edited_by", () => {
     const updated = await app.inject({
       method: "PUT",
       url: `/editor/categories/${child.id}`,
-      headers: { ...TEST_HEADERS, "if-updated-at": child.updated_at },
+      headers: TEST_HEADERS,
       payload: {
+        expected_version: child.version,
         ...categoryFields(child.slug, parent.id),
         title: "Renamed child",
       },
@@ -311,9 +317,9 @@ describe("editor last_edited_by", () => {
       headers: TEST_HEADERS,
       payload: {
         parent_id: parent.id,
-        expected: [updated.json(), sibling].map(({ id, updated_at }) => ({
+        expected: [updated.json(), sibling].map(({ id, version }) => ({
           id,
-          updated_at,
+          version,
         })),
         ordered_ids: [sibling.id, child.id],
       },
@@ -345,8 +351,9 @@ describe("editor last_edited_by", () => {
     const unchanged = await app.inject({
       method: "PUT",
       url: `/editor/categories/${child.id}`,
-      headers: { ...TEST_HEADERS, "if-updated-at": latest.updated_at },
+      headers: TEST_HEADERS,
       payload: {
+        expected_version: latest.version,
         ...categoryFields(child.slug, parent.id),
         title: "Renamed child",
       },

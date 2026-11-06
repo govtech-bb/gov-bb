@@ -14,6 +14,7 @@ import { AuthUnavailable, Forbidden } from "./modules/auth";
 import { err } from "./modules/result";
 
 const categoryResponse = z.strictObject({
+  version: z.number().int().positive().max(Number.MAX_SAFE_INTEGER),
   id: z.guid(),
   parent_id: z.guid().nullable(),
   title: z.string(),
@@ -66,8 +67,8 @@ const save = (category: Category, changes: object = {}) =>
   request({
     method: "PUT",
     url: `/editor/categories/${category.id}`,
-    headers: { "if-updated-at": category.updated_at },
     payload: {
+      expected_version: category.version,
       ...fields(category.slug, category.parent_id),
       title: category.title,
       description: category.description,
@@ -77,8 +78,7 @@ const save = (category: Category, changes: object = {}) =>
 const remove = (category: Category) =>
   request({
     method: "DELETE",
-    url: `/editor/categories/${category.id}`,
-    headers: { "if-updated-at": category.updated_at },
+    url: `/editor/categories/${category.id}?expected_version=${category.version}`,
   });
 async function list(): Promise<Category[]> {
   const response = await request({ url: "/editor/categories" });
@@ -99,7 +99,7 @@ const order = (
     url: "/editor/categories/order",
     payload: {
       parent_id,
-      expected: siblings.map(({ id, updated_at }) => ({ id, updated_at })),
+      expected: siblings.map(({ id, version }) => ({ id, version })),
       ordered_ids,
     },
   });
@@ -264,16 +264,17 @@ describe("editor categories", () => {
     });
   });
 
-  it.each([undefined, "bad", "2026-10-26T12:00:00.000001Z"])(
-    "requires a valid millisecond precondition: %s",
-    async (stamp) => {
+  it.each([undefined, "bad", 0, -1, 1.5, Number.MAX_SAFE_INTEGER + 1])(
+    "requires a positive safe integer precondition: %s",
+    async (version) => {
       const category = await create("root");
       for (const method of ["PUT", "DELETE"] as const) {
         const response = await request({
           method,
-          url: `/editor/categories/${category.id}`,
-          ...(method === "PUT" ? { payload: fields("root") } : {}),
-          headers: stamp === undefined ? {} : { "if-updated-at": stamp },
+          url: `/editor/categories/${category.id}${method === "DELETE" && version !== undefined ? `?expected_version=${version}` : ""}`,
+          ...(method === "PUT"
+            ? { payload: { ...fields("root"), expected_version: version } }
+            : {}),
         });
         expect(response.statusCode, response.body).toBe(400);
       }
@@ -296,9 +297,7 @@ describe("editor categories", () => {
       url: "/editor/categories/order",
       payload: {
         parent_id: parent.id.toUpperCase(),
-        expected: [
-          { id: current.id.toUpperCase(), updated_at: current.updated_at },
-        ],
+        expected: [{ id: current.id.toUpperCase(), version: current.version }],
         ordered_ids: [current.id],
       },
     });
@@ -317,7 +316,7 @@ describe("editor categories", () => {
     for (const response of [await save(category), await remove(category)]) {
       expect(response.statusCode).toBe(409);
       expect(response.json()).toEqual({
-        error: "conflict",
+        error: "version_conflict",
         message: expect.any(String),
       });
     }
@@ -373,10 +372,10 @@ describe("editor categories", () => {
   it("distinguishes invalid permutations from stale membership and stamps", async () => {
     const a = await create("a");
     const b = await create("b");
-    expect((await order([a, b], [a.id, a.id])).statusCode).toBe(422);
-    expect((await order([a, b], [a.id])).statusCode).toBe(422);
-    expect((await order([a, b], [a.id, randomUUID()])).statusCode).toBe(422);
-    expect((await order([a, a], [a.id, a.id])).statusCode).toBe(422);
+    expect((await order([a, b], [a.id, a.id])).statusCode).toBe(400);
+    expect((await order([a, b], [a.id])).statusCode).toBe(400);
+    expect((await order([a, b], [a.id, randomUUID()])).statusCode).toBe(400);
+    expect((await order([a, a], [a.id, a.id])).statusCode).toBe(400);
     expect((await order([a])).statusCode).toBe(409);
     await save(b, { title: "Edited" });
     expect((await order([a, b])).statusCode).toBe(409);
@@ -389,7 +388,7 @@ describe("editor categories", () => {
       { parent_id: null, expected: [], ordered_ids: [], extra: true },
       {
         parent_id: null,
-        expected: [{ id: randomUUID(), updated_at: "bad" }],
+        expected: [{ id: randomUUID(), version: "bad" }],
         ordered_ids: [],
       },
       { parent_id: null, ordered_ids: [] },
@@ -475,7 +474,11 @@ describe("editor categories", () => {
       const response = await request({
         method,
         url: method === "POST" ? "/pages" : `/pages/${existing.id}`,
-        payload: { ...existing, url: candidate.url },
+        payload: {
+          ...existing,
+          expected_version: existing.version,
+          url: candidate.url,
+        },
       });
       expect(response.statusCode).toBe(422);
       expect(response.json()).toMatchObject({ errors: [{ field: "url" }] });

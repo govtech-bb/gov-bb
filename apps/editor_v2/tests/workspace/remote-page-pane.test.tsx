@@ -18,6 +18,7 @@ import { pageHasUnsavedChanges, type PageSession } from "../../src/workspace/pag
 import { pageControl, renderInPage } from "../helpers/page-editor";
 
 const page: ApiPage = {
+  version: 1,
   id: "44444444-4444-4444-8444-444444444444",
   url: "/family/birth-certificate/fees",
   slug: "fees",
@@ -117,6 +118,103 @@ async function applySource(session: PageSession, source: string) {
   });
 }
 
+test("a confirmed save preserves unapplied source typed while the response was pending", async () => {
+  const reply = Promise.withResolvers<Response>();
+  let sent: SavePageInput | undefined;
+
+  const h = await mountPage(async (_url, init) => {
+    if (init?.method === "PUT") {
+      sent = JSON.parse(String(init.body));
+
+      return reply.promise;
+    }
+
+    return Response.json(page);
+  });
+
+  await applySource(h.session(), h.session().store.getSnapshot().source + "\n\nSubmitted");
+  await savePage();
+  await act(async () =>
+    h.session().store.edit(h.session().store.getSnapshot().source + "\n\nUnapplied"),
+  );
+  const newer = h.session().store.getSnapshot();
+  await act(async () => reply.resolve(Response.json({ ...page, ...sent, version: 2 })));
+  await vi.waitFor(() => expect(h.session().getBaseline().page.version).toBe(2));
+  expect(h.session().store.getSnapshot()).toBe(newer);
+  expect(newer.dirty).toBe(true);
+});
+
+// A submission meanwhile moved the version for something no save does, so identical text there isn't this save landing
+test("an uncertain retry freezes its request, and identical text in another review state never adopts the baseline", async () => {
+  const writes: string[] = [];
+  let latest = page;
+
+  const h = await mountPage(async (_url, init) => {
+    if (init?.method === "PUT") {
+      writes.push(String(init.body));
+
+      if (writes.length === 1) {
+        latest = {
+          ...page,
+          ...JSON.parse(String(init.body)),
+          version: 3,
+          pending_revision: { status: "submitted", comment: null },
+        };
+        throw new TypeError("Lost response");
+      }
+
+      return Response.json({ error: "version_conflict", message: "Changed" }, { status: 409 });
+    }
+
+    return Response.json(latest);
+  });
+
+  await applySource(h.session(), h.session().store.getSnapshot().source + "\n\nSubmitted");
+  const baseline = h.session().getBaseline();
+  await savePage();
+  await act(async () =>
+    h.session().store.edit(h.session().store.getSnapshot().source + "\n\nNew source"),
+  );
+  const draft = h.session().store.getSnapshot();
+  await openPageAlert();
+  await act(async () => button("Retry same save")!.click());
+  await vi.waitFor(() => expect(writes).toHaveLength(2));
+  expect(writes[1]).toBe(writes[0]);
+  expect(h.session().getBaseline()).toBe(baseline);
+  expect(h.session().store.getSnapshot()).toBe(draft);
+  expect(button("Keep my version")).toBeUndefined();
+});
+
+test("a retried save that landed while its answer was lost is confirmed, not refused as someone else's change", async () => {
+  const writes: string[] = [];
+  let latest = page;
+
+  const h = await mountPage(async (_url, init) => {
+    if (init?.method === "PUT") {
+      writes.push(String(init.body));
+      // The save lands, and its answer is lost on the way back
+      latest = { ...page, ...JSON.parse(String(init.body)), version: 2 };
+      throw new TypeError("Lost response");
+    }
+
+    return Response.json(latest);
+  });
+
+  await applySource(h.session(), h.session().store.getSnapshot().source + "\n\nSaved");
+  await savePage();
+  // Read again meanwhile, the page's newer version is this save, not someone else's change
+  await act(async () => h.client.refetchQueries({ queryKey: pageQuery(h.api, page.id).queryKey }));
+  await openPageAlert();
+  expect(document.body.textContent).not.toContain("A newer version of this page has been saved");
+  await act(async () => button("Retry same save")!.click());
+  await act(async () => {
+    await vi.waitFor(() => expect(h.session().getBaseline().page.version).toBe(2));
+  });
+  expect(writes).toHaveLength(1);
+  expect(button("Retry same save")).toBeUndefined();
+  expect(document.body.textContent).not.toContain("A newer version of this page has been saved");
+});
+
 const visibility = () => pageControl<HTMLSelectElement>("select");
 
 const draftOption = () => visibility().querySelector<HTMLOptionElement>('option[value="draft"]');
@@ -182,6 +280,7 @@ test.each(["", "preview"])(
         current = {
           ...current,
           ...fields,
+          version: current.version + 1,
           updated_at: new Date(Date.parse(current.updated_at) + 1000).toISOString(),
         };
       }
@@ -243,6 +342,7 @@ test("a background visibility change does not remove the accepted draft baseline
     h.client.setQueryData(pageQuery(h.api, page.id).queryKey, {
       ...page,
       visibility: "public",
+      version: 3,
       updated_at: "2026-10-07T14:00:00.000Z",
     });
   });
@@ -312,6 +412,7 @@ test("Save keeps the focus while it saves, and once its save leaves nothing to s
       current = {
         ...page,
         ...JSON.parse(String(init.body)),
+        version: 2,
         updated_at: "2026-10-07T13:00:00.000Z",
       };
     }
@@ -383,6 +484,7 @@ test("a rejected saved version leaves the working copy editable and its baseline
     h.client.setQueryData(pageQuery(h.api, page.id).queryKey, {
       ...page,
       title: "Saved elsewhere",
+      version: 3,
       updated_at: "2026-10-07T14:00:00.000Z",
     });
     await vi.waitFor(() => expect(document.body.textContent).toContain("Newer version saved"));
@@ -391,7 +493,7 @@ test("a rejected saved version leaves the working copy editable and its baseline
   await openPageAlert();
 
   const loadSaved = [...document.querySelectorAll("button")].find(
-    (button) => button.textContent === "Load saved version",
+    (button) => button.textContent === "Discard my changes and reload",
   )!;
 
   vi.spyOn(govbbPageCodec, "prepare").mockImplementationOnce(() => {
@@ -423,10 +525,10 @@ test("a rejected saved version leaves the working copy editable and its baseline
 });
 
 test.each([
-  { preview: false, action: "Keep my version" },
-  { preview: false, action: "Load saved version" },
-  { preview: true, action: "Keep my version" },
-  { preview: true, action: "Load saved version" },
+  { preview: false, action: "Copy my version" },
+  { preview: false, action: "Discard my changes and reload" },
+  { preview: true, action: "Copy my version" },
+  { preview: true, action: "Discard my changes and reload" },
 ])(
   "$action restores focus after answering a newer version (preview: $preview)",
   async ({ preview, action }) => {
@@ -443,6 +545,7 @@ test.each([
     await act(async () => {
       h.client.setQueryData(pageQuery(h.api, page.id).queryKey, {
         ...page,
+        version: 3,
         updated_at: "2026-10-07T14:00:00.000Z",
       });
       await vi.waitFor(() => expect(document.body.textContent).toContain("Newer version saved"));
@@ -455,14 +558,23 @@ test.each([
     )!;
 
     answer.focus();
+    vi.stubGlobal("navigator", {
+      ...navigator,
+      clipboard: { writeText: vi.fn().mockResolvedValue(undefined) },
+    });
     await act(async () => answer.click());
 
+    if (action === "Copy my version") {
+      expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
+        h.session().store.getSnapshot().source,
+      );
+      expect(answer.isConnected).toBe(true);
+
+      return;
+    }
+
     expect(answer.isConnected).toBe(false);
-    expect(document.activeElement).toBe(
-      pageControl(
-        preview ? "[data-cms-preview-host] [data-site-preview-trigger]" : "[data-document-bar] h1",
-      ),
-    );
+    expect(document.activeElement).toBe(pageControl("[data-document-bar] h1"));
   },
 );
 
@@ -604,7 +716,7 @@ test("a slow save acknowledges only its submitted snapshot; refetch cannot overw
   const second = first + "\n\nTyped during save";
   await applySource(h.session(), second);
   const fields = JSON.parse(String(sent!.body));
-  current = { ...page, ...fields, updated_at: "2026-10-07T13:00:00.000Z" };
+  current = { ...page, ...fields, version: 2, updated_at: "2026-10-07T13:00:00.000Z" };
   await act(async () => {
     answer(Response.json(current));
     await vi.waitFor(() => expect(h.session().isSaving()).toBe(false));
@@ -613,11 +725,12 @@ test("a slow save acknowledges only its submitted snapshot; refetch cannot overw
   expect(draftOption()).toBeNull();
   expect(h.session().store.getSnapshot().committed).toBe(second);
   expect(pageHasUnsavedChanges(h.session())).toBe(true);
-  expect(new Headers(sent!.headers).get("if-updated-at")).toBe(page.updated_at);
+  expect(JSON.parse(String(sent!.body)).expected_version).toBe(page.version);
 
   await act(async () => {
     h.client.setQueryData(pageQuery(h.api, page.id).queryKey, {
       ...current,
+      version: 3,
       updated_at: "2026-10-07T14:00:00.000Z",
       title: "Someone else's edit",
       visibility: "draft",
@@ -741,6 +854,7 @@ test("a change saved to a public page waits for an approver: the editor keeps it
       current = {
         ...live,
         ...JSON.parse(String(init.body)),
+        version: 2,
         updated_at: "2026-10-07T13:00:00.000Z",
         pending_revision: { status: "draft", comment: null },
       };
@@ -805,6 +919,11 @@ test("a saved draft is submitted for review at the version the editor holds, and
       sent = { url, init };
 
       return Response.json({
+        id: "revision-1",
+        page_id: live.id,
+        fields: live,
+        contributors: [],
+        version: 2,
         status: "submitted",
         comment: null,
         updated_at: live.updated_at,
@@ -813,7 +932,9 @@ test("a saved draft is submitted for review at the version the editor holds, and
     }
 
     return Response.json(
-      sent ? { ...drafted, pending_revision: { status: "submitted", comment: null } } : drafted,
+      sent
+        ? { ...drafted, version: 2, pending_revision: { status: "submitted", comment: null } }
+        : drafted,
     );
   });
 
@@ -823,8 +944,35 @@ test("a saved draft is submitted for review at the version the editor holds, and
     await vi.waitFor(() => expect(document.body.textContent).toContain(WAITING));
   });
   expect(sent?.url).toBe(`http://localhost:3020/pages/${page.id}/revision/submit`);
-  expect(new Headers(sent?.init?.headers).get("if-updated-at")).toBe(live.updated_at);
+  expect(JSON.parse(String(sent?.init?.body)).expected_version).toBe(live.version);
   expect(button("Submit for review")).toBeUndefined();
+});
+
+test("a retried submission that landed while its answer was lost is confirmed as waiting", async () => {
+  const drafted: ApiPage = { ...live, pending_revision: { status: "draft", comment: null } };
+  let submissions = 0;
+  let latest = drafted;
+
+  await mountPage(async (_url, init) => {
+    if (init?.method === "POST") {
+      submissions += 1;
+      // The submission lands, and its answer is lost on the way back
+      latest = { ...drafted, version: 2, pending_revision: { status: "submitted", comment: null } };
+      throw new TypeError("Lost response");
+    }
+
+    return Response.json(latest);
+  });
+
+  await vi.waitFor(() => expect(button("Submit for review")?.disabled).toBe(false));
+  await act(async () => button("Submit for review")!.click());
+  await openPageAlert();
+  await act(async () => button("Retry same submission")!.click());
+  await act(async () => {
+    await vi.waitFor(() => expect(document.body.textContent).toContain(WAITING));
+  });
+  expect(submissions).toBe(1);
+  expect(button("Retry same submission")).toBeUndefined();
 });
 
 test("a draft with unsaved edits can't be submitted until they're saved", async () => {
@@ -859,11 +1007,23 @@ test("a rejected change shows the approver's comment, and can be submitted again
     if (init?.method === "POST") {
       sent = init;
 
-      return Response.json({ status: "submitted", comment: null, updated_at: rejected.updated_at });
+      return Response.json({
+        id: "revision-1",
+        page_id: rejected.id,
+        fields: rejected,
+        contributors: [],
+        changes: [],
+        version: 2,
+        status: "submitted",
+        comment: null,
+        updated_at: rejected.updated_at,
+      });
     }
 
     return Response.json(
-      sent ? { ...rejected, pending_revision: { status: "submitted", comment: null } } : rejected,
+      sent
+        ? { ...rejected, version: 2, pending_revision: { status: "submitted", comment: null } }
+        : rejected,
     );
   });
 
@@ -878,7 +1038,7 @@ test("a rejected change shows the approver's comment, and can be submitted again
   await act(async () => {
     await vi.waitFor(() => expect(document.body.textContent).toContain(WAITING));
   });
-  expect(new Headers(sent?.headers).get("if-updated-at")).toBe(rejected.updated_at);
+  expect(JSON.parse(String(sent?.body)).expected_version).toBe(rejected.version);
   expect(document.body.textContent).not.toContain("A newer version");
 });
 
@@ -926,6 +1086,7 @@ test("a change waiting for review can still be saved, and keeps waiting", async 
       current = {
         ...waiting,
         ...JSON.parse(String(init.body)),
+        version: 2,
         updated_at: "2026-10-07T13:00:00.000Z",
       };
 
@@ -1018,7 +1179,12 @@ test("taking a public page with an unpublished change out of view shows its live
   const h = await mountPage(async (_url, init) =>
     init?.method === "PUT"
       ? // api_v2 changes only the visibility; the live content stays
-        Response.json({ ...live, visibility: "preview", updated_at: "2026-10-07T13:00:00.000Z" })
+        Response.json({
+          ...live,
+          visibility: "preview",
+          version: 2,
+          updated_at: "2026-10-07T13:00:00.000Z",
+        })
       : Response.json(waiting),
   );
 
@@ -1072,7 +1238,12 @@ test("a change discarded while more was typed is still announced, and the typing
   await applySource(h.session(), typed);
   await act(async () => {
     answer(
-      Response.json({ ...live, visibility: "preview", updated_at: "2026-10-07T13:00:00.000Z" }),
+      Response.json({
+        ...live,
+        visibility: "preview",
+        version: 2,
+        updated_at: "2026-10-07T13:00:00.000Z",
+      }),
     );
     await vi.waitFor(() =>
       expect(document.body.textContent).toContain("your open copy still contains them"),

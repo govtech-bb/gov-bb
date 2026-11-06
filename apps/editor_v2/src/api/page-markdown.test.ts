@@ -23,12 +23,14 @@ const categories: Category[] = estate.categories.map((category, position) => ({
   description: null,
   position,
   services: 0,
+  version: 1,
   reserved_route: false,
   last_edited_by: null,
   updated_at: "2026-10-26T12:00:00.000Z",
 }));
 
-const pages: ApiPage[] = estate.pages.map((page) => ({
+const pages: ApiPage[] = estate.pages.map((page, index) => ({
+  version: index + 1,
   id: idOf(page.url),
   url: page.url,
   slug: page.url.split("/").at(-1) ?? "",
@@ -262,6 +264,7 @@ describe("page markdown", () => {
       description: null,
       position: 0,
       services: 0,
+      version: 1,
       reserved_route: false,
       last_edited_by: null,
       updated_at: "2026-10-26T12:00:00.000Z",

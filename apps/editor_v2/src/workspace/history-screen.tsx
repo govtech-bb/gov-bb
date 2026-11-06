@@ -84,8 +84,8 @@ export function HistoryScreen({
   const awaitingReview = page.data?.pending_revision?.status === "submitted";
 
   const restore = useMutation({
-    mutationFn: ({ version, read }: { version: number; read: string }) =>
-      api.restoreVersion(pageId, version, read),
+    mutationFn: ({ versionNo, read }: { versionNo: number; read: number }) =>
+      api.restoreVersion(pageId, versionNo, read),
     onSuccess: () => {
       toast("Version restored", {
         description: !isPublic
@@ -224,8 +224,8 @@ export function HistoryScreen({
           restoring &&
           page.data &&
           restore.mutate({
-            version: restoring.version_no,
-            read: page.data.updated_at,
+            versionNo: restoring.version_no,
+            read: page.data.version,
           })
         }
       />

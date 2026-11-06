@@ -120,6 +120,13 @@ export const estateVersionQuery = (api: Pick<EditorApi, "version">, client: Quer
 export const collectionsQuery = (api: EditorApi) =>
   queryOptions({ queryKey: ["content", "collections"], queryFn: () => api.collections() });
 
+/** Private record content and definition, read together for editing. */
+export const recordQuery = (api: EditorApi, key: string, recordKey: string) =>
+  queryOptions({
+    queryKey: ["content", "record", key, recordKey],
+    queryFn: () => api.record(key, recordKey),
+  });
+
 /** One collection and its records, shared by its screen and the record dialogs over it. */
 export const collectionQuery = (api: EditorApi, key: string) =>
   queryOptions({ queryKey: ["content", "collection", key], queryFn: () => api.collection(key) });

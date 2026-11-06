@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CatchBoundary, Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import type { Category } from "../api/categories";
-import { ApiFailure, type ApiPage, type EditorApi } from "../api/client";
+import { ApiFailure, outcomeUnknown, type ApiPage, type EditorApi } from "../api/client";
 import { apiMessage } from "../api/failure-messages";
 import { pageLinkTargetsQuery } from "../api/page-link-targets";
 import { pageFieldLabel } from "../api/page-fields";
@@ -37,7 +37,18 @@ import { EditorSessionProvider } from "@/editor/react";
 import type { DocumentSessions } from "./document-views";
 import { brokenLinks, linkConfirmation } from "./broken-links";
 import type { PageSession, ServerPageBaseline } from "./page-session";
-import { savePageDraft } from "./page-sync";
+import {
+  landedSubmission,
+  preparePageSave,
+  retryPageSave,
+  saveLanded,
+  sendPageSave,
+  submissionLanded,
+  type PageSaveAttempt,
+  type PageSaveOutcome,
+} from "./page-sync";
+import type { DraftSnapshot } from "../persistence/types";
+import { ContentDiff } from "./review-screens";
 
 type SessionListener = (id: string, session: PageSession | undefined) => void;
 
@@ -59,6 +70,7 @@ export function RemotePagePane({
   nav?: ReactNode;
 }) {
   const opened = useRef(false);
+  const [generation, setGeneration] = useState(0);
   const page = useQuery({ ...pageQuery(api, id), staleTime: PRELOAD_FRESH });
   const categories = useQuery(categoriesQuery(api));
 
@@ -93,7 +105,12 @@ export function RemotePagePane({
 
   const editor = (
     <RemotePageEditor
-      key={id}
+      key={`${id}-${generation}`}
+      focusOnOpen={generation > 0}
+      resetEditor={() => {
+        sessions?.forget(id);
+        setGeneration((value) => value + 1);
+      }}
       api={api}
       page={page.data}
       categories={categories.data}
@@ -110,10 +127,10 @@ export function RemotePagePane({
   );
 
   if (!sessions) return editor;
-  sessions.open(id, page.data.updated_at);
+  sessions.open(id, page.data.version);
 
   return (
-    <EditorSessionProvider session={sessions.get(id, createEditorSession)}>
+    <EditorSessionProvider key={generation} session={sessions.get(id, createEditorSession)}>
       {editor}
     </EditorSessionProvider>
   );
@@ -129,6 +146,8 @@ function RemotePageEditor({
   readError,
   reading,
   retryRead,
+  resetEditor,
+  focusOnOpen,
 }: {
   api: EditorApi;
   page: ApiPage;
@@ -139,6 +158,8 @@ function RemotePageEditor({
   readError: Error | null;
   reading: boolean;
   retryRead: () => void;
+  resetEditor: () => void;
+  focusOnOpen: boolean;
 }) {
   const [base, setBase] = useState<ServerPageBaseline>(() => ({
     page: server,
@@ -252,19 +273,26 @@ function RemotePageEditor({
     };
   }, []);
 
+  const [localOutcome, setLocalOutcome] = useState<PageSaveOutcome>();
+  const attempt = useRef<{ request: PageSaveAttempt; snapshot: DraftSnapshot }>(undefined);
+
   const save = useMutation({
-    mutationFn: (current: { base: ServerPageBaseline; markdown: string }) =>
-      savePageDraft(api, current.base, current.markdown, categories),
+    mutationFn: (current: { request: PageSaveAttempt; snapshot: DraftSnapshot; retry?: true }) =>
+      (current.retry ? retryPageSave : sendPageSave)(api, current.request),
     onSuccess: (outcome, sent) => {
+      if (outcome.kind !== "unknown" && outcome.kind !== "conflict") attempt.current = undefined;
+
       if (outcome.kind === "saved") {
         // Show what api_v2 stored when it differs from what was sent, unless more was typed during the save
-        const typed = store.getSnapshot().committed !== sent.markdown;
+        const typed = store.getSnapshot() !== sent.snapshot;
 
-        if (outcome.base.markdown !== sent.markdown && !typed) {
-          store.edit(outcome.base.markdown);
-
-          if (!store.apply()) store.discard();
+        if (outcome.base.markdown !== sent.request.markdown && !typed) {
+          const token = store.captureReplacementToken();
+          const prepared = govbbPageCodec.prepare(outcome.base.markdown);
+          store.replacePrepared(prepared, token);
         }
+
+        attempt.current = undefined;
 
         if (outcome.discarded)
           toast("The page is no longer public", {
@@ -284,17 +312,34 @@ function RemotePageEditor({
     },
   });
 
-  // Sends the saved draft, or a rejected change as it is, for review; its version doesn't move
+  const submitAttempt = useRef<ServerPageBaseline>(undefined);
+
   const submit = useMutation({
-    mutationFn: () => api.submitRevision(server.id, server.updated_at),
-    onSuccess: () => {
-      client.setQueryData(pageQuery(api, server.id).queryKey, {
-        ...server,
-        pending_revision: { status: "submitted", comment: null },
-      });
+    mutationFn: async (sent: ServerPageBaseline & { retry?: true }): Promise<ApiPage> => {
+      const landed = sent.retry ? await landedSubmission(api, sent, categories) : undefined;
+
+      if (landed) return landed;
+      const revision = await api.submitRevision(server.id, sent.page.version);
+
+      return {
+        ...sent.page,
+        version: revision.version,
+        updated_at: revision.updated_at,
+        pending_revision: { status: revision.status, comment: revision.comment },
+      };
+    },
+    onSuccess: (confirmed, sent) => {
+      rebase({ page: confirmed, markdown: sent.markdown });
+      submitAttempt.current = undefined;
+      client.setQueryData(pageQuery(api, server.id).queryKey, confirmed);
       void client.invalidateQueries({ queryKey: ["content"] });
     },
+    onSettled: () => {
+      saving.current = false;
+    },
     onError: (error) => {
+      if (!outcomeUnknown(error)) submitAttempt.current = undefined;
+
       // The change moved on or went elsewhere: read the page again, as a refused save does
       if (error instanceof ApiFailure && (error.status === 409 || error.status === 404))
         void client.invalidateQueries({ queryKey: pageQuery(api, server.id).queryKey });
@@ -312,8 +357,13 @@ function RemotePageEditor({
       <Button
         variant="secondary"
         pending={submit.isPending}
-        disabled={unsaved || stale}
-        onClick={() => submit.mutate()}
+        disabled={unsaved || stale || blocked || save.isPending || checking || !!attempt.current}
+        onClick={() => {
+          if (saving.current) return;
+          saving.current = true;
+          submitAttempt.current ??= structuredClone(baseline.current);
+          submit.mutate(submitAttempt.current);
+        }}
       >
         {label}
       </Button>
@@ -339,9 +389,25 @@ function RemotePageEditor({
   // Only making a page public goes live at once; a public page's changes wait for an approver
   const publishes = visibility === "public" && server.visibility !== "public";
 
-  const outcome = save.isPending ? undefined : save.data;
-  const unsaved = draft.committed !== base.markdown;
-  const stale = server.updated_at !== base.page.updated_at;
+  const outcome = save.isPending ? undefined : (localOutcome ?? save.data);
+
+  const unsaved =
+    draft.committed !== base.markdown || draft.dirty || !draft.valid || draft.status === "error";
+
+  // While a request's answer is lost, a newer version holding exactly what it sent is that request landing, not someone
+  // else's change: retrying it confirms it
+  const landedMeanwhile =
+    (outcome?.kind === "unknown" &&
+      !!attempt.current &&
+      saveLanded(server, attempt.current.request)) ||
+    (outcomeUnknown(submit.error) &&
+      !!submitAttempt.current &&
+      submissionLanded(server, submitAttempt.current, categories));
+
+  const stale =
+    (server.version !== base.page.version && !landedMeanwhile) ||
+    outcome?.kind === "conflict" ||
+    (submit.error instanceof ApiFailure && submit.error.code === "version_conflict");
 
   const blocked = !draft.valid || draft.dirty || draft.status === "error";
 
@@ -350,10 +416,30 @@ function RemotePageEditor({
   const saveDraft = () => {
     const snapshot = store.getSnapshot();
 
-    if (saving.current || stale || !snapshot.valid || snapshot.dirty || snapshot.status === "error")
+    if (
+      saving.current ||
+      stale ||
+      attempt.current ||
+      submitAttempt.current ||
+      !snapshot.valid ||
+      snapshot.dirty ||
+      snapshot.status === "error"
+    )
       return;
+    const prepared = preparePageSave(baseline.current, snapshot.committed, categories);
+
+    if (!prepared.ok) return setLocalOutcome(prepared.outcome);
+    setLocalOutcome(undefined);
     saving.current = true;
-    save.mutate({ base: baseline.current, markdown: snapshot.committed });
+    attempt.current = { request: prepared.attempt, snapshot };
+    save.mutate(attempt.current);
+  };
+
+  // The same request again: one that landed meanwhile is confirmed rather than refused as a conflict (retryPageSave)
+  const retrySave = () => {
+    if (saving.current || !attempt.current) return;
+    saving.current = true;
+    save.mutate({ ...attempt.current, retry: true });
   };
 
   // Looks the page's links up again, then saves. Only making the page public stops to ask about what it found.
@@ -420,20 +506,41 @@ function RemotePageEditor({
       .find((element) => !element.closest("[inert]"))
       ?.focus();
 
-  const loadSaved = () => {
-    const markdown = pageToMarkdown(server, categories);
-    store.edit(markdown);
+  useEffect(() => {
+    if (focusOnOpen) restorePageFocus();
+  }, [focusOnOpen]);
+  const [reloading, setReloading] = useState(false);
 
-    if (store.apply()) {
-      rebase({ page: server, markdown });
+  const loadSaved = async () => {
+    if (saving.current) return;
+    saving.current = true;
+    setReloading(true);
+    const before = store.getSnapshot();
+
+    try {
+      const latest = await api.page(server.id);
+      const listed = await api.categories();
+
+      if (!listed.ok) throw listed.error;
+      const markdown = pageToMarkdown(latest, listed.value);
+      const replacement = new DraftStore(markdown, govbbPageCodec);
+
+      if (!replacement.getSnapshot().valid) throw new Error("The saved page could not be parsed.");
+
+      if (!mounted.current || store.getSnapshot() !== before)
+        throw new Error("Your draft changed while reloading. Check it before discarding.");
+      client.setQueryData(categoriesQuery(api).queryKey, listed.value);
+      client.setQueryData(pageQuery(api, server.id).queryKey, latest);
+      resetEditor();
       restorePageFocus();
-    } else {
-      // Discard the rejected source so the existing working copy remains editable.
-      store.discard();
+    } catch (error) {
       toast("The saved version couldn’t be opened", {
         tone: "error",
-        description: "Your open copy is unchanged.",
+        description: `Your open copy is unchanged. ${error instanceof Error ? error.message : ""}`,
       });
+    } finally {
+      saving.current = false;
+      setReloading(false);
     }
   };
 
@@ -452,12 +559,12 @@ function RemotePageEditor({
         onDownload: downloadMine,
       };
 
-    if (unsaved && (outcome?.kind === "failed" || save.isError))
+    if (outcome?.kind === "unknown" || save.isError)
       return {
         status: "failed",
         error:
-          "We could not save this page. Keep this editor open to retry, or download your changes.",
-        onRetry: () => void checkedSave(),
+          "We couldn’t confirm the save. Retry the same request, or copy your changes and reload.",
+        onRetry: retrySave,
         onDownload: downloadMine,
       };
 
@@ -531,33 +638,63 @@ function RemotePageEditor({
   );
 
   // Read out by its alert as it arrives, so the notice itself isn't
-  const newer = stale && (
+  const newer = (stale || outcome?.kind === "unknown" || outcomeUnknown(submit.error)) && (
     <Banner
       tone="warning"
       layout="strip"
       role="none"
       actions={
         <>
-          {unsaved && (
-            <Button
-              variant="secondary"
-              disabled={save.isPending}
-              onClick={() => {
-                rebase({ page: server, markdown: pageToMarkdown(server, categories) });
-                restorePageFocus();
-              }}
-            >
-              Keep my version
+          {outcome?.kind === "unknown" && (
+            <Button disabled={save.isPending || submit.isPending || reloading} onClick={retrySave}>
+              Retry same save
             </Button>
           )}
-          <Button variant="secondary" disabled={blocked || save.isPending} onClick={loadSaved}>
-            Load saved version
+          {outcomeUnknown(submit.error) && (
+            <Button
+              disabled={save.isPending || submit.isPending || reloading}
+              onClick={() => {
+                if (saving.current || !submitAttempt.current) return;
+                saving.current = true;
+                // One that landed meanwhile is confirmed rather than refused as a conflict (landedSubmission)
+                submit.mutate({ ...submitAttempt.current, retry: true });
+              }}
+            >
+              Retry same submission
+            </Button>
+          )}
+          <Button
+            variant="danger"
+            pending={reloading}
+            disabled={save.isPending || submit.isPending}
+            onClick={() => void loadSaved()}
+          >
+            Discard my changes and reload
           </Button>
-          {unsaved && <Button onClick={downloadMine}>Download my version</Button>}
+          <Button
+            variant="secondary"
+            onClick={() =>
+              void navigator.clipboard
+                .writeText(store.getSnapshot().source)
+                .catch(() => downloadMine())
+            }
+          >
+            Copy my version
+          </Button>
+          <Button onClick={downloadMine}>Download my version</Button>
         </>
       }
     >
-      {newerVersion}
+      <p>
+        {stale
+          ? newerVersion
+          : "We couldn’t confirm the last request. Check the saved version without discarding your open copy."}
+      </p>
+      <p className="text-14 text-muted">
+        Struck-through lines are only in the latest saved version, shown here read-only. Highlighted
+        lines are only in your open copy.
+      </p>
+      <ContentDiff live={pageToMarkdown(server, categories)} proposed={draft.source} />
     </Banner>
   );
 
@@ -573,7 +710,7 @@ function RemotePageEditor({
         ))}
       </ul>
     </Banner>
-  ) : outcome?.kind === "forbidden" ? (
+  ) : outcome?.kind === "forbidden" || outcome?.kind === "refused" ? (
     // A refusal, not a failure: saving again won't change the answer, so nothing offers a retry
     <Banner tone="error" layout="strip" role="alert">
       {outcome.message}
@@ -660,7 +797,7 @@ function RemotePageEditor({
             // Keep focus when a completed save leaves nothing to save, or a newer version blocks editing.
             <Button
               variant="accent"
-              pending={save.isPending || checking}
+              pending={save.isPending || checking || submit.isPending || reloading}
               aria-disabled={
                 !unsaved || stale || blocked || readOnly || outcome?.kind === "missing" || undefined
               }

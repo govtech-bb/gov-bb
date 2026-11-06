@@ -13,7 +13,6 @@ import type { Database } from "./db";
 import { UserId, type Employee } from "./modules/auth";
 import { ContentStoreUnavailable, withDefaults } from "./modules/page";
 import { err, ok } from "./modules/result";
-import { IF_UPDATED_AT } from "./routes/contracts";
 import { categories } from "./schema";
 import {
   ReviewNotifications,
@@ -123,26 +122,29 @@ const seedPage = async (overrides: Record<string, unknown> = {}) => {
 /** `employee` saves a change to the page and submits it. */
 const submit = async (
   employee: Employee,
-  page: { id: string; updated_at: string; category_id: string | null },
+  page: { id: string; version: number; category_id: string | null },
   fields: Record<string, unknown> = {},
 ) => {
   const saved = await as(employee, {
     method: "PUT",
     url: `/pages/${page.id}`,
-    headers: { [IF_UPDATED_AT]: page.updated_at },
-    payload: withDefaults(
-      aPage({
-        category_id: page.category_id,
-        title: "Severance pay",
-        body_markdown: BODY,
-        ...fields,
-      }),
-    ),
+    payload: {
+      expected_version: page.version,
+      ...withDefaults(
+        aPage({
+          category_id: page.category_id,
+          title: "Severance pay",
+          body_markdown: BODY,
+          ...fields,
+        }),
+      ),
+    },
   });
   expect(saved.statusCode).toBe(200);
   return as(employee, {
     method: "POST",
     url: `/pages/${page.id}/revision/submit`,
+    payload: { expected_version: saved.json().version },
   });
 };
 
@@ -150,12 +152,14 @@ const submit = async (
 const decide = async (pageId: string, step: "publish" | "reject") => {
   const version = (
     await as(APPROVER, { url: `/pages/${pageId}/revision` })
-  ).json().updated_at as string;
+  ).json().version as number;
   return as(APPROVER, {
     method: "POST",
     url: `/pages/${pageId}/revision/${step}`,
-    headers: { [IF_UPDATED_AT]: version },
-    ...(step === "reject" ? { payload: { comment: "Check the fees." } } : {}),
+    payload: {
+      expected_version: version,
+      ...(step === "reject" ? { comment: "Check the fees." } : {}),
+    },
   });
 };
 
@@ -189,16 +193,23 @@ describe("who hears of a review step", () => {
     const saved = await as(TEST_EMPLOYEE, {
       method: "PUT",
       url: `/pages/${page.id}`,
-      headers: { [IF_UPDATED_AT]: page.updated_at },
-      payload: withDefaults(
-        aPage({ category_id: page.category_id, title: "Severance pay" }),
-      ),
+      payload: {
+        expected_version: page.version,
+        ...withDefaults(
+          aPage({ category_id: page.category_id, title: "Severance pay" }),
+        ),
+      },
     });
     expect(saved.statusCode).toBe(200);
 
     const submitted = await as(TEST_EDITOR, {
       method: "POST",
       url: `/pages/${page.id}/revision/submit`,
+      payload: {
+        expected_version: (
+          await as(TEST_EDITOR, { url: `/pages/${page.id}` })
+        ).json().version,
+      },
     });
 
     expect(submitted.statusCode).toBe(200);
@@ -212,11 +223,12 @@ describe("who hears of a review step", () => {
     });
     await submit(TEST_EDITOR, page, { url: page.url, category_id: null });
     sent = [];
-    await decide(page.id, "reject");
+    const rejected = await decide(page.id, "reject");
     // Sent again as it is, then published.
     await as(TEST_EDITOR, {
       method: "POST",
       url: `/pages/${page.id}/revision/submit`,
+      payload: { expected_version: rejected.json().version },
     });
     await decide(page.id, "publish");
 

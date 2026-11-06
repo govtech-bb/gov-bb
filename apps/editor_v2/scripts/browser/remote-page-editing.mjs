@@ -47,6 +47,7 @@ const initial = {
   body_markdown: "Original body\n\n[Preview link](https://example.com/)",
   frontmatter: {},
   published_at: null,
+  version: 1,
   created_at: "2026-10-07T12:00:00.000Z",
   updated_at: "2026-10-07T12:00:00.000Z",
   pending_revision: null,
@@ -76,7 +77,7 @@ await context.route("**/*", async (route) => {
     "access-control-allow-origin": request.headers().origin ?? new URL(page.url()).origin,
     "access-control-allow-credentials": "true",
     "access-control-allow-methods": "GET, PUT, OPTIONS",
-    "access-control-allow-headers": "content-type, if-updated-at",
+    "access-control-allow-headers": "content-type",
     "cache-control": "no-store",
   };
 
@@ -95,13 +96,14 @@ await context.route("**/*", async (route) => {
 
   assert.equal(request.method(), "PUT");
   const fields = request.postDataJSON();
-  const ifUpdatedAt = request.headers()["if-updated-at"];
-  writes.push({ fields, ifUpdatedAt });
+  const expectedVersion = fields.expected_version;
+  writes.push({ fields, expectedVersion });
 
-  if (ifUpdatedAt !== current.updated_at) return reply({ error: "conflict" }, 409);
+  if (expectedVersion !== current.version) return reply({ error: "version_conflict" }, 409);
   current = {
     ...current,
     ...fields,
+    version: current.version + 1,
     updated_at: new Date(Date.parse(current.updated_at) + 1000).toISOString(),
   };
 
@@ -188,19 +190,20 @@ try {
   await button("Save").click();
   await waitForSavedTitle(savedTitle);
   assert.equal(writes.length, 1);
-  assert.equal(writes[0].ifUpdatedAt, initial.updated_at);
+  assert.equal(writes[0].expectedVersion, initial.version);
   assert.equal(writes[0].fields.body_markdown, savedBody);
   assert.equal(writes[0].fields.url, initial.url);
   assert.equal(writes[0].fields.visibility, "draft");
   assert.equal(Object.hasOwn(writes[0].fields, "parent_id"), false);
 
-  const savedVersion = current.updated_at;
+  const savedVersion = current.version;
   current = {
     ...current,
     title: "Changed by another employee",
+    version: current.version + 1,
     updated_at: "2026-10-07T13:00:00.000Z",
   };
-  const otherVersion = current.updated_at;
+  const otherVersion = current.version;
   await title.fill("My conflicting title");
   await button("Save").click();
   // Shown under the bar, and read out by the page's save state
@@ -209,13 +212,14 @@ try {
     .first()
     .waitFor();
   assert.equal(writes.length, 2);
-  assert.equal(writes[1].ifUpdatedAt, savedVersion);
+  assert.equal(writes[1].expectedVersion, savedVersion);
   assert.equal(await title.inputValue(), "My conflicting title");
-  await button("Keep my version").click();
+  await button("Discard my changes and reload").click();
+  await title.fill("My conflicting title");
   await button("Save").click();
   await waitForSavedTitle("My conflicting title");
   assert.equal(writes.length, 3);
-  assert.equal(writes[2].ifUpdatedAt, otherVersion);
+  assert.equal(writes[2].expectedVersion, otherVersion);
 
   assert.deepEqual(await page.evaluate(() => window.draftStorageCalls), []);
   await page.reload();

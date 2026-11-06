@@ -8,10 +8,9 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { FastifyInstance, InjectOptions } from "fastify";
 import type { Database } from "./db";
 import type { Employee } from "./modules/auth";
-import { withDefaults } from "./modules/page";
+import { withDefaults, type PageId } from "./modules/page";
 import { restorableFields, VersionNotRestorable } from "./modules/page-history";
 import { ok } from "./modules/result";
-import { IF_UPDATED_AT } from "./routes/contracts";
 import {
   aPage,
   createTestApp,
@@ -63,7 +62,7 @@ const as = (employee: Employee, options: InjectOptions) =>
     },
   });
 
-type Page = { id: string; updated_at: string; visibility: string };
+type Page = { id: PageId; version: number; visibility: string };
 
 const create = async (overrides: Record<string, unknown> = {}) =>
   expectOk(
@@ -75,8 +74,10 @@ const save = async (page: Page, fields: Record<string, unknown>) =>
     await as(TEST_EMPLOYEE, {
       method: "PUT",
       url: `/pages/${page.id}`,
-      headers: { [IF_UPDATED_AT]: page.updated_at },
-      payload: withDefaults(aPage({ visibility: page.visibility, ...fields })),
+      payload: {
+        ...withDefaults(aPage({ visibility: page.visibility, ...fields })),
+        expected_version: page.version,
+      },
     })
   ).json() as Page;
 
@@ -84,12 +85,12 @@ const restore = (
   employee: Employee,
   page: Page,
   version: number,
-  read: string | null = page.updated_at,
+  read: number | null = page.version,
 ) =>
   as(employee, {
     method: "POST",
     url: `/pages/${page.id}/history/${version}/restore`,
-    headers: read === null ? {} : { [IF_UPDATED_AT]: read },
+    payload: read === null ? {} : { expected_version: read },
   });
 
 const history = async (page: Page) =>
@@ -186,7 +187,7 @@ describe("POST /pages/:id/history/:version/restore", () => {
       await services.editing.save(
         renamed.id,
         withDefaults(aPage({ title: "Renamed" })),
-        new Date(renamed.updated_at),
+        renamed.version,
         TEST_EMPLOYEE,
       ),
     ) as Page;
@@ -209,10 +210,10 @@ describe("POST /pages/:id/history/:version/restore", () => {
     const created = await create({ visibility: "draft" });
     const renamed = await save(created, { title: "Renamed" });
 
-    expect((await restore(TEST_EDITOR, renamed, 1, null)).statusCode).toBe(428);
+    expect((await restore(TEST_EDITOR, renamed, 1, null)).statusCode).toBe(400);
     const stale = await restore(TEST_EDITOR, created, 1);
     expect(stale.statusCode).toBe(409);
-    expect(stale.json()).toMatchObject({ error: "conflict" });
+    expect(stale.json()).toMatchObject({ error: "version_conflict" });
     expect(await history(created)).toHaveLength(2);
   });
 
@@ -226,10 +227,11 @@ describe("POST /pages/:id/history/:version/restore", () => {
 
   it("refuses a review step, which holds a revision rather than the page", async () => {
     const live = await create({ visibility: "public" });
-    await save(live, { title: "Renamed" });
+    const drafted = await save(live, { title: "Renamed" });
     await as(TEST_EDITOR, {
       method: "POST",
       url: `/pages/${live.id}/revision/submit`,
+      payload: { expected_version: drafted.version },
     });
     const submitted = (await history(live))[0];
     expect(submitted?.action).toBe("submitted");
@@ -265,8 +267,11 @@ describe("POST /pages/:id/history/:version/restore", () => {
     const response = await as(TEST_EMPLOYEE, {
       method: "PUT",
       url: `/pages/${id}`,
-      headers: { [IF_UPDATED_AT]: restored.updated_at },
-      payload: { ...restored, visibility: "public" },
+      payload: {
+        ...restored,
+        visibility: "public",
+        expected_version: restored.version,
+      },
     });
 
     expect(response.statusCode).toBe(403);
@@ -274,8 +279,10 @@ describe("POST /pages/:id/history/:version/restore", () => {
 
   it("refuses a deletion, though a page created again with the same id keeps it in its history", async () => {
     const id = "77777777-7777-4777-8777-777777777777";
-    await create({ id, visibility: "draft" });
-    expectOk(await services.editing.delete(id, TEST_EMPLOYEE));
+    const first = await create({ id, visibility: "draft" });
+    expectOk(
+      await services.editing.delete(first.id, first.version, TEST_EMPLOYEE),
+    );
     const again = await create({ id, visibility: "draft" });
     expect((await history(again)).map(({ action }) => action)).toEqual([
       "created",

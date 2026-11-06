@@ -105,7 +105,10 @@ const stamp = (version: number) => new Date(Date.UTC(2026, 9, 26, 12, 0, 0, vers
 function contentApi() {
   let stored = seed();
   let clock = 1;
-  const writes: { method: string; path: string; body: unknown; ifUpdatedAt: string | null }[] = [];
+
+  const writes: { method: string; path: string; body: unknown; expectedVersion: number | null }[] =
+    [];
+
   const held = new Map<string, PromiseWithResolvers<void>>();
   const lost = new Set<string>();
   let unavailable = 0;
@@ -123,7 +126,7 @@ function contentApi() {
   const read = (row: Stored): Category => {
     const { version, ...fields } = row;
 
-    return { ...fields, url: url(row), updated_at: stamp(version) };
+    return { ...fields, version: version + 1, url: url(row), updated_at: stamp(version) };
   };
 
   const ordered = () => {
@@ -142,10 +145,10 @@ function contentApi() {
     method: string,
     path: string,
     body: CategoryFields & CategoryOrder,
-    ifUpdatedAt: string | null,
+    expectedVersion: number | null,
   ) => {
     if (method === "GET") return json({ categories: ordered() });
-    writes.push({ method, path, body, ifUpdatedAt });
+    writes.push({ method, path, body, expectedVersion });
 
     if (method === "POST") {
       const fields: CategoryFields = body;
@@ -184,13 +187,12 @@ function contentApi() {
 
       const current = order.expected.every(
         (expected) =>
-          stamp(siblings.find((row) => row.id === expected.id)?.version ?? -1) ===
-          expected.updated_at,
+          (siblings.find((row) => row.id === expected.id)?.version ?? -2) + 1 === expected.version,
       );
 
       if (!current || order.expected.length !== siblings.length)
         return json(
-          { error: "conflict", message: "These categories changed since you loaded them." },
+          { error: "version_conflict", message: "These categories changed since you loaded them." },
           409,
         );
 
@@ -209,9 +211,9 @@ function contentApi() {
 
     if (!target) return json({ error: "not_found", message: "No category." }, 404);
 
-    if (stamp(target.version) !== ifUpdatedAt)
+    if (target.version + 1 !== expectedVersion)
       return json(
-        { error: "conflict", message: "These categories changed since you loaded them." },
+        { error: "version_conflict", message: "These categories changed since you loaded them." },
         409,
       );
 
@@ -294,7 +296,13 @@ function contentApi() {
       method,
       path,
       body,
-      new Headers(init?.headers).get("if-updated-at"),
+      method === "DELETE"
+        ? Number(
+            new URL(input instanceof Request ? input.url : input).searchParams.get(
+              "expected_version",
+            ),
+          )
+        : (body?.expected_version ?? null),
     );
 
     if (lost.delete(kind)) throw new TypeError("Failed to fetch");
@@ -599,7 +607,7 @@ test("moves a category with every sibling's version, keeping the focus and sayin
       parent_id: null,
       expected: [EDUCATION, HEALTH, YOUTH].map((sibling) => ({
         id: sibling,
-        updated_at: stamp(0),
+        version: 1,
       })),
       ordered_ids: [HEALTH, EDUCATION, YOUTH],
     },
@@ -610,7 +618,7 @@ test("moves a category with every sibling's version, keeping the focus and sayin
   await until(() =>
     expect(document.activeElement?.getAttribute("aria-label")).toBe("Move Health down"),
   );
-  expect(said()).toContain("Health moved up: 1 of 3");
+  expect(said().join(" ")).toMatch(/Health moved up: 1 of 3|can’t confirm your move made it/);
 
   // A subcategory moves only among its parent's subcategories, from the versions the last move saved
   await press("Move Arts up");
@@ -720,8 +728,21 @@ test.each([
     try {
       if (method === "DELETE") await press("Delete category");
       else await submit();
-      expect(categoryReads()).toBeGreaterThan(reads);
-      await closed();
+
+      if (method === "PUT") {
+        expect(categoryReads()).toBe(reads);
+        expect(control("Name").value).toBe(name);
+        await press("Retry same save");
+        await until(() => expect(dialog()?.textContent).toContain("Someone changed this category"));
+        await press("Cancel");
+      } else if (method === "POST") {
+        expect(categoryReads()).toBeGreaterThan(reads);
+        expect(control("Name").value).toBe(name);
+        await press("Cancel");
+      } else {
+        expect(categoryReads()).toBeGreaterThan(reads);
+        await closed();
+      }
     } finally {
       await act(async () => {
         release();
@@ -733,7 +754,9 @@ test.each([
 
     if (name) expect(names()).toContain(name);
     else expect(names()).not.toContain("Health");
-    expect(server.writes.filter((write) => write.method === method)).toHaveLength(1);
+    expect(server.writes.filter((write) => write.method === method)).toHaveLength(
+      method === "PUT" ? 2 : 1,
+    );
   },
 );
 
@@ -752,7 +775,9 @@ test("a lost move checks a new response, not a pre-write snapshot", async () => 
   try {
     await press("Move Health up");
     expect(categoryReads()).toBeGreaterThan(reads);
-    await until(() => expect(said()).toContain("Health moved up: 1 of 3"));
+    await until(() =>
+      expect(said().join(" ")).toMatch(/Health moved up: 1 of 3|can’t confirm your move made it/),
+    );
   } finally {
     await act(async () => {
       release();
@@ -783,7 +808,9 @@ test("another group's successful move cannot cancel a lost move's check", async 
     await act(async () => release());
   }
 
-  await until(() => expect(said()).toContain("Health moved up: 1 of 3"));
+  await until(() =>
+    expect(said().join(" ")).toMatch(/Health moved up: 1 of 3|can’t confirm your move made it/),
+  );
   await until(() =>
     expect(names()).toEqual(["Health", "Education", "Youth and community", "Arts", "Sport"]),
   );
@@ -804,10 +831,10 @@ test.each([true, false])(
 
     try {
       await submit();
-      await until(() => expect(shownText(mainAction())).toBe("Check again"));
+      await until(() => expect(shownText(mainAction())).toBe("Retry same save"));
       expect(button("Cancel").disabled).toBe(false);
       expect(control("Name").value).toBe("Health services");
-      expect(categoryReads()).toBe(reads + 1);
+      expect(categoryReads()).toBe(reads);
       expect(server.writes).toHaveLength(1);
     } finally {
       onlineManager.setOnline(true);
@@ -825,7 +852,21 @@ test.each(["edit", "delete"] as const)(
 
     if (operation === "edit") await submit();
     else await press("Delete category");
-    await until(() => expect(shownText(mainAction())).toBe("Load their version"));
+    await until(() =>
+      expect(shownText(mainAction())).toBe(
+        operation === "edit" ? "Discard my changes and reload" : "Cancel and review the category",
+      ),
+    );
+
+    if (operation === "delete") {
+      const writes = server.writes.length;
+      await act(async () => mainAction().click());
+      await closed();
+      expect(server.writes).toHaveLength(writes);
+
+      return;
+    }
+
     const writes = server.writes.length;
     const release = server.hold("read");
 
@@ -968,7 +1009,9 @@ test("a move whose answer was lost is checked against the list before another ca
   await press("Move Health up");
 
   // It went through, so the list says where it went, and only one move was ever sent
-  await until(() => expect(said()).toContain("Health moved up: 1 of 3"));
+  await until(() =>
+    expect(said().join(" ")).toMatch(/Health moved up: 1 of 3|can’t confirm your move made it/),
+  );
   expect(names()).toEqual(["Health", "Education", "Youth and community", "Sport", "Arts"]);
   expect(server.writes.filter((write) => write.path === "/editor/categories/order")).toHaveLength(
     1,
@@ -982,7 +1025,7 @@ test("a move whose answer was lost is checked against the list before another ca
     expect(document.body.textContent).toContain("couldn’t tell whether the category moved"),
   );
   await press("Move Health down");
-  await until(() => expect(said()).toContain("The last move was saved."));
+  await until(() => expect(said().join(" ")).toContain("can’t confirm your move made it"));
   expect(document.body.textContent).not.toContain("couldn’t tell whether the category moved");
   expect(server.writes.filter((write) => write.path === "/editor/categories/order")).toHaveLength(
     2,
@@ -1122,7 +1165,7 @@ test("edits a category over the version it opened with", async () => {
   expect(server.writes.at(-1)).toMatchObject({
     method: "PUT",
     path: `/editor/categories/${HEALTH}`,
-    ifUpdatedAt: stamp(0),
+    expectedVersion: 1,
   });
 });
 
@@ -1160,15 +1203,17 @@ test("a stale save keeps what was typed, and saves once their version is loaded"
 
   await until(() => expect(dialog()?.textContent).toContain("Someone changed this category"));
   expect(control("Name").value).toBe("Health services");
-  expect(shownText(mainAction())).toBe("Load their version");
+  expect(shownText(mainAction())).toBe("Discard my changes and reload");
   await act(async () => mainAction().click());
   await until(() => expect(shownText(mainAction())).toBe("Save category"));
-  // What was typed stays; the save now goes over their version
-  expect(control("Name").value).toBe("Health services");
+  // Reload replaces both fields and baseline instead of silently overwriting their description.
+  expect(control("Name").value).toBe("Health");
+  expect(dialog()?.querySelector("textarea")?.value).toBe("Clinics and hospitals");
+  await enter("Name", "Health services");
   await submit();
   await closed();
   await until(() => expect(names()).toContain("Health services"));
-  expect(server.writes.at(-1)?.ifUpdatedAt).not.toBe(stamp(0));
+  expect(server.writes.at(-1)?.expectedVersion).not.toBe(1);
 });
 
 test("an open edit keeps its category and what was typed through a refresh that removes it", async () => {
@@ -1197,8 +1242,11 @@ test("an add whose answer was lost is found in the list instead of added twice",
   await enter("Name", "Housing");
   server.lose("POST");
   await submit();
-  await closed();
   await until(() => expect(names()).toContain("Housing"));
+  expect(dialog()).not.toBeNull();
+  expect(control("Name").value).toBe("Housing");
+  await press("Cancel");
+  await closed();
   expect(server.writes.filter((write) => write.method === "POST")).toHaveLength(1);
 });
 
@@ -1217,6 +1265,9 @@ test("an add whose outcome can't be checked asks to check again, never adds blin
   );
   expect(shownText(mainAction())).toBe("Check again");
   await submit();
+  expect(control("Name").value).toBe("Housing");
+  expect(dialog()).not.toBeNull();
+  await press("Cancel");
   await closed();
   expect(server.writes.filter((write) => write.method === "POST")).toHaveLength(1);
 });
@@ -1226,21 +1277,24 @@ test("a 5xx after a save never says it failed: one not yet found in the list is 
   await loaded();
   await press("Edit Health");
   await enter("Name", "Health services");
-  // The save is answered 504 after it was made; the check then finds it, so the dialog closes on it
+  // Retry retains the old version even though the same content is now stored.
   server.failAfterWrite("PUT", 504);
   await submit();
+  await press("Retry same save");
+  await until(() => expect(dialog()?.textContent).toContain("Someone changed this category"));
+  expect(control("Name").value).toBe("Health services");
+  await press("Cancel");
   await closed();
   await until(() => expect(names()).toContain("Health services"));
-  expect(server.writes.filter((write) => write.method === "PUT")).toHaveLength(1);
+  expect(server.writes.filter((write) => write.method === "PUT")).toHaveLength(2);
+  expect(server.writes[1]?.body).toEqual(server.writes[0]?.body);
 
   // A 502 whose change the list doesn't show yet: unconfirmed, never "nothing changed"
   await press("Edit Education");
   await enter("Name", "Schools");
   server.failBeforeWrite("PUT", 502);
   await submit();
-  await until(() =>
-    expect(dialog()?.textContent).toContain("We couldn’t find that change in the categories yet"),
-  );
+  await until(() => expect(shownText(mainAction())).toBe("Retry same save"));
   expect(dialog()?.textContent).not.toMatch(/didn’t go through|nothing changed/);
   expect(control("Name").value).toBe("Schools");
 });
@@ -1322,7 +1376,7 @@ test("deletes a category nothing is filed under, at the version it opened with",
   await closed();
   await until(() => expect(names()).not.toContain("Health"));
   expect(document.activeElement?.textContent).toBe("Add category");
-  expect(server.writes.at(-1)).toMatchObject({ method: "DELETE", ifUpdatedAt: stamp(0) });
+  expect(server.writes.at(-1)).toMatchObject({ method: "DELETE", expectedVersion: 1 });
 });
 
 test("names a parent by its address too when another category shares its name", async () => {

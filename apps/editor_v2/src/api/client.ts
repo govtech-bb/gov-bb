@@ -7,10 +7,6 @@ type ApiCategory = Json<paths["/editor/categories"]["get"]["responses"][200]>["c
 
 type CreateCategoryInput = Json<paths["/editor/categories"]["post"]["requestBody"]>;
 
-type UpdateCategoryInput = Json<paths["/editor/categories/{id}"]["put"]["requestBody"]>;
-
-type OrderCategoriesInput = Json<paths["/editor/categories/order"]["put"]["requestBody"]>;
-
 type ApiCategoryBlockers = Extract<
   Json<paths["/editor/categories/{id}"]["delete"]["responses"][409]>,
   { error: "category_in_use" }
@@ -23,7 +19,10 @@ export type ApiPage = Json<paths["/pages/{id}"]["get"]["responses"][200]>;
 export type CreatePageInput = Json<paths["/pages"]["post"]["requestBody"]>;
 
 /** What saving a page sends: every field, with `parent_id` left out to keep the parent. */
-export type SavePageInput = Json<paths["/pages/{id}"]["put"]["requestBody"]>;
+export type SavePageInput = Omit<
+  Json<paths["/pages/{id}"]["put"]["requestBody"]>,
+  "expected_version"
+>;
 
 /** A public page's change waiting for an approver, with what it changes. */
 export type ApiRevision = Json<paths["/pages/{id}/revision"]["get"]["responses"][200]>;
@@ -39,7 +38,6 @@ export type PageHistoryEntry = Json<
 >["entries"][number];
 
 /** What rejecting a change sends: why, for the editor. */
-type RejectRevisionInput = Json<paths["/pages/{id}/revision/reject"]["post"]["requestBody"]>;
 
 /** One row of the services list. */
 export type ServiceSummary = Json<paths["/services"]["get"]["responses"][200]>[number];
@@ -67,9 +65,19 @@ export type Collection = CollectionDetail["collection"];
 /** One record of a collection: a value for some or all of its fields, every one a string. */
 export type CollectionRecord = CollectionDetail["records"][number];
 
+/** A private record editing snapshot, including its definition from the same read. */
+export type RecordDetail = Json<
+  paths["/collections/{key}/records/{recordKey}"]["get"]["responses"][200]
+>;
+
 /** What saving a record sends: every value to keep, by field key. */
 export type RecordInput = Json<
   paths["/collections/{key}/records/{recordKey}"]["put"]["requestBody"]
+>;
+
+/** What creating a record sends: its values, against the displayed definition version. */
+type CreateRecordInput = Json<
+  paths["/collections/{key}/records/{recordKey}"]["post"]["requestBody"]
 >;
 
 /** The estate's change token. */
@@ -80,7 +88,7 @@ export type FieldError = Json<paths["/pages"]["post"]["responses"][422]>["errors
 
 type FailureBody = { error?: string; message?: string; errors?: FieldError[] };
 
-/** A request the API refused or never answered: status 0 means it was not reached. */
+/** A request the API refused or never answered; status 0 does not prove a write failed. */
 export class ApiFailure extends Error {
   constructor(
     readonly status: number,
@@ -240,6 +248,10 @@ export const isText = (value: unknown): value is string => String(value) === val
 
 const isFlag = (value: unknown): value is boolean => value === true || value === false;
 
+/** Edit versions are positive integers exactly representable by JavaScript. */
+export const isEditVersion = (value: unknown): value is number =>
+  Number.isSafeInteger(value) && Number(value) > 0;
+
 const isCount = (value: unknown): value is number =>
   Number.isSafeInteger(value) && Number(value) >= 0;
 
@@ -263,6 +275,8 @@ const isLastEditedBy = (value: unknown): value is ApiPage["last_edited_by"] =>
 
 const isCategory = (value: unknown): value is ApiCategory =>
   value instanceof Object &&
+  "version" in value &&
+  isEditVersion(value.version) &&
   "id" in value &&
   isId(value.id) &&
   "parent_id" in value &&
@@ -313,6 +327,103 @@ const isCategoryBlockers = (value: unknown): value is ApiCategoryBlockers =>
   "reserved_route" in value &&
   isFlag(value.reserved_route);
 
+// oxlint-disable-next-line anti-slop/no-unsafe-dictionary-type -- Untrusted JSON object at the HTTP boundary; each consumed field is checked below.
+const isObject = (value: unknown): value is Record<string, unknown> =>
+  value instanceof Object && !Array.isArray(value);
+
+const nullableText = (value: unknown): value is string | null => value === null || isText(value);
+
+const isPageFields = (value: unknown): value is SavePageInput & { parent_id: string | null } =>
+  isObject(value) &&
+  isText(value.url) &&
+  isText(value.title) &&
+  nullableText(value.category_id) &&
+  nullableText(value.parent_id) &&
+  nullableText(value.description) &&
+  nullableText(value.form_id) &&
+  ["public", "preview", "draft"].includes(String(value.visibility)) &&
+  isText(value.body_markdown) &&
+  isObject(value.frontmatter);
+
+const isPage = (value: unknown): value is ApiPage =>
+  isObject(value) &&
+  isText(value.id) &&
+  isText(value.slug) &&
+  isEditVersion(value.version) &&
+  isStamp(value.updated_at) &&
+  isStamp(value.created_at) &&
+  (value.published_at === null || isStamp(value.published_at)) &&
+  isLastEditedBy(value.last_edited_by) &&
+  (value.pending_revision === null ||
+    (isObject(value.pending_revision) &&
+      ["draft", "submitted", "rejected"].includes(String(value.pending_revision.status)) &&
+      nullableText(value.pending_revision.comment))) &&
+  isPageFields(value);
+
+const isRevision = (value: unknown): value is ApiRevision =>
+  isObject(value) &&
+  isEditVersion(value.version) &&
+  isText(value.id) &&
+  isText(value.page_id) &&
+  isPageFields(value.fields) &&
+  ["draft", "submitted", "rejected", "published", "discarded"].includes(String(value.status)) &&
+  nullableText(value.comment) &&
+  isStamp(value.updated_at) &&
+  Array.isArray(value.contributors) &&
+  value.contributors.every(isText) &&
+  Array.isArray(value.changes) &&
+  value.changes.every(
+    (change) =>
+      isObject(change) && isText(change.field) && "live" in change && "proposed" in change,
+  );
+
+const isEditorCollection = (value: unknown): value is RecordDetail["collection"] =>
+  isObject(value) &&
+  isText(value.key) &&
+  isText(value.title) &&
+  isText(value.record_key) &&
+  isObject(value.schema) &&
+  Array.isArray(value.schema.fields) &&
+  value.schema.fields.every(
+    (field) =>
+      isObject(field) &&
+      isText(field.key) &&
+      isText(field.label) &&
+      ["text", "slug", "email"].includes(String(field.type)),
+  );
+
+const isEditorRecord = (value: unknown): value is RecordDetail["record"] =>
+  isObject(value) &&
+  isEditVersion(value.version) &&
+  isText(value.record_key) &&
+  isStamp(value.updated_at) &&
+  isObject(value.data) &&
+  Object.values(value.data).every(isText);
+
+const isRecordDetail = (value: unknown): value is RecordDetail =>
+  isObject(value) && isEditorCollection(value.collection) && isEditorRecord(value.record);
+
+/** An unreadable successful write cannot confirm a baseline; keep the submitted request for retry. */
+export class ApiAnswerMalformed extends Error {
+  constructor() {
+    super("Content API answer is incomplete. Keep your changes and check the saved version.");
+  }
+}
+
+/** Network loss, server errors and unusable success replies can all follow a committed write. */
+// oxlint-disable-next-line anti-slop/no-unknown-parameters -- Catch-boundary classification; arbitrary thrown values are not confirmed API refusals.
+export const outcomeUnknown = (error: unknown) =>
+  error instanceof ApiAnswerMalformed ||
+  (error instanceof ApiFailure && (error.status === 0 || error.status >= 500));
+
+async function checkedReply<Body>(response: Response, valid: (value: unknown) => value is Body) {
+  const body: unknown = await response.json().catch(() => undefined);
+
+  if (!valid(body)) throw new ApiAnswerMalformed();
+
+  return body;
+}
+
 // The body of an answer, or undefined when it isn't JSON or was cut off
 const bodyOf = async (response: Response) => response.json().catch(() => undefined);
 
@@ -331,9 +442,9 @@ export function createEditorApi(apiOrigin: string, landingOrigin?: string) {
       | SavePageInput
       | CategoryFields
       | CategoryOrder
-      | RejectRevisionInput
-      | RecordInput,
-    ifUpdatedAt?: string,
+      | RecordInput
+      | CreateRecordInput
+      | { expected_version: number; comment?: string },
   ) {
     const headers = new Headers();
 
@@ -344,8 +455,6 @@ export function createEditorApi(apiOrigin: string, landingOrigin?: string) {
       headers.set("content-type", "application/json");
       init.body = JSON.stringify(body);
     }
-
-    if (ifUpdatedAt) headers.set("if-updated-at", ifUpdatedAt);
 
     try {
       return await fetch(`${apiOrigin}${path}`, init);
@@ -387,7 +496,7 @@ export function createEditorApi(apiOrigin: string, landingOrigin?: string) {
     if (status === 422 && errors) return new CategoryRejected(errors, message ?? "Not saved");
 
     if (status === 409 && message && failure instanceof Object && "error" in failure) {
-      if (failure.error === "conflict") return new CategoryConflict(message);
+      if (failure.error === "version_conflict") return new CategoryConflict(message);
 
       if (
         failure.error === "category_in_use" &&
@@ -487,15 +596,14 @@ export function createEditorApi(apiOrigin: string, landingOrigin?: string) {
 
       return written.ok ? savedCategory("create", written.value) : written;
     },
-    /** Saves a category's fields over the version last read, `ifUpdatedAt`; moved to a new parent, it goes last. */
-    updateCategory: async (id: string, fields: CategoryFields, ifUpdatedAt: string) => {
+    /** Saves the fields against the category version displayed when editing began. */
+    updateCategory: async (id: string, fields: CategoryFields, expectedVersion: number) => {
       const written = await writeCategory(
         "update",
         ["CategoryAccessDenied", "CategoryNotFound", "CategoryRejected", "CategoryConflict"],
         "PUT",
         `/editor/categories/${id}`,
-        fields satisfies UpdateCategoryInput,
-        ifUpdatedAt,
+        { ...fields, expected_version: expectedVersion },
       );
 
       return written.ok ? savedCategory("update", written.value) : written;
@@ -507,7 +615,7 @@ export function createEditorApi(apiOrigin: string, landingOrigin?: string) {
         ["CategoryAccessDenied", "CategoryRejected", "CategoryConflict"],
         "PUT",
         "/editor/categories/order",
-        order satisfies OrderCategoriesInput,
+        order,
       );
 
       if (!written.ok) return written;
@@ -517,15 +625,13 @@ export function createEditorApi(apiOrigin: string, landingOrigin?: string) {
         ? ok<Category[]>(saved.categories)
         : failed(new CategoryOutcomeUnknown("order", new CategoryAnswerMalformed()));
     },
-    /** Deletes a category nothing uses, at the version last read, `ifUpdatedAt`. */
-    deleteCategory: async (id: string, ifUpdatedAt: string) => {
+    /** Deletes an unused category at the version displayed in the confirmation. */
+    deleteCategory: async (id: string, expectedVersion: number) => {
       const written = await writeCategory(
         "delete",
         ["CategoryAccessDenied", "CategoryNotFound", "CategoryConflict", "CategoryInUse"],
         "DELETE",
-        `/editor/categories/${id}`,
-        undefined,
-        ifUpdatedAt,
+        `/editor/categories/${id}?expected_version=${expectedVersion}`,
       );
 
       return written.ok ? ok(undefined) : written;
@@ -536,58 +642,80 @@ export function createEditorApi(apiOrigin: string, landingOrigin?: string) {
     /** A collection and its records; a 404 when there is no such collection. */
     collection: (key: string) =>
       read<CollectionDetail>(`/collections/${encodeURIComponent(key)}/records`),
-    /** Adds a record; a 409 `record_exists` when its key is taken. */
-    createRecord: async (
-      key: string,
-      recordKey: string,
-      data: RecordInput["data"],
-    ): Promise<CollectionRecord> =>
-      (await send("POST", recordPath(key, recordKey), { data })).json(),
-    /** Replaces a record's data, over the version last read, `ifUpdatedAt`; a 409 `conflict` once it has moved on. */
+    /** A private editing snapshot: the record's version and the definition its form uses. */
+    record: async (key: string, recordKey: string) =>
+      checkedReply(await send("GET", recordPath(key, recordKey)), isRecordDetail),
+    /** Adds a record. */
+    createRecord: async (key: string, recordKey: string, data: RecordInput["data"]) =>
+      checkedReply(await send("POST", recordPath(key, recordKey), { data }), isEditorRecord),
+    /** Replaces a record only if its displayed version still matches. */
     saveRecord: async (
       key: string,
       recordKey: string,
       data: RecordInput["data"],
-      ifUpdatedAt: string,
-    ): Promise<CollectionRecord> =>
-      (await send("PUT", recordPath(key, recordKey), { data }, ifUpdatedAt)).json(),
-    /** Deletes a record at the version last read, `ifUpdatedAt`. */
-    deleteRecord: async (key: string, recordKey: string, ifUpdatedAt: string) => {
-      await send("DELETE", recordPath(key, recordKey), undefined, ifUpdatedAt);
+      expectedVersion: number,
+    ) =>
+      checkedReply(
+        await send("PUT", recordPath(key, recordKey), { data, expected_version: expectedVersion }),
+        isRecordDetail,
+      ),
+    /** Deletes the record displayed in the confirmation, never a replacement at the same key. */
+    deleteRecord: async (key: string, recordKey: string, expectedVersion: number) => {
+      await send("DELETE", `${recordPath(key, recordKey)}?expected_version=${expectedVersion}`);
     },
     version: () => read<EstateVersion>("/version"),
     me: () => read<Me>("/editor/me"),
-    page: (id: string) => read<ApiPage>(`/pages/${id}`),
-    createPage: async (page: CreatePageInput): Promise<ApiPage> =>
-      (await send("POST", "/pages", page)).json(),
-    savePage: async (id: string, fields: SavePageInput, ifUpdatedAt: string): Promise<ApiPage> =>
-      (await send("PUT", `/pages/${id}`, fields, ifUpdatedAt)).json(),
-    submitRevision: async (id: string, ifUpdatedAt: string): Promise<ApiRevision> =>
-      (await send("POST", `/pages/${id}/revision/submit`, undefined, ifUpdatedAt)).json(),
+    page: async (id: string) => checkedReply(await send("GET", `/pages/${id}`), isPage),
+    createPage: async (page: CreatePageInput) =>
+      checkedReply(await send("POST", "/pages", page), isPage),
+    savePage: async (id: string, fields: SavePageInput, expectedVersion: number) =>
+      checkedReply(
+        await send("PUT", `/pages/${id}`, { ...fields, expected_version: expectedVersion }),
+        isPage,
+      ),
+    submitRevision: async (id: string, expectedVersion: number) => {
+      const revision = await checkedReply(
+        await send("POST", `/pages/${id}/revision/submit`, { expected_version: expectedVersion }),
+        isRevision,
+      );
+
+      if (revision.status !== "submitted") throw new ApiAnswerMalformed();
+
+      return { ...revision, status: revision.status };
+    },
     /** The changes waiting for an approver, the longest-waiting first. */
     reviewQueue: async () =>
       (await read<{ revisions: ReviewQueueEntry[] }>("/revisions?status=submitted")).revisions,
-    revision: (id: string) => read<ApiRevision>(`/pages/${id}/revision`),
+    revision: async (id: string) =>
+      checkedReply(await send("GET", `/pages/${id}/revision`), isRevision),
     /** What happened to a page, newest first. */
     history: async (id: string) =>
       (await read<{ entries: PageHistoryEntry[] }>(`/pages/${id}/history`)).entries,
-    /** Saves history version `version`'s fields over the page as a new change, made against `ifUpdatedAt`. */
-    restoreVersion: async (id: string, version: number, ifUpdatedAt: string): Promise<ApiPage> =>
-      (
-        await send("POST", `/pages/${id}/history/${version}/restore`, undefined, ifUpdatedAt)
-      ).json(),
-    /** Publishes the change at the version the approver reviewed, `ifUpdatedAt`. */
-    publishRevision: async (id: string, ifUpdatedAt: string): Promise<ApiPage> =>
-      (await send("POST", `/pages/${id}/revision/publish`, undefined, ifUpdatedAt)).json(),
-    /** Rejects the change at the version the approver reviewed, `ifUpdatedAt`, telling the editor why. */
-    rejectRevision: async (
-      id: string,
-      comment: string,
-      ifUpdatedAt: string,
-    ): Promise<ApiRevision> =>
-      (await send("POST", `/pages/${id}/revision/reject`, { comment }, ifUpdatedAt)).json(),
-    deletePage: async (id: string) => {
-      await send("DELETE", `/pages/${id}`);
+    /** Saves history version `versionNo`'s fields over the page as a new change, made against `expectedVersion`. */
+    restoreVersion: async (id: string, versionNo: number, expectedVersion: number) =>
+      checkedReply(
+        await send("POST", `/pages/${id}/history/${versionNo}/restore`, {
+          expected_version: expectedVersion,
+        }),
+        isPage,
+      ),
+    /** Publishes exactly the version the approver reviewed. */
+    publishRevision: async (id: string, expectedVersion: number) =>
+      checkedReply(
+        await send("POST", `/pages/${id}/revision/publish`, { expected_version: expectedVersion }),
+        isPage,
+      ),
+    /** Rejects the displayed change with the submitted comment. */
+    rejectRevision: async (id: string, comment: string, expectedVersion: number) =>
+      checkedReply(
+        await send("POST", `/pages/${id}/revision/reject`, {
+          comment,
+          expected_version: expectedVersion,
+        }),
+        isRevision,
+      ),
+    deletePage: async (id: string, expectedVersion: number) => {
+      await send("DELETE", `/pages/${id}?expected_version=${expectedVersion}`);
     },
     landingUrl: (path: string) => (landing ? `${landing}${path}` : undefined),
   };

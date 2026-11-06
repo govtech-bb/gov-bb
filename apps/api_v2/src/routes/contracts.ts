@@ -30,12 +30,13 @@ import {
   CategoryFields,
   CategoryId,
   CategoryOrder,
-  CategoryStamp,
   EditorCategory,
 } from "../modules/category";
 import {
   CollectionKey,
   CollectionRecord,
+  EditorCollectionRecord,
+  RecordEnvelope,
   CollectionSummary,
   CollectionView,
   RecordBody,
@@ -44,9 +45,11 @@ import {
 import { PageHistoryEntry } from "../modules/page-history";
 import { PublicPage } from "../modules/page-visibility";
 import { EstateVersion } from "../services/editor-index";
-
-/** The editor sends the exact millisecond timestamp from its last read. */
-export const IF_UPDATED_AT = "if-updated-at";
+import {
+  expectedVersionFields,
+  ExpectedVersionQuery,
+  VersionCommandBody,
+} from "../modules/edit-concurrency";
 
 /** No credentials, or the preview token. */
 const previewSecurity: Array<Record<string, string[]>> = [
@@ -80,7 +83,7 @@ const validationFailed = z.looseObject({
 });
 
 const conflict = z.looseObject({
-  error: z.literal("conflict"),
+  error: z.literal("version_conflict"),
   message: z.string(),
   documentId: z.guid(),
 });
@@ -93,38 +96,10 @@ const revisionState = z.object({
 
 const idParams = z.object({ id: PageId });
 
-/** The version a write was made against; a 409 when it has moved on. */
-const ifUpdatedAt = (read: string) =>
-  z.object({
-    "if-updated-at": z.iso
-      .datetime({ offset: true })
-      .transform((value) => new Date(value))
-      .optional()
-      .describe(
-        `The \`updated_at\` this client last read${read}. Omit to accept ` +
-          "whatever is stored.",
-      ),
-  });
-
-/**
- * The revision version an approver reviewed. Optional in the schema only so
- * that leaving it out is a 428, as the route answers, rather than a 400.
- */
-const reviewedVersion = z.object({
-  "if-updated-at": z.iso
-    .datetime({ offset: true })
-    .transform((value) => new Date(value))
-    .optional()
-    .describe(
-      "Required: the revision's `updated_at` the approver reviewed. " +
-        "Without it the decision is refused with a 428.",
-    ),
-});
-
 const editorSecurity = [{ editorSession: [] }];
 const authErrors = { 401: error, 403: error, 503: error };
 const categoryConflict = z.object({
-  error: z.literal("conflict"),
+  error: z.literal("version_conflict"),
   message: z.string(),
 });
 const categoryInUse = z.object({
@@ -134,7 +109,6 @@ const categoryInUse = z.object({
 });
 const roleParams = z.object({ id: z.string().min(1), role: Role });
 
-const categoryHeaders = z.object({ "if-updated-at": CategoryStamp });
 const categoryParams = z.object({ id: CategoryId });
 const categoryErrors = {
   400: error,
@@ -146,7 +120,7 @@ const categoryErrors = {
 const collectionParams = z.object({ key: CollectionKey });
 const recordParams = z.object({ key: CollectionKey, recordKey: RecordKey });
 const recordConflict = z.object({
-  error: z.enum(["conflict", "record_exists"]),
+  error: z.enum(["version_conflict", "record_exists"]),
   message: z.string(),
 });
 const recordErrors = {
@@ -308,7 +282,7 @@ export const SCHEMAS = {
       "editor role (403 otherwise). " +
       "Send every field: a save replaces the page and defaults none, except " +
       "that leaving `parent_id` out keeps the page's parent. " +
-      "Send the `updated_at` you last read in the `if-updated-at` header. " +
+      "Send the page version you last read as `expected_version`. " +
       "If the stored row, or the page's pending revision, has moved on since, " +
       "the save is refused with a 409 rather than silently discarding " +
       "whoever wrote first. Changing `url` " +
@@ -327,12 +301,11 @@ export const SCHEMAS = {
       "closed as `discarded`, which the page's history records. A save to " +
       "a page whose revision is waiting for review updates that revision, " +
       "which stays waiting; the saver joins its `contributors`, so may not " +
-      "approve it. Such a save needs `if-updated-at` (428 without it). " +
+      "approve it. A stale version receives 409 `version_conflict`. " +
       "Returns the page as the editor now works on it.",
     tags: ["pages"],
     params: idParams,
-    headers: ifUpdatedAt(""),
-    body: SaveFields,
+    body: SaveFields.extend(expectedVersionFields),
     security: editorSecurity,
     response: {
       200: EditorPage,
@@ -340,7 +313,6 @@ export const SCHEMAS = {
       404: error,
       409: conflict,
       422: validationFailed,
-      428: error,
       500: error,
       ...authErrors,
     },
@@ -376,24 +348,15 @@ export const SCHEMAS = {
       "a page that isn't `public` is written, and its history gains a " +
       "`reverted` entry with `restored_from`; a `public` page's restore " +
       "goes into its pending revision, to be submitted and approved like " +
-      "any other change. `if-updated-at` is required (428 without it): the " +
-      "`updated_at` the editor last read, so a page changed since is a 409 " +
-      "`conflict`. 404 when there is no such page or version; 409 " +
+      "any other change. Send the page version you last read as " +
+      "`expected_version`: a page changed since is a 409 " +
+      "`version_conflict`. 404 when there is no such page or version; 409 " +
       "`not_restorable` for a review step, a deletion, a redacted entry or " +
       "one recorded before the page's current fields. Returns the page as " +
       "the editor now works on it.",
     tags: ["pages"],
     params: idParams.extend({ version: z.coerce.number().int().positive() }),
-    headers: z.object({
-      "if-updated-at": z.iso
-        .datetime({ offset: true })
-        .transform((value) => new Date(value))
-        .optional()
-        .describe(
-          "Required: the `updated_at` this client last read. Without it the " +
-            "restore is refused with a 428.",
-        ),
-    }),
+    body: VersionCommandBody,
     security: editorSecurity,
     response: {
       200: EditorPage,
@@ -404,7 +367,6 @@ export const SCHEMAS = {
         z.object({ error: z.literal("not_restorable"), message: z.string() }),
       ]),
       422: validationFailed,
-      428: error,
       500: error,
       ...authErrors,
     },
@@ -458,8 +420,8 @@ export const SCHEMAS = {
     description:
       "Needs the editor role (403 otherwise). Records the submitter, who " +
       "may not then approve it. 404 when the page has no draft revision; " +
-      "409 `under_review` when it is already submitted, or `conflict` when " +
-      "the draft has been saved since `if-updated-at`. Saves made while it " +
+      "409 `under_review` when it is already submitted, or `version_conflict` when " +
+      "the required page `expected_version` is stale. Saves made while it " +
       "waits update it, and it keeps waiting. A rejected revision can be submitted again " +
       "as it is: it is copied into a new submitted revision with the same " +
       "`updated_at`, and the rejected one keeps its comment. The copy's " +
@@ -467,7 +429,7 @@ export const SCHEMAS = {
       "approve it either.",
     tags: ["pages"],
     params: idParams,
-    headers: ifUpdatedAt(" for the revision"),
+    body: VersionCommandBody,
     security: editorSecurity,
     response: {
       200: RevisionView,
@@ -485,15 +447,15 @@ export const SCHEMAS = {
       "Needs the approver role, and the approver must not have changed or " +
       "submitted the revision (403 otherwise). The live page is unchanged; " +
       "the revision is kept with the comment, and the next save starts a " +
-      "new draft from it. Rejecting moves the revision's `updated_at`, so " +
+      "new draft from it. Rejecting moves the page version, so " +
       "an editor holding the earlier one reloads and sees why. " +
-      "`if-updated-at` is required (428 without it). 404 when nothing is " +
-      "waiting for review; 409 `not_submitted` for a draft, or `conflict` " +
-      "when the revision is no longer the version in `if-updated-at`.",
+      "The page `expected_version` is required. 404 when nothing is " +
+      "waiting for review; 409 `not_submitted` for a draft, or `version_conflict` " +
+      "when the page is no longer the version reviewed.",
     tags: ["pages"],
     params: idParams,
-    headers: reviewedVersion,
     body: z.object({
+      ...expectedVersionFields,
       comment: RevisionComment.describe("Why, for the editor."),
     }),
     security: editorSecurity,
@@ -502,7 +464,6 @@ export const SCHEMAS = {
       400: error,
       404: error,
       409: z.union([conflict, revisionState]),
-      428: error,
       500: error,
       ...authErrors,
     },
@@ -517,20 +478,19 @@ export const SCHEMAS = {
       "in `change_events`, all in one transaction. A revision that has gone " +
       "stale while it waited (its parent or category gone, or its url " +
       "taken) is refused with a 422 naming the field, and nothing changes. " +
-      "`if-updated-at` is required (428 without it). 404 when nothing is " +
-      "waiting for review; 409 `not_submitted` for a draft, or `conflict` " +
-      "when the revision is no longer the version in `if-updated-at`. " +
+      "The page `expected_version` is required. 404 when nothing is " +
+      "waiting for review; 409 `not_submitted` for a draft, or `version_conflict` " +
+      "when the page is no longer the version reviewed. " +
       "Returns the page as it now stands.",
     tags: ["pages"],
     params: idParams,
-    headers: reviewedVersion,
+    body: VersionCommandBody,
     security: editorSecurity,
     response: {
       200: EditorPage,
       400: error,
       404: error,
       409: z.union([conflict, revisionState]),
-      428: error,
       422: validationFailed,
       500: error,
       ...authErrors,
@@ -544,13 +504,17 @@ export const SCHEMAS = {
       "editor role (403 otherwise). A page with sub-pages is refused (422) " +
       "until they are moved or deleted. " +
       "Deleting a `public` page needs the approver role (403 otherwise). " +
-      "Its pending revision goes with it.",
+      "Its pending revision goes with it. Send `expected_version` in the query " +
+      "string: stale is 409 `version_conflict`, and absent is 404.",
     tags: ["pages"],
     params: idParams,
+    querystring: ExpectedVersionQuery,
     security: editorSecurity,
     response: {
       204: z.undefined(),
       400: error,
+      404: error,
+      409: conflict,
       422: validationFailed,
       500: error,
       ...authErrors,
@@ -625,8 +589,7 @@ export const SCHEMAS = {
     tags: ["categories"],
     security: editorSecurity,
     params: categoryParams,
-    headers: categoryHeaders,
-    body: CategoryFields,
+    body: CategoryFields.extend(expectedVersionFields),
     response: {
       200: EditorCategory,
       404: error,
@@ -656,7 +619,7 @@ export const SCHEMAS = {
     tags: ["categories"],
     security: editorSecurity,
     params: categoryParams,
-    headers: categoryHeaders,
+    querystring: ExpectedVersionQuery,
     response: {
       204: z.undefined(),
       400: error,
@@ -702,6 +665,14 @@ export const SCHEMAS = {
     },
   },
 
+  getRecord: {
+    summary: "A record and its definition from one editor snapshot",
+    tags: ["collections"],
+    security: editorSecurity,
+    params: recordParams,
+    response: { 200: RecordEnvelope, ...recordErrors },
+  },
+
   createRecord: {
     summary: "Add a record to a collection",
     description:
@@ -714,7 +685,11 @@ export const SCHEMAS = {
     security: editorSecurity,
     params: recordParams,
     body: RecordBody,
-    response: { 201: CollectionRecord, 409: recordConflict, ...recordErrors },
+    response: {
+      201: EditorCollectionRecord,
+      409: recordConflict,
+      ...recordErrors,
+    },
   },
 
   saveRecord: {
@@ -722,27 +697,29 @@ export const SCHEMAS = {
     description:
       "Needs the editor role (403 otherwise). Send every field to keep: " +
       "the record becomes `data`. Checked as a create is. Send the " +
-      "`updated_at` you last read in `if-updated-at`; if the record has " +
-      "changed since, the save is refused with a 409 `conflict`. 404 when " +
+      "record's `expected_version`; stale is 409 `version_conflict`. 404 when " +
       "there is no such collection or record.",
     tags: ["collections"],
     security: editorSecurity,
     params: recordParams,
-    headers: ifUpdatedAt(""),
-    body: RecordBody,
-    response: { 200: CollectionRecord, 409: recordConflict, ...recordErrors },
+    body: RecordBody.extend(expectedVersionFields),
+    response: {
+      200: RecordEnvelope,
+      409: recordConflict,
+      ...recordErrors,
+    },
   },
 
   deleteRecord: {
     summary: "Delete a record",
     description:
-      "Needs the editor role (403 otherwise). With `if-updated-at`, a " +
-      "record that has changed since is refused with a 409 `conflict`. 404 " +
+      "Needs the editor role (403 otherwise). Send the record `expected_version` " +
+      "in the query: stale is 409 `version_conflict`. 404 " +
       "when there is no such collection or record.",
     tags: ["collections"],
     security: editorSecurity,
     params: recordParams,
-    headers: ifUpdatedAt(""),
+    querystring: ExpectedVersionQuery,
     response: {
       204: z.undefined(),
       409: recordConflict,

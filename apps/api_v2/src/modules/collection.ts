@@ -9,6 +9,7 @@
  */
 
 import { z } from "zod";
+import { EditVersion } from "./edit-concurrency";
 import type { FieldError } from "./page";
 import { err, ok, type Result } from "./result";
 
@@ -72,11 +73,24 @@ export const CollectionRecord = z.object({
   record_key: RecordKey,
   data: RecordData,
   updated_at: Stamp.describe(
-    "Send it back in `if-updated-at` to save or delete this version.",
+    "Content timestamp; authenticated editors use version for write preconditions.",
   ),
 });
 /** One record of a collection. */
 export type CollectionRecord = z.infer<typeof CollectionRecord>;
+
+/** Record baseline for authenticated reads and mutation acknowledgements. */
+export const EditorCollectionRecord = CollectionRecord.extend({
+  version: EditVersion,
+});
+export type EditorCollectionRecord = z.infer<typeof EditorCollectionRecord>;
+
+/** A record with the definition its form is rendered from. */
+export const RecordEnvelope = z.object({
+  collection: CollectionView,
+  record: EditorCollectionRecord,
+});
+export type RecordEnvelope = z.infer<typeof RecordEnvelope>;
 
 /** What a record write sends; `data` is checked against the field list. */
 export const RecordBody = z.strictObject({

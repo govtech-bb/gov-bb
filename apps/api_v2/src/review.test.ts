@@ -14,7 +14,7 @@ import { PageDocument, withDefaults, type PageId } from "./modules/page";
 import { ok } from "./modules/result";
 import { PageEditing } from "./services/page-editing";
 import { categories, changeEvents, pageRevisions } from "./schema";
-import { IF_UPDATED_AT } from "./routes/contracts";
+
 import {
   aPage,
   createTestApp,
@@ -106,7 +106,7 @@ const seedPage = async (overrides: Record<string, unknown> = {}) => {
       TEST_EMPLOYEE,
     ),
   );
-  return PageDocument.parse(page);
+  return { ...PageDocument.parse(page), version: page.version };
 };
 
 const stored = async (id: PageId) =>
@@ -114,20 +114,23 @@ const stored = async (id: PageId) =>
 
 const save = (
   employee: Employee,
-  page: { id: string; updated_at: string; category_id?: string | null },
+  page: { id: string; version: number; category_id?: string | null },
   fields: Record<string, unknown>,
 ) =>
   as(employee, {
     method: "PUT",
     url: `/pages/${page.id}`,
-    headers: { [IF_UPDATED_AT]: page.updated_at },
-    payload: withDefaults(aPage({ category_id: page.category_id, ...fields })),
+    payload: {
+      ...withDefaults(aPage({ category_id: page.category_id, ...fields })),
+      expected_version: page.version,
+    },
   });
 
 /** The page's current revision's version, as an approver who has just read it holds it. */
 const currentVersion = async (pageId: string) =>
-  (await as(APPROVER, { url: `/pages/${pageId}/revision` })).json()
-    .updated_at as string | undefined;
+  (await as(APPROVER, { url: `/pages/${pageId}` })).json().version as
+    | number
+    | undefined;
 
 /**
  * A review step on a page's revision. A decision sends the version just read
@@ -137,19 +140,21 @@ const review = async (
   employee: Employee,
   pageId: string,
   step: "submit" | "reject" | "publish",
-  options: { version?: string | null; comment?: string } = {},
+  options: { version?: number | null; comment?: string } = {},
 ) => {
   const version =
-    options.version === undefined && step !== "submit"
+    options.version === undefined
       ? await currentVersion(pageId)
       : options.version;
   return as(employee, {
     method: "POST",
     url: `/pages/${pageId}/revision/${step}`,
-    headers: version ? { [IF_UPDATED_AT]: version } : {},
-    ...(step === "reject"
-      ? { payload: { comment: options.comment ?? "Check the fees." } }
-      : {}),
+    payload: {
+      ...(version == null ? {} : { expected_version: version }),
+      ...(step === "reject"
+        ? { comment: options.comment ?? "Check the fees." }
+        : {}),
+    },
   });
 };
 
@@ -162,16 +167,17 @@ const drafted = async (fields: Record<string, unknown> = {}) => {
     ...fields,
   });
   expect(response.statusCode).toBe(200);
-  return { page, version: response.json().updated_at as string };
+  return { page, version: response.json().version as number };
 };
 
 /** As `drafted`, and submitted for review by the editor. */
 const submitted = async (fields: Record<string, unknown> = {}) => {
   const draft = await drafted(fields);
-  expect((await review(TEST_EDITOR, draft.page.id, "submit")).statusCode).toBe(
-    200,
-  );
-  return draft;
+  const response = await review(TEST_EDITOR, draft.page.id, "submit", {
+    version: draft.version,
+  });
+  expect(response.statusCode).toBe(200);
+  return { ...draft, version: response.json().version as number };
 };
 
 const revisions = () =>
@@ -210,7 +216,7 @@ describe("submitting a revision", () => {
       status: "submitted",
       submitted_by: TEST_EDITOR.id,
       decided_by: null,
-      updated_at: version,
+      version: response.json().version,
       changes: [
         { field: "title", live: page.title, proposed: "Severance pay" },
         {
@@ -222,7 +228,7 @@ describe("submitting a revision", () => {
     });
     const opened = await as(TEST_EDITOR, { url: `/pages/${page.id}` });
     expect(opened.json()).toMatchObject({
-      updated_at: version,
+      version: response.json().version,
       pending_revision: { status: "submitted", comment: null },
     });
   });
@@ -330,7 +336,7 @@ describe("publishing a revision", () => {
       };
       const response = await save(
         TEST_EDITOR,
-        { ...page, updated_at: version },
+        { ...page, version: version },
         {
           body_markdown: ':::action{href="javascript:run()"}\nRun\n:::',
         },
@@ -356,7 +362,7 @@ describe("publishing a revision", () => {
       title: "Severance pay",
       pending_revision: null,
     });
-    expect(response.json().updated_at > version).toBe(true);
+    expect(response.json().version > version).toBe(true);
     const site = await app.inject({ url: `/pages?url=${ENTRY}` });
     expect(site.json()).toMatchObject({
       frontmatter: { title: "Severance pay" },
@@ -409,7 +415,7 @@ describe("publishing a revision", () => {
     expect(
       (
         await review(APPROVER, page.id, "publish", {
-          version: page.updated_at,
+          version: page.version,
         })
       ).statusCode,
     ).toBe(404);
@@ -437,10 +443,10 @@ describe("rejecting a revision", () => {
       decided_by: APPROVER.id,
     });
     // Rejecting moves the version, so an editor holding the old one reloads.
-    const rejected = response.json().updated_at;
+    const rejected = response.json().version;
     expect(rejected > version).toBe(true);
     expect(await publicResponses()).toEqual(before);
-    expect(await stored(page.id)).toEqual(page);
+    expect(await stored(page.id)).toEqual(PageDocument.parse(page));
     expect(await events()).toEqual([
       { action: "created", actor: TEST_EMPLOYEE.id },
       { action: "submitted", actor: TEST_EDITOR.id },
@@ -449,7 +455,7 @@ describe("rejecting a revision", () => {
     const opened = await as(TEST_EDITOR, { url: `/pages/${page.id}` });
     expect(opened.json()).toMatchObject({
       title: "Severance pay",
-      updated_at: rejected,
+      version: rejected,
       pending_revision: { status: "rejected", comment: "The fee is wrong." },
     });
   });
@@ -460,12 +466,12 @@ describe("rejecting a revision", () => {
 
     const stale = await save(
       TEST_EDITOR,
-      { ...page, updated_at: version },
+      { ...page, version: version },
       { title: "Unaware" },
     );
 
     expect(stale.statusCode).toBe(409);
-    expect(stale.json().error).toBe("conflict");
+    expect(stale.json().error).toBe("version_conflict");
     expect((await revisions()).map(({ status }) => status)).toEqual([
       "rejected",
     ]);
@@ -474,11 +480,11 @@ describe("rejecting a revision", () => {
   it("keeps the rejected revision when the next save starts a new draft from it", async () => {
     const { page } = await submitted();
     const version = (await review(APPROVER, page.id, "reject")).json()
-      .updated_at as string;
+      .version as number;
 
     const response = await save(
       TEST_EMPLOYEE,
-      { ...page, updated_at: version },
+      { ...page, version: version },
       { title: "Fixed" },
     );
 
@@ -487,7 +493,7 @@ describe("rejecting a revision", () => {
       status: "draft",
       comment: null,
     });
-    expect(response.json().updated_at > version).toBe(true);
+    expect(response.json().version > version).toBe(true);
     const rows = await revisions();
     expect(rows).toHaveLength(2);
     expect(rows[0]).toMatchObject({
@@ -507,12 +513,12 @@ describe("rejecting a revision", () => {
   it("stops showing the rejection once the live page changes, and its content never goes live", async () => {
     const { page } = await submitted();
     const version = (await review(APPROVER, page.id, "reject")).json()
-      .updated_at as string;
+      .version as number;
 
     // The editor sends the working copy, the rejected content, with the new visibility.
     const unpublished = await save(
       TEST_EMPLOYEE,
-      { ...page, updated_at: version },
+      { ...page, version: version },
       {
         title: "Severance pay",
         body_markdown: "Rewritten\n\n## Costs\n\nTwenty dollars",
@@ -523,7 +529,7 @@ describe("rejecting a revision", () => {
     expect(unpublished.statusCode).toBe(200);
     expect(unpublished.json().pending_revision).toBeNull();
     expect(await stored(page.id)).toEqual({
-      ...page,
+      ...PageDocument.parse(page),
       visibility: "preview",
       updated_at: unpublished.json().updated_at,
     });
@@ -543,7 +549,7 @@ describe("rejecting a revision", () => {
 
     const hidden = await save(
       TEST_EMPLOYEE,
-      { ...page, updated_at: rejected.updated_at },
+      { ...page, version: rejected.version },
       { ...proposed, visibility: "preview" },
     );
     const shown = await save(TEST_EMPLOYEE, hidden.json(), {
@@ -567,7 +573,7 @@ describe("rejecting a revision", () => {
     const rejected = (await review(APPROVER, page.id, "reject")).json();
 
     const response = await review(TEST_EDITOR, page.id, "submit", {
-      version: rejected.updated_at,
+      version: rejected.version,
     });
 
     expect(response.statusCode).toBe(200);
@@ -585,7 +591,7 @@ describe("rejecting a revision", () => {
       { status: "submitted", comment: null },
     ]);
     const published = await review(APPROVER, page.id, "publish", {
-      version: response.json().updated_at,
+      version: response.json().version,
     });
     expect(published.statusCode).toBe(200);
   });
@@ -612,7 +618,7 @@ describe("the page's history (#3200)", () => {
       })
     ).json();
     await review(TEST_EDITOR, page.id, "submit", {
-      version: rejected.updated_at,
+      version: rejected.version,
     });
     expect((await review(APPROVER, page.id, "publish")).statusCode).toBe(200);
 
@@ -678,11 +684,11 @@ describe("the page's history (#3200)", () => {
       await review(APPROVER, page.id, "reject", {
         comment: "The fee is wrong.",
       })
-    ).json().updated_at as string;
+    ).json().version as number;
     // A change to the live page: only its visibility, though the rejected revision changed the title and body.
     const unpublished = await save(
       TEST_EMPLOYEE,
-      { ...page, updated_at: version },
+      { ...page, version: version },
       {
         title: "Severance pay",
         body_markdown: "Rewritten\n\n## Costs\n\nTwenty dollars",
@@ -774,7 +780,7 @@ describe("self-approval (ADR 0079)", () => {
           "You can't approve or reject a change you made or submitted. Ask another approver.",
       });
       expect((await revisions())[0]?.status).toBe("submitted");
-      expect(await stored(page.id)).toEqual(page);
+      expect(await stored(page.id)).toEqual(PageDocument.parse(page));
     },
   );
 
@@ -784,7 +790,7 @@ describe("self-approval (ADR 0079)", () => {
       const { page, version } = await drafted();
       await save(
         TEST_EMPLOYEE,
-        { ...page, updated_at: version },
+        { ...page, version: version },
         { title: "Approver's edit" },
       );
       await review(TEST_EDITOR, page.id, "submit");
@@ -793,7 +799,7 @@ describe("self-approval (ADR 0079)", () => {
 
       expect(response.statusCode).toBe(403);
       expect((await revisions())[0]?.status).toBe("submitted");
-      expect(await stored(page.id)).toEqual(page);
+      expect(await stored(page.id)).toEqual(PageDocument.parse(page));
     },
   );
 
@@ -805,14 +811,16 @@ describe("self-approval (ADR 0079)", () => {
     const fields = withDefaults(
       aPage({ category_id: page.category_id, title: "Mine" }),
     );
-    expectOk(await bypassed.save(page.id, fields, null, TEST_EMPLOYEE));
+    const saved = expectOk(
+      await bypassed.save(page.id, fields, page.version, TEST_EMPLOYEE),
+    );
     const submitted = expectOk(
-      await bypassed.submit(page.id, null, TEST_EMPLOYEE),
+      await bypassed.submit(page.id, saved.version, TEST_EMPLOYEE),
     );
 
     const published = await bypassed.publish(
       page.id,
-      new Date(submitted.updated_at),
+      submitted.version,
       TEST_EMPLOYEE,
     );
 
@@ -850,7 +858,10 @@ describe("a revision that went stale while it waited", () => {
   it("is refused when its parent has been deleted", async () => {
     const parent = await seedPage({ url: "/money-financial-support/parent" });
     const { page } = await submitted({ parent_id: parent.id });
-    await as(TEST_EMPLOYEE, { method: "DELETE", url: `/pages/${parent.id}` });
+    await as(TEST_EMPLOYEE, {
+      method: "DELETE",
+      url: `/pages/${parent.id}?expected_version=${parent.version}`,
+    });
 
     await refusedNaming(page.id, "parent_id", "No page with that id.");
   });
@@ -901,7 +912,7 @@ describe("a rejected revision submitted again", () => {
     if (contributor)
       await save(
         contributor,
-        { ...page, updated_at: version },
+        { ...page, version: version },
         { title: "Severance pay", body_markdown: "Contributed" },
       );
     await review(submitter, page.id, "submit");
@@ -956,7 +967,7 @@ describe("a rejected revision submitted again", () => {
 
 describe("a decision without the version reviewed", () => {
   it.each(["publish", "reject"] as const)(
-    "is refused to %s with a 428, and nothing changes",
+    "is refused to %s with a 400, and nothing changes",
     async (step) => {
       const { page } = await submitted();
       const before = await revisions();
@@ -965,12 +976,9 @@ describe("a decision without the version reviewed", () => {
         version: null,
       });
 
-      expect(response.statusCode).toBe(428);
-      expect(response.json()).toMatchObject({
-        error: "precondition_required",
-      });
+      expect(response.statusCode).toBe(400);
       expect(await revisions()).toEqual(before);
-      expect(await stored(page.id)).toEqual(page);
+      expect(await stored(page.id)).toEqual(PageDocument.parse(page));
     },
   );
 });
@@ -985,7 +993,7 @@ describe("an approver acting on a revision replaced since they read it", () => {
     ).json();
     await save(
       TEST_EDITOR,
-      { ...page, updated_at: rejected.updated_at },
+      { ...page, version: rejected.version },
       { title: "R2" },
     );
     await review(TEST_EDITOR, page.id, "submit");
@@ -995,8 +1003,8 @@ describe("an approver acting on a revision replaced since they read it", () => {
     });
 
     expect(response.statusCode).toBe(409);
-    expect(response.json().error).toBe("conflict");
-    expect(await stored(page.id)).toEqual(page);
+    expect(response.json().error).toBe("version_conflict");
+    expect(await stored(page.id)).toEqual(PageDocument.parse(page));
     expect((await revisions()).at(-1)?.status).toBe("submitted");
   });
 });
@@ -1009,7 +1017,7 @@ describe("a revision changed after the approver read it", () => {
       // The editor saves again after the approver read the draft.
       const resaved = await save(
         TEST_EDITOR,
-        { ...page, updated_at: reviewed },
+        { ...page, version: reviewed },
         { title: "Changed after review" },
       );
       await review(TEST_EDITOR, page.id, "submit");
@@ -1021,12 +1029,11 @@ describe("a revision changed after the approver read it", () => {
 
       expect(response.statusCode).toBe(409);
       expect(response.json()).toMatchObject({
-        error: "conflict",
-        documentId: page.id,
+        error: "version_conflict",
       });
       expect(await revisions()).toEqual(before);
-      expect(await stored(page.id)).toEqual(page);
-      expect(resaved.json().updated_at > reviewed).toBe(true);
+      expect(await stored(page.id)).toEqual(PageDocument.parse(page));
+      expect(resaved.json().version > reviewed).toBe(true);
     },
   );
 });
@@ -1038,7 +1045,7 @@ describe("saving a page whose revision is waiting for review (#3203)", () => {
 
     const response = await save(
       TEST_EMPLOYEE,
-      { ...page, updated_at: version },
+      { ...page, version: version },
       { title: "One more thing" },
     );
 
@@ -1047,7 +1054,7 @@ describe("saving a page whose revision is waiting for review (#3203)", () => {
       title: "One more thing",
       pending_revision: { status: "submitted", comment: null },
     });
-    expect(response.json().updated_at > version).toBe(true);
+    expect(response.json().version > version).toBe(true);
     const after = await revisions();
     expect(after).toHaveLength(1);
     expect(after[0]).toMatchObject({
@@ -1063,26 +1070,26 @@ describe("saving a page whose revision is waiting for review (#3203)", () => {
       { action: "created", actor: TEST_EMPLOYEE.id },
       { action: "submitted", actor: TEST_EDITOR.id },
     ]);
-    expect(await stored(page.id)).toEqual(page);
+    expect(await stored(page.id)).toEqual(PageDocument.parse(page));
   });
 
   it("is refused when the revision has moved on since the editor read it", async () => {
     const { page, version } = await submitted();
-    await save(TEST_EDITOR, { ...page, updated_at: version }, { title: "1" });
+    await save(TEST_EDITOR, { ...page, version: version }, { title: "1" });
     const before = await revisions();
 
     const response = await save(
       TEST_EDITOR,
-      { ...page, updated_at: version },
+      { ...page, version: version },
       { title: "Lost?" },
     );
 
     expect(response.statusCode).toBe(409);
-    expect(response.json().error).toBe("conflict");
+    expect(response.json().error).toBe("version_conflict");
     expect(await revisions()).toEqual(before);
   });
 
-  it("is refused with a 428 without the version the editor read, and nothing changes", async () => {
+  it("is refused with a 400 without the version the editor read, and nothing changes", async () => {
     const { page } = await submitted();
     const before = await revisions();
 
@@ -1094,12 +1101,7 @@ describe("saving a page whose revision is waiting for review (#3203)", () => {
       ),
     });
 
-    expect(response.statusCode).toBe(428);
-    expect(response.json()).toEqual({
-      error: "precondition_required",
-      message:
-        "This change is waiting for review. Send the updated_at you last read in the if-updated-at header.",
-    });
+    expect(response.statusCode).toBe(400);
     expect(await revisions()).toEqual(before);
   });
 
@@ -1109,7 +1111,7 @@ describe("saving a page whose revision is waiting for review (#3203)", () => {
       const { page, version: read } = await submitted();
       await save(
         TEST_EDITOR,
-        { ...page, updated_at: read },
+        { ...page, version: read },
         { title: "Changed while waiting" },
       );
       const before = await revisions();
@@ -1119,9 +1121,9 @@ describe("saving a page whose revision is waiting for review (#3203)", () => {
       });
 
       expect(response.statusCode).toBe(409);
-      expect(response.json().error).toBe("conflict");
+      expect(response.json().error).toBe("version_conflict");
       expect(await revisions()).toEqual(before);
-      expect(await stored(page.id)).toEqual(page);
+      expect(await stored(page.id)).toEqual(PageDocument.parse(page));
     },
   );
 
@@ -1129,7 +1131,7 @@ describe("saving a page whose revision is waiting for review (#3203)", () => {
     const { page, version } = await submitted();
     await save(
       TEST_EDITOR,
-      { ...page, updated_at: version },
+      { ...page, version: version },
       { title: "Changed while waiting" },
     );
 
@@ -1146,7 +1148,7 @@ describe("saving a page whose revision is waiting for review (#3203)", () => {
       // An approver who also edits, saving after the editor submitted.
       await save(
         TEST_EMPLOYEE,
-        { ...page, updated_at: version },
+        { ...page, version: version },
         { title: "Approver's fix" },
       );
 
@@ -1165,7 +1167,7 @@ describe("unpublishing a page whose revision is waiting for review (#3203)", () 
 
     const response = await save(
       TEST_EMPLOYEE,
-      { ...page, updated_at: version },
+      { ...page, version: version },
       {
         visibility: "preview",
         title: "Severance pay",
@@ -1181,7 +1183,7 @@ describe("unpublishing a page whose revision is waiting for review (#3203)", () 
       pending_revision: null,
     });
     expect(await stored(page.id)).toEqual({
-      ...page,
+      ...PageDocument.parse(page),
       visibility: "preview",
       updated_at: response.json().updated_at,
     });
@@ -1211,7 +1213,7 @@ describe("unpublishing a page whose revision is waiting for review (#3203)", () 
     const hidden = (
       await save(
         TEST_EMPLOYEE,
-        { ...page, updated_at: version },
+        { ...page, version: version },
         { visibility: "preview" },
       )
     ).json();
@@ -1248,12 +1250,12 @@ describe("unpublishing a page whose revision is waiting for review (#3203)", () 
 
     const response = await save(
       TEST_EDITOR,
-      { ...page, updated_at: version },
+      { ...page, version: version },
       { visibility: "preview" },
     );
 
     expect(response.statusCode).toBe(403);
-    expect(await stored(page.id)).toEqual(page);
+    expect(await stored(page.id)).toEqual(PageDocument.parse(page));
     expect((await revisions())[0]?.status).toBe("submitted");
   });
 });
@@ -1294,8 +1296,8 @@ describe("making a page public (#3201)", () => {
     return as(employee, {
       method: "PUT",
       url: `/pages/${pageId}`,
-      headers: { [IF_UPDATED_AT]: page.updated_at },
       payload: {
+        expected_version: page.version,
         url: page.url,
         category_id: page.category_id,
         parent_id: page.parent_id,
@@ -1408,7 +1410,7 @@ describe("making a page public (#3201)", () => {
 
     expect(refused.statusCode).toBe(403);
     expect(refused.json()).toEqual(CHANGED_SINCE_PUBLIC);
-    expect(await stored(page.id)).toEqual(page);
+    expect(await stored(page.id)).toEqual(PageDocument.parse(page));
     expect(
       (await edit(APPROVER, page.id, { visibility: "public" })).json(),
     ).toMatchObject({ visibility: "public", title: page.title });
@@ -1545,7 +1547,7 @@ describe("making a page public (#3201)", () => {
       await bypassed.save(
         page.id,
         withDefaults(aPage({ visibility: "draft", title: "Mine" })),
-        null,
+        page.version,
         TEST_EMPLOYEE,
       ),
     );
@@ -1554,7 +1556,7 @@ describe("making a page public (#3201)", () => {
     const shown = await bypassed.save(
       page.id,
       withDefaults(aPage({ title: "Mine again" })),
-      null,
+      hidden.version,
       TEST_EMPLOYEE,
     );
 
@@ -1570,7 +1572,10 @@ describe("the review queue (#3202)", () => {
     as(employee, { url: "/revisions?status=submitted" });
 
   it("lists each change waiting for review, the longest-waiting first, with its page and submitter", async () => {
-    const { page: first, version } = await submitted();
+    const { page: first } = await submitted();
+    const firstRevision = (
+      await as(TEST_EDITOR, { url: `/pages/${first.id}/revision` })
+    ).json();
     const second = await seedPage({ url: "/money-financial-support/other" });
     expect(
       (await save(TEST_EMPLOYEE, second, { url: second.url, title: "Other" }))
@@ -1593,7 +1598,7 @@ describe("the review queue (#3202)", () => {
         submitted_by: TEST_EDITOR.id,
         submitted_by_name: TEST_EDITOR.name,
         submitted_at: expect.any(String),
-        updated_at: version,
+        updated_at: firstRevision.updated_at,
       },
       expect.objectContaining({
         page_id: second.id,

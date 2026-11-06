@@ -14,7 +14,7 @@ import { PageDocument, withDefaults, type PageId } from "./modules/page";
 import { ok } from "./modules/result";
 import { PageEditing } from "./services/page-editing";
 import { categories, changeEvents, pageRevisions } from "./schema";
-import { IF_UPDATED_AT } from "./routes/contracts";
+
 import {
   aPage,
   createTestApp,
@@ -99,7 +99,7 @@ const seedPage = async (overrides: Record<string, unknown> = {}) => {
       TEST_EMPLOYEE,
     ),
   );
-  return PageDocument.parse(page);
+  return { ...PageDocument.parse(page), version: page.version };
 };
 
 const stored = async (id: PageId) =>
@@ -107,14 +107,13 @@ const stored = async (id: PageId) =>
 
 const save = (
   employee: Employee,
-  page: { id: string; updated_at: string },
+  page: { id: string; version: number },
   fields: Record<string, unknown>,
 ) =>
   as(employee, {
     method: "PUT",
     url: `/pages/${page.id}`,
-    headers: { [IF_UPDATED_AT]: page.updated_at },
-    payload: withDefaults(aPage(fields)),
+    payload: { ...withDefaults(aPage(fields)), expected_version: page.version },
   });
 
 const revisions = () => db.select().from(pageRevisions);
@@ -160,7 +159,7 @@ describe("a save to a public page", () => {
 
       expect(response.statusCode).toBe(200);
       expect(await publicResponses()).toEqual(before);
-      expect(await stored(page.id)).toEqual(page);
+      expect(await stored(page.id)).toEqual(PageDocument.parse(page));
       // A live page that did not change gets no "updated" entry (#3200).
       expect(await events()).toEqual([
         { action: "created", actor: TEST_EMPLOYEE.id },
@@ -205,6 +204,7 @@ describe("a save to a public page", () => {
       title: "Severance pay",
       body_markdown: aPage().body_markdown,
       updated_at: revision?.updatedAt.toISOString(),
+      version: expect.any(Number),
       pending_revision: { status: "draft", comment: null },
       last_edited_by: { id: TEST_EMPLOYEE.id, name: TEST_EMPLOYEE.name },
     });
@@ -236,7 +236,7 @@ describe("a save to a public page", () => {
     const response = await as(TEST_EDITOR, {
       method: "PUT",
       url: `/pages/${page.id}`,
-      payload: unplaced,
+      payload: { ...unplaced, expected_version: page.version },
     });
 
     expect(response.statusCode).toBe(200);
@@ -274,7 +274,7 @@ describe("a save to a public page", () => {
       expect(response.statusCode).toBe(422);
       expect(response.json().errors).toEqual([error]);
     }
-    expect(await stored(page.id)).toEqual(page);
+    expect(await stored(page.id)).toEqual(PageDocument.parse(page));
     expect(await revisions()).toEqual([]);
   });
 });
@@ -299,8 +299,8 @@ describe("a revision that moves a public page with sub-pages to another category
 
     expect(response.statusCode).toBe(200);
     expect(response.json().category_id).toBe(work?.id);
-    expect(await stored(child.id)).toEqual(child);
-    expect(await stored(parent.id)).toEqual(parent);
+    expect(await stored(child.id)).toEqual(PageDocument.parse(child));
+    expect(await stored(parent.id)).toEqual(PageDocument.parse(parent));
     expect(await publicResponses()).toEqual(before);
   });
 });
@@ -388,8 +388,7 @@ describe("a stale save to a public page", () => {
 
     expect(response.statusCode).toBe(409);
     expect(response.json()).toMatchObject({
-      error: "conflict",
-      documentId: page.id,
+      error: "version_conflict",
     });
     expect(await revisions()).toEqual([before]);
   });
@@ -418,7 +417,7 @@ describe("changing a public page's visibility", () => {
     });
 
     expect(response.statusCode).toBe(403);
-    expect(await stored(page.id)).toEqual(page);
+    expect(await stored(page.id)).toEqual(PageDocument.parse(page));
     expect(await revisions()).toEqual([before]);
   });
 
@@ -443,7 +442,7 @@ describe("changing a public page's visibility", () => {
       pending_revision: null,
     });
     expect(await stored(page.id)).toEqual({
-      ...page,
+      ...PageDocument.parse(page),
       visibility: "preview",
       updated_at: response.json().updated_at,
     });
@@ -461,11 +460,13 @@ describe("changing a public page's visibility", () => {
 describe("deleting a page", () => {
   it("deletes its pending revision with it", async () => {
     const page = await seedPage();
-    await save(TEST_EDITOR, page, { title: "Waiting" });
+    const pending = (
+      await save(TEST_EDITOR, page, { title: "Waiting" })
+    ).json();
 
     const response = await as(TEST_EMPLOYEE, {
       method: "DELETE",
-      url: `/pages/${page.id}`,
+      url: `/pages/${page.id}?expected_version=${pending.version}`,
     });
 
     expect(response.statusCode).toBe(204);
@@ -488,7 +489,7 @@ describe("an approver taking a page out of public view", () => {
       await editing.save(
         page.id,
         fields({ title: "Waiting" }),
-        new Date(page.updated_at),
+        page.version,
         TEST_EDITOR,
       ),
     );
@@ -500,14 +501,14 @@ describe("an approver taking a page out of public view", () => {
       await editing.save(
         page.id,
         fields({ title: "Waiting", visibility: "preview" }),
-        new Date(pending.updated_at),
+        pending.version,
         TEST_EMPLOYEE,
       ),
     );
     const stale = await editing.save(
       page.id,
       fields({ title: "Stale", visibility: "preview" }),
-      new Date(pending.updated_at),
+      pending.version,
       TEST_EDITOR,
     );
 

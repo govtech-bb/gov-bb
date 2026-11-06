@@ -107,7 +107,11 @@ describe("Markdown page publication", () => {
       method: "PUT",
       url: `/pages/${draft.id}`,
       headers: TEST_HEADERS,
-      payload: { ...draft, visibility: "public" },
+      payload: {
+        ...draft,
+        expected_version: draft.version,
+        visibility: "public",
+      },
     });
     expect(rejected.statusCode).toBe(422);
     const stored = await app.inject({
