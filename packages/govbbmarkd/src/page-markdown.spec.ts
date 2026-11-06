@@ -153,6 +153,10 @@ describe("GovBB Markdown", () => {
     [":::service-list\n:::", "unsupported-component"],
     [":::start\nStart\n:::", "unsupported-component"],
     [":::accordion\n:::", "unsupported-component"],
+    ['::contact[Call us]{collection="offices"}', "invalid-content"],
+    ['::contact{record="bridgetown"}', "invalid-attributes"],
+    ['::contact{collection="offices" colour="red"}', "invalid-attributes"],
+    [':::contact{collection="offices"}\n:::', "unsupported-component"],
   ])("reports a located diagnostic for %s", (source, code) => {
     const parsed = parseContentMarkdown(`Intro\n\n${source}`);
     expect(parsed.errors).toEqual(
@@ -160,6 +164,25 @@ describe("GovBB Markdown", () => {
         expect.objectContaining({ code, line: 3, column: 1 }),
       ]),
     );
+  });
+
+  it("reads a contact block's record reference, including one still to be chosen", () => {
+    expect(
+      component(
+        '::contact{collection="offices" record="bridgetown" fields="phone,email"}',
+      ),
+    ).toEqual({
+      kind: "contact",
+      collection: "offices",
+      record: "bridgetown",
+      fields: ["phone", "email"],
+    });
+    expect(component('::contact{collection="offices" record=""}')).toEqual({
+      kind: "contact",
+      collection: "offices",
+      record: "",
+      fields: [],
+    });
   });
 
   it("validates complete action groups and rejects nested disclosures", () => {

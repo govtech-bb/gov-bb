@@ -3,6 +3,7 @@ import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext
 import { DotsSixVertical } from "@phosphor-icons/react";
 import { COMMAND_PRIORITY_LOW, KEY_DOWN_COMMAND, type NodeKey } from "lexical";
 import {
+  useCallback,
   useEffect,
   useRef,
   useState,
@@ -61,9 +62,15 @@ export function useBlockControls<At extends { line: Line }>(
   const pinned = useRef(false);
   const { target, pin, release } = useRailTarget(anchor, { ...targetRules, held: held || !!menu });
 
-  const openMenu = (key: NodeKey, context: NodeKey | null = null, byKeyboard = false) => {
+  const openMenu = (
+    key: NodeKey,
+    context: NodeKey | null = null,
+    { byKeyboard = false, pin: pinRail = byKeyboard }: { byKeyboard?: boolean; pin?: boolean } = {},
+  ) => {
     if (!editor.isEditable()) return;
-    pinned.current = byKeyboard;
+
+    if (pinRail) pin(key);
+    pinned.current = pinRail;
     const next = { key, context, byKeyboard };
     setMenu(next);
     onMenuOpen?.(next);
@@ -85,10 +92,10 @@ export function useBlockControls<At extends { line: Line }>(
     onNudge: (key) => openMenu(key, target?.key === key ? target.context : null),
   });
 
-  const latest = useRef({ rules: targetRules, openMenu });
+  const latest = useRef({ rules: targetRules, openMenu, closeMenu });
 
   useEffect(() => {
-    latest.current = { rules: targetRules, openMenu };
+    latest.current = { rules: targetRules, openMenu, closeMenu };
   });
 
   // ⌘/ opens the menu of the caret's block, where the rail can stand beside it
@@ -108,14 +115,13 @@ export function useBlockControls<At extends { line: Line }>(
 
           if (!key || !latest.current.rules.$place(key)) return false;
           event.preventDefault();
-          pin(key);
-          latest.current.openMenu(key, null, true);
+          latest.current.openMenu(key, null, { byKeyboard: true });
 
           return true;
         },
         COMMAND_PRIORITY_LOW,
       ),
-    [editor, pin],
+    [editor],
   );
 
   // The editor turning read-only closes the menu and lets the rail go
@@ -130,12 +136,26 @@ export function useBlockControls<At extends { line: Line }>(
     [editor, release],
   );
 
+  // The same functions every render, so an editor's own effects and commands can hold them
+  const openLatestMenu = useCallback(
+    (key: NodeKey, context: NodeKey | null = null, options: { pin?: boolean } = {}) =>
+      latest.current.openMenu(key, context, options),
+    [],
+  );
+
+  const closeLatestMenu = useCallback((reason?: string) => latest.current.closeMenu(reason), []);
+
   return {
     target,
     /** The block the menu is open on, or null while it's closed. */
     menu,
-    openMenu: (key: NodeKey, context: NodeKey | null = null) => openMenu(key, context),
-    closeMenu,
+    /**
+     * Opens a block's menu, on the node in it that settings belong to. With `pin`, the rail stands beside the block
+     * until the menu closes, for a block that opens its own menu, such as one that still needs setting up.
+     */
+    openMenu: openLatestMenu,
+    /** Closes the menu, and says how (Base UI's reason). */
+    closeMenu: closeLatestMenu,
     drag,
   };
 }

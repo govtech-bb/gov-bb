@@ -8,6 +8,7 @@ import { pageLinkTargetsQuery } from "../api/page-link-targets";
 import { pageFieldLabel } from "../api/page-fields";
 import { pageToMarkdown, pickerCategories } from "../api/page-markdown";
 import {
+  collectionRecordsQuery,
   PRELOAD_FRESH,
   categoriesQuery,
   rolesQuery,
@@ -19,6 +20,7 @@ import { PageDraftEditor } from "../host/page-editor";
 import { download } from "../host/download";
 import { collectInternalPageLinks } from "../pages/link-checks";
 import { draftPageMetadata, readPageMetadata } from "../pages";
+import { PageCollectionsProvider, type PageCollections } from "../pages/modules/contact";
 import { DraftStore } from "../persistence/draft-store";
 import { govbbPageCodec } from "../presets/govbb-page";
 import { Banner } from "../ui/banner";
@@ -202,6 +204,18 @@ function RemotePageEditor({
 
     return { breadcrumbs, publishedAt: server.published_at };
   }, [metadata.url, server.url, server.published_at, categories, service, servicePages]);
+
+  // Contact blocks show their records' current details, and open a record on the collection's screen (#3184)
+  const collections = useMemo<PageCollections>(
+    () => ({
+      read: (key) => client.fetchQuery(collectionRecordsQuery(api, key)),
+      openRecord: (collection, record) =>
+        void navigate({
+          href: `/collections/${encodeURIComponent(collection)}?record=${encodeURIComponent(record)}`,
+        }),
+    }),
+    [api, client, navigate],
+  );
 
   const linkPages = useMemo(
     () => services?.map((service) => ({ title: service.title, url: service.url })),
@@ -604,7 +618,7 @@ function RemotePageEditor({
   ) : undefined;
 
   return (
-    <>
+    <PageCollectionsProvider collections={collections}>
       {/* A failure showing the page fails only its pane. Its draft is kept here, outside, as is leaving's question about
           it: it can be downloaded, or shown again */}
       <CatchBoundary
@@ -715,6 +729,6 @@ function RemotePageEditor({
           else toast("The page changed", { description: "Publish it again to check its links." });
         }}
       />
-    </>
+    </PageCollectionsProvider>
   );
 }

@@ -32,6 +32,9 @@
       "@govtech-bb/govbbmarkd/content-url": [
         "packages/govbbmarkd/src/content-url.ts"
       ],
+      "@govtech-bb/govbbmarkd/contact-record": [
+        "packages/govbbmarkd/src/contact-record.ts"
+      ],
       "@govtech-bb/content/categories": ["packages/content/src/categories.ts"],
       "@govtech-bb/form-builder": ["packages/form-builder/src/index.ts"],
       "@govtech-bb/form-types": ["packages/form-types/src/index.ts"],

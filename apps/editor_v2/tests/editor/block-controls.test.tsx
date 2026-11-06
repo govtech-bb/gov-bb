@@ -15,7 +15,12 @@ import {
 } from "lexical";
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
 import { Editor } from "../../src/editor/react/editor";
-import { BlockGrip, BlockMenuRoot, useBlockControls } from "../../src/editor/react/block-controls";
+import {
+  BlockGrip,
+  BlockMenuRoot,
+  useBlockControls,
+  type BlockControls,
+} from "../../src/editor/react/block-controls";
 import { contentEditor } from "../../src/presets/content";
 import { Menu } from "../../src/ui/menu";
 
@@ -27,6 +32,8 @@ let root: Root;
 
 let editor: LexicalEditor;
 
+let controls: BlockControls;
+
 // Blocks the rail can't stand beside, as a form's title
 const unplaced = new Set<NodeKey>();
 
@@ -37,7 +44,7 @@ const onMenuClose = vi.fn();
 function Controls() {
   [editor] = useLexicalComposerContext();
 
-  const controls = useBlockControls(anchor, {
+  controls = useBlockControls(anchor, {
     target: {
       $blockAt: () => undefined,
       $caretBlock: () => {
@@ -203,4 +210,17 @@ test("the menu closes as the editor turns read-only", async () => {
 
   await act(async () => editor.setEditable(false));
   expect(shown().menu).toBe("");
+});
+
+test("a block that opens its own menu, pinned, keeps the rail beside it until the menu closes", async () => {
+  const { first, second } = await renderControls();
+
+  await caretIn(first);
+  await act(async () => controls.openMenu(second, null, { pin: true }));
+
+  expect(shown()).toEqual({ rail: second, menu: second });
+  expect(onMenuOpen).toHaveBeenLastCalledWith({ key: second, context: null, byKeyboard: false });
+
+  await act(async () => grip().click());
+  expect(shown()).toEqual({ rail: first, menu: "" });
 });
