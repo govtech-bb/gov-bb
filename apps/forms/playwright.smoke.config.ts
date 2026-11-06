@@ -24,7 +24,7 @@ import { defineConfig, devices } from "@playwright/test";
  * Enter a form through its landing start page's "Start now" link instead. Name
  * the spec: only specs that pass a `landingStartPath` support this, and the
  * rest throw (see openSmokeForm, #3008):
- *   SMOKE_LANDING_URL=https://landing.sandbox.alpha.gov.bb SMOKE_BASE_URL=https://forms.sandbox.alpha.gov.bb pnpm --filter @govtech-bb/forms test:smoke project-protege-mentor.smoke.spec.ts
+ *   SMOKE_LANDING_URL=https://sandbox.alpha.gov.bb SMOKE_BASE_URL=https://forms.sandbox.alpha.gov.bb pnpm --filter @govtech-bb/forms test:smoke project-protege-mentor.smoke.spec.ts
  */
 
 const rawBaseURL = process.env.SMOKE_BASE_URL?.trim();

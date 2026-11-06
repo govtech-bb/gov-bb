@@ -714,7 +714,7 @@ jobs:
     uses: ./.github/workflows/forms-smoke.yml
     with:
       base_url: https://forms.sandbox.alpha.gov.bb
-      landing_url: https://landing.sandbox.alpha.gov.bb
+      landing_url: https://sandbox.alpha.gov.bb
       spec: ${{ matrix.spec }}
       artifact_name: ${{ matrix.artifact_name }}
     secrets:
@@ -787,7 +787,7 @@ jobs:
           # shell. The token is a GitHub user PAT; the others are fixed sandbox
           # URLs. A clear fail if the token is unset (see the note above).
           E2E_API_BASE_URL: https://forms.api.sandbox.alpha.gov.bb
-          E2E_LANDING_URL: https://landing.sandbox.alpha.gov.bb
+          E2E_LANDING_URL: https://sandbox.alpha.gov.bb
           SMOKE_BASE_URL: https://forms.sandbox.alpha.gov.bb
           E2E_SERVICE_STATUS_TOKEN: ${{ secrets.E2E_SERVICE_STATUS_TOKEN }}
         run: |
@@ -925,7 +925,7 @@ jobs:
           # Needed for the CANCELLED→superseded check below to call gh api.
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           APP_LABEL: landing
-          APP_URL: https://landing.sandbox.alpha.gov.bb
+          APP_URL: https://sandbox.alpha.gov.bb
         run: |
           JOB_ID=$(aws amplify start-job \
             --app-id "$AMPLIFY_APP_ID" \
@@ -1102,7 +1102,7 @@ jobs:
             echo "| Forms live smoke | $(outcome "$SMOKE_RESULT" | sed 's/deployed/passed/') |"
             echo ""
             echo "**API URL:** https://forms.api.sandbox.alpha.gov.bb"
-            echo "**Landing URL:** https://landing.sandbox.alpha.gov.bb"
+            echo "**Landing URL:** https://sandbox.alpha.gov.bb"
             echo "**Forms URL:** https://forms.sandbox.alpha.gov.bb"
             echo "**Form Builder URL:** https://builder.sandbox.alpha.gov.bb"
             echo "**Feature Flagging URL:** https://feature-flagging.sandbox.alpha.gov.bb"
