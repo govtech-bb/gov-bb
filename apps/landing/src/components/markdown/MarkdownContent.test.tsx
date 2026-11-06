@@ -203,7 +203,7 @@ describe('::contact (a record’s contact details, #3185)', () => {
     // The contact grid and its teal tile
     expect(html).toContain('class="grid grid-cols-1 gap-s md:grid-cols-3"')
     expect(html).toContain(
-      '<a href="tel:2465350021" class="flex flex-col gap-xxs border-teal-80 border-l-4 bg-teal-10 p-s text-current no-underline',
+      '<a href="tel:+12465350021" class="flex flex-col gap-xxs border-teal-80 border-l-4 bg-teal-10 p-s text-current no-underline',
     )
     expect(html).toContain('<span class="font-bold">Telephone</span>')
     expect(html).toContain('href="mailto:drugservice@health.gov.bb"')

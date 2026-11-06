@@ -320,6 +320,8 @@ function contactSettings(node: Parameters<PageHandler["$import"]>[0]): ContactSe
     node.children.length ||
     Object.keys(data).join() !== ATTRIBUTES.join() ||
     !data.collection ||
+    data.collection !== data.collection.trim() ||
+    (data.record ?? "") !== (data.record ?? "").trim() ||
     fields.join(",") !== data.fields
   )
     throw new UnsupportedPageContent(node, "This contact block needs Markdown source editing");

@@ -43,7 +43,7 @@ describe("a contact block's details, read from a record", () => {
         field: "phone",
         label: "Telephone",
         text: "(246) 535-0021",
-        href: "tel:2465350021",
+        href: "tel:+12465350021",
       },
       {
         field: "email",
@@ -64,6 +64,19 @@ describe("a contact block's details, read from a record", () => {
         href: null,
       },
     ]);
+  });
+
+  it.each([
+    ["(246) 535-0021", "tel:+12465350021"],
+    ["246-438-7575", "tel:+12464387575"],
+    ["+1 246-426-3990", "tel:+12464263990"],
+    ["211", "tel:211"],
+    ["+44 20 7946 0958", "tel:+442079460958"],
+  ])("keeps %s dialable as %s", (phone, href) => {
+    expect(contactDetails(contacts, ["phone"], { phone })[0]).toMatchObject({
+      text: phone,
+      href,
+    });
   });
 
   it("adds https only to a website without a scheme", () => {

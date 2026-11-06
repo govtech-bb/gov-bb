@@ -33,7 +33,8 @@ export interface ContactCollection {
  */
 export function contactLink(field: string, value: string): string | null {
   if (field.includes("phone") || field.includes("telephone")) {
-    return `tel:${value.replace(/[^\d+]/g, "")}`;
+    const number = value.replace(/[^\d+]/g, "");
+    return `tel:${/^246\d{7}$/.test(number) ? `+1${number}` : number}`;
   }
   if (field.includes("email")) return `mailto:${value}`;
   if (field.includes("website") || field.includes("url")) {
