@@ -110,10 +110,12 @@ describe("trackPageview", () => {
   });
 
   it("calls umami.track() once to fire a pageview", () => {
-    const track = vi.fn();
+    const track = vi.fn<Track>();
     window.umami = { track };
     trackPageview();
     expect(track).toHaveBeenCalledTimes(1);
+    // Umami treats a payload with a name as an event, not a page view.
+    expect(sentPayload(track).name).toBeUndefined();
   });
 });
 
