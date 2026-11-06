@@ -14,6 +14,27 @@ import {
   UMAMI_SCRIPT_ATTRIBUTES,
 } from "./index";
 import { resetJourneyForTests } from "./journey";
+import type { Mock } from "vitest";
+
+// The payload Umami's tracker builds itself. With auto-track off, its url and
+// referrer are the ones it read when the page first loaded (#3586).
+const TRACKER_PAYLOAD = {
+  website: "site-id",
+  title: "Page title",
+  url: "/entry",
+  referrer: "https://www.google.com/",
+};
+
+type Track = NonNullable<Window["umami"]>["track"];
+
+/** What Umami would send for one track() call: runs the function we passed. */
+function sentPayload(track: Mock<Track>, call = 0) {
+  const arg = track.mock.calls[call][0];
+  if (typeof arg !== "function") {
+    throw new Error(`track() got ${typeof arg}, not a function`);
+  }
+  return arg(TRACKER_PAYLOAD);
+}
 
 describe("trackEvent", () => {
   afterEach(() => {
@@ -36,30 +57,34 @@ describe("trackEvent", () => {
   });
 
   it("forwards the event name when no data is given", () => {
-    const track = vi.fn();
+    const track = vi.fn<Track>();
     window.umami = { track };
     trackEvent("form-open");
     expect(track).toHaveBeenCalledTimes(1);
-    expect(track).toHaveBeenCalledWith("form-open");
+    expect(sentPayload(track)).toMatchObject({ name: "form-open" });
+    expect(sentPayload(track).data).toBeUndefined();
   });
 
   it("forwards both the event name and data when data has no form field", () => {
-    const track = vi.fn();
+    const track = vi.fn<Track>();
     window.umami = { track };
     trackEvent("search", { query: "x", results: 0 });
     expect(track).toHaveBeenCalledTimes(1);
-    expect(track).toHaveBeenCalledWith("search", { query: "x", results: 0 });
+    expect(sentPayload(track)).toMatchObject({
+      name: "search",
+      data: { query: "x", results: 0 },
+    });
   });
 
   it("masks PII in a search query before sending (#2079)", () => {
-    const track = vi.fn();
+    const track = vi.fn<Track>();
     window.umami = { track };
     const data = {
       query: "john smith national insurance 1234567890",
       results: 3,
     };
     trackEvent("search", data);
-    expect(track).toHaveBeenCalledWith("search", {
+    expect(sentPayload(track).data).toEqual({
       query: "john smith national insurance 1********0",
       results: 3,
     });
@@ -84,12 +109,133 @@ describe("trackPageview", () => {
     expect(() => trackPageview()).not.toThrow();
   });
 
-  it("calls umami.track() with no arguments to fire a pageview", () => {
-    const track = vi.fn();
+  it("calls umami.track() once to fire a pageview", () => {
+    const track = vi.fn<Track>();
     window.umami = { track };
     trackPageview();
     expect(track).toHaveBeenCalledTimes(1);
-    expect(track).toHaveBeenCalledWith();
+    // Umami treats a payload with a name as an event, not a page view.
+    expect(sentPayload(track).name).toBeUndefined();
+  });
+});
+
+describe("Umami url and referrer (#3586)", () => {
+  // A fresh module per test, so the remembered page doesn't leak between tests.
+  let analytics: typeof import("./index");
+  let track: Mock<Track>;
+
+  beforeEach(async () => {
+    vi.resetModules();
+    analytics = await import("./index");
+    track = vi.fn<Track>();
+    window.umami = { track };
+    history.replaceState(null, "", "/entry");
+  });
+
+  afterEach(() => {
+    delete (window as { umami?: unknown }).umami;
+    history.replaceState(null, "", "/");
+  });
+
+  it("a page view sends the current path, not the URL the page loaded on", () => {
+    history.pushState(null, "", "/services");
+    analytics.trackPageview();
+    expect(sentPayload(track)).toMatchObject({
+      url: "/services",
+      website: "site-id",
+      title: "Page title",
+    });
+  });
+
+  it("sends the path only, never the query string or hash (#3503)", () => {
+    history.pushState(null, "", "/water/confirm?token=secret-token#top");
+    analytics.trackPageview();
+    const payload = sentPayload(track);
+    expect(payload.url).toBe("/water/confirm");
+    expect(JSON.stringify(payload)).not.toContain("secret-token");
+  });
+
+  it("the first page view keeps the tracker's own referrer", () => {
+    analytics.trackPageview();
+    expect(sentPayload(track).referrer).toBe("https://www.google.com/");
+  });
+
+  it("the next page view names the previous path as its referrer", () => {
+    analytics.trackPageview();
+    history.pushState(null, "", "/services");
+    analytics.trackPageview();
+    expect(sentPayload(track, 1)).toMatchObject({
+      url: "/services",
+      referrer: "/entry",
+    });
+  });
+
+  it("a page view before Umami loads still counts as the next referrer", () => {
+    delete (window as { umami?: unknown }).umami;
+    analytics.trackPageview();
+    window.umami = { track };
+    history.pushState(null, "", "/services");
+    analytics.trackPageview();
+    expect(sentPayload(track).referrer).toBe("/entry");
+  });
+
+  // Forms sends a page view on every ?step= change, on the same path. Umami
+  // itself skips those; ours must not become their own referrer.
+  it("a page view on the same path keeps the page's referrer", () => {
+    analytics.trackPageview();
+    history.pushState(null, "", "/services");
+    analytics.trackPageview();
+    history.pushState(null, "", "/services?step=two");
+    analytics.trackPageview();
+    expect(sentPayload(track, 2)).toMatchObject({
+      url: "/services",
+      referrer: "/entry",
+    });
+  });
+
+  it("the first page's same-path page views keep the tracker's referrer", () => {
+    analytics.trackPageview();
+    history.pushState(null, "", "/entry?step=two");
+    analytics.trackPageview();
+    analytics.trackEvent("form-step-two");
+    expect(sentPayload(track, 1).referrer).toBe("https://www.google.com/");
+    expect(sentPayload(track, 2).referrer).toBe("https://www.google.com/");
+  });
+
+  it("an event before its page's page view names the last page", () => {
+    analytics.trackPageview();
+    history.pushState(null, "", "/services");
+    analytics.trackEvent("search", { results: 0 });
+    expect(sentPayload(track, 1)).toMatchObject({
+      url: "/services",
+      referrer: "/entry",
+    });
+  });
+
+  it("an event sends the current path and its page view's referrer", () => {
+    analytics.trackPageview();
+    history.pushState(null, "", "/services");
+    analytics.trackPageview();
+    analytics.trackEvent("service-click", { slug: "renew-passport" });
+    expect(sentPayload(track, 2)).toMatchObject({
+      name: "service-click",
+      data: { slug: "renew-passport" },
+      url: "/services",
+      referrer: "/entry",
+      title: "Page title",
+    });
+  });
+
+  it("an event before any page view keeps the tracker's own referrer", () => {
+    history.pushState(null, "", "/services?q=secret-search");
+    analytics.trackEvent("search", { results: 0 });
+    const payload = sentPayload(track);
+    expect(payload).toMatchObject({
+      name: "search",
+      url: "/services",
+      referrer: "https://www.google.com/",
+    });
+    expect(JSON.stringify(payload)).not.toContain("secret-search");
   });
 });
 
@@ -130,39 +276,36 @@ describe("trackEvent slug prefixing", () => {
   });
 
   it("prefixes the event name with the form slug when data.form is present", () => {
-    const track = vi.fn();
+    const track = vi.fn<Track>();
     window.umami = { track };
     trackEvent("form-start", {
       form: "renew-passport",
       category: "travel-id-citizenship",
     });
-    expect(track).toHaveBeenCalledWith("renew-passport:form-start", {
-      form: "renew-passport",
-      category: "travel-id-citizenship",
+    expect(sentPayload(track)).toMatchObject({
+      name: "renew-passport:form-start",
+      data: { form: "renew-passport", category: "travel-id-citizenship" },
     });
   });
 
   it("does NOT double-prefix an already-qualified name", () => {
-    const track = vi.fn();
+    const track = vi.fn<Track>();
     window.umami = { track };
     trackEvent("renew-passport:form-step-one", {
       form: "renew-passport",
       category: "travel-id-citizenship",
       step: "personal-details",
     });
-    expect(track).toHaveBeenCalledWith(
-      "renew-passport:form-step-one",
-      expect.any(Object),
-    );
+    expect(sentPayload(track).name).toBe("renew-passport:form-step-one");
   });
 
   it("does not prefix when data has no form field", () => {
-    const track = vi.fn();
+    const track = vi.fn<Track>();
     window.umami = { track };
     trackEvent("search", { query: "passport", results: 3 });
-    expect(track).toHaveBeenCalledWith("search", {
-      query: "passport",
-      results: 3,
+    expect(sentPayload(track)).toMatchObject({
+      name: "search",
+      data: { query: "passport", results: 3 },
     });
   });
 });
@@ -341,14 +484,11 @@ describe("journey events from trackEvent / trackPageview", () => {
   });
 
   it("sends to both when Umami is loaded", () => {
-    const track = vi.fn();
+    const track = vi.fn<Track>();
     window.umami = { track };
     trackEvent("form-start", { form: "get-birth-certificate", category: "x" });
     flushJourney();
-    expect(track).toHaveBeenCalledWith(
-      "get-birth-certificate:form-start",
-      expect.anything(),
-    );
+    expect(sentPayload(track).name).toBe("get-birth-certificate:form-start");
     expect(sent()[0]).toMatchObject({
       event: "form-start",
       props: { form: "get-birth-certificate" },
@@ -390,7 +530,7 @@ describe("journeyEvent", () => {
 });
 
 describe("installClickListener", () => {
-  const track = vi.fn();
+  const track = vi.fn<Track>();
   let remove: () => void = () => undefined;
 
   beforeEach(() => {
@@ -412,9 +552,9 @@ describe("installClickListener", () => {
     remove = installClickListener();
     document.body.innerHTML = `<a data-umami-event="breadcrumb" data-umami-event-to="/money" data-umami-event-depth="2">Money</a>`;
     document.querySelector("a")!.click();
-    expect(track).toHaveBeenCalledWith("breadcrumb", {
-      to: "/money",
-      depth: "2",
+    expect(sentPayload(track)).toMatchObject({
+      name: "breadcrumb",
+      data: { to: "/money", depth: "2" },
     });
   });
 
@@ -443,7 +583,7 @@ describe("installClickListener", () => {
     remove = installClickListener();
     document.body.innerHTML = `<a data-umami-event="breadcrumb"><span id="inner">Money</span></a>`;
     document.getElementById("inner")!.click();
-    expect(track).toHaveBeenCalledWith("breadcrumb", {});
+    expect(sentPayload(track)).toMatchObject({ name: "breadcrumb", data: {} });
   });
 
   it("ignores untagged elements and an empty event name", () => {
