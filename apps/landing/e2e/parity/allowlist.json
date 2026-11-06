@@ -65,6 +65,21 @@
     "diffs": ["status: 200 ≠ static 404"]
   },
   {
+    "path": "/health-and-emergency-services/stormready",
+    "reason": "The import-time contact conversion (#3261, #3405) replaces the legacy grid and Emergency badge with four headings, their anchor links and Telephone field labels. Contact names, displayed numbers and telephone destinations are unchanged; static Markdown keeps the legacy grid.",
+    "diffs": [
+      "main text 95.8% similar",
+      "heading not in static: \"DEM Emergency Line\"",
+      "heading not in static: \"Barbados Met Office\"",
+      "heading not in static: \"Police\"",
+      "heading not in static: \"BWA (water outages)\"",
+      "link not in static: \"/health-and-emergency-services/stormready#dem-emergency-line\"",
+      "link not in static: \"/health-and-emergency-services/stormready#barbados-met-office\"",
+      "link not in static: \"/health-and-emergency-services/stormready#police\"",
+      "link not in static: \"/health-and-emergency-services/stormready#bwa-water-outages\""
+    ]
+  },
+  {
     "path": "/services",
     "reason": "Lists the 13 Environmental Health licence pages that sandbox service_status publishes and staging does not (see the /business-trade/apply-for-* entries).",
     "diffs": [

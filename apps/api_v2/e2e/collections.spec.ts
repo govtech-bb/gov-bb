@@ -191,6 +191,13 @@ describe.skipIf(!HAS_DATABASE)("data collections over HTTP", () => {
     ).toEqual(["west"]);
     expect(
       (await publicRead("contacts")).map((record) => record.record_key),
-    ).toEqual(["barbados-drug-service", "nis-severance-payment-department"]);
+    ).toEqual([
+      "barbados-drug-service",
+      "barbados-met-office",
+      "bwa-water-outages",
+      "dem-emergency-line",
+      "nis-severance-payment-department",
+      "police-emergency",
+    ]);
   });
 });
