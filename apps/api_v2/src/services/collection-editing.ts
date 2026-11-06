@@ -16,10 +16,10 @@ import {
 import type { ContentStoreUnavailable } from "../modules/page";
 import { err, ok, type Result } from "../modules/result";
 
-/** Collection storage. */
 /** A page whose body mentions some text, live or in its open revision, with those bodies. */
 export type PageMentioning = RecordPage & { bodies: readonly string[] };
 
+/** Collection storage. */
 export interface CollectionStore {
   /**
    * Run `work` as one transaction on behalf of `actorId`, whom storage

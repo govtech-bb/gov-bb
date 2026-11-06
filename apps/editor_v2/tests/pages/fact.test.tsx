@@ -78,6 +78,7 @@ describe("a fact's Markdown", () => {
     ["a list item", `- Call ${FACT}`],
     ["a heading", `## Call ${FACT}`],
     ["a notice", `:::notice\nCall ${FACT}\n:::`],
+    ["a details body", `:::details[More information]\nCall ${FACT}\n:::`],
     ["a table cell", `| Office | Phone |\n| - | - |\n| Drug Service | ${FACT} |`],
   ])("keeps a fact in %s", (_, body) => {
     const saved = govbbPageCodec.encode(visual(page(body)));

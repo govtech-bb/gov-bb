@@ -79,7 +79,6 @@ export const CollectionRecord = z.object({
 /** One record of a collection. */
 export type CollectionRecord = z.infer<typeof CollectionRecord>;
 
-/** What a record write sends; `data` is checked against the field list. */
 /**
  * A page that shows a record, in a fact or a contact block, live or in its
  * open revision: what the record's "used on" lists (#3590). `service_id` is
@@ -95,6 +94,7 @@ export const RecordPage = z.object({
 /** A page that shows a record (see `RecordPage`). */
 export type RecordPage = z.infer<typeof RecordPage>;
 
+/** What a record write sends; `data` is checked against the field list. */
 export const RecordBody = z.strictObject({
   data: z
     .record(z.string(), z.unknown())

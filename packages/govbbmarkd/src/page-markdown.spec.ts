@@ -161,6 +161,10 @@ describe("GovBB Markdown", () => {
     [':fact{record="bridgetown" field="phone"}', "invalid-attributes"],
     [':fact{collection="offices" colour="red"}', "invalid-attributes"],
     ['::fact{collection="offices" field="phone"}', "unsupported-component"],
+    [
+      ':::action{href="/a"}\nCall :fact{collection="offices"}\n:::',
+      "invalid-content",
+    ],
   ])("reports a located diagnostic for %s", (source, code) => {
     const parsed = parseContentMarkdown(`Intro\n\n${source}`);
     expect(parsed.errors).toEqual(
