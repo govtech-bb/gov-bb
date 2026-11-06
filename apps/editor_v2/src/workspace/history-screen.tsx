@@ -80,18 +80,27 @@ export function HistoryScreen({
   // The page's current version is the newest one: restoring it would change nothing
   const current = entries?.find((entry) => VERSIONS.has(entry.action))?.version_no;
   const isPublic = page.data?.visibility === "public";
+  // The restore updates a change already sent for review, and it stays waiting
+  const awaitingReview = page.data?.pending_revision?.status === "submitted";
 
   const restore = useMutation({
     mutationFn: ({ version, read }: { version: number; read: string }) =>
       api.restoreVersion(pageId, version, read),
     onSuccess: () => {
       toast("Version restored", {
-        description: isPublic
-          ? "It's saved as a change to this page. Submit it for review to publish it."
-          : "It's saved as a new change at the top of the history.",
+        description: !isPublic
+          ? "It's saved as a new change at the top of the history."
+          : awaitingReview
+            ? "It's saved in the change that is waiting for review."
+            : "It's saved as a change to this page. Submit it for review to publish it.",
       });
       setRestoring(undefined);
       void client.invalidateQueries({ queryKey: ["content"] });
+    },
+    onError: (error) => {
+      // The page moved on: read it and its history again, so trying again restores onto the current version
+      if (error instanceof ApiFailure && error.status === 409)
+        void client.invalidateQueries({ queryKey: ["content"] });
     },
   });
 
