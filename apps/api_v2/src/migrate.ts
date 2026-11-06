@@ -36,8 +36,8 @@ import { SQL as SNAPSHOT_VERSION_SQL } from "./migrations/018_snapshot_version";
 import { SQL as REDACTION_SQL } from "./migrations/019_change_events_redaction";
 import { SQL as GOOGLE_SESSIONS_SQL } from "./migrations/020_google_sessions";
 import { SQL as GITHUB_ACCOUNTS_SQL } from "./migrations/021_github_accounts";
-import { SQL as CHANGE_EVENT_COUNTERS_SQL } from "./migrations/022_change_event_counters";
-import { SQL as EDIT_VERSIONS_SQL } from "./migrations/023_edit_versions";
+import { SQL as CHANGE_EVENT_COUNTERS_SQL } from "./migrations/023_change_event_counters";
+import { SQL as EDIT_VERSIONS_SQL } from "./migrations/024_edit_versions";
 import type { Database } from "./db";
 
 /** The migrations, in the order they apply. Each is idempotent by rule. */
@@ -63,8 +63,8 @@ const MIGRATIONS = [
   ["019_change_events_redaction", REDACTION_SQL],
   ["020_google_sessions", GOOGLE_SESSIONS_SQL],
   ["021_github_accounts", GITHUB_ACCOUNTS_SQL],
-  ["022_change_event_counters", CHANGE_EVENT_COUNTERS_SQL],
-  ["023_edit_versions", EDIT_VERSIONS_SQL],
+  ["023_change_event_counters", CHANGE_EVENT_COUNTERS_SQL],
+  ["024_edit_versions", EDIT_VERSIONS_SQL],
 ] as const;
 
 /** Serialises instances that boot together; released when its transaction ends. */

@@ -140,10 +140,10 @@ describe("change event allocation", () => {
     const { db, pool, close } = await createTestDb();
     const exec = (script: string) => pool.query(script);
     try {
-      // Restore the pre-022 schema and trigger bodies in this disposable clone.
+      // Restore the pre-023 schema and trigger bodies in this disposable clone.
       await exec(`drop trigger allocate_version_no on change_events;
         drop table change_event_counters;
-        delete from schema_migrations where name = '022_change_event_counters';
+        delete from schema_migrations where name = '023_change_event_counters';
         ${CHANGE_HISTORY_SQL}
         ${REVISION_DISCARDED_SQL}`);
       await exec(`${INSERT_PAGE}; delete from content_pages where id = '${PAGE}';
@@ -160,7 +160,7 @@ describe("change event allocation", () => {
           "select * from change_events order by entity_kind, version_no",
         )
       ).rows;
-      expect(await migrate(db, exec)).toEqual(["022_change_event_counters"]);
+      expect(await migrate(db, exec)).toEqual(["023_change_event_counters"]);
       expect(
         (
           await exec(
@@ -184,8 +184,8 @@ describe("change event allocation", () => {
       // A counter ahead of retained history must survive replay, including one with no events.
       await exec(`update change_event_counters set last_version = 20 where entity_kind = 'category';
         insert into change_event_counters values ('content_page', 'counter-only', 30);
-        delete from schema_migrations where name = '022_change_event_counters'`);
-      expect(await migrate(db, exec)).toEqual(["022_change_event_counters"]);
+        delete from schema_migrations where name = '023_change_event_counters'`);
+      expect(await migrate(db, exec)).toEqual(["023_change_event_counters"]);
       expect(
         (
           await exec(

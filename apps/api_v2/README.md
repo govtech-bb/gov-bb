@@ -632,7 +632,7 @@ The site routes (`/pages`, `/categories…`, `/collections/:key/records`, `/site
 
 Migrations run at boot. Each script checks `schema_migrations` after acquiring the PostgreSQL advisory lock, then conditionally executes and records completion in the same transaction on the same connection. Each migration commits separately so later scripts can use newly added enum values. A runner with an outdated ledger read skips scripts another runner completed; scripts must still tolerate replay after lost bookkeeping.
 
-Migration `023` gives pages, categories, collection definitions and records numeric edit versions from one noncycling sequence, capped at JavaScript's maximum safe integer. These identities are separate from timestamps and audit event numbers. Editor snapshots include them; public projections and audit snapshots do not.
+Migration `024` gives pages, categories and collection records numeric edit versions from one noncycling sequence, capped at JavaScript's maximum safe integer. These identities are separate from timestamps and audit event numbers. Editor snapshots include them; public projections and audit snapshots do not.
 
 A trigger on `page_revisions` bumps the page's version on every insert, update or delete, so revision writes and review steps invalidate open editors without changing the page's dates or history. Never reset the sequence below an issued identity.
 

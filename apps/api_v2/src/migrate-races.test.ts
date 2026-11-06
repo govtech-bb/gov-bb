@@ -3,7 +3,7 @@ import { migrate } from "./migrate";
 import { createTestDb } from "./test-db";
 
 describe("concurrent migration runners", () => {
-  it("does not replay cached 022 after another runner installed 023", async () => {
+  it("does not replay cached 023 after another runner installed 024", async () => {
     const { db, pool, close } = await createTestDb();
     const exec = (script: string) => pool.query(script);
     let release = () => {};
@@ -18,7 +18,7 @@ describe("concurrent migration runners", () => {
     let afterStale022: unknown;
     try {
       await exec(
-        `delete from schema_migrations where name in ('022_change_event_counters', '023_edit_versions')`,
+        `delete from schema_migrations where name in ('023_change_event_counters', '024_edit_versions')`,
       );
       stale = migrate(db, async (script) => {
         if (script.includes("allocate_change_event_version()")) {
