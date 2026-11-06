@@ -46,6 +46,12 @@ and #3250 (#3598) had built the form → category lookup on
 
 ## What we almost got wrong
 
+- The plan assumed #3250's category lookup would see a cold failure as "no
+  category". In fact `categoryForForm()` awaited the same throwing read, so an
+  api_v2 outage would have 503'd every `GET /form-definitions/:formId`. The PR
+  review caught it. The lookup now degrades to `undefined`, and a stale catalog
+  is served while one shared refresh runs, so form loads never wait on api_v2.
+
 - An empty re-check against sandbox looked like a regression. The cause was
   nest `--watch` restarting just after the readiness probe answered, so curl got
   no response. A second run matched the first: 35 public pages and 93 for an
