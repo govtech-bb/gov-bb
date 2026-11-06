@@ -804,3 +804,24 @@ test("a save whose answer is lost is never reported as failed", async () => {
 
   expect(dialog()?.textContent).not.toContain("Try again.");
 });
+
+test("a retried save that landed while its answer was lost is confirmed, not refused as someone else's change", async () => {
+  // The save lands, and its answer is lost on the way back
+  vi.stubGlobal("fetch", async (input: RequestInfo | URL, init?: RequestInit) => {
+    const answer = await server.fetch(input, init);
+
+    return init?.method === "PUT" ? Response.json({}, { status: 503 }) : answer;
+  });
+  await renderCollection({ record: "nis" }).ready;
+  await opened();
+  await enter("Name (optional)", "National Insurance Scheme");
+  await submit();
+  await until(() =>
+    expect(dialog()?.textContent).toContain("We couldn’t confirm whether this record was saved."),
+  );
+  await submit();
+  await closed();
+
+  expect(server.writes).toHaveLength(1);
+  expect(document.body.textContent).toContain("Record saved");
+});

@@ -38,8 +38,12 @@ import type { DocumentSessions } from "./document-views";
 import { brokenLinks, linkConfirmation } from "./broken-links";
 import type { PageSession, ServerPageBaseline } from "./page-session";
 import {
+  landedSubmission,
   preparePageSave,
+  retryPageSave,
+  saveLanded,
   sendPageSave,
+  submissionLanded,
   type PageSaveAttempt,
   type PageSaveOutcome,
 } from "./page-sync";
@@ -273,8 +277,8 @@ function RemotePageEditor({
   const attempt = useRef<{ request: PageSaveAttempt; snapshot: DraftSnapshot }>(undefined);
 
   const save = useMutation({
-    mutationFn: (current: { request: PageSaveAttempt; snapshot: DraftSnapshot }) =>
-      sendPageSave(api, current.request),
+    mutationFn: (current: { request: PageSaveAttempt; snapshot: DraftSnapshot; retry?: true }) =>
+      (current.retry ? retryPageSave : sendPageSave)(api, current.request),
     onSuccess: (outcome, sent) => {
       if (outcome.kind !== "unknown" && outcome.kind !== "conflict") attempt.current = undefined;
 
@@ -311,15 +315,20 @@ function RemotePageEditor({
   const submitAttempt = useRef<ServerPageBaseline>(undefined);
 
   const submit = useMutation({
-    mutationFn: (sent: ServerPageBaseline) => api.submitRevision(server.id, sent.page.version),
-    onSuccess: (revision, sent) => {
-      const confirmed = {
+    mutationFn: async (sent: ServerPageBaseline & { retry?: true }): Promise<ApiPage> => {
+      const landed = sent.retry ? await landedSubmission(api, sent, categories) : undefined;
+
+      if (landed) return landed;
+      const revision = await api.submitRevision(server.id, sent.page.version);
+
+      return {
         ...sent.page,
         version: revision.version,
         updated_at: revision.updated_at,
         pending_revision: { status: revision.status, comment: revision.comment },
       };
-
+    },
+    onSuccess: (confirmed, sent) => {
       rebase({ page: confirmed, markdown: sent.markdown });
       submitAttempt.current = undefined;
       client.setQueryData(pageQuery(api, server.id).queryKey, confirmed);
@@ -385,8 +394,18 @@ function RemotePageEditor({
   const unsaved =
     draft.committed !== base.markdown || draft.dirty || !draft.valid || draft.status === "error";
 
+  // While a request's answer is lost, a newer version holding exactly what it sent is that request landing, not someone
+  // else's change: retrying it confirms it
+  const landedMeanwhile =
+    (outcome?.kind === "unknown" &&
+      !!attempt.current &&
+      saveLanded(server, attempt.current.request)) ||
+    (outcomeUnknown(submit.error) &&
+      !!submitAttempt.current &&
+      submissionLanded(server, submitAttempt.current, categories));
+
   const stale =
-    server.version !== base.page.version ||
+    (server.version !== base.page.version && !landedMeanwhile) ||
     outcome?.kind === "conflict" ||
     (submit.error instanceof ApiFailure && submit.error.code === "version_conflict");
 
@@ -414,6 +433,13 @@ function RemotePageEditor({
     saving.current = true;
     attempt.current = { request: prepared.attempt, snapshot };
     save.mutate(attempt.current);
+  };
+
+  // The same request again: one that landed meanwhile is confirmed rather than refused as a conflict (retryPageSave)
+  const retrySave = () => {
+    if (saving.current || !attempt.current) return;
+    saving.current = true;
+    save.mutate({ ...attempt.current, retry: true });
   };
 
   // Looks the page's links up again, then saves. Only making the page public stops to ask about what it found.
@@ -538,11 +564,7 @@ function RemotePageEditor({
         status: "failed",
         error:
           "We couldn’t confirm the save. Retry the same request, or copy your changes and reload.",
-        onRetry: () => {
-          if (saving.current || !attempt.current) return;
-          saving.current = true;
-          save.mutate(attempt.current);
-        },
+        onRetry: retrySave,
         onDownload: downloadMine,
       };
 
@@ -624,14 +646,7 @@ function RemotePageEditor({
       actions={
         <>
           {outcome?.kind === "unknown" && (
-            <Button
-              disabled={save.isPending || submit.isPending || reloading}
-              onClick={() => {
-                if (saving.current || !attempt.current) return;
-                saving.current = true;
-                save.mutate(attempt.current);
-              }}
-            >
+            <Button disabled={save.isPending || submit.isPending || reloading} onClick={retrySave}>
               Retry same save
             </Button>
           )}
@@ -641,7 +656,8 @@ function RemotePageEditor({
               onClick={() => {
                 if (saving.current || !submitAttempt.current) return;
                 saving.current = true;
-                submit.mutate(submitAttempt.current);
+                // One that landed meanwhile is confirmed rather than refused as a conflict (landedSubmission)
+                submit.mutate({ ...submitAttempt.current, retry: true });
               }}
             >
               Retry same submission

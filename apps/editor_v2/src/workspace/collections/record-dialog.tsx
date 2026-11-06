@@ -26,6 +26,7 @@ import {
   keyProblem,
   recordData,
   recordValues,
+  valuesDiffer,
   withRecord,
   type RecordValues,
 } from "./records";
@@ -47,6 +48,12 @@ type RecordAttempt = {
   data: ReturnType<typeof recordData>;
   values: RecordValues;
 };
+
+/** Whether a read shows the save landed: the record moved past the version it was sent over, holding what it sent. */
+const saveLanded = (latest: RecordDetail, sent: RecordAttempt) =>
+  !!sent.record &&
+  latest.record.version !== sent.record.version &&
+  !valuesDiffer(latest.collection, sent.values, latest.record);
 
 /**
  * Public list rows are navigation only; editing starts from a private versioned snapshot. One dialog stays open
@@ -104,13 +111,22 @@ export function RecordDialog({
   const query = collectionQuery(api, collection.key);
 
   const save = useMutation({
-    mutationFn: async (sent: RecordAttempt): Promise<RecordDetail> =>
-      sent.record
-        ? api.saveRecord(sent.collection.key, sent.key, sent.data, sent.record.version)
-        : {
-            collection: sent.collection,
-            record: await api.createRecord(sent.collection.key, sent.key, sent.data),
-          },
+    mutationFn: async (sent: RecordAttempt & { retry?: true }): Promise<RecordDetail> => {
+      if (!sent.record)
+        return {
+          collection: sent.collection,
+          record: await api.createRecord(sent.collection.key, sent.key, sent.data),
+        };
+
+      // A retried save that landed meanwhile is confirmed, rather than refused as someone else's change
+      if (sent.retry) {
+        const latest = await api.record(sent.collection.key, sent.key).catch(() => undefined);
+
+        if (latest && saveLanded(latest, sent)) return latest;
+      }
+
+      return api.saveRecord(sent.collection.key, sent.key, sent.data, sent.record.version);
+    },
     onSuccess: (saved, sent) => {
       setBase(saved);
       setObserved(undefined);
@@ -169,10 +185,17 @@ export function RecordDialog({
     failure?.status === 404 ||
     (base.record && current.error instanceof ApiFailure && current.error.status === 404);
 
-  const stale =
-    conflict || (!!base.record && !!latest && latest.record.version !== base.record.version);
-
   const unknown = outcomeUnknown(save.error);
+
+  // While the answer is lost, a newer version holding exactly what was sent is that save landing, not someone else's
+  // change: retrying it confirms it
+  const stale =
+    conflict ||
+    (!!base.record &&
+      !!latest &&
+      latest.record.version !== base.record.version &&
+      !(unknown && attempt.current && saveLanded(latest, attempt.current)));
+
   const rejected = failure?.status === 400 && failure.code === "validation_failed";
 
   const fieldErrors = new Map(
@@ -263,7 +286,7 @@ export function RecordDialog({
 
     gate.current = true;
     setMessage("");
-    save.mutate(attempt.current);
+    save.mutate(unknown ? { ...attempt.current, retry: true } : attempt.current);
   };
 
   const keyListed = fields.some((field) => field.key === definition.record_key);

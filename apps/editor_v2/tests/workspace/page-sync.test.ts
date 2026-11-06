@@ -13,7 +13,12 @@ import { ApiFailure, type ApiPage, type SavePageInput } from "../../src/api/clie
 import type { Category } from "../../src/api/categories";
 import { pageToMarkdown } from "../../src/api/page-markdown";
 import { pageHasUnsavedChanges } from "../../src/workspace/page-session";
-import { savePageDraft } from "../../src/workspace/page-sync";
+import {
+  landedSubmission,
+  preparePageSave,
+  retryPageSave,
+  savePageDraft,
+} from "../../src/workspace/page-sync";
 import { DraftStore } from "../../src/persistence/draft-store";
 import { govbbPageCodec, govbbPageEditor } from "../../src/presets/govbb-page";
 
@@ -378,5 +383,102 @@ describe("saving a page", () => {
     );
 
     expect(outcome).toEqual(expected);
+  });
+});
+
+describe("retrying a save whose answer was lost", () => {
+  const edited = markdown.replace("Hello", "Hello again");
+  const prepared = preparePageSave({ page, markdown }, edited, []);
+
+  if (!prepared.ok) throw new Error("The edit should be ready to save");
+  const sent = prepared.attempt;
+
+  // The save landed: a public page's edit waits for an approver as a draft change
+  const landed: ApiPage = {
+    ...page,
+    body_markdown: "Hello again",
+    version: 2,
+    pending_revision: { status: "draft", comment: null },
+  };
+
+  const contentApi = (read: () => Promise<ApiPage>) => {
+    const writes: number[] = [];
+
+    return {
+      writes,
+      page: read,
+      savePage: async (_id: string, _fields: SavePageInput, expectedVersion: number) => {
+        writes.push(expectedVersion);
+
+        return landed;
+      },
+    };
+  };
+
+  it("confirms a save that landed, without sending it again", async () => {
+    const remote = contentApi(async () => landed);
+
+    expect(await retryPageSave(remote, sent)).toEqual({
+      kind: "saved",
+      base: { page: landed, markdown: edited },
+    });
+    expect(remote.writes).toEqual([]);
+  });
+
+  it.each([
+    ["the page hasn't moved", page],
+    ["the page holds other text", { ...landed, body_markdown: "Someone else's" }],
+    [
+      "the change was submitted for review meanwhile",
+      { ...landed, pending_revision: { status: "submitted" as const, comment: null } },
+    ],
+  ])("sends the same request again when %s", async (_case, read) => {
+    const remote = contentApi(async () => read);
+
+    await retryPageSave(remote, sent);
+    expect(remote.writes).toEqual([page.version]);
+  });
+
+  it("sends the same request again when the page can't be read", async () => {
+    const remote = contentApi(async () => {
+      throw new ApiFailure(0);
+    });
+
+    await retryPageSave(remote, sent);
+    expect(remote.writes).toEqual([page.version]);
+  });
+});
+
+describe("retrying a submission whose answer was lost", () => {
+  const drafted: ApiPage = { ...page, pending_revision: { status: "draft", comment: null } };
+  const sent = { page: drafted, markdown: pageToMarkdown(drafted, []) };
+
+  const submitted: ApiPage = {
+    ...drafted,
+    version: 2,
+    pending_revision: { status: "submitted", comment: null },
+  };
+
+  it("finds a submission that landed", async () => {
+    expect(await landedSubmission({ page: async () => submitted }, sent, [])).toBe(submitted);
+  });
+
+  it.each([
+    ["the page hasn't moved", drafted],
+    [
+      "nothing is waiting for an approver",
+      { ...submitted, pending_revision: { status: "draft" as const, comment: null } },
+    ],
+    ["the text waiting isn't the text submitted", { ...submitted, title: "Changed meanwhile" }],
+  ])("finds none when %s", async (_case, read) => {
+    expect(await landedSubmission({ page: async () => read }, sent, [])).toBeUndefined();
+  });
+
+  it("finds none when the page can't be read", async () => {
+    const unreachable = async (): Promise<ApiPage> => {
+      throw new ApiFailure(0);
+    };
+
+    expect(await landedSubmission({ page: unreachable }, sent, [])).toBeUndefined();
   });
 });

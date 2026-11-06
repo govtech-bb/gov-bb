@@ -144,7 +144,8 @@ test("a confirmed save preserves unapplied source typed while the response was p
   expect(newer.dirty).toBe(true);
 });
 
-test("an uncertain retry freezes its request and identical newer content never adopts the baseline", async () => {
+// A submission meanwhile moved the version for something no save does, so identical text there isn't this save landing
+test("an uncertain retry freezes its request, and identical text in another review state never adopts the baseline", async () => {
   const writes: string[] = [];
   let latest = page;
 
@@ -182,6 +183,36 @@ test("an uncertain retry freezes its request and identical newer content never a
   expect(h.session().getBaseline()).toBe(baseline);
   expect(h.session().store.getSnapshot()).toBe(draft);
   expect(button("Keep my version")).toBeUndefined();
+});
+
+test("a retried save that landed while its answer was lost is confirmed, not refused as someone else's change", async () => {
+  const writes: string[] = [];
+  let latest = page;
+
+  const h = await mountPage(async (_url, init) => {
+    if (init?.method === "PUT") {
+      writes.push(String(init.body));
+      // The save lands, and its answer is lost on the way back
+      latest = { ...page, ...JSON.parse(String(init.body)), version: 2 };
+      throw new TypeError("Lost response");
+    }
+
+    return Response.json(latest);
+  });
+
+  await applySource(h.session(), h.session().store.getSnapshot().source + "\n\nSaved");
+  await savePage();
+  // Read again meanwhile, the page's newer version is this save, not someone else's change
+  await act(async () => h.client.refetchQueries({ queryKey: pageQuery(h.api, page.id).queryKey }));
+  await openPageAlert();
+  expect(document.body.textContent).not.toContain("A newer version of this page has been saved");
+  await act(async () => button("Retry same save")!.click());
+  await act(async () => {
+    await vi.waitFor(() => expect(h.session().getBaseline().page.version).toBe(2));
+  });
+  expect(writes).toHaveLength(1);
+  expect(button("Retry same save")).toBeUndefined();
+  expect(document.body.textContent).not.toContain("A newer version of this page has been saved");
 });
 
 const visibility = () => pageControl<HTMLSelectElement>("select");
@@ -915,6 +946,33 @@ test("a saved draft is submitted for review at the version the editor holds, and
   expect(sent?.url).toBe(`http://localhost:3020/pages/${page.id}/revision/submit`);
   expect(JSON.parse(String(sent?.init?.body)).expected_version).toBe(live.version);
   expect(button("Submit for review")).toBeUndefined();
+});
+
+test("a retried submission that landed while its answer was lost is confirmed as waiting", async () => {
+  const drafted: ApiPage = { ...live, pending_revision: { status: "draft", comment: null } };
+  let submissions = 0;
+  let latest = drafted;
+
+  await mountPage(async (_url, init) => {
+    if (init?.method === "POST") {
+      submissions += 1;
+      // The submission lands, and its answer is lost on the way back
+      latest = { ...drafted, version: 2, pending_revision: { status: "submitted", comment: null } };
+      throw new TypeError("Lost response");
+    }
+
+    return Response.json(latest);
+  });
+
+  await vi.waitFor(() => expect(button("Submit for review")?.disabled).toBe(false));
+  await act(async () => button("Submit for review")!.click());
+  await openPageAlert();
+  await act(async () => button("Retry same submission")!.click());
+  await act(async () => {
+    await vi.waitFor(() => expect(document.body.textContent).toContain(WAITING));
+  });
+  expect(submissions).toBe(1);
+  expect(button("Retry same submission")).toBeUndefined();
 });
 
 test("a draft with unsaved edits can't be submitted until they're saved", async () => {
