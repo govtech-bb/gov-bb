@@ -84,6 +84,7 @@ export class ContentService {
   private readonly apiV2Url: string;
   private readonly previewToken: string;
   private cached?: { entries: ServiceIndexEntry[]; fetchedAt: number };
+  private refreshing?: Promise<ServiceIndexEntry[]>;
 
   constructor(
     private readonly serviceStatus: ServiceStatusService,
@@ -109,14 +110,23 @@ export class ContentService {
 
   /**
    * api_v2's catalog (public + preview pages, read with the preview token),
-   * cached 60s. A failed refresh serves the last good copy for another 60s; a
-   * cold failure is a 503 and caches nothing.
+   * cached 60s. Once stale, the cached copy is served at once while one shared
+   * refresh runs; a failed refresh keeps it for another 60s. A cold read waits
+   * for the fetch, and a cold failure is a 503 that caches nothing.
    */
   private async fromApiV2(): Promise<ServiceIndexEntry[]> {
-    const now = Date.now();
-    if (this.cached && now - this.cached.fetchedAt < CATALOG_TTL_MS) {
+    if (this.cached && Date.now() - this.cached.fetchedAt < CATALOG_TTL_MS) {
       return this.cached.entries;
     }
+    this.refreshing ??= this.refresh().finally(() => {
+      this.refreshing = undefined;
+    });
+    // A refresh with a cached copy never rejects (its catch serves the copy).
+    return this.cached?.entries ?? this.refreshing;
+  }
+
+  private async refresh(): Promise<ServiceIndexEntry[]> {
+    const now = Date.now();
     try {
       const response = await fetch(`${this.apiV2Url}/catalog`, {
         headers: this.previewToken
@@ -154,10 +164,12 @@ export class ContentService {
 
   /**
    * The category of the service page that links `formId`, for the forms app's
-   * analytics events (#3250). Undefined when no service links the form.
+   * analytics events (#3250). Undefined when no service links the form, or
+   * when the index is unavailable: an analytics tag must never fail a form load.
    */
   async categoryForForm(formId: string): Promise<string | undefined> {
-    return (await this.index()).find((e) => e.formId === formId)?.category;
+    const entries = await this.index().catch(() => []);
+    return entries.find((e) => e.formId === formId)?.category;
   }
 
   /**

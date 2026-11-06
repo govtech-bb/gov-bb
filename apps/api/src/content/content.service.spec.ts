@@ -313,11 +313,49 @@ describe("ContentService in api_v2 mode (API_V2_URL set)", () => {
       expect(await service.index()).toEqual(sorted);
       expect(fetchSpy).toHaveBeenCalledTimes(2);
 
-      vi.advanceTimersByTime(59_000);
+      await vi.advanceTimersByTimeAsync(59_000);
       expect(await service.index()).toEqual(sorted);
       expect(fetchSpy).toHaveBeenCalledTimes(2);
     },
   );
+
+  it("serves the stale copy at once while one shared refresh runs", async () => {
+    const service = make();
+    fetchSpy.mockResolvedValueOnce(ok());
+    await service.index();
+
+    let answer!: (r: Response) => void;
+    fetchSpy.mockImplementationOnce(
+      () => new Promise<Response>((resolve) => (answer = resolve)),
+    );
+    vi.advanceTimersByTime(61_000);
+    // api_v2 hasn't answered: both calls get the stale copy, one fetch.
+    expect(await service.index()).toEqual(sorted);
+    expect(await service.list(true)).toEqual(sorted);
+    expect(fetchSpy).toHaveBeenCalledTimes(2);
+
+    const fresh = { pages: [catalog.pages[1]] };
+    answer(new Response(JSON.stringify(fresh)));
+    await vi.advanceTimersByTimeAsync(0);
+    expect(await service.index()).toEqual([sorted[0]]);
+    expect(fetchSpy).toHaveBeenCalledTimes(2);
+  });
+
+  it("shares one cold fetch between concurrent callers", async () => {
+    fetchSpy.mockImplementation(async () => ok());
+    const service = make();
+    const [a, b] = await Promise.all([service.index(), service.list(true)]);
+    expect(a).toEqual(sorted);
+    expect(b).toEqual(sorted);
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it("categoryForForm is undefined, not a 503, when the cold read fails", async () => {
+    fetchSpy.mockRejectedValueOnce(new Error("down"));
+    await expect(
+      make().categoryForForm("youth-opportunity-community-canvas"),
+    ).resolves.toBeUndefined();
+  });
 
   it.each([
     ["a rejected fetch", () => Promise.reject(new Error("down"))],
