@@ -571,6 +571,11 @@ export function createEditorApi(apiOrigin: string, landingOrigin?: string) {
     /** What happened to a page, newest first. */
     history: async (id: string) =>
       (await read<{ entries: PageHistoryEntry[] }>(`/pages/${id}/history`)).entries,
+    /** Saves history version `version`'s fields over the page as a new change, made against `ifUpdatedAt`. */
+    restoreVersion: async (id: string, version: number, ifUpdatedAt: string): Promise<ApiPage> =>
+      (
+        await send("POST", `/pages/${id}/history/${version}/restore`, undefined, ifUpdatedAt)
+      ).json(),
     /** Publishes the change at the version the approver reviewed, `ifUpdatedAt`. */
     publishRevision: async (id: string, ifUpdatedAt: string): Promise<ApiPage> =>
       (await send("POST", `/pages/${id}/revision/publish`, undefined, ifUpdatedAt)).json(),
