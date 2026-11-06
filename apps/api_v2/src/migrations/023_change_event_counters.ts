@@ -1,4 +1,8 @@
-/** Serialize audit numbering across content and review writes without locking content rows. */
+/**
+ * Serialize audit numbering across content and review writes without locking
+ * content rows. `record_change()` keeps 022's restore marking and only stops
+ * numbering events itself.
+ */
 export const SQL = `
 lock table change_events in exclusive mode;
 
@@ -39,6 +43,8 @@ declare
   old_row   jsonb := case when tg_op = 'INSERT' then null else to_jsonb(old) end;
   new_row   jsonb := case when tg_op = 'DELETE' then null else to_jsonb(new) end;
   stored    jsonb := coalesce(new_row, old_row);
+  restoring boolean := tg_op = 'UPDATE'
+    and current_setting('app.restored_page', true) = stored->>'id';
   happened  change_action;
 begin
   if tg_op = 'INSERT' then
@@ -47,6 +53,8 @@ begin
     happened := 'deleted';
   elsif old_row - 'updated_at' = new_row - 'updated_at' then
     return null;
+  elsif restoring then
+    happened := 'reverted';
   elsif old_row->>'published_at' is null and new_row->>'published_at' is not null then
     happened := 'published';
   elsif old_row->>'visibility' = 'public' and new_row->>'visibility' <> 'public' then
@@ -57,9 +65,12 @@ begin
     happened := 'updated';
   end if;
 
-  insert into change_events (entity_kind, entity_id, action, snapshot, actor)
+  insert into change_events (entity_kind, entity_id, action, snapshot, actor, restored_from)
   values (kind, stored->>'id', happened, stored,
-          coalesce(nullif(current_setting('app.user_id', true), ''), 'system'));
+          coalesce(nullif(current_setting('app.user_id', true), ''), 'system'),
+          case when restoring
+               then nullif(current_setting('app.restored_from', true), '')::int
+          end);
   return null;
 end;
 $$ language plpgsql;

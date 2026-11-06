@@ -45,6 +45,7 @@ const ALL = [
   "019_change_events_redaction",
   "020_google_sessions",
   "021_github_accounts",
+  "022_restored_from",
   "023_change_event_counters",
   "024_edit_versions",
 ];
@@ -158,6 +159,7 @@ describe("migrate", () => {
       "019_change_events_redaction",
       "020_google_sessions",
       "021_github_accounts",
+      "022_restored_from",
       "023_change_event_counters",
       "024_edit_versions",
     ]);
@@ -202,6 +204,7 @@ describe("migrate", () => {
       "019_change_events_redaction",
       "020_google_sessions",
       "021_github_accounts",
+      "022_restored_from",
       "023_change_event_counters",
       "024_edit_versions",
     ]);

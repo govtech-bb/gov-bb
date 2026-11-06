@@ -115,6 +115,7 @@ it("finds the editor's writes, so an empty route list cannot pass", () => {
       "POST /pages/:id/revision/submit",
       "POST /pages/:id/revision/reject",
       "POST /pages/:id/revision/publish",
+      "POST /pages/:id/history/:version/restore",
       "POST /editor/categories",
       "PUT /editor/categories/:id",
       "PUT /editor/categories/order",
@@ -221,22 +222,35 @@ async function pageWrite(
               from content_pages where id = ${id}
               `,
     );
+  // A restore needs a version of the page to go back to.
+  if (url.endsWith("/restore")) await restorable(id);
   const version = (
     await app.inject({ url: `/pages/${id}`, headers: TEST_HEADERS })
   ).json().version;
   return {
     method: method as InjectOptions["method"],
     url:
-      url.replace(/:\w+/g, id) +
+      url.replace(":version", "1").replace(/:\w+/g, id) +
       (method === "DELETE" ? `?expected_version=${version}` : ""),
-    payload: url.includes("/revision/")
-      ? { expected_version: version }
-      : {
-          ...fields,
-          ...(method === "PUT" ? { expected_version: version } : {}),
-        },
+    payload:
+      url.includes("/revision/") || url.endsWith("/restore")
+        ? { expected_version: version }
+        : {
+            ...fields,
+            ...(method === "PUT" ? { expected_version: version } : {}),
+          },
     headers: TEST_HEADERS,
   };
+}
+
+/**
+ * Change a page after its first version, as `system`, so restoring version
+ * 1 changes it back.
+ */
+async function restorable(id: string) {
+  await db.execute(
+    sql`update content_pages set title = 'Existing, edited' where id = ${id}`,
+  );
 }
 
 /** A signed-in request to a category route, about categories of the database's own. */
@@ -464,6 +478,8 @@ async function routesChangingWhatCitizensSee(employee: Employee) {
                     from content_pages where id = ${target}
                     `,
           );
+        // A restore needs a version of the page to go back to.
+        if (url.endsWith("/restore")) await restorable(target);
         const version = (
           await signedIn.inject({
             url: `/pages/${target}`,
@@ -474,17 +490,21 @@ async function routesChangingWhatCitizensSee(employee: Employee) {
         const response = await signedIn.inject({
           method: method as InjectOptions["method"],
           url:
-            url.replace(/:\w+/g, target).replace("*", "x") +
+            url
+              .replace(":version", "1")
+              .replace(/:\w+/g, target)
+              .replace("*", "x") +
             (method === "DELETE" ? `?expected_version=${version}` : ""),
-          payload: url.includes("/revision/")
-            ? {
-                expected_version: version,
-                ...(url.endsWith("/reject") ? { comment: "Probed" } : {}),
-              }
-            : {
-                ...fields,
-                ...(method === "PUT" ? { expected_version: version } : {}),
-              },
+          payload:
+            url.includes("/revision/") || url.endsWith("/restore")
+              ? {
+                  expected_version: version,
+                  ...(url.endsWith("/reject") ? { comment: "Probed" } : {}),
+                }
+              : {
+                  ...fields,
+                  ...(method === "PUT" ? { expected_version: version } : {}),
+                },
           headers: TEST_HEADERS,
         });
         const route = `${method} ${url}`;

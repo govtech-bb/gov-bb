@@ -34,8 +34,8 @@ The history then reads forward: the bad change, and after it the restore
 that undid it, by the person who restored it.
 
 - `POST /pages/:id/history/:version/restore` needs the editor role and the
-  `updated_at` the editor last read. A page that has changed since gets a
-  409, as a save does.
+  page version the editor last read, as `expected_version`. A page that has
+  changed since gets a 409, as a save does.
 - A restore is a save in every way except where its fields come from. It
   follows the same rules for checks, placement, conflicts and review.
 - **A restore keeps the page's current visibility.** It brings back what a

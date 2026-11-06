@@ -35,6 +35,12 @@ import {
 import { err, ok, type Result } from "../modules/result";
 import type { LastEditedBy } from "../modules/content-attribution";
 import type { EditVersion } from "../modules/edit-concurrency";
+import {
+  restorableFields,
+  VersionNotFound,
+  type PageEvent,
+  type VersionNotRestorable,
+} from "../modules/page-history";
 import { chunkMarkdown, type SearchChunk } from "../modules/search-text";
 import {
   NO_REVIEW_NOTIFICATIONS,
@@ -161,6 +167,16 @@ export interface PageRecords {
   changedSincePublic(
     id: PageId,
   ): Promise<Result<readonly string[], ContentStoreUnavailable>>;
+  /** One of the page's history entries, by version, or null. */
+  pageEvent(
+    id: PageId,
+    versionNo: number,
+  ): Promise<Result<PageEvent | null, ContentStoreUnavailable>>;
+  /** Record the transaction's update of the page as restoring that version (ADR 0080). */
+  markRestore(
+    id: PageId,
+    versionNo: number,
+  ): Promise<Result<void, ContentStoreUnavailable>>;
   /** Delete a page, returning it as it stood, or null when there was none; one with sub-pages is refused. */
   remove(
     id: PageId,
@@ -300,105 +316,169 @@ export class PageEditing {
     return this.records.atomically(actor.id, async (records) => {
       const checked = await versionedPage(records, id, expectedVersion);
       if (!checked.ok) return checked;
-      const { live: current, revision: pending } = checked.value;
-      if (
-        fields.visibility !== current.visibility &&
-        !actor.roles.includes("approver")
-      )
-        return err(new NotApprover());
+      return this.saveWith(records, id, checked.value, fields, actor);
+    });
+  }
 
-      const invalidContent = markdownRejection(
-        current.visibility === "public" && fields.visibility !== "public"
-          ? { ...fieldsOf(current), visibility: fields.visibility }
-          : fields,
+  /**
+   * Bring back the page's content as history version `versionNo` left it,
+   * as a new change (ADR 0080): every entry stays, and the restore is a save
+   * of that version's fields over the page as it stands now, made against
+   * the version the caller read. It keeps the page's current visibility, so
+   * changing who sees it stays a separate approver action. A page that isn't
+   * public is written, and its history records `reverted`, naming the
+   * version. A public page's restore goes into its pending revision, as any
+   * save does, and is reviewed before citizens see it.
+   */
+  restore(
+    id: PageId,
+    versionNo: number,
+    expectedVersion: EditVersion,
+    actor: Employee,
+  ): Promise<
+    Result<
+      EditorPage,
+      | PageRejected
+      | PageNotFound
+      | PageConflict
+      | VersionNotFound
+      | VersionNotRestorable
+      | NotApprover
+      | SelfApproval
+      | ContentStoreUnavailable
+    >
+  > {
+    return this.records.atomically(actor.id, async (records) => {
+      const checked = await versionedPage(records, id, expectedVersion);
+      if (!checked.ok) return checked;
+      const event = await records.pageEvent(id, versionNo);
+      if (!event.ok) return event;
+      if (event.value === null) return err(new VersionNotFound(versionNo));
+      const fields = restorableFields(event.value);
+      if (fields instanceof Error) return err(fields);
+      const marked = await records.markRestore(id, versionNo);
+      if (!marked.ok) return marked;
+      return this.saveWith(
+        records,
+        id,
+        checked.value,
+        { ...fields, visibility: checked.value.live.visibility },
+        actor,
       );
-      if (invalidContent) return err(invalidContent);
-      // Past the pending revision's version too, which can run ahead of the
-      // clock, so no client holding it matches the page's new one.
-      const now = new Date(
-        Math.max(
-          this.clock().getTime(),
-          pending === null ? 0 : Date.parse(pending.updated_at) + 1,
+    });
+  }
+
+  /** `save`, inside the caller's transaction, over the page `versionedPage` locked and checked. */
+  private async saveWith(
+    records: PageRecords,
+    id: PageId,
+    checked: PageEditorSnapshot,
+    fields: SaveFields,
+    actor: Employee,
+  ): Promise<
+    Result<
+      EditorPage,
+      PageRejected | NotApprover | SelfApproval | ContentStoreUnavailable
+    >
+  > {
+    const { live: current, revision: pending } = checked;
+    if (
+      fields.visibility !== current.visibility &&
+      !actor.roles.includes("approver")
+    )
+      return err(new NotApprover());
+
+    const invalidContent = markdownRejection(
+      current.visibility === "public" && fields.visibility !== "public"
+        ? { ...fieldsOf(current), visibility: fields.visibility }
+        : fields,
+    );
+    if (invalidContent) return err(invalidContent);
+    // Past the pending revision's version too, which can run ahead of the
+    // clock, so no client holding it matches the page's new one.
+    const now = new Date(
+      Math.max(
+        this.clock().getTime(),
+        pending === null ? 0 : Date.parse(pending.updated_at) + 1,
+      ),
+    );
+    if (current.visibility === "public" && fields.visibility !== "public") {
+      // Marked first, so the page's history reads the discard before the
+      // unpublish, as it reads an approval before the change it lets live.
+      if (pending?.status === "submitted") {
+        const discarded = await records.markRevision(pending.id, {
+          status: "discarded",
+          by: actor.id,
+          at: now,
+        });
+        if (!discarded.ok) return discarded;
+      }
+      const hidden = await writeLive(
+        records,
+        current,
+        { ...fieldsOf(current), visibility: fields.visibility },
+        now,
+      );
+      if (!hidden.ok) return hidden;
+      if (pending?.status === "draft") {
+        const dropped = await records.dropRevision(id);
+        if (!dropped.ok) return dropped;
+      }
+      return savedPage(records, id);
+    }
+
+    if (fields.url !== current.url) {
+      const available = await records.checkPageUrl(fields.url);
+      if (!available.ok) return available;
+    }
+
+    // Null moves the page to its category's root; only leaving it out keeps the parent.
+    const placed = await place(records, id, {
+      ...fields,
+      parent_id:
+        fields.parent_id === undefined
+          ? (pending?.fields ?? current).parent_id
+          : fields.parent_id,
+    });
+    if (!placed.ok) return placed;
+    if (changesOf(workingCopy(current, pending), placed.value).length === 0)
+      return savedPage(records, id);
+    if (current.visibility === "public" && fields.visibility === "public") {
+      // Refused now for what publishing it would be refused for today.
+      const valid = await records.checkReplace(
+        id,
+        revisionOf(current, placed.value, this.clock()),
+      );
+      if (!valid.ok) return valid;
+      const proposed = await records.writeRevision(
+        id,
+        pendingRevisionOf(
+          current,
+          pending,
+          placed.value,
+          actor.id,
+          this.clock(),
         ),
       );
-      if (current.visibility === "public" && fields.visibility !== "public") {
-        // Marked first, so the page's history reads the discard before the
-        // unpublish, as it reads an approval before the change it lets live.
-        if (pending?.status === "submitted") {
-          const discarded = await records.markRevision(pending.id, {
-            status: "discarded",
-            by: actor.id,
-            at: now,
-          });
-          if (!discarded.ok) return discarded;
-        }
-        const hidden = await writeLive(
-          records,
-          current,
-          { ...fieldsOf(current), visibility: fields.visibility },
-          now,
-        );
-        if (!hidden.ok) return hidden;
-        if (pending?.status === "draft") {
-          const dropped = await records.dropRevision(id);
-          if (!dropped.ok) return dropped;
-        }
-        return savedPage(records, id);
-      }
-
-      if (fields.url !== current.url) {
-        const available = await records.checkPageUrl(fields.url);
-        if (!available.ok) return available;
-      }
-
-      // Null moves the page to its category's root; only leaving it out keeps the parent.
-      const placed = await place(records, id, {
-        ...fields,
-        parent_id:
-          fields.parent_id === undefined
-            ? (pending?.fields ?? current).parent_id
-            : fields.parent_id,
-      });
-      if (!placed.ok) return placed;
-      if (changesOf(workingCopy(current, pending), placed.value).length === 0)
-        return savedPage(records, id);
-      if (current.visibility === "public" && fields.visibility === "public") {
-        // Refused now for what publishing it would be refused for today.
-        const valid = await records.checkReplace(
-          id,
-          revisionOf(current, placed.value, this.clock()),
-        );
-        if (!valid.ok) return valid;
-        const proposed = await records.writeRevision(
-          id,
-          pendingRevisionOf(
-            current,
-            pending,
-            placed.value,
-            actor.id,
-            this.clock(),
-          ),
-        );
-        return proposed.ok ? savedPage(records, id) : proposed;
-      }
-      if (fields.visibility === "public" && !this.review.allowSelfApproval) {
-        // Making it public approves every change since it was last public,
-        // this save's included, so none of them may be the approver's.
-        if (
-          changesOf(current, placed.value).some(
-            ({ field }) => field !== "visibility",
-          )
+      return proposed.ok ? savedPage(records, id) : proposed;
+    }
+    if (fields.visibility === "public" && !this.review.allowSelfApproval) {
+      // Making it public approves every change since it was last public,
+      // this save's included, so none of them may be the approver's.
+      if (
+        changesOf(current, placed.value).some(
+          ({ field }) => field !== "visibility",
         )
-          return err(new SelfApproval(CHANGED_SINCE_PUBLIC));
-        const changers = await records.changedSincePublic(id);
-        if (!changers.ok) return changers;
-        if (changers.value.includes(actor.id))
-          return err(new SelfApproval(CHANGED_SINCE_PUBLIC));
-      }
-      // Only a public page has a revision, so there is none to close here.
-      const saved = await writeLive(records, current, placed.value, now);
-      return saved.ok ? savedPage(records, id) : saved;
-    });
+      )
+        return err(new SelfApproval(CHANGED_SINCE_PUBLIC));
+      const changers = await records.changedSincePublic(id);
+      if (!changers.ok) return changers;
+      if (changers.value.includes(actor.id))
+        return err(new SelfApproval(CHANGED_SINCE_PUBLIC));
+    }
+    // Only a public page has a revision, so there is none to close here.
+    const saved = await writeLive(records, current, placed.value, now);
+    return saved.ok ? savedPage(records, id) : saved;
   }
 
   /**

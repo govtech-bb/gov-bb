@@ -2976,7 +2976,7 @@
         "tags": [
           "pages"
         ],
-        "description": "What happened to the page, newest first, from `change_events`: each change to the live page with the fields it changed, and each review step, with who did it and when. Read-only: nothing restores an entry. 404 when the page has no history.",
+        "description": "What happened to the page, newest first, from `change_events`: each change to the live page with the fields it changed, and each review step, with who did it and when. A restore adds a `reverted` entry naming the version it restored in `restored_from`; it never removes one. 404 when the page has no history.",
         "parameters": [
           {
             "schema": {
@@ -3063,6 +3063,13 @@
                             "nullable": true,
                             "description": "Why an approver rejected the change; null for any other entry.",
                             "type": "string"
+                          },
+                          "restored_from": {
+                            "nullable": true,
+                            "description": "For a `reverted` entry, the version it restored; null for any other.",
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
                           }
                         },
                         "required": [
@@ -3072,7 +3079,8 @@
                           "actor_name",
                           "occurred_at",
                           "changed",
-                          "comment"
+                          "comment",
+                          "restored_from"
                         ],
                         "additionalProperties": false
                       }
@@ -8117,6 +8125,477 @@
                   },
                   "required": [
                     "error"
+                  ],
+                  "additionalProperties": {}
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": {}
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": {}
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/pages/{id}/history/{version}/restore": {
+      "post": {
+        "summary": "Restore a version from a page's history",
+        "tags": [
+          "pages"
+        ],
+        "description": "Requires an employee session, the editor's Origin header and the editor role (403 otherwise). Saves the page's fields as history entry `version` left them over the page as it stands now, keeping its current `visibility`, so the restore is a new change and every earlier entry stays (ADR 0080). It is a save in every other way: a page that isn't `public` is written, and its history gains a `reverted` entry with `restored_from`; a `public` page's restore goes into its pending revision, to be submitted and approved like any other change. Send the page version you last read as `expected_version`: a page changed since is a 409 `version_conflict`. 404 when there is no such page or version; 409 `not_restorable` for a review step, a deletion, a redacted entry or one recorded before the page's current fields. Returns the page as the editor now works on it.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "expected_version": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "exclusiveMinimum": true,
+                    "maximum": 9007199254740991
+                  }
+                },
+                "required": [
+                  "expected_version"
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "exclusiveMinimum": true,
+              "maximum": 9007199254740991
+            },
+            "in": "path",
+            "name": "version",
+            "required": true
+          }
+        ],
+        "security": [
+          {
+            "editorSession": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "url": {
+                      "type": "string",
+                      "maxLength": 512,
+                      "pattern": "^\\/[^?#]*[^/?#]$",
+                      "description": "The site's routing key."
+                    },
+                    "category_id": {
+                      "nullable": true,
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$"
+                    },
+                    "parent_id": {
+                      "nullable": true,
+                      "description": "The page this one sits beneath, in the same category; null for a page at the root of its category, which is what the category lists.",
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$"
+                    },
+                    "title": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 300
+                    },
+                    "description": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "visibility": {
+                      "type": "string",
+                      "enum": [
+                        "public",
+                        "preview",
+                        "draft"
+                      ]
+                    },
+                    "form_id": {
+                      "nullable": true,
+                      "type": "string",
+                      "maxLength": 100
+                    },
+                    "body_markdown": {
+                      "type": "string"
+                    },
+                    "frontmatter": {
+                      "type": "object",
+                      "properties": {
+                        "lede": {
+                          "type": "string"
+                        },
+                        "stage": {
+                          "type": "string"
+                        },
+                        "service_type": {
+                          "type": "string"
+                        },
+                        "keywords": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "source_url": {
+                          "type": "string"
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    "id": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$"
+                    },
+                    "slug": {
+                      "type": "string",
+                      "description": "The url's last segment."
+                    },
+                    "published_at": {
+                      "nullable": true,
+                      "description": "Landing's `publish_date` for an imported page, else when the page first went public; null until it has one.",
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
+                    },
+                    "created_at": {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
+                    },
+                    "updated_at": {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+                      "description": "Content timestamp at millisecond precision; use version for write preconditions."
+                    },
+                    "version": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "exclusiveMinimum": true,
+                      "maximum": 9007199254740991
+                    },
+                    "last_edited_by": {
+                      "nullable": true,
+                      "description": "The actor of the entity's highest version_no change_event, including page review steps. Null when there is no event. Pending-revision saves are not recorded, so this is not necessarily the author of the working copy or its updated_at.",
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "description": "The event's actor id, or `system`."
+                        },
+                        "name": {
+                          "nullable": true,
+                          "description": "Their name, or null when unavailable; `System` for system events.",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "name"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "pending_revision": {
+                      "nullable": true,
+                      "description": "Set when the page is public and has a change waiting for an approver, or a rejected one that has not been replaced. The fields and `updated_at` are then the revision's, and citizens still see the live page.",
+                      "type": "object",
+                      "properties": {
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "draft",
+                            "submitted",
+                            "rejected"
+                          ]
+                        },
+                        "comment": {
+                          "nullable": true,
+                          "description": "Why an approver rejected it; null unless rejected.",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "status",
+                        "comment"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "url",
+                    "category_id",
+                    "parent_id",
+                    "title",
+                    "description",
+                    "visibility",
+                    "form_id",
+                    "body_markdown",
+                    "frontmatter",
+                    "id",
+                    "slug",
+                    "published_at",
+                    "created_at",
+                    "updated_at",
+                    "version",
+                    "last_edited_by",
+                    "pending_revision"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": {}
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": {}
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": {}
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": {}
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "error": {
+                          "type": "string",
+                          "enum": [
+                            "version_conflict"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "documentId": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$"
+                        }
+                      },
+                      "required": [
+                        "error",
+                        "message",
+                        "documentId"
+                      ],
+                      "additionalProperties": {}
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "error": {
+                          "type": "string",
+                          "enum": [
+                            "not_restorable"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "error",
+                        "message"
+                      ],
+                      "additionalProperties": false
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "enum": [
+                        "validation_failed"
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "errors": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "field": {
+                            "type": "string"
+                          },
+                          "message": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "field",
+                          "message"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "errors"
                   ],
                   "additionalProperties": {}
                 }

@@ -331,6 +331,38 @@ export const editorRoutes: FastifyPluginAsyncZod<{
   });
   editor.route({
     method: "POST",
+    url: "/pages/:id/history/:version/restore",
+    schema: SCHEMAS.restorePageVersion,
+    config: { role: "editor" },
+    handler: async (request, reply) => {
+      const restored = await editing.restore(
+        request.params.id,
+        request.params.version,
+        request.body.expected_version,
+        actor(request),
+      );
+      if (restored.ok) return restored.value;
+      switch (restored.error._tag) {
+        case "VersionNotFound":
+          return reply
+            .status(404)
+            .send({ error: "not_found", message: restored.error.message });
+        case "VersionNotRestorable":
+          return reply.status(409).send({
+            error: "not_restorable",
+            message: restored.error.message,
+          });
+        case "NotApprover":
+          return reply
+            .status(403)
+            .send({ error: "forbidden", message: restored.error.message });
+        default:
+          return pageRefused(request, reply, restored.error);
+      }
+    },
+  });
+  editor.route({
+    method: "POST",
     url: "/pages/:id/revision/submit",
     schema: SCHEMAS.submitRevision,
     config: { role: "editor" },

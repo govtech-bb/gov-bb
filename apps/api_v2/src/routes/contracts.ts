@@ -323,8 +323,9 @@ export const SCHEMAS = {
     description:
       "What happened to the page, newest first, from `change_events`: each " +
       "change to the live page with the fields it changed, and each review " +
-      "step, with who did it and when. Read-only: nothing restores an " +
-      "entry. 404 when the page has no history.",
+      "step, with who did it and when. A restore adds a `reverted` entry " +
+      "naming the version it restored in `restored_from`; it never removes " +
+      "one. 404 when the page has no history.",
     tags: ["pages"],
     params: idParams,
     security: editorSecurity,
@@ -332,6 +333,40 @@ export const SCHEMAS = {
       200: z.object({ entries: z.array(PageHistoryEntry) }),
       400: error,
       404: error,
+      500: error,
+      ...authErrors,
+    },
+  },
+  restorePageVersion: {
+    summary: "Restore a version from a page's history",
+    description:
+      "Requires an employee session, the editor's Origin header and the " +
+      "editor role (403 otherwise). Saves the page's fields as history " +
+      "entry `version` left them over the page as it stands now, keeping " +
+      "its current `visibility`, so the restore is a new change and every " +
+      "earlier entry stays (ADR 0080). It is a save in every other way: " +
+      "a page that isn't `public` is written, and its history gains a " +
+      "`reverted` entry with `restored_from`; a `public` page's restore " +
+      "goes into its pending revision, to be submitted and approved like " +
+      "any other change. Send the page version you last read as " +
+      "`expected_version`: a page changed since is a 409 " +
+      "`version_conflict`. 404 when there is no such page or version; 409 " +
+      "`not_restorable` for a review step, a deletion, a redacted entry or " +
+      "one recorded before the page's current fields. Returns the page as " +
+      "the editor now works on it.",
+    tags: ["pages"],
+    params: idParams.extend({ version: z.coerce.number().int().positive() }),
+    body: VersionCommandBody,
+    security: editorSecurity,
+    response: {
+      200: EditorPage,
+      400: error,
+      404: error,
+      409: z.union([
+        conflict,
+        z.object({ error: z.literal("not_restorable"), message: z.string() }),
+      ]),
+      422: validationFailed,
       500: error,
       ...authErrors,
     },
