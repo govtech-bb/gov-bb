@@ -9,6 +9,7 @@ import type { FastifyInstance, InjectOptions } from "fastify";
 import type { Database } from "./db";
 import type { Employee } from "./modules/auth";
 import { withDefaults } from "./modules/page";
+import { restorableFields, VersionNotRestorable } from "./modules/page-history";
 import { ok } from "./modules/result";
 import { IF_UPDATED_AT } from "./routes/contracts";
 import {
@@ -271,6 +272,45 @@ describe("POST /pages/:id/history/:version/restore", () => {
     expect(response.statusCode).toBe(403);
   });
 
+  it("refuses a deletion, though a page created again with the same id keeps it in its history", async () => {
+    const id = "77777777-7777-4777-8777-777777777777";
+    await create({ id, visibility: "draft" });
+    expectOk(await services.editing.delete(id, TEST_EMPLOYEE));
+    const again = await create({ id, visibility: "draft" });
+    expect((await history(again)).map(({ action }) => action)).toEqual([
+      "created",
+      "deleted",
+      "created",
+    ]);
+
+    const response = await restore(TEST_EDITOR, again, 2);
+
+    expect(response.statusCode).toBe(409);
+    expect(response.json()).toEqual({
+      error: "not_restorable",
+      message: "Version 2 is the page's deletion.",
+    });
+  });
+
+  it("refuses a redacted entry for its redaction, not for its shape", async () => {
+    const created = await create({ visibility: "draft" });
+    const renamed = await save(created, { title: "Renamed" });
+    await db.transaction(async (tx) => {
+      await tx.execute(sql`select set_config('app.redacting', 'on', true)`);
+      await tx.execute(sql`update change_events
+        set snapshot = '{"redacted":true,"reason":"incident-42","by":"operator-test"}'
+        where entity_id = ${created.id} and version_no = 1`);
+    });
+
+    const response = await restore(TEST_EDITOR, renamed, 1);
+
+    expect(response.statusCode).toBe(409);
+    expect(response.json()).toEqual({
+      error: "not_restorable",
+      message: "Version 1 was removed from the history.",
+    });
+  });
+
   it("refuses an employee without the editor role", async () => {
     const created = await create({ visibility: "draft" });
     await db.execute(
@@ -308,5 +348,22 @@ describe("the change history trigger during a restore", () => {
       action: "updated",
       restored_from: null,
     });
+  });
+});
+
+describe("restorableFields", () => {
+  it("refuses a snapshot recorded before the page's current fields", () => {
+    const { frontmatter: _, ...older } = withDefaults(aPage());
+
+    const refused = restorableFields({
+      versionNo: 3,
+      action: "updated",
+      snapshot: older,
+    });
+
+    expect(refused).toBeInstanceOf(VersionNotRestorable);
+    expect((refused as VersionNotRestorable).message).toBe(
+      "Version 3 was recorded in an older format that can't be restored.",
+    );
   });
 });
