@@ -30,6 +30,7 @@ import matter from "gray-matter";
 import { CATEGORY_TAXONOMY } from "@govtech-bb/content/categories";
 import type { Frontmatter } from "../src/modules/page";
 import type { SeedEstate, SeedPage } from "../src/seed-data";
+import { convertStormReadyContacts } from "../src/seed-data/stormready-contacts";
 
 const root = join(__dirname, "..", "..", "..");
 const contentDir = join(root, "apps", "landing", "src", "content");
@@ -114,7 +115,10 @@ const parsed: Parsed[] = markdownFiles(contentDir).map((path) => {
       form_id: data.form_id || null,
       content_slug: slug,
       published_at: asDate(data.publish_date),
-      body_markdown: content.trim(),
+      body_markdown:
+        slug === "health-and-emergency-services/stormready"
+          ? convertStormReadyContacts(content.trim())
+          : content.trim(),
       frontmatter,
     },
   };

@@ -12,6 +12,7 @@ Content components use named colon fences. Close every component. When nesting c
 | `table`        | `Table`, `TableHeader`, `TableCell`                               |
 | `summary-list` | `SummaryList`                                                     |
 | `summary-item` | A summary row: label is the key, body is the value                |
+| `contact`      | A collection record's selected details, read by the host          |
 
 These mappings use `@govtech-bb/react@1.0.0-alpha.29`. Accordion authoring is not enabled: that package does not export the documented accordion components. There are no `start`, `service-list`, `service` or `faq` directives. Service listings belong to the application, not the page body.
 
@@ -95,6 +96,20 @@ BBD **50**
 
 A summary list contains only summary items. Each item needs a plain-text key and belongs directly inside a summary list. Values accept Markdown. This is for authored facts; application-generated check-your-answers data remains application-owned.
 
+## Contact details
+
+```md
+### DEM Emergency Line
+
+::contact{collection="contacts" record="dem-emergency-line" fields="phone"}
+```
+
+Use a leaf `::contact` with `collection`, `record` and comma-separated `fields` in that order. The page owns the heading; the record owns its phone number, email and other details. An empty record or field list is allowed while setting up a block. A label, body or extra attribute is not allowed.
+
+Landing reads the public collection at request time. A missing record or failed read renders nothing; the editor shows a warning. Phone, email and website links pass the shared content URL check. Ten-digit Barbados phone numbers get the international `+1` prefix; short codes such as `211` are left alone.
+
+The editor and landing share `@govtech-bb/govbbmarkd/contact-record`. This replaces #3185's original `block-kit` reuse decision; that package was retired in #3589.
+
 ## Validation and editing
 
 Unknown components, unsupported attributes, unsafe action URLs, invalid nesting and unclosed fences produce diagnostics with a code, line and column. Attributes are not arbitrary React props: authors cannot set classes, styles or event handlers through these directives.
@@ -109,7 +124,7 @@ Invalid or unsupported content stays in source mode without being discarded. Dra
 - `:::details{summary="Help"}` remains readable. Do not combine it with a bracketed summary.
 - Existing `<a data-start-link>` markers retain their resolution, availability and analytics behaviour.
 - Existing `notice` blocks retain the local notice renderer. They are not mapped to `StatusBanner`.
-- Legacy HTML, contact tiles, highlights and muted text are not migrated or deleted. Unsupported visual-editor source remains available for source editing.
+- Static legacy HTML, contact tiles, highlights and muted text are retained. StormReady's contacts are converted to record-backed blocks in the v2 import snapshot (#3261), not in the static page. See [the import decision](../apps/editor_v2/docs/MARKDOWN.md#contact-details-and-the-stormready-import-3185-3261).
 
 `compileContentMarkdown` escapes raw HTML by default. Landing explicitly selects the deprecated `{ html: "legacy" }` policy for existing trusted pages. The visual editor uses that policy only after its supported-node checks pass. Forms are outside this integration and retain their existing React Markdown renderer and URL policy.
 
