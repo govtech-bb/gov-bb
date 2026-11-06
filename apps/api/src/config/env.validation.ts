@@ -121,6 +121,11 @@ const baseSchema = z
     // to the first CORS_ORIGIN entry in the consuming code.
     FORMS_BASE_URL: urlOrEmpty().default(""),
 
+    // api_v2 origin (#3249). When set, GET /services reads api_v2's /catalog
+    // (with RECIPE_PREVIEW_TOKEN as x-preview-token) instead of the static
+    // snapshot + service_status. Empty = the static path.
+    API_V2_URL: urlOrEmpty().default(""),
+
     // Public landing site origin, substituted into a recipe's `{landingUrl}`
     // confirmation token so authored links to a service page point at this
     // environment's landing site. Empty = fall back to prod

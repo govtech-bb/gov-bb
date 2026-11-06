@@ -3,7 +3,8 @@ export type ServiceVisibility = "public" | "preview" | "draft";
 
 /**
  * One entry in the runtime services index served by `GET /services`. Sourced
- * from the landing content index at build time (see
+ * from api_v2's `GET /catalog` when `API_V2_URL` is set (#3249), else from the
+ * landing content index at build time (see
  * scripts/generate-services-index.ts) and compiled into the api's own bundle —
  * the api takes no runtime dependency on `@govtech-bb/content`.
  */

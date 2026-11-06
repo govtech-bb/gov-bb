@@ -29,7 +29,7 @@ const mockConfigService = {
 
 const mockContentService = {
   // Default: the form is linked from no service page.
-  categoryForForm: vi.fn().mockReturnValue(undefined),
+  categoryForForm: vi.fn().mockResolvedValue(undefined),
 };
 
 describe("FormDefinitionsController", () => {
@@ -44,7 +44,7 @@ describe("FormDefinitionsController", () => {
     mockConfigService.get.mockReturnValue("");
     // Default: no authorized GitHub caller.
     includeNonPublicFromAuth.mockResolvedValue(false);
-    mockContentService.categoryForForm.mockReturnValue(undefined);
+    mockContentService.categoryForForm.mockResolvedValue(undefined);
     res = { setHeader: vi.fn(), cookie: vi.fn() };
     controller = new FormDefinitionsController(
       mockService as never,
@@ -300,7 +300,7 @@ describe("FormDefinitionsController", () => {
         formId: "passport-renewal",
         title: "Passport Renewal",
       });
-      mockContentService.categoryForForm.mockReturnValue(
+      mockContentService.categoryForForm.mockResolvedValue(
         "travel-id-citizenship",
       );
 

@@ -81,7 +81,9 @@ GitHub-auth API change to be deployed there — see the `apps/api` PR.)
 All three sources are fetched from `apps/api` at request time and merged in
 `app/lib/catalogue.ts`:
 
-- content pages — `GET /services` (the runtime content index),
+- content pages — `GET /services` (the runtime content index; api_v2's
+  catalog where api v1 has `API_V2_URL` set, so editor_v2 publishes show
+  within a minute),
 - forms — `GET /form-definitions`,
 - live statuses — `GET /service_status`.
 

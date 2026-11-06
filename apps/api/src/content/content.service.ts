@@ -1,4 +1,10 @@
-import { Injectable } from "@nestjs/common";
+import {
+  Injectable,
+  Logger,
+  ServiceUnavailableException,
+} from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
+import { z } from "zod";
 import { SERVICES_INDEX } from "./services-index.generated";
 import type {
   ServiceIndexEntry,
@@ -6,6 +12,42 @@ import type {
 } from "./service-index.type";
 import { ServiceStatusService } from "@/services/service-status.service";
 import { ServiceStatus } from "@/database/entities/service-status.entity";
+
+/** How long one api_v2 `/catalog` read serves `/services` (api_v2's own max-age). */
+const CATALOG_TTL_MS = 60_000;
+const CATALOG_TIMEOUT_MS = 5_000;
+
+// One page of api_v2's `GET /catalog` (#3540). Unknown keys (description,
+// digital, stage, subcategory) are dropped.
+const catalogPage = z.object({
+  url: z.string().startsWith("/"),
+  slug: z.string().min(1),
+  title: z.string(),
+  // #3540 serves null outside the taxonomy; tolerate the key being absent too.
+  category: z.string().nullable().optional(),
+  form_id: z.string().nullable(),
+  visibility: z.enum(["public", "preview"]),
+});
+const catalog = z.object({ pages: z.array(catalogPage) });
+
+export type CatalogPage = z.infer<typeof catalogPage>;
+
+export function toServiceIndexEntry(page: CatalogPage): ServiceIndexEntry {
+  const segments = page.url.split("/").filter(Boolean);
+  // ponytail: v1's slug doubles as the URL hint feature_flagging and analytics
+  // build the landing link from (`category/slug` when it has no slash, the slug
+  // verbatim when it has): #3540's leaf for /<category>/<leaf> and the bare
+  // roots, the whole path for anything deeper. Carry `url` and let both read
+  // it to retire this.
+  const slug = segments.length > 2 ? segments.join("/") : page.slug;
+  return {
+    slug,
+    title: page.title,
+    ...(page.category ? { category: page.category } : {}),
+    ...(page.form_id ? { formId: page.form_id } : {}),
+    visibility: page.visibility,
+  };
+}
 
 /** Keep only public entries unless non-public (preview/draft) are requested. */
 export function filterVisible(
@@ -38,31 +80,101 @@ export function visibilityForStatus(
 
 @Injectable()
 export class ContentService {
-  constructor(private readonly serviceStatus: ServiceStatusService) {}
+  private readonly logger = new Logger(ContentService.name);
+  private readonly apiV2Url: string;
+  private readonly previewToken: string;
+  private cached?: { entries: ServiceIndexEntry[]; fetchedAt: number };
 
-  /** The static services catalogue (slug/title/category/formId). Overridable in tests. */
-  index(): ServiceIndexEntry[] {
-    return SERVICES_INDEX;
+  constructor(
+    private readonly serviceStatus: ServiceStatusService,
+    config: ConfigService,
+  ) {
+    this.apiV2Url = config.get<string>("API_V2_URL", "").replace(/\/+$/, "");
+    this.previewToken = config.get<string>("RECIPE_PREVIEW_TOKEN", "");
+    if (this.apiV2Url && !this.previewToken) {
+      this.logger.warn(
+        "API_V2_URL is set but RECIPE_PREVIEW_TOKEN is empty: /services reads api_v2's public catalog only",
+      );
+    }
+  }
+
+  /**
+   * The services catalogue (slug/title/category/formId/visibility): api_v2's
+   * `/catalog` when `API_V2_URL` is set (#3249), else the static snapshot.
+   * Overridable in tests.
+   */
+  async index(): Promise<ServiceIndexEntry[]> {
+    return this.apiV2Url ? this.fromApiV2() : SERVICES_INDEX;
+  }
+
+  /**
+   * api_v2's catalog (public + preview pages, read with the preview token),
+   * cached 60s. A failed refresh serves the last good copy for another 60s; a
+   * cold failure is a 503 and caches nothing.
+   */
+  private async fromApiV2(): Promise<ServiceIndexEntry[]> {
+    const now = Date.now();
+    if (this.cached && now - this.cached.fetchedAt < CATALOG_TTL_MS) {
+      return this.cached.entries;
+    }
+    try {
+      const response = await fetch(`${this.apiV2Url}/catalog`, {
+        headers: this.previewToken
+          ? { "x-preview-token": this.previewToken }
+          : {},
+        signal: AbortSignal.timeout(CATALOG_TIMEOUT_MS),
+      });
+      if (!response.ok) {
+        await response.body?.cancel();
+        throw new Error(`status ${response.status}`);
+      }
+      const parsed = catalog.safeParse(await response.json());
+      if (!parsed.success) throw new Error("unexpected body");
+      const entries = parsed.data.pages
+        .map(toServiceIndexEntry)
+        .sort((a, b) => a.slug.localeCompare(b.slug));
+      this.cached = { entries, fetchedAt: now };
+      return entries;
+    } catch (err) {
+      const reason = err instanceof Error ? err.message : String(err);
+      if (reason === "status 401") {
+        this.logger.error(
+          "api_v2 /catalog answered 401: RECIPE_PREVIEW_TOKEN does not match api_v2's PREVIEW_SECRET, or api_v2 has none",
+        );
+      } else {
+        this.logger.warn(`api_v2 /catalog read failed: ${reason}`);
+      }
+      if (!this.cached) {
+        throw new ServiceUnavailableException("Services index unavailable");
+      }
+      this.cached.fetchedAt = now;
+      return this.cached.entries;
+    }
   }
 
   /**
    * The category of the service page that links `formId`, for the forms app's
    * analytics events (#3250). Undefined when no service links the form.
    */
-  categoryForForm(formId: string): string | undefined {
-    return this.index().find((e) => e.formId === formId)?.category;
+  async categoryForForm(formId: string): Promise<string | undefined> {
+    return (await this.index()).find((e) => e.formId === formId)?.category;
   }
 
   /**
-   * The services index with visibility derived from the runtime `service_status`
+   * In api_v2 mode, the catalog's own visibility; `service_status` is not read
+   * (ADR 0063 "After cutover"). Otherwise the services index with visibility
+   * derived from the runtime `service_status`
    * table (keyed by the canonical slug — `formId` when the service has a form,
    * else the content slug). `includeNonPublic` gates preview services — the
    * controller sets it true only for an authenticated admin request.
    */
   async list(includeNonPublic: boolean): Promise<ServiceIndexEntry[]> {
+    if (this.apiV2Url) {
+      return filterVisible(await this.index(), includeNonPublic);
+    }
     const statuses = await this.serviceStatus.list();
     const statusBySlug = new Map(statuses.map((s) => [s.slug, s.status]));
-    const entries = this.index().map((e) => ({
+    const entries = (await this.index()).map((e) => ({
       ...e,
       visibility: visibilityForStatus(statusBySlug.get(e.formId ?? e.slug)),
     }));
