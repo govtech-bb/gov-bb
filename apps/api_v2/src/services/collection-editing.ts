@@ -124,9 +124,8 @@ export class CollectionEditing {
     actor: Employee,
   ): Promise<Result<EditorCollectionRecord, RecordWriteFailure>> {
     return this.store.atomically(actor.id, async (store) => {
-      const collection = await store.collection(key);
+      const collection = await definitionOf(store, key);
       if (!collection.ok) return collection;
-      if (!collection.value) return err(new CollectionNotFound(key));
       const parsed = parseRecord(collection.value, recordKey, data);
       if (!parsed.ok) return parsed;
       const inserted = await store.insertRecord(key, recordKey, parsed.value);
@@ -146,9 +145,8 @@ export class CollectionEditing {
     actor: Employee,
   ): Promise<Result<RecordEnvelope, RecordWriteFailure>> {
     return this.store.atomically(actor.id, async (store) => {
-      const collection = await store.collection(key);
+      const collection = await definitionOf(store, key);
       if (!collection.ok) return collection;
-      if (!collection.value) return err(new CollectionNotFound(key));
       // Check existence and the original version before field validation.
       const current = await unchanged(store, key, recordKey, expectedVersion);
       if (!current.ok) return current;
@@ -174,14 +172,27 @@ export class CollectionEditing {
     actor: Employee,
   ): Promise<Result<void, RecordWriteFailure>> {
     return this.store.atomically(actor.id, async (store) => {
-      const collection = await store.collection(key);
+      const collection = await definitionOf(store, key);
       if (!collection.ok) return collection;
-      if (collection.value === null) return err(new CollectionNotFound(key));
       const current = await unchanged(store, key, recordKey, expectedVersion);
       if (!current.ok) return current;
       return store.deleteRecord(key, recordKey);
     });
   }
+}
+
+/** The collection's definition, which every record write checks against. */
+async function definitionOf(
+  store: CollectionStore,
+  key: string,
+): Promise<
+  Result<CollectionView, CollectionNotFound | ContentStoreUnavailable>
+> {
+  const collection = await store.collection(key);
+  if (!collection.ok) return collection;
+  return collection.value
+    ? ok(collection.value)
+    : err(new CollectionNotFound(key));
 }
 
 /** The stored record, locked, if it is still the version the caller read. */
