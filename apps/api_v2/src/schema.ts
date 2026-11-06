@@ -287,6 +287,8 @@ export const changeEvents = pgTable(
     occurredAt: timestamp("occurred_at", { withTimezone: true, precision: 3 })
       .notNull()
       .defaultNow(),
+    // The version a restore brought back (ADR 0080); null on every other event.
+    restoredFrom: integer("restored_from"),
   },
   (table) => [
     unique("change_events_entity_kind_entity_id_version_no_key").on(

@@ -115,6 +115,7 @@ it("finds the editor's writes, so an empty route list cannot pass", () => {
       "POST /pages/:id/revision/submit",
       "POST /pages/:id/revision/reject",
       "POST /pages/:id/revision/publish",
+      "POST /pages/:id/history/:version/restore",
       "POST /editor/categories",
       "PUT /editor/categories/:id",
       "PUT /editor/categories/order",
@@ -223,15 +224,29 @@ async function pageWrite(
               returning to_json(updated_at)#>>'{}' as version`,
         )
       ).rows[0]?.version
-    : undefined;
+    : url.endsWith("/restore")
+      ? await restorable(id)
+      : undefined;
   return {
     method: method as InjectOptions["method"],
-    url: url.replace(/:\w+/g, id),
+    url: url.replace(":version", "1").replace(/:\w+/g, id),
     payload: fields,
     headers: reviewed
       ? { ...TEST_HEADERS, "if-updated-at": reviewed }
       : TEST_HEADERS,
   };
+}
+
+/**
+ * Change a page after its first version, as `system`, so restoring version
+ * 1 changes it back; the version a restore names, which is the page's now.
+ */
+async function restorable(id: string) {
+  const rows = await db.execute<{ version: string }>(
+    sql`update content_pages set title = 'Existing, edited' where id = ${id}
+        returning to_json(updated_at)#>>'{}' as version`,
+  );
+  return rows.rows[0]?.version;
 }
 
 /** A signed-in request to a category route, about categories of the database's own. */
@@ -441,11 +456,16 @@ async function routesChangingWhatCitizensSee(employee: Employee) {
                     returning to_json(updated_at)#>>'{}' as version`,
               )
             ).rows[0]?.version
-          : undefined;
+          : url.endsWith("/restore")
+            ? await restorable(target)
+            : undefined;
         const before = await citizenView();
         const response = await signedIn.inject({
           method: method as InjectOptions["method"],
-          url: url.replace(/:\w+/g, target).replace("*", "x"),
+          url: url
+            .replace(":version", "1")
+            .replace(/:\w+/g, target)
+            .replace("*", "x"),
           payload: { ...fields, comment: "Probed" },
           headers: reviewed
             ? { ...TEST_HEADERS, "if-updated-at": reviewed }
