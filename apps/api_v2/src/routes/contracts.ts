@@ -200,7 +200,9 @@ export const SCHEMAS = {
     summary: "Every visible page",
     description:
       "Sub-pages included, `start` steps not, A to Z: for the sitemap and " +
-      "service lists.",
+      "service lists. Each page carries its category, subcategory, form " +
+      "(else its `start` step's) and visibility, so it doubles as the " +
+      "public service index.",
     tags: ["pages"],
     ...siteRead,
     response: {

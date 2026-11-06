@@ -1,11 +1,11 @@
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
 import { ArrowDown, ArrowUp, BracketsCurly } from "@phosphor-icons/react";
 import { useEffect, useRef, useState } from "react";
-import { useEditorDefinition } from "../editor/react/composer";
+import { useEditorDefinition } from "@/editor/react";
 import { formDefinition } from "../forms/definition";
-import { createFormRuntime } from "../forms/editor/runtime";
-import { createFormDraftCodec } from "../forms/editor/codec";
-import { nativeDiagnosticPath, type NativeDiagnostic } from "../forms/schema";
+import { createFormRuntime } from "../forms/canvas/form-runtime";
+import { createFormDraftCodec } from "../forms/canvas/form-codec";
+import { nativeDiagnosticPath, type NativeDiagnostic } from "../forms/formats/native/schema";
 import type { DraftReplacementToken } from "../persistence/types";
 import { Banner } from "../ui/banner";
 import { Bar } from "../ui/bar";

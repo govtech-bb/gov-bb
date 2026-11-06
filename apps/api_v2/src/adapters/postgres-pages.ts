@@ -538,6 +538,8 @@ export class PostgresPages
           description: contentPages.description,
           formId: contentPages.formId,
           frontmatter: contentPages.frontmatter,
+          categoryId: contentPages.categoryId,
+          visibility: contentPages.visibility,
         })
         .from(contentPages)
         .where(
@@ -564,18 +566,20 @@ export class PostgresPages
         description: string | null;
         form_id: string | null;
         frontmatter: Frontmatter;
+        category_id: string | null;
+        visibility: Visibility;
       }>(sql`
         with recursive visible as (
-          select id, parent_id, slug, url, title, description, form_id, frontmatter
+          select id, parent_id, slug, url, title, description, form_id, frontmatter, category_id, visibility
             from content_pages
             where parent_id is null
               and ${visibilityIn(sql.raw("visibility"), visibilities)}
           union all
-          select p.id, p.parent_id, p.slug, p.url, p.title, p.description, p.form_id, p.frontmatter
+          select p.id, p.parent_id, p.slug, p.url, p.title, p.description, p.form_id, p.frontmatter, p.category_id, p.visibility
             from content_pages p join visible v on p.parent_id = v.id
             where ${visibilityIn(sql.raw("p.visibility"), visibilities)}
         ) cycle id set is_cycle using path
-        select id, parent_id, slug, url, title, description, form_id, frontmatter
+        select id, parent_id, slug, url, title, description, form_id, frontmatter, category_id, visibility
           from visible where not is_cycle`),
     );
     if (!rows.ok) return rows;
@@ -589,6 +593,8 @@ export class PostgresPages
         description: row.description,
         formId: row.form_id,
         frontmatter: row.frontmatter,
+        categoryId: row.category_id,
+        visibility: row.visibility,
       })),
     );
   }

@@ -80,6 +80,14 @@ Flags use `1`/`true` for on; anything else (incl. unset) is off.
 - Needs: DB access (`DATABASE_URL` or the secret ARN + SM read), Bedrock embed
   access (`BEDROCK_REGION` + `InvokeModel` on the Titan model), and network to
   the forms API.
+- Content source: set `API_V2_URL` (e.g. `https://api-v2.sandbox.alpha.gov.bb`)
+  to ingest the public pages from api_v2 (`/catalog` + `/pages`); unset, it
+  reads the landing markdown baked into the image. Set it per environment only
+  after that environment's api_v2 import. A failed api_v2 read fails the run
+  and keeps the last snapshot; a successful run prunes rows not in it.
+  Document ids change with the source, so the first api_v2 run re-embeds every
+  page, and until it finishes old and new rows can both be cited. Run it
+  off-peak and check that `ingest_runs` shows `success`.
 - Embeddings must use the **same** `BEDROCK_EMBED_MODEL` the app queries with.
 
 ## Health checks (deploy gating + probes)

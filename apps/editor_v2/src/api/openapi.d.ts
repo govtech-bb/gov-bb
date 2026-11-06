@@ -838,7 +838,7 @@ export interface paths {
         };
         /**
          * Every visible page
-         * @description Sub-pages included, `start` steps not, A to Z: for the sitemap and service lists.
+         * @description Sub-pages included, `start` steps not, A to Z: for the sitemap and service lists. Each page carries its category, subcategory, form (else its `start` step's) and visibility, so it doubles as the public service index.
          */
         get: {
             parameters: {
@@ -863,6 +863,16 @@ export interface paths {
                                 /** @description It has a form, or its frontmatter says it is digital. */
                                 digital: boolean;
                                 stage: string | null;
+                                /** @description The last segment of `url`. */
+                                slug: string;
+                                /** @description The top-level category's slug, or null when uncategorised. */
+                                category: string | null;
+                                /** @description The subcategory's slug, or null when the page has none. */
+                                subcategory: string | null;
+                                /** @description The page's form, else its `start` step's when the viewer can see it. */
+                                form_id: string | null;
+                                /** @enum {string} */
+                                visibility: "public" | "preview" | "draft";
                             }[];
                         };
                     };

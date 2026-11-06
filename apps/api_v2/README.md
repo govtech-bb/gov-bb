@@ -405,6 +405,25 @@ tracked in #3178, landing integration in #3179, and sandbox acceptance in #3180.
 
 The seed is a committed snapshot of legacy markdown and the category taxonomy, subcategories included, with each sub-page's parent. Every page keeps its frontmatter `publish_date` as `published_at`, public or not, so going public later keeps that date. Inserts are additive and idempotent and never replace authored changes. It runs only with `SEED=true`, because an additive insert also brings back a page an editor deleted. Each page and category it adds gets a `created` entry by `system` in the audit log, which also moves the editor's change token. Regenerate it with `pnpm seed-data` (or `pnpm generate:seed-data` from the root) when intentionally updating the snapshot. The import (see "Importing the estate" below) reports `source`, a sha1 of the snapshot's categories and pages computed at import time. It is not stored in `estate.json`, so content PRs don't all rewrite one shared line and conflict. CI's "Generated Files Up To Date" job regenerates the snapshot on every PR and, when it differs, commits the regen back to the PR branch, or fails when it can't push. So a content change can't merge with a stale `estate.json`.
 
+## Upgrading StormReady contacts in an existing estate (#3261)
+
+The generated snapshot converts StormReady's legacy contact grid to headings and `::contact` blocks. The static page keeps its old markup so it still works without api_v2. New estates seed the four records from `src/seed-data/stormready-contacts.ts`.
+
+An existing estate needs a targeted update. Neither a normal seed nor `import-estate --force` adds records to an existing collection; a force import also deletes authored pages and pending revisions. Do not use it for this update.
+
+1. Deploy the contact-block code first. In the editor's collections screen, add the missing records below to `contacts`. Keep the key, name and phone; leave other fields empty. If a key already exists, check its current details rather than overwriting them.
+
+   | Key | Name | Phone |
+   | --- | --- | --- |
+   | `dem-emergency-line` | DEM Emergency Line | `246-438-7575` |
+   | `barbados-met-office` | Barbados Met Office | `246-535-0021` |
+   | `police-emergency` | Police | `211` |
+   | `bwa-water-outages` | BWA (water outages) | `246-426-3990` |
+
+2. Find StormReady's page id through `GET /services` and read `GET /pages/:id` with an employee session. Save a copy of that response. If it has a pending revision, coordinate with its author before changing it.
+3. Apply `convertStormReadyContacts` from `src/seed-data/stormready-contacts.ts` to that response's current `body_markdown`. It changes only the known contact grid and refuses different labels, numbers or markup. If it refuses, compare the live contacts with the records and reconcile them before proceeding. Do not replace the whole body with the seed snapshot. Save through `PUT /pages/:id`, retaining every other save field and sending the read `updated_at` as `if-updated-at`, plus the employee session and editor `Origin`. A 409 means reread and review the concurrent change.
+4. Open the page in editor_v2 and verify all four contacts and an unchanged save. Submit the revision and have another approver publish it. Check the public page's labels and telephone links, including Police's `tel:211`, then record the deployment and update in #3261.
+
 ## Importing the estate (once per environment)
 
 Each deployed database gets the estate once, by a command rather than by `SEED`. It is compiled into the image beside `main.js`, so it runs with the task's own database settings:
@@ -520,7 +539,7 @@ gh variable set CONTENT_FREEZE --body true   # on
 gh variable delete CONTENT_FREEZE            # off
 ```
 
-The "Generated Files Up To Date" job (#3136) stays on: it also regenerates two v1 files (`services-index.generated.ts`, `form-categories.generated.ts`) and writes only generated files, so the freeze check never trips on it, and with the markdown frozen its `estate.json` regen is a no-op. From then on `estate.json` no longer tracks the prod database; it is read only by local `SEED` and fresh imports. After the prod import, content changes go through the editor only.
+The "Generated Files Up To Date" job (#3136) stays on: it also regenerates a v1 file (`services-index.generated.ts`) and writes only generated files, so the freeze check never trips on it, and with the markdown frozen its `estate.json` regen is a no-op. From then on `estate.json` no longer tracks the prod database; it is read only by local `SEED` and fresh imports. After the prod import, content changes go through the editor only.
 
 ## History protection
 

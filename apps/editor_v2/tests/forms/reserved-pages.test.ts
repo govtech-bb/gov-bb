@@ -11,12 +11,12 @@ import {
   $isRangeSelection,
   type LexicalNode,
 } from "lexical";
-import { $insertBlocks } from "../../src/forms/editor/insertion";
-import { pageEntries } from "../../src/forms/features/pages/insertion";
+import { $insertBlocks } from "../../src/forms/canvas/form-insertion";
+import { pageEntries } from "../../src/forms/form-pages/form-page-insertion";
 import { compileForm, preflight } from "../helpers/default-form";
 import { $legacyDemo as $demo } from "../helpers/legacy-demo";
-import { $pageButtons } from "../../src/forms/features/pages/buttons";
-import { MentionNode } from "../../src/forms/features/mentions/node";
+import { $pageButtons } from "../../src/forms/form-pages/form-page-buttons";
+import { MentionNode } from "../../src/forms/mentions/mention-node";
 import {
   $canBeConfirmationPage,
   $createFormTitleNode,
@@ -29,16 +29,16 @@ import {
   $pageType,
   $questionKey,
   $shareQuestionSettings,
-} from "../../src/forms/editor/nodes";
+} from "../../src/forms/canvas/form-nodes";
 import {
   $createInputNode,
   $createOptionNode,
   $createWidgetNode,
-} from "../../src/forms/editor/answer-nodes";
-import { $setSettings, $settings } from "../../src/editor/core/document-state";
+} from "../../src/forms/canvas/answer-nodes";
+import { $setSettings, $settings } from "../../src/forms/canvas/block-state";
 import { formNodes } from "../helpers/default-form";
-import { $ssbIds } from "../../src/forms/editor/ssb";
-import { $pagePreview } from "../../src/forms/features/pages/queries";
+import { $ssbIds } from "../../src/forms/formats/legacy-ssb/legacy-ssb-rules";
+import { $pagePreview } from "../../src/forms/form-pages/form-page-queries";
 
 const newEditor = () =>
   createEditor({

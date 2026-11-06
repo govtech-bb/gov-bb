@@ -2,11 +2,10 @@
  * Data collections (#3183): facts many pages repeat, such as a department's
  * phone number, kept once as records of a collection.
  *
- * A collection's field list is the shape of block-kit's
- * `CollectionDefinition` (`{ key, title, record_key, schema: { fields } }`),
- * so editor_v2 and landing can read it with those types. api_v2 keeps its own
- * Zod copy rather than importing block-kit, which would pull React into the
- * API's build.
+ * A collection is `{ key, title, record_key, schema: { fields } }`, and each
+ * field `{ key, label, type }`. editor_v2 and landing read collections in this
+ * shape through the API; govbbmarkd's contact details need only each field's
+ * key and label.
  */
 
 import { z } from "zod";
@@ -36,7 +35,7 @@ export const CollectionField = z.object({
   label: z.string().min(1),
   type: z.enum(FIELD_TYPES),
 });
-/** One field of a collection, as block-kit's `CollectionField`. */
+/** One field of a collection: its key in a record, the label readers see and the kind of value it holds. */
 export type CollectionField = z.infer<typeof CollectionField>;
 
 export const CollectionSchema = z.object({ fields: z.array(CollectionField) });

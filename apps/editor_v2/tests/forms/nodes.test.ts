@@ -12,13 +12,13 @@ import {
   $questionKey,
   $settingsHolder,
   $shareQuestionSettings,
-} from "../../src/forms/editor/nodes";
+} from "../../src/forms/canvas/form-nodes";
 import {
   $createInputNode,
   $createOptionNode,
   $createWidgetNode,
-} from "../../src/forms/editor/answer-nodes";
-import { $blockId, $setSettings, $settings } from "../../src/editor/core/document-state";
+} from "../../src/forms/canvas/answer-nodes";
+import { $blockId, $setSettings, $settings } from "../../src/forms/canvas/block-state";
 import { formNodes } from "../helpers/default-form";
 
 test("a question keeps the text between its title and its inputs, not after them", () => {

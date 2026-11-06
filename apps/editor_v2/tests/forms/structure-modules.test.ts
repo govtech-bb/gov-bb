@@ -12,18 +12,18 @@ import {
   $createOptionNode,
   $createQuestionNode,
   $addLogicAfter,
-} from "../../src/forms/editor/nodes";
-import { $canAddFollowUp } from "../../src/forms/editor/nesting";
-import { blockShortcuts } from "../../src/forms/editor/structure/keyboard";
-import { $createLogic } from "../../src/forms/features/logic/authoring";
+} from "../../src/forms/canvas/form-nodes";
+import { $canAddFollowUp } from "../../src/forms/canvas/nesting";
+import { blockShortcuts } from "../../src/forms/canvas/structure/structure-keyboard";
+import { $createLogic } from "../../src/forms/conditional-logic/logic-authoring";
 import { expect, test } from "vitest";
 import { TextModule } from "../../src/editor/modules/text/module";
 import { createHeadlessEditor } from "../../src/editor/core/create-editor";
 import { defineFormEditor } from "../../src/forms/definition";
-import { WidgetNode } from "../../src/forms/editor/answer-nodes";
-import { blockSelectionState } from "../../src/forms/editor/structure/selection-state";
-import { selectBlocks } from "../../src/forms/editor/structure/selection";
-import { rubberBand } from "../../src/forms/editor/structure/rubber-band";
+import { WidgetNode } from "../../src/forms/canvas/answer-nodes";
+import { blockSelectionState } from "../../src/forms/canvas/structure/structure-selection-state";
+import { selectBlocks } from "../../src/forms/canvas/structure/structure-selection";
+import { rubberBand } from "../../src/forms/canvas/structure/structure-rubber-band";
 import { govbbFormEditor, govbbFormModules } from "../../src/presets/govbb-form";
 import type { FormModule } from "../../src/forms/field";
 

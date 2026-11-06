@@ -4,8 +4,8 @@ import { executeAction, rankActions } from "../../src/editor/core/actions";
 import { govbbFormEditor } from "../../src/presets/govbb-form";
 import { govbbFormRegistryEntries } from "../../src/presets/form-registry/entries";
 import { registryPreviewQuestions } from "../../src/presets/form-registry/preview";
-import { remapNativeForm, type AnyFormBlock } from "../../src/forms/schema";
-import { registryDocument } from "../../src/forms/registry/validation";
+import { remapNativeForm, type AnyFormBlock } from "../../src/forms/formats/native/schema";
+import { registryDocument } from "../../src/forms/form-registry/validation";
 import { nativeHost, nativeOutput } from "../helpers/native-form";
 import baseline from "../fixtures/forms/registry-entry-baseline.json";
 

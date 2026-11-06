@@ -1,6 +1,6 @@
-import { defineFormRegistryEntry } from "../../forms/registry/definition";
-import { content, question, option, rule } from "../../forms/registry/builders";
-import type { AnyFormDefinition, QuestionBase } from "../../forms/schema";
+import { defineFormRegistryEntry } from "../../forms/form-registry/definition";
+import { content, question, option, rule } from "../../forms/form-registry/builders";
+import type { AnyFormDefinition, QuestionBase } from "../../forms/formats/native/schema";
 import { componentQuestion } from "./questions";
 
 // No message: export words each from its question's label, “Enter event name”

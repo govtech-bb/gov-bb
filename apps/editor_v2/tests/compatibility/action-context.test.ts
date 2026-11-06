@@ -13,9 +13,9 @@ import {
   $createFormTitleNode,
   $createPageTitleNode,
   $createQuestionNode,
-} from "../../src/forms/editor/nodes";
-import { $createWidgetNode, widgetState } from "../../src/forms/editor/answer-nodes";
-import { $setSettings } from "../../src/editor/core/document-state";
+} from "../../src/forms/canvas/form-nodes";
+import { $createWidgetNode, widgetState } from "../../src/forms/canvas/answer-nodes";
+import { $setSettings } from "../../src/forms/canvas/block-state";
 import insertionOrder from "../fixtures/forms/insertion-order.json";
 import { createFormEditor } from "../helpers/form-editor";
 

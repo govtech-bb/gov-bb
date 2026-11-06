@@ -1,5 +1,5 @@
 import { EditorSlot } from "./contributions";
-import { SlashMenu } from "./slash-menu";
+import { SlashMenu } from "./action-pickers/slash-menu";
 import { ContentEditable } from "@lexical/react/LexicalContentEditable";
 import type { ComponentProps, ReactNode } from "react";
 import { EditorComposer } from "./composer";

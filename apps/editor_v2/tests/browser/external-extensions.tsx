@@ -10,19 +10,11 @@ import {
 import { createPortal } from "react-dom";
 import { createRoot } from "react-dom/client";
 import { useEffect, useState } from "react";
-import {
-  $setSettings,
-  createHeadlessEditor,
-  defineEditor,
-  Editor,
-  EditorComposer,
-  executeAction,
-  FormattingModule,
-  HistoryModule,
-  LinksModule,
-  TextModule,
-  useLexicalComposerContext,
-} from "../../src/editor";
+import { createHeadlessEditor, defineEditor, executeAction } from "@/editor";
+import { $setSettings } from "../../src/forms/canvas/block-state";
+import { Editor, EditorComposer } from "@/editor/react";
+import { FormattingModule, HistoryModule, LinksModule, TextModule } from "@/editor/modules";
+import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
 import {
   $createFormTitleNode,
   $createPageTitleNode,

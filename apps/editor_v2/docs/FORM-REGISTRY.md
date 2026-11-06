@@ -64,6 +64,6 @@ The preview reads the same native declaration and resolves its renderer through 
 
 Changing or removing a registry entry does not alter inserted questions. Native metadata and text survive explicit Markdown conversion. The [demo asset](../src/presets/form-registry/demo.ts) supplies complete-form creation for embedding hosts/tests, not a browser-workspace flow.
 
-Historical Markdown preset profiles and SSB provenance remain frozen compatibility data in `forms/source/legacy` and `forms/core/legacy-provenance-v1.json`. They are separate from current native registry declarations and must not be regenerated when catalog defaults change.
+Historical Markdown preset profiles and SSB provenance remain frozen compatibility data in `forms/formats/markdown/legacy` and `forms/model/legacy-provenance-v1.json`. They are separate from current native registry declarations and must not be regenerated when catalog defaults change.
 
 `native-registry.test.ts`, `registry-insertion.test.ts`, `registry-contracts.test.ts`, and `registry-entries.test.ts` cover typed remapping, all 22 entries, configured preview dispatch, external bindings, repeat scopes, failed actions, one-use copies, undo/redo, source reload, and independent complete-form creation. The capability checker additionally requires actual native fixture evidence.

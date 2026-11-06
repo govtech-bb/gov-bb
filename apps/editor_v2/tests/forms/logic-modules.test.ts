@@ -11,7 +11,7 @@ import {
 import { createHeadlessEditor } from "../../src/editor/core/create-editor";
 import { defineFormEditor } from "../../src/forms/definition";
 import { govbbFormEditor, govbbFormModules } from "../../src/presets/govbb-form";
-import { createFormRuntime } from "../../src/forms/editor/runtime";
+import { createFormRuntime } from "../../src/forms/canvas/form-runtime";
 import { createFormDraftCodec, DraftStore } from "../helpers/default-form";
 import { lexicalToLegacySsb } from "../../src/converters/lexical-to-legacy-ssb";
 import {
@@ -27,17 +27,17 @@ import {
   $questionKey,
   $setSettings,
   $settings,
-} from "../../src/forms/editor/nodes";
+} from "../../src/forms/canvas/form-nodes";
 import {
   $createMentionNode,
   $mentionDefault,
   $mentionField,
   $mentionsIn,
   defaultState,
-} from "../../src/forms/features/mentions/node";
-import { $updateMentions } from "../../src/forms/features/mentions/editor";
-import { focusLogic } from "../../src/forms/features/logic/authoring";
-import { conditionalLogic } from "../../src/forms/core/logic";
+} from "../../src/forms/mentions/mention-node";
+import { $updateMentions } from "../../src/forms/mentions/mention-editor";
+import { focusLogic } from "../../src/forms/conditional-logic/logic-authoring";
+import { conditionalLogic } from "../../src/forms/model/logic";
 
 const runtime = createFormRuntime(govbbFormEditor),
   codec = createFormDraftCodec(runtime);

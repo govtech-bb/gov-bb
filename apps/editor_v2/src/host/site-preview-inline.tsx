@@ -1,6 +1,6 @@
 import { ContentEditable } from "@lexical/react/LexicalContentEditable";
 import { useId, useState } from "react";
-import { EditorSlot } from "../editor/react/contributions";
+import { EditorSlot } from "@/editor/react";
 import { PageBlockControls } from "../pages/block-controls";
 import { PageSlashMenu } from "../pages/slash-menu";
 import { useHeadingFields } from "../pages/metadata-fields";

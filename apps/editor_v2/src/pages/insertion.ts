@@ -5,6 +5,7 @@ import {
   HISTORY_PUSH_TAG,
   $getSelection,
   $isRangeSelection,
+  $isDecoratorNode,
   $isElementNode,
   $isParagraphNode,
   $isRootNode,
@@ -13,9 +14,9 @@ import {
 } from "lexical";
 import { $isListItemNode, $isListNode } from "@lexical/list";
 import { $isQuoteNode } from "@lexical/rich-text";
-import type { ActionRequest, EditorAction } from "../editor/core/actions";
+import type { ActionRequest, EditorAction } from "@/editor";
 import { PageMetadataNode } from "./metadata";
-import { PageComponentNode } from "./nodes";
+import { $hasTrait, PageComponentNode, type PageComponentKind } from "./blocks/node";
 
 /**
  * Where a chosen block goes, as an action request's mode. "line", the default, is the caret's line, from the "/"
@@ -40,7 +41,8 @@ export function $pageInsertionTarget(): ElementNode | null {
   while (node && !$isRootNode(node)) {
     if (
       $isElementNode(node) &&
-      (node.getType() === "paragraph" || node.getType() === "heading" || $isListItemNode(node))
+      // Muted text is a paragraph of its own type
+      ($isParagraphNode(node) || node.getType() === "heading" || $isListItemNode(node))
     )
       return node;
     node = node.getParent();
@@ -51,10 +53,7 @@ export function $pageInsertionTarget(): ElementNode | null {
 
 // The blocks an empty line leaves before a block takes its place. A Details and a table cell keep theirs
 const $leavable = (node: LexicalNode) =>
-  $isListNode(node) ||
-  $isListItemNode(node) ||
-  $isQuoteNode(node) ||
-  (node instanceof PageComponentNode && node.getKind() === "notice");
+  $isListNode(node) || $isListItemNode(node) || $isQuoteNode(node) || $hasTrait(node, "leavable");
 
 /** The caret's line holds nothing once what was typed to open the menu has gone. */
 const $emptyLine = (target: LexicalNode, request: ActionRequest) =>
@@ -106,7 +105,7 @@ function $destination(target: LexicalNode, request: ActionRequest) {
 }
 
 /** Puts a new block where a request says it goes (see PagePlace), once what was typed to ask for it has gone. */
-export function $placePageBlock(block: ElementNode, target: LexicalNode, request: ActionRequest) {
+export function $placePageBlock(block: LexicalNode, target: LexicalNode, request: ActionRequest) {
   if (request.mode === "below" || request.mode === "above") {
     const beside = $rootBlock(target) ?? target;
 
@@ -115,7 +114,10 @@ export function $placePageBlock(block: ElementNode, target: LexicalNode, request
     else beside.insertAfter(block);
   } else if ($isElementNode(target) && !target.getTextContent())
     $liftLine(target, $leavable).replace(block);
-  else if ($isListItemNode(target)) target.append(block);
+  else if ($isListItemNode(target))
+    // A block of its own, such as Contact details, can't sit in a list item: it goes after the list
+    if ($isDecoratorNode(block)) ($rootBlock(target) ?? target).insertAfter(block);
+    else target.append(block);
   else target.insertAfter(block);
 }
 
@@ -133,11 +135,17 @@ const quotable = new Set([
 export function pageInsertAction(
   id: string,
   title: string,
-  create: () => ElementNode,
-  presentation: Pick<
+  create: () => LexicalNode,
+  {
+    notInside = [],
+    ...presentation
+  }: Pick<
     EditorAction,
     "group" | "description" | "icon" | "order" | "searchOnly" | "aliases" | "markdown"
-  > = { group: "Text" },
+  > & {
+    /** The kinds of component the block can't go in, as a Details can't go in another. */
+    readonly notInside?: readonly PageComponentKind[];
+  } = { group: "Text" },
 ): EditorAction {
   return {
     id,
@@ -150,11 +158,7 @@ export function pageInsertAction(
       for (const parent of destination ? [destination, ...destination.getParents()] : []) {
         if (parent.getType() === "tablecell" && id !== "page-paragraph") return false;
 
-        if (
-          id === "page-details" &&
-          parent instanceof PageComponentNode &&
-          parent.getKind() === "details"
-        )
+        if (parent instanceof PageComponentNode && notInside.includes(parent.getKind()))
           return false;
 
         if ($isQuoteNode(parent) && !quotable.has(id)) return false;
@@ -167,7 +171,8 @@ export function pageInsertAction(
       const node = create();
       $placePageBlock(node, target, request);
 
-      if (node.getType() === "page-rule") {
+      // A rule or a block of its own, such as Contact details, holds no text: writing goes on below it
+      if (node.getType() === "page-rule" || $isDecoratorNode(node)) {
         const paragraph = $createParagraphNode();
         node.insertAfter(paragraph);
         paragraph.select();

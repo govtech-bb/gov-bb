@@ -5,7 +5,7 @@ import { parseContentMarkdown } from "@govtech-bb/govbbmarkd";
 import { createHeadlessEditor } from "../../src/editor/core/create-editor";
 import { govbbPageCodec, govbbPageEditor } from "../../src/presets/govbb-page";
 import { $setPageMetadata } from "../../src/pages/metadata";
-import { PageComponentNode } from "../../src/pages/nodes";
+import { PageComponentNode } from "../../src/pages/blocks/node";
 import { PagePreview } from "../../src/pages/preview";
 
 const formAction = ':::action{form="birth-certificate"}\nStart **now**\n:::';

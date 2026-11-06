@@ -76,6 +76,13 @@ export type PageMarkdownComponent =
       readonly kind: "summary-item";
       readonly key: string;
       readonly body: RootContent[];
+    }
+  | {
+      readonly kind: "contact";
+      readonly collection: string;
+      /** Empty while the block's record is still to be chosen. */
+      readonly record: string;
+      readonly fields: readonly string[];
     };
 
 /** Stable diagnostic categories for source editors and publishing adapters. */
@@ -191,7 +198,9 @@ export function parsePageComponent(node: Directives): PageComponentResult {
         ? ["summary"]
         : node.name === "table"
           ? ["row-headers", "numeric-columns"]
-          : [];
+          : node.name === "contact"
+            ? ["collection", "record", "fields"]
+            : [];
   if (Object.keys(attributes).some((key) => !allowed.includes(key)))
     return failure(
       node,
@@ -267,6 +276,36 @@ export function parsePageComponent(node: Directives): PageComponentResult {
       target = { kind: "linked-form" };
     }
     return { ok: true, value: { kind: "action", target, variant, label } };
+  }
+
+  // A record's contact details, which the host reads from the collection when it renders
+  if (node.name === "contact" && node.type === "leafDirective") {
+    if (node.children.length)
+      return failure(
+        node,
+        "invalid-content",
+        "Contact details take no label, only collection, record and fields.",
+      );
+    const collection = attributes.collection?.trim();
+    if (!collection)
+      return failure(
+        node,
+        "invalid-attributes",
+        "Contact details need a collection.",
+      );
+    const fields = (attributes.fields ?? "")
+      .split(",")
+      .map((field) => field.trim())
+      .filter(Boolean);
+    return {
+      ok: true,
+      value: {
+        kind: "contact",
+        collection,
+        record: attributes.record?.trim() ?? "",
+        fields,
+      },
+    };
   }
 
   if (node.type !== "containerDirective")

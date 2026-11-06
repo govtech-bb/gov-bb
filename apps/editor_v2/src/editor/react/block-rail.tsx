@@ -87,7 +87,8 @@ export function firstLineMiddle(editor: LexicalEditor, anchor: HTMLElement, key:
   };
 }
 
-type TargetRules = {
+/** How an editor tells its rail which block it is on, and where that block's first line is. */
+export type TargetRules = {
   /** The block at a point under the pointer (in the anchor's coordinates); undefined keeps the current one. */
   $blockAt: (element: Element, point: { x: number; y: number }) => NodeKey | null | undefined;
   $caretBlock: () => NodeKey | null;
@@ -285,6 +286,7 @@ export const railGrip = "cursor-grab active:cursor-grabbing [&>svg]:w-4.25";
 /** Where a dragged block would land, in the anchor's coordinates. */
 export type Line = { top: number; left: number; width: number };
 
+/** The line showing where a dragged block would land; nothing while it can't land. */
 export function DropLine({ line }: { line: Line | null }) {
   return (
     line && (
@@ -299,7 +301,8 @@ export function DropLine({ line }: { line: Line | null }) {
 
 type Point = { x: number; y: number };
 
-type DragRules<At extends { line: Line }> = {
+/** How an editor tells a dragged block where it may land, and moves it there. */
+export type DragRules<At extends { line: Line }> = {
   /** The drag's data type: only this editor's blocks drop here. */
   type: string;
   /** Where the block would land at a point on screen, and the line that shows it; null where it can't. */

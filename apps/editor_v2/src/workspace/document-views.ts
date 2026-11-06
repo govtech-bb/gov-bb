@@ -1,4 +1,4 @@
-import type { EditorSession } from "../editor/core/session";
+import type { EditorSession } from "@/editor";
 
 // The document on screen and the two most recently before it keep their views; a fixed bound, not a setting
 const MOUNTED_VIEWS = 3;

@@ -1,4 +1,4 @@
-import { setEditorReadOnly } from "../editor/core/editability";
+import { setEditorReadOnly, defineEditor, createHeadlessEditor } from "@/editor";
 import { expect, test } from "vitest";
 import {
   $createParagraphNode,
@@ -8,10 +8,7 @@ import {
   REDO_COMMAND,
   UNDO_COMMAND,
 } from "lexical";
-import { defineEditor } from "../editor/core/definition";
-import { createHeadlessEditor } from "../editor/core/create-editor";
-import { HistoryModule } from "../editor/modules/history/module";
-import { TextModule } from "../editor/modules/text/module";
+import { HistoryModule, TextModule } from "@/editor/modules";
 import { DraftStore } from "../persistence/draft-store";
 import type { DraftCodec } from "../persistence/types";
 import { draftEditorConnection } from "./draft-editor";

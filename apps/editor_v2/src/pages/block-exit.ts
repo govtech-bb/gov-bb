@@ -15,24 +15,20 @@ import {
   type LexicalEditor,
   type LexicalNode,
 } from "lexical";
-import { $paragraphAfter } from "../editor/core/blocks";
-import { PageComponentNode } from "./nodes";
+import { $paragraphAfter } from "@/editor";
+import { $hasTrait } from "./blocks/node";
 
 /** The line of text after a block: an empty one already there, or a new one. */
-function $lineAfter(block: LexicalNode) {
+export function $lineAfter(block: LexicalNode) {
   const next = block.getNextSibling();
 
   return $isParagraphNode(next) && next.isEmpty() ? next : $paragraphAfter(block, false);
 }
 
-const $isButton = (node: LexicalNode) =>
-  node instanceof PageComponentNode && (node.getKind() === "start" || node.getKind() === "action");
+const $isButton = (node: LexicalNode) => $hasTrait(node, "button");
 
 // The blocks that hold lines of text, which an empty last line leaves
-const $holdsLines = (node: LexicalNode) =>
-  $isQuoteNode(node) ||
-  (node instanceof PageComponentNode &&
-    (node.getKind() === "notice" || node.getKind() === "details"));
+const $holdsLines = (node: LexicalNode) => $isQuoteNode(node) || $hasTrait(node, "holds-lines");
 
 /**
  * Enter goes on writing below a block, as after a form's callout: in a button, or on the empty last line of a Notice,
@@ -49,9 +45,7 @@ function $continueBelow() {
     const group = button.getParent();
 
     // An action button goes on after its group of buttons
-    $lineAfter(
-      group instanceof PageComponentNode && group.getKind() === "actions" ? group : button,
-    ).select();
+    $lineAfter($hasTrait(group, "buttons") ? group : button).select();
 
     return true;
   }

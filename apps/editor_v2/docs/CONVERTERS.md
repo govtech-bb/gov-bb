@@ -16,7 +16,7 @@ Form converters and `createFormDraftCodec(runtime)` are exported from `src/forms
 
 Form Markdown import returns diagnostics and no state when preparation fails. Page import throws `SourceError` for invalid metadata; unsupported body syntax instead returns a valid source-only document. Callers must handle these outcomes separately.
 
-Every operation receives the installed form or page definition. The kernel does not import domains or converters. `src/forms/schema` owns pure form types, validation, structural references and semantic comparison.
+Every operation receives the installed form or page definition. The kernel does not import domains or converters. `src/forms/formats/native/schema` owns pure form types, validation, structural references and semantic comparison.
 
 ## Page contract
 

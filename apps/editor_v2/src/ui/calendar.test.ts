@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
 import { addToRange } from "./calendar";
-import { formatDay, parseDay, shortDate, showDate, typedDate } from "../forms/core/dates";
+import { formatDay, parseDay, shortDate, showDate, typedDate } from "../forms/model/dates";
 
 test("dates are local days, stored as yyyy-MM-dd and shown with abbreviated month names", () => {
   const day = parseDay("2026-09-27")!;

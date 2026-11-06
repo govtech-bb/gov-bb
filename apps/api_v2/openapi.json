@@ -1602,7 +1602,7 @@
         "tags": [
           "pages"
         ],
-        "description": "Sub-pages included, `start` steps not, A to Z: for the sitemap and service lists.",
+        "description": "Sub-pages included, `start` steps not, A to Z: for the sitemap and service lists. Each page carries its category, subcategory, form (else its `start` step's) and visibility, so it doubles as the public service index.",
         "security": [
           {},
           {
@@ -1639,6 +1639,33 @@
                           "stage": {
                             "nullable": true,
                             "type": "string"
+                          },
+                          "slug": {
+                            "type": "string",
+                            "description": "The last segment of `url`."
+                          },
+                          "category": {
+                            "nullable": true,
+                            "description": "The top-level category's slug, or null when uncategorised.",
+                            "type": "string"
+                          },
+                          "subcategory": {
+                            "nullable": true,
+                            "description": "The subcategory's slug, or null when the page has none.",
+                            "type": "string"
+                          },
+                          "form_id": {
+                            "nullable": true,
+                            "description": "The page's form, else its `start` step's when the viewer can see it.",
+                            "type": "string"
+                          },
+                          "visibility": {
+                            "type": "string",
+                            "enum": [
+                              "public",
+                              "preview",
+                              "draft"
+                            ]
                           }
                         },
                         "required": [
@@ -1646,7 +1673,12 @@
                           "title",
                           "description",
                           "digital",
-                          "stage"
+                          "stage",
+                          "slug",
+                          "category",
+                          "subcategory",
+                          "form_id",
+                          "visibility"
                         ],
                         "additionalProperties": false
                       }

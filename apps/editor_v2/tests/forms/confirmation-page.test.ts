@@ -8,7 +8,7 @@ import { rankActions } from "../../src/editor/core/actions";
 import { govbbFormEditor } from "../../src/presets/govbb-form";
 import { compileForm, preflight } from "../helpers/default-form";
 import { fromEditor, readMarkdown, toEditor, writeMarkdown } from "../helpers/default-form";
-import { MentionNode } from "../../src/forms/features/mentions/node";
+import { MentionNode } from "../../src/forms/mentions/mention-node";
 import {
   $createFormTitleNode,
   $createPageTitleNode,
@@ -18,13 +18,13 @@ import {
   $normalizePages,
   $pageType,
   $shareQuestionSettings,
-} from "../../src/forms/editor/nodes";
-import { $createInputNode, $createWidgetNode } from "../../src/forms/editor/answer-nodes";
-import { $createWarningNode } from "../../src/editor/modules/callouts/nodes";
-import { $setSettings, $settings } from "../../src/editor/core/document-state";
+} from "../../src/forms/canvas/form-nodes";
+import { $createInputNode, $createWidgetNode } from "../../src/forms/canvas/answer-nodes";
+import { $createWarningNode } from "../../src/forms/content/callout-nodes";
+import { $setSettings, $settings } from "../../src/forms/canvas/block-state";
 import { formNodes } from "../helpers/default-form";
-import { $normalizePageHeads } from "../../src/forms/features/pages/headings";
-import { $pagePreview } from "../../src/forms/features/pages/queries";
+import { $normalizePageHeads } from "../../src/forms/form-pages/form-page-headings";
+import { $pagePreview } from "../../src/forms/form-pages/form-page-queries";
 
 const editor = () =>
   createEditor({

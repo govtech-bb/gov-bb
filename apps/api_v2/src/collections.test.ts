@@ -320,6 +320,13 @@ describe("the seeded contacts", () => {
       response
         .json()
         .records.map((record: { record_key: string }) => record.record_key),
-    ).toEqual(["barbados-drug-service", "nis-severance-payment-department"]);
+    ).toEqual([
+      "barbados-drug-service",
+      "barbados-met-office",
+      "bwa-water-outages",
+      "dem-emergency-line",
+      "nis-severance-payment-department",
+      "police-emergency",
+    ]);
   }, 60_000);
 });

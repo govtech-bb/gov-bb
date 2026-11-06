@@ -9,15 +9,15 @@ import {
 } from "lexical";
 import { registerEditorHistory } from "../../src/editor/core/history";
 import { prepareSource } from "../helpers/default-form";
-import { $ruleLinkSources } from "../../src/forms/features/logic/wording-queries";
+import { $ruleLinkSources } from "../../src/forms/conditional-logic/logic-wording-queries";
 import {
   $createLogic,
   $hiddenWithoutShow,
   $makeVisibleWithoutShow,
   $setLogicActions,
-} from "../../src/forms/features/logic/authoring";
+} from "../../src/forms/conditional-logic/logic-authoring";
 import { fromEditor, readMarkdown, writeMarkdown } from "../helpers/default-form";
-import { $blockId, $setSettings, $settings } from "../../src/editor/core/document-state";
+import { $blockId, $setSettings, $settings } from "../../src/forms/canvas/block-state";
 import {
   $createFormTitleNode,
   $createPageTitleNode,
@@ -25,13 +25,13 @@ import {
   $ensureBlockIds,
   $ensureQuestionFields,
   $questionKey,
-} from "../../src/forms/editor/nodes";
+} from "../../src/forms/canvas/form-nodes";
 import {
   $createInputNode,
   $createLongAnswerNode,
   $createOptionNode,
   $createWidgetNode,
-} from "../../src/forms/editor/answer-nodes";
+} from "../../src/forms/canvas/answer-nodes";
 import { formNodes } from "../helpers/default-form";
 
 const makeEditor = () =>

@@ -88,9 +88,13 @@ export class SiteNavigation {
   async catalog(
     viewer: Viewer,
   ): Promise<Result<CatalogEntry[], ContentStoreUnavailable>> {
-    const pages = await this.reads.visiblePages(visibleTo(viewer));
+    const [pages, categories] = await Promise.all([
+      this.reads.visiblePages(visibleTo(viewer)),
+      this.reads.categories(),
+    ]);
     if (!pages.ok) return pages;
-    return ok(catalogOf(inCatalog(pages.value)));
+    if (!categories.ok) return categories;
+    return ok(catalogOf(pages.value, categories.value));
   }
 
   /** What search indexes: every catalog page, with its text. */

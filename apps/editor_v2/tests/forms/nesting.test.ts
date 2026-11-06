@@ -19,13 +19,13 @@ import {
   $foldQuestion,
   $moveBlocks,
   $removeBlocks,
-} from "../../src/forms/editor/structure/blocks";
-import { $enter } from "../../src/forms/editor/structure/editing";
+} from "../../src/forms/canvas/structure/structure-blocks";
+import { $enter } from "../../src/forms/canvas/structure/structure-editing";
 import { compileForm, preflight } from "../helpers/default-form";
 import { $legacyDemo as $demo } from "../helpers/legacy-demo";
-import { $blockTree } from "../../src/forms/features/logic/queries";
-import { MentionNode } from "../../src/forms/features/mentions/node";
-import { $addFollowUp, $moveOut, $normalizeDepths } from "../../src/forms/editor/nesting";
+import { $blockTree } from "../../src/forms/conditional-logic/logic-queries";
+import { MentionNode } from "../../src/forms/mentions/mention-node";
+import { $addFollowUp, $moveOut, $normalizeDepths } from "../../src/forms/canvas/nesting";
 import {
   $blockGroup,
   $blockKind,
@@ -39,16 +39,16 @@ import {
   $questionKey,
   $shareQuestionSettings,
   $turnInto,
-} from "../../src/forms/editor/nodes";
-import { $blockId, $depth, $setDepth, $setSettings } from "../../src/editor/core/document-state";
-import { $createBulletNode } from "../../src/editor/modules/lists/nodes";
+} from "../../src/forms/canvas/form-nodes";
+import { $blockId, $depth, $setDepth, $setSettings } from "../../src/forms/canvas/block-state";
+import { $createBulletNode } from "../../src/forms/content/list-nodes";
 import {
   $createInputNode,
   $createOptionNode,
   $createWidgetNode,
   $isOptionNode,
-} from "../../src/forms/editor/answer-nodes";
-import { $createShowHideNode, $toggleShowHide } from "../../src/editor/modules/disclosure/nodes";
+} from "../../src/forms/canvas/answer-nodes";
+import { $createShowHideNode, $toggleShowHide } from "../../src/forms/content/details-node";
 import { formNodes } from "../helpers/default-form";
 
 const newEditor = () =>

@@ -73,6 +73,10 @@ export const serviceContractSchema = z.object({
   // tell whether a form needs payment without leaking processor internals.
   // See issue #965.
   requiresPayment: z.boolean().optional(),
+  // Category slug of the service page that links this form, added by the
+  // api's public GET from its services index. The forms app tags analytics
+  // events with it (#3250). Absent when no page links the form.
+  category: z.string().optional(),
   createdAt: dateTimeFormatSchema,
   updatedAt: dateTimeFormatSchema,
   // Version is retired (#1196): canonical recipes carry no version. Kept

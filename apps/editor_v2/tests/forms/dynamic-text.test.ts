@@ -1,5 +1,5 @@
 import { jsonSetting, jsonSettings } from "../helpers/serialized-test-data";
-import { conditionalLogic } from "../../src/forms/core/logic";
+import { conditionalLogic } from "../../src/forms/model/logic";
 import { createEditor } from "../helpers/default-form";
 import { expect, test } from "vitest";
 import { $createTextNode, $getRoot } from "lexical";
@@ -8,9 +8,12 @@ import {
   compileWording,
   wordingComparisons,
   type WordingVariant,
-} from "../../src/forms/core/dynamic-text";
-import { $wordingChoices, $wordingSource } from "../../src/forms/features/logic/wording-queries";
-import { $blockId, $setSettings, $settings } from "../../src/editor/core/document-state";
+} from "../../src/forms/model/dynamic-text";
+import {
+  $wordingChoices,
+  $wordingSource,
+} from "../../src/forms/conditional-logic/logic-wording-queries";
+import { $blockId, $setSettings, $settings } from "../../src/forms/canvas/block-state";
 import {
   $createFormTitleNode,
   $createPageTitleNode,
@@ -23,18 +26,18 @@ import {
   $questionKey,
   $shareQuestionSettings,
   $updateSettings,
-} from "../../src/forms/editor/nodes";
+} from "../../src/forms/canvas/form-nodes";
 import {
   $createInputNode,
   $createOptionNode,
   $createWidgetNode,
-} from "../../src/forms/editor/answer-nodes";
+} from "../../src/forms/canvas/answer-nodes";
 import { formNodes } from "../helpers/default-form";
 
-import { $normalizePageHeads } from "../../src/forms/features/pages/headings";
-import { $duplicateBlocks } from "../../src/forms/editor/structure/blocks";
-import { $migrateLegacyConditions } from "../../src/forms/features/logic/migration";
-import { logicIssues } from "../../src/forms/editor/capabilities";
+import { $normalizePageHeads } from "../../src/forms/form-pages/form-page-headings";
+import { $duplicateBlocks } from "../../src/forms/canvas/structure/structure-blocks";
+import { $migrateLegacyConditions } from "../../src/forms/conditional-logic/logic-migration";
+import { logicIssues } from "../../src/forms/formats/legacy-ssb/legacy-ssb-capabilities";
 
 const targets = [
   {

@@ -4,7 +4,7 @@ import { HeadingNode } from "@lexical/rich-text";
 import { expect, test } from "vitest";
 import { $createTextNode, $getRoot } from "lexical";
 import { compileForm } from "../helpers/default-form";
-import { MentionNode } from "../../src/forms/features/mentions/node";
+import { MentionNode } from "../../src/forms/mentions/mention-node";
 import {
   $createFormTitleNode,
   $createPageTitleNode,
@@ -12,11 +12,11 @@ import {
   $ensureBlockIds,
   $ensureQuestionFields,
   $questionKey,
-} from "../../src/forms/editor/nodes";
-import { $createInputNode, $createWidgetNode } from "../../src/forms/editor/answer-nodes";
-import { $setSettings } from "../../src/editor/core/document-state";
+} from "../../src/forms/canvas/form-nodes";
+import { $createInputNode, $createWidgetNode } from "../../src/forms/canvas/answer-nodes";
+import { $setSettings } from "../../src/forms/canvas/block-state";
 import { formNodes } from "../helpers/default-form";
-import { newGroup } from "../../src/forms/features/checkbox-accordion/groups";
+import { newGroup } from "../../src/forms/fields/grouped-checkboxes-groups";
 import { fromEditor, readMarkdown, toEditor, writeMarkdown } from "../helpers/default-form";
 import { prepareSource } from "../helpers/default-form";
 import { COMPONENTS } from "../../src/presets/form-registry/components";

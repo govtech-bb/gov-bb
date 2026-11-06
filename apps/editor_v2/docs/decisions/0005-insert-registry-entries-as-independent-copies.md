@@ -32,7 +32,7 @@ Preparation and reference remapping add validation work, but failed preparation 
 
 ## Evidence
 
-- [Entry declarations and detached definitions](../../src/forms/registry/definition.ts)
-- [Preparation, instantiation and complete-form creation](../../src/forms/editor/registry.ts)
+- [Entry declarations and detached definitions](../../src/forms/form-registry/definition.ts)
+- [Preparation, instantiation and complete-form creation](../../src/forms/canvas/form-registry-insertion.ts)
 - [Copies surviving catalog replacement or removal](../../tests/forms/registry-contracts.test.ts)
 - [Independent insertion, rollback and ownership tests](../../tests/forms/registry-insertion.test.ts)
