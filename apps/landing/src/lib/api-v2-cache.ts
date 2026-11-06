@@ -12,10 +12,10 @@ import { REASONS } from './api-v2-log'
  * read of each url waits for a fresh copy, falling back to the old one on a
  * failure.
  *
- * Keyed by URL alone, which is safe only because landing never sends
- * `x-preview-token`, so api_v2's answer is the same for every viewer. A call
- * that forwards the token must skip this cache for reads too, not just rely
- * on api_v2's `no-store` keeping it from being written.
+ * Keyed by URL alone, which is safe only because every read through it is a
+ * public one: a reviewer's read sends `x-preview-token` and skips this cache
+ * for reads and writes alike (`loadApiV2Page` in api-v2-page.ts, #2961), not
+ * relying on api_v2's `no-store` to keep it from being written.
  */
 
 export const MAX_ENTRIES = 500
