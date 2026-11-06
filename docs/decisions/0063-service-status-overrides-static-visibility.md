@@ -162,3 +162,6 @@ Consequences:
 - Setting `EDITOR_V2_URL` freezes the page-only rows in the UI, the freeze
   [#3226](https://github.com/govtech-bb/gov-bb/issues/3226) needs at cutover.
   The server function still accepts a write for any slug.
+- api v1's `GET /services` reads api_v2's catalog where `API_V2_URL` is set
+  ([#3249](https://github.com/govtech-bb/gov-bb/issues/3249)): it lists
+  api_v2's visibility and ignores `service_status` there.
