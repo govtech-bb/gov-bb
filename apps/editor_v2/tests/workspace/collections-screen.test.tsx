@@ -323,6 +323,12 @@ const closed = () => until(() => expect(dialog()).toBeNull());
 /** The dialog's form, not its placeholder while the record loads. */
 const opened = () => until(() => expect(dialog()?.querySelector("input")).toBeTruthy());
 
+/** The dialog's placeholder, open before its record has arrived. */
+const waiting = async () => {
+  await until(() => expect(dialog()).not.toBeNull());
+  expect(dialog()?.querySelector("input")).toBeNull();
+};
+
 test("Collections lists each collection with its record count, its name opening its records", async () => {
   await mount(<CollectionsScreen api={api()} />);
   await until(() => expect(host.querySelector("tbody a")).not.toBeNull());
@@ -602,6 +608,46 @@ test("closing a record opened from the address gives the focus to its row's Edit
   await until(() => expect(document.activeElement?.getAttribute("data-edit")).toBe("nis"));
 });
 
+/** Holds the read of the record `nis`, as a slow connection would, until the returned promise resolves. */
+function holdRecordRead() {
+  const answer = Promise.withResolvers<void>();
+
+  vi.stubGlobal("fetch", async (input: RequestInfo | URL, init?: RequestInit) => {
+    const url = input instanceof Request ? input.url : String(input);
+
+    if (url.endsWith("/collections/contacts/records/nis")) await answer.promise;
+
+    return server.fetch(input, init);
+  });
+
+  return answer;
+}
+
+test("closing a record before it has loaded also gives the focus to its row's Edit", async () => {
+  const answer = holdRecordRead();
+  await renderCollection({ record: "nis" }).ready;
+  await loaded();
+  await waiting();
+  await press("Cancel");
+  await closed();
+
+  await until(() => expect(document.activeElement?.getAttribute("data-edit")).toBe("nis"));
+  await act(async () => answer.resolve());
+});
+
+test("a record that arrives after its dialog opened fills the same dialog, focus in its first field", async () => {
+  const answer = holdRecordRead();
+  await renderCollection({ record: "nis" }).ready;
+  await waiting();
+  const placeholder = dialog();
+
+  await act(async () => answer.resolve());
+  await opened();
+
+  expect(dialog()).toBe(placeholder);
+  await until(() => expect(document.activeElement).toBe(dialog()?.querySelector("input")));
+});
+
 test("a stale save offers to keep mine, load the saved version or download mine", async () => {
   await renderCollection({ record: "nis" }).ready;
   await opened();
@@ -670,6 +716,8 @@ test("Delete asks first, then deletes the version read", async () => {
   await until(() =>
     expect(dialog()?.querySelector("pre")?.textContent).toContain("National Insurance"),
   );
+  // Below the description, not inside its paragraph, where a <pre> isn't valid HTML
+  expect(dialog()?.querySelector("p pre")).toBeNull();
   await press("Delete record");
   await closed();
 

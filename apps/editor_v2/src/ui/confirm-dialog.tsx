@@ -12,6 +12,8 @@ type ConfirmDialogProps = {
   title: string;
   /** What happens, in plain words: what's lost, and what's kept. */
   description: ReactNode;
+  /** What the action acts on, below the description, such as the record a delete removes. */
+  children?: ReactNode;
   /** The verb on the button that does it, such as “Delete page”. */
   confirmLabel: string;
   /** Wait for a separate operation without preventing cancellation of this question. */
@@ -38,6 +40,7 @@ export function ConfirmDialog(props: ConfirmDialogProps) {
   const {
     title,
     description,
+    children,
     confirmLabel,
     confirmDisabled = false,
     pendingLabel,
@@ -53,9 +56,10 @@ export function ConfirmDialog(props: ConfirmDialogProps) {
           <Dialog.Title>{title}</Dialog.Title>
           <Dialog.Description>{description}</Dialog.Description>
         </Dialog.Header>
-        {error && (
+        {(children || error) && (
           <Dialog.Body>
-            <Banner tone="error">{error}</Banner>
+            {children}
+            {error && <Banner tone="error">{error}</Banner>}
           </Dialog.Body>
         )}
         <Dialog.Actions>

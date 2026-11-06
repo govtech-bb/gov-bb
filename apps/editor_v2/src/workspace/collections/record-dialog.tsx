@@ -9,7 +9,7 @@ import {
   type RecordDetail,
 } from "../../api/client";
 import { apiFailureMessages } from "../../api/failure-messages";
-import { collectionQuery, collectionsQuery, recordQuery } from "../../api/queries";
+import { collectionQuery, recordQuery } from "../../api/queries";
 import { download } from "../../host/download";
 import { Banner } from "../../ui/banner";
 import { Button } from "../../ui/button";
@@ -40,53 +40,6 @@ type RecordDialogProps = {
   close: () => void;
 };
 
-/** Public list rows are navigation only; editing starts from a private versioned snapshot. */
-export function RecordDialog(props: RecordDialogProps) {
-  const detail = useQuery({
-    ...recordQuery(props.api, props.collection.key, props.record?.record_key ?? ""),
-    enabled: !!props.record,
-  });
-
-  const definitions = useQuery({ ...collectionsQuery(props.api), enabled: !props.record });
-
-  const collection = props.record
-    ? detail.data?.collection
-    : definitions.data?.find((item) => item.key === props.collection.key);
-
-  const error = props.record ? detail.error : definitions.error;
-
-  if (!collection || (props.record && !detail.data))
-    return (
-      <FormDialog
-        open={props.open ?? true}
-        onOpenChange={(next) => {
-          if (!next) props.close();
-        }}
-        title={props.record ? `Edit ${props.record.record_key}` : "Add a record"}
-        description={
-          error
-            ? "The record definition could not be loaded. Your record has not been changed."
-            : "Loading the record definition…"
-        }
-        onSubmit={() => {}}
-        children={null}
-        actions={
-          <Button onClick={() => void (props.record ? detail.refetch() : definitions.refetch())}>
-            Try again
-          </Button>
-        }
-      />
-    );
-
-  return (
-    <RecordEditor
-      {...props}
-      collection={collection}
-      record={props.record ? detail.data!.record : undefined}
-    />
-  );
-}
-
 type RecordAttempt = {
   collection: RecordDetail["collection"];
   record?: RecordDetail["record"];
@@ -95,7 +48,11 @@ type RecordAttempt = {
   values: RecordValues;
 };
 
-function RecordEditor({
+/**
+ * Public list rows are navigation only; editing starts from a private versioned snapshot. One dialog stays open
+ * while that loads, so its focus and its way back to the record's row hold from opening to closing.
+ */
+export function RecordDialog({
   open = true,
   api,
   collection,
@@ -103,13 +60,15 @@ function RecordEditor({
   readOnly = false,
   close,
   finalFocus,
-}: Omit<RecordDialogProps, "collection" | "record"> & {
-  collection: RecordDetail["collection"];
-  record?: RecordDetail["record"];
-}) {
+}: RecordDialogProps) {
   const client = useQueryClient();
-  const [base, setBase] = useState(() => ({ collection, record }));
-  const [values, setValues] = useState<RecordValues>(() => recordValues(collection, record));
+
+  // Adding starts from the definition the screen holds; editing waits for the record's version
+  const [base, setBase] = useState<Pick<RecordAttempt, "collection" | "record"> | undefined>(
+    record ? undefined : { collection },
+  );
+
+  const [values, setValues] = useState<RecordValues>({});
   const valuesRef = useRef(values);
   valuesRef.current = values;
   const [keyError, setKeyError] = useState<string>();
@@ -119,22 +78,30 @@ function RecordEditor({
   const gate = useRef(false);
   const attempt = useRef<RecordAttempt>(undefined);
   const [reading, setReading] = useState(false);
-  const [reloaded, setReloaded] = useState(0);
+  // Each time api_v2's copy fills the form, the focus goes to its first field
+  const [filled, setFilled] = useState(0);
   const body = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    if (reloaded && !pressedByTouch()) body.current?.querySelector("input")?.focus();
-  }, [reloaded]);
-  const definition = base.collection;
-  const fields = definition.schema.fields;
-  const recordKey = base.record?.record_key ?? (values[definition.record_key] ?? "").trim();
+    if (filled && !pressedByTouch()) body.current?.querySelector("input")?.focus();
+  }, [filled]);
+  const shown = base ? base.record : record;
+  const title = shown ? `Edit ${shown.record_key}` : "Add a record";
 
   const current = useQuery({
-    ...recordQuery(api, definition.key, base.record?.record_key ?? ""),
-    enabled: !!base.record,
+    ...recordQuery(api, collection.key, shown?.record_key ?? ""),
+    enabled: !!shown,
   });
 
+  if (!base && current.data) {
+    setBase(current.data);
+    setValues(recordValues(current.data.collection, current.data.record));
+
+    // Opened before its record arrived, the dialog has only Cancel to focus
+    if (open) setFilled((value) => value + 1);
+  }
+
   const latest = observed ?? current.data;
-  const query = collectionQuery(api, definition.key);
+  const query = collectionQuery(api, collection.key);
 
   const save = useMutation({
     mutationFn: async (sent: RecordAttempt): Promise<RecordDetail> =>
@@ -170,6 +137,31 @@ function RecordEditor({
     },
   });
 
+  if (!base)
+    return (
+      <FormDialog
+        open={open}
+        onOpenChange={(next) => {
+          if (!next) close();
+        }}
+        finalFocus={finalFocus}
+        title={title}
+        description={
+          current.error
+            ? "The record could not be loaded. It has not been changed."
+            : "Loading the record…"
+        }
+        cancelLabel={readOnly ? "Close" : undefined}
+        onSubmit={() => {}}
+        actions={current.error && <Button onClick={() => void current.refetch()}>Try again</Button>}
+      >
+        {null}
+      </FormDialog>
+    );
+
+  const definition = base.collection;
+  const fields = definition.schema.fields;
+  const recordKey = base.record?.record_key ?? (values[definition.record_key] ?? "").trim();
   const failure = save.error instanceof ApiFailure ? save.error : undefined;
   const conflict = failure?.status === 409 && failure.code === "version_conflict";
 
@@ -208,7 +200,7 @@ function RecordEditor({
         throw new Error("Your values changed while reloading. Check them before discarding.");
       setBase(latest);
       setValues(recordValues(latest.collection, latest.record));
-      setReloaded((value) => value + 1);
+      setFilled((value) => value + 1);
       setObserved(undefined);
       attempt.current = undefined;
       save.reset();
@@ -331,7 +323,7 @@ function RecordEditor({
         if (!next) close();
       }}
       finalFocus={finalFocus}
-      title={base.record ? `Edit ${base.record.record_key}` : "Add a record"}
+      title={title}
       description={`${definition.title}. Saving changes every page that shows this record.`}
       pending={save.isPending || reading}
       cancelLabel={readOnly ? "Close" : undefined}
@@ -481,16 +473,7 @@ export function DeleteRecordDialog({
         if (!next) close();
       }}
       title={`Delete ${record.record_key}?`}
-      description={
-        <>
-          {`It’s removed from ${snapshot?.collection.title ?? collection.title}, and from every page that shows it. This can’t be undone.`}
-          {snapshot && (
-            <pre className="whitespace-pre-wrap">
-              {JSON.stringify(snapshot.record.data, null, 2)}
-            </pre>
-          )}
-        </>
-      }
+      description={`It’s removed from ${snapshot?.collection.title ?? collection.title}, and from every page that shows it. This can’t be undone.`}
       confirmLabel="Delete record"
       pendingLabel="Deleting record…"
       pending={remove.isPending}
@@ -502,6 +485,10 @@ export function DeleteRecordDialog({
         gate.current = true;
         remove.mutate();
       }}
-    />
+    >
+      {snapshot && (
+        <pre className="whitespace-pre-wrap">{JSON.stringify(snapshot.record.data, null, 2)}</pre>
+      )}
+    </ConfirmDialog>
   );
 }
