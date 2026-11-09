@@ -25,8 +25,8 @@ import {
   type Server,
 } from "./support";
 
-/** The request limit in `src/main.ts`, plus room for the rollback and the reply. */
-const BOUND_MS = 12_000;
+/** Twice the 5 s request limit in `src/main.ts`. */
+const BOUND_MS = 10_000;
 
 describe.skipIf(!HAS_DATABASE)("api_v2 when Postgres goes quiet", () => {
   let server: Server;

@@ -1,6 +1,7 @@
 /** The runtime owns configuration, concrete dependencies, and their cleanup. */
 import { once } from "node:events";
 import type { FastifyInstance, FastifyRequest } from "fastify";
+import type { QueryConfig } from "pg";
 import pino from "pino";
 import { buildApp } from "./app";
 import { createBetterAuth } from "./adapters/better-auth";
@@ -27,6 +28,13 @@ import {
 } from "./services/review-notifications";
 import { SiteNavigation } from "./services/site-navigation";
 import { seed } from "./seed";
+
+/** A request's query fails after this long, so a quiet database answers 500 rather than hanging (#2845). */
+const QUERY_TIMEOUT_MS = 5_000;
+/** A boot migration's own limit, in place of the request one. */
+const MIGRATION_TIMEOUT_MS = 10 * 60_000;
+/** pg honours a per-query `query_timeout` that @types/pg's QueryConfig omits. */
+type TimedQuery = QueryConfig & { query_timeout: number };
 
 const logger = pino({
   redact: [
@@ -72,7 +80,9 @@ async function main(): Promise<void> {
     return;
   }
   const config = parsed.value;
-  const created = createPool(config.database, logger);
+  const created = createPool(config.database, logger, {
+    queryTimeoutMs: QUERY_TIMEOUT_MS,
+  });
   if (!created.ok) return refuseToStart(created.error);
 
   const pool = created.value;
@@ -89,7 +99,15 @@ async function main(): Promise<void> {
     if (!connected.ok) return refuseToStart(connected.error);
     const db = connected.value;
     operation = "migrate";
-    const ran = await migrate(db, (script) => pool.query(script));
+    // A migration may outlast the request limit. pg reads a per-query 0 as
+    // "use the pool's", so the override is a large value rather than none.
+    const ran = await migrate(db, (script) => {
+      const query: TimedQuery = {
+        text: script,
+        query_timeout: MIGRATION_TIMEOUT_MS,
+      };
+      return pool.query(query);
+    });
     if (ran.length > 0) logger.info({ migrations: ran }, "applied migrations");
     if (config.seed) {
       operation = "seed";

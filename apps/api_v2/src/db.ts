@@ -38,10 +38,16 @@ function sslConfig(config: AppConfig["database"]) {
   };
 }
 
-/** Construct the shared pool from parsed settings, preserving verified production TLS. */
+/**
+ * Construct the shared pool from parsed settings, preserving verified
+ * production TLS. `queryTimeoutMs` fails a query the database has gone quiet
+ * on (a failover or partition keeps the socket open) instead of waiting
+ * minutes for TCP to notice; without it a query may run as long as it needs.
+ */
 export function createPool(
   config: AppConfig["database"],
   logger: Pick<Logger, "warn">,
+  { queryTimeoutMs }: { queryTimeoutMs?: number } = {},
 ): Result<Pool, DatabaseFailure> {
   try {
     const pool = new Pool({
@@ -52,6 +58,11 @@ export function createPool(
       database: config.database,
       ssl: sslConfig(config),
       connectionTimeoutMillis: 2000,
+      keepAlive: true,
+      keepAliveInitialDelayMillis: 10_000,
+      ...(queryTimeoutMs === undefined
+        ? {}
+        : { query_timeout: queryTimeoutMs }),
     });
     // This text is an operational alarm marker. The driver error carries its
     // client, so forwarding the whole error would expose connection credentials.

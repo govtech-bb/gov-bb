@@ -96,6 +96,23 @@ describe("database setup", () => {
     }
   });
 
+  it("keeps connections alive and limits a query only when asked", async () => {
+    const logger = pino({ enabled: false });
+    const unlimited = value(createPool(config, logger));
+    const limited = value(createPool(config, logger, { queryTimeoutMs: 5000 }));
+    try {
+      for (const pool of [unlimited, limited]) {
+        expect(pool.options.keepAlive).toBe(true);
+        expect(pool.options.keepAliveInitialDelayMillis).toBe(10000);
+      }
+      expect(unlimited.options).not.toHaveProperty("query_timeout");
+      expect(limited.options.query_timeout).toBe(5000);
+    } finally {
+      await unlimited.end();
+      await limited.end();
+    }
+  });
+
   it("reports a database that does not answer within the cap", async () => {
     const db = { execute: () => new Promise(() => {}) } as unknown as Database;
     expect(await ping(db, 10)).toBe(false);
