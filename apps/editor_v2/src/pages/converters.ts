@@ -1,10 +1,13 @@
 import {
   $createParagraphNode,
+  $getNodeByKey,
   $getRoot,
   $isParagraphNode,
+  $isRootNode,
+  type NodeKey,
   type SerializedEditorState,
 } from "lexical";
-import type { Root } from "mdast";
+import type { Root, RootContent } from "mdast";
 import { parseContentMarkdown } from "@govtech-bb/govbbmarkd";
 import { createHeadlessEditor } from "@/editor";
 import {
@@ -15,7 +18,7 @@ import {
 } from "../persistence/types";
 import type { PageEditorDefinition } from "./definition";
 import { PageMetadataNode, $pageMetadataNode, validateMetadata } from "./metadata";
-import { pageMetadataFromYaml, stateMetadata } from "./metadata-yaml";
+import { pageMetadataFromYaml, stateMetadata, type OriginalBlock } from "./metadata-yaml";
 import {
   blocks,
   pageConversion,
@@ -69,7 +72,91 @@ function $encode(definition: PageEditorDefinition) {
   const frontmatter = yaml ? `---\n${yaml.trimEnd()}\n---\n\n` : "";
   const bodyMarkdown = stringifyPageMarkdown(body);
 
-  return { metadata, canonical: frontmatter + bodyMarkdown, frontmatter, body: bodyMarkdown };
+  return {
+    metadata,
+    canonical: frontmatter + bodyMarkdown,
+    frontmatter,
+    body: bodyMarkdown,
+    blocks: body.children,
+  };
+}
+
+/**
+ * What each top-level block imported from the Markdown exports as, and where its text is. Importing can merge a block
+ * into the one beside it, as adjacent lists are, so neither's text then stands for what the editor holds: those blocks
+ * and their neighbours are left out.
+ */
+function $originalBlocks(
+  imported: readonly { keys: NodeKey[]; start: number; end: number }[],
+  definition: PageEditorDefinition,
+): OriginalBlock[] {
+  const context = pageConversion(definition);
+
+  const merged = imported.map(({ keys }) =>
+    keys.some((key) => !$isRootNode($getNodeByKey(key)?.getParent() ?? null)),
+  );
+
+  return imported.flatMap(({ keys, start, end }, index) => {
+    if (merged[index] || merged[index - 1] || merged[index + 1]) return [];
+
+    const exported = keys.flatMap((key) => {
+      const node = $getNodeByKey(key);
+
+      return node ? context.$export(node) : [];
+    });
+
+    return exported.length === 1 ? [{ key: JSON.stringify(exported[0]), start, end }] : [];
+  });
+}
+
+/**
+ * An edited page's blocks, with each run of blocks the edit left alone put back as the Markdown they were written in,
+ * so saving rewrites only what changed. Blocks match the original's in order, by what they export as.
+ */
+function untouched(
+  blocks: RootContent[],
+  original: string,
+  originals: readonly OriginalBlock[],
+): RootContent[] {
+  const matches: (number | undefined)[] = [];
+  let next = 0;
+
+  for (const block of blocks) {
+    const key = JSON.stringify(block);
+    let index = next;
+
+    while (index < originals.length && originals[index]?.key !== key) index++;
+
+    if (index < originals.length) {
+      matches.push(index);
+      next = index + 1;
+    } else matches.push(undefined);
+  }
+
+  const children: RootContent[] = [];
+  let run: { start: number; end: number; last: number } | undefined;
+
+  const close = () => {
+    if (run) children.push({ type: "html", value: original.slice(run.start, run.end) });
+    run = undefined;
+  };
+
+  blocks.forEach((block, index) => {
+    const match = matches[index];
+    const written = match === undefined ? undefined : originals[match];
+
+    if (match === undefined || !written) {
+      close();
+      children.push(block);
+    } else if (run && match === run.last + 1) run = { ...run, end: written.end, last: match };
+    else {
+      close();
+      run = { start: written.start, end: written.end, last: match };
+    }
+  });
+  close();
+
+  return children;
 }
 
 export function pageMarkdownToLexical(
@@ -111,6 +198,7 @@ export function pageMarkdownToLexical(
     };
 
   const editor = createHeadlessEditor(definition, undefined, { prepare: false });
+  const imported: { keys: NodeKey[]; start: number; end: number }[] = [];
 
   try {
     editor.update(
@@ -121,7 +209,13 @@ export function pageMarkdownToLexical(
 
         for (const node of root.children) {
           if (node === first && node.type === "yaml") continue;
-          $getRoot().append(...context.$import(node));
+          const nodes = context.$import(node);
+          $getRoot().append(...nodes);
+          const start = node.position?.start.offset;
+          const end = node.position?.end.offset;
+
+          if (start !== undefined && end !== undefined)
+            imported.push({ keys: nodes.map((item) => item.getKey()), start, end });
         }
 
         if ($getRoot().getChildrenSize() === 1) $getRoot().append($createParagraphNode());
@@ -129,9 +223,15 @@ export function pageMarkdownToLexical(
       { discrete: true },
     );
     // Adjacent text nodes are normalized when the import update commits.
-    editor.update(() => $pageMetadataNode().setOriginal(source, $encode(definition).canonical), {
-      discrete: true,
-    });
+    editor.update(
+      () =>
+        $pageMetadataNode().setOriginal(
+          source,
+          $encode(definition).canonical,
+          $originalBlocks(imported, definition),
+        ),
+      { discrete: true },
+    );
 
     return { mode: "visual", state: editor.getEditorState().toJSON(), source, diagnostics: [] };
   } catch (error) {
@@ -164,14 +264,22 @@ export function lexicalToPageMarkdown(
   try {
     return editor.getEditorState().read(
       () => {
-        const { metadata, canonical, frontmatter, body } = $encode(definition);
+        const { metadata, canonical, frontmatter, body, blocks } = $encode(definition);
 
         if (canonical === metadata.__fingerprint) return metadata.__original;
 
         if (body === splitPageMarkdown(metadata.__fingerprint).body)
           return frontmatter + splitPageMarkdown(metadata.__original).body;
 
-        return canonical;
+        if (!metadata.__blocks.length) return canonical;
+
+        return (
+          frontmatter +
+          stringifyPageMarkdown({
+            type: "root",
+            children: untouched(blocks, metadata.__original, metadata.__blocks),
+          })
+        );
       },
       { editor },
     );

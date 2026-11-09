@@ -5,7 +5,11 @@ export type SerializedPageMetadata = SerializedElementNode & {
   yaml: string;
   original: string;
   fingerprint: string;
+  blocks?: OriginalBlock[];
 };
+
+/** A top-level block of the Markdown a page was opened from: what the editor exports it as, and where its text is. */
+export type OriginalBlock = { key: string; start: number; end: number };
 
 export type PageMetadata = {
   title?: string;

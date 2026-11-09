@@ -175,7 +175,7 @@ describe("saving a page", () => {
       await Promise.resolve();
       editor.dispatchCommand(REDO_COMMAND, undefined);
       await Promise.resolve();
-      const body = "First line<br>Second line\n\nNew instructions";
+      const body = "First line  \nSecond line\n\nNew instructions";
       expect(await save()).toMatchObject({ title: "Renamed", body_markdown: body });
 
       editor.update(() => $setPageMetadata({ description: "Changed later" }), { discrete: true });

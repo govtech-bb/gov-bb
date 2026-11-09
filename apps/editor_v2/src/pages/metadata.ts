@@ -2,6 +2,7 @@ import { $getRoot, ElementNode, type NodeKey } from "lexical";
 import { isMap, parseDocument } from "yaml";
 import {
   pageMetadataFromYaml,
+  type OriginalBlock,
   type PageMetadata,
   type SerializedPageMetadata,
 } from "./metadata-yaml";
@@ -10,21 +11,35 @@ export class PageMetadataNode extends ElementNode {
   __yaml: string;
   __original: string;
   __fingerprint: string;
+  __blocks: readonly OriginalBlock[];
 
   static override getType() {
     return "page-metadata";
   }
   static override clone(node: PageMetadataNode) {
-    return new PageMetadataNode(node.__yaml, node.__original, node.__fingerprint, node.__key);
+    return new PageMetadataNode(
+      node.__yaml,
+      node.__original,
+      node.__fingerprint,
+      node.__blocks,
+      node.__key,
+    );
   }
-  constructor(yaml = "", original = "", fingerprint = "", key?: NodeKey) {
+  constructor(
+    yaml = "",
+    original = "",
+    fingerprint = "",
+    blocks: readonly OriginalBlock[] = [],
+    key?: NodeKey,
+  ) {
     super(key);
     this.__yaml = yaml;
     this.__original = original;
     this.__fingerprint = fingerprint;
+    this.__blocks = blocks;
   }
   static override importJSON(value: SerializedPageMetadata) {
-    return new PageMetadataNode(value.yaml, value.original, value.fingerprint);
+    return new PageMetadataNode(value.yaml, value.original, value.fingerprint, value.blocks);
   }
   override exportJSON(): SerializedPageMetadata {
     return {
@@ -34,6 +49,7 @@ export class PageMetadataNode extends ElementNode {
       yaml: this.__yaml,
       original: this.__original,
       fingerprint: this.__fingerprint,
+      blocks: [...this.__blocks],
     };
   }
   override createDOM() {
@@ -60,10 +76,11 @@ export class PageMetadataNode extends ElementNode {
   setYaml(yaml: string) {
     this.getWritable().__yaml = yaml;
   }
-  setOriginal(original: string, fingerprint: string) {
+  setOriginal(original: string, fingerprint: string, blocks: readonly OriginalBlock[]) {
     const writable = this.getWritable();
     writable.__original = original;
     writable.__fingerprint = fingerprint;
+    writable.__blocks = blocks;
   }
 }
 

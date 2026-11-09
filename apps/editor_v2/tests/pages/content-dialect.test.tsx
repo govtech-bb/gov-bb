@@ -46,7 +46,7 @@ describe("GovBB Markdown editor integration", () => {
     }
   });
 
-  it("writes legacy leaf actions and details attributes in the fenced dialect only after a body edit", () => {
+  it("writes legacy leaf actions and details attributes in the fenced dialect once they are edited", () => {
     const source =
       ':::actions\n::action[Continue]{href="/next"}\n:::\n\n:::details{summary="Help"}\nInformation.\n:::';
 
@@ -64,10 +64,23 @@ describe("GovBB Markdown editor integration", () => {
         () => $getRoot().append($createParagraphNode().append($createTextNode("New instructions"))),
         { discrete: true },
       );
+      expect(govbbPageCodec.encode(editor.getEditorState().toJSON())).toBe(
+        `---\ntitle: Updated\n---\n\n${source}\n\nNew instructions\n`,
+      );
+      editor.update(
+        () => {
+          for (const node of $nodesOfType(PageComponentNode))
+            if (node.getKind() === "action")
+              node.setAttributes({ ...node.getAttributes(), href: "/next-step" });
+            else if (node.getKind() === "details")
+              node.setAttributes({ ...node.getAttributes(), summary: "More help" });
+        },
+        { discrete: true },
+      );
       const encoded = govbbPageCodec.encode(editor.getEditorState().toJSON());
       expect(encoded).toContain("New instructions");
-      expect(encoded).toContain(':::action{href="/next"}\nContinue\n:::');
-      expect(encoded).toContain(":::details[Help]");
+      expect(encoded).toContain(':::action{href="/next-step"}\nContinue\n:::');
+      expect(encoded).toContain(":::details[More help]");
       expect(encoded).not.toContain("::action[");
     } finally {
       editor.dispose();

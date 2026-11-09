@@ -124,11 +124,7 @@ test.each([
       { discrete: true },
     );
     const edited = govbbPageCodec.encode(editor.getEditorState().toJSON());
-    expect(edited).toContain("New instructions");
-    expect(edited).toContain("<strong>");
-    expect(edited).toContain("<em>");
-    expect(edited).toContain("<del>");
-    expect(edited).toContain("<code>");
+    expect(edited).toBe(`---\ntitle: Edited\n---\n\n${source.trimEnd()}\n\nNew instructions\n`);
     expect(visual(edited).root.children.slice(1)).toEqual(
       editor.getEditorState().toJSON().root.children.slice(1),
     );

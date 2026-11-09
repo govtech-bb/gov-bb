@@ -10,7 +10,7 @@ The form editor imports and exports **FormDefinitionV2**, the application's JSON
 | [`formSchemaToLexical(value, definition)`](../src/converters/form-schema-to-lexical.ts) | Unknown parsed JSON | Isolated prepared state, or blocked result retaining original data |
 | [`lexicalToLegacySsb(state, definition, editor?)`](../src/converters/lexical-to-legacy-ssb.ts) | Existing Lexical EditorState | `schema` or `null`, with compatibility diagnostics |
 | [`pageMarkdownToLexical(source, definition)`](../src/converters/page-markdown-to-lexical.ts) | Page Markdown and YAML | Visual prepared state, or intact source-only document with diagnostics |
-| [`lexicalToPageMarkdown(state, definition)`](../src/converters/lexical-to-page-markdown.ts) | Serialized page Lexical state | Original bytes before edits; normalized page Markdown after edits |
+| [`lexicalToPageMarkdown(state, definition)`](../src/converters/lexical-to-page-markdown.ts) | Serialized page Lexical state | Original bytes before edits; after edits, changed blocks normalized and the rest as written |
 
 Form converters and `createFormDraftCodec(runtime)` are exported from `src/forms`; page converters and `createPageDraftCodec(definition)` are exported from `src/pages`. The kebab-case files in `src/converters` expose each conversion boundary without single-file directories; page implementations remain in `src/pages/converters.ts`.
 
@@ -24,7 +24,7 @@ Every operation receives the installed form or page definition. The kernel does 
 
 Modules own Markdown import, export and preview handlers. The installed GovBB page preset supports standard text, headings, links, hard breaks, nested and multi-block lists, tables, blockquotes, separators, notice/details/action directives and Start-link markers. An implicit Start destination remains implicit; `form_id` and explicit URLs are retained. Page conversion never calls form schema conversion.
 
-Metadata keeps its YAML representation, including unknown keys, comments and absent fields. The title is page metadata; the body does not gain a duplicate heading. Description and introduction remain separate. Untouched documents encode to their exact original bytes; visual edits can normalize formatting. Unsupported HTML and specialist components stay wholly in source mode instead of producing a partial editable projection. Preview renders supported nodes without injecting raw HTML.
+Metadata keeps its YAML representation, including unknown keys, comments and absent fields. The title is page metadata; the body does not gain a duplicate heading. Description and introduction remain separate. Untouched documents encode to their exact original bytes; a visual edit normalizes only the blocks it changes. Unsupported HTML and specialist components stay wholly in source mode instead of producing a partial editable projection. Preview renders supported nodes without injecting raw HTML.
 
 The [page fixtures](../tests/fixtures/pages/README.md) pin 16 frozen originals with SHA-256 hashes. Tests check three visual documents before and after metadata edits, export and reload, and verify exact preservation of the 13 source-only documents. Integration tests also read current GovBB Markdown directly from `apps/landing/src/content` and check conversion preservation as that content changes.
 
