@@ -12,7 +12,7 @@ import { NotificationDeliveryStatus } from "@/database/entities/notification-log
 interface SesEventLike {
   eventType?: string;
   notificationType?: string;
-  mail?: { messageId?: string };
+  mail?: { messageId?: string; timestamp?: string };
 }
 
 /** SNS "Notification" envelope — present only if raw message delivery is off. */
@@ -25,6 +25,9 @@ interface SnsEnvelope {
 export interface ParsedSesEvent {
   messageId: string;
   status: NotificationDeliveryStatus;
+  /** When SES accepted the original email (`mail.timestamp`). Undefined if the
+   *  event carries no valid timestamp. */
+  sentAt?: Date;
 }
 
 const EVENT_STATUS: Record<string, NotificationDeliveryStatus> = {
@@ -72,5 +75,13 @@ export function parseSesEvent(body: string): ParsedSesEvent | null {
   }
 
   const status = EVENT_STATUS[type];
-  return status ? { messageId, status } : null;
+  if (!status) return null;
+
+  const sentAt =
+    typeof event.mail?.timestamp === "string"
+      ? new Date(event.mail.timestamp)
+      : undefined;
+  return sentAt && !Number.isNaN(sentAt.getTime())
+    ? { messageId, status, sentAt }
+    : { messageId, status };
 }

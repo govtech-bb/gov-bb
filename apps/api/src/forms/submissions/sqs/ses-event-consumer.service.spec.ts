@@ -77,6 +77,84 @@ describe("SesEventConsumerService", () => {
     expect(deletedReceipts()).not.toContain("receipt-1");
   });
 
+  describe("unmatched events", () => {
+    const minutesAgo = (m: number) =>
+      new Date(Date.now() - m * 60_000).toISOString();
+
+    beforeEach(() => {
+      repo.reconcileDeliveryStatus.mockResolvedValue("unmatched");
+    });
+
+    it("leaves a recent unmatched event for redelivery (send-then-insert race)", async () => {
+      await service.processMessage(
+        QUEUE_URL,
+        sesMessage({
+          eventType: "Delivery",
+          mail: { messageId: "race-2", timestamp: minutesAgo(0.5) },
+        }),
+      );
+
+      expect(deletedReceipts()).not.toContain("receipt-1");
+    });
+
+    it("discards an unmatched event once the send is past the grace period", async () => {
+      const logSpy = vi
+        .spyOn((service as any).logger, "log")
+        .mockImplementation(() => {});
+
+      await service.processMessage(
+        QUEUE_URL,
+        sesMessage({
+          eventType: "Delivery",
+          mail: { messageId: "untracked-1", timestamp: minutesAgo(3) },
+        }),
+      );
+
+      expect(deletedReceipts()).toContain("receipt-1");
+      expect(logSpy).toHaveBeenCalledWith(
+        expect.stringMatching(
+          /messageId="untracked-1".*untracked email, discarding/,
+        ),
+      );
+    });
+
+    it("discards an old unmatched bounce but logs it at warn level", async () => {
+      const warnSpy = vi
+        .spyOn((service as any).logger, "warn")
+        .mockImplementation(() => {});
+
+      await service.processMessage(
+        QUEUE_URL,
+        sesMessage({
+          eventType: "Bounce",
+          mail: { messageId: "untracked-2", timestamp: minutesAgo(10) },
+        }),
+      );
+
+      expect(deletedReceipts()).toContain("receipt-1");
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringMatching(/status=bounced.*untracked email, discarding/),
+      );
+    });
+
+    it("keeps the retry behaviour when the event has no send timestamp", async () => {
+      await service.processMessage(
+        QUEUE_URL,
+        sesMessage({ eventType: "Delivery", mail: { messageId: "no-ts" } }),
+      );
+
+      expect(deletedReceipts()).not.toContain("receipt-1");
+    });
+
+    it("grace period leaves room before the queue's 5 x 60 s redrive", () => {
+      // alpha-infra modules/ses-telemetry: maxReceiveCount 5, visibility 60 s.
+      // Discarding must happen before the 5th receive, with retries to spare.
+      expect(SesEventConsumerService.UNMATCHED_GRACE_MS).toBeLessThan(
+        3 * 60_000,
+      );
+    });
+  });
+
   it("does NOT delete when reconciliation throws (retry path)", async () => {
     repo.reconcileDeliveryStatus.mockRejectedValue(new Error("db down"));
 

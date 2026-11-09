@@ -108,6 +108,16 @@ describe("SesMailer", () => {
       expect(getSentInput().ConfigurationSetName).toBe("cfg-set");
     });
 
+    it("returns the SES MessageId of the accepted send", async () => {
+      await expect(
+        new SesMailer(makeConfig()).sendSimple({
+          to: "a@b.c",
+          subject: "s",
+          html: "<p>h</p>",
+        }),
+      ).resolves.toBe("ses-msg-001");
+    });
+
     it("omits the ConfigurationSetName when not configured", async () => {
       await new SesMailer(makeConfig()).sendSimple({
         to: "a@b.c",

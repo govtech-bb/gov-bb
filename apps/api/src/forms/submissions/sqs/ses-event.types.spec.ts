@@ -18,6 +18,29 @@ describe("parseSesEvent", () => {
     });
   });
 
+  it("returns the send time from mail.timestamp", () => {
+    const body = JSON.stringify({
+      eventType: "Delivery",
+      mail: { messageId: "m-t", timestamp: "2026-11-09T12:00:00.000Z" },
+    });
+    expect(parseSesEvent(body)).toEqual({
+      messageId: "m-t",
+      status: NotificationDeliveryStatus.DELIVERED,
+      sentAt: new Date("2026-11-09T12:00:00.000Z"),
+    });
+  });
+
+  it("leaves sentAt out when mail.timestamp is not a valid date", () => {
+    const body = JSON.stringify({
+      eventType: "Delivery",
+      mail: { messageId: "m-bad", timestamp: "not a date" },
+    });
+    expect(parseSesEvent(body)).toEqual({
+      messageId: "m-bad",
+      status: NotificationDeliveryStatus.DELIVERED,
+    });
+  });
+
   it("is case-insensitive on the event type", () => {
     expect(parseSesEvent(event("BOUNCE"))?.status).toBe(
       NotificationDeliveryStatus.BOUNCED,
