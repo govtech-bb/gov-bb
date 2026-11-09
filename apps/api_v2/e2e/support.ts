@@ -94,6 +94,8 @@ export interface QuietProxy {
   port: number;
   /** Hold every connection, current and new, open but pass nothing either way. */
   freeze: () => void;
+  /** Freeze once the server sends a message containing `marker`, after passing that message on. */
+  freezeOn: (marker: string) => void;
   /** Pass on what was held and everything after it. */
   thaw: () => void;
   close: () => Promise<void>;
@@ -110,6 +112,11 @@ export interface QuietProxy {
 export async function startQuietProxy(): Promise<QuietProxy> {
   const sockets = new Set<Socket>();
   let frozen = false;
+  let marker: string | undefined;
+  const freeze = () => {
+    frozen = true;
+    for (const socket of sockets) socket.pause();
+  };
   // Data handlers rather than pipe(): a piped source may resume itself when
   // its destination drains, which would leak bytes through a freeze.
   const server = createServer((client) => {
@@ -118,7 +125,13 @@ export async function startQuietProxy(): Promise<QuietProxy> {
       [client, upstream],
       [upstream, client],
     ] as const) {
-      from.on("data", (chunk) => to.write(chunk));
+      from.on("data", (chunk: Buffer) => {
+        if (from === client && marker && chunk.includes(marker)) {
+          marker = undefined;
+          freeze();
+        }
+        to.write(chunk);
+      });
       from.on("close", () => to.destroy());
       from.on("error", () => to.destroy());
       sockets.add(from);
@@ -132,9 +145,9 @@ export async function startQuietProxy(): Promise<QuietProxy> {
     throw new Error("The proxy is not listening on a port");
   return {
     port: address.port,
-    freeze: () => {
-      frozen = true;
-      for (const socket of sockets) socket.pause();
+    freeze,
+    freezeOn: (text) => {
+      marker = text;
     },
     thaw: () => {
       frozen = false;

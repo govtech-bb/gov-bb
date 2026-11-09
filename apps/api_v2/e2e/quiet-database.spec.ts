@@ -13,10 +13,14 @@
  * that hangs fails here on the abort rather than on the suite's timeout.
  */
 
+import { Client } from "pg";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { z } from "zod";
 import {
   AUTH_ENV,
   createScratchDatabase,
+  databaseQuery,
+  DB,
   dropScratchDatabase,
   HAS_DATABASE,
   startQuietProxy,
@@ -27,6 +31,10 @@ import {
 
 /** Twice the 5 s request limit in `src/main.ts`. */
 const BOUND_MS = 10_000;
+/** node-postgres's default pool size, which the server keeps. */
+const POOL_MAX = 10;
+/** The lock every page write takes first (`PostgresPages.atomically`). */
+const CONTENT_LOCK = "hashtext('content_pages.parent_id')";
 
 describe.skipIf(!HAS_DATABASE)("api_v2 when Postgres goes quiet", () => {
   let server: Server;
@@ -59,8 +67,9 @@ describe.skipIf(!HAS_DATABASE)("api_v2 when Postgres goes quiet", () => {
     );
 
   let created = 0;
+  const nextUrl = () => `/e2e/quiet-${++created}`;
   /** Creating a page runs in a transaction. */
-  const write = () =>
+  const write = (url = nextUrl(), bound = BOUND_MS) =>
     fetch(`${server.url}/pages`, {
       method: "POST",
       headers: {
@@ -68,13 +77,26 @@ describe.skipIf(!HAS_DATABASE)("api_v2 when Postgres goes quiet", () => {
         origin: AUTH_ENV.EDITOR_ORIGIN,
       },
       body: JSON.stringify({
-        url: `/e2e/quiet-${++created}`,
+        url,
         title: "An e2e page",
         visibility: "draft",
         body_markdown: "Written by the e2e suite.",
       }),
-      signal: AbortSignal.timeout(BOUND_MS),
+      signal: AbortSignal.timeout(bound),
     });
+  const writes = (count: number) =>
+    Promise.all(Array.from({ length: count }, () => write()));
+
+  /** How many of the server's connections Postgres sees matching `where`. */
+  const backends = async (where: string) =>
+    z.array(z.object({ n: z.number() })).parse(
+      await databaseQuery(
+        database,
+        `select count(*)::int as n from pg_stat_activity
+           where datname = current_database() and pid <> pg_backend_pid()
+           and ${where}`,
+      ),
+    )[0]?.n;
 
   it("answers a read 500 while the database is quiet, then recovers", async () => {
     // A pooled connection to go quiet under.
@@ -116,5 +138,64 @@ describe.skipIf(!HAS_DATABASE)("api_v2 when Postgres goes quiet", () => {
       timeout: 10_000,
       interval: 250,
     });
+  });
+
+  it("returns no connection to the pool after a timed-out transaction", async () => {
+    // Fill the pool: writes queued behind a lock held here each hold a client.
+    const locker = new Client({ ...DB, database });
+    await locker.connect();
+    let warming: Promise<Response[]>;
+    try {
+      await locker.query(`select pg_advisory_lock(${CONTENT_LOCK})`);
+      warming = writes(POOL_MAX);
+      await vi.waitFor(
+        async () =>
+          expect(await backends("wait_event_type = 'Lock'")).toBe(POOL_MAX),
+        { timeout: 10_000, interval: 100 },
+      );
+    } finally {
+      await locker.end();
+    }
+    for (const response of await warming) expect(response.status).toBe(201);
+
+    // Every idle client's `begin` goes unanswered.
+    proxy.freeze();
+    try {
+      for (const response of await writes(POOL_MAX))
+        expect(response.status).toBe(500);
+    } finally {
+      proxy.thaw();
+    }
+
+    // A pool still counting those clients waits 2 s for one, then answers 500.
+    expect((await page()).status).toBe(200);
+    expect((await write()).status).toBe(201);
+    await vi.waitFor(
+      async () =>
+        expect(await backends("state = 'idle in transaction'")).toBe(0),
+      { timeout: 5_000, interval: 100 },
+    );
+  });
+
+  it("never commits the work of a transaction that timed out", async () => {
+    const abandoned = nextUrl();
+    // The page's insert goes out after `begin` was answered: mid-transaction.
+    proxy.freezeOn('insert into "content_pages"');
+    try {
+      // The request limit for the insert, and again for its rollback.
+      const response = await write(abandoned, 2 * BOUND_MS);
+      expect(response.status).toBe(500);
+    } finally {
+      proxy.thaw();
+    }
+
+    expect((await write()).status).toBe(201);
+    expect(
+      await databaseQuery(
+        database,
+        "select url from content_pages where url = $1",
+        [abandoned],
+      ),
+    ).toEqual([]);
   });
 });
