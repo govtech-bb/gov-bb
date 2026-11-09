@@ -90,6 +90,8 @@ describe("PaymentRequiredListener", () => {
         to: "citizen@example.com",
         subject: expect.stringContaining("Birth Certificate"),
         html: "<h1>Payment required</h1>",
+        // Marks the send as tracked for the SES events consumer.
+        tags: [{ Name: "submissionId", Value: "sub-1" }],
       }),
     );
   });

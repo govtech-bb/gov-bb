@@ -41,6 +41,35 @@ describe("parseSesEvent", () => {
     });
   });
 
+  it("returns the submissionId tag SES echoes in mail.tags", () => {
+    const body = JSON.stringify({
+      eventType: "Bounce",
+      mail: {
+        messageId: "m-tag",
+        tags: {
+          submissionId: ["sub-9"],
+          "ses:caller-identity": ["ssb-ecs-task-prod"],
+        },
+      },
+    });
+    expect(parseSesEvent(body)).toEqual({
+      messageId: "m-tag",
+      status: NotificationDeliveryStatus.BOUNCED,
+      submissionId: "sub-9",
+    });
+  });
+
+  it("leaves submissionId out when the email had no such tag", () => {
+    const body = JSON.stringify({
+      eventType: "Delivery",
+      mail: {
+        messageId: "m-untagged",
+        tags: { "ses:caller-identity": ["ssb-ecs-task-prod"] },
+      },
+    });
+    expect(parseSesEvent(body)).not.toHaveProperty("submissionId");
+  });
+
   it("is case-insensitive on the event type", () => {
     expect(parseSesEvent(event("BOUNCE"))?.status).toBe(
       NotificationDeliveryStatus.BOUNCED,

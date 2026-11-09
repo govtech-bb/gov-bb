@@ -6,6 +6,7 @@ import { NotificationOutcome } from "@/database/entities/notification-log.entity
 import { EmailTemplateService } from "./email-template.service";
 import { SesMailer } from "./ses-mailer";
 import type { PaymentRequiredEvent } from "../forms/submissions/submissions.types";
+import { SUBMISSION_ID_TAG } from "../forms/submissions/sqs/ses-event.types";
 
 const PAYMENT_REQUIRED_TEMPLATE = "payment-required";
 
@@ -21,8 +22,8 @@ export const PAYMENT_REQUIRED_RECIPIENT_KIND = "payment";
  * exist after payment succeeds.
  *
  * Each send is recorded to notification_log (kind `payment`) with its SES
- * MessageId, so the SesEventConsumer can reconcile delivery and bounces onto it
- * like any submission email.
+ * MessageId, and carries the `submissionId` EmailTag, so the SesEventConsumer
+ * reconciles delivery and bounces onto it like any submission email.
  *
  * Delivery is best-effort: the citizen already received the pay URL on-screen
  * from the submit response, so a failed/slow send must never disrupt the flow.
@@ -74,6 +75,10 @@ export class PaymentRequiredListener {
           to: event.customerEmail,
           subject: `Payment required to complete your ${formTitle} request`,
           html,
+          // Marks the send as tracked for the SesEventConsumer: if this row
+          // is ever missing, its events go to the DLQ instead of being
+          // discarded as untracked.
+          tags: [{ Name: SUBMISSION_ID_TAG, Value: event.submissionId }],
         });
       } catch (err) {
         await this.record(event, NotificationOutcome.FAILED, {

@@ -137,14 +137,18 @@ export class SesEventConsumerService
       );
 
       if (result === "unmatched") {
-        if (this.isPastRaceWindow(parsed.sentAt)) {
-          // The email was sent long enough ago that its notification_log row
-          // would exist by now if it was ever going to. So this event belongs
-          // to an email that isn't tracked there: one of the API's other sends
-          // (water alerts, feedback, ops alerts) or another app sending from
-          // the same domain. Retrying can never match it and only fills the
-          // DLQ, so drop it. Bad outcomes still log at warn level, so a bounce
-          // on an untracked email stays visible in the logs.
+        if (!parsed.submissionId && this.isPastRaceWindow(parsed.sentAt)) {
+          // No submissionId tag, so this email never writes a notification_log
+          // row: one of the API's other sends (water alerts, feedback, ops
+          // alerts) or another app sending from the same domain. Retrying can
+          // never match it and only fills the DLQ, so drop it. Bad outcomes
+          // still log at warn level, so a bounce on an untracked email stays
+          // visible in the logs.
+          //
+          // A TAGGED event is never discarded here. If its row is missing
+          // (e.g. the best-effort insert failed during a DB blip), it must
+          // keep retrying and reach the DLQ so the alarm sees it. The age
+          // check stays as a backstop for an untagged tracked send.
           const line =
             `No notification_log row for SES messageId="${parsed.messageId}" ` +
             `(status=${parsed.status}, sent ${parsed.sentAt!.toISOString()}) — ` +
@@ -158,12 +162,17 @@ export class SesEventConsumerService
           return;
         }
 
-        // Inside the race window: the SES event may have outrun the
-        // notification_log insert. Leave the message for SQS to redeliver
-        // (visibility timeout), and it is matched or discarded on a later try.
+        // A tracked email, or one still inside the race window: the SES event
+        // may have outrun the notification_log insert. Leave the message for
+        // SQS to redeliver (visibility timeout). An untracked one is discarded
+        // on a later try; a tracked one with no row ends up in the DLQ.
         this.logger.warn(
           `No notification_log row for SES messageId="${parsed.messageId}" ` +
-            `(status=${parsed.status}) — leaving for redelivery`,
+            `(status=${parsed.status}` +
+            (parsed.submissionId
+              ? `, submissionId=${parsed.submissionId}`
+              : "") +
+            `) — leaving for redelivery`,
         );
         return;
       }

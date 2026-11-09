@@ -12,7 +12,12 @@ import { NotificationDeliveryStatus } from "@/database/entities/notification-log
 interface SesEventLike {
   eventType?: string;
   notificationType?: string;
-  mail?: { messageId?: string; timestamp?: string };
+  mail?: {
+    messageId?: string;
+    timestamp?: string;
+    /** SES echoes the send's EmailTags here, each as an array of values. */
+    tags?: Record<string, unknown>;
+  };
 }
 
 /** SNS "Notification" envelope — present only if raw message delivery is off. */
@@ -28,7 +33,15 @@ export interface ParsedSesEvent {
   /** When SES accepted the original email (`mail.timestamp`). Undefined if the
    *  event carries no valid timestamp. */
   sentAt?: Date;
+  /** The `submissionId` EmailTag, set on every send that writes a
+   *  notification_log row (submission and payment-required emails). Its
+   *  presence marks the email as tracked. */
+  submissionId?: string;
 }
+
+/** The EmailTag name tracked sends carry. Shared with the senders so the two
+ *  sides can't drift apart. */
+export const SUBMISSION_ID_TAG = "submissionId";
 
 const EVENT_STATUS: Record<string, NotificationDeliveryStatus> = {
   delivery: NotificationDeliveryStatus.DELIVERED,
@@ -77,11 +90,19 @@ export function parseSesEvent(body: string): ParsedSesEvent | null {
   const status = EVENT_STATUS[type];
   if (!status) return null;
 
+  const result: ParsedSesEvent = { messageId, status };
+
   const sentAt =
     typeof event.mail?.timestamp === "string"
       ? new Date(event.mail.timestamp)
       : undefined;
-  return sentAt && !Number.isNaN(sentAt.getTime())
-    ? { messageId, status, sentAt }
-    : { messageId, status };
+  if (sentAt && !Number.isNaN(sentAt.getTime())) result.sentAt = sentAt;
+
+  const tag = event.mail?.tags?.[SUBMISSION_ID_TAG];
+  const submissionId = Array.isArray(tag) ? tag[0] : tag;
+  if (typeof submissionId === "string" && submissionId.length > 0) {
+    result.submissionId = submissionId;
+  }
+
+  return result;
 }

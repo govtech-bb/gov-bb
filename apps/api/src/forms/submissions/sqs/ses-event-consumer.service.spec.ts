@@ -137,6 +137,34 @@ describe("SesEventConsumerService", () => {
       );
     });
 
+    it("never discards a tracked (submissionId-tagged) event, so a failed log insert still reaches the DLQ", async () => {
+      // A submission email SES accepted, whose best-effort notification_log
+      // insert failed. Long past the race window, but tagged: it must keep
+      // retrying so maxReceiveCount routes it to the DLQ and the alarm fires.
+      const warnSpy = vi
+        .spyOn((service as any).logger, "warn")
+        .mockImplementation(() => {});
+
+      await service.processMessage(
+        QUEUE_URL,
+        sesMessage({
+          eventType: "Bounce",
+          mail: {
+            messageId: "tracked-no-row",
+            timestamp: minutesAgo(30),
+            tags: { submissionId: ["sub-123"], "ses:operation": ["SendEmail"] },
+          },
+        }),
+      );
+
+      expect(deletedReceipts()).not.toContain("receipt-1");
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringMatching(
+          /submissionId=sub-123\) — leaving for redelivery/,
+        ),
+      );
+    });
+
     it("keeps the retry behaviour when the event has no send timestamp", async () => {
       await service.processMessage(
         QUEUE_URL,
