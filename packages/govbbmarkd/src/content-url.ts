@@ -1,6 +1,12 @@
 const SAFE_PROTOCOL = /^(https?|ircs?|mailto|tel|xmpp):/i;
 const EXPLICIT_PROTOCOL = /^[a-z][a-z\d+.-]*:/i;
 
+/** A root-relative path safe for redirects and site links, checked without normalization. */
+export function isSitePath(value: string): boolean {
+  // eslint-disable-next-line no-control-regex -- Reject controls before URL parsing discards them.
+  return /^\/(?!\/)[^\\\s\u0000-\u001f\u007f]*$/.test(value);
+}
+
 /** Accepts relative content URLs and approved protocols; it does not sanitize HTML. */
 export function isSafeContentUrl(value: string): boolean {
   const url = value.trim();

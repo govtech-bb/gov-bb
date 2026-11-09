@@ -1,3 +1,4 @@
+import { isSitePath } from "@govtech-bb/govbbmarkd/content-url";
 import { pageCategory, type CategoryRecord } from "../modules/navigation";
 import {
   bareSlugOf,
@@ -101,7 +102,11 @@ export class PageResolution {
     const candidates = await this.reads.urlsWithSlug(slug);
     if (!candidates.ok) return candidates;
     const [target] = candidates.value;
-    if (candidates.value.length !== 1 || target === undefined)
+    if (
+      candidates.value.length !== 1 ||
+      target === undefined ||
+      !isSitePath(target)
+    )
       return ok(NOT_FOUND);
 
     const resolved = await this.resolve(target, viewer);

@@ -104,6 +104,29 @@ const history = async (page: Page) =>
   }>;
 
 describe("POST /pages/:id/history/:version/restore", () => {
+  it.each(["//outside.test/legacy", "/\\outside.test/legacy"])(
+    "refuses an old URL %j without changing the page or its history",
+    async (url) => {
+      const id = "88888888-8888-4888-8888-888888888888";
+      await db.execute(sql`insert into content_pages (id, url, slug, title, visibility, body_markdown)
+        values (${id}, ${url}, 'legacy', 'Legacy page', 'draft', 'Body')`);
+      await db.execute(
+        sql`update content_pages set url = '/legacy' where id = ${id}`,
+      );
+      const before = (await as(TEST_EDITOR, { url: `/pages/${id}` })).json();
+      const entries = await history(before);
+
+      const response = await restore(TEST_EDITOR, before, 1);
+
+      expect(response.statusCode).toBe(409);
+      expect(response.json()).toMatchObject({ error: "not_restorable" });
+      expect((await as(TEST_EDITOR, { url: `/pages/${id}` })).json()).toEqual(
+        before,
+      );
+      expect(await history(before)).toEqual(entries);
+    },
+  );
+
   it("brings an earlier version back as a new reverted entry, keeping every entry before it", async () => {
     const created = await create({ visibility: "draft" });
     const renamed = await save(created, { title: "Renamed" });

@@ -13,7 +13,13 @@ import { PostgresPages } from "./adapters/postgres-pages";
 import { PageDocument, withDefaults, type PageId } from "./modules/page";
 import { ok } from "./modules/result";
 import { PageEditing } from "./services/page-editing";
-import { categories, changeEvents, pageRevisions } from "./schema";
+import {
+  categories,
+  changeEvents,
+  contentPages,
+  pageRevisions,
+  searchChunks,
+} from "./schema";
 
 import {
   aPage,
@@ -266,6 +272,60 @@ describe("an editor", () => {
     expect((await revisions())[0]?.status).toBe("submitted");
   });
 });
+
+describe.each(["//outside.test/legacy", "/\\outside.test/legacy"])(
+  "publishing a stored revision with URL %j",
+  (url) => {
+    it.each([false, true])(
+      "refuses it without writes when it matches live: %s",
+      async (matchesLive) => {
+        const { page } = await submitted();
+        const [revision] = await revisions();
+        if (!revision) throw new Error("Expected the submitted revision");
+        await db
+          .update(pageRevisions)
+          .set({ fields: { ...revision.fields, url } })
+          .where(eq(pageRevisions.id, revision.id));
+        if (matchesLive) {
+          await db
+            .update(contentPages)
+            .set({ url, slug: "legacy" })
+            .where(eq(contentPages.id, page.id));
+        }
+        const [current] = await db
+          .select()
+          .from(contentPages)
+          .where(eq(contentPages.id, page.id));
+        if (!current) throw new Error("Expected the live page");
+        const before = {
+          page: await stored(page.id),
+          revisions: await revisions(),
+          events: await events(),
+          search: await db.select().from(searchChunks),
+        };
+
+        // Read the version from storage: the old URL need not pass today's response schema.
+        const response = await review(APPROVER, page.id, "publish", {
+          version: current.version,
+        });
+
+        expect(response.statusCode).toBe(422);
+        expect(response.json()).toMatchObject({
+          error: "validation_failed",
+          errors: expect.arrayContaining([
+            { field: "url", message: expect.any(String) },
+          ]),
+        });
+        expect({
+          page: await stored(page.id),
+          revisions: await revisions(),
+          events: await events(),
+          search: await db.select().from(searchChunks),
+        }).toEqual(before);
+      },
+    );
+  },
+);
 
 describe("publishing a revision", () => {
   it("publishes valid GovBB Markdown without rewriting its source", async () => {

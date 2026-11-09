@@ -9,16 +9,16 @@
  * the real handlers and the real error handler, against a real database.
  */
 
-import { sql } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { FastifyInstance, InjectOptions } from "fastify";
 import pino from "pino";
 
-import { PUBLIC_READ } from "./routes/responses";
+import { EDITOR_READ, NOT_FOUND_READ, PUBLIC_READ } from "./routes/responses";
 import type { Database } from "./db";
 import { PostgresPages } from "./adapters/postgres-pages";
 import { withDefaults, type PageId, type Visibility } from "./modules/page";
-import { categories, changeEvents, searchChunks } from "./schema";
+import { categories, changeEvents, contentPages, searchChunks } from "./schema";
 import {
   aPage,
   createTestApp,
@@ -248,6 +248,43 @@ describe("GET /pages?url=", () => {
       category: "money-financial-support",
       subcategory: "arts-culture",
     });
+  });
+
+  it.each([
+    "//outside.test/legacy",
+    "/\\outside.test/legacy",
+    "/\t/outside.test/legacy",
+    "/old\u001f/legacy",
+  ])("never redirects to an unsafe stored URL %j", async (url) => {
+    const [page] = await db
+      .insert(contentPages)
+      .values({
+        url,
+        slug: "legacy",
+        title: "Legacy page",
+        visibility: "public",
+        bodyMarkdown: "Legacy content",
+      })
+      .returning();
+    if (!page) throw new Error("Expected the legacy page");
+
+    for (const visibility of ["public", "preview"] as const) {
+      await db
+        .update(contentPages)
+        .set({ visibility })
+        .where(eq(contentPages.id, page.id));
+      const response = await read("/legacy");
+      expect(response.statusCode).toBe(404);
+      expect(response.headers.location).toBeUndefined();
+      expect(response.json()).not.toHaveProperty("redirect");
+      expect(response.headers["cache-control"]).toBe(NOT_FOUND_READ);
+
+      const preview = await readPreview("/legacy");
+      expect(preview.statusCode).toBe(404);
+      expect(preview.headers.location).toBeUndefined();
+      expect(preview.json()).not.toHaveProperty("redirect");
+      expect(preview.headers["cache-control"]).toBe(EDITOR_READ);
+    }
   });
 
   it("301s a bare slug to the one public page it names", async () => {
@@ -618,6 +655,26 @@ describe("GET /editor/categories", () => {
 });
 
 describe("POST /pages", () => {
+  it.each([
+    "//outside.test/page",
+    "/\\outside.test/page",
+    "/a//b",
+    "/a\u001fb",
+  ])(
+    "rejects an unsafe authored URL %j before inserting a page",
+    async (url) => {
+      const response = await inject({
+        method: "POST",
+        url: "/pages",
+        payload: aPage({ url, visibility: "preview" }),
+      });
+      expect(response.statusCode).toBe(400);
+      expect(await db.select().from(contentPages)).toEqual([]);
+      expect(await db.select().from(searchChunks)).toEqual([]);
+      expect(await db.select().from(changeEvents)).toEqual([]);
+    },
+  );
+
   it("creates the page", async () => {
     const response = await inject({
       method: "POST",
@@ -719,6 +776,34 @@ describe("POST /pages", () => {
 // A save to a public page goes into its pending revision (revisions.test.ts),
 // so the tests of what a save writes use a page that is not public.
 describe("PUT /pages/:id", () => {
+  it.each([
+    "//outside.test/page",
+    "/\\outside.test/page",
+    "/a//b",
+    "/a\u001fb",
+  ])(
+    "rejects an unsafe authored URL %j without changing the page",
+    async (url) => {
+      const page = await seedPage({ visibility: "preview" });
+      const before = {
+        pages: await db.select().from(contentPages),
+        search: await db.select().from(searchChunks),
+        history: await db.select().from(changeEvents),
+      };
+      const response = await inject({
+        method: "PUT",
+        url: `/pages/${page.id}`,
+        payload: { ...page, url, expected_version: page.version },
+      });
+      expect(response.statusCode).toBe(400);
+      expect({
+        pages: await db.select().from(contentPages),
+        search: await db.select().from(searchChunks),
+        history: await db.select().from(changeEvents),
+      }).toEqual(before);
+    },
+  );
+
   it("saves and returns the new updated_at", async () => {
     const created = await seedPage();
     const response = await inject({

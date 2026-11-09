@@ -308,7 +308,7 @@
                   "url": {
                     "type": "string",
                     "maxLength": 512,
-                    "pattern": "^\\/[^?#]*[^/?#]$",
+                    "pattern": "^(?:\\/[^/?#]+)+$",
                     "description": "The site's routing key."
                   },
                   "category_id": {
@@ -403,7 +403,7 @@
                     "url": {
                       "type": "string",
                       "maxLength": 512,
-                      "pattern": "^\\/[^?#]*[^/?#]$",
+                      "pattern": "^(?:\\/[^/?#]+)+$",
                       "description": "The site's routing key."
                     },
                     "category_id": {
@@ -1909,7 +1909,7 @@
                     "url": {
                       "type": "string",
                       "maxLength": 512,
-                      "pattern": "^\\/[^?#]*[^/?#]$",
+                      "pattern": "^(?:\\/[^/?#]+)+$",
                       "description": "The site's routing key."
                     },
                     "category_id": {
@@ -2228,7 +2228,7 @@
                   "url": {
                     "type": "string",
                     "maxLength": 512,
-                    "pattern": "^\\/[^?#]*[^/?#]$",
+                    "pattern": "^(?:\\/[^/?#]+)+$",
                     "description": "The site's routing key."
                   },
                   "category_id": {
@@ -2342,7 +2342,7 @@
                     "url": {
                       "type": "string",
                       "maxLength": 512,
-                      "pattern": "^\\/[^?#]*[^/?#]$",
+                      "pattern": "^(?:\\/[^/?#]+)+$",
                       "description": "The site's routing key."
                     },
                     "category_id": {
@@ -3287,7 +3287,7 @@
                         "url": {
                           "type": "string",
                           "maxLength": 512,
-                          "pattern": "^\\/[^?#]*[^/?#]$",
+                          "pattern": "^(?:\\/[^/?#]+)+$",
                           "description": "The site's routing key."
                         },
                         "category_id": {
@@ -8245,7 +8245,7 @@
                     "url": {
                       "type": "string",
                       "maxLength": 512,
-                      "pattern": "^\\/[^?#]*[^/?#]$",
+                      "pattern": "^(?:\\/[^/?#]+)+$",
                       "description": "The site's routing key."
                     },
                     "category_id": {
@@ -8728,7 +8728,7 @@
                         "url": {
                           "type": "string",
                           "maxLength": 512,
-                          "pattern": "^\\/[^?#]*[^/?#]$",
+                          "pattern": "^(?:\\/[^/?#]+)+$",
                           "description": "The site's routing key."
                         },
                         "category_id": {
@@ -9201,7 +9201,7 @@
                         "url": {
                           "type": "string",
                           "maxLength": 512,
-                          "pattern": "^\\/[^?#]*[^/?#]$",
+                          "pattern": "^(?:\\/[^/?#]+)+$",
                           "description": "The site's routing key."
                         },
                         "category_id": {
@@ -9644,7 +9644,7 @@
                     "url": {
                       "type": "string",
                       "maxLength": 512,
-                      "pattern": "^\\/[^?#]*[^/?#]$",
+                      "pattern": "^(?:\\/[^/?#]+)+$",
                       "description": "The site's routing key."
                     },
                     "category_id": {

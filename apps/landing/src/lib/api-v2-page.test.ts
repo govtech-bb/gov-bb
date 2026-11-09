@@ -595,6 +595,10 @@ describe('fetchApiV2Page', () => {
     'javascript:alert(1)',
     '/\t/evil.example',
     '/ evil',
+    '/a\u0000b',
+    '/a\u001fb',
+    '/a\u007fb',
+    '/new\n',
     '%2F%2Fevil.example',
     'https://www.alpha.gov.bb/x',
   ])(
