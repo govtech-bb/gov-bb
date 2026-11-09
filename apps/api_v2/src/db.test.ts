@@ -1,9 +1,11 @@
+import { sql, TransactionRollbackError } from "drizzle-orm";
 import pino from "pino";
 import { describe, expect, it } from "vitest";
 import type { DatabaseConfig } from "./config";
 import { connect, createPool, ping, type Database } from "./db";
 import { Redacted } from "./modules/redacted";
 import type { Result } from "./modules/result";
+import { createEmptyDb } from "./test-db";
 
 const config: DatabaseConfig = {
   host: "127.0.0.1",
@@ -116,5 +118,22 @@ describe("database setup", () => {
   it("reports a database that does not answer within the cap", async () => {
     const db = { execute: () => new Promise(() => {}) } as unknown as Database;
     expect(await ping(db, 10)).toBe(false);
+  });
+
+  it("keeps a refused transaction's connection and destroys a failed one's", async () => {
+    const test = await createEmptyDb();
+    try {
+      const db = value(await connect(test.pool, config));
+      await expect(db.transaction(async (tx) => tx.rollback())).rejects.toThrow(
+        TransactionRollbackError,
+      );
+      expect(test.pool.totalCount).toBe(1);
+      await expect(
+        db.transaction((tx) => tx.execute(sql`select 1 / 0`)),
+      ).rejects.toThrow();
+      expect(test.pool.totalCount).toBe(0);
+    } finally {
+      await test.close();
+    }
   });
 });

@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs";
-import { sql } from "drizzle-orm";
+import { sql, TransactionRollbackError } from "drizzle-orm";
 import { drizzle, type NodePgQueryResultHKT } from "drizzle-orm/node-postgres";
 import type { PgDatabase } from "drizzle-orm/pg-core";
 import { Pool } from "pg";
@@ -101,7 +101,26 @@ export async function connect(
       ),
     );
   }
-  return ok(drizzle(pool));
+  const db = drizzle(pool);
+  // drizzle-orm (0.45, node-postgres session.js) releases a transaction's
+  // client without an error even after a query on it timed out, so the pool
+  // lends out a connection still inside the abandoned transaction; and when
+  // `begin` itself fails it never releases the client, which the pool then
+  // counts for good. So transactions borrow the client here and destroy it
+  // unless they finished cleanly; Postgres rolls back whatever it held.
+  const transaction: typeof db.transaction = async (work, config) => {
+    const client = await pool.connect();
+    try {
+      const result = await drizzle(client).transaction(work, config);
+      client.release();
+      return result;
+    } catch (error) {
+      // A refusal's rollback has run, so its connection is clean.
+      client.release(!(error instanceof TransactionRollbackError));
+      throw error;
+    }
+  };
+  return ok(Object.assign(db, { transaction }));
 }
 
 /** Whether the database answers within the cap; `/health/db` reports it. */
