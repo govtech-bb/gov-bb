@@ -8,6 +8,7 @@
 
 import type { FastifySchema } from "fastify";
 import { z } from "zod";
+import { isSitePath } from "@govtech-bb/govbbmarkd/content-url";
 import { ServiceDetail, ServiceSummary } from "../modules/estate-services";
 import {
   CatalogEntry,
@@ -143,7 +144,18 @@ export const SCHEMAS = {
       "(301) to the one visible page with that slug.",
     tags: ["pages"],
     ...siteRead,
-    querystring: z.object({ url: z.string().min(1).max(512) }),
+    // A url no page could have is a 400, not a lookup: some (a NUL) would
+    // fail in Postgres and answer 500.
+    querystring: z.object({
+      url: z
+        .string()
+        .min(1)
+        .max(512)
+        .refine(
+          isSitePath,
+          "Use a site path without backslashes, whitespace or control characters.",
+        ),
+    }),
     response: {
       200: PublicPage,
       301: z.object({ redirect: z.string() }),

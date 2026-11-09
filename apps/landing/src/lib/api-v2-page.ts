@@ -207,20 +207,26 @@ export async function fetchApiV2Page(
   | { kind: 'redirect'; to: string; cacheControl: string | null }
   | ApiV2Miss
 > {
+  // A url that can't be encoded (a lone surrogate) is the visitor's, not an
+  // api_v2 failure, so it must not reach the catch below as `network`.
+  let query: string
+  try {
+    query = encodeURIComponent(url)
+  } catch {
+    logFallback('rejected', url)
+    return { kind: 'miss', reason: 'rejected', cacheControl: null }
+  }
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), API_V2_TIMEOUT_MS)
   try {
-    const response = await fetchImpl(
-      `${base}/pages?url=${encodeURIComponent(url)}`,
-      {
-        redirect: 'manual',
-        signal: controller.signal,
-        headers: {
-          ...(landingToken && { 'x-landing-token': landingToken }),
-          ...(previewToken && { 'x-preview-token': previewToken }),
-        },
+    const response = await fetchImpl(`${base}/pages?url=${query}`, {
+      redirect: 'manual',
+      signal: controller.signal,
+      headers: {
+        ...(landingToken && { 'x-landing-token': landingToken }),
+        ...(previewToken && { 'x-preview-token': previewToken }),
       },
-    )
+    })
     const cacheControl = response.headers.get('cache-control')
     if (response.status === 404) {
       // Release the socket: an unread body pins a keep-alive connection.
@@ -404,6 +410,15 @@ export async function siteVersionChanges(): Promise<number> {
   return siteChanges
 }
 
+/** A lone surrogate: a paired one is part of an astral code point under `u`. */
+const LONE_SURROGATE = /\p{Cs}/u
+
+/** A url api_v2 could hold a page at: a well-formed site path within its
+ *  512-character limit. */
+export function isPageUrl(url: string): boolean {
+  return url.length <= 512 && !LONE_SURROGATE.test(url) && isSitePath(url)
+}
+
 /**
  * A public read goes through `cache`; a reviewer's read (with a preview token)
  * skips it both ways, because the cache is keyed by url alone and a preview
@@ -419,6 +434,12 @@ export function loadApiV2Page(
   previewToken?: string,
   fetchImpl: typeof fetch = fetch,
 ): Promise<ApiV2Result> {
+  // No page lives at a url api_v2 can't store, so it's a miss here: it never
+  // reaches api_v2, the cache or the breaker.
+  if (!isPageUrl(url)) {
+    logFallback('rejected', url)
+    return Promise.resolve({ kind: 'miss', reason: 'rejected' })
+  }
   if (previewToken)
     return resolveApiV2Page(base, url, fetchImpl, landingToken, previewToken)
   return cache.get(url, () =>
@@ -430,7 +451,12 @@ export function loadApiV2Page(
  *  until it expires or api_v2's site version moves. The level comes from the
  *  httpOnly grant cookie, read here, never from the client. */
 export const getApiV2Page = createServerFn()
-  .validator((url: string) => url)
+  // Anything but a string is a hand-made call; a string that isn't a page url
+  // is still a visitor's path, so `loadApiV2Page` answers it with a miss.
+  .validator((url: unknown) => {
+    if (typeof url !== 'string') throw new Error('Expected a page url')
+    return url
+  })
   .handler(async ({ data: url }) => {
     await checkSiteVersion()
     const level = levelFromCookie(getCookie(COOKIE_NAME))
