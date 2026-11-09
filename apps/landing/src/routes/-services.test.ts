@@ -58,6 +58,18 @@ describe('/services loader (#3244)', () => {
     ])
   })
 
+  it.each(['/\\outside.test/page', '/\t/outside.test/page'])(
+    'keeps a catalog link on-site for an unsafe stored URL %j',
+    async (url) => {
+      siteMocks.getApiV2CatalogEntries.mockResolvedValue([
+        entry(url, true, 'alpha'),
+      ])
+      expect(await load({ kind: 'found', categories: [] })).toEqual([
+        expect.objectContaining({ href: '/' }),
+      ])
+    },
+  )
+
   it('leaves the static list in place when api_v2 is off', async () => {
     expect(await load({ kind: 'disabled' })).toBeNull()
     expect(siteMocks.getApiV2CatalogEntries).not.toHaveBeenCalled()

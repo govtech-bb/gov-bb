@@ -369,6 +369,22 @@ The hierarchy is `parent_id`, not the url. A page is served only when it and eve
 
 `GET /pages?url=` returns `{url, frontmatter, body_markdown, form_id, hide_start_links, breadcrumbs, category, subcategory}`. `category` and `subcategory` are slugs, null when the page has none. `hide_start_links` is true when the page's `start` sub-page is hidden from the viewer. `visibility` is `preview` when the page or any page above it is preview; the site shows its review banner and `noindex` from it (#3246). Whether a form is open is the forms API's to say: `form_id` is a name, and the site asks the forms API for the form's status. The API serves markdown as written; the site owns sanitization and rendering. Editor writes return field-specific 422s for invalid references or duplicates, 409 for a stale supplied version, and stamp `published_at` only on first publication. `content_updated_at`, the site's "Last updated" line, is moved by a trigger only when the title, description, body, frontmatter or form changes, so a visibility change or a move keeps it (migration `016_content_updated_at`, #3105). A save replaces the page, so it sends every field; only `parent_id` may be left out, which keeps the page's parent. Changing `url` moves that page alone: its sub-pages keep theirs, and nothing redirects from the old url. Each write still records an append-only audit snapshot (see above); `GET /pages/:id/history` lists them read-only, newest first, with who made each change and which fields it changed (#3423); a restore adds an entry and removes none (see above). A request its route's schema refuses (a missing field, an id that is not a UUID, an explicitly malformed version, a url over 512 characters, a title over 300) is a 400; Fastify's own refusals keep their status (a body that is not JSON is a 415), and an unknown route is a JSON 404.
 
+### Page paths
+
+`PageUrl` requires a root-relative path with non-empty segments, no trailing
+slash, query, fragment, backslash, whitespace or control characters. The limits
+are 512 characters overall and 200 in the last segment. Validation rejects bad
+input rather than rewriting it. Publishing revalidates the stored revision's URL;
+restoring history applies the same field schema.
+
+Before deploying tighter page-path rules, validate read-only exports of
+`content_pages.url` and `page_revisions.fields.url` for draft, submitted and
+rejected revisions with `PageUrl.safeParse` from `src/modules/page.ts`. Review
+and correct invalid rows before rollout: editor response schemas enforce the
+rules too, so those rows may no longer open in the editor. Do not normalize URLs
+in bulk, reimport the estate or rewrite history. Historical versions that fail
+the current schema stay in history but cannot be restored.
+
 ### Category management
 
 The one shared list serves category management, every page picker and every content

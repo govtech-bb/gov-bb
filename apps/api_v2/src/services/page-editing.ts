@@ -27,6 +27,7 @@ import {
   type PageFields,
   type PageId,
   PageRejected,
+  PageUrl,
   type PageValues,
   type PendingRevision,
   type RevisionView,
@@ -646,6 +647,16 @@ export class PageEditing {
         if (!reviewing.ok) return reviewing;
         const { live, revision } = reviewing.value;
         if (this.isOwn(revision, actor)) return err(new SelfApproval());
+        const url = PageUrl.safeParse(revision.fields.url);
+        if (!url.success)
+          return err(
+            new PageRejected(
+              url.error.issues.map(({ message }) => ({
+                field: "url",
+                message,
+              })),
+            ),
+          );
         const invalidContent = markdownRejection(revision.fields);
         if (invalidContent) return err(invalidContent);
         if (revision.fields.url !== live.url) {
