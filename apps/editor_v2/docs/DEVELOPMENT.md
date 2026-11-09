@@ -34,7 +34,7 @@ Use [Code quality](CODE-QUALITY.md) for formatting commands and the validation e
 
 TanStack Start builds a static shell and renders the workspace in the browser. Keep the root document safe to render during builds. Editing state belongs to the client-only workspace; browser storage is used only for unrelated clipboard data and UI preferences.
 
-Routes use `/services`, `/services/$serviceId`, `/services/$serviceId/$documentId` and `/categories`; `/` opens Services. Old `/#/services/...` links are replaced on startup. Clean views are cached with per-page undo; dirty/error/pending views cannot be silently evicted. Leaving unsaved work asks before changing documents. Confirmed discard removes the copy and its undo session; navigation never flushes or saves.
+Routes use `/services`, `/services/$serviceId`, `/services/$serviceId/$documentId`, `/site-pages`, `/site-pages/$pageId` and `/categories`; `/` opens Services. Site pages reads `GET /editor/site-pages` and opens each page through the existing `GET /pages/:id` and `RemotePagePane`, without needing a service or cached list. Its content queries share invalidation with Services. Saves, pending revisions, version conflicts and history use the same page APIs; site pages do not have separate write endpoints. Old `/#/services/...` links are replaced on startup. Clean views are cached with per-page undo; dirty/error/pending views cannot be silently evicted. Leaving unsaved work asks before changing documents. Confirmed discard removes the copy and its undo session; navigation never flushes or saves.
 
 Start generates `src/routeTree.gen.ts` during development and builds. Keep that file checked in so standalone typechecks work on a fresh checkout. It is excluded from linting and formatting; edit route files instead. Vitest uses its own configuration without the Start plugin.
 
@@ -77,6 +77,8 @@ PLAYWRIGHT_MODULE_PATH=/path/to/playwright-core \
 ```
 
 Two browser contexts add, rename and order categories, reload, make a stale save, file a real service so a deletion is refused, and delete an empty category. They are two clients of the same bypass identity, not distinct authenticated employees. Screenshots go to `/tmp/c3107-categories-live-*.png`; uniquely named categories and draft services remain in the disposable database. Run mutation suites serially. Keep fixture and auth suites on a separate dev server with bypass off.
+
+`site-pages-live.mjs` is opt-in the same way, with the same servers, but start api_v2 with `SEED=true` over a fresh disposable database so it holds the estate's three site pages as seeded. It opens each from Site pages, saves a Page details change and checks the body comes back byte for byte, types into the body, saves and reloads, and checks through api_v2 that both saves went into one draft revision while the public read stayed the same. It also opens the preview and history, and the list and a page at 390px. It reads api_v2 at `http://127.0.0.1:43107` unless given another origin after the editor URL. Each run leaves a revision on every site page, so give the next run a fresh database. Screenshots go to `/tmp/site-pages-live-*.png`. `site-pages.mjs` covers the same screens against fixtures and runs in the default list.
 
 The live editor suite does not publish a page or prove landing propagation: landing integration is tracked in #3179 and sandbox acceptance in #3180.
 

@@ -41,6 +41,8 @@ describe("authentication boundaries", () => {
 
   it.each([
     "/categories?sort=title#list",
+    "/site-pages",
+    "/site-pages/44444444-4444-4444-8444-444444444444",
     "/reviews",
     "/reviews/44444444-4444-4444-8444-444444444444",
     "/history/44444444-4444-4444-8444-444444444444?service=11111111-1111-4111-8111-111111111111",
@@ -60,6 +62,8 @@ describe("authentication boundaries", () => {
 
   it.each([
     "/categories/other",
+    "/site-pages/a/b",
+    "/site-pages/../auth",
     "/content-types",
     "/content-types-extra",
     "/reviews/a/b",

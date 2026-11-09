@@ -42,6 +42,11 @@ export type PageHistoryEntry = Json<
 /** One row of the services list. */
 export type ServiceSummary = Json<paths["/services"]["get"]["responses"][200]>[number];
 
+/** A standalone site page in the editor, without its content. */
+export type SitePageSummary = Json<
+  paths["/editor/site-pages"]["get"]["responses"][200]
+>["pages"][number];
+
 /** A service opened in the editor: its summary and every page in it. */
 export type ServiceDetail = Json<paths["/services/{id}"]["get"]["responses"][200]>;
 
@@ -552,6 +557,7 @@ export function createEditorApi(apiOrigin: string, landingOrigin?: string) {
 
   return {
     services,
+    sitePages: async () => (await read<{ pages: SitePageSummary[] }>("/editor/site-pages")).pages,
     pagePaths: () =>
       read<Json<paths["/editor/page-paths"]["get"]["responses"][200]>>("/editor/page-paths"),
     service: (id: string) => read<ServiceDetail>(`/services/${id}`),

@@ -117,6 +117,19 @@ const categoryFields: CategoryFields = {
 };
 
 describe("editor API client", () => {
+  it("reads the site pages from their own index, and passes a refusal on", async () => {
+    const pages = [{ id: "site-1", title: "Terms", url: "/terms", visibility: "public" }];
+    status = 200;
+    response = JSON.stringify({ pages });
+    const api = createEditorApi(origin);
+
+    expect(await api.sitePages()).toEqual(pages);
+    expect(requests.at(-1)).toMatchObject({ method: "GET", url: "/editor/site-pages" });
+    status = 401;
+    response = JSON.stringify({ error: "unauthenticated" });
+    expect(await failureOf(api.sitePages())).toMatchObject({ status: 401 });
+  });
+
   it("saves with the page's numeric version, as JSON", async () => {
     status = 200;
     response = JSON.stringify(savedPage);

@@ -114,6 +114,12 @@ Editor page responses also include `last_edited_by: { id, name } | null` (#3171)
 
 A save to a page that is not public writes the page as before. Changing `visibility` stays a direct approver action (ADR 0079): an approver's save that takes a public page out of public view changes only the live row's `visibility`. The other fields it sends are ignored and the live content stays, so revision content never reaches `content_pages` that way, to be made public again without review. It closes the page's open revision, keeping the rule that only a public page has one: a draft is dropped, and a revision waiting for review is marked `discarded` with the approver and the time (migration `015_revision_discarded`, #3203), so an urgent takedown needs no rejection first. The page's history then reads `discarded` followed by `unpublished`, both by the approver. A rejected revision retires as the live page moves on. An approver who then edits the page while it is not public can't make it public themselves (see Making a page public). A revision save writes no `change_events` entry, because the live page did not change; its review steps are recorded (see below).
 
+### Editing site pages
+
+`GET /editor/site-pages` lists uncategorised root pages (`parent_id` and `category_id` are null), including drafts and previews, for signed-in employees. It returns `{ pages: [{ id, title, url, visibility }] }` ordered by title, with stored live metadata rather than pending revision fields. The editor shows them under Site pages, separately from Services.
+
+Open and save these pages through the existing `/pages/:id` endpoints. Public-page edits still create pending revisions, and writes require the same roles and `expected_version`. No page type, migration or re-import is needed. `/services` and `/services/:id` retain their category requirement and exclude these pages.
+
 ### Reviewing a revision
 
 Migration `011_revision_review` (#3199) adds the review statuses and who moved a revision through them. A revision goes `draft` → `submitted` → `rejected` or `published`, or `discarded` when an approver unpublishes the page while it waits (`015`, #3203):
@@ -319,6 +325,7 @@ erDiagram
 | GET      | `/pages/:id/history`                   | Employee; the page's changes and review steps, newest first            |
 | GET      | `/revisions?status=submitted`          | Employee; the review queue: revisions waiting for an approver          |
 | GET      | `/services`                            | Employee service index, grouped by `parent_id`                         |
+| GET      | `/editor/site-pages`                   | Employee; uncategorised root pages in every visibility                 |
 | GET      | `/services/:id`                        | Employee; one service's pages with their roles, entry first            |
 | GET      | `/editor/categories`                   | Employee; every shared category, counts, address protection and stamps |
 | POST     | `/editor/categories`                   | Approver; append a category or subcategory                             |
