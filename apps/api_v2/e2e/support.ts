@@ -17,6 +17,7 @@
 
 import { spawn, type ChildProcess } from "node:child_process";
 import { existsSync } from "node:fs";
+import { connect, createServer, type Socket } from "node:net";
 import { join } from "node:path";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Client, Pool } from "pg";
@@ -86,6 +87,64 @@ export async function allowConnections(
   await client.connect();
   await client.query(`alter database ${database} allow_connections ${allowed}`);
   await client.end();
+}
+
+/** A TCP proxy in front of Postgres that can go quiet. */
+export interface QuietProxy {
+  port: number;
+  /** Hold every connection, current and new, open but pass nothing either way. */
+  freeze: () => void;
+  /** Pass on what was held and everything after it. */
+  thaw: () => void;
+  close: () => Promise<void>;
+}
+
+/**
+ * A failover or a partition leaves the server's sockets open while nothing
+ * comes back on them: no error, no close, only silence. Terminating backends
+ * cannot show that, because Postgres hangs up. This proxy can: frozen, it
+ * stops reading both sides of every connection, so nothing is lost and the
+ * bytes flow on when it thaws. A connection made while frozen is held the
+ * same way, so a new pool client waits for a greeting that never comes.
+ */
+export async function startQuietProxy(): Promise<QuietProxy> {
+  const sockets = new Set<Socket>();
+  let frozen = false;
+  // Data handlers rather than pipe(): a piped source may resume itself when
+  // its destination drains, which would leak bytes through a freeze.
+  const server = createServer((client) => {
+    const upstream = connect(DB.port, DB.host);
+    for (const [from, to] of [
+      [client, upstream],
+      [upstream, client],
+    ] as const) {
+      from.on("data", (chunk) => to.write(chunk));
+      from.on("close", () => to.destroy());
+      from.on("error", () => to.destroy());
+      sockets.add(from);
+      from.once("close", () => sockets.delete(from));
+      if (frozen) from.pause();
+    }
+  });
+  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+  const address = server.address();
+  if (!address || typeof address === "string")
+    throw new Error("The proxy is not listening on a port");
+  return {
+    port: address.port,
+    freeze: () => {
+      frozen = true;
+      for (const socket of sockets) socket.pause();
+    },
+    thaw: () => {
+      frozen = false;
+      for (const socket of sockets) socket.resume();
+    },
+    close: async () => {
+      for (const socket of sockets) socket.destroy();
+      await new Promise((resolve) => server.close(resolve));
+    },
+  };
 }
 
 export async function dropScratchDatabase(name: string): Promise<void> {
