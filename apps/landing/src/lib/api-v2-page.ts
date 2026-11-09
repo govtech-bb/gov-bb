@@ -1,4 +1,5 @@
 import { createServerFn } from '@tanstack/react-start'
+import { getCookie } from '@tanstack/react-start/server'
 import { useRuntimeConfig } from 'nitro/runtime-config'
 import { z } from 'zod'
 import type { ContentPage } from '../content/registry'
@@ -6,7 +7,8 @@ import { bakeStartLinkFormId } from '../utils/markdown/plugins'
 import { createApiV2Cache } from './api-v2-cache'
 import { REASONS, logFallback, message } from './api-v2-log'
 import { createVersionWatch, fetchSiteVersion } from './api-v2-version'
-import type { Frontmatter } from './frontmatter'
+import type { Frontmatter, ViewLevel } from './frontmatter'
+import { COOKIE_NAME, levelFromCookie } from './preview'
 
 /**
  * Pages from api_v2 (#2944). When `VITE_API_V2_URL` is set, the catch-all asks
@@ -25,7 +27,9 @@ import type { Frontmatter } from './frontmatter'
  * `{event: "api_v2_fallback", reason, url, status?, error?}`, whichever header
  * follows
  * — `console.error` for api_v2 failures (`status`, `timeout`, `network`,
- * `malformed`, `no_target`: these count toward the breaker), `console.warn`
+ * `malformed`, `no_target`: these count toward the breaker) and for
+ * `preview_token` (a reviewer's read refused with 401: landing's and api_v2's
+ * PREVIEW_SECRET differ), `console.warn`
  * for answers landing can't use (`rejected` — a 4xx other than 404 —
  * `bad_redirect`, `compile`). A 404 isn't logged. A breaker trip logs one
  * `{event: "api_v2_circuit_open", url}` at `console.error`; requests it turns
@@ -132,6 +136,7 @@ export type ApiV2MissReason =
   | 'rejected'
   | 'bad_redirect'
   | 'compile'
+  | 'preview_token'
   | 'no_target'
   | 'status'
   | 'malformed'
@@ -166,6 +171,24 @@ export function landingToken(): string | undefined {
   return config.landingSecret || process.env.LANDING_SECRET || undefined
 }
 
+/**
+ * The `x-preview-token` for a read at `level` (#2961): the site's
+ * PREVIEW_SECRET for a reviewer, nothing for the public. No secret configured
+ * means no token, so a reviewer then sees what the public sees.
+ */
+export function previewTokenFor(
+  level: ViewLevel,
+  secret: string | undefined,
+): string | undefined {
+  return level === 'preview' ? secret || undefined : undefined
+}
+
+/** Same dual-source as `checkFormAccessible`. Server-only. */
+function previewSecret(): string | undefined {
+  const config = useRuntimeConfig() as { previewSecret?: string }
+  return config.previewSecret || process.env.PREVIEW_SECRET || undefined
+}
+
 /** `/…` only: not `//`, no backslash, no whitespace — the three ways a
  *  browser's URL parser turns a "path" into another origin (#3126). */
 function isSitePath(to: string): boolean {
@@ -175,13 +198,15 @@ function isSitePath(to: string): boolean {
 /**
  * `GET /pages?url=` without following redirects. A 404 is a silent miss;
  * anything else unexpected (status, network, timeout, bad body) is a logged
- * miss, so the caller falls back to static content.
+ * miss, so the caller falls back to static content. `previewToken` makes it a
+ * reviewer's read; a 401 to one is a `preview_token` miss.
  */
 export async function fetchApiV2Page(
   base: string,
   url: string,
   fetchImpl: typeof fetch = fetch,
   landingToken?: string,
+  previewToken?: string,
 ): Promise<
   | { kind: 'page'; body: PageResponse; cacheControl: string | null }
   | { kind: 'redirect'; to: string; cacheControl: string | null }
@@ -195,7 +220,10 @@ export async function fetchApiV2Page(
       {
         redirect: 'manual',
         signal: controller.signal,
-        ...(landingToken && { headers: { 'x-landing-token': landingToken } }),
+        headers: {
+          ...(landingToken && { 'x-landing-token': landingToken }),
+          ...(previewToken && { 'x-preview-token': previewToken }),
+        },
       },
     )
     const cacheControl = response.headers.get('cache-control')
@@ -227,6 +255,10 @@ export async function fetchApiV2Page(
     }
     if (response.status !== 200) {
       await response.body?.cancel()
+      if (response.status === 401 && previewToken) {
+        logFallback('preview_token', url, { status: response.status })
+        return { kind: 'miss', reason: 'preview_token' }
+      }
       // A 4xx is api_v2 answering (e.g. a url over its 512-char limit), so a
       // visitor can't trip the breaker with junk urls; a 5xx is a failure.
       // 408/429 say api_v2 (or a proxy) is busy, not anything about the url.
@@ -327,9 +359,16 @@ export async function resolveApiV2Page(
   url: string,
   fetchImpl: typeof fetch = fetch,
   landingToken?: string,
+  previewToken?: string,
 ): Promise<ApiV2Result> {
   if (!base) return { kind: 'miss', reason: 'unconfigured' }
-  const result = await fetchApiV2Page(base, url, fetchImpl, landingToken)
+  const result = await fetchApiV2Page(
+    base,
+    url,
+    fetchImpl,
+    landingToken,
+    previewToken,
+  )
   if (result.kind !== 'page') return result
   const { cacheControl } = result
   try {
@@ -370,13 +409,41 @@ export async function siteVersionChanges(): Promise<number> {
   return siteChanges
 }
 
-/** Server function: `resolveApiV2Page` against the configured api_v2, cached
- *  until it expires or api_v2's site version moves. */
+/**
+ * A public read goes through `cache`; a reviewer's read (with a preview token)
+ * skips it both ways, because the cache is keyed by url alone and a preview
+ * page must never be served to the public. Reviewer reads bypass the circuit
+ * breaker and the kept stale copy too: they don't trip it, and while it is
+ * open they still wait up to `API_V2_TIMEOUT_MS` before falling back.
+ */
+export function loadApiV2Page(
+  cache: ReturnType<typeof createApiV2Cache>,
+  base: string | null,
+  url: string,
+  landingToken?: string,
+  previewToken?: string,
+  fetchImpl: typeof fetch = fetch,
+): Promise<ApiV2Result> {
+  if (previewToken)
+    return resolveApiV2Page(base, url, fetchImpl, landingToken, previewToken)
+  return cache.get(url, () =>
+    resolveApiV2Page(base, url, fetchImpl, landingToken),
+  )
+}
+
+/** Server function: `loadApiV2Page` against the configured api_v2, cached
+ *  until it expires or api_v2's site version moves. The level comes from the
+ *  httpOnly grant cookie, read here, never from the client. */
 export const getApiV2Page = createServerFn()
   .validator((url: string) => url)
   .handler(async ({ data: url }) => {
     await checkSiteVersion()
-    return apiV2Cache.get(url, () =>
-      resolveApiV2Page(apiV2Base(), url, fetch, landingToken()),
+    const level = levelFromCookie(getCookie(COOKIE_NAME))
+    return loadApiV2Page(
+      apiV2Cache,
+      apiV2Base(),
+      url,
+      landingToken(),
+      previewTokenFor(level, previewSecret()),
     )
   })

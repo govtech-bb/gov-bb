@@ -169,8 +169,9 @@ export const Route = createFileRoute('/$')({
       }
     }
 
-    // api_v2 first (#2944): it serves only public pages, so a miss (or no
-    // api_v2 configured) falls back to the static registry page. A known
+    // api_v2 first (#2944): it serves public pages, and preview pages to a
+    // reviewer with the grant (#2961), so a miss (or no api_v2 configured)
+    // falls back to the static registry page. A known
     // subcategory listing is never an api_v2 page, so it skips the round
     // trip (#2950); `findPage` still runs first, keeping today's precedence.
     // Unset VITE_API_V2_URL skips it too (#3127), so client navigations make
