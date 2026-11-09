@@ -2,10 +2,11 @@ import { sql, TransactionRollbackError } from "drizzle-orm";
 import pino from "pino";
 import { describe, expect, it } from "vitest";
 import type { DatabaseConfig } from "./config";
-import { connect, createPool, ping, type Database } from "./db";
+import { Pool } from "pg";
+import { connect, createPool, migrationExec, ping, type Database } from "./db";
 import { Redacted } from "./modules/redacted";
 import type { Result } from "./modules/result";
-import { createEmptyDb } from "./test-db";
+import { createEmptyDb, TEST_SERVER } from "./test-db";
 
 const config: DatabaseConfig = {
   host: "127.0.0.1",
@@ -118,6 +119,21 @@ describe("database setup", () => {
   it("reports a database that does not answer within the cap", async () => {
     const db = { execute: () => new Promise(() => {}) } as unknown as Database;
     expect(await ping(db, 10)).toBe(false);
+  });
+
+  it("lets a migration outlast the pool's query limit", async () => {
+    const pool = new Pool({ ...TEST_SERVER, query_timeout: 50 });
+    try {
+      // The limit is live on this pool, so the migration passing proves the override.
+      await expect(pool.query("select pg_sleep(0.2)")).rejects.toThrow(
+        "Query read timeout",
+      );
+      await expect(
+        migrationExec(pool)("select pg_sleep(0.2)"),
+      ).resolves.toBeDefined();
+    } finally {
+      await pool.end();
+    }
   });
 
   it("keeps a refused transaction's connection and destroys a failed one's", async () => {

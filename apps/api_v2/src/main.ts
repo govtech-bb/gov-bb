@@ -1,7 +1,6 @@
 /** The runtime owns configuration, concrete dependencies, and their cleanup. */
 import { once } from "node:events";
 import type { FastifyInstance, FastifyRequest } from "fastify";
-import type { QueryConfig } from "pg";
 import pino from "pino";
 import { buildApp } from "./app";
 import { createBetterAuth } from "./adapters/better-auth";
@@ -12,7 +11,13 @@ import { PostgresReviewRecipients } from "./adapters/postgres-review-recipients"
 import { moveEmails } from "./adapters/postgres-email-moves";
 import { PostgresRoles } from "./adapters/postgres-roles";
 import { parseConfig } from "./config";
-import { connect, createPool, ping, type DatabaseFailure } from "./db";
+import {
+  connect,
+  createPool,
+  migrationExec,
+  ping,
+  type DatabaseFailure,
+} from "./db";
 import { migrate } from "./migrate";
 import { authBypass, registerBypassEmployee } from "./adapters/auth-bypass";
 import type { AuthHandler } from "./routes/auth";
@@ -31,10 +36,6 @@ import { seed } from "./seed";
 
 /** A request's query fails after this long, so a quiet database answers 500 rather than hanging (#2845). */
 const QUERY_TIMEOUT_MS = 5_000;
-/** A boot migration's own limit, in place of the request one. */
-const MIGRATION_TIMEOUT_MS = 10 * 60_000;
-/** pg honours a per-query `query_timeout` that @types/pg's QueryConfig omits. */
-type TimedQuery = QueryConfig & { query_timeout: number };
 
 const logger = pino({
   redact: [
@@ -99,15 +100,7 @@ async function main(): Promise<void> {
     if (!connected.ok) return refuseToStart(connected.error);
     const db = connected.value;
     operation = "migrate";
-    // A migration may outlast the request limit. pg reads a per-query 0 as
-    // "use the pool's", so the override is a large value rather than none.
-    const ran = await migrate(db, (script) => {
-      const query: TimedQuery = {
-        text: script,
-        query_timeout: MIGRATION_TIMEOUT_MS,
-      };
-      return pool.query(query);
-    });
+    const ran = await migrate(db, migrationExec(pool));
     if (ran.length > 0) logger.info({ migrations: ran }, "applied migrations");
     if (config.seed) {
       operation = "seed";

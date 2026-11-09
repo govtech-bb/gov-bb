@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { sql, TransactionRollbackError } from "drizzle-orm";
 import { drizzle, type NodePgQueryResultHKT } from "drizzle-orm/node-postgres";
 import type { PgDatabase } from "drizzle-orm/pg-core";
-import { Pool } from "pg";
+import { Pool, type QueryConfig } from "pg";
 import type { Logger } from "pino";
 import type { AppConfig } from "./config";
 import { err, ok, type Result } from "./modules/result";
@@ -122,6 +122,24 @@ export async function connect(
   };
   return ok(Object.assign(db, { transaction }));
 }
+
+/** A boot migration's own limit, in place of the pool's request one. */
+const MIGRATION_TIMEOUT_MS = 10 * 60_000;
+/** pg honours a per-query `query_timeout` that @types/pg's QueryConfig omits. */
+type TimedQuery = QueryConfig & { query_timeout: number };
+
+/**
+ * Runs a migration script on the pool. A migration may outlast the request
+ * limit, and pg reads a per-query 0 as "use the pool's", so the override is a
+ * large value rather than none.
+ */
+export const migrationExec = (pool: Pool) => (script: string) => {
+  const query: TimedQuery = {
+    text: script,
+    query_timeout: MIGRATION_TIMEOUT_MS,
+  };
+  return pool.query(query);
+};
 
 /** Whether the database answers within the cap; `/health/db` reports it. */
 export async function ping(db: Database, timeoutMs = 2000): Promise<boolean> {
