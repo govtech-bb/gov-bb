@@ -2,7 +2,7 @@
 
 The public-facing landing site for the Government of Barbados service portal, built with TanStack Start.
 
-Sandbox: https://landing.sandbox.alpha.gov.bb
+Sandbox: https://sandbox.alpha.gov.bb
 
 # Getting Started
 
@@ -366,7 +366,7 @@ Each level is unlocked by its own token, matching a server-only env var (never
 - `?draft=<DRAFT_SECRET>` grants the `draft` level.
 
 1. Visit **any** URL with the token appended, e.g.
-   `https://landing.sandbox.alpha.gov.bb/education?draft=THE_DRAFT_SECRET`.
+   `https://sandbox.alpha.gov.bb/education?draft=THE_DRAFT_SECRET`.
 2. On a match the server sets an httpOnly `preview` cookie holding only the
    granted **level** (never the secret) and redirects to the same path with the
    token stripped (so the secret never lingers in the URL or browser history).
