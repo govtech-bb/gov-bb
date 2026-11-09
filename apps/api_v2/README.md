@@ -763,4 +763,6 @@ Unit/integration tests run against PostgreSQL (`DB_HOST` etc., defaulting to `lo
 
 `openapi.json` is a file snapshot of the document the running app generates from its route schemas (`src/routes/contracts.ts`), so `src/openapi.test.ts` fails when the two differ. It is served at `/docs/openapi.json`, with a browsable reference at `/docs`. Update it from this directory with `pnpm exec vitest run src/openapi.test.ts -u`.
 
+The editor's `apps/editor_v2/src/api/openapi.d.ts` snapshot also includes endpoint descriptions. After changing the API spec, regenerate that snapshot from the repository root with `pnpm --dir apps/editor_v2 exec vitest run src/api/openapi.test.ts -u`, then run `pnpm --dir apps/editor_v2 test`.
+
 The diagram under "Database" is the same kind of snapshot, of the tables the migrations create, so `src/erd.test.ts` fails when a migration changes a table without it. Refresh it from this directory with `pnpm exec vitest run src/erd.test.ts -u`.
