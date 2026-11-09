@@ -160,6 +160,8 @@ cicd-policy*.json
 # directory is intentionally left un-ignored so plans are reachable via
 # @-mention (the file picker respects .gitignore). A PreToolUse hook
 # (.claude/hooks/block-commit-plans.sh) blocks staging/committing them.
+# A root plans/ folder is ignored outright: plans belong in docs/plans/ (#3121).
+/plans/
 
 # Playwright test output
 **/playwright-report/
