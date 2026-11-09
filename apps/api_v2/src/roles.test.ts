@@ -212,6 +212,127 @@ describe("deleting a page", () => {
   );
 });
 
+describe("a public page's Start link", () => {
+  const ENTRY = aPage().url;
+  const START = `${ENTRY}/start`;
+
+  /** Whether the anonymous read of the entry page hides its Start link. */
+  const hidden = async () =>
+    (await app.inject({ method: "GET", url: `/pages?url=${ENTRY}` })).json()
+      .hide_start_links;
+
+  it("is not hidden by a non-approver's new start sub-page", async () => {
+    const parent = await seedPage();
+
+    const response = await as(TEST_EDITOR, {
+      method: "POST",
+      url: "/pages",
+      payload: aPage({ url: START, parent_id: parent.id, visibility: "draft" }),
+    });
+
+    expect(response.statusCode).toBe(403);
+    expect(response.json()).toEqual(FORBIDDEN);
+    expect(await hidden()).toBe(false);
+  });
+
+  it("is not shown by a non-approver deleting the start sub-page that hides it", async () => {
+    const parent = await seedPage();
+    const start = await seedPage({
+      url: START,
+      parent_id: parent.id,
+      visibility: "draft",
+    });
+
+    const response = await as(TEST_EDITOR, {
+      method: "DELETE",
+      url: `/pages/${start.id}?expected_version=${start.version}`,
+    });
+
+    expect(response.statusCode).toBe(403);
+    expect(await stored(start.id)).not.toBeNull();
+    expect(await hidden()).toBe(true);
+  });
+
+  it.each([
+    ["moving a hidden page beneath it as its start", "/elsewhere/start", null],
+    ["renaming a hidden sub-page of it to start", `${ENTRY}/notes`, "parent"],
+  ])("is not hidden by a non-approver %s", async (_, url, parentOf) => {
+    const parent = await seedPage();
+    const page = await seedPage({
+      url,
+      parent_id: parentOf === "parent" ? parent.id : null,
+      visibility: "draft",
+    });
+
+    const response = await as(TEST_EDITOR, {
+      method: "PUT",
+      url: `/pages/${page.id}`,
+      payload: {
+        ...withDefaults(
+          aPage({ url: START, parent_id: parent.id, visibility: "draft" }),
+        ),
+        expected_version: page.version,
+      },
+    });
+
+    expect(response.statusCode).toBe(403);
+    expect(await hidden()).toBe(false);
+  });
+
+  it("still lets a non-approver edit the start sub-page that hides it", async () => {
+    const parent = await seedPage();
+    const start = await seedPage({
+      url: START,
+      parent_id: parent.id,
+      visibility: "draft",
+    });
+
+    const response = await as(TEST_EDITOR, {
+      method: "PUT",
+      url: `/pages/${start.id}`,
+      payload: {
+        ...withDefaults(
+          aPage({
+            url: START,
+            parent_id: parent.id,
+            visibility: "draft",
+            title: "Changed",
+          }),
+        ),
+        expected_version: start.version,
+      },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(await hidden()).toBe(true);
+  });
+
+  it("still lets a non-approver add a start sub-page beneath a page that isn't public", async () => {
+    const parent = await seedPage({ visibility: "draft" });
+
+    const response = await as(TEST_EDITOR, {
+      method: "POST",
+      url: "/pages",
+      payload: aPage({ url: START, parent_id: parent.id, visibility: "draft" }),
+    });
+
+    expect(response.statusCode).toBe(201);
+  });
+
+  it("is hidden by an approver's new start sub-page", async () => {
+    const parent = await seedPage();
+
+    const response = await as(TEST_EMPLOYEE, {
+      method: "POST",
+      url: "/pages",
+      payload: aPage({ url: START, parent_id: parent.id, visibility: "draft" }),
+    });
+
+    expect(response.statusCode).toBe(201);
+    expect(await hidden()).toBe(true);
+  });
+});
+
 describe("an employee whose editor role is revoked", () => {
   it("can still read, but every write is refused, from the next request", async () => {
     const page = await seedPage({ visibility: "draft" });

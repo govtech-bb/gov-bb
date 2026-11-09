@@ -31,6 +31,7 @@ import {
   type PendingRevision,
   type RevisionView,
   type SaveFields,
+  segmentsOf,
 } from "../modules/page";
 import { err, ok, type Result } from "../modules/result";
 import type { LastEditedBy } from "../modules/content-attribution";
@@ -259,6 +260,8 @@ export class PageEditing {
       if (!available.ok) return available;
       const placed = await place(records, page.id, fields);
       if (!placed.ok) return placed;
+      const gated = await startLinkGate(records, actor, null, placed.value);
+      if (!gated.ok) return gated;
       const created = await records.insert(
         creationOf(page.id, placed.value, this.clock()),
       );
@@ -443,6 +446,11 @@ export class PageEditing {
     if (!placed.ok) return placed;
     if (changesOf(workingCopy(current, pending), placed.value).length === 0)
       return savedPage(records, id);
+    // A public page's save waits for review; any other writes the page now.
+    if (current.visibility !== "public") {
+      const gated = await startLinkGate(records, actor, current, placed.value);
+      if (!gated.ok) return gated;
+    }
     if (current.visibility === "public" && fields.visibility === "public") {
       // Refused now for what publishing it would be refused for today.
       const valid = await records.checkReplace(
@@ -718,10 +726,59 @@ export class PageEditing {
         !actor.roles.includes("approver")
       )
         return err(new NotApprover());
+      const gated = await startLinkGate(
+        records,
+        actor,
+        checked.value.live,
+        null,
+      );
+      if (!gated.ok) return gated;
       const removed = await records.remove(id);
       return removed.ok ? ok(undefined) : removed;
     });
   }
+}
+
+/**
+ * Refuse an editor's write that shows or hides a public page's Start link.
+ * Citizens see the link unless the page has a `start` sub-page they can't
+ * see (PageResolution), so adding, removing, moving or renaming one changes
+ * the public page as surely as editing it, and only an approver does that.
+ */
+async function startLinkGate(
+  records: PageRecords,
+  actor: Employee,
+  before: StartStepPlace | null,
+  after: StartStepPlace | null,
+): Promise<Result<void, NotApprover | ContentStoreUnavailable>> {
+  if (actor.roles.includes("approver")) return ok(undefined);
+  const hidBefore = await hidesPublicStartLink(records, before);
+  if (!hidBefore.ok) return hidBefore;
+  const hidesAfter = await hidesPublicStartLink(records, after);
+  if (!hidesAfter.ok) return hidesAfter;
+  return hidBefore.value === hidesAfter.value
+    ? ok(undefined)
+    : err(new NotApprover());
+}
+
+/** Where a page sits, and who sees it: all that decides a Start link. */
+type StartStepPlace = Pick<PageFields, "url" | "parent_id" | "visibility">;
+
+/** Whether a page with these fields is a hidden `start` sub-page of a public page. */
+async function hidesPublicStartLink(
+  records: PageRecords,
+  page: StartStepPlace | null,
+): Promise<Result<boolean, ContentStoreUnavailable>> {
+  if (
+    page === null ||
+    page.parent_id === null ||
+    page.visibility === "public" ||
+    segmentsOf(page.url).at(-1) !== "start"
+  )
+    return ok(false);
+  const parent = await records.editorSnapshot(page.parent_id);
+  if (!parent.ok) return parent;
+  return ok(parent.value?.live.visibility === "public");
 }
 
 function markdownRejection(fields: SaveFields): PageRejected | null {

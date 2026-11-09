@@ -266,6 +266,44 @@ describe("GET /pages?url=", () => {
     expect((await read("/calculate-severance-pay")).statusCode).toBe(404);
   });
 
+  it("301s a bare slug past a hidden page that shares it, rather than revealing it", async () => {
+    await seedPage();
+    await seedPage({
+      url: "/zz-unpublished/calculate-severance-pay",
+      visibility: "draft",
+    });
+
+    const response = await read("/calculate-severance-pay");
+
+    expect(response.statusCode).toBe(301);
+    expect(response.headers.location).toBe(ENTRY);
+  });
+
+  it("301s a bare slug past a page hidden beneath one that isn't public", async () => {
+    await seedPage();
+    const hidden = await seedPage({ url: "/zz-hidden", visibility: "draft" });
+    await seedPage({
+      url: "/zz-hidden/calculate-severance-pay",
+      parent_id: hidden.id,
+    });
+
+    expect((await read("/calculate-severance-pay")).headers.location).toBe(
+      ENTRY,
+    );
+  });
+
+  it("keeps the Start link when any start sub-page is public", async () => {
+    const parent = await seedPage({ body_markdown: ENTRY_MARKDOWN });
+    await seedPage({ url: START, parent_id: parent.id });
+    await seedPage({
+      url: "/elsewhere/start",
+      parent_id: parent.id,
+      visibility: "draft",
+    });
+
+    expect((await read(ENTRY)).json().hide_start_links).toBe(false);
+  });
+
   it("404s a bare slug more than one page shares", async () => {
     await seedPage({ url: "/a/start" });
     await seedPage({ url: "/b/start" });
