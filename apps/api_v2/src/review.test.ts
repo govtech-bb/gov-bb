@@ -10,10 +10,18 @@ import type { FastifyInstance, InjectOptions } from "fastify";
 import type { Database } from "./db";
 import { UserId, type Employee } from "./modules/auth";
 import { PostgresPages } from "./adapters/postgres-pages";
-import { PageDocument, withDefaults, type PageId } from "./modules/page";
+import {
+  fieldsOf,
+  PageDocument,
+  withDefaults,
+  type EditorPage,
+  type PageId,
+} from "./modules/page";
 import { ok } from "./modules/result";
 import { PageEditing } from "./services/page-editing";
 import { categories, changeEvents, pageRevisions } from "./schema";
+import { seed } from "./seed";
+import { ESTATE } from "./seed-data";
 
 import {
   aPage,
@@ -1157,6 +1165,114 @@ describe("saving a page whose revision is waiting for review (#3203)", () => {
       expect(response.statusCode).toBe(403);
       expect(response.json().message).toMatch(/you made or submitted/);
       expect((await revisions())[0]?.status).toBe("submitted");
+    },
+  );
+});
+
+describe("reviewing the seeded site pages, with no category or parent (#3500)", () => {
+  it.each(
+    ESTATE.pages.filter(
+      (page) => page.parent === null && page.category === null,
+    ),
+  )(
+    "keeps $url live until another approver publishes its submitted change",
+    async (fixture) => {
+      await seed(db);
+      const id =
+        expectOk(await new PostgresPages(db).indexedPages()).find(
+          (page) => page.url === fixture.url,
+        )?.id ?? expect.unreachable(fixture.url);
+      const live = (await stored(id)) ?? expect.unreachable();
+      const publicUrl = `/pages?url=${encodeURIComponent(fixture.url)}`;
+      const publicBefore = await app.inject({ url: publicUrl });
+      expect(publicBefore.statusCode).toBe(200);
+      const historyBefore = await events();
+      const opened = (
+        await as(TEST_EDITOR, { url: `/pages/${id}` })
+      ).json<EditorPage>();
+
+      const drafted = await save(TEST_EDITOR, opened, {
+        ...fieldsOf(opened),
+        body_markdown: `${fixture.body_markdown}\n\nA proposed update.\n`,
+      });
+      expect(drafted.statusCode).toBe(200);
+      const submission = await review(TEST_EDITOR, id, "submit", {
+        version: drafted.json().version,
+      });
+      expect(submission.statusCode).toBe(200);
+      // A second employee saves into the change while it waits.
+      const read = (
+        await as(TEST_EMPLOYEE, { url: `/pages/${id}` })
+      ).json<EditorPage>();
+      const joined = await save(TEST_EMPLOYEE, read, {
+        ...fieldsOf(read),
+        title: `${fixture.title} (reviewed)`,
+      });
+      expect(joined.statusCode).toBe(200);
+      const current = joined.json<EditorPage>();
+      expect(current).toEqual({
+        ...read,
+        title: `${fixture.title} (reviewed)`,
+        version: expect.any(Number),
+        updated_at: expect.any(String),
+        pending_revision: { status: "submitted", comment: null },
+      });
+      expect(await revisions()).toMatchObject([
+        {
+          id: submission.json().id,
+          status: "submitted",
+          fields: fieldsOf(current),
+          createdBy: TEST_EDITOR.id,
+          contributors: [TEST_EDITOR.id, TEST_EMPLOYEE.id],
+          submittedBy: TEST_EDITOR.id,
+        },
+      ]);
+
+      expect(
+        (await save(TEST_EDITOR, read, fieldsOf(current))).statusCode,
+      ).toBe(409);
+      expect(
+        (
+          await review(APPROVER, id, "publish", {
+            version: submission.json().version,
+          })
+        ).statusCode,
+      ).toBe(409);
+      for (const step of ["publish", "reject"] as const) {
+        expect((await review(TEST_EDITOR, id, step)).statusCode).toBe(403);
+        const own = await review(TEST_EMPLOYEE, id, step);
+        expect(own.statusCode).toBe(403);
+        expect(own.json().message).toMatch(/you made or submitted/);
+      }
+      expect(await stored(id)).toEqual(live);
+      expect((await app.inject({ url: publicUrl })).body).toBe(
+        publicBefore.body,
+      );
+
+      const published = await review(APPROVER, id, "publish");
+      expect(published.statusCode).toBe(200);
+      expect(published.json()).toMatchObject({
+        ...fieldsOf(current),
+        pending_revision: null,
+      });
+      expect(await stored(id)).toEqual({
+        ...live,
+        ...fieldsOf(current),
+        updated_at: published.json().updated_at,
+      });
+      expect((await app.inject({ url: publicUrl })).json()).toMatchObject({
+        url: fixture.url,
+        category: null,
+        frontmatter: { title: current.title },
+        body_markdown: current.body_markdown,
+        published_at: live.published_at,
+      });
+      expect(await events()).toEqual([
+        ...historyBefore,
+        { action: "submitted", actor: TEST_EDITOR.id },
+        { action: "approved", actor: APPROVER.id },
+        { action: "updated", actor: APPROVER.id },
+      ]);
     },
   );
 });

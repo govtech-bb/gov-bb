@@ -19,6 +19,7 @@ import type { Database } from "./db";
 import { PostgresPages } from "./adapters/postgres-pages";
 import { withDefaults, type PageId, type Visibility } from "./modules/page";
 import { categories, changeEvents, searchChunks } from "./schema";
+import { seed } from "./seed";
 import {
   aPage,
   createTestApp,
@@ -431,6 +432,96 @@ describe("GET /editor/page-paths", () => {
       );
       const response = await brokenApp.inject({
         url: "/editor/page-paths",
+        headers: TEST_HEADERS,
+      });
+
+      expect(response.statusCode).toBe(500);
+      expect(response.json()).toMatchObject({ error: "internal_error" });
+    } finally {
+      await brokenApp.close();
+      await broken.close();
+    }
+  });
+});
+
+describe("GET /editor/site-pages", () => {
+  it("lists the seeded site pages by title, and Services lists none of them", async () => {
+    await seed(db);
+    const indexed = expectOk(await new PostgresPages(db).indexedPages());
+    const sitePages = [
+      "/terms-conditions",
+      "/what-we-mean-by-alpha",
+      "/whats-changing",
+    ].map(
+      (url) =>
+        indexed.find((page) => page.url === url) ?? expect.unreachable(url),
+    );
+
+    const response = await inject({ url: "/editor/site-pages" });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.headers["cache-control"]).toBe("no-store");
+    expect(response.json()).toEqual({
+      pages: sitePages.map(({ id, title, url }) => ({
+        id,
+        title,
+        url,
+        visibility: "public",
+      })),
+    });
+    const listed = await inject({ url: "/services" });
+    expect(listed.statusCode).toBe(200);
+    for (const { id, url } of sitePages) {
+      expect(listed.json()).not.toContainEqual(
+        expect.objectContaining({ url }),
+      );
+      expect((await inject({ url: `/services/${id}` })).statusCode).toBe(404);
+    }
+  });
+
+  it("lists uncategorised root pages in every visibility, without services or sub-pages", async () => {
+    const draft = await seedPage({
+      url: "/zulu",
+      title: "Zulu draft",
+      visibility: "draft",
+    });
+    const publicPage = await seedPage({ url: "/middle", title: "Middle" });
+    const preview = await seedPage({
+      url: "/alpha",
+      title: "Alpha preview",
+      visibility: "preview",
+    });
+    const category = await seedCategory();
+    const service = await seedPage({ category_id: category.id });
+    await seedPage({ url: START, parent_id: service.id });
+    await seedPage({ url: "/middle/child", parent_id: publicPage.id });
+
+    const response = await inject({ url: "/editor/site-pages" });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({
+      pages: [preview, publicPage, draft].map(
+        ({ id, title, url, visibility }) => ({ id, title, url, visibility }),
+      ),
+    });
+  });
+
+  it("returns an empty list when there are no site pages", async () => {
+    const response = await inject({ url: "/editor/site-pages" });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({ pages: [] });
+  });
+
+  it("does not mistake a failed lookup for an empty list", async () => {
+    const broken = await createTestDb();
+    const brokenApp = await createTestApp(broken.db);
+    try {
+      await broken.db.execute(
+        sql`alter table content_pages rename to unavailable_pages`,
+      );
+      const response = await brokenApp.inject({
+        url: "/editor/site-pages",
         headers: TEST_HEADERS,
       });
 
@@ -1437,6 +1528,8 @@ describe("employee access", () => {
     ["HEAD", "/pages/not-a-uuid"],
     ["GET", "/services"],
     ["GET", "/editor/page-paths"],
+    ["GET", "/editor/site-pages"],
+    ["HEAD", "/editor/site-pages"],
     ["GET", "/services/not-a-uuid"],
     ["GET", "/editor/categories"],
     ["HEAD", "/editor/categories"],
@@ -1542,7 +1635,7 @@ describe("employee access", () => {
 
   it("never gives editor reads an ETag or a conditional 304", async () => {
     const page = await seedPage();
-    for (const url of [`/pages/${page.id}`, "/version"]) {
+    for (const url of [`/pages/${page.id}`, "/version", "/editor/site-pages"]) {
       const response = await inject({ url, headers: { "if-none-match": "*" } });
       expect(response.statusCode).toBe(200);
       expect(response.headers["cache-control"]).toBe("no-store");

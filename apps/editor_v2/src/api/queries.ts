@@ -27,6 +27,10 @@ export const retryContentRead = (failures: number, error: Error) =>
 export const servicesQuery = (api: EditorApi) =>
   queryOptions({ queryKey: ["content", "services"], queryFn: () => api.services() });
 
+/** Existing standalone site pages, separate from the service index. */
+export const sitePagesQuery = (api: EditorApi) =>
+  queryOptions({ queryKey: ["content", "site-pages"], queryFn: () => api.sitePages() });
+
 export const serviceQuery = (api: EditorApi, id: string) =>
   queryOptions({ queryKey: ["content", "service", id], queryFn: () => api.service(id) });
 

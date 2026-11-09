@@ -4,11 +4,13 @@ The GovBB editor is an internal web tool for the GovTech Barbados service team a
 
 ## Scope
 
-Authors can write service pages, save or publish them to the content API, and preview supported content. The workspace groups an entry page, an optional start page and supporting pages. Browser-only services, pages, forms and calculators are not workspace flows.
+Authors can write service pages and existing site information pages, save or publish them to the content API, and preview supported content. The workspace groups an entry page, an optional start page and supporting pages. Browser-only services, pages, forms and calculators are not workspace flows.
 
 The editor opens on api_v2's Services list, with search, category/status filters, sorting and pagination. A title opens the service at its entry page; its path opens landing. The sidebar lists API pages beneath their parents and shows visibility. Pages toggles the sidebar, whose preference is remembered; narrow screens use a drawer. Create service creates a preview-only API entry page under a category. Add document creates a preview-only start or supporting page. Delete page removes the selected API page after its children are gone; it retains no browser draft.
 
-The side menu names the editor's screens: Content holds Services, and Manage holds Categories and Collections. Inside a service it folds to a rail of icons beside the service's pages; narrow screens open it as a drawer from Menu. Categories lists the shared api_v2 records in order, each subcategory under its parent, with its address and directly filed services, including unpublished work. Categories, Services filters, Create service and page settings all use that same list.
+Site pages lists existing information pages such as Terms & Conditions, What we mean by alpha and What's changing. These pages have no service category or parent. They open directly in the same page editor, with the same preview, unsaved-work guards, history and review workflow. Category assignment and service creation/child-page controls are not offered here. Edits to a public site page stay in a pending revision until an approver publishes them.
+
+The side menu names the editor's screens: Content holds Services, Site pages and Review queue, and Manage holds Categories and Collections. Inside a service it folds to a rail of icons beside the service's pages; narrow screens open it as a drawer from Menu. Categories lists the shared api_v2 records in order, each subcategory under its parent, with its address and directly filed services, including unpublished work. Categories, Services filters, Create service and page settings all use that same list.
 
 The editor owns content authoring and conversion, including common page metadata. Saving a public page publishes its changes. Reusable form authoring remains available to embedding hosts, but has no replacement server integration in this workspace. Form-wide settings panels, form-check dashboards, submissions, scheduling and respondent execution remain outside scope.
 

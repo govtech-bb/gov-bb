@@ -262,8 +262,13 @@ describe("saving a page", () => {
       updated_at: "2026-10-28T12:00:00.000Z",
     };
 
-    // A public root page with no category: its saved version fails "Choose a category"
-    const unfiled: ApiPage = { ...page, parent_id: null, category_id: null };
+    // The saved category is missing from the loaded list, so the baseline cannot be converted.
+    const unfiled: ApiPage = {
+      ...page,
+      parent_id: null,
+      category_id: "00000000-0000-4000-8000-000000000098",
+    };
+
     let called = false;
 
     const outcome = await savePageDraft(

@@ -66,7 +66,7 @@ export function RemotePagePane({
   active: boolean;
   onSession: SessionListener;
   sessions?: DocumentSessions;
-  /** What shows the service's pages while they're hidden: at the start of the page's bar. */
+  /** Page navigation at the start of the bar, such as the service sidebar toggle or site-page history. */
   nav?: ReactNode;
 }) {
   const opened = useRef(false);
@@ -832,10 +832,11 @@ function RemotePageEditor({
           }}
           previewContext={previewContext}
           settings={{
-            ...(server.parent_id === null && {
-              categories: pickerCategories(categories),
-              single: true,
-            }),
+            ...(base.page.parent_id === null &&
+              base.page.category_id !== null && {
+                categories: pickerCategories(categories),
+                single: true,
+              }),
             publishedAt: server.published_at,
             lastEditedBy: server.last_edited_by,
             savedVisibility: base.page.visibility,

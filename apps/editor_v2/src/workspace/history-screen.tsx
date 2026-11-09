@@ -104,6 +104,12 @@ export function HistoryScreen({
     },
   });
 
+  const back = serviceId ? (
+    <Link to="/services/$serviceId/$documentId" params={{ serviceId, documentId: pageId }} />
+  ) : page.data?.parent_id === null && page.data.category_id === null ? (
+    <Link to="/site-pages/$pageId" params={{ pageId }} />
+  ) : undefined;
+
   // Each Show older changes moves the focus to the first change it added: after the last, the button itself is gone
   useLayoutEffect(() => {
     if (shown > SHOWN) list.current?.querySelectorAll("li")[shown - SHOWN]?.focus();
@@ -117,16 +123,8 @@ export function HistoryScreen({
 
   return (
     <>
-      {serviceId && (
-        <TextLink
-          className="mb-4 block w-fit"
-          render={
-            <Link
-              to="/services/$serviceId/$documentId"
-              params={{ serviceId, documentId: pageId }}
-            />
-          }
-        >
+      {back && (
+        <TextLink className="mb-4 block w-fit" render={back}>
           Back to the page
         </TextLink>
       )}
