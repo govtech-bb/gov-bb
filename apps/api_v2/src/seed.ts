@@ -12,7 +12,7 @@
  */
 
 import { count, eq, sql, TransactionRollbackError } from "drizzle-orm";
-import { writeSearchChunks } from "./adapters/postgres-pages";
+import { PostgresPages, writeSearchChunks } from "./adapters/postgres-pages";
 import type { Database } from "./db";
 import { chunkMarkdown } from "./modules/search-text";
 import {
@@ -93,6 +93,9 @@ export async function seed(
           ? new Date()
           : null;
       const inserted = await db.transaction(async (tx) => {
+        await tx.execute(
+          sql`select pg_advisory_xact_lock(hashtext('content_pages.parent_id'))`,
+        );
         const [row] = await tx
           .insert(contentPages)
           .values({
@@ -111,6 +114,13 @@ export async function seed(
           .onConflictDoNothing()
           .returning();
         if (row) {
+          const records = new PostgresPages(tx);
+          const reachable = await records.publicPagesInSubtree(row.id);
+          if (!reachable.ok) throw reachable.error;
+          for (const page of reachable.value) {
+            const cleared = await records.removePageRedirectAt(page.url);
+            if (!cleared.ok) throw cleared.error;
+          }
           await writeSearchChunks(
             tx,
             row.id,

@@ -39,6 +39,8 @@ import { SQL as GITHUB_ACCOUNTS_SQL } from "./migrations/021_github_accounts";
 import { SQL as RESTORED_FROM_SQL } from "./migrations/022_restored_from";
 import { SQL as CHANGE_EVENT_COUNTERS_SQL } from "./migrations/023_change_event_counters";
 import { SQL as EDIT_VERSIONS_SQL } from "./migrations/024_edit_versions";
+import { SQL as PAGE_REDIRECTS_SQL } from "./migrations/025_page_redirects";
+import { SQL as CHANGE_EVENT_ORDER_SQL } from "./migrations/026_change_event_order";
 import type { Database } from "./db";
 
 /** The migrations, in the order they apply. Each is idempotent by rule. */
@@ -67,6 +69,8 @@ const MIGRATIONS = [
   ["022_restored_from", RESTORED_FROM_SQL],
   ["023_change_event_counters", CHANGE_EVENT_COUNTERS_SQL],
   ["024_edit_versions", EDIT_VERSIONS_SQL],
+  ["025_page_redirects", PAGE_REDIRECTS_SQL],
+  ["026_change_event_order", CHANGE_EVENT_ORDER_SQL],
 ] as const;
 
 /** Serialises instances that boot together; released when its transaction ends. */

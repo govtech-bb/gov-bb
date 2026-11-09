@@ -2,6 +2,11 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { Element, RootContent } from 'hast'
 import { createApiV2Cache } from './api-v2-cache'
 import {
+  createVersionWatch,
+  EVERY_MS,
+  fetchSiteVersion,
+} from './api-v2-version'
+import {
   API_V2_TIMEOUT_MS,
   contentSource,
   fetchApiV2Page,
@@ -679,6 +684,52 @@ describe('previewTokenFor', () => {
 })
 
 describe('loadApiV2Page', () => {
+  it('expires cached earlier sources after flattening and serves a reclaimed page after the next site version', async () => {
+    vi.spyOn(Date, 'now').mockReturnValue(0)
+    const cache = createApiV2Cache()
+    let version = '1'
+    let destination = '/b'
+    let reclaimed = false
+    const fetchImpl = vi.fn<typeof fetch>(async (input) => {
+      const url = new URL(String(input))
+      if (url.pathname === '/site-version')
+        return jsonResponse(200, { version })
+      const source = url.searchParams.get('url')
+      return reclaimed && source === '/a'
+        ? jsonResponse(200, pageBody({ url: '/a' }), {
+            'Cache-Control': 'public, max-age=60',
+          })
+        : jsonResponse(
+            301,
+            { redirect: destination },
+            { 'Cache-Control': 'public, max-age=60' },
+          )
+    })
+    const check = createVersionWatch(
+      () => fetchSiteVersion(BASE, fetchImpl),
+      () => cache.expire(),
+    )
+    const load = (url: string) =>
+      loadApiV2Page(cache, BASE, url, undefined, undefined, fetchImpl)
+    await check(0)
+    for (const source of ['/a', '/earlier'])
+      expect(await load(source)).toMatchObject({ kind: 'redirect', to: '/b' })
+    destination = '/c'
+    version = '2'
+    expect(await load('/a')).toMatchObject({ kind: 'redirect', to: '/b' })
+    await check(EVERY_MS)
+    for (const source of ['/a', '/earlier'])
+      expect(await load(source)).toMatchObject({ kind: 'redirect', to: '/c' })
+    reclaimed = true
+    version = '3'
+    await check(2 * EVERY_MS)
+    expect(await load('/a')).toMatchObject({ kind: 'page', page: { url: 'a' } })
+    expect(await load('/earlier')).toMatchObject({ kind: 'redirect', to: '/c' })
+    expect(
+      fetchImpl.mock.calls.filter(([url]) => String(url).includes('/pages?')),
+    ).toHaveLength(6)
+  })
+
   /** api_v2 with one preview page: a 404 to the public, the page to a reviewer. */
   function previewOnlyApi() {
     return vi.fn<typeof fetch>(async (_url, init) =>
