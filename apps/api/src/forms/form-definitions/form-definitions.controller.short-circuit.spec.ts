@@ -30,7 +30,7 @@ describe("FormDefinitionsController — kill switch short-circuit", () => {
       mockFormDefinitionsService as never,
       mockDisabledOverridesService as never,
       mockConfigService as never,
-      { categoryForForm: vi.fn() } as never,
+      { categoryForForm: vi.fn().mockResolvedValue(undefined) } as never,
     );
   });
 

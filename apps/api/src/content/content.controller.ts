@@ -8,8 +8,9 @@ import { ApiResponse } from "@/common/response";
 import type { ApiResponseShape } from "@/common/response";
 
 /**
- * Read-only index of landing services, sourced from a build-time snapshot of the
- * landing content (see scripts/generate-services-index.ts). Public request
+ * Read-only index of landing services, sourced from api_v2's `GET /catalog` when
+ * `API_V2_URL` is set, else a build-time snapshot of the landing content (see
+ * scripts/generate-services-index.ts). Public request
  * returns `visibility:public` only; a valid, authorized GitHub token returns all
  * visibilities (feature-flagging tool). No mutation here.
  */

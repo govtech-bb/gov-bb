@@ -201,7 +201,7 @@ export class FormDefinitionsController {
     // comes from the services index, so the form needs no copy of it. Always
     // set, so a `category` written into a recipe can't override it; undefined
     // (no page links the form) is dropped from the JSON.
-    const category = this.contentService.categoryForForm(formId);
+    const category = await this.contentService.categoryForForm(formId);
     return AppApiResponse.success(
       { ...data, category },
       {
