@@ -696,6 +696,16 @@ test.each(sitePages)(
   },
 );
 
+test("an unknown site page says it isn't there, and leads back to Site pages", async () => {
+  await mountWorkspace("/site-pages/gone");
+  await until(() => expect(document.body.textContent).toContain("Document not found"));
+  expect(document.body.textContent).not.toContain("We could not load this page");
+  expect(document.querySelector('a[href="/history/gone"]')).toBeNull();
+  expect(document.querySelector('main a[href="/site-pages"]')?.textContent).toBe(
+    "Back to site pages",
+  );
+});
+
 test("leaving a site page asks about unsaved changes, and its history leads back to it", async () => {
   const h = await mountWorkspace("/site-pages/terms-conditions");
   await until(() => expect(activeTitle()?.value).toBe("Terms & Conditions"));

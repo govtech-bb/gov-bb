@@ -213,7 +213,8 @@ export function ServiceWorkspace({
     (item) => item.id === location?.serviceId,
   );
 
-  const sitePage = useQuery({ ...pageQuery(api, sitePageId ?? ""), enabled: false }).data;
+  const sitePageRead = useQuery({ ...pageQuery(api, sitePageId ?? ""), enabled: false });
+  const sitePage = sitePageRead.data;
   const rolesRead = useQuery(rolesQuery(api));
   const roles = rolesRead.data;
   // They couldn't be read: what needs them says so, rather than that it needs a role this person may well have
@@ -232,9 +233,10 @@ export function ServiceWorkspace({
   const deleting = useLatched(dialog === "delete" ? deleteSnapshot : null);
 
   const missing =
-    !!location &&
-    ((remote.error instanceof ApiFailure && remote.error.status === 404) ||
-      (!!remote.data && !!documentId && !selected));
+    (!!location &&
+      ((remote.error instanceof ApiFailure && remote.error.status === 404) ||
+        (!!remote.data && !!documentId && !selected))) ||
+    (sitePageRead.error instanceof ApiFailure && sitePageRead.error.status === 404);
 
   const place = useScreenPlace(
     remote.data,
@@ -464,9 +466,13 @@ export function ServiceWorkspace({
               title="Document not found"
               description="It may have been deleted, or the address may be wrong."
               actions={
-                <TextLink render={<Link to="/services" search={servicesSearch} />}>
-                  Back to services
-                </TextLink>
+                sitePageId ? (
+                  <TextLink render={<Link to="/site-pages" />}>Back to site pages</TextLink>
+                ) : (
+                  <TextLink render={<Link to="/services" search={servicesSearch} />}>
+                    Back to services
+                  </TextLink>
+                )
               }
             />
           )}
