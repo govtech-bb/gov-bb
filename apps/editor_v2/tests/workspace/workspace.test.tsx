@@ -40,6 +40,32 @@ const pages = new Map(
   ]),
 );
 
+const sitePages: ApiPage[] = (
+  [
+    ["terms-conditions", "Terms & Conditions"],
+    ["what-we-mean-by-alpha", "What we mean by alpha"],
+    ["whats-changing", "What's changing?"],
+  ] as const
+).map(([slug, title]) => ({
+  id: slug,
+  version: 1,
+  slug,
+  title,
+  url: `/${slug}`,
+  parent_id: null,
+  category_id: null,
+  visibility: "public",
+  form_id: null,
+  body_markdown: "\nSite information.  \nKeep this body exactly.\n\n",
+  frontmatter: { source_url: `https://www.gov.bb/${slug}` },
+  description: null,
+  published_at: stamp,
+  created_at: stamp,
+  updated_at: stamp,
+  pending_revision: null,
+  last_edited_by: null,
+}));
+
 const detail: ServiceDetail = {
   service: {
     id: "service",
@@ -70,11 +96,17 @@ async function mountWorkspace(
     roles = ["editor", "approver"],
     publicIds = [],
     me,
+    serverPages = new Map<string, ApiPage>([
+      ...pages,
+      ...sitePages.map((page) => [page.id, page] as const),
+    ]),
   }: {
     roles?: readonly string[];
     publicIds?: readonly string[];
     /** How /editor/me answers, when not at once with `roles`. */
     me?: () => Promise<Response>;
+    /** The pages /pages/:id reads and saves, kept across mounts when passed in. */
+    serverPages?: Map<string, ApiPage>;
   } = {},
 ) {
   vi.stubGlobal("matchMedia", (query: string) => ({
@@ -98,10 +130,22 @@ async function mountWorkspace(
   };
 
   const writes: RequestInit[] = [];
+  const asked: string[] = [];
   vi.stubGlobal(
     "fetch",
     vi.fn(async (url: string, init?: RequestInit) => {
       const path = new URL(url).pathname;
+      asked.push(path);
+
+      if (path === "/editor/site-pages")
+        return Response.json({
+          pages: sitePages.map(({ id, title, url, visibility }) => ({
+            id,
+            title,
+            url,
+            visibility,
+          })),
+        });
 
       if (path === "/services") return Response.json([detail.service]);
 
@@ -130,16 +174,25 @@ async function mountWorkspace(
         });
 
       if (path === "/version") return Response.json({ count: 1, latest: stamp });
-      const page = pages.get(path.replace("/pages/", ""));
+      const page = serverPages.get(path.replace("/pages/", ""));
 
       if (page && init?.method === "PUT") {
         writes.push(init);
+        const { expected_version: _, ...fields } = JSON.parse(String(init.body));
 
-        return Response.json({
+        // As api_v2 does, a save to a public page waits in its revision
+        const saved: ApiPage = {
           ...page,
-          ...JSON.parse(String(init.body)),
+          ...fields,
+          version: page.version + 1,
           updated_at: "2026-10-07T13:00:00.000Z",
-        });
+          pending_revision:
+            page.visibility === "public" ? { status: "draft", comment: null } : null,
+        };
+
+        serverPages.set(page.id, saved);
+
+        return Response.json(saved);
       }
 
       return page ? Response.json(page) : Response.json({}, { status: 404 });
@@ -167,7 +220,7 @@ async function mountWorkspace(
     );
   });
 
-  return { router, auth, writes, client };
+  return { router, auth, writes, client, asked, serverPages };
 }
 
 const until = (ready: () => void) =>
@@ -570,6 +623,115 @@ test("the menu names the editor's screens, folded to icons beside a service's ow
   expect(document.querySelector('nav[aria-label="Service documents"]')).toBeNull();
   expect(document.querySelector("header a")?.textContent).toBe("Categories");
   await until(() => expect(document.body.textContent).toContain("No categories yet"));
+});
+
+test.each(sitePages)(
+  "Site pages opens $url without a service or a category, and its saved change reopens",
+  async (page) => {
+    const h = await mountWorkspace("/services");
+    await act(async () => menuLink("Site pages")?.click());
+    await until(() => expect(document.querySelector("h1")?.textContent).toBe("Site pages"));
+
+    const link = document.querySelector<HTMLAnchorElement>(`main a[href="/site-pages/${page.id}"]`);
+
+    expect(link?.textContent).toBe(page.title);
+    await act(async () => link?.click());
+    await until(() => expect(activeTitle()?.value).toBe(page.title));
+    expect(menuLink("Site pages")?.getAttribute("aria-current")).toBe("page");
+    expect(document.querySelector("header")?.textContent).toContain(page.title);
+    expect(document.querySelector('nav[aria-label="Service documents"]')).toBeNull();
+    expect(control("Save").getAttribute("aria-disabled")).toBe("true");
+
+    // Even with categories to offer, a site page is offered none
+    await act(async () => {
+      h.client.setQueryData(
+        ["content", "categories"],
+        [
+          {
+            id: "00000000-0000-4000-8000-000000000099",
+            parent_id: null,
+            slug: "family",
+            title: "Family",
+            description: null,
+            url: "/family",
+            position: 0,
+            services: 1,
+            version: 1,
+            reserved_route: false,
+            last_edited_by: null,
+            updated_at: stamp,
+          },
+        ],
+      );
+    });
+    await click("Page settings");
+    expect(document.querySelector('option[value="family"]')).toBeNull();
+    await editTitle(`${page.title} updated`);
+    await click("Save");
+    await until(() => expect(h.writes).toHaveLength(1));
+    expect(JSON.parse(String(h.writes[0]?.body))).toEqual({
+      title: `${page.title} updated`,
+      url: page.url,
+      category_id: null,
+      visibility: page.visibility,
+      description: page.description,
+      form_id: page.form_id,
+      body_markdown: page.body_markdown,
+      frontmatter: page.frontmatter,
+      expected_version: page.version,
+    });
+    await until(() => expect(document.body.textContent).toContain("saved but not live"));
+    await renderInPage(null);
+
+    const reopened = await mountWorkspace(`/site-pages/${page.id}`, {
+      serverPages: h.serverPages,
+    });
+
+    await until(() => expect(activeTitle()?.value).toBe(`${page.title} updated`));
+    expect(document.body.textContent).toContain("saved but not live");
+    expect(reopened.asked).toContain(`/pages/${page.id}`);
+    expect([...h.asked, ...reopened.asked].some((path) => path.startsWith("/services/"))).toBe(
+      false,
+    );
+  },
+);
+
+test("an unknown site page says it isn't there, and leads back to Site pages", async () => {
+  await mountWorkspace("/site-pages/gone");
+  await until(() => expect(document.body.textContent).toContain("Document not found"));
+  expect(document.body.textContent).not.toContain("We could not load this page");
+  expect(document.querySelector('a[href="/history/gone"]')).toBeNull();
+  expect(document.querySelector('main a[href="/site-pages"]')?.textContent).toBe(
+    "Back to site pages",
+  );
+});
+
+test("leaving a site page asks about unsaved changes, and its history leads back to it", async () => {
+  const h = await mountWorkspace("/site-pages/terms-conditions");
+  await until(() => expect(activeTitle()?.value).toBe("Terms & Conditions"));
+  await editTitle("Keep this unsaved title");
+
+  const history = () =>
+    document.querySelector<HTMLAnchorElement>('a[href="/history/terms-conditions"]');
+
+  await act(async () => history()?.click());
+  await until(() => expect(question()?.textContent).toContain("Leave without saving?"));
+  await click("Cancel", question());
+  expect(activeTitle().value).toBe("Keep this unsaved title");
+  await act(async () => history()?.click());
+  await until(() => expect(question()).not.toBeNull());
+  await click("Leave without saving", question());
+  await until(() => expect(document.body.textContent).toContain("No history yet"));
+  expect(h.writes).toHaveLength(0);
+
+  const back = document.querySelector<HTMLAnchorElement>(
+    'main a[href="/site-pages/terms-conditions"]',
+  );
+
+  expect(back?.textContent).toBe("Back to the page");
+  await act(async () => back?.click());
+  await until(() => expect(activeTitle()?.value).toBe("Terms & Conditions"));
+  expect(control("Undo").disabled).toBe(true);
 });
 
 test("Collections is in the menu, and a record's dialog follows the address", async () => {

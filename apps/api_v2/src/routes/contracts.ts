@@ -24,6 +24,7 @@ import {
   RevisionComment,
   RevisionView,
   SaveFields,
+  SitePageSummary,
 } from "../modules/page";
 import {
   CategoryBlockers,
@@ -530,6 +531,20 @@ export const SCHEMAS = {
     tags: ["pages"],
     security: editorSecurity,
     response: { 200: z.array(z.string()), 500: error, ...authErrors },
+  },
+
+  listSitePages: {
+    summary: "List site pages",
+    description:
+      "Uncategorised root pages, ordered by title, in every visibility. " +
+      "Uses stored live metadata, not pending revisions. Requires an employee session.",
+    tags: ["pages"],
+    security: editorSecurity,
+    response: {
+      200: z.object({ pages: z.array(SitePageSummary) }),
+      500: error,
+      ...authErrors,
+    },
   },
 
   listServices: {

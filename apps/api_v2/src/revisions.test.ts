@@ -10,10 +10,19 @@ import type { FastifyInstance, InjectOptions } from "fastify";
 import type { Database } from "./db";
 import { UserId, type Employee } from "./modules/auth";
 import { PostgresPages } from "./adapters/postgres-pages";
-import { PageDocument, withDefaults, type PageId } from "./modules/page";
+import {
+  fieldsOf,
+  PageDocument,
+  withDefaults,
+  type EditorPage,
+  type PageFields,
+  type PageId,
+} from "./modules/page";
 import { ok } from "./modules/result";
 import { PageEditing } from "./services/page-editing";
 import { categories, changeEvents, pageRevisions } from "./schema";
+import { seed } from "./seed";
+import { ESTATE } from "./seed-data";
 
 import {
   aPage,
@@ -276,6 +285,143 @@ describe("a save to a public page", () => {
     }
     expect(await stored(page.id)).toEqual(PageDocument.parse(page));
     expect(await revisions()).toEqual([]);
+  });
+});
+
+describe("the seeded site pages, with no category or parent (#3500)", () => {
+  it.each(
+    ESTATE.pages.filter(
+      (page) => page.parent === null && page.category === null,
+    ),
+  )(
+    "keep $url live, with its metadata and exact body, through no-op, details and body saves",
+    async (fixture) => {
+      await seed(db);
+      const id =
+        expectOk(await new PostgresPages(db).indexedPages()).find(
+          (page) => page.url === fixture.url,
+        )?.id ?? expect.unreachable(fixture.url);
+      const opened = await as(READER, { url: `/pages/${id}` });
+      expect(opened.statusCode).toBe(200);
+      const page = opened.json<EditorPage>();
+      expect(page).toMatchObject({
+        url: fixture.url,
+        category_id: null,
+        parent_id: null,
+        title: fixture.title,
+        description: fixture.description,
+        visibility: "public",
+        form_id: fixture.form_id,
+        body_markdown: fixture.body_markdown,
+        frontmatter: fixture.frontmatter,
+        published_at: new Date(
+          fixture.published_at ?? expect.unreachable(),
+        ).toISOString(),
+        pending_revision: null,
+      });
+      const live = await stored(id);
+      const publicUrl = `/pages?url=${encodeURIComponent(fixture.url)}`;
+      const publicBefore = await app.inject({ url: publicUrl });
+      expect(publicBefore.statusCode).toBe(200);
+      const historyBefore = await events();
+      // As the editor saves: every field but the parent, left out to keep it.
+      const send = (from: EditorPage, edits: Partial<PageFields>) => {
+        const { parent_id: _, ...fields } = { ...fieldsOf(from), ...edits };
+        return as(TEST_EDITOR, {
+          method: "PUT",
+          url: `/pages/${id}`,
+          payload: { ...fields, expected_version: from.version },
+        });
+      };
+
+      const unchanged = await send(page, {});
+      expect(unchanged.statusCode).toBe(200);
+      expect(unchanged.json()).toEqual(page);
+      expect(await revisions()).toEqual([]);
+
+      let current = page;
+      for (const edits of [
+        { title: `${page.title} (edited)` },
+        { body_markdown: `${fixture.body_markdown}\n\nA proposed update.\n` },
+        { description: "Updated page details" },
+      ]) {
+        const response = await send(current, edits);
+        expect(response.statusCode).toBe(200);
+        const saved = response.json<EditorPage>();
+        expect(saved).toEqual({
+          ...current,
+          ...edits,
+          version: expect.any(Number),
+          updated_at: expect.any(String),
+          pending_revision: { status: "draft", comment: null },
+        });
+        expect(saved.version).toBeGreaterThan(current.version);
+        expect(await revisions()).toMatchObject([
+          {
+            pageId: id,
+            status: "draft",
+            fields: fieldsOf(saved),
+            createdBy: TEST_EDITOR.id,
+            contributors: [TEST_EDITOR.id],
+          },
+        ]);
+        const reopened = await as(READER, { url: `/pages/${id}` });
+        expect(reopened.json()).toEqual(saved);
+        current = saved;
+      }
+
+      expect(await stored(id)).toEqual(live);
+      expect(await events()).toEqual(historyBefore);
+      expect((await app.inject({ url: publicUrl })).body).toBe(
+        publicBefore.body,
+      );
+      const listed = await as(READER, { url: "/editor/site-pages" });
+      expect(listed.json().pages).toContainEqual({
+        id,
+        title: page.title,
+        url: page.url,
+        visibility: "public",
+      });
+    },
+  );
+
+  it("keeps the session, Origin, editor-role and visibility checks on their saves", async () => {
+    const page = await seedPage({
+      url: "/terms-conditions",
+      category_id: null,
+    });
+    const payload = { ...fieldsOf(page), expected_version: page.version };
+    const before = await events();
+
+    const anonymous = await app.inject({
+      method: "PUT",
+      url: `/pages/${page.id}`,
+      payload,
+      headers: { origin: TEST_HTTP_CONFIG.editorOrigin },
+    });
+    expect(anonymous.statusCode).toBe(401);
+    const elsewhere = await as(TEST_EDITOR, {
+      method: "PUT",
+      url: `/pages/${page.id}`,
+      payload,
+      headers: { origin: "https://outside.example" },
+    });
+    expect(elsewhere.statusCode).toBe(403);
+    expect(
+      (await save(READER, page, { ...fieldsOf(page), title: "Renamed" }))
+        .statusCode,
+    ).toBe(403);
+    expect(
+      (
+        await save(TEST_EDITOR, page, {
+          ...fieldsOf(page),
+          visibility: "preview",
+        })
+      ).statusCode,
+    ).toBe(403);
+    expect(await stored(page.id)).toEqual(PageDocument.parse(page));
+    expect(await revisions()).toEqual([]);
+    expect(await events()).toEqual(before);
   });
 });
 

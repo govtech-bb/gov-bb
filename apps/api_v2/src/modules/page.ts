@@ -112,6 +112,17 @@ export const PageDocument = PageFields.extend({
 /** A page as the editor reads it. */
 export type PageDocument = z.infer<typeof PageDocument>;
 
+/** An uncategorised root page as the editor's site pages list shows it. */
+export const SitePageSummary = PageDocument.pick({
+  id: true,
+  title: true,
+  url: true,
+  visibility: true,
+});
+
+/** An uncategorised root page in the editor's site pages list. */
+export type SitePageSummary = z.infer<typeof SitePageSummary>;
+
 /**
  * Where a pending revision stands: an editor submits a `draft`, and an
  * approver rejects or publishes a `submitted` one (#3199). Taking the page
