@@ -412,7 +412,9 @@ export async function siteVersionChanges(): Promise<number> {
 /**
  * A public read goes through `cache`; a reviewer's read (with a preview token)
  * skips it both ways, because the cache is keyed by url alone and a preview
- * page must never be served to the public.
+ * page must never be served to the public. Reviewer reads bypass the circuit
+ * breaker and the kept stale copy too: they don't trip it, and while it is
+ * open they still wait up to `API_V2_TIMEOUT_MS` before falling back.
  */
 export function loadApiV2Page(
   cache: ReturnType<typeof createApiV2Cache>,

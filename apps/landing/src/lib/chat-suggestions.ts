@@ -49,9 +49,10 @@ export function servedChatSuggestions(
   return pick((page) => served.has(`/${page.url}`))
 }
 
-/** The curated questions whose target api_v2 serves the public. A compile
- *  miss counts: api_v2 did serve the page publicly, only landing's compile
- *  failed. Any other miss, an outage included, says nothing about
+/** The curated questions whose target api_v2 serves the viewer: the public,
+ *  or a reviewer with the preview grant, who also gets chips for preview
+ *  pages (#2961). A compile miss counts: api_v2 did serve the page, only
+ *  landing's compile failed. Any other miss, an outage included, says nothing about
  *  visibility, so the chip is dropped (fail-closed). */
 export async function readServedChatSuggestions(): Promise<Array<string>> {
   const urls = CURATED.flatMap(({ serviceId }) => {
