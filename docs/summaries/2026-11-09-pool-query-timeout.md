@@ -6,15 +6,15 @@ During an RDS failover or a network partition, Postgres can stop answering witho
 
 ## What we did
 
-- `createPool()` takes an optional `queryTimeoutMs`, which becomes node-postgres's client-side `query_timeout`. Every pool also gets TCP keepalive.
+- `createPool()` takes an optional `queryTimeoutMs`, which becomes node-postgres's client-side `query_timeout` and Postgres's `statement_timeout`. Every pool also gets TCP keepalive.
 - `main.ts` gives each request query 5 s and each boot migration 10 min. The three jobs pass no limit.
 - `connect()` replaces the handle's `transaction`. It takes its own client, runs drizzle's transaction on it, and destroys the client (`release(true)`) on any error other than `TransactionRollbackError`.
 - e2e: `startQuietProxy()` in `e2e/support.ts` and `e2e/quiet-database.spec.ts`. The proxy pauses both sockets without dropping bytes to freeze the connection, and `freezeOn(marker)` freezes it partway through a transaction.
 
 ## Why we did it that way
 
-- **`query_timeout`, not `statement_timeout`.** Postgres enforces `statement_timeout` itself, and a server that has gone quiet enforces nothing. `statement_timeout` guards a live database against slow queries, which is a different failure, and it was left out.
-- **A large migration override, not 0.** pg reads `config.query_timeout || pool's`, so a per-query 0 falls back to the pool's 5 s. `@types/pg` 8.20's `QueryConfig` doesn't list `query_timeout`, hence the local `TimedQuery` type.
+- **`query_timeout` for the quiet socket, and `statement_timeout` as well.** Postgres enforces `statement_timeout` itself, so it does nothing once the server stops answering; only the client's `query_timeout` ends that wait. The plan left `statement_timeout` out on that basis. In review on #3615, a maintainer showed that the client limit alone causes a second problem. When a request times out, the pool destroys its client and opens a new one, but a backend waiting on a lock doesn't notice that its client has gone (`client_connection_check_interval` defaults to 0). With the content lock held, three waves of ten timed-out transactions left 10, 20 and then 30 backends waiting, while the pool reported none. Repeated retries could then use up Postgres's connections and take down unrelated reads. So the request pool sets both limits to the same 5 s. `client_connection_check_interval` would also do it, but only by polling the socket, while `statement_timeout` is plain and enforced everywhere.
+- **Migrations raise both limits.** pg reads `config.query_timeout || pool's`, so a per-query 0 falls back to the pool's 5 s and the client override is a large value. `@types/pg` 8.20's `QueryConfig` doesn't list `query_timeout`, hence the local `TimedQuery` type. On the server, `migrationExec` puts `set local statement_timeout` at the start of the script. Each migration is one multi-statement simple query, which runs as one implicit transaction, so `set local` holds for that script only and the pooled connection is back to 5 s afterwards. Since Postgres 13 the limit applies to each statement in the script separately, so the advisory-lock wait gets 10 min too. A unit test checks both halves of the override, and checks that the connection is back to the request limit.
 - **One pool with a per-query override, not a second pool for boot work.** The override is one call, while a second pool would add a second lifecycle to `main.ts`.
 - **Keepalive alone isn't the fix.** node exposes only the idle delay; the probe interval and count come from the OS. Keepalive eventually finds dead idle sockets, but it doesn't make a request fail fast.
 - **Why the transaction wrapper exists.** Adding the time limit exposed two faults in drizzle 0.45's `NodePgSession.transaction` (`session.js:180-194`), and an e2e test failing first proved each one:
@@ -27,6 +27,7 @@ During an RDS failover or a network partition, Postgres can stop answering witho
 ## What we almost got wrong
 
 - The plan said a client timed out inside a transaction "goes back to the pool… so this doesn't block the goal". That was true of the HTTP status but missed both faults above. Only probing `pg_stat_activity` after the first passing e2e run showed the leaked `idle in transaction` backend.
+- We left out `statement_timeout` because a quiet server can't enforce it. That was the right reason for the quiet case but the wrong conclusion. Without it, a query the client has given up on keeps running on the server, so failed requests could use up Postgres's connections. A maintainer reproduced this in review, and we confirmed it locally on Postgres 16.15.
 - The plan's editor-write test would have used a normal session cookie. Its per-request session lookup hits the frozen database first, so the write never reaches the transaction. The spec runs with `AUTH_BYPASS=true` instead.
 
 ## Open questions
