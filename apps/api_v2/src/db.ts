@@ -43,6 +43,9 @@ function sslConfig(config: AppConfig["database"]) {
  * production TLS. `queryTimeoutMs` fails a query the database has gone quiet
  * on (a failover or partition keeps the socket open) instead of waiting
  * minutes for TCP to notice; without it a query may run as long as it needs.
+ * Postgres gets the same limit (`statement_timeout`): a backend waiting on a
+ * lock doesn't notice its client has gone, so without it every timed-out
+ * query would keep a connection open after the pool has replaced it.
  */
 export function createPool(
   config: AppConfig["database"],
@@ -62,7 +65,7 @@ export function createPool(
       keepAliveInitialDelayMillis: 10_000,
       ...(queryTimeoutMs === undefined
         ? {}
-        : { query_timeout: queryTimeoutMs }),
+        : { query_timeout: queryTimeoutMs, statement_timeout: queryTimeoutMs }),
     });
     // This text is an operational alarm marker. The driver error carries its
     // client, so forwarding the whole error would expose connection credentials.
@@ -130,12 +133,14 @@ type TimedQuery = QueryConfig & { query_timeout: number };
 
 /**
  * Runs a migration script on the pool. A migration may outlast the request
- * limit, and pg reads a per-query 0 as "use the pool's", so the override is a
- * large value rather than none.
+ * limits, so it raises both: pg reads a per-query 0 as "use the pool's", so the
+ * client's is a large value rather than none, and `set local` holds the
+ * server's only for the script's own implicit transaction, so the pooled
+ * connection keeps the request limit afterwards.
  */
 export const migrationExec = (pool: Pool) => (script: string) => {
   const query: TimedQuery = {
-    text: script,
+    text: `set local statement_timeout = ${MIGRATION_TIMEOUT_MS};\n${script}`,
     query_timeout: MIGRATION_TIMEOUT_MS,
   };
   return pool.query(query);

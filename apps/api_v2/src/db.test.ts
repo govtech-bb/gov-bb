@@ -1,8 +1,8 @@
 import { sql, TransactionRollbackError } from "drizzle-orm";
 import pino from "pino";
-import { describe, expect, it } from "vitest";
+import { Client } from "pg";
+import { describe, expect, it, vi } from "vitest";
 import type { DatabaseConfig } from "./config";
-import { Pool } from "pg";
 import { connect, createPool, migrationExec, ping, type Database } from "./db";
 import { Redacted } from "./modules/redacted";
 import type { Result } from "./modules/result";
@@ -19,6 +19,24 @@ const config: DatabaseConfig = {
 function value<T, E extends Error>(result: Result<T, E>): T {
   if (!result.ok) throw result.error;
   return result.value;
+}
+
+/** The server's kind of pool, with a short request limit, on an empty database. */
+async function limitedPool(queryTimeoutMs: number) {
+  const test = await createEmptyDb();
+  const pool = value(
+    createPool(
+      {
+        ...TEST_SERVER,
+        password: new Redacted(TEST_SERVER.password),
+        database: test.name,
+        production: false,
+      },
+      pino({ enabled: false }),
+      { queryTimeoutMs },
+    ),
+  );
+  return { test, pool };
 }
 
 describe("database setup", () => {
@@ -109,7 +127,9 @@ describe("database setup", () => {
         expect(pool.options.keepAliveInitialDelayMillis).toBe(10000);
       }
       expect(unlimited.options).not.toHaveProperty("query_timeout");
+      expect(unlimited.options).not.toHaveProperty("statement_timeout");
       expect(limited.options.query_timeout).toBe(5000);
+      expect(limited.options.statement_timeout).toBe(5000);
     } finally {
       await unlimited.end();
       await limited.end();
@@ -121,18 +141,59 @@ describe("database setup", () => {
     expect(await ping(db, 10)).toBe(false);
   });
 
-  it("lets a migration outlast the pool's query limit", async () => {
-    const pool = new Pool({ ...TEST_SERVER, query_timeout: 50 });
+  it("lets a migration outlast the pool's query limits", async () => {
+    const { test, pool } = await limitedPool(50);
     try {
-      // The limit is live on this pool, so the migration passing proves the override.
-      await expect(pool.query("select pg_sleep(0.2)")).rejects.toThrow(
-        "Query read timeout",
-      );
+      // The limits are live on this pool, so the migration passing proves the override.
+      await expect(pool.query("select pg_sleep(0.2)")).rejects.toThrow();
       await expect(
         migrationExec(pool)("select pg_sleep(0.2)"),
       ).resolves.toBeDefined();
+      // The pool's only connection, back to the request limit for whoever borrows it next.
+      expect(pool.totalCount).toBe(1);
+      const { rows } = await pool.query("show statement_timeout");
+      expect(rows).toEqual([{ statement_timeout: "50ms" }]);
     } finally {
       await pool.end();
+      await test.close();
+    }
+  });
+
+  it("stops a timed-out request's work on the server too", async () => {
+    const { test, pool } = await limitedPool(150);
+    const holder = new Client({ ...TEST_SERVER, database: test.name });
+    await holder.connect();
+    try {
+      // As reindex-search holds the content lock against editor writes.
+      await holder.query("select pg_advisory_lock(2845)");
+      const db = value(await connect(pool, config));
+      const writes = await Promise.allSettled(
+        Array.from({ length: 10 }, () =>
+          db.transaction((tx) =>
+            tx.execute(sql`select pg_advisory_xact_lock(2845)`),
+          ),
+        ),
+      );
+      expect(writes.map((write) => write.status)).toEqual(
+        Array(10).fill("rejected"),
+      );
+      // The pool has let go of all ten. Postgres must not keep waiting on
+      // their behalf, or retries pile connections up past the pool's limit.
+      await vi.waitFor(
+        async () => {
+          const { rows } = await holder.query<{ n: number }>(
+            `select count(*)::int as n from pg_stat_activity
+             where datname = $1 and wait_event_type = 'Lock'`,
+            [test.name],
+          );
+          expect(rows[0]?.n).toBe(0);
+        },
+        { timeout: 2000 },
+      );
+    } finally {
+      await holder.end();
+      await pool.end();
+      await test.close();
     }
   });
 
