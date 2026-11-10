@@ -108,7 +108,7 @@ Apply is not Save. Invalid/unapplied source and serialization errors also count 
 
 An older-version restore stores `recoveredPageVersion` in the editor root's NodeState, not in Markdown. Undo and redo move this version with the recovered content. The save guard uses it to prevent overwriting a newer server version; undo returns to the pre-recovery baseline without adopting background reads. Unsupported pages have no visual undo history and retain the recovered version directly.
 
-Saving or confirmed discard removes the recovery copy. Recovery is per browser, not per account, and does not preserve undo history. Blocked or full browser storage leaves edits in memory only.
+Saving or confirmed discard removes the recovery copy. Edits made while a recovery offer is unanswered take its place in storage; discard-and-reload puts the offer back, so it is offered again. Recovery is per browser, not per account, and does not preserve undo history. Blocked or full browser storage leaves edits in memory only.
 
 The sidebar preference `govbb-editor:sidebar-collapsed` and clipboard storage remain. Old `govbb-editor:draft*`, `documents:*`, form/workspace and server-baseline records are left untouched and never loaded.
 

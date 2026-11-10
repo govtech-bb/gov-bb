@@ -37,7 +37,8 @@ function readUnsavedWork(pageId: string): UnsavedWork | undefined {
   }
 }
 
-function keepUnsavedWork(pageId: string, work: UnsavedWork) {
+/** Store a page's recovery copy: its current edits, or an unanswered offer put back in their place. */
+export function keepUnsavedWork(pageId: string, work: UnsavedWork) {
   try {
     localStorage.setItem(unsavedWorkKey(pageId), JSON.stringify(work));
   } catch {

@@ -833,6 +833,38 @@ test("discarding the open copy for the saved version forgets what was kept of it
   expect(document.body.textContent).not.toContain(KEPT);
 });
 
+test("discarding the open copy while a recovery offer waits offers the same recovery again, not the edits given up", async () => {
+  const first = await mountPage(async () => Response.json(page));
+  const saved = first.session().store.getSnapshot().committed;
+  await applySource(first.session(), saved + "\n\nKept before the reload.");
+  const offered = localStorage.getItem(keptKey);
+
+  const h = await reloadPage(async () => Response.json(page));
+  await applySource(h.session(), saved + "\n\nTyped after it.");
+  expect(localStorage.getItem(keptKey)).toContain("Typed after it.");
+
+  await act(async () => {
+    h.client.setQueryData(pageQuery(h.api, page.id).queryKey, {
+      ...page,
+      version: 3,
+      updated_at: "2026-10-07T14:00:00.000Z",
+    });
+    await vi.waitFor(() => expect(document.body.textContent).toContain("Newer version saved"));
+  });
+  await openPageAlert();
+  await act(async () => button("Discard my changes and reload")!.click());
+  await act(async () => {
+    await vi.waitFor(() =>
+      expect(h.session().store.getSnapshot().committed).not.toContain("Typed after it."),
+    );
+  });
+  expect(localStorage.getItem(keptKey)).toBe(offered);
+  expect(document.body.textContent).toContain(KEPT);
+
+  await act(async () => button("Restore changes")!.click());
+  expect(h.session().store.getSnapshot().committed).toBe(saved + "\n\nKept before the reload.");
+});
+
 test("changes kept over a version the page has moved past restore as changes to a page saved since, and can't be saved over it", async () => {
   const first = await mountPage(async () => Response.json(page));
   const unsaved = first.session().store.getSnapshot().committed + "\n\nWritten over version 1.";

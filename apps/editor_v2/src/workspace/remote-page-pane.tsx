@@ -49,7 +49,12 @@ import {
 } from "./page-sync";
 import type { DraftSnapshot } from "../persistence/types";
 import { ContentDiff } from "./review-screens";
-import { forgetUnsavedWork, recoveredPageBaseline, useUnsavedWork } from "./unsaved-work";
+import {
+  forgetUnsavedWork,
+  keepUnsavedWork,
+  recoveredPageBaseline,
+  useUnsavedWork,
+} from "./unsaved-work";
 import { UnsavedWorkOffer } from "./unsaved-work-offer";
 
 type SessionListener = (id: string, session: PageSession | undefined) => void;
@@ -543,8 +548,9 @@ function RemotePageEditor({
       client.setQueryData(categoriesQuery(api).queryKey, listed.value);
       client.setQueryData(pageQuery(api, server.id).queryKey, latest);
 
-      // Keep unanswered recovery offers when reloading the open copy.
-      if (!keptWork) forgetUnsavedWork(server.id);
+      // Edits typed over an unanswered recovery offer replaced it in storage; put it back to be offered again.
+      if (keptWork) keepUnsavedWork(server.id, keptWork);
+      else forgetUnsavedWork(server.id);
       resetEditor();
       restorePageFocus();
     } catch (error) {
