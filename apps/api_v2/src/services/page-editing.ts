@@ -778,10 +778,13 @@ export class PageEditing {
 }
 
 /**
- * Refuse an editor's write that shows or hides a public page's Start link.
- * Citizens see the link unless the page has a `start` sub-page they can't
- * see (PageResolution), so adding, removing, moving or renaming one changes
- * the public page as surely as editing it, and only an approver does that.
+ * Refuse an editor's write that adds, removes, moves or renames a hidden
+ * `start` sub-page of a public page. Such a sub-page can hide that page's
+ * Start link from citizens (PageResolution), so the write changes the public
+ * page as surely as editing it, and only an approver does that. Editing the
+ * sub-page where it stands is allowed. This is deliberately stricter than
+ * resolution: it refuses some writes, such as adding a second hidden `start`
+ * sub-page, that leave the link as it was.
  */
 async function startLinkGate(
   records: PageRecords,
@@ -790,10 +793,11 @@ async function startLinkGate(
   after: StartStepPlace | null,
 ): Promise<Result<void, NotApprover | ContentStoreUnavailable>> {
   if (actor.roles.includes("approver")) return ok(undefined);
-  const hidBefore = await hidesPublicStartLink(records, before);
+  const hidBefore = await publicPageHiddenFrom(records, before);
   if (!hidBefore.ok) return hidBefore;
-  const hidesAfter = await hidesPublicStartLink(records, after);
+  const hidesAfter = await publicPageHiddenFrom(records, after);
   if (!hidesAfter.ok) return hidesAfter;
+  // Compared by page, so moving one between public pages is refused too.
   return hidBefore.value === hidesAfter.value
     ? ok(undefined)
     : err(new NotApprover());
@@ -802,21 +806,21 @@ async function startLinkGate(
 /** Where a page sits, and who sees it: all that decides a Start link. */
 type StartStepPlace = Pick<PageFields, "url" | "parent_id" | "visibility">;
 
-/** Whether a page with these fields is a hidden `start` sub-page of a public page. */
-async function hidesPublicStartLink(
+/** The public page whose `start` sub-page, hidden, a page with these fields is, or null. */
+async function publicPageHiddenFrom(
   records: PageRecords,
   page: StartStepPlace | null,
-): Promise<Result<boolean, ContentStoreUnavailable>> {
+): Promise<Result<PageId | null, ContentStoreUnavailable>> {
   if (
     page === null ||
     page.parent_id === null ||
     page.visibility === "public" ||
     segmentsOf(page.url).at(-1) !== "start"
   )
-    return ok(false);
+    return ok(null);
   const parent = await records.editorSnapshot(page.parent_id);
   if (!parent.ok) return parent;
-  return ok(parent.value?.live.visibility === "public");
+  return ok(parent.value?.live.visibility === "public" ? page.parent_id : null);
 }
 
 function markdownRejection(fields: SaveFields): PageRejected | null {

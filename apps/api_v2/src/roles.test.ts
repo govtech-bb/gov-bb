@@ -279,6 +279,39 @@ describe("a public page's Start link", () => {
     expect(await hidden()).toBe(false);
   });
 
+  it("is not moved by a non-approver between two public pages", async () => {
+    const OTHER = "/money-financial-support/claim-unemployment-benefit";
+    const a = await seedPage();
+    const b = await seedPage({ url: OTHER, title: "Other" });
+    const start = await seedPage({
+      url: START,
+      parent_id: a.id,
+      visibility: "draft",
+    });
+    const hiddenAt = async (url: string) =>
+      (await app.inject({ method: "GET", url: `/pages?url=${url}` })).json()
+        .hide_start_links;
+
+    const response = await as(TEST_EDITOR, {
+      method: "PUT",
+      url: `/pages/${start.id}`,
+      payload: {
+        ...withDefaults(
+          aPage({
+            url: `${OTHER}/start`,
+            parent_id: b.id,
+            visibility: "draft",
+          }),
+        ),
+        expected_version: start.version,
+      },
+    });
+
+    expect(response.statusCode).toBe(403);
+    expect(await hiddenAt(ENTRY)).toBe(true);
+    expect(await hiddenAt(OTHER)).toBe(false);
+  });
+
   it("still lets a non-approver edit the start sub-page that hides it", async () => {
     const parent = await seedPage();
     const start = await seedPage({

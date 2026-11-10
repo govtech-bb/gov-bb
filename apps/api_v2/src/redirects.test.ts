@@ -827,7 +827,7 @@ describe("stored redirect HTTP resolution", () => {
     await create("/folder/missing");
     const lookup = vi.spyOn(PostgresPages.prototype, "pageOrRedirectAt");
     const ancestors = vi.spyOn(PostgresPages.prototype, "ancestorsOf");
-    const start = vi.spyOn(PostgresPages.prototype, "startStepVisibility");
+    const start = vi.spyOn(PostgresPages.prototype, "startStepVisibilities");
     const categories = vi.spyOn(PostgresPages.prototype, "categories");
     const slug = vi.spyOn(PostgresPages.prototype, "urlsWithSlug");
     const response = await read("/old");

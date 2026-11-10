@@ -2,7 +2,8 @@
  * What a site reader may see. A page is visible only when it and every page
  * above it, by `parent_id`, are visible to that reader: the public sees
  * public pages, and a reviewer with the preview token sees preview ones too.
- * A page's Start link hides when its `start` sub-page is hidden.
+ * A page's Start link hides when it has `start` sub-pages and none of them
+ * is visible.
  *
  * The API serves the content and decides what may be seen; rendering the
  * markdown is the site's job.
@@ -82,7 +83,8 @@ export const PublicPage = z.object({
   hide_start_links: z
     .boolean()
     .describe(
-      "True when the page's `start` sub-page is hidden from this viewer: " +
+      "True when the page has `start` sub-pages and this viewer can see " +
+        "none of them: " +
         'the site removes the Start link and counts "There are N ways…" down.',
     ),
   breadcrumbs: z
