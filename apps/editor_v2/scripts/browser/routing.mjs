@@ -143,6 +143,19 @@ try {
   await close.dismiss();
   assert.equal(page.isClosed(), false);
 
+  // A reload that goes ahead opens the page as the API has it, and offers back the changes this browser kept
+  const kept = page.getByText("were kept in this browser");
+  const reloading = page.waitForEvent("dialog");
+  await page.evaluate(() => {
+    setTimeout(() => location.reload(), 0);
+  });
+  await (await reloading).accept();
+  await kept.waitFor();
+  assert.equal(await title.inputValue(), "Fees");
+  await button("Restore changes").click();
+  await kept.waitFor({ state: "detached" });
+  assert.equal(await title.inputValue(), "Unsaved fees");
+
   await navigation.getByRole("link", { name: /Contact/ }).click();
   await question.getByRole("button", { name: "Leave without saving", exact: true }).click();
   await page.waitForURL(url("contact"));
@@ -150,6 +163,8 @@ try {
   await page.waitForURL(url("fees"));
   assert.equal(await title.inputValue(), "Fees");
   assert.equal(await button("Undo").isDisabled(), true);
+  // Given up on leaving, the changes aren't offered back
+  assert.equal(await kept.count(), 0);
 
   for (const [id, label] of [
     ["fourth", "Fourth"],
@@ -168,7 +183,7 @@ try {
   assert.equal(await title.inputValue(), "Contact");
   assert.deepEqual(errors, []);
   console.log(
-    "PASS API routes, legacy links, not-found handling, services table, cancelled links/Back/Forward, unload/close protection, discard/undo cleanup and clean-view eviction",
+    "PASS API routes, legacy links, not-found handling, services table, cancelled links/Back/Forward, unload/close protection, unsaved changes offered back after a reload, discard/undo cleanup and clean-view eviction",
   );
 } finally {
   await browser.close();

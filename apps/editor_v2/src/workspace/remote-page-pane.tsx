@@ -49,10 +49,14 @@ import {
 } from "./page-sync";
 import type { DraftSnapshot } from "../persistence/types";
 import { ContentDiff } from "./review-screens";
+import { forgetUnsavedWork, UnsavedWorkOffer, useUnsavedWork } from "./unsaved-work";
 
 type SessionListener = (id: string, session: PageSession | undefined) => void;
 
-/** An API page opens directly into an in-memory editor, never through browser storage. */
+/**
+ * An API page opens directly into an in-memory editor, as the API has it. Browser storage only keeps its unsaved
+ * changes, to offer them back after a reload (useUnsavedWork).
+ */
 export function RemotePagePane({
   api,
   id,
@@ -179,6 +183,7 @@ function RemotePageEditor({
   const navigate = useNavigate();
   const href = useRouterState({ select: (state) => state.location.href });
   const draft = useSyncExternalStore(store.subscribe, store.getSnapshot);
+  const [keptWork, answerKeptWork] = useUnsavedWork(server.id, draft.committed, base);
   // Links find the site's services by name; the content API lists their entry pages
   const services = useQuery(servicesQuery(api)).data;
   const rolesRead = useQuery(rolesQuery(api));
@@ -531,6 +536,9 @@ function RemotePageEditor({
         throw new Error("Your draft changed while reloading. Check it before discarding.");
       client.setQueryData(categoriesQuery(api).queryKey, listed.value);
       client.setQueryData(pageQuery(api, server.id).queryKey, latest);
+
+      // What this browser kept of the open copy goes with it; changes still on offer stay, to be offered again
+      if (!keptWork) forgetUnsavedWork(server.id);
       resetEditor();
       restorePageFocus();
     } catch (error) {
@@ -543,6 +551,46 @@ function RemotePageEditor({
       setReloading(false);
     }
   };
+
+  const restoreKeptWork = () => {
+    // Waits for a save still to be answered: its answer would move the page on, under what was restored
+    if (!keptWork || saving.current || attempt.current || submitAttempt.current) return;
+
+    const restored = store.replacePrepared(
+      govbbPageCodec.prepare(keptWork.markdown),
+      store.captureReplacementToken(),
+    );
+
+    if (restored.status === "rejected") {
+      toast("Your changes couldn’t be restored", {
+        tone: "error",
+        description: `The page is unchanged. ${restored.message}`,
+      });
+
+      return;
+    }
+
+    // Written over a version the page has since moved past: the page stands on that version again, so it shows as
+    // saved since and api_v2 refuses a save over what is there now
+    if (keptWork.version !== baseline.current.page.version)
+      rebase({
+        ...baseline.current,
+        page: { ...baseline.current.page, version: keptWork.version },
+      });
+    answerKeptWork();
+    restorePageFocus();
+  };
+
+  const keptNotice = keptWork && (
+    <UnsavedWorkOffer
+      kept={keptWork}
+      onRestore={restoreKeptWork}
+      onDiscard={() => {
+        answerKeptWork();
+        restorePageFocus();
+      }}
+    />
+  );
 
   const newerVersion = "A newer version of this page has been saved since you opened it.";
   const downloadMine = () => download(store.getSnapshot().source, "page.md");
@@ -806,7 +854,16 @@ function RemotePageEditor({
               {publishes ? "Publish changes" : "Save"}
             </Button>
           }
-          notice={notice}
+          notice={
+            keptNotice ? (
+              <>
+                {keptNotice}
+                {notice}
+              </>
+            ) : (
+              notice
+            )
+          }
           alert={
             readNotice
               ? {

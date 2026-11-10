@@ -2,7 +2,7 @@
 
 API-backed service page authoring for GovBB. The workspace groups entry, start and supporting pages, with independent in-memory edits and undo history.
 
-Pages use Markdown with YAML frontmatter. Edits remain in memory until the author chooses **Save** or **Publish changes**. There is no browser draft persistence or autosave. Reusable form editors, presets and native v2 JSON/Markdown converters remain available for embedding, but form authoring is not a workspace flow.
+Pages use Markdown with YAML frontmatter. Edits reach the content API only when the author chooses **Save** or **Publish changes**; there is no autosave. Until then the browser keeps a page's unsaved changes, and offers them back after a reload or a closed tab. Reusable form editors, presets and native v2 JSON/Markdown converters remain available for embedding, but form authoring is not a workspace flow.
 
 ## Run locally
 

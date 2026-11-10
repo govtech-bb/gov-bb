@@ -656,18 +656,21 @@ test("a page preloaded just now, as its link was pointed at, opens without waiti
   );
 });
 
-test("old browser drafts are ignored and editing never accesses storage or sends an automatic save", async () => {
+const keptKey = "govbb-editor:unsaved-work:" + page.id;
+
+const KEPT = "were kept in this browser";
+
+test("old browser drafts are ignored, and with storage blocked the page still edits without an automatic save", async () => {
   localStorage.setItem("govbb-editor:documents:" + page.id + ":markdown", "Old draft");
   localStorage.setItem("govbb-editor:workspace:v1", "{broken");
 
-  const read = vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
+  const blocked = () => {
     throw Error("Storage blocked");
-  });
+  };
 
-  const write = vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
-    throw Error("Storage blocked");
-  });
-
+  const read = vi.spyOn(Storage.prototype, "getItem").mockImplementation(blocked);
+  const write = vi.spyOn(Storage.prototype, "setItem").mockImplementation(blocked);
+  const remove = vi.spyOn(Storage.prototype, "removeItem").mockImplementation(blocked);
   let writes = 0;
 
   const h = await mountPage(async (_url, init) => {
@@ -684,9 +687,181 @@ test("old browser drafts are ignored and editing never accesses storage or sends
     window.dispatchEvent(new StorageEvent("storage", { key: "govbb-editor:workspace:v1" }));
   });
   expect(pageHasUnsavedChanges(h.session())).toBe(true);
-  expect(read).not.toHaveBeenCalled();
-  expect(write).not.toHaveBeenCalled();
+  expect(document.body.textContent).not.toContain(KEPT);
+
+  // Only the page's own unsaved work is asked for and kept, never an old draft
+  for (const storage of [read, write, remove]) {
+    expect(storage).toHaveBeenCalled();
+    expect(storage.mock.calls.every(([key]) => key === keptKey)).toBe(true);
+  }
+
   expect(writes).toBe(0);
+});
+
+/** Opens the page again as a reload does: nothing in memory, only what the API and this browser hold. */
+async function reloadPage(request: Parameters<typeof mountPage>[0]) {
+  await renderInPage(null);
+
+  return mountPage(request);
+}
+
+test("a reload offers back the unsaved changes kept in this browser, and restoring them is one step to undo", async () => {
+  const first = await mountPage(async () => Response.json(page));
+  const unsaved = first.session().store.getSnapshot().committed + "\n\nNot saved yet.";
+  await applySource(first.session(), unsaved);
+
+  await reloadPage(async () => Response.json(page));
+  expect(document.body.textContent).toContain(KEPT);
+
+  // Left unanswered, it's offered again. The page opens as the API has it: what was kept waits for an answer
+  const h = await reloadPage(async () => Response.json(page));
+  expect(document.body.textContent).toContain(KEPT);
+  expect(h.session().store.getSnapshot().committed).not.toContain("Not saved yet.");
+  expect(pageHasUnsavedChanges(h.session())).toBe(false);
+
+  button("Restore changes")!.focus();
+  await act(async () => button("Restore changes")!.click());
+  expect(h.session().store.getSnapshot().committed).toBe(unsaved);
+  expect(document.querySelector('[aria-label="Page content"]')?.textContent).toContain(
+    "Not saved yet.",
+  );
+  expect(pageHasUnsavedChanges(h.session())).toBe(true);
+  expect(h.session().getBaseline().page.version).toBe(page.version);
+  expect(document.body.textContent).not.toContain(KEPT);
+  // The offer went with its focused button: the page's heading takes the focus
+  expect(document.activeElement).toBe(pageControl("[data-document-bar] h1"));
+
+  await act(async () => pageControl<HTMLButtonElement>('button[aria-label="Undo"]').click());
+  expect(h.session().store.getSnapshot().committed).not.toContain("Not saved yet.");
+  expect(pageHasUnsavedChanges(h.session())).toBe(false);
+});
+
+test("discarding the changes kept in this browser forgets them, and the page stays as the API has it", async () => {
+  const first = await mountPage(async () => Response.json(page));
+  const saved = first.session().store.getSnapshot().committed;
+  await applySource(first.session(), saved + "\n\nNot saved yet.");
+
+  const h = await reloadPage(async () => Response.json(page));
+  button("Discard them")!.focus();
+  await act(async () => button("Discard them")!.click());
+  expect(document.body.textContent).not.toContain(KEPT);
+  expect(h.session().store.getSnapshot().committed).toBe(saved);
+  expect(document.activeElement).toBe(pageControl("[data-document-bar] h1"));
+  expect(localStorage.getItem(keptKey)).toBeNull();
+
+  await reloadPage(async () => Response.json(page));
+  expect(document.body.textContent).not.toContain(KEPT);
+});
+
+test("changes typed while an offer waits are the ones kept, and the offer can still be restored", async () => {
+  const first = await mountPage(async () => Response.json(page));
+  const saved = first.session().store.getSnapshot().committed;
+  await applySource(first.session(), saved + "\n\nKept before the reload.");
+
+  const h = await reloadPage(async () => Response.json(page));
+  await applySource(h.session(), saved + "\n\nTyped after it.");
+  expect(localStorage.getItem(keptKey)).toContain("Typed after it.");
+  expect(document.body.textContent).toContain(KEPT);
+
+  await act(async () => button("Restore changes")!.click());
+  expect(h.session().store.getSnapshot().committed).toBe(saved + "\n\nKept before the reload.");
+  expect(localStorage.getItem(keptKey)).toContain("Kept before the reload.");
+});
+
+test("a save leaves nothing kept in this browser to offer after a reload", async () => {
+  let current = page;
+
+  const request = async (_url: string, init?: RequestInit) => {
+    if (init?.method === "PUT") current = { ...page, ...JSON.parse(String(init.body)), version: 2 };
+
+    return Response.json(current);
+  };
+
+  const h = await mountPage(request);
+  await applySource(h.session(), h.session().store.getSnapshot().committed + "\n\nSaved soon.");
+  expect(JSON.parse(localStorage.getItem(keptKey)!)).toMatchObject({ version: page.version });
+  expect(localStorage.getItem(keptKey)).toContain("Saved soon.");
+
+  await savePage();
+  await act(async () => {
+    await vi.waitFor(() => expect(pageHasUnsavedChanges(h.session())).toBe(false));
+  });
+  expect(localStorage.getItem(keptKey)).toBeNull();
+
+  await reloadPage(request);
+  expect(document.body.textContent).not.toContain(KEPT);
+});
+
+test("discarding the open copy for the saved version forgets what was kept of it", async () => {
+  const h = await mountPage(async () => Response.json(page));
+  await applySource(h.session(), h.session().store.getSnapshot().committed + "\n\nGive this up.");
+  expect(localStorage.getItem(keptKey)).toContain("Give this up.");
+
+  await act(async () => {
+    h.client.setQueryData(pageQuery(h.api, page.id).queryKey, {
+      ...page,
+      version: 3,
+      updated_at: "2026-10-07T14:00:00.000Z",
+    });
+    await vi.waitFor(() => expect(document.body.textContent).toContain("Newer version saved"));
+  });
+  await openPageAlert();
+  await act(async () => button("Discard my changes and reload")!.click());
+  await act(async () => {
+    await vi.waitFor(() =>
+      expect(h.session().store.getSnapshot().committed).not.toContain("Give this up."),
+    );
+  });
+  expect(localStorage.getItem(keptKey)).toBeNull();
+  expect(document.body.textContent).not.toContain(KEPT);
+});
+
+test("changes kept over a version the page has moved past restore as changes to a page saved since, and can't be saved over it", async () => {
+  const first = await mountPage(async () => Response.json(page));
+  const unsaved = first.session().store.getSnapshot().committed + "\n\nWritten over version 1.";
+  await applySource(first.session(), unsaved);
+
+  let writes = 0;
+
+  const h = await reloadPage(async (_url, init) => {
+    if (init?.method === "PUT") writes++;
+
+    return Response.json({ ...page, version: 2, title: "Saved by someone else" });
+  });
+
+  await act(async () => button("Restore changes")!.click());
+  expect(h.session().store.getSnapshot().committed).toBe(unsaved);
+  // The page stands on the version they were written over, as it would had it never been reloaded
+  expect(h.session().getBaseline().page.version).toBe(page.version);
+  await vi.waitFor(() => expect(document.body.textContent).toContain("Newer version saved"));
+
+  const save = button("Save")!;
+  expect(save.getAttribute("aria-disabled")).toBe("true");
+  await act(async () => save.click());
+  expect(writes).toBe(0);
+  expect(JSON.parse(localStorage.getItem(keptKey)!)).toMatchObject({
+    markdown: unsaved,
+    version: page.version,
+  });
+});
+
+test.each([
+  ["something that isn't a kept page", JSON.stringify({ markdown: 7 })],
+  ["no JSON", "{broken"],
+  ["what the page already holds", undefined],
+])("%s under the page's key offers nothing", async (_name, kept) => {
+  const first = await mountPage(async () => Response.json(page));
+  const saved = first.session().store.getSnapshot().committed;
+
+  localStorage.setItem(
+    keptKey,
+    kept ?? JSON.stringify({ markdown: saved, version: 1, keptAt: "2026-10-07T12:00:00.000Z" }),
+  );
+
+  const h = await reloadPage(async () => Response.json(page));
+  expect(document.body.textContent).not.toContain(KEPT);
+  expect(h.session().store.getSnapshot().committed).toBe(saved);
+  expect(localStorage.getItem(keptKey)).toBeNull();
 });
 
 test("a slow save acknowledges only its submitted snapshot; refetch cannot overwrite newer work or its write token", async () => {

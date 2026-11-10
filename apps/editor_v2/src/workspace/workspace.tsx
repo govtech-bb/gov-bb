@@ -49,6 +49,7 @@ import type { ServicesSearch } from "./services-search";
 import type { PageDocument, WorkspaceLocation } from "./model";
 import { pageHasUnsavedChanges, type PageSession } from "./page-session";
 import { usePageLeaveGuard } from "./page-leave-guard";
+import { forgetUnsavedWork } from "./unsaved-work";
 
 type Account = {
   email: string;
@@ -136,6 +137,7 @@ export function ServiceWorkspace({
       for (const id of ids) {
         next.delete(id);
         sessions.forget(id);
+        forgetUnsavedWork(id);
       }
 
       pageSessionsRef.current = next;
