@@ -498,7 +498,7 @@ test("Cancel preserves route, edited title and focus; confirmed Leave cannot res
   expect(control("Undo").disabled).toBe(true);
   // Given up, the edits aren't kept in this browser to be offered back either
   expect(localStorage.getItem("govbb-editor:unsaved-work:fees")).toBeNull();
-  expect(document.body.textContent).not.toContain("were kept in this browser");
+  expect(document.body.textContent).not.toContain("This browser kept your unsaved changes");
 });
 
 test("sign-out asks before revoking auth and does not show a second route prompt", async () => {

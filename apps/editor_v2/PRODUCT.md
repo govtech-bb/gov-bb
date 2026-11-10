@@ -68,7 +68,9 @@ Forms support text, numbers, email, phone, dates, times, choices, boolean answer
 
 Pages use Markdown with YAML frontmatter. Forms use native v2 JSON for exchange and versioned form Markdown for editable drafts. Installed modules own their fields, controls and conversion behavior.
 
-Each open page has an in-memory working copy and undo history. Leaving unsaved work asks first; Cancel preserves it, while confirmed departure removes that copy and its undo session. Internal navigation and sign-out wait for pending saves. The browser also keeps a page's unsaved changes as they are made, so a reload, a crash or a closed tab doesn't lose them: the page opens as last saved and offers them back, to restore or discard. They stay in that browser only, without undo history, until the page is saved or its changes are given up. Changes made to a version someone has since saved over restore as changes to a page saved since, to compare and copy but not to save over it. Old browser drafts are abandoned without being read, updated or deleted.
+Each open page has an in-memory working copy and undo history. Leaving unsaved work asks first. Cancel keeps it; confirmed departure removes it and its undo session. Internal navigation and sign-out wait for pending saves.
+
+When browser storage is available, the editor keeps a recovery copy of unsaved page changes. After a reload or crash, the page opens from the API and lets the author restore that copy or confirm its discard. Restore is one undo step, including the version the recovered changes were based on. Older-version recovery cannot overwrite a newer server version. Undo returns to the version held before recovery, not one fetched in the background. Recovery stays in this browser without undo history until saved or discarded. Old browser draft keys remain untouched.
 
 Reusable JSON import validates and checks preservation before Apply. Failed imports retain the input in memory; stale asynchronous reads cannot replace newer edits. Invalid/unapplied source or read-only state blocks import/export. Replacement failure retains the prior and candidate inputs for in-session download, not durable recovery.
 

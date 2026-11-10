@@ -49,14 +49,12 @@ import {
 } from "./page-sync";
 import type { DraftSnapshot } from "../persistence/types";
 import { ContentDiff } from "./review-screens";
-import { forgetUnsavedWork, UnsavedWorkOffer, useUnsavedWork } from "./unsaved-work";
+import { forgetUnsavedWork, recoveredPageBaseline, useUnsavedWork } from "./unsaved-work";
+import { UnsavedWorkOffer } from "./unsaved-work-offer";
 
 type SessionListener = (id: string, session: PageSession | undefined) => void;
 
-/**
- * An API page opens directly into an in-memory editor, as the API has it. Browser storage only keeps its unsaved
- * changes, to offer them back after a reload (useUnsavedWork).
- */
+/** Opens API content first; browser recovery requires an explicit restore. */
 export function RemotePagePane({
   api,
   id,
@@ -165,13 +163,13 @@ function RemotePageEditor({
   resetEditor: () => void;
   focusOnOpen: boolean;
 }) {
-  const [base, setBase] = useState<ServerPageBaseline>(() => ({
+  const [savedBase, setBase] = useState<ServerPageBaseline>(() => ({
     page: server,
     markdown: pageToMarkdown(server, categories),
   }));
 
-  const [store] = useState(() => new DraftStore(base.markdown, govbbPageCodec));
-  const baseline = useRef(base);
+  const [store] = useState(() => new DraftStore(savedBase.markdown, govbbPageCodec));
+  const baseline = useRef(savedBase);
   const saving = useRef(false);
 
   const rebase = (next: ServerPageBaseline) => {
@@ -183,7 +181,14 @@ function RemotePageEditor({
   const navigate = useNavigate();
   const href = useRouterState({ select: (state) => state.location.href });
   const draft = useSyncExternalStore(store.subscribe, store.getSnapshot);
+
+  const base = useMemo(
+    () => recoveredPageBaseline(savedBase, draft.state),
+    [savedBase, draft.state],
+  );
+
   const [keptWork, answerKeptWork] = useUnsavedWork(server.id, draft.committed, base);
+  const [discardingKeptWork, setDiscardingKeptWork] = useState(false);
   // Links find the site's services by name; the content API lists their entry pages
   const services = useQuery(servicesQuery(api)).data;
   const rolesRead = useQuery(rolesQuery(api));
@@ -366,7 +371,7 @@ function RemotePageEditor({
         onClick={() => {
           if (saving.current) return;
           saving.current = true;
-          submitAttempt.current ??= structuredClone(baseline.current);
+          submitAttempt.current ??= structuredClone(session.getBaseline());
           submit.mutate(submitAttempt.current);
         }}
       >
@@ -377,7 +382,7 @@ function RemotePageEditor({
   const session = useMemo<PageSession>(
     () => ({
       store,
-      getBaseline: () => baseline.current,
+      getBaseline: () => recoveredPageBaseline(baseline.current, store.getSnapshot().state),
       isSaving: () => saving.current,
     }),
     [store, base, save.isPending, checking],
@@ -431,7 +436,8 @@ function RemotePageEditor({
       snapshot.status === "error"
     )
       return;
-    const prepared = preparePageSave(baseline.current, snapshot.committed, categories);
+
+    const prepared = preparePageSave(session.getBaseline(), snapshot.committed, categories);
 
     if (!prepared.ok) return setLocalOutcome(prepared.outcome);
     setLocalOutcome(undefined);
@@ -537,7 +543,7 @@ function RemotePageEditor({
       client.setQueryData(categoriesQuery(api).queryKey, listed.value);
       client.setQueryData(pageQuery(api, server.id).queryKey, latest);
 
-      // What this browser kept of the open copy goes with it; changes still on offer stay, to be offered again
+      // Keep unanswered recovery offers when reloading the open copy.
       if (!keptWork) forgetUnsavedWork(server.id);
       resetEditor();
       restorePageFocus();
@@ -552,14 +558,26 @@ function RemotePageEditor({
     }
   };
 
-  const restoreKeptWork = () => {
-    // Waits for a save still to be answered: its answer would move the page on, under what was restored
-    if (!keptWork || saving.current || attempt.current || submitAttempt.current) return;
+  const restoreBlocked =
+    save.isPending || submit.isPending || checking || reloading
+      ? "Wait for the current request to finish before restoring."
+      : outcome?.kind === "unknown" || save.isError || outcomeUnknown(submit.error)
+        ? "Retry the last request before restoring these changes."
+        : undefined;
 
-    const restored = store.replacePrepared(
-      govbbPageCodec.prepare(keptWork.markdown),
-      store.captureReplacementToken(),
-    );
+  const restoreKeptWork = () => {
+    if (!keptWork || saving.current || restoreBlocked) return;
+    const prepared = govbbPageCodec.prepare(keptWork.markdown);
+
+    // Root NodeState travels with undo/redo but is not written to the page's Markdown.
+    if (
+      prepared.state &&
+      prepared.source !== store.getSnapshot().committed &&
+      keptWork.version !== baseline.current.page.version
+    )
+      prepared.state.root.$ = { ...prepared.state.root.$, recoveredPageVersion: keptWork.version };
+
+    const restored = store.replacePrepared(prepared, store.captureReplacementToken());
 
     if (restored.status === "rejected") {
       toast("Your changes couldn’t be restored", {
@@ -570,9 +588,8 @@ function RemotePageEditor({
       return;
     }
 
-    // Written over a version the page has since moved past: the page stands on that version again, so it shows as
-    // saved since and api_v2 refuses a save over what is there now
-    if (keptWork.version !== baseline.current.page.version)
+    // Unsupported pages have no visual editor or undo history.
+    if (!prepared.state)
       rebase({
         ...baseline.current,
         page: { ...baseline.current.page, version: keptWork.version },
@@ -584,11 +601,9 @@ function RemotePageEditor({
   const keptNotice = keptWork && (
     <UnsavedWorkOffer
       kept={keptWork}
+      restoreBlocked={restoreBlocked}
       onRestore={restoreKeptWork}
-      onDiscard={() => {
-        answerKeptWork();
-        restorePageFocus();
-      }}
+      onDiscard={() => setDiscardingKeptWork(true)}
     />
   );
 
@@ -855,14 +870,10 @@ function RemotePageEditor({
             </Button>
           }
           notice={
-            keptNotice ? (
-              <>
-                {keptNotice}
-                {notice}
-              </>
-            ) : (
-              notice
-            )
+            <>
+              {keptNotice}
+              {notice}
+            </>
           }
           alert={
             readNotice
@@ -906,6 +917,23 @@ function RemotePageEditor({
           }}
         />
       </CatchBoundary>
+      <ConfirmDialog
+        open={discardingKeptWork}
+        onOpenChange={setDiscardingKeptWork}
+        title="Discard recovered changes?"
+        description="The changes kept in this browser will be deleted. Your open page will stay as it is."
+        confirmLabel="Discard changes"
+        finalFocus={() => {
+          if (keptWork) return true;
+          restorePageFocus();
+
+          return false;
+        }}
+        onConfirm={() => {
+          setDiscardingKeptWork(false);
+          answerKeptWork();
+        }}
+      />
       <ConfirmDialog
         open={!!confirming}
         onOpenChange={(next) => {

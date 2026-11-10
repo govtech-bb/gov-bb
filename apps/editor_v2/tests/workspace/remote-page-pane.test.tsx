@@ -658,7 +658,7 @@ test("a page preloaded just now, as its link was pointed at, opens without waiti
 
 const keptKey = "govbb-editor:unsaved-work:" + page.id;
 
-const KEPT = "were kept in this browser";
+const KEPT = "This browser kept your unsaved changes";
 
 test("old browser drafts are ignored, and with storage blocked the page still edits without an automatic save", async () => {
   localStorage.setItem("govbb-editor:documents:" + page.id + ":markdown", "Old draft");
@@ -736,17 +736,34 @@ test("a reload offers back the unsaved changes kept in this browser, and restori
   expect(pageHasUnsavedChanges(h.session())).toBe(false);
 });
 
-test("discarding the changes kept in this browser forgets them, and the page stays as the API has it", async () => {
+test("discarding recovered changes asks first, Cancel keeps them, and confirmation leaves the page unchanged", async () => {
   const first = await mountPage(async () => Response.json(page));
   const saved = first.session().store.getSnapshot().committed;
   await applySource(first.session(), saved + "\n\nNot saved yet.");
 
   const h = await reloadPage(async () => Response.json(page));
-  button("Discard them")!.focus();
-  await act(async () => button("Discard them")!.click());
+  button("Discard changes…")!.focus();
+  await act(async () => button("Discard changes…")!.click());
+  expect(document.querySelector('[role="alertdialog"]')?.textContent).toContain(
+    "Discard recovered changes?",
+  );
+  expect(localStorage.getItem(keptKey)).toContain("Not saved yet.");
+  await act(async () => button("Cancel")!.click());
+  expect(document.body.textContent).toContain(KEPT);
+  expect(localStorage.getItem(keptKey)).toContain("Not saved yet.");
+  await act(async () => {
+    await vi.waitFor(() => expect(document.activeElement).toBe(button("Discard changes…")));
+  });
+
+  await act(async () => button("Discard changes…")!.click());
+  await act(async () => button("Discard changes")!.click());
   expect(document.body.textContent).not.toContain(KEPT);
   expect(h.session().store.getSnapshot().committed).toBe(saved);
-  expect(document.activeElement).toBe(pageControl("[data-document-bar] h1"));
+  await act(async () => {
+    await vi.waitFor(() =>
+      expect(document.activeElement).toBe(pageControl("[data-document-bar] h1")),
+    );
+  });
   expect(localStorage.getItem(keptKey)).toBeNull();
 
   await reloadPage(async () => Response.json(page));
@@ -843,6 +860,182 @@ test("changes kept over a version the page has moved past restore as changes to 
     markdown: unsaved,
     version: page.version,
   });
+});
+
+test("undo and redo restore the recovery's write version, and editing after undo saves against the current version", async () => {
+  const first = await mountPage(async () => Response.json(page));
+  const recovered = first.session().store.getSnapshot().committed + "\n\nRecovered work.";
+  await applySource(first.session(), recovered);
+  let current = { ...page, version: 2, title: "Saved by someone else" };
+  const writes: (SavePageInput & { expected_version: number })[] = [];
+
+  const h = await reloadPage(async (_url, init) => {
+    if (init?.method === "PUT") {
+      const sent: (typeof writes)[number] = JSON.parse(String(init.body));
+      writes.push(sent);
+      current = { ...current, ...sent, version: 3 };
+    }
+
+    return Response.json(current);
+  });
+
+  const beforeRestore = h.session().store.getSnapshot().committed + "\n\nNew work.";
+  await applySource(h.session(), beforeRestore);
+  await act(async () => button("Restore changes")!.click());
+  expect(h.session().getBaseline().page.version).toBe(1);
+
+  await act(async () => pageControl<HTMLButtonElement>('button[aria-label="Undo"]').click());
+  expect(h.session().store.getSnapshot().committed).toBe(beforeRestore);
+  expect(h.session().getBaseline().page.version).toBe(2);
+  expect(button("Newer version saved")).toBeUndefined();
+  expect(button("Save")!.getAttribute("aria-disabled")).toBeNull();
+  expect(JSON.parse(localStorage.getItem(keptKey)!)).toMatchObject({ version: 2 });
+
+  await act(async () => pageControl<HTMLButtonElement>('button[aria-label="Redo"]').click());
+  expect(h.session().store.getSnapshot().committed).toBe(recovered);
+  expect(h.session().getBaseline().page.version).toBe(1);
+  expect(button("Save")!.getAttribute("aria-disabled")).toBe("true");
+  expect(JSON.parse(localStorage.getItem(keptKey)!)).toMatchObject({ version: 1 });
+
+  await act(async () => pageControl<HTMLButtonElement>('button[aria-label="Undo"]').click());
+  await applySource(h.session(), beforeRestore + "\n\nEdited after undo.");
+  await savePage();
+  expect(writes).toHaveLength(1);
+  expect(writes[0]?.expected_version).toBe(2);
+  expect(writes[0]?.body_markdown).toContain("Edited after undo.");
+  expect(writes[0]?.body_markdown).not.toContain("Recovered work.");
+  expect(pageHasUnsavedChanges(h.session())).toBe(false);
+});
+
+test("restoring content already typed over the current version does not introduce an older write version", async () => {
+  const first = await mountPage(async () => Response.json(page));
+  const recovered = first.session().store.getSnapshot().committed + "\n\nRecovered work.";
+  await applySource(first.session(), recovered);
+  const h = await reloadPage(async () => Response.json({ ...page, version: 2 }));
+  await applySource(h.session(), recovered);
+  await act(async () => button("Restore changes")!.click());
+  expect(h.session().store.getSnapshot().committed).toBe(recovered);
+  expect(h.session().getBaseline().page.version).toBe(2);
+  expect(button("Save")!.getAttribute("aria-disabled")).toBeNull();
+  await act(async () => pageControl<HTMLButtonElement>('button[aria-label="Undo"]').click());
+  expect(h.session().store.getSnapshot().committed).not.toContain("Recovered work.");
+  expect(h.session().getBaseline().page.version).toBe(2);
+});
+
+test("saving same-version recovery advances its baseline without retaining a recovery conflict", async () => {
+  const first = await mountPage(async () => Response.json(page));
+  await applySource(
+    first.session(),
+    first.session().store.getSnapshot().committed + "\n\nRecovered work.",
+  );
+  let current = page;
+
+  const h = await reloadPage(async (_url, init) => {
+    if (init?.method === "PUT") current = { ...page, ...JSON.parse(String(init.body)), version: 2 };
+
+    return Response.json(current);
+  });
+
+  await act(async () => button("Restore changes")!.click());
+  await savePage();
+  await act(async () => {
+    await vi.waitFor(() => expect(h.session().getBaseline().page.version).toBe(2));
+  });
+  expect(pageHasUnsavedChanges(h.session())).toBe(false);
+  expect(button("Newer version saved")).toBeUndefined();
+  expect(localStorage.getItem(keptKey)).toBeNull();
+});
+
+test("undoing recovery does not adopt a version fetched after the page opened", async () => {
+  const first = await mountPage(async () => Response.json(page));
+  await applySource(
+    first.session(),
+    first.session().store.getSnapshot().committed + "\n\nRecovered.",
+  );
+  const h = await reloadPage(async () => Response.json({ ...page, version: 2 }));
+  await act(async () => button("Restore changes")!.click());
+  await act(async () => {
+    h.client.setQueryData(pageQuery(h.api, page.id).queryKey, { ...page, version: 3 });
+  });
+  await act(async () => pageControl<HTMLButtonElement>('button[aria-label="Undo"]').click());
+  expect(h.session().getBaseline().page.version).toBe(2);
+  expect(button("Newer version saved")).toBeDefined();
+  expect(button("Save")!.getAttribute("aria-disabled")).toBe("true");
+});
+
+test("Restore is disabled during a save and works after a definitive conflict", async () => {
+  const first = await mountPage(async () => Response.json(page));
+  const recovered = first.session().store.getSnapshot().committed + "\n\nRecovered work.";
+  await applySource(first.session(), recovered);
+  const reply = Promise.withResolvers<Response>();
+  let current = page;
+
+  const h = await reloadPage(async (_url, init) =>
+    init?.method === "PUT" ? reply.promise : Response.json(current),
+  );
+
+  const edited = h.session().store.getSnapshot().committed + "\n\nNew work.";
+  await applySource(h.session(), edited);
+  await savePage();
+  await act(async () => {
+    await vi.waitFor(() =>
+      expect(button("Restore changes")!.getAttribute("aria-disabled")).toBe("true"),
+    );
+  });
+  expect(document.body.textContent).toContain(
+    "Wait for the current request to finish before restoring.",
+  );
+  await act(async () => button("Restore changes")!.click());
+  expect(h.session().store.getSnapshot().committed).toBe(edited);
+
+  current = { ...page, version: 2 };
+  await act(async () =>
+    reply.resolve(Response.json({ error: "version_conflict" }, { status: 409 })),
+  );
+  await act(async () => {
+    await vi.waitFor(() => expect(button("Newer version saved")).toBeDefined());
+  });
+  expect(button("Restore changes")!.getAttribute("aria-disabled")).toBeNull();
+  await act(async () => button("Restore changes")!.click());
+  expect(h.session().store.getSnapshot().committed).toBe(recovered);
+  expect(h.session().getBaseline().page.version).toBe(1);
+  expect(button("Save")!.getAttribute("aria-disabled")).toBe("true");
+});
+
+test("Restore explains an uncertain save and becomes available after retry confirms it", async () => {
+  const first = await mountPage(async () => Response.json(page));
+  const recovered = first.session().store.getSnapshot().committed + "\n\nRecovered work.";
+  await applySource(first.session(), recovered);
+  let current = page;
+
+  const h = await reloadPage(async (_url, init) => {
+    if (init?.method === "PUT") {
+      current = { ...page, ...JSON.parse(String(init.body)), version: 2 };
+      throw new TypeError("Lost response");
+    }
+
+    return Response.json(current);
+  });
+
+  await applySource(h.session(), h.session().store.getSnapshot().committed + "\n\nNew work.");
+  await savePage();
+  await act(async () => {
+    await vi.waitFor(() =>
+      expect(document.body.textContent).toContain(
+        "Retry the last request before restoring these changes.",
+      ),
+    );
+  });
+  expect(button("Restore changes")!.getAttribute("aria-disabled")).toBe("true");
+  await openPageAlert();
+  await act(async () => button("Retry same save")!.click());
+  await act(async () => {
+    await vi.waitFor(() => expect(h.session().getBaseline().page.version).toBe(2));
+  });
+  expect(button("Restore changes")!.getAttribute("aria-disabled")).toBeNull();
+  await act(async () => button("Restore changes")!.click());
+  expect(h.session().store.getSnapshot().committed).toBe(recovered);
+  expect(h.session().getBaseline().page.version).toBe(1);
 });
 
 test.each([
