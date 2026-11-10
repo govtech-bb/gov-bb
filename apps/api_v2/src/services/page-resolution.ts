@@ -17,12 +17,17 @@ import {
 } from "../modules/page-visibility";
 import { ok, type Result } from "../modules/result";
 
+/** A stored redirect or exact page from one database snapshot. */
+export type PageRoute =
+  | { readonly kind: "redirect"; readonly destinationUrl: string }
+  | { readonly kind: "page"; readonly page: ResolvablePage };
+
 /** The reads public page resolution needs from content storage. */
 export interface PublicPageReads {
-  /** The page at this url, or null. */
-  pageAt(
+  /** A stored rule takes precedence over the exact page, even for preview readers. */
+  pageOrRedirectAt(
     url: string,
-  ): Promise<Result<ResolvablePage | null, ContentStoreUnavailable>>;
+  ): Promise<Result<PageRoute | null, ContentStoreUnavailable>>;
   /** The pages above this one, root first; a loop in the data ends rather than repeating. */
   ancestorsOf(
     pageId: PageId,
@@ -54,10 +59,19 @@ export class PageResolution {
     url: string,
     viewer: Viewer,
   ): Promise<Result<Resolution, ContentStoreUnavailable>> {
-    const found = await this.reads.pageAt(url);
+    const found = await this.reads.pageOrRedirectAt(url);
     if (!found.ok) return found;
-    const page = found.value;
-    if (page === null) return this.redirectFor(url, viewer);
+    const route = found.value;
+    if (route === null) return this.redirectFor(url, viewer);
+    if (route.kind === "redirect") {
+      const target = route.destinationUrl;
+      return ok(
+        isSitePath(target) && target !== url
+          ? { kind: "redirect", url: target }
+          : NOT_FOUND,
+      );
+    }
+    const page = route.page;
 
     const ancestors =
       page.parentId === null

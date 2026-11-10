@@ -1,5 +1,5 @@
 /**
- * The Drizzle schema, matching migrations `001_init` to `018_snapshot_version`
+ * The Drizzle schema, matching migrations `001_init` to `026_change_event_order`
  * applied in order, table for table and column for column. BetterAuth reads
  * and writes its four `auth_*` tables through these definitions; their
  * property keys are BetterAuth's field names.
@@ -147,6 +147,26 @@ export const contentPages = pgTable(
   ],
 );
 
+/** Page redirect paths survive deletion and recreation of their destination pages. */
+export const pageRedirects = pgTable(
+  "page_redirects",
+  {
+    id: uuid("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    sourceUrl: varchar("source_url", { length: 512 }).notNull(),
+    destinationUrl: varchar("destination_url", { length: 512 }).notNull(),
+  },
+  (table) => [
+    unique("page_redirects_source_url_unique").on(table.sourceUrl),
+    check(
+      "page_redirects_not_self",
+      sql`${table.sourceUrl} <> ${table.destinationUrl}`,
+    ),
+    index("page_redirects_destination_url_idx").on(table.destinationUrl),
+  ],
+);
+
 /**
  * BetterAuth's tables, as `003_auth` creates them: quoted camelCase columns
  * and BetterAuth's own timestamp precision. `system` is the user with no
@@ -283,6 +303,10 @@ export const changeEvents = pgTable(
     entityKind: varchar("entity_kind", { length: 40 }).notNull(),
     entityId: text("entity_id").notNull(),
     versionNo: integer("version_no").notNull(),
+    // Ordered inserts under the content lock; pre-migration events remain null.
+    eventOrder: bigint("event_order", { mode: "number" }).default(
+      sql`nextval('change_event_order_seq')`,
+    ),
     action: changeAction("action").notNull(),
     snapshot: jsonb("snapshot").notNull(),
     // Null for history written before format labels were introduced.
@@ -298,6 +322,7 @@ export const changeEvents = pgTable(
     restoredFrom: integer("restored_from"),
   },
   (table) => [
+    uniqueIndex("change_events_event_order_unique").on(table.eventOrder),
     unique("change_events_entity_kind_entity_id_version_no_key").on(
       table.entityKind,
       table.entityId,
