@@ -19,12 +19,21 @@ import {
 
 const message = (error: unknown) => (error as Error).message.split('\n')[0]
 
+/** Skips the test and logs why: the list reporter doesn't print the reason. */
+function skip(reason: string): void {
+  console.log(`skipped: ${reason}`)
+  test.skip(true, reason)
+}
+
 test('preview pages are hidden from the public', async ({ request }) => {
   const env = readSmokeEnv(process.env)
   const token = process.env.SMOKE_API_V2_PREVIEW_TOKEN
-  test.skip(!token, 'preview: SMOKE_API_V2_PREVIEW_TOKEN is unset')
-  const urls = await previewPageUrls(env.apiV2, token as string)
-  test.skip(urls.length === 0, 'preview: no live example on sandbox')
+  // In CI a missing secret must fail, or the check would stop running green.
+  if (!token && process.env.CI)
+    throw new Error('SMOKE_API_V2_PREVIEW_TOKEN is unset in CI')
+  if (!token) return skip('preview: SMOKE_API_V2_PREVIEW_TOKEN is unset')
+  const urls = await previewPageUrls(env.apiV2, token)
+  if (urls.length === 0) return skip('preview: no live example on sandbox')
   const problems: string[] = []
   for (const url of urls) {
     try {
@@ -57,7 +66,7 @@ for (const [name, state] of STATES) {
   test(`${name} pages hide their Start links`, async ({ page }) => {
     const env = readSmokeEnv(process.env)
     const pages = (await discover())[state]
-    test.skip(pages.length === 0, `${name}: no live example on sandbox`)
+    if (pages.length === 0) return skip(`${name}: no live example on sandbox`)
     const problems: string[] = []
     for (const gated of pages) {
       try {

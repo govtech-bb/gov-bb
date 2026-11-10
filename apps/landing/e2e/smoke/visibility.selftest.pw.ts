@@ -28,9 +28,10 @@ const fixtures: Record<string, Fixture> = {
   '/no-banner': { source: api, body: '<p>About this service.</p>' },
   '/notice-in-copy': { source: api, body: `<p>${UPGRADING}</p>` },
   '/fallback': { source: 'static-fallback', body: banner(UPGRADING) },
-  '/start-link': {
+  // A live form whose id merely starts with the gated one's.
+  '/other-form-link': {
     source: api,
-    body: `${banner(UPGRADING)}<a data-start-link href="/elsewhere">Start now</a>`,
+    body: `${banner(UPGRADING)}<a href="${FORMS}/forms/x-2">Start now</a>`,
   },
   '/form-link': {
     source: api,
@@ -97,6 +98,7 @@ test('passes a gated page with its banner and no Start link', async ({
   await checkGatedPage(page, env, 'maintenance', gated('/gated'))
   await checkGatedPage(page, env, 'statusDisabled', gated('/gated'))
   await checkGatedPage(page, env, 'closed', gated('/closed'))
+  await checkGatedPage(page, env, 'maintenance', gated('/other-form-link'))
 })
 
 test('fails a missing banner', async ({ page }) => {
@@ -117,7 +119,7 @@ test('fails the notice in body copy, outside the banner', async ({ page }) => {
   ).rejects.toThrow('/notice-in-copy has no')
 })
 
-for (const url of ['/start-link', '/form-link', '/step-link']) {
+for (const url of ['/form-link', '/step-link']) {
   test(`fails a visible Start link (${url})`, async ({ page }) => {
     await expect(
       checkGatedPage(page, env, 'maintenance', gated(url)),

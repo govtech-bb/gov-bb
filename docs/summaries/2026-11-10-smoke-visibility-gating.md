@@ -50,7 +50,12 @@ maintenance, `form_disabled` or closed.
 
 - Nobody has confirmed that `RECIPE_PREVIEW_TOKEN` equals sandbox api_v2's
   `PREVIEW_SECRET`. If it doesn't, the preview test fails in CI with a 401.
-- Draft pages are out of scope because draft URLs are being deprecated.
+  An unset token fails in CI too (it skips only locally), so a renamed secret
+  can't turn the check off quietly.
+- Draft pages aren't checked. #3247 drops only landing's `?draft=` viewer
+  level; the 10 `draft` pages remain in api_v2. But api_v2 serves drafts only
+  to an editor session, so the smoke has no token-based way to list them, and
+  a pinned list would pass vacuously once a page is deleted.
 - The catalog leaves out `/start` steps, so a page that is preview-only at
   `/start` isn't discovered.
 - `gatedPages` makes about 100 sequential api_v2 reads (~15s). That's fine

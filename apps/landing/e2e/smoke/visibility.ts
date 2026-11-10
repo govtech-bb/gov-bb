@@ -44,12 +44,10 @@ export async function checkGatedPage(
     banner,
     `${gated.url} has no "${NOTICE[state]}" banner`,
   ).toBeVisible()
+  // Landing renders a Start link as a plain anchor (MarkdownLink.tsx drops
+  // `data-start-link`) to exactly the form or the `/start` step.
   const startLinks = main.locator(
-    [
-      'a[data-start-link]',
-      `a[href^="${env.forms}/forms/${gated.formId}"]`,
-      `a[href="${gated.url}/start"]`,
-    ].join(', '),
+    `a[href="${env.forms}/forms/${gated.formId}"], a[href="${gated.url}/start"]`,
   )
   if (await startLinks.count())
     throw new Error(`${gated.url} shows a Start link to ${gated.formId}`)
