@@ -64,4 +64,24 @@ describe("trackPageviewsOnPathChange", () => {
     expect(router.state.location.search).toEqual({ step: "two" });
     expect(trackPageview).toHaveBeenCalledTimes(1);
   });
+
+  it("counts a path change after a step change, and a return to a path", async () => {
+    const router = renderRouter("/forms/a?step=one");
+    await screen.findByRole("heading", { name: "a" });
+
+    const go = (formId: string, step?: string) =>
+      act(() =>
+        router.navigate({
+          to: "/forms/$formId",
+          params: { formId },
+          search: step ? { step } : {},
+        }),
+      );
+    await go("a", "two");
+    await go("b");
+    await go("a");
+    await screen.findByRole("heading", { name: "a" });
+
+    expect(trackPageview).toHaveBeenCalledTimes(3);
+  });
 });
