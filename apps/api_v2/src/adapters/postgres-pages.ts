@@ -718,7 +718,7 @@ export class PostgresPages
   }
 
   /** Overwrite a page that exists; the database refuses what an insert would. */
-  async replace(
+  private async replace(
     id: PageId,
     page: PageRevision,
   ): Promise<Result<PageDocument, PageRejected | ContentStoreUnavailable>> {
