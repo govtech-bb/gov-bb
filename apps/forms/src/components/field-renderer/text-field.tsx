@@ -20,6 +20,10 @@ export function renderTextField(ctx: FieldRenderContext): JSX.Element {
   } = ctx;
 
   const isNumber = field.htmlType === "number";
+  const prefix = field.ui?.prefix;
+  // A fractional `step` (e.g. 0.01 for money) means the field takes decimals,
+  // so mobile offers a keyboard with a decimal point.
+  const inputMode = Number.isInteger(field.step ?? 1) ? "numeric" : "decimal";
 
   // Repeated rows omit requiredProps; the array validator checks the group.
   const renderControl = (
@@ -29,7 +33,7 @@ export function renderTextField(ctx: FieldRenderContext): JSX.Element {
     index?: number,
   ): JSX.Element => {
     const props = rowInputProps(sharedProps, field, index);
-    return isNumber ? (
+    return isNumber && !prefix ? (
       <NumberInput
         {...props}
         {...(withRequired ? requiredProps : {})}
@@ -46,6 +50,12 @@ export function renderTextField(ctx: FieldRenderContext): JSX.Element {
         mask={field.mask}
         {...props}
         {...(withRequired ? requiredProps : {})}
+        // The design system's number input has no prefix slot, so a prefixed
+        // number is a text input with a numeric keyboard (the GOV.UK pattern).
+        // The browser no longer blocks letters, so the field's validations
+        // must (components/money-bds ships a pattern for it).
+        {...(isNumber ? { type: "text", inputMode, spellCheck: false } : {})}
+        prefix={prefix}
         autoComplete={autoComplete}
         value={value}
         aria-invalid={invalid}

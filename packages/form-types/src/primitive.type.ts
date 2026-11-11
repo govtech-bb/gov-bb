@@ -72,6 +72,9 @@ export const primitiveUISchema = z.object({
    * ask for the treatment. Set it on every field in the revealed run — adjacent
    * indented fields join into one continuous rail. */
   indent: z.boolean().optional(),
+  /** Text shown before the input, e.g. `"BDS $"`. Visual only (aria-hidden),
+   * so the label or hint must name what it means for screen-reader users. */
+  prefix: z.string().optional(),
 });
 
 export type PrimitiveUI = z.infer<typeof primitiveUISchema>;

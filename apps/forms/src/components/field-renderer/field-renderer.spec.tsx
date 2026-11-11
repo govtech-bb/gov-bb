@@ -889,6 +889,103 @@ describe("FieldRenderer", () => {
   });
 
   // -------------------------------------------------------------------------
+  // ui.prefix — design-system input adornment, e.g. "BDS $" (#3638)
+  // -------------------------------------------------------------------------
+  describe("ui.prefix", () => {
+    const money = (overrides: Partial<ClientPrimitive> = {}) =>
+      primitive("number", {
+        label: "Monthly rent",
+        hint: "In BDS dollars",
+        step: 0.01,
+        ui: { prefix: "BDS $", width: "short" },
+        validations: {
+          required: { value: true, error: "Enter the monthly rent" },
+        },
+        ...overrides,
+      });
+
+    it("renders the prefix before the input, hidden from screen readers", () => {
+      const { container } = renderField(money());
+      const prefix = container.querySelector(".govbb-input__prefix");
+      expect(prefix).toHaveTextContent("BDS $");
+      expect(prefix).toHaveAttribute("aria-hidden", "true");
+      expect(prefix?.nextElementSibling).toBe(
+        screen.getByRole("textbox", { name: "Monthly rent" }),
+      );
+    });
+
+    it("renders a prefixed number as a text input with a decimal keyboard", () => {
+      renderField(money());
+      const input = screen.getByRole("textbox", { name: "Monthly rent" });
+      expect(input).toHaveAttribute("type", "text");
+      expect(input).toHaveAttribute("inputmode", "decimal");
+      expect(input).toHaveAccessibleDescription("In BDS dollars");
+      expect(
+        document.querySelector(".govbb-number-input__step"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("offers a numeric keyboard when the step is whole", () => {
+      renderField(money({ step: undefined }));
+      expect(
+        screen.getByRole("textbox", { name: "Monthly rent" }),
+      ).toHaveAttribute("inputmode", "numeric");
+    });
+
+    it("emits the typed decimal value as a string", async () => {
+      const user = userEvent.setup();
+      renderField(money());
+      await user.type(
+        screen.getByRole("textbox", { name: "Monthly rent" }),
+        "1",
+      );
+      expect(mockFieldApi.handleChange).toHaveBeenLastCalledWith("1");
+    });
+
+    it("marks the input invalid inside the prefix wrapper on error", () => {
+      mockState = {
+        value: "-1",
+        meta: { isValid: false, errors: ["Enter the monthly rent"] },
+      };
+      const { container } = renderField(money());
+      const input = screen.getByRole("textbox", { name: "Monthly rent" });
+      expect(input).toHaveAttribute("aria-invalid", "true");
+      expect(input.closest(".govbb-input-wrapper")).toBe(
+        container.querySelector(".govbb-input-wrapper"),
+      );
+    });
+
+    it("prefixes a text field too", () => {
+      const { container } = renderField(
+        primitive("text", { ui: { prefix: "#" } }),
+      );
+      expect(container.querySelector(".govbb-input__prefix")).toHaveTextContent(
+        "#",
+      );
+      expect(screen.getByRole("textbox")).toHaveAttribute("type", "text");
+    });
+
+    it("renders no prefix or wrapper when ui.prefix is unset", () => {
+      const { container } = renderField(primitive("text"));
+      expect(container.querySelector(".govbb-input__prefix")).toBeNull();
+      expect(container.querySelector(".govbb-input-wrapper")).toBeNull();
+    });
+
+    it("leaves an unprefixed number field as the stepper input", () => {
+      const { container } = renderField(primitive("number", { step: 0.01 }));
+      const input = container.querySelector("input.govbb-number-input");
+      expect(input).toHaveAttribute("type", "number");
+      expect(input).toHaveAttribute("inputmode", "numeric");
+      expect(container.querySelector(".govbb-input__prefix")).toBeNull();
+    });
+
+    it("has no axe-detectable accessibility violations", async () => {
+      const { container } = renderField(money());
+      expect(await axe(container)).toHaveNoViolations();
+    });
+  });
+
+  // -------------------------------------------------------------------------
   // fieldConditionalOn behaviour
   // -------------------------------------------------------------------------
   describe("fieldConditionalOn behaviour", () => {

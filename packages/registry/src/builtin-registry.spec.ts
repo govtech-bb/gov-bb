@@ -42,6 +42,20 @@ describe("BUILTIN_REGISTRY", () => {
     });
   });
 
+  it("exposes the BDS $ money component (#3638)", () => {
+    expect(BUILTIN_REGISTRY["components/money-bds"]).toMatchObject({
+      fieldId: "money-bds",
+      htmlType: "number",
+      hint: "In BDS dollars",
+      step: 0.01,
+      ui: { prefix: "BDS $" },
+      validations: {
+        required: { value: true, error: "Enter the amount" },
+        min: { value: 0 },
+      },
+    });
+  });
+
   it("exposes the primary-school select with all 70 schools", () => {
     const primarySchool = BUILTIN_REGISTRY["components/primary-school"];
     expect(primarySchool).toMatchObject({
