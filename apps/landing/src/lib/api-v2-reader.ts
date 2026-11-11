@@ -49,8 +49,8 @@ export function createApiV2Breaker() {
   }
 }
 
-/** The breaker every read of api_v2 shares. */
-export const apiV2Breaker = createApiV2Breaker()
+/** The breaker every read of api_v2 shares. Pure, so the client build drops it with the reads. */
+export const apiV2Breaker = /* @__PURE__ */ createApiV2Breaker()
 
 /** Why a read has nothing to show: a 404 the caller may expect, or a failure. */
 export type ApiV2ReadMiss = {
