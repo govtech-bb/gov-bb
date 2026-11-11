@@ -854,12 +854,14 @@ test("a delete that can't be confirmed says so, then the next press checks befor
   );
   await press("Delete record");
   await until(() =>
-    expect(dialog()?.textContent).toContain("The content API could not be reached. Try again."),
+    expect(dialog()?.textContent).toContain(
+      "We couldn’t tell whether that went through. Check your connection, then check again before you try again.",
+    ),
   );
   expect(document.body.textContent).not.toContain("Record deleted");
 
   down = false;
-  await press("Delete record");
+  await press("Check again");
   await closed();
 
   expect(server.writes).toHaveLength(1);
