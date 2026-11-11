@@ -87,6 +87,10 @@ export interface ApiV2ReadOptions<A> {
   logUrl?: string
   /** `'manual'` for a caller that reads a redirect itself. */
   redirect?: RequestRedirect
+  /** `API_V2_TIMEOUT_MS` by default. */
+  timeoutMs?: number
+  /** No `api_v2_fallback` lines: for a read whose failure changes nothing. */
+  quiet?: boolean
   /**
    * The caller's own reading of an answer, before the reader's: a result is
    * the read's, `undefined` leaves the answer to the reader. It runs within
@@ -129,8 +133,8 @@ export async function readPublic<T>(
 
 /**
  * The transport alone, classed and logged as `readPublic` is, with no breaker:
- * page reads, whose cache checks and records it (api-v2-cache.ts), and
- * reviewer reads, which bypass it.
+ * page reads, whose cache checks and records it (api-v2-cache.ts), reviewer
+ * reads, which bypass it, and the site-version check, which only checks it.
  */
 export async function readApiV2<T, A = never>(
   base: string,
@@ -142,11 +146,14 @@ export async function readApiV2<T, A = never>(
     previewToken,
     logUrl = path,
     redirect,
+    timeoutMs = API_V2_TIMEOUT_MS,
+    quiet = false,
     answer,
   }: ApiV2ReadOptions<A> = {},
 ): Promise<ApiV2Read<T> | A> {
   const controller = new AbortController()
-  const timer = setTimeout(() => controller.abort(), API_V2_TIMEOUT_MS)
+  const timer = setTimeout(() => controller.abort(), timeoutMs)
+  const log: typeof logFallback = quiet ? () => {} : logFallback
 
   try {
     const response = await fetchImpl(`${base}${path}`, {
@@ -184,11 +191,11 @@ export async function readApiV2<T, A = never>(
         response.status !== 408 &&
         response.status !== 429
       ) {
-        logFallback('rejected', logUrl, { status: response.status })
+        log('rejected', logUrl, { status: response.status })
 
         return { kind: 'miss', reason: 'rejected', cacheControl }
       }
-      logFallback('status', logUrl, { status: response.status })
+      log('status', logUrl, { status: response.status })
 
       return { kind: 'miss', reason: 'status' }
     }
@@ -198,12 +205,12 @@ export async function readApiV2<T, A = never>(
 
     if (parsed.success) return { kind: 'ok', value: parsed.data, cacheControl }
     if (controller.signal.aborted) throw new Error('timed out reading the body')
-    logFallback('malformed', logUrl)
+    log('malformed', logUrl)
 
     return { kind: 'miss', reason: 'malformed' }
   } catch (error) {
     const reason = controller.signal.aborted ? 'timeout' : 'network'
-    logFallback(reason, logUrl, { error: message(error) })
+    log(reason, logUrl, { error: message(error) })
 
     return { kind: 'miss', reason }
   } finally {

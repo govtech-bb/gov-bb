@@ -214,6 +214,52 @@ describe('readApiV2', () => {
     expect(lines(error)).toMatchObject([{ reason: 'timeout', url: '/x' }])
   })
 
+  it('gives up after the timeout it is given', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    const hanging = vi.fn<typeof fetch>(
+      (_url, init) =>
+        new Promise((_resolve, reject) =>
+          init?.signal?.addEventListener('abort', () =>
+            reject(init.signal?.reason),
+          ),
+        ),
+    )
+    let settled = false
+    const result = readApiV2(BASE, '/x', Body, hanging, {
+      timeoutMs: 100,
+    }).finally(() => {
+      settled = true
+    })
+    await vi.advanceTimersByTimeAsync(99)
+    expect(settled).toBe(false)
+    await vi.advanceTimersByTimeAsync(1)
+    expect(await result).toEqual({ kind: 'miss', reason: 'timeout' })
+  })
+
+  it.each([
+    ['status', answering(503)],
+    ['rejected', answering(400)],
+    ['malformed', answering(200, '<html>')],
+    [
+      'network',
+      vi.fn<typeof fetch>(async () => {
+        throw new TypeError('fetch failed')
+      }),
+    ],
+  ])(
+    'classes a quiet %s miss the same, without a line',
+    async (reason, fetchImpl) => {
+      const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+      expect(
+        await readApiV2(BASE, '/x', Body, fetchImpl, { quiet: true }),
+      ).toMatchObject({ kind: 'miss', reason })
+      expect(error).not.toHaveBeenCalled()
+      expect(warn).not.toHaveBeenCalled()
+    },
+  )
+
   it('neither checks nor counts the breaker', async () => {
     vi.spyOn(console, 'error').mockImplementation(() => {})
     const failing = answering(503)
