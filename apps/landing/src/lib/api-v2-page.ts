@@ -231,9 +231,9 @@ export async function fetchApiV2Page(
           logFallback('preview_token', url, { status: response.status })
           return { kind: 'miss', reason: 'preview_token' }
         }
-        // Another 2xx or 3xx (a redirect it doesn't follow): `rejected`, as
-        // pages have always classed it; the reader's rule would make it
-        // `status`. ponytail: kept pending a decision (#3644 step 3 report).
+        // Another 2xx or 3xx (a redirect it doesn't follow) stays `rejected`,
+        // as pages have always classed it. The reader's rule would count it
+        // as an api_v2 failure, which moving the transport must not change.
         if (response.status !== 200 && response.status < 400) {
           await response.body?.cancel()
           logFallback('rejected', url, { status: response.status })
