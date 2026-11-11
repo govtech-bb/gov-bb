@@ -7,6 +7,7 @@ import type { ContentPage } from '../content/registry'
 import { bakeStartLinkFormId } from '../utils/markdown/plugins'
 import { createApiV2Cache } from './api-v2-cache'
 import { REASONS, logFallback, message } from './api-v2-log'
+import { API_V2_TIMEOUT_MS } from './api-v2-reader'
 import { createVersionWatch, fetchSiteVersion } from './api-v2-version'
 import type { Frontmatter, ViewLevel } from './frontmatter'
 import { COOKIE_NAME, levelFromCookie } from './preview'
@@ -40,7 +41,7 @@ import { COOKIE_NAME, levelFromCookie } from './preview'
  * classification.
  */
 
-export const API_V2_TIMEOUT_MS = 750
+export { API_V2_TIMEOUT_MS }
 
 /** An optional field that is dropped, not fatal, when it has the wrong type. */
 const lenient = <T extends z.ZodType>(schema: T) =>

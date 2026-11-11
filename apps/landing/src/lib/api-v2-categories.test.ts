@@ -122,14 +122,6 @@ describe('fetchCategoryTree', () => {
     expect(requests[0].headers).not.toHaveProperty('cookie')
   })
 
-  it("sends landing's token only when one is configured", async () => {
-    reply = json(200, { categories: TREE })
-    await fetchCategoryTree(base)
-    await fetchCategoryTree(base, fetch, 'secret')
-    expect(requests[0].headers).not.toHaveProperty('x-landing-token')
-    expect(requests[1].headers['x-landing-token']).toBe('secret')
-  })
-
   it('keeps only the public fields of each category', async () => {
     reply = json(200, {
       categories: [{ ...TREE[0], id: 'c1', services: 4, updated_at: 'x' }],
@@ -148,18 +140,6 @@ describe('fetchCategoryTree', () => {
     })
   })
 
-  it('logs a failed read as one api_v2_fallback line at error', async () => {
-    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
-    reply = json(503, { error: 'internal_error' })
-    await fetchCategoryTree(base)
-    expect(logged(error)).toEqual({
-      event: 'api_v2_fallback',
-      reason: 'status',
-      url: '/categories',
-      status: 503,
-    })
-  })
-
   it.each([
     ['a server error', json(500, { error: 'internal_error' }), 500],
     ['a missing route', json(404, { error: 'not_found' }), 404],
@@ -175,41 +155,7 @@ describe('fetchCategoryTree', () => {
     })
   })
 
-  it('is unavailable when api_v2 cannot be reached', async () => {
-    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
-    const closed = createServer()
-    await new Promise<void>((resolve) => closed.listen(0, '127.0.0.1', resolve))
-    // SAFETY: still listening on TCP here, so address() is an AddressInfo.
-    const { port } = closed.address() as AddressInfo
-    await new Promise((resolve) => closed.close(resolve))
-    expect(await fetchCategoryTree(`http://127.0.0.1:${port}`)).toEqual({
-      kind: 'unavailable',
-    })
-    expect(logged(error)).toMatchObject({
-      event: 'api_v2_fallback',
-      reason: 'network',
-      url: '/categories',
-      error: expect.stringContaining('ECONNREFUSED'),
-    })
-  })
-
-  it('is unavailable when api_v2 does not answer in time', async () => {
-    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
-    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
-    reply = 'hang'
-    const result = fetchCategoryTree(base)
-    await vi.waitFor(() => expect(requests).toHaveLength(1))
-    await vi.runAllTimersAsync()
-    expect(await result).toEqual({ kind: 'unavailable' })
-    expect(logged(error)).toMatchObject({
-      event: 'api_v2_fallback',
-      reason: 'timeout',
-      url: '/categories',
-    })
-  })
-
   it.each([
-    ['not JSON', { status: 200, body: '<html>' }],
     ['the wrong shape', json(200, { categories: [{ slug: 1 }] })],
     ['a missing list', json(200, {})],
   ])('is malformed when the body is %s', async (_, response) => {
@@ -240,19 +186,6 @@ describe('fetchCategoryListing', () => {
     expect(requests.map((request) => request.url)).toEqual([
       '/categories/money-financial-support',
     ])
-  })
-
-  it("sends landing's token only when one is configured", async () => {
-    reply = json(200, LISTING)
-    await fetchCategoryListing(base, ['money-financial-support'])
-    await fetchCategoryListing(
-      base,
-      ['money-financial-support'],
-      fetch,
-      'secret',
-    )
-    expect(requests[0].headers).not.toHaveProperty('x-landing-token')
-    expect(requests[1].headers['x-landing-token']).toBe('secret')
   })
 
   it('reads a subcategory at its two-segment public address', async () => {
