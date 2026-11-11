@@ -15,6 +15,7 @@ import {
   type CitationSidecar,
 } from "#/lib/chat/persistence";
 import type { LinkTokenMap } from "#/lib/chat/link-tokens";
+import { createAnswerTracker } from "#/lib/chat/analytics";
 import type { Citation } from "#/lib/rag/types";
 
 const EMPTY_SIDECAR: CitationSidecar = {
@@ -56,6 +57,8 @@ function Home() {
   }, []);
 
   const connection = useMemo(() => fetchServerSentEvents("/api/chat"), []);
+  // One chat-answer per chat-submit (see lib/chat/analytics).
+  const tracker = useMemo(() => createAnswerTracker(), []);
   const {
     messages,
     sendMessage,
@@ -72,11 +75,14 @@ function Home() {
     // ChatClientPersistence adapter). stop() / clear-during-stream handling come
     // for free with it.
     persistence: conversationPersistence,
+    onFinish: tracker.finished,
+    onError: tracker.failed,
     // The server emits a `citations` CUSTOM event after TEXT_MESSAGE_START,
     // keyed by messageId (the example's onCustomEvent pattern). Merge it into
     // the persisted sidecar so a restored reply keeps its Sources + links.
     onCustomEvent: (eventType, data) => {
       if (eventType !== "citations") return;
+      tracker.cited();
       const payload = data as CitationsEvent | undefined;
       const id = payload?.messageId;
       if (!id) return;
@@ -109,12 +115,14 @@ function Home() {
     const query = q?.trim().slice(0, MAX_QUERY_LENGTH);
     if (!query) return;
     autoSentRef.current = true;
+    tracker.asked("landing");
     sendMessage(query);
-  }, [q, sendMessage]);
+  }, [q, sendMessage, tracker]);
 
   const submit = () => {
     const text = input.trim();
     if (!text || isLoading) return;
+    tracker.asked("chat");
     sendMessage(text);
     setInput("");
   };
@@ -136,6 +144,7 @@ function Home() {
 
   // Clear the conversation + its persisted sidecar (no server session to reset).
   const startAgain = () => {
+    tracker.stopped();
     clear();
     setSidecar(EMPTY_SIDECAR);
     saveCitationSidecar(EMPTY_SIDECAR);
@@ -185,7 +194,10 @@ function Home() {
         input={input}
         onChange={setInput}
         onSubmit={submit}
-        onStop={stop}
+        onStop={() => {
+          tracker.stopped();
+          stop();
+        }}
         streaming={isLoading}
         placeholder={
           awaitingFieldAnswer(messages)

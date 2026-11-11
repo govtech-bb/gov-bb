@@ -87,6 +87,21 @@ export interface TrackingData {
   search: { query: string; results: number };
   "search-result-click": { query: string; position: number; href: string };
   "search-no-results": { query: string };
+  // Chat (#3515). Never the question or answer text.
+  /**
+   * A question asked. `source` is where: a landing placement such as "home",
+   * or, from the chat app, "chat" (typed there) or "landing" (carried over
+   * from landing in `?q=`).
+   */
+  "chat-submit": { source: string };
+  /**
+   * The reply to one chat-submit from the chat app. `source` is "citations"
+   * when the reply came with cited alpha.gov.bb pages, else "none".
+   */
+  "chat-answer": {
+    outcome: "answered" | "error" | "stopped";
+    source: "citations" | "none";
+  };
 }
 
 export type TrackingEventName = keyof TrackingData;

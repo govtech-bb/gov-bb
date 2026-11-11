@@ -49,6 +49,20 @@ describe("JourneyService", () => {
     expect(service.record(JSON.stringify(event()), BROWSER)).toBe(1);
   });
 
+  it("accepts events from the chat app", () => {
+    const chat = event({
+      app: "chat",
+      event: "chat-answer",
+      props: { outcome: "answered", source: "citations" },
+      path: "/",
+    });
+    expect(service.record(chat, BROWSER)).toBe(1);
+    expect(logged(stdout)[0]).toMatchObject({
+      app: "chat",
+      event: "chat-answer",
+    });
+  });
+
   it("accepts a batch", () => {
     expect(service.record([event(), event()], BROWSER)).toBe(2);
     expect(stdout).toHaveBeenCalledTimes(2);

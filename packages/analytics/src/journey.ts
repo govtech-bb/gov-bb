@@ -10,7 +10,7 @@
 // text/plain: no CORS preflight, and the last batch still goes out when the
 // page is closed.
 
-export type JourneyApp = "landing" | "forms";
+export type JourneyApp = "landing" | "forms" | "chat";
 export type JourneyProps = Record<string, string | number | boolean>;
 
 interface QueuedEvent {
