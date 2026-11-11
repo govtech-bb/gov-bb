@@ -62,7 +62,7 @@ data/recipe change, not matcher logic.
 ## Open questions / follow-ups
 
 - **Title cleanup (fast-follow):** republish `post-office-redirection-business`
-  and `-deceased` (new versions — recipes are immutable, ADR 0041) with titles
+  and `-deceased` (new versions — recipes are immutable, ADR 0071) with titles
   that read consistently in the choice pills ("Redirect my business mail") and
   carry distinguishing tokens, so a later change can pin directly on specific
   phrasing. Also realigns the stale eval `golden.json`/`results.json`.

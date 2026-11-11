@@ -21,12 +21,12 @@ with per-task spec + quality reviews.
   `{min: 1, max: 5}`, clamps inputs, drags Max up when Min passes it.
 - `feat(api)`: `post-office-redirection-individual` `1.3.0.json` (the only
   recipe with `min: 0`), refreshed after rebase from sandbox's updated `1.2.0`.
-- ADR 0036 records the three-layer enforcement split.
+- ADR 0063 records the three-layer enforcement split.
 
 ## Why we did it that way
 
 - **Lenient parse + strict save + runtime clamp** over schema tightening,
-  zod transforms, or UI-only fixes — see ADR 0036 for the full rejection
+  zod transforms, or UI-only fixes — see ADR 0063 for the full rejection
   reasoning. The short version: published versions must keep loading, authors
   must hear about bad config rather than have it silently corrected, and
   hand/AI-authored recipes bypass the UI.
@@ -37,9 +37,9 @@ with per-task spec + quality reviews.
   ships `{ "type": "repeatable" }` with no bounds. Naive clamping computes
   `canAddMore = 1 < undefined === false` and silently drops the "Add another?"
   control. A dedicated test pins it.
-- **Version bump despite ADR 0035**: `min: 0 → 1` invalidates nothing, so an
+- **Version bump despite ADR 0062**: `min: 0 → 1` invalidates nothing, so an
   in-place edit was technically allowed — but this is a semantics migration,
-  not a relaxation, and the bump documents it. ADR 0036 makes that
+  not a relaxation, and the bump documents it. ADR 0063 makes that
   distinction explicit.
 
 ## What we almost got wrong
@@ -47,7 +47,7 @@ with per-task spec + quality reviews.
 - **Stale base, twice.** The worktree was created from a stale local
   `origin/sandbox`; caught after Task 1 (cheap rebase). Then, after Tasks 2–4,
   the final whole-branch review noticed `1.2.0.json` had been edited in place
-  on sandbox (#761's passport-toggle relaxation, sanctioned by ADR 0035) —
+  on sandbox (#761's passport-toggle relaxation, sanctioned by ADR 0062) —
   *after* the rebase point. The first `1.3.0.json` copy would have silently
   reverted those fixes the moment it became served-latest. Re-fetched, rebased
   again (resolving the predicted #768 conflict in the `repeatable` descriptor
@@ -64,5 +64,5 @@ with per-task spec + quality reviews.
 
 - #742 (cross-referenced) touches the same normalization path but is verified
   separately — not closed by this work.
-- `fieldArray` (field-scoped repeatable) still has unguarded bounds; ADR 0036
+- `fieldArray` (field-scoped repeatable) still has unguarded bounds; ADR 0063
   prescribes where its rules go when someone picks it up.

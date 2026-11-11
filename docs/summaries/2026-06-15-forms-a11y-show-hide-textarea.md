@@ -38,7 +38,7 @@ error-summary anchors had already been fixed; three concrete gaps remained:
 
 **Reused `@govtech-bb/styles` classes rather than restyling.** `<details>` +
 `.govbb-show-hide*` gives the marker rotation, teal/underline summary, and the
-content border for free — consistent with ADR 0007 (forms UI styled with
+content border for free — consistent with ADR 0027 (forms UI styled with
 govbb-styles). The content wrapper stays a _sibling_ of `<details>` (rendered by
 `form-renderer`, not inside the disclosure) exactly as before; its vertical
 spacing now comes from the parent `.form-page__step` flex `gap`, so deleting the
@@ -66,7 +66,7 @@ is untouched, since asserting only the argument value passes even with the bug.
 
 ## Notes
 
-- No new ADR: the show/hide migration is an instance of ADR 0007, not a new
+- No new ADR: the show/hide migration is an instance of ADR 0027, not a new
   principle.
 - Pre-existing and out of scope: array field items still share `id`/`name`
   (`field.id`) across rows — identical to the text path; the repeatable-textarea

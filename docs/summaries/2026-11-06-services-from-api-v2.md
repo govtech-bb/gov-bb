@@ -17,7 +17,7 @@ and #3250 (#3598) had built the form → category lookup on
   of 60 s holds public and preview pages together; `list()` filters per request.
 - `index()` and `categoryForForm()` became async in both modes.
 - `API_V2_URL` is declared in env validation, `.env.example` and `SPEC.md`; one
-  bullet under ADR 0063 "After cutover".
+  bullet under ADR 0110 "After cutover".
 
 ## Why we did it that way
 
@@ -32,7 +32,7 @@ and #3250 (#3598) had built the form → category lookup on
   preview pages link to (#3250). The token is the one v1 already holds, so no
   new secret is needed. Its equality with api_v2's `PREVIEW_SECRET` is runbook
   policy (#3367), so a 401 is logged as a configuration error.
-- **`service_status` ignored in api_v2 mode.** ADR 0063 already made
+- **`service_status` ignored in api_v2 mode.** ADR 0110 already made
   `content_pages.visibility` the only page switch after cutover. The
   fail-closed "no row → preview" rule would also hide every page created in
   editor_v2, which is exactly what this issue is meant to make visible.

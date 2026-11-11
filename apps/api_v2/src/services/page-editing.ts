@@ -169,7 +169,7 @@ export interface PageRecords {
     id: PageId,
     versionNo: number,
   ): Promise<Result<PageEvent | null, ContentStoreUnavailable>>;
-  /** Record the transaction's update of the page as restoring that version (ADR 0080). */
+  /** Record the transaction's update of the page as restoring that version (ADR 0135). */
   markRestore(
     id: PageId,
     versionNo: number,
@@ -199,7 +199,7 @@ export interface PageRecords {
 export class PageEditing {
   /**
    * The root supplies content storage and the clock, allows self-approval
-   * only for local development under AUTH_BYPASS (ADR 0079), and supplies
+   * only for local development under AUTH_BYPASS (ADR 0134), and supplies
    * who hears of a review step once it commits (#3267); nobody, by default.
    */
   constructor(
@@ -315,7 +315,7 @@ export class PageEditing {
 
   /**
    * Bring back the page's content as history version `versionNo` left it,
-   * as a new change (ADR 0080): every entry stays, and the restore is a save
+   * as a new change (ADR 0135): every entry stays, and the restore is a save
    * of that version's fields over the page as it stands now, made against
    * the version the caller read. It keeps the page's current visibility, so
    * changing who sees it stays a separate approver action. A page that isn't
@@ -743,11 +743,11 @@ function markdownRejection(fields: SaveFields): PageRejected | null {
     : null;
 }
 
-/** Why an approver can't create a page as Public (ADR 0079, #3201). */
+/** Why an approver can't create a page as Public (ADR 0134, #3201). */
 const CREATED_PUBLIC =
   "Another approver needs to make a page you wrote public. Create it as Preview or Draft.";
 
-/** Why an approver can't make public a page they changed (ADR 0079, #3201). */
+/** Why an approver can't make public a page they changed (ADR 0134, #3201). */
 const CHANGED_SINCE_PUBLIC =
   "You changed this page since it was last public, so another approver needs to make it public.";
 

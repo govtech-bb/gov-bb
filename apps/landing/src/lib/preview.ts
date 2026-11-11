@@ -99,7 +99,7 @@ export function decideViewLevel({
 /**
  * The parent-domain the grant cookie is scoped to, so landing, forms and the
  * API share ONE cookie across `*.sandbox.alpha.gov.bb` / `*.alpha.gov.bb`
- * (#1646 Phase 3, ADR 0058). Build-baked via vite `runtimeConfig` in prod;
+ * (#1646 Phase 3, ADR 0099). Build-baked via vite `runtimeConfig` in prod;
  * `process.env` in local dev (the same dual-source as the secret above).
  * Empty/unset → undefined → host-only cookie, so local and per-PR Amplify
  * previews degrade gracefully to per-app URL tokens. The value MUST byte-match

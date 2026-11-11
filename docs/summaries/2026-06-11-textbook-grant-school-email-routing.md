@@ -31,7 +31,7 @@ processor wiring.
 - **`apps/api`** — new recipe `1.7.0.json` adding the school email processor
   (`recipientField: { "schoolEmail": { "var": "values.child-details.0.child-school" } }`),
   and batch-resolution tests in `expressions.service.spec.ts`.
-- Decision record `0050` captures the batch-atomicity constraint that shaped the
+- Decision record `0085` captures the batch-atomicity constraint that shaped the
   fallback.
 
 ## Why we did it that way
@@ -45,7 +45,7 @@ processor wiring.
   whole processor batch atomically — an empty `recipientField` fails the resolved
   schema and drops *every* email on the submission, including the applicant
   confirmation. The fallback makes that impossible; the guard spec makes a real
-  miss impossible for valid input. (See decision `0050`.)
+  miss impossible for valid input. (See decision `0085`.)
 - **The var path reads index 0 of the `child-details` array.** The school is a
   `sharedFields` entry, and shared values are spread into every repeatable
   instance at submission (`apps/forms/src/lib/api/forms.ts:318`,

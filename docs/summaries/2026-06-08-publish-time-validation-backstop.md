@@ -35,7 +35,7 @@ work. Resolved on `publish-time-validation-backstop-759` (targets `sandbox`).
 - **Added `publish.spec.ts`** — invalid recipe (snake_case id) → 400 + issues +
   zero fetches; unknown ref → same; valid recipe → proceeds to the GitHub flow
   (`prUrl`/`prNumber`); missing recipe/token → 400 before validating.
-- **ADR 0042** records the principle: contract validation gates at publish, not
+- **ADR 0072** records the principle: contract validation gates at publish, not
   at draft writes.
 
 ## Why we did it that way
@@ -43,7 +43,7 @@ work. Resolved on `publish-time-validation-backstop-759` (targets `sandbox`).
 - **Backstop at publish, not the write endpoints.** The write paths persist
   drafts and must keep accepting invalid ones; the publish boundary is where a
   recipe is about to become a production PR, so that is the correct place for a
-  hard gate. See ADR 0042 for the full reasoning the issue's proposed fix would
+  hard gate. See ADR 0072 for the full reasoning the issue's proposed fix would
   have violated.
 - **One shared helper, called by both routes.** `/validate` (client gate) and
   `/publish` (server backstop) now run the *same* code, so they can't drift —

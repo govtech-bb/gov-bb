@@ -77,7 +77,7 @@ export const VISIBILITY_LEVELS: ReadonlyArray<{
   { value: "public", label: "Live (public)" },
 ];
 
-// landing overlays a service_status row on frontmatter visibility (ADR 0063),
+// landing overlays a service_status row on frontmatter visibility (ADR 0110),
 // so this field is only the default until Feature flagging sets a status.
 export const PAGE_VISIBILITY_HINT =
   "Whether this page is live is managed in the Feature flagging app. This setting only applies until a status is set there.";

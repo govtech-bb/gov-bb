@@ -34,7 +34,7 @@ typed getters). Issue #1392, second of the three extractions in
   network call) is still cached once per ARN; re-parsing a 2-3 field object on
   each typed-getter call is sub-microsecond. One cache, cleaner dedup, negligible
   cost.
-- **No ADR-0055 subpath/.d.ts dance** (unlike LIB-03): both consumers are
+- **No ADR-0093 subpath/.d.ts dance** (unlike LIB-03): both consumers are
   Vite/Nitro bundler apps that resolve `@govtech-bb/*` via `exports` → source,
   so a plain ESM package + a `package.json` dep is enough. form_builder's vitest
   resolved the new dep with no alias (same as it already does for

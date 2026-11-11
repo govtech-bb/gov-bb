@@ -9,7 +9,7 @@ submission messages run concurrently in one process. `SpreadsheetProcessor`
 does an unguarded `readFile → in-memory dedup scan → addRow → writeFile` on a
 recipe-supplied `<filename>.xlsx`. Two writers targeting the same file can both
 `readFile` before either `writeFile`s; the second write clobbers the first — a
-lost row. The `${submissionId}:${index}` dedup token (ADR 0031) made *retries*
+lost row. The `${submissionId}:${index}` dedup token (ADR 0055) made *retries*
 safe but does nothing for concurrent *first*-writes, because the racing reads
 never see each other's not-yet-written token. Worked from
 `docs/plans/702-spreadsheet-concurrent-append-race.md`.
@@ -31,7 +31,7 @@ never see each other's not-yet-written token. Worked from
   a separate spec file (no global `jest.mock`, real `os.tmpdir()` file) that
   proves both rows persist, a "different files stay parallel" test, and an
   error-isolation test.
-- Recorded the topology constraint in ADR 0053.
+- Recorded the topology constraint in ADR 0088.
 
 ## Why we did it that way
 
@@ -40,7 +40,7 @@ never see each other's not-yet-written token. Worked from
   ever written by one process. An in-process per-path serializer therefore
   *fully* closes the race; EFS file-locks / an atomic append store would be
   necessary only if multiple processes shared an export dir. That's out of scope
-  for `severity:minor` and is flagged (NOTE comment + ADR 0053) so a future infra
+  for `severity:minor` and is flagged (NOTE comment + ADR 0088) so a future infra
   change can't silently reintroduce the bug.
 
 - **Lock lives in the processor, not the consumer.** The processor owns the file

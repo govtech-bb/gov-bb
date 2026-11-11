@@ -21,7 +21,7 @@ STRICT RAG rule, so the model frequently stopped at the decline.
 - Added a `"miss"` eval category (`eval/responses/run.ts` judge + `cases.json`)
   with three out-of-corpus cases; existing `ambiguous`/`refusal` cases stay as
   regression guards.
-- Recorded the sourcing principle as ADR 0046.
+- Recorded the sourcing principle as ADR 0080.
 
 ## Why we did it that way
 
@@ -33,7 +33,7 @@ matches are the dangerous ones (passport↔certificates,
 driver's-licence↔conductor-licence), so naming them would mislead. That tradeoff
 is the whole reason the recovery splits by where the context is — off-target
 hits (citations present) get "name what I found"; pure misses get a clarifying
-question only. ADR 0046 is the durable record of that choice.
+question only. ADR 0080 is the durable record of that choice.
 
 The routing fix matters as much as the prompt text. A `none` resolution was
 unconditionally pushing `NO_FORM_DISCLOSURE` — titled *"NO ONLINE FORM
@@ -66,4 +66,4 @@ worktree; full suite then passed 78/78.
 
 - The relaxed-retrieval pass is deferred, not dead. If the `miss`-category evals
   on the preview show pure near-misses still dead-ending too often, revisit ADR
-  0046's "future relaxed pass must clear a confidence bar" clause.
+  0080's "future relaxed pass must clear a confidence bar" clause.

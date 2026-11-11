@@ -2,7 +2,7 @@
 
 **Issue:** [#37](https://github.com/govtech-bb/gov-bb/issues/37) — Change the form builder to use the existing govbb design system.
 **Branch:** `chore/migrate-forms-design-system`
-**Plan:** `docs/plans/migrate-forms-design-system.md` · **Decision:** `docs/decisions/0007-forms-ui-styled-with-govbb-styles.md`
+**Plan:** `docs/plans/migrate-forms-design-system.md` · **Decision:** `docs/decisions/0027-forms-ui-styled-with-govbb-styles.md`
 
 ## What this was
 

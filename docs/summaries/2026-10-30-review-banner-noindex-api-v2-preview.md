@@ -34,7 +34,7 @@ that as an api_v2 change.
   `draft` included, reads as `public` and keeps the page.
 - **Absent or unknown → `public`.** A `preview` default would put the banner
   and `noindex` on every page during a skewed deploy; preview is a rollout
-  gate, not a confidentiality boundary (ADR 0013).
+  gate, not a confidentiality boundary (ADR 0028).
 
 ## What we almost got wrong
 
@@ -44,7 +44,7 @@ that as an api_v2 change.
   landing PR can only go green after the api_v2 PR merges and it rebases.
 - `-preview-gating.test.ts` needed three registry title stubs (a public page's
   head builds breadcrumb JSON-LD from them) and `visibility: 'public'` on two
-  hand-built ADR 0078 fixtures (`level` now comes from that field).
+  hand-built ADR 0132 fixtures (`level` now comes from that field).
 
 ## Open questions
 

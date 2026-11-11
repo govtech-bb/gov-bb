@@ -2,7 +2,7 @@
 
 **Date:** 2026-05-26
 **Branch:** fix/form-builder-overrides-per-instance (base: origin/sandbox)
-**Related:** [#194](https://github.com/govtech-bb/gov-bb/issues/194), [0009 — instance ids are editor-only](../decisions/0009-form-builder-instance-ids-are-editor-only.md), [plan](../plans/fix-form-builder-component-overrides-per-instance.md)
+**Related:** [#194](https://github.com/govtech-bb/gov-bb/issues/194), [0019 — instance ids are editor-only](../decisions/0019-form-builder-instance-ids-are-editor-only.md), [plan](../plans/fix-form-builder-component-overrides-per-instance.md)
 
 ## Context
 
@@ -11,7 +11,7 @@ In the builder edit page, overriding or deleting one component on a step
 cascaded to every sibling of the same type. Root cause: the reducer and step
 editor treated `ref` (the shared catalog key) as a per-instance identifier.
 
-The fix and its rejected alternatives are recorded in decision 0009. In short:
+The fix and its rejected alternatives are recorded in decision 0019. In short:
 add an editor-only `id` to `RecipeFieldDraft` and key instance-addressing
 lookups on `id` instead of `ref` — no schema or wire-format change.
 

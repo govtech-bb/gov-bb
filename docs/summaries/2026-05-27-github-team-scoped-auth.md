@@ -26,7 +26,7 @@ in without needing repo write access, with the access list managed in GitHub
 ## Why we did it that way
 
 The access-model principle is recorded in
-[0011 — Form Builder access is delegated to GitHub identity](../decisions/0011-form-builder-access-delegated-to-github.md);
+[0025 — Form Builder access is delegated to GitHub identity](../decisions/0025-form-builder-access-delegated-to-github.md);
 the points below are the session-specific reasoning behind it.
 
 - **OR, not replace.** Keeping the repo-write check means existing collaborators

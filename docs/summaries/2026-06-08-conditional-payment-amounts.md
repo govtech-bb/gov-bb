@@ -39,7 +39,7 @@ Done on `conditional-payment-amounts-937` (targets `sandbox`), based off the
   already resolves it to a literal via `ExpressionsService.resolveProcessors`.
   So a conditional amount is stored exactly like a literal one — an `if`-chain
   in the same slot — with **zero change** to `processor.type.ts`, the resolver,
-  or the payment DB entity. This is now recorded as a principle: ADR 0043.
+  or the payment DB entity. This is now recorded as a principle: ADR 0074.
 - **A separate `-amount-editor.tsx`, not inline in the config form.** The
   fixed/conditional mode can't be derived from `amount` alone — an empty
   conditional table compiles to a bare default *number*, indistinguishable from

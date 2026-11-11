@@ -710,7 +710,7 @@ it("does not derive a message from the registry's placeholder label", async () =
 
 // --- Effective Field ID (#2685) -------------------------------------------
 // A field's id is the registry default until the Field ID Override replaces it
-// (ADR 0010) — never a kebab of the label. The read-only "Field ID" input under
+// (ADR 0020) — never a kebab of the label. The read-only "Field ID" input under
 // Label shows that effective id, live from the panel's unsaved overrides, and
 // persists nothing. Queries stay on the exact string: "Field ID Override" is a
 // second input in the same dialog.

@@ -3,7 +3,7 @@
  *
  * The revision of `001_init` drawn in the proposed ERD: `categories` and
  * `forms` are added, and `content_pages` stores `body_markdown` in place of
- * the block document (ADR 0074's block document comes back later, as a change
+ * the block document (ADR 0123's block document comes back later, as a change
  * of its own). The site renders the markdown; nothing compiled is stored. `visibility` replaces `is_draft`,
  * and the collection tables go, with `record_status` and `page_schema_name`.
  *

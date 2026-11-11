@@ -1,6 +1,6 @@
 /**
  * Each environment's `service_status` (api v1, feature flagging) applied to
- * the estate snapshot at import time, with landing's mapping (ADR 0063):
+ * the estate snapshot at import time, with landing's mapping (ADR 0110):
  * `disabled` → preview, `enabled` → public, `form_disabled` and no row keep
  * the frontmatter level (#3188).
  */
@@ -31,7 +31,7 @@ const LEVEL: Partial<Record<ServiceStatus, Visibility>> = {
 };
 
 /**
- * Landing's overlay (ADR 0063) on snapshot pages: key `form_id ??
+ * Landing's overlay (ADR 0110) on snapshot pages: key `form_id ??
  * content_slug`. Returns new pages and, in input order, those whose level
  * changed.
  */

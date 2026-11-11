@@ -35,7 +35,7 @@ The three runtime follow-ons deferred from Phase 1:
   recipe uses fieldArray, but DB-stored form_config drafts authored before
   Phase 1 could; a render-site floor fixes every past and future source
   without touching stored data.
-- **The prompt's decision rule is the same sentence ADR 0067/Phase 1 used**
+- **The prompt's decision rule is the same sentence ADR 0115/Phase 1 used**
   ("one field repeated vs a group repeated"), keeping the AI route and the
   human-facing miniature teaching the same distinction.
 - **Ordering**: this landed only after #2319 merged — unlocking the AI route

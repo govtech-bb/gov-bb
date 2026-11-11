@@ -8,7 +8,7 @@
 @import '@govtech-bb/design';
 
 /* Scan compiled DS output + the shared admin-ui source for class names.
-   The DS path is this app's own node_modules: pnpm's isolated linker (ADR 0004)
+   The DS path is this app's own node_modules: pnpm's isolated linker (ADR 0122)
    does not put @govtech-bb/react in the repo-root node_modules, and a missing
    @source path fails silently (no classes, no error). */
 @source "../../node_modules/@govtech-bb/react/dist/**/*.{js,cjs}";
