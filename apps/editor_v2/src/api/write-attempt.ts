@@ -9,12 +9,15 @@ import {
 } from "./client";
 import { apiMessage } from "./failure-messages";
 
-/** A write's answer, or why it cannot yet be confirmed; screens own the wording. */
+/**
+ * A write's answer, or why it cannot yet be confirmed; screens own the wording. A refusal is an answer, so it carries
+ * the API's own sentence when one was sent. A lost answer is not, so `unknown` carries none.
+ */
 export type Outcome<Answer> =
   | { kind: "landed"; answer: Answer }
-  | { kind: "invalid"; errors: readonly FieldError[] }
-  | { kind: "missing" | "signed-out" | "unknown" }
-  | { kind: "conflict" | "forbidden"; message?: string }
+  | { kind: "unknown" }
+  | { kind: "invalid"; errors: readonly FieldError[]; message?: string }
+  | { kind: "conflict" | "missing" | "signed-out" | "forbidden"; message?: string }
   | { kind: "refused"; code?: string; message?: string; detail?: unknown };
 
 /** Read-back is independent of cached queries; only absence returns undefined. */
@@ -38,33 +41,29 @@ function failureOutcome(error: unknown): Outcome<never> {
 
   if (!(error instanceof ApiFailure)) return { kind: "unknown" };
 
+  const message = apiMessage(error);
+
   if (error instanceof CategoryInUse)
-    return {
-      kind: "refused",
-      code: "category_in_use",
-      message: apiMessage(error),
-      detail: error.blockers,
-    };
+    return { kind: "refused", code: "category_in_use", message, detail: error.blockers };
 
   if (
     error instanceof CategoryConflict ||
     (error.status === 409 && error.code === "version_conflict")
   )
-    return { kind: "conflict", message: apiMessage(error) };
+    return { kind: "conflict", message };
 
-  if (error instanceof CategoryRefused)
-    return { kind: "refused", code: error.code, message: apiMessage(error) };
+  if (error instanceof CategoryRefused) return { kind: "refused", code: error.code, message };
 
   if (error.status === 422 || (error.status === 400 && error.code === "validation_failed"))
-    return { kind: "invalid", errors: error.errors };
+    return { kind: "invalid", errors: error.errors, message };
 
-  if (error.status === 404) return { kind: "missing" };
+  if (error.status === 404) return { kind: "missing", message };
 
-  if (error.status === 401) return { kind: "signed-out" };
+  if (error.status === 401) return { kind: "signed-out", message };
 
-  if (error.status === 403) return { kind: "forbidden", message: apiMessage(error) };
+  if (error.status === 403) return { kind: "forbidden", message };
 
-  return { kind: "refused", code: error.code, message: apiMessage(error) };
+  return { kind: "refused", code: error.code, message };
 }
 
 /** Freeze one request until settled or forgotten; only an author's press may resend it. */

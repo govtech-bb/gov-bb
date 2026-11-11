@@ -69,7 +69,10 @@ test("a landed save returns the API answer without reading back", async () => {
 
 test.each([
   [new ApiFailure(422, errors), { kind: "invalid", errors }],
-  [new ApiFailure(400, errors, "Invalid", "validation_failed"), { kind: "invalid", errors }],
+  [
+    new ApiFailure(400, errors, "Invalid", "validation_failed"),
+    { kind: "invalid", errors, message: "Invalid" },
+  ],
   [
     new ApiFailure(409, [], "Changed", "version_conflict"),
     { kind: "conflict", message: "Changed" },
@@ -316,7 +319,11 @@ test("a tagged validation refusal returns field errors", async () => {
     landed: () => false,
   });
 
-  expect(await attempt.press(() => undefined)).toEqual({ kind: "invalid", errors });
+  expect(await attempt.press(() => undefined)).toEqual({
+    kind: "invalid",
+    errors,
+    message: "Invalid",
+  });
 });
 
 test("a successful tagged answer keeps the write's declared answer shape", async () => {
@@ -338,8 +345,8 @@ const blockers = { pages: 1, subcategories: 0, reserved_route: false };
 
 test.each([
   [new CategoryConflict("Changed"), { kind: "conflict", message: "Changed" }],
-  [new CategoryNotFound("Gone"), { kind: "missing" }],
-  [new CategoryAccessDenied(401, "Sign in"), { kind: "signed-out" }],
+  [new CategoryNotFound("Gone"), { kind: "missing", message: "Gone" }],
+  [new CategoryAccessDenied(401, "Sign in"), { kind: "signed-out", message: "Sign in" }],
   [new CategoryAccessDenied(403, "Editors only"), { kind: "forbidden", message: "Editors only" }],
   [
     new CategoryInUse("Still used", blockers),
