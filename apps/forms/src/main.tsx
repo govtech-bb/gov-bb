@@ -3,7 +3,8 @@ import ReactDOM from "react-dom/client";
 import { RouterProvider, createRouter } from "@tanstack/react-router";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "./lib/query-client";
-import { configureJourney, trackPageview } from "./lib/analytics";
+import { configureJourney } from "./lib/analytics";
+import { trackPageviewsOnPathChange } from "./lib/pageviews";
 import { loadUmamiScript } from "./lib/umami-script";
 import "./styles/govtech.css";
 
@@ -46,7 +47,9 @@ const router = createRouter({
 // First-party journey events (alongside Umami). Off unless VITE_JOURNEY_URL is
 // set for the environment.
 configureJourney({ url: import.meta.env.VITE_JOURNEY_URL, app: "forms" });
-router.subscribe("onResolved", trackPageview);
+// Page views on onRendered, one per pathname: a ?step= change alone is not a
+// page view, because form-step-view already records steps (#3504).
+trackPageviewsOnPathChange(router);
 
 // Register the router instance for type safety
 declare module "@tanstack/react-router" {

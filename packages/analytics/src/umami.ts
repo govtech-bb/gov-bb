@@ -28,8 +28,8 @@ type Page = { url: string; referrer?: string };
 let page: Page | undefined;
 
 // The page the visitor is on now. The same path is the same page: forms sends
-// a page view on every ?step= change, and Umami itself only counts a new page
-// when the path changes. A new path names the last page view as its referrer.
+// events on every ?step= change, and Umami itself only counts a new page when
+// the path changes. A new path names the last page view as its referrer.
 function currentPage(): Page {
   const url = location.pathname;
   return url === page?.url ? page : { url, referrer: page?.url };
