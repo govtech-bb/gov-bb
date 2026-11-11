@@ -27,21 +27,22 @@ import { COOKIE_NAME, levelFromCookie } from './preview'
  * bad content). Category listings send `api_v2` when api_v2 lists them
  * (ADR 0132) and `static` otherwise. Each failed fetch logs one JSON line
  * `{event: "api_v2_fallback", reason, url, status?, error?}`, whichever header
- * follows
+ * follows (but the site-version check logs nothing: api-v2-version.ts)
  * — `console.error` for api_v2 failures (`status`, `timeout`, `network`,
  * `malformed`, `no_target`: these count toward the breaker) and for
  * `preview_token` (a reviewer's read refused with 401: landing's and api_v2's
  * PREVIEW_SECRET differ), `console.warn`
- * for answers landing can't use (`rejected` — a 4xx other than 404 —
- * `bad_redirect`, `compile`). A 404 isn't logged. A breaker trip logs one
+ * for answers landing can't use (`rejected` — a 4xx other than 404, 408 and
+ * 429, or for a page another 2xx or a 3xx other than 301 — `bad_redirect`,
+ * `compile`). A 404 isn't logged. A breaker trip logs one
  * `{event: "api_v2_circuit_open", url}` at `console.error`; requests it turns
- * away aren't logged. Category and collection reads (api-v2-categories.ts,
- * api-v2-collections.ts) log the same lines and count toward the same breaker
- * (api-v2-reader.ts), with the api_v2 path as `url`. A 4xx other than 404,
- * 408 and 429 is `rejected` for them too, so a visitor's bad collection key
- * can't open the breaker; any other status but 200 and 404 is `status`, as is
- * a 404 from `/categories`, `/catalog` or `/search/documents`. `REASONS` in
- * api-v2-log.ts holds the classification.
+ * away aren't logged. Category, site-list and collection reads
+ * (api-v2-categories.ts, api-v2-site.ts, api-v2-collections.ts) log the same
+ * lines and count toward the same breaker (api-v2-reader.ts), with the api_v2
+ * path as `url`. A 4xx other than 404, 408 and 429 is `rejected` for them too,
+ * so a visitor's bad collection key can't open the breaker; any other status
+ * but 200 and 404 is `status`, as is a 404 from `/categories`, `/catalog` or
+ * `/search/documents`. `REASONS` in api-v2-log.ts holds the classification.
  */
 
 /** An optional field that is dropped, not fatal, when it has the wrong type. */
@@ -126,9 +127,10 @@ export type ApiV2Page = SerializedContentPage & {
 }
 
 /**
- * Why there is no api_v2 page. `not_found`, `rejected` (a 4xx),
- * `bad_redirect` and `compile` are answers (cached for their
- * `Cache-Control`); `no_target`, `status` (a 5xx, 408 or 429),
+ * Why there is no api_v2 page. `not_found`, `rejected` (a 4xx other than 404,
+ * 408 and 429, or another 2xx or 3xx), `bad_redirect` and `compile` are
+ * answers (cached for their `Cache-Control`); `no_target`, `status` (a 5xx,
+ * 408 or 429),
  * `malformed`, `timeout` and `network` are api_v2 failures (never cached,
  * counted by the breaker in api-v2-reader.ts). See `REASONS` in api-v2-log.ts.
  */

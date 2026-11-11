@@ -1,6 +1,6 @@
 import type { ApiV2Result } from './api-v2-page'
-import { REASONS } from './api-v2-log'
-import { createApiV2Breaker } from './api-v2-reader'
+import { failed } from './api-v2-reader'
+import type { createApiV2Breaker } from './api-v2-reader'
 
 /**
  * In-memory cache in front of api_v2 page reads (#3127), per server instance.
@@ -20,10 +20,6 @@ import { createApiV2Breaker } from './api-v2-reader'
  */
 
 export const MAX_ENTRIES = 500
-/** api_v2 failed (vs. answered): never cached, counted toward the breaker. */
-const failed = (r: ApiV2Result) =>
-  r.kind === 'miss' && REASONS[r.reason].failure
-
 /** A kept page served because api_v2 failed: `x-content-source: api_v2-stale`. */
 const kept = (r: ApiV2Result): ApiV2Result =>
   r.kind === 'page' ? { ...r, stale: true } : r
@@ -40,7 +36,9 @@ interface Entry {
 }
 
 /** `breaker`: the one every api_v2 read shares; a fresh one only in tests. */
-export function createApiV2Cache(breaker = createApiV2Breaker()) {
+export function createApiV2Cache(
+  breaker: ReturnType<typeof createApiV2Breaker>,
+) {
   const entries = new Map<string, Entry>()
   const inflight = new Map<string, Promise<ApiV2Result>>()
   /** Bumped by `expire()`, so a fetch begun before it can't store its older answer as fresh. */
