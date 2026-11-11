@@ -102,7 +102,7 @@ cd apps/forms && SMOKE_BASE_URL=http://localhost:3000 pnpm exec playwright test 
 
 This is the only check that shows that the spec agrees with the recipe. Do this before you present the work as done. The walk submits to your local API, so its processors run unless you also set `SMOKE_SUBMISSION_TOKEN` to the value in `apps/api/.env`.
 
-**Deployed environments.** A smoke run against a deployed environment submits a real application. `SMOKE_SUBMISSION_TOKEN` makes the API drop all processors, so the run sends no email and no webhook (ADR 0052). Do not run a smoke against a deployed environment without the approval of the designer.
+**Deployed environments.** A smoke run against a deployed environment submits a real application. `SMOKE_SUBMISSION_TOKEN` makes the API drop all processors, so the run sends no email and no webhook (ADR 0087). Do not run a smoke against a deployed environment without the approval of the designer.
 
 The Form Builder writes `Publish form:` PRs without this skill, so those PRs can make a spec stale.
 

@@ -664,7 +664,7 @@ jobs:
   # NOT listed (their specs are test.fixme): the three certificate forms
   # (get-birth-/get-death-/get-marriage-certificate) block on the EZ Pay
   # confirmation-screen bug (#919); referral-student-support-services has an
-  # unsubmittable required-checkbox-with-empty-options recipe bug (ADR 0027).
+  # unsubmittable required-checkbox-with-empty-options recipe bug (ADR 0047).
   # Add them to the matrix once those are fixed.
   #
   # ALSO NOT listed — gated `visibility: preview` (#1646) pending the misrouted

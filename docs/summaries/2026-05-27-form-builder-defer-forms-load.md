@@ -4,7 +4,7 @@
 **Branch:** `feat/form-builder-defer-forms` (to merge into `sandbox`)
 **Issue:** [#234](https://github.com/govtech-bb/gov-bb/issues/234) — Form Builder UI: significant lag when opening
 **Plan:** `docs/plans/form-builder-ui-defer-forms-load.md`
-**Decisions:** [0011](../decisions/0011-form-builder-component-tests-use-per-file-jsdom.md), [0012](../decisions/0012-route-loaders-await-only-first-paint-data.md)
+**Decisions:** [0022](../decisions/0022-form-builder-component-tests-use-per-file-jsdom.md), [0023](../decisions/0023-route-loaders-await-only-first-paint-data.md)
 
 ## Context
 
@@ -17,12 +17,12 @@
 - Loader returns `{ catalog }` only.
 - New `useFormsList()` hook (`-use-forms-list.ts`) fetches `listForms()` once on mount with an unmount guard; returns `{ forms: …[] | null, loadError }`.
 - `FormPicker` now takes `forms: …[] | null` + `loadError`, rendering "Loading forms…" / "No forms found." / a fetch error / the rows.
-- First React component tests in `form_builder`: `-use-forms-list.spec.tsx` (5) and `-form-picker.spec.tsx` (4). Required new jest wiring — see decision 0011.
+- First React component tests in `form_builder`: `-use-forms-list.spec.tsx` (5) and `-form-picker.spec.tsx` (4). Required new jest wiring — see decision 0022.
 
 ## Why we did it that way
 
 - **Extracted a hook instead of inlining the `useEffect` in `BuilderPage`.** The mount-fetch + error + unmount-guard logic is the genuinely bug-prone part, and inlining it would have made it untestable without standing up the whole TanStack router (loader context, `useNavigate`). As a standalone hook it's testable with `renderHook` + a mocked `listForms`. The plan suggested an inline effect; this is a deviation in shape, not behaviour.
-- **Per-file jsdom, not a global env flip.** The existing server suites run under `testEnvironment: "node"`; switching the whole project to jsdom to get a DOM would change the environment out from under them. Opted into jsdom per-file via docblock and kept the global node default. (Decision 0011.)
+- **Per-file jsdom, not a global env flip.** The existing server suites run under `testEnvironment: "node"`; switching the whole project to jsdom to get a DOM would change the environment out from under them. Opted into jsdom per-file via docblock and kept the global node default. (Decision 0022.)
 - **Declared `identity-obj-proxy` explicitly.** The CSS-module mapper the component tests need was only present transitively via `@nx/jest`. Relying on a transitive in our own jest config is fragile — a future `@nx/jest` bump could drop it and break CI — so it was added to root devDependencies.
 - **`loadError` is a separate prop from FormPicker's existing internal `error`.** The internal `error` is a row-click recipe-load failure; `loadError` is the background list fetch failing. They compose in the same error area via `error || loadError` but are distinct concerns.
 
@@ -37,5 +37,5 @@ Alternatives rejected (per the plan): **fetch-on-open** (leaner, but always spin
 
 ## Open questions / follow-ups
 
-- **Underlying waterfall unchanged.** `listPublishedForms` is still `1 + 2N` serial GitHub calls with no cache — deferring only moved it off the critical path (decision 0012 names this explicitly). Candidate follow-up: parallelise per-form fetches and/or add a short server-side cache mirroring the catalog's.
+- **Underlying waterfall unchanged.** `listPublishedForms` is still `1 + 2N` serial GitHub calls with no cache — deferring only moved it off the critical path (decision 0023 names this explicitly). Candidate follow-up: parallelise per-form fetches and/or add a short server-side cache mirroring the catalog's.
 - **Picker refetch.** Fetches once on mount and keeps the result in component state; reopening reuses it. A manual refresh affordance can come later if needed.

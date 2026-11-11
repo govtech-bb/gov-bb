@@ -32,17 +32,17 @@ previewing a draft from the builder never worked.
   change required it.
 - **`.env.example`** — documented (commented) `VITE_RECIPE_PREVIEW_TOKEN=demo`
   with the bundle-baked / OAuth-gated / must-match-API note.
-- **ADR-0016** records the OAuth-gated-builder-may-VITE-bake principle.
+- **ADR-0034** records the OAuth-gated-builder-may-VITE-bake principle.
 
 ## Why we did it that way
 
 - **`VITE_` var, not server-only.** The link is built in the browser
-  (`import.meta.env` per ADR 0005), so the token has to be `VITE_`-prefixed —
+  (`import.meta.env` per ADR 0013), so the token has to be `VITE_`-prefixed —
   which bakes it into the builder bundle. The public forms app deliberately
   declined this exposure, but the builder is GitHub-OAuth-gated, so the team
   accepted it for the simplicity of matching how `VITE_FORMS_URL` already works.
   The server-only-via-loader alternative was rejected as more machinery for no
-  gain given the gate. See ADR-0016.
+  gain given the gate. See ADR-0034.
 - **Always default to `"demo"`, param always present.** Chosen over
   "no token ⇒ no param" so the helper stays branch-free and the link is uniform;
   a link is always preview-capable in dev. (Confirmed with Isaiah during

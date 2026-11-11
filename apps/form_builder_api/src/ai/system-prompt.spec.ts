@@ -175,7 +175,7 @@ describe("AI system prompt", () => {
     expect(missing).toEqual([]);
   });
 
-  it("steers the declaration step away from blocks/applicant-declaration (ADR 0077)", () => {
+  it("steers the declaration step away from blocks/applicant-declaration (ADR 0131)", () => {
     expect(prompt).not.toContain("Form has a declaration/agreement checkbox");
     expect(prompt).toContain(
       "blocks/applicant-declaration` | confirmation | Never for the declaration step",

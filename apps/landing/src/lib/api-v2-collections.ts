@@ -1,7 +1,8 @@
 import { createServerFn } from '@tanstack/react-start'
 import type { Root, RootContent } from 'hast'
 import { z } from 'zod'
-import { API_V2_TIMEOUT_MS, apiV2Base, landingToken } from './api-v2-page'
+import { apiV2Base, landingToken } from './api-v2-page'
+import { readPublic } from './api-v2-reader'
 
 /**
  * Contact details read from api_v2's data collections (#3185). A page names a
@@ -64,8 +65,8 @@ export function contactRefs(tree: Root): ContactRef[] {
 }
 
 /**
- * `GET /collections/:key/records`. A 404 is a silent miss; anything else
- * unexpected (status, network, timeout, bad body) is a logged miss.
+ * `GET /collections/:key/records`, through the reader: a 404 is a silent miss,
+ * a failure a logged one, and while the breaker is open no request is made.
  */
 export async function fetchCollectionRecords(
   base: string,
@@ -73,33 +74,14 @@ export async function fetchCollectionRecords(
   fetchImpl: typeof fetch = fetch,
   landingToken?: string,
 ): Promise<CollectionRecords | null> {
-  const controller = new AbortController()
-  const timer = setTimeout(() => controller.abort(), API_V2_TIMEOUT_MS)
-  try {
-    const response = await fetchImpl(
-      `${base}/collections/${encodeURIComponent(key)}/records`,
-      {
-        signal: controller.signal,
-        ...(landingToken && { headers: { 'x-landing-token': landingToken } }),
-      },
-    )
-    if (response.status !== 200) {
-      if (response.status !== 404)
-        console.warn(`[api-v2] ${response.status} for collection ${key}`)
-      // Release the socket: an unread body pins a keep-alive connection.
-      await response.body?.cancel()
-      return null
-    }
-    const body = CollectionRecords.safeParse(await response.json())
-    if (body.success) return body.data
-    console.warn(`[api-v2] malformed collection ${key}`)
-    return null
-  } catch (error) {
-    console.warn(`[api-v2] request for collection ${key} failed:`, error)
-    return null
-  } finally {
-    clearTimeout(timer)
-  }
+  const result = await readPublic(
+    base,
+    `/collections/${encodeURIComponent(key)}/records`,
+    CollectionRecords,
+    fetchImpl,
+    landingToken,
+  )
+  return result.kind === 'ok' ? result.value : null
 }
 
 /**

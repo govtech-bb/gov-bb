@@ -255,5 +255,5 @@ Notable rules enforced by the builder:
 
 ## 8. Current AI architecture
 
-See [ADR 0072](../../docs/decisions/0072-builder-ai-streams-with-reviewed-client-edits.md)
+See [ADR 0120](../../docs/decisions/0120-builder-ai-streams-with-reviewed-client-edits.md)
 for the streaming, approval, persistence, and upload contracts.

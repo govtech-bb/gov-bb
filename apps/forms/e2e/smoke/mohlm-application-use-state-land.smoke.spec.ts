@@ -9,7 +9,7 @@
  *
  * Like the other specs under e2e/smoke they run ONLY via
  * playwright.smoke.config.ts — the normal `test:e2e` / CI suite ignores this
- * directory (ADR 0027 / 0029). The recipe is `visibility: preview`, so it must
+ * directory (ADR 0047 / 0051). The recipe is `visibility: preview`, so it must
  * NOT be added to the post-deploy smoke matrix (#1842) — a non-public form 404s
  * there.
  *

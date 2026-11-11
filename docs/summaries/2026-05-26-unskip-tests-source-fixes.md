@@ -3,7 +3,7 @@
 **Date:** 2026-05-26
 **Branch:** test/increase-coverage
 **Commit:** eb72565
-**Related:** [0006 — `valueIsEmpty` treats false as empty by design](../decisions/0006-valueIsEmpty-treats-false-as-empty-by-design.md), [2026-05-22 forms test review](2026-05-22-forms-test-review-red-tests.md), [2026-05-22 valueIsEmpty fix](2026-05-22-valueisempty-fix.md)
+**Related:** [0016 — `valueIsEmpty` treats false as empty by design](../decisions/0016-valueIsEmpty-treats-false-as-empty-by-design.md), [2026-05-22 forms test review](2026-05-22-forms-test-review-red-tests.md), [2026-05-22 valueIsEmpty fix](2026-05-22-valueisempty-fix.md)
 
 ## Context
 
@@ -29,7 +29,7 @@ manual behaviour skips only.
     `apps/forms/src/lib/env.ts` so the spec can mock dev-mode behaviour.
 - One skip's premise was reversed mid-session (from "retired" to "real bug"):
   - `forms.spec.ts` — `keeps fields with boolean false values`. Initially
-    deleted per the existing 0006 decision record. Then the user flagged
+    deleted per the existing 0016 decision record. Then the user flagged
     that submissions silently losing `false` is in fact a bug. Restored
     the test, fixed the filter.
 
@@ -63,14 +63,14 @@ value at runtime; the value is purely in the test boundary it creates.
 Cost: one indirection that future readers will wonder about.
 Mitigation: comment on the helper explaining why it exists.
 
-**Filter whitelist over `valueIsEmpty` rewrite.** Decision record 0006
+**Filter whitelist over `valueIsEmpty` rewrite.** Decision record 0016
 established that `valueIsEmpty(false) === true` is load-bearing for
 required-checkbox enforcement (an unchecked "I accept the terms" must
 flag as `requiredAndEmpty`). Changing `valueIsEmpty` to make
 `false` non-empty would silently weaken that enforcement. The
 submission filter is the one consumer that wants the opposite
 semantic, so the whitelist lives there. This is exactly the
-"submission-shape vs validation-shape" split the 0006 consequences
+"submission-shape vs validation-shape" split the 0016 consequences
 section flagged as future work — done locally rather than as a full
 helper split, because one call site doesn't yet justify the
 abstraction.
@@ -97,9 +97,9 @@ forced the audit that surfaced the date regression. The surgical
 whitelist preserves all `valueIsEmpty` semantics and changes nothing
 the existing tests weren't watching.
 
-**Also initially deleted the boolean-false test** based on the 0006
+**Also initially deleted the boolean-false test** based on the 0016
 record's framing ("retire on `test/increase-coverage` rather than
-going green"). 0006 anticipated this scenario but framed the boolean
+going green"). 0016 anticipated this scenario but framed the boolean
 test as a wrong-test problem rather than as a submission-shape bug.
 The user's correction reframed it: the bug isn't in `valueIsEmpty`,
 the bug is in `formatDataForSubmission` using `valueIsEmpty` for a
@@ -107,7 +107,7 @@ purpose `valueIsEmpty` was never the right tool for.
 
 ## Open questions
 
-- 0006's consequences section recommended splitting `valueIsEmpty`
+- 0016's consequences section recommended splitting `valueIsEmpty`
   into submission-shape and validation-shape helpers if a need for
   "optional checkbox where `false` is meaningful" ever surfaced. This
   session surfaced exactly that need but didn't do the split — solved

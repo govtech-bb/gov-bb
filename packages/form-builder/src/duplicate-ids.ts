@@ -104,7 +104,7 @@ export function findRecipeIdCollisions(
  * Server/ingest callers (the `/builder/registry/validate` route and the AI
  * publish handler) hold a recipe, not a draft. `deserializeRecipe` bridges the
  * two so every consumer reuses the single detector instead of re-deriving id
- * resolution (per ADR 0010).
+ * resolution (per ADR 0020).
  *
  * Defensive on purpose: the AI publish path passes an unvalidated recipe, so a
  * structurally malformed shape (e.g. `steps` missing or not an array) yields no

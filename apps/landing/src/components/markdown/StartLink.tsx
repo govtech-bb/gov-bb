@@ -20,7 +20,7 @@ type StartLinkProps = {
 } & Record<string, unknown>
 
 // An authored href wins over formId; an unavailable formId suppresses the
-// button. See docs/decisions/0005.
+// button. See docs/decisions/0011.
 export function StartLink({ href, formId, children, ...rest }: StartLinkProps) {
   const availableForms = useContext(AvailableFormsContext)
   const { pathname } = useLocation()

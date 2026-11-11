@@ -3,7 +3,7 @@
 ## Context
 
 Issue [#95](https://github.com/govtech-bb/gov-bb/issues/95), a proactive
-reliability follow-up to #94 / ADR 0006. After #94 each non-gating processor
+reliability follow-up to #94 / ADR 0014. After #94 each non-gating processor
 *type* got one SQS message and the handler iterated all matching
 `processors[]` entries internally. That traded away isolation: a failure on the
 second email retried the whole `email` batch (re-sending the first), one slow
@@ -24,7 +24,7 @@ the type, not the entry. Worked from `docs/plans/95-per-instance-sqs-dispatch.md
   only. Spreadsheet dedups on a composite `${submissionId}:${index}` token in a
   leading `submissionRef` column; webhook gained `X-Idempotency-Key:
   ${submissionId}:${index}`.
-- Recorded the decision in ADR 0031; marked ADR 0006's dispatch decision
+- Recorded the decision in ADR 0055; marked ADR 0014's dispatch decision
   superseded.
 
 ## Why we did it that way
@@ -33,9 +33,9 @@ the type, not the entry. Worked from `docs/plans/95-per-instance-sqs-dispatch.md
   both. A message only ever addresses the snapshot it was enqueued with, and its
   whole retry→DLQ life happens against that frozen array — there's no
   cross-form-version identity need. So we extended the `${submissionId}:${index}`
-  grain already used for idempotency keys (ADR 0006) and on-the-wire recipe
-  identity (ADR 0009) rather than pay for a `form-types` schema change, builder
-  id-minting, and back-compat for every existing form. Full reasoning in ADR 0031.
+  grain already used for idempotency keys (ADR 0014) and on-the-wire recipe
+  identity (ADR 0019) rather than pay for a `form-types` schema change, builder
+  id-minting, and back-compat for every existing form. Full reasoning in ADR 0055.
 
 - **Index-only, no iterate-all fallback (user decision, deviates from the plan).**
   The plan defaulted to *keeping* the iterate-all branch for one release to

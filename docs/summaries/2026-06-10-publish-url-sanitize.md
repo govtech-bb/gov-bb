@@ -73,7 +73,7 @@ Defence-in-depth: validate the input *and* sanitize at the sink.
 ## Out of scope
 
 - The `js/missing-rate-limiting` alerts on this service (accepted risk,
-  ADR 0042 / #874).
+  ADR 0073 / #874).
 - The other constant-only `fetch` URLs in `publish.ts` (not user-tainted).
 - After merge: confirm both CodeQL alerts (publish.ts:104, :138) clear on the PR
   scan.

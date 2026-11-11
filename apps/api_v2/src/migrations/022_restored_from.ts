@@ -1,5 +1,5 @@
 /**
- * A page restored to an earlier version of its history (#3231, ADR 0080) is
+ * A page restored to an earlier version of its history (#3231, ADR 0135) is
  * a new change, not a rewind: `record_change()` logs it as `reverted`, with
  * the version it restored in `restored_from`. Every earlier event stays.
  *

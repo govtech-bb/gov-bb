@@ -22,7 +22,7 @@ the pages stay. Deleting pages would mean a GitHub PR through
 `deleteContentPage`, which is a much bigger change.
 
 **What "published" means.** The form is live, *or* the manifest is in Git
-(`baseManifestSha !== null`, the never-published test ADR 0073 uses), *or* any
+(`baseManifestSha !== null`, the never-published test ADR 0121 uses), *or* any
 page is in Git. The library's status label wasn't usable: `serviceStatus`
 calls anything with a local draft "Draft". Pages or a manifest already in Git
 would also survive a local delete and reappear as a page-only row.

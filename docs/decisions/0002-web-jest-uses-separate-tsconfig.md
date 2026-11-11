@@ -1,7 +1,7 @@
 # 0002 — Web Jest compilation uses a separate tsconfig
 
 **Date:** 2026-05-19  
-**Status:** Accepted
+**Status:** Deprecated (2026-11-10, #3120): about `apps/forms`, a v1 app; kept as a historical record. Previously: Accepted
 
 ## Context
 

@@ -155,9 +155,9 @@ export function serializeRecipeDraft(
       ? { contactDetails: draft.contactDetails }
       : {}),
     // Carry processors through, stripping the editor-only id (never persisted,
-    // per ADR 0009) AND every `payment` processor: payment config is now a
+    // per ADR 0019) AND every `payment` processor: payment config is now a
     // per-environment DB sibling living in `form_config.config` (#716, ADR
-    // 0033), never in the committed recipe — so it must never reach the wire
+    // 0057), never in the committed recipe — so it must never reach the wire
     // here. `!== undefined` (not a truthiness/length check) keeps "absent"
     // distinct from an explicit `[]`. The filter can collapse a non-empty draft
     // array to `[]` (a form whose only processor was payment) — that's the

@@ -17,11 +17,11 @@ Three coupled changes, ordered security-first:
 - **(b)** `apps/form_builder/app/server/publish.ts`'s inline `requireSession`
   deleted; `publishRecipe`/`eraseRecipe` switched to `.middleware([requireSession])`
   + `context.session`, matching `forms.ts`.
-- **(a)** ADR 0061 records the three auth boundaries and the one dev-bypass
+- **(a)** ADR 0106 records the three auth boundaries and the one dev-bypass
   policy; `apps/form_builder_api/src/middleware/auth.ts` refactored onto a
   deliberately-duplicated `resolveTokenAuth`, behaviour-preserving.
 
-Specs added/updated across all three apps. ADR 0061 carries the decision.
+Specs added/updated across all three apps. ADR 0106 carries the decision.
 
 ## Why
 
@@ -42,7 +42,7 @@ Decisions that shaped the diff and won't survive in it:
   provisioning *plus* a workflow + script + secret rename, for naming cosmetics.
 
 - **Token read per-request from `process.env`, never a boot-required env var.**
-  apps/api validates env at boot (ADR 0057); a `required` `ADMIN_API_TOKEN`
+  apps/api validates env at boot (ADR 0098); a `required` `ADMIN_API_TOKEN`
   there would crash-loop ECS on a missing value → circuit-breaker rollback (the
   exact prod failure mode seen before). The schema entry is `.optional()`; the
   guard fails closed in prod at request time instead.
@@ -50,7 +50,7 @@ Decisions that shaped the diff and won't survive in it:
 - **`resolveTokenAuth` is duplicated, not shared via a package.** It's ~15 lines
   spanning a Nest app and an Express app. A shared buildable package would incur
   the nx "buildable + referenced" overhead and the `sherif` single-specifier
-  gate for no real payoff. The duplication is governed by ADR 0061 + identical
+  gate for no real payoff. The duplication is governed by ADR 0106 + identical
   specs. apps/api's copy reuses the existing `isValidSecretToken`;
   form_builder_api's copy carries its own (byte-identical) compare.
 
@@ -84,7 +84,7 @@ Decisions that shaped the diff and won't survive in it:
   operator-invoked and now requires that token too.
 - **Deploy prerequisite (not code):** apps/api sandbox and prod must both set
   `ARCHIVE_DRAFTS_TOKEN` (same value the workflow sends) or `/admin/*` returns
-  500 (fail-closed). Documented in ADR 0061 and the guard comment.
+  500 (fail-closed). Documented in ADR 0106 and the guard comment.
 - Verified this session: `api:test` (935 pass, 98.4% cov), `form-builder-app`
   (645), `form-builder-api` (244), `tsc -b` (exit 0),
   `nx run-many -t build --exclude=landing` (16 projects), and a clean
@@ -102,7 +102,7 @@ rather than re-litigating the original decisions above:
   target), so sandbox hits the fail-closed guard first, the moment this PR
   merges — not prod later. The archive workflow's calls fail silently
   (best-effort by design); the kill switch 500s overtly for operators. Fixed
-  above and in ADR 0061.
+  above and in ADR 0106.
 - **`ADMIN_KILL_SWITCH_TOKEN` decouples the kill switch's credential from
   `ARCHIVE_DRAFTS_TOKEN`.** The kill-switch controller now constructs its
   guard as `new AdminTokenGuard("ADMIN_KILL_SWITCH_TOKEN", "ARCHIVE_DRAFTS_TOKEN")`

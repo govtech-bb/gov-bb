@@ -19,7 +19,7 @@ same session on `worktree-text-field-numeric-validation` (targets `sandbox`).
   rules (previously asserted dropped); added reverse-direction tests
   (text→number drops year rules, text→email drops both).
 - Editor spec case asserting the dropdown offers all six for `htmlType="text"`.
-- Decision record: `docs/decisions/0040-rule-availability-mirrors-runtime-capability.md`.
+- Decision record: `docs/decisions/0069-rule-availability-mirrors-runtime-capability.md`.
 
 ## Why we did it that way
 
@@ -45,4 +45,4 @@ same session on `worktree-text-field-numeric-validation` (targets `sandbox`).
 ## Open questions
 
 - None. If `tel` ever needs the numeric rules, it's a descriptor-only change
-  per ADR 0040.
+  per ADR 0069.

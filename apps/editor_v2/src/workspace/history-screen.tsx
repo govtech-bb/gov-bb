@@ -13,7 +13,7 @@ import { LoadingState } from "../ui/loading-state";
 import { ScreenHeader } from "../ui/screen-header";
 import { TextLink } from "../ui/text-link";
 import { toast } from "../ui/toast";
-import { LoadFailure } from "./load-failure";
+import { listLoadView } from "./list-load-view";
 
 /** How many changes show at first, and how many more each Show older changes adds. */
 const SHOWN = 50;
@@ -32,7 +32,7 @@ const ACTIONS: Record<PageHistoryEntry["action"], string> = {
   discarded: "Review closed when the page was taken out of public view",
 };
 
-/** Entries whose snapshot is the page itself, so a restore can bring it back (ADR 0080). */
+/** Entries whose snapshot is the page itself, so a restore can bring it back (ADR 0135). */
 const VERSIONS = new Set<PageHistoryEntry["action"]>([
   "created",
   "updated",
@@ -72,7 +72,7 @@ export function HistoryScreen({
   const history = useQuery(historyQuery(api, pageId));
   const page = useQuery(pageQuery(api, pageId));
   const editor = useQuery(rolesQuery(api)).data?.includes("editor") ?? false;
-  const none = history.error instanceof ApiFailure && history.error.status === 404;
+  const load = listLoadView(history, "this page’s history");
   const entries = history.data;
   const [shown, setShown] = useState(SHOWN);
   const list = useRef<HTMLOListElement>(null);
@@ -132,15 +132,11 @@ export function HistoryScreen({
         title={page.data ? `History: ${page.data.title}` : "Page history"}
         lead="Every change to this page and every review step, newest first, with who made it and when."
       />
-      {none ? (
+      {load.notices}
+      {load.state.kind === "blocked" && load.state.reason === "gone" ? (
         <EmptyState title="No history yet" description="Changes to this page will show here." />
-      ) : history.isError && !history.data ? (
-        <LoadFailure
-          noun="this page’s history"
-          error={history.error}
-          retrying={history.isFetching}
-          retry={() => void history.refetch()}
-        />
+      ) : load.state.kind === "blocked" ? (
+        load.failure
       ) : !entries ? (
         <LoadingState label="Loading the page’s history…" />
       ) : (

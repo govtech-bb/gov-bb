@@ -128,7 +128,7 @@ export function serviceTypeLabel(row: ServiceRow): string | null {
 
 /** Whether the Status select is offered. A row without a form (a page, or
  *  a stray row) is a page toggle only, which does nothing once pages come
- *  from api_v2 (ADR 0063, "After cutover"). */
+ *  from api_v2 (ADR 0110, "After cutover"). */
 export function statusEditable(
   row: ServiceRow,
   pagesInEditor: boolean,

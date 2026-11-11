@@ -57,7 +57,7 @@ client components.
 
 **The join compares labels through the existing candidate-free parser.** The
 first cut added `deployBranchMatchesFormId(headRef, formId)` — fitted prefix +
-all-digit tail. It was correct for the sibling case, but ADR 0070 (the #2390
+all-digit tail. It was correct for the sibling case, but ADR 0118 (the #2390
 record) requires the parser to take no candidate id, and the reviewer found two
 real holes: `eraseBranchName("passport")` and `deployBranchName("erase-passport")`
 are the same string, so the matcher would push a recipe onto an Erase PR; and
@@ -84,7 +84,7 @@ literal constants far under it; CLAUDE.md says not to handle impossible
 scenarios. It is exported, so the next caller gets no signal — noted, accepted.
 
 **No decision record.** Proposed (`generated-branch-names-carry-a-fitted-label-not-the-id`,
-amending 0070's "recovers the id" premise) and declined; the CLAUDE.md section
+amending 0118's "recovers the id" premise) and declined; the CLAUDE.md section
 and the doc comments on `deployBranchLabel` / `formIdFromDeployBranch` carry
 the rule.
 
@@ -109,9 +109,9 @@ the rule.
 ## Open questions
 
 - `formIdFromDeployBranch` and `OpenDeployPR.formId` are now misnomers — both
-  hold the label. Renaming ripples into ADR 0070's text and several specs;
+  hold the label. Renaming ripples into ADR 0118's text and several specs;
   left with doc comments instead.
-- ADR 0070's "a parser that recovers the id" is slightly stale; no amendment
+- ADR 0118's "a parser that recovers the id" is slightly stale; no amendment
   written by decision.
 - Re-run `gh pr list --state open` for `start-page-*` / `form-builder/*` heads
   immediately before merging; the pre-merge check stands in for legacy code.

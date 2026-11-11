@@ -8,7 +8,7 @@
 browser, where it's reachable via DevTools, a malicious extension, or XSS. The
 live leak was the webhook HMAC `secret` / `auth.secret` and the opencrvs
 `token`. (Payment config already lives only in the DB `form_config` sidecar,
-ADR 0033, so it wasn't the issue here.) Fix: keep those secrets off the wire.
+ADR 0057, so it wasn't the issue here.) Fix: keep those secrets off the wire.
 
 ## Approach (and why)
 

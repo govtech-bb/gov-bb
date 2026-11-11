@@ -5,6 +5,7 @@ import {
   fetchCollectionRecords,
   resolveContactRecords,
 } from './api-v2-collections'
+import { apiV2Breaker } from './api-v2-reader'
 
 const BASE = 'http://api.example'
 
@@ -53,7 +54,10 @@ const json = (status: number, body: unknown) =>
     headers: { 'Content-Type': 'application/json' },
   })
 
-afterEach(() => vi.restoreAllMocks())
+afterEach(() => {
+  vi.restoreAllMocks()
+  apiV2Breaker.reset()
+})
 
 describe('contactRefs', () => {
   it('finds each record a page’s contact blocks name, once', async () => {
@@ -83,17 +87,12 @@ describe('fetchCollectionRecords', () => {
     expect(init.headers).toBeUndefined()
   })
 
-  it('sends landing’s rate-limit exemption token, and still no preview token', async () => {
-    const fetchImpl = stubFetch(json(200, CONTACTS))
-    await fetchCollectionRecords(BASE, 'contacts', fetchImpl, 'landing-secret')
-    const [, init] = fetchImpl.mock.calls[0] as [string, RequestInit]
-    expect(init.headers).toEqual({ 'x-landing-token': 'landing-secret' })
-  })
-
   it('is a silent miss on a 404', async () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
     const fetchImpl = stubFetch(json(404, { error: 'not_found' }))
     expect(await fetchCollectionRecords(BASE, 'contacts', fetchImpl)).toBeNull()
+    expect(error).not.toHaveBeenCalled()
     expect(warn).not.toHaveBeenCalled()
   })
 
@@ -101,13 +100,19 @@ describe('fetchCollectionRecords', () => {
     ['a server error', json(500, {})],
     ['a malformed body', json(200, { records: 'no' })],
     ['a network failure', new Error('ECONNREFUSED')],
-  ])('is a logged miss on %s', async (_, response) => {
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
-    expect(
-      await fetchCollectionRecords(BASE, 'contacts', stubFetch(response)),
-    ).toBeNull()
-    expect(warn).toHaveBeenCalled()
-  })
+  ])(
+    'is a miss on %s, logged as an api_v2_fallback error',
+    async (_, response) => {
+      const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+      expect(
+        await fetchCollectionRecords(BASE, 'contacts', stubFetch(response)),
+      ).toBeNull()
+      expect(JSON.parse(String(error.mock.calls[0][0]))).toMatchObject({
+        event: 'api_v2_fallback',
+        url: '/collections/contacts/records',
+      })
+    },
+  )
 })
 
 describe('resolveContactRecords', () => {
@@ -163,7 +168,7 @@ describe('resolveContactRecords', () => {
   })
 
   it('leaves out a collection that can’t be read', async () => {
-    vi.spyOn(console, 'warn').mockImplementation(() => {})
+    vi.spyOn(console, 'error').mockImplementation(() => {})
     expect(
       await resolveContactRecords(
         BASE,
@@ -171,5 +176,40 @@ describe('resolveContactRecords', () => {
         stubFetch(new Error('timeout')),
       ),
     ).toEqual({})
+  })
+
+  it('leaves the breaker closed when api_v2 rejects every key it is sent', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const rejecting = vi.fn(async () => json(400, { error: 'bad_request' }))
+    expect(
+      await resolveContactRecords(
+        BASE,
+        ['A', 'B', 'C', 'D', 'E'].map((collection) => ({
+          collection,
+          record: 'x',
+        })),
+        rejecting,
+      ),
+    ).toEqual({})
+    expect(rejecting).toHaveBeenCalledTimes(5)
+    const fetchImpl = stubFetch(json(200, CONTACTS))
+    await fetchCollectionRecords(BASE, 'contacts', fetchImpl)
+    expect(fetchImpl).toHaveBeenCalledOnce()
+  })
+
+  it('leaves out a collection, without a request, while the breaker is open', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    const failing = vi.fn(async () => json(500, {}))
+    for (let i = 0; i < 3; i++)
+      await fetchCollectionRecords(BASE, 'contacts', failing)
+    const fetchImpl = stubFetch(json(200, CONTACTS))
+    expect(
+      await resolveContactRecords(
+        BASE,
+        [{ collection: 'contacts', record: 'barbados-drug-service' }],
+        fetchImpl,
+      ),
+    ).toEqual({})
+    expect(fetchImpl).not.toHaveBeenCalled()
   })
 })

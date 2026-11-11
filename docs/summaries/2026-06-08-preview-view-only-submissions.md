@@ -8,14 +8,14 @@ submit with a generic "Something went wrong" panel —
 recipe paths resolve from different sources. `GET /form-definitions/:formId`
 honours the preview token and serves the unpublished **DB** draft, but
 `POST /submissions` resolves from bundled **file** recipes only (forced outside
-`NODE_ENV=development` per ADR 0007 / #145). A draft-only version (the reported
+`NODE_ENV=development` per ADR 0017 / #145). A draft-only version (the reported
 case was `get-death-certificate` 1.2.2) isn't in files, so `findByFormId` threw
 `AppError.notFound` → 404. Done on the `preview-view-only-934` worktree, targets
 `sandbox`.
 
 ## What we did
 
-- **Decided preview is view-only** (ADR 0043). The operator uses preview to
+- **Decided preview is view-only** (ADR 0075). The operator uses preview to
   confirm a draft renders and flows; running a real submission off an
   unpublished draft is deferred to a future test-submission harness.
 - **Frontend (`apps/forms`) — primary fix.** Added optional `isPreview` to

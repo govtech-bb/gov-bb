@@ -1,4 +1,4 @@
-# apps/forms cleanup — unused exports + ADR-0005 vite define drift
+# apps/forms cleanup — unused exports + ADR-0013 vite define drift
 
 **Date:** 2026-06-23
 **Branch:** `forms-cleanup-1523-1504`
@@ -14,7 +14,7 @@ share one verification gate, so they shipped together as one PR.
   consumers (including TanStack route files, barrels, and the live e2e/smoke
   suites) before acting.
 - **#1504** — `vite.config.ts` still carried a `define: { "process.env": {…} }`
-  block, a direct violation of ADR-0005 ("Vite env vars use `import.meta.env`
+  block, a direct violation of ADR-0013 ("Vite env vars use `import.meta.env`
   only"). One consumer still read `process.env`.
 
 ## What we did
@@ -41,7 +41,7 @@ inside `smoke.ts`, so they were down-scoped rather than deleted.
 (consumed by `responses.type.ts` and `form-draft.type.ts` respectively) and
 were left alone.
 
-### Part B (#1504) — close the ADR-0005 drift
+### Part B (#1504) — close the ADR-0013 drift
 
 - Removed the `define` block; with `VITE_API_URL` already read via
   `import.meta.env` in `forms.ts`/`files.ts`, the block was redundant, so
@@ -58,7 +58,7 @@ were left alone.
   removed, and the skipped block became a real test asserting a custom allowlist
   supplied through `import.meta.env` is honoured.
 
-### ADR-0005 correction
+### ADR-0013 correction
 
 The ADR's Consequences section still claimed `apps/forms` uses ts-jest +
 `ts-jest-mock-import-meta`. That's stale — the app is on Vitest 4, which reads
@@ -70,7 +70,7 @@ in place, keeping the historical ts-jest note for any future Vite-on-Jest app.
 - **Down-scope over delete** where a symbol is still used in its own file —
   keeps the value, just removes it from the public surface. Deletion was
   reserved for genuinely zero-consumer symbols.
-- **No new ADR** — Part B is an instance of ADR-0005, not a new principle. The
+- **No new ADR** — Part B is an instance of ADR-0013, not a new principle. The
   only doc change is correcting the ADR's stale test-runner claim.
 
 ## Verification

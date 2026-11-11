@@ -361,7 +361,7 @@ export const SCHEMAS = {
       "editor role (403 otherwise). Saves the page's fields as history " +
       "entry `version` left them over the page as it stands now, keeping " +
       "its current `visibility`, so the restore is a new change and every " +
-      "earlier entry stays (ADR 0080). It is a save in every other way: " +
+      "earlier entry stays (ADR 0135). It is a save in every other way: " +
       "a page that isn't `public` is written, and its history gains a " +
       "`reverted` entry with `restored_from`; a `public` page's restore " +
       "goes into its pending revision, to be submitted and approved like " +

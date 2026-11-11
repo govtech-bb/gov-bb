@@ -1,5 +1,5 @@
 /**
- * Restoring a version from a page's history (#3231, ADR 0080): a new change
+ * Restoring a version from a page's history (#3231, ADR 0135): a new change
  * from the page as it stands to that version's fields, never a rewind.
  */
 

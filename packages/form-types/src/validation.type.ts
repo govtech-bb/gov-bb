@@ -176,7 +176,7 @@ export function ruleValueIssues(validations: ValidationRule): string[] {
 // Because the forms frontend and the API deploy separately, the shape is
 // tolerated as EITHER during the migration window: the validation boundary in
 // `@govtech-bb/form-validation` coerces both to a number where arithmetic is
-// needed (ADR 0040 / 0043). The frontend flips to emitting strings in a later
+// needed (ADR 0068 / 0076). The frontend flips to emitting strings in a later
 // deploy. See issue #815.
 export const dateValueInputSchema = z.object({
   day: z.union([z.number(), z.string()]).optional(),

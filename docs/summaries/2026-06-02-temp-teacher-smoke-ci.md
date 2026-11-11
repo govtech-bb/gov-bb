@@ -15,7 +15,7 @@ substantially. Plan: `docs/plans/temp-teacher-smoke-ci.md`.
 - Added a `smoke` target to `apps/forms/project.json` and documented the
   unit / mocked-e2e / live-smoke split in `apps/forms/README.md`.
 - Recorded the governing principle in
-  [ADR 0027](../decisions/0027-live-smoke-tests-run-post-deploy-not-per-pr.md).
+  [ADR 0047](../decisions/0047-live-smoke-tests-run-post-deploy-not-per-pr.md).
 - No test code was written — the spec and `playwright.smoke.config.ts` already
   existed.
 
@@ -26,7 +26,7 @@ substantially. Plan: `docs/plans/temp-teacher-smoke-ci.md`.
   only gap was that nothing ran it automatically — CI ran *zero* Playwright.
 
 - **"On each PR" is impossible for a live test, so we changed the trigger — see
-  ADR 0027.** temp-teacher is a real DB-backed form fetched from the API; the
+  ADR 0047.** temp-teacher is a real DB-backed form fetched from the API; the
   mocked `test:e2e` suite only knows the synthetic `master` fixture. A PR can't
   serve the real form, and real submits per PR file real applications + emails.
   We surfaced this contradiction explicitly (the user had picked both "verify the

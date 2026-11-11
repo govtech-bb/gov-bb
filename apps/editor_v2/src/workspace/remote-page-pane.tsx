@@ -1,9 +1,19 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { CatchBoundary, Link, useNavigate, useRouterState } from "@tanstack/react-router";
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
+import {
+  useEffect,
+  useEffectEvent,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  type ReactNode,
+} from "react";
 import type { Category } from "../api/categories";
-import { ApiFailure, outcomeUnknown, type ApiPage, type EditorApi } from "../api/client";
-import { apiMessage } from "../api/failure-messages";
+import { ApiFailure, type ApiPage, type EditorApi } from "../api/client";
+import type { Outcome } from "../api/write-attempt";
+import { writes, type PageSaveAnswer, type ServerPageBaseline } from "../api/writes";
 import { pageLinkTargetsQuery } from "../api/page-link-targets";
 import { pageFieldLabel } from "../api/page-fields";
 import { pageToMarkdown, pickerCategories } from "../api/page-markdown";
@@ -36,17 +46,9 @@ import { createEditorSession } from "@/editor";
 import { EditorSessionProvider } from "@/editor/react";
 import type { DocumentSessions } from "./document-views";
 import { brokenLinks, linkConfirmation } from "./broken-links";
-import type { PageSession, ServerPageBaseline } from "./page-session";
-import {
-  landedSubmission,
-  preparePageSave,
-  retryPageSave,
-  saveLanded,
-  sendPageSave,
-  submissionLanded,
-  type PageSaveAttempt,
-  type PageSaveOutcome,
-} from "./page-sync";
+import type { PageSession } from "./page-session";
+import { preparePageSave } from "./page-sync";
+import { useWrite } from "./use-write";
 import type { DraftSnapshot } from "../persistence/types";
 import { ContentDiff } from "./review-screens";
 
@@ -273,97 +275,87 @@ function RemotePageEditor({
     };
   }, []);
 
-  const [localOutcome, setLocalOutcome] = useState<PageSaveOutcome>();
-  const attempt = useRef<{ request: PageSaveAttempt; snapshot: DraftSnapshot }>(undefined);
+  const [localOutcome, setLocalOutcome] = useState<Outcome<PageSaveAnswer>>();
+  // The editor snapshot identifies typing after dispatch; the attempt owns the request itself.
+  const savedSnapshot = useRef<DraftSnapshot>(undefined);
+  const save = useWrite(api, writes.savePage);
+  const submit = useWrite(api, writes.submitRevision);
+  const savePending = save.state === "sending" || save.state === "checking";
+  const submitPending = submit.state === "sending" || submit.state === "checking";
 
-  const save = useMutation({
-    mutationFn: (current: { request: PageSaveAttempt; snapshot: DraftSnapshot; retry?: true }) =>
-      (current.retry ? retryPageSave : sendPageSave)(api, current.request),
-    onSuccess: (outcome, sent) => {
-      if (outcome.kind !== "unknown" && outcome.kind !== "conflict") attempt.current = undefined;
+  const saved = useEffectEvent((outcome: Outcome<PageSaveAnswer>) => {
+    if (outcome.kind === "landed") {
+      const answer = outcome.answer;
+      const typed = store.getSnapshot() !== savedSnapshot.current;
 
-      if (outcome.kind === "saved") {
-        // Show what api_v2 stored when it differs from what was sent, unless more was typed during the save
-        const typed = store.getSnapshot() !== sent.snapshot;
+      if (answer.base.markdown !== savedSnapshot.current?.committed && !typed) {
+        const token = store.captureReplacementToken();
+        const prepared = govbbPageCodec.prepare(answer.base.markdown);
+        store.replacePrepared(prepared, token);
+      }
 
-        if (outcome.base.markdown !== sent.request.markdown && !typed) {
-          const token = store.captureReplacementToken();
-          const prepared = govbbPageCodec.prepare(outcome.base.markdown);
-          store.replacePrepared(prepared, token);
-        }
+      if (answer.discarded)
+        toast("The page is no longer public", {
+          description: typed
+            ? "Its unpublished changes were discarded, but your open copy still contains them. Check it before you save."
+            : "Its unpublished changes were discarded. It shows its last published content.",
+        });
 
-        attempt.current = undefined;
-
-        if (outcome.discarded)
-          toast("The page is no longer public", {
-            description: typed
-              ? "Its unpublished changes were discarded, but your open copy still contains them. Check it before you save."
-              : "Its unpublished changes were discarded. It shows its last published content.",
-          });
-
-        rebase(outcome.base);
-        client.setQueryData(pageQuery(api, server.id).queryKey, outcome.base.page);
-        void client.invalidateQueries({ queryKey: ["content"] });
-      } else if (outcome.kind === "conflict")
-        void client.invalidateQueries({ queryKey: pageQuery(api, server.id).queryKey });
-    },
-    onSettled: () => {
-      saving.current = false;
-    },
+      rebase(answer.base);
+      client.setQueryData(pageQuery(api, server.id).queryKey, answer.base.page);
+    } else if (outcome.kind === "conflict")
+      void client.invalidateQueries({ queryKey: pageQuery(api, server.id).queryKey });
+    saving.current = false;
   });
 
-  const submitAttempt = useRef<ServerPageBaseline>(undefined);
+  // Before paint, so a landed save never shows for a frame as unsaved changes
+  useLayoutEffect(() => {
+    if (save.outcome) saved(save.outcome);
+  }, [save.outcome]);
 
-  const submit = useMutation({
-    mutationFn: async (sent: ServerPageBaseline & { retry?: true }): Promise<ApiPage> => {
-      const landed = sent.retry ? await landedSubmission(api, sent, categories) : undefined;
-
-      if (landed) return landed;
-      const revision = await api.submitRevision(server.id, sent.page.version);
-
-      return {
-        ...sent.page,
-        version: revision.version,
-        updated_at: revision.updated_at,
-        pending_revision: { status: revision.status, comment: revision.comment },
-      };
-    },
-    onSuccess: (confirmed, sent) => {
-      rebase({ page: confirmed, markdown: sent.markdown });
-      submitAttempt.current = undefined;
-      client.setQueryData(pageQuery(api, server.id).queryKey, confirmed);
-      void client.invalidateQueries({ queryKey: ["content"] });
-    },
-    onSettled: () => {
-      saving.current = false;
-    },
-    onError: (error) => {
-      if (!outcomeUnknown(error)) submitAttempt.current = undefined;
-
-      // The change moved on or went elsewhere: read the page again, as a refused save does
-      if (error instanceof ApiFailure && (error.status === 409 || error.status === 404))
+  const submitted = useEffectEvent((outcome: Outcome<ServerPageBaseline>) => {
+    if (outcome.kind === "landed") {
+      rebase(outcome.answer);
+      client.setQueryData(pageQuery(api, server.id).queryKey, outcome.answer.page);
+    } else {
+      if (outcome.kind === "conflict" || outcome.kind === "missing" || outcome.kind === "refused")
         void client.invalidateQueries({ queryKey: pageQuery(api, server.id).queryKey });
-      toast("This change couldn’t be submitted for review", {
-        tone: "error",
-        description:
-          (error instanceof ApiFailure && apiMessage(error)) ||
-          "Check you are still signed in, then try again.",
-      });
-    },
+      toast(
+        outcome.kind === "unknown"
+          ? "We couldn’t confirm the last request."
+          : "This change couldn’t be submitted for review",
+        {
+          tone: "error",
+          description:
+            outcome.kind === "unknown"
+              ? "Check the saved version without discarding your open copy."
+              : outcome.message || "Check you are still signed in, then try again.",
+        },
+      );
+    }
+
+    saving.current = false;
   });
+
+  useLayoutEffect(() => {
+    if (submit.outcome) submitted(submit.outcome);
+  }, [submit.outcome]);
+
+  const submitPage = () => {
+    if (saving.current || save.state === "unsettled") return;
+    saving.current = true;
+    void submit.press(() => ({ base: baseline.current, categories }));
+  };
 
   const submitAction = (label: string) =>
     !readOnly && (
       <Button
         variant="secondary"
-        pending={submit.isPending}
-        disabled={unsaved || stale || blocked || save.isPending || checking || !!attempt.current}
-        onClick={() => {
-          if (saving.current) return;
-          saving.current = true;
-          submitAttempt.current ??= structuredClone(baseline.current);
-          submit.mutate(submitAttempt.current);
-        }}
+        pending={submitPending}
+        disabled={
+          unsaved || stale || blocked || savePending || checking || save.state === "unsettled"
+        }
+        onClick={submitPage}
       >
         {label}
       </Button>
@@ -375,7 +367,7 @@ function RemotePageEditor({
       getBaseline: () => baseline.current,
       isSaving: () => saving.current,
     }),
-    [store, base, save.isPending, checking],
+    [store, base, savePending, submitPending, checking],
   );
 
   useEffect(() => {
@@ -389,25 +381,30 @@ function RemotePageEditor({
   // Only making a page public goes live at once; a public page's changes wait for an approver
   const publishes = visibility === "public" && server.visibility !== "public";
 
-  const outcome = save.isPending ? undefined : (localOutcome ?? save.data);
+  const outcome = savePending ? undefined : (localOutcome ?? save.outcome);
 
   const unsaved =
     draft.committed !== base.markdown || draft.dirty || !draft.valid || draft.status === "error";
 
-  // While a request's answer is lost, a newer version holding exactly what it sent is that request landing, not someone
-  // else's change: retrying it confirms it
-  const landedMeanwhile =
-    (outcome?.kind === "unknown" &&
-      !!attempt.current &&
-      saveLanded(server, attempt.current.request)) ||
-    (outcomeUnknown(submit.error) &&
-      !!submitAttempt.current &&
-      submissionLanded(server, submitAttempt.current, categories));
+  // A refreshed version may be this write's own result, including before its landed answer becomes the baseline.
+  const savedVersion =
+    save.outcome?.kind === "landed" ? save.outcome.answer.base.page.version : undefined;
 
+  const submittedVersion =
+    submit.outcome?.kind === "landed" ? submit.outcome.answer.page.version : undefined;
+
+  const unsettled = save.state === "unsettled" || submit.state === "unsettled";
+
+  // A page's version only rises, so a read older than the baseline is a lagging read, not someone else's change.
   const stale =
-    (server.version !== base.page.version && !landedMeanwhile) ||
+    (!savePending &&
+      !submitPending &&
+      !unsettled &&
+      server.version > base.page.version &&
+      server.version !== savedVersion &&
+      server.version !== submittedVersion) ||
     outcome?.kind === "conflict" ||
-    (submit.error instanceof ApiFailure && submit.error.code === "version_conflict");
+    submit.outcome?.kind === "conflict";
 
   const blocked = !draft.valid || draft.dirty || draft.status === "error";
 
@@ -419,8 +416,7 @@ function RemotePageEditor({
     if (
       saving.current ||
       stale ||
-      attempt.current ||
-      submitAttempt.current ||
+      unsettled ||
       !snapshot.valid ||
       snapshot.dirty ||
       snapshot.status === "error"
@@ -431,15 +427,20 @@ function RemotePageEditor({
     if (!prepared.ok) return setLocalOutcome(prepared.outcome);
     setLocalOutcome(undefined);
     saving.current = true;
-    attempt.current = { request: prepared.attempt, snapshot };
-    save.mutate(attempt.current);
+    void save.press(() => {
+      savedSnapshot.current = snapshot;
+
+      return prepared.request;
+    });
   };
 
-  // The same request again: one that landed meanwhile is confirmed rather than refused as a conflict (retryPageSave)
   const retrySave = () => {
-    if (saving.current || !attempt.current) return;
+    if (saving.current || save.state !== "unsettled") return;
     saving.current = true;
-    save.mutate({ ...attempt.current, retry: true });
+    void save.press(() => {
+      // An unsettled press must not ask for new input, including invalid source typed since dispatch.
+      throw new Error("An unsettled page save must reuse its frozen request.");
+    });
   };
 
   // Looks the page's links up again, then saves. Only making the page public stops to ask about what it found.
@@ -531,6 +532,8 @@ function RemotePageEditor({
         throw new Error("Your draft changed while reloading. Check it before discarding.");
       client.setQueryData(categoriesQuery(api).queryKey, listed.value);
       client.setQueryData(pageQuery(api, server.id).queryKey, latest);
+      save.forget();
+      submit.forget();
       resetEditor();
       restorePageFocus();
     } catch (error) {
@@ -549,7 +552,7 @@ function RemotePageEditor({
 
   // Source errors take precedence over the server's save state (useDraftSave).
   const standing = (): SaveStateProps => {
-    if (save.isPending) return { status: "saving" };
+    if (savePending) return { status: "saving" };
 
     if (outcome?.kind === "missing")
       return {
@@ -559,7 +562,7 @@ function RemotePageEditor({
         onDownload: downloadMine,
       };
 
-    if (outcome?.kind === "unknown" || save.isError)
+    if (outcome?.kind === "unknown")
       return {
         status: "failed",
         error:
@@ -638,7 +641,7 @@ function RemotePageEditor({
   );
 
   // Read out by its alert as it arrives, so the notice itself isn't
-  const newer = (stale || outcome?.kind === "unknown" || outcomeUnknown(submit.error)) && (
+  const newer = (stale || outcome?.kind === "unknown" || submit.outcome?.kind === "unknown") && (
     <Banner
       tone="warning"
       layout="strip"
@@ -646,27 +649,19 @@ function RemotePageEditor({
       actions={
         <>
           {outcome?.kind === "unknown" && (
-            <Button disabled={save.isPending || submit.isPending || reloading} onClick={retrySave}>
+            <Button disabled={savePending || submitPending || reloading} onClick={retrySave}>
               Retry same save
             </Button>
           )}
-          {outcomeUnknown(submit.error) && (
-            <Button
-              disabled={save.isPending || submit.isPending || reloading}
-              onClick={() => {
-                if (saving.current || !submitAttempt.current) return;
-                saving.current = true;
-                // One that landed meanwhile is confirmed rather than refused as a conflict (landedSubmission)
-                submit.mutate({ ...submitAttempt.current, retry: true });
-              }}
-            >
+          {submit.outcome?.kind === "unknown" && (
+            <Button disabled={savePending || submitPending || reloading} onClick={submitPage}>
               Retry same submission
             </Button>
           )}
           <Button
             variant="danger"
             pending={reloading}
-            disabled={save.isPending || submit.isPending}
+            disabled={savePending || submitPending}
             onClick={() => void loadSaved()}
           >
             Discard my changes and reload
@@ -713,7 +708,10 @@ function RemotePageEditor({
   ) : outcome?.kind === "forbidden" || outcome?.kind === "refused" ? (
     // A refusal, not a failure: saving again won't change the answer, so nothing offers a retry
     <Banner tone="error" layout="strip" role="alert">
-      {outcome.message}
+      {outcome.message ??
+        (outcome.kind === "forbidden"
+          ? "You don’t have permission to save this change."
+          : "This request could not be saved.")}
     </Banner>
   ) : outcome?.kind === "signed-out" ? (
     <Banner tone="warning" layout="strip" role="alert" actions={signInAction}>
@@ -797,7 +795,7 @@ function RemotePageEditor({
             // Keep focus when a completed save leaves nothing to save, or a newer version blocks editing.
             <Button
               variant="accent"
-              pending={save.isPending || checking || submit.isPending || reloading}
+              pending={savePending || checking || submitPending || reloading}
               aria-disabled={
                 !unsaved || stale || blocked || readOnly || outcome?.kind === "missing" || undefined
               }

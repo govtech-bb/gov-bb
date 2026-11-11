@@ -2,7 +2,10 @@ import { describe, expect, it } from 'vitest'
 import {
   PINNED_PAGES,
   contentSourceProblem,
+  gatedForms,
+  gatedPages,
   pagesToCheck,
+  previewPageUrls,
   readSmokeEnv,
   startChain,
   startChains,
@@ -48,11 +51,13 @@ describe('readSmokeEnv', () => {
         SMOKE_LANDING_URL: 'https://landing.test/',
         SMOKE_API_V2_URL: 'https://api.test/x',
         SMOKE_FORMS_URL: 'https://forms.test',
+        SMOKE_FORMS_API_URL: 'https://forms-api.test/',
       }),
     ).toEqual({
       landing: 'https://landing.test',
       apiV2: 'https://api.test',
       forms: 'https://forms.test',
+      formsApi: 'https://forms-api.test',
     })
   })
 })
@@ -245,5 +250,174 @@ describe('startChain', () => {
       path: ['/a', '/b'],
       problem: 'start links from /a loop or run too deep',
     })
+  })
+})
+
+// #3143: which pages landing must keep from the public.
+describe('previewPageUrls', () => {
+  const TOKEN = 'secret'
+  const catalog = (urls: string[]) => ({ pages: urls.map((url) => ({ url })) })
+  const api =
+    (tokenStatus = 200, anonymousStatus = 200) =>
+    async (_url: string, init?: RequestInit): Promise<Response> => {
+      const token = new Headers(init?.headers).get('x-preview-token')
+      if (token && token !== TOKEN)
+        return Response.json({ error: 'unauthorized' }, { status: 401 })
+      return token
+        ? Response.json(catalog(['/a', '/hidden', '/b']), {
+            status: tokenStatus,
+          })
+        : Response.json(catalog(['/a', '/b']), { status: anonymousStatus })
+    }
+
+  it('is the token catalog minus the public one', async () => {
+    expect(await previewPageUrls(API, TOKEN, api())).toEqual(['/hidden'])
+  })
+
+  it('fails a wrong token rather than finding nothing', async () => {
+    await expect(previewPageUrls(API, 'wrong', api())).rejects.toThrow(
+      'GET /catalog returned 401',
+    )
+  })
+
+  it('fails when either read fails', async () => {
+    await expect(previewPageUrls(API, TOKEN, api(500))).rejects.toThrow(
+      'GET /catalog returned 500',
+    )
+    await expect(previewPageUrls(API, TOKEN, api(200, 503))).rejects.toThrow(
+      'GET /catalog returned 503',
+    )
+  })
+})
+
+const FORMS_API = 'https://forms-api.test'
+
+/** A forms API answering each path from `bodies`; a number is an HTTP error. */
+function fakeFormsApi(overrides: Record<string, unknown> = {}) {
+  const bodies: Record<string, unknown> = {
+    '/form-definitions/maintenance': {
+      status: 'success',
+      data: ['upgrading', 'both'],
+    },
+    '/form-definitions/closed': { status: 'success', data: ['closed-form'] },
+    '/service_status': {
+      status: 'success',
+      data: [
+        { slug: 'switched-off', status: 'form_disabled' },
+        { slug: 'both', status: 'form_disabled' },
+        { slug: 'hidden-page', status: 'disabled' },
+        { slug: 'live', status: 'enabled' },
+      ],
+    },
+    ...overrides,
+  }
+  return async (input: string): Promise<Response> => {
+    const body = bodies[new URL(input).pathname]
+    return typeof body === 'number'
+      ? new Response('', { status: body })
+      : Response.json(body)
+  }
+}
+
+describe('gatedForms', () => {
+  it('reads each gated list; form_disabled excludes maintenance', async () => {
+    expect(await gatedForms(FORMS_API, fakeFormsApi())).toEqual({
+      maintenance: new Set(['upgrading', 'both']),
+      statusDisabled: new Set(['switched-off']),
+      closed: new Set(['closed-form']),
+    })
+  })
+
+  it.each([
+    '/form-definitions/maintenance',
+    '/form-definitions/closed',
+    '/service_status',
+  ])('fails when %s fails', async (path) => {
+    await expect(
+      gatedForms(FORMS_API, fakeFormsApi({ [path]: 500 })),
+    ).rejects.toThrow(`GET ${path} returned 500`)
+  })
+
+  it.each([
+    ['/form-definitions/maintenance', { status: 'error', data: [] }],
+    ['/form-definitions/closed', { status: 'success' }],
+    ['/service_status', null],
+  ])('fails an odd %s', async (path, body) => {
+    await expect(
+      gatedForms(FORMS_API, fakeFormsApi({ [path]: body })),
+    ).rejects.toThrow(`GET ${path}: unexpected response shape`)
+  })
+
+  it('fails an odd entry', async () => {
+    await expect(
+      gatedForms(
+        FORMS_API,
+        fakeFormsApi({
+          '/form-definitions/closed': {
+            status: 'success',
+            data: ['Not Kebab'],
+          },
+        }),
+      ),
+    ).rejects.toThrow('GET /form-definitions/closed: a form ID failed')
+    await expect(
+      gatedForms(
+        FORMS_API,
+        fakeFormsApi({
+          '/service_status': {
+            status: 'success',
+            data: [{ slug: 'x', status: 'paused' }],
+          },
+        }),
+      ),
+    ).rejects.toThrow('GET /service_status: a status failed validation')
+  })
+})
+
+describe('gatedPages', () => {
+  const page = (url: string, form_id: string | null): ApiV2Page => ({
+    url,
+    form_id,
+    hide_start_links: false,
+    body_markdown: '',
+  })
+  const gated = {
+    maintenance: new Set(['upgrading']),
+    statusDisabled: new Set(['switched-off']),
+    closed: new Set(['closed-form', 'upgrading']),
+  }
+
+  it('files each page and its /start step by its own form_id', async () => {
+    const api = fakeApi({
+      catalog: { pages: [{ url: '/a' }, { url: '/b' }, { url: '/c' }] },
+      pages: {
+        // Its /start step is gated with it.
+        '/a': page('/a', 'upgrading'),
+        '/a/start': page('/a/start', 'upgrading'),
+        // No /start step in api_v2.
+        '/b': page('/b', 'closed-form'),
+        // A live page whose /start step is bound to a switched-off form.
+        '/c': page('/c', 'live-form'),
+        '/c/start': page('/c/start', 'switched-off'),
+      },
+    })
+    expect(await gatedPages(API, gated, api)).toEqual({
+      maintenance: [
+        { url: '/a', formId: 'upgrading' },
+        { url: '/a/start', formId: 'upgrading' },
+      ],
+      statusDisabled: [{ url: '/c/start', formId: 'switched-off' }],
+      closed: [
+        { url: '/a', formId: 'upgrading' },
+        { url: '/a/start', formId: 'upgrading' },
+        { url: '/b', formId: 'closed-form' },
+      ],
+    })
+  })
+
+  it('fails a broken api_v2', async () => {
+    await expect(
+      gatedPages(API, gated, fakeApi({ catalogStatus: 500 })),
+    ).rejects.toThrow('GET /catalog returned 500')
   })
 })

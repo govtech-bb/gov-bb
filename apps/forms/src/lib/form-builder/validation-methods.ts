@@ -28,7 +28,7 @@ export type RequiredState =
  * is preserved verbatim rather than collapsing to `9`, and `"00"` stays
  * distinct from `"0"` — following the GOV.UK guidance of treating date parts as
  * text (#815). Numbers are derived only at the validation/formatting boundary
- * in `@govtech-bb/form-validation`, which tolerates both shapes (ADR 0043).
+ * in `@govtech-bb/form-validation`, which tolerates both shapes (ADR 0076).
  */
 export const parseDatePart = (raw: string): string | undefined => {
   const digits = raw.replace(/\D/g, "");

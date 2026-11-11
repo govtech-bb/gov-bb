@@ -373,6 +373,7 @@ const isRevision = (value: unknown): value is ApiRevision =>
   isPageFields(value.fields) &&
   ["draft", "submitted", "rejected", "published", "discarded"].includes(String(value.status)) &&
   nullableText(value.comment) &&
+  isStamp(value.live_updated_at) &&
   isStamp(value.updated_at) &&
   Array.isArray(value.contributors) &&
   value.contributors.every(isText) &&

@@ -14,7 +14,7 @@ const FORMS_URL = (process.env.FORMS_URL || "http://localhost:4200").replace(
   "",
 );
 // The content editor (editor_v2). Set once this environment's landing reads
-// api_v2: pages are then managed there, not here (ADR 0063, "After cutover").
+// api_v2: pages are then managed there, not here (ADR 0110, "After cutover").
 export const EDITOR_V2_URL = (process.env.EDITOR_V2_URL || "").replace(
   /\/+$/,
   "",
