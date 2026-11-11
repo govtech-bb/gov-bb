@@ -4,10 +4,12 @@ import { REASONS, logFallback, message } from './api-v2-log'
 
 /**
  * The one reader landing's api_v2 reads go through (#3644). It owns the
- * transport (timeout, landing's token, releasing an unread body), the
+ * transport (timeout, the token headers, releasing an unread body), the
  * `api_v2_fallback` line (contract in api-v2-page.ts) and the breaker, which
- * describes api_v2's health, so every read counts toward it and is turned away
- * by it. Page reads use the same breaker through their cache (api-v2-cache.ts).
+ * describes api_v2's health, so every public read counts toward it and is
+ * turned away by it, once: `readPublic` checks it for its reads, the page cache
+ * (api-v2-cache.ts) for page reads, which go through `readApiV2`. A reviewer's
+ * page read bypasses it.
  *
  * The breaker is module state here, not in a module that defines server
  * functions: TanStack Start copies those into the extracted handler, which
@@ -54,7 +56,7 @@ export const apiV2Breaker = /* @__PURE__ */ createApiV2Breaker()
 
 /**
  * Why a read has nothing to show: a 404 the caller may expect, a request
- * api_v2 rejected, or a failure.
+ * api_v2 rejected, or a failure. The two answers carry their `Cache-Control`.
  */
 export type ApiV2ReadMiss = {
   kind: 'miss'
@@ -68,16 +70,40 @@ export type ApiV2ReadMiss = {
     | 'network'
     | 'circuit_open'
   >
+  cacheControl?: string | null
+}
+
+/** A parsed answer from api_v2, with its `Cache-Control`, or why there is none. */
+export type ApiV2Read<T> =
+  | { kind: 'ok'; value: T; cacheControl: string | null }
+  | ApiV2ReadMiss
+
+/** How a read is sent and logged, and the answers its caller reads itself. */
+export interface ApiV2ReadOptions<A> {
+  landingToken?: string
+  /** A reviewer's read (#2961), sent as `x-preview-token`. */
+  previewToken?: string
+  /** The `url` of its log lines; the request path by default. */
+  logUrl?: string
+  /** `'manual'` for a caller that reads a redirect itself. */
+  redirect?: RequestRedirect
+  /**
+   * The caller's own reading of an answer, before the reader's: a result is
+   * the read's, `undefined` leaves the answer to the reader. It runs within
+   * the timeout, and a throw is a `timeout` or `network` miss.
+   */
+  answer?: (response: Response, signal: AbortSignal) => Promise<A | undefined>
 }
 
 /**
- * GET a public api_v2 read, parsed. A failure (`status`, `malformed`,
- * `timeout`, `network`) logs an `api_v2_fallback` line and counts toward the
- * breaker; while it is open the read is a `circuit_open` miss, without a
- * request or a line. A 404 is a silent `not_found` the caller may expect. Any
- * other 4xx but 408 and 429 is `rejected`, logged at `warn` and not counted:
- * api_v2 answered, the request was wrong, so a visitor's bad input (a
- * collection key api_v2 refuses) can't open the breaker for the whole site.
+ * GET a public api_v2 read, parsed, through the breaker. A failure (`status`,
+ * `malformed`, `timeout`, `network`) logs an `api_v2_fallback` line and counts
+ * toward the breaker; while it is open the read is a `circuit_open` miss,
+ * without a request or a line. A 404 is a silent `not_found` the caller may
+ * expect. Any other 4xx but 408 and 429 is `rejected`, logged at `warn` and
+ * not counted: api_v2 answered, the request was wrong, so a visitor's bad
+ * input (a collection key api_v2 refuses) can't open the breaker for the
+ * whole site.
  */
 export async function readPublic<T>(
   base: string,
@@ -85,11 +111,13 @@ export async function readPublic<T>(
   schema: z.ZodType<T>,
   fetchImpl: typeof fetch,
   landingToken?: string,
-): Promise<{ kind: 'ok'; value: T } | ApiV2ReadMiss> {
+): Promise<ApiV2Read<T>> {
   const now = Date.now()
   if (apiV2Breaker.isOpen(now)) return { kind: 'miss', reason: 'circuit_open' }
 
-  const result = await read(base, path, schema, fetchImpl, landingToken)
+  const result = await readApiV2(base, path, schema, fetchImpl, {
+    landingToken,
+  })
   apiV2Breaker.record(
     result.kind === 'miss' && REASONS[result.reason].failure,
     path,
@@ -99,55 +127,83 @@ export async function readPublic<T>(
   return result
 }
 
-async function read<T>(
+/**
+ * The transport alone, classed and logged as `readPublic` is, with no breaker:
+ * page reads, whose cache checks and records it (api-v2-cache.ts), and
+ * reviewer reads, which bypass it.
+ */
+export async function readApiV2<T, A = never>(
   base: string,
   path: string,
   schema: z.ZodType<T>,
   fetchImpl: typeof fetch,
-  landingToken?: string,
-): Promise<{ kind: 'ok'; value: T } | ApiV2ReadMiss> {
+  {
+    landingToken,
+    previewToken,
+    logUrl = path,
+    redirect,
+    answer,
+  }: ApiV2ReadOptions<A> = {},
+): Promise<ApiV2Read<T> | A> {
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), API_V2_TIMEOUT_MS)
 
   try {
     const response = await fetchImpl(`${base}${path}`, {
+      redirect,
       signal: controller.signal,
-      ...(landingToken && { headers: { 'x-landing-token': landingToken } }),
+      ...((landingToken || previewToken) && {
+        headers: {
+          ...(landingToken && { 'x-landing-token': landingToken }),
+          ...(previewToken && { 'x-preview-token': previewToken }),
+        },
+      }),
     })
+
+    const own = await answer?.(response, controller.signal)
+    if (own !== undefined) return own
+
+    const cacheControl = response.headers.get('cache-control')
 
     if (response.status === 404) {
       // Release the socket: an unread body pins a keep-alive connection.
       await response.body?.cancel()
 
-      return { kind: 'miss', reason: 'not_found' }
+      return { kind: 'miss', reason: 'not_found', cacheControl }
     }
 
     if (response.status !== 200) {
       await response.body?.cancel()
-      // As for pages: 408/429 say api_v2 (or a proxy) is busy, not that the
+      // A 4xx is api_v2 answering (a page url over its 512-char limit, a
+      // collection key it refuses), so a visitor can't trip the breaker with
+      // junk input. 408/429 say api_v2 (or a proxy) is busy, not that the
       // request was wrong.
-      const rejected =
+      if (
         response.status >= 400 &&
         response.status < 500 &&
         response.status !== 408 &&
         response.status !== 429
-      const reason = rejected ? 'rejected' : 'status'
-      logFallback(reason, path, { status: response.status })
+      ) {
+        logFallback('rejected', logUrl, { status: response.status })
 
-      return { kind: 'miss', reason }
+        return { kind: 'miss', reason: 'rejected', cacheControl }
+      }
+      logFallback('status', logUrl, { status: response.status })
+
+      return { kind: 'miss', reason: 'status' }
     }
 
     const body: unknown = await response.json().catch(() => undefined)
     const parsed = schema.safeParse(body)
 
-    if (parsed.success) return { kind: 'ok', value: parsed.data }
+    if (parsed.success) return { kind: 'ok', value: parsed.data, cacheControl }
     if (controller.signal.aborted) throw new Error('timed out reading the body')
-    logFallback('malformed', path)
+    logFallback('malformed', logUrl)
 
     return { kind: 'miss', reason: 'malformed' }
   } catch (error) {
     const reason = controller.signal.aborted ? 'timeout' : 'network'
-    logFallback(reason, path, { error: message(error) })
+    logFallback(reason, logUrl, { error: message(error) })
 
     return { kind: 'miss', reason }
   } finally {

@@ -7,7 +7,6 @@ import {
   fetchSiteVersion,
 } from './api-v2-version'
 import {
-  API_V2_TIMEOUT_MS,
   contentSource,
   fetchApiV2Page,
   fromApiV2,
@@ -17,6 +16,7 @@ import {
   resolveApiV2Page,
 } from './api-v2-page'
 import type { ApiV2MissReason, ApiV2Result, PageResponse } from './api-v2-page'
+import { API_V2_TIMEOUT_MS } from './api-v2-reader'
 
 const BASE = 'http://api.example'
 
@@ -275,6 +275,31 @@ describe('fetchApiV2Page', () => {
     })
     expect(error).not.toHaveBeenCalled()
   })
+
+  it.each([302, 308])(
+    'treats a %i (a redirect it does not follow) as a rejected miss and warns',
+    async (status) => {
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+      const result = await fetchApiV2Page(
+        BASE,
+        '/x',
+        stubFetch(
+          new Response(null, { status, headers: { Location: '/elsewhere' } }),
+        ),
+      )
+      expect(result).toEqual({
+        kind: 'miss',
+        reason: 'rejected',
+        cacheControl: null,
+      })
+      expect(logged(warn)).toEqual({
+        event: 'api_v2_fallback',
+        reason: 'rejected',
+        url: '/x',
+        status,
+      })
+    },
+  )
 
   it('treats a timeout while reading a 301 body as a timeout miss', async () => {
     vi.useFakeTimers()

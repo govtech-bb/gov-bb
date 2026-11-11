@@ -7,7 +7,7 @@ import type { ContentPage } from '../content/registry'
 import { bakeStartLinkFormId } from '../utils/markdown/plugins'
 import { createApiV2Cache } from './api-v2-cache'
 import { REASONS, logFallback, message } from './api-v2-log'
-import { API_V2_TIMEOUT_MS, apiV2Breaker } from './api-v2-reader'
+import { apiV2Breaker, readApiV2 } from './api-v2-reader'
 import { createVersionWatch, fetchSiteVersion } from './api-v2-version'
 import type { Frontmatter, ViewLevel } from './frontmatter'
 import { COOKIE_NAME, levelFromCookie } from './preview'
@@ -43,8 +43,6 @@ import { COOKIE_NAME, levelFromCookie } from './preview'
  * a 404 from `/categories`, `/catalog` or `/search/documents`. `REASONS` in
  * api-v2-log.ts holds the classification.
  */
-
-export { API_V2_TIMEOUT_MS }
 
 /** An optional field that is dropped, not fatal, when it has the wrong type. */
 const lenient = <T extends z.ZodType>(schema: T) =>
@@ -194,11 +192,17 @@ function previewSecret(): string | undefined {
   return config.previewSecret || process.env.PREVIEW_SECRET || undefined
 }
 
+/** A 301 from api_v2: a same-site redirect, or why it can't be followed. */
+type RedirectRead =
+  | { kind: 'redirect'; to: string; cacheControl: string | null }
+  | ApiV2Miss
+
 /**
- * `GET /pages?url=` without following redirects. A 404 is a silent miss;
- * anything else unexpected (status, network, timeout, bad body) is a logged
- * miss, so the caller falls back to static content. `previewToken` makes it a
- * reviewer's read; a 401 to one is a `preview_token` miss.
+ * `GET /pages?url=` through the reader, without following redirects. A 404 is
+ * a silent miss; anything else unexpected (status, network, timeout, bad body)
+ * is a logged miss, so the caller falls back to static content. A 301 and a
+ * reviewer's 401 are read here. `previewToken` makes it a reviewer's read; a
+ * 401 to one is a `preview_token` miss.
  */
 export async function fetchApiV2Page(
   base: string,
@@ -208,83 +212,66 @@ export async function fetchApiV2Page(
   previewToken?: string,
 ): Promise<
   | { kind: 'page'; body: PageResponse; cacheControl: string | null }
-  | { kind: 'redirect'; to: string; cacheControl: string | null }
-  | ApiV2Miss
+  | RedirectRead
 > {
-  const controller = new AbortController()
-  const timer = setTimeout(() => controller.abort(), API_V2_TIMEOUT_MS)
-  try {
-    const response = await fetchImpl(
-      `${base}/pages?url=${encodeURIComponent(url)}`,
-      {
-        redirect: 'manual',
-        signal: controller.signal,
-        headers: {
-          ...(landingToken && { 'x-landing-token': landingToken }),
-          ...(previewToken && { 'x-preview-token': previewToken }),
-        },
+  const result = await readApiV2(
+    base,
+    `/pages?url=${encodeURIComponent(url)}`,
+    PageResponse,
+    fetchImpl,
+    {
+      landingToken,
+      previewToken,
+      logUrl: url,
+      redirect: 'manual',
+      answer: async (response, signal): Promise<RedirectRead | undefined> => {
+        if (response.status === 301) return readRedirect(url, response, signal)
+        if (response.status === 401 && previewToken) {
+          await response.body?.cancel()
+          logFallback('preview_token', url, { status: response.status })
+          return { kind: 'miss', reason: 'preview_token' }
+        }
+        // Another 2xx or 3xx (a redirect it doesn't follow) stays `rejected`,
+        // as pages have always classed it. The reader's rule would count it
+        // as an api_v2 failure, which moving the transport must not change.
+        if (response.status !== 200 && response.status < 400) {
+          await response.body?.cancel()
+          logFallback('rejected', url, { status: response.status })
+          const cacheControl = response.headers.get('cache-control')
+          return { kind: 'miss', reason: 'rejected', cacheControl }
+        }
       },
-    )
-    const cacheControl = response.headers.get('cache-control')
-    if (response.status === 404) {
-      // Release the socket: an unread body pins a keep-alive connection.
-      await response.body?.cancel()
-      return { kind: 'miss', reason: 'not_found', cacheControl }
-    }
-    if (response.status === 301) {
-      const body = (await response.json().catch(() => null)) as {
-        redirect?: unknown
-      } | null
-      const to =
-        typeof body?.redirect === 'string'
-          ? body.redirect
-          : response.headers.get('Location')
-      // Same-site paths only (#3126): a 301 here may come from a proxy, not
-      // api_v2, and the browser caches it, so an off-site target would outlive
-      // the misconfiguration that produced it.
-      if (to && isSitePath(to)) return { kind: 'redirect', to, cacheControl }
-      if (controller.signal.aborted)
-        throw new Error('timed out reading the body')
-      logFallback(to ? 'bad_redirect' : 'no_target', url, to ? { to } : {})
-      // An off-site target is content: cached, no breaker. No target at all
-      // is an api_v2 failure.
-      return to
-        ? { kind: 'miss', reason: 'bad_redirect', cacheControl }
-        : { kind: 'miss', reason: 'no_target' }
-    }
-    if (response.status !== 200) {
-      await response.body?.cancel()
-      if (response.status === 401 && previewToken) {
-        logFallback('preview_token', url, { status: response.status })
-        return { kind: 'miss', reason: 'preview_token' }
-      }
-      // A 4xx is api_v2 answering (e.g. a url over its 512-char limit), so a
-      // visitor can't trip the breaker with junk urls; a 5xx is a failure.
-      // 408/429 say api_v2 (or a proxy) is busy, not anything about the url.
-      if (
-        response.status < 500 &&
-        response.status !== 408 &&
-        response.status !== 429
-      ) {
-        logFallback('rejected', url, { status: response.status })
-        return { kind: 'miss', reason: 'rejected', cacheControl }
-      }
-      logFallback('status', url, { status: response.status })
-      return { kind: 'miss', reason: 'status' }
-    }
-    const body: unknown = await response.json().catch(() => null)
-    const parsed = PageResponse.safeParse(body)
-    if (parsed.success) return { kind: 'page', body: parsed.data, cacheControl }
-    if (controller.signal.aborted) throw new Error('timed out reading the body')
-    logFallback('malformed', url)
-    return { kind: 'miss', reason: 'malformed' }
-  } catch (error) {
-    const reason = controller.signal.aborted ? 'timeout' : 'network'
-    logFallback(reason, url, { error: message(error) })
-    return { kind: 'miss', reason }
-  } finally {
-    clearTimeout(timer)
-  }
+    },
+  )
+  if (result.kind !== 'ok') return result
+  return { kind: 'page', body: result.value, cacheControl: result.cacheControl }
+}
+
+/** A 301's target, from its body or its Location header. */
+async function readRedirect(
+  url: string,
+  response: Response,
+  signal: AbortSignal,
+): Promise<RedirectRead> {
+  const cacheControl = response.headers.get('cache-control')
+  const body = (await response.json().catch(() => null)) as {
+    redirect?: unknown
+  } | null
+  const to =
+    typeof body?.redirect === 'string'
+      ? body.redirect
+      : response.headers.get('Location')
+  // Same-site paths only (#3126): a 301 here may come from a proxy, not
+  // api_v2, and the browser caches it, so an off-site target would outlive
+  // the misconfiguration that produced it.
+  if (to && isSitePath(to)) return { kind: 'redirect', to, cacheControl }
+  if (signal.aborted) throw new Error('timed out reading the body')
+  logFallback(to ? 'bad_redirect' : 'no_target', url, to ? { to } : {})
+  // An off-site target is content: cached, no breaker. No target at all
+  // is an api_v2 failure.
+  return to
+    ? { kind: 'miss', reason: 'bad_redirect', cacheControl }
+    : { kind: 'miss', reason: 'no_target' }
 }
 
 /**
