@@ -55,7 +55,7 @@ Production requires HTTPS API/editor origins on the same site, such as separate 
 | Outbound adapters | `src/adapters`             | `PostgresPages` (all content SQL, including the recursive hierarchy reads and the live page write), BetterAuth, the local bypass.                                                             |
 | Inbound adapters  | `src/routes`, `src/app.ts` | Zod request/response contracts, the HTTP mapping of each result.                                                                                                                              |
 
-Adapters do I/O and make no decisions, with one exception (ADR 0081). `PostgresPages.writeLivePage` is the only way to write a live page, for both create and save. It runs the steps in order: it writes the page, files the page's uncategorised sub-pages under its category, updates its redirects and re-cuts its search chunks from the saved body. This way no caller can get the order wrong or forget to re-index. The redirect decisions it applies come from `src/modules/page-redirect-history.ts`.
+Adapters do I/O and make no decisions, with one exception (ADR 0137). `PostgresPages.writeLivePage` is the only way to write a live page, for both create and save. It runs the steps in order: it writes the page, files the page's uncategorised sub-pages under its category, updates its redirects and re-cuts its search chunks from the saved body. This way no caller can get the order wrong or forget to re-index. The redirect decisions it applies come from `src/modules/page-redirect-history.ts`.
 
 Category HTTP handlers live in `src/routes/categories.ts`. Its editor plugin is registered inside `src/routes/editor.ts`, so employee, Origin and no-store checks apply before validation. Its public plugin is registered inside `src/routes/site.ts`, so preview admission, cache policy and ETags remain separate from employee access. Both reuse the parent scope's request identity reader; category rules and SQL stay in their existing domain, service and storage owners.
 
@@ -409,7 +409,7 @@ to newly public descendants without changing their URLs.
 
 `PostgresPages.recordPageRedirectMove` removes a rule at the destination,
 retargets incoming rules and upserts the source while preserving its audit ID.
-The live page write (`writeLivePage`, ADR 0081) captures former addresses
+The live page write (`writeLivePage`, ADR 0137) captures former addresses
 before writing the page, validates paths with `PageUrl`, and refuses to reclaim
 another page's, category's or redirect's source. Page, redirect, revision and
 audit changes commit in the same actor-bearing transaction under the shared

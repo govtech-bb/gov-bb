@@ -741,7 +741,7 @@ export class PostgresPages
 
   /**
    * Insert or overwrite a live page with its sub-pages' categories, its
-   * redirects and its search chunks, in this order (ADR 0081). Former public
+   * redirects and its search chunks, in this order (ADR 0137). Former public
    * addresses are read before the page is written, which the content lock
    * holds still; which of them redirect where is `redirectsAfterWrite`'s.
    */

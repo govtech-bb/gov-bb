@@ -134,7 +134,7 @@ export interface PageRecords {
   ): Promise<Result<string | null, ContentStoreUnavailable>>;
   /**
    * Insert a page, or overwrite the page as it stands, with what follows
-   * from it (ADR 0081): its uncategorised sub-pages are filed under its
+   * from it (ADR 0137): its uncategorised sub-pages are filed under its
    * category, its subtree's former public addresses redirect to where they
    * now are, no rule covers an address now public, and its search chunks are
    * re-cut from the saved body. Storage refuses an unknown category or
