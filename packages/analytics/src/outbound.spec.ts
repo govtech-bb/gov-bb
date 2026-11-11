@@ -27,7 +27,9 @@ describe("installOutboundClickListener", () => {
     track.mockReset();
     window.umami = { track };
     window.history.replaceState(null, "", "/register-a-business");
-    remove = installOutboundClickListener({ internalOrigins: [FORMS] });
+    remove = installOutboundClickListener({
+      internalOrigins: [`${FORMS}/forms`, "https://alpha.gov.bb/"],
+    });
   });
 
   afterEach(() => {
@@ -117,9 +119,10 @@ describe("installOutboundClickListener", () => {
     expect(track).not.toHaveBeenCalled();
   });
 
-  it("treats the configured forms origin as the same service", () => {
+  it("treats the configured origins as the same service, whatever their path", () => {
     click(link(`${FORMS}/forms/get-birth-certificate`));
     click(link(`${FORMS}/`));
+    click(link("https://alpha.gov.bb/feedback"));
     expect(track).not.toHaveBeenCalled();
   });
 
@@ -134,6 +137,24 @@ describe("installOutboundClickListener", () => {
     document.body.innerHTML = `<div data-umami-event="card"><a href="https://example.com">x</a></div>`;
     click(document.querySelector("a")!);
     expect(track).not.toHaveBeenCalled();
+  });
+
+  it("leaves a tagged element inside a link to installClickListener", () => {
+    document.body.innerHTML = `<a href="https://example.com"><span data-umami-event="icon">x</span></a>`;
+    click(document.querySelector("span")!);
+    expect(track).not.toHaveBeenCalled();
+  });
+
+  // installClickListener ignores an empty name, so this one must count it.
+  it("counts a link whose data-umami-event is empty", () => {
+    click(link("https://example.com", 'data-umami-event=""'));
+    expect(sent()).toHaveLength(1);
+  });
+
+  it("counts protocol-relative links and clicks on an SVG icon", () => {
+    document.body.innerHTML = `<a href="//example.com/x"><svg><path></path></svg></a>`;
+    click(document.querySelector("path")!);
+    expect(sent()[0].data).toMatchObject({ host: "example.com" });
   });
 
   it("ignores clicks that are not on a link, or on links that go nowhere", () => {
@@ -174,9 +195,18 @@ describe("installOutboundClickListener", () => {
   });
 
   it("never cancels the click", () => {
-    click(link("https://example.com"));
+    const a = link("https://example.com");
+    click(a);
     expect(track).toHaveBeenCalledTimes(1);
     expect(cancelled).toBe(false);
+    const aux = new MouseEvent("auxclick", {
+      bubbles: true,
+      cancelable: true,
+      button: 1,
+    });
+    a.dispatchEvent(aux);
+    expect(track).toHaveBeenCalledTimes(2);
+    expect(aux.defaultPrevented).toBe(false);
   });
 
   it("also queues the click for /journey when it is configured", () => {

@@ -11,7 +11,7 @@ import { trackEvent, type TrackingData } from "./index";
  *
  * Not outbound: links to this site's own origin, links to `internalOrigins`
  * (landing passes the forms origin, as landing and forms are one service),
- * and links inside a data-umami-event element, which installClickListener
+ * and clicks inside a data-umami-event element, which installClickListener
  * already sends.
  *
  * A left click, with or without Ctrl, Cmd or Shift, fires click. A middle
@@ -31,9 +31,14 @@ export function installOutboundClickListener(
   const onClick = (e: MouseEvent) => {
     if (e.button !== (e.type === "auxclick" ? 1 : 0)) return;
     const target = e.target instanceof Element ? e.target : null;
+    // installClickListener sends this click: same test it uses.
+    if (
+      target?.closest<HTMLElement>("[data-umami-event]")?.dataset.umamiEvent
+    ) {
+      return;
+    }
     const link = target?.closest("a[href]");
     if (!(link instanceof HTMLAnchorElement)) return;
-    if (link.closest("[data-umami-event]")) return;
     const data = outboundData(link.href, internal);
     if (data) trackEvent("outbound-click", data);
   };

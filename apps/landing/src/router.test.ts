@@ -6,6 +6,7 @@ import {
   trackPageview,
 } from './lib/analytics'
 import { FORMS_BASE_URL } from './config/env'
+import { SITE_URL } from './lib/site-url'
 
 // vi.mock calls are hoisted above the imports, so getRouter sees the mocks.
 const subscribe = vi.hoisted(() => vi.fn())
@@ -43,12 +44,12 @@ describe('getRouter', () => {
   })
 
   // #3512: installed whether or not /journey is configured, and told the
-  // forms origin so links to forms are not counted as leaving the service.
-  it('installs the outbound click listener with the forms origin', () => {
+  // forms and site origins so links to them are not counted as leaving the service.
+  it('installs the outbound click listener with the forms and site origins', () => {
     getRouter()
 
     expect(installOutboundClickListener).toHaveBeenCalledWith({
-      internalOrigins: [FORMS_BASE_URL],
+      internalOrigins: [FORMS_BASE_URL, SITE_URL],
     })
   })
 })

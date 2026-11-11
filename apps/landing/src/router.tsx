@@ -9,6 +9,7 @@ import {
   trackPageview,
 } from './lib/analytics'
 import { FORMS_BASE_URL } from './config/env'
+import { SITE_URL } from './lib/site-url'
 
 export function getRouter() {
   const queryClient = new QueryClient()
@@ -35,7 +36,8 @@ export function getRouter() {
   })
   installClickListener()
   // Landing and forms are one service, so a link to forms is not outbound.
-  installOutboundClickListener({ internalOrigins: [FORMS_BASE_URL] })
+  // SITE_URL covers absolute links to landing read on another host.
+  installOutboundClickListener({ internalOrigins: [FORMS_BASE_URL, SITE_URL] })
   // onRendered, not onResolved: onResolved only fires when the router goes from
   // pending to idle, which never happens on the first, server-rendered page or
   // on a click whose loader data the `intent` preload already fetched, so most
