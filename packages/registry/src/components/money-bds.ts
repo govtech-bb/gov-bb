@@ -3,8 +3,9 @@ import type { NumberPrimitive } from "@govtech-bb/form-types";
 // An amount of money in Barbados dollars (#3638). The "BDS $" prefix is visual
 // only (aria-hidden), so the hint names the currency for screen-reader users —
 // a recipe that overrides the hint must keep "BDS dollars" in the label or
-// hint. A fractional `step` tells the forms app to offer a decimal keyboard,
-// and the pattern takes whole dollars or dollars and cents (1250 or 1250.50).
+// hint. A fractional `step` tells the forms app to offer a decimal keyboard.
+// The pattern takes whole dollars or dollars and cents (1250 or 1250.50); it
+// lets a minus sign through so `min` gives a negative amount its own message.
 export const MoneyBds: NumberPrimitive = {
   fieldId: "money-bds",
   htmlType: "number",
@@ -21,7 +22,7 @@ export const MoneyBds: NumberPrimitive = {
       error: "Enter the amount",
     },
     pattern: {
-      value: "^\\d+(\\.\\d{1,2})?$",
+      value: "^-?\\d+(\\.\\d{1,2})?$",
       error: "Enter the amount as a number, like 1250 or 1250.50",
     },
     min: {

@@ -937,9 +937,12 @@ describe("FieldRenderer", () => {
       renderField(money());
       await user.type(
         screen.getByRole("textbox", { name: "Monthly rent" }),
-        "1",
+        "1250.50",
       );
-      expect(mockFieldApi.handleChange).toHaveBeenLastCalledWith("1");
+      // The mock field state never updates, so each keystroke arrives alone.
+      expect(
+        mockFieldApi.handleChange.mock.calls.map(([v]) => v).join(""),
+      ).toBe("1250.50");
     });
 
     it("marks the input invalid inside the prefix wrapper on error", () => {
@@ -971,8 +974,32 @@ describe("FieldRenderer", () => {
       expect(container.querySelector(".govbb-input-wrapper")).toBeNull();
     });
 
+    it("does not put the number step on the text input", () => {
+      renderField(money());
+      expect(
+        screen.getByRole("textbox", { name: "Monthly rent" }),
+      ).not.toHaveAttribute("step");
+    });
+
+    it("prefixes every row in the Add-another array path", () => {
+      mockState = { value: ["10", "20"], meta: { isValid: true, errors: [] } };
+      const { container } = renderField(
+        money({ behaviours: [{ type: "fieldArray", min: 1, max: 3 } as any] }),
+      );
+      const inputs = container.querySelectorAll(
+        ".govbb-input-wrapper > input.govbb-input",
+      );
+      expect(Array.from(inputs, (i) => i.id)).toEqual([
+        "step-1.number-field",
+        "step-1.number-field-1",
+      ]);
+      expect(
+        container.querySelectorAll('.govbb-input__prefix[aria-hidden="true"]'),
+      ).toHaveLength(2);
+    });
+
     it("leaves an unprefixed number field as the stepper input", () => {
-      const { container } = renderField(primitive("number", { step: 0.01 }));
+      const { container } = renderField(primitive("number"));
       const input = container.querySelector("input.govbb-number-input");
       expect(input).toHaveAttribute("type", "number");
       expect(input).toHaveAttribute("inputmode", "numeric");

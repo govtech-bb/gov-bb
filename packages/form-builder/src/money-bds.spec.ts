@@ -48,6 +48,15 @@ describe("components/money-bds", () => {
     },
   );
 
+  it("names the rule a wrong amount breaks", () => {
+    const first = (value: string) =>
+      validateField(hydrateMoney(), value, {})[0];
+    expect(first("-1")).toBe("The amount must be 0 or more");
+    expect(first("abc")).toBe(
+      "Enter the amount as a number, like 1250 or 1250.50",
+    );
+  });
+
   it("names the field when the amount is missing", () => {
     expect(validateField(hydrateMoney(), "", {})).toEqual(["Enter the amount"]);
   });

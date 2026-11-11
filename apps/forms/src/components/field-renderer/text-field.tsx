@@ -54,7 +54,9 @@ export function renderTextField(ctx: FieldRenderContext): JSX.Element {
         // number is a text input with a numeric keyboard (the GOV.UK pattern).
         // The browser no longer blocks letters, so the field's validations
         // must (components/money-bds ships a pattern for it).
-        {...(isNumber ? { type: "text", inputMode, spellCheck: false } : {})}
+        {...(isNumber
+          ? { type: "text", inputMode, spellCheck: false, step: undefined }
+          : {})}
         prefix={prefix}
         autoComplete={autoComplete}
         value={value}
