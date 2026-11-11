@@ -12,6 +12,7 @@ export function listLoadView<Value>(
     refetch: () => void;
   },
   noun: string,
+  refreshNoun = noun,
 ) {
   const state = listLoadState(read);
   const loadingLabel = `Loading ${noun}…`;
@@ -28,8 +29,7 @@ export function listLoadView<Value>(
         pendingLabel={`Refreshing ${noun}…`}
         onRetry={retry}
       >
-        We could not refresh {noun === "records" ? "these records" : noun}. Showing the last loaded
-        list.
+        We could not refresh {refreshNoun}. Showing the last loaded list.
       </RefreshFailure>
     ),
     failure: state.kind === "blocked" && (

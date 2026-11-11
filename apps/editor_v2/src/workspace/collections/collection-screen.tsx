@@ -127,7 +127,7 @@ export function CollectionScreen({
   const add = useRef<HTMLButtonElement>(null);
   const card = useRef<HTMLDivElement>(null);
   const collection = detail.data?.collection;
-  const load = listLoadView(detail, "records");
+  const load = listLoadView(detail, "records", "these records");
 
   const found = wanted
     ? detail.data?.records.find((item) => item.record_key === wanted)
