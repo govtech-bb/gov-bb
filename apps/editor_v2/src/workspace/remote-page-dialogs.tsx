@@ -17,6 +17,8 @@ import { toast } from "../ui/toast";
 import { ApiProblems, ApiProblemText } from "./api-problems";
 import { documentLabel, type PageDocument } from "./model";
 
+const CHANGED = "This item changed. Cancel and review the latest version before trying again.";
+
 /** Page dialogs retain their refusal wording; unknown writes use the existing recovery explanation. */
 function pageAttemptMessages(outcome: Outcome<unknown> | undefined, otherwise: string): string[] {
   switch (outcome?.kind) {
@@ -30,10 +32,7 @@ function pageAttemptMessages(outcome: Outcome<unknown> | undefined, otherwise: s
     case "signed-out":
       return ["Your session has ended. Sign in again, then try again."];
     case "conflict":
-      return [
-        outcome.message ??
-          "This item changed. Cancel and review the latest version before trying again.",
-      ];
+      return [outcome.message ?? CHANGED];
     case "forbidden":
       return [outcome.message ?? otherwise];
     case "invalid":
@@ -41,7 +40,7 @@ function pageAttemptMessages(outcome: Outcome<unknown> | undefined, otherwise: s
         ? outcome.errors.map((item) => `${pageFieldLabel(item.field)}: ${item.message}`)
         : [otherwise];
     case "refused":
-      return [outcome.code === "page_dialog_conflict" ? (outcome.message ?? otherwise) : otherwise];
+      return [outcome.code === "page_dialog_conflict" ? (outcome.message ?? CHANGED) : otherwise];
     case "missing":
       return [otherwise];
   }
@@ -54,7 +53,7 @@ function useCreatePage(api: EditorApi, onDone: (id: string) => void, input: stri
   // Only the UI snapshot: retries belong to the shared attempt.
   const submitted = useRef<string>(undefined);
   const adopted = useRef(false);
-  const created = create.outcome?.kind === "landed" ? create.outcome.answer.page : undefined;
+  const created = create.outcome?.kind === "landed" ? create.outcome.answer : undefined;
 
   useLayoutEffect(() => {
     if (!created || adopted.current) return;
@@ -231,7 +230,7 @@ export function CreateRemoteServiceDialog({
           pending={create.isPending}
           pendingLabel="Creating service…"
         >
-          Create service
+          {create.unsettled ? "Check again" : "Create service"}
         </Button>
       }
     >
@@ -351,7 +350,7 @@ export function CreateRemotePageDialog({
           pending={create.isPending}
           pendingLabel="Adding page…"
         >
-          Add page
+          {create.unsettled ? "Check again" : "Add page"}
         </Button>
       }
     >
@@ -444,7 +443,9 @@ export function DeleteRemotePageDialog({
           ? `${documentLabel(page)} is this service’s entry page, so deleting it deletes the service. It’s removed from the content API and, if it’s public, from the site. Any unsaved changes will be lost.`
           : `${documentLabel(page)} is removed from the content API and, if it is public, from the site. Any unsaved changes will be lost.`
       }
-      confirmLabel={service ? "Delete service" : "Delete page"}
+      confirmLabel={
+        remove.state === "unsettled" ? "Check again" : service ? "Delete service" : "Delete page"
+      }
       pendingLabel={service ? "Deleting service…" : "Deleting page…"}
       pending={remove.state === "sending" || remove.state === "checking"}
       finalFocus={() => (deleted.current ? focusAfter.current : true)}

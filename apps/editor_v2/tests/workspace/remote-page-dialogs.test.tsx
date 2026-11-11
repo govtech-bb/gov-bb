@@ -210,6 +210,15 @@ test("deleting a page asks in an alert dialog, which can't be closed while the p
   );
   expect(button("Delete page").getAttribute("aria-disabled")).toBeNull();
 
+  // A conflict the API gave no reason for
+  await act(async () => button("Delete page").click());
+  await act(async () => respond(new Response(null, { status: 409 })));
+  await vi.waitFor(() =>
+    expect(dialog.querySelector('[role="alert"]')?.textContent).toBe(
+      "This item changed. Cancel and review the latest version before trying again.",
+    ),
+  );
+
   // Refused: the API's own reason, since trying again won't help
   await act(async () => button("Delete page").click());
   await act(async () =>
@@ -684,11 +693,7 @@ async function openPageCreation(kind: "service" | "start" | "supporting") {
   const api = {
     ...createEditorApi("https://content.test"),
     createPage: vi.fn<EditorApi["createPage"]>().mockReturnValue(sent.promise),
-    page: vi
-      .fn<EditorApi["page"]>()
-      .mockImplementation(async (id) =>
-        id === detail.service.id ? { ...found, id, parent_id: null } : checked.promise,
-      ),
+    page: vi.fn<EditorApi["page"]>().mockReturnValue(checked.promise),
     categories: vi.fn<EditorApi["categories"]>().mockResolvedValue({ ok: true, value: [family] }),
     services: vi
       .fn<EditorApi["services"]>()
@@ -846,6 +851,7 @@ test.each(["service", "start", "supporting"] as const)(
     const original = structuredClone(api.createPage.mock.calls[0]![0]);
     await act(async () => sent.reject(new ApiFailure(503)));
     await vi.waitFor(() => expect(form.textContent).toContain(uncertainty));
+    expect(shownText(form.querySelector('button[type="submit"]')!)).toBe("Check again");
     await enterPageField(form.querySelector("input")!, "");
 
     if (kind === "service") await enterPageField(form.querySelector("select")!, "");
@@ -1001,6 +1007,7 @@ test("deletion keeps the opened identity, version and warning through refresh an
 
   await act(async () => confirm.click());
   await vi.waitFor(() => expect(document.body.textContent).toContain(uncertainty));
+  expect(shownText(confirm)).toBe("Check again");
   expect(done).not.toHaveBeenCalled();
   expect(document.body.textContent).not.toContain("Page deleted");
   await render({ ...page, version: 100 });

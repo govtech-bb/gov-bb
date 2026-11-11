@@ -1154,11 +1154,7 @@ test.each([
   },
   {
     failure: new ApiFailure(409),
-    expected: {
-      kind: "refused",
-      code: "review_state_conflict",
-      message: "This change is not in the state required for that decision.",
-    },
+    expected: { kind: "refused", code: "review_state_conflict" },
   },
   {
     failure: new ApiFailure(409, [], "Changed", "version_conflict"),
@@ -1254,7 +1250,7 @@ test("page creation accepts an answered page without reading an index", async ()
   api.createPage.mockResolvedValue(newPage);
   expect(await writeAttempt(writes.createPage(api)).press(() => newPageInput)).toEqual({
     kind: "landed",
-    answer: { page: newPage, category: "family" },
+    answer: newPage,
   });
   expect(api.createPage).toHaveBeenCalledWith(newPageInput);
   expect(api.services).not.toHaveBeenCalled();
@@ -1265,7 +1261,7 @@ test("a lost service create reads the editing index and the actual page once", a
   const api = pageCreationApi();
   expect(await writeAttempt(writes.createPage(api)).press(() => newPageInput)).toEqual({
     kind: "landed",
-    answer: { page: newPage, category: "family" },
+    answer: newPage,
   });
   expect(api.services).toHaveBeenCalledTimes(1);
   expect(api.page.mock.calls).toEqual([[newPage.id]]);
@@ -1383,45 +1379,32 @@ function childCreationApi() {
     service: { ...newService, id: "parent" },
     pages: [{ ...child, role: "start" }],
   });
-  api.page.mockImplementation(async (id) =>
-    id === "parent" ? { ...newPage, id: "parent" } : child,
-  );
+  api.page.mockResolvedValue(child);
 
   return { api, input, child };
 }
 
-test("a lost child create checks its parent and inherits only the live category", async () => {
+test("a lost child create confirms without comparing the category it inherited", async () => {
   const { api, input, child } = childCreationApi();
   expect(await writeAttempt(writes.createPage(api)).press(() => input)).toEqual({
     kind: "landed",
-    answer: { page: child, category: "family" },
+    answer: child,
   });
   expect(api.service).toHaveBeenCalledWith("parent");
-  expect(api.page.mock.calls).toEqual([[child.id], ["parent"]]);
+  expect(api.page.mock.calls).toEqual([[child.id]]);
   expect(api.services).not.toHaveBeenCalled();
 });
 
-test.each(["category", "identity", "pending", "unreadable"] as const)(
-  "a child create cannot confirm with a different or unreadable parent %s",
-  async (difference) => {
-    const { api, input, child } = childCreationApi();
-    api.page.mockImplementation(async (id) => {
-      if (id !== "parent") return child;
-
-      if (difference === "unreadable") throw new ApiAnswerMalformed();
-
-      return {
-        ...newPage,
-        id: difference === "identity" ? "another-parent" : "parent",
-        category_id: difference === "category" ? "other" : "family",
-        pending_revision: difference === "pending" ? { status: "draft", comment: null } : null,
-      };
-    });
-    expect(await writeAttempt(writes.createPage(api)).press(() => input)).toEqual({
-      kind: "unknown",
-    });
-  },
-);
+test("a root create that names no category is not confirmed by a categorised page", async () => {
+  const api = pageCreationApi();
+  const input = { url: "/fees", title: "Fees", body_markdown: "" };
+  const found: ApiPage = { ...page, ...input, visibility: "draft", frontmatter: {} };
+  api.sitePages.mockResolvedValue([found]);
+  api.page.mockResolvedValue({ ...found, category_id: "family" });
+  expect(await writeAttempt(writes.createPage(api)).press(() => input)).toEqual({
+    kind: "unknown",
+  });
+});
 
 test("page create compares explicitly submitted optional fields instead of defaults", async () => {
   const api = pageCreationApi();
@@ -1510,14 +1493,7 @@ test.each([
     new ApiFailure(409, [], "Page has children", "has_children"),
     { kind: "refused", code: "page_dialog_conflict", message: "Page has children" },
   ],
-  [
-    new ApiFailure(409),
-    {
-      kind: "refused",
-      code: "page_dialog_conflict",
-      message: "This item changed. Cancel and review the latest version before trying again.",
-    },
-  ],
+  [new ApiFailure(409), { kind: "refused", code: "page_dialog_conflict" }],
   [new ApiFailure(422, errors), { kind: "invalid", errors }],
   [new ApiFailure(400, errors), { kind: "invalid", errors }],
 ])("page dialog catalogue preserves refusal presentation: %s", async (failure, outcome) => {

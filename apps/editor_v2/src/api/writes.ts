@@ -58,8 +58,6 @@ export type PageSaveAnswer = { base: ServerPageBaseline; discarded?: true };
 
 type PageSubmission = { base: ServerPageBaseline; categories: readonly Category[] };
 
-type PageCreationAnswer = { page: ApiPage; category: string | null };
-
 type PageDeletion = { id: string; version: number };
 
 // oxlint-disable-next-line anti-slop/no-unknown-parameters -- Preserve dialog refusal precedence before classification drops HTTP status.
@@ -69,13 +67,7 @@ function pageDialogRefusal(error: unknown, creating: boolean): never {
       throw new ApiFailure(422, error.errors, apiMessage(error));
 
     if (error.status === 409 && error.code !== "version_conflict")
-      throw new ApiFailure(
-        409,
-        [],
-        apiMessage(error) ??
-          "This item changed. Cancel and review the latest version before trying again.",
-        "page_dialog_conflict",
-      );
+      throw new ApiFailure(409, [], apiMessage(error), "page_dialog_conflict");
   }
 
   throw error;
@@ -144,12 +136,7 @@ function reviewRefusal(error: unknown): never {
 
   // Preserve the review-state branch after the shared outcome drops HTTP status.
   if (error instanceof ApiFailure && error.status === 409 && error.code !== "version_conflict")
-    throw new ApiFailure(
-      409,
-      error.errors,
-      apiMessage(error) ?? "This change is not in the state required for that decision.",
-      "review_state_conflict",
-    );
+    throw new ApiFailure(409, error.errors, apiMessage(error), "review_state_conflict");
   throw error;
 }
 
@@ -164,12 +151,10 @@ function reviewedFieldsMatch(found: ApiRevision["fields"], reviewed: ApiRevision
 
 /** Each migrated write's send, independent read-back and landed check. */
 export const writes = {
-  createPage: (api: EditorApi): Write<CreatePageInput, PageCreationAnswer> => ({
+  createPage: (api: EditorApi): Write<CreatePageInput, ApiPage> => ({
     send: async (sent) => {
       try {
-        const page = await api.createPage(sent);
-
-        return { page, category: page.category_id };
+        return await api.createPage(sent);
       } catch (error) {
         return pageDialogRefusal(error, true);
       }
@@ -186,32 +171,23 @@ export const writes = {
       if (!candidate || !isText(candidate.id)) return undefined;
       const page = await readPage(api, candidate.id);
 
-      if (!page || page.id !== candidate.id) return undefined;
-      let category = sent.category_id ?? null;
-
-      // place() inherits the parent's live category, not a pending revision's proposed category.
-      if (sent.parent_id && category === null) {
-        const parent = await api.page(sent.parent_id);
-
-        if (parent.id !== sent.parent_id || parent.pending_revision !== null) return undefined;
-        category = parent.category_id;
-      }
-
-      return { page, category };
+      return page?.id === candidate.id ? page : undefined;
     },
     landed: (found, sent) =>
       !!found &&
-      (sent.id === undefined || found.page.id === sent.id) &&
-      found.page.pending_revision === null &&
-      found.page.url === sent.url &&
-      found.page.parent_id === (sent.parent_id ?? null) &&
-      found.page.category_id === found.category &&
-      found.page.title === sent.title &&
-      found.page.description === (sent.description ?? null) &&
-      found.page.visibility === (sent.visibility ?? "draft") &&
-      found.page.form_id === (sent.form_id ?? null) &&
-      found.page.body_markdown === sent.body_markdown &&
-      JSON.stringify(found.page.frontmatter) === JSON.stringify(sent.frontmatter ?? {}),
+      (sent.id === undefined || found.id === sent.id) &&
+      found.pending_revision === null &&
+      found.url === sent.url &&
+      found.parent_id === (sent.parent_id ?? null) &&
+      // api_v2 gives a sub-page that names no category its parent's, so the author sent nothing to compare.
+      ((!!sent.parent_id && !sent.category_id) ||
+        found.category_id === (sent.category_id ?? null)) &&
+      found.title === sent.title &&
+      found.description === (sent.description ?? null) &&
+      found.visibility === (sent.visibility ?? "draft") &&
+      found.form_id === (sent.form_id ?? null) &&
+      found.body_markdown === sent.body_markdown &&
+      JSON.stringify(found.frontmatter) === JSON.stringify(sent.frontmatter ?? {}),
   }),
   deletePage: (api: EditorApi): Write<PageDeletion, ApiPage | undefined> => ({
     send: async (sent) => {
