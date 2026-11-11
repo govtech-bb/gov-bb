@@ -118,7 +118,7 @@ Paths below are relative to `src`. Symbols not listed as renamed keep their name
 
 | Previous source | Current source |
 | --- | --- |
-| `workspace/api-pages.ts` synchronization | `workspace/page-sync.ts`: `ServerPageBaseline`, `PageSaveOutcome`, `savePageDraft`; browser baseline storage/seeding helpers removed |
+| `workspace/api-pages.ts` synchronization | `workspace/page-sync.ts`: `preparePageSave`; `api/writes.ts`: `ServerPageBaseline` and page write entries; `api/write-attempt.ts`: write outcomes and retry policy; browser baseline storage/seeding helpers removed |
 | `workspace/api-pages.ts` service mapping | `workspace/service-pages.ts`: `apiPageDocument` → `pageDocumentFromApi`, `roleOf` → `inferServicePageRole`; local `serviceDocuments` joins removed |
 | `workspace/api-pages.ts` Markdown helpers | `api/page-markdown.ts`: `fieldLabel` → `pageFieldLabel`; `restoredMarkdown` removed with saved-page history |
 | `workspace/api-page.tsx` | `workspace/remote-page-pane.tsx`: `RemotePagePane`, private `RemotePageEditor`; baseline state is in memory |

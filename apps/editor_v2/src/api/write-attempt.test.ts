@@ -11,10 +11,12 @@ import {
   CategoryRejected,
   createEditorApi,
   type EditorApi,
+  type ApiPage,
   type RecordDetail,
 } from "./client";
 import { writeAttempt } from "./write-attempt";
-import { writes, type RecordWrite } from "./writes";
+import { writes, type RecordWrite, type PageSaveRequest } from "./writes";
+import { markdownToPageSaveInput, pageToMarkdown } from "./page-markdown";
 
 const base: RecordDetail = {
   collection: {
@@ -47,6 +49,9 @@ const errors = [{ field: "name", message: "Enter a name" }];
 function fakeApi() {
   return {
     ...createEditorApi("https://content.test"),
+    page: vi.fn<EditorApi["page"]>(),
+    savePage: vi.fn<EditorApi["savePage"]>(),
+    submitRevision: vi.fn<EditorApi["submitRevision"]>(),
     record: vi.fn<EditorApi["record"]>().mockResolvedValue(base),
     saveRecord: vi.fn<EditorApi["saveRecord"]>().mockResolvedValue(saved),
     createRecord: vi.fn<EditorApi["createRecord"]>().mockResolvedValue(saved.record),
@@ -378,3 +383,262 @@ test.each([
     expect(readBack).toHaveBeenCalledTimes(outcome.kind === "unknown" ? 1 : 0);
   },
 );
+
+const page: ApiPage = {
+  id: "page",
+  version: 1,
+  url: "/fees",
+  slug: "fees",
+  parent_id: null,
+  category_id: null,
+  title: "Fees",
+  description: null,
+  visibility: "public",
+  form_id: null,
+  body_markdown: "Original",
+  frontmatter: {},
+  pending_revision: null,
+  last_edited_by: null,
+  updated_at: "2026-11-11T12:00:00.000Z",
+  created_at: "2026-11-11T12:00:00.000Z",
+  published_at: "2026-11-11T12:00:00.000Z",
+};
+
+const savedPage: ApiPage = {
+  ...page,
+  version: 2,
+  body_markdown: "Submitted",
+  pending_revision: { status: "draft", comment: null },
+};
+
+const edited = pageToMarkdown(savedPage, []);
+
+const fields = markdownToPageSaveInput(edited, page, []);
+
+if (!fields.ok) throw new Error("Page fixture must be valid");
+
+const pageRequest: PageSaveRequest = {
+  base: { page, markdown: pageToMarkdown(page, []) },
+  markdown: edited,
+  fields: fields.value,
+  categories: [],
+  hiding: false,
+};
+
+test("a lost page save is confirmed with its submitted Markdown and new version", async () => {
+  const api = fakeApi();
+  api.savePage.mockRejectedValueOnce(new ApiFailure(0));
+  api.page.mockResolvedValue(savedPage);
+  const attempt = writeAttempt(writes.savePage(api));
+  expect(await attempt.press(() => pageRequest)).toEqual({
+    kind: "landed",
+    answer: { base: { page: savedPage, markdown: edited } },
+  });
+  expect(api.savePage).toHaveBeenCalledTimes(1);
+  expect(api.savePage).toHaveBeenCalledWith(page.id, fields.value, 1);
+});
+
+test.each([
+  ["the page has not moved", { ...savedPage, version: 1 }],
+  ["the text differs", { ...savedPage, body_markdown: "Someone else's" }],
+  [
+    "the review moved on",
+    { ...savedPage, pending_revision: { status: "submitted" as const, comment: null } },
+  ],
+])(
+  "a lost page save is not confirmed when %s; only a press resends the original",
+  async (_name, found) => {
+    const api = fakeApi();
+    api.savePage.mockRejectedValueOnce(new ApiFailure(0)).mockResolvedValue(savedPage);
+    api.page.mockResolvedValue(found);
+    const attempt = writeAttempt(writes.savePage(api));
+    expect(await attempt.press(() => pageRequest)).toEqual({ kind: "unknown" });
+    expect(api.savePage).toHaveBeenCalledTimes(1);
+    expect(
+      await attempt.press(() => ({
+        ...pageRequest,
+        base: { page: found, markdown: "Newer typing" },
+      })),
+    ).toMatchObject({ kind: "landed" });
+    expect(api.savePage.mock.calls).toEqual([
+      [page.id, fields.value, 1],
+      [page.id, fields.value, 1],
+    ]);
+  },
+);
+
+test("a lost hiding save confirms restored live content, not the discarded revision", async () => {
+  const api = fakeApi();
+  const hidden: ApiPage = { ...page, version: 3, visibility: "preview" };
+  api.savePage.mockRejectedValueOnce(new ApiFailure(503));
+  api.page.mockResolvedValue(hidden);
+
+  const sent: PageSaveRequest = {
+    ...pageRequest,
+    base: { page: savedPage, markdown: edited },
+    fields: { ...fields.value, visibility: "preview" },
+    markdown: pageToMarkdown({ ...savedPage, visibility: "preview" }, []),
+    hiding: true,
+  };
+
+  expect(await writeAttempt(writes.savePage(api)).press(() => sent)).toEqual({
+    kind: "landed",
+    answer: { base: { page: hidden, markdown: pageToMarkdown(hidden, []) }, discarded: true },
+  });
+});
+
+test("a hiding save still waiting for review is not confirmation", async () => {
+  const api = fakeApi();
+  api.savePage.mockRejectedValue(new ApiFailure(0));
+  api.page.mockResolvedValue({ ...savedPage, visibility: "preview" });
+  expect(
+    await writeAttempt(writes.savePage(api)).press(() => ({
+      ...pageRequest,
+      fields: { ...fields.value, visibility: "preview" },
+      hiding: true,
+    })),
+  ).toEqual({ kind: "unknown" });
+});
+
+test("an ordinary page save needs no pending revision when it writes a non-public page", async () => {
+  const api = fakeApi();
+  const draft: ApiPage = { ...page, visibility: "draft" };
+  const saved: ApiPage = { ...draft, version: 2, body_markdown: "Submitted" };
+  api.savePage.mockRejectedValueOnce(new ApiFailure(0));
+  api.page.mockResolvedValue(saved);
+  expect(
+    await writeAttempt(writes.savePage(api)).press(() => ({
+      ...pageRequest,
+      base: { page: draft, markdown: pageToMarkdown(draft, []) },
+      fields: { ...fields.value, visibility: "draft" },
+      markdown: pageToMarkdown(saved, []),
+    })),
+  ).toEqual({
+    kind: "landed",
+    answer: { base: { page: saved, markdown: pageToMarkdown(saved, []) } },
+  });
+});
+
+const submittedPage: ApiPage = {
+  ...savedPage,
+  version: 3,
+  pending_revision: { status: "submitted", comment: null },
+};
+
+const submission = { base: { page: savedPage, markdown: edited }, categories: [] };
+
+test("a lost save to a review already submitted is confirmed without mistaking that status for another submission", async () => {
+  const api = fakeApi();
+  const waiting = { ...page, pending_revision: { status: "submitted" as const, comment: null } };
+  api.savePage.mockRejectedValueOnce(new ApiFailure(0));
+  api.page.mockResolvedValue(submittedPage);
+  expect(
+    await writeAttempt(writes.savePage(api)).press(() => ({
+      ...pageRequest,
+      base: { page: waiting, markdown: pageToMarkdown(waiting, []) },
+    })),
+  ).toEqual({ kind: "landed", answer: { base: { page: submittedPage, markdown: edited } } });
+});
+
+test("a submission's answer advances only its submitted baseline", async () => {
+  const api = fakeApi();
+  api.submitRevision.mockResolvedValue({
+    id: "revision",
+    page_id: page.id,
+    fields: { ...fields.value, parent_id: null },
+    version: 3,
+    status: "submitted",
+    comment: null,
+    updated_at: page.updated_at,
+    contributors: [],
+    changes: [],
+    live_updated_at: page.updated_at,
+    created_at: page.created_at,
+    created_by: "editor",
+    submitted_by: "editor",
+    submitted_at: page.updated_at,
+    decided_by: null,
+    decided_at: null,
+  });
+  expect(await writeAttempt(writes.submitRevision(api)).press(() => submission)).toEqual({
+    kind: "landed",
+    answer: { page: submittedPage, markdown: edited },
+  });
+  expect(api.submitRevision).toHaveBeenCalledWith(page.id, 2);
+  expect(api.page).not.toHaveBeenCalled();
+});
+
+test("a lost submission is confirmed automatically as waiting for review", async () => {
+  const api = fakeApi();
+  api.submitRevision.mockRejectedValue(new ApiFailure(0));
+  api.page.mockResolvedValue(submittedPage);
+  expect(await writeAttempt(writes.submitRevision(api)).press(() => submission)).toEqual({
+    kind: "landed",
+    answer: { page: submittedPage, markdown: edited },
+  });
+  expect(api.submitRevision).toHaveBeenCalledTimes(1);
+});
+
+test.each([
+  ["the version has not moved", { ...submittedPage, version: 2 }],
+  [
+    "the review is still a draft",
+    { ...submittedPage, pending_revision: { status: "draft" as const, comment: null } },
+  ],
+  ["the submitted text differs", { ...submittedPage, title: "Changed meanwhile" }],
+])("a lost submission remains unsettled when %s", async (_name, found) => {
+  const api = fakeApi();
+  api.submitRevision.mockRejectedValueOnce(new ApiFailure(0));
+  api.page.mockResolvedValue(found);
+  const attempt = writeAttempt(writes.submitRevision(api));
+  expect(await attempt.press(() => submission)).toEqual({ kind: "unknown" });
+  expect(api.submitRevision).toHaveBeenCalledTimes(1);
+  api.page.mockResolvedValue(submittedPage);
+  expect(
+    await attempt.press(() => ({ ...submission, base: { page: found, markdown: "New input" } })),
+  ).toEqual({ kind: "landed", answer: { page: submittedPage, markdown: edited } });
+  expect(api.submitRevision).toHaveBeenCalledTimes(1);
+});
+
+test("an explicit submission retry cannot adopt a newer read's version", async () => {
+  const api = fakeApi();
+  api.submitRevision
+    .mockRejectedValueOnce(new ApiFailure(0))
+    .mockRejectedValueOnce(new ApiFailure(409, [], "Changed", "version_conflict"));
+  api.page.mockResolvedValue({ ...savedPage, version: 4 });
+  const attempt = writeAttempt(writes.submitRevision(api));
+  await attempt.press(() => submission);
+  expect(
+    await attempt.press(() => ({
+      ...submission,
+      base: { ...submission.base, page: submittedPage },
+    })),
+  ).toEqual({ kind: "conflict", message: "Changed" });
+  expect(api.submitRevision.mock.calls).toEqual([
+    [page.id, 2],
+    [page.id, 2],
+  ]);
+});
+
+test.each(["save", "submit"])("an absent page does not confirm %s", async (operation) => {
+  const api = fakeApi();
+  api.savePage.mockRejectedValue(new ApiFailure(0));
+  api.submitRevision.mockRejectedValue(new ApiFailure(0));
+  api.page.mockRejectedValue(new ApiFailure(404));
+
+  const outcome =
+    operation === "save"
+      ? await writeAttempt(writes.savePage(api)).press(() => pageRequest)
+      : await writeAttempt(writes.submitRevision(api)).press(() => submission);
+
+  expect(outcome).toEqual({ kind: "unknown" });
+});
+
+test("a message-less non-version page conflict retains its review-state fallback", async () => {
+  const api = fakeApi();
+  api.savePage.mockRejectedValue(new ApiFailure(409));
+  expect(await writeAttempt(writes.savePage(api)).press(() => pageRequest)).toEqual({
+    kind: "refused",
+    message: "This change cannot be saved in its current review state.",
+  });
+});

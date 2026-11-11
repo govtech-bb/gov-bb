@@ -109,7 +109,7 @@ A `DraftStore` receives explicit source and a codec: `new DraftStore(source, cod
 
 ## Service pages and workspace
 
-`workspace/page-sync.ts` compares a working copy with an in-memory `ServerPageBaseline` and saves explicitly using its numeric `version` token. A response acknowledges the submitted snapshot, never later edits. Background refresh does not overwrite the working copy or silently advance its write token. `workspace/service-pages.ts` maps only API pages into sidebar rows. `api/page-markdown.ts` owns page/save conversion.
+`workspace/page-sync.ts` validates and converts the working copy against its in-memory `ServerPageBaseline`, defined in `api/writes.ts`. The page save and submit catalogue entries run through `workspace/use-write.ts` and `api/write-attempt.ts`, which own frozen requests, read-back and explicit retries. A response acknowledges the submitted snapshot, never later edits. Background refresh does not overwrite the working copy or silently advance its write token. `workspace/service-pages.ts` maps only API pages into sidebar rows. `api/page-markdown.ts` owns page/save conversion.
 
 `PageDocument` contains API navigation metadata, not content or storage keys. `ServicePageRole` describes entry/start/supporting content; the reusable form schema's `PageRole` describes questions/review/declaration/confirmation/result pages.
 
