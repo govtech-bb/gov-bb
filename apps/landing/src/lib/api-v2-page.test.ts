@@ -786,29 +786,6 @@ describe('loadApiV2Page', () => {
     )
     expect(reviewer.kind).toBe('page')
   })
-
-  it('misses a url no page could have without asking api_v2 or counting a failure', async () => {
-    vi.spyOn(console, 'warn').mockImplementation(() => {})
-    vi.spyOn(console, 'error').mockImplementation(() => {})
-    const cache = createApiV2Cache()
-    const fetchImpl = vi.fn<typeof fetch>(async () =>
-      jsonResponse(500, { error: 'internal_error' }),
-    )
-    const load = (url: string) =>
-      loadApiV2Page(cache, BASE, url, undefined, undefined, fetchImpl)
-
-    // Two real failures: one short of opening the breaker.
-    await load('/a')
-    await load('/b')
-    for (const url of ['/\u0000a', '/\uD800a', '/\u0000b', '/a b', '//x'])
-      expect(await load(url)).toEqual({ kind: 'miss', reason: 'rejected' })
-    expect(fetchImpl).toHaveBeenCalledTimes(2)
-
-    // Still closed, so api_v2 is asked; this third failure opens it.
-    expect(await load('/c')).toMatchObject({ reason: 'status' })
-    expect(await load('/d')).toMatchObject({ reason: 'circuit_open' })
-    expect(fetchImpl).toHaveBeenCalledTimes(3)
-  })
 })
 
 describe('fromApiV2', () => {

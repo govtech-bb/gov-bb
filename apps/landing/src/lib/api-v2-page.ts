@@ -415,7 +415,7 @@ const LONE_SURROGATE = /\p{Cs}/u
 
 /** A url api_v2 could hold a page at: a well-formed site path within its
  *  512-character limit. */
-export function isPageUrl(url: string): boolean {
+function isPageUrl(url: string): boolean {
   return url.length <= 512 && !LONE_SURROGATE.test(url) && isSitePath(url)
 }
 
@@ -434,12 +434,6 @@ export function loadApiV2Page(
   previewToken?: string,
   fetchImpl: typeof fetch = fetch,
 ): Promise<ApiV2Result> {
-  // No page lives at a url api_v2 can't store, so it's a miss here: it never
-  // reaches api_v2, the cache or the breaker.
-  if (!isPageUrl(url)) {
-    logFallback('rejected', url)
-    return Promise.resolve({ kind: 'miss', reason: 'rejected' })
-  }
   if (previewToken)
     return resolveApiV2Page(base, url, fetchImpl, landingToken, previewToken)
   return cache.get(url, () =>
@@ -447,24 +441,33 @@ export function loadApiV2Page(
   )
 }
 
-/** Server function: `loadApiV2Page` against the configured api_v2, cached
- *  until it expires or api_v2's site version moves. The level comes from the
- *  httpOnly grant cookie, read here, never from the client. */
+/**
+ * `getApiV2Page`'s handler: `loadApiV2Page` against the configured api_v2,
+ * cached until it expires or api_v2's site version moves. The level comes
+ * from the httpOnly grant cookie, read here, never from the client. Exported
+ * for its test, which can't call a server function outside Start's runtime.
+ */
+export async function readApiV2Page(url: string): Promise<ApiV2Result> {
+  // A visitor's path no page could have is a miss, not an error, and it makes
+  // no api_v2 request: not the version check, the page read, the cache or
+  // the breaker.
+  if (!isPageUrl(url)) {
+    logFallback('rejected', url)
+    return { kind: 'miss', reason: 'rejected' }
+  }
+  await checkSiteVersion()
+  const level = levelFromCookie(getCookie(COOKIE_NAME))
+  return loadApiV2Page(
+    apiV2Cache,
+    apiV2Base(),
+    url,
+    landingToken(),
+    previewTokenFor(level, previewSecret()),
+  )
+}
+
+/** Server function: `readApiV2Page`. A malformed string is the visitor's
+ *  path, so it reaches the handler and misses; anything else is refused. */
 export const getApiV2Page = createServerFn()
-  // Anything but a string is a hand-made call; a string that isn't a page url
-  // is still a visitor's path, so `loadApiV2Page` answers it with a miss.
-  .validator((url: unknown) => {
-    if (typeof url !== 'string') throw new Error('Expected a page url')
-    return url
-  })
-  .handler(async ({ data: url }) => {
-    await checkSiteVersion()
-    const level = levelFromCookie(getCookie(COOKIE_NAME))
-    return loadApiV2Page(
-      apiV2Cache,
-      apiV2Base(),
-      url,
-      landingToken(),
-      previewTokenFor(level, previewSecret()),
-    )
-  })
+  .validator(z.string())
+  .handler(({ data: url }) => readApiV2Page(url))
