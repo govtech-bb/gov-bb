@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { z } from 'zod'
-import { API_V2_TIMEOUT_MS, readPublic } from './api-v2-reader'
+import { createApiV2Cache } from './api-v2-cache'
+import { API_V2_TIMEOUT_MS, apiV2Breaker, readPublic } from './api-v2-reader'
 
 const BASE = 'http://api.example'
 const Body = z.object({ ok: z.boolean() })
@@ -17,6 +18,7 @@ const lines = (spy: ReturnType<typeof vi.spyOn>) =>
   spy.mock.calls.map((call: unknown[]) => JSON.parse(String(call[0])))
 
 afterEach(() => {
+  apiV2Breaker.reset()
   vi.restoreAllMocks()
   vi.useRealTimers()
 })
@@ -114,5 +116,68 @@ describe('readPublic', () => {
     expect(lines(error)).toMatchObject([
       { event: 'api_v2_fallback', reason: 'timeout', url: '/x' },
     ])
+  })
+})
+
+describe('the breaker', () => {
+  it('opens after three failures, turning reads away without a request or a line, for 30 s', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const failing = answering(503)
+    for (let i = 0; i < 3; i++) await read(failing)
+    expect(lines(error).at(-1)).toEqual({
+      event: 'api_v2_circuit_open',
+      url: '/x',
+    })
+    error.mockClear()
+
+    vi.advanceTimersByTime(29_999)
+    expect(await read(failing)).toEqual({
+      kind: 'miss',
+      reason: 'circuit_open',
+    })
+    expect(failing).toHaveBeenCalledTimes(3)
+    expect(error).not.toHaveBeenCalled()
+
+    vi.advanceTimersByTime(1)
+    const healthy = answering(200, '{"ok":true}')
+    expect(await read(healthy)).toEqual({ kind: 'ok', value: { ok: true } })
+  })
+
+  it('starts counting again after any answer, a 404 included', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    const failing = answering(503)
+    for (const answer of [answering(200, '{"ok":true}'), answering(404)]) {
+      await read(failing)
+      await read(failing)
+      await read(answer)
+    }
+    await read(failing)
+    expect(failing).toHaveBeenCalledTimes(5)
+  })
+
+  it('is the one the page cache uses', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    const pages = createApiV2Cache(apiV2Breaker)
+    const resolvePage = vi.fn(async () => ({
+      kind: 'miss' as const,
+      reason: 'network' as const,
+    }))
+    for (const url of ['/a', '/b', '/c']) await pages.get(url, resolvePage)
+
+    const fetchImpl = answering(200, '{"ok":true}')
+    expect(await read(fetchImpl)).toEqual({
+      kind: 'miss',
+      reason: 'circuit_open',
+    })
+    expect(fetchImpl).not.toHaveBeenCalled()
+
+    apiV2Breaker.reset()
+    for (let i = 0; i < 3; i++) await read(answering(503))
+    expect(await pages.get('/d', resolvePage)).toEqual({
+      kind: 'miss',
+      reason: 'circuit_open',
+    })
+    expect(resolvePage).toHaveBeenCalledTimes(3)
   })
 })

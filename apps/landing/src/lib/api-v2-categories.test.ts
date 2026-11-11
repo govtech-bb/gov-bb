@@ -21,6 +21,7 @@ import {
   resolveCategoryAddress,
 } from './api-v2-categories'
 import type { CategoryListing, CategoryNode } from './api-v2-categories'
+import { apiV2Breaker } from './api-v2-reader'
 
 /** The one `api_v2_fallback` line logged through `spy`, parsed. */
 function logged(spy: ReturnType<typeof vi.spyOn>) {
@@ -103,6 +104,7 @@ afterEach(() => {
   requests.length = 0
   vi.restoreAllMocks()
   vi.useRealTimers()
+  apiV2Breaker.reset()
 })
 
 describe('fetchCategoryTree', () => {
@@ -153,6 +155,15 @@ describe('fetchCategoryTree', () => {
       url: '/categories',
       status,
     })
+  })
+
+  it('is unavailable while the breaker is open, without a request', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    reply = json(503, { error: 'internal_error' })
+    for (let i = 0; i < 3; i++) await fetchCategoryTree(base)
+    reply = json(200, { categories: TREE })
+    expect(await fetchCategoryTree(base)).toEqual({ kind: 'unavailable' })
+    expect(requests).toHaveLength(3)
   })
 
   it.each([
@@ -228,6 +239,17 @@ describe('fetchCategoryListing', () => {
       url: '/categories/money/tax',
       status: 503,
     })
+  })
+
+  it('is unavailable while the breaker is open, not not-found', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    reply = json(503, { error: 'internal_error' })
+    for (let i = 0; i < 3; i++) await fetchCategoryListing(base, ['money'])
+    reply = json(404, { error: 'not_found' })
+    expect(await fetchCategoryListing(base, ['money'])).toEqual({
+      kind: 'unavailable',
+    })
+    expect(requests).toHaveLength(3)
   })
 
   it('is malformed when the listing has the wrong shape', async () => {
