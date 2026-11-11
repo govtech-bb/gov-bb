@@ -921,6 +921,61 @@ test("a save the API refuses (403) says why and offers no retry, keeping the wor
   expect(pageHasUnsavedChanges(h.session())).toBe(true);
 });
 
+test.each([
+  [403, "You don’t have permission to save this change."],
+  [400, "This request could not be saved."],
+])(
+  "a save refused (%s) without a reason from the API still says what happened",
+  async (status, sentence) => {
+    const h = await mountPage(async (_url, init) =>
+      init?.method === "PUT" ? new Response(null, { status }) : Response.json(page),
+    );
+
+    await applySource(h.session(), h.session().store.getSnapshot().source + "\n\nKeep this");
+    await savePage();
+    await act(async () => {
+      await vi.waitFor(() =>
+        expect(document.querySelector('[role="alert"]')?.textContent).toBe(sentence),
+      );
+    });
+    expect(pageHasUnsavedChanges(h.session())).toBe(true);
+  },
+);
+
+// Each landed write moves the baseline on, so a read begun before both shows a version older than either
+test("a page read that lags two of the editor's own saves is not shown as someone else's newer version", async () => {
+  let current = page;
+
+  const h = await mountPage(async (_url, init) => {
+    if (init?.method === "PUT")
+      current = { ...page, ...JSON.parse(String(init.body)), version: current.version + 1 };
+
+    return Response.json(current);
+  });
+
+  for (const version of [2, 3]) {
+    await applySource(h.session(), h.session().store.getSnapshot().source + `\n\nSave ${version}`);
+    await savePage();
+    await act(async () => {
+      await vi.waitFor(() => expect(h.session().getBaseline().page.version).toBe(version));
+      await vi.waitFor(() =>
+        expect(h.client.getQueryData(pageQuery(h.api, page.id).queryKey)?.version).toBe(version),
+      );
+    });
+  }
+
+  // The name is on screen once the pane has rendered the lagging read
+  await act(async () => {
+    h.client.setQueryData(pageQuery(h.api, page.id).queryKey, {
+      ...page,
+      last_edited_by: { id: "lagging", name: "Lagging read" },
+    });
+    await vi.waitFor(() => expect(document.querySelector("bdi")?.textContent).toBe("Lagging read"));
+  });
+  expect(document.querySelector("[data-document-alert]")).toBeNull();
+  expect(pageHasUnsavedChanges(h.session())).toBe(false);
+});
+
 const PENDING = "Your changes are saved but not live. Submit them for review when they’re ready.";
 
 const WAITING =

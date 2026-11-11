@@ -172,11 +172,7 @@ function RemotePageEditor({
   const baseline = useRef(base);
   const saving = useRef(false);
 
-  // The version the last landed write replaced; the page read still shows it until the query catches up.
-  const [replaced, setReplaced] = useState<ApiPage["version"]>();
-
   const rebase = (next: ServerPageBaseline) => {
-    setReplaced(baseline.current.page.version);
     baseline.current = next;
     setBase(next);
   };
@@ -399,12 +395,12 @@ function RemotePageEditor({
 
   const unsettled = save.state === "unsettled" || submit.state === "unsettled";
 
+  // A page's version only rises, so a read older than the baseline is a lagging read, not someone else's change.
   const stale =
     (!savePending &&
       !submitPending &&
       !unsettled &&
-      server.version !== base.page.version &&
-      server.version !== replaced &&
+      server.version > base.page.version &&
       server.version !== savedVersion &&
       server.version !== submittedVersion) ||
     outcome?.kind === "conflict" ||
