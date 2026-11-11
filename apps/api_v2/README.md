@@ -221,6 +221,7 @@ erDiagram
     timestamptz(3) occurred_at
     int4 snapshot_version "nullable"
     int4 restored_from "nullable"
+    int8 event_order "nullable"
   }
   collection_records {
     uuid id PK
@@ -258,6 +259,11 @@ erDiagram
     int4 schema_version
     timestamptz(3) created_at
     timestamptz(3) updated_at
+  }
+  page_redirects {
+    uuid id PK
+    varchar(512) source_url UK
+    varchar(512) destination_url
   }
   page_revisions {
     uuid id PK
@@ -353,7 +359,7 @@ erDiagram
 
 Missing, expired, or revoked sessions produce JSON 401 responses; disallowed employees or write origins produce 403; unavailable session verification produces 503. The API does not redirect protected content requests to Google. The editor handles navigation. Authenticated writes require `Origin: <EDITOR_ORIGIN>`. Auth/session/editor responses use `Cache-Control: no-store` and do not receive ETags. Page, category and collection record write audit rows record the authenticated user ID, never a caller-supplied actor, and commit with the write they record.
 
-The database writes the history itself: a trigger (`record_change`, migration `007`) adds a `change_events` row for every insert, update and delete of a content table (`content_pages`, `categories`, `data_collections`, `collection_records`), including the sub-pages a parent's move carries with it. Its `actor` is the transaction's `app.user_id`, which the editor's writes set (transaction-local, so a pooled connection never carries it into the next request), or `system`, a user with no account, when nothing set it: the seed, the import, raw SQL. `actor` references `auth_user`, so a user with history cannot be deleted. An update that changes nothing but `updated_at` is not recorded; a page going public is `published` and one leaving public is `unpublished`. The snapshot is the row as stored. A new content table attaches `record_change` in the migration that creates it, or `migrate.test.ts` fails.
+The database writes the history itself: a trigger (`record_change`, migration `007`) adds a `change_events` row for every insert, update and delete of a content table (`content_pages`, `categories`, `data_collections`, `collection_records`, `page_redirects`), including the sub-pages a parent's move carries with it. Its `actor` is the transaction's `app.user_id`, which the editor's writes set (transaction-local, so a pooled connection never carries it into the next request), or `system`, a user with no account, when nothing set it: the seed, the import, raw SQL. `actor` references `auth_user`, so a user with history cannot be deleted. An update that changes nothing but `updated_at` is not recorded; a page going public is `published` and one leaving public is `unpublished`. The snapshot is the row as stored. A new content table attaches `record_change` in the migration that creates it, or `migrate.test.ts` fails.
 
 Review is recorded the same way (`record_review`, migration `013`): when a page's revision changes status, the page's own history gets `submitted` (a first submission or a resubmission), `rejected`, `approved` (on publish) or `discarded` (unpublished while waiting, migration `015`), by the transaction's user, numbered after the page's last event. The snapshot is the revision row, so it names the submitter (`submitted_by`), the approver or rejecter (`decided_by`) and a rejection's `comment`. A page's history therefore holds two snapshot shapes under `entity_kind = 'content_page'`: review events (`submitted`, `rejected`, `approved`, `discarded`) store a `page_revisions` row, whose `snapshot->>'id'` is the revision's id (the page's is `snapshot->>'page_id'`), and every other event stores a `content_pages` row. Anything that rebuilds a page's state from its history must filter on `action`. A publish then logs the live write as `updated` (or `published`) by the same approver, so a page's history reads who submitted a change, who approved it, and when it went live. Saves to a revision, draft or submitted, are not recorded.
 
@@ -367,7 +373,103 @@ Preview: the site's server sends its `PREVIEW_SECRET` as `x-preview-token`, and 
 
 The hierarchy is `parent_id`, not the url. A page is served only when it and every page above it are visible; its breadcrumbs are its category (and parent category, for a subcategory), then the pages above it; a category lists only the pages at its root (`parent_id` null), so `start` steps and sub-pages never appear in a listing. A sub-page must share its parent's category (moving the parent moves its sub-pages), a page cannot sit beneath itself, and a page with sub-pages cannot be deleted: each is a field-specific 422.
 
-`GET /pages?url=` returns `{url, frontmatter, body_markdown, form_id, hide_start_links, breadcrumbs, category, subcategory}`. `category` and `subcategory` are slugs, null when the page has none. `hide_start_links` is true when the page's `start` sub-page is hidden from the viewer. `visibility` is `preview` when the page or any page above it is preview; the site shows its review banner and `noindex` from it (#3246). Whether a form is open is the forms API's to say: `form_id` is a name, and the site asks the forms API for the form's status. The API serves markdown as written; the site owns sanitization and rendering. Editor writes return field-specific 422s for invalid references or duplicates, 409 for a stale supplied version, and stamp `published_at` only on first publication. `content_updated_at`, the site's "Last updated" line, is moved by a trigger only when the title, description, body, frontmatter or form changes, so a visibility change or a move keeps it (migration `016_content_updated_at`, #3105). A save replaces the page, so it sends every field; only `parent_id` may be left out, which keeps the page's parent. Changing `url` moves that page alone: its sub-pages keep theirs, and nothing redirects from the old url. Each write still records an append-only audit snapshot (see above); `GET /pages/:id/history` lists them read-only, newest first, with who made each change and which fields it changed (#3423); a restore adds an entry and removes none (see above). A request its route's schema refuses (a missing field, an id that is not a UUID, an explicitly malformed version, a url over 512 characters, a title over 300) is a 400; Fastify's own refusals keep their status (a body that is not JSON is a 415), and an unknown route is a JSON 404.
+`GET /pages?url=` returns `{url, frontmatter, body_markdown, form_id, hide_start_links, breadcrumbs, category, subcategory}`. `category` and `subcategory` are slugs, null when the page has none. `hide_start_links` is true when the page's `start` sub-page is hidden from the viewer. `visibility` is `preview` when the page or any page above it is preview; the site shows its review banner and `noindex` from it (#3246). Whether a form is open is the forms API's to say: `form_id` is a name, and the site asks the forms API for the form's status. The API serves markdown as written; the site owns sanitization and rendering. Editor writes return field-specific 422s for invalid references or duplicates, 409 for a stale supplied version, and stamp `published_at` only on first publication. `content_updated_at`, the site's "Last updated" line, is moved by a trigger only when the title, description, body, frontmatter or form changes, so a visibility change or a move keeps it (migration `016_content_updated_at`, #3105). A save replaces the page, so it sends every field; only `parent_id` may be left out, which keeps the page's parent. Changing `url` moves that page alone; its sub-pages keep theirs. Public moves create redirects at publication (see below). Each write still records an append-only audit snapshot (see above); `GET /pages/:id/history` lists them read-only, newest first, with who made each change and which fields it changed (#3423); a restore adds an entry and removes none (see above). A request its route's schema refuses (a missing field, an id that is not a UUID, an explicitly malformed version, a url over 512 characters, a title over 300) is a 400; Fastify's own refusals keep their status (a body that is not JSON is a 415), and an unknown route is a JSON 404.
+
+### Page paths
+
+`PageUrl` requires a root-relative path with non-empty segments, no trailing
+slash, query, fragment, backslash, whitespace or control characters. The limits
+are 512 characters overall and 200 in the last segment. Validation rejects bad
+input rather than rewriting it. Publishing revalidates the stored revision's URL;
+restoring history applies the same field schema.
+
+Before deploying tighter page-path rules, validate read-only exports of
+`content_pages.url` and `page_revisions.fields.url` for draft, submitted and
+rejected revisions with `PageUrl.safeParse` from `src/modules/page.ts`. Review
+and correct invalid rows before rollout: editor response schemas enforce the
+rules too, so those rows may no longer open in the editor. Do not normalize URLs
+in bulk, reimport the estate or rewrite history. Historical versions that fail
+the current schema stay in history but cannot be restored.
+
+### Page redirect maintenance
+
+Migration `025_page_redirects` adds independent source/destination paths with a
+UUID audit identity. There is no page foreign key or expiry, so deleting a page
+does not delete its incoming rules. Changes use `entity_kind = 'page_redirect'`
+and advance the existing site version without appearing in page revision history.
+
+Publication records a move only when the destination and its ancestors are
+public. Pending revisions, never-public Draft/Preview URLs and hidden edits do
+not create redirects. A newly public page clears a rule at its address; a draft
+replacement leaves that rule intact. Unpublishing or deleting a destination
+keeps incoming rules. Publishing or reparenting an ancestor applies these rules
+to newly public descendants without changing their URLs.
+
+`PostgresPages.recordPageRedirectMove` removes a rule at the destination,
+retargets incoming rules and upserts the source while preserving its audit ID.
+The service captures former addresses before writing the page, validates paths
+with `PageUrl`, and refuses to reclaim another page's, category's or redirect's
+source. Page, redirect, revision and audit changes commit in the same
+actor-bearing transaction under the shared content lock. Seed/import takes that
+lock too and clears rules only for newly inserted, publicly reachable pages.
+
+Republication can recover the last verifiably public URL after hidden renames.
+Migration `026_change_event_order` gives new audit inserts a unique
+`event_order`; with the content lock held, it orders page mutations across
+records. Transaction-start timestamps and per-page version numbers cannot do
+that. Existing events remain null and are never backfilled or renumbered.
+Recovery stays within the record's latest creation, reads historical ancestry,
+ignores review snapshots, and skips sources whose public reachability or later
+ownership cannot be proved. Missing order, missing history, redaction and
+unsupported snapshots do not become guessed redirects. Publication still
+succeeds when recovery must omit a former URL.
+
+Pause edits and imports during migration/writer cutover. Do not import redirect
+rules or add a writer that bypasses the content lock and publication checks.
+Destinations must remain terminal, never another rule's source.
+
+Public reads select the stored rule before the exact page in one database
+statement. This applies to preview readers too: a Draft/Preview replacement
+does not override a public redirect. The API returns 301 with the stored
+`Location` and `{ redirect }` body without looking up the destination.
+Following it still applies normal page visibility, so the destination can return
+404 while the rule remains stored. Unsafe or self-referential rules return 404.
+Bare-slug guessing runs only when neither a rule nor an exact page exists.
+
+API redirects use the public read cache policy, or `no-store` for preview,
+and vary on `x-preview-token`. They have no ETag and never return 304.
+Landing's browser-facing 301 uses `Cache-Control: no-store` so a cached
+permanent redirect cannot prevent later source reuse. Rule audit changes
+advance the site version and expire landing's server cache, including cached
+earlier sources changed by flattening. HTTP freshness does not expire stored
+rules.
+
+#### Redirect rollout and rollback
+
+Merging API changes into `v2-rewrite` triggers
+[Deploy api_v2 to Sandbox](../../.github/workflows/deploy-api-v2-sandbox.yml).
+Agree the cutover window before merging; a rolling deployment alone does not
+stop an old instance from accepting edits.
+
+1. Pause editor writes and imports, and let in-flight writes finish.
+2. Deploy the API. `main.ts` runs migrations before opening its HTTP listener.
+   Confirm `025_page_redirects` and `026_change_event_order` are recorded in
+   `schema_migrations`, the expected image is serving, and all old writer
+   instances have drained. Do not backfill `event_order` or reimport content.
+3. Deploy landing's `no-store` redirect change. With an approver and agreed
+   test paths, publish A, then move it to B and C. Check that A and B both
+   return 301 directly to C, with matching `Location` and `{ redirect }`, and
+   C returns the public page. Check landing's final 301 has
+   `Cache-Control: no-store`.
+4. Publish a replacement at A and check that A serves the new page after
+   landing's site-version refresh. A draft replacement must leave the rule
+   intact. Deleting the test destination leaves incoming rules stored, so
+   choose test paths knowing those rules persist.
+5. Resume normal writes only after these checks and the old-instance drain.
+
+If rollback is needed, pause writes again first and keep the additive schema
+and audit data. An old binary neither serves nor maintains these redirects;
+keep edits and imports paused until a redirect-aware version is restored.
 
 ### Category management
 
@@ -642,6 +744,8 @@ too. Another approver who did not contribute must publish the page.
 
 SIGINT/SIGTERM drain HTTP requests before closing the shared pool; startup failures also release acquired resources. JSON logs omit cookies, OAuth callback query parameters, provider tokens and raw driver error objects. The exact warning `idle database connection dropped` remains the operational alarm marker; its safe `code` identifies the failure. Public content failures continue to use the existing 500 response, while authentication outages fail closed with 503.
 
+The server's pool gives a request's query 5 s, a boot migration 10 min, and a new connection 2 s, and keeps its sockets alive with TCP keepalive. Postgres enforces the same query limits (`statement_timeout`), so a query that times out also stops on the server instead of keeping a connection open after the pool has replaced it. A database that goes quiet without hanging up (a failover or partition) therefore answers 500 `internal_error` from the driver's "Query read timeout" instead of hanging. A query waiting on a lock counts too, so editor writes fail after 5 s while `reindex-search` holds the content lock for longer than that. The jobs (`import-estate`, `reindex-search`, `redact-change-events`) have no query limit.
+
 The site routes (`/pages`, `/categories…`, `/collections/:key/records`, `/site-version`, `/catalog`, `/search/documents`) are limited to 1,000 requests a minute per client, answering 429 beyond it; editor, auth and `/docs` routes are not limited. `trustProxy` trusts only private-address peers (the ALB), so the client is the address the ALB forwards and a client's own `X-Forwarded-For` entries are ignored. Buckets are in memory, per task. Landing is exempt: its server sends `LANDING_SECRET` as `x-landing-token`, and such requests skip the limit and carry no `x-ratelimit-*` headers. It has to be, because landing reads `/pages` on every uncached page view (and a category listing on every category page view, and `/site-version` on its poll) from a few shared egress addresses, so its rate follows citizen and bot traffic and no limit can be sized above it (#3129). With `LANDING_SECRET` unset, nobody is exempt.
 
 Migrations run at boot. Each script checks `schema_migrations` after acquiring the PostgreSQL advisory lock, then conditionally executes and records completion in the same transaction on the same connection. Each migration commits separately so later scripts can use newly added enum values. A runner with an outdated ledger read skips scripts another runner completed; scripts must still tolerate replay after lost bookkeeping.
@@ -660,5 +764,7 @@ DB_HOST=localhost pnpm exec nx run api_v2:e2e
 Unit/integration tests run against PostgreSQL (`DB_HOST` etc., defaulting to `localhost:5432` as `postgres`/`postgres`): the global setup migrates one template database per run and each test clones it, dropping it afterwards. There is no skip; with no database the run fails and says so. CI's Test job provides a `postgres` service. PostgreSQL e2e creates and drops uniquely named scratch databases and exercises the compiled Node process, migrations, cookie sessions, session expiry/revocation, origin protection, audit identity, pool recovery and shutdown. Test sessions are created through the real BetterAuth internal adapter in test code; no production login bypass exists. The e2e suite skips when `DB_HOST` is unset. OAuth provider admission and the sign-in handshake are tested without live Google credentials; deployment still requires a real Google sign-in and TLS smoke check.
 
 `openapi.json` is a file snapshot of the document the running app generates from its route schemas (`src/routes/contracts.ts`), so `src/openapi.test.ts` fails when the two differ. It is served at `/docs/openapi.json`, with a browsable reference at `/docs`. Update it from this directory with `pnpm exec vitest run src/openapi.test.ts -u`.
+
+The editor's `apps/editor_v2/src/api/openapi.d.ts` snapshot also includes endpoint descriptions. After changing the API spec, regenerate that snapshot from the repository root with `pnpm --dir apps/editor_v2 exec vitest run src/api/openapi.test.ts -u`, then run `pnpm --dir apps/editor_v2 test`.
 
 The diagram under "Database" is the same kind of snapshot, of the tables the migrations create, so `src/erd.test.ts` fails when a migration changes a table without it. Refresh it from this directory with `pnpm exec vitest run src/erd.test.ts -u`.

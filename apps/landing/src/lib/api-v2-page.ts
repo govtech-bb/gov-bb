@@ -2,6 +2,7 @@ import { createServerFn } from '@tanstack/react-start'
 import { getCookie } from '@tanstack/react-start/server'
 import { useRuntimeConfig } from 'nitro/runtime-config'
 import { z } from 'zod'
+import { isSitePath } from '@govtech-bb/govbbmarkd/content-url'
 import type { ContentPage } from '../content/registry'
 import { bakeStartLinkFormId } from '../utils/markdown/plugins'
 import { createApiV2Cache } from './api-v2-cache'
@@ -187,12 +188,6 @@ export function previewTokenFor(
 function previewSecret(): string | undefined {
   const config = useRuntimeConfig() as { previewSecret?: string }
   return config.previewSecret || process.env.PREVIEW_SECRET || undefined
-}
-
-/** `/…` only: not `//`, no backslash, no whitespace — the three ways a
- *  browser's URL parser turns a "path" into another origin (#3126). */
-function isSitePath(to: string): boolean {
-  return /^\/(?!\/)[^\\\s]*$/.test(to)
 }
 
 /**

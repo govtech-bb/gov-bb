@@ -5,6 +5,7 @@
 
 import { isDeepStrictEqual } from "node:util";
 import { z } from "zod";
+import { isSitePath } from "@govtech-bb/govbbmarkd/content-url";
 import { LastEditedBy } from "./content-attribution";
 import { EditVersion } from "./edit-concurrency";
 
@@ -43,7 +44,14 @@ export type PageId = z.infer<typeof PageId>;
 export const PageUrl = z
   .string()
   .max(512)
-  .regex(/^\/[^?#]*[^/?#]$/)
+  .regex(
+    /^(?:\/[^/?#]+)+$/,
+    "Use / followed by non-empty path segments, without a trailing slash, query or fragment.",
+  )
+  .refine(
+    isSitePath,
+    "Use a site path without backslashes, whitespace or control characters.",
+  )
   .refine(
     (url) => (segmentsOf(url).at(-1) ?? "").length <= 200,
     "The url's last segment, its slug, can be at most 200 characters.",

@@ -107,6 +107,35 @@ describe('collectSitemapEntries in api_v2 mode', () => {
 })
 
 describe('collectSitemapEntries with api_v2 pages', () => {
+  it('keeps unsafe stored page and category URLs out of sitemap paths', () => {
+    const url = '/\\outside.test/page'
+    const entries = collectSitemapEntries(
+      undefined,
+      {
+        kind: 'found',
+        categories: [
+          {
+            slug: 'legacy',
+            url,
+            title: 'Legacy',
+            description: null,
+            subcategories: [],
+          },
+        ],
+      },
+      [url, '/safe-page'],
+    )
+
+    expect(entries.map((entry) => entry.path)).not.toContain(url)
+    expect(entries.map((entry) => entry.path)).toContain('/safe-page')
+    expect(entries.filter((entry) => entry.path === '/')).toHaveLength(1)
+    for (const entry of entries) {
+      expect(new URL(entry.path, 'https://site.test').origin).toBe(
+        'https://site.test',
+      )
+    }
+  })
+
   it('lists each api_v2 page once, beside the static pages', () => {
     const legacy = collectSitemapEntries()
     const staticPage = '/family-birth-relationships/get-birth-certificate'

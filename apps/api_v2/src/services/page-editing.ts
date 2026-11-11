@@ -27,6 +27,7 @@ import {
   type PageFields,
   type PageId,
   PageRejected,
+  PageUrl,
   type PageValues,
   type PendingRevision,
   type RevisionView,
@@ -137,6 +138,31 @@ export interface PageRecords {
     id: PageId,
     page: PageRevision,
   ): Promise<Result<PageDocument, PageRejected | ContentStoreUnavailable>>;
+  /** Former public addresses in this subtree; capture under the content lock before replacing any page. */
+  redirectSourcesInSubtree(
+    pageId: PageId,
+  ): Promise<
+    Result<readonly { id: PageId; url: string }[], ContentStoreUnavailable>
+  >;
+  /** Currently reachable public addresses, including ancestors above this subtree's root. */
+  publicPagesInSubtree(
+    pageId: PageId,
+  ): Promise<
+    Result<readonly { id: PageId; url: string }[], ContentStoreUnavailable>
+  >;
+  /** Remove a page redirect at a newly public URL, inside the locked actor transaction. */
+  removePageRedirectAt(
+    url: string,
+  ): Promise<Result<void, ContentStoreUnavailable>>;
+  /**
+   * Record a page redirect move in the locked actor transaction, flattening
+   * incoming rules. The caller validates both paths with PageUrl and verifies
+   * source ownership and destination public reachability before calling.
+   */
+  recordPageRedirectMove(
+    sourceUrl: string,
+    destinationUrl: string,
+  ): Promise<Result<void, ContentStoreUnavailable>>;
   /** Refuse what `replace` would, without keeping the write. */
   checkReplace(
     id: PageId,
@@ -266,6 +292,8 @@ export class PageEditing {
         creationOf(page.id, placed.value, this.clock()),
       );
       if (!created.ok) return created;
+      const routed = await updatePublicRedirects(records, created.value.id, []);
+      if (!routed.ok) return routed;
       const indexed = await records.replaceSearchChunks(
         created.value.id,
         chunkMarkdown(created.value.body_markdown),
@@ -654,6 +682,16 @@ export class PageEditing {
         if (!reviewing.ok) return reviewing;
         const { live, revision } = reviewing.value;
         if (this.isOwn(revision, actor)) return err(new SelfApproval());
+        const url = PageUrl.safeParse(revision.fields.url);
+        if (!url.success)
+          return err(
+            new PageRejected(
+              url.error.issues.map(({ message }) => ({
+                field: "url",
+                message,
+              })),
+            ),
+          );
         const invalidContent = markdownRejection(revision.fields);
         if (invalidContent) return err(invalidContent);
         if (revision.fields.url !== live.url) {
@@ -933,6 +971,15 @@ async function writeLive(
   now: Date,
 ): Promise<Result<PageDocument, PageRejected | ContentStoreUnavailable>> {
   if (changesOf(current, fields).length === 0) return ok(current);
+  const routingChanged =
+    fields.visibility === "public" &&
+    (fields.url !== current.url ||
+      fields.visibility !== current.visibility ||
+      fields.parent_id !== current.parent_id);
+  const sources = routingChanged
+    ? await records.redirectSourcesInSubtree(current.id)
+    : ok([]);
+  if (!sources.ok) return sources;
   const saved = await records.replace(
     current.id,
     revisionOf(current, fields, now),
@@ -945,11 +992,45 @@ async function writeLive(
     );
     if (!filed.ok) return filed;
   }
+  if (routingChanged) {
+    const routed = await updatePublicRedirects(
+      records,
+      current.id,
+      sources.value,
+    );
+    if (!routed.ok) return routed;
+  }
   const indexed = await records.replaceSearchChunks(
     current.id,
     chunkMarkdown(saved.value.body_markdown),
   );
   return indexed.ok ? saved : indexed;
+}
+
+async function updatePublicRedirects(
+  records: PageRecords,
+  pageId: PageId,
+  sources: readonly { id: PageId; url: string }[],
+): Promise<Result<void, ContentStoreUnavailable>> {
+  const publicPages = await records.publicPagesInSubtree(pageId);
+  if (!publicPages.ok) return publicPages;
+  const sourceById = new Map(sources.map((source) => [source.id, source.url]));
+  const publicUrls = new Set(publicPages.value.map((page) => page.url));
+  for (const page of publicPages.value) {
+    const source = sourceById.get(page.id);
+    // Another page in this publication may have reclaimed the historical source.
+    if (
+      source !== undefined &&
+      source !== page.url &&
+      !publicUrls.has(source)
+    ) {
+      const moved = await records.recordPageRedirectMove(source, page.url);
+      if (!moved.ok) return moved;
+    }
+    const cleared = await records.removePageRedirectAt(page.url);
+    if (!cleared.ok) return cleared;
+  }
+  return ok(undefined);
 }
 
 /**

@@ -41,6 +41,7 @@ import {
   ContentStoreUnavailable,
   OPEN_REVISION_STATUSES,
   PageRejected,
+  PageUrl,
   type FieldError,
   type Frontmatter,
   type PageDocument,
@@ -50,7 +51,11 @@ import {
   type Visibility,
 } from "../modules/page";
 import type { PageChangeEvent, PageEvent } from "../modules/page-history";
-import type { Ancestor, ResolvablePage } from "../modules/page-visibility";
+import { visibleTo, type Ancestor } from "../modules/page-visibility";
+import {
+  PAGE_REDIRECT_LIVE_ACTIONS,
+  PageRedirectHistory,
+} from "../modules/page-redirect-history";
 import { err, ok, type Result } from "../modules/result";
 import type { SearchChunk } from "../modules/search-text";
 import {
@@ -58,6 +63,7 @@ import {
   categories,
   changeEvents,
   contentPages,
+  pageRedirects,
   pageRevisions,
   searchChunks,
 } from "../schema";
@@ -70,7 +76,7 @@ import type {
   PendingRevisionRecord,
   RevisionMark,
 } from "../services/page-editing";
-import type { PublicPageReads } from "../services/page-resolution";
+import type { PageRoute, PublicPageReads } from "../services/page-resolution";
 import type { NavigationReads } from "../services/site-navigation";
 
 const categoryDatabaseRow = EditorCategory.omit({
@@ -283,14 +289,26 @@ export class PostgresPages
     }
   }
 
-  /** The page at this url, or null. */
-  async pageAt(
+  /** Read the rule and exact page together, so a concurrent move cannot fall between two lookups. */
+  pageOrRedirectAt(
     url: string,
-  ): Promise<Result<ResolvablePage | null, ContentStoreUnavailable>> {
-    const rows = await attempt("pageAt", () =>
-      this.db.select().from(contentPages).where(eq(contentPages.url, url)),
-    );
-    return rows.ok ? ok(rows.value[0] ?? null) : rows;
+  ): Promise<Result<PageRoute | null, ContentStoreUnavailable>> {
+    return attempt<PageRoute | null>("pageOrRedirectAt", async () => {
+      const [row] = await this.db
+        .select({
+          destinationUrl: pageRedirects.destinationUrl,
+          page: contentPages,
+        })
+        .from(sql`(select 1) as source`)
+        .leftJoin(pageRedirects, eq(pageRedirects.sourceUrl, url))
+        .leftJoin(
+          contentPages,
+          and(eq(contentPages.url, url), isNull(pageRedirects.id)),
+        );
+      if (row && row.destinationUrl !== null)
+        return { kind: "redirect", destinationUrl: row.destinationUrl };
+      return row?.page ? { kind: "page", page: row.page } : null;
+    });
   }
 
   /** The pages above this one, root first. */
@@ -722,6 +740,164 @@ export class PostgresPages
       rejectionOf,
     );
     return rows.ok ? ok(onlyDocument(rows.value)) : rows;
+  }
+
+  private async redirectSubtree(pageId: PageId) {
+    const result = await this.db.execute<{
+      id: PageId;
+      url: string;
+      parentId: PageId | null;
+      visibility: Visibility;
+      isPublic: boolean;
+    }>(sql`
+      with recursive above as (
+        select id, parent_id, visibility from content_pages where id = ${pageId}
+        union all
+        select p.id, p.parent_id, p.visibility
+          from content_pages p join above a on p.id = a.parent_id
+      ) cycle id set is_cycle using path,
+      subtree as (
+        select p.id, p.url, p.parent_id, p.visibility,
+          not exists (select 1 from above a
+            where a.is_cycle or not ${visibilityIn(sql`a.visibility`, visibleTo("public"))}) as is_public
+          from content_pages p where p.id = ${pageId}
+        union all
+        select p.id, p.url, p.parent_id, p.visibility,
+          s.is_public and ${visibilityIn(sql`p.visibility`, visibleTo("public"))}
+          from content_pages p join subtree s on p.parent_id = s.id
+      ) cycle id set is_cycle using path
+      select id, url, parent_id as "parentId", visibility, is_public as "isPublic"
+        from subtree where not is_cycle
+    `);
+    return result.rows;
+  }
+
+  /** Public addresses in the locked subtree, including visibility above its root. */
+  publicPagesInSubtree(
+    pageId: PageId,
+  ): Promise<
+    Result<readonly { id: PageId; url: string }[], ContentStoreUnavailable>
+  > {
+    return attempt("publicPagesInSubtree", async () =>
+      (await this.redirectSubtree(pageId))
+        .filter((page) => page.isPublic)
+        .map(({ id, url }) => ({ id, url })),
+    );
+  }
+
+  /** Capture former public addresses before any live write, never through gaps or reclaimed ownership. */
+  redirectSourcesInSubtree(
+    pageId: PageId,
+  ): Promise<
+    Result<readonly { id: PageId; url: string }[], ContentStoreUnavailable>
+  > {
+    return attempt("redirectSourcesInSubtree", async () => {
+      const pages = await this.redirectSubtree(pageId);
+      const sources = pages
+        .filter((page) => page.isPublic && PageUrl.safeParse(page.url).success)
+        .map(({ id, url }) => ({ id, url }));
+      const hidden = pages.filter((page) => !page.isPublic);
+      if (hidden.length === 0) return sources;
+      const previouslyPublic = await this.db
+        .selectDistinct({ id: changeEvents.entityId })
+        .from(changeEvents)
+        .where(
+          and(
+            eq(changeEvents.entityKind, "content_page"),
+            inArray(
+              changeEvents.entityId,
+              hidden.map((page) => page.id),
+            ),
+            inArray(changeEvents.action, PAGE_REDIRECT_LIVE_ACTIONS),
+            sql`${changeEvents.eventOrder} is not null and ${changeEvents.snapshot}->>'visibility' = 'public'`,
+          ),
+        );
+      if (previouslyPublic.length === 0) return sources;
+      const candidateIds = new Set(previouslyPublic.map(({ id }) => id));
+
+      const history = new PageRedirectHistory(
+        await this.db
+          .select({
+            entityId: changeEvents.entityId,
+            versionNo: changeEvents.versionNo,
+            action: changeEvents.action,
+            eventOrder: changeEvents.eventOrder,
+            snapshotVersion: changeEvents.snapshotVersion,
+            snapshot: sql<unknown>`jsonb_build_object(
+          'id', ${changeEvents.snapshot}->'id',
+          'url', ${changeEvents.snapshot}->'url',
+          'visibility', ${changeEvents.snapshot}->'visibility',
+          'redacted', ${changeEvents.snapshot}->'redacted')
+          || case when ${changeEvents.snapshot} ? 'parent_id'
+            then jsonb_build_object('parent_id', ${changeEvents.snapshot}->'parent_id')
+            else '{}'::jsonb end`,
+          })
+          .from(changeEvents)
+          .where(
+            and(
+              eq(changeEvents.entityKind, "content_page"),
+              inArray(changeEvents.action, PAGE_REDIRECT_LIVE_ACTIONS),
+            ),
+          ),
+      );
+      for (const page of hidden) {
+        if (!candidateIds.has(page.id)) continue;
+        const source = history.sourceFor(page);
+        if (source === null) continue;
+        const occupied = await this.db.execute(sql`
+          select 1 from content_pages where url = ${source} and id <> ${page.id}
+          union all
+          select 1 from page_redirects where source_url = ${source}
+          union all
+          select 1 from categories c left join categories p on p.id = c.parent_id
+            where case when p.id is null then '/' || c.slug
+              else '/' || p.slug || '/' || c.slug end = ${source}
+          limit 1
+        `);
+        if (occupied.rows.length === 0)
+          sources.push({ id: page.id, url: source });
+      }
+      return sources;
+    });
+  }
+
+  /** Remove a page redirect in the caller's actor-bearing, content-locked transaction. */
+  removePageRedirectAt(
+    url: string,
+  ): Promise<Result<void, ContentStoreUnavailable>> {
+    return attempt("removePageRedirectAt", async () => {
+      await this.db
+        .delete(pageRedirects)
+        .where(eq(pageRedirects.sourceUrl, url));
+    });
+  }
+
+  /** Record a validated public move in the caller's locked transaction; destinations stay terminal. */
+  recordPageRedirectMove(
+    sourceUrl: string,
+    destinationUrl: string,
+  ): Promise<Result<void, ContentStoreUnavailable>> {
+    if (sourceUrl === destinationUrl) return Promise.resolve(ok(undefined));
+
+    return attempt("recordPageRedirectMove", async () => {
+      // Moving back must remove the destination's rule before flattening, or it becomes a self-redirect.
+      await this.db
+        .delete(pageRedirects)
+        .where(eq(pageRedirects.sourceUrl, destinationUrl));
+
+      await this.db
+        .update(pageRedirects)
+        .set({ destinationUrl })
+        .where(eq(pageRedirects.destinationUrl, sourceUrl));
+
+      await this.db
+        .insert(pageRedirects)
+        .values({ sourceUrl, destinationUrl })
+        .onConflictDoUpdate({
+          target: pageRedirects.sourceUrl,
+          set: { destinationUrl },
+        });
+    });
   }
 
   /** Refuse what `replace` would: it writes in a savepoint and rolls it back. */
