@@ -747,6 +747,58 @@ test("a stale delete is refused in the dialog", async () => {
   );
 });
 
+test("a delete whose answer is lost is confirmed automatically, without another press", async () => {
+  // The delete lands, and its answer is lost on the way back
+  vi.stubGlobal("fetch", async (input: RequestInfo | URL, init?: RequestInit) => {
+    const answer = await server.fetch(input, init);
+
+    return init?.method === "DELETE" ? Response.json({}, { status: 503 }) : answer;
+  });
+  await renderCollection().ready;
+  await loaded();
+  await press("Delete nis");
+  await until(() =>
+    expect(dialog()?.querySelector("pre")?.textContent).toContain("National Insurance"),
+  );
+  await press("Delete record");
+  await closed();
+
+  expect(server.writes).toHaveLength(1);
+  expect(document.body.textContent).toContain("Record deleted");
+  await loaded(1);
+  // The row is gone, so the focus goes to Add record
+  await until(() => expect(document.activeElement?.textContent).toBe("Add record"));
+});
+
+test("a delete that can't be confirmed says so, then the next press checks before deleting again", async () => {
+  let down = true;
+
+  // The delete lands, its answer is lost, and the check that follows fails too
+  vi.stubGlobal("fetch", async (input: RequestInfo | URL, init?: RequestInit) => {
+    const answer = await server.fetch(input, init);
+
+    return down && server.writes.length > 0 ? Response.json({}, { status: 503 }) : answer;
+  });
+  await renderCollection().ready;
+  await loaded();
+  await press("Delete nis");
+  await until(() =>
+    expect(dialog()?.querySelector("pre")?.textContent).toContain("National Insurance"),
+  );
+  await press("Delete record");
+  await until(() =>
+    expect(dialog()?.textContent).toContain("The content API could not be reached. Try again."),
+  );
+  expect(document.body.textContent).not.toContain("Record deleted");
+
+  down = false;
+  await press("Delete record");
+  await closed();
+
+  expect(server.writes).toHaveLength(1);
+  expect(document.body.textContent).toContain("Record deleted");
+});
+
 test("without the editor role, records can be read but not added, saved or deleted", async () => {
   await renderCollection({ readOnly: true, record: "nis" }).ready;
   await opened();
