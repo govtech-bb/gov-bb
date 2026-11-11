@@ -13,7 +13,7 @@ reference in code, a test or a doc could only be decoded from its context
 and git history.
 
 Many ADRs are also about v1 apps that the v2 rewrite replaces: `apps/api`,
-`forms`, `form_builder`, `form_builder_api`, `cms`, and `landing`'s
+`forms`, `form_builder`, `form_builder_api`, and `landing`'s
 static-markdown content. They read as current guidance for v2 work.
 
 ## Decision
@@ -50,4 +50,6 @@ This covers `docs/decisions/` only. editor_v2 keeps its own series in
   into rework after review.
 - A merge from `main` into `v2-rewrite` brings in any ADR that `main` has
   added since, under `main`'s number. Each one takes the next free number
-  above `v2-rewrite`'s set at that merge.
+  above `v2-rewrite`'s set at that merge. References that `main` has added
+  since cite old numbers too, so that merge also remaps them with the
+  old → new table.
