@@ -57,6 +57,15 @@ export function createApiV2Breaker() {
 /** The breaker every read of api_v2 shares. Pure, so the client build drops it with the reads. */
 export const apiV2Breaker = /* @__PURE__ */ createApiV2Breaker()
 
+/** api_v2 failed (vs. answered): never cached, counted toward the breaker. */
+export const failed = (result: {
+  kind: string
+  reason?: keyof typeof REASONS
+}) =>
+  result.kind === 'miss' &&
+  result.reason !== undefined &&
+  REASONS[result.reason].failure
+
 /**
  * Why a read has nothing to show: a 404 the caller may expect, a request
  * api_v2 rejected, or a failure. The two answers carry their `Cache-Control`.
@@ -125,11 +134,7 @@ export async function readPublic<T>(
   const result = await readApiV2(base, path, schema, fetchImpl, {
     landingToken,
   })
-  apiV2Breaker.record(
-    result.kind === 'miss' && REASONS[result.reason].failure,
-    path,
-    now,
-  )
+  apiV2Breaker.record(failed(result), path, now)
 
   return result
 }
