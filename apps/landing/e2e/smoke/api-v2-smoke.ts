@@ -273,7 +273,7 @@ export interface GatedForms {
   closed: Set<string>
 }
 
-/** Canonical form IDs are kebab-case (ADR-0028), as available-forms.ts checks. */
+/** Canonical form IDs are kebab-case (ADR-0048), as available-forms.ts checks. */
 const FORM_ID = /^[a-z0-9][a-z0-9-]*$/
 const SERVICE_STATUSES = new Set(['enabled', 'form_disabled', 'disabled'])
 
