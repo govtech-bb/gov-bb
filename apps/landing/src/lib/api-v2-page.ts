@@ -37,10 +37,11 @@ import { COOKIE_NAME, levelFromCookie } from './preview'
  * `{event: "api_v2_circuit_open", url}` at `console.error`; requests it turns
  * away aren't logged. Category and collection reads (api-v2-categories.ts,
  * api-v2-collections.ts) log the same lines and count toward the same breaker
- * (api-v2-reader.ts), with the api_v2
- * path as `url`, but have no `rejected`: any status but
- * 200 and 404 is `status`, as is a 404 from `/categories`. `REASONS` in api-v2-log.ts holds the
- * classification.
+ * (api-v2-reader.ts), with the api_v2 path as `url`. A 4xx other than 404,
+ * 408 and 429 is `rejected` for them too, so a visitor's bad collection key
+ * can't open the breaker; any other status but 200 and 404 is `status`, as is
+ * a 404 from `/categories`, `/catalog` or `/search/documents`. `REASONS` in
+ * api-v2-log.ts holds the classification.
  */
 
 export { API_V2_TIMEOUT_MS }

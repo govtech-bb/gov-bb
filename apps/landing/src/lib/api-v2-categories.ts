@@ -63,7 +63,10 @@ export type CategoryListing = z.infer<typeof CategoryListing>
 /** Why a category read has nothing to show. */
 type CategoryReadFailure = { kind: 'unavailable' } | { kind: 'malformed' }
 
-/** A failed read: a body the site can't use, or api_v2 unavailable. */
+/**
+ * A failed read: `malformed` for a body the site can't use; any other miss, a
+ * rejected request included, is `unavailable`.
+ */
 const failure = ({ reason }: ApiV2ReadMiss): CategoryReadFailure =>
   reason === 'malformed' ? { kind: 'malformed' } : { kind: 'unavailable' }
 

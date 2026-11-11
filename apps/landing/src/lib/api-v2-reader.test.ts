@@ -56,16 +56,33 @@ describe('readPublic', () => {
     expect(cancel).toHaveBeenCalledOnce()
   })
 
-  it('is a status miss on any other status, logged at error', async () => {
-    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
-    expect(await read(answering(503))).toEqual({
-      kind: 'miss',
-      reason: 'status',
-    })
-    expect(lines(error)).toEqual([
-      { event: 'api_v2_fallback', reason: 'status', url: '/x', status: 503 },
-    ])
-  })
+  it.each([400, 401, 403])(
+    'is a rejected miss on a %i, logged at warn',
+    async (status) => {
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+      expect(await read(answering(status))).toEqual({
+        kind: 'miss',
+        reason: 'rejected',
+      })
+      expect(lines(warn)).toEqual([
+        { event: 'api_v2_fallback', reason: 'rejected', url: '/x', status },
+      ])
+    },
+  )
+
+  it.each([408, 429, 500, 503])(
+    'is a status miss on a %i, logged at error',
+    async (status) => {
+      const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+      expect(await read(answering(status))).toEqual({
+        kind: 'miss',
+        reason: 'status',
+      })
+      expect(lines(error)).toEqual([
+        { event: 'api_v2_fallback', reason: 'status', url: '/x', status },
+      ])
+    },
+  )
 
   it.each([
     ['not JSON', '<html>'],
@@ -154,6 +171,14 @@ describe('the breaker', () => {
     }
     await read(failing)
     expect(failing).toHaveBeenCalledTimes(5)
+  })
+
+  it('is not opened by rejected requests: api_v2 answered', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+    for (let i = 0; i < 3; i++) await read(answering(400))
+    const fetchImpl = answering(200, '{"ok":true}')
+    expect(await read(fetchImpl)).toEqual({ kind: 'ok', value: { ok: true } })
+    expect(fetchImpl).toHaveBeenCalledOnce()
   })
 
   it('is the one the page cache uses', async () => {

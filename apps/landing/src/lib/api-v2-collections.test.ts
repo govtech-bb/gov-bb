@@ -176,6 +176,25 @@ describe('resolveContactRecords', () => {
     ).toEqual({})
   })
 
+  it('leaves the breaker closed when api_v2 rejects every key it is sent', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const rejecting = vi.fn(async () => json(400, { error: 'bad_request' }))
+    expect(
+      await resolveContactRecords(
+        BASE,
+        ['A', 'B', 'C', 'D', 'E'].map((collection) => ({
+          collection,
+          record: 'x',
+        })),
+        rejecting,
+      ),
+    ).toEqual({})
+    expect(rejecting).toHaveBeenCalledTimes(5)
+    const fetchImpl = stubFetch(json(200, CONTACTS))
+    await fetchCollectionRecords(BASE, 'contacts', fetchImpl)
+    expect(fetchImpl).toHaveBeenCalledOnce()
+  })
+
   it('leaves out a collection, without a request, while the breaker is open', async () => {
     vi.spyOn(console, 'error').mockImplementation(() => {})
     const failing = vi.fn(async () => json(500, {}))
