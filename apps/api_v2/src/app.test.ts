@@ -329,17 +329,24 @@ describe("GET /pages?url=", () => {
     );
   });
 
-  it("keeps the Start link when any start sub-page is public", async () => {
-    const parent = await seedPage({ body_markdown: ENTRY_MARKDOWN });
-    await seedPage({ url: START, parent_id: parent.id });
-    await seedPage({
-      url: "/elsewhere/start",
-      parent_id: parent.id,
-      visibility: "draft",
-    });
+  // Both orders, so a check of only the first or last sub-page can't pass.
+  it.each([
+    ["draft", "public"],
+    ["public", "draft"],
+  ])(
+    "keeps the Start link when any start sub-page is public (%s, then %s)",
+    async (...visibilities) => {
+      const parent = await seedPage({ body_markdown: ENTRY_MARKDOWN });
+      for (const [i, visibility] of visibilities.entries())
+        await seedPage({
+          url: i === 0 ? START : "/elsewhere/start",
+          parent_id: parent.id,
+          visibility,
+        });
 
-    expect((await read(ENTRY)).json().hide_start_links).toBe(false);
-  });
+      expect((await read(ENTRY)).json().hide_start_links).toBe(false);
+    },
+  );
 
   it("404s a bare slug more than one page shares", async () => {
     await seedPage({ url: "/a/start" });
