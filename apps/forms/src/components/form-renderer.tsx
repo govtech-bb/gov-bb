@@ -724,6 +724,12 @@ function ActiveStep({
               amount: submissionState?.amount ?? "",
             })
           }
+          onPrint={() =>
+            trackEvent("form-print", {
+              form: formMeta.formId,
+              category: formCategory(formMeta.formId),
+            })
+          }
           submissionState={submissionState}
           feedbackUrl={feedbackUrl}
         />

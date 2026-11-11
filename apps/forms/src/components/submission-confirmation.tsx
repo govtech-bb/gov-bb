@@ -44,6 +44,7 @@ export default function SubmissionConfirmation({
   contactDetails,
   onTryAgain,
   onPaymentInitiated,
+  onPrint,
   hideReferenceNumber,
   submissionState,
   feedbackUrl,
@@ -132,7 +133,13 @@ export default function SubmissionConfirmation({
           printed output via the `form-page__print` @media print rule in
           govtech.css. */}
       <div className="form-page__print">
-        <Button variant="secondary" onClick={() => window.print()}>
+        <Button
+          variant="secondary"
+          onClick={() => {
+            onPrint?.();
+            window.print();
+          }}
+        >
           Print
         </Button>
       </div>

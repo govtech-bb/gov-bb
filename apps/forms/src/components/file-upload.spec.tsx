@@ -27,8 +27,12 @@ import {
   UNSCANNABLE_FILE_MESSAGE,
 } from "@govtech-bb/form-validation";
 
+vi.mock("../lib/analytics", () => ({ trackEvent: vi.fn() }));
+import { trackEvent } from "../lib/analytics";
+
 const mockSendFile = sendFile as Mock;
 const mockCheckFile = checkFile as Mock;
+const mockTrackEvent = trackEvent as Mock;
 
 function makeFile(name: string, type: string, sizeBytes: number): File {
   return new File(["x".repeat(sizeBytes)], name, { type });
@@ -1113,5 +1117,128 @@ describe("FileUpload", () => {
       }),
     ).toBeVisible();
     expect(harnessOnFileChange).not.toHaveBeenCalled();
+  });
+
+  describe("analytics (#3514)", () => {
+    const calls = (event: string) =>
+      mockTrackEvent.mock.calls.filter((c) => c[0] === event);
+
+    it.each([
+      ["error", () => mockSendFile.mockRejectedValue(new Error("network"))],
+      ["timeout", () => mockCheckFile.mockResolvedValue("timeout")],
+      [
+        "infected",
+        () =>
+          mockCheckFile.mockResolvedValue({
+            ...makeUploaded("doc.pdf"),
+            scanStatus: "infected",
+          }),
+      ],
+      [
+        "unscannable",
+        () =>
+          mockCheckFile.mockResolvedValue({
+            ...makeUploaded("doc.pdf"),
+            scanStatus: "unscannable",
+          }),
+      ],
+    ] as const)(
+      "sends form-file-error with reason %s when the upload settles to it",
+      async (reason, arrange) => {
+        const user = userEvent.setup();
+        arrange();
+        const { fileInput } = renderComponent({ formId: "f1" });
+
+        await user.upload(
+          fileInput,
+          makeFile("doc.pdf", "application/pdf", 100),
+        );
+
+        await waitFor(() => expect(calls("form-file-error")).toHaveLength(1));
+        expect(calls("form-file-error")[0][1]).toEqual({
+          form: "f1",
+          category: expect.any(String),
+          step: "step-1",
+          field: "doc-field",
+          reason,
+        });
+      },
+    );
+
+    it.each([
+      ["a type it does not accept", makeFile("doc.txt", "text/plain", 100)],
+      ["over the size limit", makeFile("big.pdf", "application/pdf", 5000)],
+    ])(
+      "sends form-file-error with reason rejected for a file %s",
+      async (_case, file) => {
+        const user = userEvent.setup({ applyAccept: false });
+        const { fileInput } = renderComponent({
+          formId: "f1",
+          field: {
+            ...baseField,
+            validations: { ...baseField.validations, maxSize: { value: 1024 } },
+          },
+        });
+
+        await user.upload(fileInput, file);
+
+        await waitFor(() => expect(calls("form-file-error")).toHaveLength(1));
+        expect(calls("form-file-error")[0][1]).toMatchObject({
+          field: "doc-field",
+          reason: "rejected",
+        });
+        expect(mockSendFile).not.toHaveBeenCalled();
+      },
+    );
+
+    it("sends no form-file-error for a clean file", async () => {
+      const user = userEvent.setup();
+      const { onFileChange, fileInput } = renderComponent({ formId: "f1" });
+
+      await user.upload(fileInput, makeFile("doc.pdf", "application/pdf", 100));
+
+      await waitFor(() => expect(onFileChange).toHaveBeenCalled());
+      expect(calls("form-file-error")).toHaveLength(0);
+    });
+
+    it("sends form-file-remove when a confirmed file is removed", async () => {
+      const user = userEvent.setup();
+      renderComponent({ formId: "f1", value: [makeUploaded("alpha.pdf")] });
+
+      await user.click(
+        screen.getByRole("button", { name: "Remove alpha.pdf" }),
+      );
+
+      expect(calls("form-file-remove")).toEqual([
+        [
+          "form-file-remove",
+          {
+            form: "f1",
+            category: expect.any(String),
+            step: "step-1",
+            field: "doc-field",
+          },
+        ],
+      ]);
+    });
+
+    it("never sends a filename", async () => {
+      const user = userEvent.setup();
+      mockSendFile.mockRejectedValue(new Error("network"));
+      renderComponent({ formId: "f1", value: [makeUploaded("alpha.pdf")] });
+
+      await user.upload(
+        screen.getByLabelText(/upload document/i, { selector: "input" }),
+        makeFile("secret-name.pdf", "application/pdf", 100),
+      );
+      await waitFor(() => expect(calls("form-file-error")).toHaveLength(1));
+      await user.click(
+        screen.getByRole("button", { name: "Remove alpha.pdf" }),
+      );
+
+      const sent = JSON.stringify(mockTrackEvent.mock.calls);
+      expect(sent).not.toContain("secret-name");
+      expect(sent).not.toContain("alpha.pdf");
+    });
   });
 });

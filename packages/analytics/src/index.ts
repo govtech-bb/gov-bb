@@ -84,6 +84,23 @@ export interface TrackingData {
     outcome: string;
     hasPayment: boolean;
   };
+  // File upload failures, removals and printing (#3514). `reason` is the
+  // status the upload settled to: rejected (refused before upload, for its
+  // type or size), error, timeout, infected or unscannable.
+  "form-file-error": {
+    form: string;
+    category: string;
+    step: string;
+    field: string;
+    reason: string;
+  };
+  "form-file-remove": {
+    form: string;
+    category: string;
+    step: string;
+    field: string;
+  };
+  "form-print": { form: string; category: string };
   search: { query: string; results: number };
   "search-result-click": { query: string; position: number; href: string };
   "search-no-results": { query: string };
@@ -187,6 +204,10 @@ export const SHORT_EVENT: Readonly<Record<string, string>> = {
   "page-start-view": "pstvw",
   "payment-initiated": "pinit",
   "payment-returned": "pretn",
+  // File upload failures, removals and printing (#3514).
+  "form-file-error": "fferr",
+  "form-file-remove": "ffrem",
+  "form-print": "fprnt",
 };
 
 const CANONICAL_BY_SHORT: Readonly<Record<string, string>> = Object.fromEntries(

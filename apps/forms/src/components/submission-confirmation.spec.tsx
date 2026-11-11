@@ -1009,6 +1009,27 @@ describe("SubmissionConfirmation — Print button (#2132)", () => {
     }
   });
 
+  it("fires onPrint when the Print button is clicked (#3514)", () => {
+    const original = window.print;
+    window.print = vi.fn();
+    const onPrint = vi.fn();
+    try {
+      render(
+        <SubmissionConfirmation
+          serviceTitle="Passport"
+          stepTitle="Submitted"
+          onPrint={onPrint}
+          submissionState={baseState}
+        />,
+      );
+      fireEvent.click(screen.getByRole("button", { name: /print/i }));
+      expect(onPrint).toHaveBeenCalledTimes(1);
+      expect(window.print).toHaveBeenCalledTimes(1);
+    } finally {
+      window.print = original;
+    }
+  });
+
   it("is keyboard-reachable and has an accessible name", () => {
     renderWith(baseState);
     // Exact-name role query proves the accessible name is "Print".
