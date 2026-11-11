@@ -11,6 +11,7 @@ import { act, useState, type ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { createEditorApi, type RecordDetail } from "../../src/api/client";
+import { collectionQuery, collectionsQuery } from "../../src/api/queries";
 import { CollectionScreen, CollectionsScreen } from "../../src/workspace/collections";
 import { Toaster } from "../../src/ui/toast";
 
@@ -360,6 +361,72 @@ test("a collection's records fill the shared table, a column per field with its 
   // Each row's actions name their record, for keyboard and screen reader users
   expect(button("Edit nis").tagName).toBe("BUTTON");
   expect(button("Delete nis").disabled).toBe(false);
+});
+
+test("a malformed collections refresh keeps the list with a retry notice", async () => {
+  const editorApi = api();
+  await mount(<CollectionsScreen api={editorApi} />);
+  await until(() => expect(host.querySelector("tbody a")).not.toBeNull());
+
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () => new Response("{")),
+  );
+  await act(async () => {
+    await client.refetchQueries({ queryKey: collectionsQuery(editorApi).queryKey });
+  });
+  await until(() =>
+    expect(host.textContent).toContain(
+      "We could not refresh collections. Showing the last loaded list.",
+    ),
+  );
+  expect(host.querySelector("tbody a")?.textContent).toBe("Ministries and departments");
+  expect(host.textContent).not.toContain("We could not load collections");
+
+  vi.stubGlobal("fetch", server.fetch);
+  await press("Try again");
+  await until(() => expect(host.textContent).not.toContain("We could not refresh collections"));
+});
+
+test("a malformed records refresh keeps the list with its existing retry sentence", async () => {
+  await renderCollection().ready;
+  await loaded();
+
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () => new Response("{")),
+  );
+  await act(async () => {
+    await client.refetchQueries({ queryKey: collectionQuery(api(), "contacts").queryKey });
+  });
+  await until(() =>
+    expect(host.textContent).toContain(
+      "We could not refresh these records. Showing the last loaded list.",
+    ),
+  );
+  expect(rows()).toHaveLength(2);
+  expect(host.textContent).toContain("Barbados Drug Service");
+  expect(host.textContent).not.toContain("We could not load records");
+
+  vi.stubGlobal("fetch", server.fetch);
+  await press("Try again");
+  await until(() => expect(host.textContent).not.toContain("We could not refresh these records"));
+});
+
+test("a collection removed after loading keeps the not-found screen and way back", async () => {
+  await renderCollection().ready;
+  await loaded();
+
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () => Response.json({}, { status: 404 })),
+  );
+  await act(async () => {
+    await client.refetchQueries({ queryKey: collectionQuery(api(), "contacts").queryKey });
+  });
+  await until(() => expect(host.textContent).toContain("Collection not found"));
+  expect(rows()).toHaveLength(0);
+  expect(host.querySelector('a[href="/collections"]')?.textContent).toBe("Back to collections");
 });
 
 test("an unknown collection says so, with the way back", async () => {

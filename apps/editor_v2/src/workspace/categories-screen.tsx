@@ -27,19 +27,18 @@ import {
   type CategoryOrder,
   type CategoryRow,
 } from "../api/categories";
-import { ApiFailure, type EditorApi } from "../api/client";
+import type { EditorApi } from "../api/client";
 import { categoriesQuery } from "../api/queries";
 import { Banner } from "../ui/banner";
 import { Button } from "../ui/button";
 import { Menu } from "../ui/menu";
 import { ListScreen } from "../ui/list-screen";
-import { RefreshFailure } from "../ui/refresh-failure";
 import { NameCell } from "../ui/table/cell-components";
 import { createAppColumnHelper, useAppTable } from "../ui/table/table-hooks";
 import { Tip } from "../ui/tooltip";
 import { useLatched } from "../ui/use-latched";
 import { CategoryDialog, DeleteCategoryDialog } from "./category-dialogs";
-import { LoadFailure } from "./load-failure";
+import { listLoadView } from "./list-load-view";
 
 /** Up the list, or down it. */
 type Direction = -1 | 1;
@@ -288,12 +287,8 @@ export function CategoriesScreen({
 }) {
   const client = useQueryClient();
   const categories = useQuery(categoriesQuery(api));
-  const status = categories.error instanceof ApiFailure ? categories.error.status : undefined;
+  const load = listLoadView(categories, "categories");
 
-  // Only an ended session or lost access hides the list; any other failed refresh keeps the last one read
-  const refreshFailed = categories.isError && !!categories.data && status !== 401 && status !== 403;
-
-  const blocked = categories.isError && !refreshFailed;
   const rows = useMemo(() => categoryRows(categories.data ?? []), [categories.data]);
 
   // A dialog keeps the category it opened with, whatever the list does meanwhile, and shows it until it has faded away
@@ -540,7 +535,7 @@ export function CategoriesScreen({
               Add category
             </Button>
           }
-          status={categories.isPending ? "Loading categories…" : null}
+          status={load.status}
           notices={
             <>
               {readOnly && why && (
@@ -548,16 +543,7 @@ export function CategoriesScreen({
                   {why}
                 </Banner>
               )}
-              {refreshFailed && (
-                <RefreshFailure
-                  inset="card"
-                  pending={categories.isFetching}
-                  pendingLabel="Refreshing categories…"
-                  onRetry={() => void categories.refetch()}
-                >
-                  We could not refresh categories. Showing the last loaded list.
-                </RefreshFailure>
-              )}
+              {load.notices}
               {problem && (
                 <Banner tone={problem.tone} layout="strip" inset="card">
                   {problem.text}
@@ -565,16 +551,7 @@ export function CategoriesScreen({
               )}
             </>
           }
-          failure={
-            blocked && (
-              <LoadFailure
-                noun="categories"
-                error={categories.error}
-                retrying={categories.isFetching}
-                retry={() => void categories.refetch()}
-              />
-            )
-          }
+          failure={load.failure}
         >
           <table.DataTable
             caption="Categories"
