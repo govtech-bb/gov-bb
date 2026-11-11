@@ -89,9 +89,11 @@ describe('fetchCollectionRecords', () => {
 
   it('is a silent miss on a 404', async () => {
     const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
     const fetchImpl = stubFetch(json(404, { error: 'not_found' }))
     expect(await fetchCollectionRecords(BASE, 'contacts', fetchImpl)).toBeNull()
     expect(error).not.toHaveBeenCalled()
+    expect(warn).not.toHaveBeenCalled()
   })
 
   it.each([
