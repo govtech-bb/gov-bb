@@ -48,6 +48,8 @@ const ALL = [
   "022_restored_from",
   "023_change_event_counters",
   "024_edit_versions",
+  "025_page_redirects",
+  "026_change_event_order",
 ];
 
 /** Tables whose rows are not content, so the history does not record them. */
@@ -93,6 +95,7 @@ describe("migrate", () => {
       "collection_records",
       "content_pages",
       "data_collections",
+      "page_redirects",
       "page_revisions",
       "schema_migrations",
       "search_chunks",
@@ -162,6 +165,8 @@ describe("migrate", () => {
       "022_restored_from",
       "023_change_event_counters",
       "024_edit_versions",
+      "025_page_redirects",
+      "026_change_event_order",
     ]);
     const pages = await exec("select count(*)::int as n from content_pages");
     expect(pages.rows).toEqual([{ n: 0 }]);
@@ -207,6 +212,8 @@ describe("migrate", () => {
       "022_restored_from",
       "023_change_event_counters",
       "024_edit_versions",
+      "025_page_redirects",
+      "026_change_event_order",
     ]);
     await exec(
       `insert into categories (slug, title) values ('c', 'C');
@@ -712,6 +719,99 @@ describe("migrate", () => {
         { snapshot_version: 1 },
         { snapshot_version: 1 },
       ]);
+    } finally {
+      await close();
+    }
+  });
+
+  it("keeps redirect rules and their audit ids when 025 is replayed", async () => {
+    const { db, exec, close } = await freshDb();
+    try {
+      await migrate(db, exec);
+      await exec(`insert into page_redirects (source_url, destination_url)
+        values ('/old', '/current')`);
+      const rules = (await exec("select * from page_redirects")).rows;
+      const history = (await exec("select * from change_events")).rows;
+
+      await exec(
+        "delete from schema_migrations where name = '025_page_redirects'",
+      );
+      expect(await migrate(db, exec)).toEqual(["025_page_redirects"]);
+      expect((await exec("select * from page_redirects")).rows).toEqual(rules);
+      expect((await exec("select * from change_events")).rows).toEqual(history);
+
+      await exec(`update page_redirects set destination_url = '/new';
+        delete from page_redirects`);
+      expect(
+        (
+          await exec(`select entity_kind, entity_id, version_no, action, actor
+            from change_events order by version_no`)
+        ).rows,
+      ).toEqual(
+        ["created", "updated", "deleted"].map((action, index) => ({
+          entity_kind: "page_redirect",
+          entity_id: rules[0].id,
+          version_no: index + 1,
+          action,
+          actor: "system",
+        })),
+      );
+    } finally {
+      await close();
+    }
+  });
+
+  it("orders only new audit events and never backfills or rewinds order on replay", async () => {
+    const { db, exec, close } = await freshDb();
+    try {
+      await migrate(db, exec);
+      await exec(`alter table change_events drop column if exists event_order;
+        drop sequence if exists change_event_order_seq;
+        delete from schema_migrations where name = '026_change_event_order';
+        insert into content_pages (url, slug, title, body_markdown)
+          values ('/old', 'old', 'Before ordering', '')`);
+      const legacy = (await exec("select * from change_events")).rows;
+
+      expect(await migrate(db, exec)).toEqual(["026_change_event_order"]);
+      expect((await exec("select * from change_events")).rows).toEqual(
+        legacy.map((event) => ({ ...event, event_order: null })),
+      );
+      await exec("update content_pages set title = 'Ordered'");
+      const ordered = (
+        await exec("select * from change_events order by version_no")
+      ).rows;
+      expect(ordered[0].event_order).toBeNull();
+      expect(Number(ordered[1].event_order)).toBeGreaterThan(0);
+
+      await exec(
+        "delete from schema_migrations where name = '026_change_event_order'",
+      );
+      expect(await migrate(db, exec)).toEqual(["026_change_event_order"]);
+      expect(
+        (await exec("select * from change_events order by version_no")).rows,
+      ).toEqual(ordered);
+      await exec("update content_pages set title = 'After replay'");
+      const after = (
+        await exec("select * from change_events order by version_no")
+      ).rows;
+      expect(after[0].event_order).toBeNull();
+      expect(Number(after[2].event_order)).toBeGreaterThan(
+        Number(ordered[1].event_order),
+      );
+
+      await expect(
+        exec(`insert into change_events (entity_kind, entity_id, action, snapshot, event_order)
+        select entity_kind, entity_id, action, snapshot, event_order
+          from change_events where event_order is not null limit 1`),
+      ).rejects.toMatchObject({
+        code: "23505",
+        constraint: "change_events_event_order_unique",
+      });
+      await expect(
+        exec(
+          "update change_events set event_order = event_order + 100 where event_order is not null",
+        ),
+      ).rejects.toThrow("change_events is append-only");
     } finally {
       await close();
     }
