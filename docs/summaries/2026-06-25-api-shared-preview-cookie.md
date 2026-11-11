@@ -34,9 +34,9 @@ Worked in worktree `recipe-visibility-phase3-api` (branch
   multi-cookie parse, no-cookie no-bypass, draft-header mints nothing).
 - **`apps/api/.env.example`** — documents `PREVIEW_COOKIE_DOMAIN` and the
   `RECIPE_PREVIEW_TOKEN == PREVIEW_SECRET` value-alignment.
-- **`docs/decisions/0011-…md`** — re-scoped to the `?draft=`/DB-scratch +
+- **`docs/decisions/0026-…md`** — re-scoped to the `?draft=`/DB-scratch +
   disabled-form path (it no longer governs the published-form visibility bypass).
-- **`docs/decisions/0058-…md`** (new) — the shared preview cookie as a forgeable
+- **`docs/decisions/0099-…md`** (new) — the shared preview cookie as a forgeable
   rollout gate.
 
 ## Why it looks this way

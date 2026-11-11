@@ -7,7 +7,7 @@ name: Forms Live Smoke
 # the callers keep their dependency edge (deploy-sandbox's smoke jobs
 # `needs: amplify-forms`; pr-preview's smoke job `needs: preview-forms`) while
 # the steps below live in one place. See ADR 0047 (post-deploy smoke) and ADR
-# 0029 (per-PR preview smoke).
+# 0050 (per-PR preview smoke).
 #
 # No AWS credentials: it drives a headless browser against the public deployed
 # URL, and any uploads use presigned URLs the deployed API issues server-side.

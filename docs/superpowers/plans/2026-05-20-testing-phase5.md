@@ -213,7 +213,7 @@ Read `apps/web/src/components/review.tsx` before writing the spec to confirm the
 - [ ] If **functions < 88%**: identify the top-5 uncovered functions (from the HTML report). For each, decide:
   - Is it reachable with an additional unit test? → add the test.
   - Is it in `form-renderer.tsx` or `routes/forms/$formId/index.tsx`? → escalate to the scope decision below.
-- [ ] **Scope decision for `form-renderer`**: create a task item here only if the measurement shows functions < 88% and the gap is attributable to `form-renderer`. Document the decision (add unit tests vs accept E2E-only) in `docs/decisions/0003-*`.
+- [ ] **Scope decision for `form-renderer`**: create a task item here only if the measurement shows functions < 88% and the gap is attributable to `form-renderer`. Document the decision (add unit tests vs accept E2E-only) in `docs/decisions/0004-*`.
 
 ### 3.6 — Threshold ratchet
 
@@ -310,7 +310,7 @@ Inspect `packages/form-conditions/coverage/index.html` to identify the specific 
 | `packages/form-types/src/validation-rules.type.spec.ts` | New |
 | `packages/form-types/src/form-field.type.spec.ts` | Add `fieldConditionalOnSchema` operator tests |
 | `packages/form-conditions/src/index.spec.ts` | Add targeted branch tests from HTML report |
-| `docs/decisions/0003-*.md` | New — 90% target, exemptions, ratchet policy |
+| `docs/decisions/0004-*.md` | New — 90% target, exemptions, ratchet policy |
 
 ---
 

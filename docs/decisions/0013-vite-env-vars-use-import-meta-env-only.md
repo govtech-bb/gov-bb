@@ -1,4 +1,4 @@
-# Vite frontend env vars use `import.meta.env` only
+# 0013 — Vite frontend env vars use `import.meta.env` only
 
 **Status:** Accepted (2026-05-21)
 **Applies to:** `apps/forms`, `apps/landing`, `apps/form_builder`, and any future Vite-built app in this monorepo.

@@ -1,4 +1,4 @@
-# 0050 — Live smoke tests may gate a PR via its Amplify preview (amends 0027)
+# 0050 — Live smoke tests may gate a PR via its Amplify preview (amends 0047)
 
 **Date:** 2026-06-02
 **Status:** Accepted — amends [0047](0047-live-smoke-tests-run-post-deploy-not-per-pr.md)

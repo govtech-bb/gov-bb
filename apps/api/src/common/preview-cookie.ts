@@ -2,7 +2,7 @@
  * Shared `preview` cookie helpers (#1646 Phase 3, ADR 0099). The cross-app
  * `preview` cookie grants a **visibility** bypass by its presence — its value
  * is only the level, never a secret (a forgeable rollout gate per ADR
- * 0013/0058). Used by the form-GET path and the file-upload presign/confirm
+ * 0028/0099). Used by the form-GET path and the file-upload presign/confirm
  * path (#2116) so a non-public form loaded via the shared cookie — after
  * `canDropPreviewToken` removed the `?preview=` URL token — can still resolve
  * its file-field config.
