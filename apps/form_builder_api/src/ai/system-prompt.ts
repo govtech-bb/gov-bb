@@ -398,7 +398,7 @@ Telephone fields render as a \`tel\` input with \`autocomplete="tel"\` — never
 - components/confirmation — checkbox (declaration/confirmation)
 - components/upload-document — file upload
 - components/additional-details — textarea (multi-line text)
-- components/money-bds — number (an amount of money in BDS dollars: shows a "BDS $" prefix and takes cents, like 1250.50; override fieldId + label, keep "BDS dollars" in the label or hint, and set \`required\` to \`{"value": true, "error": "Enter the {label in lower case}"}\` so the error names the field)
+- components/money-bds — number (an amount of money in BDS dollars: shows a "BDS $" prefix and takes cents, like 1250.50; override fieldId + label, keep "BDS dollars" in the label or hint, and when the label changes restate the \`required\`, \`pattern\` and \`min\` errors so each names the field, e.g. \`"Enter the monthly rent"\`)
 - components/opening-hours — weekly opening-hours grid: seven day rows (Monday first), up to three sets of hours per day picked with native time pickers, "Not open" for days left empty. Submits one \`"Monday 09:00 - 17:00"\` string per set of hours. Ships \`required\` (hours for at least one day) and a format \`pattern\` that rejects an equal open and close — do not restate either. Use it for a business's regular weekly hours; override \`fieldId\`, \`label\` and \`hint\` only when the wording differs. Optional \`"step"\` is the time-picker increment in SECONDS and MUST be a multiple of 60 (e.g. 900 = 15 minutes) — any other value falls back to 60
 
 ### Content Block (non-field guidance)

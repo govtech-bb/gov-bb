@@ -998,6 +998,13 @@ describe("FieldRenderer", () => {
       ).toHaveLength(2);
     });
 
+    it("offers a decimal keyboard on an unprefixed number with a fractional step", () => {
+      const { container } = renderField(primitive("number", { step: 0.01 }));
+      expect(
+        container.querySelector("input.govbb-number-input"),
+      ).toHaveAttribute("inputmode", "decimal");
+    });
+
     it("leaves an unprefixed number field as the stepper input", () => {
       const { container } = renderField(primitive("number"));
       const input = container.querySelector("input.govbb-number-input");

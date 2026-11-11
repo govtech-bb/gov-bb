@@ -39,7 +39,7 @@ export function renderTextField(ctx: FieldRenderContext): JSX.Element {
         {...(withRequired ? requiredProps : {})}
         labelId={`${field.id}-label`}
         min={0}
-        inputMode="numeric"
+        inputMode={inputMode}
         value={value}
         aria-invalid={invalid}
         onInput={(event) => onChange(event.currentTarget.value)}
