@@ -9,6 +9,7 @@ export {
   journeyEnabled,
   sendJourney,
 } from "./journey";
+export { installOutboundClickListener } from "./outbound";
 
 declare global {
   interface Window {
@@ -87,6 +88,15 @@ export interface TrackingData {
   search: { query: string; results: number };
   "search-result-click": { query: string; position: number; href: string };
   "search-no-results": { query: string };
+  /**
+   * Citizen followed a link that leaves the service (#3512). `host` is set for
+   * web links only. Never the full URL, query string, number or address.
+   */
+  "outbound-click": {
+    kind: "link" | "tel" | "mailto";
+    host?: string;
+    page: string;
+  };
 }
 
 export type TrackingEventName = keyof TrackingData;

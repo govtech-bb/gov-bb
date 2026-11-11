@@ -1,6 +1,11 @@
 import { describe, expect, it, vi } from 'vitest'
 import { getRouter } from './router'
-import { installClickListener, trackPageview } from './lib/analytics'
+import {
+  installClickListener,
+  installOutboundClickListener,
+  trackPageview,
+} from './lib/analytics'
+import { FORMS_BASE_URL } from './config/env'
 
 // vi.mock calls are hoisted above the imports, so getRouter sees the mocks.
 const subscribe = vi.hoisted(() => vi.fn())
@@ -15,6 +20,7 @@ vi.mock('./routeTree.gen', () => ({ routeTree: {} }))
 vi.mock('./lib/analytics', () => ({
   configureJourney: vi.fn(),
   installClickListener: vi.fn(),
+  installOutboundClickListener: vi.fn(),
   trackPageview: vi.fn(),
 }))
 
@@ -34,5 +40,15 @@ describe('getRouter', () => {
     getRouter()
 
     expect(installClickListener).toHaveBeenCalled()
+  })
+
+  // #3512: installed whether or not /journey is configured, and told the
+  // forms origin so links to forms are not counted as leaving the service.
+  it('installs the outbound click listener with the forms origin', () => {
+    getRouter()
+
+    expect(installOutboundClickListener).toHaveBeenCalledWith({
+      internalOrigins: [FORMS_BASE_URL],
+    })
   })
 })

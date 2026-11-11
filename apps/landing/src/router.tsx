@@ -5,8 +5,10 @@ import { routeTree } from './routeTree.gen'
 import {
   configureJourney,
   installClickListener,
+  installOutboundClickListener,
   trackPageview,
 } from './lib/analytics'
+import { FORMS_BASE_URL } from './config/env'
 
 export function getRouter() {
   const queryClient = new QueryClient()
@@ -32,6 +34,8 @@ export function getRouter() {
     app: 'landing',
   })
   installClickListener()
+  // Landing and forms are one service, so a link to forms is not outbound.
+  installOutboundClickListener({ internalOrigins: [FORMS_BASE_URL] })
   // onRendered, not onResolved: onResolved only fires when the router goes from
   // pending to idle, which never happens on the first, server-rendered page or
   // on a click whose loader data the `intent` preload already fetched, so most
