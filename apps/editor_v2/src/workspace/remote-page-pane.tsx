@@ -3,6 +3,7 @@ import { CatchBoundary, Link, useNavigate, useRouterState } from "@tanstack/reac
 import {
   useEffect,
   useEffectEvent,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -171,7 +172,11 @@ function RemotePageEditor({
   const baseline = useRef(base);
   const saving = useRef(false);
 
+  // The version the last landed write replaced; the page read still shows it until the query catches up.
+  const [replaced, setReplaced] = useState<ApiPage["version"]>();
+
   const rebase = (next: ServerPageBaseline) => {
+    setReplaced(baseline.current.page.version);
     baseline.current = next;
     setBase(next);
   };
@@ -307,7 +312,8 @@ function RemotePageEditor({
     saving.current = false;
   });
 
-  useEffect(() => {
+  // Before paint, so a landed save never shows for a frame as unsaved changes
+  useLayoutEffect(() => {
     if (save.outcome) saved(save.outcome);
   }, [save.outcome]);
 
@@ -335,7 +341,7 @@ function RemotePageEditor({
     saving.current = false;
   });
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (submit.outcome) submitted(submit.outcome);
   }, [submit.outcome]);
 
@@ -398,6 +404,7 @@ function RemotePageEditor({
       !submitPending &&
       !unsettled &&
       server.version !== base.page.version &&
+      server.version !== replaced &&
       server.version !== savedVersion &&
       server.version !== submittedVersion) ||
     outcome?.kind === "conflict" ||

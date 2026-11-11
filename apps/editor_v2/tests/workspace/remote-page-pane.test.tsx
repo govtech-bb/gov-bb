@@ -425,6 +425,39 @@ test("someone without the editor role can't save", async () => {
   expect(vi.mocked(fetch).mock.calls.some(([, init]) => init?.method === "PUT")).toBe(false);
 });
 
+test("a save that lands is never shown as someone else's newer version", async () => {
+  let current = page;
+
+  const h = await mountPage(async (_url, init) => {
+    if (init?.method === "PUT") current = { ...page, ...JSON.parse(String(init.body)), version: 2 };
+
+    return Response.json(current);
+  });
+
+  await applySource(h.session(), h.session().store.getSnapshot().source + "\n\nMine");
+  let announced = false;
+
+  // Looked at after every change to the page, so a notice that comes and goes is still caught
+  const watch = new MutationObserver(() => {
+    announced ||= !!document.querySelector("[data-document-alert]");
+  });
+
+  watch.observe(document.body, { childList: true, subtree: true, characterData: true });
+
+  try {
+    await savePage();
+    await vi.waitFor(() => expect(h.session().getBaseline().page.version).toBe(2));
+    await vi.waitFor(() =>
+      expect(h.client.getQueryData(pageQuery(h.api, page.id).queryKey)?.version).toBe(2),
+    );
+    await act(async () => {});
+  } finally {
+    watch.disconnect();
+  }
+
+  expect(announced).toBe(false);
+});
+
 test("Save keeps the focus while it saves, and once its save leaves nothing to save", async () => {
   const answered = Promise.withResolvers<void>();
   let current = page;
