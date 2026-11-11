@@ -1,8 +1,8 @@
 import { readFileSync } from "node:fs";
-import { sql } from "drizzle-orm";
+import { sql, TransactionRollbackError } from "drizzle-orm";
 import { drizzle, type NodePgQueryResultHKT } from "drizzle-orm/node-postgres";
 import type { PgDatabase } from "drizzle-orm/pg-core";
-import { Pool } from "pg";
+import { Pool, type QueryConfig } from "pg";
 import type { Logger } from "pino";
 import type { AppConfig } from "./config";
 import { err, ok, type Result } from "./modules/result";
@@ -38,10 +38,19 @@ function sslConfig(config: AppConfig["database"]) {
   };
 }
 
-/** Construct the shared pool from parsed settings, preserving verified production TLS. */
+/**
+ * Construct the shared pool from parsed settings, preserving verified
+ * production TLS. `queryTimeoutMs` fails a query the database has gone quiet
+ * on (a failover or partition keeps the socket open) instead of waiting
+ * minutes for TCP to notice; without it a query may run as long as it needs.
+ * Postgres gets the same limit (`statement_timeout`): a backend waiting on a
+ * lock doesn't notice its client has gone, so without it every timed-out
+ * query would keep a connection open after the pool has replaced it.
+ */
 export function createPool(
   config: AppConfig["database"],
   logger: Pick<Logger, "warn">,
+  { queryTimeoutMs }: { queryTimeoutMs?: number } = {},
 ): Result<Pool, DatabaseFailure> {
   try {
     const pool = new Pool({
@@ -52,6 +61,11 @@ export function createPool(
       database: config.database,
       ssl: sslConfig(config),
       connectionTimeoutMillis: 2000,
+      keepAlive: true,
+      keepAliveInitialDelayMillis: 10_000,
+      ...(queryTimeoutMs === undefined
+        ? {}
+        : { query_timeout: queryTimeoutMs, statement_timeout: queryTimeoutMs }),
     });
     // This text is an operational alarm marker. The driver error carries its
     // client, so forwarding the whole error would expose connection credentials.
@@ -90,8 +104,47 @@ export async function connect(
       ),
     );
   }
-  return ok(drizzle(pool));
+  const db = drizzle(pool);
+  // drizzle-orm (0.45, node-postgres session.js) releases a transaction's
+  // client without an error even after a query on it timed out, so the pool
+  // lends out a connection still inside the abandoned transaction; and when
+  // `begin` itself fails it never releases the client, which the pool then
+  // counts for good. So transactions borrow the client here and destroy it
+  // unless they finished cleanly; Postgres rolls back whatever it held.
+  const transaction: typeof db.transaction = async (work, config) => {
+    const client = await pool.connect();
+    try {
+      const result = await drizzle(client).transaction(work, config);
+      client.release();
+      return result;
+    } catch (error) {
+      // A refusal's rollback has run, so its connection is clean.
+      client.release(!(error instanceof TransactionRollbackError));
+      throw error;
+    }
+  };
+  return ok(Object.assign(db, { transaction }));
 }
+
+/** A boot migration's own limit, in place of the pool's request one. */
+const MIGRATION_TIMEOUT_MS = 10 * 60_000;
+/** pg honours a per-query `query_timeout` that @types/pg's QueryConfig omits. */
+type TimedQuery = QueryConfig & { query_timeout: number };
+
+/**
+ * Runs a migration script on the pool. A migration may outlast the request
+ * limits, so it raises both: pg reads a per-query 0 as "use the pool's", so the
+ * client's is a large value rather than none, and `set local` holds the
+ * server's only for the script's own implicit transaction, so the pooled
+ * connection keeps the request limit afterwards.
+ */
+export const migrationExec = (pool: Pool) => (script: string) => {
+  const query: TimedQuery = {
+    text: `set local statement_timeout = ${MIGRATION_TIMEOUT_MS};\n${script}`,
+    query_timeout: MIGRATION_TIMEOUT_MS,
+  };
+  return pool.query(query);
+};
 
 /** Whether the database answers within the cap; `/health/db` reports it. */
 export async function ping(db: Database, timeoutMs = 2000): Promise<boolean> {
