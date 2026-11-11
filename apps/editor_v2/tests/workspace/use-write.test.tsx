@@ -77,3 +77,66 @@ test.each(["landed", "unknown", "confirmed"])(
     }
   },
 );
+
+test("a new press clears the last outcome; checking an unsettled write keeps it", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const sent = Promise.withResolvers<undefined>();
+  const read = Promise.withResolvers<RecordDetail>();
+
+  const api = {
+    ...createEditorApi("https://content.test"),
+    deleteRecord: vi
+      .fn<EditorApi["deleteRecord"]>()
+      .mockRejectedValueOnce(new ApiFailure(403))
+      .mockReturnValueOnce(sent.promise),
+    record: vi
+      .fn<EditorApi["record"]>()
+      .mockRejectedValueOnce(new ApiFailure(503))
+      .mockReturnValueOnce(read.promise),
+  };
+
+  function Harness() {
+    const write = useWrite(api, writes.deleteRecord);
+
+    return (
+      <button
+        onClick={() => void write.press(() => ({ collection: "contacts", key: "nis", version: 1 }))}
+      >
+        {write.state}:{write.outcome?.kind}
+      </button>
+    );
+  }
+
+  const host = document.createElement("div");
+  const root = createRoot(host);
+  const press = () => act(async () => host.querySelector("button")!.click());
+
+  try {
+    await act(async () =>
+      root.render(
+        <QueryClientProvider client={client}>
+          <Harness />
+        </QueryClientProvider>,
+      ),
+    );
+    await press();
+    expect(host.textContent).toBe("idle:forbidden");
+
+    // A refusal was answered, so the next press is a new request and starts clean
+    await press();
+    expect(host.textContent).toBe("sending:");
+    await act(async () => sent.reject(new ApiFailure(0)));
+    expect(host.textContent).toBe("unsettled:unknown");
+
+    // This press checks the same request, so its "unknown" stays up meanwhile
+    await press();
+    expect(host.textContent).toBe("checking:unknown");
+    await act(async () => read.reject(new ApiFailure(404)));
+    expect(host.textContent).toBe("idle:landed");
+    expect(api.deleteRecord).toHaveBeenCalledTimes(2);
+  } finally {
+    await act(async () => root.unmount());
+    client.clear();
+  }
+});
