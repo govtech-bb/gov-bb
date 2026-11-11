@@ -43,7 +43,7 @@ export function collectSitemapEntries(
   add('/', 1)
   add('/services', 0.9)
 
-  // api_v2 mode (ADR 0078): its public tree's categories, or none when it
+  // api_v2 mode (ADR 0132): its public tree's categories, or none when it
   // can't be read. Never use the static taxonomy, which would list removed ones.
   // Pages and app routes below are listed either way.
   if (categoryTree.kind === 'disabled') {

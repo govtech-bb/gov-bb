@@ -10,7 +10,7 @@
  *
  * Like the other specs under e2e/smoke it runs ONLY via
  * playwright.smoke.config.ts — the normal `test:e2e` / CI suite ignores this
- * directory (see ADR 0027 / 0029), and no workflow runs it automatically:
+ * directory (see ADR 0047 / 0051), and no workflow runs it automatically:
  * forms-smoke.yml only ever runs the ONE spec its caller names, so this file is
  * inert in CI until it is explicitly wired in.
  *

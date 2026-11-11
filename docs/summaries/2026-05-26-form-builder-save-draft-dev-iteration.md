@@ -4,12 +4,12 @@
 **Branch:** `feat/form-builder-save-draft-dev-iteration`
 **Issue:** [#153](https://github.com/govtech-bb/gov-bb/issues/153) — form_builder + api: dev iteration via Save Draft + API serves DB alongside files
 **Plan:** `docs/plans/form-builder-save-draft-dev-iteration.md`
-**ADR:** `docs/decisions/0008-form-builder-catalog-aligns-with-api-registry.md`
+**ADR:** `docs/decisions/0018-form-builder-catalog-aligns-with-api-registry.md`
 
 ## Context
 
 After #145 made files the only runtime recipe source (see
-[0007](../decisions/0007-runtime-recipes-load-from-files-not-form_definitions-table.md)),
+[0017](../decisions/0017-runtime-recipes-load-from-files-not-form_definitions-table.md)),
 the local-dev workflow for authoring a form regressed. Save draft from
 `/builder/ui` writes to `form_definitions`, but every end-user `GET
 /form-definitions/{formId}` reads from disk — so a dev who wanted to preview
@@ -46,7 +46,7 @@ One commit: `fdc1943 feat(api): RECIPE_SOURCE=both mode for save-draft dev itera
 **Scope expansion: form_builder catalog → API registry alignment.** First
 end-to-end verify failed: `GET /form-definitions/{formId}` 500'd. Dispatched
 a general-purpose subagent to walk the hydration code path. Findings
-([detail in 0008](../decisions/0008-form-builder-catalog-aligns-with-api-registry.md)):
+([detail in 0018](../decisions/0018-form-builder-catalog-aligns-with-api-registry.md)):
 the field picker's "Primitives" tab advertised refs like `components/text`
 and `blocks/name` that the API's domain-specific registry doesn't know about
 — so every draft 500'd on `UnresolvableComponentError`, masked by the global
@@ -131,7 +131,7 @@ here; deferred because (1) the picker change makes accidental drift through
 the UI impossible, (2) the validation belongs to the form-builder-api,
 which is its own service surface, and (3) it's a separate principle worth
 deciding deliberately (do we reject at save time, or annotate as
-"unresolvable" and let GET 422?). Tracked as a follow-up in 0008.
+"unresolvable" and let GET 422?). Tracked as a follow-up in 0018.
 
 ## Open items / follow-ups
 
@@ -140,7 +140,7 @@ deciding deliberately (do we reject at save time, or annotate as
   GET round-trip. Worth deciding policy: reject at save, or allow + flag.
 - **Retire `packages/form-builder/src/builtins/`.** Migrate the
   fixture-heavy specs onto registry-backed fixtures and delete the in-package
-  builtin files. Mentioned in 0008.
+  builtin files. Mentioned in 0018.
 - **Retire `RECIPE_SOURCE=db`.** With `both` covering dev iteration, the
   DB-only mode has no remaining use case. Mentioned in the plan's follow-up
   list.
@@ -171,6 +171,6 @@ deciding deliberately (do we reject at save time, or annotate as
 ## Branch state
 
 Tip at `2cd11b9 fix(form_builder): field picker emits API-registered refs
-only`. Two commits ahead of the merge point. Plan doc, ADR 0008, and this
+only`. Two commits ahead of the merge point. Plan doc, ADR 0018, and this
 summary committed as docs in a third commit. PR target should match the rest
 of the recipe-files work — `dev`.

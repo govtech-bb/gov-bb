@@ -18,7 +18,7 @@ import { resolveTokenAuth } from "../resolve-token-auth";
  * with fallbacks after it, e.g.
  * `new AdminTokenGuard("ADMIN_KILL_SWITCH_TOKEN", "ARCHIVE_DRAFTS_TOKEN")` —
  * the first name with a non-empty value in `process.env` wins. This uses the
- * shared dev-bypass policy — ADR 0061:
+ * shared dev-bypass policy — ADR 0106:
  *   - no var set + production  → 500 (fail closed; misconfigured server)
  *   - no var set + non-prod    → pass through (local dev)
  *   - a var is set             → presented token must match it, else 401

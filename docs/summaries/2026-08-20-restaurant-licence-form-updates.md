@@ -12,7 +12,7 @@ principle behind most of the removals: **anything the inspection sheet covers
 does not belong on the application form** — the officer establishes it on site
 anyway, and asking twice is friction that buys nothing. That principle was
 written up the same day, from the parallel food business licence pass, as
-[ADR 0068](../decisions/0068-environmental-health-forms-do-not-ask-what-the-inspection-verifies.md).
+[ADR 0116](../decisions/0116-environmental-health-forms-do-not-ask-what-the-inspection-verifies.md).
 
 ## What we did
 
@@ -46,7 +46,7 @@ plus one new spec (`apply-for-restaurant-licence.spec.ts`).
   counter per day, so the two halves of a range cannot desync. We traded a real
   time picker and structured data for an invariant that holds by construction —
   generalised as
-  [ADR 0069](../decisions/0069-paired-values-are-one-repeated-field.md).
+  [ADR 0117](../decisions/0117-paired-values-are-one-repeated-field.md).
 - **Free text is only acceptable because `pattern` reaches every entry.**
   `forEachString` (packages/form-validation/src/rules/string-values.ts) maps
   string-format rules over an array value and skips blank elements, so the

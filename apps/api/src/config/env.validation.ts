@@ -161,8 +161,8 @@ const baseSchema = z
     // (the default) disables the bypass entirely — leave unset in production.
     // A free string, not an enum: valid form IDs aren't known at boot (recipes
     // resolve from files at runtime) and an unknown ID simply never matches.
-    // DB-only builder drafts stay unsubmittable regardless (ADR 0043 / #145).
-    // Replaces the blanket ALLOW_PREVIEW_SUBMISSIONS boolean — see ADR 0066.
+    // DB-only builder drafts stay unsubmittable regardless (ADR 0075 / #145).
+    // Replaces the blanket ALLOW_PREVIEW_SUBMISSIONS boolean — see ADR 0114.
     PREVIEW_SUBMISSION_FORM_IDS: z.string().default(""),
 
     // Parent domain for the cross-app shared `preview` cookie (#1646 Phase 3),
@@ -179,13 +179,13 @@ const baseSchema = z
     // (kill switch + draft archive). OPTIONAL on purpose: the guard reads it
     // per-request, so an unset value only disables auth outside production (it
     // fails closed in prod). Never make this `.required()` — a boot-time
-    // required var would crash-loop ECS on a missing value (ADR 0061).
+    // required var would crash-loop ECS on a missing value (ADR 0106).
     ARCHIVE_DRAFTS_TOKEN: z.string().optional(),
 
     // Dedicated token for the kill-switch admin surface (per-form disable).
     // When unset, the guard falls back to ARCHIVE_DRAFTS_TOKEN (same value
     // today) — set this var only to rotate the two credentials independently.
-    // Never make this `.required()` either, for the same reason (ADR 0061).
+    // Never make this `.required()` either, for the same reason (ADR 0106).
     ADMIN_KILL_SWITCH_TOKEN: z.string().optional(),
 
     // Shared secret the observability console presents (Authorization: Bearer)
@@ -193,7 +193,7 @@ const baseSchema = z
     // per-request by AdminTokenGuard, so it fails closed in prod (unset → 500,
     // never serves PII un-gated) and stays open in local dev. OPTIONAL on
     // purpose — never `.required()`, same ECS crash-loop reason as above
-    // (ADR 0061).
+    // (ADR 0106).
     MONITORING_API_TOKEN: z.string().optional(),
 
     // S3 file uploads (optional — required only when a form uses file fields)

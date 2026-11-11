@@ -1,7 +1,7 @@
 /**
  * A page's history as the editor lists it, read from `change_events`: what
  * happened, who did it, when, and for a change to the live page which fields
- * it changed. Restoring an entry writes a new one (ADR 0080).
+ * it changed. Restoring an entry writes a new one (ADR 0135).
  */
 
 import { isDeepStrictEqual } from "node:util";

@@ -32,7 +32,7 @@ const ACTIONS: Record<PageHistoryEntry["action"], string> = {
   discarded: "Review closed when the page was taken out of public view",
 };
 
-/** Entries whose snapshot is the page itself, so a restore can bring it back (ADR 0080). */
+/** Entries whose snapshot is the page itself, so a restore can bring it back (ADR 0135). */
 const VERSIONS = new Set<PageHistoryEntry["action"]>([
   "created",
   "updated",

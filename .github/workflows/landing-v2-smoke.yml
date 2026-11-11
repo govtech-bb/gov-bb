@@ -1,13 +1,16 @@
 name: Landing v2 Smoke
 
-# Post-deploy smoke of landing served from api_v2 (#3305: #3140, #3144).
+# Post-deploy smoke of landing served from api_v2 (#3305: #3140, #3143, #3144).
 # After each Amplify build of `v2-rewrite` on the sandbox landing app, it
 # checks the preview:
 #
 # - every known api_v2 page comes back `x-content-source: api_v2`, so a
 #   broken, stale or empty api_v2 can't hide behind landing's static fallback;
 # - every api_v2 page bound to a form opens that form's first step from its
-#   Start link. Nothing is submitted.
+#   Start link. Nothing is submitted;
+# - visibility gating: preview pages 404 for the public, and a page whose form
+#   is under maintenance, form_disabled or closed shows its notice, no Start
+#   link, and a 404 `/start` step.
 #
 # A red run on v2-rewrite's head blocks the v2-rewrite -> main merge (#3131).
 # After that merge, #3311 retargets it at landing.sandbox.alpha.gov.bb.
@@ -34,6 +37,10 @@ env:
   # Must equal the Amplify v2-rewrite branch's VITE_FORMS_URL: the walk
   # looks for Start links to exactly <this>/forms/<form_id>.
   SMOKE_FORMS_URL: https://forms.sandbox.alpha.gov.bb
+  # Must equal the Amplify v2-rewrite branch's VITE_FORMS_API_URL: the
+  # visibility check reads the same maintenance, closed and service-status
+  # lists landing gates on.
+  SMOKE_FORMS_API_URL: https://forms.api.sandbox.alpha.gov.bb
 
 jobs:
   wait:
@@ -88,7 +95,7 @@ jobs:
           gh run watch "$RUN_ID" --repo "$REPO" --exit-status --interval 30
 
   smoke:
-    name: Smoke (api_v2 source, Start links)
+    name: Smoke (api_v2 source, Start links, visibility gating)
     needs: wait
     if: needs.wait.outputs.superseded != 'true'
     runs-on: ubuntu-latest
@@ -114,6 +121,10 @@ jobs:
       - name: Self-test (the checks fail on broken pages)
         run: pnpm --filter @govtech-bb/landing test:smoke --project selftest
       - name: Smoke the v2-rewrite preview
+        env:
+          # Must equal sandbox api_v2's PREVIEW_SECRET, so the visibility check
+          # can list preview pages. Absent, the preview test skips.
+          SMOKE_API_V2_PREVIEW_TOKEN: ${{ secrets.RECIPE_PREVIEW_TOKEN }}
         run: pnpm --filter @govtech-bb/landing test:smoke --project live
       - name: Upload Playwright trace on failure
         if: failure()

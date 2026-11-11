@@ -136,7 +136,7 @@ const environment = z
     AUTH_BYPASS: z.enum(["true", "false"]).optional(),
     PREVIEW_SECRET: z.string().min(1).optional(),
     LANDING_SECRET: z.string().min(1).optional(),
-    // Comma-separated; how an environment always has an admin (ADR 0079).
+    // Comma-separated; how an environment always has an admin (ADR 0134).
     API_V2_ADMIN_EMAILS: z
       .string()
       .default("")
@@ -179,7 +179,7 @@ const environment = z
         code: "custom",
         path: ["API_V2_ADMIN_EMAILS"],
         message:
-          "Set API_V2_ADMIN_EMAILS to at least one admin's email: without an admin nobody can grant the approver role (ADR 0079)",
+          "Set API_V2_ADMIN_EMAILS to at least one admin's email: without an admin nobody can grant the approver role (ADR 0134)",
       });
     // A bypassed API admits any caller, so it is only for an editor on this machine.
     if (

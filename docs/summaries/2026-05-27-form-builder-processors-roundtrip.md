@@ -4,7 +4,7 @@
 **Branch:** `fix/form-builder-processors-roundtrip` (off `sandbox`, merges back to `sandbox`)
 **Issue:** [#255](https://github.com/govtech-bb/gov-bb/issues/255)
 **Plan:** `docs/plans/form-builder-processors-roundtrip.md`
-**Decision:** [ADR 0013](../decisions/0013-form-builder-round-trip-preserves-unauthored-fields.md)
+**Decision:** [ADR 0029](../decisions/0029-form-builder-round-trip-preserves-unauthored-fields.md)
 
 ## Context
 
@@ -26,7 +26,7 @@ of 2": fix the data loss only, no authoring UI.
   no-processors-stays-absent guard; added a populated round-trip (email + payment
   + webhook, deep-equal), a `serviceContractRecipeSchema` parse, and an
   explicit-empty-`[]` test. 74 tests (was 71).
-- ADR 0013 records the general principle the bug violated.
+- ADR 0029 records the general principle the bug violated.
 
 ## Why we did it that way
 

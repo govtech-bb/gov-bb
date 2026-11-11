@@ -174,7 +174,7 @@ export class ContentService {
 
   /**
    * In api_v2 mode, the catalog's own visibility; `service_status` is not read
-   * (ADR 0063 "After cutover"). Otherwise the services index with visibility
+   * (ADR 0110 "After cutover"). Otherwise the services index with visibility
    * derived from the runtime `service_status`
    * table (keyed by the canonical slug — `formId` when the service has a form,
    * else the content slug). `includeNonPublic` gates preview services — the

@@ -49,7 +49,7 @@ was purely the version *label*, driven by a debounced effect:
 - **`getRecipe` precedence tests** added to `server/forms.spec.ts`: published
   newer → published; draft newer-or-equal → draft; no published → draft; no
   draft (404) → published.
-- **ADR-0019** records the client-side deterministic versioning principle.
+- **ADR-0038** records the client-side deterministic versioning principle.
 
 ## Why we did it that way
 
@@ -61,7 +61,7 @@ was purely the version *label*, driven by a debounced effect:
   resolves the true latest published version synchronously on the client, so a
   server round-trip on the load path is both redundant and the flicker vector.
   Reading the DB for "next version" is structurally wrong: the DB is builder
-  scratch (ADR-0007) and never holds the GitHub-published version. See ADR-0019.
+  scratch (ADR-0017) and never holds the GitHub-published version. See ADR-0038.
 - **Deploy cuts a minor — a free fix for a latent bug.** Publishing
   `bumpMinor(current)` rather than re-publishing `current` means a redeploy never
   collides with the existing `<current>.json` on GitHub.

@@ -1,6 +1,6 @@
 // Frozen one-time seed (#1650), generated from landing content and recipe
 // visibility. The generator was retired in #3251: after cutover a
-// `service_status` row no longer changes a page (ADR 0063). Do not edit or
+// `service_status` row no longer changes a page (ADR 0110). Do not edit or
 // regenerate. Consumed only by the SeedServiceStatus migration, which still
 // runs once in each new environment.
 import type { ServiceStatus } from "../entities";

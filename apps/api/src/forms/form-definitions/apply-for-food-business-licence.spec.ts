@@ -211,7 +211,7 @@ it("requires the staff list as a document, not a headcount", async () => {
   expect(list.validations).toMatchObject({ required: { value: true } });
 
   // The sex-split headcounts sit alongside it rather than instead of it: ADR
-  // 0068 keeps "staff numbers by sex, which fix the restroom provision the
+  // 0116 keeps "staff numbers by sex, which fix the restroom provision the
   // premises must meet" on the form. An earlier version of this guard asserted
   // the opposite and cited the same ADR; it only kept passing because the
   // fields came back under different ids (`male-staff-count`, not

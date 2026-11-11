@@ -5,7 +5,7 @@ const ADMIN_TOKEN_HEADER = "x-admin-token";
 
 /**
  * Gates /builder/* on the shared X-Admin-Token, using the one dev-bypass policy
- * shared with apps/api's AdminTokenGuard (ADR 0061): token unset + prod → 500,
+ * shared with apps/api's AdminTokenGuard (ADR 0106): token unset + prod → 500,
  * token unset + non-prod → passthrough, token set → must match. The 401
  * (missing header) vs 403 (wrong token) split is an Express-adapter concern, so
  * it stays here.

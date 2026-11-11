@@ -10,7 +10,7 @@ off `sandbox`.
 
 ## What we did
 
-Three composing layers (see ADR 0041 for the principles):
+Three composing layers (see ADR 0071 for the principles):
 
 - **CI**: `scripts/recipe-version-guard.ts` + a `recipe-version-guard` job —
   immutability rule (override label, deletions exempt) + cross-PR collision

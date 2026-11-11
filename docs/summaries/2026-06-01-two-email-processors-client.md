@@ -56,7 +56,7 @@ specified.
   `contact.email`, `applicant-info.email`, …), so the author fills it in; the
   server Validate flow already catches a still-blank `recipientField`. The MDA
   side has a fixed home — the reserved `contactDetails.email` namespace (see the
-  companion plan's ADR 0023).
+  companion plan's ADR 0042).
 - **Label as per-instance config metadata, not a type subvariant.** Two emails
   are distinguished by `label`, keeping the processor type system flat. (Declined
   to record this as its own ADR — the schema field + editor fallback make the

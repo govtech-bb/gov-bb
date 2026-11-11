@@ -15,7 +15,7 @@ export const Route = createFileRoute('/services')({
       'Browse all digital government services available on alpha.gov.bb.',
       { path: '/services' },
     ),
-  // api_v2 mode replaces the static list (ADR 0078); the catalog is A to Z.
+  // api_v2 mode replaces the static list (ADR 0132); the catalog is A to Z.
   loader: async ({ context }) =>
     context.categoryTree.kind === 'disabled'
       ? null

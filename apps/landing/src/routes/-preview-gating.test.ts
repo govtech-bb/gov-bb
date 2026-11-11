@@ -905,7 +905,7 @@ describe('form route beforeLoad gating', () => {
 
 // The real loader and category resolver run against a stubbed listing response.
 // scripts/check-api-v2-categories.mjs covers the built RPC wiring.
-describe('$ route loader in api_v2 category mode (ADR 0078)', () => {
+describe('$ route loader in api_v2 category mode (ADR 0132)', () => {
   const ref = (url: string, title: string) => ({
     slug: url.split('/').at(-1) ?? '',
     url,

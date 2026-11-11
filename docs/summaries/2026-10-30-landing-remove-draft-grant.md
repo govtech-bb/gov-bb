@@ -12,7 +12,7 @@ editor_v2 already only know `public` and `preview`.
 - Removed the `?draft=` token, `draft` cookie value, `DRAFT_SECRET` build input
   and the draft branch of `decideViewLevel` from `apps/landing`, with its tests,
   comments and README section.
-- Amended ADR 0058 (Status line + end-of-file `## Amendment`).
+- Amended ADR 0099 (Status line + end-of-file `## Amendment`).
 - Checked alpha-infra: three comment-only `DRAFT_SECRET` mentions in
   `amplify-landing.tf`, no variable declared, nothing to remove.
 
@@ -27,9 +27,9 @@ editor_v2 already only know `public` and `preview`.
   decision. `draft` stays as a page value no token grants (hidden from every
   site viewer); `ReviewBanner`'s draft copy and the static ranking tests go with
   it in #3220.
-- **ADR amended, not edited.** Repo precedent (0027, 0046) is an appended
+- **ADR amended, not edited.** Repo precedent (0047, 0081) is an appended
   `## Amendment` plus a Status-line note; no ADR here rewrites its Decision
-  text, so ADR 0058's "`DRAFT_SECRET` … untouched" line stays and is superseded
+  text, so ADR 0099's "`DRAFT_SECRET` … untouched" line stays and is superseded
   by name.
 - **No alpha-infra issue.** Its comments ("DRAFT_SECRET is deliberately NOT
   set") remain true; noted on #3456 for whoever next edits those files.
@@ -37,5 +37,5 @@ editor_v2 already only know `public` and `preview`.
 
 ## Open questions
 
-None. Out of scope by design: the forms-side `?draft=` (ADR 0011) and the v1
+None. Out of scope by design: the forms-side `?draft=` (ADR 0026) and the v1
 API cookie bypass set, which still accepts `draft` harmlessly.

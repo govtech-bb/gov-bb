@@ -1,5 +1,5 @@
 /**
- * Every employee is an editor by default (ADR 0079). From now on api_v2
+ * Every employee is an editor by default (ADR 0134). From now on api_v2
  * grants the role when it creates a user at their first sign-in; this grants
  * it to everyone who signed in before that, with no grantor. The `system`
  * user (007) can never sign in, so it gets none.
