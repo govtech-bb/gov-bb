@@ -17,7 +17,7 @@ no runtime change intended.
   `types/repeatable.type.ts`; updated `renderer.type.ts`, `props.type.ts`,
   `behavior-helper.type.ts`, and the `types/index.ts` barrel to import from it.
 - Recorded the principle in ADR
-  [0056](../decisions/0056-package-barrels-are-for-external-consumers-only.md).
+  [0095](../decisions/0095-package-barrels-are-for-external-consumers-only.md).
 
 ## Why we did it that way
 

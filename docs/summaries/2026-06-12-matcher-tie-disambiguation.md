@@ -16,7 +16,7 @@ Two paths route a request to a form in `apps/chat`:
 1. The **title-token matcher** (`form/detect.ts`) — lexical overlap with a form
    title. It returned a single best, breaking ties by shortest `formId`, then
    pinned it (`resolution.kind = "collect"`).
-2. **RAG-driven disambiguation** (ADR 0048, in `run-turn.ts`) — when the matcher
+2. **RAG-driven disambiguation** (ADR 0083, in `run-turn.ts`) — when the matcher
    pinned *nothing* and retrieval surfaced ≥2 distinct services, it already
    presents clickable choices instead of guessing.
 
@@ -48,7 +48,7 @@ specifically ("redirect mail for a deceased person", scoring that form 1 above
 the others) still offers all of them. That's the deliberate "safe" bias.
 
 **Reused the existing disambiguation surface rather than inventing one.** The
-matcher tie produces the same `{ titles }` shape ADR 0048's RAG path already
+matcher tie produces the same `{ titles }` shape ADR 0083's RAG path already
 feeds to `buildDisambiguationDisclosure` and the `offer-start` action
 (present_choices only — no field tools, so collection can't be forced). A
 matcher tie leaves the session unpinned, so it flows through the identical

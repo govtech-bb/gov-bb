@@ -37,7 +37,7 @@ describe("booting without a database", () => {
     });
     expect(code).toBe(1);
     expect(output).toContain("API_V2_ADMIN_EMAILS");
-    expect(output).toContain("ADR 0079");
+    expect(output).toContain("ADR 0134");
     expect(output).not.toContain("Cannot reach Postgres");
   });
 

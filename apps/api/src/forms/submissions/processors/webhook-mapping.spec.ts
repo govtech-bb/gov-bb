@@ -376,7 +376,7 @@ describe("webhook-mapping", () => {
       expect(build().form_id).toBe("science-camp");
     });
 
-    // Recipe versioning was retired by ADR 0057 (#1196): the served contract
+    // Recipe versioning was retired by ADR 0097 (#1196): the served contract
     // carries no version, so a form_version key would be permanently absent.
     // Asserted here so nobody re-adds a field the CMS could never rely on.
     it("sends no form_version — recipes are versionless", () => {

@@ -40,7 +40,7 @@ forms) split the real causes into three buckets:
    `get-marriage-certificate-test` (name mismatch). Both are forms-team
    follow-ups, not repo changes.
 
-The render contract (ADR-0005) requires **both** a `form_id` in frontmatter and a
+The render contract (ADR-0011) requires **both** a `form_id` in frontmatter and a
 `<a data-start-link>` marker in the body; the youth pages had neither, so the fix
 adds both.
 

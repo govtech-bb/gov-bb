@@ -10,7 +10,7 @@
  *
  * `content_pages.body_markdown` is the page body, stored as written; the site
  * sanitises and renders it. The block document of
- * ADR 0074 returns as a later change.
+ * ADR 0123 returns as a later change.
  */
 
 import {
@@ -318,7 +318,7 @@ export const changeEvents = pgTable(
     occurredAt: timestamp("occurred_at", { withTimezone: true, precision: 3 })
       .notNull()
       .defaultNow(),
-    // The version a restore brought back (ADR 0080); null on every other event.
+    // The version a restore brought back (ADR 0135); null on every other event.
     restoredFrom: integer("restored_from"),
   },
   (table) => [
@@ -393,7 +393,7 @@ export const pageRevisions = pgTable(
       precision: 3,
     }).notNull(),
     createdBy: text("created_by").notNull(),
-    // Everyone who saved to it; none of them may approve it (ADR 0079).
+    // Everyone who saved to it; none of them may approve it (ADR 0134).
     contributors: text("contributors").array().notNull(),
     submittedBy: text("submitted_by"),
     submittedAt: timestamp("submitted_at", {

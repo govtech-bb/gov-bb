@@ -14,7 +14,7 @@ operational migration that follows.
 - `@govtech-bb/form-types`: `formConfigBlobSchema` (loose) +
   `parseFormConfigBlob`; exported `paymentConfigAuthorSchema`.
 - `apps/api`: `FormConfigService.resolveProcessors` + DB-wins append in
-  `findByFormId` — see [ADR 0034](../decisions/0034-payment-processors-resolve-from-form-config.md).
+  `findByFormId` — see [ADR 0059](../decisions/0059-payment-processors-resolve-from-form-config.md).
 - Builder API: tolerant `processors` sibling (absent/clear/set, 400 on
   invalid or non-payment), merged into the blob inside the existing
   transaction; rekey test asserts the blob survives a `form_id` move.
@@ -26,7 +26,7 @@ operational migration that follows.
 
 - **Plan-level decisions** (DB-wins, fail-loud, builder-re-save-as-migration,
   sandbox rows over code special-casing) were settled in the planning session
-  and are recorded in ADR 0034 — not restated here.
+  and are recorded in ADR 0059 — not restated here.
 - **Parallel agent split.** The two planned sessions (API, builder) shared
   exactly one artifact: the blob schema. We built that contract first, then ran
   both sessions as concurrent subagents in one worktree on disjoint file sets,

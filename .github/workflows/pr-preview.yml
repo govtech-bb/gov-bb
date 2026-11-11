@@ -144,7 +144,7 @@ jobs:
 
           # The per-PR preview smoke drives the jobstart-plus-programme form on
           # the preview frontend, which fetches contracts from the SANDBOX API —
-          # so it can only validate a recipe already live on sandbox (ADR 0029).
+          # so it can only validate a recipe already live on sandbox (ADR 0051).
           # (It must be a PUBLIC form: the preview frontend hits the sandbox API,
           # which 404s non-public forms (#1646).) When this PR changes that recipe
           # (or its smoke spec), the preview would run the new spec against the
@@ -276,7 +276,7 @@ jobs:
   # drives a headless browser against the public preview URL. The form has no
   # uploads, so no presign/S3 flow is exercised. It must be a PUBLIC form —
   # the preview frontend reads the sandbox API, which 404s non-public forms
-  # (#1646). See ADR 0030 — this is the per-PR-preview counterpart to the
+  # (#1646). See ADR 0050 — this is the per-PR-preview counterpart to the
   # post-deploy smoke in deploy-sandbox.yml. Steps live in
   # .github/workflows/forms-smoke.yml; the preview URL built by preview-forms is
   # passed as base_url.
@@ -287,7 +287,7 @@ jobs:
     # jobstart-plus-programme recipe/spec AND it doesn't target prod. A contract
     # change can't be preview-smoked — the preview frontend serves the sandbox
     # API's OLD recipe, so the updated spec would always fail until the new
-    # version ships (ADR 0029). The same skew applies to prod-targeted PRs
+    # version ships (ADR 0051). The same skew applies to prod-targeted PRs
     # (hotfixes/restores): their frontend carries prod's contract, which can lag
     # the sandbox API the preview always points at, so the smoke would spuriously
     # fail. Both cases are covered post-deploy by smoke-test-forms in

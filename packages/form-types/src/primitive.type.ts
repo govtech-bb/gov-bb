@@ -219,7 +219,7 @@ export type AddressLookupPrimitive = z.infer<
 // A weekly opening-hours grid (#2358): seven day rows, each holding zero or
 // more sets of hours entered through native time pickers. The submitted value
 // is a string array of "Monday 09:00 - 17:00" entries — one per set of hours,
-// days with no entries are simply absent — so ADR 0069's one-field-per-pair
+// days with no entries are simply absent — so ADR 0117's one-field-per-pair
 // invariant holds and array validation, check-your-answers and payload
 // rendering treat it like any other multi-value string field.
 export const openingHoursPrimitiveSchema = basePrimitiveSchema.extend({

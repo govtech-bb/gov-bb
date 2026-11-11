@@ -247,7 +247,7 @@ function ServerErrorPage() {
 
 function RootLayout() {
   const { level, serviceStatuses, categoryTree } = Route.useRouteContext()
-  // api_v2 mode (ADR 0078): listed only when the public tree lists it. An
+  // api_v2 mode (ADR 0132): listed only when the public tree lists it. An
   // unreadable tree hides it too, never falling back to the static category.
   const showAboutBarbados =
     categoryTree.kind === 'disabled'

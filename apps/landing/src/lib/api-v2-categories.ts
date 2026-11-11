@@ -10,7 +10,7 @@ import {
 import { logFallback, message } from './api-v2-log'
 
 /**
- * Categories from api_v2's public reads (ADR 0078). When `VITE_API_V2_URL` is
+ * Categories from api_v2's public reads (ADR 0132). When `VITE_API_V2_URL` is
  * set the site lists the categories api_v2 serves, at request time; unset, the
  * static taxonomy in `content/categories.ts` stays in charge.
  *
@@ -173,7 +173,7 @@ export async function fetchCategoryTree(
   }
 }
 
-/** A category slug, as api_v2 accepts one (ADR 0078). */
+/** A category slug, as api_v2 accepts one (ADR 0132). */
 const CATEGORY_SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
 
 /**

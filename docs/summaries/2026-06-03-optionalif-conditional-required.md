@@ -62,7 +62,7 @@ the field re-validates when the target changes — no change needed there.
 - **Relax by cloning-minus-`required`, not a new validator runner.** Conditional
   *gating* of a rule lives in the orchestration layer (conditions package + the
   API/forms callers), while the validator stays rule-only. This keeps
-  ADR 0029's "rules live only in `form-validation`" intact: `optionalIf` is not a
+  ADR 0051's "rules live only in `form-validation`" intact: `optionalIf` is not a
   rule, it's a decision about *which* rules apply. (Considered recording this as
   an ADR; deemed sufficiently captured by the plan + this summary.)
 - **`field-renderer.tsx` untouched.** The plan deliberately scoped out the

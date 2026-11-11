@@ -153,7 +153,7 @@ async function main(): Promise<void> {
     app = await buildApp({
       resolution: new PageResolution(pages),
       navigation: new SiteNavigation(pages),
-      // One local developer runs the whole review flow (ADR 0079).
+      // One local developer runs the whole review flow (ADR 0134).
       editing: new PageEditing(
         pages,
         () => new Date(),

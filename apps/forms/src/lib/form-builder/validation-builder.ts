@@ -369,7 +369,7 @@ export const collectStepErrorCodes = (
 };
 
 // Whether a step the applicant is NOT on still passes validation, for the
-// return from a Change on check-your-answers (#2812, ADR 0076).
+// return from a Change on check-your-answers (#2812, ADR 0130).
 // form.validateField only runs validators on mounted fields, so this judges
 // the step's visible fields directly — the visibility filter matters: a hidden
 // required field must not count. Repeatable steps are trusted on completion

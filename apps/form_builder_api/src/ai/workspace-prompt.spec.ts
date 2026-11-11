@@ -10,7 +10,7 @@ import {
 } from "@govtech-bb/form-builder";
 
 // Guards the workspace-assistant prompt the way system-prompt.spec.ts guards
-// the form prompt (ADR 0020): every tool name and input key the prompt steers
+// the form prompt (ADR 0039): every tool name and input key the prompt steers
 // the model at must be one the tools in @govtech-bb/form-builder expose, or
 // the model is pointed at a call that cannot succeed. Pins the load-bearing
 // vocabulary, not the wording (#2900).

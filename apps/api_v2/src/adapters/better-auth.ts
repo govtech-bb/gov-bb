@@ -95,7 +95,7 @@ export function betterAuthOptions(
       accountLinking: { enabled: true, trustedProviders: [] },
     },
     databaseHooks: {
-      // A new user gets no role; an admin grants one (ADR 0079).
+      // A new user gets no role; an admin grants one (ADR 0134).
       account: {
         create: { before: discardOAuthTokens },
         update: { before: discardOAuthTokens },

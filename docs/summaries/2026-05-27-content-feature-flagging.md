@@ -24,14 +24,14 @@ build time. Planned in `docs/plans/content-feature-flagging.md`.
 - Reworked `rehype-hide-start-links.ts` to hide the online-application method
   and rewrite the "N ways" count when a public page's `/start` is in preview.
 - Decision recorded in
-  `docs/decisions/0013-content-preview-is-a-rollout-gate-not-a-confidentiality-boundary.md`.
+  `docs/decisions/0028-content-preview-is-a-rollout-gate-not-a-confidentiality-boundary.md`.
 
 ## Why we did it that way
 
 - **Runtime gate, not build-time exclusion.** Chosen because the user accepted
   "hidden, not secret" — preview content can ship in the bundle. This kept the
   design to one artifact for all environments and avoided standing up auth. The
-  cost (content is technically downloadable) is the subject of ADR 0013.
+  cost (content is technically downloadable) is the subject of ADR 0028.
 - **Shared token over per-user auth or environment gating.** The user wanted
   reviewers to preview on *any* environment including prod, controlled by a
   secret rather than a staging URL — so an httpOnly token cookie, not accounts

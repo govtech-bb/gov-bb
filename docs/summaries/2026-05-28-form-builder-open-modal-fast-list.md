@@ -39,7 +39,7 @@ Implemented from `docs/plans/form-builder-open-modal-fast-list.md` on branch
   `PublishedFormSummary` interface) removed. `listVersions`, `fetchRecipeFile`,
   and `getPublishedRecipe` stay — the single-form fetch path (opening one form
   for edit) still goes through GitHub. That's an explicit out-of-scope item.
-- **ADR-0015** codifies the principle: form_builder list/index views read from
+- **ADR-0031** codifies the principle: form_builder list/index views read from
   `apps/api`'s in-memory index, not GitHub.
 - **`.env.example`:** documents `API_BASE_URL=http://localhost:3001` and that
   the handler returns 500 if unset.
@@ -53,7 +53,7 @@ Implemented from `docs/plans/form-builder-open-modal-fast-list.md` on branch
   otherwise the Open modal silently lags behind a publish until some unrelated
   change triggers a redeploy. Proxying `apps/api`'s loader keeps a single
   source of truth and rides the existing publish-to-visibility flow
-  unchanged. See ADR-0015.
+  unchanged. See ADR-0031.
 - **`API_BASE_URL` fails per-request, not at boot.** The handler reads
   `process.env.API_BASE_URL` on every request and returns
   `500 { error: "API_BASE_URL is not set" }` if missing. This mirrors
@@ -71,7 +71,7 @@ Implemented from `docs/plans/form-builder-open-modal-fast-list.md` on branch
   unauthenticated (only `ThrottlerGuard`), so the service-to-service call
   needs only `API_BASE_URL`. The endpoint's throttle (20/10s, 120/60s) is well
   above one call per Open-modal click. If `findAll` ever exposes data that
-  needs auth, the decision in ADR-0015 has to be revisited along with it.
+  needs auth, the decision in ADR-0031 has to be revisited along with it.
 
 ## What we almost got wrong
 

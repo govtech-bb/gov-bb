@@ -24,7 +24,7 @@ import { COOKIE_NAME, levelFromCookie } from './preview'
  * open), `static` (static markdown, api_v2 unset, skipped or answered "no
  * page"), or `static-fallback` (static markdown because api_v2 failed or sent
  * bad content). Category listings send `api_v2` when api_v2 lists them
- * (ADR 0078) and `static` otherwise. Each failed fetch logs one JSON line
+ * (ADR 0132) and `static` otherwise. Each failed fetch logs one JSON line
  * `{event: "api_v2_fallback", reason, url, status?, error?}`, whichever header
  * follows
  * — `console.error` for api_v2 failures (`status`, `timeout`, `network`,
@@ -119,7 +119,7 @@ export type SerializedContentPage = Omit<
 
 export type ApiV2Page = SerializedContentPage & {
   hideStartLinks: boolean
-  /** api_v2's trail, current page last, Home not (ADR 0078). */
+  /** api_v2's trail, current page last, Home not (ADR 0132). */
   breadcrumbs: PageResponse['breadcrumbs']
 }
 

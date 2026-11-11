@@ -4,11 +4,11 @@
 **Branch:** `feat/fieldid-stepid-server-backstop` (off `sandbox`, merges back to `sandbox`)
 **Issue:** [#207](https://github.com/govtech-bb/gov-bb/issues/207) — server-side follow-up to [#206](https://github.com/govtech-bb/gov-bb/issues/206)
 **Plan:** `docs/plans/fieldid-stepid-uniqueness-server-backstop.md`
-**Prior session:** `docs/summaries/2026-05-26-fieldid-stepid-uniqueness.md` (client-side detector), `ADR 0010`
+**Prior session:** `docs/summaries/2026-05-26-fieldid-stepid-uniqueness.md` (client-side detector), `ADR 0020`
 
 ## Context
 
-#206 shipped the recipe-wide fieldId/stepId uniqueness detector and wired it into the manual builder UI as a live client-side gate. ADR 0010 recorded the matching principle but flagged the server as an open hole: "do not treat server-accepted recipes as uniqueness-checked" until a backstop lands. This session closes that hole (#207).
+#206 shipped the recipe-wide fieldId/stepId uniqueness detector and wired it into the manual builder UI as a live client-side gate. ADR 0020 recorded the matching principle but flagged the server as an open hole: "do not treat server-accepted recipes as uniqueness-checked" until a backstop lands. This session closes that hole (#207).
 
 ## What we did
 
@@ -28,7 +28,7 @@
 
 - **Collision check ordered before any DB mutation.** The publish handler deletes a previously-published form (`repo.delete`) before re-saving. The gate sits above that delete, so a rejected republish leaves the existing row intact — it doesn't wipe a good form to reject a bad one.
 
-- **Catalog stays out of `validateFormContract`.** Uniqueness needs the catalog to resolve defaults; `validateFormContract` is the runtime-safe, Zod-only, catalog-free contract check (ADR 0010). Pushing catalog plumbing into `packages/form-types` was rejected. The catalog-dependent check lives in the form-builder package and is invoked by the API routes that already hold the catalog.
+- **Catalog stays out of `validateFormContract`.** Uniqueness needs the catalog to resolve defaults; `validateFormContract` is the runtime-safe, Zod-only, catalog-free contract check (ADR 0020). Pushing catalog plumbing into `packages/form-types` was rejected. The catalog-dependent check lives in the form-builder package and is invoked by the API routes that already hold the catalog.
 
 - **Formatter extracted for one source of truth.** The UI inlined the collision message strings; `/validate` needs identical strings so the panel reads the same whether the check fired client- or server-side. Extracting `formatCollisionIssues` (rather than re-typing the strings server-side, the plan's fallback) makes drift impossible and gave the strings unit-test coverage.
 
