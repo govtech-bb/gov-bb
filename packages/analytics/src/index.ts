@@ -89,13 +89,14 @@ export interface TrackingData {
   "search-no-results": { query: string };
   // Dead ends (#3513): where a citizen was stopped before reaching a service.
   "form-closed-view": { form: string };
-  /** `form` is absent when the error is on a route outside a form. */
+  /** `form` is absent on a route outside a form, and when the form is not found. */
   "form-load-error": {
     form?: string;
     reason: "not-found" | "network" | "server";
   };
   "service-unavailable-view": Record<string, never>;
-  /** The app only, never the path: a missing page's address can hold typed text. */
+  /** The app only, never the path, in the event data: a missing page's address
+   *  can hold typed text. */
   "page-not-found": { app: string };
 }
 

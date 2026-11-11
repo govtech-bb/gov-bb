@@ -167,7 +167,6 @@ describe("FormError", () => {
     }
 
     it.each([
-      ["not-found", new FormFetchError("Not found", 404)],
       ["network", new FormFetchError("Network failure", 0)],
       ["server", new FormFetchError("Server error", 500)],
       ["server", new Error("Unexpected")],
@@ -180,8 +179,33 @@ describe("FormError", () => {
       });
     });
 
-    it("leaves the form out on a route with no form", () => {
-      renderError(new Error("Unexpected"));
+    it("leaves out a form that was not found: its id is typed text", async () => {
+      await renderFormRouteError(new FormFetchError("Not found", 404));
+      expect(trackEvent).toHaveBeenCalledTimes(1);
+      expect(trackEvent).toHaveBeenCalledWith("form-load-error", {
+        reason: "not-found",
+      });
+    });
+
+    it("leaves the form out on a route with no form", async () => {
+      const rootRoute = createRootRoute({
+        loader: () => {
+          throw new Error("Unexpected");
+        },
+        errorComponent: FormError,
+      });
+      render(
+        <StrictMode>
+          <RouterProvider
+            router={createRouter({
+              routeTree: rootRoute,
+              history: createMemoryHistory(),
+            })}
+          />
+        </StrictMode>,
+      );
+      await screen.findByRole("heading", { level: 1 });
+      expect(trackEvent).toHaveBeenCalledTimes(1);
       expect(trackEvent).toHaveBeenCalledWith("form-load-error", {
         reason: "server",
       });

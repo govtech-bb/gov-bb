@@ -17,7 +17,11 @@ const SERVICE_DIRECTORY = {
 
 type LoadErrorReason = TrackingData["form-load-error"]["reason"];
 
-/** A fixed code for why the page failed to load; never the error's text. */
+/**
+ * A fixed code for why the page failed to load; never the error's text.
+ * `server` is everything else: other HTTP statuses, and any error thrown while
+ * the form builds or renders.
+ */
 function loadErrorReason(error: unknown): LoadErrorReason {
   if (error instanceof FormFetchError && error.status === 404) {
     return "not-found";
@@ -35,16 +39,18 @@ export default function FormError({ error }: ErrorComponentProps<unknown>) {
   // This is also the router's default error page, so a route may have no form.
   const formId = useParams({ strict: false, shouldThrow: false })?.formId;
 
-  // Once per view: the ref survives StrictMode's second effect run (#3513).
-  const tracked = React.useRef(false);
+  // Once per error: the ref survives StrictMode's second effect run (#3513).
+  // A not-found id is whatever was typed in the address, not a form, so it is
+  // left out of the event data.
+  const tracked = React.useRef<unknown>(undefined);
   React.useEffect(() => {
-    if (tracked.current) return;
-    tracked.current = true;
+    if (tracked.current === error) return;
+    tracked.current = error;
     trackEvent(
       "form-load-error",
-      formId ? { form: formId, reason } : { reason },
+      formId && reason !== "not-found" ? { form: formId, reason } : { reason },
     );
-  }, [formId, reason]);
+  }, [error, formId, reason]);
 
   if (reason === "not-found") {
     return (

@@ -208,8 +208,9 @@ function RootDocument({ children }: { children: React.ReactNode }) {
 }
 
 function NotFoundPage() {
-  // Once per view: the ref survives StrictMode's second effect run. The app
-  // only, never the path: it can hold text the visitor typed (#3513).
+  // Once per view: the ref survives StrictMode's second effect run. The event
+  // data holds the app only, never the path: it can hold text the visitor
+  // typed (#3513).
   const tracked = useRef(false)
   useEffect(() => {
     if (tracked.current) return

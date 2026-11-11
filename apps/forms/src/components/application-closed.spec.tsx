@@ -92,4 +92,22 @@ describe("ApplicationClosed", () => {
       form: "national-science-camp",
     });
   });
+
+  it("sends form-closed-view again when the view moves to another closed form", () => {
+    const view = (formId: string) => (
+      <StrictMode>
+        <ApplicationClosed
+          formId={formId}
+          serviceTitle="Camp"
+          closingDateTime="2026-07-09T23:59:00-04:00"
+        />
+      </StrictMode>
+    );
+    const { rerender } = render(view("camp-a"));
+    rerender(view("camp-b"));
+    expect(vi.mocked(trackEvent).mock.calls).toEqual([
+      ["form-closed-view", { form: "camp-a" }],
+      ["form-closed-view", { form: "camp-b" }],
+    ]);
+  });
 });

@@ -21,11 +21,11 @@ export default function ApplicationClosed({
   closingDateTime,
   contactDetails,
 }: ApplicationClosedProps) {
-  // Once per view: the ref survives StrictMode's second effect run (#3513).
-  const tracked = React.useRef(false);
+  // Once per form: the ref survives StrictMode's second effect run (#3513).
+  const tracked = React.useRef<string | undefined>(undefined);
   React.useEffect(() => {
-    if (tracked.current) return;
-    tracked.current = true;
+    if (tracked.current === formId) return;
+    tracked.current = formId;
     trackEvent("form-closed-view", { form: formId });
   }, [formId]);
 
