@@ -32,6 +32,7 @@ import { TextLink } from "../ui/text-link";
 import { Textarea } from "../ui/textarea";
 import { toast } from "../ui/toast";
 import { lineDiff } from "./line-diff";
+import { listLoadView } from "./list-load-view";
 import { LoadFailure } from "./load-failure";
 import { brokenLinks, linkConfirmation, linksInMarkdown } from "./broken-links";
 
@@ -47,6 +48,7 @@ const At = ({ value }: { value: string }) => (
 /** Every change waiting for an approver, the longest-waiting first, each linking to its comparison. */
 export function ReviewQueueScreen({ api }: { api: EditorApi }) {
   const queue = useQuery(reviewQueueQuery(api));
+  const load = listLoadView(queue, "the review queue");
   const approver = useQuery(rolesQuery(api)).data?.includes("approver") ?? false;
 
   return (
@@ -59,15 +61,11 @@ export function ReviewQueueScreen({ api }: { api: EditorApi }) {
             : "Changes to live pages waiting for an approver. Citizens see them once an approver publishes them."
         }
       />
-      {queue.isError && !queue.data ? (
-        <LoadFailure
-          noun="the review queue"
-          error={queue.error}
-          retrying={queue.isFetching}
-          retry={() => void queue.refetch()}
-        />
+      {load.notices}
+      {load.state.kind === "blocked" ? (
+        load.failure
       ) : !queue.data ? (
-        <LoadingState label="Loading the review queue…" />
+        <LoadingState label={load.loadingLabel} />
       ) : queue.data.length === 0 ? (
         <EmptyState
           title="Nothing is waiting for review"
