@@ -48,12 +48,14 @@ Production requires HTTPS API/editor origins on the same site, such as separate 
 
 `main.ts` is the composition root. It parses configuration, creates one logger and pool, connects, migrates and seeds, then constructs the adapters (`PostgresPages`, BetterAuth or the local bypass), the services over them, and the HTTP app, and on shutdown closes the app before the pool. `src/test-db.ts` composes the same graph for tests.
 
-| Layer             | Directory                  | Owns                                                                                                                                                                               |
-| ----------------- | -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Domain            | `src/modules`              | Page shapes and write rules (placement, publication), what a viewer may see, categories and what they list, service grouping, search text, auth admission. Pure: no I/O, no clock. |
-| Application       | `src/services`             | One use case each (`PageResolution`, `SiteNavigation`, `PageEditing`, `CategoryEditing`, `EditorIndex`, `EditorAccess`), with the ports it needs declared beside it.               |
-| Outbound adapters | `src/adapters`             | `PostgresPages` (all content SQL, including the recursive hierarchy reads), BetterAuth, the local bypass.                                                                          |
-| Inbound adapters  | `src/routes`, `src/app.ts` | Zod request/response contracts, the HTTP mapping of each result.                                                                                                                   |
+| Layer             | Directory                  | Owns                                                                                                                                                                                          |
+| ----------------- | -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Domain            | `src/modules`              | Page shapes and write rules (placement, publication, redirects), what a viewer may see, categories and what they list, service grouping, search text, auth admission. Pure: no I/O, no clock. |
+| Application       | `src/services`             | One use case each (`PageResolution`, `SiteNavigation`, `PageEditing`, `CategoryEditing`, `EditorIndex`, `EditorAccess`), with the ports it needs declared beside it.                          |
+| Outbound adapters | `src/adapters`             | `PostgresPages` (all content SQL, including the recursive hierarchy reads and the live page write), BetterAuth, the local bypass.                                                             |
+| Inbound adapters  | `src/routes`, `src/app.ts` | Zod request/response contracts, the HTTP mapping of each result.                                                                                                                              |
+
+Adapters do I/O and make no decisions, with one exception (ADR 0137). `PostgresPages.writeLivePage` is the only way to write a live page, for both create and save. It runs the steps in order: it writes the page, files the page's uncategorised sub-pages under its category, updates its redirects and re-cuts its search chunks from the saved body. This way no caller can get the order wrong or forget to re-index. The redirect decisions it applies come from `src/modules/page-redirect-history.ts`.
 
 Category HTTP handlers live in `src/routes/categories.ts`. Its editor plugin is registered inside `src/routes/editor.ts`, so employee, Origin and no-store checks apply before validation. Its public plugin is registered inside `src/routes/site.ts`, so preview admission, cache policy and ETags remain separate from employee access. Both reuse the parent scope's request identity reader; category rules and SQL stay in their existing domain, service and storage owners.
 
@@ -407,11 +409,12 @@ to newly public descendants without changing their URLs.
 
 `PostgresPages.recordPageRedirectMove` removes a rule at the destination,
 retargets incoming rules and upserts the source while preserving its audit ID.
-The service captures former addresses before writing the page, validates paths
-with `PageUrl`, and refuses to reclaim another page's, category's or redirect's
-source. Page, redirect, revision and audit changes commit in the same
-actor-bearing transaction under the shared content lock. Seed/import takes that
-lock too and clears rules only for newly inserted, publicly reachable pages.
+The live page write (`writeLivePage`, ADR 0137) captures former addresses
+before writing the page, validates paths with `PageUrl`, and refuses to reclaim
+another page's, category's or redirect's source. Page, redirect, revision and
+audit changes commit in the same actor-bearing transaction under the shared
+content lock. Seed/import takes that lock too and clears rules only for newly
+inserted, publicly reachable pages.
 
 Republication can recover the last verifiably public URL after hidden renames.
 Migration `026_change_event_order` gives new audit inserts a unique
