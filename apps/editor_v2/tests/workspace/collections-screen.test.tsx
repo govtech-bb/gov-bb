@@ -814,6 +814,58 @@ test("a stale delete is refused in the dialog", async () => {
   );
 });
 
+test("a delete whose answer is lost is confirmed automatically, without another press", async () => {
+  // The delete lands, and its answer is lost on the way back
+  vi.stubGlobal("fetch", async (input: RequestInfo | URL, init?: RequestInit) => {
+    const answer = await server.fetch(input, init);
+
+    return init?.method === "DELETE" ? Response.json({}, { status: 503 }) : answer;
+  });
+  await renderCollection().ready;
+  await loaded();
+  await press("Delete nis");
+  await until(() =>
+    expect(dialog()?.querySelector("pre")?.textContent).toContain("National Insurance"),
+  );
+  await press("Delete record");
+  await closed();
+
+  expect(server.writes).toHaveLength(1);
+  expect(document.body.textContent).toContain("Record deleted");
+  await loaded(1);
+  // The row is gone, so the focus goes to Add record
+  await until(() => expect(document.activeElement?.textContent).toBe("Add record"));
+});
+
+test("a delete that can't be confirmed says so, then the next press checks before deleting again", async () => {
+  let down = true;
+
+  // The delete lands, its answer is lost, and the check that follows fails too
+  vi.stubGlobal("fetch", async (input: RequestInfo | URL, init?: RequestInit) => {
+    const answer = await server.fetch(input, init);
+
+    return down && server.writes.length > 0 ? Response.json({}, { status: 503 }) : answer;
+  });
+  await renderCollection().ready;
+  await loaded();
+  await press("Delete nis");
+  await until(() =>
+    expect(dialog()?.querySelector("pre")?.textContent).toContain("National Insurance"),
+  );
+  await press("Delete record");
+  await until(() =>
+    expect(dialog()?.textContent).toContain("The content API could not be reached. Try again."),
+  );
+  expect(document.body.textContent).not.toContain("Record deleted");
+
+  down = false;
+  await press("Delete record");
+  await closed();
+
+  expect(server.writes).toHaveLength(1);
+  expect(document.body.textContent).toContain("Record deleted");
+});
+
 test("without the editor role, records can be read but not added, saved or deleted", async () => {
   await renderCollection({ readOnly: true, record: "nis" }).ready;
   await opened();
@@ -860,19 +912,29 @@ test("a confirmed record save keeps values typed after dispatch", async () => {
   expect(control("Name (optional)").value).toBe("Newer typing");
 });
 
-test("a save whose answer is lost is never reported as failed", async () => {
-  await renderCollection({ record: "nis" }).ready;
-  await opened();
+test("an unsettled create keeps its key read-only, and the next press resends what was submitted", async () => {
+  await renderCollection().ready;
+  await loaded();
+  await press("Add record");
+  await enter("Key", "new-contact");
+  await enter("Name (optional)", "Submitted");
   server.refuse(503, { error: "unavailable", message: "Down." });
   await submit();
-  await until(() =>
-    expect(dialog()?.textContent).toContain("We couldn’t confirm whether this record was saved."),
-  );
+  await until(() => expect(button("Check records").disabled).toBe(false));
 
-  expect(dialog()?.textContent).not.toContain("Try again.");
+  expect(control("Key").readOnly).toBe(true);
+  expect(control("Name (optional)").readOnly).toBe(false);
+  await enter("Name (optional)", "Newer typing");
+  expect(control("Name (optional)").value).toBe("Newer typing");
+  expect(server.writes).toHaveLength(1);
+
+  await press("Check records");
+  await until(() => expect(document.body.textContent).toContain("Record added"));
+  expect(server.writes).toHaveLength(2);
+  expect(server.writes[1]?.body).toEqual(server.writes[0]?.body);
 });
 
-test("a retried save that landed while its answer was lost is confirmed, not refused as someone else's change", async () => {
+test("a save whose answer is lost is confirmed automatically, without another press", async () => {
   // The save lands, and its answer is lost on the way back
   vi.stubGlobal("fetch", async (input: RequestInfo | URL, init?: RequestInit) => {
     const answer = await server.fetch(input, init);
@@ -882,13 +944,20 @@ test("a retried save that landed while its answer was lost is confirmed, not ref
   await renderCollection({ record: "nis" }).ready;
   await opened();
   await enter("Name (optional)", "National Insurance Scheme");
-  await submit();
-  await until(() =>
-    expect(dialog()?.textContent).toContain("We couldn’t confirm whether this record was saved."),
-  );
+  const alerts: string[] = [];
+
+  // Its own new version must never be announced as someone else's change, even for one render
+  const watch = new MutationObserver((changes) => {
+    for (const change of changes)
+      for (const node of change.addedNodes) alerts.push(node.textContent ?? "");
+  });
+
+  watch.observe(document.body, { childList: true, subtree: true });
   await submit();
   await closed();
+  watch.disconnect();
 
+  expect(alerts.join(" ")).not.toContain("The record changed since you opened it.");
   expect(server.writes).toHaveLength(1);
   expect(document.body.textContent).toContain("Record saved");
 });
