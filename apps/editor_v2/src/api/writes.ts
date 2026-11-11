@@ -5,6 +5,7 @@ import {
   type CategoryResult,
   type CreatePageInput,
   type ApiPage,
+  type PageHistoryEntry,
   type ApiRevision,
   type EditorApi,
   type RecordDetail,
@@ -59,6 +60,15 @@ export type PageSaveAnswer = { base: ServerPageBaseline; discarded?: true };
 type PageSubmission = { base: ServerPageBaseline; categories: readonly Category[] };
 
 type PageDeletion = { id: string; version: number };
+
+/** A restore's first-press page version and newest displayed history number are separate guards. */
+export type PageRestoreRequest = {
+  pageId: string;
+  versionNo: number;
+  read: number;
+  historyVersion: number;
+  isPublic: boolean;
+};
 
 // oxlint-disable-next-line anti-slop/no-unknown-parameters -- Preserve dialog refusal precedence before classification drops HTTP status.
 function pageDialogRefusal(error: unknown, creating: boolean): never {
@@ -151,6 +161,32 @@ function reviewedFieldsMatch(found: ApiRevision["fields"], reviewed: ApiRevision
 
 /** Each migrated write's send, independent read-back and landed check. */
 export const writes = {
+  restoreVersion: (api: EditorApi): Write<PageRestoreRequest, ApiPage | PageHistoryEntry[]> => ({
+    send: async (sent) => {
+      try {
+        return await api.restoreVersion(sent.pageId, sent.versionNo, sent.read);
+      } catch (error) {
+        // History refreshes after every answered 409, not just version conflicts.
+        if (
+          error instanceof ApiFailure &&
+          error.status === 409 &&
+          error.code !== "version_conflict"
+        )
+          throw new ApiFailure(409, error.errors, apiMessage(error), "restore_conflict");
+        throw error;
+      }
+    },
+    readBack: (sent) => api.history(sent.pageId),
+    landed: (found, sent) =>
+      !sent.isPublic &&
+      Array.isArray(found) &&
+      found.some(
+        (entry) =>
+          entry.action === "reverted" &&
+          entry.restored_from === sent.versionNo &&
+          entry.version_no > sent.historyVersion,
+      ),
+  }),
   createPage: (api: EditorApi): Write<CreatePageInput, ApiPage> => ({
     send: async (sent) => {
       try {
