@@ -1,5 +1,9 @@
 import { z } from "zod";
-import { behaviourSchema, conditionalLabelSchema } from "./behavior.type";
+import {
+  behaviourSchema,
+  conditionalHintSchema,
+  conditionalLabelSchema,
+} from "./behavior.type";
 import { validationRuleSchema } from "./validation.type";
 import { kebabIdSchema } from "./id-pattern";
 
@@ -99,6 +103,9 @@ export const basePrimitiveSchema = z.object({
   htmlType: htmlTypesSchema,
   placeholder: z.string().optional(),
   hint: z.string().optional(),
+  // Per-answer hint overrides (#3637) — see conditionalHintSchema. The static
+  // `hint` above stays the fallback.
+  conditionalHint: z.array(conditionalHintSchema).optional(),
   defaultValue: z.any().optional(),
   value: z.any().optional(),
   isDisabled: z.boolean().optional(),
@@ -267,6 +274,7 @@ export const fieldOverridesSchema = basePrimitiveSchema
     // served contract.
     conditionalLabel: true,
     hint: true,
+    conditionalHint: true,
     placeholder: true,
     validations: true,
     defaultValue: true,
