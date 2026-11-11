@@ -1,6 +1,7 @@
 import { maskSearchQuery } from "./mask-search-query";
 import { journeyEnabled, sendJourney } from "./journey";
 import { sendUmamiEvent, sendUmamiPageview, type UmamiPayload } from "./umami";
+import type { ToolTrackingData } from "./tool-events";
 
 export { maskSearchQuery } from "./mask-search-query";
 export {
@@ -9,6 +10,12 @@ export {
   journeyEnabled,
   sendJourney,
 } from "./journey";
+export type {
+  ToolId,
+  ToolResult,
+  ToolResultData,
+  ToolTrackingData,
+} from "./tool-events";
 
 declare global {
   interface Window {
@@ -35,7 +42,9 @@ export const UMAMI_SCRIPT_ATTRIBUTES = {
   "data-exclude-search": "true",
 } as const;
 
-export interface TrackingData {
+// Landing tool events (tool-step-view, tool-result, tool-action, tool-error)
+// are in tool-events.ts (ADR 0079).
+export interface TrackingData extends ToolTrackingData {
   "form-start": { form: string; category: string };
   "form-step-back": { form: string; category: string; step: string };
   "form-step-edit": { form: string; category: string; step: string };
@@ -95,7 +104,12 @@ export function trackEvent<E extends TrackingEventName>(
   event: E,
   data: TrackingData[E],
 ): void;
-export function trackEvent(event: string, data?: Record<string, unknown>): void;
+// Any other name. A tool event name is refused here, so wrong tool data fails
+// type-check instead of falling through to this overload (ADR 0079).
+export function trackEvent<N extends string>(
+  event: N extends keyof ToolTrackingData ? never : N,
+  data?: Record<string, unknown>,
+): void;
 export function trackEvent(
   event: string,
   data?: Record<string, unknown>,
