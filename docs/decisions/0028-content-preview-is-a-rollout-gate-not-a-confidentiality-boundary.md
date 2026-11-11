@@ -1,7 +1,7 @@
 # 0028 — Content preview is a rollout gate, not a confidentiality boundary
 
 **Date:** 2026-05-27
-**Status:** Accepted
+**Status:** Deprecated (2026-11-10, #3120): about `apps/landing`'s static-markdown content, which api_v2 replaces; kept as a historical record. Previously: Accepted
 
 ## Context
 

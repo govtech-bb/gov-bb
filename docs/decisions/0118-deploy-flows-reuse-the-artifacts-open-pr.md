@@ -1,7 +1,7 @@
 # 0118 — A PR-based authoring flow reuses the artifact's open PR
 
 **Date:** 2026-08-23
-**Status:** Accepted
+**Status:** Deprecated (2026-11-10, #3120): about `apps/form_builder`, a v1 app; kept as a historical record. Previously: Accepted
 
 ## Context
 

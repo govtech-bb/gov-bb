@@ -1,5 +1,7 @@
 # 0102 — A zero-fee payment is a no-op, not a zero-amount payment
 
+**Status:** Deprecated (2026-11-10, #3120): about `apps/api`, a v1 app; kept as a historical record. Previously: no status recorded.
+
 ## Context
 
 A form's payment fee can be a dynamic expression (e.g. a fee-waiver branch), so

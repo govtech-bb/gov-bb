@@ -1,7 +1,7 @@
 # 0124 — The Form Builder reads a form's status from the API and never derives it from the recipe or manifest
 
 **Date:** 2026-10-03
-**Status:** Accepted
+**Status:** Deprecated (2026-11-10, #3120): about `apps/form_builder`, a v1 app; kept as a historical record. Previously: Accepted
 **Related:** [#2875](https://github.com/govtech-bb/gov-bb/issues/2875) (this
 decision), [#1650](https://github.com/govtech-bb/gov-bb/issues/1650) (epic:
 feature-flagging on `service_status`), [#1835](https://github.com/govtech-bb/gov-bb/issues/1835)

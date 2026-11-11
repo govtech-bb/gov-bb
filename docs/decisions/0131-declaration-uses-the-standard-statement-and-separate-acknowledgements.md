@@ -1,7 +1,7 @@
 # 0131 — The declaration uses the standard statement; anything extra is a separate acknowledgement
 
 **Date:** 2026-10-08
-**Status:** Accepted
+**Status:** Deprecated (2026-11-10, #3120): about `apps/forms`, a v1 app; kept as a historical record. Previously: Accepted
 **Supersedes:** [ADR 0070](./0070-declaration-step-contains-exactly-one-field.md)
 **Related:** [#2920](https://github.com/govtech-bb/gov-bb/issues/2920) (the
 content designer's standard), [#2930](https://github.com/govtech-bb/gov-bb/pull/2930)

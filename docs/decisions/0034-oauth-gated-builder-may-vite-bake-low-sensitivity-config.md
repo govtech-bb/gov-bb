@@ -1,7 +1,7 @@
 # 0034 — OAuth-gated builder may VITE-bake low-sensitivity config
 
 **Date:** 2026-05-28  
-**Status:** Accepted
+**Status:** Deprecated (2026-11-10, #3120): about `apps/form_builder`, a v1 app; kept as a historical record. Previously: Accepted
 
 ## Context
 

@@ -1,7 +1,7 @@
 # 0012 — Markdown loaders in client-bundled modules must be browser-safe
 
 **Date:** 2026-05-21
-**Status:** Accepted
+**Status:** Deprecated (2026-11-10, #3120): about `apps/landing`'s static-markdown content, which api_v2 replaces; kept as a historical record. Previously: Accepted
 
 ## Context
 

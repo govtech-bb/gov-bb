@@ -1,6 +1,6 @@
 # Forms UI is styled with the `@govtech-bb/styles` package
 
-**Status:** Accepted (2026-05-27)
+**Status:** Deprecated (2026-11-10, #3120): about `apps/forms`, a v1 app; kept as a historical record. Previously: Accepted (2026-05-27)
 **Applies to:** `apps/forms` — its field renderer, form chrome composition, and any future form-facing UI.
 
 ## Context

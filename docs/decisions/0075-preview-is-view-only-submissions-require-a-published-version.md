@@ -1,7 +1,7 @@
 # 0075 — Preview is view-only; submissions require a published version
 
 **Date:** 2026-06-08
-**Status:** Accepted
+**Status:** Deprecated (2026-11-10, #3120): about `apps/api`, a v1 app; kept as a historical record. Previously: Accepted
 
 ## Context
 

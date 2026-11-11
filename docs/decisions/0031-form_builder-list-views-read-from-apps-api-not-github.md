@@ -1,7 +1,7 @@
 # 0031 — form_builder list views read from apps/api, not GitHub
 
 **Date:** 2026-05-28
-**Status:** Accepted
+**Status:** Deprecated (2026-11-10, #3120): about `apps/form_builder`, a v1 app; kept as a historical record. Previously: Accepted
 **Related:** [#309](https://github.com/govtech-bb/gov-bb/issues/309), [ADR 0007](./0007-form-authoring-lives-in-form_builder.md)
 
 ## Context

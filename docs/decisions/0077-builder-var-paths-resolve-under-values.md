@@ -1,7 +1,7 @@
 # 0077 — Builder var paths resolve under `values`
 
 **Date:** 2026-06-08
-**Status:** Accepted
+**Status:** Deprecated (2026-11-10, #3120): about `apps/form_builder`, a v1 app; kept as a historical record. Previously: Accepted
 
 ## Context
 

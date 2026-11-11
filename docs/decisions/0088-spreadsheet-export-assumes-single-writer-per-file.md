@@ -1,7 +1,7 @@
 # 0088 — Spreadsheet export assumes a single writer per file
 
 **Date:** 2026-06-12
-**Status:** Accepted — builds on
+**Status:** Deprecated (2026-11-10, #3120): about `apps/api`, a v1 app; kept as a historical record. Previously: Accepted — builds on
 [ADR 0055](0055-submission-processors-dispatch-per-entry.md) (per-entry dispatch
 and the `${submissionId}:${index}` dedup token)
 

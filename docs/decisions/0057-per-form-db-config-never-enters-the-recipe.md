@@ -1,7 +1,7 @@
 # 0057 — Per-form DB config never enters the recipe
 
 **Date:** 2026-06-03
-**Status:** Accepted — extends [ADR 0056](0056-recipient-resolution-degrades-on-miss-not-on-infra-error.md)
+**Status:** Deprecated (2026-11-10, #3120): about `apps/form_builder`, a v1 app; kept as a historical record. Previously: Accepted — extends [ADR 0056](0056-recipient-resolution-degrades-on-miss-not-on-infra-error.md)
 
 ## Context
 

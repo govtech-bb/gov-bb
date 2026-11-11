@@ -1,7 +1,7 @@
 # 0079 — Derived-value gating via a shared primitive and a `transform` keyword
 
 **Date:** 2026-06-09
-**Status:** Accepted
+**Status:** Deprecated (2026-11-10, #3120): about `apps/forms`, a v1 app; kept as a historical record. Previously: Accepted
 
 ## Context
 

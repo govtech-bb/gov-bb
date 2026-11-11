@@ -1,7 +1,7 @@
 # 0026 — Unpublished recipe preview is a secret-gated, per-request exception
 
 **Date:** 2026-05-27
-**Status:** Accepted (re-scoped 2026-06-25 — see Update below)
+**Status:** Deprecated (2026-11-10, #3120): about `apps/api`, a v1 app; kept as a historical record. Previously: Accepted (re-scoped 2026-06-25 — see Update below)
 **Related:** [#219](https://github.com/govtech-bb/gov-bb/issues/219), ADR-0017 (runtime recipes load from files, not `form_definitions`), #145 (files-only runtime), [#1682](https://github.com/govtech-bb/gov-bb/issues/1682) (token split), [#1646](https://github.com/govtech-bb/gov-bb/issues/1646) (visibility), ADR-0099 (shared preview cookie).
 
 ## Update (2026-06-25 — #1682 Phase 2 / #1646 Phase 3)

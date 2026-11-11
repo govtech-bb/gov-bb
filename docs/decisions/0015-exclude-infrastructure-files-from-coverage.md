@@ -1,7 +1,7 @@
 # 0015 — Exclude infrastructure files from Jest coverage collection
 
 **Date:** 2026-05-22
-**Status:** Accepted
+**Status:** Deprecated (2026-11-10, #3120): about `apps/api`, a v1 app; kept as a historical record. Previously: Accepted
 
 ## Context
 

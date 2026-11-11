@@ -1,7 +1,7 @@
 # 0043 — Repo-recipe integrity guards must be always-run, not affected-gated
 
 **Date:** 2026-06-01
-**Status:** Accepted
+**Status:** Deprecated (2026-11-10, #3120): about `apps/api`, a v1 app; kept as a historical record. Previously: Accepted
 **Related:** [#504](https://github.com/govtech-bb/gov-bb/issues/504), [#349](https://github.com/govtech-bb/gov-bb/issues/349). Extends [0036](0036-recipe-ref-resolution-fails-loud.md) (recipe ref resolution fails loud) with the CI-enforcement half.
 
 ## Context

@@ -1,7 +1,7 @@
 # 0048 — A form's `formId` is a canonical kebab-case identifier, from one shared pattern
 
 **Date:** 2026-06-02
-**Status:** Accepted
+**Status:** Deprecated (2026-11-10, #3120): about `apps/form_builder`, a v1 app; kept as a historical record. Previously: Accepted
 **Related:** [#573](https://github.com/govtech-bb/gov-bb/issues/573)
 
 ## Context

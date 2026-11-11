@@ -1,7 +1,7 @@
 # 0033 — Non-HttpException error details are non-prod only
 
 **Date:** 2026-05-28
-**Status:** Accepted
+**Status:** Deprecated (2026-11-10, #3120): about `apps/api`, a v1 app; kept as a historical record. Previously: Accepted
 **Related:** [#343](https://github.com/govtech-bb/gov-bb/issues/343)
 
 ## Context

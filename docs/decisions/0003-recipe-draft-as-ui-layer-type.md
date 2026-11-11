@@ -1,6 +1,7 @@
 # 0003 — RecipeDraft is a UI-layer type; ServiceContractRecipe is the canonical persisted form
 
 **Date:** 2026-05-19  
+**Status:** Deprecated (2026-11-10, #3120): about `apps/form_builder`, a v1 app; kept as a historical record. Previously: no status recorded.  
 **Branch:** `platform/recipe-builder`
 
 ## Context

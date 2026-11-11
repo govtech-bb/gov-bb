@@ -1,7 +1,7 @@
 # 0022 — form_builder component tests opt into jsdom per-file
 
 **Date:** 2026-05-27
-**Status:** Accepted
+**Status:** Deprecated (2026-11-10, #3120): about `apps/form_builder`, a v1 app; kept as a historical record. Previously: Accepted
 **Related:** [#234](https://github.com/govtech-bb/gov-bb/issues/234)
 
 ## Context

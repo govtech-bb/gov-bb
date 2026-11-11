@@ -1,7 +1,7 @@
 # 0101 — The builder sources launch-gate visibility from the published recipe when the working copy is silent
 
 **Date:** 2026-06-26
-**Status:** Accepted — amended by ADR 0124 (2026-10-03): the builder no longer
+**Status:** Deprecated (2026-11-10, #3120): about `apps/form_builder`, a v1 app; kept as a historical record. Previously: Accepted — amended by ADR 0124 (2026-10-03): the builder no longer
 *shows* `meta.visibility` (status comes from apps/api, #2875); this hydration
 survives only as the mechanism that carries a committed `meta` through a Deploy.
 **Related:** [#1682](https://github.com/govtech-bb/gov-bb/issues/1682) (Phase 2: form-builder visibility control), [#1676](https://github.com/govtech-bb/gov-bb/issues/1676) (visibility gate ported to the versionless model), [#1646](https://github.com/govtech-bb/gov-bb/issues/1646) (Phase 1: `meta.visibility`), [#1196](https://github.com/govtech-bb/gov-bb/issues/1196) (DB scratch row is the working copy), ADR-0097 (recipe versioning removed — one flat file per form).

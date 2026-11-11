@@ -1,5 +1,7 @@
 # 0104 — API DataSource bootstrap is shared and verifies TLS in production
 
+**Status:** Deprecated (2026-11-10, #3120): about `apps/api`, a v1 app; kept as a historical record. Previously: no status recorded.
+
 ## Context
 
 `apps/api` (NestJS) and `apps/form_builder_api` (plain Express) both connect to

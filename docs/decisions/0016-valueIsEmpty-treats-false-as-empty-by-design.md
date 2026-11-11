@@ -1,7 +1,7 @@
 # 0016 — `valueIsEmpty` treats boolean `false` as empty by design
 
 **Date:** 2026-05-22
-**Status:** Accepted
+**Status:** Deprecated (2026-11-10, #3120): about `apps/forms`, a v1 app; kept as a historical record. Previously: Accepted
 
 ## Context
 

@@ -1,7 +1,7 @@
 # 0054 — Erase is restricted to live published forms
 
 **Date:** 2026-06-03
-**Status:** Accepted
+**Status:** Deprecated (2026-11-10, #3120): about `apps/form_builder`, a v1 app; kept as a historical record. Previously: Accepted
 **Refines:** the "Permanent recipe removal … Erase **must also clear the
 tombstone**" consequence in [ADR 0049](0049-form-removal-semantics-split-by-publish-state.md)
 

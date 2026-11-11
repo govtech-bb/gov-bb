@@ -1,7 +1,7 @@
 # 0068 — Cross-deploy payload fields are optional with consumer-side fallback
 
 **Date:** 2026-06-04
-**Status:** Accepted
+**Status:** Deprecated (2026-11-10, #3120): about `apps/api`, a v1 app; kept as a historical record. Previously: Accepted
 
 ## Context
 

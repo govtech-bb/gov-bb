@@ -1,5 +1,7 @@
 # 0092 — The submission payload shape, and the logic that assembles it, live once in `@govtech-bb/form-types`
 
+**Status:** Deprecated (2026-11-10, #3120): about `apps/forms`, a v1 app; kept as a historical record. Previously: no status recorded.
+
 ## Context
 
 Two apps independently turned collected field values into the step-keyed shape

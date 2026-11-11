@@ -1,7 +1,7 @@
 # 0062 — Validation-relaxing recipe edits are in-place, no version bump
 
 **Date:** 2026-06-04
-**Status:** Accepted
+**Status:** Deprecated (2026-11-10, #3120): about `apps/api`, a v1 app; kept as a historical record. Previously: Accepted
 
 ## Context
 

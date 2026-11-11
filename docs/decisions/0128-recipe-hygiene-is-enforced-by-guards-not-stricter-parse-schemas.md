@@ -1,7 +1,7 @@
 # 0128 — Recipe hygiene is enforced by guards, not by stricter parse schemas
 
 **Date:** 2026-10-13
-**Status:** Accepted
+**Status:** Deprecated (2026-11-10, #3120): about `apps/api`, a v1 app; kept as a historical record. Previously: Accepted
 **Related:** [#2713](https://github.com/govtech-bb/gov-bb/issues/2713) (this
 decision), [#2877](https://github.com/govtech-bb/gov-bb/issues/2877)
 (`checkCatchmentRoutingHasMapping`, the same shape), ADR 0125

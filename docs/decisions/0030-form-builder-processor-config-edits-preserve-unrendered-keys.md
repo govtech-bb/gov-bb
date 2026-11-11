@@ -1,7 +1,7 @@
 # 0030 — Form builder processor config edits preserve unrendered keys
 
 **Date:** 2026-05-27
-**Status:** Accepted
+**Status:** Deprecated (2026-11-10, #3120): about `apps/form_builder`, a v1 app; kept as a historical record. Previously: Accepted
 **Related:** [#255](https://github.com/govtech-bb/gov-bb/issues/255), [#275](https://github.com/govtech-bb/gov-bb/issues/275), [ADR 0029](./0029-form-builder-round-trip-preserves-unauthored-fields.md)
 
 ## Context

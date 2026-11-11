@@ -1,6 +1,6 @@
 # 0120 — Builder AI streams with reviewed client edits
 
-Status: accepted
+Status: Deprecated (2026-11-10, #3120): about `apps/form_builder`, a v1 app; kept as a historical record. Previously: accepted
 Date: 2026-09-09
 Amended: 2026-09-12 — permission modes, harness layout, and service workspace targets
 Supersedes the AI transport and apply flow in ADR 0041; retains ADR 0082's

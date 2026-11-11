@@ -1,7 +1,7 @@
 # 0091 — Recipe-publish GitHub flow is shared and env-identified
 
 **Date:** 2026-06-22
-**Status:** Accepted
+**Status:** Deprecated (2026-11-10, #3120): about `apps/form_builder`, a v1 app; kept as a historical record. Previously: Accepted
 
 ## Context
 

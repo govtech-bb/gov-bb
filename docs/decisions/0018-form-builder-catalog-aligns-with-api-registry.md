@@ -1,7 +1,7 @@
 # 0018 — Form builder catalog aligns with the API hydration registry
 
 **Date:** 2026-05-26
-**Status:** Accepted
+**Status:** Deprecated (2026-11-10, #3120): about `apps/form_builder`, a v1 app; kept as a historical record. Previously: Accepted
 
 > **Note 2026-10-13 ([#2024](https://github.com/govtech-bb/gov-bb/issues/2024)):**
 > `apps/api/src/registry/resolution.ts` was retired by #2044. The API now hydrates

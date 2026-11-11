@@ -1,7 +1,7 @@
 # 0037 — @govtech-bb/registry is the sole home for builtin definitions
 
 **Date:** 2026-05-28
-**Status:** Accepted
+**Status:** Deprecated (2026-11-10, #3120): about `apps/api`, a v1 app; kept as a historical record. Previously: Accepted
 **Supersedes (in part):** [0018](0018-form-builder-catalog-aligns-with-api-registry.md)
 
 ## Context

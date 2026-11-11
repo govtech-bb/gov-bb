@@ -1,7 +1,7 @@
 # 0059 — Payment processors resolve from `form_config`, DB wins, invalid fails loud
 
 **Date:** 2026-06-04
-**Status:** Accepted — extends [ADR 0056](0056-recipient-resolution-degrades-on-miss-not-on-infra-error.md) and [ADR 0057](0057-per-form-db-config-never-enters-the-recipe.md)
+**Status:** Deprecated (2026-11-10, #3120): about `apps/api`, a v1 app; kept as a historical record. Previously: Accepted — extends [ADR 0056](0056-recipient-resolution-degrades-on-miss-not-on-infra-error.md) and [ADR 0057](0057-per-form-db-config-never-enters-the-recipe.md)
 
 ## Context
 

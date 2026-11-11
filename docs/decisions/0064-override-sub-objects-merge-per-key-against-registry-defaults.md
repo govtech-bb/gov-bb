@@ -1,7 +1,7 @@
 # 0064 — Override sub-objects merge per-key against registry defaults
 
 **Date:** 2026-06-04
-**Status:** Accepted
+**Status:** Deprecated (2026-11-10, #3120): about `apps/api`, a v1 app; kept as a historical record. Previously: Accepted
 
 > **Note 2026-10-13 ([#2024](https://github.com/govtech-bb/gov-bb/issues/2024)):**
 > `apps/api/src/registry/resolution.ts` was retired by #2044. The API now hydrates

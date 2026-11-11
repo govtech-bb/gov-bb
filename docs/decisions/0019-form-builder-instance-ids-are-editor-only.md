@@ -1,7 +1,7 @@
 # 0019 — Form builder instance ids are editor-only
 
 **Date:** 2026-05-26
-**Status:** Accepted
+**Status:** Deprecated (2026-11-10, #3120): about `apps/form_builder`, a v1 app; kept as a historical record. Previously: Accepted
 **Related:** [#194](https://github.com/govtech-bb/gov-bb/issues/194)
 
 ## Context

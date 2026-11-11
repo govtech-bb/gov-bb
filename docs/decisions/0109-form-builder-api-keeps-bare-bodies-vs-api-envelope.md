@@ -1,5 +1,7 @@
 # 0109 — form_builder_api keeps bare response bodies; apps/api keeps its envelope
 
+**Status:** Deprecated (2026-11-10, #3120): about `apps/form_builder_api`, a v1 app; kept as a historical record. Previously: no status recorded.
+
 ## Context
 
 The two backends speak deliberately different wire formats, and the

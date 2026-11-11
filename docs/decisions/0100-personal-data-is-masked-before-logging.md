@@ -1,5 +1,7 @@
 # 0100 — Personal data is masked before logging
 
+**Status:** Deprecated (2026-11-10, #3120): about `apps/api`, a v1 app; kept as a historical record. Previously: no status recorded.
+
 ## Context
 
 Application logs are more widely accessible and longer retained than the

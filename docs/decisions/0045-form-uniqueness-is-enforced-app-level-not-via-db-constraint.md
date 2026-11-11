@@ -1,7 +1,7 @@
 # 0045 — Form `title`/`formId` uniqueness is enforced app-level, not via a DB constraint
 
 **Date:** 2026-06-02
-**Status:** Accepted
+**Status:** Deprecated (2026-11-10, #3120): about `apps/form_builder`, a v1 app; kept as a historical record. Previously: Accepted
 **Related:** [#545](https://github.com/govtech-bb/gov-bb/issues/545), [#556](https://github.com/govtech-bb/gov-bb/issues/556)
 
 ## Context

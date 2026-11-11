@@ -1,7 +1,7 @@
 # 0009 — Containerised api needs explicit workspace symlinks at root `node_modules`
 
 **Date:** 2026-05-21
-**Status:** Accepted — amended by [ADR 0122](./0122-pnpm-uses-the-default-isolated-node-linker.md) (2026-09-21): the workspace now installs isolated; the flat runtime layout this ADR relies on is produced explicitly by the `prod-deps` stage (`--config.node-linker=hoisted`), and the compiled api lives at `apps/api/dist`
+**Status:** Deprecated (2026-11-10, #3120): about `apps/api`, a v1 app; kept as a historical record. Previously: Accepted — amended by [ADR 0122](./0122-pnpm-uses-the-default-isolated-node-linker.md) (2026-09-21): the workspace now installs isolated; the flat runtime layout this ADR relies on is produced explicitly by the `prod-deps` stage (`--config.node-linker=hoisted`), and the compiled api lives at `apps/api/dist`
 
 ## Context
 

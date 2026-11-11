@@ -1,7 +1,7 @@
 # 0114 — Preview submissions are scoped to named forms, not the whole environment
 
 **Date:** 2026-08-07
-**Status:** Accepted — supersedes ADR 0113
+**Status:** Deprecated (2026-11-10, #3120): about `apps/api`, a v1 app; kept as a historical record. Previously: Accepted — supersedes ADR 0113
 
 ## Context
 

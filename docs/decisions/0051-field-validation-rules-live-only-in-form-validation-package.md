@@ -1,5 +1,7 @@
 # 0051 — Field validation rules live only in `@govtech-bb/form-validation`
 
+**Status:** Deprecated (2026-11-10, #3120): about `apps/forms`, a v1 app; kept as a historical record. Previously: no status recorded.
+
 ## Context
 
 Field-level validation rule logic (required, length, pattern, email, numeric

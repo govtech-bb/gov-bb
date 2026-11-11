@@ -1,7 +1,7 @@
 # 0117 — A repeating pair of values is one field, not two field arrays
 
 **Date:** 2026-08-20
-**Status:** Accepted
+**Status:** Deprecated (2026-11-10, #3120): about `apps/forms`, a v1 app; kept as a historical record. Previously: Accepted
 
 ## Context
 

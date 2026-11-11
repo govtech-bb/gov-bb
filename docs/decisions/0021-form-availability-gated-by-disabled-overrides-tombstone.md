@@ -1,7 +1,7 @@
 # 0021 — Form availability is gated by the `form_disabled_overrides` tombstone
 
 **Date:** 2026-05-27
-**Status:** Accepted
+**Status:** Deprecated (2026-11-10, #3120): about `apps/api`, a v1 app; kept as a historical record. Previously: Accepted
 
 ## Context
 

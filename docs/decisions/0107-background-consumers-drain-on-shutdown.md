@@ -1,5 +1,7 @@
 # 0107 — Background consumers drain in-flight work on shutdown
 
+**Status:** Deprecated (2026-11-10, #3120): about `apps/api`, a v1 app; kept as a historical record. Previously: no status recorded.
+
 ## Context
 
 `apps/api` runs long-lived background loops that pull work off SQS — currently

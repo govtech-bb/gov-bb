@@ -1,5 +1,7 @@
 # 0053 — A field's resolved fieldId is its stable identity
 
+**Status:** Deprecated (2026-11-10, #3120): about `apps/form_builder`, a v1 app; kept as a historical record. Previously: no status recorded.
+
 ## Context
 
 A form-builder field has two ids. The editor-only `id` (a minted UUID) tracks

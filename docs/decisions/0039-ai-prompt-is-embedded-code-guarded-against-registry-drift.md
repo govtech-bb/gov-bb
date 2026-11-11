@@ -1,5 +1,7 @@
 # 0039 — The AI prompt is embedded code, guarded against registry drift
 
+**Status:** Deprecated (2026-11-10, #3120): about `apps/form_builder`, a v1 app; kept as a historical record. Previously: no status recorded.
+
 ## Context
 
 The AI form-builder's system prompt names registry refs (`components/<x>`,

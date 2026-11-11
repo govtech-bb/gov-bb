@@ -1,5 +1,7 @@
 # 0108 — Date semantics compute in the default zone, anchored at UTC midnight
 
+**Status:** Deprecated (2026-11-10, #3120): about `apps/forms`, a v1 app; kept as a historical record. Previously: no status recorded.
+
 ## Context
 
 The platform serves Barbados (UTC−4). "Today" and date-relative logic appear in

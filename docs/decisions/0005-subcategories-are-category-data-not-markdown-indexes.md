@@ -1,7 +1,7 @@
 # 0005 — Sub-categories are category data, not markdown indexes
 
 **Date:** 2026-05-20
-**Status:** Accepted
+**Status:** Deprecated (2026-11-10, #3120): about `apps/landing`'s static-markdown content, which api_v2 replaces; kept as a historical record. Previously: Accepted
 
 ## Context
 

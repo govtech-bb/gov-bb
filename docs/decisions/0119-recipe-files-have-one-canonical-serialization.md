@@ -1,7 +1,7 @@
 # 0119 — Recipe files have one canonical serialization
 
 **Date:** 2026-08-25
-**Status:** Accepted
+**Status:** Deprecated (2026-11-10, #3120): about `apps/api`, a v1 app; kept as a historical record. Previously: Accepted
 
 ## Context
 

@@ -1,5 +1,7 @@
 # 0085 — Processor-config expression ops must resolve to valid values
 
+**Status:** Deprecated (2026-11-10, #3120): about `apps/api`, a v1 app; kept as a historical record. Previously: no status recorded.
+
 ## Context
 
 A recipe's `processors` array drives post-submission side effects (emails, payments,

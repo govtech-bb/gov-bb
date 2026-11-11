@@ -1,7 +1,7 @@
 # 0029 — Form builder round-trip preserves unauthored fields
 
 **Date:** 2026-05-27
-**Status:** Accepted
+**Status:** Deprecated (2026-11-10, #3120): about `apps/form_builder`, a v1 app; kept as a historical record. Previously: Accepted
 **Related:** [#255](https://github.com/govtech-bb/gov-bb/issues/255), [ADR 0019](./0019-form-builder-instance-ids-are-editor-only.md)
 
 ## Context

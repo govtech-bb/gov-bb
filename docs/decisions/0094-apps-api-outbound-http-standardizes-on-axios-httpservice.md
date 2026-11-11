@@ -1,7 +1,7 @@
 # 0094 — apps/api outbound HTTP standardizes on axios HttpService
 
 **Date:** 2026-06-22
-**Status:** Accepted
+**Status:** Deprecated (2026-11-10, #3120): about `apps/api`, a v1 app; kept as a historical record. Previously: Accepted
 **Issue:** [#1421](https://github.com/govtech-bb/gov-bb/issues/1421) (TECH-04)
 
 ## Context

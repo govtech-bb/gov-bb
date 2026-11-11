@@ -1,6 +1,6 @@
 # Analytics events use fixed names and structured data
 
-**Status:** Accepted (2026-05-21)
+**Status:** Deprecated (2026-11-10, #3120): about `apps/forms`, a v1 app; kept as a historical record. Previously: Accepted (2026-05-21)
 **Applies to:** `apps/forms`, and any future app adding analytics. `apps/landing` is explicitly exempt — see Consequences.
 
 ## Context

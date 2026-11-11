@@ -1,7 +1,7 @@
 # 0116 — Environmental Health forms do not ask what the inspection verifies
 
 **Date:** 2026-08-20
-**Status:** Accepted
+**Status:** Deprecated (2026-11-10, #3120): about `apps/forms`, a v1 app; kept as a historical record. Previously: Accepted
 
 ## Context
 

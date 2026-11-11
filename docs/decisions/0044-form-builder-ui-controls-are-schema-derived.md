@@ -1,7 +1,7 @@
 # 0044 — Form builder `ui` controls are schema-derived
 
 **Date:** 2026-06-01
-**Status:** Accepted
+**Status:** Deprecated (2026-11-10, #3120): about `apps/form_builder`, a v1 app; kept as a historical record. Previously: Accepted
 **Related:** [#533](https://github.com/govtech-bb/gov-bb/issues/533), [#522](https://github.com/govtech-bb/gov-bb/issues/522), [ADR 0029](./0029-form-builder-round-trip-preserves-unauthored-fields.md), [ADR 0030](./0030-form-builder-processor-config-edits-preserve-unrendered-keys.md)
 
 ## Context

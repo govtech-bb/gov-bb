@@ -1,5 +1,7 @@
 # 0103 — Anonymous uploads bind presign↔confirm via a self-describing key, not auth
 
+**Status:** Deprecated (2026-11-10, #3120): about `apps/api`, a v1 app; kept as a historical record. Previously: no status recorded.
+
 ## Context
 
 The file-upload endpoints (`POST /files/presign-upload`, `POST /files/confirm-upload`)

@@ -1,7 +1,7 @@
 # 0097 — Recipe versioning removed; one flat file per form
 
 **Date:** 2026-06-23
-**Status:** Accepted
+**Status:** Deprecated (2026-11-10, #3120): about `apps/api`, a v1 app; kept as a historical record. Previously: Accepted
 **Issue:** [#1196](https://github.com/govtech-bb/gov-bb/issues/1196)
 **Supersedes:**
 [0038](0038-builder-version-bumps-are-client-side-and-deterministic.md),

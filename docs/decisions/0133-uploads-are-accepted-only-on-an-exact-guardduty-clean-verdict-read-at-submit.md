@@ -1,5 +1,7 @@
 # 0133 — Uploads are accepted only on an exact GuardDuty clean verdict, read at submit
 
+**Status:** Deprecated (2026-11-10, #3120): about `apps/api`, a v1 app; kept as a historical record. Previously: no status recorded.
+
 ## Context
 
 GuardDuty Malware Protection scans every object in the forms uploads bucket and

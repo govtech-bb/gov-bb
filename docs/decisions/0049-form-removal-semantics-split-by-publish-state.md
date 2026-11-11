@@ -1,7 +1,7 @@
 # 0049 — Form removal semantics are split by publish state
 
 **Date:** 2026-06-02
-**Status:** Accepted
+**Status:** Deprecated (2026-11-10, #3120): about `apps/form_builder`, a v1 app; kept as a historical record. Previously: Accepted
 **Supersedes:** part of [ADR 0021](0021-form-availability-gated-by-disabled-overrides-tombstone.md) (the "every code path that retires a form must write the tombstone" corollary)
 
 ## Context

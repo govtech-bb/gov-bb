@@ -1,5 +1,7 @@
 # 0069 — Builder rule availability mirrors runtime capability
 
+**Status:** Deprecated (2026-11-10, #3120): about `apps/form_builder`, a v1 app; kept as a historical record. Previously: no status recorded.
+
 ## Context
 
 `VALIDATION_RULE_DESCRIPTORS` (`packages/form-builder/src/behaviors/validation-builder.ts`)

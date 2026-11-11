@@ -1,5 +1,7 @@
 # 0105 — Untrusted DB content is sanitized before entering LLM prompts
 
+**Status:** Deprecated (2026-11-10, #3120): about `apps/form_builder`, a v1 app; kept as a historical record. Previously: no status recorded.
+
 ## Context
 
 The form-builder AI assembles a system prompt from two sources: a static

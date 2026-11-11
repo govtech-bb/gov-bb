@@ -1,7 +1,7 @@
 # 0081 — Save Changes overwrites in place; Deploy is the only path that cuts a version
 
 **Date:** 2026-06-10
-**Status:** Accepted
+**Status:** Deprecated (2026-11-10, #3120): about `apps/form_builder`, a v1 app; kept as a historical record. Previously: Accepted
 
 ## Context
 

@@ -1,7 +1,7 @@
 # 0112 — Per-MDA webhook destinations in one Secrets Manager JSON
 
 **Date:** 2026-07-22
-**Status:** Accepted
+**Status:** Deprecated (2026-11-10, #3120): about `apps/api`, a v1 app; kept as a historical record. Previously: Accepted
 **Issues:** #1920, #2020 (supersedes the per-form env approach of #1970 and the
 DB + AES-256-GCM approach that briefly replaced it)
 

@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted (2026-06-04)
+Deprecated (2026-11-10, #3120): about `apps/forms`, a v1 app; kept as a historical record. Previously: Accepted (2026-06-04)
 
 ## Context
 

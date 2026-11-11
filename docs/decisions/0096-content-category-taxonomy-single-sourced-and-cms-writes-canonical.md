@@ -1,5 +1,7 @@
 # 0096 — The content category taxonomy is single-sourced, and the CMS writes the canonical file
 
+**Status:** Deprecated (2026-11-10, #3120): about `apps/landing`'s static-markdown content, which api_v2 replaces; kept as a historical record. Previously: no status recorded.
+
 ## Context
 
 The landing site's content category taxonomy (top-level slugs + titles, their

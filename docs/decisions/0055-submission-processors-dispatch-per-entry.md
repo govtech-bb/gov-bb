@@ -1,7 +1,7 @@
 # 0055 — Submission processors dispatch one SQS message per entry
 
 **Date:** 2026-06-03
-**Status:** Accepted — supersedes the **dispatch** decision of
+**Status:** Deprecated (2026-11-10, #3120): about `apps/api`, a v1 app; kept as a historical record. Previously: Accepted — supersedes the **dispatch** decision of
 [ADR 0014](0014-submission-processors-iterate-internally.md)
 
 ## Context

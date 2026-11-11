@@ -1,7 +1,7 @@
 # 0046 — A field's value type is defined by its renderer, not its `htmlType` name
 
 **Date:** 2026-06-02
-**Status:** Accepted
+**Status:** Deprecated (2026-11-10, #3120): about `apps/form_builder`, a v1 app; kept as a historical record. Previously: Accepted
 **Related:** [#565](https://github.com/govtech-bb/gov-bb/issues/565), [ADR 0020](./0020-form-data-fieldids-are-recipe-wide-unique.md)
 
 ## Context

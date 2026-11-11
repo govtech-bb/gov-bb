@@ -1,5 +1,7 @@
 # 0093 — Node10/CJS apps consume shared ESM workspace packages via a narrow subpath
 
+**Status:** Deprecated (2026-11-10, #3120): about `apps/form_builder_api`, a v1 app; kept as a historical record. Previously: no status recorded.
+
 ## Context
 
 Several apps (`apps/form_builder_api`, `apps/api`) compile with

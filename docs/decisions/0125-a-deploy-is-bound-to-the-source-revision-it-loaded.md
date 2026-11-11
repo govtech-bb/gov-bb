@@ -1,7 +1,7 @@
 # 0125 — A PR-based authoring flow binds a deploy to the source revision it loaded
 
 **Date:** 2026-10-03
-**Status:** Accepted
+**Status:** Deprecated (2026-11-10, #3120): about `apps/form_builder`, a v1 app; kept as a historical record. Previously: Accepted
 **Related:** [#2489](https://github.com/govtech-bb/gov-bb/issues/2489) (this
 decision), [#2409](https://github.com/govtech-bb/gov-bb/issues/2409) (same
 root cause, wider evidence), [#2477](https://github.com/govtech-bb/gov-bb/pull/2477)

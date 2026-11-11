@@ -1,7 +1,7 @@
 # 0082 — AI-generated recipes load with a warning; validity is gated at Save/Deploy, not at load
 
 **Date:** 2026-06-10
-**Status:** Accepted
+**Status:** Deprecated (2026-11-10, #3120): about `apps/form_builder`, a v1 app; kept as a historical record. Previously: Accepted
 
 ## Context
 

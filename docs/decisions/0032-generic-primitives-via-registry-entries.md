@@ -1,7 +1,7 @@
 # 0032 — Generic primitives via registry entries
 
 **Date:** 2026-05-28
-**Status:** Accepted
+**Status:** Deprecated (2026-11-10, #3120): about `apps/form_builder`, a v1 app; kept as a historical record. Previously: Accepted
 **Related:** [#310](https://github.com/govtech-bb/gov-bb/issues/310), [ADR 0018](./0018-form-builder-catalog-aligns-with-api-registry.md)
 
 ## Context

@@ -1,7 +1,7 @@
 # 0042 — `contactDetails.` is a reserved recipientField namespace
 
 **Date:** 2026-06-01
-**Status:** Accepted
+**Status:** Deprecated (2026-11-10, #3120): about `apps/api`, a v1 app; kept as a historical record. Previously: Accepted
 **Related:** [#501](https://github.com/govtech-bb/gov-bb/issues/501). Builds on
 the multiple-same-type-processor iteration guarantee from
 [0014](0014-submission-processors-iterate-internally.md).

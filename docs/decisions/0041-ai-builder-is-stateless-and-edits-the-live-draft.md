@@ -4,7 +4,7 @@
 > [ADR 0120](0120-builder-ai-streams-with-reviewed-client-edits.md). Domain guardrails still apply.
 
 **Date:** 2026-06-01
-**Status:** Accepted
+**Status:** Deprecated (2026-11-10, #3120): about `apps/form_builder`, a v1 app; kept as a historical record. Previously: Accepted
 **Supersedes:** [0024 — Builder-mode handoff goes through persistence](./0024-builder-mode-handoff-goes-through-persistence.md)
 **Related:** [#490](https://github.com/govtech-bb/gov-bb/issues/490) — integrate UI + AI into one builder with a collapsible chat sidebar; [#332](https://github.com/govtech-bb/gov-bb/issues/332) — in-memory AI sessions lost on restart.
 

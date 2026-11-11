@@ -1,5 +1,7 @@
 # 0095 — A package's barrel is for external consumers only
 
+**Status:** Deprecated (2026-11-10, #3120): about `apps/forms`, a v1 app; kept as a historical record. Previously: no status recorded.
+
 ## Context
 
 `apps/forms` carried 6 circular import cycles (ARCH-05, #1407), all within the

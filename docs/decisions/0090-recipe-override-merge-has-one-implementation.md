@@ -1,5 +1,7 @@
 # 0090 — Recipe override-merge has one implementation
 
+**Status:** Deprecated (2026-11-10, #3120): about `apps/api`, a v1 app; kept as a historical record. Previously: no status recorded.
+
 > **Note 2026-10-13 ([#2024](https://github.com/govtech-bb/gov-bb/issues/2024)):**
 > `apps/api/src/registry/resolution.ts` was retired by #2044. The API now hydrates
 > recipes with the shared `hydrateForm` in `packages/form-builder/src/resolution.ts`

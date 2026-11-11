@@ -1,7 +1,7 @@
 # 0035 — Builder commit actions self-validate on click
 
 **Date:** 2026-05-28
-**Status:** Accepted
+**Status:** Deprecated (2026-11-10, #3120): about `apps/form_builder`, a v1 app; kept as a historical record. Previously: Accepted
 **Related:** [#344](https://github.com/govtech-bb/gov-bb/issues/344) — Form Builder: stale-green validate left buttons enabled. Supersedes the planned approach in the (now-deleted) `form-builder-validate-gate-reset.md`.
 
 ## Context

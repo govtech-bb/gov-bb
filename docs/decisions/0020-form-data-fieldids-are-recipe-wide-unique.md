@@ -1,7 +1,7 @@
 # 0020 — Form data fieldIds are recipe-wide unique
 
 **Date:** 2026-05-26
-**Status:** Accepted
+**Status:** Deprecated (2026-11-10, #3120): about `apps/form_builder`, a v1 app; kept as a historical record. Previously: Accepted
 **Related:** [#206](https://github.com/govtech-bb/gov-bb/issues/206), follow-up to [#201](https://github.com/govtech-bb/gov-bb/issues/201); backstop tracked in [#207](https://github.com/govtech-bb/gov-bb/issues/207), [#208](https://github.com/govtech-bb/gov-bb/issues/208). Builds on [0019](0019-form-builder-instance-ids-are-editor-only.md).
 
 ## Context

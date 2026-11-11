@@ -1,7 +1,7 @@
 # 0014 — Submission processors iterate over their own matching configs
 
 **Date:** 2026-05-22
-**Status:** Accepted — the **dispatch** decision (one message per type, handlers
+**Status:** Deprecated (2026-11-10, #3120): about `apps/api`, a v1 app; kept as a historical record. Previously: Accepted — the **dispatch** decision (one message per type, handlers
 iterate internally) is **superseded** by
 [ADR 0055](0055-submission-processors-dispatch-per-entry.md), which dispatches
 one message per entry addressed by a positional `processorIndex`. The gating
