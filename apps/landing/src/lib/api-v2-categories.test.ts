@@ -21,6 +21,7 @@ import {
   resolveCategoryAddress,
 } from './api-v2-categories'
 import type { CategoryListing, CategoryNode } from './api-v2-categories'
+import { apiV2Breaker } from './api-v2-reader'
 
 /** The one `api_v2_fallback` line logged through `spy`, parsed. */
 function logged(spy: ReturnType<typeof vi.spyOn>) {
@@ -103,6 +104,7 @@ afterEach(() => {
   requests.length = 0
   vi.restoreAllMocks()
   vi.useRealTimers()
+  apiV2Breaker.reset()
 })
 
 describe('fetchCategoryTree', () => {
@@ -120,14 +122,6 @@ describe('fetchCategoryTree', () => {
     expect(requests.map((request) => request.url)).toEqual(['/categories'])
     expect(requests[0].headers).not.toHaveProperty('x-preview-token')
     expect(requests[0].headers).not.toHaveProperty('cookie')
-  })
-
-  it("sends landing's token only when one is configured", async () => {
-    reply = json(200, { categories: TREE })
-    await fetchCategoryTree(base)
-    await fetchCategoryTree(base, fetch, 'secret')
-    expect(requests[0].headers).not.toHaveProperty('x-landing-token')
-    expect(requests[1].headers['x-landing-token']).toBe('secret')
   })
 
   it('keeps only the public fields of each category', async () => {
@@ -148,18 +142,6 @@ describe('fetchCategoryTree', () => {
     })
   })
 
-  it('logs a failed read as one api_v2_fallback line at error', async () => {
-    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
-    reply = json(503, { error: 'internal_error' })
-    await fetchCategoryTree(base)
-    expect(logged(error)).toEqual({
-      event: 'api_v2_fallback',
-      reason: 'status',
-      url: '/categories',
-      status: 503,
-    })
-  })
-
   it.each([
     ['a server error', json(500, { error: 'internal_error' }), 500],
     ['a missing route', json(404, { error: 'not_found' }), 404],
@@ -175,41 +157,16 @@ describe('fetchCategoryTree', () => {
     })
   })
 
-  it('is unavailable when api_v2 cannot be reached', async () => {
-    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
-    const closed = createServer()
-    await new Promise<void>((resolve) => closed.listen(0, '127.0.0.1', resolve))
-    // SAFETY: still listening on TCP here, so address() is an AddressInfo.
-    const { port } = closed.address() as AddressInfo
-    await new Promise((resolve) => closed.close(resolve))
-    expect(await fetchCategoryTree(`http://127.0.0.1:${port}`)).toEqual({
-      kind: 'unavailable',
-    })
-    expect(logged(error)).toMatchObject({
-      event: 'api_v2_fallback',
-      reason: 'network',
-      url: '/categories',
-      error: expect.stringContaining('ECONNREFUSED'),
-    })
-  })
-
-  it('is unavailable when api_v2 does not answer in time', async () => {
-    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
-    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
-    reply = 'hang'
-    const result = fetchCategoryTree(base)
-    await vi.waitFor(() => expect(requests).toHaveLength(1))
-    await vi.runAllTimersAsync()
-    expect(await result).toEqual({ kind: 'unavailable' })
-    expect(logged(error)).toMatchObject({
-      event: 'api_v2_fallback',
-      reason: 'timeout',
-      url: '/categories',
-    })
+  it('is unavailable while the breaker is open, without a request', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    reply = json(503, { error: 'internal_error' })
+    for (let i = 0; i < 3; i++) await fetchCategoryTree(base)
+    reply = json(200, { categories: TREE })
+    expect(await fetchCategoryTree(base)).toEqual({ kind: 'unavailable' })
+    expect(requests).toHaveLength(3)
   })
 
   it.each([
-    ['not JSON', { status: 200, body: '<html>' }],
     ['the wrong shape', json(200, { categories: [{ slug: 1 }] })],
     ['a missing list', json(200, {})],
   ])('is malformed when the body is %s', async (_, response) => {
@@ -240,19 +197,6 @@ describe('fetchCategoryListing', () => {
     expect(requests.map((request) => request.url)).toEqual([
       '/categories/money-financial-support',
     ])
-  })
-
-  it("sends landing's token only when one is configured", async () => {
-    reply = json(200, LISTING)
-    await fetchCategoryListing(base, ['money-financial-support'])
-    await fetchCategoryListing(
-      base,
-      ['money-financial-support'],
-      fetch,
-      'secret',
-    )
-    expect(requests[0].headers).not.toHaveProperty('x-landing-token')
-    expect(requests[1].headers['x-landing-token']).toBe('secret')
   })
 
   it('reads a subcategory at its two-segment public address', async () => {
@@ -295,6 +239,17 @@ describe('fetchCategoryListing', () => {
       url: '/categories/money/tax',
       status: 503,
     })
+  })
+
+  it('is unavailable while the breaker is open, not not-found', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    reply = json(503, { error: 'internal_error' })
+    for (let i = 0; i < 3; i++) await fetchCategoryListing(base, ['money'])
+    reply = json(404, { error: 'not_found' })
+    expect(await fetchCategoryListing(base, ['money'])).toEqual({
+      kind: 'unavailable',
+    })
+    expect(requests).toHaveLength(3)
   })
 
   it('is malformed when the listing has the wrong shape', async () => {

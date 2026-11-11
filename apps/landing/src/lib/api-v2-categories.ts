@@ -1,13 +1,10 @@
 import { createServerFn } from '@tanstack/react-start'
 import { QueryClient, isCancelledError } from '@tanstack/react-query'
 import { z } from 'zod'
-import {
-  API_V2_TIMEOUT_MS,
-  apiV2Base,
-  landingToken,
-  siteVersionChanges,
-} from './api-v2-page'
-import { logFallback, message } from './api-v2-log'
+import { apiV2Base, landingToken, siteVersionChanges } from './api-v2-page'
+import { logFallback } from './api-v2-log'
+import { readPublic } from './api-v2-reader'
+import type { ApiV2ReadMiss } from './api-v2-reader'
 
 /**
  * Categories from api_v2's public reads (ADR 0132). When `VITE_API_V2_URL` is
@@ -66,6 +63,10 @@ export type CategoryListing = z.infer<typeof CategoryListing>
 /** Why a category read has nothing to show. */
 type CategoryReadFailure = { kind: 'unavailable' } | { kind: 'malformed' }
 
+/** A failed read: a body the site can't use, or api_v2 unavailable. */
+const failure = ({ reason }: ApiV2ReadMiss): CategoryReadFailure =>
+  reason === 'malformed' ? { kind: 'malformed' } : { kind: 'unavailable' }
+
 /** The categories the site lists, or why they can't be shown. */
 export type CategoryTreeResult =
   | { kind: 'disabled' }
@@ -91,60 +92,6 @@ export const CategoryPath = z.union([
 /** A category path: `[category]` or `[category, subcategory]`. */
 export type CategoryPath = z.infer<typeof CategoryPath>
 
-/**
- * GET a public api_v2 read, parsed; `missing` is a 404 the caller may expect.
- * Any other miss logs an `api_v2_fallback` line (contract in api-v2-page.ts).
- */
-export async function readPublic<T>(
-  base: string,
-  path: string,
-  schema: z.ZodType<T>,
-  fetchImpl: typeof fetch,
-  landingToken?: string,
-): Promise<
-  { kind: 'ok'; value: T } | { kind: 'missing' } | CategoryReadFailure
-> {
-  const controller = new AbortController()
-  const timer = setTimeout(() => controller.abort(), API_V2_TIMEOUT_MS)
-
-  try {
-    const response = await fetchImpl(`${base}${path}`, {
-      signal: controller.signal,
-      ...(landingToken && { headers: { 'x-landing-token': landingToken } }),
-    })
-
-    if (response.status === 404) {
-      // Release the socket: an unread body pins a keep-alive connection.
-      await response.body?.cancel()
-
-      return { kind: 'missing' }
-    }
-
-    if (response.status !== 200) {
-      logFallback('status', path, { status: response.status })
-      await response.body?.cancel()
-
-      return { kind: 'unavailable' }
-    }
-
-    const body: unknown = await response.json().catch(() => undefined)
-    const parsed = schema.safeParse(body)
-
-    if (parsed.success) return { kind: 'ok', value: parsed.data }
-    if (controller.signal.aborted) throw new Error('timed out reading the body')
-    logFallback('malformed', path)
-
-    return { kind: 'malformed' }
-  } catch (error) {
-    const reason = controller.signal.aborted ? 'timeout' : 'network'
-    logFallback(reason, path, { error: message(error) })
-
-    return { kind: 'unavailable' }
-  } finally {
-    clearTimeout(timer)
-  }
-}
-
 /** `GET /categories`: every category the public can browse, in order. */
 export async function fetchCategoryTree(
   base: string | null,
@@ -161,16 +108,14 @@ export async function fetchCategoryTree(
     landingToken,
   )
 
-  switch (result.kind) {
-    case 'ok':
-      return { kind: 'found', categories: result.value.categories }
-    // The tree route always exists; a 404 means api_v2 isn't serving it.
-    case 'missing':
-      logFallback('status', '/categories', { status: 404 })
-      return { kind: 'unavailable' }
-    default:
-      return result
+  if (result.kind === 'ok')
+    return { kind: 'found', categories: result.value.categories }
+  // The tree route always exists; a 404 means api_v2 isn't serving it.
+  if (result.reason === 'not_found') {
+    logFallback('status', '/categories', { status: 404 })
+    return { kind: 'unavailable' }
   }
+  return failure(result)
 }
 
 /** A category slug, as api_v2 accepts one (ADR 0132). */
@@ -200,14 +145,9 @@ export async function fetchCategoryListing(
     landingToken,
   )
 
-  switch (result.kind) {
-    case 'ok':
-      return { kind: 'found', listing: result.value }
-    case 'missing':
-      return { kind: 'not_found' }
-    default:
-      return result
-  }
+  if (result.kind === 'ok') return { kind: 'found', listing: result.value }
+  if (result.reason === 'not_found') return { kind: 'not_found' }
+  return failure(result)
 }
 
 /** What a one- or two-segment address is, in api_v2 mode. */

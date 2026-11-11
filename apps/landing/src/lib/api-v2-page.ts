@@ -7,6 +7,7 @@ import type { ContentPage } from '../content/registry'
 import { bakeStartLinkFormId } from '../utils/markdown/plugins'
 import { createApiV2Cache } from './api-v2-cache'
 import { REASONS, logFallback, message } from './api-v2-log'
+import { API_V2_TIMEOUT_MS, apiV2Breaker } from './api-v2-reader'
 import { createVersionWatch, fetchSiteVersion } from './api-v2-version'
 import type { Frontmatter, ViewLevel } from './frontmatter'
 import { COOKIE_NAME, levelFromCookie } from './preview'
@@ -35,12 +36,13 @@ import { COOKIE_NAME, levelFromCookie } from './preview'
  * `bad_redirect`, `compile`). A 404 isn't logged. A breaker trip logs one
  * `{event: "api_v2_circuit_open", url}` at `console.error`; requests it turns
  * away aren't logged. Category reads (api-v2-categories.ts) log the same
- * lines, with the api_v2 path as `url`, but have no `rejected`: any status but
+ * lines and count toward the same breaker (api-v2-reader.ts), with the api_v2
+ * path as `url`, but have no `rejected`: any status but
  * 200 and 404 is `status`, as is a 404 from `/categories`. `REASONS` in api-v2-log.ts holds the
  * classification.
  */
 
-export const API_V2_TIMEOUT_MS = 750
+export { API_V2_TIMEOUT_MS }
 
 /** An optional field that is dropped, not fatal, when it has the wrong type. */
 const lenient = <T extends z.ZodType>(schema: T) =>
@@ -128,7 +130,7 @@ export type ApiV2Page = SerializedContentPage & {
  * `bad_redirect` and `compile` are answers (cached for their
  * `Cache-Control`); `no_target`, `status` (a 5xx, 408 or 429),
  * `malformed`, `timeout` and `network` are api_v2 failures (never cached,
- * counted by the breaker in api-v2-cache.ts). See `REASONS` in api-v2-log.ts.
+ * counted by the breaker in api-v2-reader.ts). See `REASONS` in api-v2-log.ts.
  */
 export type ApiV2MissReason =
   | 'unconfigured'
@@ -387,7 +389,7 @@ export function contentSource(result: ApiV2Result): ContentSource {
 }
 
 // Pure, so the client build (where the handler is stripped) drops the cache.
-const apiV2Cache = /* @__PURE__ */ createApiV2Cache()
+const apiV2Cache = /* @__PURE__ */ createApiV2Cache(apiV2Breaker)
 let siteChanges = 0
 const checkSiteVersion = /* @__PURE__ */ createVersionWatch(
   () => fetchSiteVersion(apiV2Base(), fetch, landingToken()),
