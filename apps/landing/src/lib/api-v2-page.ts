@@ -1,4 +1,4 @@
-import { createServerFn } from '@tanstack/react-start'
+import { createServerFn, createServerOnlyFn } from '@tanstack/react-start'
 import { getCookie } from '@tanstack/react-start/server'
 import { useRuntimeConfig } from 'nitro/runtime-config'
 import { z } from 'zod'
@@ -216,9 +216,18 @@ export async function fetchApiV2Page(
   | { kind: 'page'; body: PageResponse; cacheControl: string | null }
   | RedirectRead
 > {
+  // A url that can't be encoded (a lone surrogate) is the visitor's, not an
+  // api_v2 failure, so it must not throw out of the read.
+  let query: string
+  try {
+    query = encodeURIComponent(url)
+  } catch {
+    logFallback('rejected', url)
+    return { kind: 'miss', reason: 'rejected', cacheControl: null }
+  }
   const result = await readApiV2(
     base,
-    `/pages?url=${encodeURIComponent(url)}`,
+    `/pages?url=${query}`,
     PageResponse,
     fetchImpl,
     {
@@ -397,6 +406,15 @@ export async function siteVersionChanges(): Promise<number> {
   return siteChanges
 }
 
+/** A lone surrogate: a paired one is part of an astral code point under `u`. */
+const LONE_SURROGATE = /\p{Cs}/u
+
+/** A url api_v2 could hold a page at: a well-formed site path within its
+ *  512-character limit. */
+function isPageUrl(url: string): boolean {
+  return url.length <= 512 && !LONE_SURROGATE.test(url) && isSitePath(url)
+}
+
 /**
  * A public read goes through `cache`; a reviewer's read (with a preview token)
  * skips it both ways, because the cache is keyed by url alone and a preview
@@ -419,12 +437,23 @@ export function loadApiV2Page(
   )
 }
 
-/** Server function: `loadApiV2Page` against the configured api_v2, cached
- *  until it expires or api_v2's site version moves. The level comes from the
- *  httpOnly grant cookie, read here, never from the client. */
-export const getApiV2Page = createServerFn()
-  .validator((url: string) => url)
-  .handler(async ({ data: url }) => {
+/**
+ * `getApiV2Page`'s handler: `loadApiV2Page` against the configured api_v2,
+ * cached until it expires or api_v2's site version moves. The level comes
+ * from the httpOnly grant cookie, read here, never from the client. Exported
+ * for its test, which can't call a server function outside Start's runtime;
+ * server-only, so the client build drops it and what it reaches (the cookie,
+ * the tokens) as it does a handler body.
+ */
+export const readApiV2Page = createServerOnlyFn(
+  async (url: string): Promise<ApiV2Result> => {
+    // A visitor's path no page could have is a miss, not an error, and it
+    // makes no api_v2 request: not the version check, the page read, the
+    // cache or the breaker.
+    if (!isPageUrl(url)) {
+      logFallback('rejected', url)
+      return { kind: 'miss', reason: 'rejected' }
+    }
     await checkSiteVersion()
     const level = levelFromCookie(getCookie(COOKIE_NAME))
     return loadApiV2Page(
@@ -434,4 +463,11 @@ export const getApiV2Page = createServerFn()
       landingToken(),
       previewTokenFor(level, previewSecret()),
     )
-  })
+  },
+)
+
+/** Server function: `readApiV2Page`. A malformed string is the visitor's
+ *  path, so it reaches the handler and misses; anything else is refused. */
+export const getApiV2Page = createServerFn()
+  .validator(z.string())
+  .handler(({ data: url }) => readApiV2Page(url))
