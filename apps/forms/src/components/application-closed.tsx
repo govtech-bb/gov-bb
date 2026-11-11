@@ -1,7 +1,10 @@
 import { ContactDetails, formatClosingDateTime } from "@govtech-bb/form-types";
 import { Heading, Link, ServiceHeading, Text } from "@govtech-bb/react";
+import React from "react";
+import { trackEvent } from "../lib/analytics";
 
 interface ApplicationClosedProps {
+  formId: string;
   serviceTitle: string;
   closingDateTime: string;
   contactDetails?: ContactDetails;
@@ -13,10 +16,19 @@ interface ApplicationClosedProps {
  * contact from the served contract's `contactDetails` (never hardcoded).
  */
 export default function ApplicationClosed({
+  formId,
   serviceTitle,
   closingDateTime,
   contactDetails,
 }: ApplicationClosedProps) {
+  // Once per view: the ref survives StrictMode's second effect run (#3513).
+  const tracked = React.useRef(false);
+  React.useEffect(() => {
+    if (tracked.current) return;
+    tracked.current = true;
+    trackEvent("form-closed-view", { form: formId });
+  }, [formId]);
+
   const hasContact = Boolean(
     contactDetails?.title ||
     contactDetails?.email ||

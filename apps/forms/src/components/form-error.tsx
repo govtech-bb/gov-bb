@@ -1,6 +1,12 @@
-import { useRouter, type ErrorComponentProps } from "@tanstack/react-router";
+import {
+  useParams,
+  useRouter,
+  type ErrorComponentProps,
+} from "@tanstack/react-router";
+import React from "react";
 import { FormFetchError } from "@forms/form-api";
 import { LANDING_URL } from "../config/landing";
+import { trackEvent, type TrackingData } from "../lib/analytics";
 import { ErrorPage } from "./error-page";
 
 const HOMEPAGE = { label: "Return to homepage", href: LANDING_URL };
@@ -9,15 +15,38 @@ const SERVICE_DIRECTORY = {
   href: `${LANDING_URL}/services`,
 };
 
+type LoadErrorReason = TrackingData["form-load-error"]["reason"];
+
+/** A fixed code for why the page failed to load; never the error's text. */
+function loadErrorReason(error: unknown): LoadErrorReason {
+  if (error instanceof FormFetchError && error.status === 404) {
+    return "not-found";
+  }
+  if (error instanceof FormFetchError && error.status === 0) return "network";
+  return "server";
+}
+
 export default function FormError({ error }: ErrorComponentProps<unknown>) {
   const router = useRouter();
   const retry = () => {
     void router.invalidate();
   };
-  const isNotFound = error instanceof FormFetchError && error.status === 404;
-  const isNetworkError = error instanceof FormFetchError && error.status === 0;
+  const reason = loadErrorReason(error);
+  // This is also the router's default error page, so a route may have no form.
+  const formId = useParams({ strict: false, shouldThrow: false })?.formId;
 
-  if (isNotFound) {
+  // Once per view: the ref survives StrictMode's second effect run (#3513).
+  const tracked = React.useRef(false);
+  React.useEffect(() => {
+    if (tracked.current) return;
+    tracked.current = true;
+    trackEvent(
+      "form-load-error",
+      formId ? { form: formId, reason } : { reason },
+    );
+  }, [formId, reason]);
+
+  if (reason === "not-found") {
     return (
       <ErrorPage
         title="Form not found"
@@ -33,7 +62,7 @@ export default function FormError({ error }: ErrorComponentProps<unknown>) {
     );
   }
 
-  if (isNetworkError) {
+  if (reason === "network") {
     return (
       <ErrorPage
         title="Connection error"

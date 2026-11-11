@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import {
   HeadContent,
   Outlet,
@@ -207,6 +208,15 @@ function RootDocument({ children }: { children: React.ReactNode }) {
 }
 
 function NotFoundPage() {
+  // Once per view: the ref survives StrictMode's second effect run. The app
+  // only, never the path: it can hold text the visitor typed (#3513).
+  const tracked = useRef(false)
+  useEffect(() => {
+    if (tracked.current) return
+    tracked.current = true
+    trackEvent('page-not-found', { app: 'landing' })
+  }, [])
+
   return (
     <ErrorPage
       title="We couldn't find that page"
