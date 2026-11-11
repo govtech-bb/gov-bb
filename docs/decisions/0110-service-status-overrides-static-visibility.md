@@ -1,7 +1,7 @@
 # 0110 — A `service_status` row fully overrides the static visibility seed
 
 **Date:** 2026-07-08
-**Status:** Deprecated (2026-11-10, #3120): about `apps/api`, a v1 app; kept as a historical record. Previously: Accepted (amended 2026-07-08 — landing shipped via
+**Status:** Accepted (amended 2026-07-08 — landing shipped via
 [#1928](https://github.com/govtech-bb/gov-bb/pull/1928), which also gates
 sitemap and search; see "Accepted gaps"; amended 2026-10-30 — page
 visibility is set in api_v2 in any environment whose landing reads it, see
