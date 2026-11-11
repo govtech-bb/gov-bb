@@ -8,7 +8,7 @@ Recorded: 2026-11-11
 
 A write can commit before its answer is lost. A dropped connection, a server error or an unreadable reply cannot prove that the write failed. Seven screens handle this separately, with different rules for checking and retrying. Repeating a request with newer input or a newer version can overwrite an author's work.
 
-The "Clients, uncertainty and public caching" section of [ADR 0078](../../../../docs/decisions/0078-category-write-rules.md#clients-uncertainty-and-public-caching) requires category writes to read back before repeating an uncertain request. Every editor write needs that protection, including creates and deletions.
+The "Clients, uncertainty and public caching" section of [ADR 0132](../../../../docs/decisions/0132-category-write-rules.md#clients-uncertainty-and-public-caching) requires category writes to read back before repeating an uncertain request. Every editor write needs that protection, including creates and deletions.
 
 ## Decision
 
