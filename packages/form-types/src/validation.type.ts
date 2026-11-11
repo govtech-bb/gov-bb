@@ -11,7 +11,7 @@ import { kebabIdSchema } from "./id-pattern";
 export const scaleBySchema = z.object({
   referenceFieldId: kebabIdSchema,
   targetStepId: kebabIdSchema.optional(),
-  factors: z.record(z.string(), z.number()),
+  factors: z.record(z.string(), z.number().positive()),
 });
 
 export const validationConfigSchema = z.object({

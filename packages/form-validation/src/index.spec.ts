@@ -330,6 +330,25 @@ describe("validate()", () => {
       expect(result.errors["income-amount"]).toEqual(["Must be at most 3000"]);
     });
 
+    it("resolves per repeatable instance from that instance's values", () => {
+      // The API validates each instance with its own values as stepValues.
+      const primitives = [income({ referenceFieldId: "income-frequency" })];
+      const allValues = {
+        household: [
+          { "income-amount": 1000, "income-frequency": "monthly" },
+          { "income-amount": 1000, "income-frequency": "weekly" },
+        ],
+      };
+      expect(
+        validate({ primitives, stepValues: allValues.household[0]!, allValues })
+          .valid,
+      ).toBe(true);
+      expect(
+        validate({ primitives, stepValues: allValues.household[1]!, allValues })
+          .valid,
+      ).toBe(false);
+    });
+
     it("keeps the bound reference separate from the scale reference", () => {
       const result = validate({
         primitives: [

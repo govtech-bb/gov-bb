@@ -4,7 +4,8 @@ import { resolveReference, MISSING } from "./resolve-reference";
 
 // For cross-field rules (config.reference set), pre-resolves the reference using
 // stepValues as a fallback for the current step. Patches config so the runner
-// treats it as a literal-value rule — no change to RuleRunner's signature needed.
+// treats it as a literal-value rule. stepValues is passed on for the numeric
+// runners' `scaleBy` lookup (#3636).
 export function runRule(
   runner: RuleRunner,
   value: unknown,

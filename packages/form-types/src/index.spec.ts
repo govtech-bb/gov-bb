@@ -413,6 +413,16 @@ describe("validationConfigSchema", () => {
       ).toBe(false);
     });
 
+    // A 0 factor would pass every max/lt for any amount (and a negative one
+    // would flip the bound), so a factor must be positive.
+    it.each([0, -4])("rejects a factor of %s", (factor) => {
+      expect(
+        validationConfigSchema.safeParse({
+          scaleBy: { ...scaleBy, factors: { weekly: factor } },
+        }).success,
+      ).toBe(false);
+    });
+
     it("rejects a factor that is not a number", () => {
       expect(
         validationConfigSchema.safeParse({

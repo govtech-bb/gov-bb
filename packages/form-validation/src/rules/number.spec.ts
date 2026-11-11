@@ -489,6 +489,17 @@ describe("numeric runners with scaleBy", () => {
     ).toBe("Must be at most 3000");
   });
 
+  it("scales the transformed number, not the raw date", () => {
+    // A 10-year-old's age × 2 = 20 clears `min: 16`; unscaled it would not.
+    const scaleByTwo = { referenceFieldId: "count", factors: { two: 2 } };
+    const config = { value: 16, transform: "yearsSince" as const };
+    const allValues = { s: { count: "two" } };
+    expect(minRunner(dobYearsAgo(10), config, allValues)).not.toBeNull();
+    expect(
+      minRunner(dobYearsAgo(10), { ...config, scaleBy: scaleByTwo }, allValues),
+    ).toBeNull();
+  });
+
   it("leaves a rule with no scaleBy unscaled", () => {
     expect(maxRunner(1000, { value: 3000 }, answers("weekly"))).toBeNull();
   });
