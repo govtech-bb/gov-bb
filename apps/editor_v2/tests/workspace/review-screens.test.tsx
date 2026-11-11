@@ -210,6 +210,37 @@ test("the queue lists each change waiting for review, linking to its comparison"
   expect(text()).toContain(entry.url);
 });
 
+test("a failed queue refresh keeps the last loaded changes with a retry notice", async () => {
+  const { server } = await render("queue");
+  await until(() => expect(text()).toContain("Submitted by Ada Editor"));
+
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () => new Response("{")),
+  );
+  await act(async () => {
+    await client.refetchQueries({ queryKey: ["content", "review-queue"] });
+  });
+  await until(() =>
+    expect(text()).toContain(
+      "We could not refresh the review queue. Showing the last loaded list.",
+    ),
+  );
+  expect(host.querySelector(`a[href="/reviews/${PAGE}"]`)?.textContent).toBe("Severance pay");
+  expect(text()).not.toContain("We could not load the review queue");
+
+  const retry = [...host.querySelectorAll("button")].find((item) =>
+    item.textContent?.startsWith("Try again"),
+  );
+
+  expect(retry).toBeDefined();
+  vi.stubGlobal("fetch", server.fetch);
+  await act(async () => retry?.click());
+  await until(() => expect(text()).not.toContain("We could not refresh the review queue"));
+  expect(host.querySelector(`a[href="/reviews/${PAGE}"]`)?.textContent).toBe("Severance pay");
+  expect(server.sent).toEqual([]);
+});
+
 test("an empty queue says nothing is waiting", async () => {
   const { server } = await render("queue");
   server.replace(null);

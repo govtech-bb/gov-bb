@@ -18,6 +18,30 @@ const router = createRouter({
 });
 
 test.each([
+  [undefined, "records"],
+  ["these records", "these records"],
+] as const)("the caller chooses the refresh phrase (%s)", async (refreshNoun, phrase) => {
+  const load = listLoadView(
+    {
+      data: ["Last loaded row"],
+      isError: true,
+      error: new ApiFailure(503),
+      isFetching: true,
+      refetch: vi.fn(),
+    },
+    "records",
+    refreshNoun,
+  );
+
+  await renderInPage(load.notices);
+  expect(document.body.textContent).toContain(
+    `We could not refresh ${phrase}. Showing the last loaded list.`,
+  );
+  expect(load.loadingLabel).toBe("Loading records…");
+  expect(document.querySelector("button")?.textContent).toContain("Refreshing records…");
+});
+
+test.each([
   [401, "Your session has ended. Sign in again to load services."],
   [403, "You do not have access to these services."],
   [
