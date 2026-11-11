@@ -70,7 +70,10 @@ test("a landed save returns the API answer without reading back", async () => {
 test.each([
   [new ApiFailure(422, errors), { kind: "invalid", errors }],
   [new ApiFailure(400, errors, "Invalid", "validation_failed"), { kind: "invalid", errors }],
-  [new ApiFailure(409, [], "Changed", "version_conflict"), { kind: "conflict" }],
+  [
+    new ApiFailure(409, [], "Changed", "version_conflict"),
+    { kind: "conflict", message: "Changed" },
+  ],
   [new ApiFailure(404), { kind: "missing" }],
   [new ApiFailure(401), { kind: "signed-out" }],
   [new ApiFailure(403, [], "Editors only"), { kind: "forbidden", message: "Editors only" }],
@@ -287,6 +290,7 @@ test("a replacement record is not deleted by retrying the frozen version", async
   await attempt.press(() => ({ collection: "contacts", key: "nis", version: 1 }));
   expect(await attempt.press(() => ({ collection: "contacts", key: "nis", version: 2 }))).toEqual({
     kind: "conflict",
+    message: "Changed",
   });
   expect(api.deleteRecord.mock.calls).toEqual([
     ["contacts", "nis", 1],
@@ -333,7 +337,7 @@ test("a successful tagged answer keeps the write's declared answer shape", async
 const blockers = { pages: 1, subcategories: 0, reserved_route: false };
 
 test.each([
-  [new CategoryConflict("Changed"), { kind: "conflict" }],
+  [new CategoryConflict("Changed"), { kind: "conflict", message: "Changed" }],
   [new CategoryNotFound("Gone"), { kind: "missing" }],
   [new CategoryAccessDenied(401, "Sign in"), { kind: "signed-out" }],
   [new CategoryAccessDenied(403, "Editors only"), { kind: "forbidden", message: "Editors only" }],

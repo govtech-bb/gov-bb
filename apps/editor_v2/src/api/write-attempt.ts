@@ -13,8 +13,8 @@ import { apiMessage } from "./failure-messages";
 export type Outcome<Answer> =
   | { kind: "landed"; answer: Answer }
   | { kind: "invalid"; errors: readonly FieldError[] }
-  | { kind: "conflict" | "missing" | "signed-out" | "unknown" }
-  | { kind: "forbidden"; message?: string }
+  | { kind: "missing" | "signed-out" | "unknown" }
+  | { kind: "conflict" | "forbidden"; message?: string }
   | { kind: "refused"; code?: string; message?: string; detail?: unknown };
 
 /** Read-back is independent of cached queries; only absence returns undefined. */
@@ -50,7 +50,7 @@ function failureOutcome(error: unknown): Outcome<never> {
     error instanceof CategoryConflict ||
     (error.status === 409 && error.code === "version_conflict")
   )
-    return { kind: "conflict" };
+    return { kind: "conflict", message: apiMessage(error) };
 
   if (error instanceof CategoryRefused)
     return { kind: "refused", code: error.code, message: apiMessage(error) };

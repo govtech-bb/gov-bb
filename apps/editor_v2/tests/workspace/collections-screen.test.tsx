@@ -793,7 +793,7 @@ test("a confirmed record save keeps values typed after dispatch", async () => {
   expect(control("Name (optional)").value).toBe("Newer typing");
 });
 
-test("an unsettled create keeps its submitted key read-only while other values remain editable", async () => {
+test("an unsettled create keeps its key read-only, and the next press resends what was submitted", async () => {
   await renderCollection().ready;
   await loaded();
   await press("Add record");
@@ -808,6 +808,11 @@ test("an unsettled create keeps its submitted key read-only while other values r
   await enter("Name (optional)", "Newer typing");
   expect(control("Name (optional)").value).toBe("Newer typing");
   expect(server.writes).toHaveLength(1);
+
+  await press("Check records");
+  await until(() => expect(document.body.textContent).toContain("Record added"));
+  expect(server.writes).toHaveLength(2);
+  expect(server.writes[1]?.body).toEqual(server.writes[0]?.body);
 });
 
 test("a save whose answer is lost is confirmed automatically, without another press", async () => {
@@ -820,9 +825,20 @@ test("a save whose answer is lost is confirmed automatically, without another pr
   await renderCollection({ record: "nis" }).ready;
   await opened();
   await enter("Name (optional)", "National Insurance Scheme");
+  const alerts: string[] = [];
+
+  // Its own new version must never be announced as someone else's change, even for one render
+  const watch = new MutationObserver((changes) => {
+    for (const change of changes)
+      for (const node of change.addedNodes) alerts.push(node.textContent ?? "");
+  });
+
+  watch.observe(document.body, { childList: true, subtree: true });
   await submit();
   await closed();
+  watch.disconnect();
 
+  expect(alerts.join(" ")).not.toContain("The record changed since you opened it.");
   expect(server.writes).toHaveLength(1);
   expect(document.body.textContent).toContain("Record saved");
 });

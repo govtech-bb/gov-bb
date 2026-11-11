@@ -56,7 +56,11 @@ function recordOutcomeMessages(
   if (outcome.kind === "invalid")
     return outcome.errors.map((item) => `${item.field}: ${item.message}`);
 
-  if (outcome.kind === "conflict") return ["This record has changed since you opened it."];
+  if (outcome.kind === "conflict")
+    return [
+      outcome.message ??
+        "This item changed. Cancel and review the latest version before trying again.",
+    ];
 
   if (outcome.kind === "unknown") return ["The content API could not be reached. Try again."];
 
@@ -172,9 +176,18 @@ export function RecordDialog({
 
   const unknown = outcome?.kind === "unknown";
 
+  // The save's own new version is not someone else's change: not while its lost answer is being checked, nor in
+  // the render before its landed answer becomes the base
+  const mine = outcome?.kind === "landed" ? outcome.answer.record.version : undefined;
+
   const stale =
     conflict ||
-    (!unknown && !!base.record && !!latest && latest.record.version !== base.record.version);
+    (!unknown &&
+      !pending &&
+      !!base.record &&
+      !!latest &&
+      latest.record.version !== base.record.version &&
+      latest.record.version !== mine);
 
   const rejected = outcome?.kind === "invalid";
 
