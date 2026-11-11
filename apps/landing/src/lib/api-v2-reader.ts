@@ -5,11 +5,14 @@ import { REASONS, logFallback, message } from './api-v2-log'
 /**
  * The one reader landing's api_v2 reads go through (#3644). It owns the
  * transport (timeout, the token headers, releasing an unread body), the
- * `api_v2_fallback` line (contract in api-v2-page.ts) and the breaker, which
- * describes api_v2's health, so every public read counts toward it and is
- * turned away by it, once: `readPublic` checks it for its reads, the page cache
- * (api-v2-cache.ts) for page reads, which go through `readApiV2`. A reviewer's
- * page read bypasses it.
+ * `api_v2_fallback` line for `status`, `rejected`, `malformed`, `timeout` and
+ * `network` (contract in api-v2-page.ts; the page module logs its own
+ * reasons) and the breaker, which describes api_v2's health, so every public
+ * read counts toward it and is turned away by it, once: `readPublic` checks it
+ * for its reads, the page cache (api-v2-cache.ts) for page reads, which go
+ * through `readApiV2`. A reviewer's page read bypasses it. The site-version
+ * check (api-v2-version.ts) is turned away by it, but its failures neither
+ * count nor log.
  *
  * The breaker is module state here, not in a module that defines server
  * functions: TanStack Start copies those into the extracted handler, which
