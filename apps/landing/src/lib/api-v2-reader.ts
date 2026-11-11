@@ -52,12 +52,16 @@ export function createApiV2Breaker() {
 /** The breaker every read of api_v2 shares. Pure, so the client build drops it with the reads. */
 export const apiV2Breaker = /* @__PURE__ */ createApiV2Breaker()
 
-/** Why a read has nothing to show: a 404 the caller may expect, or a failure. */
+/**
+ * Why a read has nothing to show: a 404 the caller may expect, a request
+ * api_v2 rejected, or a failure.
+ */
 export type ApiV2ReadMiss = {
   kind: 'miss'
   reason: Extract<
     ApiV2MissReason,
     | 'not_found'
+    | 'rejected'
     | 'status'
     | 'malformed'
     | 'timeout'
@@ -70,7 +74,10 @@ export type ApiV2ReadMiss = {
  * GET a public api_v2 read, parsed. A failure (`status`, `malformed`,
  * `timeout`, `network`) logs an `api_v2_fallback` line and counts toward the
  * breaker; while it is open the read is a `circuit_open` miss, without a
- * request or a line. A 404 is a silent `not_found` the caller may expect.
+ * request or a line. A 404 is a silent `not_found` the caller may expect. Any
+ * other 4xx but 408 and 429 is `rejected`, logged at `warn` and not counted:
+ * api_v2 answered, the request was wrong, so a visitor's bad input (a
+ * collection key api_v2 refuses) can't open the breaker for the whole site.
  */
 export async function readPublic<T>(
   base: string,
@@ -116,10 +123,18 @@ async function read<T>(
     }
 
     if (response.status !== 200) {
-      logFallback('status', path, { status: response.status })
       await response.body?.cancel()
+      // As for pages: 408/429 say api_v2 (or a proxy) is busy, not that the
+      // request was wrong.
+      const rejected =
+        response.status >= 400 &&
+        response.status < 500 &&
+        response.status !== 408 &&
+        response.status !== 429
+      const reason = rejected ? 'rejected' : 'status'
+      logFallback(reason, path, { status: response.status })
 
-      return { kind: 'miss', reason: 'status' }
+      return { kind: 'miss', reason }
     }
 
     const body: unknown = await response.json().catch(() => undefined)
