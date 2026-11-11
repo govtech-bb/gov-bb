@@ -471,22 +471,6 @@ If rollback is needed, pause writes again first and keep the additive schema
 and audit data. An old binary neither serves nor maintains these redirects;
 keep edits and imports paused until a redirect-aware version is restored.
 
-### Page paths
-
-`PageUrl` requires a root-relative path with non-empty segments, no trailing
-slash, query, fragment, backslash, whitespace or control characters. The limits
-are 512 characters overall and 200 in the last segment. Validation rejects bad
-input rather than rewriting it. Publishing revalidates the stored revision's URL;
-restoring history applies the same field schema.
-
-Before deploying tighter page-path rules, validate read-only exports of
-`content_pages.url` and `page_revisions.fields.url` for draft, submitted and
-rejected revisions with `PageUrl.safeParse` from `src/modules/page.ts`. Review
-and correct invalid rows before rollout: editor response schemas enforce the
-rules too, so those rows may no longer open in the editor. Do not normalize URLs
-in bulk, reimport the estate or rewrite history. Historical versions that fail
-the current schema stay in history but cannot be restored.
-
 ### Category management
 
 The one shared list serves category management, every page picker and every content
