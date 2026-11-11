@@ -56,7 +56,7 @@ function serializeInsetEntry(entry: MockInsetEntry) {
 vi.mock("./field-renderer", () => ({
   __esModule: true,
   default: (props: {
-    field: { id: string; hint?: string };
+    field: { id: string; label?: string; hint?: string };
     children?: ReactNode;
     formVersion?: string;
     insetFieldsByOption?: Map<string, MockInsetEntry[]>;
@@ -64,6 +64,7 @@ vi.mock("./field-renderer", () => ({
     <div
       data-testid="field-renderer"
       data-field-id={props.field.id}
+      data-label={props.field.label}
       data-hint={props.field.hint}
       data-form-version={props.formVersion}
       data-inset-options={
@@ -715,6 +716,35 @@ describe("FormRenderer", () => {
         conditionalHint,
       });
       expect(renderer()).toHaveAttribute("data-hint", "Static hint");
+    });
+
+    it("removes the hint when the watched answer stops matching and there is no static hint", () => {
+      values = { "applying-with_applying-with": "with-another-person" };
+      const { renderer, rerender } = renderHintStep({ conditionalHint });
+      expect(renderer()).toHaveAttribute("data-hint", JOINT_HINT);
+
+      values = { "applying-with_applying-with": "on-my-own" };
+      rerender();
+      expect(renderer()).not.toHaveAttribute("data-hint");
+    });
+
+    it("resolves a field's conditionalLabel and conditionalHint together", () => {
+      values = { "applying-with_applying-with": "with-another-person" };
+      const { renderer } = renderHintStep({
+        label: "Land you own",
+        conditionalLabel: [
+          {
+            targetStepId: "applying-with",
+            targetFieldId: "applying-with",
+            operator: "equal" as const,
+            value: "with-another-person",
+            label: "Land you own jointly",
+          },
+        ],
+        conditionalHint,
+      });
+      expect(renderer()).toHaveAttribute("data-label", "Land you own jointly");
+      expect(renderer()).toHaveAttribute("data-hint", JOINT_HINT);
     });
 
     it("renders no hint when there is no static hint and no match", () => {
