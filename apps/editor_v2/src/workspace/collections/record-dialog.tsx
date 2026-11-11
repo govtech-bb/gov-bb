@@ -1,8 +1,7 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useRef, useState, type RefObject } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useEffectEvent, useRef, useState, type RefObject } from "react";
 import {
   ApiFailure,
-  outcomeUnknown,
   type Collection,
   type CollectionRecord,
   type EditorApi,
@@ -10,6 +9,8 @@ import {
 } from "../../api/client";
 import { apiFailureMessages } from "../../api/failure-messages";
 import { collectionQuery, recordQuery } from "../../api/queries";
+import type { Outcome } from "../../api/write-attempt";
+import { writes } from "../../api/writes";
 import { download } from "../../host/download";
 import { Banner } from "../../ui/banner";
 import { Button } from "../../ui/button";
@@ -21,12 +22,12 @@ import { toast } from "../../ui/toast";
 import { pressedByTouch } from "../../ui/focus";
 import { ApiProblems, ApiProblemText } from "../api-problems";
 import { ContentDiff } from "../review-screens";
+import { useWrite } from "../use-write";
 import {
   droppedFields,
   keyProblem,
   recordData,
   recordValues,
-  valuesDiffer,
   withRecord,
   type RecordValues,
 } from "./records";
@@ -41,19 +42,26 @@ type RecordDialogProps = {
   close: () => void;
 };
 
-type RecordAttempt = {
-  collection: RecordDetail["collection"];
-  record?: RecordDetail["record"];
-  key: string;
-  data: ReturnType<typeof recordData>;
-  values: RecordValues;
-};
+function recordOutcomeMessages(
+  outcome: Outcome<RecordDetail | undefined> | undefined,
+  otherwise: string,
+) {
+  if (!outcome || outcome.kind === "landed") return [];
 
-/** Whether a read shows the save landed: the record moved past the version it was sent over, holding what it sent. */
-const saveLanded = (latest: RecordDetail, sent: RecordAttempt) =>
-  !!sent.record &&
-  latest.record.version !== sent.record.version &&
-  !valuesDiffer(latest.collection, sent.values, latest.record);
+  if (outcome.kind === "signed-out")
+    return ["Your session has ended. Sign in again, then try again."];
+
+  if (outcome.kind === "forbidden") return [outcome.message ?? otherwise];
+
+  if (outcome.kind === "invalid")
+    return outcome.errors.map((item) => `${item.field}: ${item.message}`);
+
+  if (outcome.kind === "conflict") return ["This record has changed since you opened it."];
+
+  if (outcome.kind === "unknown") return ["The content API could not be reached. Try again."];
+
+  return [otherwise];
+}
 
 /**
  * Public list rows are navigation only; editing starts from a private versioned snapshot. One dialog stays open
@@ -71,9 +79,9 @@ export function RecordDialog({
   const client = useQueryClient();
 
   // Adding starts from the definition the screen holds; editing waits for the record's version
-  const [base, setBase] = useState<Pick<RecordAttempt, "collection" | "record"> | undefined>(
-    record ? undefined : { collection },
-  );
+  const [base, setBase] = useState<
+    { collection: Collection; record?: RecordDetail["record"] } | undefined
+  >(record ? undefined : { collection });
 
   const [values, setValues] = useState<RecordValues>({});
   const valuesRef = useRef(values);
@@ -81,9 +89,6 @@ export function RecordDialog({
   const [keyError, setKeyError] = useState<string>();
   const [checked, setChecked] = useState<RecordValues>();
   const [message, setMessage] = useState("");
-  const [observed, setObserved] = useState<RecordDetail>();
-  const gate = useRef(false);
-  const attempt = useRef<RecordAttempt>(undefined);
   const [reading, setReading] = useState(false);
   // Each time api_v2's copy fills the form, the focus goes to its first field
   const [filled, setFilled] = useState(0);
@@ -107,51 +112,31 @@ export function RecordDialog({
     if (open) setFilled((value) => value + 1);
   }
 
-  const latest = observed ?? current.data;
+  const latest = current.data;
   const query = collectionQuery(api, collection.key);
 
-  const save = useMutation({
-    mutationFn: async (sent: RecordAttempt & { retry?: true }): Promise<RecordDetail> => {
-      if (!sent.record)
-        return {
-          collection: sent.collection,
-          record: await api.createRecord(sent.collection.key, sent.key, sent.data),
-        };
+  const save = useWrite(api, base?.record ? writes.saveRecord : writes.createRecord);
+  const pending = save.state === "sending" || save.state === "checking";
 
-      // A retried save that landed meanwhile is confirmed, rather than refused as someone else's change
-      if (sent.retry) {
-        const latest = await api.record(sent.collection.key, sent.key).catch(() => undefined);
+  const saved = useEffectEvent((answer: RecordDetail) => {
+    const wasEditing = !!base?.record;
+    setBase(answer);
+    client.setQueryData(
+      recordQuery(api, answer.collection.key, answer.record.record_key).queryKey,
+      answer,
+    );
+    client.setQueryData(
+      query.queryKey,
+      (old) => old && { ...old, records: withRecord(old.records, answer.record) },
+    );
+    toast(wasEditing ? "Record saved" : "Record added");
 
-        if (latest && saveLanded(latest, sent)) return latest;
-      }
-
-      return api.saveRecord(sent.collection.key, sent.key, sent.data, sent.record.version);
-    },
-    onSuccess: (saved, sent) => {
-      setBase(saved);
-      setObserved(undefined);
-      attempt.current = undefined;
-      client.setQueryData(
-        recordQuery(api, saved.collection.key, saved.record.record_key).queryKey,
-        saved,
-      );
-      client.setQueryData(
-        query.queryKey,
-        (old) => old && { ...old, records: withRecord(old.records, saved.record) },
-      );
-      void client.invalidateQueries({ queryKey: ["content"] });
-      toast(sent.record ? "Record saved" : "Record added");
-
-      if (JSON.stringify(valuesRef.current) === JSON.stringify(sent.values)) close();
-    },
-    onError: (error) => {
-      if (!outcomeUnknown(error)) attempt.current = undefined;
-      void client.invalidateQueries({ queryKey: ["content"] });
-    },
-    onSettled: () => {
-      gate.current = false;
-    },
+    if (JSON.stringify(valuesRef.current) === JSON.stringify(checked)) close();
   });
+
+  useEffect(() => {
+    if (save.outcome?.kind === "landed") saved(save.outcome.answer);
+  }, [save.outcome]);
 
   if (!base)
     return (
@@ -178,32 +163,27 @@ export function RecordDialog({
   const definition = base.collection;
   const fields = definition.schema.fields;
   const recordKey = base.record?.record_key ?? (values[definition.record_key] ?? "").trim();
-  const failure = save.error instanceof ApiFailure ? save.error : undefined;
-  const conflict = failure?.status === 409 && failure.code === "version_conflict";
+  const outcome = save.outcome;
+  const conflict = outcome?.kind === "conflict";
 
   const gone =
-    failure?.status === 404 ||
+    outcome?.kind === "missing" ||
     (base.record && current.error instanceof ApiFailure && current.error.status === 404);
 
-  const unknown = outcomeUnknown(save.error);
+  const unknown = outcome?.kind === "unknown";
 
-  // While the answer is lost, a newer version holding exactly what was sent is that save landing, not someone else's
-  // change: retrying it confirms it
   const stale =
     conflict ||
-    (!!base.record &&
-      !!latest &&
-      latest.record.version !== base.record.version &&
-      !(unknown && attempt.current && saveLanded(latest, attempt.current)));
+    (!unknown && !!base.record && !!latest && latest.record.version !== base.record.version);
 
-  const rejected = failure?.status === 400 && failure.code === "validation_failed";
+  const rejected = outcome?.kind === "invalid";
 
   const fieldErrors = new Map(
-    rejected ? failure.errors.map((item) => [item.field, item.message]) : [],
+    rejected ? outcome.errors.map((item) => [item.field, item.message]) : [],
   );
 
   const taken =
-    failure?.status === 409 && failure.code === "record_exists"
+    outcome?.kind === "refused" && outcome.code === "record_exists"
       ? "Another record already has this key"
       : undefined;
 
@@ -211,82 +191,53 @@ export function RecordDialog({
     download(JSON.stringify(valuesRef.current, null, 2), `${recordKey || definition.key}.json`);
 
   const reload = async () => {
-    if (gate.current) return;
-    gate.current = true;
+    if (pending || reading) return;
     setReading(true);
     const before = valuesRef.current;
 
     try {
-      const latest = await api.record(definition.key, attempt.current?.key ?? recordKey);
+      const key =
+        unknown && !base.record ? (checked?.[definition.record_key] ?? "").trim() : recordKey;
+
+      const latest = await api.record(definition.key, key);
 
       if (valuesRef.current !== before)
         throw new Error("Your values changed while reloading. Check them before discarding.");
       setBase(latest);
       setValues(recordValues(latest.collection, latest.record));
       setFilled((value) => value + 1);
-      setObserved(undefined);
-      attempt.current = undefined;
-      save.reset();
+      save.forget();
       setMessage("");
-      client.setQueryData(recordQuery(api, definition.key, recordKey).queryKey, latest);
+      client.setQueryData(
+        recordQuery(api, definition.key, latest.record.record_key).queryKey,
+        latest,
+      );
     } catch (error) {
       setMessage(
         error instanceof Error ? error.message : "Could not reload. Your values are unchanged.",
       );
     } finally {
-      gate.current = false;
       setReading(false);
     }
   };
 
-  const submit = async () => {
-    if (readOnly || gate.current || stale || gone) return;
+  const submit = () => {
+    if (readOnly || pending || reading || stale || gone) return;
 
-    if (unknown && attempt.current && !attempt.current.record) {
-      gate.current = true;
-      setReading(true);
-
-      try {
-        setObserved(await api.record(attempt.current.collection.key, attempt.current.key));
-        setMessage(
-          "A record exists at the submitted key. Copy your values, or discard them and reload to inspect it.",
-        );
-      } catch (error) {
-        if (error instanceof ApiFailure && error.status === 404) {
-          attempt.current = undefined;
-          save.reset();
-          setMessage(
-            "The submitted record is not present. Check the key before creating it again.",
-          );
-        } else
-          setMessage(
-            "Could not check whether the record exists. Keep your values and check again.",
-          );
-      } finally {
-        gate.current = false;
-        setReading(false);
-      }
-
-      return;
-    }
-
-    if (!attempt.current) {
+    if (save.state !== "unsettled") {
       const problem = base.record ? undefined : keyProblem(recordKey);
       setKeyError(problem);
       setChecked(values);
 
       if (problem) return;
-      attempt.current = structuredClone({
-        ...base,
-        key: recordKey,
-        data: recordData(definition, values),
-        values,
-      });
     }
 
-    gate.current = true;
     setMessage("");
-    save.mutate(unknown ? { ...attempt.current, retry: true } : attempt.current);
+    void save.press(() => ({
+      ...base,
+      key: recordKey,
+      data: recordData(definition, values),
+    }));
   };
 
   const keyListed = fields.some((field) => field.key === definition.record_key);
@@ -307,7 +258,9 @@ export function RecordDialog({
     >
       <Input
         value={values[key] ?? ""}
-        readOnly={readOnly || (key === definition.record_key && (!!base.record || save.isPending))}
+        readOnly={
+          readOnly || (key === definition.record_key && (!!base.record || pending || unknown))
+        }
         inputMode={kind === "email" ? "email" : undefined}
         spellCheck={kind === "text" ? undefined : false}
         autoCapitalize={kind === "text" ? undefined : "off"}
@@ -324,7 +277,7 @@ export function RecordDialog({
     : "Lower-case letters, numbers and hyphens, such as barbados-drug-service. It can’t be changed later.";
 
   const otherProblems = rejected
-    ? failure.errors
+    ? outcome.errors
         .filter((item) => !fields.some((field) => field.key === item.field))
         .map((item) => item.message)
     : taken || stale || gone
@@ -333,11 +286,7 @@ export function RecordDialog({
         ? [
             "We couldn’t confirm whether this record was saved. Retry the same request or copy your values before reloading.",
           ]
-        : apiFailureMessages(
-            save.error,
-            "The record could not be saved. Try again.",
-            (field) => field,
-          );
+        : recordOutcomeMessages(outcome, "The record could not be saved. Try again.");
 
   return (
     <FormDialog
@@ -348,7 +297,7 @@ export function RecordDialog({
       finalFocus={finalFocus}
       title={title}
       description={`${definition.title}. Saving changes every page that shows this record.`}
-      pending={save.isPending || reading}
+      pending={pending || reading}
       cancelLabel={readOnly ? "Close" : undefined}
       onSubmit={() => void submit()}
       actions={
@@ -357,7 +306,7 @@ export function RecordDialog({
             type="submit"
             variant="accent"
             size="md"
-            pending={save.isPending || reading}
+            pending={pending || reading}
             aria-disabled={stale || gone || undefined}
           >
             {unknown
@@ -372,7 +321,7 @@ export function RecordDialog({
       }
     >
       <div ref={body} className="flex flex-col gap-4">
-        {(stale || gone || observed || unknown) && (
+        {(stale || gone || unknown) && (
           <Banner
             tone="warning"
             role="alert"
@@ -381,7 +330,7 @@ export function RecordDialog({
                 {!gone && (
                   <Button
                     variant="danger"
-                    disabled={save.isPending || reading}
+                    disabled={pending || reading}
                     onClick={() => void reload()}
                   >
                     Discard my changes and reload
@@ -463,31 +412,24 @@ export function DeleteRecordDialog({
   const [snapshot, setSnapshot] = useState<RecordDetail>();
 
   if (!snapshot && current.data) setSnapshot(current.data);
-  const client = useQueryClient();
   const deleted = useRef(false);
-  const gate = useRef(false);
+  const remove = useWrite(api, writes.deleteRecord);
 
-  const remove = useMutation({
-    mutationFn: async () => {
-      if (!snapshot) throw new Error("Load the record before deleting it.");
-      await api.deleteRecord(collection.key, snapshot.record.record_key, snapshot.record.version);
-    },
-    onSuccess: () => {
-      deleted.current = true;
-      void client.invalidateQueries({ queryKey: ["content"] });
-      toast("Record deleted");
-      close();
-    },
-    onSettled: () => {
-      gate.current = false;
-    },
+  const removed = useEffectEvent(() => {
+    deleted.current = true;
+    toast("Record deleted");
+    close();
   });
 
-  const messages = apiFailureMessages(
-    remove.error ?? current.error,
-    "The record could not be deleted. Retry uses the same displayed version.",
-    (field) => field,
-  );
+  useEffect(() => {
+    if (remove.outcome?.kind === "landed") removed();
+  }, [remove.outcome]);
+
+  const otherwise = "The record could not be deleted. Retry uses the same displayed version.";
+
+  const messages = remove.outcome
+    ? recordOutcomeMessages(remove.outcome, otherwise)
+    : apiFailureMessages(current.error, otherwise, (field) => field);
 
   return (
     <ConfirmDialog
@@ -499,14 +441,17 @@ export function DeleteRecordDialog({
       description={`It’s removed from ${snapshot?.collection.title ?? collection.title}, and from every page that shows it. This can’t be undone.`}
       confirmLabel="Delete record"
       pendingLabel="Deleting record…"
-      pending={remove.isPending}
+      pending={remove.state === "sending" || remove.state === "checking"}
       confirmDisabled={!snapshot}
       finalFocus={() => (deleted.current ? focusAfter.current : true)}
       error={messages.length > 0 && <ApiProblemText messages={messages} />}
       onConfirm={() => {
-        if (!snapshot || gate.current) return;
-        gate.current = true;
-        remove.mutate();
+        if (!snapshot) return;
+        void remove.press(() => ({
+          collection: collection.key,
+          key: snapshot.record.record_key,
+          version: snapshot.record.version,
+        }));
       }}
     >
       {snapshot && (

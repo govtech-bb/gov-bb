@@ -793,19 +793,24 @@ test("a confirmed record save keeps values typed after dispatch", async () => {
   expect(control("Name (optional)").value).toBe("Newer typing");
 });
 
-test("a save whose answer is lost is never reported as failed", async () => {
-  await renderCollection({ record: "nis" }).ready;
-  await opened();
+test("an unsettled create keeps its submitted key read-only while other values remain editable", async () => {
+  await renderCollection().ready;
+  await loaded();
+  await press("Add record");
+  await enter("Key", "new-contact");
+  await enter("Name (optional)", "Submitted");
   server.refuse(503, { error: "unavailable", message: "Down." });
   await submit();
-  await until(() =>
-    expect(dialog()?.textContent).toContain("We couldn’t confirm whether this record was saved."),
-  );
+  await until(() => expect(button("Check records").disabled).toBe(false));
 
-  expect(dialog()?.textContent).not.toContain("Try again.");
+  expect(control("Key").readOnly).toBe(true);
+  expect(control("Name (optional)").readOnly).toBe(false);
+  await enter("Name (optional)", "Newer typing");
+  expect(control("Name (optional)").value).toBe("Newer typing");
+  expect(server.writes).toHaveLength(1);
 });
 
-test("a retried save that landed while its answer was lost is confirmed, not refused as someone else's change", async () => {
+test("a save whose answer is lost is confirmed automatically, without another press", async () => {
   // The save lands, and its answer is lost on the way back
   vi.stubGlobal("fetch", async (input: RequestInfo | URL, init?: RequestInit) => {
     const answer = await server.fetch(input, init);
@@ -815,10 +820,6 @@ test("a retried save that landed while its answer was lost is confirmed, not ref
   await renderCollection({ record: "nis" }).ready;
   await opened();
   await enter("Name (optional)", "National Insurance Scheme");
-  await submit();
-  await until(() =>
-    expect(dialog()?.textContent).toContain("We couldn’t confirm whether this record was saved."),
-  );
   await submit();
   await closed();
 

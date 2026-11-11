@@ -1,4 +1,4 @@
-import type { Collection, CollectionRecord, RecordInput } from "../../api/client";
+import type { Collection, CollectionRecord } from "../../api/client";
 
 /** A record's values as its dialog edits them, by field key; a field it doesn't hold is blank. */
 export type RecordValues = CollectionRecord["data"];
@@ -29,7 +29,7 @@ export function keyProblem(key: string) {
  * removes its value. A value for a field the collection no longer lists is left out too, since api_v2 refuses it: the
  * dialog says so before saving (`droppedFields`).
  */
-export function recordData(collection: Collection, values: RecordValues): RecordInput["data"] {
+export function recordData(collection: Collection, values: RecordValues): RecordValues {
   const data: RecordValues = {};
 
   for (const { key } of collection.schema.fields) {
@@ -46,19 +46,6 @@ export const droppedFields = (collection: Collection, record?: CollectionRecord)
   Object.keys(record?.data ?? {}).filter(
     (key) => !collection.schema.fields.some((field) => field.key === key),
   );
-
-/** Whether the dialog's values differ from a record's, as when a newer version of it was saved meanwhile. */
-export function valuesDiffer(
-  collection: Collection,
-  values: RecordValues,
-  record: CollectionRecord,
-) {
-  const saved = recordValues(collection, record);
-
-  return collection.schema.fields.some(
-    (field) => (values[field.key] ?? "").trim() !== (saved[field.key] ?? ""),
-  );
-}
 
 /** The records with this one, as the content API just saved it, in record key order. */
 export const withRecord = (records: readonly CollectionRecord[], saved: CollectionRecord) =>
