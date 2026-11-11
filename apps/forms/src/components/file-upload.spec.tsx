@@ -1222,6 +1222,23 @@ describe("FileUpload", () => {
       ]);
     });
 
+    it("sends no form-file-error when the person cancels a failing upload", async () => {
+      const user = userEvent.setup();
+      let failSend: (err: Error) => void = () => {};
+      mockSendFile.mockImplementation(
+        () => new Promise<string>((_resolve, reject) => (failSend = reject)),
+      );
+      const { fileInput } = renderComponent({ formId: "f1" });
+
+      await user.upload(fileInput, makeFile("doc.pdf", "application/pdf", 100));
+      await user.click(
+        await screen.findByRole("button", { name: "Cancel doc.pdf" }),
+      );
+      await act(async () => failSend(new Error("aborted")));
+
+      expect(calls("form-file-error")).toHaveLength(0);
+    });
+
     it("never sends a filename", async () => {
       const user = userEvent.setup();
       mockSendFile.mockRejectedValue(new Error("network"));

@@ -147,7 +147,8 @@ export default function FileUpload({
     const next = confirmedRef.current.filter((f) => f.key !== key);
     confirmedRef.current = next;
     onFileChange(next.length ? next : null);
-    if (removed) setStatusMessage(`${removed.name} removed.`);
+    if (!removed) return;
+    setStatusMessage(`${removed.name} removed.`);
     trackEvent("form-file-remove", {
       form: formId ?? "",
       category: formCategory(formId ?? ""),
