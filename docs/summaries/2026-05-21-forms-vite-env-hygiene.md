@@ -3,7 +3,7 @@
 **Branch:** `fix/forms-vite-env-hygiene`
 **Issue:** [#20](https://github.com/govtech-bb/gov-bb/issues/20)
 **Plan:** [docs/plans/forms-vite-env-hygiene.md](../plans/forms-vite-env-hygiene.md)
-**Decision:** [docs/decisions/0005-vite-env-vars-use-import-meta-env-only.md](../decisions/0005-vite-env-vars-use-import-meta-env-only.md)
+**Decision:** [docs/decisions/0013-vite-env-vars-use-import-meta-env-only.md](../decisions/0013-vite-env-vars-use-import-meta-env-only.md)
 
 ## Context
 
@@ -26,14 +26,14 @@ A side-issue: `apps/forms/src/lib/api/forms.ts` read `process.env.VITE_API_URL` 
 
 **Unplanned test-infra work.** Running the existing Jest suite revealed that ts-jest in CommonJS mode (per [decision 0002](../decisions/0002-web-jest-uses-separate-tsconfig.md)) cannot parse `import.meta` — it's a language-level constraint of CommonJS, not a config knob. The pre-existing `import.meta.env.VITE_API_URL` reference in `routes/admin/form-builder.tsx` didn't trip on this because that route file isn't covered by any spec; the moment `lib/api/forms.ts` switched (which *is* loaded transitively by `form-query.spec.ts`), two suites failed to compile. Two options surfaced: (a) shim `import.meta.env` in Jest config, or (b) keep `lib/api/forms.ts` on `process.env` and restore part of the `define` block.
 
-Picked (a). Added `ts-jest-mock-import-meta` as a workspace devDependency and wired it as an AST transformer in `apps/forms/jest.config.ts` with stub values (`DEV: true`, `VITE_API_URL`, `VITE_DESIGN_SYSTEM`, etc.). Option (b) would have left the ADR with an exception from day one and kept half the antipattern alive — paying down the test-infra cost once was the better trade. The constraint is now captured in ADR-0005's Consequences section so the next Vite app added to the monorepo knows to do the same wiring upfront.
+Picked (a). Added `ts-jest-mock-import-meta` as a workspace devDependency and wired it as an AST transformer in `apps/forms/jest.config.ts` with stub values (`DEV: true`, `VITE_API_URL`, `VITE_DESIGN_SYSTEM`, etc.). Option (b) would have left the ADR with an exception from day one and kept half the antipattern alive — paying down the test-infra cost once was the better trade. The constraint is now captured in ADR-0013's Consequences section so the next Vite app added to the monorepo knows to do the same wiring upfront.
 
 ## Key decisions
 
 - **`SKIP_CONTINUE_VALIDATION` gated to `import.meta.env.DEV`, not removed.** The flag had a real local-dev purpose (clicking through forms past validation without filling required fields). Removing it would have made dev slightly worse without paying for itself. Gating to `DEV` keeps the convenience and makes the bypass structurally unreachable in production — Vite resolves `import.meta.env.DEV` statically at build time and tree-shakes the branch.
 - **Renamed `DESIGN_SYSTEM` → `VITE_DESIGN_SYSTEM`.** The whole point of going idiomatic was to delete the `define` shim. To do that, every env var the browser needs has to actually be `VITE_`-prefixed so Vite's built-in exposure machinery handles it. `VITE_API_URL` was already prefixed; `DESIGN_SYSTEM` was not. The rename is mechanical — three code/config files plus the Amplify console — and unblocks dropping `define`.
 - **Removed dead `DEVELOPMENT=true;` from `.env.example`.** Search across the repo showed no code reads it. Cleaning it up while in the file rather than leaving a confusing leftover.
-- **Convention captured as ADR-0005.** The decision to standardize on `import.meta.env.VITE_*` (and use `import.meta.env.DEV` for dev-only flags, never custom runtime env vars) generalises beyond this issue. Future Vite-app additions in the monorepo should follow it without re-discovering the same arguments.
+- **Convention captured as ADR-0013.** The decision to standardize on `import.meta.env.VITE_*` (and use `import.meta.env.DEV` for dev-only flags, never custom runtime env vars) generalises beyond this issue. Future Vite-app additions in the monorepo should follow it without re-discovering the same arguments.
 
 ## Alternatives considered and rejected
 

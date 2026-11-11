@@ -389,7 +389,7 @@ export async function createEmployeeSession(
       ],
     );
     // Tests run as an editor unless they say otherwise. A real first sign-in
-    // grants no role; an admin grants one (ADR 0079).
+    // grants no role; an admin grants one (ADR 0134).
     for (const role of options.roles ?? ["editor"])
       await pool.query(
         "insert into user_roles (user_id, role) values ($1, $2)",

@@ -2,7 +2,7 @@ import z from "zod";
 import { processorSchema } from "./processor.type";
 
 // Schema for the per-form `form_config.config` JSONB blob (per-environment DB
-// config that never enters the recipe — ADR 0033). `processors` carries
+// config that never enters the recipe — ADR 0057). `processors` carries
 // author-time processor entries: dynamic() fields are allowed and resolved by
 // the expressions pipeline at submission, exactly as for recipe processors.
 //

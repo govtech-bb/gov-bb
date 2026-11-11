@@ -226,7 +226,7 @@ pnpm migration:show
 
 > **Note:** at runtime, production forms are served from **recipe files**, not
 > the `form_definitions` table (a `NODE_ENV` guard) — so DB changes don't alter
-> the live forms list. See `docs/decisions/0007-runtime-recipes-load-from-files…`.
+> the live forms list. See `docs/decisions/0017-runtime-recipes-load-from-files…`.
 
 ## Deployment & branching
 

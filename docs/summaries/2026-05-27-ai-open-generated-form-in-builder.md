@@ -4,7 +4,7 @@
 **Branch:** `feat/ai-open-in-builder` (off `sandbox`, merges back to `sandbox`)
 **Issue:** [#235](https://github.com/govtech-bb/gov-bb/issues/235)
 **Plan:** `docs/plans/ai-open-generated-form-in-builder.md`
-**ADR:** `docs/decisions/0011-builder-mode-handoff-goes-through-persistence.md`
+**ADR:** `docs/decisions/0024-builder-mode-handoff-goes-through-persistence.md`
 
 ## Context
 
@@ -41,7 +41,7 @@ Single session, worktree-isolated, TDD for the extractable logic.
 sessionStorage. This reuses the Open-picker load path (no second recipe→draft
 code path) and means "open" always opens a created form. Full rationale and the
 constraint it places on future work are in
-[0011](../decisions/0011-builder-mode-handoff-goes-through-persistence.md).
+[0024](../decisions/0024-builder-mode-handoff-goes-through-persistence.md).
 
 **`?formId=` search param over history state.** Refresh-safe and shareable; the
 receiving route clears the param after load (replace navigation) so a refresh

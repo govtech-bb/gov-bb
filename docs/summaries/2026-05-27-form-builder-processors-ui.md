@@ -4,12 +4,12 @@
 **Branch:** `feat/form-builder-processors-ui` (off `fix/form-builder-processors-roundtrip`, merges back into it — stacked on Session 1)
 **Issue:** [#275](https://github.com/govtech-bb/gov-bb/issues/275) (parent [#255](https://github.com/govtech-bb/gov-bb/issues/255))
 **Plan:** `docs/plans/form-builder-processors-ui.md`
-**Decision:** [ADR 0014](../decisions/0014-form-builder-processor-config-edits-preserve-unrendered-keys.md)
+**Decision:** [ADR 0030](../decisions/0030-form-builder-processor-config-edits-preserve-unrendered-keys.md)
 
 ## Context
 
 Session 1 made the builder carry `processors` losslessly through serialize/
-deserialize but with no UI ([ADR 0013](../decisions/0013-form-builder-round-trip-preserves-unauthored-fields.md)).
+deserialize but with no UI ([ADR 0029](../decisions/0029-form-builder-round-trip-preserves-unauthored-fields.md)).
 This session ("Session 2 of 2") adds the authoring UI: a form-level Processors
 panel where a builder adds/edits/removes processors instead of hand-editing
 recipe JSON. Built on Session 1's branch because PR #268 had not yet merged to
@@ -42,13 +42,13 @@ recipe JSON. Built on Session 1's branch because PR #268 had not yet merged to
   add list — but an existing payment processor renders as a read-only, removable
   card rather than vanishing. Hiding it would make the panel's count lie and risk
   a builder being surprised by config they can't see. It still round-trips intact.
-- **Config edits replace; forms preserve unrendered keys by spreading (ADR 0014).**
+- **Config edits replace; forms preserve unrendered keys by spreading (ADR 0030).**
   The first cut had the reducer *merge* the edited config over the old one. That
   preserves the unrendered webhook `secret` for free — but then a key-value editor
   can never *remove* a key (the deleted key survives the merge). Switched to
   replace, and moved secret-preservation into the forms (each spreads `...config`
   before overlaying edits). This is the only design that satisfies both
-  removal and secret-survival; it's the edit-path counterpart to ADR 0013.
+  removal and secret-survival; it's the edit-path counterpart to ADR 0029.
 - **`makeDefaultProcessor` returns a full `{ type, config }`, not just config.**
   Returning the whole discriminated-union member keeps the `type`↔`config`
   correlation, so the reducer can spread an id over it (`{ ...processor, id }`)
@@ -71,7 +71,7 @@ recipe JSON. Built on Session 1's branch because PR #268 had not yet merged to
 - **Merge vs replace for config updates.** See above — caught during a review pass
   before commit: merge silently breaks key removal for the record-shaped
   spreadsheet/opencrvs configs. Re-architected to replace + form-side spread and
-  recorded it as ADR 0014.
+  recorded it as ADR 0030.
 - **`dynamic()` fields aren't plain strings at the type level.**
   `dynamic(z.string())` infers `string | Record<string, unknown>` (jsonLogic), so
   `recipientField`/`url`/header values aren't `string`. Added an `asText` coercion

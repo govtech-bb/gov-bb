@@ -180,7 +180,7 @@ describe("admin emails", () => {
       if (!parsed.ok) {
         expect(parsed.error.fields).toEqual(["API_V2_ADMIN_EMAILS"]);
         expect(parsed.error.reasons).toEqual([
-          expect.stringContaining("ADR 0079"),
+          expect.stringContaining("ADR 0134"),
         ]);
       }
     }

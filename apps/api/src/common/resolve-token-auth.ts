@@ -2,7 +2,7 @@ import { isValidSecretToken } from "./secret-token";
 
 /**
  * The single dev-bypass + token-match policy decision, shared by every
- * service-to-service token boundary. See ADR 0061.
+ * service-to-service token boundary. See ADR 0106.
  *
  *   - `misconfigured` — no secret configured in production: fail closed.
  *   - `passthrough`   — no secret configured outside production: dev bypass.

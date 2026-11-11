@@ -4,7 +4,7 @@
  * search chunks are untouched until then. `fields` is the page as the save
  * sent it. `live_updated_at` is the live page's version the revision was last
  * saved over. `contributors` is everyone who saved to it, none of whom may
- * approve it (ADR 0079). A page has at most one open revision; a later save
+ * approve it (ADR 0134). A page has at most one open revision; a later save
  * updates it. #3199 adds the statuses after `draft`, and widens the index to
  * whichever of them are open.
  */

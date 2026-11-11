@@ -53,7 +53,7 @@ a static structural summary (id, title, steps/fields). Nothing is persisted.
 - No ADR written. "Link only when saved" is a scoped UX decision for one modal,
   not a codebase-wide principle — below the decision-record bar. The
   forms-app-preview-needs-a-DB-record reality is already captured by
-  ADR-0011-unpublished-recipe-preview and the preview-token-link work.
+  ADR-0026-unpublished-recipe-preview and the preview-token-link work.
 - `tsc -b apps/form_builder` reports two errors in `app/server/registry.ts`
   (TanStack server-fn serialization typing) — confirmed **pre-existing on base
   `sandbox`**, untouched by this change. `form_builder`'s real type-check is via

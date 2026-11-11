@@ -1,55 +1,30 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { ApiFailure, type EditorApi } from "../api/client";
+import type { EditorApi } from "../api/client";
 import { sitePagesQuery } from "../api/queries";
 import { visibilityLabels, visibilityTones } from "../pages/visibility";
 import { Badge } from "../ui/badge";
 import { EmptyState } from "../ui/empty-state";
 import { ListScreen } from "../ui/list-screen";
 import { LoadingState } from "../ui/loading-state";
-import { RefreshFailure } from "../ui/refresh-failure";
 import { touchTarget } from "../ui/surface";
 import { TextLink } from "../ui/text-link";
-import { LoadFailure } from "./load-failure";
+import { listLoadView } from "./list-load-view";
 
 /** Existing site information pages; titles open the editor, paths open the public site. */
 export function SitePagesScreen({ api }: { api: EditorApi }) {
   const pages = useQuery(sitePagesQuery(api));
-  const status = pages.error instanceof ApiFailure ? pages.error.status : undefined;
-
-  const refreshFailed =
-    pages.isError && !!pages.data && (status === 0 || (status !== undefined && status >= 500));
+  const load = listLoadView(pages, "site pages");
 
   return (
     <ListScreen
       title="Site pages"
       lead="Information about GOV.BB and how the website works."
-      notices={
-        refreshFailed && (
-          <RefreshFailure
-            inset="card"
-            pending={pages.isFetching}
-            pendingLabel="Refreshing site pages…"
-            onRetry={() => void pages.refetch()}
-          >
-            We could not refresh site pages. Showing the last loaded list.
-          </RefreshFailure>
-        )
-      }
-      failure={
-        pages.isError &&
-        !refreshFailed && (
-          <LoadFailure
-            noun="site pages"
-            error={pages.error}
-            retrying={pages.isFetching}
-            retry={() => void pages.refetch()}
-          />
-        )
-      }
+      notices={load.notices}
+      failure={load.failure}
     >
       {!pages.data ? (
-        <LoadingState label="Loading site pages…" />
+        <LoadingState label={load.loadingLabel} />
       ) : pages.data.length === 0 ? (
         <EmptyState title="No site pages" description="There are no site pages to edit." />
       ) : (

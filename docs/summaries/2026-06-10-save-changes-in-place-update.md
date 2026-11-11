@@ -23,7 +23,7 @@ Resolved on `329-save-changes-in-place` (targets `sandbox`).
   badge preserved); replaced the old manual-typedown test with a read-only-field
   assertion; added a consecutive-saves test (two PUTs, zero POSTs, same row); and
   added an editable-field contrast on the new-form path.
-- Recorded the convention in ADR 0046.
+- Recorded the convention in ADR 0081.
 
 ## Why we did it that way
 
@@ -35,7 +35,7 @@ Resolved on `329-save-changes-in-place` (targets `sandbox`).
 - **Chose overwrite-in-place over a `pristineVersion` track.** The alternative
   still mints a patch row per save; it renames the duplicate rather than removing
   it. Save Changes = overwrite, Deploy = new version is the cleaner semantic
-  (ADR 0046).
+  (ADR 0081).
 - **Made the version field read-only rather than leaving the fork escape hatch.**
   Initially the field stayed editable (type a higher version to fork). Per
   product call we removed that: Deploy is the single, unambiguous path to a new

@@ -421,7 +421,7 @@ describe("validateDateField", () => {
     });
 
     it("isCompleteDateValue accepts both string and numeric { day, month, year }", () => {
-      // Tolerant during the migration (ADR 0043): either shape counts as complete.
+      // Tolerant during the migration (ADR 0076): either shape counts as complete.
       expect(isCompleteDateValue({ day: "5", month: "6", year: "1990" })).toBe(
         true,
       );

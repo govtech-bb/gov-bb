@@ -365,7 +365,7 @@ export class EmailProcessor implements ISubmissionProcessor {
    * Returns `undefined` when the contract has no contactDetails or the
    * requested key is absent/non-string. The caller (`processEntry`) then
    * throws for this entry; `process()` collects the failure and continues so
-   * a sibling applicant email still sends (ADR 0006), then re-throws an
+   * a sibling applicant email still sends (ADR 0014), then re-throws an
    * aggregated error so the unresolved recipient is surfaced, not silently
    * dropped.
    */

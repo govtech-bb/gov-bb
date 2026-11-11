@@ -27,7 +27,7 @@ the updated `sandbox` resolved the drift before any code was written.
 - **`UI_FIELD_META`** supplies a label and (for enums) the default that clears
   the key; unmapped keys fall back to `humanize()`.
 - **Width defaults to `long`** — choosing it clears the key; `short`/`medium`
-  persist. See ADR 0024 for the reasoning and constraints this establishes.
+  persist. See ADR 0044 for the reasoning and constraints this establishes.
 - **Tests** — width set/clear, `ui` collapse to `undefined`, the #522 hideLabel
   regression, width+hideLabel coexistence, plus two guard tests added during
   review (default-stays-a-real-enum-member, `humanize` fallback).
@@ -38,7 +38,7 @@ the updated `sandbox` resolved the drift before any code was written.
   panel and re-implements the clear/collapse logic for every future `ui` key.
   Reading controls off the schema makes "add a `ui` property" a schema change,
   not a panel change. This is the convention recorded in
-  [ADR 0024](../decisions/0024-form-builder-ui-controls-are-schema-derived.md).
+  [ADR 0044](../decisions/0044-form-builder-ui-controls-are-schema-derived.md).
 - **`long`-as-default needs no CSS/runtime/schema change** — verified in
   `apps/forms/src/styles/govtech.css`: at ≥768px only `short` (33%) and `medium`
   (50%) are sized; `long`/unset already render full-width. So treating `long` as

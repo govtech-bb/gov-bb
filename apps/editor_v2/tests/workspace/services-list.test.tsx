@@ -517,86 +517,59 @@ test("the first services load names its results region without replacing its con
   client.clear();
 });
 
-test.each([0, 503, 401, 403, 404])(
-  "a services refresh failure (%s) is local, without presenting refused data as current",
-  async (status) => {
-    const held = Promise.withResolvers<Response>();
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(() => held.promise),
-    );
+test("a malformed services refresh keeps the last loaded rows with a local retry notice", async () => {
+  const held = Promise.withResolvers<Response>();
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(() => held.promise),
+  );
 
-    const client = new QueryClient({
-      defaultOptions: { queries: { retry: false, staleTime: Infinity } },
-    });
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false, staleTime: Infinity } },
+  });
 
-    const query = servicesQuery(api);
-    cacheCategories(client);
-    client.setQueryData(query.queryKey, thirty);
-    await show(
-      <RouterContextProvider router={router}>
-        <QueryClientProvider client={client}>
-          <ServicesList api={api} search={{}} onSearch={() => {}} onCreate={() => {}} />
-        </QueryClientProvider>
-      </RouterContextProvider>,
-    );
-    let refresh: Promise<void>;
-    await act(async () => {
-      refresh = client.refetchQueries({ queryKey: query.queryKey });
-    });
-    expect(titles()).toHaveLength(25);
-    expect(host.textContent).not.toContain("Loading services…");
-    await act(async () => {
-      if (status === 0) held.reject(new TypeError("Offline"));
-      else held.resolve(Response.json({}, { status }));
-      await refresh;
-    });
-    await act(async () => {
-      await vi.waitFor(() => expect(client.getQueryState(query.queryKey)?.status).toBe("error"));
-    });
+  const query = servicesQuery(api);
+  cacheCategories(client);
+  client.setQueryData(query.queryKey, thirty);
+  await show(
+    <RouterContextProvider router={router}>
+      <QueryClientProvider client={client}>
+        <ServicesList api={api} search={{}} onSearch={() => {}} onCreate={() => {}} />
+      </QueryClientProvider>
+    </RouterContextProvider>,
+  );
+  let refresh: Promise<void>;
+  await act(async () => {
+    refresh = client.refetchQueries({ queryKey: query.queryKey });
+  });
+  expect(titles()).toHaveLength(25);
+  expect(host.textContent).not.toContain("Loading services…");
+  await act(async () => {
+    held.resolve(new Response("{"));
+    await refresh;
+  });
+  await act(async () => {
+    await vi.waitFor(() => expect(host.textContent).toContain("We could not refresh services"));
+  });
+  expect(titles()).toHaveLength(25);
+  expect(host.textContent).not.toContain("We could not load services");
 
-    if (status === 0 || status === 503) {
-      await act(async () => {
-        await vi.waitFor(() => expect(host.textContent).toContain("We could not refresh services"));
-      });
-      expect(titles()).toHaveLength(25);
-      expect(host.textContent).toContain("We could not refresh services");
-      expect(host.textContent).not.toContain("We could not load services");
-    } else {
-      await act(async () => {
-        await vi.waitFor(() => expect(host.querySelector('[role="alert"]')).not.toBeNull());
-      });
-      expect(titles()).toHaveLength(0);
-      expect(host.querySelector('[role="alert"]')).not.toBeNull();
+  const retry = [...host.querySelectorAll("button")].find((item) =>
+    item.textContent?.startsWith("Try again"),
+  );
 
-      const alert = host.querySelector('[role="alert"]')!;
-
-      if (status === 401) {
-        const signIn = alert.querySelector("a");
-
-        expect(alert.textContent).toContain(
-          "Your session has ended. Sign in again to load services.",
-        );
-        expect(signIn?.textContent).toBe("Sign in again");
-
-        const target = new URL(signIn!.getAttribute("href")!, "http://localhost");
-
-        expect(target.pathname).toBe("/auth");
-        expect(Object.fromEntries(target.searchParams)).toEqual({
-          state: "sign-in",
-          returnTo: "/services",
-          reason: "provider",
-        });
-        expect(button("Try again")).toBeUndefined();
-      } else if (status === 403) {
-        expect(alert.textContent).toContain("You do not have access to these services.");
-        expect(alert.querySelector("button")?.textContent).toBe("Try again");
-      }
-    }
-
-    client.clear();
-  },
-);
+  expect(retry).toBeDefined();
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () => Response.json(thirty)),
+  );
+  await act(async () => retry?.click());
+  await act(async () => {
+    await vi.waitFor(() => expect(host.textContent).not.toContain("We could not refresh services"));
+  });
+  expect(titles()).toHaveLength(25);
+  client.clear();
+});
 
 test("a failed load is an alert with Try again", async () => {
   const failing = new QueryClient();

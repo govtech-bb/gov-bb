@@ -23,7 +23,7 @@ Five commits on `worktree-791-reference-code` (base `1c14477c`):
   below).
 
 Decision record:
-[0040 — cross-deploy payload fields are optional with consumer-side fallback](../decisions/0040-cross-deploy-payload-fields-are-optional-with-consumer-fallback.md).
+[0068 — cross-deploy payload fields are optional with consumer-side fallback](../decisions/0068-cross-deploy-payload-fields-are-optional-with-consumer-fallback.md).
 
 ## Why we did it that way
 

@@ -3,6 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { Category, CategoryFields } from "./categories";
 import {
   ApiFailure,
+  ApiAnswerMalformed,
   CategoryConflict,
   CategoryInUse,
   CategoryAnswerMalformed,
@@ -172,6 +173,7 @@ describe("editor API client", () => {
       status: "rejected",
       comment: "Check the fees.",
       fields: savedPage,
+      live_updated_at: savedPage.updated_at,
       updated_at: savedPage.updated_at,
       contributors: [],
       changes: [],
@@ -188,6 +190,29 @@ describe("editor API client", () => {
       expected_version: reviewed,
     });
   });
+
+  it.each([undefined, null, "not-a-stamp"])(
+    "refuses a revision whose live timestamp cannot support publish recovery: %j",
+    async (live_updated_at) => {
+      status = 200;
+      response = JSON.stringify({
+        id: "revision-1",
+        page_id: "page-1",
+        version: 1,
+        status: "submitted",
+        comment: null,
+        fields: { ...fields, parent_id: null },
+        live_updated_at,
+        updated_at: savedPage.updated_at,
+        contributors: [],
+        changes: [],
+      });
+
+      await expect(createEditorApi(origin).revision("page-1")).rejects.toBeInstanceOf(
+        ApiAnswerMalformed,
+      );
+    },
+  );
 
   it("sends no content type with a request that has no body", async () => {
     status = 204;

@@ -1,4 +1,4 @@
-// Checks the built landing's Request/Response handler (ADR 0078): listings,
+// Checks the built landing's Request/Response handler (ADR 0132): listings,
 // page fallback, category failures, public caching and server-function parsing.
 // The API stand-in uses real HTTP; landing runs through its built SSR entry
 // without binding the Amplify preset's port or interrupting an existing preview.

@@ -7,7 +7,6 @@ import {
   fetchSiteVersion,
 } from './api-v2-version'
 import {
-  API_V2_TIMEOUT_MS,
   contentSource,
   fetchApiV2Page,
   fromApiV2,
@@ -17,6 +16,7 @@ import {
   resolveApiV2Page,
 } from './api-v2-page'
 import type { ApiV2MissReason, ApiV2Result, PageResponse } from './api-v2-page'
+import { API_V2_TIMEOUT_MS, createApiV2Breaker } from './api-v2-reader'
 
 const BASE = 'http://api.example'
 
@@ -275,6 +275,31 @@ describe('fetchApiV2Page', () => {
     })
     expect(error).not.toHaveBeenCalled()
   })
+
+  it.each([302, 308])(
+    'treats a %i (a redirect it does not follow) as a rejected miss and warns',
+    async (status) => {
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+      const result = await fetchApiV2Page(
+        BASE,
+        '/x',
+        stubFetch(
+          new Response(null, { status, headers: { Location: '/elsewhere' } }),
+        ),
+      )
+      expect(result).toEqual({
+        kind: 'miss',
+        reason: 'rejected',
+        cacheControl: null,
+      })
+      expect(logged(warn)).toEqual({
+        event: 'api_v2_fallback',
+        reason: 'rejected',
+        url: '/x',
+        status,
+      })
+    },
+  )
 
   it('treats a timeout while reading a 301 body as a timeout miss', async () => {
     vi.useFakeTimers()
@@ -686,7 +711,7 @@ describe('previewTokenFor', () => {
 describe('loadApiV2Page', () => {
   it('expires cached earlier sources after flattening and serves a reclaimed page after the next site version', async () => {
     vi.spyOn(Date, 'now').mockReturnValue(0)
-    const cache = createApiV2Cache()
+    const cache = createApiV2Cache(createApiV2Breaker())
     let version = '1'
     let destination = '/b'
     let reclaimed = false
@@ -746,7 +771,7 @@ describe('loadApiV2Page', () => {
   }
 
   it("serves a reviewer the preview page and keeps it out of the public's cache", async () => {
-    const cache = createApiV2Cache()
+    const cache = createApiV2Cache(createApiV2Breaker())
     const fetchImpl = previewOnlyApi()
     const load = (token?: string) =>
       loadApiV2Page(cache, BASE, '/x', undefined, token, fetchImpl)
@@ -762,7 +787,7 @@ describe('loadApiV2Page', () => {
   })
 
   it("doesn't serve a reviewer the public's cached answer", async () => {
-    const cache = createApiV2Cache()
+    const cache = createApiV2Cache(createApiV2Breaker())
     const fetchImpl = previewOnlyApi()
     await loadApiV2Page(cache, BASE, '/x', undefined, undefined, fetchImpl)
     const reviewer = await loadApiV2Page(

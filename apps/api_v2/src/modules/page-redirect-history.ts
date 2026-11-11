@@ -1,5 +1,11 @@
 import { z } from "zod";
-import { PageId, PageUrl, Visibility } from "./page";
+import {
+  PageId,
+  PageUrl,
+  Visibility,
+  type PageDocument,
+  type PageValues,
+} from "./page";
 import { canSee } from "./page-visibility";
 import type { PageChangeEvent } from "./page-history";
 
@@ -12,6 +18,47 @@ export const PAGE_REDIRECT_LIVE_ACTIONS = [
   "reverted",
   "deleted",
 ] as const;
+
+/**
+ * Whether writing `next` over the live page `current`, or inserting it when
+ * there is none, can change which addresses are public, so its redirects
+ * need updating.
+ */
+export function routingChanged(
+  current: PageDocument | null,
+  next: PageValues,
+): boolean {
+  return (
+    next.visibility === "public" &&
+    (current === null ||
+      next.url !== current.url ||
+      next.visibility !== current.visibility ||
+      next.parentId !== current.parent_id)
+  );
+}
+
+/**
+ * Each now-public address a live write leaves, in order: no rule may cover
+ * it, and the former public address of the page there, if any, redirects to
+ * it. A former address another page in the write now holds is not redirected.
+ */
+export function redirectsAfterWrite(
+  sources: readonly { id: PageId; url: string }[],
+  publicPages: readonly { id: PageId; url: string }[],
+): { source: string | null; destination: string }[] {
+  const sourceById = new Map(sources.map((source) => [source.id, source.url]));
+  const publicUrls = new Set(publicPages.map((page) => page.url));
+  return publicPages.map((page) => {
+    const source = sourceById.get(page.id);
+    return {
+      source:
+        source !== undefined && source !== page.url && !publicUrls.has(source)
+          ? source
+          : null,
+      destination: page.url,
+    };
+  });
+}
 
 /** Routing evidence from the append-only page history; null order cannot prove historical reachability. */
 export interface PageRedirectHistoryEvent {

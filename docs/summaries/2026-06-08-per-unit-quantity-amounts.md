@@ -48,12 +48,12 @@ Done on `per-unit-quantity-amounts-961` (targets `sandbox`), branched off
   real number or a conditional `if`-chain**. Anything else — a var × var, a
   non-`values.` var, the wrong arity, or a non-number scalar base like
   `{"*": ["foo", {var}]}` — falls through to the read-only `advanced` branch with
-  the *whole* expression preserved. This upholds ADR 0044's never-clobber
+  the *whole* expression preserved. This upholds ADR 0077's never-clobber
   principle: the editor must never re-emit `{"*": [0, …]}` over a hand- or
   AI-authored expression it doesn't fully understand. (The non-number-base guard
   was added in review — `classifyBase` maps a bare scalar to `fixed/undefined`,
   which would otherwise have been re-emitted as `0`.)
-- **`values.` prefix at the boundary (ADR 0044).** The table stores the bare
+- **`values.` prefix at the boundary (ADR 0077).** The table stores the bare
   `stepId.fieldId`; the prefix is added at compile and stripped at parse — the
   multiplier reuses the same boundary as the subject paths, so it's a corollary
   of an existing decision, not a new one. That's why no new ADR was written.

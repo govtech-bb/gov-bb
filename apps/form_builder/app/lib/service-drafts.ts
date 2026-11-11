@@ -124,7 +124,7 @@ export async function getServiceDraft({
       const recipe = draftRecipeSchema.parse(loaded[0]);
       const pendingConfig = servicePendingConfigSchema.parse(loaded[1]);
       // A never-published manifest keeps tracking what the recipe decides
-      // until the author decides otherwise (ADR 0073, #2683); a published one
+      // until the author decides otherwise (ADR 0121, #2683); a published one
       // is authored fact.
       const manifest =
         draft.baseManifestSha === null
@@ -171,7 +171,7 @@ async function save(
   saveRecipe: boolean,
 ): Promise<ServiceDraft> {
   const snapshot = serviceSnapshotSchema.parse(snapshotInput);
-  // A never-published manifest is seeded on every write (ADR 0073, #2683) so
+  // A never-published manifest is seeded on every write (ADR 0121, #2683) so
   // the stored draft is always what a refresh would derive — a restored or
   // patched manifest cannot bump the revision under an open screen.
   if (snapshot.baseManifestSha === null)

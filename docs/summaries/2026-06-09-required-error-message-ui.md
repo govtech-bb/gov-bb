@@ -16,7 +16,7 @@ error-message input, so `required.error` became unreachable from the UI.
 The data model (`{ value, error? }` in `packages/form-types`) and runtime
 (`config.error ?? DEFAULT_MSG` in `packages/form-validation/src/rules/required.ts`)
 already supported it, and both hydrators merge validations identically (ADR
-0021) — so this was a **UI-only fix**. Resolved on
+0040) — so this was a **UI-only fix**. Resolved on
 `required-error-message-ui` (targets `sandbox`).
 
 ## What we did
@@ -50,7 +50,7 @@ already supported it, and both hydrators merge validations identically (ADR
   `ValidationRulesEditor`.** That would directly recreate the #618
   double-control the exclusion was added to prevent. A deep-merge alternative
   (so `{ error }` alone would be safe) was rejected too: it changes shared
-  resolution semantics across both hydrators (ADR 0021) for a UI gap — higher
+  resolution semantics across both hydrators (ADR 0040) for a UI gap — higher
   blast radius, out of scope.
 - **Input wrapped in its `<label>` rather than `id`/`htmlFor`.** The block
   path renders `OverrideForm` once per child element, so a static `id` would

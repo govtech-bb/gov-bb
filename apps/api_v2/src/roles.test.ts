@@ -1,5 +1,5 @@
 /**
- * Roles (#3187, #3197, ADR 0079): only an editor writes, only an approver
+ * Roles (#3187, #3197, ADR 0134): only an editor writes, only an approver
  * changes what citizens see, only an admin changes who holds which role,
  * and roles are read from the database on every request.
  */

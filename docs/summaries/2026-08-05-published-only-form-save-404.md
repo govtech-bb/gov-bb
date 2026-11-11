@@ -18,7 +18,7 @@ being present in the upstream published set. New spec:
 
 ## Why it looks the way it does
 
-- **This is conformance to ADR-0057, not a new decision.** That record already
+- **This is conformance to ADR-0097, not a new decision.** That record already
   says, of the versionless model: *"After a merge-archive deletes the row, the
   builder reseeds the draft from the file."* The **read** path implements it —
   `resolveStoredRecipe` prefers the draft row and falls back to the published

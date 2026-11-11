@@ -3,7 +3,7 @@
 **Date:** 2026-05-22
 **Branch:** fix/multi-instance-processors → api/multi-processors
 **Plan:** [docs/plans/multi-instance-processors.md](../plans/multi-instance-processors.md)
-**ADR:** [docs/decisions/0006-submission-processors-iterate-internally.md](../decisions/0006-submission-processors-iterate-internally.md)
+**ADR:** [docs/decisions/0014-submission-processors-iterate-internally.md](../decisions/0014-submission-processors-iterate-internally.md)
 **Issues:** #94 (this work), #62 (design discussion), #95 (per-instance dispatch follow-up)
 
 ## What was built
@@ -56,7 +56,7 @@ of the pipeline. Running two payment configs would produce two Payment
 rows for one submission and two EzPay redirect URLs — both pointing the
 user somewhere, neither obviously the "right" one. First-wins-plus-warn
 fails noisily to the operator (form is misconfigured) rather than
-silently doing the wrong thing. ADR 0006 captures this as the general
+silently doing the wrong thing. ADR 0014 captures this as the general
 rule for processors with uncoordinated side effects.
 
 **Empty processors array short-circuits in SpreadsheetProcessor.** The

@@ -38,7 +38,7 @@ DB row without `meta`.
 The fix hydrates `meta` from the published recipe **only when the working copy
 is silent** (`draft.meta === undefined`), so an author's in-progress visibility
 edit always wins and a never-deployed draft stays metaless (→ public). See
-ADR-0059 for the principle: launch-gate visibility is sourced from the published
+ADR-0101 for the principle: launch-gate visibility is sourced from the published
 recipe; #1196's "DB scratch wins" is scoped to content.
 
 ## Notes

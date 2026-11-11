@@ -12,7 +12,7 @@ Closed the `TODO(security)` presign↔confirm binding gap. `buildKey` now embeds
 differs from the key — so a caller can no longer presign a lenient field and
 confirm under a stricter one to dodge its content-type/size policy. `fieldId`
 gained a path-safe `@Matches` on both upload DTOs. Decision recorded in
-[ADR 0061](../decisions/0061-anonymous-uploads-bind-via-self-describing-key-not-auth.md).
+[ADR 0103](../decisions/0103-anonymous-uploads-bind-via-self-describing-key-not-auth.md).
 
 ## Why it looks the way it does
 
