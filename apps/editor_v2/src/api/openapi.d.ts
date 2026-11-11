@@ -11,7 +11,7 @@ export interface paths {
         };
         /**
          * Get a public page by its url
-         * @description The site's read. A page is served only when it and every page above it (by `parent_id`) are visible: public, or preview too with the preview token. `hide_start_links` is set when the page's `start` sub-page is not. A stored public redirect takes precedence over a page at its source, including Draft/Preview replacements, and returns 301 with its stored Location and redirect body. Rules persist when the destination is hidden or deleted; following one still applies normal page visibility. With neither a rule nor an exact page, a bare `/<slug>` redirects (301) to the one visible page with that slug.
+         * @description The site's read. A page is served only when it and every page above it (by `parent_id`) are visible: public, or preview too with the preview token. `hide_start_links` is set when the page has `start` sub-pages and none of them is. A stored public redirect takes precedence over a page at its source, including Draft/Preview replacements, and returns 301 with its stored Location and redirect body. Rules persist when the destination is hidden or deleted; following one still applies normal page visibility. With neither a rule nor an exact page, a bare `/<slug>` redirects (301) to the one visible page with that slug.
          */
         get: {
             parameters: {
@@ -46,7 +46,7 @@ export interface paths {
                             body_markdown: string;
                             /** @description The form a Start link with no href of its own opens, or null. Whether the form is open is the forms API's to say. */
                             form_id: string | null;
-                            /** @description True when the page's `start` sub-page is hidden from this viewer: the site removes the Start link and counts "There are N ways…" down. */
+                            /** @description True when the page has `start` sub-pages and this viewer can see none of them: the site removes the Start link and counts "There are N ways…" down. */
                             hide_start_links: boolean;
                             /** @description The full trail, current page included, Home not: the category (and its parent, for a subcategory), then the pages above this one. */
                             breadcrumbs: {
