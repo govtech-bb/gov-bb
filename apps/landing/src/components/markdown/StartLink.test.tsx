@@ -44,9 +44,28 @@ describe('StartLink journey ID', () => {
     expect(getJourneyId()).toMatch(/^[0-9a-f-]{36}$/)
   })
 
+  it('puts the plain href back once the click has been handled', () => {
+    vi.useFakeTimers()
+    try {
+      const link = renderStart()
+      fireEvent.click(link)
+      expect(link.href).toContain('jid=')
+      vi.runAllTimers()
+      expect(link.href).not.toContain('jid=')
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it('adds it on a middle-click into a new tab too', () => {
     const link = renderStart()
     fireEvent(link, new MouseEvent('auxclick', { bubbles: true, button: 1 }))
     expect(new URL(link.href).searchParams.get('jid')).toBe(getJourneyId())
+  })
+
+  it('leaves the link alone on a right-click', () => {
+    const link = renderStart()
+    fireEvent(link, new MouseEvent('auxclick', { bubbles: true, button: 2 }))
+    expect(link.href).not.toContain('jid=')
   })
 })

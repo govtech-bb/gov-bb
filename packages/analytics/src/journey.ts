@@ -42,7 +42,10 @@ const FLUSH_DELAY_MS = 5_000;
 const JOURNEY_ID_KEY = "govbb_journey_id";
 // The Start link's query parameter that hands the journey ID to the forms app.
 const JOURNEY_ID_PARAM = "jid";
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+// The API's z.uuid(): version 1-8 and the RFC variant. A looser check would
+// let a hand-edited ?jid= through, and the API would drop every event carrying it.
+const UUID =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 let config: { url: string; app: JourneyApp; pageLoadId: string } | null = null;
 let queue: QueuedEvent[] = [];
@@ -141,6 +144,8 @@ export function adoptJourneyId(): void {
   const url = new URL(window.location.href);
   const jid = url.searchParams.get(JOURNEY_ID_PARAM);
   if (jid === null) return;
+  // The link wins over an ID this tab already had on forms: that keeps the
+  // landing Start click joined to the form, which is what jid is for.
   if (config && UUID.test(jid)) {
     try {
       sessionStorage.setItem(JOURNEY_ID_KEY, jid.toLowerCase());

@@ -12,16 +12,21 @@ const FORMS_BASE_URL = requireEnv(
 )
 
 // Live form ids, resolved server-side per request (see lib/available-forms.ts).
-export const AvailableFormsContext = createContext<ReadonlySet<string>>(
-  new Set(),
-)
+export const AvailableFormsContext = createContext<ReadonlySet<string>>(new Set())
 
 // Hand this tab's journey ID to the forms app, which is on another origin and
 // can't read landing's sessionStorage. Added when the link is clicked (auxclick
 // covers a middle-click into a new tab): the page is server-rendered, and the
-// ID only exists in the browser.
+// ID only exists in the browser. The plain href is put back once the browser
+// has taken the URL, so a later "Copy link" never shares this tab's ID.
 function addJourneyId(event: MouseEvent<HTMLAnchorElement>) {
-  event.currentTarget.href = withJourneyId(event.currentTarget.href)
+  if (event.type === 'auxclick' && event.button !== 1) return
+  const link = event.currentTarget
+  const href = link.href
+  link.href = withJourneyId(href)
+  setTimeout(() => {
+    link.href = href
+  })
 }
 
 type StartLinkProps = {

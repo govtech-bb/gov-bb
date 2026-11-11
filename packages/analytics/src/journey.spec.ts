@@ -230,6 +230,8 @@ describe("journey events", () => {
     const UUID =
       /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
     const LANDING_ID = "6f1c2a4e-8b3d-4c5e-9f60-1a2b3c4d5e6f";
+    // UUID-shaped, but the API's z.uuid() rejects it (no version or variant).
+    const NOT_RFC_UUID = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa";
 
     // Storage that throws, as when the browser blocks site data.
     const blocked = () => {
@@ -280,10 +282,14 @@ describe("journey events", () => {
         expect(getJourneyId()).not.toBe(id);
       });
 
-      it("replaces a stored value that is not a UUID", () => {
-        sessionStorage.setItem("govbb_journey_id", "not-a-uuid");
-        expect(getJourneyId()).toMatch(UUID);
-      });
+      it.each(["not-a-uuid", NOT_RFC_UUID])(
+        "replaces a stored value the API would reject: %s",
+        (stored) => {
+          sessionStorage.setItem("govbb_journey_id", stored);
+          expect(getJourneyId()).toMatch(UUID);
+          expect(getJourneyId()).not.toBe(stored);
+        },
+      );
 
       it("falls back to page_load_id when storage is blocked", () => {
         vi.stubGlobal("sessionStorage", { getItem: blocked, setItem: blocked });
@@ -358,13 +364,16 @@ describe("journey events", () => {
         expect(sessionStorage.length).toBe(0);
       });
 
-      it("strips a jid that is not a UUID without keeping it", () => {
-        configureJourney({ url: URL_, app: "forms" });
-        window.history.replaceState({}, "", "/forms/x?jid=<script>");
-        adoptJourneyId();
-        expect(window.location.search).toBe("");
-        expect(sessionStorage.length).toBe(0);
-      });
+      it.each(["<script>", NOT_RFC_UUID])(
+        "strips a jid the API would reject without keeping it: %s",
+        (jid) => {
+          configureJourney({ url: URL_, app: "forms" });
+          window.history.replaceState({}, "", `/forms/x?jid=${jid}`);
+          adoptJourneyId();
+          expect(window.location.search).toBe("");
+          expect(sessionStorage.length).toBe(0);
+        },
+      );
 
       it("still strips jid when storage is blocked", () => {
         configureJourney({ url: URL_, app: "forms" });

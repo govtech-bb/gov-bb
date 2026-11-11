@@ -115,6 +115,10 @@ describe("JourneyService", () => {
     ["path with a query string", event({ path: "/forms/x?token=abc" })],
     ["non-uuid id", event({ id: "123" })],
     ["non-uuid journey_id", event({ journey_id: "a@b.com" })],
+    [
+      "journey_id with no UUID version",
+      event({ journey_id: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa" }),
+    ],
     ["unknown top-level field", event({ email: "a@b.com" })],
     ["nested prop", event({ props: { form: { id: "x" } } })],
     [

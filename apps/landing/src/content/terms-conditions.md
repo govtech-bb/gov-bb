@@ -45,7 +45,7 @@ The site runs on Amazon Web Services in the United States. This means your infor
 
 ### Cookies
 
-We use your browser's session storage to remember your progress through a form, and to hold a random code that links the pages you visit in one browser tab. This shows us where people stop. Your browser deletes both when you close the tab. We don't use tracking cookies.
+We use your browser's session storage to remember your progress through a form. It also holds a random code that we receive with the pages you visit in one browser tab, so we can see where people stop. When you start a form, the code goes with you from this site to the forms site in the link. Your browser deletes both when you close the tab. We don't use tracking cookies.
 
 ### Your rights
 
