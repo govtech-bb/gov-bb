@@ -12,6 +12,7 @@ import {
   createEditorApi,
   type EditorApi,
   type ApiPage,
+  type ApiRevision,
   type RecordDetail,
 } from "./client";
 import { writeAttempt } from "./write-attempt";
@@ -53,6 +54,9 @@ function fakeApi() {
     page: vi.fn<EditorApi["page"]>(),
     savePage: vi.fn<EditorApi["savePage"]>(),
     submitRevision: vi.fn<EditorApi["submitRevision"]>(),
+    revision: vi.fn<EditorApi["revision"]>(),
+    publishRevision: vi.fn<EditorApi["publishRevision"]>(),
+    rejectRevision: vi.fn<EditorApi["rejectRevision"]>(),
     record: vi.fn<EditorApi["record"]>().mockResolvedValue(base),
     saveRecord: vi.fn<EditorApi["saveRecord"]>().mockResolvedValue(saved),
     createRecord: vi.fn<EditorApi["createRecord"]>().mockResolvedValue(saved.record),
@@ -922,3 +926,278 @@ test.each([
     ).toEqual({ kind: "refused", code: undefined, message });
   },
 );
+
+const reviewed: ApiRevision = {
+  id: "revision",
+  page_id: page.id,
+  version: 7,
+  status: "submitted",
+  fields: {
+    url: page.url,
+    category_id: null,
+    parent_id: null,
+    title: "Reviewed title",
+    description: null,
+    visibility: "public",
+    form_id: null,
+    body_markdown: "Reviewed content",
+    frontmatter: { lede: "office" },
+  },
+  live_updated_at: page.updated_at,
+  created_by: "author",
+  contributors: ["author"],
+  submitted_by: "author",
+  submitted_at: page.updated_at,
+  decided_by: null,
+  decided_at: null,
+  comment: null,
+  created_at: page.updated_at,
+  updated_at: page.updated_at,
+  changes: [{ field: "body_markdown", live: page.body_markdown, proposed: "Reviewed content" }],
+};
+
+const publishedPage: ApiPage = {
+  ...page,
+  ...reviewed.fields,
+  version: 8,
+  updated_at: "2026-11-11T12:01:00.000Z",
+};
+
+const rejectedRevision: ApiRevision = {
+  ...reviewed,
+  status: "rejected",
+  version: 8,
+  comment: "Check the fees.",
+  decided_by: "approver",
+  decided_at: publishedPage.updated_at,
+  updated_at: publishedPage.updated_at,
+};
+
+test("publishing sends the displayed revision version and keeps its answered page", async () => {
+  const api = fakeApi();
+  api.publishRevision.mockResolvedValue(publishedPage);
+  expect(await writeAttempt(writes.publishRevision(api)).press(() => reviewed)).toEqual({
+    kind: "landed",
+    answer: { page: publishedPage },
+  });
+  expect(api.publishRevision).toHaveBeenCalledExactlyOnceWith(page.id, 7);
+  expect(api.revision).not.toHaveBeenCalled();
+});
+
+test("a lost publication needs an answered revision absence and the changed live page", async () => {
+  const api = fakeApi();
+  api.publishRevision.mockRejectedValue(new ApiFailure(0));
+  api.revision.mockRejectedValue(new ApiFailure(404));
+  api.page.mockResolvedValue(publishedPage);
+  expect(await writeAttempt(writes.publishRevision(api)).press(() => reviewed)).toEqual({
+    kind: "landed",
+    answer: { revision: undefined, page: publishedPage },
+  });
+  expect(api.revision).toHaveBeenCalledExactlyOnceWith(page.id);
+  expect(api.page).toHaveBeenCalledExactlyOnceWith(page.id);
+  expect(api.publishRevision).toHaveBeenCalledTimes(1);
+});
+
+test.each([
+  { name: "revision read fails", revisionError: 503 },
+  { name: "page read fails", pageError: 503 },
+  { name: "page was deleted", pageError: 404 },
+])("publication is unconfirmed when $name", async ({ revisionError, pageError }) => {
+  const api = fakeApi();
+  api.publishRevision.mockRejectedValue(new ApiFailure(0));
+  api.revision.mockRejectedValue(new ApiFailure(revisionError ?? 404));
+
+  if (pageError) api.page.mockRejectedValue(new ApiFailure(pageError));
+  else api.page.mockResolvedValue(publishedPage);
+  expect(await writeAttempt(writes.publishRevision(api)).press(() => reviewed)).toEqual({
+    kind: "unknown",
+  });
+});
+
+test.each([
+  { name: "same revision still submitted", current: reviewed },
+  { name: "revision rejected instead", current: rejectedRevision },
+  { name: "different revision", current: { ...reviewed, id: "other" } },
+])("publication is unconfirmed with $name", async ({ current }) => {
+  const api = fakeApi();
+  api.publishRevision.mockRejectedValue(new ApiFailure(0));
+  api.revision.mockResolvedValue(current);
+  api.page.mockResolvedValue(publishedPage);
+  expect(await writeAttempt(writes.publishRevision(api)).press(() => reviewed)).toEqual({
+    kind: "unknown",
+  });
+});
+
+test.each([
+  { id: "other-page" },
+  { version: reviewed.version },
+  { pending_revision: { status: "draft" as const, comment: null } },
+  { visibility: "draft" as const },
+  { updated_at: reviewed.live_updated_at },
+  { title: "Other title" },
+  { url: "/other" },
+  { category_id: "other-category" },
+  { parent_id: "other-parent" },
+  { description: "Other description" },
+  { form_id: "other-form" },
+  { body_markdown: "Other body" },
+  { frontmatter: { lede: "elsewhere" } },
+])(
+  "missing revision does not confirm a different or unchanged live page: %s",
+  async (difference) => {
+    const api = fakeApi();
+    api.publishRevision.mockRejectedValue(new ApiFailure(0));
+    api.revision.mockRejectedValue(new ApiFailure(404));
+    api.page.mockResolvedValue({ ...publishedPage, ...difference });
+    expect(await writeAttempt(writes.publishRevision(api)).press(() => reviewed)).toEqual({
+      kind: "unknown",
+    });
+  },
+);
+
+test("an explicit publish retry keeps the reviewed version and snapshot after a failed read", async () => {
+  const api = fakeApi();
+  api.publishRevision
+    .mockRejectedValueOnce(new ApiFailure(0))
+    .mockRejectedValueOnce(new ApiFailure(409, [], "Changed", "version_conflict"));
+  api.revision.mockRejectedValue(new ApiFailure(503));
+  const snapshot = structuredClone(reviewed);
+  const attempt = writeAttempt(writes.publishRevision(api));
+  expect(await attempt.press(() => snapshot)).toEqual({ kind: "unknown" });
+  snapshot.version = 99;
+  snapshot.fields.title = "New revision";
+  expect(await attempt.press(() => snapshot)).toMatchObject({ kind: "conflict" });
+  expect(api.publishRevision).toHaveBeenLastCalledWith(reviewed.page_id, 7);
+});
+
+test("rejecting sends the reviewed version and submitted comment", async () => {
+  const api = fakeApi();
+  api.rejectRevision.mockResolvedValue(rejectedRevision);
+  const sent = { reviewed, comment: "Check the fees." };
+  expect(await writeAttempt(writes.rejectRevision(api)).press(() => sent)).toEqual({
+    kind: "landed",
+    answer: rejectedRevision,
+  });
+  expect(api.rejectRevision).toHaveBeenCalledExactlyOnceWith(page.id, sent.comment, 7);
+  expect(api.revision).not.toHaveBeenCalled();
+});
+
+test("a lost rejection confirms the same revision, fields and submitted comment", async () => {
+  const api = fakeApi();
+  api.rejectRevision.mockRejectedValue(new ApiFailure(0));
+  api.revision.mockResolvedValue(rejectedRevision);
+  expect(
+    await writeAttempt(writes.rejectRevision(api)).press(() => ({
+      reviewed,
+      comment: "Check the fees.",
+    })),
+  ).toEqual({ kind: "landed", answer: rejectedRevision });
+  expect(api.rejectRevision).toHaveBeenCalledTimes(1);
+});
+
+test.each([
+  { id: "other-revision" },
+  { page_id: "other-page" },
+  { version: reviewed.version },
+  { status: "submitted" as const },
+  { comment: "Someone else's comment" },
+  { fields: { ...reviewed.fields, body_markdown: "Other revision content" } },
+])("rejection is not confirmed by a different reviewed state: %s", async (difference) => {
+  const api = fakeApi();
+  api.rejectRevision.mockRejectedValue(new ApiFailure(0));
+  api.revision.mockResolvedValue({ ...rejectedRevision, ...difference });
+  expect(
+    await writeAttempt(writes.rejectRevision(api)).press(() => ({
+      reviewed,
+      comment: "Check the fees.",
+    })),
+  ).toEqual({ kind: "unknown" });
+});
+
+test.each([404, 503])("a revision read answered %s cannot confirm rejection", async (status) => {
+  const api = fakeApi();
+  api.rejectRevision.mockRejectedValue(new ApiFailure(0));
+  api.revision.mockRejectedValue(new ApiFailure(status));
+  expect(
+    await writeAttempt(writes.rejectRevision(api)).press(() => ({
+      reviewed,
+      comment: "Check the fees.",
+    })),
+  ).toEqual({ kind: "unknown" });
+});
+
+test("a rejection retry cannot use a refreshed revision or a later comment", async () => {
+  const api = fakeApi();
+  api.rejectRevision
+    .mockRejectedValueOnce(new ApiFailure(0))
+    .mockRejectedValueOnce(new ApiFailure(409, [], "Changed", "version_conflict"));
+  api.revision.mockResolvedValue({ ...rejectedRevision, id: "other-revision", version: 9 });
+  const sent = { reviewed: structuredClone(reviewed), comment: "Check the fees." };
+  const attempt = writeAttempt(writes.rejectRevision(api));
+  expect(await attempt.press(() => sent)).toEqual({ kind: "unknown" });
+  sent.reviewed.version = 9;
+  sent.comment = "Later comment";
+  expect(await attempt.press(() => sent)).toMatchObject({ kind: "conflict" });
+  expect(api.rejectRevision).toHaveBeenLastCalledWith(reviewed.page_id, "Check the fees.", 7);
+});
+
+test.each([
+  {
+    failure: new ApiFailure(409, [], "Submit this first.", "not_submitted"),
+    expected: { kind: "refused", code: "review_state_conflict", message: "Submit this first." },
+  },
+  {
+    failure: new ApiFailure(409),
+    expected: {
+      kind: "refused",
+      code: "review_state_conflict",
+      message: "This change is not in the state required for that decision.",
+    },
+  },
+  {
+    failure: new ApiFailure(409, [], "Changed", "version_conflict"),
+    expected: { kind: "conflict", message: "Changed" },
+  },
+  {
+    failure: new ApiFailure(400, [], "Bad request", "not_submitted"),
+    expected: { kind: "refused", code: "not_submitted", message: "Bad request" },
+  },
+  {
+    failure: new ApiFailure(
+      400,
+      [{ field: "comment", message: "Malformed" }],
+      "Bad request",
+      "validation_failed",
+    ),
+    expected: { kind: "refused", code: "review_request_refused", message: "Bad request" },
+  },
+  {
+    failure: new ApiFailure(403, [], "You worked on this change."),
+    expected: { kind: "forbidden", message: "You worked on this change." },
+  },
+])(
+  "review decision mapping preserves the refusal distinction: $failure",
+  async ({ failure, expected }) => {
+    const api = fakeApi();
+    api.publishRevision.mockRejectedValue(failure);
+    api.rejectRevision.mockRejectedValue(failure);
+    expect(await writeAttempt(writes.publishRevision(api)).press(() => reviewed)).toEqual(expected);
+    expect(
+      await writeAttempt(writes.rejectRevision(api)).press(() => ({ reviewed, comment: "Check." })),
+    ).toEqual(expected);
+    expect(api.revision).not.toHaveBeenCalled();
+  },
+);
+
+test("matching non-public fields cannot confirm publication", async () => {
+  const api = fakeApi();
+  api.publishRevision.mockRejectedValue(new ApiFailure(0));
+  api.revision.mockRejectedValue(new ApiFailure(404));
+  api.page.mockResolvedValue({ ...publishedPage, visibility: "draft" });
+  expect(
+    await writeAttempt(writes.publishRevision(api)).press(() => ({
+      ...reviewed,
+      fields: { ...reviewed.fields, visibility: "draft" },
+    })),
+  ).toEqual({ kind: "unknown" });
+});

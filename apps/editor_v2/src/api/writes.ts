@@ -3,6 +3,7 @@ import {
   CategoryRefused,
   type CategoryResult,
   type ApiPage,
+  type ApiRevision,
   type EditorApi,
   type RecordDetail,
   type SavePageInput,
@@ -97,8 +98,88 @@ async function readCategories(api: EditorApi) {
   return categoryAnswer(await api.categories());
 }
 
+type RevisionRejection = { reviewed: ApiRevision; comment: string };
+
+type RevisionPublication = { revision?: ApiRevision; page?: ApiPage };
+
+async function readRevision(api: EditorApi, id: string) {
+  try {
+    return await api.revision(id);
+  } catch (error) {
+    if (error instanceof ApiFailure && error.status === 404) return undefined;
+    throw error;
+  }
+}
+
+// oxlint-disable-next-line anti-slop/no-unknown-parameters -- Catch-boundary mapping; only an answered non-version 409 is a review-state refusal.
+function reviewRefusal(error: unknown): never {
+  // Review dialogs name validation fields only for 422; a malformed 400 keeps their generic refusal.
+  if (error instanceof ApiFailure && error.status === 400 && error.code === "validation_failed")
+    throw new ApiFailure(400, error.errors, apiMessage(error), "review_request_refused");
+
+  // Preserve the review-state branch after the shared outcome drops HTTP status.
+  if (error instanceof ApiFailure && error.status === 409 && error.code !== "version_conflict")
+    throw new ApiFailure(
+      409,
+      error.errors,
+      apiMessage(error) ?? "This change is not in the state required for that decision.",
+      "review_state_conflict",
+    );
+  throw error;
+}
+
+function reviewedFieldsMatch(found: ApiRevision["fields"], reviewed: ApiRevision) {
+  // SAFETY: These keys come from the reviewed revision's validated PageFields object.
+  const fields = Object.keys(reviewed.fields) as (keyof ApiRevision["fields"])[];
+
+  return fields.every(
+    (field) => JSON.stringify(found[field]) === JSON.stringify(reviewed.fields[field]),
+  );
+}
+
 /** Each migrated write's send, independent read-back and landed check. */
 export const writes = {
+  publishRevision: (api: EditorApi): Write<ApiRevision, RevisionPublication> => ({
+    send: async (reviewed) => {
+      try {
+        return { page: await api.publishRevision(reviewed.page_id, reviewed.version) };
+      } catch (error) {
+        return reviewRefusal(error);
+      }
+    },
+    readBack: async (reviewed) => ({
+      revision: await readRevision(api, reviewed.page_id),
+      page: await readPage(api, reviewed.page_id),
+    }),
+    landed: (found, reviewed) =>
+      !!found?.page &&
+      !found.revision &&
+      found.page.id === reviewed.page_id &&
+      found.page.version > reviewed.version &&
+      found.page.pending_revision === null &&
+      found.page.visibility === "public" &&
+      // A discarded/no-op revision can leave the already-matching live page unchanged.
+      found.page.updated_at !== reviewed.live_updated_at &&
+      reviewedFieldsMatch(found.page, reviewed),
+  }),
+  rejectRevision: (api: EditorApi): Write<RevisionRejection, ApiRevision> => ({
+    send: async (sent) => {
+      try {
+        return await api.rejectRevision(sent.reviewed.page_id, sent.comment, sent.reviewed.version);
+      } catch (error) {
+        return reviewRefusal(error);
+      }
+    },
+    readBack: (sent) => readRevision(api, sent.reviewed.page_id),
+    landed: (found, sent) =>
+      !!found &&
+      found.id === sent.reviewed.id &&
+      found.page_id === sent.reviewed.page_id &&
+      found.version > sent.reviewed.version &&
+      found.status === "rejected" &&
+      found.comment === sent.comment &&
+      reviewedFieldsMatch(found.fields, sent.reviewed),
+  }),
   createCategory: (api: EditorApi): Write<CategorySaveRequest, Category> => ({
     send: async (sent) => categoryAnswer(await api.createCategory(sent.fields)),
     readBack: async (sent) =>
