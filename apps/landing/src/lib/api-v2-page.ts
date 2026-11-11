@@ -1,4 +1,4 @@
-import { createServerFn } from '@tanstack/react-start'
+import { createServerFn, createServerOnlyFn } from '@tanstack/react-start'
 import { getCookie } from '@tanstack/react-start/server'
 import { useRuntimeConfig } from 'nitro/runtime-config'
 import { z } from 'zod'
@@ -445,26 +445,30 @@ export function loadApiV2Page(
  * `getApiV2Page`'s handler: `loadApiV2Page` against the configured api_v2,
  * cached until it expires or api_v2's site version moves. The level comes
  * from the httpOnly grant cookie, read here, never from the client. Exported
- * for its test, which can't call a server function outside Start's runtime.
+ * for its test, which can't call a server function outside Start's runtime;
+ * server-only, so the client build drops it and what it reaches (the cookie,
+ * the tokens) as it does a handler body.
  */
-export async function readApiV2Page(url: string): Promise<ApiV2Result> {
-  // A visitor's path no page could have is a miss, not an error, and it makes
-  // no api_v2 request: not the version check, the page read, the cache or
-  // the breaker.
-  if (!isPageUrl(url)) {
-    logFallback('rejected', url)
-    return { kind: 'miss', reason: 'rejected' }
-  }
-  await checkSiteVersion()
-  const level = levelFromCookie(getCookie(COOKIE_NAME))
-  return loadApiV2Page(
-    apiV2Cache,
-    apiV2Base(),
-    url,
-    landingToken(),
-    previewTokenFor(level, previewSecret()),
-  )
-}
+export const readApiV2Page = createServerOnlyFn(
+  async (url: string): Promise<ApiV2Result> => {
+    // A visitor's path no page could have is a miss, not an error, and it
+    // makes no api_v2 request: not the version check, the page read, the
+    // cache or the breaker.
+    if (!isPageUrl(url)) {
+      logFallback('rejected', url)
+      return { kind: 'miss', reason: 'rejected' }
+    }
+    await checkSiteVersion()
+    const level = levelFromCookie(getCookie(COOKIE_NAME))
+    return loadApiV2Page(
+      apiV2Cache,
+      apiV2Base(),
+      url,
+      landingToken(),
+      previewTokenFor(level, previewSecret()),
+    )
+  },
+)
 
 /** Server function: `readApiV2Page`. A malformed string is the visitor's
  *  path, so it reaches the handler and misses; anything else is refused. */
