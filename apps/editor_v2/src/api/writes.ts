@@ -1,7 +1,9 @@
 import {
   ApiFailure,
   CategoryRefused,
+  isText,
   type CategoryResult,
+  type CreatePageInput,
   type ApiPage,
   type ApiRevision,
   type EditorApi,
@@ -55,6 +57,29 @@ export type PageSaveRequest = {
 export type PageSaveAnswer = { base: ServerPageBaseline; discarded?: true };
 
 type PageSubmission = { base: ServerPageBaseline; categories: readonly Category[] };
+
+type PageCreationAnswer = { page: ApiPage; category: string | null };
+
+type PageDeletion = { id: string; version: number };
+
+// oxlint-disable-next-line anti-slop/no-unknown-parameters -- Preserve dialog refusal precedence before classification drops HTTP status.
+function pageDialogRefusal(error: unknown, creating: boolean): never {
+  if (error instanceof ApiFailure && error.status > 0 && error.status < 500) {
+    if (error.errors.length && (creating || ![401, 409].includes(error.status)))
+      throw new ApiFailure(422, error.errors, apiMessage(error));
+
+    if (error.status === 409 && error.code !== "version_conflict")
+      throw new ApiFailure(
+        409,
+        [],
+        apiMessage(error) ??
+          "This item changed. Cancel and review the latest version before trying again.",
+        "page_dialog_conflict",
+      );
+  }
+
+  throw error;
+}
 
 async function readPage(api: EditorApi, id: string) {
   try {
@@ -139,6 +164,68 @@ function reviewedFieldsMatch(found: ApiRevision["fields"], reviewed: ApiRevision
 
 /** Each migrated write's send, independent read-back and landed check. */
 export const writes = {
+  createPage: (api: EditorApi): Write<CreatePageInput, PageCreationAnswer> => ({
+    send: async (sent) => {
+      try {
+        const page = await api.createPage(sent);
+
+        return { page, category: page.category_id };
+      } catch (error) {
+        return pageDialogRefusal(error, true);
+      }
+    },
+    readBack: async (sent) => {
+      const list = sent.parent_id
+        ? (await api.service(sent.parent_id)).pages
+        : sent.category_id
+          ? await api.services()
+          : await api.sitePages();
+
+      const candidate = list.find((item) => item.url === sent.url);
+
+      if (!candidate || !isText(candidate.id)) return undefined;
+      const page = await readPage(api, candidate.id);
+
+      if (!page || page.id !== candidate.id) return undefined;
+      let category = sent.category_id ?? null;
+
+      // place() inherits the parent's live category, not a pending revision's proposed category.
+      if (sent.parent_id && category === null) {
+        const parent = await api.page(sent.parent_id);
+
+        if (parent.id !== sent.parent_id || parent.pending_revision !== null) return undefined;
+        category = parent.category_id;
+      }
+
+      return { page, category };
+    },
+    landed: (found, sent) =>
+      !!found &&
+      (sent.id === undefined || found.page.id === sent.id) &&
+      found.page.pending_revision === null &&
+      found.page.url === sent.url &&
+      found.page.parent_id === (sent.parent_id ?? null) &&
+      found.page.category_id === found.category &&
+      found.page.title === sent.title &&
+      found.page.description === (sent.description ?? null) &&
+      found.page.visibility === (sent.visibility ?? "draft") &&
+      found.page.form_id === (sent.form_id ?? null) &&
+      found.page.body_markdown === sent.body_markdown &&
+      JSON.stringify(found.page.frontmatter) === JSON.stringify(sent.frontmatter ?? {}),
+  }),
+  deletePage: (api: EditorApi): Write<PageDeletion, ApiPage | undefined> => ({
+    send: async (sent) => {
+      try {
+        await api.deletePage(sent.id, sent.version);
+
+        return undefined;
+      } catch (error) {
+        return pageDialogRefusal(error, false);
+      }
+    },
+    readBack: (sent) => readPage(api, sent.id),
+    landed: (found) => found === undefined,
+  }),
   publishRevision: (api: EditorApi): Write<ApiRevision, RevisionPublication> => ({
     send: async (reviewed) => {
       try {

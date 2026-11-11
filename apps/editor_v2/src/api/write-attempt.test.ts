@@ -12,6 +12,7 @@ import {
   createEditorApi,
   type EditorApi,
   type ApiPage,
+  type CreatePageInput,
   type ApiRevision,
   type RecordDetail,
 } from "./client";
@@ -52,6 +53,11 @@ function fakeApi() {
   return {
     ...createEditorApi("https://content.test"),
     page: vi.fn<EditorApi["page"]>(),
+    createPage: vi.fn<EditorApi["createPage"]>(),
+    deletePage: vi.fn<EditorApi["deletePage"]>(),
+    services: vi.fn<EditorApi["services"]>(),
+    service: vi.fn<EditorApi["service"]>(),
+    sitePages: vi.fn<EditorApi["sitePages"]>(),
     savePage: vi.fn<EditorApi["savePage"]>(),
     submitRevision: vi.fn<EditorApi["submitRevision"]>(),
     revision: vi.fn<EditorApi["revision"]>(),
@@ -1200,4 +1206,377 @@ test("matching non-public fields cannot confirm publication", async () => {
       fields: { ...reviewed.fields, visibility: "draft" },
     })),
   ).toEqual({ kind: "unknown" });
+});
+
+const newPageInput: CreatePageInput = {
+  url: "/family/birth",
+  title: "Birth",
+  category_id: "family",
+  visibility: "preview",
+  body_markdown: "",
+  frontmatter: { stage: "alpha" },
+};
+
+const newPage: ApiPage = {
+  ...page,
+  ...newPageInput,
+  parent_id: null,
+  category_id: "family",
+  visibility: "preview",
+  frontmatter: { stage: "alpha" },
+  slug: "birth",
+  published_at: null,
+};
+
+const newService = {
+  id: newPage.id,
+  url: newPage.url,
+  title: newPage.title,
+  category: { slug: "family", title: "Family" },
+  visibility: newPage.visibility,
+  form_id: null,
+  has_start_page: false,
+  page_count: 1,
+  updated_at: newPage.updated_at,
+};
+
+function pageCreationApi() {
+  const api = fakeApi();
+  api.createPage.mockRejectedValue(new ApiFailure(0));
+  api.services.mockResolvedValue([newService]);
+  api.page.mockResolvedValue(newPage);
+
+  return api;
+}
+
+test("page creation accepts an answered page without reading an index", async () => {
+  const api = pageCreationApi();
+  api.createPage.mockResolvedValue(newPage);
+  expect(await writeAttempt(writes.createPage(api)).press(() => newPageInput)).toEqual({
+    kind: "landed",
+    answer: { page: newPage, category: "family" },
+  });
+  expect(api.createPage).toHaveBeenCalledWith(newPageInput);
+  expect(api.services).not.toHaveBeenCalled();
+  expect(api.page).not.toHaveBeenCalled();
+});
+
+test("a lost service create reads the editing index and the actual page once", async () => {
+  const api = pageCreationApi();
+  expect(await writeAttempt(writes.createPage(api)).press(() => newPageInput)).toEqual({
+    kind: "landed",
+    answer: { page: newPage, category: "family" },
+  });
+  expect(api.services).toHaveBeenCalledTimes(1);
+  expect(api.page.mock.calls).toEqual([[newPage.id]]);
+  expect(api.createPage).toHaveBeenCalledTimes(1);
+});
+
+test.each([
+  ["url", "/elsewhere"],
+  ["parent_id", "another-parent"],
+  ["category_id", "another-category"],
+  ["title", "Someone else's title"],
+  ["description", "Different"],
+  ["visibility", "public"],
+  ["form_id", "another-form"],
+  ["body_markdown", "Different"],
+  ["frontmatter", {}],
+  ["pending_revision", { status: "draft", comment: null }],
+  ["id", "different-index-identity"],
+] as const)(
+  "page create does not confirm a matching index path with different %s",
+  async (field, value) => {
+    const api = pageCreationApi();
+    api.page.mockResolvedValue({ ...newPage, [field]: value });
+    expect(await writeAttempt(writes.createPage(api)).press(() => newPageInput)).toEqual({
+      kind: "unknown",
+    });
+    expect(api.createPage).toHaveBeenCalledTimes(1);
+  },
+);
+
+test("page creation checks a supplied identity too, without generating one", async () => {
+  const api = pageCreationApi();
+  expect(
+    await writeAttempt(writes.createPage(api)).press(() => ({ ...newPageInput, id: "specified" })),
+  ).toEqual({ kind: "unknown" });
+});
+
+test.each([new ApiFailure(0), new ApiFailure(503), new ApiAnswerMalformed(), new ApiFailure(404)])(
+  "failed page creation index or full-page reads cannot confirm: %s",
+  async (failure) => {
+    for (const read of ["index", "page"] as const) {
+      const api = pageCreationApi();
+
+      if (read === "index") api.services.mockRejectedValue(failure);
+      else api.page.mockRejectedValue(failure);
+      expect(await writeAttempt(writes.createPage(api)).press(() => newPageInput)).toEqual({
+        kind: "unknown",
+      });
+      expect(api.createPage).toHaveBeenCalledTimes(1);
+    }
+  },
+);
+
+test("a lost create whose path is absent stays unknown, then resends only the frozen input", async () => {
+  const api = pageCreationApi();
+  api.services.mockResolvedValue([]);
+  const input = structuredClone(newPageInput);
+  const attempt = writeAttempt(writes.createPage(api));
+  expect(await attempt.press(() => input)).toEqual({ kind: "unknown" });
+  input.title = "Later typing";
+  input.url = "/different";
+  input.frontmatter!.stage = "beta";
+  api.createPage.mockResolvedValue(newPage);
+  const next = vi.fn(() => input);
+  expect((await attempt.press(next)).kind).toBe("landed");
+  expect(next).not.toHaveBeenCalled();
+  expect(api.createPage.mock.calls).toEqual([[newPageInput], [newPageInput]]);
+  expect(api.services).toHaveBeenCalledTimes(2);
+  expect(api.services.mock.invocationCallOrder[1]).toBeLessThan(
+    api.createPage.mock.invocationCallOrder[1]!,
+  );
+});
+
+test("a later matching create read confirms without sending again", async () => {
+  const api = pageCreationApi();
+  api.services.mockResolvedValueOnce([]);
+  const attempt = writeAttempt(writes.createPage(api));
+  await attempt.press(() => newPageInput);
+  expect((await attempt.press(() => newPageInput)).kind).toBe("landed");
+  expect(api.createPage).toHaveBeenCalledTimes(1);
+});
+
+test("an uncategorised root create uses the site-page index and documented defaults", async () => {
+  const api = pageCreationApi();
+  const input = { url: "/fees", title: "Fees", body_markdown: "" };
+
+  const found: ApiPage = {
+    ...page,
+    ...input,
+    category_id: null,
+    visibility: "draft",
+    frontmatter: {},
+  };
+
+  api.sitePages.mockResolvedValue([found]);
+  api.page.mockResolvedValue(found);
+  expect((await writeAttempt(writes.createPage(api)).press(() => input)).kind).toBe("landed");
+  expect(api.sitePages).toHaveBeenCalledTimes(1);
+  expect(api.services).not.toHaveBeenCalled();
+});
+
+function childCreationApi() {
+  const api = pageCreationApi();
+
+  const input: CreatePageInput = {
+    url: "/family/birth/start",
+    title: "Before you start",
+    parent_id: "parent",
+    visibility: "preview",
+    body_markdown: "",
+  };
+
+  const child: ApiPage = { ...newPage, ...input, parent_id: "parent", frontmatter: {} };
+  api.service.mockResolvedValue({
+    service: { ...newService, id: "parent" },
+    pages: [{ ...child, role: "start" }],
+  });
+  api.page.mockImplementation(async (id) =>
+    id === "parent" ? { ...newPage, id: "parent" } : child,
+  );
+
+  return { api, input, child };
+}
+
+test("a lost child create checks its parent and inherits only the live category", async () => {
+  const { api, input, child } = childCreationApi();
+  expect(await writeAttempt(writes.createPage(api)).press(() => input)).toEqual({
+    kind: "landed",
+    answer: { page: child, category: "family" },
+  });
+  expect(api.service).toHaveBeenCalledWith("parent");
+  expect(api.page.mock.calls).toEqual([[child.id], ["parent"]]);
+  expect(api.services).not.toHaveBeenCalled();
+});
+
+test.each(["category", "identity", "pending", "unreadable"] as const)(
+  "a child create cannot confirm with a different or unreadable parent %s",
+  async (difference) => {
+    const { api, input, child } = childCreationApi();
+    api.page.mockImplementation(async (id) => {
+      if (id !== "parent") return child;
+
+      if (difference === "unreadable") throw new ApiAnswerMalformed();
+
+      return {
+        ...newPage,
+        id: difference === "identity" ? "another-parent" : "parent",
+        category_id: difference === "category" ? "other" : "family",
+        pending_revision: difference === "pending" ? { status: "draft", comment: null } : null,
+      };
+    });
+    expect(await writeAttempt(writes.createPage(api)).press(() => input)).toEqual({
+      kind: "unknown",
+    });
+  },
+);
+
+test("page create compares explicitly submitted optional fields instead of defaults", async () => {
+  const api = pageCreationApi();
+
+  const input: CreatePageInput = {
+    ...newPageInput,
+    description: "Details",
+    form_id: "form",
+    frontmatter: { stage: "alpha", lede: "Intro" },
+  };
+
+  api.page.mockResolvedValue({
+    ...newPage,
+    description: "Details",
+    form_id: "form",
+    frontmatter: input.frontmatter!,
+  });
+  expect((await writeAttempt(writes.createPage(api)).press(() => input)).kind).toBe("landed");
+});
+
+test("an answered page deletion needs no read-back", async () => {
+  const api = fakeApi();
+  api.deletePage.mockResolvedValue(undefined);
+  expect(
+    await writeAttempt(writes.deletePage(api)).press(() => ({ id: page.id, version: 1 })),
+  ).toEqual({
+    kind: "landed",
+    answer: undefined,
+  });
+  expect(api.deletePage).toHaveBeenCalledWith(page.id, 1);
+  expect(api.page).not.toHaveBeenCalled();
+});
+
+test("only an answered 404 confirms a lost page deletion", async () => {
+  const api = fakeApi();
+  api.deletePage.mockRejectedValue(new ApiFailure(0));
+  api.page.mockRejectedValue(new ApiFailure(404));
+  expect(
+    await writeAttempt(writes.deletePage(api)).press(() => ({ id: page.id, version: 1 })),
+  ).toEqual({
+    kind: "landed",
+    answer: undefined,
+  });
+  expect(api.page).toHaveBeenCalledWith(page.id);
+  expect(api.deletePage).toHaveBeenCalledTimes(1);
+});
+
+test.each([new ApiFailure(0), new ApiFailure(503), new ApiAnswerMalformed()])(
+  "a failed deletion read is not absence: %s",
+  async (failure) => {
+    const api = fakeApi();
+    api.deletePage.mockRejectedValue(new ApiFailure(0));
+    api.page.mockRejectedValue(failure);
+    expect(
+      await writeAttempt(writes.deletePage(api)).press(() => ({ id: page.id, version: 1 })),
+    ).toEqual({ kind: "unknown" });
+    expect(api.deletePage).toHaveBeenCalledTimes(1);
+  },
+);
+
+test("a remaining page cannot confirm deletion; a retry keeps its displayed identity and version", async () => {
+  const api = fakeApi();
+  api.deletePage
+    .mockRejectedValueOnce(new ApiFailure(503))
+    .mockRejectedValueOnce(new ApiFailure(409, [], "Changed", "version_conflict"));
+  api.page.mockResolvedValue({ ...page, version: 99 });
+  const input = { id: page.id, version: 1 };
+  const attempt = writeAttempt(writes.deletePage(api));
+  expect(await attempt.press(() => input)).toEqual({ kind: "unknown" });
+  input.id = "another-page";
+  input.version = 99;
+  expect(await attempt.press(() => input)).toEqual({ kind: "conflict", message: "Changed" });
+  expect(api.deletePage.mock.calls).toEqual([
+    [page.id, 1],
+    [page.id, 1],
+  ]);
+  expect(api.page.mock.calls).toEqual([[page.id], [page.id]]);
+  expect(api.page.mock.invocationCallOrder[1]).toBeLessThan(
+    api.deletePage.mock.invocationCallOrder[1]!,
+  );
+});
+
+test.each([
+  [new ApiFailure(403, [], "Editors only"), { kind: "forbidden", message: "Editors only" }],
+  [
+    new ApiFailure(409, [], "Page has children", "has_children"),
+    { kind: "refused", code: "page_dialog_conflict", message: "Page has children" },
+  ],
+  [
+    new ApiFailure(409),
+    {
+      kind: "refused",
+      code: "page_dialog_conflict",
+      message: "This item changed. Cancel and review the latest version before trying again.",
+    },
+  ],
+  [new ApiFailure(422, errors), { kind: "invalid", errors }],
+  [new ApiFailure(400, errors), { kind: "invalid", errors }],
+])("page dialog catalogue preserves refusal presentation: %s", async (failure, outcome) => {
+  const api = fakeApi();
+  api.createPage.mockRejectedValue(failure);
+  api.deletePage.mockRejectedValue(failure);
+  expect(await writeAttempt(writes.createPage(api)).press(() => newPageInput)).toEqual(outcome);
+  expect(
+    await writeAttempt(writes.deletePage(api)).press(() => ({ id: page.id, version: 1 })),
+  ).toEqual(outcome);
+  expect(api.page).not.toHaveBeenCalled();
+});
+
+test.each([
+  "parent_id",
+  "category_id",
+  "frontmatter",
+  "visibility",
+  "title",
+  "body_markdown",
+] as const)(
+  "real-client create recovery rejects missing confirmation evidence: %s",
+  async (field) => {
+    const fetch = vi.spyOn(globalThis, "fetch").mockImplementation(async (url, init) => {
+      if (init?.method === "POST") return new Response(null, { status: 503 });
+
+      if (String(url).endsWith("/services")) return Response.json([newService]);
+
+      return Response.json({ ...newPage, [field]: undefined });
+    });
+
+    try {
+      const api = createEditorApi("https://content.test");
+      expect(await writeAttempt(writes.createPage(api)).press(() => newPageInput)).toEqual({
+        kind: "unknown",
+      });
+      expect(fetch.mock.calls.filter(([, init]) => init?.method === "POST")).toHaveLength(1);
+    } finally {
+      fetch.mockRestore();
+    }
+  },
+);
+
+test("real-client deletion recovery does not mistake a malformed 200 for absence", async () => {
+  const fetch = vi
+    .spyOn(globalThis, "fetch")
+    .mockImplementation(async (_url, init) =>
+      init?.method === "DELETE"
+        ? new Response(null, { status: 503 })
+        : Response.json({ id: page.id }),
+    );
+
+  try {
+    const api = createEditorApi("https://content.test");
+    expect(
+      await writeAttempt(writes.deletePage(api)).press(() => ({ id: page.id, version: 1 })),
+    ).toEqual({ kind: "unknown" });
+    expect(fetch.mock.calls.filter(([, init]) => init?.method === "DELETE")).toHaveLength(1);
+  } finally {
+    fetch.mockRestore();
+  }
 });
