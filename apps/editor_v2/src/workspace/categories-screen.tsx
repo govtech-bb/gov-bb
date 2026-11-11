@@ -20,7 +20,6 @@ import {
 } from "react";
 import {
   categoryRows,
-  inOrder,
   moveOrder,
   withSavedCategories,
   type Category,
@@ -29,6 +28,8 @@ import {
 } from "../api/categories";
 import type { EditorApi } from "../api/client";
 import { categoriesQuery } from "../api/queries";
+import { writeAttempt } from "../api/write-attempt";
+import { writes, type CategoryOrderAnswer } from "../api/writes";
 import { Banner } from "../ui/banner";
 import { Button } from "../ui/button";
 import { Menu } from "../ui/menu";
@@ -313,25 +314,19 @@ export function CategoriesScreen({
   // The control a move came from, to have the focus back once its row is in its new place
   const refocus = useRef<{ id: string; by: Direction; from: "button" | "menu" }>(undefined);
 
-  /**
-   * Each sibling group with a move not yet settled: being saved, or sent without an answer and not yet checked. A press
-   * meanwhile does nothing: two moves from one version of the list would refuse each other.
-   */
-  const [moving, setMoving] = useState<ReadonlyMap<string, "saving" | CategoryOrder>>(new Map());
-  const settling = useRef(new Map<string, "saving" | CategoryOrder>());
+  const attempts = useRef(
+    new Map<
+      string,
+      {
+        attempt: ReturnType<typeof writeAttempt<CategoryOrder, CategoryOrderAnswer>>;
+        control: { id: string; by: Direction; from: "button" | "menu" };
+      }
+    >(),
+  );
+
+  const [moving, setMoving] = useState<ReadonlySet<string>>(new Set());
   // The move button a save or a check came from, which turns while its group waits
   const [pressed, setPressed] = useState<{ group: string; id: string; by: Direction }>();
-
-  const settle = useCallback((group: string, state?: "saving" | CategoryOrder) => {
-    const next = new Map(settling.current);
-
-    if (state) next.set(group, state);
-    else next.delete(group);
-    settling.current = next;
-    setMoving(next);
-
-    if (state !== "saving") setPressed((button) => (button?.group === group ? undefined : button));
-  }, []);
 
   // Says where a moved row is now, keeps its control focused and tints it for a while
   const showMoved = useCallback(
@@ -351,134 +346,110 @@ export function CategoriesScreen({
     [],
   );
 
-  // An independent read: a pre-write query or another group's cancellation must not settle this move.
-  const checkMove = useCallback(
-    async (group: string, order: CategoryOrder) => {
-      settle(group, "saving");
-      setMoved("Checking whether the move was saved…");
-      const result = await api.categories();
-
-      if (!result.ok) {
-        settle(group, order);
-        setMoved("");
-        setProblem({
-          tone: "error",
-          text: "We couldn’t tell whether the category moved. Check your connection, then try again.",
-        });
-
-        return undefined;
-      }
-
-      // The list could be read, so a card saying it couldn't is out of date
-      settle(group);
-      setProblem(null);
-      void client.invalidateQueries({ queryKey: ["content"] });
-
-      return result.value;
-    },
-    [api, client, settle],
-  );
-
-  // Reads the list as it is now, so each move is made from the latest versions of its siblings
   const move = useCallback(
     async (row: CategoryRow, by: Direction, from: "button" | "menu") => {
       const group = groupOf(row);
-      const unsettled = settling.current.get(group);
+      let entry = attempts.current.get(group);
 
-      if (unsettled === "saving") return;
+      if (entry?.attempt.state === "sending" || entry?.attempt.state === "checking") return;
 
-      // Settle the lost one first; the author presses again once the list says where things are
-      if (unsettled) {
-        setPressed({ group, id: row.id, by });
-        const list = await checkMove(group, unsettled);
+      if (!entry) {
+        const write = writes.orderCategories(api);
+        entry = {
+          control: { id: row.id, by, from },
+          attempt: writeAttempt({
+            ...write,
+            readBack: (sent: CategoryOrder) => {
+              setMoved("Checking whether the move was saved…");
+              void client.invalidateQueries({ queryKey: ["content"] });
 
-        if (list && inOrder(list, unsettled)) {
-          setMoved("");
-          setProblem(UNCONFIRMED_MOVE);
-        } else if (list) {
-          setMoved("");
-          setProblem({
-            tone: "warning",
-            text: "We couldn’t find the last move in the list yet. Check the order before moving it again.",
-          });
-        }
-
-        return;
+              return write.readBack(sent);
+            },
+          }),
+        };
+        attempts.current.set(group, entry);
       }
 
       const order = moveOrder(categories.data ?? [], row.id, by);
 
-      if (!order) return;
-      settle(group, "saving");
-      setPressed({ group, id: row.id, by });
-      const result = await api.orderCategories(order);
+      if (entry.attempt.state !== "unsettled") {
+        if (!order) return;
+        entry.control = { id: row.id, by, from };
+      }
 
-      if (result.ok) {
-        // A background read that started before the move mustn't put the old order back
-        await client.cancelQueries({ queryKey: categoriesQuery(api).queryKey });
+      setMoving((current) => new Set(current).add(group));
+      setPressed({ group, id: row.id, by });
+      setProblem(null);
+
+      const result = await entry.attempt.press(() => {
+        if (!order) throw new Error("Category move requires a sibling order.");
+
+        return order;
+      });
+
+      if (result.kind === "landed") {
+        // A pre-write background read must not restore the replaced order.
+        void client.cancelQueries({ queryKey: categoriesQuery(api).queryKey });
 
         const list = client.setQueryData(categoriesQuery(api).queryKey, (current) =>
-          withSavedCategories(current ?? [], result.value),
+          withSavedCategories(current ?? [], result.answer.categories),
         );
 
-        settle(group);
-        showMoved(list ?? [], row.id, by, from);
-        void client.invalidateQueries({ queryKey: ["content"] });
+        const control = entry.control;
+        showMoved(list ?? [], control.id, control.by, control.from);
 
-        return;
-      }
-
-      switch (result.error._tag) {
-        case "CategoryOutcomeUnknown": {
-          const list = await checkMove(group, order);
-
-          if (list && inOrder(list, order)) {
-            setMoved("");
-            setProblem(UNCONFIRMED_MOVE);
-          } else if (list) {
-            setMoved("");
-            setProblem({
-              tone: "warning",
-              text: "We couldn’t find that move in the list yet. Check the order before moving it again.",
-            });
-          }
-
-          return;
+        if (result.answer.checked) {
+          setMoved("");
+          setProblem(UNCONFIRMED_MOVE);
         }
 
-        case "CategoryConflict":
-          settle(group);
-          setMoved("");
-          setProblem({
-            tone: "error",
-            text: "Someone changed these categories first. The list now shows their changes: move it again.",
-          });
-          void client.invalidateQueries({ queryKey: ["content"] });
+        void client.invalidateQueries({ queryKey: ["content"] });
+      } else {
+        setMoved("");
 
-          return;
-        default:
-          settle(group);
-          setMoved("");
-          setProblem({
-            tone: "error",
-            text:
-              result.error._tag === "CategoryAccessDenied"
-                ? result.error.status === 401
+        switch (result.kind) {
+          case "unknown":
+            setProblem({
+              tone: "error",
+              text: "We couldn’t tell whether the category moved. Check your connection, then try again.",
+            });
+            break;
+          case "conflict":
+            setProblem({
+              tone: "error",
+              text: "Someone changed these categories first. The list now shows their changes: move it again.",
+            });
+            void client.invalidateQueries({ queryKey: ["content"] });
+            break;
+          default:
+            setProblem({
+              tone: "error",
+              text:
+                result.kind === "signed-out"
                   ? "Your session has ended. Sign in again, then move the category."
-                  : // A refusal, such as no editor role: the API's reason, since trying again won't help
-                    result.error.message || "You do not have access to change categories."
-                : "The category could not be moved. Try again.",
-          });
+                  : result.kind === "forbidden"
+                    ? result.message || "You do not have access to change categories."
+                    : "The category could not be moved. Try again.",
+            });
+        }
       }
+
+      setMoving((current) => {
+        const next = new Set(current);
+        next.delete(group);
+
+        return next;
+      });
+      setPressed((button) => (button?.group === group ? undefined : button));
     },
-    [api, categories.data, checkMove, client, settle, showMoved],
+    [api, categories.data, client, showMoved],
   );
 
   // One value until a move's list or its groups' state changes, so the rest of the screen's updates leave rows be
   const actions = useMemo<RowActions>(
     () => ({
       move: (row, by, from) => void move(row, by, from),
-      moving: (row) => moving.get(groupOf(row)) === "saving",
+      moving: (row) => moving.has(groupOf(row)),
       pressed: (row, by) => pressed?.id === row.id && pressed.by === by,
       readOnly,
       edit: (row) => openDialog({ kind: "edit", category: row }),

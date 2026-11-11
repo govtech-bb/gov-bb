@@ -15,6 +15,7 @@ import {
   type RecordDetail,
 } from "./client";
 import { writeAttempt } from "./write-attempt";
+import { moveOrder, type Category, type CategoryFields } from "./categories";
 import { writes, type RecordWrite, type PageSaveRequest } from "./writes";
 import { markdownToPageSaveInput, pageToMarkdown } from "./page-markdown";
 
@@ -56,6 +57,9 @@ function fakeApi() {
     saveRecord: vi.fn<EditorApi["saveRecord"]>().mockResolvedValue(saved),
     createRecord: vi.fn<EditorApi["createRecord"]>().mockResolvedValue(saved.record),
     deleteRecord: vi.fn<EditorApi["deleteRecord"]>().mockResolvedValue(undefined),
+    categories: vi.fn<EditorApi["categories"]>(),
+    createCategory: vi.fn<EditorApi["createCategory"]>(),
+    orderCategories: vi.fn<EditorApi["orderCategories"]>(),
     updateCategory: vi.fn<EditorApi["updateCategory"]>(),
     deleteCategory: vi
       .fn<EditorApi["deleteCategory"]>()
@@ -642,3 +646,279 @@ test("a message-less non-version page conflict retains its review-state fallback
     message: "This change cannot be saved in its current review state.",
   });
 });
+
+const category: Category = {
+  id: "health",
+  title: "Health",
+  slug: "health",
+  parent_id: null,
+  description: null,
+  url: "/health",
+  position: 0,
+  version: 1,
+  services: 0,
+  reserved_route: false,
+  updated_at: "2026-11-11T12:00:00.000Z",
+  last_edited_by: null,
+};
+
+const categoryFields: CategoryFields = {
+  title: " Health services ",
+  slug: "health",
+  parent_id: null,
+  description: " ",
+};
+
+const savedCategory: Category = { ...category, title: "Health services", version: 2 };
+
+test.each(["createCategory", "saveCategory"] as const)(
+  "%s confirms the submitted fields after a lost answer",
+  async (entry) => {
+    const api = fakeApi();
+    const send = entry === "createCategory" ? api.createCategory : api.updateCategory;
+    send.mockResolvedValue({
+      ok: false,
+      error: new CategoryOutcomeUnknown(
+        entry === "createCategory" ? "create" : "update",
+        new TypeError("Lost answer"),
+      ),
+    });
+    api.categories.mockResolvedValue({ ok: true, value: [savedCategory] });
+    const attempt = writeAttempt(writes[entry](api));
+    expect(await attempt.press(() => ({ fields: categoryFields, base: category }))).toEqual({
+      kind: "landed",
+      answer: savedCategory,
+    });
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(api.categories).toHaveBeenCalledTimes(1);
+  },
+);
+
+test.each([
+  { slug: "another" },
+  { parent_id: "parent" },
+  { title: "Someone else's title" },
+  { description: "Someone else's description" },
+])("a category create does not confirm different fields: %s", async (difference) => {
+  const api = fakeApi();
+  api.createCategory.mockResolvedValue({
+    ok: false,
+    error: new CategoryOutcomeUnknown("create", new TypeError("Lost answer")),
+  });
+  api.categories.mockResolvedValue({ ok: true, value: [{ ...savedCategory, ...difference }] });
+  expect(
+    await writeAttempt(writes.createCategory(api)).press(() => ({ fields: categoryFields })),
+  ).toEqual({ kind: "unknown" });
+  expect(api.createCategory).toHaveBeenCalledTimes(1);
+});
+
+test("category save confirms an exact no-op without advancing its version", async () => {
+  const api = fakeApi();
+  api.updateCategory.mockResolvedValue({
+    ok: false,
+    error: new CategoryOutcomeUnknown("update", new TypeError("Lost answer")),
+  });
+  api.categories.mockResolvedValue({
+    ok: true,
+    value: [{ ...savedCategory, version: category.version }],
+  });
+  expect(
+    await writeAttempt(writes.saveCategory(api)).press(() => ({
+      fields: categoryFields,
+      base: category,
+    })),
+  ).toEqual({ kind: "landed", answer: { ...savedCategory, version: 1 } });
+});
+
+test("a newer category version alone is not a landed save; retry keeps fields and version", async () => {
+  const api = fakeApi();
+  api.updateCategory
+    .mockResolvedValueOnce({
+      ok: false,
+      error: new CategoryOutcomeUnknown("update", new TypeError("Lost answer")),
+    })
+    .mockResolvedValueOnce({ ok: false, error: new CategoryConflict("Changed elsewhere.") });
+  api.categories.mockResolvedValue({ ok: true, value: [{ ...category, version: 9 }] });
+  const attempt = writeAttempt(writes.saveCategory(api));
+  const request = { fields: { ...categoryFields }, base: { ...category } };
+  expect(await attempt.press(() => request)).toEqual({ kind: "unknown" });
+  request.fields.title = "Later typing";
+  request.base.version = 9;
+  const next = vi.fn(() => request);
+  expect(await attempt.press(next)).toEqual({ kind: "conflict", message: "Changed elsewhere." });
+  expect(next).not.toHaveBeenCalled();
+  expect(api.updateCategory).toHaveBeenLastCalledWith(category.id, categoryFields, 1);
+  expect(api.categories).toHaveBeenCalledTimes(2);
+});
+
+test("an unsettled category create retries the original fields, even after its slug is vacated", async () => {
+  const api = fakeApi();
+  api.createCategory
+    .mockResolvedValueOnce({
+      ok: false,
+      error: new CategoryOutcomeUnknown("create", new TypeError("Lost answer")),
+    })
+    .mockResolvedValueOnce({ ok: true, value: { ...savedCategory, id: "second" } });
+  api.categories.mockResolvedValue({ ok: true, value: [{ ...savedCategory, slug: "renamed" }] });
+  const attempt = writeAttempt(writes.createCategory(api));
+  const request = { fields: { ...categoryFields } };
+  expect(await attempt.press(() => request)).toEqual({ kind: "unknown" });
+  request.fields.slug = "later-typing";
+  expect(await attempt.press(() => request)).toEqual({
+    kind: "landed",
+    answer: { ...savedCategory, id: "second" },
+  });
+  expect(api.createCategory).toHaveBeenLastCalledWith(categoryFields);
+  expect(api.createCategory).toHaveBeenCalledTimes(2);
+});
+
+test("a taken category slug refuses a retry rather than confirming different fields", async () => {
+  const api = fakeApi();
+  api.createCategory
+    .mockResolvedValueOnce({
+      ok: false,
+      error: new CategoryOutcomeUnknown("create", new TypeError("Lost answer")),
+    })
+    .mockResolvedValueOnce({
+      ok: false,
+      error: new CategoryRejected([{ field: "slug", message: "Taken" }], "Taken"),
+    });
+  api.categories.mockResolvedValue({ ok: true, value: [category] });
+  const attempt = writeAttempt(writes.createCategory(api));
+  expect(await attempt.press(() => ({ fields: categoryFields }))).toEqual({ kind: "unknown" });
+  expect(await attempt.press(() => ({ fields: categoryFields }))).toMatchObject({
+    kind: "invalid",
+    errors: [{ field: "slug", message: "Taken" }],
+  });
+});
+
+test("a failed category deletion read is not absence; a later successful read confirms it", async () => {
+  const api = fakeApi();
+  api.deleteCategory.mockResolvedValue({
+    ok: false,
+    error: new CategoryOutcomeUnknown("delete", new TypeError("Lost answer")),
+  });
+  api.categories
+    .mockResolvedValueOnce({ ok: false, error: new CategoryRefused(503, "Unavailable") })
+    .mockResolvedValueOnce({ ok: true, value: [] });
+  const attempt = writeAttempt(writes.deleteCategory(api));
+  expect(await attempt.press(() => category)).toEqual({ kind: "unknown" });
+  expect(await attempt.press(() => category)).toEqual({
+    kind: "landed",
+    answer: { category: undefined, checked: true },
+  });
+  expect(api.deleteCategory).toHaveBeenCalledExactlyOnceWith(category.id, category.version);
+});
+
+test("an existing category is not a confirmed deletion and a retry keeps the displayed version", async () => {
+  const api = fakeApi();
+  api.deleteCategory
+    .mockResolvedValueOnce({
+      ok: false,
+      error: new CategoryOutcomeUnknown("delete", new TypeError("Lost answer")),
+    })
+    .mockResolvedValueOnce({ ok: false, error: new CategoryConflict("Changed elsewhere.") });
+  api.categories.mockResolvedValue({ ok: true, value: [{ ...category, version: 7 }] });
+  const attempt = writeAttempt(writes.deleteCategory(api));
+  expect(await attempt.press(() => category)).toEqual({ kind: "unknown" });
+  expect(await attempt.press(() => ({ ...category, version: 7 }))).toMatchObject({
+    kind: "conflict",
+  });
+  expect(api.deleteCategory).toHaveBeenLastCalledWith(category.id, 1);
+});
+
+test("category deletion retains the API's occupancy blockers and sentence", async () => {
+  const api = fakeApi();
+  const blockers = { pages: 2, subcategories: 1, reserved_route: false };
+  api.deleteCategory.mockResolvedValue({
+    ok: false,
+    error: new CategoryInUse("Still used.", blockers),
+  });
+  expect(await writeAttempt(writes.deleteCategory(api)).press(() => category)).toEqual({
+    kind: "refused",
+    code: "category_in_use",
+    message: "Still used.",
+    detail: blockers,
+  });
+});
+
+const sibling: Category = {
+  ...category,
+  id: "schools",
+  title: "Schools",
+  slug: "schools",
+  position: 1,
+};
+
+const order = moveOrder([category, sibling], sibling.id, -1)!;
+
+const orderedCategories = [
+  { ...sibling, position: 0, version: 3 },
+  { ...category, position: 1, version: 4 },
+];
+
+test("a lost category order confirms its whole sibling group, excluding unrelated groups", async () => {
+  const api = fakeApi();
+  api.orderCategories.mockResolvedValue({
+    ok: false,
+    error: new CategoryOutcomeUnknown("order", new TypeError("Lost answer")),
+  });
+  api.categories.mockResolvedValue({
+    ok: true,
+    value: [...orderedCategories, { ...category, id: "child", parent_id: category.id }],
+  });
+  expect(await writeAttempt(writes.orderCategories(api)).press(() => order)).toEqual({
+    kind: "landed",
+    answer: { categories: orderedCategories, checked: true },
+  });
+  expect(api.orderCategories).toHaveBeenCalledTimes(1);
+});
+
+test.each([
+  { found: [category, sibling] },
+  { found: orderedCategories.slice(0, 1) },
+  { found: [...orderedCategories, { ...category, id: "new-sibling", position: 2 }] },
+])("a different sibling group does not confirm the frozen order: %s", async ({ found }) => {
+  const api = fakeApi();
+  api.orderCategories
+    .mockResolvedValueOnce({
+      ok: false,
+      error: new CategoryOutcomeUnknown("order", new TypeError("Lost answer")),
+    })
+    .mockResolvedValueOnce({ ok: false, error: new CategoryConflict("Changed elsewhere.") });
+  api.categories.mockResolvedValue({ ok: true, value: found });
+  const attempt = writeAttempt(writes.orderCategories(api));
+  const sentOrder = structuredClone(order);
+  expect(await attempt.press(() => sentOrder)).toEqual({ kind: "unknown" });
+  sentOrder.expected = sentOrder.expected.map((item) => ({ ...item, version: 99 }));
+  sentOrder.ordered_ids.reverse();
+  expect(await attempt.press(() => sentOrder)).toMatchObject({ kind: "conflict" });
+  expect(api.orderCategories).toHaveBeenLastCalledWith(order);
+});
+
+test("a category no-op order is confirmed without requiring newer versions", () => {
+  const api = fakeApi();
+  const unchanged = { ...order, ordered_ids: [category.id, sibling.id] };
+  expect(
+    writes
+      .orderCategories(api)
+      .landed({ categories: [category, sibling], checked: true }, unchanged),
+  ).toBe(true);
+});
+
+test.each([
+  [400, ""],
+  [409, "The API's own sentence."],
+])(
+  "category refusal %s retains the existing dialog fallback or API sentence",
+  async (status, message) => {
+    const api = fakeApi();
+    api.createCategory.mockResolvedValue({
+      ok: false,
+      error: new CategoryRefused(status, "The API's own sentence."),
+    });
+    expect(
+      await writeAttempt(writes.createCategory(api)).press(() => ({ fields: categoryFields })),
+    ).toEqual({ kind: "refused", code: undefined, message });
+  },
+);

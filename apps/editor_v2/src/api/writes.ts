@@ -1,11 +1,19 @@
 import {
   ApiFailure,
+  CategoryRefused,
+  type CategoryResult,
   type ApiPage,
   type EditorApi,
   type RecordDetail,
   type SavePageInput,
 } from "./client";
-import type { Category } from "./categories";
+import {
+  holdsFields,
+  inOrder,
+  type Category,
+  type CategoryFields,
+  type CategoryOrder,
+} from "./categories";
 import { pageToMarkdown } from "./page-markdown";
 import { apiMessage } from "./failure-messages";
 import { valuesDiffer } from "./record-values";
@@ -65,8 +73,75 @@ function savedPage(page: ApiPage, sent: PageSaveRequest): PageSaveAnswer {
   return sent.hiding && sent.base.page.pending_revision ? { base, discarded: true } : { base };
 }
 
+/** Category fields and the displayed version, retained together until the write settles. */
+export type CategorySaveRequest = { fields: CategoryFields; base?: Category };
+
+/** A sibling group confirmed by a write answer or by reading its current order. */
+export type CategoryOrderAnswer = { categories: Category[]; checked: boolean };
+
+type CategoryDeletion = { id: string; version: number };
+
+/** The delete dialog distinguishes a write answer from absence established by a read. */
+type CategoryDeletionAnswer = { category?: Category; checked: boolean };
+
+function categoryAnswer<Value>(result: CategoryResult<Value, Error>): Value {
+  if (result.ok) return result.value;
+
+  // The category dialogs have always used their own fallback for a malformed request.
+  if (result.error instanceof CategoryRefused && result.error.status === 400)
+    throw new CategoryRefused(400, "");
+  throw result.error;
+}
+
+async function readCategories(api: EditorApi) {
+  return categoryAnswer(await api.categories());
+}
+
 /** Each migrated write's send, independent read-back and landed check. */
 export const writes = {
+  createCategory: (api: EditorApi): Write<CategorySaveRequest, Category> => ({
+    send: async (sent) => categoryAnswer(await api.createCategory(sent.fields)),
+    readBack: async (sent) =>
+      (await readCategories(api)).find((category) => category.slug === sent.fields.slug),
+    landed: (found, sent) => !!found && holdsFields(found, sent.fields),
+  }),
+  saveCategory: (api: EditorApi): Write<CategorySaveRequest, Category> => ({
+    send: async (sent) => {
+      if (!sent.base) throw new Error("Category save requires the displayed version.");
+
+      return categoryAnswer(await api.updateCategory(sent.base.id, sent.fields, sent.base.version));
+    },
+    readBack: async (sent) =>
+      (await readCategories(api)).find((category) => category.id === sent.base?.id),
+    // api_v2 returns the existing version for an exact no-op.
+    landed: (found, sent) =>
+      !!found && found.id === sent.base?.id && holdsFields(found, sent.fields),
+  }),
+  deleteCategory: (api: EditorApi): Write<CategoryDeletion, CategoryDeletionAnswer> => ({
+    send: async (sent) => {
+      categoryAnswer(await api.deleteCategory(sent.id, sent.version));
+
+      return { checked: false };
+    },
+    readBack: async (sent) => ({
+      category: (await readCategories(api)).find((category) => category.id === sent.id),
+      checked: true,
+    }),
+    landed: (found) => !!found && found.checked && !found.category,
+  }),
+  orderCategories: (api: EditorApi): Write<CategoryOrder, CategoryOrderAnswer> => ({
+    send: async (sent) => ({
+      categories: categoryAnswer(await api.orderCategories(sent)),
+      checked: false,
+    }),
+    readBack: async (sent) => ({
+      categories: (await readCategories(api)).filter(
+        (category) => category.parent_id === sent.parent_id,
+      ),
+      checked: true,
+    }),
+    landed: (found, sent) => !!found && inOrder(found.categories, sent),
+  }),
   savePage: (api: EditorApi): Write<PageSaveRequest, PageSaveAnswer> => ({
     send: async (sent) => {
       try {

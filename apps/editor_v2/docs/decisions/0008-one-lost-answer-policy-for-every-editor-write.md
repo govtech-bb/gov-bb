@@ -36,6 +36,8 @@ Migrate one screen at a time. This first change adds catalogue entries only for 
 
 A record save, create or deletion can now be confirmed without a second press after its answer is lost. An unsettled create's next press checks and, if needed, resends the original request instead of only reporting whether its key exists. A new record's key stays read-only while its request is unsettled; other fields remain editable. Version guards and unique keys still decide whether the API accepts a resend; the client does not advance those guards from background data.
 
+For creates, the editor cannot distinguish a request that never landed from one that landed and was then renamed or deleted by someone else. If the submitted key is free again, an explicit retry press can create it again. This applies to every create in the catalogue, including records and categories. Preventing that replay requires a durable request identity on api_v2, which is outside this work. A taken key still prevents a second create while the first item retains it.
+
 The module tests own protocol permutations. Screen tests retain ordinary success, lost-then-confirmed integration, and screen-specific behavior such as field errors, focus, discard and edits made after dispatch. Other screens and page-sync tests remain unchanged in this first migration.
 
 ## Evidence
