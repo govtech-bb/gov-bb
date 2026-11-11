@@ -1,13 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { ApiFailure, type CollectionSummary, type EditorApi } from "../../api/client";
+import type { CollectionSummary, EditorApi } from "../../api/client";
 import { collectionsQuery } from "../../api/queries";
 import { ListScreen } from "../../ui/list-screen";
-import { RefreshFailure } from "../../ui/refresh-failure";
 import { NameCell } from "../../ui/table/cell-components";
 import { createAppColumnHelper, useAppTable } from "../../ui/table/table-hooks";
 import { TextLink } from "../../ui/text-link";
-import { LoadFailure } from "../load-failure";
+import { listLoadView } from "../list-load-view";
 
 const column = createAppColumnHelper<CollectionSummary>();
 
@@ -47,14 +46,7 @@ const columns = column.columns([
  */
 export function CollectionsScreen({ api }: { api: EditorApi }) {
   const collections = useQuery(collectionsQuery(api));
-  const status = collections.error instanceof ApiFailure ? collections.error.status : undefined;
-
-  const refreshFailed =
-    collections.isError &&
-    !!collections.data &&
-    (status === 0 || (status !== undefined && status >= 500));
-
-  const blocked = collections.isError && !refreshFailed;
+  const load = listLoadView(collections, "collections");
 
   const table = useAppTable({
     columns,
@@ -70,29 +62,9 @@ export function CollectionsScreen({ api }: { api: EditorApi }) {
       <ListScreen
         title="Collections"
         lead="Facts many pages show, kept once. Change a record here and every page showing it changes."
-        status={collections.isPending ? "Loading collections…" : null}
-        notices={
-          refreshFailed && (
-            <RefreshFailure
-              inset="card"
-              pending={collections.isFetching}
-              pendingLabel="Refreshing collections…"
-              onRetry={() => void collections.refetch()}
-            >
-              We could not refresh collections. Showing the last loaded list.
-            </RefreshFailure>
-          )
-        }
-        failure={
-          blocked && (
-            <LoadFailure
-              noun="collections"
-              error={collections.error}
-              retrying={collections.isFetching}
-              retry={() => void collections.refetch()}
-            />
-          )
-        }
+        status={load.status}
+        notices={load.notices}
+        failure={load.failure}
       >
         <table.DataTable
           caption="Collections"

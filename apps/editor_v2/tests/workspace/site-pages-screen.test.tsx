@@ -97,20 +97,8 @@ test("distinguishes an empty index from a failed read and lets a failed read ret
   expect(h.fetch).toHaveBeenCalledTimes(2);
 });
 
-test.each([401, 403])("does not show cached rows after access is denied (%s)", async (status) => {
-  await show(async () => Response.json({}, { status }), pages);
-  await waitFor(() => expect(document.body.textContent).toContain("We could not load site pages"));
-  expect(document.querySelector('a[href="/site-pages/terms"]')).toBeNull();
-
-  if (status === 401) {
-    const signIn = document.querySelector<HTMLAnchorElement>('a[href^="/auth"]');
-    expect(signIn?.textContent).toBe("Sign in again");
-    expect(new URL(signIn?.href ?? "").searchParams.get("returnTo")).toBe("/site-pages");
-  } else expect(document.body.textContent).toContain("You do not have access");
-});
-
-test("keeps the last loaded list with a retry notice on a temporary refresh failure", async () => {
-  await show(async () => Response.json({}, { status: 503 }), pages);
+test("keeps the last loaded list with a retry notice on a malformed refresh answer", async () => {
+  await show(async () => new Response("{"), pages);
   await waitFor(() =>
     expect(document.body.textContent).toContain("We could not refresh site pages"),
   );

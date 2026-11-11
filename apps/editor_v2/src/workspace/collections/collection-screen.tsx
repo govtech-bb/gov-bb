@@ -2,21 +2,15 @@ import { PencilSimple, Trash } from "@phosphor-icons/react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { useMemo, useRef, useState } from "react";
-import {
-  ApiFailure,
-  type Collection,
-  type CollectionRecord,
-  type EditorApi,
-} from "../../api/client";
+import type { Collection, CollectionRecord, EditorApi } from "../../api/client";
 import { collectionQuery } from "../../api/queries";
 import { Banner } from "../../ui/banner";
 import { Button } from "../../ui/button";
 import { EmptyState } from "../../ui/empty-state";
 import { ListScreen } from "../../ui/list-screen";
-import { RefreshFailure } from "../../ui/refresh-failure";
 import { createAppColumnHelper, useAppTable } from "../../ui/table/table-hooks";
 import { TextLink } from "../../ui/text-link";
-import { LoadFailure } from "../load-failure";
+import { listLoadView } from "../list-load-view";
 import { DeleteRecordDialog, RecordDialog } from "./record-dialog";
 
 const column = createAppColumnHelper<CollectionRecord>();
@@ -133,12 +127,7 @@ export function CollectionScreen({
   const add = useRef<HTMLButtonElement>(null);
   const card = useRef<HTMLDivElement>(null);
   const collection = detail.data?.collection;
-  const status = detail.error instanceof ApiFailure ? detail.error.status : undefined;
-
-  const refreshFailed =
-    detail.isError && !!detail.data && (status === 0 || (status !== undefined && status >= 500));
-
-  const blocked = detail.isError && !refreshFailed;
+  const load = listLoadView(detail, "records");
 
   const found = wanted
     ? detail.data?.records.find((item) => item.record_key === wanted)
@@ -184,7 +173,7 @@ export function CollectionScreen({
     getRowId: (record) => record.record_key,
   });
 
-  if (blocked && status === 404)
+  if (load.state.kind === "blocked" && load.state.reason === "gone")
     return (
       <EmptyState
         kind="not-found"
@@ -212,7 +201,7 @@ export function CollectionScreen({
             Add record
           </Button>
         }
-        status={detail.isPending ? "Loading records…" : null}
+        status={load.status}
         notices={
           <>
             {wanted && detail.data && !found && !opened && (
@@ -220,28 +209,10 @@ export function CollectionScreen({
                 There is no record “{wanted}” in this collection. It may have been deleted.
               </Banner>
             )}
-            {refreshFailed && (
-              <RefreshFailure
-                inset="card"
-                pending={detail.isFetching}
-                pendingLabel="Refreshing records…"
-                onRetry={() => void detail.refetch()}
-              >
-                We could not refresh these records. Showing the last loaded list.
-              </RefreshFailure>
-            )}
+            {load.notices}
           </>
         }
-        failure={
-          blocked && (
-            <LoadFailure
-              noun="records"
-              error={detail.error}
-              retrying={detail.isFetching}
-              retry={() => void detail.refetch()}
-            />
-          )
-        }
+        failure={load.failure}
       >
         <table.DataTable
           caption={collection ? `${collection.title} records` : "Records"}

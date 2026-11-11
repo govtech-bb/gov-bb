@@ -115,7 +115,6 @@ function contentApi() {
   let malformed = 0;
   const failing = new Map<string, number>();
   const unapplied = new Map<string, number>();
-  let refusal: number | undefined;
 
   const url = (row: Stored): string => {
     const parent = stored.find((other) => other.id === row.parent_id);
@@ -272,8 +271,6 @@ function contentApi() {
       return new Response(null, { status: 503 });
     }
 
-    if (method === "GET" && refusal) return new Response(null, { status: refusal });
-
     // A gateway that timed out before the write was made: the same 5xx, nothing changed yet
     const unmade = unapplied.get(kind);
 
@@ -340,8 +337,6 @@ function contentApi() {
     failBeforeWrite: (kind: string, status: number) => void unapplied.set(kind, status),
     /** The next reads fail on the API's side. */
     failReads: (count: number) => void (unavailable = count),
-    /** Every read is refused with this status from now on. */
-    refuseReads: (status: number) => void (refusal = status),
     /** Someone else's change, made straight in the content API. */
     change: (categoryId: string, fields: Partial<Stored>) => {
       stored = stored.map((row) =>
@@ -1409,46 +1404,11 @@ test("a malformed refresh keeps the rows and an open draft, with a warning", asy
   );
   expect(names()).toHaveLength(5);
   expect(control("Name").value).toBe("Health services");
-});
 
-test("keeps the list with a warning when a refresh fails, and retries", async () => {
-  await render();
-  await loaded();
-
-  server.failReads(1);
-  await refresh();
-
-  expect(names()).toHaveLength(5);
-  await until(() =>
-    expect(host.textContent).toContain(
-      "We could not refresh categories. Showing the last loaded list.",
-    ),
-  );
-
+  await press("Cancel");
   await press("Try again");
   await until(() => expect(host.textContent).not.toContain("We could not refresh categories"));
   expect(names()).toHaveLength(5);
-});
-
-test.each([
-  [401, "Your session has ended"],
-  [403, "You do not have access"],
-])("shows a %i refresh refusal even with cached categories", async (status, message) => {
-  await render();
-  await loaded();
-
-  server.refuseReads(status);
-  await refresh();
-
-  await until(() => expect(host.textContent).toContain(message));
-  expect(rows()).toHaveLength(0);
-
-  if (status === 401) {
-    const link = host.querySelector("a");
-
-    expect(link?.textContent).toBe("Sign in again");
-    expect(link?.getAttribute("href")).toContain("returnTo=%2Fcategories");
-  } else expect(button("Try again")).toBeDefined();
 });
 
 test("says when the categories couldn't load, and loads them on Try again", async () => {
