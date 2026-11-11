@@ -156,7 +156,7 @@ A documented convention links the landing site to the **forms app**:
 - At render time the Markdown component only renders the button if `form_id` ∈ `AVAILABLE_FORMS`. Otherwise the button is silently suppressed (with a `console.warn` in dev to catch authoring typos).
 - The button links to `${VITE_FORMS_URL}/forms/<form_id>` and emits an analytics event `<form_id>-start`.
 
-This is governed by **ADR-0005** in the monorepo docs.
+This is governed by **ADR-0011** in the monorepo docs.
 
 ---
 

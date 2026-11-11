@@ -70,7 +70,7 @@ is browser-safe (no `Buffer`, no `process`). Both `mda.ts` and
 `apps/landing/package.json`.
 
 Recorded as
-[ADR 0005](../decisions/0005-markdown-loaders-must-be-browser-safe.md):
+[ADR 0012](../decisions/0012-markdown-loaders-must-be-browser-safe.md):
 markdown loaders in client-bundled modules must be browser-safe.
 
 ## What this exposed
@@ -95,6 +95,6 @@ have caught this immediately. Worth filing as follow-up work.
 - `apps/landing/package.json` (drop `gray-matter`, add `js-yaml` + types)
 - `apps/landing/src/routeTree.gen.ts` (regenerated)
 - `docs/plans/crop-over-permits-form.md`
-- `docs/decisions/0005-markdown-loaders-must-be-browser-safe.md`
+- `docs/decisions/0012-markdown-loaders-must-be-browser-safe.md`
 
 PR: https://github.com/govtech-bb/gov-bb/pull/70 → `dev`.

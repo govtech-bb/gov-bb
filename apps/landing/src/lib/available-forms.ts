@@ -26,8 +26,8 @@ import { formsApiBase } from './forms-api-url'
  * before giving up. Both only matter when there is no cached list yet; a warm
  * instance always falls back to its last-known-good list instantly.
  *
- * See docs/decisions/0030-landing-resolves-form-availability-at-runtime.md
- * (supersedes 0005).
+ * See docs/decisions/0052-landing-resolves-form-availability-at-runtime.md
+ * (supersedes 0011).
  */
 
 const FETCH_TIMEOUT_MS = 15_000
@@ -43,7 +43,7 @@ const TTL_MS = 60_000
  */
 const COLD_START_RETRIES = 3
 
-/** Canonical form IDs are kebab-case (ADR-0028). */
+/** Canonical form IDs are kebab-case (ADR-0048). */
 const ID_PATTERN = /^[a-z0-9][a-z0-9-]*$/
 
 interface FormsCache {

@@ -1,5 +1,5 @@
 /**
- * Shared `preview` cookie helpers (#1646 Phase 3, ADR 0058). The cross-app
+ * Shared `preview` cookie helpers (#1646 Phase 3, ADR 0099). The cross-app
  * `preview` cookie grants a **visibility** bypass by its presence — its value
  * is only the level, never a secret (a forgeable rollout gate per ADR
  * 0013/0058). Used by the form-GET path and the file-upload presign/confirm
@@ -37,7 +37,7 @@ export function readPreviewCookie(
  * True when the raw `Cookie` header carries a `preview` cookie whose value
  * grants a visibility bypass. Bypasses **visibility** only — it never sources
  * unpublished DB content (that still requires the per-request `X-Recipe-Draft`
- * secret, ADR 0011).
+ * secret, ADR 0026).
  */
 export function hasPreviewCookieBypass(
   cookieHeader: string | undefined,

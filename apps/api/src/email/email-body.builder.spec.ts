@@ -863,7 +863,7 @@ describe("EmailBodyBuilder", () => {
     it("formats string-part date values (forms migration tolerance, #815)", async () => {
       // Once the forms frontend flips to string date parts, submissions arrive
       // as { day: "5", month: "6", year: "1990" }. The validation boundary
-      // tolerates both shapes (ADR 0043), so the email renders the same.
+      // tolerates both shapes (ADR 0076), so the email renders the same.
       const payload = makePayload();
       (payload.values.personal as Record<string, unknown>).dob = {
         day: "5",

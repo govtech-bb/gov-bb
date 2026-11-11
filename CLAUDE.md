@@ -111,7 +111,7 @@ this. The form builder's auto-generated branches (`form-builder/<id>-<ts>`,
 `@govtech-bb/form-types`, which truncates the id or slug and appends a short
 hash when the name would overshoot. So a branch carries a *label* derived from
 the id, not necessarily the id: join an open Deploy PR to a form with
-`formIdFromDeployBranch(headRef) === deployBranchLabel(formId)` (see ADR 0070
+`formIdFromDeployBranch(headRef) === deployBranchLabel(formId)` (see ADR 0118
 for why the parser takes no candidate), never by comparing to `formId`.
 
 ### When creating a GitHub issue, assign it to the author
@@ -200,7 +200,7 @@ file list"):
 
 Library builds emit into the package's own `packages/<name>/dist` (the api into
 `apps/api/dist`), so declarations and compiled code resolve their externals from
-that package's `node_modules`. pnpm uses its default isolated linker (ADR 0004):
+that package's `node_modules`. pnpm uses its default isolated linker (ADR 0122):
 a project only sees dependencies its own `package.json` declares, so declare
 every import where it is used rather than relying on a sibling to pull it in.
 

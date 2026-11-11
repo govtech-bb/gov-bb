@@ -4,7 +4,7 @@
 **Branch:** `worktree-lib-05-share-category-taxonomy`
 **Issue:** #1393 (LIB-05)
 **Plan:** `docs/plans/1393-share-content-category-taxonomy.md`
-**ADR:** `docs/decisions/0056-content-category-taxonomy-single-sourced-and-cms-writes-canonical.md`
+**ADR:** `docs/decisions/0096-content-category-taxonomy-single-sourced-and-cms-writes-canonical.md`
 
 ## Context
 

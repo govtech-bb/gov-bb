@@ -6,7 +6,7 @@ name: Forms Live Smoke
 # point at — job-level `needs:` only resolves within a single workflow file, so
 # the callers keep their dependency edge (deploy-sandbox's smoke jobs
 # `needs: amplify-forms`; pr-preview's smoke job `needs: preview-forms`) while
-# the steps below live in one place. See ADR 0027 (post-deploy smoke) and ADR
+# the steps below live in one place. See ADR 0047 (post-deploy smoke) and ADR
 # 0029 (per-PR preview smoke).
 #
 # No AWS credentials: it drives a headless browser against the public deployed

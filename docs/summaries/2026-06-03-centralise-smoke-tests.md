@@ -25,7 +25,7 @@ same Playwright helpers (`primaryButton`, `expectStep`, `advance`, `fillField`,
   and `SUCCEED` guard, passing the preview URL as `base_url`.
 - Extracted the shared helpers into `apps/forms/e2e/helpers/smoke.ts` and
   refactored all three specs onto it (~449 deletions for ~187 insertions net).
-- Amended [ADR 0027](../decisions/0027-live-smoke-tests-run-post-deploy-not-per-pr.md)
+- Amended [ADR 0047](../decisions/0047-live-smoke-tests-run-post-deploy-not-per-pr.md)
   and updated `apps/forms/README.md`.
 
 ## Why we did it that way
@@ -35,7 +35,7 @@ same Playwright helpers (`primaryButton`, `expectStep`, `advance`, `fillField`,
   could not simply move out and keep their `needs: amplify-forms` /
   `needs: preview-forms` edges. A `workflow_call` reusable workflow defines the
   steps once while each caller keeps its dependency edge and (for the preview)
-  its output plumbing. `workflow_run` was rejected for the same reasons ADR 0027
+  its output plumbing. `workflow_run` was rejected for the same reasons ADR 0047
   rejected it originally — it loses the preview URL and the direct edge.
 
 - **Shared helpers + thin per-form specs, NOT a recipe-driven generic driver.**
@@ -66,7 +66,7 @@ same Playwright helpers (`primaryButton`, `expectStep`, `advance`, `fillField`,
   comprehensive on-demand spec but ran in no CI job. Wiring it post-deploy means
   a forms deploy now files **two** real submissions (temp-teacher + vendor,
   recipient `testing@govtech.bb`) — an accepted extension of the cadence cost
-  ADR 0027 already documented. Confirmed published on the sandbox API before
+  ADR 0047 already documented. Confirmed published on the sandbox API before
   wiring.
 
 ## Notes / follow-ups

@@ -4,7 +4,7 @@
 **Branch:** `worktree-feat+form-builder-delete-form` (worktree; based on and merging into `sandbox`)
 **Issue:** [#220](https://github.com/govtech-bb/gov-bb/issues/220) — delete a form (hard-remove definitions + write tombstone)
 **Plan:** `docs/plans/form-builder-delete-form.md`
-**Decision record:** `docs/decisions/0011-form-availability-gated-by-disabled-overrides-tombstone.md`
+**Decision record:** `docs/decisions/0021-form-availability-gated-by-disabled-overrides-tombstone.md`
 
 ## Context
 
@@ -14,10 +14,10 @@ version from `form_definitions`, write a **tombstone** into
 return **410 Gone**, **preserve** all `form_submissions`, and drop the form from
 the builder's list.
 
-The load-bearing constraint comes from [ADR 0007](../decisions/0007-runtime-recipes-load-from-files-not-form_definitions-table.md):
+The load-bearing constraint comes from [ADR 0017](../decisions/0017-runtime-recipes-load-from-files-not-form_definitions-table.md):
 the public site serves recipes from committed files, not `form_definitions`. So
 deleting definition rows alone hides nothing publicly — the tombstone is the
-only thing that retires a form. ADR 0011 (written this session) records that
+only thing that retires a form. ADR 0021 (written this session) records that
 invariant.
 
 ## What we did
@@ -44,7 +44,7 @@ Backend done with TDD (red → green), the rest wired and gated by build/test/ts
 
 ## Decisions / notes
 
-- **Tombstone is the gate, not row/file absence** — recorded as ADR 0011. The
+- **Tombstone is the gate, not row/file absence** — recorded as ADR 0021. The
   delete writes both the row removal and the tombstone in one transaction; the
   410 and the builder-list filter both read the tombstone. The GitHub recipe
   file is intentionally **not** removed (out of scope, per the issue).
@@ -97,7 +97,7 @@ Backend done with TDD (red → green), the rest wired and gated by build/test/ts
 
 - **Recipe file removal** — the committed GitHub recipe file is not deleted; the
   tombstone gates the public 410 regardless.
-- **Un-delete / restore** — no path to clear a tombstone yet; ADR 0011 notes a
+- **Un-delete / restore** — no path to clear a tombstone yet; ADR 0021 notes a
   future restore must delete the `form_disabled_overrides` row.
 - **Integration Postgres harness** — unit tests prove the handler wires both
   writes onto one transactional manager and never touches `form_submissions`;

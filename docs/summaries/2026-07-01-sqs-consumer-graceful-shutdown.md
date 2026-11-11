@@ -15,7 +15,7 @@ dropped or reprocessed on deploy.
 - Tests for the four shutdown behaviours; updated one existing poll-loop test
   whose setup relied on the old "process a batch even though running is false"
   behaviour.
-- Decision record [0062](../decisions/0062-background-consumers-drain-on-shutdown.md).
+- Decision record [0107](../decisions/0107-background-consumers-drain-on-shutdown.md).
 
 ## Why it looks the way it does
 

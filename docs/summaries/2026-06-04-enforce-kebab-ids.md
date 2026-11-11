@@ -33,7 +33,7 @@ stricter than the data breaks both.
   `KEBAB_ID_ERROR` at dotted paths.
 - **form_builder** (`b0a16e19`): Step ID input now kebabizes on blur,
   mirroring the Field ID Override input — a gap found during verification.
-- **ADR 0034** records the convention; issues #759 (write-endpoint bypass)
+- **ADR 0060** records the convention; issues #759 (write-endpoint bypass)
   and #760 (deployed-env `form_versions`) capture the follow-ups.
 
 ## Why we did it that way

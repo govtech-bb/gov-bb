@@ -752,7 +752,7 @@ jobs:
         run: pnpm validate-recipes
 
       # A recipe whose content changed must move its `updatedAt` (#2878): the
-      # builder decides a draft row's staleness from that stamp (ADR 0075).
+      # builder decides a draft row's staleness from that stamp (ADR 0125).
       # An always-run step, not an nx target — nx inputs skip content-only
       # changes, so a cached target would replay a stale green. Diffs the PR
       # against its merge base with the target branch; on a push to `main`

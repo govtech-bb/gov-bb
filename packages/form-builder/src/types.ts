@@ -37,7 +37,7 @@ export interface RecipeStepDraft {
 }
 
 // Editor-only id mirrors RecipeFieldDraft.id: minted on deserialize, stripped on
-// serialize, never persisted (per ADR 0009). Intersecting with the Processor
+// serialize, never persisted (per ADR 0019). Intersecting with the Processor
 // discriminated union keeps the `type` discriminant intact across all members.
 export type RecipeProcessorDraft = Processor & { id: string };
 

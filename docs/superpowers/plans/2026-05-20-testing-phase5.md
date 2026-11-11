@@ -73,7 +73,7 @@ Four sequential phases, each independently shippable:
   },
   ```
 
-- [ ] **`docs/decisions/`** — create `0003-90pct-coverage-target-and-exemptions.md` documenting:
+- [ ] **`docs/decisions/`** — create `0004-90pct-coverage-target-and-exemptions.md` documenting:
   - Project target: 90% statements, branches, functions, lines.
   - `packages/form-types` functions exemption and the reason.
   - `apps/web` functions target deferred to post-Phase 3 measurement.

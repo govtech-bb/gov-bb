@@ -41,7 +41,7 @@ per form or putting private addresses in the recipe.
 ## Decisions worth the reasoning
 
 **Per-form DB config never enters the recipe** —
-[ADR 0033](../decisions/0033-per-form-db-config-never-enters-the-recipe.md).
+[ADR 0057](../decisions/0057-per-form-db-config-never-enters-the-recipe.md).
 `mdaContactId` lives on `RecipeDraft` for editing but is excluded from
 `serializeRecipeDraft`; it travels as a sibling of `recipe` and is read via a
 dedicated config endpoint. The recipe keeps only the `config.mdaEmail` token.

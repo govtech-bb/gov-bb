@@ -34,7 +34,7 @@ because the DB overlay wins on payment.
 The committed payment blocks all shared one placeholder `paymentCode`
 (`awR2Da5z7K`) and carried per-MDA routing values (payment code, department,
 amount) that are environment-specific and should not live in source control —
-same rationale as the #607 email recipients, and codified by ADR 0033
+same rationale as the #607 email recipients, and codified by ADR 0057
 (*per-form DB config never enters the recipe*). The payment processor is now
 sourced per-environment from `form_config.config.processors` at hydration
 (`form-definitions.service.ts:127-152`).

@@ -15,7 +15,7 @@ closes that gap: the inverse of Deploy. Plan: `docs/plans/599-erase-published-fo
   published rows in `-form-picker.tsx`; state/handlers in `builder/index.tsx`.
 - Exported `listVersions`/`RECIPES_BASE` from `github-recipes.ts` (added an
   optional `ref` arg so the listing reads the base branch).
-- Decision: [ADR 0030](../decisions/0030-erase-restricted-to-live-published-forms.md).
+- Decision: [ADR 0054](../decisions/0054-erase-restricted-to-live-published-forms.md).
 
 ## Why we did it that way
 
@@ -26,14 +26,14 @@ closes that gap: the inverse of Deploy. Plan: `docs/plans/599-erase-published-fo
   `sha: null` (GitHub's create-tree delete), one commit, PATCH the branch ref.
   Result: a single commit whose diff is solely the deleted folder.
 
-- **Live-only, so there's no tombstone to clear.** ADR 0028 had anticipated
+- **Live-only, so there's no tombstone to clear.** ADR 0049 had anticipated
   Erase and said it "must also clear the tombstone." We deliberately did *not*
   do that — instead Erase refuses disabled forms. Clearing a tombstone is
   immediate but the recipe only disappears on PR *merge*, with no merge hook to
   coordinate them; clearing up front would leave the form live (200) while the
   recipe is still on disk, and on a disabled form re-introduce the #576 id-reuse
   poison. Restricting to live forms removes the hazard entirely rather than
-  managing it. This refinement is ADR 0030.
+  managing it. This refinement is ADR 0054.
 
 - **Server is the authority.** The "not disabled" + "has versions" gates run in
   `eraseRecipe` before any branch is created, against `/builder/forms/disabled`
@@ -60,7 +60,7 @@ closes that gap: the inverse of Deploy. Plan: `docs/plans/599-erase-published-fo
 
 ## Open questions
 
-- ADR 0028's `isPublished` weak point (#601) still applies: a disabled published
+- ADR 0049's `isPublished` weak point (#601) still applies: a disabled published
   form with a newer draft can drop out of the picker. Out of scope here; Erase
   is only reachable from the live state anyway.
 

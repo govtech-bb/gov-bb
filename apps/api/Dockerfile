@@ -84,7 +84,7 @@ CMD ["pnpm", "exec", "nx", "dev", "api"]
 # CACHED it never ran in this build, so the mount is empty.
 #
 # node-linker=hoisted here only: the workspace installs with pnpm's default
-# isolated layout (ADR 0004), but the runner resolves everything from a single
+# isolated layout (ADR 0122), but the runner resolves everything from a single
 # /app/node_modules, so this stage lays the prod deps out flat, npm-style.
 FROM builder AS prod-deps
 RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store,uid=1001,gid=1001 \

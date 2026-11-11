@@ -54,7 +54,7 @@ scope was checked with the designer rather than assumed.
 were put up. The strongest on paper was replacing the step with a `repeatable`
 one carrying two `components/generic-time` fields — native time pickers, no
 typing, structured data downstream, and explicitly the alternative
-[ADR 0069](../decisions/0069-paired-values-are-one-repeated-field.md) names for
+[ADR 0117](../decisions/0117-paired-values-are-one-repeated-field.md) names for
 a pair that must stay structured. The runtime already supports it:
 `field-renderer/index.tsx` routes `time` to `renderTextField` and
 `render-context.ts` sets `type: field.htmlType`, so `<input type="time">`
@@ -67,7 +67,7 @@ pay, without restructuring a step that had just been through review. What it
 does not remove is the format burden, and that gap is real: `9.00 - 17.00` is
 still rejected, and a 24-hour restaurant still cannot answer the question at
 all. That is #2358, which proposes a `time-range` field — two native pickers
-behind one `HH:MM - HH:MM` value, so ADR 0069's one-field invariant survives
+behind one `HH:MM - HH:MM` value, so ADR 0117's one-field invariant survives
 and the typing does not.
 
 **The gate leans on stacked-condition AND semantics.** Each per-day field now

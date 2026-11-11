@@ -838,7 +838,7 @@ Most government forms start with personal information:
 
 **Important:** The `label` field becomes the heading above the checkbox. The `options[0].label` is the text shown NEXT TO the checkbox. Put the full declaration statement in `options[0].label`, not in `label`. The renderer will auto-display the applicant name and date above the checkbox.
 
-Do not change the title, the checkbox text or the error. If the service has a legal or operational need for one more point, add a separate `components/confirmation` on the same step. Give it its own `fieldId` and `ui.hideLabel`. Do not add a general consent to verification. Do not add a general warning about false information. Refer to ADR 0077.
+Do not change the title, the checkbox text or the error. If the service has a legal or operational need for one more point, add a separate `components/confirmation` on the same step. Give it its own `fieldId` and `ui.hideLabel`. Do not add a general consent to verification. Do not add a general warning about false information. Refer to ADR 0131.
 
 For example, an acknowledgement added after the declaration element:
 

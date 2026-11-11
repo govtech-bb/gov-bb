@@ -239,7 +239,7 @@ Service pages that have a corresponding form in the forms API can render a
 is no hand-maintained mapping file in this repo.
 
 The full architectural rationale is in
-[ADR-0005](../../docs/decisions/0005-build-time-manifest-for-cross-app-link-availability.md).
+[ADR-0011](../../docs/decisions/0011-build-time-manifest-for-cross-app-link-availability.md).
 
 ### Authoring
 
@@ -352,7 +352,7 @@ sub-pages too.
 > Like `preview`, `draft` is a **rollout gate, not a confidentiality
 > boundary** — the content still ships in the client bundle and is downloadable
 > by anyone who inspects it (see
-> `docs/decisions/0013-content-preview-is-a-rollout-gate-not-a-confidentiality-boundary.md`).
+> `docs/decisions/0028-content-preview-is-a-rollout-gate-not-a-confidentiality-boundary.md`).
 
 ### Viewing a gated page
 

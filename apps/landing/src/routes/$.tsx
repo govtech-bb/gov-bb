@@ -91,7 +91,7 @@ type LoaderData =
       contactRecords: ContactRecords
     }
   | {
-      // api_v2 mode (ADR 0078): a category's own pages and its subcategories,
+      // api_v2 mode (ADR 0132): a category's own pages and its subcategories,
       // both shown, as api_v2 lists them.
       kind: 'api-category'
       listing: CategoryListing
@@ -122,7 +122,7 @@ export const Route = createFileRoute('/$')({
 
     // A known category's failed listing is an error. Without a readable tree,
     // the address may instead be a page; preserve page fallback, never a
-    // static category listing (ADR 0078).
+    // static category listing (ADR 0132).
     const tree = context.categoryTree
     const apiMode = tree.kind !== 'disabled'
     let categoryFailure: Error | undefined
