@@ -20,11 +20,11 @@ Expose `idle`, `sending`, `checking` and `unsettled` as the attempt's state. `fo
 
 Every press returns one outcome: `landed`, `invalid`, `conflict`, `missing`, `signed-out`, `forbidden`, `refused` or `unknown`. Invalid outcomes carry field errors. A refusal is an answer, so every outcome except `landed` and `unknown` carries the API's own sentence when it sent one; a lost answer has no sentence to carry. Refused outcomes retain the API's code and message, and any refusal detail such as category blockers. Screens keep their own wording and see outcome values rather than transport failures. The attempt classifies both thrown API errors and tagged category failures; a successful answer keeps the shape declared by its write. Changing `client.ts` to use one failure style is separate work.
 
-A catalogue defines each write's `send`, independent `readBack` and `landed` check. Only a confirmed absence becomes `undefined`; an unavailable read must not stand in for absence. Creates compare the submitted key and fields. Saves compare both the displayed version and submitted fields. Deletions confirm absence. A landed check may accept `undefined` only when the write's answer type includes it.
+A catalogue defines each write's `send`, independent `readBack` and `landed` check. Only a confirmed absence becomes `undefined`; an unavailable read must not stand in for absence. Creates compare the submitted key and fields. Saves compare the submitted fields, and also the displayed version where the API always moves it; category saves skip the version check because api_v2 returns the existing version for an exact no-op. Deletions confirm absence. A landed check may accept `undefined` only when the write's answer type includes it.
 
-A small `useWrite(api, entry)` hook owns the attempt for a mounted screen and invalidates `["content"]` after landed outcomes and lost answers. It also invalidates when the author checks an unsettled attempt again. Read-back does not join a cached query or inherit its retries. Category ordering will keep an attempt per sibling list, rather than one attempt for the screen.
+A small `useWrite(api, entry)` hook owns the attempt for a mounted screen and invalidates `["content"]` after landed outcomes and lost answers. It also invalidates when the author checks an unsettled attempt again. Read-back does not join a cached query or inherit its retries. Category ordering keeps an attempt per sibling list, rather than one attempt for the screen.
 
-Migrate one screen at a time. This first change adds catalogue entries only for record create, save and delete. Other screens keep their existing implementation until their migration.
+Migrate one screen at a time, starting with record create, save and delete. A screen keeps its existing implementation until its migration.
 
 ## Alternatives
 
@@ -38,10 +38,10 @@ A record save, create or deletion can now be confirmed without a second press af
 
 For creates, the editor cannot distinguish a request that never landed from one that landed and was then renamed or deleted by someone else. If the submitted key is free again, an explicit retry press can create it again. This applies to every create in the catalogue, including records and categories. Preventing that replay requires a durable request identity on api_v2, which is outside this work. A taken key still prevents a second create while the first item retains it.
 
-The module tests own protocol permutations. Screen tests retain ordinary success, lost-then-confirmed integration, and screen-specific behavior such as field errors, focus, discard and edits made after dispatch. Other screens and page-sync tests remain unchanged in this first migration.
+The module tests own protocol permutations. Screen tests retain ordinary success, lost-then-confirmed integration, and screen-specific behavior such as field errors, focus, discard and edits made after dispatch. The tests of a screen that has not been migrated remain unchanged.
 
 ## Evidence
 
 - [Issue #3643](https://github.com/govtech-bb/gov-bb/issues/3643).
-- [Write attempt](../../src/api/write-attempt.ts), [record catalogue](../../src/api/writes.ts) and [React hook](../../src/workspace/use-write.ts).
+- [Write attempt](../../src/api/write-attempt.ts), [write catalogue](../../src/api/writes.ts) and [React hook](../../src/workspace/use-write.ts).
 - [Protocol tests](../../src/api/write-attempt.test.ts), [hook tests](../../tests/workspace/use-write.test.tsx) and [record dialog tests](../../tests/workspace/collections-screen.test.tsx).
