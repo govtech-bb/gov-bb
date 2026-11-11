@@ -21,7 +21,7 @@ function renderStart() {
       <StartLink formId="birth">Start now</StartLink>
     </AvailableFormsContext.Provider>,
   )
-  return screen.getByRole('link', { name: 'Start now' }) as HTMLAnchorElement
+  return screen.getByRole<HTMLAnchorElement>('link', { name: 'Start now' })
 }
 
 describe('StartLink journey ID', () => {
