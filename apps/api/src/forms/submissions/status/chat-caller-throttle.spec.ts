@@ -70,7 +70,8 @@ describe("chat caller throttle (#3623)", () => {
     ["no header", undefined],
     ["a wrong token", "not-the-token"],
     ["an empty header", ""],
-    ["a repeated header", [TOKEN, TOKEN]],
+    // Node joins a repeated header into one value.
+    ["a repeated header", `${TOKEN}, ${TOKEN}`],
     ["a token in the wrong case", TOKEN.toUpperCase()],
   ])("keeps %s on the per-IP limits", async (_label, header) => {
     process.env.CHAT_CALLER_TOKEN = TOKEN;

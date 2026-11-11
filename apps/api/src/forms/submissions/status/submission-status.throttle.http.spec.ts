@@ -4,6 +4,7 @@ import { APP_GUARD } from "@nestjs/core";
 import { ThrottlerGuard, ThrottlerModule } from "@nestjs/throttler";
 import request from "supertest";
 import { THROTTLERS } from "@/common/throttlers";
+import { CHAT_LIMITS } from "./chat-caller-throttle";
 import { SubmissionStatusController } from "./submission-status.controller";
 import { SubmissionStatusService } from "./submission-status.service";
 
@@ -63,6 +64,16 @@ describe("GET /submissions/:reference/status — throttle", () => {
     const statuses = await lookups(PER_IP_SHORT + 1, TOKEN);
 
     expect(statuses.every((s) => s === 200)).toBe(true);
+  });
+
+  // Higher, never unlimited: a leaked token still meets a ceiling.
+  it("stops the chat at its own limit", async () => {
+    const statuses = await lookups(CHAT_LIMITS.short + 1, TOKEN);
+
+    expect(statuses.at(-1)).toBe(429);
+    expect(statuses.slice(0, CHAT_LIMITS.short).every((s) => s === 200)).toBe(
+      true,
+    );
   });
 
   it("limits a caller without the token per IP, as before", async () => {

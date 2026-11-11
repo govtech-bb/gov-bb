@@ -27,10 +27,12 @@ interface HeaderedRequest {
 
 /**
  * Whether the request carries the chat's caller token. Read from process.env
- * rather than ConfigService: this runs from a decorator, outside DI, and
- * ConfigModule writes the validated env back to process.env. An unset token
- * matches nothing (`isValidSecretToken` fails closed), and a repeated header
- * is not a token. Never log the header.
+ * rather than ConfigService: this runs from a decorator, outside DI.
+ * ConfigModule only fills in keys missing from process.env, never rewrites
+ * one, so this is the raw value: fine while the schema only defaults it, but
+ * a transform added there (a trim, say) would not reach here. An unset token
+ * matches nothing (`isValidSecretToken` fails closed). A repeated header
+ * arrives joined ("a, b") and fails the compare. Never log the header.
  */
 export function isChatCaller(req: HeaderedRequest): boolean {
   const provided = req.headers["x-chat-caller-token"];
