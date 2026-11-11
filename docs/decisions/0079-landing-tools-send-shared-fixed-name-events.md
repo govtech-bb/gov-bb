@@ -42,13 +42,20 @@ part of `TrackingData`:
   outcomes, actions and errors are short codes defined in code. A new tool adds
   a `ToolId` (and its `ToolResultData` entry), not new event names. A new event
   name needs a new _kind_ of event, as in ADR 0004.
-- **Wrong data fails type-check.** `tool-result` is typed per tool, so a prop
-  another tool owns, an unknown tool or a missing required prop is a compile
-  error at the `trackEvent` call. `trackEvent`'s untyped fallback overload
-  refuses the tool event names for this reason.
-- **Everything goes through `trackEvent`** in `@govtech-bb/analytics`. No tool
-  calls `window.umami` directly, so Umami and `/journey` always get the same
-  event, with the same data and the same PII masking.
+- **Wrong data fails type-check, when the call is written the typed way.**
+  `tool-result` is typed per tool, so a prop another tool owns, an unknown tool
+  or a missing required prop is a compile error at the `trackEvent` call.
+  `trackEvent`'s untyped fallback overload refuses the tool event names for
+  this reason. The check holds only for a literal event name, a literal `tool`
+  and data written inline as an object literal, so that is the required call
+  pattern. Data built elsewhere, a `tool` held as a plain `ToolId`, or an event
+  name held in a `string` can carry extra props past the compiler; review
+  catches those.
+- **Everything goes through a direct `trackEvent` call** in
+  `@govtech-bb/analytics`. No tool calls `window.umami` directly, so Umami and
+  `/journey` always get the same event name and data. A tool never sends its
+  events with `data-umami-event` attributes: `installClickListener` passes a
+  `string` name and string values, so the types above do not apply.
 - **Names are sent as they are.** Tool events carry no `form` prop, so Umami's
   `<form>:<event>` packing never applies and they need no compact codes; the
   longest name is 14 characters, under Umami's 50. `/journey` gets the same
@@ -74,7 +81,12 @@ code (a step, outcome, action, error, plan or a pharmacy or shelter ID).
 
 - Each tool's instrumentation picks codes for its steps, outcomes, actions and
   errors, and adds any extra `tool-result` props to its `ToolResultData` entry,
-  where review sees them against this bar.
+  where review sees them against this bar. Those code fields are typed as
+  `string` for now, so the types do not stop free text or a URL reaching them;
+  a tool may narrow its codes to string-literal unions as it is instrumented.
+- `/journey` replaces any string prop with a run of 6 or more digits with
+  `[redacted]` on the server; Umami keeps it. Pick IDs without long digit runs
+  so the two match.
 - `tool-result` requires an `outcome`, so a tool whose result has no natural
   outcome still names one (for example `estimated` or `parish-chosen`).
 - The rest of landing keeps ADR 0004's exemption: its directory events

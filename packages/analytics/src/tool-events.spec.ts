@@ -6,7 +6,7 @@ import {
   type ToolId,
   type TrackingData,
 } from "./index";
-import { resetJourneyForTests } from "./journey";
+import { MAX_PROPS, PROP_KEY, resetJourneyForTests } from "./journey";
 import type { Mock } from "vitest";
 
 type Track = NonNullable<Window["umami"]>["track"];
@@ -177,11 +177,11 @@ describe("tool events (ADR 0079)", () => {
   });
 
   it.each(KEY_SETS)("%s keys pass the /journey key rule", (_, keys) => {
-    for (const key of keys) expect(key).toMatch(/^[a-zA-Z][a-zA-Z0-9_]{0,39}$/);
+    for (const key of keys) expect(key).toMatch(PROP_KEY);
   });
 
   it.each(KEY_SETS)("%s never needs more than 20 props", (_, keys) => {
-    expect(keys.length).toBeLessThanOrEqual(20);
+    expect(keys.length).toBeLessThanOrEqual(MAX_PROPS);
   });
 
   it("rejects an unknown tool or a prop the event does not allow", () => {
