@@ -22,6 +22,16 @@ Use sentence case. Mark optional questions with “(optional)” and leave requi
 
 Use `type="confirmation"` in Markdown, `role: "confirmation"` in native JSON and `confirmation` for the editor setting. Unsupported page encodings are rejected with the original input retained in memory for download.
 
+## Writes and recovery
+
+| Term | Meaning |
+| --- | --- |
+| Attempt | One editor write's frozen request and its progress through sending, checking and an unsettled answer. The author's press decides when it may be sent again. Discard-and-reload forgets it. |
+| Outcome | What a write attempt can establish: landed, invalid, conflict, missing, signed-out, forbidden, refused or unknown. Screens express the outcome in their own wording. |
+| Lost answer | A write's response that never arrived or could not be trusted, including a network failure, a 5xx or an unreadable reply. The write may have committed; read back before repeating it. |
+
+[ADR 0008](decisions/0008-one-lost-answer-policy-for-every-editor-write.md) defines the shared policy.
+
 ## Code names and ownership
 
 - `pages` owns authored service content; `forms/form-pages` owns pages within a form; `routes` owns application URLs. Keep the existing editor, form, workspace, API, host, persistence, preset and UI boundaries.
