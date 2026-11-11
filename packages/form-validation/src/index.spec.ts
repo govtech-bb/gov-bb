@@ -273,4 +273,80 @@ describe("validate()", () => {
       expect(result.valid).toBe(true);
     });
   });
+
+  // #3636: a monthly limit checked against an amount paid at a chosen frequency.
+  describe("scaleBy", () => {
+    const factors = { weekly: 4, "twice-a-month": 2, monthly: 1 };
+    const income = (scaleBy: Record<string, unknown>) =>
+      number("income-amount", {
+        max: { value: 3000, scaleBy: { factors, ...scaleBy } } as never,
+      });
+
+    it("resolves a same-step reference from the step values", () => {
+      const result = validate({
+        primitives: [income({ referenceFieldId: "income-frequency" })],
+        stepValues: { "income-amount": 1000, "income-frequency": "weekly" },
+      });
+      expect(result.errors["income-amount"]).toEqual(["Must be at most 3000"]);
+    });
+
+    it("resolves a reference on a different step via targetStepId", () => {
+      const primitives = [
+        income({
+          referenceFieldId: "income-frequency",
+          targetStepId: "pay-frequency",
+        }),
+      ];
+      const allValues = { "pay-frequency": { "income-frequency": "weekly" } };
+      expect(
+        validate({
+          primitives,
+          stepValues: { "income-amount": 1000, "income-frequency": "monthly" },
+          allValues,
+        }).valid,
+      ).toBe(false);
+      expect(
+        validate({
+          primitives,
+          stepValues: { "income-amount": 700 },
+          allValues,
+        }).valid,
+      ).toBe(true);
+    });
+
+    it("is skipped when the referenced answer is not given", () => {
+      const result = validate({
+        primitives: [income({ referenceFieldId: "income-frequency" })],
+        stepValues: { "income-amount": 1_000_000 },
+      });
+      expect(result.valid).toBe(true);
+    });
+
+    it("fails closed on an answer with no factor (a crafted POST)", () => {
+      const result = validate({
+        primitives: [income({ referenceFieldId: "income-frequency" })],
+        stepValues: { "income-amount": 1, "income-frequency": "yearly" },
+      });
+      expect(result.errors["income-amount"]).toEqual(["Must be at most 3000"]);
+    });
+
+    it("keeps the bound reference separate from the scale reference", () => {
+      const result = validate({
+        primitives: [
+          number("income-amount", {
+            max: {
+              referenceFieldId: "income-limit",
+              scaleBy: { referenceFieldId: "income-frequency", factors },
+            } as never,
+          }),
+        ],
+        stepValues: {
+          "income-amount": 1000,
+          "income-frequency": "weekly",
+          "income-limit": 3999,
+        },
+      });
+      expect(result.errors["income-amount"]).toEqual(["Must be at most 3999"]);
+    });
+  });
 });

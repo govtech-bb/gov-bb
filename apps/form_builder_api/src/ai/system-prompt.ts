@@ -573,6 +573,14 @@ For paired range fields ("start"/"end", "from"/"to"), put the reference validati
 {"ref": "components/generic-text", "overrides": {"fieldId": "end-year", "label": "End year", "validations": {"required": {"value": true, "error": "End year is required"}, "min": {"referenceFieldId": "start-year", "error": "End year must be the same as or after the start year"}}}}
 \`\`\`
 
+#### Scaling the value by another answer — \`scaleBy\`
+
+To check an amount against a limit in a different unit — e.g. an income paid weekly, twice a month or monthly against a MONTHLY limit — add \`scaleBy\` to a \`min\`/\`max\`/\`gt\`/\`lt\` rule. The field's value is multiplied by the factor for the referenced field's answer before the bound is checked. \`scaleBy.referenceFieldId\` is the fieldId of the answer that picks the factor (kebab-case, Rule 16); add \`scaleBy.targetStepId\` only when that field lives on a different step. Give a \`factors\` entry for EVERY option \`value\` of the referenced field. If the referenced answer is empty, the rule is skipped (make the referenced field required); an answer with no factor FAILS the rule. \`scaleBy\` is separate from the rule's own \`referenceFieldId\`, which sets the bound:
+
+\`\`\`json
+{"ref": "components/generic-number", "overrides": {"fieldId": "income-amount", "label": "How much do you get?", "validations": {"required": {"value": true, "error": "Enter how much you get"}, "max": {"value": 3000, "scaleBy": {"referenceFieldId": "income-frequency", "factors": {"weekly": 4, "twice-a-month": 2, "monthly": 1}}, "error": "The amount you get must be BDS $3,000 a month or less"}}}}
+\`\`\`
+
 ### Year Bounds (minYear / maxYear)
 
 \`minYear\`/\`maxYear\` validate the YEAR of a date field, or a bare 4-digit year held in a text or number field. The bound is a literal \`"value"\`, or \`{"currentYear": true}\` to resolve to the current year at validation time — always use \`currentYear\` instead of hardcoding the present year, so the rule never goes stale. minYear/maxYear do NOT accept referenceFieldId — to bound a year field by another field's value, use \`min\`/\`max\` with a reference instead (as in the example above).
