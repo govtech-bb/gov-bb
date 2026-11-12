@@ -732,6 +732,39 @@
           "overrides": {
             "label": "Postal code",
             "hint": "For example, BB11000.",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "country-of-residence",
+                "targetStepId": "applicant-details",
+                "operator": "equal",
+                "value": "barbados"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "overseas-postcode",
+            "label": "Postal code",
+            "ui": {
+              "width": "short"
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "country-of-residence",
+                "targetStepId": "applicant-details",
+                "operator": "equal",
+                "value": "other"
+              }
+            ],
             "validations": {
               "required": {
                 "value": false
@@ -1211,6 +1244,43 @@
                 "targetFieldId": "co-applicant-same-address",
                 "operator": "equal",
                 "value": "no"
+              },
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "co-applicant-country-of-residence",
+                "targetStepId": "co-applicant-details",
+                "operator": "equal",
+                "value": "barbados"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "co-applicant-overseas-postcode",
+            "label": "Postal code",
+            "ui": {
+              "width": "short"
+            },
+            "validations": {
+              "required": {
+                "value": false
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "co-applicant-same-address",
+                "operator": "equal",
+                "value": "no"
+              },
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "co-applicant-country-of-residence",
+                "targetStepId": "co-applicant-details",
+                "operator": "equal",
+                "value": "other"
               }
             ]
           }
@@ -1503,7 +1573,7 @@
             "validations": {
               "required": {
                 "value": true,
-                "error": "Select whether you own any land or property"
+                "error": "Select whether you, or your spouse if you have one, own any land or property"
               }
             }
           }
@@ -1976,9 +2046,17 @@
                 "value": true,
                 "error": "Age is required"
               },
+              "pattern": {
+                "value": "^\\d+$",
+                "error": "Enter age as a whole number, like 9"
+              },
               "min": {
                 "value": 0,
                 "error": "Age must be 0 or more"
+              },
+              "max": {
+                "value": 120,
+                "error": "Age must be 120 or less"
               }
             },
             "ui": {
@@ -2724,7 +2802,7 @@
     {
       "stepId": "submission-confirmation",
       "title": "Application submitted",
-      "markdownContent": "Your application for an NHC {applicationType} has been submitted.\n\nKeep your reference number in case you need to contact the National Housing Corporation about your application.\n\n## What happens next\n\nNHC will check your application and may contact you if it needs more information.\n\nIf you qualify, NHC may put you on a waiting list until a rental home or house lot is available.\n\n**National Housing Corporation**\\\n“The Garden”\\\nCountry Road\\\nSt. Michael\n\nTelephone: (246) 536-5300\\\nEmail: NHC.CustomerService@barbados.gov.bb",
+      "markdownContent": "Your application for an NHC {applicationType} has been submitted.\n\nKeep your reference number in case you need to contact the National Housing Corporation about your application.\n\n## What happens next\n\nNHC will check your application and may contact you if it needs more information.\n\nIf you qualify, NHC may put you on a waiting list until a rental home or house lot is available.\n\n**National Housing Corporation**\\\n“The Garden”\\\nCountry Road\\\nSt. Michael\\\nBarbados\n\nTelephone: (246) 536-5300\\\nEmail: NHC.CustomerService@barbados.gov.bb",
       "conditionalMarkdown": [
         {
           "token": "applicationType",
@@ -2769,7 +2847,7 @@
     }
   ],
   "createdAt": "2026-09-03T00:00:00.000Z",
-  "updatedAt": "2026-11-12T03:09:42.000Z",
+  "updatedAt": "2026-11-12T05:06:52.000Z",
   "meta": {
     "visibility": "preview"
   }

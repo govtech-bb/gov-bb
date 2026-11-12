@@ -376,13 +376,15 @@ export default function FileUpload({
 
   // A recipe may list a type twice — as a MIME type and as extensions, so an
   // untyped `photo.jpg` still passes (#2708). Name each type once, keeping the
-  // first label; .jpg and .jpeg are the same type.
+  // first label; .jpg and .jpeg are the same type, named "jpg" when the recipe
+  // lists it, to match recipe copy such as "PDF, JPG or PNG".
   const labelsByType = new Map<string, string>();
   for (const type of rawFileTypes) {
     const label = type.includes("/") ? type.split("/")[1] : type;
     const key = label.replace(/^\./, "").toLowerCase();
     const sameType = key === "jpg" ? "jpeg" : key;
-    if (!labelsByType.has(sameType)) labelsByType.set(sameType, label);
+    if (key === "jpg") labelsByType.set(sameType, "jpg");
+    else if (!labelsByType.has(sameType)) labelsByType.set(sameType, label);
   }
   const readableFileTypes: string[] = [...labelsByType.values()];
 

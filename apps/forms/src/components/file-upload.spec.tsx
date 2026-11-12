@@ -512,7 +512,7 @@ describe("FileUpload", () => {
       },
     });
     expect(
-      screen.getByText(/^attach a pdf, jpeg, or png file$/i),
+      screen.getByText(/^attach a pdf, jpg, or png file$/i),
     ).toBeInTheDocument();
   });
 

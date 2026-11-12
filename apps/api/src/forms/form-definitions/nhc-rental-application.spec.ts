@@ -95,6 +95,7 @@ function answers(opts: {
   othersLiveThere?: "yes" | "no";
   maritalStatus?: string;
   country?: string;
+  coCountry?: string;
   sameAddress?: "yes" | "no";
 }): StepScopedValues {
   return {
@@ -111,7 +112,9 @@ function answers(opts: {
       "marital-status": opts.maritalStatus ?? "single",
       "country-of-residence": opts.country ?? "barbados",
     },
-    "co-applicant-details": { "co-applicant-country-of-residence": "barbados" },
+    "co-applicant-details": {
+      "co-applicant-country-of-residence": opts.coCountry ?? "barbados",
+    },
     "co-applicant-contact": {
       "co-applicant-same-address": opts.sameAddress ?? "yes",
     },
@@ -408,6 +411,16 @@ it("lists other occupants only when someone else will live there, up to 20", asy
   ]);
 });
 
+it.each([
+  ["9", []],
+  ["0", []],
+  ["9.5", ["Enter age as a whole number, like 9"]],
+  ["250", ["Age must be 120 or less"]],
+])("checks an occupant age of %s", async (age, errors) => {
+  const f = await field("other-occupants", "occupant-age");
+  expect(validateField(f, age, {})).toEqual(errors);
+});
+
 it("routes a single employed applicant for a rental home past the joint steps", async () => {
   expect(
     await activeSteps(
@@ -532,21 +545,48 @@ it("asks for the country by name only when it is Other", async () => {
   ]);
 });
 
-it("asks for a parish only for an address in Barbados", async () => {
-  const at = async (country: string) =>
-    (
-      await activeFields(
-        "applicant-contact",
-        answers({
-          type: "house-lot",
-          joint: false,
-          income: "retired",
-          country,
-        }),
-      )
-    ).has("parish");
-  expect(await at("barbados")).toBe(true);
-  expect(await at("canada")).toBe(false);
+it("asks for a parish and a Barbados postcode only for an address in Barbados", async () => {
+  const at = (country: string) =>
+    activeFields(
+      "applicant-contact",
+      answers({
+        type: "house-lot",
+        joint: false,
+        income: "retired",
+        country,
+      }),
+    );
+  const barbados = await at("barbados");
+  const abroad = await at("other");
+  expect(barbados.has("parish")).toBe(true);
+  expect(barbados.has("postcode")).toBe(true);
+  expect(barbados.has("overseas-postcode")).toBe(false);
+  // Abroad: no parish, and a free-text postal code instead of the Barbados
+  // postcode pattern, which would refuse a real foreign postal code.
+  expect(abroad.has("parish")).toBe(false);
+  expect(abroad.has("postcode")).toBe(false);
+  expect(abroad.has("overseas-postcode")).toBe(true);
+  expect(
+    (await field("applicant-contact", "overseas-postcode")).validations
+      ?.pattern,
+  ).toBeUndefined();
+});
+
+it("asks the second person for an overseas postal code when they live abroad", async () => {
+  const fields = await activeFields(
+    "co-applicant-contact",
+    answers({
+      type: "house-lot",
+      joint: true,
+      income: "retired",
+      coIncome: "retired",
+      sameAddress: "no",
+      coCountry: "other",
+    }),
+  );
+  expect(fields.has("co-applicant-parish")).toBe(false);
+  expect(fields.has("co-applicant-postcode")).toBe(false);
+  expect(fields.has("co-applicant-overseas-postcode")).toBe(true);
 });
 
 it("hides the second person's address when they live at the same address", async () => {
@@ -795,7 +835,7 @@ it.each([
     // Hard breaks (a trailing backslash), so the address keeps its lines on
     // the page (react-markdown) and in the email (markdown-it).
     expect(body).toContain(
-      "**National Housing Corporation**\\\n“The Garden”\\\nCountry Road\\\nSt. Michael",
+      "**National Housing Corporation**\\\n“The Garden”\\\nCountry Road\\\nSt. Michael\\\nBarbados",
     );
     expect(body).toContain("Telephone: (246) 536-5300");
     expect(body).toContain("Email: NHC.CustomerService@barbados.gov.bb");
