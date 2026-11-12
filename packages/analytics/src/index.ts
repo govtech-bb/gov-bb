@@ -111,17 +111,19 @@ export interface TrackingData extends ToolTrackingData {
   // Chat (#3515). Never the question or answer text.
   /**
    * A question asked. `source` is where: a landing placement such as "home",
-   * or, from the chat app, "chat" (typed there) or "landing" (carried over
-   * from landing in `?q=`).
+   * or "chat" when typed in the chat app.
    */
   "chat-submit": { source: string };
   /**
-   * The reply to one chat-submit from the chat app. `source` is "citations"
-   * when the reply came with cited alpha.gov.bb pages, else "none".
+   * The chat app's reply to one question. `source` is where it was asked:
+   * "chat" (typed there; the chat app sent chat-submit) or "landing" (carried
+   * over in `?q=`; landing sent chat-submit or chat-suggestion). `cited` is
+   * true when the reply came with cited alpha.gov.bb pages.
    */
   "chat-answer": {
     outcome: "answered" | "error" | "stopped";
-    source: "citations" | "none";
+    source: "chat" | "landing";
+    cited: boolean;
   };
 }
 

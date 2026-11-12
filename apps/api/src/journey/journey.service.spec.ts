@@ -64,7 +64,7 @@ describe("JourneyService", () => {
     const chat = event({
       app: "chat",
       event: "chat-answer",
-      props: { outcome: "answered", source: "citations" },
+      props: { outcome: "answered", source: "chat", cited: true },
       path: "/",
     });
     expect(service.record(chat, BROWSER)).toBe(1);
