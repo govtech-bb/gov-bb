@@ -31,8 +31,8 @@ interface QueuedEvent {
 // Limits mirror apps/api/src/journey/journey-event.schema.ts, so the sender
 // never builds an event the server would drop.
 const EVENT_NAME = /^[a-z0-9][a-z0-9:~_-]{0,99}$/;
-const PROP_KEY = /^[a-zA-Z][a-zA-Z0-9_]{0,39}$/;
-const MAX_PROPS = 20;
+export const PROP_KEY = /^[a-zA-Z][a-zA-Z0-9_]{0,39}$/;
+export const MAX_PROPS = 20;
 const MAX_STRING = 300;
 const MAX_PATH = 300;
 const MAX_EVENTS_PER_REQUEST = 25;
