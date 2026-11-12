@@ -319,4 +319,15 @@ describe("envValidationSchema", () => {
       expect(value?.SES_ENDPOINT).toBe("http://localhost:8005");
     });
   });
+
+  describe("CHAT_CALLER_TOKEN (#3623)", () => {
+    it("defaults to empty, so no request gets the chat limit", () => {
+      expect(validate(baseEnv).value?.CHAT_CALLER_TOKEN).toBe("");
+    });
+
+    it("keeps a configured token", () => {
+      const { value } = validate({ ...baseEnv, CHAT_CALLER_TOKEN: "t0ken" });
+      expect(value?.CHAT_CALLER_TOKEN).toBe("t0ken");
+    });
+  });
 });

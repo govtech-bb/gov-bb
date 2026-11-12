@@ -20,7 +20,7 @@ import type { Mock } from "vitest";
  */
 
 import type { ReactNode } from "react";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useStore } from "@tanstack/react-form";
 import { useStepGuard } from "../hooks/use-step-guard";
@@ -100,9 +100,10 @@ vi.mock("./review", () => ({
 
 vi.mock("./submission-confirmation", () => ({
   __esModule: true,
-  default: (props: { markdownContent?: string }) => (
+  default: (props: { markdownContent?: string; onPrint?: () => void }) => (
     <div data-testid="submission-confirmation">
       <span data-testid="confirmation-markdown">{props.markdownContent}</span>
+      <button onClick={props.onPrint}>Print</button>
     </div>
   ),
 }));
@@ -523,6 +524,28 @@ describe("FormRenderer", () => {
     expect(
       mockTrackEvent.mock.calls.some((c) => c[0] === "payment-returned"),
     ).toBe(false);
+  });
+
+  it("emits form-print when the confirmation is printed (#3514)", () => {
+    const step = makeStep("submission-confirmation");
+    render(
+      <FormRenderer
+        form={mockForm}
+        formMeta={makeMeta() as any}
+        stepId="submission-confirmation"
+        visibleSteps={[step]}
+        repeatableStepSettingsRef={mockRepeatableStepSettingsRef as any}
+        submissionState={mockSubmissionState as any}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Print" }));
+
+    expect(
+      mockTrackEvent.mock.calls.filter((c) => c[0] === "form-print"),
+    ).toEqual([
+      ["form-print", { form: "test-form", category: expect.any(String) }],
+    ]);
   });
 
   it("also emits payment-returned when returning from EzPay (#1955)", () => {

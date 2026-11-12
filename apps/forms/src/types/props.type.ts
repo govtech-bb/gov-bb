@@ -196,6 +196,8 @@ export interface SubmissionConfirmationProps {
   onTryAgain?: () => void;
   /** Fired when the citizen clicks "Continue to payment" (#1955 analytics). */
   onPaymentInitiated?: () => void;
+  /** Fired when the citizen clicks "Print" (#3514 analytics). */
+  onPrint?: () => void;
   submissionState?: SubmissionState;
   /**
    * Target for the "Give feedback on this service" link. When set, the feedback
