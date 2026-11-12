@@ -1,6 +1,6 @@
 {
   "formId": "nhc-rental-application",
-  "title": "Apply for an NHC rental home or house lot",
+  "title": "Apply for a National Housing Corporation (NHC) rental home or house lot",
   "description": "National Housing Corporation application for a rental home or house lot",
   "steps": [
     {
@@ -2147,6 +2147,10 @@
               "itemMaxSize": {
                 "value": 10485760,
                 "error": "The file must be 10 MB or smaller"
+              },
+              "minItems": {
+                "value": 2,
+                "error": "Upload your 2 recent payslips"
               }
             },
             "behaviours": [
@@ -2455,6 +2459,10 @@
               "itemMaxSize": {
                 "value": 10485760,
                 "error": "The file must be 10 MB or smaller"
+              },
+              "minItems": {
+                "value": 2,
+                "error": "Upload their 2 recent payslips"
               }
             },
             "behaviours": [
@@ -2716,7 +2724,7 @@
     {
       "stepId": "submission-confirmation",
       "title": "Application submitted",
-      "markdownContent": "Your application for an NHC {applicationType} has been submitted.\n\nKeep your reference number in case you need to contact the National Housing Corporation about your application.\n\n## What happens next\n\nNHC will check your application and may contact you if it needs more information.\n\nIf you qualify, NHC may put you on a waiting list until a rental home or house lot is available.\n\n**National Housing Corporation**\n“The Garden”\nCountry Road\nSt. Michael\n\nTelephone: (246) 536-5300\nEmail: NHC.CustomerService@barbados.gov.bb",
+      "markdownContent": "Your application for an NHC {applicationType} has been submitted.\n\nKeep your reference number in case you need to contact the National Housing Corporation about your application.\n\n## What happens next\n\nNHC will check your application and may contact you if it needs more information.\n\nIf you qualify, NHC may put you on a waiting list until a rental home or house lot is available.\n\n**National Housing Corporation**\\\n“The Garden”\\\nCountry Road\\\nSt. Michael\n\nTelephone: (246) 536-5300\\\nEmail: NHC.CustomerService@barbados.gov.bb",
       "conditionalMarkdown": [
         {
           "token": "applicationType",
@@ -2761,7 +2769,7 @@
     }
   ],
   "createdAt": "2026-09-03T00:00:00.000Z",
-  "updatedAt": "2026-11-11T12:00:00.000Z",
+  "updatedAt": "2026-11-12T03:09:42.000Z",
   "meta": {
     "visibility": "preview"
   }

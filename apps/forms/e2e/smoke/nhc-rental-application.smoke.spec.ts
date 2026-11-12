@@ -55,6 +55,7 @@ import {
   selectDropdown,
   selectRadio,
   submitAndConfirm,
+  uploadMany,
   uploadOne,
 } from "../helpers/smoke";
 import { TEST_PNG } from "../helpers/test-data";
@@ -285,7 +286,10 @@ test.describe("NHC rental application — Live Smoke", () => {
     ).toHaveCount(0);
     await uploadOne(page, step, "national-id-card", png("id-card.png"));
     await uploadOne(page, step, "passport-photo", png("photo.png"));
-    await uploadOne(page, step, "payslips", png("payslip.png"));
+    await uploadMany(page, step, "payslips", [
+      png("payslip-1.png"),
+      png("payslip-2.png"),
+    ]);
     await uploadOne(page, step, "job-letter", png("job-letter.png"));
     await advance(page, step);
 

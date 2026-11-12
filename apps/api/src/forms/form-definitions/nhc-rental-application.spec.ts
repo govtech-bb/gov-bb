@@ -41,9 +41,17 @@ async function readRaw(): Promise<string> {
   return fs.readFile(RECIPE_PATH, "utf8");
 }
 
-async function contract(): Promise<ServiceContract> {
-  const recipe = serviceContractRecipeSchema.parse(JSON.parse(await readRaw()));
-  return hydrateForm(recipe, getCatalog()) as unknown as ServiceContract;
+// Hydrated once: every test reads the same recipe.
+let hydrated: Promise<ServiceContract> | undefined;
+function contract(): Promise<ServiceContract> {
+  hydrated ??= readRaw().then(
+    (raw) =>
+      hydrateForm(
+        serviceContractRecipeSchema.parse(JSON.parse(raw)),
+        getCatalog(),
+      ) as unknown as ServiceContract,
+  );
+  return hydrated;
 }
 
 async function step(stepId: string) {
@@ -723,6 +731,16 @@ it("asks for the second person's documents only on a joint application", async (
   expect(joint.has("co-applicant-pension-document")).toBe(false);
 });
 
+it.each(["payslips", "co-applicant-payslips"])(
+  "asks for 2 files in upload-your-documents.%s",
+  async (fieldId) => {
+    expect(
+      (await field("upload-your-documents", fieldId)).validations?.minItems
+        ?.value,
+    ).toBe(2);
+  },
+);
+
 it("lets a self-employed applicant apply without proof of income, but not a retired one without a pension document", async () => {
   for (const prefix of ["", "co-applicant-"]) {
     for (const id of [
@@ -773,6 +791,11 @@ it.each([
     );
     expect(body).toContain(
       `Your application for an NHC ${name} has been submitted.`,
+    );
+    // Hard breaks (a trailing backslash), so the address keeps its lines on
+    // the page (react-markdown) and in the email (markdown-it).
+    expect(body).toContain(
+      "**National Housing Corporation**\\\n“The Garden”\\\nCountry Road\\\nSt. Michael",
     );
     expect(body).toContain("Telephone: (246) 536-5300");
     expect(body).toContain("Email: NHC.CustomerService@barbados.gov.bb");
