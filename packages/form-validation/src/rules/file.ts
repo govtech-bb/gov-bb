@@ -38,6 +38,19 @@ const toBareExt = (allowed: string): string => {
   return lower.startsWith(".") ? lower.slice(1) : lower;
 };
 
+// Extensions that name the same type. `image/jpeg` reduces to "jpeg", but most
+// JPEG files are named ".jpg", so without this an untyped `photo.jpg` was
+// refused while `photo.jpeg` passed (#2708).
+const SAME_TYPE_EXTS: Record<string, string[]> = {
+  jpeg: ["jpeg", "jpg"],
+  jpg: ["jpeg", "jpg"],
+};
+
+const toBareExts = (allowed: string): string[] => {
+  const ext = toBareExt(allowed);
+  return SAME_TYPE_EXTS[ext] ?? [ext];
+};
+
 // Typed with `allValues` OPTIONAL rather than as a bare RuleRunner: this rule
 // reads nothing from the surrounding form state, and its two direct callers —
 // the browser pre-check and the API presign gate — validate a single file with
@@ -55,7 +68,7 @@ export const fileTypesRunner: (
   // normalising MIME / dotted / dotless forms to a bare extension) OR its
   // browser-reported MIME type matches an allowed MIME entry verbatim. Matching
   // the extension covers the common case where `file.type` is empty.
-  const allowedExts = new Set(allowed.map(toBareExt));
+  const allowedExts = new Set(allowed.flatMap(toBareExts));
   const allowedMimes = new Set(allowed.map((t) => t.toLowerCase()));
   for (const file of toFiles(value)) {
     const ext = extOf(file.name);

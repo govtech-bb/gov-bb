@@ -394,9 +394,12 @@ export default function FileUpload({
     );
   };
 
-  const readableFileTypes: string[] = rawFileTypes.map((type: string) =>
-    type.includes("/") ? type.split("/")[1] : type,
-  );
+  // image/jpeg accepts .jpg and .jpeg alike (#2708), so name it by the
+  // extension people know: "jpg".
+  const readableFileTypes: string[] = rawFileTypes.map((type: string) => {
+    const label = type.includes("/") ? type.split("/")[1] : type;
+    return label === "jpeg" ? "jpg" : label;
+  });
 
   // Constrain the native picker to the allowed types. MIME types pass through;
   // bare extensions ("pdf") get a leading dot so the picker recognises them.

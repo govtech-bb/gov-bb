@@ -475,8 +475,9 @@ describe("FileUpload", () => {
         },
       },
     });
-    // Component formats: "Attach a png or jpeg file"
-    expect(screen.getByText(/attach a png or jpeg file/i)).toBeInTheDocument();
+    // Component formats: "Attach a png or jpg file" (image/jpeg is named
+    // "jpg", the extension people know; #2708)
+    expect(screen.getByText(/attach a png or jpg file/i)).toBeInTheDocument();
   });
 
   it("renders extension-style file types verbatim (with leading dots)", () => {
@@ -562,7 +563,7 @@ describe("FileUpload", () => {
       },
     });
     expect(
-      screen.getByText(/attach a pdf, jpeg, or png file/i),
+      screen.getByText(/attach a pdf, jpg, or png file/i),
     ).toBeInTheDocument();
   });
 
@@ -637,7 +638,7 @@ describe("FileUpload", () => {
         },
       },
     });
-    expect(screen.getByText(/attach a png or jpeg file/i)).toBeInTheDocument();
+    expect(screen.getByText(/attach a png or jpg file/i)).toBeInTheDocument();
   });
 
   it("derives the accept attribute from MIME-type validations", () => {
