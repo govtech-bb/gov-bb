@@ -55,7 +55,7 @@ Drafts have a **7-day inactivity TTL**. A daily cron job (`@Cron(EVERY_DAY_AT_MI
 | Method | Path | Description |
 |---|---|---|
 | `POST` | `/submissions` | Validate, persist, and dispatch a form submission. Requires the `Idempotency-Key` request header. Body is size-limited to **1 MiB** by `SubmissionPayloadSizePipe`. |
-| `GET` | `/submissions/:reference/status` | Where an application has got to, for the chat (#3419). Public and unauthenticated, like the application tracker: the reference is the access. `200` with `data.kind` `found` (`status`, `updatedAt`), `untracked` (`receivedAt`, `formId`) or `not_found`; `503` when the tracker can't answer. The chat sends `X-Chat-Caller-Token` to be throttled as one caller (§6.2). |
+| `GET` | `/submissions/:reference/status` | Where an application has got to, for the chat (#3419). Public and unauthenticated, like the application tracker: the reference is the access. `200` with `data.kind` `found` (`status`, `updatedAt`, `formId`), `untracked` (`receivedAt`, `formId`) or `not_found`; `503` when the tracker can't answer. The chat sends `X-Chat-Caller-Token` to be throttled as one caller (§6.2). |
 
 Submission semantics:
 

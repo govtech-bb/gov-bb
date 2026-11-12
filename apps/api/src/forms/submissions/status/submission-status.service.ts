@@ -26,6 +26,8 @@ export type SubmissionStatusAnswer =
        * chat's to show as "We can't show this result here". */
       status: string;
       updatedAt: string;
+      /** So the chat can link the service's page, as for untracked (#3624). */
+      formId: string;
     }
   | {
       kind: "untracked";
@@ -86,7 +88,9 @@ export class SubmissionStatusService {
       // The recipe has been deleted, so it can't say whether the form went to
       // CaMS. The tracker can: a record means it did.
       const tracked = await this.askTracker(reference);
-      return tracked.found ? found(reference, tracked) : untracked;
+      return tracked.found
+        ? found(reference, submission.formId, tracked)
+        : untracked;
     }
 
     if (!recipeSendsToCams) return untracked;
@@ -95,12 +99,13 @@ export class SubmissionStatusService {
     // deployment isn't publishing statuses): it really was received.
     const tracked = await this.askTracker(reference);
     return tracked.found
-      ? found(reference, tracked)
+      ? found(reference, submission.formId, tracked)
       : {
           kind: "found",
           reference,
           status: "received",
           updatedAt: submittedAt,
+          formId: submission.formId,
         };
   }
 
@@ -123,6 +128,7 @@ export class SubmissionStatusService {
 
 function found(
   reference: string,
+  formId: string,
   tracked: Extract<TrackerLookupResult, { found: true }>,
 ): SubmissionStatusAnswer {
   return {
@@ -130,5 +136,6 @@ function found(
     reference,
     status: tracked.status,
     updatedAt: tracked.occurredAt,
+    formId,
   };
 }
