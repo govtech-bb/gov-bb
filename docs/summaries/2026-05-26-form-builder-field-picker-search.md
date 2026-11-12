@@ -29,7 +29,7 @@ On review, the user pointed out that the real integration target is `feat/form-b
 
 Rebased `feat/form-builder-field-picker-search` `--onto feat/form-builder-save-draft-dev-iteration f4bf85c`. The plan commit replayed cleanly; the implementation commit conflicted on `-field-picker.tsx` and was resolved by rewriting against the 3-tab shape (dropped `Primitives`, restored `Object.entries(REGISTRY_BLOCKS)` for Blocks). The CSS conflict auto-resolved.
 
-Why this matters for future work: the picker shape on `sandbox` and on `feat/form-builder-save-draft-dev-iteration` is genuinely divergent — not a clean ancestor relationship. When `save-draft` lands on `dev` and `sandbox` reconciles, that catalog-vs-registry shape question (the one ADR 0008 settled) will need a follow-up alignment pass.
+Why this matters for future work: the picker shape on `sandbox` and on `feat/form-builder-save-draft-dev-iteration` is genuinely divergent — not a clean ancestor relationship. When `save-draft` lands on `dev` and `sandbox` reconciles, that catalog-vs-registry shape question (the one ADR 0018 settled) will need a follow-up alignment pass.
 
 ## Verify
 

@@ -1,7 +1,7 @@
 # Session summary — fieldArray becomes a first-class authoring tool, Phase 1 (#2317)
 
 **Date:** 2026-08-19 · **Branch:** `2317-field-array-phase-1` (off `main`) ·
-part of #2317 (Phase 2 pending) · ADR 0067
+part of #2317 (Phase 2 pending) · ADR 0115
 
 ## What shipped
 
@@ -16,7 +16,7 @@ authoring tool:
 - `addAnotherLabel` added to `fieldArrayBehaviourSchema` (form-types) and
   honoured by the runtime Add link (`repeatable-field.tsx`), mirroring
   repeatable's #768 field. Byte-identical markup when absent.
-- New `BehaviourTypeDescriptor.supportedHtmlTypes` (ADR 0067): the editor
+- New `BehaviourTypeDescriptor.supportedHtmlTypes` (ADR 0115): the editor
   offers the behaviour **disabled with a reason** on field types the runtime
   can't repeat (everything except text/number/time/tel/email/textarea).
 - An aria-hidden **"The applicant sees" miniature** in the behaviour row: the
@@ -38,7 +38,7 @@ authoring tool:
   authoring clamp.
 - **Disabled-with-a-reason, not hidden** for unsupported field types — an
   absent option reads as a missing feature; a stated constraint teaches the
-  rule (ADR 0067).
+  rule (ADR 0115).
 - **Copy renames are author-facing only.** The `fieldArray` type string,
   published recipes, and the runtime contract are untouched; no committed
   recipe uses fieldArray (only the forms master-contract fixture), so the new

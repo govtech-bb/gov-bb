@@ -236,7 +236,7 @@
   color: var(--color-muted);
 }
 
-/* SSB's field widths (ui.width, gov-bb's ADR 0034): from 768px up, a question's label, hint and box stop at a fixed
+/* SSB's field widths (ui.width, gov-bb's ADR 0061): from 768px up, a question's label, hint and box stop at a fixed
    measure. markBlocks (behaviors.ts) puts data-width on the question's blocks, and an insert preview on its drawing */
 @media (min-width: 768px) {
   [data-width="short"] {

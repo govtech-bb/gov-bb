@@ -468,7 +468,7 @@ export function pendingRevisionOf(
 /**
  * Who a revision started from a rejected one counts as having changed it:
  * the rejected one's contributors and its submitter. None of them may
- * approve the new round (ADR 0079), so resubmitting it under someone else's
+ * approve the new round (ADR 0134), so resubmitting it under someone else's
  * name can't let its earlier submitter approve it.
  */
 export function inheritedFrom(rejected: PendingRevision): string[] {

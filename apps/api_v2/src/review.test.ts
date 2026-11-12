@@ -831,7 +831,7 @@ describe("the page's history (#3200)", () => {
   });
 });
 
-describe("self-approval (ADR 0079)", () => {
+describe("self-approval (ADR 0134)", () => {
   it.each(["publish", "reject"] as const)(
     "refuses to let the submitter %s it",
     async (step) => {

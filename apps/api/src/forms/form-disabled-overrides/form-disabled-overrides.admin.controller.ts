@@ -31,7 +31,7 @@ interface DisabledStatusResponse {
  * SECURITY: Authenticated by `AdminTokenGuard` — every request must carry a
  * valid `Authorization: Bearer <ADMIN_KILL_SWITCH_TOKEN>`, falling back to
  * `ARCHIVE_DRAFTS_TOKEN` while the dedicated var is unset (dev-bypass policy
- * per ADR 0061). The network ACL remains as defence in depth.
+ * per ADR 0106). The network ACL remains as defence in depth.
  */
 @ApiTags("Admin — Form Disabled Overrides")
 @ApiBearerAuth()

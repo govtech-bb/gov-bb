@@ -93,4 +93,4 @@ the live DB), root `tsc -b` (CI type-check), `nx run-many -t build
   visibility PR merges before this one, re-run `pnpm generate:service-status-seed`
   before merging.
 - The "row overrides repo visibility / repo is seed-default only" principle is
-  recorded by **ADR 0063** (consumer gates #1896/#1897), not duplicated here.
+  recorded by **ADR 0110** (consumer gates #1896/#1897), not duplicated here.

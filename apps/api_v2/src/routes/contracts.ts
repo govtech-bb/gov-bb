@@ -8,6 +8,7 @@
 
 import type { FastifySchema } from "fastify";
 import { z } from "zod";
+import { isSitePath } from "@govtech-bb/govbbmarkd/content-url";
 import { ServiceDetail, ServiceSummary } from "../modules/estate-services";
 import {
   CatalogEntry,
@@ -147,7 +148,18 @@ export const SCHEMAS = {
       "`/<slug>` redirects (301) to the one visible page with that slug.",
     tags: ["pages"],
     ...siteRead,
-    querystring: z.object({ url: z.string().min(1).max(512) }),
+    // A url no page could have is a 400, not a lookup: some (a NUL) would
+    // fail in Postgres and answer 500.
+    querystring: z.object({
+      url: z
+        .string()
+        .min(1)
+        .max(512)
+        .refine(
+          isSitePath,
+          "Use a site path without backslashes, whitespace or control characters.",
+        ),
+    }),
     response: {
       200: PublicPage,
       301: z.object({ redirect: z.string() }),
@@ -349,7 +361,7 @@ export const SCHEMAS = {
       "editor role (403 otherwise). Saves the page's fields as history " +
       "entry `version` left them over the page as it stands now, keeping " +
       "its current `visibility`, so the restore is a new change and every " +
-      "earlier entry stays (ADR 0080). It is a save in every other way: " +
+      "earlier entry stays (ADR 0135). It is a save in every other way: " +
       "a page that isn't `public` is written, and its history gains a " +
       "`reverted` entry with `restored_from`; a `public` page's restore " +
       "goes into its pending revision, to be submitted and approved like " +

@@ -408,7 +408,7 @@ it("seeds a never-published manifest on save so a refresh never bumps the revisi
   });
   expect(refreshed.revision).toBe(saved.revision);
 });
-it("keeps a decided pair that disagrees with the recipe's actions (ADR 0073)", async () => {
+it("keeps a decided pair that disagrees with the recipe's actions (ADR 0121)", async () => {
   // Decided through the Details page or the assistant; readiness, not the
   // seed, is what asks the author to reconcile it with the actions.
   const decided = {

@@ -39,12 +39,12 @@ Same bad recipe, quiet field-loss in preview, detonation in prod.
   console.warn" tests with throw-on-unknown-ref and collect-all-across-steps
   cases. `registry.validate.spec.ts` (new): unknown ref → `ok:false` with the
   expected issue path/message; all-refs-resolve → `ok:true`.
-- **ADR-0017** records the "recipe ref resolution fails loud" principle.
+- **ADR-0036** records the "recipe ref resolution fails loud" principle.
 
 ## Why we did it that way
 
 - **Existence check at the endpoint, not in `validateFormContract`.** Keeps
-  `packages/form-types` free of a registry dependency (ADR-0010). The schema
+  `packages/form-types` free of a registry dependency (ADR-0020). The schema
   regex stays prefix-only. This mirrors where the fieldId/stepId collision
   backstop already lives.
 - **Collect-all, not fail-fast,** in both layers — one complete report per pass,

@@ -1,7 +1,8 @@
 /**
  * Pure logic for the post-deploy smoke of landing served from api_v2
- * (#3140, #3144). No browser here, so api-v2-smoke.test.ts covers it in the
- * normal vitest run; the Playwright specs beside it drive the live preview.
+ * (#3140, #3143, #3144). No browser here, so api-v2-smoke.test.ts covers it
+ * in the normal vitest run; the Playwright specs beside it drive the live
+ * preview.
  *
  * The pages under test come from api_v2 itself at run time: `GET /catalog`
  * (every public page except `/start` steps) plus each page its start links
@@ -17,6 +18,8 @@ export interface SmokeEnv {
   apiV2: string
   /** The forms origin landing's Start links open. */
   forms: string
+  /** The forms API landing reads form availability from (VITE_FORMS_API_URL). */
+  formsApi: string
 }
 
 function origin(name: string, value: string | undefined): string {
@@ -31,6 +34,7 @@ export function readSmokeEnv(
     landing: origin('SMOKE_LANDING_URL', env.SMOKE_LANDING_URL),
     apiV2: origin('SMOKE_API_V2_URL', env.SMOKE_API_V2_URL),
     forms: origin('SMOKE_FORMS_URL', env.SMOKE_FORMS_URL),
+    formsApi: origin('SMOKE_FORMS_API_URL', env.SMOKE_FORMS_API_URL),
   }
 }
 
@@ -51,14 +55,21 @@ export interface ApiV2Page {
   body_markdown: string
 }
 
-type Fetch = (url: string) => Promise<Response>
+export type Fetch = (url: string, init?: RequestInit) => Promise<Response>
 
-/** Every catalog page URL. Throws on a failed or empty catalog. */
+/**
+ * Every catalog page URL. Throws on a failed or empty catalog. With api_v2's
+ * preview token the catalog also lists preview pages.
+ */
 export async function fetchCatalogUrls(
   apiV2: string,
   fetchImpl: Fetch = fetch,
+  previewToken?: string,
 ): Promise<string[]> {
-  const response = await fetchImpl(`${apiV2}/catalog`)
+  const response = await fetchImpl(
+    `${apiV2}/catalog`,
+    previewToken ? { headers: { 'x-preview-token': previewToken } } : undefined,
+  )
   if (!response.ok) throw new Error(`GET /catalog returned ${response.status}`)
   const body = (await response.json()) as { pages?: unknown }
   if (!Array.isArray(body.pages))
@@ -237,3 +248,134 @@ export const UNAVAILABLE_NOTICES = [
   'This form is currently being upgraded to serve you better.',
   'Applications for this service have closed.',
 ]
+
+/**
+ * The catalog pages only a preview-token holder sees (#3143). Throws when
+ * either read fails, so a wrong token (401) fails rather than finding none.
+ */
+export async function previewPageUrls(
+  apiV2: string,
+  token: string,
+  fetchImpl: Fetch = fetch,
+): Promise<string[]> {
+  const all = await fetchCatalogUrls(apiV2, fetchImpl, token)
+  const anonymous = new Set(await fetchCatalogUrls(apiV2, fetchImpl))
+  return all.filter((url) => !anonymous.has(url))
+}
+
+/** The forms whose pages landing gates (#3143), by the notice it shows. */
+export interface GatedForms {
+  /** `/form-definitions/maintenance`: the upgrade notice. */
+  maintenance: Set<string>
+  /** `form_disabled` service statuses not under maintenance: the same notice. */
+  statusDisabled: Set<string>
+  /** `/form-definitions/closed`: the closed notice. */
+  closed: Set<string>
+}
+
+/** Canonical form IDs are kebab-case (ADR-0048), as available-forms.ts checks. */
+const FORM_ID = /^[a-z0-9][a-z0-9-]*$/
+const SERVICE_STATUSES = new Set(['enabled', 'form_disabled', 'disabled'])
+
+/** The `data` of a forms API `{status:"success", data:[...]}` response. */
+async function readFormsApiList(
+  formsApi: string,
+  path: string,
+  fetchImpl: Fetch,
+): Promise<unknown[]> {
+  const response = await fetchImpl(`${formsApi}${path}`)
+  if (!response.ok) throw new Error(`GET ${path} returned ${response.status}`)
+  const body = (await response.json()) as { status?: unknown; data?: unknown }
+  if (body?.status !== 'success' || !Array.isArray(body.data))
+    throw new Error(`GET ${path}: unexpected response shape`)
+  return body.data
+}
+
+async function readFormIds(
+  formsApi: string,
+  path: string,
+  fetchImpl: Fetch,
+): Promise<Set<string>> {
+  const ids = await readFormsApiList(formsApi, path, fetchImpl)
+  if (
+    !ids.every((id): id is string => typeof id === 'string' && FORM_ID.test(id))
+  )
+    throw new Error(`GET ${path}: a form ID failed validation`)
+  return new Set(ids)
+}
+
+/**
+ * The gated form IDs, read from the forms API landing reads (validated as
+ * available-forms.ts and service-status.ts do). Throws on a failed or odd read.
+ */
+export async function gatedForms(
+  formsApi: string,
+  fetchImpl: Fetch = fetch,
+): Promise<GatedForms> {
+  const maintenance = await readFormIds(
+    formsApi,
+    '/form-definitions/maintenance',
+    fetchImpl,
+  )
+  const closed = await readFormIds(
+    formsApi,
+    '/form-definitions/closed',
+    fetchImpl,
+  )
+  const statuses = (await readFormsApiList(
+    formsApi,
+    '/service_status',
+    fetchImpl,
+  )) as { slug?: unknown; status?: unknown }[]
+  if (
+    !statuses.every(
+      (entry) =>
+        typeof entry?.slug === 'string' &&
+        entry.slug.length > 0 &&
+        typeof entry.status === 'string' &&
+        SERVICE_STATUSES.has(entry.status),
+    )
+  )
+    throw new Error('GET /service_status: a status failed validation')
+  const statusDisabled = new Set(
+    statuses
+      .filter((entry) => entry.status === 'form_disabled')
+      .map((entry) => entry.slug as string)
+      .filter((slug) => !maintenance.has(slug)),
+  )
+  return { maintenance, statusDisabled, closed }
+}
+
+/** An api_v2 page landing must gate. A url ending `/start` is a start step. */
+export interface GatedPage {
+  url: string
+  formId: string
+}
+
+/**
+ * Every catalog page, and the `/start` step beside it when api_v2 serves one,
+ * filed under each gated state its OWN `form_id` is in: landing gates a page
+ * by its own form, not the one its links lead to.
+ */
+export async function gatedPages(
+  apiV2: string,
+  gated: GatedForms,
+  fetchImpl: Fetch = fetch,
+): Promise<Record<keyof GatedForms, GatedPage[]>> {
+  const result: Record<keyof GatedForms, GatedPage[]> = {
+    maintenance: [],
+    statusDisabled: [],
+    closed: [],
+  }
+  for (const url of await fetchCatalogUrls(apiV2, fetchImpl)) {
+    for (const candidate of [url, `${url}/start`]) {
+      const page = await fetchPage(apiV2, candidate, fetchImpl)
+      if (!page?.form_id) continue
+      for (const state of Object.keys(result) as (keyof GatedForms)[]) {
+        if (gated[state].has(page.form_id))
+          result[state].push({ url: candidate, formId: page.form_id })
+      }
+    }
+  }
+  return result
+}

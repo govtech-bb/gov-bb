@@ -148,7 +148,7 @@ interface UiPropertiesEditorProps {
 // surface with no per-key panel wiring. Setting a key to its per-key default —
 // the base primitive's `ui` value when declared, the global UI_FIELD_META
 // default otherwise (#789) — drops it, and `ui` collapses to `undefined` once
-// nothing is set, per the override contract (ADR 0013/0014).
+// nothing is set, per the override contract (ADR 0029/0030).
 function UiPropertiesEditor({
   ui,
   baseUi,
@@ -671,7 +671,7 @@ function PlainOverrideFields({
         />
       </div>
 
-      {/* The id this field resolves to (ADR 0010): the override when set,
+      {/* The id this field resolves to (ADR 0020): the override when set,
           else the registry default — never derived from the label. Tracks the
           Field ID Override as it is typed. readOnly, not disabled: it stays
           focusable and copyable. The shared-id warning repeats here because
@@ -785,7 +785,7 @@ function OverrideForm({
   defaultFieldId,
   basePrimitive,
 }: OverrideFormProps) {
-  // The id the field resolves to right now (ADR 0010): the unsaved override
+  // The id the field resolves to right now (ADR 0020): the unsaved override
   // when set, else the registry default. The duplicate check runs on it, so
   // two untouched fields of one type warn without anyone typing an override.
   // Advisory only — the recipe-wide gate still blocks Save/Deploy.

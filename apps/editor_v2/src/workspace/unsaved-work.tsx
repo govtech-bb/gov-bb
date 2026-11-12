@@ -1,7 +1,7 @@
 import type { SerializedEditorState } from "lexical";
 import { useEffect, useState } from "react";
 import { isEditVersion, isText } from "../api/client";
-import type { ServerPageBaseline } from "./page-session";
+import type { ServerPageBaseline } from "../api/writes";
 
 /** Browser recovery keeps Markdown and its write version, not undo history. */
 export type UnsavedWork = { markdown: string; version: number; keptAt: string };

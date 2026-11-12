@@ -185,7 +185,7 @@ export interface MappedCasePayload {
   /** The form whose contract produced `sections` — the payload never named the
    * form before (#2587).
    *
-   * No `form_version` companion: recipe versioning was retired by ADR 0057
+   * No `form_version` companion: recipe versioning was retired by ADR 0097
    * (#1196), so the served contract carries no version at all and the field
    * would be permanently absent. */
   form_id?: string;

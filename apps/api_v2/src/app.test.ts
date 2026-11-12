@@ -137,6 +137,15 @@ describe("GET /pages?url=", () => {
     expect(response.statusCode).toBe(400);
   });
 
+  it.each(["%00", "%2F%00a", "%2Fa%0Ab", "%2Fa%20b", "%2F%2Fx", "x"])(
+    "400s when url %s is not a site path",
+    async (url) => {
+      const response = await inject({ url: `/pages?url=${url}` });
+      expect(response.statusCode).toBe(400);
+      expect(response.json()).toMatchObject({ error: "bad_request" });
+    },
+  );
+
   it("serves the page as url, frontmatter, markdown and breadcrumbs", async () => {
     const category = await seedCategory();
     const created = await seedPage({

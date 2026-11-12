@@ -12,7 +12,7 @@ To make this work the content registry grew: an optional `subcategories` array o
 
 ## Why it looks the way it does
 
-**Sub-categories as typed data, not markdown index files.** Two candidate models surfaced during planning. The chosen one (data on `Category`) trades one new TS field plus one frontmatter field for a single source of truth on taxonomy shape, type-checked sub-category copy, and registry-time validation of the page → sub-category relationship. The rejected one (an `<subcat>/index.md` per sub-category) would have been symmetric with how multi-step pages work (`apply-for-conductor-licence/index.md` + `.../start.md`) but conflates page-level structure with taxonomy structure. The decision is recorded in `docs/decisions/0002-subcategories-are-category-data-not-markdown-indexes.md` because the same question will come up again when another category needs sub-categories.
+**Sub-categories as typed data, not markdown index files.** Two candidate models surfaced during planning. The chosen one (data on `Category`) trades one new TS field plus one frontmatter field for a single source of truth on taxonomy shape, type-checked sub-category copy, and registry-time validation of the page → sub-category relationship. The rejected one (an `<subcat>/index.md` per sub-category) would have been symmetric with how multi-step pages work (`apply-for-conductor-licence/index.md` + `.../start.md`) but conflates page-level structure with taxonomy structure. The decision is recorded in `docs/decisions/0005-subcategories-are-category-data-not-markdown-indexes.md` because the same question will come up again when another category needs sub-categories.
 
 **Generic, not special-cased.** It would have been cheaper to handle `youth-and-community` as a one-off in the route loader. The user explicitly chose the generic extension because the same shape will be useful for any future category that wants sub-categories — once special-casing starts, it tends to grow.
 
@@ -43,7 +43,7 @@ To make this work the content registry grew: an optional `subcategories` array o
 | `apps/landing/src/routes/$.tsx` | Loader handles 1/2/3-segment URLs; new `SubcategoryIndexView` and `SubcategoryView` components |
 | `apps/landing/src/components/Breadcrumbs.tsx` | Resolve sub-category segments via parent category context |
 | `apps/landing/src/content/youth-and-community/**/*.md` | 20 new leaf pages, content converted from alpha.gov.bb |
-| `docs/decisions/0002-subcategories-are-category-data-not-markdown-indexes.md` | New ADR |
+| `docs/decisions/0005-subcategories-are-category-data-not-markdown-indexes.md` | New ADR |
 | `docs/plans/youth-and-community-subcategories.md` | Plan written in the same session |
 
 ## Verification

@@ -8,7 +8,7 @@ import { DateValueInput, FieldValue } from "./validation.type";
 /** True when every entry of `value` is a blank (or whitespace-only) string —
  * the shape a fieldArray leaves behind when rows were added but never typed
  * into. Such an array carries no answer, so `required` must reject it and the
- * submission reshaper must drop it; ADR 0069 noted this gap ("required
+ * submission reshaper must drop it; ADR 0117 noted this gap ("required
  * remains weak on an array") and this closes it. An array holding anything
  * that is not a string (file objects, option slugs) is never all-blank. */
 export const isAllBlankStringArray = (value: readonly unknown[]): boolean =>

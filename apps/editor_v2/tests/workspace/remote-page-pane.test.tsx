@@ -185,34 +185,57 @@ test("an uncertain retry freezes its request, and identical text in another revi
   expect(button("Keep my version")).toBeUndefined();
 });
 
-test("a retried save that landed while its answer was lost is confirmed, not refused as someone else's change", async () => {
+test("a lost save is confirmed automatically without briefly announcing its own version as someone else's", async () => {
   const writes: string[] = [];
   let latest = page;
+  let reads = 0;
+  const check = Promise.withResolvers<Response>();
 
   const h = await mountPage(async (_url, init) => {
     if (init?.method === "PUT") {
       writes.push(String(init.body));
-      // The save lands, and its answer is lost on the way back
       latest = { ...page, ...JSON.parse(String(init.body)), version: 2 };
       throw new TypeError("Lost response");
     }
+
+    if (writes.length && ++reads > 1) return check.promise;
 
     return Response.json(latest);
   });
 
   await applySource(h.session(), h.session().store.getSnapshot().source + "\n\nSaved");
-  await savePage();
-  // Read again meanwhile, the page's newer version is this save, not someone else's change
-  await act(async () => h.client.refetchQueries({ queryKey: pageQuery(h.api, page.id).queryKey }));
-  await openPageAlert();
-  expect(document.body.textContent).not.toContain("A newer version of this page has been saved");
-  await act(async () => button("Retry same save")!.click());
-  await act(async () => {
-    await vi.waitFor(() => expect(h.session().getBaseline().page.version).toBe(2));
+  const notices: string[] = [];
+
+  const watch = new MutationObserver((changes) => {
+    for (const change of changes)
+      for (const node of change.addedNodes) notices.push(node.textContent ?? "");
   });
-  expect(writes).toHaveLength(1);
-  expect(button("Retry same save")).toBeUndefined();
-  expect(document.body.textContent).not.toContain("A newer version of this page has been saved");
+
+  watch.observe(document.body, { childList: true, subtree: true });
+
+  try {
+    await savePage();
+    await act(async () => {
+      await vi.waitFor(() => expect(reads).toBeGreaterThanOrEqual(2));
+      await vi.waitFor(() =>
+        expect(h.client.getQueryData(pageQuery(h.api, page.id).queryKey)?.version).toBe(2),
+      );
+    });
+    expect(h.session().isSaving()).toBe(true);
+    expect(h.session().getBaseline().page.version).toBe(1);
+    expect(document.querySelector("[data-document-alert]")).toBeNull();
+
+    await act(async () => check.resolve(Response.json(latest)));
+    await act(async () => {
+      await vi.waitFor(() => expect(h.session().getBaseline().page.version).toBe(2));
+    });
+    expect(writes).toHaveLength(1);
+    expect(h.session().isSaving()).toBe(false);
+    expect(notices.join(" ")).not.toContain("Newer version saved");
+    expect(notices.join(" ")).not.toContain("A newer version of this page has been saved");
+  } finally {
+    watch.disconnect();
+  }
 });
 
 const visibility = () => pageControl<HTMLSelectElement>("select");
@@ -400,6 +423,39 @@ test("someone without the editor role can't save", async () => {
   expect(save.getAttribute("aria-disabled")).toBe("true");
   await act(async () => save.click());
   expect(vi.mocked(fetch).mock.calls.some(([, init]) => init?.method === "PUT")).toBe(false);
+});
+
+test("a save that lands is never shown as someone else's newer version", async () => {
+  let current = page;
+
+  const h = await mountPage(async (_url, init) => {
+    if (init?.method === "PUT") current = { ...page, ...JSON.parse(String(init.body)), version: 2 };
+
+    return Response.json(current);
+  });
+
+  await applySource(h.session(), h.session().store.getSnapshot().source + "\n\nMine");
+  let announced = false;
+
+  // Looked at after every change to the page, so a notice that comes and goes is still caught
+  const watch = new MutationObserver(() => {
+    announced ||= !!document.querySelector("[data-document-alert]");
+  });
+
+  watch.observe(document.body, { childList: true, subtree: true, characterData: true });
+
+  try {
+    await savePage();
+    await vi.waitFor(() => expect(h.session().getBaseline().page.version).toBe(2));
+    await vi.waitFor(() =>
+      expect(h.client.getQueryData(pageQuery(h.api, page.id).queryKey)?.version).toBe(2),
+    );
+    await act(async () => {});
+  } finally {
+    watch.disconnect();
+  }
+
+  expect(announced).toBe(false);
 });
 
 test("Save keeps the focus while it saves, and once its save leaves nothing to save", async () => {
@@ -1039,10 +1095,11 @@ test("Restore explains an uncertain save and becomes available after retry confi
   const recovered = first.session().store.getSnapshot().committed + "\n\nRecovered work.";
   await applySource(first.session(), recovered);
   let current = page;
+  let written = page;
 
   const h = await reloadPage(async (_url, init) => {
     if (init?.method === "PUT") {
-      current = { ...page, ...JSON.parse(String(init.body)), version: 2 };
+      written = { ...page, ...JSON.parse(String(init.body)), version: 2 };
       throw new TypeError("Lost response");
     }
 
@@ -1050,6 +1107,7 @@ test("Restore explains an uncertain save and becomes available after retry confi
   });
 
   await applySource(h.session(), h.session().store.getSnapshot().committed + "\n\nNew work.");
+  // The save's own check reads the page before the write shows, so the save stays uncertain
   await savePage();
   await act(async () => {
     await vi.waitFor(() =>
@@ -1059,6 +1117,7 @@ test("Restore explains an uncertain save and becomes available after retry confi
     );
   });
   expect(button("Restore changes")!.getAttribute("aria-disabled")).toBe("true");
+  current = written;
   await openPageAlert();
   await act(async () => button("Retry same save")!.click());
   await act(async () => {
@@ -1137,10 +1196,14 @@ test("a slow save acknowledges only its submitted snapshot; refetch cannot overw
     });
   });
   expect(h.session().getBaseline().page.updated_at).toBe(current.updated_at);
-  expect(draftOption()).toBeNull();
-  expect(h.session().store.getSnapshot().committed).toBe(second);
+  expect(h.session().getBaseline().page.version).toBe(2);
   await openPageAlert();
   expect(document.body.textContent).toContain("A newer version");
+  const earlierRequest = sent;
+  await act(async () => button("Save")!.click());
+  expect(sent).toBe(earlierRequest);
+  expect(draftOption()).toBeNull();
+  expect(h.session().store.getSnapshot().committed).toBe(second);
 });
 
 test.each([0, 503, 401, 403, 404])(
@@ -1183,32 +1246,57 @@ test.each([0, 503, 401, 403, 404])(
   },
 );
 
-test.each([401, 404, 409, 422, 503, 0])(
-  "failed save %s retains the in-memory working copy and original baseline",
-  async (status) => {
-    const h = await mountPage(async (_url, init) => {
-      if (init?.method !== "PUT") return Response.json(page);
+test("a version conflict keeps the draft and baseline until explicit discard and reload", async () => {
+  const writes: string[] = [];
+  let latest = page;
 
-      if (status === 0) throw Error("Offline");
+  const h = await mountPage(async (_url, init) => {
+    if (init?.method === "PUT") {
+      writes.push(String(init.body));
 
-      return Response.json({ errors: [{ field: "url", message: "Taken" }] }, { status });
-    });
+      if (writes.length === 1) {
+        latest = { ...page, version: 2, title: "Another author's title" };
 
-    await chooseVisibility("preview");
-    const source = h.session().store.getSnapshot().source + "\n\nKeep this";
-    await applySource(h.session(), source);
-    await savePage();
-    await act(async () => {
-      await vi.waitFor(() => expect(h.session().isSaving()).toBe(false));
-    });
-    expect(h.session().store.getSnapshot().committed).toBe(source);
-    expect(h.session().getBaseline().page).toEqual(page);
-    expect(pageHasUnsavedChanges(h.session())).toBe(true);
-    expect(draftOption()?.disabled).toBe(false);
-    await chooseVisibility("draft");
-    expect(h.session().store.getSnapshot().committed).toContain("Keep this");
-  },
-);
+        return Response.json(
+          { error: "version_conflict", message: "Changed elsewhere." },
+          { status: 409 },
+        );
+      }
+
+      latest = { ...latest, ...JSON.parse(String(init.body)), version: 3 };
+    }
+
+    return Response.json(latest);
+  });
+
+  const baseline = h.session().getBaseline();
+  await applySource(h.session(), baseline.markdown + "\n\nKeep this");
+  const draft = h.session().store.getSnapshot();
+  await savePage();
+  await act(async () => {
+    await vi.waitFor(() => expect(h.session().isSaving()).toBe(false));
+    await vi.waitFor(() =>
+      expect(h.client.getQueryData(pageQuery(h.api, page.id).queryKey)?.version).toBe(2),
+    );
+  });
+  expect(h.session().getBaseline()).toBe(baseline);
+  expect(h.session().store.getSnapshot()).toBe(draft);
+  await act(async () => button("Save")!.click());
+  expect(writes).toHaveLength(1);
+
+  await openPageAlert();
+  await act(async () => button("Discard my changes and reload")!.click());
+  await act(async () => {
+    await vi.waitFor(() => expect(h.session().getBaseline().page.version).toBe(2));
+  });
+  expect(h.session().store.getSnapshot().committed).not.toContain("Keep this");
+  expect(h.session().getBaseline().page.title).toBe("Another author's title");
+  await applySource(h.session(), h.session().store.getSnapshot().committed + "\n\nAfter reload");
+  await savePage();
+  expect(writes).toHaveLength(2);
+  expect(JSON.parse(writes[0]!).expected_version).toBe(1);
+  expect(JSON.parse(writes[1]!).expected_version).toBe(2);
+});
 
 test("a save the API refuses (403) says why and offers no retry, keeping the working copy", async () => {
   const h = await mountPage(async (_url, init) =>
@@ -1234,6 +1322,61 @@ test("a save the API refuses (403) says why and offers no retry, keeping the wor
   expect(names).not.toContain("Retry");
   expect(document.body.textContent).not.toContain("We could not save this page");
   expect(pageHasUnsavedChanges(h.session())).toBe(true);
+});
+
+test.each([
+  [403, "You don’t have permission to save this change."],
+  [400, "This request could not be saved."],
+])(
+  "a save refused (%s) without a reason from the API still says what happened",
+  async (status, sentence) => {
+    const h = await mountPage(async (_url, init) =>
+      init?.method === "PUT" ? new Response(null, { status }) : Response.json(page),
+    );
+
+    await applySource(h.session(), h.session().store.getSnapshot().source + "\n\nKeep this");
+    await savePage();
+    await act(async () => {
+      await vi.waitFor(() =>
+        expect(document.querySelector('[role="alert"]')?.textContent).toBe(sentence),
+      );
+    });
+    expect(pageHasUnsavedChanges(h.session())).toBe(true);
+  },
+);
+
+// Each landed write moves the baseline on, so a read begun before both shows a version older than either
+test("a page read that lags two of the editor's own saves is not shown as someone else's newer version", async () => {
+  let current = page;
+
+  const h = await mountPage(async (_url, init) => {
+    if (init?.method === "PUT")
+      current = { ...page, ...JSON.parse(String(init.body)), version: current.version + 1 };
+
+    return Response.json(current);
+  });
+
+  for (const version of [2, 3]) {
+    await applySource(h.session(), h.session().store.getSnapshot().source + `\n\nSave ${version}`);
+    await savePage();
+    await act(async () => {
+      await vi.waitFor(() => expect(h.session().getBaseline().page.version).toBe(version));
+      await vi.waitFor(() =>
+        expect(h.client.getQueryData(pageQuery(h.api, page.id).queryKey)?.version).toBe(version),
+      );
+    });
+  }
+
+  // The name is on screen once the pane has rendered the lagging read
+  await act(async () => {
+    h.client.setQueryData(pageQuery(h.api, page.id).queryKey, {
+      ...page,
+      last_edited_by: { id: "lagging", name: "Lagging read" },
+    });
+    await vi.waitFor(() => expect(document.querySelector("bdi")?.textContent).toBe("Lagging read"));
+  });
+  expect(document.querySelector("[data-document-alert]")).toBeNull();
+  expect(pageHasUnsavedChanges(h.session())).toBe(false);
 });
 
 const PENDING = "Your changes are saved but not live. Submit them for review when they’re ready.";
@@ -1348,31 +1491,149 @@ test("a saved draft is submitted for review at the version the editor holds, and
   expect(button("Submit for review")).toBeUndefined();
 });
 
-test("a retried submission that landed while its answer was lost is confirmed as waiting", async () => {
+test("a lost submission is confirmed automatically without announcing a false conflict", async () => {
   const drafted: ApiPage = { ...live, pending_revision: { status: "draft", comment: null } };
   let submissions = 0;
+  let reads = 0;
   let latest = drafted;
+  const check = Promise.withResolvers<Response>();
 
-  await mountPage(async (_url, init) => {
+  const h = await mountPage(async (_url, init) => {
     if (init?.method === "POST") {
       submissions += 1;
-      // The submission lands, and its answer is lost on the way back
       latest = { ...drafted, version: 2, pending_revision: { status: "submitted", comment: null } };
       throw new TypeError("Lost response");
     }
 
+    if (submissions && ++reads > 1) return check.promise;
+
     return Response.json(latest);
   });
 
+  const notices: string[] = [];
+
+  const watch = new MutationObserver((changes) => {
+    for (const change of changes)
+      for (const node of change.addedNodes) notices.push(node.textContent ?? "");
+  });
+
+  watch.observe(document.body, { childList: true, subtree: true });
+
+  try {
+    await vi.waitFor(() => expect(button("Submit for review")?.disabled).toBe(false));
+    await act(async () => button("Submit for review")!.click());
+    await act(async () => {
+      await vi.waitFor(() => expect(reads).toBeGreaterThanOrEqual(2));
+      await vi.waitFor(() =>
+        expect(h.client.getQueryData(pageQuery(h.api, page.id).queryKey)?.version).toBe(2),
+      );
+    });
+    expect(h.session().isSaving()).toBe(true);
+    expect(h.session().getBaseline().page.version).toBe(1);
+    expect(document.querySelector("[data-document-alert]")).toBeNull();
+    await act(async () => check.resolve(Response.json(latest)));
+    await act(async () => {
+      await vi.waitFor(() => expect(h.session().getBaseline().page.version).toBe(2));
+    });
+    expect(document.body.textContent).toContain(WAITING);
+    expect(submissions).toBe(1);
+    expect(h.session().isSaving()).toBe(false);
+    expect(notices.join(" ")).not.toContain("Newer version saved");
+    expect(notices.join(" ")).not.toContain("This change couldn’t be submitted for review");
+  } finally {
+    watch.disconnect();
+  }
+});
+
+test.each([0, 503])(
+  "an unresolved submission (%s) reports uncertainty and retries its frozen version after re-renders",
+  async (status) => {
+    const drafted: ApiPage = { ...live, pending_revision: { status: "draft", comment: null } };
+    let latest = drafted;
+    const requests: string[] = [];
+
+    const h = await mountPage(async (_url, init) => {
+      if (init?.method === "POST") {
+        requests.push(String(init.body));
+
+        if (requests.length === 2)
+          return Response.json(
+            { error: "version_conflict", message: "Changed elsewhere." },
+            { status: 409 },
+          );
+
+        if (status === 0) throw new TypeError("Lost response");
+
+        return Response.json({ message: "Database connection lost." }, { status });
+      }
+
+      return Response.json(latest);
+    });
+
+    const baseline = h.session().getBaseline();
+    await vi.waitFor(() => expect(button("Submit for review")?.disabled).toBe(false));
+    await act(async () => button("Submit for review")!.click());
+    await act(async () => {
+      await vi.waitFor(() =>
+        expect(document.body.textContent).toContain("We couldn’t confirm the last request."),
+      );
+    });
+    expect(document.body.textContent).toContain(
+      "Check the saved version without discarding your open copy.",
+    );
+    expect(document.body.textContent).not.toContain("This change couldn’t be submitted for review");
+    expect(document.body.textContent).not.toContain("Database connection lost.");
+    expect(document.body.textContent).not.toContain(
+      "Check you are still signed in, then try again.",
+    );
+    expect(h.session().getBaseline()).toBe(baseline);
+    expect(requests).toHaveLength(1);
+    await act(async () =>
+      document.querySelector<HTMLButtonElement>('[aria-label="Dismiss"]')?.click(),
+    );
+    latest = { ...drafted, version: 3, title: "A newer read" };
+    await act(async () => {
+      h.client.setQueryData(pageQuery(h.api, page.id).queryKey, latest);
+      h.session().store.edit(h.session().store.getSnapshot().source + "\n\nNew typing");
+    });
+    const draft = h.session().store.getSnapshot();
+    await openPageAlert();
+    await act(async () => button("Retry same submission")!.click());
+    await act(async () => {
+      await vi.waitFor(() => expect(document.body.textContent).toContain("Changed elsewhere."));
+    });
+    expect(requests).toEqual([
+      JSON.stringify({ expected_version: 1 }),
+      JSON.stringify({ expected_version: 1 }),
+    ]);
+    expect(h.session().getBaseline()).toBe(baseline);
+    expect(h.session().store.getSnapshot()).toBe(draft);
+    await act(async () =>
+      document.querySelector<HTMLButtonElement>('[aria-label="Dismiss"]')?.click(),
+    );
+  },
+);
+
+test.each([401, 403, 422])("a submission's %s refusal keeps the API's sentence", async (status) => {
+  await mountPage(async (_url, init) =>
+    init?.method === "POST"
+      ? Response.json(
+          {
+            message: "The API's explanation.",
+            errors: [{ field: "version", message: "Read again" }],
+          },
+          { status },
+        )
+      : Response.json({ ...live, pending_revision: { status: "draft", comment: null } }),
+  );
   await vi.waitFor(() => expect(button("Submit for review")?.disabled).toBe(false));
   await act(async () => button("Submit for review")!.click());
-  await openPageAlert();
-  await act(async () => button("Retry same submission")!.click());
   await act(async () => {
-    await vi.waitFor(() => expect(document.body.textContent).toContain(WAITING));
+    await vi.waitFor(() => expect(document.body.textContent).toContain("The API's explanation."));
   });
-  expect(submissions).toBe(1);
-  expect(button("Retry same submission")).toBeUndefined();
+  await act(async () =>
+    document.querySelector<HTMLButtonElement>('[aria-label="Dismiss"]')?.click(),
+  );
 });
 
 test("a draft with unsaved edits can't be submitted until they're saved", async () => {

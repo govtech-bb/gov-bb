@@ -58,7 +58,7 @@ src/ui/table                 shared list table: features and components once; ea
 src/routes                   TanStack routes and server-safe document shell
 ```
 
-`src/api/client.ts` also owns the category boundary for `/editor/categories`: it parses each answer and returns a `CategoryResult` with a tagged failure, never throwing for an expected one; `categoriesQuery` is the one place that unwraps it, for React Query. `src/api/categories.ts` holds the pure category rules the dialogs check before sending. See [Development](DEVELOPMENT.md#app-shell-and-routes) and ADR 0078.
+`src/api/client.ts` also owns the category boundary for `/editor/categories`: it parses each answer and returns a `CategoryResult` with a tagged failure, never throwing for an expected one; `categoriesQuery` is the one place that unwraps it, for React Query. `src/api/categories.ts` holds the pure category rules the dialogs check before sending. See [Development](DEVELOPMENT.md#app-shell-and-routes) and ADR 0132.
 
 The TypeScript boundary checker enforces these dependency boundaries. Generic editor code cannot import forms, presets, the app or persistence. Pure layers cannot reach browser globals or React UI. Form behavior is owned by installed form contributions; it is not selected from a second global catalog.
 
@@ -109,7 +109,7 @@ A `DraftStore` receives explicit source and a codec: `new DraftStore(source, cod
 
 ## Service pages and workspace
 
-`workspace/page-sync.ts` compares a working copy with an in-memory `ServerPageBaseline` and saves explicitly using its numeric `version` token. A response acknowledges the submitted snapshot, never later edits. Background refresh does not overwrite the working copy or silently advance its write token. `workspace/service-pages.ts` maps only API pages into sidebar rows. `api/page-markdown.ts` owns page/save conversion.
+`workspace/page-sync.ts` validates and converts the working copy against its in-memory `ServerPageBaseline`, defined in `api/writes.ts`. The page save and submit catalogue entries run through `workspace/use-write.ts` and `api/write-attempt.ts`, which own frozen requests, read-back and explicit retries. A response acknowledges the submitted snapshot, never later edits. Background refresh does not overwrite the working copy or silently advance its write token. `workspace/service-pages.ts` maps only API pages into sidebar rows. `api/page-markdown.ts` owns page/save conversion.
 
 `PageDocument` contains API navigation metadata, not content or storage keys. `ServicePageRole` describes entry/start/supporting content; the reusable form schema's `PageRole` describes questions/review/declaration/confirmation/result pages.
 

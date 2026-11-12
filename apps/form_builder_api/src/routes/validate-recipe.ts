@@ -51,10 +51,10 @@ const REQUIRED_DEFECT_CAUSE: Record<RequiredMessageDefect, string> = {
  *      all. Shared with `pnpm validate-recipes`.
  *   3. `findRecipeIdCollisionsFromRecipe` — recipe-wide fieldId/stepId
  *      uniqueness, which the Zod schema can't check without a catalog to
- *      resolve component defaults (ADR 0010).
+ *      resolve component defaults (ADR 0020).
  *   4. `collectUnknownRefs` — ref-existence: the schema validates ref *format*,
  *      so a ref to a removed/renamed component parses but would drop in preview
- *      / throw in the renderer (also ADR 0010).
+ *      / throw in the renderer (also ADR 0020).
  *   5. `collectGenericRequiredMessages` — every effectively-required field must
  *      fail with a message that names it, since the forms error summary uses
  *      the message as its link text (#2227). Catalog-aware for the same reason

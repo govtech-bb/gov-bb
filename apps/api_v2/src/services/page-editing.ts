@@ -42,7 +42,6 @@ import {
   type PageEvent,
   type VersionNotRestorable,
 } from "../modules/page-history";
-import { chunkMarkdown, type SearchChunk } from "../modules/search-text";
 import {
   NO_REVIEW_NOTIFICATIONS,
   type ReviewNotifier,
@@ -64,6 +63,11 @@ export interface PageRevision {
   readonly updatedAt: Date;
   readonly publishedAt: Date | null;
 }
+
+/** A live page write: a new page, or a revision over the page as it stands. */
+export type LivePageWrite =
+  | { readonly current: null; readonly page: NewPageRecord }
+  | { readonly current: PageDocument; readonly page: PageRevision };
 
 /** A public page's pending revision as a save writes it. */
 export interface PendingRevisionRecord {
@@ -128,50 +132,22 @@ export interface PageRecords {
   categoryOf(
     pageId: PageId,
   ): Promise<Result<string | null, ContentStoreUnavailable>>;
-  /** Insert a page; storage refuses an unknown category or parent, a mismatched category, and a taken url or id. */
-  insert(
-    page: NewPageRecord,
-  ): Promise<Result<PageDocument, PageRejected | ContentStoreUnavailable>>;
-  /** Overwrite a page that exists; storage refuses what an insert would. */
-  replace(
-    id: PageId,
-    page: PageRevision,
-  ): Promise<Result<PageDocument, PageRejected | ContentStoreUnavailable>>;
-  /** Former public addresses in this subtree; capture under the content lock before replacing any page. */
-  redirectSourcesInSubtree(
-    pageId: PageId,
-  ): Promise<
-    Result<readonly { id: PageId; url: string }[], ContentStoreUnavailable>
-  >;
-  /** Currently reachable public addresses, including ancestors above this subtree's root. */
-  publicPagesInSubtree(
-    pageId: PageId,
-  ): Promise<
-    Result<readonly { id: PageId; url: string }[], ContentStoreUnavailable>
-  >;
-  /** Remove a page redirect at a newly public URL, inside the locked actor transaction. */
-  removePageRedirectAt(
-    url: string,
-  ): Promise<Result<void, ContentStoreUnavailable>>;
   /**
-   * Record a page redirect move in the locked actor transaction, flattening
-   * incoming rules. The caller validates both paths with PageUrl and verifies
-   * source ownership and destination public reachability before calling.
+   * Insert a page, or overwrite the page as it stands, with what follows
+   * from it (ADR 0137): its uncategorised sub-pages are filed under its
+   * category, its subtree's former public addresses redirect to where they
+   * now are, no rule covers an address now public, and its search chunks are
+   * re-cut from the saved body. Storage refuses an unknown category or
+   * parent, a mismatched category, and a taken url or id.
    */
-  recordPageRedirectMove(
-    sourceUrl: string,
-    destinationUrl: string,
-  ): Promise<Result<void, ContentStoreUnavailable>>;
-  /** Refuse what `replace` would, without keeping the write. */
+  writeLivePage(
+    write: LivePageWrite,
+  ): Promise<Result<PageDocument, PageRejected | ContentStoreUnavailable>>;
+  /** Refuse what a live page write over the page would, without keeping it. */
   checkReplace(
     id: PageId,
     page: PageRevision,
   ): Promise<Result<void, PageRejected | ContentStoreUnavailable>>;
-  /** File a page's uncategorised sub-pages, all the way down, under its category. */
-  fileUncategorisedBelow(
-    id: PageId,
-    categoryId: string,
-  ): Promise<Result<void, ContentStoreUnavailable>>;
   /** Start a page's open revision, or overwrite it, keeping who started it. */
   writeRevision(
     pageId: PageId,
@@ -184,11 +160,6 @@ export interface PageRecords {
     revisionId: string,
     mark: RevisionMark,
   ): Promise<Result<PendingRevision, ContentStoreUnavailable>>;
-  /** Replace a page's search chunks. */
-  replaceSearchChunks(
-    pageId: PageId,
-    chunks: readonly SearchChunk[],
-  ): Promise<Result<void, ContentStoreUnavailable>>;
   /** Who changed a page's content since it was last public, or ever when it never was. */
   changedSincePublic(
     id: PageId,
@@ -198,7 +169,7 @@ export interface PageRecords {
     id: PageId,
     versionNo: number,
   ): Promise<Result<PageEvent | null, ContentStoreUnavailable>>;
-  /** Record the transaction's update of the page as restoring that version (ADR 0080). */
+  /** Record the transaction's update of the page as restoring that version (ADR 0135). */
   markRestore(
     id: PageId,
     versionNo: number,
@@ -228,7 +199,7 @@ export interface PageRecords {
 export class PageEditing {
   /**
    * The root supplies content storage and the clock, allows self-approval
-   * only for local development under AUTH_BYPASS (ADR 0079), and supplies
+   * only for local development under AUTH_BYPASS (ADR 0134), and supplies
    * who hears of a review step once it commits (#3267); nobody, by default.
    */
   constructor(
@@ -285,17 +256,11 @@ export class PageEditing {
       if (!available.ok) return available;
       const placed = await place(records, page.id, fields);
       if (!placed.ok) return placed;
-      const created = await records.insert(
-        creationOf(page.id, placed.value, this.clock()),
-      );
-      if (!created.ok) return created;
-      const routed = await updatePublicRedirects(records, created.value.id, []);
-      if (!routed.ok) return routed;
-      const indexed = await records.replaceSearchChunks(
-        created.value.id,
-        chunkMarkdown(created.value.body_markdown),
-      );
-      return indexed.ok ? savedPage(records, created.value.id) : indexed;
+      const created = await records.writeLivePage({
+        current: null,
+        page: creationOf(page.id, placed.value, this.clock()),
+      });
+      return created.ok ? savedPage(records, created.value.id) : created;
     });
   }
 
@@ -350,7 +315,7 @@ export class PageEditing {
 
   /**
    * Bring back the page's content as history version `versionNo` left it,
-   * as a new change (ADR 0080): every entry stays, and the restore is a save
+   * as a new change (ADR 0135): every entry stays, and the restore is a save
    * of that version's fields over the page as it stands now, made against
    * the version the caller read. It keeps the page's current visibility, so
    * changing who sees it stays a separate approver action. A page that isn't
@@ -778,11 +743,11 @@ function markdownRejection(fields: SaveFields): PageRejected | null {
     : null;
 }
 
-/** Why an approver can't create a page as Public (ADR 0079, #3201). */
+/** Why an approver can't create a page as Public (ADR 0134, #3201). */
 const CREATED_PUBLIC =
   "Another approver needs to make a page you wrote public. Create it as Preview or Draft.";
 
-/** Why an approver can't make public a page they changed (ADR 0079, #3201). */
+/** Why an approver can't make public a page they changed (ADR 0134, #3201). */
 const CHANGED_SINCE_PUBLIC =
   "You changed this page since it was last public, so another approver needs to make it public.";
 
@@ -903,9 +868,9 @@ async function underReview(
 }
 
 /**
- * Write `fields` over the live page as a save does: filing its uncategorised
- * sub-pages under its category and re-cutting its search chunks. The history
- * trigger records it against the transaction's actor.
+ * Write `fields` over the live page as a save does, through the one live
+ * page write, unless they change nothing. The history trigger records it
+ * against the transaction's actor.
  */
 async function writeLive(
   records: PageRecords,
@@ -914,66 +879,10 @@ async function writeLive(
   now: Date,
 ): Promise<Result<PageDocument, PageRejected | ContentStoreUnavailable>> {
   if (changesOf(current, fields).length === 0) return ok(current);
-  const routingChanged =
-    fields.visibility === "public" &&
-    (fields.url !== current.url ||
-      fields.visibility !== current.visibility ||
-      fields.parent_id !== current.parent_id);
-  const sources = routingChanged
-    ? await records.redirectSourcesInSubtree(current.id)
-    : ok([]);
-  if (!sources.ok) return sources;
-  const saved = await records.replace(
-    current.id,
-    revisionOf(current, fields, now),
-  );
-  if (!saved.ok) return saved;
-  if (saved.value.category_id !== null) {
-    const filed = await records.fileUncategorisedBelow(
-      current.id,
-      saved.value.category_id,
-    );
-    if (!filed.ok) return filed;
-  }
-  if (routingChanged) {
-    const routed = await updatePublicRedirects(
-      records,
-      current.id,
-      sources.value,
-    );
-    if (!routed.ok) return routed;
-  }
-  const indexed = await records.replaceSearchChunks(
-    current.id,
-    chunkMarkdown(saved.value.body_markdown),
-  );
-  return indexed.ok ? saved : indexed;
-}
-
-async function updatePublicRedirects(
-  records: PageRecords,
-  pageId: PageId,
-  sources: readonly { id: PageId; url: string }[],
-): Promise<Result<void, ContentStoreUnavailable>> {
-  const publicPages = await records.publicPagesInSubtree(pageId);
-  if (!publicPages.ok) return publicPages;
-  const sourceById = new Map(sources.map((source) => [source.id, source.url]));
-  const publicUrls = new Set(publicPages.value.map((page) => page.url));
-  for (const page of publicPages.value) {
-    const source = sourceById.get(page.id);
-    // Another page in this publication may have reclaimed the historical source.
-    if (
-      source !== undefined &&
-      source !== page.url &&
-      !publicUrls.has(source)
-    ) {
-      const moved = await records.recordPageRedirectMove(source, page.url);
-      if (!moved.ok) return moved;
-    }
-    const cleared = await records.removePageRedirectAt(page.url);
-    if (!cleared.ok) return cleared;
-  }
-  return ok(undefined);
+  return records.writeLivePage({
+    current,
+    page: revisionOf(current, fields, now),
+  });
 }
 
 /**

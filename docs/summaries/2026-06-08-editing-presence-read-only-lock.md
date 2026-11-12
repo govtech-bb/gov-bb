@@ -2,7 +2,7 @@
 
 ## Context
 
-Issue #874, the follow-up to #873 (ADR 0041). The deploy guards stop two
+Issue #874, the follow-up to #873 (ADR 0071). The deploy guards stop two
 deploys colliding on a *version*; this removes the cause — two people editing
 the same form unaware of each other — by making concurrent editing visible and
 the second editor's session read-only. Executed a pre-written plan
@@ -11,7 +11,7 @@ the second editor's session read-only. Executed a pre-written plan
 
 ## What we did
 
-Three layers, bottom-up (see ADR 0042 for the principles):
+Three layers, bottom-up (see ADR 0073 for the principles):
 
 - **`packages/database`**: `FormEditingSessionEntity` (unique on `form_id`;
   `user_login`, `claimed_at`, `last_activity_at`) + migration
@@ -61,7 +61,7 @@ Three layers, bottom-up (see ADR 0042 for the principles):
 
 - **Re-key was ungated.** `rekeyFormHandler` moves an existing form old→new id —
   a write — but had no presence check; the plan never mentioned it. This was the
-  ADR-0042 principle in action: gated it on the old id and threaded `userLogin`
+  ADR-0073 principle in action: gated it on the old id and threaded `userLogin`
   through `rekeyRecipe`.
 - **`held:false` / `holder:null` race.** If the holder's claim lapsed between the
   filtered upsert and the follow-up holder read, the client locked read-only

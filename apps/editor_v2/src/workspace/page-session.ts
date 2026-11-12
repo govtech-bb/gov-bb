@@ -1,8 +1,5 @@
-import type { ApiPage } from "../api/client";
+import type { ServerPageBaseline } from "../api/writes";
 import type { DraftStore } from "../persistence/draft-store";
-
-/** The exact page version and submitted Markdown last loaded or saved in this session. */
-export type ServerPageBaseline = { page: ApiPage; markdown: string };
 
 /** Mounted page registration; live getters let navigation see edits and pending saves immediately. */
 export type PageSession = {

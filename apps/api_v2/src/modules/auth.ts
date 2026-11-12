@@ -75,7 +75,7 @@ export class NotApprover extends Error {
 
 /**
  * An approver deciding on a revision they changed or submitted, or making
- * public content they changed since the page was last public (ADR 0079).
+ * public content they changed since the page was last public (ADR 0134).
  */
 export class SelfApproval extends Error {
   /** Stable protocol-projection discriminator. */

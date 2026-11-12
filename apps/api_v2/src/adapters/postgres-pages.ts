@@ -55,9 +55,11 @@ import { visibleTo, type Ancestor } from "../modules/page-visibility";
 import {
   PAGE_REDIRECT_LIVE_ACTIONS,
   PageRedirectHistory,
+  redirectsAfterWrite,
+  routingChanged,
 } from "../modules/page-redirect-history";
 import { err, ok, type Result } from "../modules/result";
-import type { SearchChunk } from "../modules/search-text";
+import { chunkMarkdown, type SearchChunk } from "../modules/search-text";
 import {
   authUser,
   categories,
@@ -69,6 +71,7 @@ import {
 } from "../schema";
 import type { EstateVersion, IndexReads } from "../services/editor-index";
 import type {
+  LivePageWrite,
   NewPageRecord,
   PageRecords,
   PageEditorSnapshot,
@@ -266,7 +269,7 @@ export class PostgresPages
    */
   async atomically<R extends Result<unknown, Error>>(
     actorId: UserId,
-    work: (records: PageRecords & CategoryRecords) => Promise<R>,
+    work: (records: PostgresPages) => Promise<R>,
   ): Promise<R | Result<never, ContentStoreUnavailable>> {
     let refused: R | undefined;
     try {
@@ -715,7 +718,7 @@ export class PostgresPages
   }
 
   /** Overwrite a page that exists; the database refuses what an insert would. */
-  async replace(
+  private async replace(
     id: PageId,
     page: PageRevision,
   ): Promise<Result<PageDocument, PageRejected | ContentStoreUnavailable>> {
@@ -734,6 +737,53 @@ export class PostgresPages
       rejectionOf,
     );
     return rows.ok ? ok(onlyDocument(rows.value)) : rows;
+  }
+
+  /**
+   * Insert or overwrite a live page with its sub-pages' categories, its
+   * redirects and its search chunks, in this order (ADR 0137). Former public
+   * addresses are read before the page is written, which the content lock
+   * holds still; which of them redirect where is `redirectsAfterWrite`'s.
+   */
+  async writeLivePage(
+    write: LivePageWrite,
+  ): Promise<Result<PageDocument, PageRejected | ContentStoreUnavailable>> {
+    const rerouted = routingChanged(write.current, write.page.values);
+    const sources =
+      rerouted && write.current !== null
+        ? await this.redirectSourcesInSubtree(write.current.id)
+        : ok([]);
+    if (!sources.ok) return sources;
+    const saved =
+      write.current === null
+        ? await this.insert(write.page)
+        : await this.replace(write.current.id, write.page);
+    if (!saved.ok) return saved;
+    const { id, category_id, body_markdown } = saved.value;
+    if (category_id !== null) {
+      const filed = await this.fileUncategorisedBelow(id, category_id);
+      if (!filed.ok) return filed;
+    }
+    if (rerouted) {
+      const publicPages = await this.publicPagesInSubtree(id);
+      if (!publicPages.ok) return publicPages;
+      for (const { source, destination } of redirectsAfterWrite(
+        sources.value,
+        publicPages.value,
+      )) {
+        if (source !== null) {
+          const moved = await this.recordPageRedirectMove(source, destination);
+          if (!moved.ok) return moved;
+        }
+        const cleared = await this.removePageRedirectAt(destination);
+        if (!cleared.ok) return cleared;
+      }
+    }
+    const indexed = await this.replaceSearchChunks(
+      id,
+      chunkMarkdown(body_markdown),
+    );
+    return indexed.ok ? saved : indexed;
   }
 
   private async redirectSubtree(pageId: PageId) {
@@ -928,7 +978,7 @@ export class PostgresPages
    * category, but the composite key skips a row whose category is null, so a
    * parent that gains its first category would otherwise leave them behind.
    */
-  async fileUncategorisedBelow(
+  private async fileUncategorisedBelow(
     id: PageId,
     categoryId: string,
   ): Promise<Result<void, ContentStoreUnavailable>> {
@@ -1106,7 +1156,7 @@ export class PostgresPages
   }
 
   /** Replace a page's search chunks. */
-  replaceSearchChunks(
+  private replaceSearchChunks(
     pageId: PageId,
     chunks: readonly SearchChunk[],
   ): Promise<Result<void, ContentStoreUnavailable>> {

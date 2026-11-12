@@ -150,6 +150,36 @@ test("a page with no history says so, rather than that it failed to load", async
   expect(host.textContent).not.toContain("We could not load");
 });
 
+test("a failed history refresh keeps the last loaded entries with a retry notice", async () => {
+  await render([entry({ version_no: 2 }), entry({ action: "created" })]);
+  await until(() => expect(items()).toHaveLength(2));
+
+  const fetch = globalThis.fetch;
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () => Response.json({}, { status: 503 })),
+  );
+  await act(async () => {
+    await client.refetchQueries({ queryKey: ["content", "history", PAGE] });
+  });
+  await until(() =>
+    expect(host.textContent).toContain(
+      "We could not refresh this page’s history. Showing the last loaded list.",
+    ),
+  );
+  expect(items()).toHaveLength(2);
+  expect(items()[0]).toContain("Edited by Ada Editor");
+  expect(host.textContent).not.toContain("We could not load this page’s history");
+
+  vi.stubGlobal("fetch", fetch);
+  await act(async () => buttons("Try again")[0]?.click());
+  await until(() =>
+    expect(host.textContent).not.toContain("We could not refresh this page’s history"),
+  );
+  expect(items()).toHaveLength(2);
+  expect(restores).toEqual([]);
+});
+
 test("each entry says who did it: their name, the system, or a former employee", async () => {
   await render([
     entry({ version_no: 3, actor_name: "Ada Editor" }),

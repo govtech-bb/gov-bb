@@ -23,7 +23,7 @@ submitted dates are anchored at UTC midnight by `parseDate`. Mixing the two puts
 a 4-hour gap into every `<` / `>` comparison — `pastRunner` would then wrongly
 accept a date that is actually today. So we take the Barbados *calendar date*
 (`now.year/month/day`) and rebuild it with `Date.UTC(...)`: right clock, right
-anchoring. This subtlety is recorded in ADR 0062.
+anchoring. This subtlety is recorded in ADR 0108.
 
 **Luxon direct, not reuse of `expressions.today()`.** The cleaner option was
 `parseDate(expressionsToday())` — no new dependency, single source of truth for
