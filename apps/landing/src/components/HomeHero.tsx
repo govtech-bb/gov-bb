@@ -2,7 +2,14 @@ import { useEffect, useId, useRef, useState } from 'react'
 import type { RefObject } from 'react'
 import { flushSync } from 'react-dom'
 import { useNavigate } from '@tanstack/react-router'
-import { Autocomplete, Button, Heading, StatusBanner } from '@govtech-bb/react'
+import {
+  Autocomplete,
+  Button,
+  Heading,
+  Input,
+  StatusBanner,
+} from '@govtech-bb/react'
+import { isVisible, PAGES } from '../content/registry'
 import type { ViewLevel } from '../lib/frontmatter'
 import { trackEvent } from '../lib/analytics'
 import { CHAT_URL } from '../lib/chat-url'
@@ -11,11 +18,16 @@ import './HomeHero.css'
 
 const MAX_QUESTION_LENGTH = 2000
 const SOURCE = 'home'
+const OFFLINE_MESSAGE = 'The assistant is not available right now.'
 
+// Each search leads to one service, so it's hidden while that service is.
 const POPULAR_SEARCHES = [
-  'Birth certificates',
-  'Redirect my mail',
-  'Financial assistance',
+  { query: 'Birth certificates', serviceId: 'get-birth-certificate' },
+  {
+    query: 'Redirect my mail',
+    serviceId: 'post-office-redirection-individual',
+  },
+  { query: 'Financial assistance', serviceId: 'apply-financial-assistance' },
 ]
 
 type Mode = 'search' | 'ask'
@@ -32,24 +44,22 @@ function useChatStatus(): ChatStatus {
   const [status, setStatus] = useState<ChatStatus>('checking')
 
   useEffect(() => {
-    // Returning to the tab fires both focus and visibilitychange; one check covers both.
-    let checking = false
+    let probeId = 0
     let unmounted = false
 
     async function probe() {
-      if (checking) return
-      checking = true
+      const myId = ++probeId
       try {
         const r = await fetch(`${CHAT_URL}/api/health/public`, {
           cache: 'no-store',
           signal: AbortSignal.timeout(3000),
         })
+        if (unmounted || myId !== probeId) return
         const data = r.ok ? ((await r.json()) as { ok?: boolean }) : null
-        if (!unmounted) setStatus(data?.ok === true ? 'online' : 'offline')
+        if (unmounted || myId !== probeId) return
+        setStatus(data?.ok === true ? 'online' : 'offline')
       } catch {
-        if (!unmounted) setStatus('offline')
-      } finally {
-        checking = false
+        if (!unmounted && myId === probeId) setStatus('offline')
       }
     }
 
@@ -145,27 +155,43 @@ export function HomeHero({ questions, viewer, overlay }: HomeHeroProps) {
   const askInputId = useId()
 
   const [mode, setMode] = useState<Mode>('ask')
-  // One value for both inputs, so text typed in one mode is still there after switching.
+  // The active input's text, for suggestions and submitting. The inputs
+  // themselves are uncontrolled, so text typed before hydration isn't wiped.
   const [text, setText] = useState('')
   // Only typed text gets suggestions, not text carried over from Ask.
   const [hasTyped, setHasTyped] = useState(false)
   const chatStatus = useChatStatus()
   useHeightOfChromeAbove(heroRef)
 
-  // The radios are uncontrolled so a choice made before hydration, or restored
-  // by the browser on Back, isn't overwritten; this picks it up.
+  // The radios and inputs are uncontrolled so a choice or text entered before
+  // hydration, or restored by the browser on Back, isn't overwritten; this
+  // picks it up.
   useEffect(() => {
-    if (searchRadioRef.current?.checked) setMode('search')
+    const searching = searchRadioRef.current?.checked === true
+    if (searching) setMode('search')
+    setText((searching ? searchInputRef : askInputRef).current?.value ?? '')
   }, [])
 
   const isChatOffline = chatStatus === 'offline'
   const searchHits =
     mode === 'search' && hasTyped ? suggest(text, viewer, overlay) : []
+  const popularSearches = POPULAR_SEARCHES.filter(({ serviceId }) => {
+    const page = PAGES.find(({ slug }) => slug === serviceId)
+    return page ? isVisible(page, 'public', overlay) : false
+  })
 
+  // Carries the text across, so it's still there after switching.
   const switchMode = (next: Mode) => {
+    const [from, to] =
+      next === 'ask'
+        ? [searchInputRef.current, askInputRef.current]
+        : [askInputRef.current, searchInputRef.current]
+    let value = from?.value ?? ''
+    if (next === 'ask') value = value.slice(0, MAX_QUESTION_LENGTH)
+    if (to) to.value = value
     setMode(next)
     setHasTyped(false)
-    if (next === 'ask') setText((value) => value.slice(0, MAX_QUESTION_LENGTH))
+    setText(value)
   }
 
   const submitSearch = (value: string) => {
@@ -270,7 +296,6 @@ export function HomeHero({ questions, viewer, overlay }: HomeHeroProps) {
                     placeholder="Search services"
                     autoComplete="off"
                     enterKeyHint="search"
-                    value={text}
                     suggestions={searchHits.map((hit) => ({
                       value: hit.title,
                     }))}
@@ -295,23 +320,25 @@ export function HomeHero({ questions, viewer, overlay }: HomeHeroProps) {
                   <Button type="submit">Search</Button>
                 </div>
               </form>
-              <div className="home-hero__suggestions">
-                <p className="home-hero__suggestions-label">
-                  Popular searches:
-                </p>
-                <ul className="home-hero__suggestions-list" role="list">
-                  {POPULAR_SEARCHES.map((query) => (
-                    <li key={query}>
-                      <a
-                        className="govbb-link"
-                        href={`/search-results?${new URLSearchParams({ q: query })}`}
-                      >
-                        {query}
-                      </a>
-                    </li>
-                  ))}
-                </ul>
-              </div>
+              {popularSearches.length > 0 ? (
+                <div className="home-hero__suggestions">
+                  <p className="home-hero__suggestions-label">
+                    Popular searches:
+                  </p>
+                  <ul className="home-hero__suggestions-list" role="list">
+                    {popularSearches.map(({ query }) => (
+                      <li key={query}>
+                        <a
+                          className="govbb-link"
+                          href={`/search-results?${new URLSearchParams({ q: query })}`}
+                        >
+                          {query}
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
             </div>
 
             <div className="home-hero__mode" data-for="ask">
@@ -328,17 +355,16 @@ export function HomeHero({ questions, viewer, overlay }: HomeHeroProps) {
                   <label className="govbb-visually-hidden" htmlFor={askInputId}>
                     Ask a question
                   </label>
-                  <input
+                  <Input
                     ref={askInputRef}
                     id={askInputId}
                     name="q"
                     type="text"
-                    className="govbb-input home-hero__input"
+                    className="home-hero__input"
                     placeholder="Ask a question"
                     autoComplete="off"
                     enterKeyHint="send"
                     maxLength={MAX_QUESTION_LENGTH}
-                    value={text}
                     onChange={(event) => setText(event.currentTarget.value)}
                   />
                   <Button type="submit" disabled={isChatOffline}>
@@ -346,52 +372,53 @@ export function HomeHero({ questions, viewer, overlay }: HomeHeroProps) {
                   </Button>
                 </div>
               </form>
-              {/* Always present, so screen readers announce the swap when the
-                  chat goes offline or comes back. */}
-              <div role="status">
-                {isChatOffline ? (
-                  <StatusBanner
-                    variant="service"
-                    rounded
-                    className="home-hero__status"
-                  >
-                    <p>
-                      <strong>The assistant is not available right now.</strong>{' '}
-                      You can still{' '}
-                      <button
-                        type="button"
-                        className="govbb-link home-hero__link-button"
-                        onClick={searchInstead}
-                      >
-                        search for a service
-                      </button>
-                      .
-                    </p>
-                  </StatusBanner>
-                ) : questions.length > 0 ? (
-                  <div className="home-hero__suggestions">
-                    <p className="home-hero__suggestions-label">Try asking:</p>
-                    <ul className="home-hero__suggestions-list" role="list">
-                      {questions.map((question) => (
-                        <li key={question}>
-                          <a
-                            className="govbb-link"
-                            href={chatHref(question)}
-                            onClick={() =>
-                              trackEvent('chat-suggestion', {
-                                question,
-                                source: SOURCE,
-                              })
-                            }
-                          >
-                            {question}
-                          </a>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                ) : null}
-              </div>
+              {/* Always present, so screen readers announce the sentence when
+                  the chat goes offline. Only the sentence: the banner and the
+                  questions would be read out in full. */}
+              <p role="status" className="govbb-visually-hidden">
+                {isChatOffline ? OFFLINE_MESSAGE : null}
+              </p>
+              {isChatOffline ? (
+                <StatusBanner
+                  variant="service"
+                  rounded
+                  className="home-hero__status"
+                >
+                  <p>
+                    <strong>{OFFLINE_MESSAGE}</strong> You can still{' '}
+                    <button
+                      type="button"
+                      className="govbb-link home-hero__link-button"
+                      onClick={searchInstead}
+                    >
+                      search for a service
+                    </button>
+                    .
+                  </p>
+                </StatusBanner>
+              ) : questions.length > 0 ? (
+                <div className="home-hero__suggestions">
+                  <p className="home-hero__suggestions-label">Try asking:</p>
+                  <ul className="home-hero__suggestions-list" role="list">
+                    {questions.map((question) => (
+                      <li key={question}>
+                        <a
+                          className="govbb-link"
+                          href={chatHref(question)}
+                          onClick={() =>
+                            trackEvent('chat-suggestion', {
+                              question,
+                              source: SOURCE,
+                            })
+                          }
+                        >
+                          {question}
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
             </div>
           </div>
         </div>

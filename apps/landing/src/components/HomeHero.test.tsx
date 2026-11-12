@@ -1,12 +1,16 @@
 /**
  * @vitest-environment jsdom
  */
+import { act } from 'react'
+import { hydrateRoot } from 'react-dom/client'
+import { renderToString } from 'react-dom/server'
 import {
   cleanup,
   fireEvent,
   render,
   screen,
   waitFor,
+  within,
 } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { SearchHit } from '../lib/search'
@@ -43,15 +47,23 @@ function stubChatHealth(ok: boolean) {
   )
 }
 
-function renderHero(questions = [QUESTION]) {
+function renderHero(
+  questions = [QUESTION],
+  overlay: ReadonlyMap<string, 'public' | 'preview'> = new Map(),
+) {
   return render(
-    <HomeHero questions={questions} viewer="public" overlay={new Map()} />,
+    <HomeHero questions={questions} viewer="public" overlay={overlay} />,
   )
 }
 
 const askInput = () => screen.getByRole('textbox', { name: 'Ask a question' })
 const searchInput = () =>
   screen.getByRole('combobox', { name: 'Search services' })
+// The search box has a status of its own, for its suggestion count.
+const chatStatus = () =>
+  within(askInput().closest<HTMLElement>('[data-for="ask"]')!).getByRole(
+    'status',
+  )
 
 let assignedHref: string | undefined
 
@@ -230,18 +242,15 @@ describe('HomeHero', () => {
     stubChatHealth(false)
     renderHero()
     // Screen readers only announce changes inside a live region that was
-    // already there, so the banner must land in the region the questions were in.
-    const region = screen.getByText('Try asking:').closest('[role="status"]')
-    expect(region).not.toBeNull()
+    // already there, so the status is on the page before the chat goes offline.
+    const status = chatStatus()
+    expect(status.textContent).toBe('')
 
     const send = screen.getByRole<HTMLButtonElement>('button', { name: 'Send' })
     await waitFor(() => expect(send.disabled).toBe(true))
     expect(screen.queryByRole('link', { name: QUESTION })).toBeNull()
-    expect(
-      screen
-        .getByText('The assistant is not available right now.')
-        .closest('[role="status"]'),
-    ).toBe(region)
+    // Just the sentence, not the banner's link or the questions.
+    expect(status.textContent).toBe('The assistant is not available right now.')
 
     fireEvent.change(askInput(), { target: { value: 'Renew a passport' } })
     fireEvent.submit(askInput())
@@ -256,6 +265,36 @@ describe('HomeHero', () => {
     expect(document.activeElement).toBe(searchInput())
   })
 
+  it('keeps the newest chat check when an older one finishes later', async () => {
+    let finishFirst: (response: Response) => void = () => {}
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockImplementationOnce(
+          () =>
+            new Promise<Response>((resolve) => {
+              finishFirst = resolve
+            }),
+        )
+        .mockImplementation(async () => Response.json({ ok: true })),
+    )
+    renderHero()
+    fireEvent(window, new Event('focus'))
+    await waitFor(() =>
+      expect(screen.getByRole('link', { name: QUESTION })).toBeTruthy(),
+    )
+
+    await act(async () => {
+      finishFirst(Response.json({ ok: false }))
+    })
+
+    expect(
+      screen.getByRole<HTMLButtonElement>('button', { name: 'Send' }).disabled,
+    ).toBe(false)
+    expect(chatStatus().textContent).toBe('')
+  })
+
   it('checks the chat again when the tab comes back', async () => {
     stubChatHealth(false)
     renderHero()
@@ -267,5 +306,50 @@ describe('HomeHero', () => {
 
     await waitFor(() => expect(send.disabled).toBe(false))
     expect(screen.getByRole('link', { name: QUESTION })).toBeTruthy()
+  })
+
+  it('hides a popular search whose service is hidden', () => {
+    renderHero([QUESTION], new Map([['get-birth-certificate', 'preview']]))
+    fireEvent.click(screen.getByRole('radio', { name: 'Search' }))
+
+    expect(
+      screen.queryByRole('link', { name: 'Birth certificates' }),
+    ).toBeNull()
+    expect(screen.getByRole('link', { name: 'Redirect my mail' })).toBeTruthy()
+    expect(
+      screen.getByRole('link', { name: 'Financial assistance' }),
+    ).toBeTruthy()
+  })
+})
+
+describe('HomeHero before hydration', () => {
+  it('keeps a question typed before the page hydrated, and sends it', async () => {
+    const hero = (
+      <HomeHero questions={[QUESTION]} viewer="public" overlay={new Map()} />
+    )
+    const container = document.createElement('div')
+    container.innerHTML = renderToString(hero)
+    document.body.append(container)
+    const input = container.querySelector<HTMLInputElement>(
+      'input[placeholder="Ask a question"]',
+    )!
+    input.value = 'How do I renew my passport?'
+
+    const root = await act(async () => hydrateRoot(container, hero))
+    // Let the chat check finish too, which renders the hero again.
+    await waitFor(() =>
+      expect(
+        within(container).getByRole('button', { name: 'Send' }),
+      ).toBeTruthy(),
+    )
+    await act(() => new Promise((resolve) => setTimeout(resolve, 0)))
+    expect(input.value).toBe('How do I renew my passport?')
+    fireEvent.submit(input)
+    expect(assignedHref).toBe(
+      `${new URL('/', CHAT_URL)}?q=How+do+I+renew+my+passport%3F`,
+    )
+
+    act(() => root.unmount())
+    container.remove()
   })
 })
