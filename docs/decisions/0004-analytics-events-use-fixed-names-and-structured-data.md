@@ -2,6 +2,7 @@
 
 **Status:** Accepted (2026-05-21)
 **Applies to:** `apps/forms`, and any future app adding analytics. `apps/landing` is explicitly exempt — see Consequences.
+**Amended by:** [ADR 0079](./0079-landing-tools-send-shared-fixed-name-events.md) — landing tools are no longer exempt.
 
 ## Context
 

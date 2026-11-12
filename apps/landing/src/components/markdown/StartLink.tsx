@@ -1,11 +1,27 @@
 import { LinkButton } from '@govtech-bb/react'
 import { useLocation } from '@tanstack/react-router'
 import { createContext, useContext } from 'react'
-import type { ReactNode } from 'react'
+import type { MouseEvent, ReactNode } from 'react'
 import { FORMS_BASE_URL } from '@/config/env'
+import { withJourneyId } from '@/lib/analytics'
 
 // Live form ids, resolved server-side per request (see lib/available-forms.ts).
 export const AvailableFormsContext = createContext<ReadonlySet<string>>(new Set())
+
+// Hand this tab's journey ID to the forms app, which is on another origin and
+// can't read landing's sessionStorage. Added when the link is clicked (auxclick
+// covers a middle-click into a new tab): the page is server-rendered, and the
+// ID only exists in the browser. The plain href is put back once the browser
+// has taken the URL, so a later "Copy link" never shares this tab's ID.
+function addJourneyId(event: MouseEvent<HTMLAnchorElement>) {
+  if (event.type === 'auxclick' && event.button !== 1) return
+  const link = event.currentTarget
+  const href = link.href
+  link.href = withJourneyId(href)
+  setTimeout(() => {
+    link.href = href
+  })
+}
 
 type StartLinkProps = {
   href?: string
@@ -44,6 +60,8 @@ export function StartLink({ href, formId, children, ...rest }: StartLinkProps) {
         data-umami-event="start-click"
         data-umami-event-form-id={formId}
         data-umami-event-from={pathname}
+        onClick={addJourneyId}
+        onAuxClick={addJourneyId}
       >
         {children}
       </LinkButton>

@@ -3,8 +3,10 @@ import type { StepScopedValues } from "../types";
 
 const MISSING = Symbol("MISSING");
 
+// Takes just the reference pair, so a `scaleBy` (#3636) resolves through the
+// same lookup as a rule's own reference.
 export function resolveReference(
-  config: ValidationConfig,
+  config: Pick<ValidationConfig, "referenceFieldId" | "targetStepId">,
   allValues: StepScopedValues,
   stepValues: Record<string, unknown> = {},
 ): unknown | typeof MISSING {
