@@ -76,6 +76,9 @@ A small fixed set of event names; high-cardinality dimensions (`form_id`, `step_
 | `form-submit-success` | Submission API returns success / pending_payment | `form_id`, `step_count` |
 | `form-submit-error` | Submission API returns failed/error or network throws | `form_id`, `reason: 'server' \| 'network'` |
 | `form-file-select` | User picks a file in a file-upload field | `form_id`, `step_id`, `field_id`, `mime`, `size_kb` |
+| `form-file-error` | A picked file is not added: refused before upload, or the upload settles to a failure | `form`, `category`, `step`, `field`, `reason: 'rejected' \| 'error' \| 'timeout' \| 'infected' \| 'unscannable'` |
+| `form-file-remove` | User removes an added file | `form`, `category`, `step`, `field` |
+| `form-print` | User clicks Print on the confirmation page | `form`, `category` |
 
 ### Privacy
 
