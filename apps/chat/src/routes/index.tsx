@@ -130,7 +130,8 @@ function Home() {
     const text = input.trim();
     if (!text || isLoading) return;
     // A typed answer to a form field is not a question (a pill answer isn't
-    // counted either).
+    // counted either). A typed reply to choice pills still counts: it can be a
+    // new question, such as after "No, I need something else".
     if (!awaitingFieldAnswer(messages)) tracker.asked("chat");
     sendMessage(text);
     setInput("");
