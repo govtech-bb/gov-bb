@@ -189,6 +189,13 @@ const baseSchema = z
     // Smoke submission (empty disables the processor-drop escape hatch, #1252)
     SMOKE_SUBMISSION_TOKEN: z.string().default(""),
 
+    // The chat's caller token (#3623). A status lookup carrying it in
+    // X-Chat-Caller-Token is counted against the chat's own limit, not the
+    // per-IP one: every chat user reaches the API from the chat's server. The
+    // same value as the chat's `chat-caller-token` secret. Empty means no
+    // request gets the chat limit.
+    CHAT_CALLER_TOKEN: z.string().default(""),
+
     // Bearer token the AdminTokenGuard validates on the /admin/* endpoints
     // (kill switch + draft archive). OPTIONAL on purpose: the guard reads it
     // per-request, so an unset value only disables auth outside production (it
