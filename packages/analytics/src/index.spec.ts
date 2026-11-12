@@ -650,3 +650,23 @@ describe("UMAMI_SCRIPT_ATTRIBUTES", () => {
     expect(UMAMI_SCRIPT_ATTRIBUTES["data-exclude-search"]).toBe("true");
   });
 });
+
+describe("dead-end form events fit the 50-char name (#3513)", () => {
+  const IDS = [
+    "get-birth-certificate",
+    "apply-for-temporary-restaurant-permit",
+    // The longest real form id in the recipes (84 chars).
+    "apply-for-national-summer-camp-programme-tropical-trails-and-tales-science-camp-2026",
+  ];
+
+  it.each(["form-closed-view", "form-load-error"])(
+    "%s stays within 50 chars and maps back to its name",
+    (event) => {
+      for (const id of IDS) {
+        const name = eventName(id, event);
+        expect(name.length).toBeLessThanOrEqual(50);
+        expect(canonicalEvent(name.slice(name.indexOf(":") + 1))).toBe(event);
+      }
+    },
+  );
+});
