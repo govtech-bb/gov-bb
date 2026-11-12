@@ -128,6 +128,16 @@ describe('ToolsPage', () => {
     expect(screen.queryByText('Confirmed')).toBeNull()
   })
 
+  it('says when the funnel could not be loaded', () => {
+    render(<ToolsPage data={{ ...data, waterAlerts: null }} />)
+    expect(
+      screen.getByText(
+        'The alert sign-ups could not be loaded. Try again in a minute.',
+      ),
+    ).toBeTruthy()
+    expect(screen.queryByText('Confirmed')).toBeNull()
+  })
+
   it('lists a zero-traffic tool (so owners see it exists)', () => {
     render(<ToolsPage data={data} />)
     expect(screen.getByText('Check bank holiday dates')).toBeTruthy()

@@ -41,24 +41,36 @@ export default function ToolsPage({ data }: { data: ToolsPayload }) {
 
 // The water outage alert sign-up funnel: submitted → confirmation email sent →
 // confirmed, and unsubscribed. Event counts, not distinct visitors.
-function WaterAlerts({ funnel }: { funnel: WaterAlertFunnel }) {
-  const { submitted, sent, confirmed, unsubscribed } = funnel
+function WaterAlerts({ funnel }: { funnel: WaterAlertFunnel | null }) {
+  const total = funnel
+    ? funnel.submitted + funnel.sent + funnel.confirmed + funnel.unsubscribed
+    : 0
   return (
     <section className="mt-l">
       <Heading as="h2" size="h3" className="mb-s">
         Water outage alert sign-ups
       </Heading>
-      {submitted + sent + confirmed + unsubscribed === 0 ? (
+      {!funnel ? (
+        <Text as="p" className="text-mid-grey-00">
+          The alert sign-ups could not be loaded. Try again in a minute.
+        </Text>
+      ) : total === 0 ? (
         <Text as="p" className="text-mid-grey-00">
           No alert sign-up events in this period.
         </Text>
       ) : (
         <StatCards
           cards={[
-            { label: 'Submitted', value: submitted.toLocaleString() },
-            { label: 'Confirmation email sent', value: sent.toLocaleString() },
-            { label: 'Confirmed', value: confirmed.toLocaleString() },
-            { label: 'Unsubscribed', value: unsubscribed.toLocaleString() },
+            { label: 'Submitted', value: funnel.submitted.toLocaleString() },
+            {
+              label: 'Confirmation email sent',
+              value: funnel.sent.toLocaleString(),
+            },
+            { label: 'Confirmed', value: funnel.confirmed.toLocaleString() },
+            {
+              label: 'Unsubscribed',
+              value: funnel.unsubscribed.toLocaleString(),
+            },
           ]}
         />
       )}

@@ -816,20 +816,28 @@ describe('fetchToolsData (tool events read from Umami)', () => {
 })
 
 describe('shapeWaterAlerts (water outage alert sign-up funnel)', () => {
+  const outcomes = [
+    { value: 'parish-chosen', total: 120 },
+    { value: 'subscribe-sent', total: 18 },
+    { value: 'subscribe-failed', total: 2 },
+    { value: 'confirmed', total: 12 },
+    { value: 'invalid-token', total: 1 },
+    { value: 'unsubscribed', total: 3 },
+  ]
+  const actions = [
+    { value: 'subscribe-submit', total: 20 },
+    { value: 'open-notice', total: 40 },
+  ]
+  const rows: ToolEventRows = {
+    resultsByTool: [{ value: 'water-outages', total: 156 }],
+    actionsByTool: [{ value: 'water-outages', total: 60 }],
+    errorsByTool: [],
+    outcomes: new Map([['water-outages', outcomes]]),
+    actions: new Map([['water-outages', actions]]),
+  }
+
   it('counts submitted, sent, confirmed and unsubscribed', () => {
-    const outcomes = [
-      { value: 'parish-chosen', total: 120 },
-      { value: 'subscribe-sent', total: 18 },
-      { value: 'subscribe-failed', total: 2 },
-      { value: 'confirmed', total: 12 },
-      { value: 'invalid-token', total: 1 },
-      { value: 'unsubscribed', total: 3 },
-    ]
-    const actions = [
-      { value: 'subscribe-submit', total: 20 },
-      { value: 'open-notice', total: 40 },
-    ]
-    expect(shapeWaterAlerts(outcomes, actions)).toEqual({
+    expect(shapeWaterAlerts(rows)).toEqual({
       submitted: 20,
       sent: 18,
       confirmed: 12,
@@ -838,12 +846,21 @@ describe('shapeWaterAlerts (water outage alert sign-up funnel)', () => {
   })
 
   it('is all zeros before any sign-up event', () => {
-    expect(shapeWaterAlerts([], [])).toEqual({
-      submitted: 0,
-      sent: 0,
-      confirmed: 0,
-      unsubscribed: 0,
-    })
+    expect(
+      shapeWaterAlerts({
+        resultsByTool: [],
+        actionsByTool: [],
+        errorsByTool: [],
+        outcomes: new Map(),
+        actions: new Map(),
+      }),
+    ).toEqual({ submitted: 0, sent: 0, confirmed: 0, unsubscribed: 0 })
+  })
+
+  it('is null, not zeros, when a breakdown query failed', () => {
+    // The water tool sent results, but its outcome breakdown is missing.
+    expect(shapeWaterAlerts({ ...rows, outcomes: new Map() })).toBeNull()
+    expect(shapeWaterAlerts({ ...rows, actions: new Map() })).toBeNull()
   })
 })
 

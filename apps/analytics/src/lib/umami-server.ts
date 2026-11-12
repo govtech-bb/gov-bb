@@ -1052,7 +1052,8 @@ export interface ToolEventRows {
 
 export interface ToolsData {
   tools: ToolRow[]
-  waterAlerts: WaterAlertFunnel
+  /** Null when its breakdown could not be read from Umami. */
+  waterAlerts: WaterAlertFunnel | null
   range: string
   window: string
 }
@@ -1111,17 +1112,25 @@ export function shapeToolEvents(
 /**
  * The alert sign-up funnel from the water tool's outcome and action values.
  * Each outcome is sent at one step only, so the outcome alone tells a confirm
- * or unsubscribe result apart.
+ * or unsubscribe result apart. Null when a breakdown query failed (no entry
+ * although the tool sent that event), so the page says so instead of showing
+ * zeros that read as "no emails went out".
  */
-export function shapeWaterAlerts(
-  outcomeRows: EventDataValue[],
-  actionRows: EventDataValue[],
-): WaterAlertFunnel {
+export function shapeWaterAlerts(rows: ToolEventRows): WaterAlertFunnel | null {
+  const id: ToolId = 'water-outages'
+  const outcomes = rows.outcomes.get(id)
+  const actions = rows.actions.get(id)
+  if (
+    (!outcomes && totalFor(rows.resultsByTool, id) > 0) ||
+    (!actions && totalFor(rows.actionsByTool, id) > 0)
+  ) {
+    return null
+  }
   return {
-    submitted: totalFor(actionRows, 'subscribe-submit'),
-    sent: totalFor(outcomeRows, 'subscribe-sent'),
-    confirmed: totalFor(outcomeRows, 'confirmed'),
-    unsubscribed: totalFor(outcomeRows, 'unsubscribed'),
+    submitted: totalFor(actions ?? [], 'subscribe-submit'),
+    sent: totalFor(outcomes ?? [], 'subscribe-sent'),
+    confirmed: totalFor(outcomes ?? [], 'confirmed'),
+    unsubscribed: totalFor(outcomes ?? [], 'unsubscribed'),
   }
 }
 
@@ -1248,10 +1257,7 @@ export async function fetchToolsData(
     )
     return {
       tools: shapeTools(tools, urlRows, sourcesByPath, eventRows),
-      waterAlerts: shapeWaterAlerts(
-        eventRows.outcomes.get('water-outages') ?? [],
-        eventRows.actions.get('water-outages') ?? [],
-      ),
+      waterAlerts: shapeWaterAlerts(eventRows),
       range,
       window: rangeLabel(range),
     }
