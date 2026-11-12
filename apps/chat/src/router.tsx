@@ -20,7 +20,14 @@ export function getRouter() {
     url: import.meta.env.VITE_JOURNEY_URL as string | undefined,
     app: "chat",
   });
-  router.subscribe("onRendered", trackPageview);
+  // One page view per pathname, the first load included: removing landing's
+  // ?q= after it is sent changes the address, and is not a new page.
+  let lastPath: string | undefined;
+  router.subscribe("onRendered", ({ toLocation }) => {
+    if (toLocation.pathname === lastPath) return;
+    lastPath = toLocation.pathname;
+    trackPageview();
+  });
 
   return router;
 }

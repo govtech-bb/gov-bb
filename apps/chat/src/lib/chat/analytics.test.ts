@@ -15,6 +15,16 @@ function recorder() {
   return { calls, tracker };
 }
 
+type Tracker = ReturnType<typeof createAnswerTracker>;
+
+// One useChat turn: loading starts, `during` runs the stream's callbacks, and
+// loading ends.
+function turn(tracker: Tracker, during: () => void = () => undefined) {
+  tracker.loading(true);
+  during();
+  tracker.loading(false);
+}
+
 test("a question typed in the chat sends chat-submit: chat", () => {
   const { calls, tracker } = recorder();
   tracker.asked("chat");
@@ -25,19 +35,22 @@ test("a question from landing sends no chat-submit: landing sent it", () => {
   const { calls, tracker } = recorder();
   tracker.asked("landing");
   assert.deepEqual(calls, []);
-  tracker.finished();
+  turn(tracker, tracker.replied);
   assert.deepEqual(calls, [
     ["chat-answer", { outcome: "answered", source: "landing", cited: false }],
   ]);
 });
 
-test("a finished reply sends one chat-answer: answered", () => {
+test("a reply sends one chat-answer: answered, when the turn ends", () => {
   const { calls, tracker } = recorder();
   tracker.asked("chat");
-  tracker.finished();
-  // A second stream end in the same turn (e.g. the client's own finalize after
-  // RUN_FINISHED) must not send a second answer.
-  tracker.finished();
+  turn(tracker, () => {
+    // onFinish fires once per model pass in a tool loop: wait for the turn.
+    tracker.replied();
+    tracker.replied();
+    assert.equal(calls.length, 1);
+  });
+  tracker.loading(false);
   assert.deepEqual(calls.slice(1), [
     ["chat-answer", { outcome: "answered", source: "chat", cited: false }],
   ]);
@@ -46,8 +59,10 @@ test("a finished reply sends one chat-answer: answered", () => {
 test("cited is true when the reply came with cited pages", () => {
   const { calls, tracker } = recorder();
   tracker.asked("landing");
-  tracker.cited();
-  tracker.finished();
+  turn(tracker, () => {
+    tracker.cited();
+    tracker.replied();
+  });
   assert.deepEqual(calls.at(-1), [
     "chat-answer",
     { outcome: "answered", source: "landing", cited: true },
@@ -57,8 +72,22 @@ test("cited is true when the reply came with cited pages", () => {
 test("a failed request sends chat-answer: error, once", () => {
   const { calls, tracker } = recorder();
   tracker.asked("chat");
-  tracker.failed();
-  tracker.finished();
+  // The client can end an errored stream with onFinish too.
+  turn(tracker, () => {
+    tracker.replied();
+    tracker.failed();
+  });
+  assert.deepEqual(calls.slice(1), [
+    ["chat-answer", { outcome: "error", source: "chat", cited: false }],
+  ]);
+});
+
+test("a turn that ends with no reply text sends chat-answer: error", () => {
+  // e.g. the server's turn timeout fires before the first word: useChat calls
+  // neither onFinish nor onError.
+  const { calls, tracker } = recorder();
+  tracker.asked("chat");
+  turn(tracker);
   assert.deepEqual(calls.slice(1), [
     ["chat-answer", { outcome: "error", source: "chat", cited: false }],
   ]);
@@ -67,30 +96,37 @@ test("a failed request sends chat-answer: error, once", () => {
 test("stopping or clearing mid-reply sends chat-answer: stopped", () => {
   const { calls, tracker } = recorder();
   tracker.asked("chat");
-  tracker.stopped();
-  // A stop after the reply already finished sends nothing more.
+  turn(tracker, () => {
+    tracker.replied();
+    tracker.stopped();
+  });
+  // A stop after the turn ended sends nothing more.
   tracker.stopped();
   assert.deepEqual(calls.slice(1), [
     ["chat-answer", { outcome: "stopped", source: "chat", cited: false }],
   ]);
 });
 
-test("turns that are not questions (retries, pill answers) send nothing", () => {
+test("turns that are not questions (retries, field answers) send nothing", () => {
   const { calls, tracker } = recorder();
-  tracker.cited();
-  tracker.finished();
-  tracker.failed();
-  tracker.stopped();
+  turn(tracker, () => {
+    tracker.cited();
+    tracker.replied();
+    tracker.failed();
+    tracker.stopped();
+  });
   assert.deepEqual(calls, []);
 });
 
 test("citations from an earlier reply do not carry over to the next one", () => {
   const { calls, tracker } = recorder();
   tracker.asked("chat");
-  tracker.cited();
-  tracker.finished();
+  turn(tracker, () => {
+    tracker.cited();
+    tracker.replied();
+  });
   tracker.asked("chat");
-  tracker.finished();
+  turn(tracker, tracker.replied);
   assert.deepEqual(calls.at(-1), [
     "chat-answer",
     { outcome: "answered", source: "chat", cited: false },
@@ -100,17 +136,21 @@ test("citations from an earlier reply do not carry over to the next one", () => 
 test("one chat-answer per chat-submit across a conversation", () => {
   const { calls, tracker } = recorder();
   tracker.asked("landing");
-  tracker.cited();
-  tracker.finished();
+  turn(tracker, () => {
+    tracker.cited();
+    tracker.replied();
+  });
   tracker.asked("chat");
-  tracker.failed();
+  turn(tracker, tracker.failed);
   tracker.asked("chat");
-  tracker.stopped();
+  turn(tracker);
+  tracker.asked("chat");
+  turn(tracker, tracker.stopped);
   const count = (name: string, source: string) =>
     calls.filter(([e, data]) => e === name && data.source === source).length;
   // Questions typed here: one chat-submit and one chat-answer each.
-  assert.equal(count("chat-submit", "chat"), 2);
-  assert.equal(count("chat-answer", "chat"), 2);
+  assert.equal(count("chat-submit", "chat"), 3);
+  assert.equal(count("chat-answer", "chat"), 3);
   // The landing question: its chat-submit was sent on landing, not here.
   assert.equal(count("chat-submit", "landing"), 0);
   assert.equal(count("chat-answer", "landing"), 1);
@@ -146,10 +186,12 @@ test("nothing sent to Umami or /journey carries the question or the answer", () 
     trackPageview();
     const tracker = createAnswerTracker();
     tracker.asked("landing");
-    tracker.cited();
-    tracker.finished();
+    turn(tracker, () => {
+      tracker.cited();
+      tracker.replied();
+    });
     tracker.asked("chat");
-    tracker.failed();
+    turn(tracker, tracker.failed);
     flushJourney();
   } finally {
     delete g.window;

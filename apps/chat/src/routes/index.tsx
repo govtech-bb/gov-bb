@@ -75,7 +75,7 @@ function Home() {
     // ChatClientPersistence adapter). stop() / clear-during-stream handling come
     // for free with it.
     persistence: conversationPersistence,
-    onFinish: tracker.finished,
+    onFinish: tracker.replied,
     onError: tracker.failed,
     // The server emits a `citations` CUSTOM event after TEXT_MESSAGE_START,
     // keyed by messageId (the example's onCustomEvent pattern). Merge it into
@@ -107,8 +107,12 @@ function Home() {
     },
   });
 
+  // Settle the turn's chat-answer when it stops loading.
+  useEffect(() => tracker.loading(isLoading), [isLoading, tracker]);
+
   // Auto-send the landing handoff query (`/chat?q=…`) once, on arrival.
   const { q } = Route.useSearch();
+  const navigate = Route.useNavigate();
   const autoSentRef = useRef(false);
   useEffect(() => {
     if (autoSentRef.current) return;
@@ -117,12 +121,17 @@ function Home() {
     autoSentRef.current = true;
     tracker.asked("landing");
     sendMessage(query);
-  }, [q, sendMessage, tracker]);
+    // Drop q from the address bar, so a reload or Back doesn't ask it again
+    // (and count a second answer to landing's one chat-submit).
+    void navigate({ search: {}, replace: true });
+  }, [q, sendMessage, tracker, navigate]);
 
   const submit = () => {
     const text = input.trim();
     if (!text || isLoading) return;
-    tracker.asked("chat");
+    // A typed answer to a form field is not a question (a pill answer isn't
+    // counted either).
+    if (!awaitingFieldAnswer(messages)) tracker.asked("chat");
     sendMessage(text);
     setInput("");
   };
