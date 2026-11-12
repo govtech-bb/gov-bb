@@ -416,8 +416,9 @@ function RemotePageEditor({
       !submitPending &&
       !unsettled &&
       server.version > base.page.version &&
-      server.version !== savedVersion &&
-      server.version !== submittedVersion) ||
+      // A recovered older version is never this editor's own write
+      (base !== savedBase ||
+        (server.version !== savedVersion && server.version !== submittedVersion))) ||
     outcome?.kind === "conflict" ||
     submit.outcome?.kind === "conflict";
 
@@ -611,8 +612,10 @@ function RemotePageEditor({
     <UnsavedWorkOffer
       kept={keptWork}
       restoreBlocked={restoreBlocked}
+      // Discard-and-reload puts the offer back when it finishes, so an answer given meanwhile would be undone
+      discardBlocked={reloading}
       onRestore={restoreKeptWork}
-      onDiscard={() => setDiscardingKeptWork(true)}
+      onDiscard={() => !reloading && setDiscardingKeptWork(true)}
     />
   );
 

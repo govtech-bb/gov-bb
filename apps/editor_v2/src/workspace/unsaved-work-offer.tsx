@@ -8,11 +8,13 @@ import type { UnsavedWork } from "./unsaved-work";
 export function UnsavedWorkOffer({
   kept,
   restoreBlocked,
+  discardBlocked,
   onRestore,
   onDiscard,
 }: {
   kept: UnsavedWork;
   restoreBlocked?: string;
+  discardBlocked?: boolean;
   onRestore: () => void;
   onDiscard: () => void;
 }) {
@@ -32,7 +34,9 @@ export function UnsavedWorkOffer({
           >
             Restore changes
           </Button>
-          <Button onClick={onDiscard}>Discard changes…</Button>
+          <Button aria-disabled={discardBlocked || undefined} onClick={onDiscard}>
+            Discard changes…
+          </Button>
         </>
       }
     >

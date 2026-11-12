@@ -921,6 +921,44 @@ test("discarding the open copy while a recovery offer waits offers the same reco
   expect(h.session().store.getSnapshot().committed).toBe(saved + "\n\nKept before the reload.");
 });
 
+test("a recovery offer can't be discarded while discard-and-reload is reading the page", async () => {
+  const first = await mountPage(async () => Response.json(page));
+  const saved = first.session().store.getSnapshot().committed;
+  await applySource(first.session(), saved + "\n\nKept before the reload.");
+  let hold: PromiseWithResolvers<void> | undefined;
+  let current = page;
+
+  const h = await reloadPage(async (_url, init) => {
+    if (hold && init?.method !== "PUT") await hold.promise;
+
+    return Response.json(current);
+  });
+
+  await applySource(h.session(), saved + "\n\nTyped after it.");
+  current = { ...page, version: 3, updated_at: "2026-10-07T14:00:00.000Z" };
+  await act(async () => {
+    h.client.setQueryData(pageQuery(h.api, page.id).queryKey, current);
+    await vi.waitFor(() => expect(document.body.textContent).toContain("Newer version saved"));
+  });
+  hold = Promise.withResolvers();
+  await openPageAlert();
+  await act(async () => button("Discard my changes and reload")!.click());
+
+  const discard = button("Discard changes…")!;
+  expect(discard.getAttribute("aria-disabled")).toBe("true");
+  await act(async () => discard.click());
+  expect(document.querySelector('[role="alertdialog"]')).toBeNull();
+
+  await act(async () => hold!.resolve());
+  await act(async () => {
+    await vi.waitFor(() =>
+      expect(h.session().store.getSnapshot().committed).not.toContain("Typed after it."),
+    );
+  });
+  expect(localStorage.getItem(keptKey)).toContain("Kept before the reload.");
+  expect(button("Discard changes…")!.getAttribute("aria-disabled")).toBeNull();
+});
+
 test("undoing what was typed while a recovery offer waits puts the offer back, so a reload offers it again", async () => {
   const first = await mountPage(async () => Response.json(page));
   const saved = first.session().store.getSnapshot().committed;
@@ -968,6 +1006,41 @@ test("saving what was typed while a recovery offer waits doesn't leave the saved
   await act(async () => button("Restore changes")!.click());
   expect(again.session().store.getSnapshot().committed).toContain("Kept before the reload.");
   expect(again.session().store.getSnapshot().committed).not.toContain("Typed and saved.");
+});
+
+test("restoring an offer after saving over it shows the page's own save as a newer version, and can't save over it", async () => {
+  const first = await mountPage(async () => Response.json(page));
+  const saved = first.session().store.getSnapshot().committed;
+  await applySource(first.session(), saved + "\n\nKept before the reload.");
+  let current = page;
+  let writes = 0;
+
+  const request = async (_url: string, init?: RequestInit) => {
+    if (init?.method === "PUT") {
+      writes++;
+      current = { ...page, ...JSON.parse(String(init.body)), version: 2 };
+    }
+
+    return Response.json(current);
+  };
+
+  const h = await reloadPage(request);
+  await applySource(h.session(), saved + "\n\nTyped and saved.");
+  await savePage();
+  await act(async () => {
+    await vi.waitFor(() => expect(pageHasUnsavedChanges(h.session())).toBe(false));
+  });
+
+  await act(async () => button("Restore changes")!.click());
+  expect(h.session().getBaseline().page.version).toBe(page.version);
+  await act(async () => {
+    await vi.waitFor(() => expect(document.body.textContent).toContain("Newer version saved"));
+  });
+
+  const save = button("Save")!;
+  expect(save.getAttribute("aria-disabled")).toBe("true");
+  await act(async () => save.click());
+  expect(writes).toBe(1);
 });
 
 test("changes kept over a version the page has moved past restore as changes to a page saved since, and can't be saved over it", async () => {

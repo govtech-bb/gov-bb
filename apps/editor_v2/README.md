@@ -25,7 +25,7 @@ For local development without Google sign-in, run `vite dev` with `VITE_AUTH_BYP
 
 `VITE_LANDING_ORIGIN` is the optional public site origin. When set, each service's path in the Services list links to its page there.
 
-Authentication gates the workspace. Leaving unsaved work or signing out asks before discarding it; pending saves block departure. Cancel keeps the working copy and undo history. After a reload or crash, the page opens from the API with a choice to restore or discard its browser recovery copy. Discard asks for confirmation. Recovery needs working browser storage, so save or download work you cannot afford to lose.
+Authentication gates the workspace. Leaving unsaved work, signing out or an expired-session redirect asks before discarding it; pending saves block departure. Cancel keeps the working copy and undo history. After a reload or crash, the page opens from the API with a choice to restore or discard its browser recovery copy. Discard asks for confirmation. Recovery needs working browser storage, so save or download work you cannot afford to lose.
 
 ## Checks
 
