@@ -219,14 +219,15 @@ See `apps/landing/.env.example` for the contract. When a variable is unset (incl
 
 ### Event-naming conventions
 
+Every event, with its data and where it fires, is listed in the [event catalogue](../../docs/analytics/event-catalogue.md). Add a row there when you add an event: a test fails on a `data-umami-event` value without one.
+
 | Pattern              | Example                                                        | Used for                                                                                                                                                         |
 | -------------------- | -------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `<surface>-<action>` | `header-home`, `footer-careers`, `feedback-submit`             | Fixed UI elements                                                                                                                                                |
+| `<surface>-<action>` | `footer-home`, `footer-careers`, `feedback-submit`             | Fixed UI elements                                                                                                                                                |
 | `service-click`      | `service-click` with `slug: business-trade/apply-for-food-business-licence` | Clicks on the `/services` list. One name for every service, slug as data: per-service names ran past Umami's 50-character limit and were cut off. |
-| `<slug>-start`       | `renew-passport-start`, `travel-renew-passport-start`          | Slug-prefixed start CTA clicks from a service root page into its `/start` flow (derived automatically by `deriveStartEventName()` from the link href)            |
 | `start-click`        | `start-click` with `formId: get-birth-certificate`, `from: /registry/birth-certificate` | Click on a Start now button rendered from a page's `form_id` frontmatter. Keyed on the form actually started, not the page slug — see _Start now buttons_ below. The form id is data, not part of the name, because some ids pushed the name past Umami's 50-character limit. |
 
-Filter `service-click` by its `slug` property in Umami to see one service. The `<slug>-start` events measure the conversion from root page to start page and are grouped separately so they're easy to find.
+Filter `service-click` by its `slug` property in Umami to see one service.
 
 ## Start now buttons (cross-app links to the forms app)
 
