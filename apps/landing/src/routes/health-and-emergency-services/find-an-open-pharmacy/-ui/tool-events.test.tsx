@@ -223,6 +223,17 @@ describe('pharmacy finder tool-error', () => {
       { tool: 'pharmacy-finder', error: 'location-unavailable' },
     ])
   })
+
+  it('sends nothing for a location request that was reset or unmounted', () => {
+    const view = render(<PharmacyFinder />)
+    fireEvent.click(screen.getByRole('button', { name: 'Use my location' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Reset filters' }))
+    act(() => failure?.({ code: 1 } as GeolocationPositionError))
+    fireEvent.click(screen.getByRole('button', { name: 'Use my location' }))
+    view.unmount()
+    act(() => failure?.({ code: 1 } as GeolocationPositionError))
+    expect(sent('tool-error')).toEqual([])
+  })
 })
 
 describe('pharmacy finder tool-action', () => {
