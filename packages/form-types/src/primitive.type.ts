@@ -76,6 +76,11 @@ export const primitiveUISchema = z.object({
    * ask for the treatment. Set it on every field in the revealed run — adjacent
    * indented fields join into one continuous rail. */
   indent: z.boolean().optional(),
+  /** Text shown before the input, e.g. `"BDS $"`. Visual only (aria-hidden),
+   * so the label or hint must name what it means for screen-reader users.
+   * Rendered on text, number, tel and email fields. A prefixed number field
+   * renders as a text input, so it needs a `pattern` to reject non-numbers. */
+  prefix: z.string().optional(),
 });
 
 export type PrimitiveUI = z.infer<typeof primitiveUISchema>;
