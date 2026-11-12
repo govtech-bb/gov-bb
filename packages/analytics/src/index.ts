@@ -9,6 +9,7 @@ export {
   journeyEnabled,
   sendJourney,
 } from "./journey";
+export { adoptJourneyId, getJourneyId, withJourneyId } from "./journey";
 
 declare global {
   interface Window {

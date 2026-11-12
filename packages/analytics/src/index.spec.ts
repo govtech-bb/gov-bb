@@ -495,6 +495,23 @@ describe("journey events from trackEvent / trackPageview", () => {
     });
   });
 
+  it("sends the journey ID to /journey and never to Umami", () => {
+    const track = vi.fn<Track>();
+    window.umami = { track };
+    trackEvent("form-start", { form: "get-birth-certificate", category: "x" });
+    trackPageview();
+    flushJourney();
+    expect(sent()[0].journey_id).toMatch(/^[0-9a-f-]{36}$/);
+    for (const [arg] of track.mock.calls) {
+      const payload = typeof arg === "function" ? arg(TRACKER_PAYLOAD) : arg;
+      expect(JSON.stringify(payload)).not.toContain(
+        sent()[0].journey_id as string,
+      );
+      expect(JSON.stringify(payload)).not.toContain("journey");
+    }
+    expect(track).toHaveBeenCalledTimes(2);
+  });
+
   it("unpacks Umami's packed per-step names", () => {
     trackEvent(eventName("get-birth-certificate", "form-step-three"), {
       form: "get-birth-certificate",
