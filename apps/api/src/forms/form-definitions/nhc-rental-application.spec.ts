@@ -552,37 +552,43 @@ it("asks for a parish and a Barbados postcode only for an address in Barbados", 
       }),
     );
   const barbados = await at("barbados");
-  const abroad = await at("other");
   expect(barbados.has("parish")).toBe(true);
   expect(barbados.has("postcode")).toBe(true);
   expect(barbados.has("overseas-postcode")).toBe(false);
-  // Abroad: no parish, and a free-text postal code instead of the Barbados
-  // postcode pattern, which would refuse a real foreign postal code.
-  expect(abroad.has("parish")).toBe(false);
-  expect(abroad.has("postcode")).toBe(false);
-  expect(abroad.has("overseas-postcode")).toBe(true);
+  // Abroad — a named country or "Other": no parish, and a free-text postal
+  // code instead of the Barbados postcode pattern, which would refuse a real
+  // foreign postal code.
+  for (const country of ["canada", "united-states", "other"]) {
+    const abroad = await at(country);
+    expect(abroad.has("parish"), country).toBe(false);
+    expect(abroad.has("postcode"), country).toBe(false);
+    expect(abroad.has("overseas-postcode"), country).toBe(true);
+  }
   expect(
     (await field("applicant-contact", "overseas-postcode")).validations
       ?.pattern,
   ).toBeUndefined();
 });
 
-it("asks the second person for an overseas postal code when they live abroad", async () => {
-  const fields = await activeFields(
-    "co-applicant-contact",
-    answers({
-      type: "house-lot",
-      joint: true,
-      income: "retired",
-      coIncome: "retired",
-      sameAddress: "no",
-      coCountry: "other",
-    }),
-  );
-  expect(fields.has("co-applicant-parish")).toBe(false);
-  expect(fields.has("co-applicant-postcode")).toBe(false);
-  expect(fields.has("co-applicant-overseas-postcode")).toBe(true);
-});
+it.each([["canada"], ["united-states"], ["other"]])(
+  "asks the second person for an overseas postal code when they live in %s",
+  async (coCountry) => {
+    const fields = await activeFields(
+      "co-applicant-contact",
+      answers({
+        type: "house-lot",
+        joint: true,
+        income: "retired",
+        coIncome: "retired",
+        sameAddress: "no",
+        coCountry,
+      }),
+    );
+    expect(fields.has("co-applicant-parish")).toBe(false);
+    expect(fields.has("co-applicant-postcode")).toBe(false);
+    expect(fields.has("co-applicant-overseas-postcode")).toBe(true);
+  },
+);
 
 it("hides the second person's address when they live at the same address", async () => {
   const addressIds = [
@@ -662,6 +668,10 @@ it("words the land or property question for spouses and joint applications", asy
     "Include land or property you own on your own or with someone else.",
   );
   expect(resolveFieldHint(owns, marriedAlone)).toBeUndefined();
+  // One error for every wording, so it must cover the spouse version too.
+  expect(owns.validations?.required?.error).toBe(
+    "Select whether you, or your spouse if you have one, own any land or property",
+  );
 });
 
 // conditionalHint is not scoped inside repeatable steps and the cross-step

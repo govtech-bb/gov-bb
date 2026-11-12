@@ -761,8 +761,8 @@
                 "type": "fieldConditionalOn",
                 "targetFieldId": "country-of-residence",
                 "targetStepId": "applicant-details",
-                "operator": "equal",
-                "value": "other"
+                "operator": "notEqual",
+                "value": "barbados"
               }
             ],
             "validations": {
@@ -1279,8 +1279,8 @@
                 "type": "fieldConditionalOn",
                 "targetFieldId": "co-applicant-country-of-residence",
                 "targetStepId": "co-applicant-details",
-                "operator": "equal",
-                "value": "other"
+                "operator": "notEqual",
+                "value": "barbados"
               }
             ]
           }
@@ -2763,7 +2763,7 @@
     }
   ],
   "createdAt": "2026-09-03T00:00:00.000Z",
-  "updatedAt": "2026-11-12T06:15:09.000Z",
+  "updatedAt": "2026-11-12T06:25:06.000Z",
   "meta": {
     "visibility": "preview"
   }
