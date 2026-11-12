@@ -9,7 +9,8 @@ import {
   Text,
 } from '@govtech-bb/react'
 import { ClientOnly } from '@tanstack/react-router'
-import { lazy, Suspense, useRef, useState } from 'react'
+import { lazy, Suspense, useEffect, useRef, useState } from 'react'
+import { trackEvent } from '@/lib/analytics'
 import { locateParish } from '../-lib/geo'
 import {
   freshnessLabel,
@@ -27,6 +28,14 @@ export const DESCRIPTION =
   'See current Barbados Water Authority notices for your parish, and sign up for email alerts.'
 
 function MapUnavailable() {
+  // Once per view: the ref survives StrictMode's second effect run.
+  const tracked = useRef(false)
+  useEffect(() => {
+    if (tracked.current) return
+    tracked.current = true
+    trackEvent('tool-error', { tool: 'water-outages', error: 'map-failed' })
+  }, [])
+
   return (
     <Text as="p" className="water-outages-map-message">
       The map could not load. Choose a parish above to see its notices.
@@ -137,17 +146,37 @@ export function WaterOutagesPage({
     !!selected &&
     visibleActive.some((o) => o.type !== 'notice' && isCurrentConcern(o, now))
 
-  function chooseParish(value: string) {
+  // "All of Barbados" is not a parish, so choosing it sends nothing.
+  function trackParish(parish: string, chosenBy: 'list' | 'map' | 'location') {
+    if (!parish) return
+    trackEvent('tool-result', {
+      tool: 'water-outages',
+      outcome: 'parish-chosen',
+      parish,
+      chosen_by: chosenBy,
+      active_notices: counts[parish] ?? 0,
+      past_notices: past.filter((o) => o.parishes.includes(parish)).length,
+    })
+  }
+
+  function chooseParish(value: string, chosenBy: 'list' | 'map') {
     locationRequest.current += 1
     onSelect(value)
+    trackParish(value, chosenBy)
     setLocating(false)
     setLocationError(false)
     setLocatedParish(null)
   }
 
+  // Never the position itself: only that the lookup failed, and why.
+  function locationFailed(error: 'location-denied' | 'location-unavailable') {
+    setLocationError(true)
+    trackEvent('tool-error', { tool: 'water-outages', error })
+  }
+
   function requestLocation() {
     if (!navigator.geolocation) {
-      setLocationError(true)
+      locationFailed('location-unavailable')
       return
     }
     setLocating(true)
@@ -164,20 +193,27 @@ export function WaterOutagesPage({
           if (request !== locationRequest.current) return
           if (located) {
             onSelect(located.value)
+            trackParish(located.value, 'location')
             setLocatedParish(located.value)
             setLocatedExact(located.exact)
           } else {
-            setLocationError(true)
+            locationFailed('location-unavailable')
           }
         } catch {
-          if (request === locationRequest.current) setLocationError(true)
+          if (request === locationRequest.current) {
+            locationFailed('location-unavailable')
+          }
         } finally {
           if (request === locationRequest.current) setLocating(false)
         }
       },
-      () => {
+      (error) => {
         if (request !== locationRequest.current) return
-        setLocationError(true)
+        locationFailed(
+          error.code === error.PERMISSION_DENIED
+            ? 'location-denied'
+            : 'location-unavailable',
+        )
         setLocating(false)
       },
       { timeout: 8000 },
@@ -192,7 +228,7 @@ export function WaterOutagesPage({
       <div className="water-outages-controls">
         <Select
           label="Choose a parish"
-          onChange={(e) => chooseParish(e.target.value)}
+          onChange={(e) => chooseParish(e.target.value, 'list')}
           value={selected}
         >
           <option value="">All of Barbados</option>
@@ -316,7 +352,19 @@ export function WaterOutagesPage({
             >
               Report a water outage to the BWA
             </Link>{' '}
-            (or call <Link href="tel:+12464344292">246-434-4292</Link>).
+            (or call{' '}
+            <Link
+              href="tel:+12464344292"
+              onClick={() =>
+                trackEvent('tool-action', {
+                  tool: 'water-outages',
+                  action: 'call',
+                })
+              }
+            >
+              246-434-4292
+            </Link>
+            ).
           </Text>
         </div>
 
@@ -344,7 +392,7 @@ export function WaterOutagesPage({
             <Suspense fallback={MAP_FALLBACK}>
               <OutageMap
                 counts={counts}
-                onSelect={chooseParish}
+                onSelect={(value) => chooseParish(value, 'map')}
                 selected={selected}
               />
             </Suspense>
@@ -398,6 +446,12 @@ function OutageCard({ outage, now }: { outage: Outage; now: number }) {
           aria-label={`Read the BWA notice about ${outage.title}`}
           external
           href={outage.link}
+          onClick={() =>
+            trackEvent('tool-action', {
+              tool: 'water-outages',
+              action: 'open-notice',
+            })
+          }
         >
           Read the BWA notice
         </Link>
