@@ -112,6 +112,7 @@ afterEach(() => {
   cleanup()
   vi.resetAllMocks()
   vi.unstubAllGlobals()
+  vi.useRealTimers()
 })
 
 describe('water outages page', () => {
@@ -306,56 +307,109 @@ describe('water outages events (#3510)', () => {
     })
   }
 
+  // Lets a parish choice settle: parish-chosen waits a second.
+  function settle(ms = 1000) {
+    act(() => {
+      vi.advanceTimersByTime(ms)
+    })
+  }
+
   it('sends tool-result when a parish is chosen from the list, the map or the location', async () => {
     vi.mocked(locateParish).mockResolvedValue({
       value: 'saint-john',
       exact: true,
     })
     render(<TestPage data={DATA} />)
-    const parish = screen.getByRole<HTMLSelectElement>('combobox', {
-      name: 'Choose a parish',
-    })
-    fireEvent.change(parish, { target: { value: 'saint-michael' } })
-    fireEvent.click(
-      await screen.findByRole('button', { name: /Map St. Michael/ }),
+    const map = await screen.findByRole('button', { name: /Map St. Michael/ })
+    vi.useFakeTimers()
+    fireEvent.change(
+      screen.getByRole('combobox', { name: 'Choose a parish' }),
+      {
+        target: { value: 'saint-john' },
+      },
     )
+    settle()
+    fireEvent.click(map)
+    settle()
     fireEvent.click(screen.getByRole('button', { name: 'Use my location' }))
     await act(async () => {
       success({
         coords: { latitude: 13.1, longitude: -59.61 },
       } as GeolocationPosition)
     })
-    const chosen = (chosen_by: string) => ({
+    settle()
+    const john = (chosen_by: string) => ({
       tool,
       outcome: 'parish-chosen',
-      parish: 'saint-michael',
+      parish: 'saint-john',
       chosen_by,
       active_notices: 1,
-      past_notices: 1,
+      past_notices: 0,
     })
     expect(vi.mocked(trackEvent).mock.calls).toEqual([
-      ['tool-result', chosen('list')],
-      ['tool-result', chosen('map')],
+      ['tool-result', john('list')],
       [
         'tool-result',
         {
           tool,
           outcome: 'parish-chosen',
-          parish: 'saint-john',
-          chosen_by: 'location',
+          parish: 'saint-michael',
+          chosen_by: 'map',
           active_notices: 1,
-          past_notices: 0,
+          past_notices: 1,
         },
       ],
+      ['tool-result', john('location')],
     ])
   })
 
-  it('sends nothing when the list goes back to All of Barbados', () => {
+  it('sends one tool-result for the parish the list settles on, and none for All of Barbados', () => {
+    vi.useFakeTimers()
     render(<TestPage data={DATA} />)
     const parish = screen.getByRole('combobox', { name: 'Choose a parish' })
-    fireEvent.change(parish, { target: { value: 'saint-john' } })
+    // Arrow keys on a closed list change the parish at each press.
+    for (const value of ['saint-andrew', 'saint-george', 'saint-john']) {
+      fireEvent.change(parish, { target: { value } })
+    }
+    settle(999)
+    expect(trackEvent).not.toHaveBeenCalled()
+    settle(1)
+    expect(vi.mocked(trackEvent).mock.calls).toEqual([
+      [
+        'tool-result',
+        expect.objectContaining({ parish: 'saint-john', chosen_by: 'list' }),
+      ],
+    ])
     vi.mocked(trackEvent).mockClear()
+    fireEvent.change(parish, { target: { value: 'saint-lucy' } })
     fireEvent.change(parish, { target: { value: '' } })
+    settle()
+    expect(trackEvent).not.toHaveBeenCalled()
+  })
+
+  it('sends nothing when the map picks the parish already shown', async () => {
+    render(<TestPage data={DATA} />)
+    const map = await screen.findByRole('button', { name: /Map St. Michael/ })
+    vi.useFakeTimers()
+    fireEvent.click(map)
+    settle()
+    vi.mocked(trackEvent).mockClear()
+    fireEvent.click(map)
+    settle()
+    expect(trackEvent).not.toHaveBeenCalled()
+  })
+
+  it('drops a choice still waiting when the page closes', () => {
+    vi.useFakeTimers()
+    const { unmount } = render(<TestPage data={DATA} />)
+    fireEvent.change(
+      screen.getByRole('combobox', { name: 'Choose a parish' }),
+      {
+        target: { value: 'saint-john' },
+      },
+    )
+    unmount()
+    vi.advanceTimersByTime(1000)
     expect(trackEvent).not.toHaveBeenCalled()
   })
 
@@ -505,6 +559,7 @@ describe('water outages events (#3510)', () => {
       ok: true,
       message: 'Check your email.',
     })
+    vi.useFakeTimers()
     render(<TestPage data={DATA} />)
     fireEvent.click(screen.getByRole('button', { name: 'Use my location' }))
     await act(async () => {
@@ -512,6 +567,7 @@ describe('water outages events (#3510)', () => {
         coords: { latitude: 13.0987, longitude: -59.6145 },
       } as GeolocationPosition)
     })
+    settle()
     fireEvent.click(screen.getByRole('button', { name: 'Get email alerts' }))
     const input = screen.getByRole('textbox', { name: 'Your email address' })
     fireEvent.change(input, { target: { value: 'resident' } })

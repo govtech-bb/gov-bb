@@ -73,6 +73,8 @@ export function WaterOutagesPage({
   const [locatedParish, setLocatedParish] = useState<string | null>(null)
   const [locatedExact, setLocatedExact] = useState(false)
   const locationRequest = useRef(0)
+  const parishTimer = useRef<ReturnType<typeof setTimeout>>(undefined)
+  useEffect(() => () => clearTimeout(parishTimer.current), [])
 
   const heading = (
     <>
@@ -146,23 +148,29 @@ export function WaterOutagesPage({
     !!selected &&
     visibleActive.some((o) => o.type !== 'notice' && isCurrentConcern(o, now))
 
-  // "All of Barbados" is not a parish, so choosing it sends nothing.
+  // Sent once a choice has held for a second, as arrow keys on the list change
+  // the parish at each press. "All of Barbados" is not a parish: it sends
+  // nothing and cancels a choice still waiting.
   function trackParish(parish: string, chosenBy: 'list' | 'map' | 'location') {
+    clearTimeout(parishTimer.current)
     if (!parish) return
-    trackEvent('tool-result', {
-      tool: 'water-outages',
-      outcome: 'parish-chosen',
-      parish,
-      chosen_by: chosenBy,
-      active_notices: counts[parish] ?? 0,
-      past_notices: past.filter((o) => o.parishes.includes(parish)).length,
-    })
+    parishTimer.current = setTimeout(() => {
+      trackEvent('tool-result', {
+        tool: 'water-outages',
+        outcome: 'parish-chosen',
+        parish,
+        chosen_by: chosenBy,
+        active_notices: counts[parish] ?? 0,
+        past_notices: past.filter((o) => o.parishes.includes(parish)).length,
+      })
+    }, 1000)
   }
 
   function chooseParish(value: string, chosenBy: 'list' | 'map') {
     locationRequest.current += 1
     onSelect(value)
-    trackParish(value, chosenBy)
+    // The parish already shown, picked again on the map, is not a new result.
+    if (value !== selected) trackParish(value, chosenBy)
     setLocating(false)
     setLocationError(false)
     setLocatedParish(null)

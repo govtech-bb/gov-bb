@@ -62,10 +62,10 @@ function ConfirmPage() {
   // A link opened from the email loads on the server, where trackEvent cannot
   // send, so the browser sends the result once it shows. The ref survives
   // StrictMode's second effect run.
-  const tracked = useRef(false)
+  const tracked = useRef<TokenOutcome | null>(null)
   useEffect(() => {
-    if (tracked.current) return
-    tracked.current = true
+    if (tracked.current === outcome) return
+    tracked.current = outcome
     trackEvent('tool-result', {
       tool: 'water-outages',
       step: 'confirm',
