@@ -365,6 +365,35 @@ const isPage = (value: unknown): value is ApiPage =>
       nullableText(value.pending_revision.comment))) &&
   isPageFields(value);
 
+const isPageHistory = (value: unknown): value is { entries: PageHistoryEntry[] } =>
+  isObject(value) &&
+  Array.isArray(value.entries) &&
+  value.entries.every(
+    (entry) =>
+      isObject(entry) &&
+      isEditVersion(entry.version_no) &&
+      isText(entry.action) &&
+      [
+        "created",
+        "updated",
+        "published",
+        "unpublished",
+        "reverted",
+        "deleted",
+        "submitted",
+        "approved",
+        "rejected",
+        "discarded",
+      ].includes(entry.action) &&
+      (entry.restored_from === null || isEditVersion(entry.restored_from)) &&
+      isText(entry.actor) &&
+      nullableText(entry.actor_name) &&
+      isStamp(entry.occurred_at) &&
+      Array.isArray(entry.changed) &&
+      entry.changed.every(isText) &&
+      nullableText(entry.comment),
+  );
+
 const isRevision = (value: unknown): value is ApiRevision =>
   isObject(value) &&
   isEditVersion(value.version) &&
@@ -697,7 +726,7 @@ export function createEditorApi(apiOrigin: string, landingOrigin?: string) {
       checkedReply(await send("GET", `/pages/${id}/revision`), isRevision),
     /** What happened to a page, newest first. */
     history: async (id: string) =>
-      (await read<{ entries: PageHistoryEntry[] }>(`/pages/${id}/history`)).entries,
+      (await checkedReply(await send("GET", `/pages/${id}/history`), isPageHistory)).entries,
     /** Saves history version `versionNo`'s fields over the page as a new change, made against `expectedVersion`. */
     restoreVersion: async (id: string, versionNo: number, expectedVersion: number) =>
       checkedReply(

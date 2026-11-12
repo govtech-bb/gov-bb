@@ -62,7 +62,10 @@ function recordOutcomeMessages(
         "This item changed. Cancel and review the latest version before trying again.",
     ];
 
-  if (outcome.kind === "unknown") return ["The content API could not be reached. Try again."];
+  if (outcome.kind === "unknown")
+    return [
+      "We couldn’t tell whether that went through. Check your connection, then check again before you try again.",
+    ];
 
   return [otherwise];
 }
@@ -452,7 +455,7 @@ export function DeleteRecordDialog({
       }}
       title={`Delete ${record.record_key}?`}
       description={`It’s removed from ${snapshot?.collection.title ?? collection.title}, and from every page that shows it. This can’t be undone.`}
-      confirmLabel="Delete record"
+      confirmLabel={remove.state === "unsettled" ? "Check again" : "Delete record"}
       pendingLabel="Deleting record…"
       pending={remove.state === "sending" || remove.state === "checking"}
       confirmDisabled={!snapshot}

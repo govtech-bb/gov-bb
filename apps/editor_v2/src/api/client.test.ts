@@ -214,6 +214,67 @@ describe("editor API client", () => {
     },
   );
 
+  it.each([
+    ["version_no", undefined],
+    ["version_no", "9"],
+    ["version_no", 1.5],
+    ["action", undefined],
+    ["action", "restored"],
+    ["restored_from", undefined],
+    ["restored_from", "1"],
+    ["restored_from", 1.5],
+  ])("refuses unchecked history confirmation evidence: %s=%j", async (field, value) => {
+    status = 200;
+    response = JSON.stringify({
+      entries: [
+        {
+          version_no: 9,
+          action: "reverted",
+          restored_from: 1,
+          actor: "editor",
+          actor_name: null,
+          occurred_at: savedPage.updated_at,
+          changed: [],
+          comment: null,
+          [field]: value,
+        },
+      ],
+    });
+    await expect(createEditorApi(origin).history("page-1")).rejects.toBeInstanceOf(
+      ApiAnswerMalformed,
+    );
+  });
+
+  it("reads validated history entries, including a non-restore's null source", async () => {
+    status = 200;
+
+    const entries = [
+      {
+        version_no: 9,
+        action: "reverted",
+        restored_from: 1,
+        actor: "editor",
+        actor_name: null,
+        occurred_at: savedPage.updated_at,
+        changed: ["title"],
+        comment: null,
+      },
+      {
+        version_no: 1,
+        action: "created",
+        restored_from: null,
+        actor: "system",
+        actor_name: "System",
+        occurred_at: savedPage.created_at,
+        changed: [],
+        comment: null,
+      },
+    ];
+
+    response = JSON.stringify({ entries });
+    await expect(createEditorApi(origin).history("page-1")).resolves.toEqual(entries);
+  });
+
   it("sends no content type with a request that has no body", async () => {
     status = 204;
     response = "";

@@ -1,14 +1,10 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLayoutEffect, useRef, useState, type Ref, type RefObject } from "react";
 import { categoryLabel, categoryRows } from "../api/categories";
-import {
-  ApiFailure,
-  outcomeUnknown,
-  type EditorApi,
-  type CreatePageInput,
-  type ServiceDetail,
-} from "../api/client";
-import { apiFailureMessages } from "../api/failure-messages";
+import type { EditorApi, CreatePageInput, ServiceDetail } from "../api/client";
+import type { Outcome } from "../api/write-attempt";
+import { writes } from "../api/writes";
+import { useWrite } from "./use-write";
 import { pageFieldLabel, suggestedUrl, urlProblem } from "../api/page-fields";
 import { categoriesQuery, pageQuery } from "../api/queries";
 import { Button } from "../ui/button";
@@ -21,70 +17,68 @@ import { toast } from "../ui/toast";
 import { ApiProblems, ApiProblemText } from "./api-problems";
 import { documentLabel, type PageDocument } from "./model";
 
+const CHANGED = "This item changed. Cancel and review the latest version before trying again.";
+
+/** Page dialogs retain their refusal wording; unknown writes use the existing recovery explanation. */
+function pageAttemptMessages(outcome: Outcome<unknown> | undefined, otherwise: string): string[] {
+  switch (outcome?.kind) {
+    case undefined:
+    case "landed":
+      return [];
+    case "unknown":
+      return [
+        "We couldn’t tell whether that went through. Check your connection, then check again before you try again.",
+      ];
+    case "signed-out":
+      return ["Your session has ended. Sign in again, then try again."];
+    case "conflict":
+      return [outcome.message ?? CHANGED];
+    case "forbidden":
+      return [outcome.message ?? otherwise];
+    case "invalid":
+      return outcome.errors.length
+        ? outcome.errors.map((item) => `${pageFieldLabel(item.field)}: ${item.message}`)
+        : [otherwise];
+    case "refused":
+      return [outcome.code === "page_dialog_conflict" ? (outcome.message ?? CHANGED) : otherwise];
+    case "missing":
+      return [otherwise];
+  }
+}
+
 /** Create a page in Preview, then hand its id over once the API has it. */
 function useCreatePage(api: EditorApi, onDone: (id: string) => void, input: string) {
   const client = useQueryClient();
+  const create = useWrite(api, writes.createPage);
+  // Only the UI snapshot: retries belong to the shared attempt.
+  const submitted = useRef<string>(undefined);
+  const adopted = useRef(false);
+  const created = create.outcome?.kind === "landed" ? create.outcome.answer : undefined;
 
-  const uncertain = useRef<CreatePageInput>(undefined);
-  const current = useRef(input);
-  current.current = input;
-  const gate = useRef(false);
-  const [created, setCreated] = useState<string>();
+  useLayoutEffect(() => {
+    if (!created || adopted.current) return;
+    adopted.current = true;
+    client.setQueryData(pageQuery(api, created.id).queryKey, created);
 
-  const mutation = useMutation({
-    mutationFn: async ({ page }: { page: CreatePageInput; snapshot: string }) => {
-      if (uncertain.current) {
-        const sent = uncertain.current;
-
-        const list = sent.parent_id
-          ? (await api.service(sent.parent_id)).pages
-          : await api.services();
-
-        const found = list.some((item) => item.url === sent.url);
-
-        if (!found) uncertain.current = undefined;
-        throw new ApiFailure(
-          409,
-          [],
-          found
-            ? "A page already exists at the submitted path. Close this dialog and inspect it before creating another page."
-            : "The submitted page is not listed. Check the path and submit again if you still want to create it.",
-          "create_checked",
-        );
-      }
-
-      const sent = structuredClone(page);
-
-      try {
-        return await api.createPage(sent);
-      } catch (error) {
-        if (outcomeUnknown(error)) uncertain.current = sent;
-        throw error;
-      }
-    },
-    onSuccess: (page, sent) => {
-      setCreated(page.id);
-      client.setQueryData(pageQuery(api, page.id).queryKey, page);
-      void client.invalidateQueries({ queryKey: ["content"] });
-
-      if (current.current === sent.snapshot) onDone(page.id);
-    },
-    onSettled: () => {
-      gate.current = false;
-    },
-  });
+    if (input === submitted.current) onDone(created.id);
+  }, [created, api, client, input, onDone]);
 
   return {
-    ...mutation,
+    outcome: create.outcome,
+    isPending: create.state === "sending" || create.state === "checking",
+    unsettled: create.state === "unsettled",
     mutate: (page: CreatePageInput) => {
-      if (gate.current || created) return;
-      gate.current = true;
-      mutation.mutate({ page: structuredClone(page), snapshot: current.current });
+      if (created) return;
+      void create.press(() => {
+        submitted.current = input;
+
+        return page;
+      });
     },
     createdNotice: created && (
       <div role="status">
         The page was created. Your newer input is still here and has not been saved. Copy it before
-        opening the page.<Button onClick={() => onDone(created)}>Open created page</Button>
+        opening the page.<Button onClick={() => onDone(created.id)}>Open created page</Button>
       </div>
     ),
   };
@@ -97,12 +91,12 @@ function useCreatePage(api: EditorApi, onDone: (id: string) => void, input: stri
  */
 function useFieldProblems(
   controls: ReadonlyMap<string, RefObject<HTMLElement | null>>,
-  error: Error | null,
+  outcome: Outcome<unknown> | undefined,
 ) {
   const [found, setFound] = useState<ReadonlyMap<string, string>>(new Map());
   const [changed, setChanged] = useState<ReadonlySet<string>>(new Set());
   const [checks, setChecks] = useState(0);
-  const refused = error instanceof ApiFailure ? error.errors : [];
+  const refused = outcome?.kind === "invalid" ? outcome.errors : [];
 
   const errorOf = (field: string) =>
     changed.has(field)
@@ -112,7 +106,7 @@ function useFieldProblems(
   // As problems show, not as each one goes
   useLayoutEffect(() => {
     [...controls].find(([field]) => errorOf(field))?.[1].current?.focus();
-  }, [checks, error]);
+  }, [checks, outcome]);
 
   return {
     errorOf,
@@ -131,7 +125,7 @@ function useFieldProblems(
       ? refused
           .filter((item) => !controls.has(item.field))
           .map((item) => `${pageFieldLabel(item.field)}: ${item.message}`)
-      : apiFailureMessages(error, "The page could not be created. Try again.", pageFieldLabel),
+      : pageAttemptMessages(outcome, "The page could not be created. Try again."),
   };
 }
 
@@ -192,7 +186,7 @@ export function CreateRemoteServiceDialog({
       ["category_id", categoryControl],
       ["url", pathControl],
     ]),
-    create.error,
+    create.outcome,
   );
 
   // Until it's edited, the path follows the name and the category, so it changes with them
@@ -217,11 +211,11 @@ export function CreateRemoteServiceDialog({
 
         if (badPath) found.set("url", badPath);
 
-        if (problems.check(found) && category)
+        if (create.unsettled || (problems.check(found) && category))
           create.mutate({
             url: path,
             title: title.trim(),
-            category_id: category.id,
+            category_id: category?.id,
             visibility: "preview",
             body_markdown: "",
             // /services lists only alpha services (#3244).
@@ -236,7 +230,7 @@ export function CreateRemoteServiceDialog({
           pending={create.isPending}
           pendingLabel="Creating service…"
         >
-          Create service
+          {create.unsettled ? "Check again" : "Create service"}
         </Button>
       }
     >
@@ -316,7 +310,7 @@ export function CreateRemotePageDialog({
       ["title", titleControl],
       ["url", pathControl],
     ]),
-    create.error,
+    create.outcome,
   );
 
   // Until it's edited, the path follows the title and the page's type, so it changes with them
@@ -339,7 +333,7 @@ export function CreateRemotePageDialog({
 
         if (badPath) found.set("url", badPath);
 
-        if (problems.check(found))
+        if (create.unsettled || problems.check(found))
           create.mutate({
             url: path,
             title: name,
@@ -356,7 +350,7 @@ export function CreateRemotePageDialog({
           pending={create.isPending}
           pendingLabel="Adding page…"
         >
-          Add page
+          {create.unsettled ? "Check again" : "Add page"}
         </Button>
       }
     >
@@ -405,7 +399,7 @@ export function CreateRemotePageDialog({
 export function DeleteRemotePageDialog({
   api,
   open,
-  page,
+  page: initialPage,
   onClose,
   onDone,
   focusAfter,
@@ -419,19 +413,19 @@ export function DeleteRemotePageDialog({
   /** Where the focus goes once the page has gone, as the editor leaves it and its Delete page may go too. */
   focusAfter: RefObject<HTMLElement | null>;
 }) {
-  const client = useQueryClient();
+  const [page] = useState(initialPage);
   const deleted = useRef(false);
+  const remove = useWrite(api, writes.deletePage);
 
-  const remove = useMutation({
-    mutationFn: () => api.deletePage(page.id, page.version),
-    onSuccess: () => {
-      deleted.current = true;
-      void client.invalidateQueries({ queryKey: ["content"] });
-      // The editor leaves the page, so say it went
-      toast("Page deleted");
-      onDone();
-    },
-  });
+  useLayoutEffect(() => {
+    if (remove.outcome?.kind !== "landed" || deleted.current) return;
+    deleted.current = true;
+    // The editor leaves the page, so say it went
+    toast("Page deleted");
+    onDone();
+  }, [remove.outcome, onDone]);
+
+  const messages = pageAttemptMessages(remove.outcome, "The page could not be deleted. Try again.");
 
   // A service is its entry page: deleting that page deletes the service
   const service = page.role === "entry";
@@ -449,22 +443,16 @@ export function DeleteRemotePageDialog({
           ? `${documentLabel(page)} is this service’s entry page, so deleting it deletes the service. It’s removed from the content API and, if it’s public, from the site. Any unsaved changes will be lost.`
           : `${documentLabel(page)} is removed from the content API and, if it is public, from the site. Any unsaved changes will be lost.`
       }
-      confirmLabel={service ? "Delete service" : "Delete page"}
-      pendingLabel={service ? "Deleting service…" : "Deleting page…"}
-      pending={remove.isPending}
-      finalFocus={() => (deleted.current ? focusAfter.current : true)}
-      error={
-        remove.error && (
-          <ApiProblemText
-            messages={apiFailureMessages(
-              remove.error,
-              "The page could not be deleted. Try again.",
-              pageFieldLabel,
-            )}
-          />
-        )
+      confirmLabel={
+        remove.state === "unsettled" ? "Check again" : service ? "Delete service" : "Delete page"
       }
-      onConfirm={() => remove.mutate()}
+      pendingLabel={service ? "Deleting service…" : "Deleting page…"}
+      pending={remove.state === "sending" || remove.state === "checking"}
+      finalFocus={() => (deleted.current ? focusAfter.current : true)}
+      error={messages.length > 0 && <ApiProblemText messages={messages} />}
+      onConfirm={() => {
+        if (!deleted.current) void remove.press(() => ({ id: page.id, version: page.version }));
+      }}
     />
   );
 }

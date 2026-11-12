@@ -881,6 +881,17 @@ test("an unconfirmed publish keeps the dialog through absence and preserves the 
   noFalseNotice();
 });
 
+test("a non-version 409 without a reason from the API still says what happened", async () => {
+  const { server } = await render("review");
+  await shown();
+  server.answer(() => new Response(null, { status: 409 }));
+  await press("Approve and publish");
+  await until(() => expect(dialog()).not.toBeNull());
+  await confirmDecision();
+  await until(() => expect(dialog()).toBeNull());
+  expect(text()).toContain("This change is not in the state required for that decision.");
+});
+
 test.each([400, 409])(
   "a non-version %s keeps the existing refusal wording and reload behaviour",
   async (status) => {
