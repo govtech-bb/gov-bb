@@ -10,6 +10,7 @@ import { Heading, Link, Text } from '@govtech-bb/react'
 import { format, parseISO } from 'date-fns'
 import { PHARMACIES_LAST_UPDATED } from '../-data/pharmacies'
 import { DRUG_SERVICE_PHONE, telHref } from '../-lib/routes'
+import { trackPharmacyAction } from '../-lib/tool-events'
 import { PharmacyFinder } from './pharmacy-finder'
 
 export const TITLE = 'Search for pharmacies'
@@ -69,7 +70,12 @@ export function FindOpenPharmacyPage() {
         </Text>
         <Text as="p">
           Phone:{' '}
-          <Link href={telHref(DRUG_SERVICE_PHONE)}>{DRUG_SERVICE_PHONE}</Link>
+          <Link
+            href={telHref(DRUG_SERVICE_PHONE)}
+            onClick={() => trackPharmacyAction('call-drug-service')}
+          >
+            {DRUG_SERVICE_PHONE}
+          </Link>
         </Text>
         <Text as="p">
           Email:{' '}
