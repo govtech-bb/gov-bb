@@ -393,6 +393,27 @@ describe("eventName — 50-char cap (#2682)", () => {
   });
 });
 
+describe("file and print event codes (#3514)", () => {
+  const LONG_ID = "apply-for-temporary-restaurant-permit"; // 37 chars
+  const HUGE_ID =
+    "apply-for-national-summer-camp-programme-tropical-trails-and-tales-science-camp-2026";
+  const events = ["form-file-error", "form-file-remove", "form-print"];
+
+  it("gives each a compact code that maps back to its name", () => {
+    const codes = events.map((ev) => eventName(HUGE_ID, ev).split(":")[1]);
+    expect(codes).toEqual(["fferr", "ffrem", "fprnt"]);
+    codes.forEach((code, i) => expect(canonicalEvent(code)).toBe(events[i]));
+  });
+
+  it("keeps every name within 50 chars, even on the longest form id", () => {
+    for (const id of [LONG_ID, HUGE_ID, "a".repeat(44)]) {
+      for (const ev of events) {
+        expect(eventName(id, ev).length).toBeLessThanOrEqual(50);
+      }
+    }
+  });
+});
+
 describe("eventFormKey — ids longer than 44 chars (#2682)", () => {
   const HUGE_ID =
     "apply-for-national-summer-camp-programme-tropical-trails-and-tales-science-camp-2026";

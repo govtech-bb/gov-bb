@@ -147,8 +147,25 @@ export default function FileUpload({
     const next = confirmedRef.current.filter((f) => f.key !== key);
     confirmedRef.current = next;
     onFileChange(next.length ? next : null);
-    if (removed) setStatusMessage(`${removed.name} removed.`);
+    if (!removed) return;
+    setStatusMessage(`${removed.name} removed.`);
+    trackEvent("form-file-remove", {
+      form: formId ?? "",
+      category: formCategory(formId ?? ""),
+      step: field.stepId,
+      field: field.fieldId,
+    });
   };
+
+  /** Count a file that was not added, by the status it settled to (#3514). */
+  const trackFileError = (reason: PendingStatus) =>
+    trackEvent("form-file-error", {
+      form: formId ?? "",
+      category: formCategory(formId ?? ""),
+      step: field.stepId,
+      field: field.fieldId,
+      reason,
+    });
 
   // Each row's run can be cancelled: Remove on a row still uploading or
   // checking, and every run when the field leaves the page. A cancelled run
@@ -181,6 +198,7 @@ export default function FileUpload({
   ) => {
     updatePending(id, { status, error });
     setStatusMessage(`${name}: ${error}`);
+    trackFileError(status);
   };
 
   /**
@@ -351,6 +369,7 @@ export default function FileUpload({
             { id, name: file.name, status: "rejected", error: rejection },
           ]);
           setStatusMessage(`${file.name}: ${rejection}`);
+          trackFileError("rejected");
           return;
         }
 
@@ -362,6 +381,7 @@ export default function FileUpload({
             { id, name: file.name, status: "rejected", error },
           ]);
           setStatusMessage(`${file.name}: ${error}`);
+          trackFileError("rejected");
           return;
         }
 
