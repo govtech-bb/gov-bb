@@ -183,4 +183,13 @@ describe('permit IDs', () => {
     expect(new Set(ids).size).toBe(ids.length)
     for (const id of ids) expect(id).toMatch(/^[a-z][a-z-]*$/)
   })
+
+  // The tel: link prefixes +1 to the digits of the shown number.
+  it('shows every phone number as a 10-digit Barbados number', () => {
+    for (const { applyInPerson } of PERMITS) {
+      if (applyInPerson?.tel) {
+        expect(applyInPerson.tel.replace(/\D/g, '')).toMatch(/^246\d{7}$/)
+      }
+    }
+  })
 })
