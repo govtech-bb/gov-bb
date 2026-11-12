@@ -135,6 +135,26 @@ export interface TrackingData extends ToolTrackingData {
     host?: string;
     page: string;
   };
+  // Chat (#3515). Never the question or answer text.
+  /**
+   * A question asked. `source` is where: a landing placement such as "home",
+   * or "chat" when typed in the chat app.
+   */
+  "chat-submit": { source: string };
+  /**
+   * The chat app's reply to one question, sent when the turn ends. `source` is
+   * where it was asked: "chat" (typed there; the chat app sent chat-submit) or
+   * "landing" (carried over in `?q=`; landing sent chat-submit or
+   * chat-suggestion). `outcome` is "error" when the request failed or no reply
+   * text came back; a reply the server cuts off at its turn timeout after
+   * text started reads as "answered". `cited` is true when the reply came with
+   * cited alpha.gov.bb pages.
+   */
+  "chat-answer": {
+    outcome: "answered" | "error" | "stopped";
+    source: "chat" | "landing";
+    cited: boolean;
+  };
 }
 
 export type TrackingEventName = keyof TrackingData;

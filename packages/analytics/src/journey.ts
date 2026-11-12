@@ -14,7 +14,7 @@
 // getJourneyId), so landing's Start click, the form and the EzPay round trip
 // can be joined. It goes to /journey only, never to Umami.
 
-export type JourneyApp = "landing" | "forms";
+export type JourneyApp = "landing" | "forms" | "chat";
 export type JourneyProps = Record<string, string | number | boolean>;
 
 interface QueuedEvent {

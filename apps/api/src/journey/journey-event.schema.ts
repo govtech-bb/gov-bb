@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-// Shape of a first-party journey event sent by the landing and forms sites
+// Shape of a first-party journey event sent by the landing, forms and chat sites
 // (replacing Umami, see journey.controller.ts).
 //
 // Event names are built at runtime (`<formId>:form-step-three`,
@@ -27,7 +27,7 @@ export const journeyEventSchema = z
   .object({
     /** Random per-event id, so a retried send can be counted once. */
     id: z.uuid(),
-    app: z.enum(["landing", "forms"]),
+    app: z.enum(["landing", "forms", "chat"]),
     event: z.string().regex(EVENT_NAME),
     props: z
       .record(z.string().regex(PROP_KEY), propValue)

@@ -37,6 +37,9 @@ redeploy** — none of these are live-tunable. The only things read at runtime
 | `RAG_ONLY` | optional | `1`/`true` master kill-switch — forces every feature off (rollback to Q&A only). | `1` |
 | `BEDROCK_PROMPT_CACHE` | optional | `1`/`true` to cache the system prompt via a Bedrock cache point (model/region dependent). | `1` |
 | `TURN_TIMEOUT_MS` | optional | Wall-clock ceiling per streamed turn, ms (default `60000`). | `60000` |
+| `VITE_UMAMI_WEBSITE_ID` | optional | Umami website id for the chat app. Unset = no Umami script, no Umami events. | `xxxxxxxx-xxxx-…` |
+| `VITE_UMAMI_SRC` | optional | Umami script URL (default `https://cloud.umami.is/script.js`). | `https://cloud.umami.is/script.js` |
+| `VITE_JOURNEY_URL` | optional | The API's `/journey` URL for first-party journey events. Unset = none sent. Set it only where the WAF has the per-IP rule for `/journey`. | `https://forms.api.sandbox.alpha.gov.bb/journey` |
 
 Flags use `1`/`true` for on; anything else (incl. unset) is off.
 
