@@ -19,6 +19,7 @@ import {
 import type { ApiV2SearchDocument } from './api-v2-site'
 import { siteCache } from './api-v2-site-cache'
 import type * as SiteModule from './api-v2-site'
+import { apiV2Breaker } from './api-v2-reader'
 
 const DOCUMENT: ApiV2SearchDocument = {
   url: '/work-employment/apply-for-a-grant',
@@ -81,6 +82,7 @@ afterEach(() => {
   vi.restoreAllMocks()
   vi.useRealTimers()
   vi.unstubAllEnvs()
+  apiV2Breaker.reset()
 })
 
 describe('fetchApiV2Catalog', () => {

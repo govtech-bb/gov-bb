@@ -1,4 +1,4 @@
-import type { QuestionBlock } from "../../forms/schema";
+import type { QuestionBlock } from "../../forms/formats/native/schema";
 import {
   ACCOUNT_TYPES,
   COUNTRIES,
@@ -15,7 +15,7 @@ import {
 export {
   OPENING_HOURS_PATTERN,
   OPENING_HOURS_ERROR,
-} from "../../forms/features/opening-hours/defaults";
+} from "../../forms/fields/opening-hours-defaults";
 
 /** Native copied defaults; registry provenance never becomes part of submitted form data. */
 export const COMPONENTS = {

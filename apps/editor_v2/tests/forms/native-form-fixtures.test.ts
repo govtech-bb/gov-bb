@@ -13,9 +13,9 @@ import {
   validateFormDefinition,
   type FormDefinitionV2,
   type QuestionBlock,
-} from "../../src/forms/schema";
-import { $native } from "../../src/forms/editor/native-state";
-import { $isQuestionNode } from "../../src/forms/editor/nodes";
+} from "../../src/forms/formats/native/schema";
+import { $native } from "../../src/forms/formats/native/native-state";
+import { $isQuestionNode } from "../../src/forms/canvas/form-nodes";
 import { evaluate, Invalid, Missing, type RawAnswers } from "../helpers/native-fixture-interpreter";
 import manifest from "../fixtures/forms/v2/manifest.json";
 

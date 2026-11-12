@@ -2,14 +2,14 @@
  * Data collections (#3183): facts many pages repeat, such as a department's
  * phone number, kept once as records of a collection.
  *
- * A collection's field list is the shape of block-kit's
- * `CollectionDefinition` (`{ key, title, record_key, schema: { fields } }`),
- * so editor_v2 and landing can read it with those types. api_v2 keeps its own
- * Zod copy rather than importing block-kit, which would pull React into the
- * API's build.
+ * A collection is `{ key, title, record_key, schema: { fields } }`, and each
+ * field `{ key, label, type }`. editor_v2 and landing read collections in this
+ * shape through the API; govbbmarkd's contact details need only each field's
+ * key and label.
  */
 
 import { z } from "zod";
+import { EditVersion } from "./edit-concurrency";
 import type { FieldError } from "./page";
 import { err, ok, type Result } from "./result";
 
@@ -35,7 +35,7 @@ export const CollectionField = z.object({
   label: z.string().min(1),
   type: z.enum(FIELD_TYPES),
 });
-/** One field of a collection, as block-kit's `CollectionField`. */
+/** One field of a collection: its key in a record, the label readers see and the kind of value it holds. */
 export type CollectionField = z.infer<typeof CollectionField>;
 
 export const CollectionSchema = z.object({ fields: z.array(CollectionField) });
@@ -73,11 +73,24 @@ export const CollectionRecord = z.object({
   record_key: RecordKey,
   data: RecordData,
   updated_at: Stamp.describe(
-    "Send it back in `if-updated-at` to save or delete this version.",
+    "Content timestamp; authenticated editors use version for write preconditions.",
   ),
 });
 /** One record of a collection. */
 export type CollectionRecord = z.infer<typeof CollectionRecord>;
+
+/** Record baseline for authenticated reads and mutation acknowledgements. */
+export const EditorCollectionRecord = CollectionRecord.extend({
+  version: EditVersion,
+});
+export type EditorCollectionRecord = z.infer<typeof EditorCollectionRecord>;
+
+/** A record with the definition its form is rendered from. */
+export const RecordEnvelope = z.object({
+  collection: CollectionView,
+  record: EditorCollectionRecord,
+});
+export type RecordEnvelope = z.infer<typeof RecordEnvelope>;
 
 /** What a record write sends; `data` is checked against the field list. */
 export const RecordBody = z.strictObject({

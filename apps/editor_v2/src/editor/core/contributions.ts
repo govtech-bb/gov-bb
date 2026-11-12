@@ -5,4 +5,5 @@ export type EditorRenderer = {
   readonly render: (props: unknown) => ReactNode;
 };
 
+/** A renderer added to a named slot, such as editor.overlay. */
 export type EditorSlotContribution = EditorRenderer & { readonly slot: string };

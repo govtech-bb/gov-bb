@@ -18,13 +18,13 @@ landing hides Start for `form_disabled`.
   confirm dialog says the status changes the form only, with a two-step
   warning on `disabled`.
 - `statusEditable(row, pagesInEditor)` in `app/lib/catalogue.ts`, with spec.
-- ADR 0063 amended ("After cutover"); no new ADR.
+- ADR 0110 amended ("After cutover"); no new ADR.
 
 ## Why we did it that way
 
 **Retire the toggles rather than have api_v2 honour `service_status`.**
 Honouring it would put a cross-service read on every page view and give a page
-a second switch that bypasses the approver role (ADR 0079). The page rows are
+a second switch that bypasses the approver role (ADR 0134). The page rows are
 also going away: they lose their titles once the landing markdown is removed
 (#3220/#3240).
 

@@ -2,21 +2,21 @@
 
 Date: 2026-08-07
 Status: Approved (design), pending implementation plan
-Related: ADR 0065 (superseded by new ADR 0066), ADR 0043, #1682, #1646
+Related: ADR 0113 (superseded by new ADR 0114), ADR 0075, #1682, #1646
 
 ## Context
 
-`ALLOW_PREVIEW_SUBMISSIONS` (ADR 0065) is an all-or-nothing environment switch.
+`ALLOW_PREVIEW_SUBMISSIONS` (ADR 0113) is an all-or-nothing environment switch.
 When it is `"true"`, `SubmissionsController.create` sets `bypassVisibility` on
 **every** submission, so **every** non-public published-file recipe on that
 environment becomes submittable without a token.
 
-That is broader than the need it was introduced for. ADR 0065 was written to
+That is broader than the need it was introduced for. ADR 0113 was written to
 exercise one feature-flagged form — `apply-for-temporary-restaurant-licence`
 (`meta.visibility: "draft"`) — end to end on sandbox and staging. The flag
 instead unlocks the submit path for every form gated by `meta.visibility` or by
 a `service_status` row, including forms deliberately hidden for reasons
-unrelated to testing. ADR 0065 already recorded the residual risk: "anyone who
+unrelated to testing. ADR 0113 already recorded the residual risk: "anyone who
 can reach a sandbox/staging API can submit its non-public forms."
 
 Narrowing the flag to a named set of forms keeps the testing capability and
@@ -24,9 +24,9 @@ removes the collateral exposure.
 
 Unchanged by this work:
 
-- **ADR 0043 / #145** — `bypassVisibility` does not touch the recipe *source*.
+- **ADR 0075 / #145** — `bypassVisibility` does not touch the recipe *source*.
   `resolveRecipe` still forces `files` outside dev, so a DB-only builder draft
-  resolves to `null` → 404 → the ADR 0043 400 ("This recipe is an unpublished
+  resolves to `null` → 404 → the ADR 0075 400 ("This recipe is an unpublished
   preview and cannot be submitted"). DB drafts stay unsubmittable.
 - **#1682** — the per-request `X-Recipe-Preview` token path keeps working for
   any form, allowlisted or not. It is already secret-gated.
@@ -54,8 +54,8 @@ in its place:
 // submitted without a per-request X-Recipe-Preview token, so a feature-flagged
 // form can be tested end-to-end. Empty (default) disables the bypass — leave
 // unset in production. DB-only builder drafts stay unsubmittable regardless
-// (ADR 0043 / #145). Replaces the blanket ALLOW_PREVIEW_SUBMISSIONS boolean.
-// See ADR 0066.
+// (ADR 0075 / #145). Replaces the blanket ALLOW_PREVIEW_SUBMISSIONS boolean.
+// See ADR 0114.
 PREVIEW_SUBMISSION_FORM_IDS: z.string().default(""),
 ```
 
@@ -66,7 +66,7 @@ against. No boot-time validation of membership.
 
 The schema ends in `.passthrough()`, so a stale `ALLOW_PREVIEW_SUBMISSIONS`
 still present in a deployed task definition is accepted and ignored rather than
-failing the boot gate. This is deliberate — ADR 0061 records that a hard
+failing the boot gate. This is deliberate — ADR 0106 records that a hard
 boot-time env requirement crash-loops ECS.
 
 ### 2. `apps/api/src/forms/submissions/submissions.controller.ts`
@@ -78,10 +78,10 @@ with:
 ```ts
 // PREVIEW_SUBMISSION_FORM_IDS names the forms whose non-public *published file*
 // recipe may be submitted without a per-request token, so a feature-flagged
-// form can be tested end-to-end on sandbox/staging (ADR 0066). Any other form
+// form can be tested end-to-end on sandbox/staging (ADR 0114). Any other form
 // still needs a valid X-Recipe-Preview token. Empty list → no bypass, which is
 // production's posture. DB-only builder drafts stay unsubmittable either way
-// (ADR 0043 / #145).
+// (ADR 0075 / #145).
 const previewSubmissionFormIds = this.configService
   .get<string>("PREVIEW_SUBMISSION_FORM_IDS", "")
   .split(",")
@@ -125,7 +125,7 @@ constructor(
     this.logger.warn(
       "ALLOW_PREVIEW_SUBMISSIONS is set but no longer read — preview " +
         "submissions are now scoped per form via PREVIEW_SUBMISSION_FORM_IDS " +
-        "(ADR 0066).",
+        "(ADR 0114).",
     );
   }
 }
@@ -138,15 +138,15 @@ Replace the `ALLOW_PREVIEW_SUBMISSIONS` block (lines 65–70) with a
 empty means the bypass is off, that it reaches published-file recipes only, and
 that production leaves it unset.
 
-### 4. New ADR `docs/decisions/0066-preview-submissions-are-scoped-to-named-forms.md`
+### 4. New ADR `docs/decisions/0114-preview-submissions-are-scoped-to-named-forms.md`
 
-Supersedes ADR 0065; 0065 stays in place as history with its status updated to
+Supersedes ADR 0113; 0113 stays in place as history with its status updated to
 note the supersession. The new ADR records:
 
 - Why the blanket switch was too broad (every gated form on the environment,
   not just the one under test).
 - The replacement: an explicit per-form allowlist, no wildcard, empty default.
-- That ADR 0043's DB-draft prohibition and #1682's token path are both
+- That ADR 0075's DB-draft prohibition and #1682's token path are both
   unaffected.
 - That the gate remains environment configuration rather than a per-request
   secret — anyone who can reach sandbox/staging can still submit the *named*
@@ -192,8 +192,8 @@ Between the code deploy and that edit, preview submissions are **off** on
 sandbox and staging: a submission to `apply-for-temporary-restaurant-licence`
 404s on the files path, the draft-sourced guard in
 `submission-pipeline.service.ts` re-finds the recipe, and the caller gets the
-ADR 0043 **400** — "This recipe is an unpublished preview and cannot be
-submitted." (Not a 404; that is the pre-ADR-0065 behaviour described in 0065's
+ADR 0075 **400** — "This recipe is an unpublished preview and cannot be
+submitted." (Not a 404; that is the pre-ADR-0113 behaviour described in 0113's
 own context section.) This fails closed, which is the safe direction, and the
 boot warning names the cause in CloudWatch. Call it out as a release note in the
 PR description.
@@ -208,7 +208,7 @@ variable defaults to empty.
 - A submission to any other non-public form on that same environment is
   rejected exactly as it is today with the flag off.
 - A valid `X-Recipe-Preview` token still submits any non-public published form.
-- A DB-only builder draft is still rejected with the ADR 0043 400, in every
+- A DB-only builder draft is still rejected with the ADR 0075 400, in every
   configuration above.
 - `pnpm exec nx run api:test` passes; `nx run-many -t build --exclude=landing`
   compiles clean.

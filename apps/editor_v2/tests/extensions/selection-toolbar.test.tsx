@@ -9,19 +9,17 @@ import {
   $isRangeSelection,
   type LexicalEditor,
 } from "lexical";
+import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
+import { defineEditor, type EditorModule } from "@/editor";
 import {
-  defineEditor,
-  defineSlot,
-  Editor,
   FormattingModule,
   HistoryModule,
   keepSelection,
   LinksModule,
   SELECTION_TOOLBAR,
   TextModule,
-  useLexicalComposerContext,
-  type EditorModule,
-} from "../../src/editor";
+} from "@/editor/modules";
+import { defineSlot, Editor } from "@/editor/react";
 import { Button } from "../../src/ui/button";
 import { renderInPage } from "../helpers/page-editor";
 

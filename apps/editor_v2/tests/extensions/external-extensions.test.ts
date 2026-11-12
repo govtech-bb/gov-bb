@@ -1,14 +1,10 @@
 import { serializedNodes } from "../helpers/serialized-test-data";
 import { expect, test } from "vitest";
 import { $getRoot, HISTORY_PUSH_TAG, REDO_COMMAND, UNDO_COMMAND } from "lexical";
-import {
-  $setSettings,
-  createHeadlessEditor,
-  defineEditor,
-  executeAction,
-  HistoryModule,
-  TextModule,
-} from "../../src/editor";
+import { createHeadlessEditor, defineEditor, executeAction } from "@/editor";
+// The form's own settings adapter, which a field's controls edit through (onSettings)
+import { $setSettings } from "../../src/forms/canvas/form-nodes";
+import { HistoryModule, TextModule } from "@/editor/modules";
 import {
   defineFormEditor,
   FormRegistryModule,

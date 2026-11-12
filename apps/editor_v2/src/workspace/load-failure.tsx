@@ -1,6 +1,7 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useLayoutEffect, useRef } from "react";
 import { ApiFailure } from "../api/client";
+import type { ListBlockedReason } from "../api/list-load-state";
 import { Button } from "../ui/button";
 import { EmptyState } from "../ui/empty-state";
 
@@ -23,8 +24,34 @@ export function LoadFailure({
   retrying: boolean;
   retry: () => void;
 }) {
-  const href = useRouterState({ select: (state) => state.location.href });
   const status = error instanceof ApiFailure ? error.status : undefined;
+
+  return (
+    <BlockedLoadFailure
+      noun={noun}
+      title={title}
+      reason={status === 401 ? "session-ended" : status === 403 ? "no-access" : "unreachable"}
+      retrying={retrying}
+      retry={retry}
+    />
+  );
+}
+
+/** A blocked list's reason and way on; non-list loads keep their existing wording through LoadFailure. */
+export function BlockedLoadFailure({
+  noun,
+  title = `We could not load ${noun}`,
+  reason,
+  retrying,
+  retry,
+}: {
+  noun: string;
+  title?: string;
+  reason: ListBlockedReason;
+  retrying: boolean;
+  retry: () => void;
+}) {
+  const href = useRouterState({ select: (state) => state.location.href });
   const again = useRef<HTMLButtonElement>(null);
 
   // Once what failed loads, this goes, and Try again with it: the screen's content takes the focus from its top
@@ -42,14 +69,16 @@ export function LoadFailure({
       tone="error"
       title={title}
       description={
-        status === 401
+        reason === "session-ended"
           ? `Your session has ended. Sign in again to load ${noun}.`
-          : status === 403
+          : reason === "no-access"
             ? `You do not have access to these ${noun}.`
-            : "Check your connection, then try again."
+            : reason === "gone"
+              ? `These ${noun} could not be found. They may have been removed, or the address may be wrong.`
+              : "Check your connection, then try again."
       }
       actions={
-        status === 401 ? (
+        reason === "session-ended" ? (
           <Button
             variant="secondary"
             render={

@@ -2,9 +2,9 @@ import { expect, test } from "vitest";
 import {
   nativeFormula,
   parseNativeFormula,
-} from "../../src/forms/features/calculations/native-formula";
-import type { NativeTargets } from "../../src/forms/features/logic/native-authoring";
-import type { Expression } from "../../src/forms/schema/types";
+} from "../../src/forms/calculated-fields/native-formula";
+import type { NativeTargets } from "../../src/forms/conditional-logic/logic-native-authoring";
+import type { Expression } from "../../src/forms/formats/native/schema/types";
 
 const targets: NativeTargets = {
   questions: [{ value: "amount.with spaces", label: "Amount", kind: "number", options: [] }],

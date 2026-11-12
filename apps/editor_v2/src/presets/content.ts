@@ -1,15 +1,12 @@
+import { LinksModule, FormattingModule, TextModule, HistoryModule } from "@/editor/modules";
 import {
   HeadingsModule,
   ListsModule,
   CalloutsModule,
   DisclosureModule,
-  LinksModule,
-  FormattingModule,
   $isShowHideNode,
-  defineEditor,
-  TextModule,
-  HistoryModule,
-} from "../editor";
+} from "../forms/modules";
+import { defineEditor } from "@/editor";
 
 export const contentEditor = defineEditor(
   [

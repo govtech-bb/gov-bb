@@ -1,11 +1,11 @@
-import { fieldWidthOf as fieldWidth } from "../../src/forms/editor/preset-settings";
+import { fieldWidthOf as fieldWidth } from "../../src/forms/canvas/preset-settings";
 import { createEditor as createLexicalEditor, type EditorState, type LexicalEditor } from "lexical";
 import { registerEditorDefinition } from "../../src/editor/core/context";
 import { govbbFormEditor, govbbFormCodec } from "../../src/presets/govbb-form";
-import { createFormSourceDialect } from "../../src/forms/source/dialect";
-import { compileForm as compile } from "../../src/forms/editor/compile";
-import { preflight as check } from "../../src/forms/adapters/ssb/validation";
-import { legacyFieldAdapter } from "../../src/forms/editor/legacy-mappings";
+import { createFormSourceDialect } from "../../src/forms/formats/markdown/dialect";
+import { compileForm as compile } from "../../src/forms/canvas/form-compile";
+import { preflight as check } from "../../src/forms/formats/legacy-ssb/projection/validation";
+import { legacyFieldAdapter } from "../../src/forms/formats/legacy-ssb/legacy-mappings";
 import { initialDraft as initializeDraft } from "../../src/persistence/draft-store";
 import { DraftStore as ConfiguredDraftStore } from "../../src/persistence/draft-store";
 import { draftEditorConnection } from "../../src/host/draft-editor";
@@ -15,8 +15,8 @@ import {
   rulesFor as rules,
   defaultMessage as message,
   messagesFor as messages,
-} from "../../src/forms/editor/ssb";
-import { fieldArrayKinds as repeatKinds } from "../../src/forms/features/repetition/queries";
+} from "../../src/forms/formats/legacy-ssb/legacy-ssb-rules";
+import { fieldArrayKinds as repeatKinds } from "../../src/forms/repetition/repetition-queries";
 
 /** Explicit preset fixture for tests written before editor composition existed. */
 export function createEditor(options: Parameters<typeof createLexicalEditor>[0]) {
@@ -56,17 +56,17 @@ export const preflight = (schema: Parameters<typeof check>[0]) =>
     })),
   });
 
-export * from "../../src/forms/core/references";
+export * from "../../src/forms/model/references";
 
-export * from "../../src/forms/adapters/ssb/schema";
+export * from "../../src/forms/formats/legacy-ssb/projection/schema";
 
-export type { LegacySsbFormSchema as FormSchema } from "../../src/forms/adapters/ssb/schema";
+export type { LegacySsbFormSchema as FormSchema } from "../../src/forms/formats/legacy-ssb/projection/schema";
 
-export type * from "../../src/forms/core/logic";
+export type * from "../../src/forms/model/logic";
 
-export { $toMarkdown } from "../../src/forms/editor/compile";
+export { $toMarkdown } from "../../src/forms/canvas/form-compile";
 
-export { createFormDraftCodec } from "../../src/forms/editor/codec";
+export { createFormDraftCodec } from "../../src/forms/canvas/form-codec";
 
 export * from "../../src/persistence/types";
 
@@ -103,7 +103,7 @@ export const messagesFor = (...args: Parameters<typeof messages>) =>
 
 export const fieldArrayKinds = { has: (kind: string) => readDefault(() => repeatKinds.has(kind)) };
 
-export { sourceSlug } from "../../src/forms/source/identifiers";
+export { sourceSlug } from "../../src/forms/formats/markdown/identifiers";
 
 export const fieldWidthOf = (...args: Parameters<typeof fieldWidth>) =>
   readDefault(() => fieldWidth(...args));

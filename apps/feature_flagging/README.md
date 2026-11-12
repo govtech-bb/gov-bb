@@ -17,7 +17,7 @@ government service**, backed by the `service_status` API on `apps/api`. Built fo
 - Gates access behind GitHub org/team membership (or repo write access).
 
 After cutover — once an environment's landing reads its pages from api_v2 —
-page visibility is set in the content editor (editor_v2), not here (ADR 0063,
+page visibility is set in the content editor (editor_v2), not here (ADR 0110,
 "After cutover"). Set **`EDITOR_V2_URL`** (the editor's origin, no trailing
 slash) on that environment's branch and rebuild: rows without a form then show
 no status select, a line above the table links to the editor, and the statuses
@@ -81,7 +81,9 @@ GitHub-auth API change to be deployed there — see the `apps/api` PR.)
 All three sources are fetched from `apps/api` at request time and merged in
 `app/lib/catalogue.ts`:
 
-- content pages — `GET /services` (the runtime content index),
+- content pages — `GET /services` (the runtime content index; api_v2's
+  catalog where api v1 has `API_V2_URL` set, so editor_v2 publishes show
+  within a minute),
 - forms — `GET /form-definitions`,
 - live statuses — `GET /service_status`.
 

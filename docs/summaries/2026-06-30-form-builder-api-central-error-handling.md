@@ -19,7 +19,7 @@ broader question was whether to make form_builder_api adopt apps/api's
   the simple request-validation (400) and not-found (404) guards to
   `throw badRequest(...)` / `throw notFound(...)` so they answer through the
   central handler too (bodies unchanged).
-- Recorded the response-shape decision in ADR `0062`.
+- Recorded the response-shape decision in ADR `0109`.
 - Updated the route specs that unit-test error paths to assert the new throw
   contract; added specs for the new helper + middleware.
 
@@ -31,7 +31,7 @@ consumer and reads success bodies bare (`api.get<T[]>("/builder/forms")`); on a
 non-2xx it reads **only** `errBody.error` + the HTTP status and discards
 everything else. Enveloping would break every call site for a private admin tool
 with no payoff. So the error body shape stays `{ error: string }` (non-breaking)
-and ADR 0062 documents the divergence as deliberate.
+and ADR 0109 documents the divergence as deliberate.
 
 **"Preserve" over "flatten" (user decision).** The plan floated standardizing
 *all* error bodies to `{ error: string }`. We checked the specs first: three

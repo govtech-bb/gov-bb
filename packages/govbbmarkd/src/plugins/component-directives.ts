@@ -55,6 +55,14 @@ const componentDirectives: Plugin<[handlers?: Handlers | undefined], Root> =
             node.data.hName = "summary-item";
             node.data.hProperties = { dataSummaryKey: component.key };
             break;
+          case "contact":
+            node.data.hName = "contact-record";
+            node.data.hProperties = {
+              collection: component.collection,
+              record: component.record,
+              fields: component.fields.join(","),
+            };
+            break;
           case "table":
             node.data.hName = "div";
             component.table.data = {

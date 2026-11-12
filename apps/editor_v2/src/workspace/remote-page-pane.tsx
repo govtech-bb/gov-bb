@@ -1,13 +1,24 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { CatchBoundary, Link, useNavigate, useRouterState } from "@tanstack/react-router";
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
+import {
+  useEffect,
+  useEffectEvent,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  type ReactNode,
+} from "react";
 import type { Category } from "../api/categories";
 import { ApiFailure, type ApiPage, type EditorApi } from "../api/client";
-import { apiMessage } from "../api/failure-messages";
+import type { Outcome } from "../api/write-attempt";
+import { writes, type PageSaveAnswer, type ServerPageBaseline } from "../api/writes";
 import { pageLinkTargetsQuery } from "../api/page-link-targets";
 import { pageFieldLabel } from "../api/page-fields";
 import { pageToMarkdown, pickerCategories } from "../api/page-markdown";
 import {
+  collectionRecordsQuery,
   PRELOAD_FRESH,
   categoriesQuery,
   rolesQuery,
@@ -19,6 +30,7 @@ import { PageDraftEditor } from "../host/page-editor";
 import { download } from "../host/download";
 import { collectInternalPageLinks } from "../pages/link-checks";
 import { draftPageMetadata, readPageMetadata } from "../pages";
+import { PageCollectionsProvider, type PageCollections } from "../pages/modules/contact";
 import { DraftStore } from "../persistence/draft-store";
 import { govbbPageCodec } from "../presets/govbb-page";
 import { Banner } from "../ui/banner";
@@ -30,16 +42,26 @@ import { LoadingState } from "../ui/loading-state";
 import { TextLink } from "../ui/text-link";
 import type { SaveStateProps } from "../ui/save-state";
 import { toast } from "../ui/toast";
-import { createEditorSession } from "../editor/core/session";
-import { EditorSessionProvider } from "../editor/react/composer";
+import { createEditorSession } from "@/editor";
+import { EditorSessionProvider } from "@/editor/react";
 import type { DocumentSessions } from "./document-views";
 import { brokenLinks, linkConfirmation } from "./broken-links";
-import type { PageSession, ServerPageBaseline } from "./page-session";
-import { savePageDraft } from "./page-sync";
+import type { PageSession } from "./page-session";
+import { preparePageSave } from "./page-sync";
+import { useWrite } from "./use-write";
+import type { DraftSnapshot } from "../persistence/types";
+import { ContentDiff } from "./review-screens";
+import {
+  forgetUnsavedWork,
+  keepUnsavedWork,
+  recoveredPageBaseline,
+  useUnsavedWork,
+} from "./unsaved-work";
+import { UnsavedWorkOffer } from "./unsaved-work-offer";
 
 type SessionListener = (id: string, session: PageSession | undefined) => void;
 
-/** An API page opens directly into an in-memory editor, never through browser storage. */
+/** Opens API content first; browser recovery requires an explicit restore. */
 export function RemotePagePane({
   api,
   id,
@@ -53,10 +75,11 @@ export function RemotePagePane({
   active: boolean;
   onSession: SessionListener;
   sessions?: DocumentSessions;
-  /** What shows the service's pages while they're hidden: at the start of the page's bar. */
+  /** Page navigation at the start of the bar, such as the service sidebar toggle or site-page history. */
   nav?: ReactNode;
 }) {
   const opened = useRef(false);
+  const [generation, setGeneration] = useState(0);
   const page = useQuery({ ...pageQuery(api, id), staleTime: PRELOAD_FRESH });
   const categories = useQuery(categoriesQuery(api));
 
@@ -91,7 +114,12 @@ export function RemotePagePane({
 
   const editor = (
     <RemotePageEditor
-      key={id}
+      key={`${id}-${generation}`}
+      focusOnOpen={generation > 0}
+      resetEditor={() => {
+        sessions?.forget(id);
+        setGeneration((value) => value + 1);
+      }}
       api={api}
       page={page.data}
       categories={categories.data}
@@ -108,10 +136,10 @@ export function RemotePagePane({
   );
 
   if (!sessions) return editor;
-  sessions.open(id, page.data.updated_at);
+  sessions.open(id, page.data.version);
 
   return (
-    <EditorSessionProvider session={sessions.get(id, createEditorSession)}>
+    <EditorSessionProvider key={generation} session={sessions.get(id, createEditorSession)}>
       {editor}
     </EditorSessionProvider>
   );
@@ -127,6 +155,8 @@ function RemotePageEditor({
   readError,
   reading,
   retryRead,
+  resetEditor,
+  focusOnOpen,
 }: {
   api: EditorApi;
   page: ApiPage;
@@ -137,14 +167,16 @@ function RemotePageEditor({
   readError: Error | null;
   reading: boolean;
   retryRead: () => void;
+  resetEditor: () => void;
+  focusOnOpen: boolean;
 }) {
-  const [base, setBase] = useState<ServerPageBaseline>(() => ({
+  const [savedBase, setBase] = useState<ServerPageBaseline>(() => ({
     page: server,
     markdown: pageToMarkdown(server, categories),
   }));
 
-  const [store] = useState(() => new DraftStore(base.markdown, govbbPageCodec));
-  const baseline = useRef(base);
+  const [store] = useState(() => new DraftStore(savedBase.markdown, govbbPageCodec));
+  const baseline = useRef(savedBase);
   const saving = useRef(false);
 
   const rebase = (next: ServerPageBaseline) => {
@@ -156,6 +188,14 @@ function RemotePageEditor({
   const navigate = useNavigate();
   const href = useRouterState({ select: (state) => state.location.href });
   const draft = useSyncExternalStore(store.subscribe, store.getSnapshot);
+
+  const base = useMemo(
+    () => recoveredPageBaseline(savedBase, draft.state),
+    [savedBase, draft.state],
+  );
+
+  const [keptWork, answerKeptWork] = useUnsavedWork(server.id, draft.committed, base);
+  const [discardingKeptWork, setDiscardingKeptWork] = useState(false);
   // Links find the site's services by name; the content API lists their entry pages
   const services = useQuery(servicesQuery(api)).data;
   const rolesRead = useQuery(rolesQuery(api));
@@ -203,6 +243,18 @@ function RemotePageEditor({
     return { breadcrumbs, publishedAt: server.published_at };
   }, [metadata.url, server.url, server.published_at, categories, service, servicePages]);
 
+  // Contact blocks show their records' current details, and open a record on the collection's screen (#3184)
+  const collections = useMemo<PageCollections>(
+    () => ({
+      read: (key) => client.fetchQuery(collectionRecordsQuery(api, key)),
+      openRecord: (collection, record) =>
+        void navigate({
+          href: `/collections/${encodeURIComponent(collection)}?record=${encodeURIComponent(record)}`,
+        }),
+    }),
+    [api, client, navigate],
+  );
+
   const linkPages = useMemo(
     () => services?.map((service) => ({ title: service.title, url: service.url })),
     [services],
@@ -238,68 +290,87 @@ function RemotePageEditor({
     };
   }, []);
 
-  const save = useMutation({
-    mutationFn: (current: { base: ServerPageBaseline; markdown: string }) =>
-      savePageDraft(api, current.base, current.markdown, categories),
-    onSuccess: (outcome, sent) => {
-      if (outcome.kind === "saved") {
-        // Show what api_v2 stored when it differs from what was sent, unless more was typed during the save
-        const typed = store.getSnapshot().committed !== sent.markdown;
+  const [localOutcome, setLocalOutcome] = useState<Outcome<PageSaveAnswer>>();
+  // The editor snapshot identifies typing after dispatch; the attempt owns the request itself.
+  const savedSnapshot = useRef<DraftSnapshot>(undefined);
+  const save = useWrite(api, writes.savePage);
+  const submit = useWrite(api, writes.submitRevision);
+  const savePending = save.state === "sending" || save.state === "checking";
+  const submitPending = submit.state === "sending" || submit.state === "checking";
 
-        if (outcome.base.markdown !== sent.markdown && !typed) {
-          store.edit(outcome.base.markdown);
+  const saved = useEffectEvent((outcome: Outcome<PageSaveAnswer>) => {
+    if (outcome.kind === "landed") {
+      const answer = outcome.answer;
+      const typed = store.getSnapshot() !== savedSnapshot.current;
 
-          if (!store.apply()) store.discard();
-        }
+      if (answer.base.markdown !== savedSnapshot.current?.committed && !typed) {
+        const token = store.captureReplacementToken();
+        const prepared = govbbPageCodec.prepare(answer.base.markdown);
+        store.replacePrepared(prepared, token);
+      }
 
-        if (outcome.discarded)
-          toast("The page is no longer public", {
-            description: typed
-              ? "Its unpublished changes were discarded, but your open copy still contains them. Check it before you save."
-              : "Its unpublished changes were discarded. It shows its last published content.",
-          });
+      if (answer.discarded)
+        toast("The page is no longer public", {
+          description: typed
+            ? "Its unpublished changes were discarded, but your open copy still contains them. Check it before you save."
+            : "Its unpublished changes were discarded. It shows its last published content.",
+        });
 
-        rebase(outcome.base);
-        client.setQueryData(pageQuery(api, server.id).queryKey, outcome.base.page);
-        void client.invalidateQueries({ queryKey: ["content"] });
-      } else if (outcome.kind === "conflict")
-        void client.invalidateQueries({ queryKey: pageQuery(api, server.id).queryKey });
-    },
-    onSettled: () => {
-      saving.current = false;
-    },
+      rebase(answer.base);
+      client.setQueryData(pageQuery(api, server.id).queryKey, answer.base.page);
+    } else if (outcome.kind === "conflict")
+      void client.invalidateQueries({ queryKey: pageQuery(api, server.id).queryKey });
+    saving.current = false;
   });
 
-  // Sends the saved draft, or a rejected change as it is, for review; its version doesn't move
-  const submit = useMutation({
-    mutationFn: () => api.submitRevision(server.id, server.updated_at),
-    onSuccess: () => {
-      client.setQueryData(pageQuery(api, server.id).queryKey, {
-        ...server,
-        pending_revision: { status: "submitted", comment: null },
-      });
-      void client.invalidateQueries({ queryKey: ["content"] });
-    },
-    onError: (error) => {
-      // The change moved on or went elsewhere: read the page again, as a refused save does
-      if (error instanceof ApiFailure && (error.status === 409 || error.status === 404))
+  // Before paint, so a landed save never shows for a frame as unsaved changes
+  useLayoutEffect(() => {
+    if (save.outcome) saved(save.outcome);
+  }, [save.outcome]);
+
+  const submitted = useEffectEvent((outcome: Outcome<ServerPageBaseline>) => {
+    if (outcome.kind === "landed") {
+      rebase(outcome.answer);
+      client.setQueryData(pageQuery(api, server.id).queryKey, outcome.answer.page);
+    } else {
+      if (outcome.kind === "conflict" || outcome.kind === "missing" || outcome.kind === "refused")
         void client.invalidateQueries({ queryKey: pageQuery(api, server.id).queryKey });
-      toast("This change couldn’t be submitted for review", {
-        tone: "error",
-        description:
-          (error instanceof ApiFailure && apiMessage(error)) ||
-          "Check you are still signed in, then try again.",
-      });
-    },
+      toast(
+        outcome.kind === "unknown"
+          ? "We couldn’t confirm the last request."
+          : "This change couldn’t be submitted for review",
+        {
+          tone: "error",
+          description:
+            outcome.kind === "unknown"
+              ? "Check the saved version without discarding your open copy."
+              : outcome.message || "Check you are still signed in, then try again.",
+        },
+      );
+    }
+
+    saving.current = false;
   });
+
+  useLayoutEffect(() => {
+    if (submit.outcome) submitted(submit.outcome);
+  }, [submit.outcome]);
+
+  const submitPage = () => {
+    if (saving.current || save.state === "unsettled") return;
+    saving.current = true;
+    void submit.press(() => ({ base: session.getBaseline(), categories }));
+  };
 
   const submitAction = (label: string) =>
     !readOnly && (
       <Button
         variant="secondary"
-        pending={submit.isPending}
-        disabled={unsaved || stale}
-        onClick={() => submit.mutate()}
+        pending={submitPending}
+        disabled={
+          unsaved || stale || blocked || savePending || checking || save.state === "unsettled"
+        }
+        onClick={submitPage}
       >
         {label}
       </Button>
@@ -308,10 +379,10 @@ function RemotePageEditor({
   const session = useMemo<PageSession>(
     () => ({
       store,
-      getBaseline: () => baseline.current,
+      getBaseline: () => recoveredPageBaseline(baseline.current, store.getSnapshot().state),
       isSaving: () => saving.current,
     }),
-    [store, base, save.isPending, checking],
+    [store, base, savePending, submitPending, checking],
   );
 
   useEffect(() => {
@@ -325,9 +396,31 @@ function RemotePageEditor({
   // Only making a page public goes live at once; a public page's changes wait for an approver
   const publishes = visibility === "public" && server.visibility !== "public";
 
-  const outcome = save.isPending ? undefined : save.data;
-  const unsaved = draft.committed !== base.markdown;
-  const stale = server.updated_at !== base.page.updated_at;
+  const outcome = savePending ? undefined : (localOutcome ?? save.outcome);
+
+  const unsaved =
+    draft.committed !== base.markdown || draft.dirty || !draft.valid || draft.status === "error";
+
+  // A refreshed version may be this write's own result, including before its landed answer becomes the baseline.
+  const savedVersion =
+    save.outcome?.kind === "landed" ? save.outcome.answer.base.page.version : undefined;
+
+  const submittedVersion =
+    submit.outcome?.kind === "landed" ? submit.outcome.answer.page.version : undefined;
+
+  const unsettled = save.state === "unsettled" || submit.state === "unsettled";
+
+  // A page's version only rises, so a read older than the baseline is a lagging read, not someone else's change.
+  const stale =
+    (!savePending &&
+      !submitPending &&
+      !unsettled &&
+      server.version > base.page.version &&
+      // A recovered older version is never this editor's own write
+      (base !== savedBase ||
+        (server.version !== savedVersion && server.version !== submittedVersion))) ||
+    outcome?.kind === "conflict" ||
+    submit.outcome?.kind === "conflict";
 
   const blocked = !draft.valid || draft.dirty || draft.status === "error";
 
@@ -336,10 +429,35 @@ function RemotePageEditor({
   const saveDraft = () => {
     const snapshot = store.getSnapshot();
 
-    if (saving.current || stale || !snapshot.valid || snapshot.dirty || snapshot.status === "error")
+    if (
+      saving.current ||
+      stale ||
+      unsettled ||
+      !snapshot.valid ||
+      snapshot.dirty ||
+      snapshot.status === "error"
+    )
       return;
+
+    const prepared = preparePageSave(session.getBaseline(), snapshot.committed, categories);
+
+    if (!prepared.ok) return setLocalOutcome(prepared.outcome);
+    setLocalOutcome(undefined);
     saving.current = true;
-    save.mutate({ base: baseline.current, markdown: snapshot.committed });
+    void save.press(() => {
+      savedSnapshot.current = snapshot;
+
+      return prepared.request;
+    });
+  };
+
+  const retrySave = () => {
+    if (saving.current || save.state !== "unsettled") return;
+    saving.current = true;
+    void save.press(() => {
+      // An unsettled press must not ask for new input, including invalid source typed since dispatch.
+      throw new Error("An unsettled page save must reuse its frozen request.");
+    });
   };
 
   // Looks the page's links up again, then saves. Only making the page public stops to ask about what it found.
@@ -406,29 +524,107 @@ function RemotePageEditor({
       .find((element) => !element.closest("[inert]"))
       ?.focus();
 
-  const loadSaved = () => {
-    const markdown = pageToMarkdown(server, categories);
-    store.edit(markdown);
+  useEffect(() => {
+    if (focusOnOpen) restorePageFocus();
+  }, [focusOnOpen]);
+  const [reloading, setReloading] = useState(false);
 
-    if (store.apply()) {
-      rebase({ page: server, markdown });
+  const loadSaved = async () => {
+    if (saving.current) return;
+    saving.current = true;
+    setReloading(true);
+    const before = store.getSnapshot();
+
+    try {
+      const latest = await api.page(server.id);
+      const listed = await api.categories();
+
+      if (!listed.ok) throw listed.error;
+      const markdown = pageToMarkdown(latest, listed.value);
+      const replacement = new DraftStore(markdown, govbbPageCodec);
+
+      if (!replacement.getSnapshot().valid) throw new Error("The saved page could not be parsed.");
+
+      if (!mounted.current || store.getSnapshot() !== before)
+        throw new Error("Your draft changed while reloading. Check it before discarding.");
+      client.setQueryData(categoriesQuery(api).queryKey, listed.value);
+      client.setQueryData(pageQuery(api, server.id).queryKey, latest);
+      save.forget();
+      submit.forget();
+
+      // Edits typed over an unanswered recovery offer replaced it in storage; put it back to be offered again.
+      if (keptWork) keepUnsavedWork(server.id, keptWork);
+      else forgetUnsavedWork(server.id);
+      resetEditor();
       restorePageFocus();
-    } else {
-      // Discard the rejected source so the existing working copy remains editable.
-      store.discard();
+    } catch (error) {
       toast("The saved version couldn’t be opened", {
         tone: "error",
-        description: "Your open copy is unchanged.",
+        description: `Your open copy is unchanged. ${error instanceof Error ? error.message : ""}`,
       });
+    } finally {
+      saving.current = false;
+      setReloading(false);
     }
   };
+
+  const restoreBlocked =
+    savePending || submitPending || checking || reloading
+      ? "Wait for the current request to finish before restoring."
+      : unsettled
+        ? "Retry the last request before restoring these changes."
+        : undefined;
+
+  const restoreKeptWork = () => {
+    if (!keptWork || saving.current || restoreBlocked) return;
+    const prepared = govbbPageCodec.prepare(keptWork.markdown);
+
+    // Root NodeState travels with undo/redo but is not written to the page's Markdown.
+    if (
+      prepared.state &&
+      prepared.source !== store.getSnapshot().committed &&
+      keptWork.version !== baseline.current.page.version
+    )
+      prepared.state.root.$ = { ...prepared.state.root.$, recoveredPageVersion: keptWork.version };
+
+    const restored = store.replacePrepared(prepared, store.captureReplacementToken());
+
+    if (restored.status === "rejected") {
+      toast("Your changes couldn’t be restored", {
+        tone: "error",
+        description: `The page is unchanged. ${restored.message}`,
+      });
+
+      return;
+    }
+
+    // Unsupported pages have no visual editor or undo history.
+    if (!prepared.state)
+      rebase({
+        ...baseline.current,
+        page: { ...baseline.current.page, version: keptWork.version },
+      });
+    answerKeptWork();
+    restorePageFocus();
+  };
+
+  const keptNotice = keptWork && (
+    <UnsavedWorkOffer
+      kept={keptWork}
+      restoreBlocked={restoreBlocked}
+      // Discard-and-reload puts the offer back when it finishes, so an answer given meanwhile would be undone
+      discardBlocked={reloading}
+      onRestore={restoreKeptWork}
+      onDiscard={() => !reloading && setDiscardingKeptWork(true)}
+    />
+  );
 
   const newerVersion = "A newer version of this page has been saved since you opened it.";
   const downloadMine = () => download(store.getSnapshot().source, "page.md");
 
   // Source errors take precedence over the server's save state (useDraftSave).
   const standing = (): SaveStateProps => {
-    if (save.isPending) return { status: "saving" };
+    if (savePending) return { status: "saving" };
 
     if (outcome?.kind === "missing")
       return {
@@ -438,12 +634,12 @@ function RemotePageEditor({
         onDownload: downloadMine,
       };
 
-    if (unsaved && (outcome?.kind === "failed" || save.isError))
+    if (outcome?.kind === "unknown")
       return {
         status: "failed",
         error:
-          "We could not save this page. Keep this editor open to retry, or download your changes.",
-        onRetry: () => void checkedSave(),
+          "We couldn’t confirm the save. Retry the same request, or copy your changes and reload.",
+        onRetry: retrySave,
         onDownload: downloadMine,
       };
 
@@ -517,33 +713,55 @@ function RemotePageEditor({
   );
 
   // Read out by its alert as it arrives, so the notice itself isn't
-  const newer = stale && (
+  const newer = (stale || outcome?.kind === "unknown" || submit.outcome?.kind === "unknown") && (
     <Banner
       tone="warning"
       layout="strip"
       role="none"
       actions={
         <>
-          {unsaved && (
-            <Button
-              variant="secondary"
-              disabled={save.isPending}
-              onClick={() => {
-                rebase({ page: server, markdown: pageToMarkdown(server, categories) });
-                restorePageFocus();
-              }}
-            >
-              Keep my version
+          {outcome?.kind === "unknown" && (
+            <Button disabled={savePending || submitPending || reloading} onClick={retrySave}>
+              Retry same save
             </Button>
           )}
-          <Button variant="secondary" disabled={blocked || save.isPending} onClick={loadSaved}>
-            Load saved version
+          {submit.outcome?.kind === "unknown" && (
+            <Button disabled={savePending || submitPending || reloading} onClick={submitPage}>
+              Retry same submission
+            </Button>
+          )}
+          <Button
+            variant="danger"
+            pending={reloading}
+            disabled={savePending || submitPending}
+            onClick={() => void loadSaved()}
+          >
+            Discard my changes and reload
           </Button>
-          {unsaved && <Button onClick={downloadMine}>Download my version</Button>}
+          <Button
+            variant="secondary"
+            onClick={() =>
+              void navigator.clipboard
+                .writeText(store.getSnapshot().source)
+                .catch(() => downloadMine())
+            }
+          >
+            Copy my version
+          </Button>
+          <Button onClick={downloadMine}>Download my version</Button>
         </>
       }
     >
-      {newerVersion}
+      <p>
+        {stale
+          ? newerVersion
+          : "We couldn’t confirm the last request. Check the saved version without discarding your open copy."}
+      </p>
+      <p className="text-14 text-muted">
+        Struck-through lines are only in the latest saved version, shown here read-only. Highlighted
+        lines are only in your open copy.
+      </p>
+      <ContentDiff live={pageToMarkdown(server, categories)} proposed={draft.source} />
     </Banner>
   );
 
@@ -559,10 +777,13 @@ function RemotePageEditor({
         ))}
       </ul>
     </Banner>
-  ) : outcome?.kind === "forbidden" ? (
+  ) : outcome?.kind === "forbidden" || outcome?.kind === "refused" ? (
     // A refusal, not a failure: saving again won't change the answer, so nothing offers a retry
     <Banner tone="error" layout="strip" role="alert">
-      {outcome.message}
+      {outcome.message ??
+        (outcome.kind === "forbidden"
+          ? "You don’t have permission to save this change."
+          : "This request could not be saved.")}
     </Banner>
   ) : outcome?.kind === "signed-out" ? (
     <Banner tone="warning" layout="strip" role="alert" actions={signInAction}>
@@ -604,7 +825,7 @@ function RemotePageEditor({
   ) : undefined;
 
   return (
-    <>
+    <PageCollectionsProvider collections={collections}>
       {/* A failure showing the page fails only its pane. Its draft is kept here, outside, as is leaving's question about
           it: it can be downloaded, or shown again */}
       <CatchBoundary
@@ -646,7 +867,7 @@ function RemotePageEditor({
             // Keep focus when a completed save leaves nothing to save, or a newer version blocks editing.
             <Button
               variant="accent"
-              pending={save.isPending || checking}
+              pending={savePending || checking || submitPending || reloading}
               aria-disabled={
                 !unsaved || stale || blocked || readOnly || outcome?.kind === "missing" || undefined
               }
@@ -655,7 +876,12 @@ function RemotePageEditor({
               {publishes ? "Publish changes" : "Save"}
             </Button>
           }
-          notice={notice}
+          notice={
+            <>
+              {keptNotice}
+              {notice}
+            </>
+          }
           alert={
             readNotice
               ? {
@@ -681,10 +907,11 @@ function RemotePageEditor({
           }}
           previewContext={previewContext}
           settings={{
-            ...(server.parent_id === null && {
-              categories: pickerCategories(categories),
-              single: true,
-            }),
+            ...(base.page.parent_id === null &&
+              base.page.category_id !== null && {
+                categories: pickerCategories(categories),
+                single: true,
+              }),
             publishedAt: server.published_at,
             lastEditedBy: server.last_edited_by,
             savedVisibility: base.page.visibility,
@@ -697,6 +924,23 @@ function RemotePageEditor({
           }}
         />
       </CatchBoundary>
+      <ConfirmDialog
+        open={discardingKeptWork}
+        onOpenChange={setDiscardingKeptWork}
+        title="Discard recovered changes?"
+        description="The changes kept in this browser will be deleted. Your open page will stay as it is."
+        confirmLabel="Discard changes"
+        finalFocus={() => {
+          if (keptWork) return true;
+          restorePageFocus();
+
+          return false;
+        }}
+        onConfirm={() => {
+          setDiscardingKeptWork(false);
+          answerKeptWork();
+        }}
+      />
       <ConfirmDialog
         open={!!confirming}
         onOpenChange={(next) => {
@@ -715,6 +959,6 @@ function RemotePageEditor({
           else toast("The page changed", { description: "Publish it again to check its links." });
         }}
       />
-    </>
+    </PageCollectionsProvider>
   );
 }

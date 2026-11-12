@@ -10,7 +10,7 @@ import { z } from 'zod'
  * `draft` is a value a page can carry that no token grants (#3247), so a
  * `draft` page is hidden from every viewer until #3220 removes static content.
  * Like `preview`, it is a rollout gate, *not* a confidentiality boundary — the
- * content still ships in the client bundle (see `docs/decisions/0013-…`).
+ * content still ships in the client bundle (see `docs/decisions/0028-…`).
  */
 export const VIEW_LEVELS = ['public', 'preview', 'draft'] as const
 export type ViewLevel = (typeof VIEW_LEVELS)[number]

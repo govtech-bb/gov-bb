@@ -69,8 +69,11 @@ export const ServiceDetail = z.object({
 /** A service as the editor opens it. */
 export type ServiceDetail = z.infer<typeof ServiceDetail>;
 
-const isStartOf = (page: IndexedPage, entry: IndexedPage) =>
-  page.parentId === entry.id && page.slug === "start";
+/** Whether `page` is the `start` step of `entry`, the page holding its form. */
+export const isStartOf = (
+  page: Pick<IndexedPage, "parentId" | "slug">,
+  entry: Pick<IndexedPage, "id">,
+) => page.parentId === entry.id && page.slug === "start";
 
 /** Group pages into services by `parent_id`, ordered by title. */
 export function groupServices(pages: readonly IndexedPage[]): ServiceSummary[] {

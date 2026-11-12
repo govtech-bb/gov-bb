@@ -1,12 +1,16 @@
 import { ElementNode, type LexicalNode, type NodeKey, type SerializedElementNode } from "lexical";
 
 /**
- * The kinds of page component. Each block's file adds its own, so adding a block never edits this list:
+ * The kinds of page component, and the attributes they keep. Each block's file adds its own, so adding a block never
+ * edits these lists:
  *
  * ```ts
  * declare module "./node" {
  *   interface PageComponentKinds {
- *     notice: true;
+ *     details: true;
+ *   }
+ *   interface PageComponentAttributes {
+ *     summary?: string;
  *   }
  * }
  * ```
@@ -15,18 +19,11 @@ export interface PageComponentKinds {}
 
 export type PageComponentKind = keyof PageComponentKinds;
 
-/** Editable fields may be incomplete; the Markdown boundary validates authored components. */
-export type PageComponentAttributes = {
-  summary?: string;
-  href?: string;
-  variant?: string;
-  form?: string;
-  target?: "form";
-  caption?: string;
-  rowHeaders?: "first" | "none";
-  numericColumns?: readonly number[];
-  summaryKey?: string;
-};
+/**
+ * The attributes components keep, each added by the block whose components keep it (see PageComponentKinds). They're
+ * optional, as editable fields may be incomplete; the Markdown boundary validates authored components.
+ */
+export interface PageComponentAttributes {}
 
 /** What a kind of component is to the editing around it, which asks for a trait rather than knowing every kind. */
 export type BlockTrait =

@@ -11,7 +11,13 @@ import {
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ApiFailure, type EditorApi } from "../api/client";
-import { rolesQuery, serviceQuery, servicesQuery, estateVersionQuery } from "../api/queries";
+import {
+  rolesQuery,
+  serviceQuery,
+  servicesQuery,
+  estateVersionQuery,
+  pageQuery,
+} from "../api/queries";
 import {
   CreateRemotePageDialog,
   CreateRemoteServiceDialog,
@@ -38,10 +44,12 @@ import { ScreenTitle } from "./screen-title";
 import { DocumentSessions, keptViews } from "./document-views";
 import { GovbbLogo } from "./govbb-logo";
 import { ServicesList } from "./services-list";
+import { SitePagesScreen } from "./site-pages-screen";
 import type { ServicesSearch } from "./services-search";
-import type { WorkspaceLocation } from "./model";
+import type { PageDocument, WorkspaceLocation } from "./model";
 import { pageHasUnsavedChanges, type PageSession } from "./page-session";
 import { usePageLeaveGuard } from "./page-leave-guard";
+import { forgetUnsavedWork } from "./unsaved-work";
 
 type Account = {
   email: string;
@@ -80,6 +88,8 @@ export function ServiceWorkspace({
   const href = useRouterState({ select: (state) => state.location.href });
   const routerNavigate = useNavigate();
   const listSearch = useSearch({ from: "/_workspace/services", shouldThrow: false });
+  const onSitePages = !!useMatch({ from: "/_workspace/site-pages", shouldThrow: false });
+  const sitePageId = onSitePages ? params.pageId : undefined;
   const onCategories = !!useMatch({ from: "/_workspace/categories", shouldThrow: false });
   const onReviews = !!useMatch({ from: "/_workspace/reviews", shouldThrow: false });
   const reviewing = params.pageId;
@@ -99,7 +109,7 @@ export function ServiceWorkspace({
     ? { serviceId: params.serviceId, documentId: params.documentId }
     : undefined;
 
-  const documentId = location?.documentId;
+  const documentId = sitePageId ?? location?.documentId;
   const [panes, setPanes] = useState<string[]>(() => (documentId ? [documentId] : []));
   const [sessions] = useState(() => new DocumentSessions());
 
@@ -127,6 +137,7 @@ export function ServiceWorkspace({
       for (const id of ids) {
         next.delete(id);
         sessions.forget(id);
+        forgetUnsavedWork(id);
       }
 
       pageSessionsRef.current = next;
@@ -155,7 +166,7 @@ export function ServiceWorkspace({
     for (const id of panes.filter((id) => !kept.includes(id))) {
       const page = pageSessions.get(id);
 
-      if (page) sessions.close(id, page.getBaseline().page.updated_at);
+      if (page) sessions.close(id, page.getBaseline().page.version);
     }
 
     setPanes(kept);
@@ -169,7 +180,19 @@ export function ServiceWorkspace({
   // Remount on each opening to clear the previous form and request state.
   const [opened, setOpened] = useState(0);
 
+  const [deleteSnapshot, setDeleteSnapshot] = useState<(PageDocument & { version: number }) | null>(
+    null,
+  );
+
   const openDialog = (kind: "service" | "page" | "delete") => {
+    if (kind === "delete") {
+      const session = selected && pageSessionsRef.current.get(selected.id);
+
+      if (!selected || !session || session.isSaving()) return;
+      const page = session.getBaseline().page;
+      setDeleteSnapshot({ ...selected, title: page.title, version: page.version });
+    }
+
     setOpened((count) => count + 1);
     setDialog(kind);
   };
@@ -192,6 +215,8 @@ export function ServiceWorkspace({
     (item) => item.id === location?.serviceId,
   );
 
+  const sitePageRead = useQuery({ ...pageQuery(api, sitePageId ?? ""), enabled: false });
+  const sitePage = sitePageRead.data;
   const rolesRead = useQuery(rolesQuery(api));
   const roles = rolesRead.data;
   // They couldn't be read: what needs them says so, rather than that it needs a role this person may well have
@@ -205,13 +230,15 @@ export function ServiceWorkspace({
 
   const rows = useMemo(() => (remote.data ? remoteServiceRows(remote.data) : []), [remote.data]);
   const selected = rows.find((row) => row.document.id === documentId)?.document;
+  const activePageId = sitePageId ?? selected?.id;
   // The page being deleted, kept while its dialog fades away after the page itself has gone
-  const deleting = useLatched(dialog === "delete" ? (selected ?? null) : null);
+  const deleting = useLatched(dialog === "delete" ? deleteSnapshot : null);
 
   const missing =
-    !!location &&
-    ((remote.error instanceof ApiFailure && remote.error.status === 404) ||
-      (!!remote.data && !!documentId && !selected));
+    (!!location &&
+      ((remote.error instanceof ApiFailure && remote.error.status === 404) ||
+        (!!remote.data && !!documentId && !selected))) ||
+    (sitePageRead.error instanceof ApiFailure && sitePageRead.error.status === 404);
 
   const place = useScreenPlace(
     remote.data,
@@ -284,17 +311,21 @@ export function ServiceWorkspace({
   };
 
   const crumbs: Crumb[] = [
-    onCategories
-      ? { label: "Categories", render: <Link to="/categories" /> }
-      : onReviews
-        ? { label: "Review queue", render: <Link to="/reviews" /> }
-        : onCollections
-          ? { label: "Collections", render: <Link to="/collections" /> }
-          : { label: "Services", render: <Link to="/services" search={servicesSearch} /> },
+    onSitePages
+      ? { label: "Site pages", render: <Link to="/site-pages" /> }
+      : onCategories
+        ? { label: "Categories", render: <Link to="/categories" /> }
+        : onReviews
+          ? { label: "Review queue", render: <Link to="/reviews" /> }
+          : onCollections
+            ? { label: "Collections", render: <Link to="/collections" /> }
+            : { label: "Services", render: <Link to="/services" search={servicesSearch} /> },
   ];
 
-  if (serviceName)
-    crumbs.push({ label: <span className="block max-w-100 truncate">{serviceName}</span> });
+  const workspaceName = sitePageId ? sitePage?.title : serviceName;
+
+  if (workspaceName)
+    crumbs.push({ label: <span className="block max-w-100 truncate">{workspaceName}</span> });
 
   const leave = usePageLeaveGuard({
     getPages,
@@ -309,15 +340,17 @@ export function ServiceWorkspace({
         names={
           missing
             ? ["Document not found"]
-            : location
-              ? [place.document, serviceName]
-              : onReviews
-                ? reviewing
-                  ? ["Review change", "Review queue"]
-                  : ["Review queue"]
-                : onHistory
-                  ? ["Page history"]
-                  : [onCategories ? "Categories" : onCollections ? "Collections" : "Services"]
+            : onSitePages
+              ? [sitePage?.title, "Site pages"]
+              : location
+                ? [place.document, serviceName]
+                : onReviews
+                  ? reviewing
+                    ? ["Review change", "Review queue"]
+                    : ["Review queue"]
+                  : onHistory
+                    ? ["Page history"]
+                    : [onCategories ? "Categories" : onCollections ? "Collections" : "Services"]
         }
       />
       <a
@@ -435,9 +468,13 @@ export function ServiceWorkspace({
               title="Document not found"
               description="It may have been deleted, or the address may be wrong."
               actions={
-                <TextLink render={<Link to="/services" search={servicesSearch} />}>
-                  Back to services
-                </TextLink>
+                sitePageId ? (
+                  <TextLink render={<Link to="/site-pages" />}>Back to site pages</TextLink>
+                ) : (
+                  <TextLink render={<Link to="/services" search={servicesSearch} />}>
+                    Back to services
+                  </TextLink>
+                )
               }
             />
           )}
@@ -471,6 +508,11 @@ export function ServiceWorkspace({
               }
               actions={serviceRecovery}
             />
+          )}
+          {onSitePages && !sitePageId && (
+            <section>
+              <SitePagesScreen api={api} />
+            </section>
           )}
           {!location && onCategories && (
             <section>
@@ -535,20 +577,25 @@ export function ServiceWorkspace({
               />
             </section>
           )}
-          {!location && !onCategories && !onCollections && !onReviews && !onHistory && (
-            <section>
-              <ServicesList
-                api={api}
-                search={listSearch ?? {}}
-                onSearch={(search) => {
-                  setServicesSearch(search);
-                  void routerNavigate({ to: "/services", search, replace: true });
-                }}
-                onCreate={() => openDialog("service")}
-                readOnly={readOnly}
-              />
-            </section>
-          )}
+          {!location &&
+            !onSitePages &&
+            !onCategories &&
+            !onCollections &&
+            !onReviews &&
+            !onHistory && (
+              <section>
+                <ServicesList
+                  api={api}
+                  search={listSearch ?? {}}
+                  onSearch={(search) => {
+                    setServicesSearch(search);
+                    void routerNavigate({ to: "/services", search, replace: true });
+                  }}
+                  onCreate={() => openDialog("service")}
+                  readOnly={readOnly}
+                />
+              </section>
+            )}
           {!missing && remote.data && location && !documentId && (
             <EmptyState
               size="page"
@@ -565,10 +612,11 @@ export function ServiceWorkspace({
           {panes.map((id) => (
             <section
               key={id}
-              hidden={missing || id !== selected?.id}
-              inert={missing || id !== selected?.id}
+              hidden={missing || id !== activePageId}
+              inert={missing || id !== activePageId}
               aria-label={
                 rows.find((row) => row.document.id === id)?.document.title ??
+                (id === sitePageId ? sitePage?.title : undefined) ??
                 "Page from the content API"
               }
             >
@@ -576,10 +624,21 @@ export function ServiceWorkspace({
                 <RemotePagePane
                   api={api}
                   id={id}
-                  active={!missing && id === selected?.id}
+                  active={!missing && id === activePageId}
                   onSession={trackPageSession}
                   sessions={sessions}
-                  nav={showPages}
+                  nav={
+                    id === sitePageId ? (
+                      <TextLink
+                        className="inline-flex min-h-11 items-center text-14"
+                        render={<Link to="/history/$pageId" params={{ pageId: id }} search={{}} />}
+                      >
+                        Page history
+                      </TextLink>
+                    ) : (
+                      showPages
+                    )
+                  }
                 />
               </Suspense>
             </section>

@@ -37,7 +37,7 @@ For local development only, `AUTH_BYPASS=true` skips sign-in. BetterAuth is not 
 | `AUTH_BYPASS`                                      | Local development only: `true` skips sign-in (see above)                                                                                                                                                                |
 | `PREVIEW_SECRET`                                   | Optional; the site's preview token. Unset, every preview read is refused                                                                                                                                                |
 | `LANDING_SECRET`                                   | Optional; landing's token. Landing sends it as `x-landing-token` and is then not rate-limited. Unset, nobody is exempt                                                                                                  |
-| `API_V2_ADMIN_EMAILS`                              | Required unless `AUTH_BYPASS=true`: comma-separated emails granted `admin` and `editor` whenever they sign in (see Roles). Startup refuses an empty list, since without an admin nobody can grant `approver` (ADR 0079) |
+| `API_V2_ADMIN_EMAILS`                              | Required unless `AUTH_BYPASS=true`: comma-separated emails granted `admin` and `editor` whenever they sign in (see Roles). Startup refuses an empty list, since without an admin nobody can grant `approver` (ADR 0134) |
 | `REVIEW_NOTIFICATIONS`                             | `off` (default), `log` or `ses`: whether review steps email people (see Review emails). `log` writes each email to the log instead, for local runs and tests; production refuses it                                     |
 | `SES_FROM_ADDRESS`                                 | Required when `REVIEW_NOTIFICATIONS=ses`: the verified SES sender, as apps/api's `SES_FROM_ADDRESS`. Startup refuses `ses` without it                                                                                   |
 | `SES_REGION`                                       | Optional SES region; falls back to `AWS_DEFAULT_REGION`, then `us-east-1`                                                                                                                                               |
@@ -48,12 +48,14 @@ Production requires HTTPS API/editor origins on the same site, such as separate 
 
 `main.ts` is the composition root. It parses configuration, creates one logger and pool, connects, migrates and seeds, then constructs the adapters (`PostgresPages`, BetterAuth or the local bypass), the services over them, and the HTTP app, and on shutdown closes the app before the pool. `src/test-db.ts` composes the same graph for tests.
 
-| Layer             | Directory                  | Owns                                                                                                                                                                               |
-| ----------------- | -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Domain            | `src/modules`              | Page shapes and write rules (placement, publication), what a viewer may see, categories and what they list, service grouping, search text, auth admission. Pure: no I/O, no clock. |
-| Application       | `src/services`             | One use case each (`PageResolution`, `SiteNavigation`, `PageEditing`, `CategoryEditing`, `EditorIndex`, `EditorAccess`), with the ports it needs declared beside it.               |
-| Outbound adapters | `src/adapters`             | `PostgresPages` (all content SQL, including the recursive hierarchy reads), BetterAuth, the local bypass.                                                                          |
-| Inbound adapters  | `src/routes`, `src/app.ts` | Zod request/response contracts, the HTTP mapping of each result.                                                                                                                   |
+| Layer             | Directory                  | Owns                                                                                                                                                                                          |
+| ----------------- | -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Domain            | `src/modules`              | Page shapes and write rules (placement, publication, redirects), what a viewer may see, categories and what they list, service grouping, search text, auth admission. Pure: no I/O, no clock. |
+| Application       | `src/services`             | One use case each (`PageResolution`, `SiteNavigation`, `PageEditing`, `CategoryEditing`, `EditorIndex`, `EditorAccess`), with the ports it needs declared beside it.                          |
+| Outbound adapters | `src/adapters`             | `PostgresPages` (all content SQL, including the recursive hierarchy reads and the live page write), BetterAuth, the local bypass.                                                             |
+| Inbound adapters  | `src/routes`, `src/app.ts` | Zod request/response contracts, the HTTP mapping of each result.                                                                                                                              |
+
+Adapters do I/O and make no decisions, with one exception (ADR 0137). `PostgresPages.writeLivePage` is the only way to write a live page, for both create and save. It runs the steps in order: it writes the page, files the page's uncategorised sub-pages under its category, updates its redirects and re-cuts its search chunks from the saved body. This way no caller can get the order wrong or forget to re-index. The redirect decisions it applies come from `src/modules/page-redirect-history.ts`.
 
 Category HTTP handlers live in `src/routes/categories.ts`. Its editor plugin is registered inside `src/routes/editor.ts`, so employee, Origin and no-store checks apply before validation. Its public plugin is registered inside `src/routes/site.ts`, so preview admission, cache policy and ETags remain separate from employee access. Both reuse the parent scope's request identity reader; category rules and SQL stay in their existing domain, service and storage owners.
 
@@ -65,9 +67,9 @@ Migration `003_auth` adds BetterAuth's four core tables: `auth_user`, `auth_sess
 
 ### Roles
 
-Signing in decides who is an employee; roles decide what they can do (ADR 0079). Roles are rows in `user_roles` (migration `008_user_roles`, numbered after #3340's 006 and 007), read on every request, so a revocation applies to the employee's next request.
+Signing in decides who is an employee; roles decide what they can do (ADR 0134). Roles are rows in `user_roles` (migration `008_user_roles`, numbered after #3340's 006 and 007), read on every request, so a revocation applies to the employee's next request.
 
-- `editor` writes: creating, saving and deleting pages. A new user has no role at their first sign-in: they can read the editor but not write until an admin grants `editor` (ADR 0079, amended for #3412). Under GitHub sign-in api_v2 granted it by default, and migration `009_default_editor_role` granted it once to everyone who had signed in before; those grants stay.
+- `editor` writes: creating, saving and deleting pages. A new user has no role at their first sign-in: they can read the editor but not write until an admin grants `editor` (ADR 0134, amended for #3412). Under GitHub sign-in api_v2 granted it by default, and migration `009_default_editor_role` granted it once to everyone who had signed in before; those grants stay.
 - `approver` changes what citizens see: changing a page's `visibility`, deleting a `public` page, rejecting or publishing a pending revision, and creating, editing, reordering and deleting categories, so landing shows only category changes an approver made (#3201). These are direct actions, with no request waiting for a second approver, except that an approver can't make public content they changed (see Making a page public). An editor who isn't an approver can make every other edit, and submit a revision for review.
 - `admin` lists employees and grants and revokes roles (`/editor/employees…`), recording who granted each. A signed-in employee whose email `API_V2_ADMIN_EMAILS` lists is granted `admin` and `editor`, with no grantor, if they lack them, so a listed admin can write as well as grant roles; an admin cannot revoke a listed admin's roles for good.
 
@@ -75,35 +77,64 @@ A refusal is a 403 `{error: "forbidden", message}` and the database is unchanged
 
 ### Making a page public
 
-Making a page public approves its content, so the self-approval rule (ADR 0079) applies to it as it does to a revision (#3201). A save that makes a page public is a 403, and nothing is written, when the approver changed the page's content since it was last public, or ever when it never was: in an earlier save, or in this one. Another approver makes it public. Who changed it comes from the page's `change_events`: the actor of each `created`, `updated`, `published` or `unpublished` entry since the last one whose snapshot is public, counting only entries whose row differs from the one before in more than `visibility` and its stamps (and, for a sub-page, its category, which follows its parent's when a write above it carries it along), so an approver who only took the page out of public view, or moved it between Draft and Preview, may still make it public. Creating a page as `public` needs the approver role, and is refused to an approver for the same reason, so outside `AUTH_BYPASS` nobody creates a page as `public`: create it as Preview or Draft. Under `AUTH_BYPASS` the rule is relaxed, as it is for revisions. So an approver can't skip review by taking a public page private, editing it and making it public again, nor by deleting it and creating it again as `public`.
+Making a page public approves its content, so the self-approval rule (ADR 0134) applies to it as it does to a revision (#3201). A save that makes a page public is a 403, and nothing is written, when the approver changed the page's content since it was last public, or ever when it never was: in an earlier save, or in this one. Another approver makes it public. Who changed it comes from the page's `change_events`: the actor of each `created`, `updated`, `published`, `unpublished` or `reverted` entry since the last one whose snapshot is public, counting only entries whose row differs from the one before in more than `visibility` and its stamps (and, for a sub-page, its category, which follows its parent's when a write above it carries it along), so an approver who only took the page out of public view, or moved it between Draft and Preview, may still make it public. Creating a page as `public` needs the approver role, and is refused to an approver for the same reason, so outside `AUTH_BYPASS` nobody creates a page as `public`: create it as Preview or Draft. Under `AUTH_BYPASS` the rule is relaxed, as it is for revisions. So an approver can't skip review by taking a public page private, editing it and making it public again, nor by deleting it and creating it again as `public`.
 
 Unpublishing a page and deleting a `public` page stay direct approver actions: they take content away from citizens rather than show them unreviewed content. Deleting a Preview or Draft page needs only the editor role (#3187).
 
 Under `AUTH_BYPASS` the local developer holds every role. `GET /editor/me` returns the signed-in employee and their roles, which the editor uses to hide what they cannot do.
 
+### Write preconditions and cutover
+
+All existing-content writes require the version displayed by the editor. Versions
+are positive JavaScript-safe integers issued by the database; compare them for
+equality, never increment or derive them from timestamps. Page/category PUTs and
+review commands send `expected_version` in JSON. Page/category/record DELETEs
+send it as a canonical decimal query value. Category reorder and record writes
+use the additional baselines documented below.
+
+Authentication, Origin and role checks still run first. Missing or malformed
+versions return 400, without looking up the target. With valid input, missing targets return 404 and stale versions return
+409 `version_conflict`, including stale no-ops. Business conflicts such as
+`under_review`, `not_submitted`, `record_exists` and `category_in_use` retain
+their existing codes.
+
+Do not restore timestamp fallback or write ETags. If a response is lost, retry only the immutable original request
+with its original versions. Before resending, the editor reads the target. If it
+already stands exactly as the request would have left it, with the same content
+and the review state that request gives, the request is confirmed and not sent
+again. A matching value doesn't prove this client wrote it, but nothing is left
+to write. Never adopt a fresh version and resubmit. Public representations and
+public ETags remain version-free.
+
 ### Pending revisions
 
-A save that keeps a `public` page public, whoever sends it, approvers included, goes into the page's pending revision in `page_revisions` (migration `010_page_revisions`, #3198). The live row, its search chunks and every site read stay as they were until an approver publishes the revision (#3199). A page has at most one open revision, and a later save updates it. The revision keeps the fields as the save sent them, the live `updated_at` it was saved over, who started it, and everyone who saved to it, since none of them may approve it (ADR 0079). It is refused with the same field-level 422s as a live save, and it goes when its page is deleted.
+A save that keeps a `public` page public, whoever sends it, approvers included, goes into the page's pending revision in `page_revisions` (migration `010_page_revisions`, #3198). The live row, its search chunks and every site read stay as they were until an approver publishes the revision (#3199). A page has at most one open revision, and a later save updates it. The revision keeps the fields as the save sent them, the live `updated_at` it was saved over, who started it, and everyone who saved to it, since none of them may approve it (ADR 0134). It is refused with the same field-level 422s as a live save, and it goes when its page is deleted.
 
-The editor reads and saves the working copy: `GET /pages/:id` and the save's response lay the revision over the live page, set `pending_revision`, and give the revision's `updated_at`, which is what the next save sends in `if-updated-at`. `GET /pages/:id/revision` returns the revision itself, or 404 when there is none.
+The editor reads and saves the working copy. `GET /pages/:id` and the save response lay the revision over the live page, set `pending_revision`, and return the enclosing page's numeric `version`. Send that version as `expected_version` on the next write. `updated_at` remains a display timestamp. `GET /pages/:id/revision` returns the revision with the page's version, or 404 when there is none.
 
 Editor page responses also include `last_edited_by: { id, name } | null` (#3171), from the page's highest `version_no` change event joined to `auth_user`. Review steps count; pending-revision saves do not create events, so this may not identify the working copy's last saver or the author of its `updated_at`. A system event returns `{ id: "system", name: "System" }`. No event returns null; an event whose actor's name is unavailable keeps its id with `name: null`, as history does. Public page, category, catalog and search reads never include attribution, even for signed-in callers.
 
-A save to a page that is not public writes the page as before. Changing `visibility` stays a direct approver action (ADR 0079): an approver's save that takes a public page out of public view changes only the live row's `visibility`. The other fields it sends are ignored and the live content stays, so revision content never reaches `content_pages` that way, to be made public again without review. It closes the page's open revision, keeping the rule that only a public page has one: a draft is dropped, and a revision waiting for review is marked `discarded` with the approver and the time (migration `015_revision_discarded`, #3203), so an urgent takedown needs no rejection first. The page's history then reads `discarded` followed by `unpublished`, both by the approver. A rejected revision retires as the live page moves on. An approver who then edits the page while it is not public can't make it public themselves (see Making a page public). A revision save writes no `change_events` entry, because the live page did not change; its review steps are recorded (see below).
+A save to a page that is not public writes the page as before. Changing `visibility` stays a direct approver action (ADR 0134): an approver's save that takes a public page out of public view changes only the live row's `visibility`. The other fields it sends are ignored and the live content stays, so revision content never reaches `content_pages` that way, to be made public again without review. It closes the page's open revision, keeping the rule that only a public page has one: a draft is dropped, and a revision waiting for review is marked `discarded` with the approver and the time (migration `015_revision_discarded`, #3203), so an urgent takedown needs no rejection first. The page's history then reads `discarded` followed by `unpublished`, both by the approver. A rejected revision retires as the live page moves on. An approver who then edits the page while it is not public can't make it public themselves (see Making a page public). A revision save writes no `change_events` entry, because the live page did not change; its review steps are recorded (see below).
+
+### Editing site pages
+
+`GET /editor/site-pages` lists uncategorised root pages (`parent_id` and `category_id` are null), including drafts and previews, for signed-in employees. It returns `{ pages: [{ id, title, url, visibility }] }` ordered by title, with stored live metadata rather than pending revision fields. The editor shows them under Site pages, separately from Services.
+
+Open and save these pages through the existing `/pages/:id` endpoints. Public-page edits still create pending revisions, and writes require the same roles and `expected_version`. No page type, migration or re-import is needed. `/services` and `/services/:id` retain their category requirement and exclude these pages.
 
 ### Reviewing a revision
 
 Migration `011_revision_review` (#3199) adds the review statuses and who moved a revision through them. A revision goes `draft` → `submitted` → `rejected` or `published`, or `discarded` when an approver unpublishes the page while it waits (`015`, #3203):
 
 - `POST /pages/:id/revision/submit` (editor role) sends the page's draft for review and records the submitter. With no draft it is a 404; already submitted, a 409 `under_review`. A rejected revision can be submitted again as it is: it is copied into a new submitted revision with the same `updated_at` (its content hasn't changed), and the rejected one keeps its comment as history. The copy's `contributors` are the rejected round's plus its submitter, and a new draft saved over a rejected revision inherits them the same way, so whoever submitted an earlier round still can't approve it.
-- `POST /pages/:id/revision/reject` (approver role) takes `{ comment }`, 1 to 2000 characters after trimming. The live page is unchanged. The rejected revision is kept with its comment and the rejecter, and the editor keeps working from it: `GET /pages/:id` lays it over the live page with `pending_revision: { status: "rejected", comment }`. The next save starts a new draft beside it, carrying its contributors over, since it starts from their content. A live write retires a rejection: it no longer shows once the live page has moved past the version it was saved over.
+- `POST /pages/:id/revision/reject` (approver role) takes `{ comment, expected_version }`, with a comment of 1 to 2000 characters after trimming. The live page is unchanged. The rejected revision is kept with its comment and the rejecter, and the editor keeps working from it: `GET /pages/:id` lays it over the live page with `pending_revision: { status: "rejected", comment }`. The next save starts a new draft beside it, carrying its contributors over, since it starts from their content. A live write retires a rejection: it no longer shows once the live page has moved past the version it was saved over.
 - `POST /pages/:id/revision/publish` (approver role) approves and publishes in one transaction: the revision's fields are checked again as a save checks them (placement, a url a category owns, and the database's own refusals), since its parent, its category or its url can have changed while it waited. A stale revision is a 422 naming the field, and nothing changes. Otherwise the revision is marked `published` with the approver and the time (an `approved` `change_events` entry), then the live row is written, its search chunks re-cut and an `updated` (or `published`) entry appended, both by the approver.
 
-Publish and reject are a 404 when nothing waits for review, and a 409 `not_submitted` for a draft. They **require** `if-updated-at`, the revision's `updated_at` the approver reviewed: without it the answer is a 428 `precondition_required`, and when the revision is no longer that version, a 409 `conflict`, so an approver never decides on a version they didn't read. Submit takes it optionally. A content save moves a revision's `updated_at`, and so does a rejection, so an editor's tab opened before the rejection gets a 409 on save, reloads and sees the comment; submitting a draft doesn't move it. Each runs under the page's row lock, as a save does.
+Submit and publish take `{ expected_version }`; reject takes `{ comment, expected_version }`. Every command checks the page's version under its row lock before review-state rules. Missing versions return 400; stale versions return 409 `version_conflict`. With a current version, publish and reject return 404 when nothing waits for review and 409 `not_submitted` for a draft. Submit, reject, publish and revision saves all advance the page version, even when the live content is unchanged.
 
-**Self-approval** (ADR 0079): the approver who publishes or rejects a revision must not be its submitter or one of its `contributors`; otherwise it is a 403. It is allowed only under `AUTH_BYPASS`, where `main.ts` passes `allowSelfApproval` to `PageEditing` so one developer can try the whole flow.
+**Self-approval** (ADR 0134): the approver who publishes or rejects a revision must not be its submitter or one of its `contributors`; otherwise it is a 403. It is allowed only under `AUTH_BYPASS`, where `main.ts` passes `allowSelfApproval` to `PageEditing` so one developer can try the whole flow.
 
-**One open revision.** A page has at most one revision that is `draft` or `submitted` (`page_revisions_open_page_id_key`). Editors keep working while a change waits (#3203): a save to a page whose revision is `submitted` updates that revision in place, and it stays `submitted` in the review queue. Such a save must send `if-updated-at`, the revision's `updated_at` (a 428 `precondition_required` without it, a 409 `conflict` when stale), and the saver joins its `contributors`, so whoever changes a waiting revision can't approve it. The save moves the revision's `updated_at`, so an approver holding the version from before it gets a 409 `conflict` on publish or reject, reloads, and decides on the latest version.
+**One open revision.** A page has at most one revision that is `draft` or `submitted` (`page_revisions_open_page_id_key`). Editors keep working while a change waits (#3203). A save to a submitted revision updates it in place and it stays in the review queue. Like every save, it requires the page's `expected_version`. The saver joins its `contributors`, so whoever changes a waiting revision cannot approve it. The page version advances, and an approver holding the earlier version receives 409 `version_conflict` on publish or reject.
 
 `GET /pages/:id/revision`, and the submit and reject responses, carry `changes`: `{ field, live, proposed }` for each page field whose proposed value differs from the live page's, in field order. Publish returns the page as it now stands.
 
@@ -174,6 +205,12 @@ erDiagram
     timestamptz(3) updated_at
     uuid parent_id FK "nullable"
     int4 position
+    int8 version
+  }
+  change_event_counters {
+    varchar(40) entity_kind PK
+    text entity_id PK
+    int4 last_version
   }
   change_events {
     uuid id PK
@@ -185,6 +222,8 @@ erDiagram
     text actor FK
     timestamptz(3) occurred_at
     int4 snapshot_version "nullable"
+    int4 restored_from "nullable"
+    int8 event_order "nullable"
   }
   collection_records {
     uuid id PK
@@ -193,6 +232,7 @@ erDiagram
     jsonb data
     timestamptz(3) created_at
     timestamptz(3) updated_at
+    int8 version
   }
   content_pages {
     uuid id PK "unique (id, category_id)"
@@ -210,6 +250,7 @@ erDiagram
     timestamptz(3) published_at "nullable"
     uuid parent_id FK "nullable"
     timestamptz(3) content_updated_at
+    int8 version
   }
   data_collections {
     uuid id PK
@@ -220,6 +261,11 @@ erDiagram
     int4 schema_version
     timestamptz(3) created_at
     timestamptz(3) updated_at
+  }
+  page_redirects {
+    uuid id PK
+    varchar(512) source_url UK
+    varchar(512) destination_url
   }
   page_revisions {
     uuid id PK
@@ -277,7 +323,7 @@ erDiagram
 | GET      | `/catalog`                             | Every visible page (sitemap, service lists)                            |
 | GET      | `/site-version`                        | Opaque token that moves on any content change; the site polls it       |
 | GET      | `/search/documents`                    | Every visible page with its search text in chunks                      |
-| GET      | `/collections/:key/records`            | A data collection and its records (public; the editor reads it too)    |
+| GET      | `/collections/:key/records`            | A data collection and its records (public, without edit versions)    |
 | GET      | `/docs`                                | Public API reference (Scalar)                                          |
 | GET      | `/docs/openapi.json`                   | Public OpenAPI document                                                |
 | GET      | `/health`                              | Load balancer check: 200 while the process serves; never hits the DB   |
@@ -287,20 +333,23 @@ erDiagram
 | GET      | `/pages/:id/history`                   | Employee; the page's changes and review steps, newest first            |
 | GET      | `/revisions?status=submitted`          | Employee; the review queue: revisions waiting for an approver          |
 | GET      | `/services`                            | Employee service index, grouped by `parent_id`                         |
+| GET      | `/editor/site-pages`                   | Employee; uncategorised root pages in every visibility                 |
 | GET      | `/services/:id`                        | Employee; one service's pages with their roles, entry first            |
 | GET      | `/editor/categories`                   | Employee; every shared category, counts, address protection and stamps |
 | POST     | `/editor/categories`                   | Approver; append a category or subcategory                             |
-| PUT      | `/editor/categories/:id`               | Approver; edit with mandatory `if-updated-at`                          |
+| PUT      | `/editor/categories/:id`               | Approver; edit with body `expected_version`                          |
 | PUT      | `/editor/categories/order`             | Approver; reorder a complete expected sibling snapshot                 |
-| DELETE   | `/editor/categories/:id`               | Approver; delete an empty category with `if-updated-at`                |
+| DELETE   | `/editor/categories/:id`               | Approver; delete an empty category with query `expected_version`                |
 | GET      | `/collections`                         | Employee; every data collection with its field list and record count   |
-| POST     | `/collections/:key/records/:recordKey` | Editor; add a record, checked against the collection's field list      |
-| PUT      | `/collections/:key/records/:recordKey` | Editor; replace a record's data, optional `if-updated-at`              |
-| DELETE   | `/collections/:key/records/:recordKey` | Editor; delete a record, optional `if-updated-at`                      |
+| GET      | `/collections/:key/records/:recordKey` | Employee; coherent versioned `{ collection, record }` snapshot |
+| POST     | `/collections/:key/records/:recordKey` | Editor; add a record                                         |
+| PUT      | `/collections/:key/records/:recordKey` | Editor; replace data with record and collection versions              |
+| DELETE   | `/collections/:key/records/:recordKey` | Editor; delete a record with query `expected_version`                      |
 | GET      | `/version`                             | Employee change token                                                  |
 | POST     | `/pages`                               | Employee create; as `public`, refused (approver under `AUTH_BYPASS`)   |
-| PUT      | `/pages/:id`                           | Editor save, optional `if-updated-at`; public pages save to a revision |
+| PUT      | `/pages/:id`                           | Editor save with body `expected_version`; public pages save to a revision |
 | DELETE   | `/pages/:id`                           | Employee delete; a `public` page, approver only                        |
+| POST     | `/pages/:id/history/:version/restore`  | Editor; save a history version's fields as a new change (ADR 0135)     |
 | POST     | `/pages/:id/revision/submit`           | Editor; submit the draft revision for review                           |
 | POST     | `/pages/:id/revision/reject`           | Approver, not its author or submitter; reject with a `comment`         |
 | POST     | `/pages/:id/revision/publish`          | Approver, not its author or submitter; publish it to the live page     |
@@ -312,19 +361,118 @@ erDiagram
 
 Missing, expired, or revoked sessions produce JSON 401 responses; disallowed employees or write origins produce 403; unavailable session verification produces 503. The API does not redirect protected content requests to Google. The editor handles navigation. Authenticated writes require `Origin: <EDITOR_ORIGIN>`. Auth/session/editor responses use `Cache-Control: no-store` and do not receive ETags. Page, category and collection record write audit rows record the authenticated user ID, never a caller-supplied actor, and commit with the write they record.
 
-The database writes the history itself: a trigger (`record_change`, migration `007`) adds a `change_events` row for every insert, update and delete of a content table (`content_pages`, `categories`, `data_collections`, `collection_records`), including the sub-pages a parent's move carries with it. Its `actor` is the transaction's `app.user_id`, which the editor's writes set (transaction-local, so a pooled connection never carries it into the next request), or `system`, a user with no account, when nothing set it: the seed, the import, raw SQL. `actor` references `auth_user`, so a user with history cannot be deleted. An update that changes nothing but `updated_at` is not recorded; a page going public is `published` and one leaving public is `unpublished`. The snapshot is the row as stored. A new content table attaches `record_change` in the migration that creates it, or `migrate.test.ts` fails.
+The database writes the history itself: a trigger (`record_change`, migration `007`) adds a `change_events` row for every insert, update and delete of a content table (`content_pages`, `categories`, `data_collections`, `collection_records`, `page_redirects`), including the sub-pages a parent's move carries with it. Its `actor` is the transaction's `app.user_id`, which the editor's writes set (transaction-local, so a pooled connection never carries it into the next request), or `system`, a user with no account, when nothing set it: the seed, the import, raw SQL. `actor` references `auth_user`, so a user with history cannot be deleted. An update that changes nothing but `updated_at` is not recorded; a page going public is `published` and one leaving public is `unpublished`. The snapshot is the row as stored. A new content table attaches `record_change` in the migration that creates it, or `migrate.test.ts` fails.
 
 Review is recorded the same way (`record_review`, migration `013`): when a page's revision changes status, the page's own history gets `submitted` (a first submission or a resubmission), `rejected`, `approved` (on publish) or `discarded` (unpublished while waiting, migration `015`), by the transaction's user, numbered after the page's last event. The snapshot is the revision row, so it names the submitter (`submitted_by`), the approver or rejecter (`decided_by`) and a rejection's `comment`. A page's history therefore holds two snapshot shapes under `entity_kind = 'content_page'`: review events (`submitted`, `rejected`, `approved`, `discarded`) store a `page_revisions` row, whose `snapshot->>'id'` is the revision's id (the page's is `snapshot->>'page_id'`), and every other event stores a `content_pages` row. Anything that rebuilds a page's state from its history must filter on `action`. A publish then logs the live write as `updated` (or `published`) by the same approver, so a page's history reads who submitted a change, who approved it, and when it went live. Saves to a revision, draft or submitted, are not recorded.
 
+Restoring a version is a new change, never a rewind (ADR 0135, #3231). `POST /pages/:id/history/:version/restore` (editor role; the page's `expected_version` in JSON, 400 without it and 409 `version_conflict` when stale) reads the named entry's snapshot and saves its fields over the page as it stands now, keeping the page's current `visibility`, through the same rules as `PUT /pages/:id`. Every earlier entry stays. On a page that isn't public the write is live, and `record_change` logs it as `reverted` with the version it brought back in `change_events.restored_from` (migration `022_restored_from`); the restore sets `app.restored_page` and `app.restored_from` for its transaction, so only that page's update is `reverted`, and a sub-page the save files under its category is `updated`. On a public page the restore goes into the pending revision, to be submitted and approved like any other change, so the live write is logged as an approved `updated` and no `reverted` entry is written. A review step, a deletion, a redacted entry or a snapshot that doesn't parse as the page's fields is a 409 `not_restorable`; a version the page doesn't have is a 404. `GET /pages/:id/history` returns `restored_from` on each entry.
+
 Public site reads (`/pages?url=`, `/categories…`, `/catalog`, `/search/documents`, `/collections/:key/records`) send `public, max-age=60, stale-while-revalidate=300, stale-if-error=86400`; unknown public URLs send `public, max-age=10`. `/site-version` sends `public, max-age=5`: landing checks it at most every 5 s and expires its cached pages when it moves, so a publish shows within seconds rather than after the pages' max-age. ETags and 304s remain available for public reads. These routes do not look up or refresh employee sessions.
 
-The editor reads a collection's records through that same public route, fetching with `cache: "no-store"`, and sends a record's `updated_at` back in `if-updated-at` when it saves or deletes it. That depends on no shared cache (a CDN, or a server-side fetch cache) sitting between the editor and api_v2: a cached read up to six minutes old would turn the editor's next save into a 409 against its own earlier write. Put a cache in front of api_v2 and the editor needs an uncached, editor-scope read of records first.
+The editor loads record detail through authenticated `GET /collections/:key/records/:recordKey`, which returns `{ collection, record }` from one database snapshot, with the record's version. It never derives a write baseline from the public record list. PUT sends `{ data, expected_version }` and returns the same envelope, including for a no-op. POST sends `{ data }` and returns the created versioned record. DELETE needs the record's `expected_version` query parameter. Collection definitions have no edit version: editors can't change them, so a record write is validated against the current definition.
 
 Preview: the site's server sends its `PREVIEW_SECRET` as `x-preview-token`, and the same reads then include `preview` content. Those responses are `no-store` with no ETag, so preview content never enters a shared cache. A wrong token, or any token when `PREVIEW_SECRET` is unset here, is a 401 rather than a quiet fall-back to the public view. `draft` content is only ever served to the editor.
 
 The hierarchy is `parent_id`, not the url. A page is served only when it and every page above it are visible; its breadcrumbs are its category (and parent category, for a subcategory), then the pages above it; a category lists only the pages at its root (`parent_id` null), so `start` steps and sub-pages never appear in a listing. A sub-page must share its parent's category (moving the parent moves its sub-pages), a page cannot sit beneath itself, and a page with sub-pages cannot be deleted: each is a field-specific 422.
 
-`GET /pages?url=` returns `{url, frontmatter, body_markdown, form_id, hide_start_links, breadcrumbs, category, subcategory}`. `category` and `subcategory` are slugs, null when the page has none. `hide_start_links` is true when the page's `start` sub-page is hidden from the viewer. `visibility` is `preview` when the page or any page above it is preview; the site shows its review banner and `noindex` from it (#3246). Whether a form is open is the forms API's to say: `form_id` is a name, and the site asks the forms API for the form's status. The API serves markdown as written; the site owns sanitization and rendering. Editor writes return field-specific 422s for invalid references or duplicates, 409 for a stale supplied version, and stamp `published_at` only on first publication. `content_updated_at`, the site's "Last updated" line, is moved by a trigger only when the title, description, body, frontmatter or form changes, so a visibility change or a move keeps it (migration `016_content_updated_at`, #3105). A save replaces the page, so it sends every field; only `parent_id` may be left out, which keeps the page's parent. Changing `url` moves that page alone: its sub-pages keep theirs, and nothing redirects from the old url. Each write still records an append-only audit snapshot (see above); `GET /pages/:id/history` lists them read-only, newest first, with who made each change and which fields it changed (#3423); nothing restores an earlier version. A request its route's schema refuses (a missing field, an id that is not a UUID, an `if-updated-at` that is not a timestamp, a url over 512 characters, a title over 300) is a 400; Fastify's own refusals keep their status (a body that is not JSON is a 415), and an unknown route is a JSON 404.
+`GET /pages?url=` returns `{url, frontmatter, body_markdown, form_id, hide_start_links, breadcrumbs, category, subcategory}`. `category` and `subcategory` are slugs, null when the page has none. `hide_start_links` is true when the page's `start` sub-page is hidden from the viewer. `visibility` is `preview` when the page or any page above it is preview; the site shows its review banner and `noindex` from it (#3246). Whether a form is open is the forms API's to say: `form_id` is a name, and the site asks the forms API for the form's status. The API serves markdown as written; the site owns sanitization and rendering. Editor writes return field-specific 422s for invalid references or duplicates, 409 for a stale supplied version, and stamp `published_at` only on first publication. `content_updated_at`, the site's "Last updated" line, is moved by a trigger only when the title, description, body, frontmatter or form changes, so a visibility change or a move keeps it (migration `016_content_updated_at`, #3105). A save replaces the page, so it sends every field; only `parent_id` may be left out, which keeps the page's parent. Changing `url` moves that page alone; its sub-pages keep theirs. Public moves create redirects at publication (see below). Each write still records an append-only audit snapshot (see above); `GET /pages/:id/history` lists them read-only, newest first, with who made each change and which fields it changed (#3423); a restore adds an entry and removes none (see above). A request its route's schema refuses (a missing field, an id that is not a UUID, an explicitly malformed version, a url over 512 characters, a title over 300) is a 400; Fastify's own refusals keep their status (a body that is not JSON is a 415), and an unknown route is a JSON 404.
+
+### Page paths
+
+`PageUrl` requires a root-relative path with non-empty segments, no trailing
+slash, query, fragment, backslash, whitespace or control characters. The limits
+are 512 characters overall and 200 in the last segment. Validation rejects bad
+input rather than rewriting it. Publishing revalidates the stored revision's URL;
+restoring history applies the same field schema.
+
+Before deploying tighter page-path rules, validate read-only exports of
+`content_pages.url` and `page_revisions.fields.url` for draft, submitted and
+rejected revisions with `PageUrl.safeParse` from `src/modules/page.ts`. Review
+and correct invalid rows before rollout: editor response schemas enforce the
+rules too, so those rows may no longer open in the editor. Do not normalize URLs
+in bulk, reimport the estate or rewrite history. Historical versions that fail
+the current schema stay in history but cannot be restored.
+
+### Page redirect maintenance
+
+Migration `025_page_redirects` adds independent source/destination paths with a
+UUID audit identity. There is no page foreign key or expiry, so deleting a page
+does not delete its incoming rules. Changes use `entity_kind = 'page_redirect'`
+and advance the existing site version without appearing in page revision history.
+
+Publication records a move only when the destination and its ancestors are
+public. Pending revisions, never-public Draft/Preview URLs and hidden edits do
+not create redirects. A newly public page clears a rule at its address; a draft
+replacement leaves that rule intact. Unpublishing or deleting a destination
+keeps incoming rules. Publishing or reparenting an ancestor applies these rules
+to newly public descendants without changing their URLs.
+
+`PostgresPages.recordPageRedirectMove` removes a rule at the destination,
+retargets incoming rules and upserts the source while preserving its audit ID.
+The live page write (`writeLivePage`, ADR 0137) captures former addresses
+before writing the page, validates paths with `PageUrl`, and refuses to reclaim
+another page's, category's or redirect's source. Page, redirect, revision and
+audit changes commit in the same actor-bearing transaction under the shared
+content lock. Seed/import takes that lock too and clears rules only for newly
+inserted, publicly reachable pages.
+
+Republication can recover the last verifiably public URL after hidden renames.
+Migration `026_change_event_order` gives new audit inserts a unique
+`event_order`; with the content lock held, it orders page mutations across
+records. Transaction-start timestamps and per-page version numbers cannot do
+that. Existing events remain null and are never backfilled or renumbered.
+Recovery stays within the record's latest creation, reads historical ancestry,
+ignores review snapshots, and skips sources whose public reachability or later
+ownership cannot be proved. Missing order, missing history, redaction and
+unsupported snapshots do not become guessed redirects. Publication still
+succeeds when recovery must omit a former URL.
+
+Pause edits and imports during migration/writer cutover. Do not import redirect
+rules or add a writer that bypasses the content lock and publication checks.
+Destinations must remain terminal, never another rule's source.
+
+Public reads select the stored rule before the exact page in one database
+statement. This applies to preview readers too: a Draft/Preview replacement
+does not override a public redirect. The API returns 301 with the stored
+`Location` and `{ redirect }` body without looking up the destination.
+Following it still applies normal page visibility, so the destination can return
+404 while the rule remains stored. Unsafe or self-referential rules return 404.
+Bare-slug guessing runs only when neither a rule nor an exact page exists.
+
+API redirects use the public read cache policy, or `no-store` for preview,
+and vary on `x-preview-token`. They have no ETag and never return 304.
+Landing's browser-facing 301 uses `Cache-Control: no-store` so a cached
+permanent redirect cannot prevent later source reuse. Rule audit changes
+advance the site version and expire landing's server cache, including cached
+earlier sources changed by flattening. HTTP freshness does not expire stored
+rules.
+
+#### Redirect rollout and rollback
+
+Merging API changes into `v2-rewrite` triggers
+[Deploy api_v2 to Sandbox](../../.github/workflows/deploy-api-v2-sandbox.yml).
+Agree the cutover window before merging; a rolling deployment alone does not
+stop an old instance from accepting edits.
+
+1. Pause editor writes and imports, and let in-flight writes finish.
+2. Deploy the API. `main.ts` runs migrations before opening its HTTP listener.
+   Confirm `025_page_redirects` and `026_change_event_order` are recorded in
+   `schema_migrations`, the expected image is serving, and all old writer
+   instances have drained. Do not backfill `event_order` or reimport content.
+3. Deploy landing's `no-store` redirect change. With an approver and agreed
+   test paths, publish A, then move it to B and C. Check that A and B both
+   return 301 directly to C, with matching `Location` and `{ redirect }`, and
+   C returns the public page. Check landing's final 301 has
+   `Cache-Control: no-store`.
+4. Publish a replacement at A and check that A serves the new page after
+   landing's site-version refresh. A draft replacement must leave the rule
+   intact. Deleting the test destination leaves incoming rules stored, so
+   choose test paths knowing those rules persist.
+5. Resume normal writes only after these checks and the old-instance drain.
+
+If rollback is needed, pause writes again first and keep the additive schema
+and audit data. An old binary neither serves nor maintains these redirects;
+keep edits and imports paused until a redirect-aware version is restored.
 
 ### Category management
 
@@ -332,14 +480,14 @@ The one shared list serves category management, every page picker and every cont
 type. `GET /editor/categories` returns `{ categories: [...] }` with each parent
 followed by its ordered children. Rows contain `id`, `parent_id`, `title`, `slug`,
 nullable `description`, `url`, `position`, `services`, `reserved_route` and
-`updated_at` and `last_edited_by`. Attribution uses the category's latest change event
+`updated_at`, `version` and `last_edited_by`. Attribution uses the category's latest change event
 and the same nullable author shape as editor pages. Service counts match `/services`
 roots, including unpublished work.
 Public category reads expose none of the private counts or editor metadata.
 The former taxonomy endpoint is removed without an alias.
 
 Create/update send all four fields:
-`{ title, slug, parent_id, description }`. Unknown keys are refused. Titles and
+`{ title, slug, parent_id, description }`; update also requires `expected_version`. Unknown keys are refused. Titles and
 descriptions are trimmed; blank descriptions become null. Names need not be
 unique; slugs must be globally unique, lower-case hyphenated words of at most
 100 characters. Renaming a title never changes the slug. Empty categories may
@@ -347,11 +495,11 @@ change slug/parent, but any assigned page, subcategory or reserved app-route
 anchor blocks address changes. Names and descriptions remain editable at anchors.
 
 Create and reparent append to the current destination under the shared content
-write lock. Update/delete require the original millisecond `if-updated-at`.
-Reorder sends `{ parent_id, expected: [{ id, updated_at }], ordered_ids }` for the
+write lock. Update requires `expected_version` in its body; delete requires it in the query.
+Reorder sends `{ parent_id, expected: [{ id, version }], ordered_ids }` for the
 complete sibling group and returns `{ categories: [...] }` in saved order.
-Missing/malformed fields or versions are 400; field rules are 422; stale writes
-are 409 `conflict`. Occupied deletion is 409 `category_in_use` with
+Missing or malformed fields, versions or ID sets are 400;
+field rules are 422; stale membership or versions are 409 `version_conflict`. Occupied deletion is 409 `category_in_use` with
 `blockers: { pages, subcategories, reserved_route }`. The page blocker counts
 all pages, not just services. No operation cascades deletion or moves page URLs.
 A missing category target is 404; successful deletion is 204.
@@ -361,7 +509,7 @@ advisory lock before row locks. They check page/category URL collisions in both
 directions, including drafts and empty categories. Existing page operations
 otherwise retain their behavior. App-owned route/asset reservations and category
 anchors are explicit in `src/modules/category.ts`, with landing route coverage
-in its test. The complete contract is [ADR 0078](../../docs/decisions/0078-category-write-rules.md).
+in its test. The complete contract is [ADR 0132](../../docs/decisions/0132-category-write-rules.md).
 
 Do not automatically retry a mutation whose response was lost or was a 5xx.
 The write may already have committed. Refresh and reconcile the saved slug/fields,
@@ -375,6 +523,25 @@ tracked in #3178, landing integration in #3179, and sandbox acceptance in #3180.
 `search_chunks` holds each page's body split at its headings, as plain text, rewritten in the same transaction as every save. Rejoined, a page's chunks are exactly the text landing's search indexes today (`search-text.test.ts` checks every seeded page), so moving search onto the API does not move its ranking. The generated `tsv` column and its GIN index are there for server-side search and are not read yet.
 
 The seed is a committed snapshot of legacy markdown and the category taxonomy, subcategories included, with each sub-page's parent. Every page keeps its frontmatter `publish_date` as `published_at`, public or not, so going public later keeps that date. Inserts are additive and idempotent and never replace authored changes. It runs only with `SEED=true`, because an additive insert also brings back a page an editor deleted. Each page and category it adds gets a `created` entry by `system` in the audit log, which also moves the editor's change token. Regenerate it with `pnpm seed-data` (or `pnpm generate:seed-data` from the root) when intentionally updating the snapshot. The import (see "Importing the estate" below) reports `source`, a sha1 of the snapshot's categories and pages computed at import time. It is not stored in `estate.json`, so content PRs don't all rewrite one shared line and conflict. CI's "Generated Files Up To Date" job regenerates the snapshot on every PR and, when it differs, commits the regen back to the PR branch, or fails when it can't push. So a content change can't merge with a stale `estate.json`.
+
+## Upgrading StormReady contacts in an existing estate (#3261)
+
+The generated snapshot converts StormReady's legacy contact grid to headings and `::contact` blocks. The static page keeps its old markup so it still works without api_v2. New estates seed the four records from `src/seed-data/stormready-contacts.ts`.
+
+An existing estate needs a targeted update. Neither a normal seed nor `import-estate --force` adds records to an existing collection; a force import also deletes authored pages and pending revisions. Do not use it for this update.
+
+1. Deploy the contact-block code first. In the editor's collections screen, add the missing records below to `contacts`. Keep the key, name and phone; leave other fields empty. If a key already exists, check its current details rather than overwriting them.
+
+   | Key | Name | Phone |
+   | --- | --- | --- |
+   | `dem-emergency-line` | DEM Emergency Line | `246-438-7575` |
+   | `barbados-met-office` | Barbados Met Office | `246-535-0021` |
+   | `police-emergency` | Police | `211` |
+   | `bwa-water-outages` | BWA (water outages) | `246-426-3990` |
+
+2. Find StormReady's page id through `GET /services` and read `GET /pages/:id` with an employee session. Save a copy of that response. If it has a pending revision, coordinate with its author before changing it.
+3. Apply `convertStormReadyContacts` from `src/seed-data/stormready-contacts.ts` to that response's current `body_markdown`. It changes only the known contact grid and refuses different labels, numbers or markup. If it refuses, compare the live contacts with the records and reconcile them before proceeding. Do not replace the whole body with the seed snapshot. Save through `PUT /pages/:id`, retaining every other save field and sending the read `updated_at` as `if-updated-at`, plus the employee session and editor `Origin`. A 409 means reread and review the concurrent change.
+4. Open the page in editor_v2 and verify all four contacts and an unchanged save. Submit the revision and have another approver publish it. Check the public page's labels and telephone links, including Police's `tel:211`, then record the deployment and update in #3261.
 
 ## Importing the estate (once per environment)
 
@@ -390,7 +557,7 @@ Before it touches the database, the command reads that environment's `service_st
 
 ### Each environment's service_status
 
-The snapshot's visibility is the markdown frontmatter's. Each environment's admins have since set services `enabled`, `disabled` or `form_disabled` in feature flagging, and landing applies that at request time; after cutover landing ignores it for api_v2 pages (#3125), so the import applies it instead (#3188, ADR 0063's mapping):
+The snapshot's visibility is the markdown frontmatter's. Each environment's admins have since set services `enabled`, `disabled` or `form_disabled` in feature flagging, and landing applies that at request time; after cutover landing ignores it for api_v2 pages (#3125), so the import applies it instead (#3188, ADR 0110's mapping):
 
 | `service_status` | Imported visibility                                      |
 | ---------------- | -------------------------------------------------------- |
@@ -403,7 +570,7 @@ A page's key is its `form_id`, or its `content_slug` (landing's registry slug) w
 
 `--forms-api` is required. A missing flag, a network error, a non-2xx answer or a body that is not the `{"status":"success","data":[{slug,status}]}` envelope exits 1 before the database is opened, so nothing is written.
 
-Before every run, confirm in the Amplify Console that the environment's feature_flagging branch has no `EDITOR_V2_URL` set. If it is set, stop: that environment is past cutover, where a `disabled` row hides only the form (ADR 0063, "After cutover"), and the overlay would wrongly lower the page. The importer cannot detect this.
+Before every run, confirm in the Amplify Console that the environment's feature_flagging branch has no `EDITOR_V2_URL` set. If it is set, stop: that environment is past cutover, where a `disabled` row hides only the form (ADR 0110, "After cutover"), and the overlay would wrongly lower the page. The importer cannot detect this.
 
 `--forms-api` is that environment's api v1 origin, the same value as its `VITE_FORMS_API_URL`:
 
@@ -491,7 +658,7 @@ gh variable set CONTENT_FREEZE --body true   # on
 gh variable delete CONTENT_FREEZE            # off
 ```
 
-The "Generated Files Up To Date" job (#3136) stays on: it also regenerates two v1 files (`services-index.generated.ts`, `form-categories.generated.ts`) and writes only generated files, so the freeze check never trips on it, and with the markdown frozen its `estate.json` regen is a no-op. From then on `estate.json` no longer tracks the prod database; it is read only by local `SEED` and fresh imports. After the prod import, content changes go through the editor only.
+The "Generated Files Up To Date" job (#3136) stays on: it also regenerates a v1 file (`services-index.generated.ts`) and writes only generated files, so the freeze check never trips on it, and with the markdown frozen its `estate.json` regen is a no-op. From then on `estate.json` no longer tracks the prod database; it is read only by local `SEED` and fresh imports. After the prod import, content changes go through the editor only.
 
 ## History protection
 
@@ -580,9 +747,15 @@ too. Another approver who did not contribute must publish the page.
 
 SIGINT/SIGTERM drain HTTP requests before closing the shared pool; startup failures also release acquired resources. JSON logs omit cookies, OAuth callback query parameters, provider tokens and raw driver error objects. The exact warning `idle database connection dropped` remains the operational alarm marker; its safe `code` identifies the failure. Public content failures continue to use the existing 500 response, while authentication outages fail closed with 503.
 
+The server's pool gives a request's query 5 s, a boot migration 10 min, and a new connection 2 s, and keeps its sockets alive with TCP keepalive. Postgres enforces the same query limits (`statement_timeout`), so a query that times out also stops on the server instead of keeping a connection open after the pool has replaced it. A database that goes quiet without hanging up (a failover or partition) therefore answers 500 `internal_error` from the driver's "Query read timeout" instead of hanging. A query waiting on a lock counts too, so editor writes fail after 5 s while `reindex-search` holds the content lock for longer than that. The jobs (`import-estate`, `reindex-search`, `redact-change-events`) have no query limit.
+
 The site routes (`/pages`, `/categories…`, `/collections/:key/records`, `/site-version`, `/catalog`, `/search/documents`) are limited to 1,000 requests a minute per client, answering 429 beyond it; editor, auth and `/docs` routes are not limited. `trustProxy` trusts only private-address peers (the ALB), so the client is the address the ALB forwards and a client's own `X-Forwarded-For` entries are ignored. Buckets are in memory, per task. Landing is exempt: its server sends `LANDING_SECRET` as `x-landing-token`, and such requests skip the limit and carry no `x-ratelimit-*` headers. It has to be, because landing reads `/pages` on every uncached page view (and a category listing on every category page view, and `/site-version` on its poll) from a few shared egress addresses, so its rate follows citizen and bot traffic and no limit can be sized above it (#3129). With `LANDING_SECRET` unset, nobody is exempt.
 
-Migrations run at boot. Each script commits with its `schema_migrations` row under a PostgreSQL advisory lock, so instances that boot together apply them one at a time; every script must be safe to replay, because an instance that waited on the lock runs it again.
+Migrations run at boot. Each script checks `schema_migrations` after acquiring the PostgreSQL advisory lock, then conditionally executes and records completion in the same transaction on the same connection. Each migration commits separately so later scripts can use newly added enum values. A runner with an outdated ledger read skips scripts another runner completed; scripts must still tolerate replay after lost bookkeeping.
+
+Migration `024` gives pages, categories and collection records numeric edit versions from one noncycling sequence, capped at JavaScript's maximum safe integer. These identities are separate from timestamps and audit event numbers. Editor snapshots include them; public projections and audit snapshots do not.
+
+A trigger on `page_revisions` bumps the page's version on every insert, update or delete, so revision writes and review steps invalidate open editors without changing the page's dates or history. Never reset the sequence below an issued identity.
 
 ```sh
 pnpm exec nx run api_v2:build
@@ -594,5 +767,7 @@ DB_HOST=localhost pnpm exec nx run api_v2:e2e
 Unit/integration tests run against PostgreSQL (`DB_HOST` etc., defaulting to `localhost:5432` as `postgres`/`postgres`): the global setup migrates one template database per run and each test clones it, dropping it afterwards. There is no skip; with no database the run fails and says so. CI's Test job provides a `postgres` service. PostgreSQL e2e creates and drops uniquely named scratch databases and exercises the compiled Node process, migrations, cookie sessions, session expiry/revocation, origin protection, audit identity, pool recovery and shutdown. Test sessions are created through the real BetterAuth internal adapter in test code; no production login bypass exists. The e2e suite skips when `DB_HOST` is unset. OAuth provider admission and the sign-in handshake are tested without live Google credentials; deployment still requires a real Google sign-in and TLS smoke check.
 
 `openapi.json` is a file snapshot of the document the running app generates from its route schemas (`src/routes/contracts.ts`), so `src/openapi.test.ts` fails when the two differ. It is served at `/docs/openapi.json`, with a browsable reference at `/docs`. Update it from this directory with `pnpm exec vitest run src/openapi.test.ts -u`.
+
+The editor's `apps/editor_v2/src/api/openapi.d.ts` snapshot also includes endpoint descriptions. After changing the API spec, regenerate that snapshot from the repository root with `pnpm --dir apps/editor_v2 exec vitest run src/api/openapi.test.ts -u`, then run `pnpm --dir apps/editor_v2 test`.
 
 The diagram under "Database" is the same kind of snapshot, of the tables the migrations create, so `src/erd.test.ts` fails when a migration changes a table without it. Refresh it from this directory with `pnpm exec vitest run src/erd.test.ts -u`.

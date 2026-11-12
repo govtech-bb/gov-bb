@@ -9,8 +9,8 @@ import {
   $getSelection,
   $isRangeSelection,
 } from "lexical";
-import { $describe } from "../../src/forms/react/gutter";
-import { $createMentionNode, MentionNode } from "../../src/forms/features/mentions/node";
+import { $describe } from "../../src/forms/canvas/form-gutter";
+import { $createMentionNode, MentionNode } from "../../src/forms/mentions/mention-node";
 import {
   $blockGroup,
   $createFormTitleNode,
@@ -19,9 +19,9 @@ import {
   $ensureBlockIds,
   $ensureQuestionFields,
   $hintBlocks,
-} from "../../src/forms/editor/nodes";
-import { $createInputNode, $createOptionNode } from "../../src/forms/editor/answer-nodes";
-import { $depth, $setDepth, $setSettings, $settings } from "../../src/editor/core/document-state";
+} from "../../src/forms/canvas/form-nodes";
+import { $createInputNode, $createOptionNode } from "../../src/forms/canvas/answer-nodes";
+import { $depth, $setDepth, $setSettings, $settings } from "../../src/forms/canvas/block-state";
 import { formNodes } from "../helpers/default-form";
 
 const makeEditor = () =>

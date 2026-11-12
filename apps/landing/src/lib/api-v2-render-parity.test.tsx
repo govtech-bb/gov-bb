@@ -2,6 +2,10 @@ import { describe, expect, it, vi } from 'vitest'
 import type * as ReactRouter from '@tanstack/react-router'
 import { renderToStaticMarkup } from 'react-dom/server'
 import estate from '@api-v2-seed/estate.json'
+import { CONTACTS } from '@api-v2-seed/collections'
+import { STORMREADY_CONTACTS } from '@api-v2-seed/stormready-contacts'
+import { contactRefs, resolveContactRecords } from './api-v2-collections'
+import type { ContactRecords } from './api-v2-collections'
 import { MarkdownContent } from '../components/markdown'
 import { findPage } from '../content/registry'
 import type { ContentPage } from '../content/registry'
@@ -12,7 +16,9 @@ import type { Frontmatter } from './frontmatter'
 /**
  * Every page api_v2 is seeded with must build the same page through
  * `fromApiV2` as landing's static registry builds from its markdown (#3135):
- * the same rendered HTML and the same frontmatter fields. No network: the
+ * the same rendered HTML and the same frontmatter fields, except StormReady's
+ * import-time contact conversion (#3261), whose labels and links must match.
+ * No network: the
  * api_v2 response is built from the seed snapshot and read through
  * `resolveApiV2Page`, so the response schema parses every seeded page.
  *
@@ -151,18 +157,30 @@ const KNOWN: Array<{ why: string; field: Field; urls: string[] }> = [
 const NO_STATIC_PAGE: string[] = []
 
 /** The page's body and chrome as the catch-all route renders it. */
-function render(page: ContentPage): string {
+function render(
+  page: ContentPage,
+  contactRecords: ContactRecords = {},
+): string {
   const formId = page.frontmatter.form_id
   return renderToStaticMarkup(
     <MarkdownContent
       hast={page.hast}
       frontmatter={page.frontmatter}
       availableForms={new Set(formId ? [formId] : [])}
+      contactRecords={contactRecords}
     />,
   )
 }
 
 const seeded = ESTATE.pages.map((page) => page.url.replace(/^\//, ''))
+const stormReadyUrl = 'health-and-emergency-services/stormready'
+const seededContacts = {
+  collection: CONTACTS,
+  records: CONTACTS.records.map((data) => ({
+    record_key: data.key,
+    data,
+  })),
+}
 
 describe('api_v2 render parity', () => {
   it('lists only seeded pages as known differences', () => {
@@ -211,7 +229,41 @@ describe('api_v2 render parity', () => {
       for (const { field } of known) {
         Object.assign(expected, { [field]: api.frontmatter[field] })
       }
-      expect(render(api)).toBe(render({ ...twin, frontmatter: expected }))
+      const readContacts = vi.fn(async () => Response.json(seededContacts))
+      const refs = contactRefs(api.hast)
+      const records = await resolveContactRecords(
+        'http://api.example',
+        refs,
+        readContacts,
+      )
+      const html = render(api, records)
+      const staticHtml = render({ ...twin, frontmatter: expected })
+      if (url === stormReadyUrl) {
+        expect(refs).toEqual(
+          STORMREADY_CONTACTS.map(({ key }) => ({
+            collection: 'contacts',
+            record: key,
+          })),
+        )
+        expect(readContacts).toHaveBeenCalledTimes(1)
+        // Only the last section changes layout; static mode still needs no API.
+        const section = '<h2 id="key-contacts-during-a-storm"'
+        expect(html).toContain(section)
+        expect(staticHtml).toContain(section)
+        expect(html.split(section)[0]).toBe(staticHtml.split(section)[0])
+        expect(html.match(/href="tel:[^"]+"/g)).toEqual(
+          staticHtml.match(/href="tel:[^"]+"/g),
+        )
+        for (const { name, phone } of STORMREADY_CONTACTS) {
+          expect(html).toContain(name)
+          expect(html).toContain(phone)
+          expect(staticHtml).toContain(name)
+          expect(staticHtml).toContain(phone)
+        }
+        expect(html).not.toBe(staticHtml)
+      } else {
+        expect(html).toBe(staticHtml)
+      }
       for (const field of FIELDS) {
         const differs = known.find((entry) => entry.field === field)
         if (differs) {
@@ -225,6 +277,40 @@ describe('api_v2 render parity', () => {
       }
     },
   )
+})
+
+it('shows a changed StormReady phone number without changing the page', async () => {
+  const seed = ESTATE.pages.find((page) => page.url === `/${stormReadyUrl}`)
+  if (!seed) throw new Error('Missing StormReady seed page')
+  const result = await resolveApiV2Page(
+    'http://api.example',
+    seed.url,
+    async () => Response.json(served(seed)),
+  )
+  if (result.kind !== 'page') throw new Error('StormReady did not resolve')
+  const page = result.page
+  const refs = contactRefs(page.hast)
+  const before = await resolveContactRecords(
+    'http://api.example',
+    refs,
+    async () => Response.json(seededContacts),
+  )
+  const after = await resolveContactRecords(
+    'http://api.example',
+    refs,
+    async () =>
+      Response.json({
+        ...seededContacts,
+        records: seededContacts.records.map((record) =>
+          record.record_key === 'dem-emergency-line'
+            ? { ...record, data: { ...record.data, phone: '246-438-0000' } }
+            : record,
+        ),
+      }),
+  )
+  expect(render(page, before)).toContain('href="tel:+12464387575"')
+  expect(render(page, after)).toContain('href="tel:+12464380000"')
+  expect(render(page, after)).not.toContain('246-438-7575')
 })
 
 describe('"Last updated" date (#3105)', () => {

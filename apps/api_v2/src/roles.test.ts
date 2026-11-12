@@ -1,5 +1,5 @@
 /**
- * Roles (#3187, #3197, ADR 0079): only an editor writes, only an approver
+ * Roles (#3187, #3197, ADR 0134): only an editor writes, only an approver
  * changes what citizens see, only an admin changes who holds which role,
  * and roles are read from the database on every request.
  */
@@ -71,10 +71,12 @@ const as = (employee: Employee, options: InjectOptions) =>
     },
   });
 
-const seedPage = async (overrides: Record<string, unknown> = {}) =>
-  PageDocument.parse(
-    expectOk(await services.editing.create(aPage(overrides), TEST_EMPLOYEE)),
+const seedPage = async (overrides: Record<string, unknown> = {}) => {
+  const page = expectOk(
+    await services.editing.create(aPage(overrides), TEST_EMPLOYEE),
   );
+  return { ...PageDocument.parse(page), version: page.version };
+};
 
 const stored = async (id: PageId) =>
   expectOk(await new PostgresPages(db).find(id));
@@ -91,12 +93,15 @@ describe("a page's visibility", () => {
     const response = await as(TEST_EDITOR, {
       method: "PUT",
       url: `/pages/${page.id}`,
-      payload: withDefaults(aPage({ visibility: "public", title: "Changed" })),
+      payload: {
+        ...withDefaults(aPage({ visibility: "public", title: "Changed" })),
+        expected_version: page.version,
+      },
     });
 
     expect(response.statusCode).toBe(403);
     expect(response.json()).toEqual(FORBIDDEN);
-    expect(await stored(page.id)).toEqual(page);
+    expect(await stored(page.id)).toEqual(PageDocument.parse(page));
   });
 
   it("still lets a non-approver edit a page's content", async () => {
@@ -105,7 +110,10 @@ describe("a page's visibility", () => {
     const response = await as(TEST_EDITOR, {
       method: "PUT",
       url: `/pages/${page.id}`,
-      payload: withDefaults(aPage({ title: "Changed" })),
+      payload: {
+        ...withDefaults(aPage({ title: "Changed" })),
+        expected_version: page.version,
+      },
     });
 
     expect(response.statusCode).toBe(200);
@@ -127,7 +135,10 @@ describe("a page's visibility", () => {
     const response = await as(TEST_EMPLOYEE, {
       method: "PUT",
       url: `/pages/${page.id}`,
-      payload: withDefaults(aPage({ visibility: "public" })),
+      payload: {
+        ...withDefaults(aPage({ visibility: "public" })),
+        expected_version: page.version,
+      },
     });
 
     expect(response.statusCode).toBe(200);
@@ -176,12 +187,12 @@ describe("deleting a page", () => {
 
     const response = await as(TEST_EDITOR, {
       method: "DELETE",
-      url: `/pages/${page.id}`,
+      url: `/pages/${page.id}?expected_version=${page.version}`,
     });
 
     expect(response.statusCode).toBe(403);
     expect(response.json()).toEqual(FORBIDDEN);
-    expect(await stored(page.id)).toEqual(page);
+    expect(await stored(page.id)).toEqual(PageDocument.parse(page));
     expect(expectOk(await services.index.version()).count).toBe(1);
   });
 
@@ -192,7 +203,7 @@ describe("deleting a page", () => {
 
       const response = await as(TEST_EDITOR, {
         method: "DELETE",
-        url: `/pages/${page.id}`,
+        url: `/pages/${page.id}?expected_version=${page.version}`,
       });
 
       expect(response.statusCode).toBe(204);
@@ -214,7 +225,10 @@ describe("an employee whose editor role is revoked", () => {
     const response = await as(TEST_EDITOR, {
       method: "PUT",
       url: `/pages/${page.id}`,
-      payload: withDefaults(aPage({ visibility: "draft", title: "Changed" })),
+      payload: {
+        ...withDefaults(aPage({ visibility: "draft", title: "Changed" })),
+        expected_version: page.version,
+      },
     });
     expect(response.statusCode).toBe(403);
     expect(response.json()).toEqual({
@@ -297,7 +311,10 @@ describe("role management", () => {
     const response = await as(TEST_EDITOR, {
       method: "PUT",
       url: `/pages/${page.id}`,
-      payload: withDefaults(aPage({ visibility: "public" })),
+      payload: {
+        ...withDefaults(aPage({ visibility: "public" })),
+        expected_version: page.version,
+      },
     });
     expect(response.statusCode).toBe(403);
   });

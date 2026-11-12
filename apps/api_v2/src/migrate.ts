@@ -36,6 +36,11 @@ import { SQL as SNAPSHOT_VERSION_SQL } from "./migrations/018_snapshot_version";
 import { SQL as REDACTION_SQL } from "./migrations/019_change_events_redaction";
 import { SQL as GOOGLE_SESSIONS_SQL } from "./migrations/020_google_sessions";
 import { SQL as GITHUB_ACCOUNTS_SQL } from "./migrations/021_github_accounts";
+import { SQL as RESTORED_FROM_SQL } from "./migrations/022_restored_from";
+import { SQL as CHANGE_EVENT_COUNTERS_SQL } from "./migrations/023_change_event_counters";
+import { SQL as EDIT_VERSIONS_SQL } from "./migrations/024_edit_versions";
+import { SQL as PAGE_REDIRECTS_SQL } from "./migrations/025_page_redirects";
+import { SQL as CHANGE_EVENT_ORDER_SQL } from "./migrations/026_change_event_order";
 import type { Database } from "./db";
 
 /** The migrations, in the order they apply. Each is idempotent by rule. */
@@ -61,6 +66,11 @@ const MIGRATIONS = [
   ["019_change_events_redaction", REDACTION_SQL],
   ["020_google_sessions", GOOGLE_SESSIONS_SQL],
   ["021_github_accounts", GITHUB_ACCOUNTS_SQL],
+  ["022_restored_from", RESTORED_FROM_SQL],
+  ["023_change_event_counters", CHANGE_EVENT_COUNTERS_SQL],
+  ["024_edit_versions", EDIT_VERSIONS_SQL],
+  ["025_page_redirects", PAGE_REDIRECTS_SQL],
+  ["026_change_event_order", CHANGE_EVENT_ORDER_SQL],
 ] as const;
 
 /** Serialises instances that boot together; released when its transaction ends. */
@@ -84,11 +94,15 @@ export async function migrate(db: Database, exec: Exec): Promise<string[]> {
   const ran: string[] = [];
   for (const [name, script] of MIGRATIONS) {
     if (done.has(name)) continue;
-    // The script and its record commit together. An instance that loses the
-    // race for the lock re-runs an idempotent script and records nothing new.
+    // One simple-query script pins the lock, ledger recheck and migration to
+    // the same transaction/connection. A stale runner must not downgrade functions.
     await exec(`${LOCK}
-${script}
-insert into schema_migrations (name) values ('${name}') on conflict do nothing;`);
+do $migration$ begin
+  if not exists (select 1 from schema_migrations where name = '${name}') then
+    execute '${script.replaceAll("'", "''")}';
+    insert into schema_migrations (name) values ('${name}');
+  end if;
+end $migration$;`);
     ran.push(name);
   }
   return ran;

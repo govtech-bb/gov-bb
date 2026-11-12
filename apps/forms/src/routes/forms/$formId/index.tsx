@@ -46,7 +46,7 @@ import { LANDING_URL } from "../../../config/landing";
 import { resolveServerFieldErrors } from "../../../lib/server-field-errors";
 import { resolveConditionalMarkdown } from "@govtech-bb/form-conditions";
 import { buildStepScopedValues } from "../../../lib/form-builder/helpers/value-tree";
-import { formCategory } from "../../../lib/form-category";
+import { formCategory, rememberFormCategory } from "../../../lib/form-category";
 import {
   resolveSubmissionOutcome,
   applyPaymentReturn,
@@ -83,6 +83,8 @@ export const Route = createFileRoute("/forms/$formId/")({
     const clientContract = await queryClient.ensureQueryData(
       contractQueryOptions(params.formId, deps.preview, deps.draft),
     );
+    // Analytics events tag the form with the category the API sends (#3250).
+    rememberFormCategory(clientContract.formId, clientContract.category);
 
     // Tier 2: get or build the FormMeta for this specific
     // (version, preview, draft) combination.

@@ -2,9 +2,8 @@ import { ArrowSquareRight, CursorClick, Plus } from "@phosphor-icons/react";
 import { isPageDirective } from "@govtech-bb/govbbmarkd";
 import { $createTextNode } from "lexical";
 import { useState } from "react";
-import { useLinkPages } from "../../editor/react/composer";
-import { defineSlot } from "../../editor/react/contributions";
-import { linkAddress } from "../../editor/modules/links/url";
+import { useLinkPages, defineSlot } from "@/editor/react";
+import { linkAddress } from "@/editor/modules";
 import { Button } from "../../ui/button";
 import { Field } from "../../ui/field";
 import { Input } from "../../ui/input";
@@ -28,6 +27,14 @@ declare module "./node" {
   interface PageComponentKinds {
     actions: true;
     action: true;
+  }
+
+  /** A button goes to an address, a registered form, or the page's linked form (`target: "form"`). */
+  interface PageComponentAttributes {
+    href?: string;
+    form?: string;
+    target?: "form";
+    variant?: string;
   }
 }
 

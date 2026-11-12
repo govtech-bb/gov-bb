@@ -1,5 +1,5 @@
 /**
- * The Drizzle schema, matching migrations `001_init` to `018_snapshot_version`
+ * The Drizzle schema, matching migrations `001_init` to `026_change_event_order`
  * applied in order, table for table and column for column. BetterAuth reads
  * and writes its four `auth_*` tables through these definitions; their
  * property keys are BetterAuth's field names.
@@ -10,12 +10,13 @@
  *
  * `content_pages.body_markdown` is the page body, stored as written; the site
  * sanitises and renders it. The block document of
- * ADR 0074 returns as a later change.
+ * ADR 0123 returns as a later change.
  */
 
 import {
   type AnyPgColumn,
   boolean,
+  bigint,
   check,
   customType,
   index,
@@ -80,6 +81,9 @@ export const categories = pgTable("categories", {
   }),
   // The order the site lists categories (and a category's subcategories) in.
   position: integer("position").notNull().default(0),
+  version: bigint("version", { mode: "number" })
+    .notNull()
+    .default(sql`nextval('content_edit_version_seq')`),
   ...timestamps,
 });
 
@@ -123,6 +127,9 @@ export const contentPages = pgTable(
     })
       .notNull()
       .defaultNow(),
+    version: bigint("version", { mode: "number" })
+      .notNull()
+      .default(sql`nextval('content_edit_version_seq')`),
     ...timestamps,
   },
   (table) => [
@@ -137,6 +144,26 @@ export const contentPages = pgTable(
       .onDelete("restrict"),
     index("content_pages_parent_id_idx").on(table.parentId),
     index("content_pages_category_id_idx").on(table.categoryId),
+  ],
+);
+
+/** Page redirect paths survive deletion and recreation of their destination pages. */
+export const pageRedirects = pgTable(
+  "page_redirects",
+  {
+    id: uuid("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    sourceUrl: varchar("source_url", { length: 512 }).notNull(),
+    destinationUrl: varchar("destination_url", { length: 512 }).notNull(),
+  },
+  (table) => [
+    unique("page_redirects_source_url_unique").on(table.sourceUrl),
+    check(
+      "page_redirects_not_self",
+      sql`${table.sourceUrl} <> ${table.destinationUrl}`,
+    ),
+    index("page_redirects_destination_url_idx").on(table.destinationUrl),
   ],
 );
 
@@ -276,6 +303,10 @@ export const changeEvents = pgTable(
     entityKind: varchar("entity_kind", { length: 40 }).notNull(),
     entityId: text("entity_id").notNull(),
     versionNo: integer("version_no").notNull(),
+    // Ordered inserts under the content lock; pre-migration events remain null.
+    eventOrder: bigint("event_order", { mode: "number" }).default(
+      sql`nextval('change_event_order_seq')`,
+    ),
     action: changeAction("action").notNull(),
     snapshot: jsonb("snapshot").notNull(),
     // Null for history written before format labels were introduced.
@@ -287,14 +318,28 @@ export const changeEvents = pgTable(
     occurredAt: timestamp("occurred_at", { withTimezone: true, precision: 3 })
       .notNull()
       .defaultNow(),
+    // The version a restore brought back (ADR 0135); null on every other event.
+    restoredFrom: integer("restored_from"),
   },
   (table) => [
+    uniqueIndex("change_events_event_order_unique").on(table.eventOrder),
     unique("change_events_entity_kind_entity_id_version_no_key").on(
       table.entityKind,
       table.entityId,
       table.versionNo,
     ),
   ],
+);
+
+/** Persistent audit counters survive deletion and recreation of their content entity. */
+export const changeEventCounters = pgTable(
+  "change_event_counters",
+  {
+    entityKind: varchar("entity_kind", { length: 40 }).notNull(),
+    entityId: text("entity_id").notNull(),
+    lastVersion: integer("last_version").notNull(),
+  },
+  (table) => [primaryKey({ columns: [table.entityKind, table.entityId] })],
 );
 
 /**
@@ -348,7 +393,7 @@ export const pageRevisions = pgTable(
       precision: 3,
     }).notNull(),
     createdBy: text("created_by").notNull(),
-    // Everyone who saved to it; none of them may approve it (ADR 0079).
+    // Everyone who saved to it; none of them may approve it (ADR 0134).
     contributors: text("contributors").array().notNull(),
     submittedBy: text("submitted_by"),
     submittedAt: timestamp("submitted_at", {
@@ -402,6 +447,9 @@ export const collectionRecords = pgTable(
       .references(() => dataCollections.key, { onDelete: "restrict" }),
     recordKey: varchar("record_key", { length: 200 }).notNull(),
     data: jsonb("data").$type<RecordData>().notNull(),
+    version: bigint("version", { mode: "number" })
+      .notNull()
+      .default(sql`nextval('content_edit_version_seq')`),
     ...timestamps,
   },
   (table) => [

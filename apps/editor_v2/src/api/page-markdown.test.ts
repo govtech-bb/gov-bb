@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { compileContentMarkdown } from "@govtech-bb/govbbmarkd";
 import { sitePreviewDocument } from "../host/site-preview-renderer";
 import estate from "../../../api_v2/src/seed-data/estate.json";
-import { createHeadlessEditor } from "../editor/core/create-editor";
+import { createHeadlessEditor } from "@/editor";
 import { $setPageMetadata } from "../pages/metadata";
 import { govbbPageCodec, govbbPageEditor } from "../presets/govbb-page";
 import type { Category } from "./categories";
@@ -23,12 +23,14 @@ const categories: Category[] = estate.categories.map((category, position) => ({
   description: null,
   position,
   services: 0,
+  version: 1,
   reserved_route: false,
   last_edited_by: null,
   updated_at: "2026-10-26T12:00:00.000Z",
 }));
 
-const pages: ApiPage[] = estate.pages.map((page) => ({
+const pages: ApiPage[] = estate.pages.map((page, index) => ({
+  version: index + 1,
   id: idOf(page.url),
   url: page.url,
   slug: page.url.split("/").at(-1) ?? "",
@@ -83,18 +85,9 @@ describe("page markdown", () => {
     expect(sitePreview.ok && sitePreview.value.text).toBe(publicPage.ok && publicPage.value.text);
   });
 
-  it("saves every seeded service page as the API holds it", () => {
+  it("saves every seeded page as the API holds it", () => {
     for (const page of pages) {
       const saved = markdownToPageSaveInput(pageToMarkdown(page, categories), page, categories);
-
-      if (page.parent_id === null && page.category_id === null) {
-        // Not a service: the editor opens services only.
-        expect(saved, page.url).toEqual({
-          ok: false,
-          errors: [{ field: "category", message: "Choose a category" }],
-        });
-        continue;
-      }
 
       expect(saved, page.url).toEqual({
         ok: true,
@@ -127,6 +120,85 @@ describe("page markdown", () => {
     if (prepared.mode === "source") throw new Error(`${url}: ${prepared.diagnostics[0]?.message}`);
     expect(govbbPageCodec.encode(prepared.state)).toBe(source);
   });
+
+  it.each(["/terms-conditions", "/what-we-mean-by-alpha", "/whats-changing"])(
+    "opens %s visually and preserves its exact body through page details edits",
+    (url) => {
+      const page = pages.find((page) => page.url === url);
+
+      if (!page) throw new Error(`Missing site page: ${url}`);
+      expect(page).toMatchObject({ parent_id: null, category_id: null });
+      const source = pageToMarkdown(page, categories);
+      const prepared = govbbPageCodec.prepare(source);
+
+      if (prepared.mode === "source") throw new Error(`${url} should open visually`);
+      expect(govbbPageCodec.encode(prepared.state)).toBe(source);
+      const before = markdownToPageSaveInput(source, page, categories);
+      expect(before.ok).toBe(true);
+      const editor = createHeadlessEditor(govbbPageEditor, prepared.state);
+
+      try {
+        editor.update(() => $setPageMetadata({ description: "Updated summary" }), {
+          discrete: true,
+        });
+
+        const after = markdownToPageSaveInput(
+          govbbPageCodec.encode(editor.getEditorState().toJSON()),
+          page,
+          categories,
+        );
+
+        expect(after).toEqual({
+          ok: true,
+          value: {
+            ...(before.ok && before.value),
+            description: "Updated summary",
+            category_id: null,
+            body_markdown: page.body_markdown,
+          },
+        });
+      } finally {
+        editor.dispose();
+      }
+    },
+  );
+
+  it.each([
+    "category: money-financial-support",
+    "categories: [money-financial-support]",
+    "subcategory: arts-culture",
+    "category: 42",
+    "categories: [42]",
+  ])("refuses category metadata on an existing site page: %s", (line) => {
+    const page: ApiPage = { ...entry, category_id: null, parent_id: null };
+
+    const saved = markdownToPageSaveInput(
+      markdownOf(`title: Site information\nurl: /site-information\n${line}`),
+      page,
+      categories,
+    );
+
+    expect(saved).toEqual({
+      ok: false,
+      errors: [{ field: "category", message: "Remove the category; this is a site page" }],
+    });
+  });
+
+  it.each(["", "category: null", "categories: []"])(
+    "still requires a category for a categorised service: %s",
+    (line) => {
+      const saved = markdownToPageSaveInput(
+        markdownOf(`title: Service\nurl: /service\n${line}`),
+        entry,
+        categories,
+      );
+
+      expect(saved).toEqual({
+        ok: false,
+        errors: [{ field: "category", message: "Choose a category" }],
+      });
+    },
+  );
 
   it("never marks a page unsaved just for opening it", () => {
     for (const page of pages) {
@@ -262,6 +334,7 @@ describe("page markdown", () => {
       description: null,
       position: 0,
       services: 0,
+      version: 1,
       reserved_route: false,
       last_edited_by: null,
       updated_at: "2026-10-26T12:00:00.000Z",

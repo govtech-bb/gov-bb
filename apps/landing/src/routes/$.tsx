@@ -30,6 +30,8 @@ import { shouldHideStartLink } from '../lib/hide-start-link'
 import { checkFormAccessible } from '../lib/preview-form-access'
 import { contentSource, getApiV2Page } from '../lib/api-v2-page'
 import type { ContentSource, SerializedContentPage } from '../lib/api-v2-page'
+import { contactRefs, getContactRecords } from '../lib/api-v2-collections'
+import type { ContactRecords } from '../lib/api-v2-collections'
 import {
   getApiV2CategoryListing,
   resolveCategoryAddress,
@@ -84,9 +86,12 @@ type LoaderData =
       /** api_v2 mode only: the whole trail, this page last and Home left out,
        * shared by the visible breadcrumbs and their JSON-LD. */
       breadcrumbs?: Crumb[]
+      /** The records the page's `::contact` blocks name (#3185), read now so
+       * a changed record shows with no page edit and no deploy. */
+      contactRecords: ContactRecords
     }
   | {
-      // api_v2 mode (ADR 0078): a category's own pages and its subcategories,
+      // api_v2 mode (ADR 0132): a category's own pages and its subcategories,
       // both shown, as api_v2 lists them.
       kind: 'api-category'
       listing: CategoryListing
@@ -117,7 +122,7 @@ export const Route = createFileRoute('/$')({
 
     // A known category's failed listing is an error. Without a readable tree,
     // the address may instead be a page; preserve page fallback, never a
-    // static category listing (ADR 0078).
+    // static category listing (ADR 0132).
     const tree = context.categoryTree
     const apiMode = tree.kind !== 'disabled'
     let categoryFailure: Error | undefined
@@ -164,8 +169,9 @@ export const Route = createFileRoute('/$')({
       }
     }
 
-    // api_v2 first (#2944): it serves only public pages, so a miss (or no
-    // api_v2 configured) falls back to the static registry page. A known
+    // api_v2 first (#2944): it serves public pages, and preview pages to a
+    // reviewer with the grant (#2961), so a miss (or no api_v2 configured)
+    // falls back to the static registry page. A known
     // subcategory listing is never an api_v2 page, so it skips the round
     // trip (#2950); `findPage` still runs first, keeping today's precedence.
     // Unset VITE_API_V2_URL skips it too (#3127), so client navigations make
@@ -180,7 +186,13 @@ export const Route = createFileRoute('/$')({
       isSubcategory || !import.meta.env.VITE_API_V2_URL
         ? ({ kind: 'miss', reason: 'skipped' } as const)
         : await getApiV2Page({ data: `/${splat}` })
-    if (v2.kind === 'redirect') throw redirect({ href: v2.to, statusCode: 301 })
+    if (v2.kind === 'redirect') {
+      throw redirect({
+        href: v2.to,
+        statusCode: 301,
+        headers: { 'Cache-Control': 'no-store' },
+      })
+    }
     const v2Page = v2.kind === 'page' ? v2.page : undefined
     const page = v2Page ?? findPage(splat)
     if (page) {
@@ -255,12 +267,17 @@ export const Route = createFileRoute('/$')({
       const underMaintenance =
         formDisabledByStatus ||
         (formId ? (await getMaintenanceForms()).includes(formId) : false)
+      // The server fn takes at most 50; more than that is an authoring slip, not a reason to fail the page
+      const refs = contactRefs(page.hast).slice(0, 50)
+      const contactRecords =
+        refs.length > 0 ? await getContactRecords({ data: refs }) : {}
       return {
         kind: 'page',
         url: page.url,
         availableForms,
         underMaintenance,
         applicationClosed,
+        contactRecords,
         level: v2Page
           ? v2Page.frontmatter.visibility
           : pageLevel(page, overlay),
@@ -415,6 +432,7 @@ function ContentRoute() {
         startSubPageVisible={data.startSubPageVisible}
         underMaintenance={data.underMaintenance}
         applicationClosed={data.applicationClosed}
+        contactRecords={data.contactRecords}
       />
     )
   }
@@ -479,6 +497,7 @@ function PageView({
   startSubPageVisible,
   underMaintenance,
   applicationClosed,
+  contactRecords,
 }: {
   page: ContentPage
   availableForms: string[]
@@ -489,6 +508,7 @@ function PageView({
   startSubPageVisible: boolean
   underMaintenance: boolean
   applicationClosed: boolean
+  contactRecords: ContactRecords
 }) {
   // A visitor whose level can't see this page's `/start` sub-page (because it's
   // gated above them) sees the online-application method stripped and the
@@ -533,6 +553,7 @@ function PageView({
           frontmatter={page.frontmatter}
           availableForms={new Set(availableForms)}
           hideStartLink={hideStartLink}
+          contactRecords={contactRecords}
         />
       )}
     </Shell>

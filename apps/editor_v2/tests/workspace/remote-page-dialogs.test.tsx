@@ -1,11 +1,18 @@
 /** @vitest-environment jsdom */
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { act, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, expect, test, vi } from "vitest";
 import type { Category } from "../../src/api/categories";
-import { createEditorApi, type ServiceDetail } from "../../src/api/client";
-import { categoriesQuery } from "../../src/api/queries";
+import {
+  ApiFailure,
+  createEditorApi,
+  type ApiPage,
+  type EditorApi,
+  type ServiceDetail,
+} from "../../src/api/client";
+import { categoriesQuery, pageQuery, serviceQuery } from "../../src/api/queries";
+import { Toaster } from "../../src/ui/toast";
 import type { PageDocument } from "../../src/workspace/model";
 import {
   CreateRemotePageDialog,
@@ -26,6 +33,26 @@ const page: PageDocument = {
   role: "supporting",
 };
 
+const createdPage = {
+  id: "register-a-birth",
+  version: 1,
+  title: "Birth",
+  url: "/family/birth",
+  slug: "birth",
+  parent_id: null,
+  category_id: null,
+  description: null,
+  form_id: null,
+  visibility: "preview",
+  body_markdown: "",
+  frontmatter: {},
+  pending_revision: null,
+  last_edited_by: null,
+  created_at: "2026-10-07T12:00:00.000Z",
+  updated_at: "2026-10-07T12:00:00.000Z",
+  published_at: null,
+};
+
 test.each(["service", "start", "supporting"] as const)(
   "creating a %s starts in Preview with an empty body",
   async (kind) => {
@@ -40,6 +67,7 @@ test.each(["service", "start", "supporting"] as const)(
       description: null,
       position: 0,
       services: 0,
+      version: 1,
       reserved_route: false,
       last_edited_by: null,
       updated_at: "2026-10-07T12:00:00.000Z",
@@ -60,7 +88,7 @@ test.each(["service", "start", "supporting"] as const)(
     const send = vi.fn(async (_url: string, init?: RequestInit) =>
       Response.json(
         init?.method === "POST"
-          ? { ...JSON.parse(String(init.body)), id: page.id }
+          ? { ...createdPage, ...JSON.parse(String(init.body)), id: page.id }
           : { categories: [category] },
       ),
     );
@@ -148,7 +176,7 @@ test("deleting a page asks in an alert dialog, which can't be closed while the p
         <DeleteRemotePageDialog
           api={createEditorApi("https://api.example.invalid")}
           open
-          page={page}
+          page={{ ...page, version: 1 }}
           onClose={close}
           onDone={() => {}}
           focusAfter={{ current: null }}
@@ -174,13 +202,22 @@ test("deleting a page asks in an alert dialog, which can't be closed while the p
   expect(close).not.toHaveBeenCalled();
 
   // It fails: the dialog stays, with the reason, and the page can be deleted again
-  await act(async () => respond(new Response(null, { status: 500 })));
+  await act(async () => respond(new Response(null, { status: 400 })));
   await vi.waitFor(() =>
     expect(dialog.querySelector('[role="alert"]')?.textContent).toBe(
       "The page could not be deleted. Try again.",
     ),
   );
   expect(button("Delete page").getAttribute("aria-disabled")).toBeNull();
+
+  // A conflict the API gave no reason for
+  await act(async () => button("Delete page").click());
+  await act(async () => respond(new Response(null, { status: 409 })));
+  await vi.waitFor(() =>
+    expect(dialog.querySelector('[role="alert"]')?.textContent).toBe(
+      "This item changed. Cancel and review the latest version before trying again.",
+    ),
+  );
 
   // Refused: the API's own reason, since trying again won't help
   await act(async () => button("Delete page").click());
@@ -218,7 +255,7 @@ test("once the page has gone, the focus goes where the workspace says, as its De
         <DeleteRemotePageDialog
           api={createEditorApi("https://api.example.invalid")}
           open={open}
-          page={page}
+          page={{ ...page, version: 1 }}
           onClose={() => setOpen(false)}
           onDone={() => setOpen(false)}
           focusAfter={{ current: content }}
@@ -314,6 +351,7 @@ test("a service on its way can't be cancelled, so none is made after the author 
     url: "/family",
     position: 0,
     services: 0,
+    version: 1,
     reserved_route: false,
     last_edited_by: null,
     updated_at: "2026-10-28T12:00:00.000Z",
@@ -382,7 +420,7 @@ test("a service on its way can't be cancelled, so none is made after the author 
   });
   expect(close).not.toHaveBeenCalled();
 
-  await act(async () => created.resolve(Response.json({ id: "register-a-birth" })));
+  await act(async () => created.resolve(Response.json(createdPage)));
   await vi.waitFor(() => expect(done).toHaveBeenCalledWith("register-a-birth"));
   expect(close).not.toHaveBeenCalled();
   await act(async () => root.unmount());
@@ -400,6 +438,7 @@ test("each problem shows on its field, the first takes the focus, and a field's 
     url: "/family",
     position: 0,
     services: 0,
+    version: 1,
     reserved_route: false,
     last_edited_by: null,
     updated_at: "2026-10-28T12:00:00.000Z",
@@ -556,4 +595,430 @@ test("switching to a start page clears the replaced supporting path's error", as
   expect(form.textContent).not.toContain("Enter a path that starts with /");
 
   await act(async () => root.unmount());
+});
+
+const family: Category = {
+  id: "family",
+  parent_id: null,
+  slug: "family",
+  title: "Family",
+  description: null,
+  url: "/family",
+  position: 0,
+  services: 0,
+  version: 1,
+  reserved_route: false,
+  last_edited_by: null,
+  updated_at: createdPage.updated_at,
+};
+
+const detail: ServiceDetail = {
+  service: {
+    id: "service",
+    title: "Birth",
+    url: "/family/birth",
+    category: { slug: "family", title: "Family" },
+    visibility: "preview",
+    form_id: null,
+    has_start_page: false,
+    page_count: 1,
+    updated_at: createdPage.updated_at,
+  },
+  pages: [],
+};
+
+const uncertainty =
+  "We couldn’t tell whether that went through. Check your connection, then check again before you try again.";
+
+async function enterPageField(field: HTMLInputElement | HTMLSelectElement, value: string) {
+  await act(async () => {
+    const prototype = field instanceof HTMLSelectElement ? HTMLSelectElement : HTMLInputElement;
+    Object.getOwnPropertyDescriptor(prototype.prototype, "value")!.set!.call(field, value);
+    field.dispatchEvent(
+      new Event(field instanceof HTMLSelectElement ? "change" : "input", { bubbles: true }),
+    );
+  });
+}
+
+function watchPageDialogNotices() {
+  const notices: string[] = [];
+
+  const check = (text: string | null) => {
+    if (
+      text &&
+      /This item changed|could not be created|could not be deleted|couldn’t tell|already exists at|not listed/.test(
+        text,
+      )
+    )
+      notices.push(text);
+  };
+
+  const observer = new MutationObserver((changes) => {
+    check(document.body.textContent);
+
+    for (const change of changes) {
+      if (change.type === "characterData") check(change.target.textContent);
+
+      for (const node of [...change.addedNodes, ...change.removedNodes]) check(node.textContent);
+    }
+  });
+
+  observer.observe(document.body, { subtree: true, childList: true, characterData: true });
+
+  return { notices, stop: () => observer.disconnect() };
+}
+
+async function openPageCreation(kind: "service" | "start" | "supporting") {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  const sent = Promise.withResolvers<ApiPage>();
+  const checked = Promise.withResolvers<ApiPage>();
+  const background = Promise.withResolvers<ServiceDetail>();
+
+  const found: ApiPage = {
+    ...createdPage,
+    visibility: "preview",
+    title: kind === "service" ? "Birth" : kind === "start" ? "Before you start" : "Fees",
+    url:
+      kind === "service" ? "/family/birth" : `/family/birth/${kind === "start" ? "start" : "fees"}`,
+    parent_id: kind === "service" ? null : detail.service.id,
+    category_id: family.id,
+    frontmatter: kind === "service" ? { stage: "alpha" } : {},
+  };
+
+  const indexed: ServiceDetail = {
+    service: { ...detail.service, has_start_page: kind === "start" },
+    pages: [{ ...found, role: kind === "service" ? "entry" : kind }],
+  };
+
+  const api = {
+    ...createEditorApi("https://content.test"),
+    createPage: vi.fn<EditorApi["createPage"]>().mockReturnValue(sent.promise),
+    page: vi.fn<EditorApi["page"]>().mockReturnValue(checked.promise),
+    categories: vi.fn<EditorApi["categories"]>().mockResolvedValue({ ok: true, value: [family] }),
+    services: vi
+      .fn<EditorApi["services"]>()
+      .mockResolvedValue([{ ...detail.service, id: found.id }]),
+    service: vi.fn<EditorApi["service"]>().mockReturnValue(background.promise),
+  };
+
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false, staleTime: Infinity } },
+  });
+
+  client.setQueryData(categoriesQuery(api).queryKey, [family]);
+  client.setQueryData(serviceQuery(api, detail.service.id).queryKey, detail);
+  const done = vi.fn();
+  const close = vi.fn();
+
+  function Creating() {
+    const current = useQuery(serviceQuery(api, detail.service.id));
+
+    return kind === "service" ? (
+      <CreateRemoteServiceDialog api={api} open onClose={close} onDone={done} />
+    ) : (
+      <CreateRemotePageDialog api={api} detail={current.data!} open onClose={close} onDone={done} />
+    );
+  }
+
+  const root = createRoot(document.body.appendChild(document.createElement("div")));
+
+  const render = () =>
+    act(async () =>
+      root.render(
+        <QueryClientProvider client={client}>
+          <Creating />
+        </QueryClientProvider>,
+      ),
+    );
+
+  await render();
+  const form = document.querySelector("form")!;
+
+  if (kind === "service") await enterPageField(form.querySelector("select")!, family.id);
+
+  if (kind === "supporting") await enterPageField(form.querySelector("select")!, "supporting");
+
+  if (kind !== "start") await enterPageField(form.querySelector("input")!, found.title);
+
+  const press = () =>
+    act(async () => {
+      form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+    });
+
+  return {
+    api,
+    client,
+    found,
+    indexed,
+    sent,
+    checked,
+    background,
+    done,
+    close,
+    form,
+    press,
+    render,
+    cleanup: async () => {
+      await act(async () => root.unmount());
+      client.clear();
+    },
+  };
+}
+
+test.each(["service", "start", "supporting"] as const)(
+  "ordinary and recovered %s creation adopt the cache, preserving later typing",
+  async (kind) => {
+    for (const lost of [false, true]) {
+      for (const laterTyping of [false, true]) {
+        const setup = await openPageCreation(kind);
+        const { api, client, found, indexed, sent, checked, background, done, form, press } = setup;
+        const watching = watchPageDialogNotices();
+        await press();
+        // A second submit while pending cannot capture a new snapshot or send another request.
+        await press();
+
+        if (laterTyping) await enterPageField(form.querySelector("input")!, "Later typing");
+
+        if (lost) {
+          api.service.mockResolvedValue(indexed);
+          await act(async () => sent.reject(new ApiFailure(0)));
+          await vi.waitFor(() => expect(api.page).toHaveBeenCalledWith(found.id));
+          await setup.render();
+          expect(done).not.toHaveBeenCalled();
+          expect(form.textContent).not.toContain("The page was created.");
+          expect(
+            form
+              .querySelector<HTMLButtonElement>('button[type="submit"]')!
+              .getAttribute("aria-disabled"),
+          ).toBe("true");
+          await act(async () => {
+            document
+              .querySelector('[role="dialog"]')!
+              .dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+          });
+          expect(setup.close).not.toHaveBeenCalled();
+          await act(async () => checked.resolve(found));
+        } else {
+          // The invalidated index stays behind the answered create.
+          await act(async () => sent.resolve(found));
+        }
+
+        await vi.waitFor(() =>
+          expect(client.getQueryData(pageQuery(api, found.id).queryKey)).toEqual(found),
+        );
+        await setup.render();
+        expect(api.createPage).toHaveBeenCalledTimes(1);
+
+        if (laterTyping) {
+          expect(done).not.toHaveBeenCalled();
+          expect(form.querySelector("input")!.value).toBe("Later typing");
+          expect(form.textContent).toContain(
+            "The page was created. Your newer input is still here and has not been saved.",
+          );
+          await press();
+          expect(api.createPage).toHaveBeenCalledTimes(1);
+          // Returning to the submitted input must not trigger delayed automatic navigation.
+          await enterPageField(form.querySelector("input")!, kind === "start" ? "" : found.title);
+          expect(done).not.toHaveBeenCalled();
+
+          const open = [...form.querySelectorAll("button")].find(
+            (button) => shownText(button) === "Open created page",
+          )!;
+
+          await act(async () => open.click());
+        }
+
+        expect(done).toHaveBeenCalledExactlyOnceWith(found.id);
+        await act(async () => background.resolve(indexed));
+        await setup.render();
+        expect(done).toHaveBeenCalledTimes(1);
+        expect(watching.notices).toEqual([]);
+        watching.stop();
+        await setup.cleanup();
+      }
+    }
+  },
+);
+
+test.each(["service", "start", "supporting"] as const)(
+  "an unconfirmed %s create retries the original fields despite invalid later typing",
+  async (kind) => {
+    const setup = await openPageCreation(kind);
+    const { api, sent, checked, found, form, press, done } = setup;
+    api.service.mockResolvedValue(detail);
+    api.services.mockResolvedValue([]);
+    await press();
+    const original = structuredClone(api.createPage.mock.calls[0]![0]);
+    await act(async () => sent.reject(new ApiFailure(503)));
+    await vi.waitFor(() => expect(form.textContent).toContain(uncertainty));
+    expect(shownText(form.querySelector('button[type="submit"]')!)).toBe("Check again");
+    await enterPageField(form.querySelector("input")!, "");
+
+    if (kind === "service") await enterPageField(form.querySelector("select")!, "");
+    else {
+      await enterPageField(form.querySelector("select")!, "supporting");
+      await enterPageField(form.querySelectorAll("input")[1]!, "bad");
+    }
+
+    api.createPage.mockResolvedValue(found);
+    await press();
+    await vi.waitFor(() => expect(form.textContent).toContain("The page was created."));
+    expect(api.createPage.mock.calls).toEqual([[original], [original]]);
+    expect(done).not.toHaveBeenCalled();
+    expect(form.querySelector("input")!.value).toBe("");
+    await press();
+    expect(api.createPage).toHaveBeenCalledTimes(2);
+    checked.resolve(found);
+    await setup.cleanup();
+  },
+);
+
+test.each([false, true])(
+  "deletion confirms once with final focus (lost answer: %s)",
+  async (lost) => {
+    vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+    const sent = Promise.withResolvers<void>();
+    const read = Promise.withResolvers<ApiPage>();
+
+    const api = {
+      ...createEditorApi("https://content.test"),
+      deletePage: vi.fn<EditorApi["deletePage"]>().mockReturnValue(sent.promise),
+      page: vi.fn<EditorApi["page"]>().mockReturnValue(read.promise),
+    };
+
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const content = document.body.appendChild(document.createElement("main"));
+    content.tabIndex = -1;
+    const done = vi.fn();
+    const close = vi.fn();
+
+    function Deleting() {
+      const [open, setOpen] = useState(true);
+
+      return (
+        <DeleteRemotePageDialog
+          api={api}
+          open={open}
+          page={{ ...page, version: 1 }}
+          onClose={close}
+          onDone={() => {
+            done();
+            setOpen(false);
+          }}
+          focusAfter={{ current: content }}
+        />
+      );
+    }
+
+    const root = createRoot(document.body.appendChild(document.createElement("div")));
+    await act(async () =>
+      root.render(
+        <QueryClientProvider client={client}>
+          <Deleting />
+          <Toaster />
+        </QueryClientProvider>,
+      ),
+    );
+    const watching = watchPageDialogNotices();
+
+    const confirm = [
+      ...document.querySelectorAll<HTMLButtonElement>('[role="alertdialog"] button'),
+    ].find((button) => shownText(button) === "Delete page")!;
+
+    await act(async () => {
+      confirm.click();
+      confirm.click();
+    });
+
+    if (lost) {
+      await act(async () => sent.reject(new ApiFailure(0)));
+      await vi.waitFor(() => expect(api.page).toHaveBeenCalledWith(page.id));
+      expect(done).not.toHaveBeenCalled();
+      expect(document.body.textContent).not.toContain("Page deleted");
+      await act(async () =>
+        document
+          .querySelector('[role="alertdialog"]')!
+          .dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })),
+      );
+      expect(close).not.toHaveBeenCalled();
+      await act(async () => read.reject(new ApiFailure(404)));
+    } else {
+      await act(async () => sent.resolve());
+    }
+
+    await vi.waitFor(() => expect(document.querySelector('[role="alertdialog"]')).toBeNull());
+    await vi.waitFor(() => expect(document.activeElement).toBe(content));
+    expect(done).toHaveBeenCalledTimes(1);
+    expect(document.body.textContent).toContain("Page deleted");
+    expect(api.deletePage.mock.calls).toEqual([[page.id, 1]]);
+    expect(watching.notices).toEqual([]);
+    watching.stop();
+    await act(async () => root.unmount());
+    client.clear();
+  },
+);
+
+test("deletion keeps the opened identity, version and warning through refresh and failed recovery", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+
+  const api = {
+    ...createEditorApi("https://content.test"),
+    deletePage: vi
+      .fn<EditorApi["deletePage"]>()
+      .mockRejectedValueOnce(new ApiFailure(503))
+      .mockRejectedValueOnce(new ApiFailure(409, [], "This page changed.", "version_conflict")),
+    page: vi.fn<EditorApi["page"]>().mockRejectedValue(new ApiFailure(503)),
+  };
+
+  const client = new QueryClient();
+  const done = vi.fn();
+  const root = createRoot(document.body.appendChild(document.createElement("div")));
+
+  const render = (current: PageDocument & { version: number }) =>
+    act(async () =>
+      root.render(
+        <QueryClientProvider client={client}>
+          <DeleteRemotePageDialog
+            api={api}
+            open
+            page={current}
+            onClose={() => {}}
+            onDone={done}
+            focusAfter={{ current: null }}
+          />
+        </QueryClientProvider>,
+      ),
+    );
+
+  await render({ ...page, role: "entry", version: 1 });
+  await render({
+    ...page,
+    id: "replacement",
+    title: "Later title",
+    role: "supporting",
+    version: 99,
+  });
+  expect(document.body.textContent).toContain("Entry page is this service’s entry page");
+  expect(document.body.textContent).toContain("Any unsaved changes will be lost.");
+
+  const confirm = [
+    ...document.querySelectorAll<HTMLButtonElement>('[role="alertdialog"] button'),
+  ].find((button) => shownText(button) === "Delete service")!;
+
+  await act(async () => confirm.click());
+  await vi.waitFor(() => expect(document.body.textContent).toContain(uncertainty));
+  expect(shownText(confirm)).toBe("Check again");
+  expect(done).not.toHaveBeenCalled();
+  expect(document.body.textContent).not.toContain("Page deleted");
+  await render({ ...page, version: 100 });
+  await act(async () => confirm.click());
+  await vi.waitFor(() => expect(document.body.textContent).toContain("This page changed."));
+  expect(api.deletePage.mock.calls).toEqual([
+    [page.id, 1],
+    [page.id, 1],
+  ]);
+  expect(api.page.mock.calls).toEqual([[page.id], [page.id]]);
+  expect(done).not.toHaveBeenCalled();
+  await act(async () => root.unmount());
+  client.clear();
 });

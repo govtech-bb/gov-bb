@@ -48,13 +48,29 @@ The original file is preserved exactly until a visual edit. Changes to page deta
 
 The checked-in [GovBB page fixtures](../tests/fixtures/pages/README.md) retain 16 frozen regression examples: three visual and 13 source-only pages, with their original hashes. Integration tests also read current GovBB Markdown directly from `apps/landing/src/content`. Visual support remains limited to the syntax described above.
 
+### Contact details and the StormReady import (#3185, #3261)
+
+```md
+### DEM Emergency Line
+
+::contact{collection="contacts" record="dem-emergency-line" fields="phone"}
+```
+
+Contact details is in the insert and slash menus. Its Block options choose a record and fields, and open the record for editing. The page keeps the organisation's heading; the record supplies the details. Missing records show a warning in the editor and nothing on landing. Existing contact references with padded collection or record keys stay read-only rather than disagreeing with landing.
+
+StormReady's four legacy contacts are converted when generating the API estate snapshot. The static Markdown stays unchanged so sites without api_v2 retain their telephone links. The imported page uses four headings and contact-detail blocks instead of the legacy contact grid and its emergency colour. Labels, displayed numbers, order and dialling destinations are retained, including Police's `tel:211`. Ten-digit Barbados numbers link with `+1`; explicit international numbers and short codes are unchanged.
+
+The imported StormReady and NIS pages must open visually, save unchanged byte-for-byte, and retain their content through body edits. The static StormReady source and frozen fixtures still test read-only preservation. Future imports include all four contact records; existing estates need the [targeted update](../../api_v2/README.md#upgrading-stormready-contacts-in-an-existing-estate-3261).
+
+Contact rendering is shared through `@govtech-bb/govbbmarkd/contact-record`, not the retired `block-kit` package. This supersedes #3185's earlier instruction to keep `block-kit`.
+
 ### Legacy button conversions (#3314)
 
 The NIS self-employed overview uses a standalone `:::action`; its record-and-benefits page and StormReady use `::::actions` containing fenced `:::action` blocks. These replace `<link-button>` and `<buttons>` without adding HTML support: both syntaxes render through the same `LinkButton` and `ButtonGroup` components.
 
 Labels, order, primary/secondary variants and explicit URLs are retained, including the external registration URL, payment anchor and print query. An explicit URL ending in `/form` stays a URL, not a linked-form reference. Existing `<a data-start-link>` markers are unchanged.
 
-Both NIS pages open visually and retain their content through body edits and reopening. StormReady's action group and converted notice (#3313) round-trip independently; its whole page remains read-only until its contacts (#3185) are handled. Those remaining components and the frozen HTML fixtures are unchanged here. The generated API snapshot updates future imports, not an already-imported database.
+Both NIS pages open visually and retain their content through body edits and reopening. StormReady's action group and converted notice (#3313) round-trip independently. Its imported page also opens visually after the contact conversion above; the static source and frozen HTML fixtures are unchanged. The generated API snapshot updates future imports, not an already-imported database.
 
 ### Legacy HTML conversions (#3313)
 
@@ -66,13 +82,13 @@ The current landing content uses existing blocks rather than new HTML support:
 | Crop Over permits (`crop-over-permits/index.md`) | The styled `<div>` callout becomes `:::notice`, with Markdown bold. |
 | StormReady (`health-and-emergency-services/stormready/index.md`) | `<notice>` becomes `:::notice`, with Markdown bold. Its other components are unchanged. |
 
-Pension guidance and Crop Over permits must open visually and retain their content through body edits and reopening. StormReady's notice and converted actions (#3314) are editable on their own, but the whole page remains read-only until its contacts are converted (#3185).
+Pension guidance and Crop Over permits must open visually and retain their content through body edits and reopening. StormReady's notice and converted actions (#3314) are editable on their own; the import-time contact conversion above makes the full imported page editable.
 
 Plain `<br>` tags already import as hard breaks and are left unchanged. The frozen HTML fixtures still test source-only preservation; they are not rewritten to match current content. The generated API snapshot carries the conversions for future imports, not updates to an already-imported database.
 
 ### Legacy highlights and muted text (#3315)
 
-StormReady uses both. They keep landing's HTML, which has no directive form, so the page renders as before; its highlights and muted text open visually and round-trip, and the page stays read-only only for its contacts (#3185).
+StormReady uses both. They keep landing's HTML, which has no directive form, so highlights and muted text render as before, open visually and round-trip. Only the static page's legacy contacts keep that source read-only; the imported page uses the contact blocks above.
 
 **Highlights** is a block in the insert and `/` menus. It reads and writes `<highlights>` holding `<highlight title="…">` elements, and looks as landing draws it: teal cards, each a title over its text, two to a row on wider screens. A highlight's title and text are both written in place, and the block menu adds highlights. Enter goes from a title to its text, and from the text to a new highlight; on an empty last highlight it goes on writing below the block. Backspace and Delete stop at the edges of a title and its text rather than joining them, and Backspace in an empty highlight removes it. Titles and text are plain, and text can have line breaks: landing lays a highlight out as a column, which would put formatted words on lines of their own, so the selection toolbar offers no formatting there, and formatting or links typed or pasted in are removed. A line break in a title becomes a space, as landing shows it. Other HTML in a highlight keeps the page source-only.
 
@@ -108,7 +124,7 @@ Ordinary text supports links, italic, bold, strikethrough, inline code, hard bre
 
 Historical Markdown presets such as `preset="country"` expand into editable copies. Current Form registry entries are declared in native JSON; this preset syntax remains a compatibility reader.
 
-Both source versions use the immutable `src/forms/source/legacy/profiles-v1.json` settings and option lists, with copied field IDs, labels and exceptional option values in `src/forms/source/legacy/preset-defaults-v1.json`. The remaining option values use the frozen version 1 spelling algorithm. The installed component registry cannot change those defaults.
+Both source versions use the immutable `src/forms/formats/markdown/legacy/profiles-v1.json` settings and option lists, with copied field IDs, labels and exceptional option values in `src/forms/formats/markdown/legacy/preset-defaults-v1.json`. The remaining option values use the frozen version 1 spelling algorithm. The installed component registry cannot change those defaults.
 
 The retained `ref` identifies the definition the copy was based on; it does not synchronize the copy. `sourceFieldId`, `sourceLabel` and `sourceOptionValue` retain copied defaults. Edited labels can change automatic field IDs, and explicit `fieldId` or `optionValue` pins override them. Explicit overrides remain explicit, and removed inherited settings are recorded below.
 

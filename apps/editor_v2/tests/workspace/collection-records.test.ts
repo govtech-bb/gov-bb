@@ -1,11 +1,11 @@
 import { expect, test } from "vitest";
 import type { Collection } from "../../src/api/client";
+import { valuesDiffer } from "../../src/api/record-values";
 import {
   droppedFields,
   keyProblem,
   recordData,
   recordValues,
-  valuesDiffer,
   withRecord,
 } from "../../src/workspace/collections/records";
 

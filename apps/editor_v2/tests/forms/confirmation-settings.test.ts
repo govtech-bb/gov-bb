@@ -1,20 +1,20 @@
 import { expect, test } from "vitest";
 import { $getRoot } from "lexical";
 import { createHeadlessEditor } from "../../src/editor/core/create-editor";
-import { $settings } from "../../src/editor/core/document-state";
-import { validatePageSettings } from "../../src/forms/core/pages";
-import type { Settings } from "../../src/forms/core/settings";
+import { $settings } from "../../src/forms/canvas/block-state";
+import { validatePageSettings } from "../../src/forms/model/pages";
+import type { Settings } from "../../src/forms/model/settings";
 import {
   nativeFormToSerialized,
   serializedToNativeForm,
-} from "../../src/forms/editor/native-bindings";
-import { prepareNativeBindings } from "../../src/forms/editor/native-preparation";
-import { $setFormSettings } from "../../src/forms/editor/native-settings";
-import { $native, rawNative } from "../../src/forms/editor/native-state";
-import { syncNativeSource } from "../../src/forms/editor/native-source";
-import { $isPageBreak, $pageType } from "../../src/forms/editor/nodes";
+} from "../../src/forms/formats/native/native-bindings";
+import { prepareNativeBindings } from "../../src/forms/formats/native/native-preparation";
+import { $setFormSettings } from "../../src/forms/formats/native/native-settings";
+import { $native, rawNative } from "../../src/forms/formats/native/native-state";
+import { syncNativeSource } from "../../src/forms/formats/native/native-source";
+import { $isPageBreak, $pageType } from "../../src/forms/canvas/form-nodes";
 import { govbbFormEditor } from "../../src/presets/govbb-form";
-import type { AnyFormDefinition } from "../../src/forms/schema/types";
+import type { AnyFormDefinition } from "../../src/forms/formats/native/schema/types";
 import { jsonSettings, serializedNodes } from "../helpers/serialized-test-data";
 
 const form: AnyFormDefinition = {
@@ -77,7 +77,7 @@ for (const [name, invalid] of [
     const before = JSON.stringify(state);
 
     expect(() => createHeadlessEditor(govbbFormEditor, state)).toThrow();
-    expect(() => syncNativeSource(state)).toThrow();
+    expect(() => syncNativeSource(state, govbbFormEditor)).toThrow();
     expect(() => serializedToNativeForm(state, govbbFormEditor)).toThrow();
     const prepared = prepareNativeBindings(state, govbbFormEditor);
     expect(prepared.state).toBe(state);
@@ -152,6 +152,8 @@ test("canonical preparation and source sync preserve page identities without mig
   expect(prepared.state).toBe(state);
   expect(prepared.migrated).toBe(false);
   expect(prepared.diagnostics).toEqual([]);
-  expect(serializedToNativeForm(syncNativeSource(state), govbbFormEditor)).toEqual(form);
+  expect(serializedToNativeForm(syncNativeSource(state, govbbFormEditor), govbbFormEditor)).toEqual(
+    form,
+  );
   expect(JSON.stringify(state)).toBe(before);
 });

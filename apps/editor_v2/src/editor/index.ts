@@ -1,3 +1,5 @@
+// Headless entry point: no React or DOM at runtime, so converters and pure form layers can use it.
+
 export { defineEditor, type EditorDefinition } from "./core/definition";
 
 export { createHeadlessEditor } from "./core/create-editor";
@@ -9,73 +11,32 @@ export type {
   DocumentNodeDefinition,
 } from "./core/module";
 
-export { TextModule } from "./modules/text/module";
+export type { EditorSlotContribution } from "./core/contributions";
 
-export { HistoryModule } from "./modules/history/module";
-
-export { EditorComposer, useEditorDefinition } from "./react/composer";
-
-export { Editor } from "./react/editor";
+export { editorDefinition, installedEditorDefinition } from "./core/context";
 
 export {
   executeAction,
   $executeAction,
   $availableActions,
+  rankActions,
+  sectioned,
   type EditorAction,
   type ActionContext,
   type ActionRequest,
+  type ActionOutcome,
 } from "./core/actions";
 
-export { defineRenderer, defineSlot, RendererHost, EditorSlot } from "./react/contributions";
+export { $turnLineInto, type TurnInto, type TurnIntoChoice } from "./core/turn-into";
 
-export { FormattingModule } from "./modules/formatting/module";
+export { HISTORY_START_TAG, pushStep, registerEditorHistory, type Step } from "./core/history";
 
-export { SELECTION_TOOLBAR, keepSelection } from "./modules/formatting/toolbar";
+export { createEditorSession, type EditorSession } from "./core/session";
 
-export {
-  TextColourMenu,
-  type TextColour,
-  type TextColours,
-} from "./modules/formatting/colour-menu";
+export { createEditableGate, setEditorReadOnly } from "./core/editability";
 
-export { LinksModule } from "./modules/links/module";
-
-export { HeadingsModule } from "./modules/headings/module";
-
-export { ListsModule } from "./modules/lists/module";
-
-export { CalloutsModule } from "./modules/callouts/module";
-
-export { DisclosureModule } from "./modules/disclosure/module";
-
-export { contentActions, $insertContent, type ContentEntry } from "./modules/formatting/insertion";
-
-export {
-  settingsState,
-  $settings,
-  $setSettings,
-  $depth,
-  $setDepth,
-  $blockId,
-  blockIdState,
-} from "./core/document-state";
-
-export type { Settings, Setting } from "./core/settings";
+export { $caretBlock, $atEdge } from "./core/caret";
 
 export { $paragraphAfter } from "./core/blocks";
 
-export { container, ghost, placeholder, el, $static } from "./react/block-dom";
-
-export { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
-
-export { textEntries } from "./modules/text/insertion";
-
-export { headingEntries } from "./modules/headings/insertion";
-
-export { listEntries } from "./modules/lists/insertion";
-
-export { calloutEntries } from "./modules/callouts/insertion";
-
-export { disclosureEntries } from "./modules/disclosure/insertion";
-
-export { $isShowHideNode } from "./modules/disclosure/nodes";
+export { immutableData } from "./core/immutable";

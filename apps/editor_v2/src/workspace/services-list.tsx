@@ -3,14 +3,13 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
 import { categoryLabel } from "../api/categories";
-import { ApiFailure, type EditorApi, type ServiceSummary } from "../api/client";
+import type { EditorApi, ServiceSummary } from "../api/client";
 import { categoriesQuery, servicesQuery } from "../api/queries";
 import { visibilityLabels, visibilityTones } from "../pages/visibility";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { pressedByTouch } from "../ui/focus";
 import { ListScreen } from "../ui/list-screen";
-import { RefreshFailure } from "../ui/refresh-failure";
 import { Select, type SelectItem } from "../ui/select";
 import { StatusDot } from "../ui/status-dot";
 import { NameCell } from "../ui/table/cell-components";
@@ -21,7 +20,7 @@ import {
   useTableFilters,
   useTableContext,
 } from "../ui/table/table-hooks";
-import { LoadFailure } from "./load-failure";
+import { listLoadView } from "./list-load-view";
 import {
   filteredBy,
   pagedTo,
@@ -228,14 +227,8 @@ export function ServicesList({
 }) {
   const services = useQuery(servicesQuery(api));
   const categoryList = useQuery(categoriesQuery(api));
-  const status = services.error instanceof ApiFailure ? services.error.status : undefined;
+  const load = listLoadView(services, "services");
 
-  const refreshFailed =
-    services.isError &&
-    !!services.data &&
-    (status === 0 || (status !== undefined && status >= 500));
-
-  const blocked = services.isError && !refreshFailed;
   const columns = useMemo(() => serviceColumns(api), [api]);
 
   // The list answers each change at once, and the address follows
@@ -322,29 +315,9 @@ export function ServicesList({
           </Button>
         }
         filters={<ServiceFilters categories={categories} />}
-        status={services.isPending ? "Loading services…" : null}
-        notices={
-          refreshFailed && (
-            <RefreshFailure
-              inset="card"
-              pending={services.isFetching}
-              pendingLabel="Refreshing services…"
-              onRetry={() => void services.refetch()}
-            >
-              We could not refresh services. Showing the last loaded list.
-            </RefreshFailure>
-          )
-        }
-        failure={
-          blocked && (
-            <LoadFailure
-              noun="services"
-              error={services.error}
-              retrying={services.isFetching}
-              retry={() => void services.refetch()}
-            />
-          )
-        }
+        status={load.status}
+        notices={load.notices}
+        failure={load.failure}
       >
         <table.DataTable
           caption="Services"

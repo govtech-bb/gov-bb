@@ -6,7 +6,7 @@ import {
 } from "lexical";
 import type { Root } from "mdast";
 import { parseContentMarkdown } from "@govtech-bb/govbbmarkd";
-import { createHeadlessEditor } from "../editor/core/create-editor";
+import { createHeadlessEditor } from "@/editor";
 import {
   SourceError,
   type DraftCodec,

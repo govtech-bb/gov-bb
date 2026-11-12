@@ -1,14 +1,15 @@
 import { expect, test } from "vitest";
-import { createFormSourceDialect } from "../../src/forms/source/dialect";
-import { paragraphContent, headingContents } from "../../src/forms/editor/content-adapters";
-import { shortAnswerField } from "../../src/forms/features/short-answer/definition";
+import { createFormSourceDialect } from "../../src/forms/formats/markdown/dialect";
+import { paragraphContent } from "../../src/forms/content/paragraphs";
+import { headingContents } from "../../src/forms/content/headings";
+import { textInputField } from "../../src/forms/fields/text-input";
 
 test("question hints use installed paragraph and heading codecs independently of their kind names", () => {
   const heading = { ...headingContents[1]!.source, kind: "section-heading" };
   let emitted = 0;
 
   const dialect = createFormSourceDialect(
-    [shortAnswerField.source],
+    [textInputField.source],
     [
       paragraphContent.source,
       {

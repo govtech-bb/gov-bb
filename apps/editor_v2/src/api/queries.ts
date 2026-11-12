@@ -27,8 +27,24 @@ export const retryContentRead = (failures: number, error: Error) =>
 export const servicesQuery = (api: EditorApi) =>
   queryOptions({ queryKey: ["content", "services"], queryFn: () => api.services() });
 
+/** Existing standalone site pages, separate from the service index. */
+export const sitePagesQuery = (api: EditorApi) =>
+  queryOptions({ queryKey: ["content", "site-pages"], queryFn: () => api.sitePages() });
+
 export const serviceQuery = (api: EditorApi, id: string) =>
   queryOptions({ queryKey: ["content", "service", id], queryFn: () => api.service(id) });
+
+/** A collection and its records, such as the contacts a page's contact blocks show. */
+export const collectionRecordsQuery = (api: Pick<EditorApi, "collection">, key: string) =>
+  queryOptions({
+    // Not collectionQuery's key: that one throws on a 404, where this one answers null
+    queryKey: ["content", "contact-collection", key],
+    queryFn: () =>
+      api.collection(key).catch((error: Error) => {
+        if (error instanceof ApiFailure && error.status === 404) return null;
+        throw error;
+      }),
+  });
 
 export const pageQuery = (api: EditorApi, id: string) =>
   queryOptions({ queryKey: ["content", "page", id], queryFn: () => api.page(id) });
@@ -107,6 +123,13 @@ export const estateVersionQuery = (api: Pick<EditorApi, "version">, client: Quer
 /** The data collections, with their record counts, for the Collections screen. */
 export const collectionsQuery = (api: EditorApi) =>
   queryOptions({ queryKey: ["content", "collections"], queryFn: () => api.collections() });
+
+/** Private record content and definition, read together for editing. */
+export const recordQuery = (api: EditorApi, key: string, recordKey: string) =>
+  queryOptions({
+    queryKey: ["content", "record", key, recordKey],
+    queryFn: () => api.record(key, recordKey),
+  });
 
 /** One collection and its records, shared by its screen and the record dialogs over it. */
 export const collectionQuery = (api: EditorApi, key: string) =>

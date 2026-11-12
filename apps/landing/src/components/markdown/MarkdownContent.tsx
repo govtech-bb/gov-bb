@@ -6,16 +6,21 @@ import { renderMarkdownNodes } from '@govtech-bb/govbbmarkd/react'
 import { markdownComponents } from './MdComponents'
 import { formatPublishDate } from '../../lib/format-date'
 import { AvailableFormsContext } from './StartLink'
+import { ContactRecordsContext } from '../content/ContactRecord'
+import type { ContactRecords } from '../../lib/api-v2-collections'
 
 export function MarkdownBody({
   hast,
   availableForms = new Set(),
   hideStartLink = false,
+  contactRecords = {},
   formId,
 }: {
   hast: Root
   availableForms?: ReadonlySet<string>
   hideStartLink?: boolean
+  /** The records the page's `::contact` blocks name; none shows nothing. */
+  contactRecords?: ContactRecords
   formId?: string
 }) {
   // Clone: these passes mutate, and hast is shared across renders.
@@ -25,9 +30,11 @@ export function MarkdownBody({
 
   return (
     <AvailableFormsContext.Provider value={availableForms}>
-      <div className="govbb-prose">
-        {renderMarkdownNodes(tree.children, markdownComponents)}
-      </div>
+      <ContactRecordsContext.Provider value={contactRecords}>
+        <div className="govbb-prose">
+          {renderMarkdownNodes(tree.children, markdownComponents)}
+        </div>
+      </ContactRecordsContext.Provider>
     </AvailableFormsContext.Provider>
   )
 }
@@ -38,6 +45,7 @@ type MarkdownContentProps = {
   hast?: Root
   availableForms?: ReadonlySet<string>
   hideStartLink?: boolean
+  contactRecords?: ContactRecords
 }
 
 export function MarkdownContent({
@@ -45,6 +53,7 @@ export function MarkdownContent({
   hast,
   availableForms,
   hideStartLink = false,
+  contactRecords,
 }: MarkdownContentProps) {
   return (
     <div className="mb-xm lg:grid lg:grid-cols-3 lg:gap-16">
@@ -95,6 +104,7 @@ export function MarkdownContent({
             hast={hast}
             availableForms={availableForms}
             hideStartLink={hideStartLink}
+            contactRecords={contactRecords}
             formId={frontmatter.form_id}
           />
         ) : null}

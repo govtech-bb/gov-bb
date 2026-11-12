@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { pageCategory, type CategoryRecord } from "./navigation";
+import {
+  catalogOf,
+  pageCategory,
+  type CategoryRecord,
+  type ListablePage,
+} from "./navigation";
+import type { PageId } from "./page";
 
 const row = (id: string, parentId: string | null = null): CategoryRecord => ({
   id,
@@ -37,5 +43,55 @@ describe("pageCategory", () => {
         { name: "arts title", url: "/youth-slug/arts-slug" },
       ],
     });
+  });
+});
+
+describe("catalogOf", () => {
+  const page = (
+    id: string,
+    overrides: Partial<ListablePage> = {},
+  ): ListablePage => ({
+    id: id as PageId,
+    parentId: null,
+    slug: id,
+    url: `/${id}`,
+    title: id,
+    description: null,
+    formId: null,
+    frontmatter: {},
+    categoryId: "money",
+    visibility: "public",
+    ...overrides,
+  });
+
+  const formIds = (pages: ListablePage[]) =>
+    Object.fromEntries(
+      catalogOf(pages, categories).map((entry) => [entry.url, entry.form_id]),
+    );
+
+  it("takes the form from the page's own start step, not another child's", () => {
+    expect(
+      formIds([
+        page("grant"),
+        page("grant-help", { parentId: "grant" as PageId, formId: "help" }),
+        page("grant-start", {
+          parentId: "grant" as PageId,
+          slug: "start",
+          formId: "grant-form",
+        }),
+      ]),
+    ).toEqual({ "/grant": "grant-form", "/grant-help": "help" });
+  });
+
+  it("gives no form when the start step is not among the visible pages", () => {
+    expect(formIds([page("grant")])).toEqual({ "/grant": null });
+  });
+
+  it("leaves an uncategorised page without a category", () => {
+    const [entry] = catalogOf(
+      [page("terms", { categoryId: null })],
+      categories,
+    );
+    expect(entry).toMatchObject({ category: null, subcategory: null });
   });
 });

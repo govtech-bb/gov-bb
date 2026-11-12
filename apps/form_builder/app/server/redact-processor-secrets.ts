@@ -12,7 +12,7 @@ import type { Processor } from "@govtech-bb/form-types";
  *   - webhook  `config.secret`       (legacy inline HMAC key)
  *   - webhook  `config.auth.secret`  (hmac scheme)
  *   - opencrvs `config.token`
- * Payment processors live only in the DB `form_config` sidecar (ADR 0033), so
+ * Payment processors live only in the DB `form_config` sidecar (ADR 0057), so
  * they never reach this path.
  */
 export const REDACTED_SECRET = "__REDACTED__";

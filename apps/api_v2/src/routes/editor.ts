@@ -17,14 +17,14 @@ import type { EditorIndex } from "../services/editor-index";
 import type { PageEditing } from "../services/page-editing";
 import { editorCategoryRoutes } from "./categories";
 import { editorCollectionRoutes } from "./collections";
-import { IF_UPDATED_AT, SCHEMAS } from "./contracts";
+import { SCHEMAS } from "./contracts";
 import { EDITOR_READ, rejected, storageFailed } from "./responses";
 import { editorRoleRoutes } from "./roles";
 
 declare module "fastify" {
   interface FastifyContextConfig {
     /**
-     * The role a route needs (ADR 0079). Every write route names one, and
+     * The role a route needs (ADR 0134). Every write route names one, and
      * a read may; the editor scope refuses a write that names none, so a new
      * route fails closed rather than open.
      */
@@ -38,13 +38,6 @@ const NEEDS_ROLE: Readonly<Record<Role, string>> = {
   approver: "You need the approver role to do this.",
   admin: "Only admins can see or change who has which role.",
 };
-
-/** A decision on a revision must name the version the approver reviewed. */
-const VERSION_REQUIRED = {
-  error: "precondition_required",
-  message:
-    "Send the revision's updated_at you reviewed in the if-updated-at header.",
-} as const;
 
 /** Why a page write or review step was refused, as its response. */
 function pageRefused(
@@ -67,7 +60,7 @@ function pageRefused(
         .send({ error: "not_found", message: error.message });
     case "PageConflict":
       return reply.status(409).send({
-        error: "conflict",
+        error: "version_conflict",
         message: error.message,
         documentId: error.documentId,
       });
@@ -228,6 +221,17 @@ export const editorRoutes: FastifyPluginAsyncZod<{
   });
   editor.route({
     method: "GET",
+    url: "/editor/site-pages",
+    schema: SCHEMAS.listSitePages,
+    handler: async (request, reply) => {
+      const pages = await index.listSitePages();
+      return pages.ok
+        ? { pages: pages.value }
+        : reply.status(500).send(storageFailed(request.log, pages.error));
+    },
+  });
+  editor.route({
+    method: "GET",
     url: "/editor/page-paths",
     schema: SCHEMAS.pagePaths,
     handler: async (request, reply) => {
@@ -321,10 +325,11 @@ export const editorRoutes: FastifyPluginAsyncZod<{
     schema: SCHEMAS.savePage,
     config: { role: "editor" },
     handler: async (request, reply) => {
+      const { expected_version: expected, ...fields } = request.body;
       const saved = await editing.save(
         request.params.id,
-        request.body,
-        request.headers[IF_UPDATED_AT] ?? null,
+        fields,
+        expected,
         actor(request),
       );
       if (saved.ok) return saved.value;
@@ -332,12 +337,39 @@ export const editorRoutes: FastifyPluginAsyncZod<{
         return reply
           .status(403)
           .send({ error: "forbidden", message: saved.error.message });
-      if (saved.error._tag === "PageVersionRequired")
-        return reply.status(428).send({
-          error: "precondition_required",
-          message: saved.error.message,
-        });
       return pageRefused(request, reply, saved.error);
+    },
+  });
+  editor.route({
+    method: "POST",
+    url: "/pages/:id/history/:version/restore",
+    schema: SCHEMAS.restorePageVersion,
+    config: { role: "editor" },
+    handler: async (request, reply) => {
+      const restored = await editing.restore(
+        request.params.id,
+        request.params.version,
+        request.body.expected_version,
+        actor(request),
+      );
+      if (restored.ok) return restored.value;
+      switch (restored.error._tag) {
+        case "VersionNotFound":
+          return reply
+            .status(404)
+            .send({ error: "not_found", message: restored.error.message });
+        case "VersionNotRestorable":
+          return reply.status(409).send({
+            error: "not_restorable",
+            message: restored.error.message,
+          });
+        case "NotApprover":
+          return reply
+            .status(403)
+            .send({ error: "forbidden", message: restored.error.message });
+        default:
+          return pageRefused(request, reply, restored.error);
+      }
     },
   });
   editor.route({
@@ -346,9 +378,10 @@ export const editorRoutes: FastifyPluginAsyncZod<{
     schema: SCHEMAS.submitRevision,
     config: { role: "editor" },
     handler: async (request, reply) => {
+      const expected = request.body.expected_version;
       const submitted = await editing.submit(
         request.params.id,
-        request.headers[IF_UPDATED_AT] ?? null,
+        expected,
         actor(request),
       );
       return submitted.ok
@@ -362,13 +395,11 @@ export const editorRoutes: FastifyPluginAsyncZod<{
     schema: SCHEMAS.rejectRevision,
     config: { role: "approver" },
     handler: async (request, reply) => {
-      const reviewed = request.headers[IF_UPDATED_AT];
-      if (reviewed === undefined)
-        return reply.status(428).send(VERSION_REQUIRED);
+      const expected = request.body.expected_version;
       const decided = await editing.reject(
         request.params.id,
         request.body.comment,
-        reviewed,
+        expected,
         actor(request),
       );
       return decided.ok
@@ -382,12 +413,10 @@ export const editorRoutes: FastifyPluginAsyncZod<{
     schema: SCHEMAS.publishRevision,
     config: { role: "approver" },
     handler: async (request, reply) => {
-      const reviewed = request.headers[IF_UPDATED_AT];
-      if (reviewed === undefined)
-        return reply.status(428).send(VERSION_REQUIRED);
+      const expected = request.body.expected_version;
       const published = await editing.publish(
         request.params.id,
-        reviewed,
+        expected,
         actor(request),
       );
       return published.ok
@@ -401,24 +430,18 @@ export const editorRoutes: FastifyPluginAsyncZod<{
     schema: SCHEMAS.deletePage,
     config: { role: "editor" },
     handler: async (request, reply) => {
-      const deleted = await editing.delete(request.params.id, actor(request));
+      const expected = request.query.expected_version;
+      const deleted = await editing.delete(
+        request.params.id,
+        expected,
+        actor(request),
+      );
       if (deleted.ok) return reply.status(204).send();
-      switch (deleted.error._tag) {
-        case "PageRejected":
-          return reply.status(422).send(rejected(deleted.error));
-        case "NotApprover":
-          return reply
-            .status(403)
-            .send({ error: "forbidden", message: deleted.error.message });
-        case "ContentStoreUnavailable":
-          return reply
-            .status(500)
-            .send(storageFailed(request.log, deleted.error));
-        default: {
-          const unexpected: never = deleted.error;
-          throw unexpected;
-        }
-      }
+      if (deleted.error._tag === "NotApprover")
+        return reply
+          .status(403)
+          .send({ error: "forbidden", message: deleted.error.message });
+      return pageRefused(request, reply, deleted.error);
     },
   });
 };

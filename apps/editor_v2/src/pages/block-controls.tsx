@@ -1,4 +1,3 @@
-import type { BaseUIEvent } from "@base-ui/react/types";
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
 import { useLexicalEditable } from "@lexical/react/useLexicalEditable";
 import {
@@ -20,8 +19,8 @@ import {
   $setSelection,
   COMMAND_PRIORITY_LOW,
   HISTORY_PUSH_TAG,
+  SKIP_SELECTION_FOCUS_TAG,
   INDENT_CONTENT_COMMAND,
-  KEY_DOWN_COMMAND,
   OUTDENT_CONTENT_COMMAND,
   type BaseSelection,
   type LexicalEditor,
@@ -30,8 +29,6 @@ import {
 import {
   ArrowDown,
   ArrowUp,
-  DotsSixVertical,
-  MagnifyingGlass,
   Plus,
   TextIndent,
   TextOutdent,
@@ -40,42 +37,37 @@ import {
   ListBullets,
   ListNumbers,
 } from "@phosphor-icons/react";
-import { useEffect, useId, useRef, useState, type MouseEvent, type RefObject } from "react";
-import {
-  $availableActions,
-  $executeAction,
-  rankActions,
-  type EditorAction,
-} from "../editor/core/actions";
+import { useEffect, useId, useRef, useState } from "react";
 import {
   BlockRail,
   DropLine,
   firstLineMiddle,
   menuKey,
   RailButton,
-  railGrip,
-  useBlockDrag,
-  useRailTarget,
-} from "../editor/react/block-rail";
-import { EditorSlot } from "../editor/react/contributions";
-import { useEditorDefinition } from "../editor/react/composer";
-import { $validPoint, roomierSide, useCaretReturn } from "../editor/react/editor-popup";
-import { cn } from "../cn";
-import { altKey } from "../editor/react/shortcut";
-import { turnIntoOptions } from "../editor/react/turn-into";
+  useBlockControls,
+  BlockMenuRoot,
+  BlockGrip,
+  EditorSlot,
+  $validPoint,
+  roomierSide,
+  useCaretReturn,
+  altKey,
+  turnIntoOptions,
+} from "@/editor/react";
 import { Button } from "../ui/button";
-import { openedByTouch } from "../ui/focus";
 import { Kbd } from "../ui/kbd";
 import { Menu } from "../ui/menu";
-import { belowBar, Popover } from "../ui/popover";
-import { groupLabel, listFooter } from "../ui/surface";
+import { belowBar } from "../ui/popover";
+import { groupLabel } from "../ui/surface";
 import { Tip } from "../ui/tooltip";
 import { TurnIntoSubmenu } from "../ui/turn-into";
 import { useLatched } from "../ui/use-latched";
-import { actionList, PageActionList } from "./action-menu";
+import { PageInsertMenu, type PageInsertMenuState } from "./insert-menu";
 import { $writeAtEnd } from "./block-exit";
 import { $blockLines, $pageChoices, $turnPageLines } from "./turn-into";
 import { $rootBlock, type PagePlace } from "./insertion";
+import { OPEN_BLOCK_OPTIONS_COMMAND } from "./block-options";
+import { $isPageContactNode, ContactBlockSettings, type PageContactNode } from "./modules/contact";
 import { startWriting } from "./slash-menu";
 import { PageMetadataNode } from "./metadata";
 import { PageComponentNode } from "./blocks/node";
@@ -131,16 +123,6 @@ function $pageBlockAt(editor: LexicalEditor, y: number) {
   })!.key;
 }
 
-type InsertMenu = {
-  anchor: HTMLElement;
-  /** The block it inserts beside, or null at the end of the page. */
-  key: string | null;
-  /** Where the new block goes beside its block. */
-  place: PagePlace;
-  selection: BaseSelection | null;
-  side: "top" | "bottom";
-};
-
 type BlockMenu = { key: string; contextKey: string | null; selection: BaseSelection | null };
 
 export function PageBlockControls({ anchor, hintId }: { anchor: HTMLElement; hintId: string }) {
@@ -151,56 +133,63 @@ export function PageBlockControls({ anchor, hintId }: { anchor: HTMLElement; hin
 
 function EditablePageControls({ anchor, hintId }: { anchor: HTMLElement; hintId: string }) {
   const [editor] = useLexicalComposerContext();
-  const [insert, setInsert] = useState<InsertMenu | null>(null);
-  const [blockMenu, setBlockMenu] = useState<BlockMenu | null>(null);
+  const [insert, setInsert] = useState<PageInsertMenuState | null>(null);
   const caret = useRef<string | null>(null);
   const savedSelection = useRef<BaseSelection | null>(null);
-  const grip = useRef<HTMLButtonElement>(null);
+  // Where the caret was as the block menu opened, for closing it to put the caret back
+  const menuSelection = useRef<BaseSelection | null>(null);
   const returnCaret = useCaretReturn();
   // Add content opens the insert menu at the page's end; the rail's Insert, at its block
   const addContent = useId();
   const insertOpen = !!insert && insert.anchor.id !== addContent;
-  // The block menu came from ⌘/: closing it lets the pointer lead the rail again
-  const byKeyboard = useRef(false);
 
-  const { target, pin, release } = useRailTarget(anchor, {
-    // Keep the rail anchored while interacting with its menu.
-    held: !!insert || !!blockMenu,
-    $blockAt: (element, point) => {
-      const root = editor.getRootElement();
+  const controls = useBlockControls(anchor, {
+    // Keep the rail anchored while interacting with its insert menu, as with its block menu
+    held: !!insert,
+    target: {
+      $blockAt: (element, point) => {
+        const root = editor.getRootElement();
 
-      if (!root) return undefined;
-      const block = root.contains(element) && $rootBlock($getNearestNodeFromDOMNode(element));
+        if (!root) return undefined;
+        const block = root.contains(element) && $rootBlock($getNearestNodeFromDOMNode(element));
 
-      if (block) return block.getKey();
+        if (block) return block.getKey();
 
-      return root.contains(element) || element === anchor
-        ? $pageBlockAt(editor, point.y + anchor.getBoundingClientRect().top)
-        : undefined;
+        return root.contains(element) || element === anchor
+          ? $pageBlockAt(editor, point.y + anchor.getBoundingClientRect().top)
+          : undefined;
+      },
+      // The caret's block, kept while the selection is somewhere else for a moment
+      $caretBlock: () => {
+        const selection = $getSelection();
+
+        const block =
+          $isRangeSelection(selection) || $isTableSelection(selection)
+            ? $rootBlock(selection.anchor.getNode())
+            : null;
+
+        if (block) caret.current = block.getKey();
+
+        return caret.current && $getNodeByKey(caret.current)?.isAttached() ? caret.current : null;
+      },
+      $place: (key) => firstLineMiddle(editor, anchor, key),
     },
-    // The caret's block, kept while the selection is somewhere else for a moment
-    $caretBlock: () => {
-      const selection = $getSelection();
-
-      const block =
-        $isRangeSelection(selection) || $isTableSelection(selection)
-          ? $rootBlock(selection.anchor.getNode())
-          : null;
-
-      if (block) caret.current = block.getKey();
-
-      return caret.current && $getNodeByKey(caret.current)?.isAttached() ? caret.current : null;
+    drag: {
+      type: PAGE_BLOCK_DRAG,
+      $at: (key, point) => $pageDropAt(editor, anchor, key, point),
+      $drop: $dropPageBlock,
     },
-    $place: (key) => firstLineMiddle(editor, anchor, key),
+    onMenuOpen: () => {
+      setInsert(null);
+      menuSelection.current = savedSelection.current?.clone() ?? null;
+    },
+    // Esc, a press outside or the grip again puts the caret back; an option's own action places it
+    onMenuClose: (reason) => {
+      if (reason && reason !== "item-press") returnCaret(menuSelection.current, reason);
+    },
   });
 
-  const drag = useBlockDrag(anchor, {
-    type: PAGE_BLOCK_DRAG,
-    $at: (key, point) => $pageDropAt(editor, anchor, key, point),
-    $drop: $dropPageBlock,
-    onEnd: release,
-    onNudge: (key) => openBlockMenu(key, target?.key === key ? target.context : null),
-  });
+  const { target, menu, openMenu } = controls;
 
   useEffect(() => {
     const update = () =>
@@ -220,7 +209,8 @@ function EditablePageControls({ anchor, hintId }: { anchor: HTMLElement; hintId:
 
   const openInsert = (element: HTMLElement, key: string | null, place: PagePlace = "below") => {
     if (!editor.isEditable()) return;
-    setBlockMenu(null);
+
+    if (menu) controls.closeMenu();
     setInsert({
       anchor: element,
       key,
@@ -230,64 +220,38 @@ function EditablePageControls({ anchor, hintId }: { anchor: HTMLElement; hintId:
     });
   };
 
-  const openBlockMenu = (key: string, contextKey: string | null = null) => {
-    if (!editor.isEditable()) return;
-    setInsert(null);
-    setBlockMenu({ key, contextKey, selection: savedSelection.current?.clone() ?? null });
+  const blockMenu: BlockMenu | null = menu && {
+    key: menu.key,
+    contextKey: menu.context,
+    selection: menuSelection.current,
   };
 
-  const closeBlockMenu = () => {
-    setBlockMenu(null);
-
-    if (!byKeyboard.current) return;
-    byKeyboard.current = false;
-    release();
-  };
-
-  // ⌘/ opens the caret's block menu, as in the form editor
+  // A block that still needs setting up opens its own Block options, such as a contact block once it's inserted
   useEffect(
     () =>
       editor.registerCommand(
-        KEY_DOWN_COMMAND,
-        (event) => {
-          if (
-            !editor.isEditable() ||
-            !(event.metaKey || event.ctrlKey) ||
-            event.altKey ||
-            event.key !== "/"
-          )
-            return false;
-          const key = caret.current;
+        OPEN_BLOCK_OPTIONS_COMMAND,
+        (key) => {
+          if (!editor.isEditable()) return false;
 
-          if (!key || !grip.current) return false;
-          event.preventDefault();
-          byKeyboard.current = true;
-          pin(key);
-          openBlockMenu(key);
+          // Its root block takes the rail, which renders for it if no pointer or caret has put it anywhere yet; the
+          // block itself, such as a contact inside a notice, stays the menu's subject
+          const root = editor.getEditorState().read(() => $rootBlock($getNodeByKey(key))?.getKey());
+
+          if (!root) return false;
+          // Pinned, the menu stays on its block; closing it lets the pointer lead the rail again
+          openMenu(root, key, { pin: true });
 
           return true;
         },
         COMMAND_PRIORITY_LOW,
       ),
-    // openBlockMenu reads only refs and state setters
-    [editor, pin],
+    [editor, openMenu],
   );
 
   return (
-    <Menu.Root
-      open={!!blockMenu}
-      onOpenChange={(open, { reason }) => {
-        if (open) {
-          if (!blockMenu && target) openBlockMenu(target.key, target.context);
-
-          return;
-        }
-
-        if (blockMenu && reason !== "item-press") returnCaret(blockMenu.selection, reason);
-        closeBlockMenu();
-      }}
-    >
-      <DropLine line={drag.line} />
+    <BlockMenuRoot controls={controls}>
+      <DropLine line={controls.drag.line} />
       <p id={hintId} className="sr-only">
         {startWriting}
       </p>
@@ -320,42 +284,17 @@ function EditablePageControls({ anchor, hintId }: { anchor: HTMLElement; hintId:
               <Plus />
             </RailButton>
           </Tip>
-          <Tip
-            hint
-            content={
+          <BlockGrip
+            controls={controls}
+            label="Block options"
+            tip={
               <>
                 <em>Drag</em> to move
                 <br />
                 <em>Click</em> or <Kbd>{menuKey}</Kbd> for block options
               </>
             }
-          >
-            <Menu.Trigger
-              render={
-                <RailButton
-                  ref={grip}
-                  aria-label="Block options"
-                  draggable
-                  className={railGrip}
-                  onDragStart={(event) => {
-                    setBlockMenu(null);
-                    drag.start(event, target.key);
-                  }}
-                  // Base UI opens a menu on mousedown, which would swallow the drag: it opens on click instead
-                  onMouseDown={(event: BaseUIEvent<MouseEvent<HTMLButtonElement>>) =>
-                    event.preventBaseUIHandler()
-                  }
-                  onClick={() => {
-                    if (!blockMenu) return openBlockMenu(target.key, target.context);
-                    returnCaret(blockMenu.selection, "trigger-press");
-                    closeBlockMenu();
-                  }}
-                >
-                  <DotsSixVertical />
-                </RailButton>
-              }
-            />
-          </Tip>
+          />
         </BlockRail>
       )}
       {/* Below the last block, a click goes on writing at the end of the page */}
@@ -388,180 +327,8 @@ function EditablePageControls({ anchor, hintId }: { anchor: HTMLElement; hintId:
           setInsert(null);
         }}
       />
-      <PageBlockMenu menu={blockMenu} onDone={closeBlockMenu} />
-    </Menu.Root>
-  );
-}
-
-/** Keeps the last menu state through its exit transition and fixes placement while filtering. */
-function PageInsertMenu({
-  menu,
-  onDone,
-  onDismiss,
-}: {
-  menu: InsertMenu | null;
-  onDone: () => void;
-  /** Esc, or a press outside. */
-  onDismiss: (reason: string) => void;
-}) {
-  const shown = useLatched(menu);
-  const search = useRef<HTMLInputElement>(null);
-  const popup = useRef<HTMLDivElement>(null);
-
-  return (
-    <Popover.Root open={!!menu} onOpenChange={(open, { reason }) => !open && onDismiss(reason)}>
-      {shown && (
-        <Popover.Content
-          ref={popup}
-          aria-label="Insert page content"
-          anchor={shown.anchor}
-          side={shown.side}
-          align="start"
-          collisionPadding={belowBar()}
-          collisionAvoidance={{ side: "none", align: "shift", fallbackAxisSide: "none" }}
-          // Opened by a touch, the menu takes the focus itself, as the search's would bring up the keyboard over the
-          // list. Otherwise the search does: focus before positioning must not scroll the page.
-          initialFocus={(type) => {
-            if (openedByTouch(type)) return popup.current;
-            search.current?.focus({ preventScroll: true });
-
-            return false;
-          }}
-          finalFocus={false}
-          className="page-insert-menu flex w-[min(21rem,calc(100vw-2rem))] flex-col overflow-hidden p-0 text-14"
-        >
-          <InsertList menu={shown} search={search} onDone={onDone} />
-        </Popover.Content>
-      )}
-    </Popover.Root>
-  );
-}
-
-/** The insert menu's search and list, fresh each time the menu opens. */
-function InsertList({
-  menu,
-  search,
-  onDone,
-}: {
-  menu: InsertMenu;
-  search: RefObject<HTMLInputElement | null>;
-  onDone: () => void;
-}) {
-  const [editor] = useLexicalComposerContext();
-  const definition = useEditorDefinition();
-  const [query, setQuery] = useState("");
-  const [index, setIndex] = useState(0);
-  const [error, setError] = useState<string>();
-  const ids = useId();
-  const list = useRef<HTMLDivElement>(null);
-
-  const actions = editor.getEditorState().read(
-    () => {
-      const target = menu.key ? $getNodeByKey(menu.key) : $getRoot().getLastChild();
-
-      return target
-        ? rankActions(
-            query,
-            $availableActions(editor, definition, { targetKey: target.getKey(), mode: menu.place }),
-          )
-        : [];
-    },
-    { editor },
-  );
-
-  const selected = actions[index];
-  const shownIndex = useRef(index);
-
-  // Scroll only after the highlight moves; the popup may not be positioned on its first render.
-  useEffect(() => {
-    if (shownIndex.current === index) return;
-    shownIndex.current = index;
-    list.current?.querySelector("[aria-selected=true]")?.scrollIntoView({ block: "nearest" });
-  }, [index]);
-
-  const insert = (action: EditorAction) => {
-    if (!editor.isEditable()) return;
-    editor.update(
-      () => {
-        let target = menu.key ? $getNodeByKey(menu.key) : $getRoot().getLastChild();
-
-        if (!target || target instanceof PageMetadataNode) {
-          target = $createParagraphNode();
-          $getRoot().append(target);
-        }
-
-        const result = $executeAction(editor, definition, action.id, {
-          targetKey: target.getKey(),
-          mode: menu.place,
-        });
-
-        if (result.executed) {
-          onDone();
-          result.result?.afterClose?.();
-        } else setError(result.error ?? "This block cannot be inserted here.");
-      },
-      { tag: HISTORY_PUSH_TAG },
-    );
-    editor.focus();
-  };
-
-  return (
-    <>
-      <label className="mx-1.5 mt-1.5 flex items-center gap-2.5 border-b border-line px-2 pt-2.5 pb-3.5 text-muted [&>svg]:size-4 [&>svg]:shrink-0">
-        <MagnifyingGlass aria-hidden="true" />
-        <input
-          ref={search}
-          role="combobox"
-          aria-label="Search page content"
-          placeholder="Search content…"
-          value={query}
-          aria-expanded
-          aria-controls={`${ids}-list`}
-          aria-activedescendant={selected ? `${ids}-${index}` : undefined}
-          className="w-full min-w-0 text-16 text-ink outline-offset-4"
-          onChange={(event) => {
-            setQuery(event.target.value);
-            setIndex(0);
-            setError(undefined);
-          }}
-          onKeyDown={(event) => {
-            if ((event.key === "ArrowDown" || event.key === "ArrowUp") && actions.length) {
-              event.preventDefault();
-              setIndex(
-                (current) =>
-                  (current + (event.key === "ArrowDown" ? 1 : -1) + actions.length) %
-                  actions.length,
-              );
-            } else if (event.key === "Enter" && selected) {
-              event.preventDefault();
-              insert(selected);
-            }
-          }}
-        />
-      </label>
-      <div
-        ref={list}
-        id={`${ids}-list`}
-        className={cn(actionList, "max-h-[34rem] min-h-0")}
-        role="listbox"
-        aria-label="Insert page content"
-      >
-        <PageActionList
-          actions={actions}
-          searching={!!query.trim()}
-          selectedIndex={index}
-          onHighlight={setIndex}
-          onSelect={insert}
-          optionId={(i) => `${ids}-${i}`}
-          error={error}
-        />
-      </div>
-      {selected?.description && (
-        <p className={listFooter} aria-hidden="true">
-          {selected.description}
-        </p>
-      )}
-    </>
+      <PageBlockMenu menu={blockMenu} onDone={() => controls.closeMenu()} />
+    </BlockMenuRoot>
   );
 }
 
@@ -601,13 +368,17 @@ function BlockMenuRows({ menu, onDone }: { menu: BlockMenu; onDone: () => void }
           : block);
 
       let component: PageComponentNode | null = null;
+      let contact: PageContactNode | null = null;
       const list = $nearestPageList(node);
       let table = $isTableNode(block);
       // Turn into takes a whole text block: its line, a quote's lines or every item in a list
       const lines = block instanceof PageComponentNode ? null : $blockLines(block);
 
       while (node && !$isRootNode(node)) {
-        if (!component && node instanceof PageComponentNode) component = node;
+        // The innermost wins: a contact inside a notice is the contact's to set up
+        if (!component && !contact && $isPageContactNode(node)) contact = node;
+
+        if (!component && !contact && node instanceof PageComponentNode) component = node;
 
         if ($isTableCellNode(node)) table = true;
         node = node.getParent();
@@ -620,6 +391,7 @@ function BlockMenuRows({ menu, onDone }: { menu: BlockMenu; onDone: () => void }
           !!block.getPreviousSibling() && !(block.getPreviousSibling() instanceof PageMetadataNode),
         down: !!block.getNextSibling(),
         turnInto: lines?.length ? $pageChoices(lines) : null,
+        contact: contact ? { key: contact.getKey(), settings: contact.getSettings() } : null,
         component: component
           ? {
               key: component.getKey(),
@@ -651,7 +423,11 @@ function BlockMenuRows({ menu, onDone }: { menu: BlockMenu; onDone: () => void }
           else if ($isElementNode(block)) block.selectStart();
           apply(block);
         },
-        { tag: HISTORY_PUSH_TAG, discrete: true },
+        // Kept open, the menu's own control keeps the focus while the block changes
+        {
+          tag: close ? HISTORY_PUSH_TAG : [HISTORY_PUSH_TAG, SKIP_SELECTION_FOCUS_TAG],
+          discrete: true,
+        },
       );
 
       if (close) {
@@ -672,6 +448,21 @@ function BlockMenuRows({ menu, onDone }: { menu: BlockMenu; onDone: () => void }
         <p className="px-3.5 py-1.5 text-14 text-error" role="alert">
           {error}
         </p>
+      )}
+      {model.contact && (
+        // Keep its fields' keys out of menu navigation; Escape still dismisses it.
+        <div onKeyDown={(event) => event.key !== "Escape" && event.stopPropagation()}>
+          <ContactBlockSettings
+            settings={model.contact.settings}
+            onChange={(patch) =>
+              change((block) => {
+                const node = $pageBlockDescendant(model.contact!.key, block);
+
+                if ($isPageContactNode(node)) node.setSettings(patch);
+              }, false)
+            }
+          />
+        </div>
       )}
       {(component || model.turnInto) && (
         <Menu.Group>

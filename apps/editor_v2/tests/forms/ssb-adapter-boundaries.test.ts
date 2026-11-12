@@ -1,18 +1,21 @@
 import { legacyFieldAdapter } from "../../src/forms/legacy";
-import type { Settings } from "../../src/forms/core/settings";
+import type { Settings } from "../../src/forms/model/settings";
 import { expect, test } from "vitest";
 import { $createLinkNode } from "@lexical/link";
 import { $createParagraphNode, $createTextNode, $getRoot } from "lexical";
 import { createHeadlessEditor } from "../../src/editor/core/create-editor";
 import { defineFormEditor } from "../../src/forms/definition";
 import { govbbFormModules } from "../../src/presets/govbb-form";
-import { compileForm } from "../../src/forms/editor/compile";
-import { preflight } from "../../src/forms/adapters/ssb/validation";
-import { capabilityWarnings, logicIssues } from "../../src/forms/adapters/ssb/capabilities";
+import { compileForm } from "../../src/forms/canvas/form-compile";
+import { preflight } from "../../src/forms/formats/legacy-ssb/projection/validation";
+import {
+  capabilityWarnings,
+  logicIssues,
+} from "../../src/forms/formats/legacy-ssb/projection/capabilities";
 import {
   capabilityWarnings as editorWarnings,
   logicIssues as editorIssues,
-} from "../../src/forms/editor/capabilities";
+} from "../../src/forms/formats/legacy-ssb/legacy-ssb-capabilities";
 import { lexicalToLegacySsb } from "../../src/converters/lexical-to-legacy-ssb";
 import { lexicalToFormMarkdown } from "../../src/converters/lexical-to-form-markdown";
 import {
@@ -24,8 +27,8 @@ import {
   $ensureQuestionFields,
   $questionKey,
   $setSettings,
-} from "../../src/forms/editor/nodes";
-import { $createMentionNode } from "../../src/forms/features/mentions/node";
+} from "../../src/forms/canvas/form-nodes";
+import { $createMentionNode } from "../../src/forms/mentions/mention-node";
 
 function configured(target: string, mapped = true) {
   return defineFormEditor({

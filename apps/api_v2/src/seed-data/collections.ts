@@ -2,15 +2,15 @@
  * The seeded data collections (#3183): `contacts`, the organisations a
  * citizen is told to get in touch with. From the block editor spike's
  * `MINISTRIES` (PR #2789, `packages/spike-db/src/seed-data/collections.ts`),
- * renamed. Its records are the two the estate wrote out by hand: the Drug
- * Service from find-an-open-pharmacy, the NIS department from
- * calculate-severance-pay.
+ * renamed. Records cover the Drug Service, the NIS Severance Payment
+ * Department and StormReady's four storm contacts.
  *
  * The field names are conventional (`phone`, `email`, `website`) so a
  * renderer can link them by name.
  */
 
 import type { CollectionSchema, RecordData } from "../modules/collection";
+import { STORMREADY_CONTACTS } from "./stormready-contacts";
 
 /** A collection as the seed writes it. */
 export interface SeedCollection {
@@ -52,6 +52,7 @@ export const CONTACTS: SeedCollection = {
       address: "Frank Walcott Building, Culloden Road, St. Michael",
       hours: "Extensions 1502 to 1509",
     },
+    ...STORMREADY_CONTACTS,
   ],
 };
 

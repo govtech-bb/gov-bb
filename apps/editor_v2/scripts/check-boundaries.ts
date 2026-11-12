@@ -16,21 +16,35 @@ export const temporaryLegacyEdges: readonly {
 }[] = [];
 
 const pureFeatureFiles = new Set([
-  "src/forms/features/checkbox-accordion/groups.ts",
-  "src/forms/features/opening-hours/defaults.ts",
+  "src/forms/fields/grouped-checkboxes-groups.ts",
+  "src/forms/fields/opening-hours-defaults.ts",
 ]);
 
 const within = (file: string, directory: string) => file.startsWith(`${directory}/`);
 
+/** The editor's public entry points: @/editor (headless), @/editor/react and @/editor/modules. */
+const editorEntries = new Set([
+  "src/editor/index.ts",
+  "src/editor/react/index.ts",
+  "src/editor/modules/index.ts",
+]);
+
 const genericBrowserLayer = (file: string) =>
-  within(file, "src/editor/react") ||
-  within(file, "src/editor/modules") ||
-  file === "src/editor/index.ts";
+  within(file, "src/editor/react") || within(file, "src/editor/modules");
 
 const formBrowserLayer = (file: string) =>
-  within(file, "src/forms/editor") ||
-  within(file, "src/forms/react") ||
-  (within(file, "src/forms/features") && !pureFeatureFiles.has(file));
+  within(file, "src/forms/canvas") ||
+  (within(file, "src/forms/formats/native") && !within(file, "src/forms/formats/native/schema")) ||
+  (within(file, "src/forms/formats/legacy-ssb") &&
+    !within(file, "src/forms/formats/legacy-ssb/projection")) ||
+  (within(file, "src/forms/content") && file !== "src/forms/content/define-content.ts") ||
+  within(file, "src/forms/fields") ||
+  (within(file, "src/forms/settings") && file !== "src/forms/settings/define-setting.ts") ||
+  within(file, "src/forms/form-pages") ||
+  within(file, "src/forms/conditional-logic") ||
+  within(file, "src/forms/calculated-fields") ||
+  within(file, "src/forms/repetition") ||
+  within(file, "src/forms/mentions");
 
 const formPublicLayer = (file: string) =>
   ["src/forms/index.ts", "src/forms/modules.ts", "src/forms/legacy.ts"].includes(file);
@@ -56,12 +70,13 @@ const checked = (file: string) =>
     within(file, "src/workspace") ||
     within(file, "src/persistence") ||
     within(file, "src/editor/core") ||
-    within(file, "src/forms/core") ||
-    within(file, "src/forms/schema") ||
-    within(file, "src/forms/registry") ||
-    within(file, "src/forms/source") ||
+    file === "src/editor/index.ts" ||
+    within(file, "src/forms/model") ||
+    within(file, "src/forms/formats/native/schema") ||
+    within(file, "src/forms/form-registry") ||
+    within(file, "src/forms/formats/markdown") ||
     file === "src/forms/native.ts" ||
-    within(file, "src/forms/adapters/ssb") ||
+    within(file, "src/forms/formats/legacy-ssb/projection") ||
     within(file, "src/presets") ||
     hostLayer(file) ||
     within(file, "src/templates") ||
@@ -70,7 +85,12 @@ const checked = (file: string) =>
     formBrowserLayer(file) ||
     pureFeatureFiles.has(file) ||
     within(file, "src/converters") ||
-    ["src/forms/field.ts", "src/forms/definition.ts", "src/forms/content.ts"].includes(file));
+    [
+      "src/forms/field.ts",
+      "src/forms/definition.ts",
+      "src/forms/content/define-content.ts",
+      "src/forms/settings/define-setting.ts",
+    ].includes(file));
 
 const browserGlobals = new Set([
   "window",
@@ -198,6 +218,13 @@ function edgesAndGlobals(file: string, source: string) {
 }
 
 function permitted(from: string, to: string, typeOnly: boolean) {
+  // Each entry re-exports its own layer: the headless one only core, so converters can use it without React
+  if (from === "src/editor/index.ts") return within(to, "src/editor/core");
+
+  if (from === "src/editor/react/index.ts") return within(to, "src/editor/react");
+
+  if (from === "src/editor/modules/index.ts") return within(to, "src/editor/modules");
+
   if (within(from, "src/pages"))
     return (
       within(to, "src/pages") ||
@@ -211,6 +238,7 @@ function permitted(from: string, to: string, typeOnly: boolean) {
         "react-dom",
         "@phosphor-icons/react",
         "@govtech-bb/govbbmarkd",
+        "@govtech-bb/govbbmarkd/contact-record",
         "@govtech-bb/govbbmarkd/content-url",
         "@govtech-bb/govbbmarkd/legacy",
         "@govtech-bb/govbbmarkd/react",
@@ -257,18 +285,17 @@ function permitted(from: string, to: string, typeOnly: boolean) {
       (from.endsWith(".tsx") && to === "@tanstack/react-router")
     );
 
-  if (within(from, "src/forms/schema")) return within(to, "src/forms/schema");
+  if (within(from, "src/forms/formats/native/schema"))
+    return within(to, "src/forms/formats/native/schema");
 
   if (from === "src/forms/native.ts")
     return (
-      within(to, "src/forms/schema") ||
+      within(to, "src/forms/formats/native/schema") ||
       (typeOnly && ["lexical", "src/forms/definition.ts"].includes(to))
     );
 
-  if (
-    /^src\/forms\/features\/[^/]+\/definition\.tsx?$/.test(from) &&
-    within(to, "src/forms/adapters/ssb")
-  )
+  // A field declares the native contract, never the legacy SSB one
+  if (within(from, "src/forms/fields") && within(to, "src/forms/formats/legacy-ssb/projection"))
     return false;
 
   if (sharedUiLayer(from))
@@ -287,13 +314,7 @@ function permitted(from: string, to: string, typeOnly: boolean) {
       to.startsWith("date-fns/")
     );
 
-  if (
-    (within(from, "src/editor") &&
-      from !== "src/editor/index.ts" &&
-      to === "src/editor/index.ts") ||
-    (within(from, "src/forms") && !formPublicLayer(from) && formPublicLayer(to))
-  )
-    return false;
+  if (within(from, "src/forms") && !formPublicLayer(from) && formPublicLayer(to)) return false;
 
   if (formPublicLayer(from)) return within(to, "src/forms") || within(to, "src/converters");
 
@@ -337,14 +358,19 @@ function permitted(from: string, to: string, typeOnly: boolean) {
 
   if (["src/presets/content.ts", "src/presets/govbb-form.ts"].includes(from))
     return (
-      ["src/editor/index.ts", "src/forms/index.ts", "src/forms/modules.ts", "react"].includes(to) ||
-      within(to, "src/presets")
+      [
+        "src/editor/index.ts",
+        "src/editor/modules/index.ts",
+        "src/forms/index.ts",
+        "src/forms/modules.ts",
+        "react",
+      ].includes(to) || within(to, "src/presets")
     );
 
   if (from === "src/presets/demo.ts")
     return [
-      "src/forms/editor/native-bindings.ts",
-      "src/editor/core/context.ts",
+      "src/forms/formats/native/native-bindings.ts",
+      "src/editor/index.ts",
       "src/forms/definition.ts",
       "src/presets/form-registry/demo.ts",
       "lexical",
@@ -357,11 +383,11 @@ function permitted(from: string, to: string, typeOnly: boolean) {
   )
     return true;
 
-  if (within(from, "src/forms/registry"))
+  if (within(from, "src/forms/form-registry"))
     return (
-      within(to, "src/forms/registry") ||
-      within(to, "src/forms/schema") ||
-      to === "src/editor/core/immutable.ts" ||
+      within(to, "src/forms/form-registry") ||
+      within(to, "src/forms/formats/native/schema") ||
+      to === "src/editor/index.ts" ||
       (typeOnly && (to === "react" || to === "src/forms/definition.ts"))
     );
 
@@ -385,7 +411,7 @@ function permitted(from: string, to: string, typeOnly: boolean) {
   // Public converters orchestrate only these configured headless/read bridges.
   if (
     from === "src/converters/form-markdown-to-lexical.ts" &&
-    ["src/forms/editor/runtime.ts", "src/forms/editor/native-source.ts"].includes(to)
+    ["src/forms/canvas/form-runtime.ts", "src/forms/formats/native/native-source.ts"].includes(to)
   )
     return true;
 
@@ -397,49 +423,62 @@ function permitted(from: string, to: string, typeOnly: boolean) {
   )
     return (
       [
-        "src/forms/editor/native-bindings.ts",
-        "src/forms/editor/context.ts",
+        "src/forms/formats/native/native-bindings.ts",
+        "src/forms/canvas/form-context.ts",
         "src/forms/definition.ts",
       ].includes(to) ||
       (from === "src/converters/form-schema-to-lexical.ts" &&
-        ["src/editor/core/create-editor.ts", "src/converters/lexical-to-form-schema.ts"].includes(
-          to,
-        )) ||
-      within(to, "src/forms/schema") ||
+        ["src/editor/index.ts", "src/converters/lexical-to-form-schema.ts"].includes(to)) ||
+      within(to, "src/forms/formats/native/schema") ||
       (typeOnly && to === "lexical")
     );
 
   if (
     from === "src/converters/lexical-to-legacy-ssb.ts" &&
-    ["src/forms/editor/compile.ts", "src/forms/editor/legacy-mappings.ts"].includes(to)
+    [
+      "src/forms/canvas/form-compile.ts",
+      "src/forms/formats/legacy-ssb/legacy-mappings.ts",
+    ].includes(to)
   )
     return true;
 
   if (within(from, "src/converters"))
     return (
-      within(to, "src/forms/core") ||
-      within(to, "src/forms/schema") ||
-      within(to, "src/forms/source") ||
-      within(to, "src/forms/adapters/ssb") ||
+      within(to, "src/forms/model") ||
+      within(to, "src/forms/formats/native/schema") ||
+      within(to, "src/forms/formats/markdown") ||
+      within(to, "src/forms/formats/legacy-ssb/projection") ||
       (typeOnly && (to === "lexical" || to === "src/forms/definition.ts"))
     );
 
-  if (["src/forms/field.ts", "src/forms/definition.ts", "src/forms/content.ts"].includes(from))
+  if (
+    [
+      "src/forms/field.ts",
+      "src/forms/definition.ts",
+      "src/forms/content/define-content.ts",
+      "src/forms/settings/define-setting.ts",
+    ].includes(from)
+  )
     return (
-      within(to, "src/forms/core") ||
-      within(to, "src/forms/schema") ||
+      within(to, "src/forms/model") ||
+      within(to, "src/forms/formats/native/schema") ||
       to === "src/forms/native.ts" ||
-      within(to, "src/editor/core") ||
-      ["src/forms/field.ts", "src/forms/definition.ts", "src/forms/content.ts"].includes(to) ||
-      within(to, "src/forms/source") ||
-      within(to, "src/forms/registry") ||
+      to === "src/editor/index.ts" ||
+      [
+        "src/forms/field.ts",
+        "src/forms/definition.ts",
+        "src/forms/content/define-content.ts",
+        "src/forms/settings/define-setting.ts",
+      ].includes(to) ||
+      within(to, "src/forms/formats/markdown") ||
+      within(to, "src/forms/form-registry") ||
       (typeOnly && (to === "react" || to === "lexical"))
     );
 
-  if (pureFeatureFiles.has(from)) return within(to, "src/forms/core") || pureFeatureFiles.has(to);
+  if (pureFeatureFiles.has(from)) return within(to, "src/forms/model") || pureFeatureFiles.has(to);
 
   if (
-    from === "src/forms/editor/codec.ts" &&
+    from === "src/forms/canvas/form-codec.ts" &&
     [
       "src/persistence/types.ts",
       "src/converters/lexical-to-form-markdown.ts",
@@ -450,24 +489,25 @@ function permitted(from: string, to: string, typeOnly: boolean) {
 
   if (formBrowserLayer(from))
     return (
-      within(to, "src/forms/registry") ||
-      within(to, "src/forms/core") ||
-      within(to, "src/forms/schema") ||
+      within(to, "src/forms/form-registry") ||
+      within(to, "src/forms/model") ||
+      within(to, "src/forms/formats/native/schema") ||
       formBrowserLayer(to) ||
       pureFeatureFiles.has(to) ||
-      within(to, "src/forms/adapters/ssb") ||
+      within(to, "src/forms/formats/legacy-ssb/projection") ||
       within(to, "src/editor") ||
       within(to, "src/ui") ||
       [
         "src/forms/field.ts",
         "src/forms/definition.ts",
-        "src/forms/content.ts",
+        "src/forms/content/define-content.ts",
+        "src/forms/settings/define-setting.ts",
         "src/forms/native.ts",
         "src/cn.ts",
         "src/converters/lexical-to-form-schema.ts",
         "src/converters/lexical-to-legacy-ssb.ts",
       ].includes(to) ||
-      within(to, "src/forms/source") ||
+      within(to, "src/forms/formats/markdown") ||
       [
         "lexical",
         "react",
@@ -482,25 +522,25 @@ function permitted(from: string, to: string, typeOnly: boolean) {
       to.startsWith("@phosphor-icons/core/")
     );
 
-  if (within(from, "src/forms/core"))
-    return within(to, "src/forms/core") || within(to, "src/editor/core") || to === "date-fns";
+  if (within(from, "src/forms/model"))
+    return within(to, "src/forms/model") || to === "src/editor/index.ts" || to === "date-fns";
 
-  if (within(from, "src/forms/source"))
+  if (within(from, "src/forms/formats/markdown"))
     return (
-      within(to, "src/forms/source") ||
-      within(to, "src/forms/core") ||
+      within(to, "src/forms/formats/markdown") ||
+      within(to, "src/forms/model") ||
       (typeOnly && to === "lexical")
     );
 
-  if (within(from, "src/forms/adapters/ssb"))
-    return within(to, "src/forms/adapters/ssb") || within(to, "src/forms/core");
+  if (within(from, "src/forms/formats/legacy-ssb/projection"))
+    return within(to, "src/forms/formats/legacy-ssb/projection") || within(to, "src/forms/model");
 
   if (within(from, "src/presets/form-registry"))
     return (
       within(to, "src/presets/form-registry") ||
-      within(to, "src/forms/core") ||
-      within(to, "src/forms/schema") ||
-      within(to, "src/forms/registry") ||
+      within(to, "src/forms/model") ||
+      within(to, "src/forms/formats/native/schema") ||
+      within(to, "src/forms/form-registry") ||
       pureFeatureFiles.has(to) ||
       to === "@phosphor-icons/react" ||
       (from === "src/presets/form-registry/preview.tsx" &&
@@ -508,13 +548,12 @@ function permitted(from: string, to: string, typeOnly: boolean) {
           "src/forms/definition.ts",
           "src/forms/native.ts",
           "src/cn.ts",
-          "src/editor/react/contributions.tsx",
-          "src/editor/react/composer.tsx",
+          "src/editor/react/index.ts",
           "src/ui/preview-sheet.tsx",
         ].includes(to))
     );
 
-  return within(to, "src/forms/core") || pureFeatureFiles.has(to);
+  return within(to, "src/forms/model") || pureFeatureFiles.has(to);
 }
 
 /** Enforces package ownership, including public composition and pure conversion layers. */
@@ -522,26 +561,48 @@ export function boundaryIssues(sources: ReadonlyMap<string, string>): BoundaryIs
   const issues: BoundaryIssue[] = [];
 
   for (const [file, source] of sources) {
-    if (!checked(file)) continue;
+    // Every src module outside the editor reaches it only through its entry points, and the editor's own modules,
+    // entry points included, never import one. Tests may reach inside.
+    const test = /\.test\.tsx?$/.test(file);
+    const editorModule = within(file, "src/editor") && !test;
+    const editorConsumer = !within(file, "src/editor") && !test;
+
+    if (!checked(file) && !editorModule && !editorConsumer) continue;
     const { edges, globals } = edgesAndGlobals(file, source);
 
     for (const edge of edges) {
       const base = edge.specifier.startsWith(".")
         ? posix.normalize(posix.join(posix.dirname(file), edge.specifier))
-        : edge.specifier;
+        : edge.specifier.startsWith("@/")
+          ? posix.normalize(`src/${edge.specifier.slice(2)}`)
+          : edge.specifier;
 
       const to =
         [base, `${base}.ts`, `${base}.tsx`, `${base}/index.ts`, `${base}/index.tsx`].find(
           (candidate) => sources.has(candidate),
         ) ?? base;
 
-      if (!permitted(file, to, edge.typeOnly))
+      if (editorConsumer && within(to, "src/editor") && !editorEntries.has(to))
+        issues.push({
+          file,
+          line: edge.line,
+          message: `Editor import bypasses its entry points: ${edge.specifier}. Import @/editor, @/editor/react or @/editor/modules instead`,
+        });
+      else if (editorModule && editorEntries.has(to))
+        issues.push({
+          file,
+          line: edge.line,
+          message: `Editor module imports an editor entry point: ${edge.specifier}. Import the module that owns it instead`,
+        });
+      else if (checked(file) && !permitted(file, to, edge.typeOnly))
         issues.push({
           file,
           line: edge.line,
           message: `${edge.typeOnly ? "Type" : "Runtime"} import crosses a completed boundary: ${edge.specifier}`,
         });
     }
+
+    if (!checked(file)) continue;
 
     if (
       !sharedUiLayer(file) &&

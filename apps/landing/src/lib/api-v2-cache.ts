@@ -1,30 +1,25 @@
 import type { ApiV2Result } from './api-v2-page'
-import { REASONS } from './api-v2-log'
+import { failed } from './api-v2-reader'
+import type { createApiV2Breaker } from './api-v2-reader'
 
 /**
  * In-memory cache in front of api_v2 page reads (#3127), per server instance.
  * TTLs come only from api_v2's `Cache-Control` (#2702): pages get max-age 60 +
  * stale-while-revalidate 300, a 404 max-age 10, `no-store` nothing. A stale
  * entry is served at once while one background refetch per URL runs; on a
- * failure the last good copy is served at any age, marked `stale`. After three
- * failures in a row api_v2 isn't called for 30 s. `expire()` makes every entry
- * stale at once, for when api_v2's site version moves (a publish): the next
- * read of each url waits for a fresh copy, falling back to the old one on a
- * failure.
+ * failure the last good copy is served at any age, marked `stale`. While the
+ * breaker (api-v2-reader.ts) is open api_v2 isn't called. `expire()` makes
+ * every entry stale at once, for when api_v2's site version moves (a publish):
+ * the next read of each url waits for a fresh copy, falling back to the old
+ * one on a failure.
  *
- * Keyed by URL alone, which is safe only because landing never sends
- * `x-preview-token`, so api_v2's answer is the same for every viewer. A call
- * that forwards the token must skip this cache for reads too, not just rely
- * on api_v2's `no-store` keeping it from being written.
+ * Keyed by URL alone, which is safe only because every read through it is a
+ * public one: a reviewer's read sends `x-preview-token` and skips this cache
+ * for reads and writes alike (`loadApiV2Page` in api-v2-page.ts, #2961), not
+ * relying on api_v2's `no-store` to keep it from being written.
  */
 
 export const MAX_ENTRIES = 500
-const FAILURES_TO_OPEN = 3
-const OPEN_MS = 30_000
-/** api_v2 failed (vs. answered): never cached, counted toward the breaker. */
-const failed = (r: ApiV2Result) =>
-  r.kind === 'miss' && REASONS[r.reason].failure
-
 /** A kept page served because api_v2 failed: `x-content-source: api_v2-stale`. */
 const kept = (r: ApiV2Result): ApiV2Result =>
   r.kind === 'page' ? { ...r, stale: true } : r
@@ -40,11 +35,12 @@ interface Entry {
   swrMs: number
 }
 
-export function createApiV2Cache() {
+/** `breaker`: the one every api_v2 read shares; a fresh one only in tests. */
+export function createApiV2Cache(
+  breaker: ReturnType<typeof createApiV2Breaker>,
+) {
   const entries = new Map<string, Entry>()
   const inflight = new Map<string, Promise<ApiV2Result>>()
-  let failures = 0
-  let openUntil = 0
   /** Bumped by `expire()`, so a fetch begun before it can't store its older answer as fresh. */
   let generation = 0
 
@@ -58,18 +54,8 @@ export function createApiV2Cache() {
     const startedIn = generation
     pending = resolve()
       .then((result) => {
-        if (failed(result)) {
-          // Started before the breaker opened: already counted by its trip.
-          if (now < openUntil) return result
-          if (++failures >= FAILURES_TO_OPEN) {
-            openUntil = now + OPEN_MS
-            failures = 0
-            console.error(JSON.stringify({ event: 'api_v2_circuit_open', url }))
-          }
-          return result
-        }
-        failures = 0
-        if (startedIn !== generation) return result
+        breaker.record(failed(result), url, now)
+        if (failed(result) || startedIn !== generation) return result
         const maxAgeMs = seconds(result.cacheControl, /max-age=(\d+)/)
         const swrMs = seconds(
           result.cacheControl,
@@ -108,7 +94,7 @@ export function createApiV2Cache() {
     const entry = entries.get(url)
     const age = entry ? now - entry.storedAt : Infinity
     if (entry && age < entry.maxAgeMs) return entry.result
-    if (now < openUntil)
+    if (breaker.isOpen(now))
       return entry
         ? kept(entry.result)
         : { kind: 'miss', reason: 'circuit_open' }

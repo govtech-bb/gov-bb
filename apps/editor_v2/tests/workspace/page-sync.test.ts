@@ -9,15 +9,38 @@ import {
 } from "lexical";
 import { createHeadlessEditor } from "../../src/editor/core/create-editor";
 import { $setPageMetadata } from "../../src/pages/metadata";
-import { ApiFailure, type ApiPage, type SavePageInput } from "../../src/api/client";
+import {
+  createEditorApi,
+  type EditorApi,
+  type ApiPage,
+  type SavePageInput,
+} from "../../src/api/client";
+import { writeAttempt } from "../../src/api/write-attempt";
+import { writes, type ServerPageBaseline } from "../../src/api/writes";
 import type { Category } from "../../src/api/categories";
 import { pageToMarkdown } from "../../src/api/page-markdown";
 import { pageHasUnsavedChanges } from "../../src/workspace/page-session";
-import { savePageDraft } from "../../src/workspace/page-sync";
+import { preparePageSave } from "../../src/workspace/page-sync";
 import { DraftStore } from "../../src/persistence/draft-store";
 import { govbbPageCodec, govbbPageEditor } from "../../src/presets/govbb-page";
 
+async function savePreparedPage(
+  api: Pick<EditorApi, "savePage">,
+  base: ServerPageBaseline,
+  markdown: string,
+  categories: readonly Category[],
+) {
+  const prepared = preparePageSave(base, markdown, categories);
+
+  if (!prepared.ok) return prepared.outcome;
+
+  return writeAttempt(
+    writes.savePage({ ...createEditorApi("https://content.test"), ...api }),
+  ).press(() => prepared.request);
+}
+
 const page: ApiPage = {
+  version: 1,
   id: "page-1",
   url: "/money-financial-support/severance/how-it-is-worked-out",
   slug: "how-it-is-worked-out",
@@ -86,7 +109,7 @@ describe("saving a page", () => {
         try {
           editor.update(() => $setPageMetadata(details), { discrete: true });
 
-          const outcome = await savePageDraft(
+          const outcome = await savePreparedPage(
             {
               savePage: async (_id, fields) => {
                 sent.push(fields);
@@ -99,7 +122,7 @@ describe("saving a page", () => {
             [],
           );
 
-          expect(outcome.kind, JSON.stringify(body)).toBe("saved");
+          expect(outcome.kind, JSON.stringify(body)).toBe("landed");
           expect(sent, JSON.stringify(body)).toEqual([
             expect.objectContaining({ ...details, body_markdown: body }),
           ]);
@@ -120,7 +143,7 @@ describe("saving a page", () => {
     const sent: SavePageInput[] = [];
 
     const save = async () => {
-      const outcome = await savePageDraft(
+      const outcome = await savePreparedPage(
         {
           savePage: async (_id, fields) => {
             sent.push(fields);
@@ -133,8 +156,8 @@ describe("saving a page", () => {
         [],
       );
 
-      if (outcome.kind !== "saved") throw new Error("Expected the page to save");
-      base = outcome.base;
+      if (outcome.kind !== "landed") throw new Error("Expected the page to save");
+      base = outcome.answer.base;
 
       return base.page;
     };
@@ -183,39 +206,10 @@ describe("saving a page", () => {
     }
   });
 
-  it("saves the draft over the version it was edited from", async () => {
-    const sent: { fields: SavePageInput; ifUpdatedAt: string }[] = [];
-    const edited = markdown.replace("Hello", "Hello again");
-
-    const outcome = await savePageDraft(
-      {
-        savePage: async (_id, fields, ifUpdatedAt) => {
-          sent.push({ fields, ifUpdatedAt });
-
-          return { ...newer, body_markdown: fields.body_markdown };
-        },
-      },
-      base,
-      edited,
-      [],
-    );
-
-    expect(sent).toEqual([
-      {
-        fields: expect.objectContaining({ body_markdown: "Hello again" }),
-        ifUpdatedAt: page.updated_at,
-      },
-    ]);
-    expect(outcome).toEqual({
-      kind: "saved",
-      base: { page: { ...newer, body_markdown: "Hello again" }, markdown: edited },
-    });
-  });
-
   it("refuses to take a public page out of view along with other edits, which api_v2 would ignore", async () => {
     let called = false;
 
-    const outcome = await savePageDraft(
+    const outcome = await savePreparedPage(
       {
         savePage: async () => {
           called = true;
@@ -250,16 +244,22 @@ describe("saving a page", () => {
       url: "/business-trade",
       position: 0,
       services: 30,
+      version: 1,
       reserved_route: false,
       last_edited_by: null,
       updated_at: "2026-10-28T12:00:00.000Z",
     };
 
-    // A public root page with no category: its saved version fails "Choose a category"
-    const unfiled: ApiPage = { ...page, parent_id: null, category_id: null };
+    // The saved category is missing from the loaded list, so the baseline cannot be converted.
+    const unfiled: ApiPage = {
+      ...page,
+      parent_id: null,
+      category_id: "00000000-0000-4000-8000-000000000098",
+    };
+
     let called = false;
 
-    const outcome = await savePageDraft(
+    const outcome = await savePreparedPage(
       {
         savePage: async () => {
           called = true;
@@ -283,7 +283,7 @@ describe("saving a page", () => {
     const hidden: ApiPage = { ...page, visibility: "preview", updated_at: newer.updated_at };
     const sent = pageToMarkdown({ ...page, visibility: "preview" }, []);
 
-    const outcome = await savePageDraft(
+    const outcome = await savePreparedPage(
       { savePage: async () => ({ ...hidden, title: "As stored" }) },
       { page, markdown },
       sent,
@@ -291,10 +291,12 @@ describe("saving a page", () => {
     );
 
     expect(outcome).toEqual({
-      kind: "saved",
-      base: {
-        page: { ...hidden, title: "As stored" },
-        markdown: pageToMarkdown({ ...hidden, title: "As stored" }, []),
+      kind: "landed",
+      answer: {
+        base: {
+          page: { ...hidden, title: "As stored" },
+          markdown: pageToMarkdown({ ...hidden, title: "As stored" }, []),
+        },
       },
     });
   });
@@ -308,7 +310,7 @@ describe("saving a page", () => {
 
     const hidden: ApiPage = { ...page, visibility: "preview", updated_at: newer.updated_at };
 
-    const outcome = await savePageDraft(
+    const outcome = await savePreparedPage(
       { savePage: async () => hidden },
       { page: waiting, markdown: pageToMarkdown(waiting, []) },
       pageToMarkdown({ ...waiting, visibility: "preview" }, []),
@@ -316,16 +318,15 @@ describe("saving a page", () => {
     );
 
     expect(outcome).toEqual({
-      kind: "saved",
-      base: { page: hidden, markdown: pageToMarkdown(hidden, []) },
-      discarded: true,
+      kind: "landed",
+      answer: { base: { page: hidden, markdown: pageToMarkdown(hidden, []) }, discarded: true },
     });
   });
 
   it("sends nothing when the draft cannot be saved", async () => {
     let called = false;
 
-    const outcome = await savePageDraft(
+    const outcome = await savePreparedPage(
       {
         savePage: async () => {
           called = true;
@@ -343,38 +344,5 @@ describe("saving a page", () => {
       kind: "invalid",
       errors: [{ field: "title", message: "Enter a title" }],
     });
-  });
-
-  it.each([
-    [
-      new ApiFailure(422, [{ field: "url", message: "Taken" }]),
-      { kind: "invalid", errors: [{ field: "url", message: "Taken" }] },
-    ],
-    [new ApiFailure(409), { kind: "conflict" }],
-    [new ApiFailure(404), { kind: "missing" }],
-    [new ApiFailure(401), { kind: "signed-out" }],
-    [
-      new ApiFailure(403, [], "Only approvers can change who can see a page."),
-      { kind: "forbidden", message: "Only approvers can change who can see a page." },
-    ],
-    [
-      new ApiFailure(403),
-      { kind: "forbidden", message: "You don’t have permission to save this change." },
-    ],
-    [new ApiFailure(503), { kind: "failed" }],
-    [new ApiFailure(0), { kind: "failed" }],
-  ])("turns a %s refusal into what the editor does about it", async (failure, expected) => {
-    const outcome = await savePageDraft(
-      {
-        savePage: async () => {
-          throw failure;
-        },
-      },
-      base,
-      markdown,
-      [],
-    );
-
-    expect(outcome).toEqual(expected);
   });
 });

@@ -10,7 +10,7 @@ The builder was two sibling surfaces behind a two-card landing: `/builder/ui`
 (visual editor, client-side draft) and `/builder/ai` (a chat page backed by an
 in-process `Map<id, Session>` that replayed a growing message history). The only
 bridge was heavyweight — the AI page published its recipe to `form_definitions`,
-then re-opened it in the UI builder by `?formId=` (ADR 0011). Two costs: the
+then re-opened it in the UI builder by `?formId=` (ADR 0024). Two costs: the
 session map was lost on restart and unshareable across instances (#332), and
 editing an AI-generated form required a DB round trip even for an unsaved tweak.
 
@@ -63,7 +63,7 @@ switch and no DB round trip.
   `draftsEqual`).
 
 **Docs** — rewrote the AI sections of `apps/form_builder/SPEC.md` for the
-stateless/unified model; ADR 0022 records the principle and supersedes 0011.
+stateless/unified model; ADR 0041 records the principle and supersedes 0024.
 
 ## Why we did it that way
 

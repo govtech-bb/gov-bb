@@ -5,6 +5,7 @@ import {
   HISTORY_PUSH_TAG,
   $getSelection,
   $isRangeSelection,
+  $isDecoratorNode,
   $isElementNode,
   $isParagraphNode,
   $isRootNode,
@@ -13,7 +14,7 @@ import {
 } from "lexical";
 import { $isListItemNode, $isListNode } from "@lexical/list";
 import { $isQuoteNode } from "@lexical/rich-text";
-import type { ActionRequest, EditorAction } from "../editor/core/actions";
+import type { ActionRequest, EditorAction } from "@/editor";
 import { PageMetadataNode } from "./metadata";
 import { $hasTrait, PageComponentNode, type PageComponentKind } from "./blocks/node";
 
@@ -104,7 +105,7 @@ function $destination(target: LexicalNode, request: ActionRequest) {
 }
 
 /** Puts a new block where a request says it goes (see PagePlace), once what was typed to ask for it has gone. */
-export function $placePageBlock(block: ElementNode, target: LexicalNode, request: ActionRequest) {
+export function $placePageBlock(block: LexicalNode, target: LexicalNode, request: ActionRequest) {
   if (request.mode === "below" || request.mode === "above") {
     const beside = $rootBlock(target) ?? target;
 
@@ -113,7 +114,10 @@ export function $placePageBlock(block: ElementNode, target: LexicalNode, request
     else beside.insertAfter(block);
   } else if ($isElementNode(target) && !target.getTextContent())
     $liftLine(target, $leavable).replace(block);
-  else if ($isListItemNode(target)) target.append(block);
+  else if ($isListItemNode(target))
+    // A block of its own, such as Contact details, can't sit in a list item: it goes after the list
+    if ($isDecoratorNode(block)) ($rootBlock(target) ?? target).insertAfter(block);
+    else target.append(block);
   else target.insertAfter(block);
 }
 
@@ -131,7 +135,7 @@ const quotable = new Set([
 export function pageInsertAction(
   id: string,
   title: string,
-  create: () => ElementNode,
+  create: () => LexicalNode,
   {
     notInside = [],
     ...presentation
@@ -167,7 +171,8 @@ export function pageInsertAction(
       const node = create();
       $placePageBlock(node, target, request);
 
-      if (node.getType() === "page-rule") {
+      // A rule or a block of its own, such as Contact details, holds no text: writing goes on below it
+      if (node.getType() === "page-rule" || $isDecoratorNode(node)) {
         const paragraph = $createParagraphNode();
         node.insertAfter(paragraph);
         paragraph.select();

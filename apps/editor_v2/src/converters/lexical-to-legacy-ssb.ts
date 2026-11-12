@@ -1,11 +1,11 @@
 import type { EditorState, LexicalEditor } from "lexical";
 import type { FormEditorDefinition } from "../forms/definition";
-import type { FieldIssue } from "../forms/core/fields";
-import type { LegacySsbFormSchema } from "../forms/adapters/ssb/schema";
-import { UnavailableSsbOutput } from "../forms/adapters/ssb/diagnostics";
-import { compileForm } from "../forms/editor/compile";
-import { preflight } from "../forms/adapters/ssb/validation";
-import { legacyFieldAdapter } from "../forms/editor/legacy-mappings";
+import type { FieldIssue } from "../forms/model/fields";
+import type { LegacySsbFormSchema } from "../forms/formats/legacy-ssb/projection/schema";
+import { UnavailableSsbOutput } from "../forms/formats/legacy-ssb/projection/diagnostics";
+import { compileForm } from "../forms/canvas/form-compile";
+import { preflight } from "../forms/formats/legacy-ssb/projection/validation";
+import { legacyFieldAdapter } from "../forms/formats/legacy-ssb/legacy-mappings";
 
 type LegacySsbProjection = { schema: LegacySsbFormSchema | null; diagnostics: FieldIssue[] };
 

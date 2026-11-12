@@ -4,15 +4,20 @@ Each kind of component an author inserts into a page, such as a Notice or Highli
 
 ## What a block declares
 
-- **Kinds**: the components it's made of. Every component is a `PageComponentNode`, told apart by its kind, so saved pages keep one node type whichever blocks exist. A block adds its kinds to `PageComponentKinds` from its own file:
+- **Kinds and attributes**: the components it's made of, and the attributes they keep. Every component is a `PageComponentNode`, told apart by its kind, so saved pages keep one node type whichever blocks exist. A block adds its kinds to `PageComponentKinds`, and its attributes to `PageComponentAttributes`, from its own file:
 
   ```ts
   declare module "./node" {
     interface PageComponentKinds {
-      notice: true;
+      details: true;
+    }
+    interface PageComponentAttributes {
+      summary?: string;
     }
   }
   ```
+
+  Attributes are optional, as an author's settings may be incomplete until the Markdown is written. Blocks that keep the same attribute, as buttons and Start markers both keep `href`, declare it with the same type. Any attribute that holds text can be edited with `LabelSettings`.
 
   Each kind says how it behaves (`BlockKind` in `node.ts`): whether editing stays inside it (`shadowRoot`), whether it can be emptied and written in again (`canBeEmpty`), the label it shows on the editing surface (`decorate`), its `name` in hints, and the `traits` the shared editing asks about instead of knowing every kind: `button`, `buttons`, `holds-lines` and `leavable`.
 

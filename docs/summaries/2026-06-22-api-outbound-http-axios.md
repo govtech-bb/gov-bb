@@ -17,7 +17,7 @@ non-`ok`-throw logic. Issue [#1421](https://github.com/govtech-bb/gov-bb/issues/
 - Reworked both processor specs from `global.fetch` mocking to `HttpService`
   (rxjs `of`) mocking.
 - Convention recorded in
-  [ADR 0056](../decisions/0056-apps-api-outbound-http-standardizes-on-axios-httpservice.md).
+  [ADR 0094](../decisions/0094-apps-api-outbound-http-standardizes-on-axios-httpservice.md).
 
 ## Why we did it that way
 

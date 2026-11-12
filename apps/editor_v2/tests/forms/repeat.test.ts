@@ -11,8 +11,8 @@ import {
   $isParagraphNode,
   $isRangeSelection,
 } from "lexical";
-import { $insertBlocks } from "../../src/forms/editor/insertion";
-import { pageEntries } from "../../src/forms/features/pages/insertion";
+import { $insertBlocks } from "../../src/forms/canvas/form-insertion";
+import { pageEntries } from "../../src/forms/form-pages/form-page-insertion";
 import {
   compileForm,
   preflight,
@@ -20,9 +20,9 @@ import {
   type FormSchema,
 } from "../helpers/default-form";
 import { $legacyDemo as $demo } from "../helpers/legacy-demo";
-import { $pageButtons } from "../../src/forms/features/pages/buttons";
-import { $describe } from "../../src/forms/react/gutter";
-import { MentionNode } from "../../src/forms/features/mentions/node";
+import { $pageButtons } from "../../src/forms/form-pages/form-page-buttons";
+import { $describe } from "../../src/forms/canvas/form-gutter";
+import { MentionNode } from "../../src/forms/mentions/mention-node";
 import {
   $blockKind,
   $createFormTitleNode,
@@ -33,16 +33,16 @@ import {
   $isPageBreak,
   $pageType,
   $shareQuestionSettings,
-} from "../../src/forms/editor/nodes";
+} from "../../src/forms/canvas/form-nodes";
 import {
   $createInputNode,
   $createLongAnswerNode,
   $createOptionNode,
   $createWidgetNode,
-} from "../../src/forms/editor/answer-nodes";
-import { $setSettings, $settings } from "../../src/editor/core/document-state";
+} from "../../src/forms/canvas/answer-nodes";
+import { $setSettings, $settings } from "../../src/forms/canvas/block-state";
 import { formNodes } from "../helpers/default-form";
-import { type Setting } from "../../src/editor/core/settings";
+import type { Setting } from "../../src/forms/model/settings";
 import {
   $fieldArrayDrawingOf,
   $labelOf,
@@ -50,7 +50,7 @@ import {
   $pageRepeat,
   $questionBehaviours,
   $repeatEnd,
-} from "../../src/forms/features/repetition/queries";
+} from "../../src/forms/repetition/repetition-queries";
 import {
   autoAddAnother,
   autoQuestion,
@@ -66,8 +66,8 @@ import {
   repeatSummary,
   toSettings,
   withText,
-} from "../../src/forms/core/repetition";
-import { $pagePreview } from "../../src/forms/features/pages/queries";
+} from "../../src/forms/model/repetition";
+import { $pagePreview } from "../../src/forms/form-pages/form-page-queries";
 
 const newEditor = () =>
   createEditor({

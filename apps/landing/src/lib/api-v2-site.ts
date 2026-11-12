@@ -1,8 +1,8 @@
 import { createServerFn } from '@tanstack/react-start'
 import { z } from 'zod'
-import { readPublic } from './api-v2-categories'
 import { apiV2Base, landingToken } from './api-v2-page'
 import { logFallback } from './api-v2-log'
+import { readPublic } from './api-v2-reader'
 import { siteCache } from './api-v2-site-cache'
 
 /**
@@ -68,7 +68,7 @@ async function cachedList<T, U>(
       const result = await readPublic(base, path, schema, fetchImpl, token)
       if (result.kind === 'ok') return pick(result.value)
       // The route always exists; a 404 means api_v2 isn't serving it.
-      if (result.kind === 'missing')
+      if (result.reason === 'not_found')
         logFallback('status', path, { status: 404 })
       return siteCache.getQueryData<U[]>(queryKey) ?? []
     },

@@ -196,6 +196,16 @@ function categoryOf(
     return null;
   }
 
+  if (base.category_id === null) {
+    if (named != null || listed != null || subcategory != null)
+      errors.push({
+        field: "category",
+        message: "Remove the category; this is a site page",
+      });
+
+    return null;
+  }
+
   if (slugs.length !== 1) {
     errors.push({
       field: "category",

@@ -2,10 +2,10 @@ import { createHash } from "node:crypto";
 import type { LexicalEditor } from "lexical";
 import { createHeadlessEditor } from "../../src/editor/core/create-editor";
 import type { FormEditorDefinition } from "../../src/forms/definition";
-import type { Setting, Settings } from "../../src/forms/core/settings";
-import { remapKnownSettings } from "../../src/forms/core/references";
+import type { Setting, Settings } from "../../src/forms/model/settings";
+import { remapKnownSettings } from "../../src/forms/model/references";
 import { lexicalToLegacySsb } from "../../src/converters/lexical-to-legacy-ssb";
-import { $blockKind, $depth, $formBlocks, $settings } from "../../src/forms/editor/nodes";
+import { $blockKind, $depth, $formBlocks, $settings } from "../../src/forms/canvas/form-nodes";
 
 type Raw = { type: string; $?: { id?: string; settings?: Settings }; children?: Raw[] };
 

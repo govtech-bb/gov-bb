@@ -1,18 +1,13 @@
 import type { FastifyInstance, InjectOptions } from "fastify";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
-  CategoryStamp,
   EditorCategory,
   type CategoryId,
   type CategoryOrder,
 } from "./modules/category";
-import { PostgresPages } from "./adapters/postgres-pages";
-import { CategoryEditing } from "./services/category-editing";
 import {
   createTestApp,
   createTestDb,
-  expectOk,
-  TEST_EMPLOYEE,
   TEST_HEADERS,
   type TestDb,
 } from "./test-db";
@@ -54,22 +49,21 @@ const save = (row: EditorCategory, changes: object = {}) =>
     method: "PUT",
     url: `/editor/categories/${row.id}`,
     payload: {
+      expected_version: row.version,
       ...fields(row.slug, row.parent_id),
       title: row.title,
       description: row.description,
       ...changes,
     },
-    headers: { "if-updated-at": row.updated_at },
   });
 const remove = (row: EditorCategory) =>
   request({
     method: "DELETE",
-    url: `/editor/categories/${row.id}`,
-    headers: { "if-updated-at": row.updated_at },
+    url: `/editor/categories/${row.id}?expected_version=${row.version}`,
   });
 const orderBody = (rows: EditorCategory[]): CategoryOrder => ({
   parent_id: rows[0]?.parent_id ?? null,
-  expected: rows.map(({ id, updated_at }) => ({ id, updated_at })),
+  expected: rows.map(({ id, version }) => ({ id, version })),
   ordered_ids: rows.map((row) => row.id).reverse(),
 });
 const reorder = (rows: EditorCategory[]) =>
@@ -334,7 +328,11 @@ describe("serialized category and page writes", () => {
           : request({
               method: "PUT",
               url: `/pages/${existing.id}`,
-              payload: { ...existing, category_id: category.id },
+              payload: {
+                ...existing,
+                expected_version: existing.version,
+                category_id: category.id,
+              },
             });
       const [assigned, blocked] = await race(assign, () => remove(category));
       expect(assigned.statusCode).toBe(action === "create" ? 201 : 200);
@@ -373,7 +371,11 @@ describe("serialized category and page writes", () => {
     const category = await create("category");
     const occupying = (await page("/occupying", category.id)).json();
     const [deletedPage, deletedCategory] = await race(
-      () => request({ method: "DELETE", url: `/pages/${occupying.id}` }),
+      () =>
+        request({
+          method: "DELETE",
+          url: `/pages/${occupying.id}?expected_version=${occupying.version}`,
+        }),
       () => remove(category),
     );
     expect([deletedPage.statusCode, deletedCategory.statusCode]).toEqual([
@@ -402,7 +404,11 @@ describe("serialized category and page writes", () => {
         request({
           method: "PUT",
           url: `/pages/${existing.id}`,
-          payload: { ...existing, url: "/claimed" },
+          payload: {
+            ...existing,
+            expected_version: existing.version,
+            url: "/claimed",
+          },
         });
       const [first, second] = await race(
         categoryFirst ? moveCategory : movePage,
@@ -422,42 +428,5 @@ describe("serialized category and page writes", () => {
     expect(response.statusCode).toBe(500);
     expect(response.json()).toEqual({ error: "internal_error" });
     expect(await rows()).toEqual([a, b]);
-  });
-
-  it("persists strictly increasing stamps with a frozen clock and compares timezone-equivalent versions", async () => {
-    const editing = new CategoryEditing(
-      new PostgresPages(test.db),
-      () => new Date("2026-10-26T12:00:00.000Z"),
-    );
-    let category = expectOk(
-      await editing.create(fields("frozen"), TEST_EMPLOYEE),
-    );
-    for (let n = 0; n < 5; n++) {
-      const previous = category.updated_at;
-      category = expectOk(
-        // A real change each time: a save that changes nothing keeps its stamp.
-        await editing.update(
-          category.id,
-          { ...fields("frozen"), title: `Frozen ${n}` },
-          previous,
-          TEST_EMPLOYEE,
-        ),
-      );
-      expect(Date.parse(category.updated_at) - Date.parse(previous)).toBe(1);
-    }
-    const equivalent = CategoryStamp.parse(
-      category.updated_at.replace("12:00", "13:00").replace("Z", "+01:00"),
-    );
-    expect(
-      (
-        await editing.update(
-          category.id,
-          { ...fields("frozen"), title: "Frozen again" },
-          equivalent,
-          TEST_EMPLOYEE,
-        )
-      ).ok,
-    ).toBe(true);
-    expect((await rows())[0]?.updated_at).toBe("2026-10-26T12:00:00.006Z");
   });
 });

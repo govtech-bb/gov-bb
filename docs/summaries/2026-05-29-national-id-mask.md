@@ -38,7 +38,7 @@ reduced to supplying one piece of data:
 - **Mask on the component, not the recipes.** `hydrateForm` resolves refs
   server-side, so one edit covers all 18+ forms that ref
   `components/national-id-number`. Editing each recipe JSON would be redundant
-  and drift-prone. This follows ADR-0018 (registry is the sole home for builtin
+  and drift-prone. This follows ADR-0037 (registry is the sole home for builtin
   definitions). `mask` is a top-level property, so it survives even in recipes
   that override `validations` (e.g. `digital-media-training-programme-application`).
 - **Hard mask, not soft `maxLength` + error.** The issue title says "stop …

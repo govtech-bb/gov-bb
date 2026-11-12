@@ -220,7 +220,7 @@ async function resolveStoredRecipeSource(
       `/builder/forms/${encodeURIComponent(formId)}`,
     );
     if (draft) {
-      // ADR 0059: `meta.visibility` was written straight into the published
+      // ADR 0101: `meta.visibility` was written straight into the published
       // flat files (#1676) for the #1517 flagged forms, bypassing the builder
       // save flow — so their pre-existing DB scratch rows carry no `meta`.
       // When the working copy has none, hydrate it from the published recipe.

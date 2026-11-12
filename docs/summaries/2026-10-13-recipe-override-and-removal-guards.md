@@ -18,7 +18,7 @@ branches shipped in parallel:
 
 - **#2713:** `checkOverrideKeys` (form-types) runs in `validate-recipes` and
   the Deploy validator, and the 81 dead keys were deleted from 10 recipes.
-  The reasoning is in ADR 0077.
+  The reasoning is in ADR 0128.
 - **#2409 removal guard:** `validate-recipe-removals` compares changed
   recipes with their merge base and counts:
   - webhooks
@@ -41,7 +41,7 @@ branches shipped in parallel:
   `validations.fileTypes`, `readonly`, the homeschooling conditional) changes
   what citizens see, so those decisions go to the service owners in a
   follow-up issue.
-- **A guard over `.strict()`.** See ADR 0077. Wiring the guard into Deploy
+- **A guard over `.strict()`.** See ADR 0128. Wiring the guard into Deploy
   was first suspected to be dead code. It wasn't: the legacy Deploy sends
   the draft unparsed and serialises it verbatim, so a phantom key in a draft
   row would reach the committed file.

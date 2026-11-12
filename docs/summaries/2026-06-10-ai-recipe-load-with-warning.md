@@ -30,7 +30,7 @@ Resolved on `1051-ai-recipe-load-with-warning` (targets `sandbox`).
   hard-error, validate-request hard-error, no-op, declined-confirm, and
   Deploy-stays-blocked. Added `editRecipe` (+ upload trio) to the convert mock and
   made `findRecipeIdCollisions` swappable per test via a `mockCollisions` var.
-- Recorded the convention in ADR 0047.
+- Recorded the convention in ADR 0082.
 
 ## Why we did it that way
 
@@ -50,7 +50,7 @@ Resolved on `1051-ai-recipe-load-with-warning` (targets `sandbox`).
 - **`applied: true` on an invalid recipe is intentional** — the sidebar shows
   "Applied to the editor — not saved yet" and the author fixes it in place. The
   established principle (Deploy is the hard gate, #504) is generalised: load
-  surfaces permissive, publish/save surfaces strict (ADR 0047).
+  surfaces permissive, publish/save surfaces strict (ADR 0082).
 - **Test assertions matched the real panels.** The id-collision test asserts the
   always-on panel's heading ("Duplicate IDs must be fixed…") and its split
   `is used by 2 fields` text — not `formatCollisionIssues`' quoted string, which

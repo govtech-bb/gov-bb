@@ -41,11 +41,11 @@ expand-contract migration. This branch is **phase 1 (expand)**; it targets
   *shared sandbox API* (`pr-preview.yml`; there is no per-PR API), so a
   string-emitting frontend hit the still-numeric sandbox validation and every
   date part read as absent → "incomplete date" → 422.
-- **This is the ADR 0040 hazard** (a wire field flipped to an incompatible shape
+- **This is the ADR 0068 hazard** (a wire field flipped to an incompatible shape
   across a deploy boundary). The catch-22: no code on the branch can make the
   preview smoke green, because the shared API won't accept strings until *after*
   this merges and redeploys.
-- **Resolution: expand-contract (ADR 0043).** Phase 1 makes the API tolerant of
+- **Resolution: expand-contract (ADR 0076).** Phase 1 makes the API tolerant of
   both shapes and keeps the frontend numeric — so the preview smoke passes
   (numeric→numeric) and, once deployed, the sandbox API accepts string parts.
   Phase 2 (a follow-up branch, opened after sandbox runs the tolerant API)

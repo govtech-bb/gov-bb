@@ -443,7 +443,7 @@ describe("fieldValueSchema", () => {
 });
 
 describe("dateValueInputSchema", () => {
-  // Tolerant during the number→string migration (ADR 0043): both shapes parse.
+  // Tolerant during the number→string migration (ADR 0076): both shapes parse.
   it("accepts a full date object with string parts", () => {
     expect(
       dateValueInputSchema.safeParse({ day: "1", month: "6", year: "2024" })

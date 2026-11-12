@@ -11,7 +11,7 @@ import {
   type LexicalNode,
 } from "lexical";
 import { registerEditorHistory } from "../../src/editor/core/history";
-import { $setDepth, $setSettings, $settings } from "../../src/editor/core/document-state";
+import { $setDepth, $setSettings, $settings } from "../../src/forms/canvas/block-state";
 import {
   $blockZone,
   $canMovePage,
@@ -22,7 +22,7 @@ import {
   $moveBlocks,
   $pageQuestionCount,
   $removeBlocks,
-} from "../../src/forms/editor/structure/blocks";
+} from "../../src/forms/canvas/structure/structure-blocks";
 import {
   $createFormTitleNode,
   $createPageDescriptionNode,
@@ -34,14 +34,14 @@ import {
   $settingsHolder,
   $updateSettings,
   $wholePage,
-} from "../../src/forms/editor/nodes";
+} from "../../src/forms/canvas/form-nodes";
 import {
   $createInputNode,
   $createOptionNode,
   $createWidgetNode,
-} from "../../src/forms/editor/answer-nodes";
-import { MentionNode } from "../../src/forms/features/mentions/node";
-import { deletePageLabel } from "../../src/forms/react/page-menu";
+} from "../../src/forms/canvas/answer-nodes";
+import { MentionNode } from "../../src/forms/mentions/mention-node";
+import { deletePageLabel } from "../../src/forms/canvas/page-menu";
 
 const newEditor = () =>
   createEditor({

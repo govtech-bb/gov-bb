@@ -1,16 +1,19 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { useLayoutEffect, useRef, useState } from "react";
 import { ApiFailure, type EditorApi, type PageHistoryEntry } from "../api/client";
+import { apiMessage } from "../api/failure-messages";
 import { pageFieldLabel } from "../api/page-fields";
-import { historyQuery, pageQuery } from "../api/queries";
+import { historyQuery, pageQuery, rolesQuery } from "../api/queries";
 import { Button } from "../ui/button";
+import { ConfirmDialog } from "../ui/confirm-dialog";
 import { formatDayAndTime } from "../ui/dates";
 import { EmptyState } from "../ui/empty-state";
 import { LoadingState } from "../ui/loading-state";
 import { ScreenHeader } from "../ui/screen-header";
 import { TextLink } from "../ui/text-link";
-import { LoadFailure } from "./load-failure";
+import { toast } from "../ui/toast";
+import { listLoadView } from "./list-load-view";
 
 /** How many changes show at first, and how many more each Show older changes adds. */
 const SHOWN = 50;
@@ -21,13 +24,22 @@ const ACTIONS: Record<PageHistoryEntry["action"], string> = {
   updated: "Edited",
   published: "Made public",
   unpublished: "Taken out of public view",
-  reverted: "Reverted",
+  reverted: "Restored an earlier version",
   deleted: "Deleted",
   submitted: "Submitted for review",
   approved: "Approved and published",
   rejected: "Rejected",
   discarded: "Review closed when the page was taken out of public view",
 };
+
+/** Entries whose snapshot is the page itself, so a restore can bring it back (ADR 0135). */
+const VERSIONS = new Set<PageHistoryEntry["action"]>([
+  "created",
+  "updated",
+  "published",
+  "unpublished",
+  "reverted",
+]);
 
 /**
  * Whether an edit is the live write an approval let through: the API writes it in the approval's transaction, so
@@ -43,7 +55,10 @@ const appliesApproval = (entry: PageHistoryEntry, older: PageHistoryEntry | unde
 const byWhom = (entry: PageHistoryEntry) =>
   entry.actor === "system" ? "the system" : (entry.actor_name ?? "a former employee");
 
-/** Everything that happened to one page, newest first. Read-only: nothing here changes the page. */
+/**
+ * Everything that happened to one page, newest first. An editor can restore an earlier version, which saves it as a
+ * new change: nothing in the history is removed.
+ */
 export function HistoryScreen({
   api,
   pageId,
@@ -53,30 +68,63 @@ export function HistoryScreen({
   pageId: string;
   serviceId?: string;
 }) {
+  const client = useQueryClient();
   const history = useQuery(historyQuery(api, pageId));
   const page = useQuery(pageQuery(api, pageId));
-  const none = history.error instanceof ApiFailure && history.error.status === 404;
+  const editor = useQuery(rolesQuery(api)).data?.includes("editor") ?? false;
+  const load = listLoadView(history, "this page’s history");
   const entries = history.data;
   const [shown, setShown] = useState(SHOWN);
   const list = useRef<HTMLOListElement>(null);
+  const [restoring, setRestoring] = useState<PageHistoryEntry>();
+  // The page's current version is the newest one: restoring it would change nothing
+  const current = entries?.find((entry) => VERSIONS.has(entry.action))?.version_no;
+  const isPublic = page.data?.visibility === "public";
+  // The restore updates a change already sent for review, and it stays waiting
+  const awaitingReview = page.data?.pending_revision?.status === "submitted";
+
+  const restore = useMutation({
+    mutationFn: ({ versionNo, read }: { versionNo: number; read: number }) =>
+      api.restoreVersion(pageId, versionNo, read),
+    onSuccess: () => {
+      toast("Version restored", {
+        description: !isPublic
+          ? "It's saved as a new change at the top of the history."
+          : awaitingReview
+            ? "It's saved in the change that is waiting for review."
+            : "It's saved as a change to this page. Submit it for review to publish it.",
+      });
+      setRestoring(undefined);
+      void client.invalidateQueries({ queryKey: ["content"] });
+    },
+    onError: (error) => {
+      // The page moved on: read it and its history again, so trying again restores onto the current version
+      if (error instanceof ApiFailure && error.status === 409)
+        void client.invalidateQueries({ queryKey: ["content"] });
+    },
+  });
+
+  const back = serviceId ? (
+    <Link to="/services/$serviceId/$documentId" params={{ serviceId, documentId: pageId }} />
+  ) : page.data?.parent_id === null && page.data.category_id === null ? (
+    <Link to="/site-pages/$pageId" params={{ pageId }} />
+  ) : undefined;
 
   // Each Show older changes moves the focus to the first change it added: after the last, the button itself is gone
   useLayoutEffect(() => {
     if (shown > SHOWN) list.current?.querySelectorAll("li")[shown - SHOWN]?.focus();
   }, [shown]);
 
+  const restoredWhen = (entry: PageHistoryEntry) => {
+    const source = entries?.find((other) => other.version_no === entry.restored_from);
+
+    return source && `Restored the version from ${formatDayAndTime(source.occurred_at)}`;
+  };
+
   return (
     <>
-      {serviceId && (
-        <TextLink
-          className="mb-4 block w-fit"
-          render={
-            <Link
-              to="/services/$serviceId/$documentId"
-              params={{ serviceId, documentId: pageId }}
-            />
-          }
-        >
+      {back && (
+        <TextLink className="mb-4 block w-fit" render={back}>
           Back to the page
         </TextLink>
       )}
@@ -84,15 +132,11 @@ export function HistoryScreen({
         title={page.data ? `History: ${page.data.title}` : "Page history"}
         lead="Every change to this page and every review step, newest first, with who made it and when."
       />
-      {none ? (
+      {load.notices}
+      {load.state.kind === "blocked" && load.state.reason === "gone" ? (
         <EmptyState title="No history yet" description="Changes to this page will show here." />
-      ) : history.isError && !history.data ? (
-        <LoadFailure
-          noun="this page’s history"
-          error={history.error}
-          retrying={history.isFetching}
-          retry={() => void history.refetch()}
-        />
+      ) : load.state.kind === "blocked" ? (
+        load.failure
       ) : !entries ? (
         <LoadingState label="Loading the page’s history…" />
       ) : (
@@ -103,7 +147,8 @@ export function HistoryScreen({
                 <span className="font-semibold">
                   {appliesApproval(entry, entries[index + 1])
                     ? "Approved change published"
-                    : ACTIONS[entry.action]}{" "}
+                    : (entry.action === "reverted" && restoredWhen(entry)) ||
+                      ACTIONS[entry.action]}{" "}
                   by {byWhom(entry)}
                 </span>
                 <time dateTime={entry.occurred_at} className="text-14 text-muted tabular-nums">
@@ -117,6 +162,22 @@ export function HistoryScreen({
                 {entry.comment && (
                   <span className="text-14 wrap-break-word">Reason: {entry.comment}</span>
                 )}
+                {editor &&
+                  page.data &&
+                  VERSIONS.has(entry.action) &&
+                  entry.version_no !== current && (
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      className="mt-1 w-fit"
+                      onClick={() => {
+                        restore.reset();
+                        setRestoring(entry);
+                      }}
+                    >
+                      Restore this version
+                    </Button>
+                  )}
               </li>
             ))}
           </ol>
@@ -132,6 +193,36 @@ export function HistoryScreen({
           )}
         </>
       )}
+      <ConfirmDialog
+        open={restoring !== undefined}
+        onOpenChange={(open) => {
+          if (!open) setRestoring(undefined);
+        }}
+        title="Restore this version?"
+        description={
+          restoring &&
+          (isPublic
+            ? `The page as it was on ${formatDayAndTime(restoring.occurred_at)} is saved as a change to it. Citizens keep seeing the live page until an approver publishes the change. Nothing in the history is removed.`
+            : `The page goes back to how it was on ${formatDayAndTime(restoring.occurred_at)}. This is added to the history as a new change: nothing is removed. Who can see the page doesn't change.`)
+        }
+        confirmLabel="Restore version"
+        pendingLabel="Restoring…"
+        pending={restore.isPending}
+        variant="accent"
+        error={
+          restore.error &&
+          ((restore.error instanceof ApiFailure && apiMessage(restore.error)) ||
+            "The version couldn't be restored. Try again.")
+        }
+        onConfirm={() =>
+          restoring &&
+          page.data &&
+          restore.mutate({
+            versionNo: restoring.version_no,
+            read: page.data.version,
+          })
+        }
+      />
     </>
   );
 }

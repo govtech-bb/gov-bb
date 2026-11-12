@@ -25,8 +25,8 @@ import {
   type HeadingTagType,
 } from "@lexical/rich-text";
 import { $createLinkNode, $isLinkNode } from "@lexical/link";
-import { TextModule } from "../../editor/modules/text/module";
-import { lineHint } from "../../editor/react/block-dom";
+import { TextModule } from "@/editor/modules";
+import { lineHint } from "@/editor/react";
 import { isSafeContentUrl } from "@govtech-bb/govbbmarkd/content-url";
 import { isHtmlBreak } from "@govtech-bb/govbbmarkd/legacy";
 import type { MarkdownNode, PageHandler, PageModule } from "../definition";

@@ -1,4 +1,14 @@
-import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
+import { assert, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
+import {
+  createRootRoute,
+  createRoute,
+  createRouter,
+  isRedirect,
+} from '@tanstack/react-router'
+import {
+  createRequestHandler,
+  defaultStreamHandler,
+} from '@tanstack/react-router/ssr/server'
 import type { ContentPage } from '../content/registry'
 import type { ViewLevel } from '../lib/frontmatter'
 import type * as CategoryApiModule from '../lib/api-v2-categories'
@@ -56,6 +66,14 @@ const v2Mocks = vi.hoisted(() => ({
 vi.mock('../lib/api-v2-page', async (importOriginal) => ({
   ...(await importOriginal<object>()),
   ...v2Mocks,
+}))
+
+const contactMocks = vi.hoisted(() => ({
+  getContactRecords: vi.fn(),
+}))
+vi.mock('../lib/api-v2-collections', async (importOriginal) => ({
+  ...(await importOriginal<object>()),
+  ...contactMocks,
 }))
 
 const categoryMocks = vi.hoisted(() => ({
@@ -318,10 +336,46 @@ describe('$ route loader gating', () => {
       applicationClosed: false,
       level: 'public',
       startSubPageVisible: true,
+      contactRecords: {},
       source: 'static',
     })
     expect((data as { page?: unknown }).page).toBeUndefined()
     expect(mocks.isVisible).toHaveBeenCalledWith(fakePage, 'draft', new Map())
+    // No `::contact` block, so no collection is read
+    expect(contactMocks.getContactRecords).not.toHaveBeenCalled()
+  })
+
+  it('reads the records its contact blocks name at request time (#3185)', async () => {
+    const records = { contacts: { collection: {}, records: {} } }
+    contactMocks.getContactRecords.mockResolvedValue(records)
+    mocks.findPage.mockReturnValue({
+      ...fakePage,
+      hast: {
+        type: 'root',
+        children: [
+          {
+            type: 'element',
+            tagName: 'contact-record',
+            properties: {
+              collection: 'contacts',
+              record: 'barbados-drug-service',
+            },
+            children: [],
+          },
+        ],
+      },
+    })
+    mocks.isVisible.mockReturnValue(true)
+
+    const loader = Route.options.loader as (a: unknown) => Promise<unknown>
+    const data = await loader({
+      params: { _splat: 'secret-service' },
+      context: { level: 'public', serviceStatuses: [], categoryTree: STATIC },
+    })
+    expect(contactMocks.getContactRecords).toHaveBeenCalledWith({
+      data: [{ collection: 'contacts', record: 'barbados-drug-service' }],
+    })
+    expect(data).toMatchObject({ kind: 'page', contactRecords: records })
   })
 
   it('flags a page whose form is under maintenance', async () => {
@@ -618,11 +672,47 @@ describe('$ route api_v2 pages (#2944)', () => {
       params: { _splat: 'work-employment/old-service' },
       context: { level: 'public', serviceStatuses: [], categoryTree: STATIC },
     }).catch((e: unknown) => e)
-    const opts = (err as { options?: { href?: string; statusCode?: number } })
-      .options
-    expect(opts?.href).toBe('/work-employment/new-service')
-    expect(opts?.statusCode).toBe(301)
+    assert(isRedirect(err))
+    expect(err.headers.get('Location')).toBe('/work-employment/new-service')
+    expect(err.status).toBe(301)
+    expect(err.headers.get('Cache-Control')).toBe('no-store')
   })
+
+  it.each(['public', 'preview'] as const)(
+    'keeps no-store on the final %s SSR redirect response',
+    async (level) => {
+      v2Mocks.getApiV2Page.mockResolvedValue({
+        kind: 'redirect',
+        to: '/new-service',
+        cacheControl: 'public, max-age=60',
+      })
+      const loader = Route.options.loader as (a: unknown) => Promise<unknown>
+      const root = createRootRoute({
+        headers: () => ({ 'Cache-Control': 'public, max-age=3600' }),
+      })
+      const content = createRoute({
+        getParentRoute: () => root,
+        path: '$',
+        loader: ({ params }) =>
+          loader({
+            params,
+            context: { level, serviceStatuses: [], categoryTree: STATIC },
+          }),
+      })
+      const response = await createRequestHandler({
+        request: new Request('http://localhost/old-service'),
+        createRouter: () =>
+          createRouter({ routeTree: root.addChildren([content]) }),
+      })(defaultStreamHandler)
+      try {
+        expect(response.status).toBe(301)
+        expect(response.headers.get('Location')).toBe('/new-service')
+        expect(response.headers.get('Cache-Control')).toBe('no-store')
+      } finally {
+        await response.body?.cancel()
+      }
+    },
+  )
 
   it('hides the /start step when api_v2 says so', async () => {
     const data = await load({ ...v2Page, hideStartLinks: true })
@@ -815,7 +905,7 @@ describe('form route beforeLoad gating', () => {
 
 // The real loader and category resolver run against a stubbed listing response.
 // scripts/check-api-v2-categories.mjs covers the built RPC wiring.
-describe('$ route loader in api_v2 category mode (ADR 0078)', () => {
+describe('$ route loader in api_v2 category mode (ADR 0132)', () => {
   const ref = (url: string, title: string) => ({
     slug: url.split('/').at(-1) ?? '',
     url,

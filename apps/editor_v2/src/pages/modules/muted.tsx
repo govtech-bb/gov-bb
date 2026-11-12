@@ -12,9 +12,8 @@ import {
   type SerializedParagraphNode,
 } from "lexical";
 import type { Paragraph } from "mdast";
-import { TextColourMenu, type TextColours } from "../../editor/modules/formatting/colour-menu";
-import { SELECTION_TOOLBAR } from "../../editor/modules/formatting/toolbar";
-import { defineSlot } from "../../editor/react/contributions";
+import { SELECTION_TOOLBAR, TextColourMenu, type TextColours } from "@/editor/modules";
+import { defineSlot } from "@/editor/react";
 import type { PageHandler, PageModule } from "../definition";
 import { phrasing, UnsupportedPageContent } from "../markdown";
 import "./muted.css";

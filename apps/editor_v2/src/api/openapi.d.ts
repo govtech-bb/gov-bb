@@ -11,7 +11,7 @@ export interface paths {
         };
         /**
          * Get a public page by its url
-         * @description The site's read. A page is served only when it and every page above it (by `parent_id`) are visible: public, or preview too with the preview token. `hide_start_links` is set when the page's `start` sub-page is not. A bare `/<slug>` with no page of its own redirects (301) to the one visible page with that slug.
+         * @description The site's read. A page is served only when it and every page above it (by `parent_id`) are visible: public, or preview too with the preview token. `hide_start_links` is set when the page's `start` sub-page is not. A stored public redirect takes precedence over a page at its source, including Draft/Preview replacements, and returns 301 with its stored Location and redirect body. Rules persist when the destination is hidden or deleted; following one still applies normal page visibility. With neither a rule nor an exact page, a bare `/<slug>` redirects (301) to the one visible page with that slug.
          */
         get: {
             parameters: {
@@ -234,9 +234,10 @@ export interface paths {
                             created_at: string;
                             /**
                              * Format: date-time
-                             * @description Millisecond precision, and exactly the value to send back in `if-updated-at` on the next save.
+                             * @description Content timestamp at millisecond precision; use version for write preconditions.
                              */
                             updated_at: string;
+                            version: number;
                             /** @description The actor of the entity's highest version_no change_event, including page review steps. Null when there is no event. Pending-revision saves are not recorded, so this is not necessarily the author of the working copy or its updated_at. */
                             last_edited_by: {
                                 /** @description The event's actor id, or `system`. */
@@ -700,7 +701,7 @@ export interface paths {
                                 };
                                 /**
                                  * Format: date-time
-                                 * @description Send it back in `if-updated-at` to save or delete this version.
+                                 * @description Content timestamp; authenticated editors use version for write preconditions.
                                  */
                                 updated_at: string;
                             }[];
@@ -837,7 +838,7 @@ export interface paths {
         };
         /**
          * Every visible page
-         * @description Sub-pages included, `start` steps not, A to Z: for the sitemap and service lists.
+         * @description Sub-pages included, `start` steps not, A to Z: for the sitemap and service lists. Each page carries its category, subcategory, form (else its `start` step's) and visibility, so it doubles as the public service index.
          */
         get: {
             parameters: {
@@ -862,6 +863,16 @@ export interface paths {
                                 /** @description It has a form, or its frontmatter says it is digital. */
                                 digital: boolean;
                                 stage: string | null;
+                                /** @description The last segment of `url`. */
+                                slug: string;
+                                /** @description The top-level category's slug, or null when uncategorised. */
+                                category: string | null;
+                                /** @description The subcategory's slug, or null when the page has none. */
+                                subcategory: string | null;
+                                /** @description The page's form, else its `start` step's when the viewer can see it. */
+                                form_id: string | null;
+                                /** @enum {string} */
+                                visibility: "public" | "preview" | "draft";
                             }[];
                         };
                     };
@@ -1049,9 +1060,10 @@ export interface paths {
                             created_at: string;
                             /**
                              * Format: date-time
-                             * @description Millisecond precision, and exactly the value to send back in `if-updated-at` on the next save.
+                             * @description Content timestamp at millisecond precision; use version for write preconditions.
                              */
                             updated_at: string;
+                            version: number;
                             /** @description The actor of the entity's highest version_no change_event, including page review steps. Null when there is no event. Pending-revision saves are not recorded, so this is not necessarily the author of the working copy or its updated_at. */
                             last_edited_by: {
                                 /** @description The event's actor id, or `system`. */
@@ -1157,15 +1169,12 @@ export interface paths {
         };
         /**
          * Save a page
-         * @description Requires an employee session, the editor's Origin header and the editor role (403 otherwise). Send every field: a save replaces the page and defaults none, except that leaving `parent_id` out keeps the page's parent. Send the `updated_at` you last read in the `if-updated-at` header. If the stored row, or the page's pending revision, has moved on since, the save is refused with a 409 rather than silently discarding whoever wrote first. Changing `url` moves this page alone: its sub-pages keep their urls and stay beneath it by `parent_id`, and nothing redirects from the old url. Changing `visibility` needs the approver role (403 otherwise). Making a page public is refused (403) to an approver who changed its content since it was last public, in this save or before: another approver makes it public. A save that keeps a `public` page public, whoever sends it, goes into the page's pending revision: citizens keep seeing the live page until an approver publishes it. An approver's save that takes a `public` page out of public view changes only its `visibility`: the other fields sent are ignored, the live content stays, and the page's open revision is discarded: a draft is dropped, and one waiting for review is closed as `discarded`, which the page's history records. A save to a page whose revision is waiting for review updates that revision, which stays waiting; the saver joins its `contributors`, so may not approve it. Such a save needs `if-updated-at` (428 without it). Returns the page as the editor now works on it.
+         * @description Requires an employee session, the editor's Origin header and the editor role (403 otherwise). Send every field: a save replaces the page and defaults none, except that leaving `parent_id` out keeps the page's parent. Send the page version you last read as `expected_version`. If the stored row, or the page's pending revision, has moved on since, the save is refused with a 409 rather than silently discarding whoever wrote first. Changing `url` moves this page alone: its sub-pages keep their urls and stay beneath it by `parent_id`, and nothing redirects from the old url. Changing `visibility` needs the approver role (403 otherwise). Making a page public is refused (403) to an approver who changed its content since it was last public, in this save or before: another approver makes it public. A save that keeps a `public` page public, whoever sends it, goes into the page's pending revision: citizens keep seeing the live page until an approver publishes it. An approver's save that takes a `public` page out of public view changes only its `visibility`: the other fields sent are ignored, the live content stays, and the page's open revision is discarded: a draft is dropped, and one waiting for review is closed as `discarded`, which the page's history records. A save to a page whose revision is waiting for review updates that revision, which stays waiting; the saver joins its `contributors`, so may not approve it. A stale version receives 409 `version_conflict`. Returns the page as the editor now works on it.
          */
         put: {
             parameters: {
                 query?: never;
-                header?: {
-                    /** @description The `updated_at` this client last read. Omit to accept whatever is stored. */
-                    "if-updated-at"?: string;
-                };
+                header?: never;
                 path: {
                     id: string;
                 };
@@ -1196,6 +1205,7 @@ export interface paths {
                             keywords?: string[];
                             source_url?: string;
                         };
+                        expected_version: number;
                     };
                 };
             };
@@ -1242,9 +1252,10 @@ export interface paths {
                             created_at: string;
                             /**
                              * Format: date-time
-                             * @description Millisecond precision, and exactly the value to send back in `if-updated-at` on the next save.
+                             * @description Content timestamp at millisecond precision; use version for write preconditions.
                              */
                             updated_at: string;
+                            version: number;
                             /** @description The actor of the entity's highest version_no change_event, including page review steps. Null when there is no event. Pending-revision saves are not recorded, so this is not necessarily the author of the working copy or its updated_at. */
                             last_edited_by: {
                                 /** @description The event's actor id, or `system`. */
@@ -1326,7 +1337,7 @@ export interface paths {
                     content: {
                         "application/json": {
                             /** @enum {string} */
-                            error: "conflict";
+                            error: "version_conflict";
                             message: string;
                             /** Format: uuid */
                             documentId: string;
@@ -1349,20 +1360,6 @@ export interface paths {
                                 field: string;
                                 message: string;
                             }[];
-                        } & {
-                            [key: string]: unknown;
-                        };
-                    };
-                };
-                /** @description Default Response */
-                428: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            error: string;
-                            message?: string;
                         } & {
                             [key: string]: unknown;
                         };
@@ -1401,11 +1398,13 @@ export interface paths {
         post?: never;
         /**
          * Delete a page
-         * @description Requires an employee session, the editor's Origin header and the editor role (403 otherwise). A page with sub-pages is refused (422) until they are moved or deleted. Deleting a `public` page needs the approver role (403 otherwise). Its pending revision goes with it.
+         * @description Requires an employee session, the editor's Origin header and the editor role (403 otherwise). A page with sub-pages is refused (422) until they are moved or deleted. Deleting a `public` page needs the approver role (403 otherwise). Its pending revision goes with it. Send `expected_version` in the query string: stale is 409 `version_conflict`, and absent is 404.
          */
         delete: {
             parameters: {
-                query?: never;
+                query: {
+                    expected_version: string;
+                };
                 header?: never;
                 path: {
                     id: string;
@@ -1458,6 +1457,37 @@ export interface paths {
                         "application/json": {
                             error: string;
                             message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @enum {string} */
+                            error: "version_conflict";
+                            message: string;
+                            /** Format: uuid */
+                            documentId: string;
                         } & {
                             [key: string]: unknown;
                         };
@@ -1526,7 +1556,7 @@ export interface paths {
         };
         /**
          * Get a page's history
-         * @description What happened to the page, newest first, from `change_events`: each change to the live page with the fields it changed, and each review step, with who did it and when. Read-only: nothing restores an entry. 404 when the page has no history.
+         * @description What happened to the page, newest first, from `change_events`: each change to the live page with the fields it changed, and each review step, with who did it and when. A restore adds a `reverted` entry naming the version it restored in `restored_from`; it never removes one. 404 when the page has no history.
          */
         get: {
             parameters: {
@@ -1560,6 +1590,8 @@ export interface paths {
                                 changed: ("url" | "category_id" | "parent_id" | "title" | "description" | "visibility" | "form_id" | "body_markdown" | "frontmatter")[];
                                 /** @description Why an approver rejected the change; null for any other entry. */
                                 comment: string | null;
+                                /** @description For a `reverted` entry, the version it restored; null for any other. */
+                                restored_from: number | null;
                             }[];
                         };
                     };
@@ -1741,9 +1773,10 @@ export interface paths {
                             created_at: string;
                             /**
                              * Format: date-time
-                             * @description Moves when its content is saved, not when it is submitted or rejected. Send it in `if-updated-at` to act on this version.
+                             * @description Revision content timestamp; use the enclosing page version for write preconditions.
                              */
                             updated_at: string;
+                            version: number;
                             /** @description The fields whose proposed value differs from the live page's, in field order. Empty when the revision matches the live page. */
                             changes: {
                                 /** @enum {string} */
@@ -1913,6 +1946,111 @@ export interface paths {
                             message?: string;
                         } & {
                             [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/editor/site-pages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List site pages
+         * @description Uncategorised root pages, ordered by title, in every visibility. Uses stored live metadata, not pending revisions. Requires an employee session.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Default Response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            pages: {
+                                /** Format: uuid */
+                                id: string;
+                                title: string;
+                                /** @description The site's routing key. */
+                                url: string;
+                                /** @enum {string} */
+                                visibility: "public" | "preview" | "draft";
+                            }[];
                         };
                     };
                 };
@@ -2394,6 +2532,7 @@ export interface paths {
                                 /** Format: uuid */
                                 parent_id: string | null;
                                 description: string | null;
+                                version: number;
                                 /** Format: uuid */
                                 id: string;
                                 url: string;
@@ -2507,6 +2646,7 @@ export interface paths {
                             /** Format: uuid */
                             parent_id: string | null;
                             description: string | null;
+                            version: number;
                             /** Format: uuid */
                             id: string;
                             url: string;
@@ -2637,9 +2777,7 @@ export interface paths {
         put: {
             parameters: {
                 query?: never;
-                header: {
-                    "if-updated-at": string;
-                };
+                header?: never;
                 path: {
                     id: string;
                 };
@@ -2653,6 +2791,7 @@ export interface paths {
                         /** Format: uuid */
                         parent_id: string | null;
                         description: string | null;
+                        expected_version: number;
                     };
                 };
             };
@@ -2669,6 +2808,7 @@ export interface paths {
                             /** Format: uuid */
                             parent_id: string | null;
                             description: string | null;
+                            version: number;
                             /** Format: uuid */
                             id: string;
                             url: string;
@@ -2751,7 +2891,7 @@ export interface paths {
                     content: {
                         "application/json": {
                             /** @enum {string} */
-                            error: "conflict";
+                            error: "version_conflict";
                             message: string;
                         };
                     };
@@ -2812,10 +2952,10 @@ export interface paths {
          */
         delete: {
             parameters: {
-                query?: never;
-                header: {
-                    "if-updated-at": string;
+                query: {
+                    expected_version: string;
                 };
+                header?: never;
                 path: {
                     id: string;
                 };
@@ -2894,7 +3034,7 @@ export interface paths {
                     content: {
                         "application/json": {
                             /** @enum {string} */
-                            error: "conflict";
+                            error: "version_conflict";
                             message: string;
                         } | {
                             /** @enum {string} */
@@ -2970,8 +3110,7 @@ export interface paths {
                         expected: {
                             /** Format: uuid */
                             id: string;
-                            /** Format: date-time */
-                            updated_at: string;
+                            version: number;
                         }[];
                         ordered_ids: string[];
                     };
@@ -2991,6 +3130,7 @@ export interface paths {
                                 /** Format: uuid */
                                 parent_id: string | null;
                                 description: string | null;
+                                version: number;
                                 /** Format: uuid */
                                 id: string;
                                 url: string;
@@ -3060,7 +3200,7 @@ export interface paths {
                     content: {
                         "application/json": {
                             /** @enum {string} */
-                            error: "conflict";
+                            error: "version_conflict";
                             message: string;
                         };
                     };
@@ -3242,18 +3382,162 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /** A record and its definition from one editor snapshot */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    key: string;
+                    recordKey: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Default Response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            collection: {
+                                key: string;
+                                title: string;
+                                /** @description The field whose value is each record's `record_key`. */
+                                record_key: string;
+                                schema: {
+                                    fields: {
+                                        key: string;
+                                        label: string;
+                                        /** @enum {string} */
+                                        type: "text" | "slug" | "email";
+                                    }[];
+                                };
+                                schema_version: number;
+                                /** Format: date-time */
+                                updated_at: string;
+                            };
+                            record: {
+                                record_key: string;
+                                data: {
+                                    [key: string]: string;
+                                };
+                                /**
+                                 * Format: date-time
+                                 * @description Content timestamp; authenticated editors use version for write preconditions.
+                                 */
+                                updated_at: string;
+                                version: number;
+                            };
+                        };
+                    };
+                };
+                /** @description Default Response */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": ({
+                            /** @enum {string} */
+                            error: "validation_failed";
+                            message: string;
+                            errors: {
+                                field: string;
+                                message: string;
+                            }[];
+                        } & {
+                            [key: string]: unknown;
+                        }) | ({
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        });
+                    };
+                };
+                /** @description Default Response */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+        };
         /**
          * Replace a record's data
-         * @description Needs the editor role (403 otherwise). Send every field to keep: the record becomes `data`. Checked as a create is. Send the `updated_at` you last read in `if-updated-at`; if the record has changed since, the save is refused with a 409 `conflict`. 404 when there is no such collection or record.
+         * @description Needs the editor role (403 otherwise). Send every field to keep: the record becomes `data`. Checked as a create is. Send the record's `expected_version`; stale is 409 `version_conflict`. 404 when there is no such collection or record.
          */
         put: {
             parameters: {
                 query?: never;
-                header?: {
-                    /** @description The `updated_at` this client last read. Omit to accept whatever is stored. */
-                    "if-updated-at"?: string;
-                };
+                header?: never;
                 path: {
                     key: string;
                     recordKey: string;
@@ -3267,6 +3551,7 @@ export interface paths {
                         data: {
                             [key: string]: unknown;
                         };
+                        expected_version: number;
                     };
                 };
             };
@@ -3278,15 +3563,35 @@ export interface paths {
                     };
                     content: {
                         "application/json": {
-                            record_key: string;
-                            data: {
-                                [key: string]: string;
+                            collection: {
+                                key: string;
+                                title: string;
+                                /** @description The field whose value is each record's `record_key`. */
+                                record_key: string;
+                                schema: {
+                                    fields: {
+                                        key: string;
+                                        label: string;
+                                        /** @enum {string} */
+                                        type: "text" | "slug" | "email";
+                                    }[];
+                                };
+                                schema_version: number;
+                                /** Format: date-time */
+                                updated_at: string;
                             };
-                            /**
-                             * Format: date-time
-                             * @description Send it back in `if-updated-at` to save or delete this version.
-                             */
-                            updated_at: string;
+                            record: {
+                                record_key: string;
+                                data: {
+                                    [key: string]: string;
+                                };
+                                /**
+                                 * Format: date-time
+                                 * @description Content timestamp; authenticated editors use version for write preconditions.
+                                 */
+                                updated_at: string;
+                                version: number;
+                            };
                         };
                     };
                 };
@@ -3364,7 +3669,7 @@ export interface paths {
                     content: {
                         "application/json": {
                             /** @enum {string} */
-                            error: "conflict" | "record_exists";
+                            error: "version_conflict" | "record_exists";
                             message: string;
                         };
                     };
@@ -3437,9 +3742,10 @@ export interface paths {
                             };
                             /**
                              * Format: date-time
-                             * @description Send it back in `if-updated-at` to save or delete this version.
+                             * @description Content timestamp; authenticated editors use version for write preconditions.
                              */
                             updated_at: string;
+                            version: number;
                         };
                     };
                 };
@@ -3517,7 +3823,7 @@ export interface paths {
                     content: {
                         "application/json": {
                             /** @enum {string} */
-                            error: "conflict" | "record_exists";
+                            error: "version_conflict" | "record_exists";
                             message: string;
                         };
                     };
@@ -3554,15 +3860,14 @@ export interface paths {
         };
         /**
          * Delete a record
-         * @description Needs the editor role (403 otherwise). With `if-updated-at`, a record that has changed since is refused with a 409 `conflict`. 404 when there is no such collection or record.
+         * @description Needs the editor role (403 otherwise). Send the record `expected_version` in the query: stale is 409 `version_conflict`. 404 when there is no such collection or record.
          */
         delete: {
             parameters: {
-                query?: never;
-                header?: {
-                    /** @description The `updated_at` this client last read. Omit to accept whatever is stored. */
-                    "if-updated-at"?: string;
+                query: {
+                    expected_version: string;
                 };
+                header?: never;
                 path: {
                     key: string;
                     recordKey: string;
@@ -3652,7 +3957,7 @@ export interface paths {
                     content: {
                         "application/json": {
                             /** @enum {string} */
-                            error: "conflict" | "record_exists";
+                            error: "version_conflict" | "record_exists";
                             message: string;
                         };
                     };
@@ -4194,7 +4499,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/pages/{id}/revision/submit": {
+    "/pages/{id}/history/{version}/restore": {
         parameters: {
             query?: never;
             header?: never;
@@ -4204,471 +4509,26 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Submit a page's draft revision for review
-         * @description Needs the editor role (403 otherwise). Records the submitter, who may not then approve it. 404 when the page has no draft revision; 409 `under_review` when it is already submitted, or `conflict` when the draft has been saved since `if-updated-at`. Saves made while it waits update it, and it keeps waiting. A rejected revision can be submitted again as it is: it is copied into a new submitted revision with the same `updated_at`, and the rejected one keeps its comment. The copy's `contributors` gain the rejected round's submitter, who may not approve it either.
+         * Restore a version from a page's history
+         * @description Requires an employee session, the editor's Origin header and the editor role (403 otherwise). Saves the page's fields as history entry `version` left them over the page as it stands now, keeping its current `visibility`, so the restore is a new change and every earlier entry stays (ADR 0135). It is a save in every other way: a page that isn't `public` is written, and its history gains a `reverted` entry with `restored_from`; a `public` page's restore goes into its pending revision, to be submitted and approved like any other change. Send the page version you last read as `expected_version`: a page changed since is a 409 `version_conflict`. 404 when there is no such page or version; 409 `not_restorable` for a review step, a deletion, a redacted entry or one recorded before the page's current fields. Returns the page as the editor now works on it.
          */
         post: {
             parameters: {
                 query?: never;
-                header?: {
-                    /** @description The `updated_at` this client last read for the revision. Omit to accept whatever is stored. */
-                    "if-updated-at"?: string;
-                };
+                header?: never;
                 path: {
                     id: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Default Response */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            /** Format: uuid */
-                            id: string;
-                            /** Format: uuid */
-                            page_id: string;
-                            /** @enum {string} */
-                            status: "draft" | "submitted" | "rejected" | "published" | "discarded";
-                            /** @description The page as the change would make it. */
-                            fields: {
-                                /** @description The site's routing key. */
-                                url: string;
-                                /** Format: uuid */
-                                category_id: string | null;
-                                /**
-                                 * Format: uuid
-                                 * @description The page this one sits beneath, in the same category; null for a page at the root of its category, which is what the category lists.
-                                 */
-                                parent_id: string | null;
-                                title: string;
-                                description: string | null;
-                                /** @enum {string} */
-                                visibility: "public" | "preview" | "draft";
-                                form_id: string | null;
-                                body_markdown: string;
-                                frontmatter: {
-                                    lede?: string;
-                                    stage?: string;
-                                    service_type?: string;
-                                    keywords?: string[];
-                                    source_url?: string;
-                                };
-                            };
-                            /**
-                             * Format: date-time
-                             * @description The live page's `updated_at` this revision was last saved over.
-                             */
-                            live_updated_at: string;
-                            /** @description The user id of whoever started it. */
-                            created_by: string;
-                            /** @description The user id of everyone who saved to it, and of whoever submitted an earlier, rejected round of it; none of them may approve it. */
-                            contributors: string[];
-                            /** @description The user id of whoever submitted it for review. */
-                            submitted_by: string | null;
-                            /** Format: date-time */
-                            submitted_at: string | null;
-                            /** @description The user id of the approver who rejected or published it. */
-                            decided_by: string | null;
-                            /** Format: date-time */
-                            decided_at: string | null;
-                            /** @description Why the approver rejected it. */
-                            comment: string | null;
-                            /** Format: date-time */
-                            created_at: string;
-                            /**
-                             * Format: date-time
-                             * @description Moves when its content is saved, not when it is submitted or rejected. Send it in `if-updated-at` to act on this version.
-                             */
-                            updated_at: string;
-                            /** @description The fields whose proposed value differs from the live page's, in field order. Empty when the revision matches the live page. */
-                            changes: {
-                                /** @enum {string} */
-                                field: "url" | "category_id" | "parent_id" | "title" | "description" | "visibility" | "form_id" | "body_markdown" | "frontmatter";
-                                live: unknown;
-                                proposed: unknown;
-                            }[];
-                        };
-                    };
-                };
-                /** @description Default Response */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            error: string;
-                            message?: string;
-                        } & {
-                            [key: string]: unknown;
-                        };
-                    };
-                };
-                /** @description Default Response */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            error: string;
-                            message?: string;
-                        } & {
-                            [key: string]: unknown;
-                        };
-                    };
-                };
-                /** @description Default Response */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            error: string;
-                            message?: string;
-                        } & {
-                            [key: string]: unknown;
-                        };
-                    };
-                };
-                /** @description Default Response */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            error: string;
-                            message?: string;
-                        } & {
-                            [key: string]: unknown;
-                        };
-                    };
-                };
-                /** @description Default Response */
-                409: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": ({
-                            /** @enum {string} */
-                            error: "conflict";
-                            message: string;
-                            /** Format: uuid */
-                            documentId: string;
-                        } & {
-                            [key: string]: unknown;
-                        }) | {
-                            /** @enum {string} */
-                            error: "under_review" | "not_submitted";
-                            message: string;
-                        };
-                    };
-                };
-                /** @description Default Response */
-                500: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            error: string;
-                            message?: string;
-                        } & {
-                            [key: string]: unknown;
-                        };
-                    };
-                };
-                /** @description Default Response */
-                503: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            error: string;
-                            message?: string;
-                        } & {
-                            [key: string]: unknown;
-                        };
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/pages/{id}/revision/reject": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Reject a submitted revision with a comment
-         * @description Needs the approver role, and the approver must not have changed or submitted the revision (403 otherwise). The live page is unchanged; the revision is kept with the comment, and the next save starts a new draft from it. Rejecting moves the revision's `updated_at`, so an editor holding the earlier one reloads and sees why. `if-updated-at` is required (428 without it). 404 when nothing is waiting for review; 409 `not_submitted` for a draft, or `conflict` when the revision is no longer the version in `if-updated-at`.
-         */
-        post: {
-            parameters: {
-                query?: never;
-                header?: {
-                    /** @description Required: the revision's `updated_at` the approver reviewed. Without it the decision is refused with a 428. */
-                    "if-updated-at"?: string;
-                };
-                path: {
-                    id: string;
+                    version: number;
                 };
                 cookie?: never;
             };
             requestBody: {
                 content: {
                     "application/json": {
-                        /** @description Why, for the editor. */
-                        comment: string;
+                        expected_version: number;
                     };
                 };
             };
-            responses: {
-                /** @description Default Response */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            /** Format: uuid */
-                            id: string;
-                            /** Format: uuid */
-                            page_id: string;
-                            /** @enum {string} */
-                            status: "draft" | "submitted" | "rejected" | "published" | "discarded";
-                            /** @description The page as the change would make it. */
-                            fields: {
-                                /** @description The site's routing key. */
-                                url: string;
-                                /** Format: uuid */
-                                category_id: string | null;
-                                /**
-                                 * Format: uuid
-                                 * @description The page this one sits beneath, in the same category; null for a page at the root of its category, which is what the category lists.
-                                 */
-                                parent_id: string | null;
-                                title: string;
-                                description: string | null;
-                                /** @enum {string} */
-                                visibility: "public" | "preview" | "draft";
-                                form_id: string | null;
-                                body_markdown: string;
-                                frontmatter: {
-                                    lede?: string;
-                                    stage?: string;
-                                    service_type?: string;
-                                    keywords?: string[];
-                                    source_url?: string;
-                                };
-                            };
-                            /**
-                             * Format: date-time
-                             * @description The live page's `updated_at` this revision was last saved over.
-                             */
-                            live_updated_at: string;
-                            /** @description The user id of whoever started it. */
-                            created_by: string;
-                            /** @description The user id of everyone who saved to it, and of whoever submitted an earlier, rejected round of it; none of them may approve it. */
-                            contributors: string[];
-                            /** @description The user id of whoever submitted it for review. */
-                            submitted_by: string | null;
-                            /** Format: date-time */
-                            submitted_at: string | null;
-                            /** @description The user id of the approver who rejected or published it. */
-                            decided_by: string | null;
-                            /** Format: date-time */
-                            decided_at: string | null;
-                            /** @description Why the approver rejected it. */
-                            comment: string | null;
-                            /** Format: date-time */
-                            created_at: string;
-                            /**
-                             * Format: date-time
-                             * @description Moves when its content is saved, not when it is submitted or rejected. Send it in `if-updated-at` to act on this version.
-                             */
-                            updated_at: string;
-                            /** @description The fields whose proposed value differs from the live page's, in field order. Empty when the revision matches the live page. */
-                            changes: {
-                                /** @enum {string} */
-                                field: "url" | "category_id" | "parent_id" | "title" | "description" | "visibility" | "form_id" | "body_markdown" | "frontmatter";
-                                live: unknown;
-                                proposed: unknown;
-                            }[];
-                        };
-                    };
-                };
-                /** @description Default Response */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            error: string;
-                            message?: string;
-                        } & {
-                            [key: string]: unknown;
-                        };
-                    };
-                };
-                /** @description Default Response */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            error: string;
-                            message?: string;
-                        } & {
-                            [key: string]: unknown;
-                        };
-                    };
-                };
-                /** @description Default Response */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            error: string;
-                            message?: string;
-                        } & {
-                            [key: string]: unknown;
-                        };
-                    };
-                };
-                /** @description Default Response */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            error: string;
-                            message?: string;
-                        } & {
-                            [key: string]: unknown;
-                        };
-                    };
-                };
-                /** @description Default Response */
-                409: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": ({
-                            /** @enum {string} */
-                            error: "conflict";
-                            message: string;
-                            /** Format: uuid */
-                            documentId: string;
-                        } & {
-                            [key: string]: unknown;
-                        }) | {
-                            /** @enum {string} */
-                            error: "under_review" | "not_submitted";
-                            message: string;
-                        };
-                    };
-                };
-                /** @description Default Response */
-                428: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            error: string;
-                            message?: string;
-                        } & {
-                            [key: string]: unknown;
-                        };
-                    };
-                };
-                /** @description Default Response */
-                500: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            error: string;
-                            message?: string;
-                        } & {
-                            [key: string]: unknown;
-                        };
-                    };
-                };
-                /** @description Default Response */
-                503: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            error: string;
-                            message?: string;
-                        } & {
-                            [key: string]: unknown;
-                        };
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/pages/{id}/revision/publish": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Approve a submitted revision and publish it
-         * @description Needs the approver role, and the approver must not have changed or submitted the revision (403 otherwise). Writes the revision to the live page as a save would, re-indexes it and records the approver in `change_events`, all in one transaction. A revision that has gone stale while it waited (its parent or category gone, or its url taken) is refused with a 422 naming the field, and nothing changes. `if-updated-at` is required (428 without it). 404 when nothing is waiting for review; 409 `not_submitted` for a draft, or `conflict` when the revision is no longer the version in `if-updated-at`. Returns the page as it now stands.
-         */
-        post: {
-            parameters: {
-                query?: never;
-                header?: {
-                    /** @description Required: the revision's `updated_at` the approver reviewed. Without it the decision is refused with a 428. */
-                    "if-updated-at"?: string;
-                };
-                path: {
-                    id: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
             responses: {
                 /** @description Default Response */
                 200: {
@@ -4712,9 +4572,10 @@ export interface paths {
                             created_at: string;
                             /**
                              * Format: date-time
-                             * @description Millisecond precision, and exactly the value to send back in `if-updated-at` on the next save.
+                             * @description Content timestamp at millisecond precision; use version for write preconditions.
                              */
                             updated_at: string;
+                            version: number;
                             /** @description The actor of the entity's highest version_no change_event, including page review steps. Null when there is no event. Pending-revision saves are not recorded, so this is not necessarily the author of the working copy or its updated_at. */
                             last_edited_by: {
                                 /** @description The event's actor id, or `system`. */
@@ -4796,7 +4657,670 @@ export interface paths {
                     content: {
                         "application/json": ({
                             /** @enum {string} */
-                            error: "conflict";
+                            error: "version_conflict";
+                            message: string;
+                            /** Format: uuid */
+                            documentId: string;
+                        } & {
+                            [key: string]: unknown;
+                        }) | {
+                            /** @enum {string} */
+                            error: "not_restorable";
+                            message: string;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @enum {string} */
+                            error: "validation_failed";
+                            message?: string;
+                            errors: {
+                                field: string;
+                                message: string;
+                            }[];
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pages/{id}/revision/submit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Submit a page's draft revision for review
+         * @description Needs the editor role (403 otherwise). Records the submitter, who may not then approve it. 404 when the page has no draft revision; 409 `under_review` when it is already submitted, or `version_conflict` when the required page `expected_version` is stale. Saves made while it waits update it, and it keeps waiting. A rejected revision can be submitted again as it is: it is copied into a new submitted revision with the same `updated_at`, and the rejected one keeps its comment. The copy's `contributors` gain the rejected round's submitter, who may not approve it either.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        expected_version: number;
+                    };
+                };
+            };
+            responses: {
+                /** @description Default Response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** Format: uuid */
+                            id: string;
+                            /** Format: uuid */
+                            page_id: string;
+                            /** @enum {string} */
+                            status: "draft" | "submitted" | "rejected" | "published" | "discarded";
+                            /** @description The page as the change would make it. */
+                            fields: {
+                                /** @description The site's routing key. */
+                                url: string;
+                                /** Format: uuid */
+                                category_id: string | null;
+                                /**
+                                 * Format: uuid
+                                 * @description The page this one sits beneath, in the same category; null for a page at the root of its category, which is what the category lists.
+                                 */
+                                parent_id: string | null;
+                                title: string;
+                                description: string | null;
+                                /** @enum {string} */
+                                visibility: "public" | "preview" | "draft";
+                                form_id: string | null;
+                                body_markdown: string;
+                                frontmatter: {
+                                    lede?: string;
+                                    stage?: string;
+                                    service_type?: string;
+                                    keywords?: string[];
+                                    source_url?: string;
+                                };
+                            };
+                            /**
+                             * Format: date-time
+                             * @description The live page's `updated_at` this revision was last saved over.
+                             */
+                            live_updated_at: string;
+                            /** @description The user id of whoever started it. */
+                            created_by: string;
+                            /** @description The user id of everyone who saved to it, and of whoever submitted an earlier, rejected round of it; none of them may approve it. */
+                            contributors: string[];
+                            /** @description The user id of whoever submitted it for review. */
+                            submitted_by: string | null;
+                            /** Format: date-time */
+                            submitted_at: string | null;
+                            /** @description The user id of the approver who rejected or published it. */
+                            decided_by: string | null;
+                            /** Format: date-time */
+                            decided_at: string | null;
+                            /** @description Why the approver rejected it. */
+                            comment: string | null;
+                            /** Format: date-time */
+                            created_at: string;
+                            /**
+                             * Format: date-time
+                             * @description Revision content timestamp; use the enclosing page version for write preconditions.
+                             */
+                            updated_at: string;
+                            version: number;
+                            /** @description The fields whose proposed value differs from the live page's, in field order. Empty when the revision matches the live page. */
+                            changes: {
+                                /** @enum {string} */
+                                field: "url" | "category_id" | "parent_id" | "title" | "description" | "visibility" | "form_id" | "body_markdown" | "frontmatter";
+                                live: unknown;
+                                proposed: unknown;
+                            }[];
+                        };
+                    };
+                };
+                /** @description Default Response */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": ({
+                            /** @enum {string} */
+                            error: "version_conflict";
+                            message: string;
+                            /** Format: uuid */
+                            documentId: string;
+                        } & {
+                            [key: string]: unknown;
+                        }) | {
+                            /** @enum {string} */
+                            error: "under_review" | "not_submitted";
+                            message: string;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pages/{id}/revision/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reject a submitted revision with a comment
+         * @description Needs the approver role, and the approver must not have changed or submitted the revision (403 otherwise). The live page is unchanged; the revision is kept with the comment, and the next save starts a new draft from it. Rejecting moves the page version, so an editor holding the earlier one reloads and sees why. The page `expected_version` is required. 404 when nothing is waiting for review; 409 `not_submitted` for a draft, or `version_conflict` when the page is no longer the version reviewed.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        expected_version: number;
+                        /** @description Why, for the editor. */
+                        comment: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Default Response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** Format: uuid */
+                            id: string;
+                            /** Format: uuid */
+                            page_id: string;
+                            /** @enum {string} */
+                            status: "draft" | "submitted" | "rejected" | "published" | "discarded";
+                            /** @description The page as the change would make it. */
+                            fields: {
+                                /** @description The site's routing key. */
+                                url: string;
+                                /** Format: uuid */
+                                category_id: string | null;
+                                /**
+                                 * Format: uuid
+                                 * @description The page this one sits beneath, in the same category; null for a page at the root of its category, which is what the category lists.
+                                 */
+                                parent_id: string | null;
+                                title: string;
+                                description: string | null;
+                                /** @enum {string} */
+                                visibility: "public" | "preview" | "draft";
+                                form_id: string | null;
+                                body_markdown: string;
+                                frontmatter: {
+                                    lede?: string;
+                                    stage?: string;
+                                    service_type?: string;
+                                    keywords?: string[];
+                                    source_url?: string;
+                                };
+                            };
+                            /**
+                             * Format: date-time
+                             * @description The live page's `updated_at` this revision was last saved over.
+                             */
+                            live_updated_at: string;
+                            /** @description The user id of whoever started it. */
+                            created_by: string;
+                            /** @description The user id of everyone who saved to it, and of whoever submitted an earlier, rejected round of it; none of them may approve it. */
+                            contributors: string[];
+                            /** @description The user id of whoever submitted it for review. */
+                            submitted_by: string | null;
+                            /** Format: date-time */
+                            submitted_at: string | null;
+                            /** @description The user id of the approver who rejected or published it. */
+                            decided_by: string | null;
+                            /** Format: date-time */
+                            decided_at: string | null;
+                            /** @description Why the approver rejected it. */
+                            comment: string | null;
+                            /** Format: date-time */
+                            created_at: string;
+                            /**
+                             * Format: date-time
+                             * @description Revision content timestamp; use the enclosing page version for write preconditions.
+                             */
+                            updated_at: string;
+                            version: number;
+                            /** @description The fields whose proposed value differs from the live page's, in field order. Empty when the revision matches the live page. */
+                            changes: {
+                                /** @enum {string} */
+                                field: "url" | "category_id" | "parent_id" | "title" | "description" | "visibility" | "form_id" | "body_markdown" | "frontmatter";
+                                live: unknown;
+                                proposed: unknown;
+                            }[];
+                        };
+                    };
+                };
+                /** @description Default Response */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": ({
+                            /** @enum {string} */
+                            error: "version_conflict";
+                            message: string;
+                            /** Format: uuid */
+                            documentId: string;
+                        } & {
+                            [key: string]: unknown;
+                        }) | {
+                            /** @enum {string} */
+                            error: "under_review" | "not_submitted";
+                            message: string;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pages/{id}/revision/publish": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Approve a submitted revision and publish it
+         * @description Needs the approver role, and the approver must not have changed or submitted the revision (403 otherwise). Writes the revision to the live page as a save would, re-indexes it and records the approver in `change_events`, all in one transaction. A revision that has gone stale while it waited (its parent or category gone, or its url taken) is refused with a 422 naming the field, and nothing changes. The page `expected_version` is required. 404 when nothing is waiting for review; 409 `not_submitted` for a draft, or `version_conflict` when the page is no longer the version reviewed. Returns the page as it now stands.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        expected_version: number;
+                    };
+                };
+            };
+            responses: {
+                /** @description Default Response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @description The site's routing key. */
+                            url: string;
+                            /** Format: uuid */
+                            category_id: string | null;
+                            /**
+                             * Format: uuid
+                             * @description The page this one sits beneath, in the same category; null for a page at the root of its category, which is what the category lists.
+                             */
+                            parent_id: string | null;
+                            title: string;
+                            description: string | null;
+                            /** @enum {string} */
+                            visibility: "public" | "preview" | "draft";
+                            form_id: string | null;
+                            body_markdown: string;
+                            frontmatter: {
+                                lede?: string;
+                                stage?: string;
+                                service_type?: string;
+                                keywords?: string[];
+                                source_url?: string;
+                            };
+                            /** Format: uuid */
+                            id: string;
+                            /** @description The url's last segment. */
+                            slug: string;
+                            /**
+                             * Format: date-time
+                             * @description Landing's `publish_date` for an imported page, else when the page first went public; null until it has one.
+                             */
+                            published_at: string | null;
+                            /** Format: date-time */
+                            created_at: string;
+                            /**
+                             * Format: date-time
+                             * @description Content timestamp at millisecond precision; use version for write preconditions.
+                             */
+                            updated_at: string;
+                            version: number;
+                            /** @description The actor of the entity's highest version_no change_event, including page review steps. Null when there is no event. Pending-revision saves are not recorded, so this is not necessarily the author of the working copy or its updated_at. */
+                            last_edited_by: {
+                                /** @description The event's actor id, or `system`. */
+                                id: string;
+                                /** @description Their name, or null when unavailable; `System` for system events. */
+                                name: string | null;
+                            } | null;
+                            /** @description Set when the page is public and has a change waiting for an approver, or a rejected one that has not been replaced. The fields and `updated_at` are then the revision's, and citizens still see the live page. */
+                            pending_revision: {
+                                /** @enum {string} */
+                                status: "draft" | "submitted" | "rejected";
+                                /** @description Why an approver rejected it; null unless rejected. */
+                                comment: string | null;
+                            } | null;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": ({
+                            /** @enum {string} */
+                            error: "version_conflict";
                             message: string;
                             /** Format: uuid */
                             documentId: string;
@@ -4823,20 +5347,6 @@ export interface paths {
                                 field: string;
                                 message: string;
                             }[];
-                        } & {
-                            [key: string]: unknown;
-                        };
-                    };
-                };
-                /** @description Default Response */
-                428: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            error: string;
-                            message?: string;
                         } & {
                             [key: string]: unknown;
                         };

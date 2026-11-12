@@ -1,6 +1,6 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { useLayoutEffect, useRef, useState, type RefObject } from "react";
+import { useEffectEvent, useLayoutEffect, useRef, useState, type RefObject } from "react";
 import {
   addressLock,
   categoryFieldLabel,
@@ -9,14 +9,16 @@ import {
   categorySlug,
   categoryUrl,
   deleteBlocker,
-  holdsFields,
   siblingsOf,
   type Category,
   type CategoryBlockers,
   type CategoryFields,
   type CategoryProblem,
 } from "../api/categories";
-import type { CategoryRefusal, EditorApi } from "../api/client";
+import type { EditorApi } from "../api/client";
+import type { Outcome } from "../api/write-attempt";
+import { writes } from "../api/writes";
+import { useWrite } from "./use-write";
 import { Button } from "../ui/button";
 import { ConfirmDialog } from "../ui/confirm-dialog";
 import { Dialog } from "../ui/dialog";
@@ -27,32 +29,8 @@ import { NativeSelect } from "../ui/native-select";
 import { Textarea } from "../ui/textarea";
 import { toast } from "../ui/toast";
 import { ApiProblems, ApiProblemText } from "./api-problems";
-
-/**
- * Where a category change stands once it has been sent, short of done: refused for a reason the author can act on,
- * changed or deleted by someone else since the dialog opened, or sent without an answer, so the list is read again to
- * find out whether it took before it may be sent again. Checks read directly, outside the shared query's request,
- * cancellation and retry lifecycle.
- */
-type Attempt =
-  | { readonly _tag: "Refused"; readonly error: CategoryRefusal }
-  | { readonly _tag: "Superseded" }
-  | { readonly _tag: "Gone" }
-  | { readonly _tag: "Saving" }
-  | { readonly _tag: "Checking" }
-  | { readonly _tag: "Unclear" }
-  | { readonly _tag: "Unconfirmed" };
-
-const CHECKING: Attempt = { _tag: "Checking" };
-
-const UNCLEAR: Attempt = { _tag: "Unclear" };
-
-/** Every content read again: page settings, Create service and the Services list file under categories too. */
-function useContentChanged() {
-  const client = useQueryClient();
-
-  return () => void client.invalidateQueries({ queryKey: ["content"] });
-}
+import { ContentDiff } from "./review-screens";
+import { download } from "../host/download";
 
 const plural = (count: number, one: string, many: string) => `${count} ${count === 1 ? one : many}`;
 
@@ -71,76 +49,42 @@ function blockerText(title: string, blockers: CategoryBlockers) {
   return `${title} still has ${uses.join(" and ") || "something filed under it"}. Move ${one ? "it" : "them"} to another category first.`;
 }
 
-/** Why a category change was refused, in words an author can act on; field reasons show on their fields instead. */
-function refusalMessages(error: CategoryRefusal, otherwise: string) {
-  switch (error._tag) {
-    case "CategoryAccessDenied":
-      return [
-        error.status === 401
-          ? "Your session has ended. Sign in again, then try again."
-          : "You do not have access to change categories.",
-      ];
-    case "CategoryRejected":
-      return error.errors
+/** The dialog keeps its category wording; field reasons stay on their fields. */
+function attemptMessages(outcome: Outcome<unknown> | undefined, otherwise: string, noun: string) {
+  switch (outcome?.kind) {
+    case undefined:
+    case "landed":
+      return [];
+    case "signed-out":
+      return ["Your session has ended. Sign in again, then try again."];
+    case "forbidden":
+      return ["You do not have access to change categories."];
+    case "invalid":
+      return outcome.errors
         .filter((item) => !FIELDS.has(item.field))
         .map((item) => `${categoryFieldLabel(item.field)}: ${item.message}`);
-    case "CategoryInUse":
-    case "CategoryConflict":
-    case "CategoryNotFound":
-    case "CategoryRefused":
-      // The content API's own words, unless it gave none
+    case "conflict":
       return [
-        error.status === 400 || error.status >= 500 || !error.message ? otherwise : error.message,
+        `Someone changed this ${noun} after you opened it. Copy your changes or discard them and reload.`,
       ];
-    default: {
-      const unexpected: never = error;
-
-      return unexpected;
-    }
-  }
-}
-
-/** What the dialog says about an attempt that didn't finish, and what its main button does next. */
-function attemptMessages(attempt: Attempt | undefined, otherwise: string, noun: string) {
-  switch (attempt?._tag) {
-    case undefined:
-    case "Saving":
-    case "Checking":
-      return [];
-    case "Refused":
-      return refusalMessages(attempt.error, otherwise);
-    case "Superseded":
-      return [
-        `Someone changed this ${noun} after you opened it. Load their version, then try again: what you typed stays.`,
-      ];
-    case "Gone":
+    case "missing":
       return [
         `This ${noun} has been deleted since you opened it. What you typed stays here, so you can copy it.`,
       ];
-    case "Unclear":
+    case "unknown":
       return [
         "We couldn’t tell whether that went through. Check your connection, then check again before you try again.",
       ];
-    case "Unconfirmed":
-      return [
-        "We couldn’t find that change in the categories yet. It may still arrive, so check the list before you try again.",
-      ];
-    default: {
-      const unexpected: never = attempt;
-
-      return unexpected;
-    }
+    case "refused":
+      return [outcome.message || otherwise];
   }
 }
 
 // The fields the dialog has, where a refusal of one of them shows
 const FIELDS = new Set(["title", "slug", "parent_id", "description"]);
 
-// The refused fields the dialog shows on the fields themselves
-const refusedFields = (attempt: Attempt | undefined) =>
-  attempt?._tag === "Refused" && attempt.error._tag === "CategoryRejected"
-    ? attempt.error.errors.filter((item) => FIELDS.has(item.field))
-    : [];
+const refusedFields = (outcome: Outcome<unknown> | undefined) =>
+  outcome?.kind === "invalid" ? outcome.errors.filter((item) => FIELDS.has(item.field)) : [];
 
 const addWords = {
   title: "Add a category",
@@ -184,10 +128,10 @@ export function CategoryDialog({
   categories: readonly Category[];
   onClose: () => void;
 }) {
-  const contentChanged = useContentChanged();
-  const words = category ? editWords : addWords;
+  const client = useQueryClient();
   // The version this edit saves over: the one the dialog opened with until the author loads a newer one
   const [base, setBase] = useState(category);
+  const words = base ? editWords : addWords;
   const [title, setTitle] = useState(category?.title ?? "");
   const [slug, setSlug] = useState(category?.slug);
   const [parentId, setParentId] = useState(category?.parent_id ?? "");
@@ -196,9 +140,15 @@ export function CategoryDialog({
   // What the fields held when last checked: a field's problem, the dialog's or the API's, is about that value, so it
   // goes once the author changes the field
   const [checked, setChecked] = useState<CategoryFields>();
-  const [attempt, setAttempt] = useState<Attempt>();
-  // What was last sent, to recognise it in the list when its answer was lost
-  const sent = useRef<CategoryFields>(undefined);
+  const save = useWrite(api, base ? writes.saveCategory : writes.createCategory);
+  const [reading, setReading] = useState(false);
+  const [reloadMissing, setReloadMissing] = useState(false);
+  const outcome = reloadMissing ? { kind: "missing" as const } : save.outcome;
+  // Only a UI snapshot: the attempt owns the request used for every retry.
+  const submitted = useRef<string>(undefined);
+  const gate = useRef(false);
+  const [latest, setLatest] = useState<Category>();
+  const currentFields = useRef<CategoryFields>(undefined);
   const titleControl = useRef<HTMLInputElement>(null);
   const slugControl = useRef<HTMLInputElement>(null);
   const parentControl = useRef<HTMLSelectElement>(null);
@@ -210,82 +160,87 @@ export function CategoryDialog({
     description: description.trim() ? description : null,
   };
 
+  currentFields.current = fields;
+
   // Only a top-level category can be a parent
   const parents = siblingsOf(categories, null).filter((item) => item.id !== base?.id);
   const parent = categories.find((item) => item.id === parentId);
   const locked = base && addressLock(base, categories);
-  const deletedMeanwhile = !!base && !categories.some((item) => item.id === base.id);
-  const working = attempt?._tag === "Saving" || attempt?._tag === "Checking";
+  const working = reading || save.state === "sending" || save.state === "checking";
+  const unsettled = save.state === "unsettled";
 
-  const done = () => {
-    contentChanged();
-    toast(words.done);
-    onClose();
-  };
+  // The refreshed list is only a read-only comparison, never a write token or confirmation.
+  const compared =
+    latest ??
+    (unsettled
+      ? categories.find((item) => (base ? item.id === base.id : item.slug === checked?.slug))
+      : undefined);
 
-  // A save whose answer was lost: done if the list now holds what was sent, else it may be sent again
-  const reconcile = async () => {
-    const values = sent.current;
+  // A newly created row may not be in the shared list yet.
+  const deletedMeanwhile =
+    !!base &&
+    !working &&
+    !unsettled &&
+    outcome?.kind !== "landed" &&
+    !categories.some((item) => item.id === base.id);
 
-    if (!values) return;
-    setAttempt(CHECKING);
-    const result = await api.categories();
+  const saved = useEffectEvent((result: Outcome<Category>) => {
+    if (result.kind === "landed") {
+      setBase(result.answer);
 
-    if (!result.ok) return setAttempt(UNCLEAR);
-
-    const saved = base
-      ? result.value.find((item) => item.id === base.id)
-      : result.value.find((item) => item.slug === values.slug);
-
-    if (saved && holdsFields(saved, values)) return done();
-    contentChanged();
-
-    if (base && !saved) return setAttempt({ _tag: "Gone" });
-
-    // Someone else's version, where this one was saved over
-    if (base && saved && saved.updated_at !== base.updated_at)
-      return setAttempt({ _tag: "Superseded" });
-    setAttempt({ _tag: "Unconfirmed" });
-  };
-
-  const save = async (values: CategoryFields) => {
-    sent.current = values;
-    setAttempt({ _tag: "Saving" });
-
-    const result = base
-      ? await api.updateCategory(base.id, values, base.updated_at)
-      : await api.createCategory(values);
-
-    if (result.ok) return done();
-
-    switch (result.error._tag) {
-      case "CategoryOutcomeUnknown":
-        return reconcile();
-      case "CategoryConflict":
-        return setAttempt({ _tag: "Superseded" });
-      case "CategoryNotFound":
-        return setAttempt({ _tag: "Gone" });
-      default:
-        return setAttempt({ _tag: "Refused", error: result.error });
+      if (JSON.stringify(currentFields.current) === submitted.current) {
+        toast(words.done);
+        onClose();
+      }
+    } else if (result.kind === "conflict") {
+      void client.invalidateQueries({ queryKey: ["content"] });
+      void api.categories().then((result) => {
+        if (result.ok) setLatest(result.value.find((item) => item.id === base?.id));
+      });
     }
-  };
+  });
 
-  // Takes the newer version to save over, keeping what the author typed
+  // Adopt the landed baseline before paint, without replacing later typing.
+  useLayoutEffect(() => {
+    if (save.outcome) saved(save.outcome);
+  }, [save.outcome]);
+
+  // Once the list has the row, subsequent removals must show the normal deletion notice.
+  useLayoutEffect(() => {
+    const result = save.outcome;
+
+    if (result?.kind === "landed" && categories.some((item) => item.id === result.answer.id))
+      save.forget();
+  }, [categories, save.outcome]);
+
+  // Replace fields and baseline together only after a successful read with no newer typing.
   const loadLatest = async () => {
-    setAttempt(CHECKING);
+    if (gate.current || working) return;
+    gate.current = true;
+    const before = JSON.stringify(currentFields.current);
+    setReading(true);
     const result = await api.categories();
 
-    if (!result.ok) return setAttempt(UNCLEAR);
-    contentChanged();
+    gate.current = false;
+    setReading(false);
+
+    if (!result.ok || JSON.stringify(currentFields.current) !== before) return;
+    void client.invalidateQueries({ queryKey: ["content"] });
     const latest = result.value.find((item) => item.id === base?.id);
 
-    if (!latest) return setAttempt({ _tag: "Gone" });
+    if (!latest) return setReloadMissing(true);
     setBase(latest);
-    setAttempt(undefined);
+    setTitle(latest.title);
+    setSlug(latest.slug);
+    setParentId(latest.parent_id ?? "");
+    setDescription(latest.description ?? "");
+    setLatest(undefined);
+    setReloadMissing(false);
+    save.forget();
   };
 
   // A field the API refused shows its reason like one the dialog found; anything else is said under the fields
-  const refused = refusedFields(attempt);
+  const refused = refusedFields(outcome);
 
   const errorOf = (field: keyof CategoryFields) =>
     fields[field] === checked?.[field]
@@ -293,15 +248,15 @@ export function CategoryDialog({
       : undefined;
 
   const messages = [
-    ...(deletedMeanwhile && attempt?._tag !== "Gone"
+    ...(deletedMeanwhile && outcome?.kind !== "missing"
       ? ["Someone has deleted this category since you opened it."]
       : []),
-    ...attemptMessages(attempt, words.failed, "category"),
+    ...(!working ? attemptMessages(outcome, words.failed, "category") : []),
   ];
 
   // Once an attempt's reasons show, the first field with one takes the focus, so it's read out with its error
   useLayoutEffect(() => {
-    const reasons = [...problems, ...refusedFields(attempt)];
+    const reasons = [...problems, ...refusedFields(outcome)];
 
     const controls = new Map<string, RefObject<HTMLElement | null>>([
       ["title", titleControl],
@@ -312,15 +267,12 @@ export function CategoryDialog({
     const first = [...controls].find(([field]) => reasons.some((reason) => reason.field === field));
 
     first?.[1].current?.focus();
-  }, [problems, attempt]);
-
-  // Until a lost answer is settled, the main button finds out whether it took instead of sending it again
-  const unsettled = attempt?._tag === "Unclear";
+  }, [problems, outcome]);
 
   const action =
-    attempt?._tag === "Superseded" ? (
-      <Button type="button" variant="accent" size="md" onClick={() => void loadLatest()}>
-        Load their version
+    outcome?.kind === "conflict" && !reading ? (
+      <Button type="button" variant="danger" size="md" onClick={() => void loadLatest()}>
+        Discard my changes and reload
       </Button>
     ) : (
       <Button
@@ -330,10 +282,10 @@ export function CategoryDialog({
         pending={working}
         // Checking for a lost answer, which Check again does too; saving otherwise
         pendingLabel={
-          attempt?._tag === "Checking" || unsettled ? "Checking category…" : words.pending
+          reading || save.state === "checking" || unsettled ? "Checking category…" : words.pending
         }
       >
-        {unsettled ? "Check again" : words.action}
+        {unsettled ? (base ? "Retry same save" : "Check again") : words.action}
       </Button>
     );
 
@@ -348,16 +300,26 @@ export function CategoryDialog({
       // While a save or a check is out, the dialog stays: its answer, and what was typed, still need it
       pending={working}
       onSubmit={() => {
-        if (working || attempt?._tag === "Superseded") return;
+        if (working || outcome?.kind === "conflict") return;
 
-        if (unsettled) return void reconcile();
-        const found = categoryProblems(fields, categories, base?.id);
+        if (!unsettled) {
+          const found = categoryProblems(fields, categories, base?.id);
+          setProblems(found);
+          setChecked(fields);
+          setReloadMissing(false);
 
-        setProblems(found);
-        setChecked(fields);
-        setAttempt(undefined);
+          if (found.length > 0) {
+            save.forget();
 
-        if (found.length === 0) void save(fields);
+            return;
+          }
+        }
+
+        void save.press(() => {
+          submitted.current = JSON.stringify(fields);
+
+          return { fields, base };
+        });
       }}
       actions={action}
     >
@@ -412,6 +374,30 @@ export function CategoryDialog({
           onChange={(event) => setDescription(event.target.value)}
         />
       </Field>
+      {compared && (
+        <>
+          <p className="text-14 text-muted">
+            Struck-through lines are only in the latest saved version, shown here read-only.
+            Highlighted lines are only in your open copy.
+          </p>
+          <ContentDiff
+            live={JSON.stringify(compared, null, 2)}
+            proposed={JSON.stringify(fields, null, 2)}
+          />
+        </>
+      )}
+      {(outcome?.kind === "conflict" || unsettled) && (
+        <Button
+          variant="secondary"
+          onClick={() =>
+            void navigator.clipboard
+              .writeText(JSON.stringify(fields, null, 2))
+              .catch(() => download(JSON.stringify(fields, null, 2), "category.json"))
+          }
+        >
+          Copy my version
+        </Button>
+      )}
       <ApiProblems messages={messages} />
     </FormDialog>
   );
@@ -441,66 +427,33 @@ export function DeleteCategoryDialog({
   /** Where the focus goes once the category has gone, taking its row's buttons with it. */
   focusAfter: RefObject<HTMLElement | null>;
 }) {
-  const contentChanged = useContentChanged();
-  const [base, setBase] = useState(category);
-  const [attempt, setAttempt] = useState<Attempt>();
+  const client = useQueryClient();
+  const [base] = useState(category);
+  const remove = useWrite(api, writes.deleteCategory);
+  const outcome = remove.outcome;
   const deleted = useRef(false);
   const blocked = deleteBlocker(base, categories);
-  const working = attempt?._tag === "Saving" || attempt?._tag === "Checking";
-  const unsettled = attempt?._tag === "Unclear";
+  const working = remove.state === "sending" || remove.state === "checking";
+  const unsettled = remove.state === "unsettled";
 
-  const done = (words: string) => {
+  const removed = useEffectEvent(() => {
+    if (outcome?.kind !== "landed" && outcome?.kind !== "missing") return;
     deleted.current = true;
-    contentChanged();
-    toast(words);
-    onClose();
-  };
 
-  // A deletion whose answer was lost: done once the category is gone from the list
-  const reconcile = async () => {
-    setAttempt(CHECKING);
-    const result = await api.categories();
-
-    if (!result.ok) return setAttempt(UNCLEAR);
-    const still = result.value.find((item) => item.id === base.id);
-
-    if (!still) return done("Category deleted");
-    contentChanged();
-    setAttempt(
-      still.updated_at === base.updated_at ? { _tag: "Unconfirmed" } : { _tag: "Superseded" },
+    if (outcome.kind === "missing") void client.invalidateQueries({ queryKey: ["content"] });
+    toast(
+      outcome.kind === "landed"
+        ? outcome.answer.checked
+          ? "Category is no longer present"
+          : "Category deleted"
+        : "Category already deleted",
     );
-  };
+    onClose();
+  });
 
-  const remove = async () => {
-    setAttempt({ _tag: "Saving" });
-    const result = await api.deleteCategory(base.id, base.updated_at);
-
-    if (result.ok) return done("Category deleted");
-
-    switch (result.error._tag) {
-      case "CategoryOutcomeUnknown":
-        return reconcile();
-      case "CategoryNotFound":
-        return done("Category already deleted");
-      case "CategoryConflict":
-        return setAttempt({ _tag: "Superseded" });
-      default:
-        return setAttempt({ _tag: "Refused", error: result.error });
-    }
-  };
-
-  const loadLatest = async () => {
-    setAttempt(CHECKING);
-    const result = await api.categories();
-
-    if (!result.ok) return setAttempt(UNCLEAR);
-    const latest = result.value.find((item) => item.id === base.id);
-
-    if (!latest) return done("Category already deleted");
-    contentChanged();
-    setBase(latest);
-    setAttempt(undefined);
-  };
+  useLayoutEffect(() => {
+    removed();
+  }, [outcome]);
 
   // Nothing to confirm: why not, and the way to what's in the way
   if (blocked)
@@ -535,11 +488,14 @@ export function DeleteCategoryDialog({
     );
 
   const refusal =
-    attempt?._tag === "Refused" && attempt.error._tag === "CategoryInUse"
-      ? [blockerText(base.title, attempt.error.blockers)]
-      : attemptMessages(attempt, "The category could not be deleted. Try again.", "category");
+    outcome?.kind === "refused" && outcome.code === "category_in_use"
+      ? // SAFETY: category_in_use retains the category client's validated blockers as refusal detail.
+        [blockerText(base.title, outcome.detail as CategoryBlockers)]
+      : working
+        ? []
+        : attemptMessages(outcome, "The category could not be deleted. Try again.", "category");
 
-  const superseded = attempt?._tag === "Superseded";
+  const superseded = outcome?.kind === "conflict";
 
   return (
     <ConfirmDialog
@@ -550,19 +506,25 @@ export function DeleteCategoryDialog({
       title={`Delete ${base.title}?`}
       description="Services can no longer be filed under it. This can’t be undone."
       confirmLabel={
-        superseded ? "Load their version" : unsettled ? "Check again" : "Delete category"
+        superseded
+          ? "Cancel and review the category"
+          : unsettled
+            ? "Check again"
+            : "Delete category"
       }
       variant={superseded || unsettled ? "accent" : "danger"}
       // Loading their version and Check again check the list; deleting otherwise
       pendingLabel={
-        superseded || unsettled || attempt?._tag === "Checking"
+        superseded || unsettled || remove.state === "checking"
           ? "Checking category…"
           : "Deleting category…"
       }
       pending={working}
       error={refusal.length > 0 && <ApiProblemText messages={refusal} />}
       finalFocus={() => (deleted.current ? focusAfter.current : true)}
-      onConfirm={() => void (superseded ? loadLatest() : unsettled ? reconcile() : remove())}
+      onConfirm={() =>
+        void (superseded ? onClose() : remove.press(() => ({ id: base.id, version: base.version })))
+      }
     />
   );
 }

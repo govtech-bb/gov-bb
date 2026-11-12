@@ -22,8 +22,7 @@ import {
   type ElementNode,
   type LexicalNode,
 } from "lexical";
-import { editorDefinition } from "../editor/core/context";
-import type { TurnInto, TurnIntoChoice } from "../editor/core/turn-into";
+import { editorDefinition, type TurnInto, type TurnIntoChoice } from "@/editor";
 import { $liftLine } from "./insertion";
 import { $nearestPageList, $setPageListType } from "./modules/lists";
 import { $hasTrait } from "./blocks/node";

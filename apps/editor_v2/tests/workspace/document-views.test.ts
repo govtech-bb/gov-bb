@@ -38,17 +38,17 @@ test("a closed view's session waits for it, unless its draft changed while it wa
   expect(sessions.get("fees", createEditorSession)).toBe(fees);
 
   // Closed and opened on the same draft: the same session
-  sessions.close("fees", "Fees draft");
-  sessions.open("fees", "Fees draft");
+  sessions.close("fees", 1);
+  sessions.open("fees", 1);
   expect(sessions.get("fees", createEditorSession)).toBe(fees);
 
   // Opening a view that never closed changes nothing
-  sessions.open("fees", "Changed in another tab");
+  sessions.open("fees", 2);
   expect(sessions.get("fees", createEditorSession)).toBe(fees);
 
   // Changed while closed, such as by another tab: a fresh session
-  sessions.close("fees", "Fees draft");
-  sessions.open("fees", "Changed in another tab");
+  sessions.close("fees", 1);
+  sessions.open("fees", 2);
   expect(sessions.get("fees", createEditorSession)).not.toBe(fees);
 
   const start = sessions.get("start", createEditorSession);

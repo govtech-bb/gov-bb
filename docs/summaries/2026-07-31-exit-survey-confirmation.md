@@ -34,7 +34,7 @@ Two changes to the **Exit Survey** ([exit-survey.json](apps/api/src/forms/form-d
 
 - **Literal email recipient.** The processor's `recipientField` is a literal
   `feedback@govtech.bb` (a supported mode alongside `stepId.fieldId` and the MDA
-  token — ADR 0032). A literal avoids adding a `contactDetails` block to the
+  token — ADR 0056). A literal avoids adding a `contactDetails` block to the
   recipe, which would render an unwanted "If you need help… contact:" section on
   the confirmation. The subject is **literal only** (the processor doesn't
   interpolate answers), so the reviewed service name (`referring-service`)

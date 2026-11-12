@@ -44,7 +44,7 @@ import { useLatched } from "../../../ui/use-latched";
 import { useEditorDefinition, useLinkPages } from "../../react/composer";
 import { EditorSlot } from "../../react/contributions";
 import { turnIntoOptions } from "../../react/turn-into";
-import { composing } from "./editing";
+import { composing } from "../../react/shortcut";
 import { isSafeLinkUrl, linkAddress } from "../links/url";
 
 /** The caret or selection, when all of it is in rich-text blocks, where text can be formatted. */

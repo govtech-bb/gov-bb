@@ -54,7 +54,7 @@ round-tripped recipe field and stops dropping it in both hydrators.
 - **`!== undefined` guard, not truthiness.** Keeps "absent" distinct from a set
   value, the same reason processors uses it; a truthiness check would reintroduce
   the data-loss bug. No editor-only `id` to mint (single object, not a list).
-- **Captured the recurring trap as ADR 0021.** This is the second time a recipe
+- **Captured the recurring trap as ADR 0040.** This is the second time a recipe
   field was added to the schema but dropped in transit (after #255 processors);
   the ADR pins the four carry points + round-trip-test requirement so a third
   recurrence is a review/CI catch, not a dead feature.

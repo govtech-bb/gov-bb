@@ -1,9 +1,9 @@
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
 import { $getRoot } from "lexical";
 import { useSyncExternalStore, type ReactNode } from "react";
-import type { EditorDefinition } from "../editor/core/definition";
-import { EditorComposer } from "../editor/react/composer";
-import { $createFormTitleNode, $isFormTitleNode } from "../forms/editor/nodes";
+import type { EditorDefinition } from "@/editor";
+import { EditorComposer } from "@/editor/react";
+import { $createFormTitleNode, $isFormTitleNode } from "../forms/canvas/form-nodes";
 import { draftPause, type DraftStore } from "../persistence/draft-store";
 import { DraftEditorBinding, DraftProvider, useDraft } from "./source-ui";
 

@@ -18,19 +18,19 @@ import {
   remapKnownSettings,
 } from "../helpers/default-form";
 import { $legacyDemo as $demo } from "../helpers/legacy-demo";
-import { MentionNode } from "../../src/forms/features/mentions/node";
+import { MentionNode } from "../../src/forms/mentions/mention-node";
 import {
   $ensureBlockIds,
   $ensureQuestionFields,
   $normalizePages,
   $shareQuestionSettings,
-} from "../../src/forms/editor/nodes";
+} from "../../src/forms/canvas/form-nodes";
 import { formNodes } from "../helpers/default-form";
-import { type Settings } from "../../src/editor/core/settings";
-import { $normalizePageHeads } from "../../src/forms/features/pages/headings";
-import { $normalizeDepths } from "../../src/forms/editor/nesting";
+import type { Settings } from "../../src/forms/model/settings";
+import { $normalizePageHeads } from "../../src/forms/form-pages/form-page-headings";
+import { $normalizeDepths } from "../../src/forms/canvas/nesting";
 import { compileForm, preflight } from "../helpers/default-form";
-import { closingWorks } from "../../src/forms/core/closing";
+import { closingWorks } from "../../src/forms/model/closing";
 
 const editor = () =>
   createEditor({
@@ -351,12 +351,12 @@ test("closing dates reject impossible calendar dates and times without normaliza
 });
 
 test("stable source keys survive label edits, option deletion, reordering and copying", async () => {
-  const { $ensureSourceKeys } = await import("../../src/forms/editor/source-keys");
+  const { $ensureSourceKeys } = await import("../../src/forms/canvas/source-keys");
 
   const { $settings, $questionKey, $blockGroup, $isInput, $isOptionNode } =
-    await import("../../src/forms/editor/nodes");
+    await import("../../src/forms/canvas/form-nodes");
 
-  const { $duplicateQuestion } = await import("../../src/forms/editor/structure");
+  const { $duplicateQuestion } = await import("../../src/forms/canvas/structure");
 
   const e = hydrate(
     source(
@@ -474,7 +474,7 @@ test("code-formatted mentions keep their references", async () => {
 
 test("choice conditions distinguish question keys from the first option's overlapping legacy ID", async () => {
   const { $createWidgetNode, $setSettings, $blockId, $questionKey, $isOptionNode } =
-    await import("../../src/forms/editor/nodes");
+    await import("../../src/forms/canvas/form-nodes");
 
   const { semanticFingerprint } = await import("../helpers/default-form");
 
@@ -597,8 +597,12 @@ test("blank newly inserted choice options remain saveable with and without a lab
 
 test("new blank logic and calculated-field catalog blocks can autosave and reload", async () => {
   const { draftCodec, prepareSource } = await import("../helpers/default-form");
-  const { conditionalLogicEntry } = await import("../../src/forms/features/logic/insertion");
-  const { calculatedFieldsEntry } = await import("../../src/forms/features/calculations/insertion");
+
+  const { conditionalLogicEntry } =
+    await import("../../src/forms/conditional-logic/logic-insertion");
+
+  const { calculatedFieldsEntry } =
+    await import("../../src/forms/calculated-fields/calculated-field-insertion");
 
   for (const name of ["CONDITIONAL_LOGIC", "CALCULATED_FIELDS"]) {
     const entry = [conditionalLogicEntry, calculatedFieldsEntry].find(
@@ -718,7 +722,7 @@ test("safe JSON frontmatter keys remain parseable through initialization and can
 
 test("multiline choice labels preserve configured options and nested followups through Markdown", async () => {
   const { $createLineBreakNode } = await import("lexical");
-  const { $isOptionNode } = await import("../../src/forms/editor/nodes");
+  const { $isOptionNode } = await import("../../src/forms/canvas/form-nodes");
 
   const { draftCodec, prepareSource } = await import("../helpers/default-form");
 

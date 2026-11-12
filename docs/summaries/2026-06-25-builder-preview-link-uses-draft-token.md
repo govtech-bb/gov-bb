@@ -40,6 +40,6 @@ sandbox); this change just makes the builder generate the link that path expects
   "Preview form" were left as-is — they describe the action, and renaming would
   ripple into three callers for no behavioral gain.
 - No new ADR: this conforms to the existing token-split decision (#1682) and the
-  visibility ADRs (0011/0013); it doesn't establish a new principle.
+  visibility ADRs (0026/0028); it doesn't establish a new principle.
 - Verified via `form-builder-app:test` (641 pass), `form-builder-app:build`, and
   `tsc -b` (clean).

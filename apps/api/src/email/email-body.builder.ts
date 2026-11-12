@@ -42,7 +42,7 @@ const markdownRenderer = new MarkdownIt();
 // Steps suppressed from the notification email, per form. The in-chat
 // `chat-feedback` form's declaration is auto-confirmed by the chat on the
 // user's behalf — the recipe requires it (and the form-builder regenerates it
-// on every republish), but the user never sees or confirms it (ADR 0049).
+// on every republish), but the user never sees or confirms it (ADR 0084).
 // Surfacing a "Declaration: I confirm" row the user never actually agreed to
 // would be misleading, so it's dropped from the feedback email. Scoped per
 // formId: a real application keeps its declaration in the MDA email as an
