@@ -13,3 +13,6 @@ export {
   canonicalEvent,
   stepFromEvent,
 } from "@govtech-bb/analytics";
+// The tool IDs landing sends in its tool events (ADR 0079), so the dashboard's
+// tool list is checked against them.
+export type { ToolId } from "@govtech-bb/analytics";

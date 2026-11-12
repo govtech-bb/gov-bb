@@ -69,3 +69,39 @@ describe("UmamiClient.reportJourney", () => {
     vi.unstubAllGlobals();
   });
 });
+
+describe("UmamiClient.eventDataValues", () => {
+  it("GETs one event property's values, with no property filter by default", async () => {
+    const fetchSpy = mockFetchOnce([{ value: "results", total: 3 }]);
+    vi.stubGlobal("fetch", fetchSpy);
+    const client = new UmamiClient({ apiKey: "k" });
+    const rows = await client.eventDataValues(
+      "w1",
+      "tool-result",
+      "tool",
+      range,
+    );
+    expect(rows).toEqual([{ value: "results", total: 3 }]);
+    const url = new URL(String(fetchSpy.mock.calls[0][0]));
+    expect(url.pathname).toContain("/websites/w1/event-data/values");
+    expect(url.searchParams.get("event")).toBe("tool-result");
+    expect(url.searchParams.get("propertyName")).toBe("tool");
+    expect(url.searchParams.has("epf1")).toBe(false);
+    vi.unstubAllGlobals();
+  });
+
+  it("keeps only events whose string property equals a value (Umami's epf filter)", async () => {
+    const fetchSpy = mockFetchOnce([]);
+    vi.stubGlobal("fetch", fetchSpy);
+    const client = new UmamiClient({ apiKey: "k" });
+    await client.eventDataValues("w1", "tool-result", "outcome", range, {
+      property: "tool",
+      equals: "water-outages",
+    });
+    const url = new URL(String(fetchSpy.mock.calls[0][0]));
+    expect(url.searchParams.get("propertyName")).toBe("outcome");
+    // <dataType 1 = string>.<operator>.<property>.<value>
+    expect(url.searchParams.get("epf1")).toBe("1.eq.tool.water-outages");
+    vi.unstubAllGlobals();
+  });
+});
