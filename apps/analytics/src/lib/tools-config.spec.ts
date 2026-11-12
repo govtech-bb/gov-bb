@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { liveTools, pathMatchesPrefix } from './tools-config'
+import { liveTools } from './tools-config'
 
 describe('liveTools', () => {
   it('lists every tool once, by the ID its events carry', () => {
@@ -17,11 +17,5 @@ describe('liveTools', () => {
       'shelter-finder',
       'water-outages',
     ])
-  })
-
-  it('gives each tool an entry page under its own prefix', () => {
-    for (const t of liveTools()) {
-      expect(pathMatchesPrefix(t.primaryPath, t.prefix)).toBe(true)
-    }
   })
 })

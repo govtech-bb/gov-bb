@@ -5,6 +5,7 @@ import {
   buildVisitFunnelSteps,
   fetchFormDefinition,
   fetchFormList,
+  fetchToolsData,
   funnelHeadline,
   humanizeStep,
   isConfigured,
@@ -698,6 +699,47 @@ describe("shapeToolEvents (a tool's own events, ADR 0079)", () => {
     })
   })
 
+  it('shows no breakdown when its query failed (no rows for the tool)', () => {
+    const stats = shapeToolEvents(pharmacy, {
+      ...rows,
+      outcomes: new Map(),
+      actions: new Map(),
+    })
+    expect(stats).toMatchObject({ results: 40, errors: 10, errorRate: 0.2 })
+    expect(stats?.noResultRate).toBeNull()
+    expect(stats?.topAction).toBeNull()
+  })
+
+  it("shows no breakdown that adds up to more than the tool's own count", () => {
+    // What Umami would return if it ignored the `tool` filter: every tool's
+    // outcomes and actions, not just the pharmacy finder's.
+    const stats = shapeToolEvents(pharmacy, {
+      ...rows,
+      outcomes: new Map([
+        [
+          'pharmacy-finder',
+          [
+            { value: 'results', total: 30 },
+            { value: 'no-results', total: 10 },
+            { value: 'estimated', total: 9 },
+          ],
+        ],
+      ]),
+      actions: new Map([
+        [
+          'pharmacy-finder',
+          [
+            { value: 'call', total: 11 },
+            { value: 'restart', total: 20 },
+          ],
+        ],
+      ]),
+    })
+    expect(stats?.results).toBe(40)
+    expect(stats?.noResultRate).toBeNull()
+    expect(stats?.topAction).toBeNull()
+  })
+
   it('has no error rate when a tool sent only actions', () => {
     const stats = shapeToolEvents(pharmacy, {
       ...rows,
@@ -707,6 +749,69 @@ describe("shapeToolEvents (a tool's own events, ADR 0079)", () => {
     })
     expect(stats).toMatchObject({ results: 0, errors: 0, errorRate: null })
     expect(stats?.topAction).toEqual({ action: 'call', count: 11 })
+  })
+})
+
+describe('fetchToolsData (tool events read from Umami)', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('asks for a breakdown only for tools with events, filtered by tool', async () => {
+    // Only the water tool has sent events. Answer each Umami GET by its query.
+    const answers: Record<string, unknown> = {
+      'tool-result/tool/': [{ value: 'water-outages', total: 5 }],
+      'tool-action/tool/': [{ value: 'water-outages', total: 3 }],
+      'tool-error/tool/': [],
+      'tool-result/outcome/1.eq.tool.water-outages': [
+        { value: 'parish-chosen', total: 3 },
+        { value: 'subscribe-sent', total: 2 },
+      ],
+      'tool-action/action/1.eq.tool.water-outages': [
+        { value: 'subscribe-submit', total: 3 },
+      ],
+    }
+    const filtered: string[] = []
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: URL) => {
+        const q = input.searchParams
+        if (q.has('epf1')) filtered.push(String(q.get('epf1')))
+        const key = `${q.get('event')}/${q.get('propertyName')}/${q.get('epf1') ?? ''}`
+        const body = input.pathname.endsWith('/event-data/values')
+          ? answers[key]
+          : [] // URL and referrer metrics
+        return { ok: true, status: 200, json: async () => body } as Response
+      }),
+    )
+
+    const data = await fetchToolsData(
+      {
+        apiKey: 'k',
+        landingWebsiteId: 'l',
+        formsWebsiteId: 'f',
+        formsApiUrl: 'http://forms.test',
+      },
+      'past-7-days',
+    )
+
+    expect(filtered.sort()).toEqual([
+      '1.eq.tool.water-outages',
+      '1.eq.tool.water-outages',
+    ])
+    const water = data.tools.find((t) => t.path.endsWith('/water-outages'))
+    expect(water?.events).toMatchObject({
+      results: 5,
+      topAction: { action: 'subscribe-submit', count: 3 },
+      errors: 0,
+    })
+    expect(data.tools.filter((t) => t.events !== null)).toHaveLength(1)
+    expect(data.waterAlerts).toEqual({
+      submitted: 3,
+      sent: 2,
+      confirmed: 0,
+      unsubscribed: 0,
+    })
   })
 })
 

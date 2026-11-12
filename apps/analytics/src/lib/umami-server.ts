@@ -997,8 +997,7 @@ export interface ToolRow {
   /**
    * Distinct visitors, SUMMED across the tool's sub-pages. Exact for
    * single-page tools; may overcount a visitor who hits several sub-pages of a
-   * multi-page tool (only the shelter finder today) — surfaced with a caveat in
-   * the UI. True prefix-distinct isn't available from Umami's per-path metrics.
+   * multi-page tool — surfaced with a caveat in the UI. True prefix-distinct isn't available from Umami's per-path metrics.
    */
   visitors: number
   topSources: SourceRow[]
@@ -1066,6 +1065,21 @@ function totalFor(rows: EventDataValue[], value: string): number {
 }
 
 /**
+ * A tool's own outcome or action rows, or undefined when they can't be
+ * trusted: the query failed (no entry), or the rows add up to more than the
+ * tool's own count, as they would if Umami ignored the `tool` filter. The
+ * table then shows a dash rather than a wrong number.
+ */
+function breakdownFor(
+  rows: Map<ToolId, EventDataValue[]>,
+  tool: Tool,
+  count: number,
+): EventDataValue[] | undefined {
+  const own = rows.get(tool.id)
+  return own && own.reduce((s, r) => s + r.total, 0) <= count ? own : undefined
+}
+
+/**
  * One tool's event metrics, or null when it sent no tool events (the empty
  * state). Counts come from the every-tool `tool` values; the no-result rate and
  * top action from the tool's own outcome and action values.
@@ -1075,19 +1089,19 @@ export function shapeToolEvents(
   rows: ToolEventRows,
 ): ToolEventStats | null {
   const results = totalFor(rows.resultsByTool, tool.id)
+  const actionCount = totalFor(rows.actionsByTool, tool.id)
   const errors = totalFor(rows.errorsByTool, tool.id)
-  if (results + errors + totalFor(rows.actionsByTool, tool.id) === 0) {
-    return null
-  }
-  const noResults = tool.noResultOutcome
-    ? totalFor(rows.outcomes.get(tool.id) ?? [], tool.noResultOutcome)
-    : 0
-  const top = (rows.actions.get(tool.id) ?? []).reduce<
+  if (results + actionCount + errors === 0) return null
+  const outcomes = breakdownFor(rows.outcomes, tool, results)
+  const top = breakdownFor(rows.actions, tool, actionCount)?.reduce<
     EventDataValue | undefined
   >((best, r) => (!best || r.total > best.total ? r : best), undefined)
   return {
     results,
-    noResultRate: tool.noResultOutcome && results ? noResults / results : null,
+    noResultRate:
+      tool.noResultOutcome && outcomes && results
+        ? totalFor(outcomes, tool.noResultOutcome) / results
+        : null,
     topAction: top ? { action: String(top.value), count: top.total } : null,
     errors,
     errorRate: results + errors ? errors / (results + errors) : null,
@@ -1162,27 +1176,33 @@ async function fetchToolEventRows(
     eventValues(client, websiteId, 'tool-action', 'tool', r),
     eventValues(client, websiteId, 'tool-error', 'tool', r),
   ])
+  // A failed query leaves the tool out of the map (not `[]`), so its row shows
+  // a dash instead of a believable 0%.
   const perTool = async (
     event: string,
     propertyName: string,
     byTool: EventDataValue[],
-  ) =>
-    new Map(
-      await Promise.all(
-        tools
-          .filter((tool) => totalFor(byTool, tool.id) > 0)
-          .map(
-            async (tool) =>
-              [
-                tool.id,
-                await eventValues(client, websiteId, event, propertyName, r, {
-                  property: 'tool',
-                  equals: tool.id,
-                }),
-              ] as const,
-          ),
-      ),
+  ) => {
+    const rows = new Map<ToolId, EventDataValue[]>()
+    await Promise.all(
+      tools
+        .filter((tool) => totalFor(byTool, tool.id) > 0)
+        .map(async (tool) => {
+          try {
+            rows.set(
+              tool.id,
+              await client.eventDataValues(websiteId, event, propertyName, r, {
+                property: 'tool',
+                equals: tool.id,
+              }),
+            )
+          } catch {
+            // left out: shown as a dash
+          }
+        }),
     )
+    return rows
+  }
   const [outcomes, actions] = await Promise.all([
     perTool('tool-result', 'outcome', resultsByTool),
     perTool('tool-action', 'action', actionsByTool),
@@ -1565,16 +1585,9 @@ async function eventValues(
   event: string,
   propertyName: string,
   r: Range,
-  where?: { property: string; equals: string },
 ): Promise<EventDataValue[]> {
   try {
-    return await client.eventDataValues(
-      websiteId,
-      event,
-      propertyName,
-      r,
-      where,
-    )
+    return await client.eventDataValues(websiteId, event, propertyName, r)
   } catch {
     return []
   }
