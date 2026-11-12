@@ -33,7 +33,7 @@ const HITS: Array<SearchHit> = Array.from({ length: 5 }, (_, index) => ({
 function renderSearch(
   props: Partial<React.ComponentProps<typeof ServiceSearch>> = {},
 ) {
-  return render(<ServiceSearch source="home" viewer="public" {...props} />)
+  return render(<ServiceSearch source="services" viewer="public" {...props} />)
 }
 
 function listboxFor(input: HTMLElement): HTMLUListElement {
@@ -198,13 +198,7 @@ describe('ServiceSearch', () => {
     })
   })
 
-  it('preserves both empty-query destinations', () => {
-    const first = renderSearch({ emptyHref: '/services' })
-    fireEvent.submit(screen.getByRole('search'))
-    expect(navigateMock).toHaveBeenLastCalledWith({ to: '/services' })
-
-    first.unmount()
-    navigateMock.mockClear()
+  it('sends an empty search to the results page', () => {
     renderSearch({ source: 'services' })
     fireEvent.submit(screen.getByRole('search'))
     expect(navigateMock).toHaveBeenLastCalledWith({

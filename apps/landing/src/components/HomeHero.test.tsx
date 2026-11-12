@@ -94,8 +94,31 @@ describe('HomeHero', () => {
     fireEvent.click(screen.getByRole('radio', { name: 'Search' }))
 
     expect(searchInput()).toHaveProperty('value', 'passport')
-    // Carried-over text is not typed text, so it gets no suggestions.
     expect(suggestMock).not.toHaveBeenCalled()
+  })
+
+  it('offers no suggestions for search text after a trip through Ask', () => {
+    renderHero()
+    fireEvent.click(screen.getByRole('radio', { name: 'Search' }))
+    fireEvent.input(searchInput(), { target: { value: 'birth' } })
+    expect(suggestMock).toHaveBeenCalled()
+
+    suggestMock.mockClear()
+    fireEvent.click(screen.getByRole('radio', { name: 'Ask Assistant' }))
+    fireEvent.click(screen.getByRole('radio', { name: 'Search' }))
+
+    expect(searchInput()).toHaveProperty('value', 'birth')
+    expect(suggestMock).not.toHaveBeenCalled()
+  })
+
+  it('cuts carried-over text to the question limit when switching to Ask', () => {
+    renderHero()
+    fireEvent.click(screen.getByRole('radio', { name: 'Search' }))
+    fireEvent.input(searchInput(), { target: { value: 'a'.repeat(2100) } })
+
+    fireEvent.click(screen.getByRole('radio', { name: 'Ask Assistant' }))
+
+    expect(askInput()).toHaveProperty('value', 'a'.repeat(2000))
   })
 
   it('sends a question to the chat without putting it in analytics', () => {
@@ -110,13 +133,41 @@ describe('HomeHero', () => {
     expect(assignedHref).toBe(`${new URL('/', CHAT_URL)}?q=Renew+a+passport`)
   })
 
-  it('stays on the page when the question is empty', () => {
+  it.each(['', '   '])(
+    'stays on the page and returns to the box when the question is %j',
+    (value) => {
+      renderHero()
+      fireEvent.change(askInput(), { target: { value } })
+
+      fireEvent.submit(askInput())
+
+      expect(assignedHref).toBeUndefined()
+      expect(trackEventMock).not.toHaveBeenCalled()
+      expect(document.activeElement).toBe(askInput())
+    },
+  )
+
+  it('tracks a question picked from Try asking', () => {
     renderHero()
 
-    fireEvent.submit(askInput())
+    fireEvent.click(screen.getByRole('link', { name: QUESTION }))
 
-    expect(assignedHref).toBeUndefined()
-    expect(trackEventMock).not.toHaveBeenCalled()
+    expect(trackEventMock).toHaveBeenCalledWith('chat-suggestion', {
+      question: QUESTION,
+      source: 'home',
+    })
+  })
+
+  it('lets a question be sent while the chat check is still running', () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => new Promise(() => {})),
+    )
+    renderHero()
+
+    expect(
+      screen.getByRole<HTMLButtonElement>('button', { name: 'Send' }).disabled,
+    ).toBe(false)
   })
 
   it('sends an empty search to the services list', () => {
@@ -146,6 +197,35 @@ describe('HomeHero', () => {
     })
   })
 
+  it('tracks and searches for a picked suggestion', () => {
+    renderHero()
+    fireEvent.click(screen.getByRole('radio', { name: 'Search' }))
+    const input = searchInput()
+    input.focus()
+    fireEvent.input(input, { target: { value: 'birth' } })
+
+    fireEvent.keyDown(input, { key: 'ArrowDown' })
+    fireEvent.keyDown(input, { key: 'Enter' })
+
+    expect(trackEventMock.mock.calls).toEqual([
+      [
+        'search-suggestion-select',
+        {
+          query: 'birth',
+          title: HIT.title,
+          href: HIT.href,
+          position: 1,
+          source: 'home',
+        },
+      ],
+      ['search-submit', { query: HIT.title, source: 'home' }],
+    ])
+    expect(navigateMock).toHaveBeenCalledWith({
+      to: '/search-results',
+      search: { q: HIT.title },
+    })
+  })
+
   it('offers Search instead of questions when the assistant is offline', async () => {
     stubChatHealth(false)
     renderHero()
@@ -165,5 +245,18 @@ describe('HomeHero', () => {
       screen.getByRole<HTMLInputElement>('radio', { name: 'Search' }).checked,
     ).toBe(true)
     expect(document.activeElement).toBe(searchInput())
+  })
+
+  it('checks the chat again when the tab comes back', async () => {
+    stubChatHealth(false)
+    renderHero()
+    const send = screen.getByRole<HTMLButtonElement>('button', { name: 'Send' })
+    await waitFor(() => expect(send.disabled).toBe(true))
+
+    stubChatHealth(true)
+    fireEvent(window, new Event('focus'))
+
+    await waitFor(() => expect(send.disabled).toBe(false))
+    expect(screen.getByRole('link', { name: QUESTION })).toBeTruthy()
   })
 })

@@ -423,9 +423,9 @@ question prefilled via `?q=` so chat auto-sends on mount.
 | --------------- | ---------- | ----------------------------------------------------------------------------------------- |
 | `VITE_CHAT_URL` | build time | Base URL of the deployed chat app. Used for both the health probe and the submit handoff. |
 
-`HomeHero` defaults to `https://chat.sandbox.alpha.gov.bb` in code
-when `VITE_CHAT_URL` is unset, so deploys work with no Amplify Console
-config.
+`src/lib/chat-url.ts` defaults to `https://chat.sandbox.alpha.gov.bb`
+in dev only when `VITE_CHAT_URL` is unset; a production build fails fast
+without it (#1366).
 
 To override (e.g. run landing locally against a localhost chat instance,
 or point a build at a different chat deploy), set `VITE_CHAT_URL`

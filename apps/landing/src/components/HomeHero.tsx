@@ -135,6 +135,7 @@ interface HomeHeroProps {
 export function HomeHero({ questions, viewer, overlay }: HomeHeroProps) {
   const navigate = useNavigate()
   const heroRef = useRef<HTMLElement>(null)
+  const searchRadioRef = useRef<HTMLInputElement>(null)
   const searchInputRef = useRef<HTMLInputElement>(null)
   const askInputRef = useRef<HTMLInputElement>(null)
   const modeName = useId()
@@ -148,6 +149,12 @@ export function HomeHero({ questions, viewer, overlay }: HomeHeroProps) {
   const [hasTyped, setHasTyped] = useState(false)
   const chatStatus = useChatStatus()
   useHeightOfChromeAbove(heroRef)
+
+  // The radios are uncontrolled so a choice made before hydration, or restored
+  // by the browser on Back, isn't overwritten; this picks it up.
+  useEffect(() => {
+    if (searchRadioRef.current?.checked) setMode('search')
+  }, [])
 
   const isChatOffline = chatStatus === 'offline'
   const searchHits =
@@ -182,6 +189,7 @@ export function HomeHero({ questions, viewer, overlay }: HomeHeroProps) {
   }
 
   const searchInstead = () => {
+    if (searchRadioRef.current) searchRadioRef.current.checked = true
     // Flushed so the search box is visible before it takes focus.
     flushSync(() => switchMode('search'))
     searchInputRef.current?.focus()
@@ -196,6 +204,7 @@ export function HomeHero({ questions, viewer, overlay }: HomeHeroProps) {
           srcSet="/images/home-hero-small.jpg 1200w, /images/home-hero.jpg 2400w"
           sizes="(width >= 64rem) 142vw, (width >= 50rem) 100vw, 346vw"
           alt=""
+          fetchPriority="high"
         />
       </div>
       <div className="govbb-width-container home-hero__inner">
@@ -203,17 +212,17 @@ export function HomeHero({ questions, viewer, overlay }: HomeHeroProps) {
           Find and use Barbados government services
         </Heading>
 
-        <div className="home-hero__panel" data-mode={mode}>
+        <div className="home-hero__panel">
           <fieldset className="home-hero__toggle">
             <legend className="govbb-visually-hidden">
               Choose how to find what you need
             </legend>
             <label className="home-hero__toggle-option">
               <input
+                ref={searchRadioRef}
                 type="radio"
                 name={modeName}
                 value="search"
-                checked={mode === 'search'}
                 onChange={() => switchMode('search')}
               />
               <SearchIcon />
@@ -224,7 +233,7 @@ export function HomeHero({ questions, viewer, overlay }: HomeHeroProps) {
                 type="radio"
                 name={modeName}
                 value="ask"
-                checked={mode === 'ask'}
+                defaultChecked
                 onChange={() => switchMode('ask')}
               />
               <SparkleIcon />

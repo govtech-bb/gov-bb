@@ -5,14 +5,13 @@ import type { ViewLevel } from '../lib/frontmatter'
 import { suggest } from '../lib/search'
 import { trackEvent } from '../lib/analytics'
 
-type SearchSource = 'home' | 'services' | 'results'
+type SearchSource = 'services' | 'results'
 
 interface ServiceSearchProps {
   source: SearchSource
   viewer: ViewLevel
   overlay?: ReadonlyMap<string, ViewLevel>
   defaultValue?: string
-  emptyHref?: '/services' | '/search-results'
 }
 
 export function ServiceSearch({
@@ -20,7 +19,6 @@ export function ServiceSearch({
   viewer,
   overlay,
   defaultValue = '',
-  emptyHref = '/search-results',
 }: ServiceSearchProps) {
   const navigate = useNavigate()
   const inputId = useId()
@@ -31,12 +29,6 @@ export function ServiceSearch({
   const submit = (value: string) => {
     const query = value.trim()
     trackEvent('search-submit', { query, source })
-
-    if (!query && emptyHref === '/services') {
-      void navigate({ to: '/services' })
-      return
-    }
-
     void navigate({ to: '/search-results', search: { q: query } })
   }
 

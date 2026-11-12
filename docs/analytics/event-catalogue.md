@@ -185,4 +185,6 @@ through `trackEvent` instead.
 | `tell-us-submit`         | none     | The Tally form on `/tell-us` is submitted.                              |
 
 The featured assistant and tracker links and the footer careers link go to
-other sites, so each of those clicks also sends `outbound-click`.
+other sites, so each of those clicks also sends `outbound-click`. So do the
+homepage's "Try asking" questions, which go to the chat app and also send
+`chat-suggestion`.

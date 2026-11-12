@@ -126,7 +126,9 @@
       align-items: stretch;
     }
 
-    .home-hero__title {
+    /* Two classes, to beat .govbb-text-h1 in the same layer whatever order
+       the stylesheets load in. */
+    .home-hero .home-hero__title {
       font-size: 2rem;
       line-height: 2.5rem;
     }
@@ -171,9 +173,7 @@
   }
 
   .home-hero__panel:has(input[value='search']:checked) [data-for='ask'],
-  .home-hero__panel:has(input[value='ask']:checked) [data-for='search'],
-  .home-hero__panel[data-mode='search'] [data-for='ask'],
-  .home-hero__panel[data-mode='ask'] [data-for='search'] {
+  .home-hero__panel:has(input[value='ask']:checked) [data-for='search'] {
     visibility: hidden;
   }
 
