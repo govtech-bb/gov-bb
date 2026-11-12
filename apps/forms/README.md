@@ -63,22 +63,9 @@ Set `VITE_UMAMI_WEBSITE_ID` (and optionally `VITE_UMAMI_SRC`) in the deploy envi
 
 ### Event taxonomy
 
-A small fixed set of event names; high-cardinality dimensions (`form_id`, `step_id`, `field_id`, `reason`) go in event data. This keeps Umami's dashboard sane — every new form/step/field doesn't add a new metric.
+A small fixed set of event names; high-cardinality dimensions (`form`, `step`, `field`, `reason`) go in event data. This keeps Umami's dashboard sane — every new form/step/field doesn't add a new metric.
 
-| Event name | Fires when | Data |
-|---|---|---|
-| `form-open` | Form route mounts | `form_id` |
-| `form-step-view` | A step becomes the resolved step | `form_id`, `step_id`, `step_index`, `step_count` |
-| `form-step-advance` | User advances past a step (non-repeatable transitions) | `form_id`, `from_step`, `to_step` |
-| `form-step-back` | User goes back a step | `form_id`, `from_step`, `to_step` |
-| `form-field-error` | A field fails client-side validation on advance-attempt | `form_id`, `step_id`, `field_id`, `reason: 'validation'` |
-| `form-submit` | Submit button clicked | `form_id` |
-| `form-submit-success` | Submission API returns success / pending_payment | `form_id`, `step_count` |
-| `form-submit-error` | Submission API returns failed/error or network throws | `form_id`, `reason: 'server' \| 'network'` |
-| `form-file-select` | User picks a file in a file-upload field | `form_id`, `step_id`, `field_id`, `mime`, `size_kb` |
-| `form-file-error` | A picked file is not added: refused before upload, or the upload settles to a failure | `form`, `category`, `step`, `field`, `reason: 'rejected' \| 'error' \| 'timeout' \| 'infected' \| 'unscannable'` |
-| `form-file-remove` | User removes an added file | `form`, `category`, `step`, `field` |
-| `form-print` | User clicks Print on the confirmation page | `form`, `category` |
+Every event, with its data and where it fires, is listed in the [event catalogue](../../docs/analytics/event-catalogue.md). Add a row there when you add an event to `TrackingData`: a landing test (`apps/landing/src/lib/event-catalogue.test.ts`) fails without one.
 
 ### Privacy
 

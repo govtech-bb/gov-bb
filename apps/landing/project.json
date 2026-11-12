@@ -71,6 +71,11 @@
     },
     "test": {
       "executor": "nx:run-commands",
+      "inputs": [
+        "default",
+        "^production",
+        "{workspaceRoot}/docs/analytics/event-catalogue.md"
+      ],
       "options": {
         "command": "npm run test",
         "cwd": "apps/landing"
