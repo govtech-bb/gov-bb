@@ -21,6 +21,8 @@ interface ApplyInPerson {
 }
 
 export interface Permit {
+  /** A code sent in analytics events (ADR 0079), so never a URL or a name. */
+  id: string
   step: number
   name: string
   agency: string
@@ -37,6 +39,7 @@ export interface Permit {
 
 export const PERMITS: Array<Permit> = [
   {
+    id: 'venue',
     step: 1,
     name: 'Venue permit',
     agency: 'National Conservation Commission (NCC)',
@@ -61,6 +64,7 @@ export const PERMITS: Array<Permit> = [
     ],
   },
   {
+    id: 'place-of-entertainment',
     step: 2,
     name: 'Place of Public Entertainment licence',
     agency: 'Barbados Revenue Authority (BRA) — for the venue owner',
@@ -85,6 +89,7 @@ export const PERMITS: Array<Permit> = [
     ],
   },
   {
+    id: 'promoter-authorisation',
     step: 2,
     name: "Promoter's Authorisation to Stage Public Entertainment",
     agency: 'Barbados Revenue Authority (BRA) — for the event promoter',
@@ -109,6 +114,7 @@ export const PERMITS: Array<Permit> = [
     ],
   },
   {
+    id: 'pyrotechnics',
     step: 3,
     name: 'Pyrotechnics and fireworks permit',
     agency:
@@ -133,6 +139,7 @@ export const PERMITS: Array<Permit> = [
     ],
   },
   {
+    id: 'loud-music',
     step: 4,
     name: 'Loud music permit',
     agency: 'Barbados Police Service (BPS)',
@@ -153,6 +160,7 @@ export const PERMITS: Array<Permit> = [
     ],
   },
   {
+    id: 'public-gathering',
     step: 4,
     name: 'Public gathering licence',
     agency: 'Barbados Police Service (BPS)',
@@ -173,6 +181,7 @@ export const PERMITS: Array<Permit> = [
     ],
   },
   {
+    id: 'music-copyright',
     step: 5,
     name: 'Music copyright (public performance) licence',
     agency: 'Copyright Society of Composers, Authors and Publishers (COSCAP)',
@@ -192,6 +201,7 @@ export const PERMITS: Array<Permit> = [
     ],
   },
   {
+    id: 'liquor-licence',
     step: 6,
     name: 'Special Occasion Liquor Licence',
     agency:
@@ -213,6 +223,7 @@ export const PERMITS: Array<Permit> = [
     ],
   },
   {
+    id: 'food-handler',
     step: 7,
     name: "Food handler's health certificate",
     agency: "Any registered doctor's office in Barbados",
@@ -231,6 +242,7 @@ export const PERMITS: Array<Permit> = [
     ],
   },
   {
+    id: 'fire-safety',
     step: 8,
     name: 'Fire safety inspection and certificate',
     agency: 'Barbados Fire Service (BFS)',

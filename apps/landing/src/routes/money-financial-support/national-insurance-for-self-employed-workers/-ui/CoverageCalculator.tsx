@@ -2,6 +2,7 @@ import { Button, ErrorSummary, Link } from '@govtech-bb/react'
 import type { ErrorSummaryItem } from '@govtech-bb/react'
 import { useEffect, useRef, useState } from 'react'
 import type { KeyboardEvent, ReactNode, RefObject } from 'react'
+import { trackEvent } from '@/lib/analytics'
 import { money as formatBbd } from '@/lib/money'
 import {
   estimateBenefits,
@@ -227,6 +228,15 @@ export function CoverageCalculator() {
     topRef.current?.focus()
   }, [screen])
 
+  // One step view per screen shown: the ref survives StrictMode's second
+  // effect run.
+  const viewedScreen = useRef<Screen | null>(null)
+  useEffect(() => {
+    if (viewedScreen.current === screen) return
+    viewedScreen.current = screen
+    trackEvent('tool-step-view', { tool: 'nis-self-employed', step: screen })
+  }, [screen])
+
   // Move focus to (and scroll to) an error summary when validation fails on a
   // step that stays on the same screen — mirrors the sibling calculators.
   const focusErrorSummary = (ref: RefObject<HTMLDivElement | null>) => {
@@ -291,6 +301,23 @@ export function CoverageCalculator() {
       setTierError('')
       go('plan')
     } else {
+      // "required" when a field with an error was left empty, else "format".
+      // Never the earnings themselves.
+      const values = {
+        earningsVary,
+        usualMonth,
+        goodMonth,
+        slowMonth,
+        goodMonths,
+      }
+      const missing = (Object.keys(next) as Array<keyof typeof next>).some(
+        (field) => !values[field].trim(),
+      )
+      trackEvent('tool-error', {
+        tool: 'nis-self-employed',
+        step: 'income',
+        error: missing ? 'required' : 'format',
+      })
       focusErrorSummary(incomeErrorRef)
     }
   }
@@ -365,10 +392,21 @@ export function CoverageCalculator() {
             onContinue={() => {
               if (!tier) {
                 setTierError('Select an amount to compare')
+                trackEvent('tool-error', {
+                  tool: 'nis-self-employed',
+                  step: 'plan',
+                  error: 'required',
+                })
                 focusErrorSummary(planErrorRef)
                 return
               }
               setTierError('')
+              // The plan code only, never the earnings or an amount.
+              trackEvent('tool-result', {
+                tool: 'nis-self-employed',
+                outcome: 'estimated',
+                plan: tier,
+              })
               go('result')
             }}
             setTier={(t) => {
@@ -442,6 +480,12 @@ function Hero({
             className="justify-center py-2 text-center"
             external
             href={REGISTER_HREF}
+            onClick={() =>
+              trackEvent('tool-action', {
+                tool: 'nis-self-employed',
+                action: 'register',
+              })
+            }
           >
             I&rsquo;m ready to register for NIS
           </Link>
