@@ -399,6 +399,30 @@ describe('water outages events (#3510)', () => {
     expect(trackEvent).not.toHaveBeenCalled()
   })
 
+  it('drops a choice still waiting when Back or Forward changes the parish', () => {
+    vi.useFakeTimers()
+    const page = (selected: string) => (
+      <WaterOutagesPage
+        data={DATA}
+        onRetry={retry}
+        onSelect={vi.fn()}
+        retrying={false}
+        selected={selected}
+      />
+    )
+    const { rerender } = render(page(''))
+    fireEvent.change(
+      screen.getByRole('combobox', { name: 'Choose a parish' }),
+      {
+        target: { value: 'saint-john' },
+      },
+    )
+    rerender(page('saint-john'))
+    rerender(page(''))
+    settle()
+    expect(trackEvent).not.toHaveBeenCalled()
+  })
+
   it('drops a choice still waiting when the page closes', () => {
     vi.useFakeTimers()
     const { unmount } = render(<TestPage data={DATA} />)

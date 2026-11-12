@@ -74,7 +74,12 @@ export function WaterOutagesPage({
   const [locatedExact, setLocatedExact] = useState(false)
   const locationRequest = useRef(0)
   const parishTimer = useRef<ReturnType<typeof setTimeout>>(undefined)
+  const pendingParish = useRef('')
   useEffect(() => () => clearTimeout(parishTimer.current), [])
+  // Back or Forward to another parish cancels a choice still waiting.
+  useEffect(() => {
+    if (selected !== pendingParish.current) clearTimeout(parishTimer.current)
+  }, [selected])
 
   const heading = (
     <>
@@ -154,6 +159,7 @@ export function WaterOutagesPage({
   function trackParish(parish: string, chosenBy: 'list' | 'map' | 'location') {
     clearTimeout(parishTimer.current)
     if (!parish) return
+    pendingParish.current = parish
     parishTimer.current = setTimeout(() => {
       trackEvent('tool-result', {
         tool: 'water-outages',
