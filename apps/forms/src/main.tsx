@@ -3,7 +3,11 @@ import ReactDOM from "react-dom/client";
 import { RouterProvider, createRouter } from "@tanstack/react-router";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "./lib/query-client";
-import { configureJourney, trackPageview } from "./lib/analytics";
+import {
+  adoptJourneyId,
+  configureJourney,
+  trackPageview,
+} from "./lib/analytics";
 import { loadUmamiScript } from "./lib/umami-script";
 import "./styles/govtech.css";
 
@@ -20,6 +24,14 @@ loadUmamiScript(
   import.meta.env.VITE_UMAMI_WEBSITE_ID,
   import.meta.env.VITE_UMAMI_SRC,
 );
+
+// First-party journey events (alongside Umami). Off unless VITE_JOURNEY_URL is
+// set for the environment. Then keep the journey ID landing's Start link passed
+// in ?jid= and strip it from the address bar. This runs before the router is
+// created, so the router, every page view and every logged path only ever see
+// the URL without it, whichever router event counts page views.
+configureJourney({ url: import.meta.env.VITE_JOURNEY_URL, app: "forms" });
+adoptJourneyId();
 
 // Surface otherwise-invisible client errors. Route/render errors are shown by
 // the router's defaultErrorComponent and the top-level ErrorBoundary; these
@@ -43,9 +55,6 @@ const router = createRouter({
   defaultErrorComponent: FormError,
 });
 
-// First-party journey events (alongside Umami). Off unless VITE_JOURNEY_URL is
-// set for the environment.
-configureJourney({ url: import.meta.env.VITE_JOURNEY_URL, app: "forms" });
 router.subscribe("onResolved", trackPageview);
 
 // Register the router instance for type safety

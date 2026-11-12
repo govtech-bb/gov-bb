@@ -1,9 +1,12 @@
 import {
+  adoptJourneyId,
   configureJourney,
   flushJourney,
+  getJourneyId,
   journeyEnabled,
   resetJourneyForTests,
   sendJourney,
+  withJourneyId,
 } from "./journey";
 
 const URL_ = "https://forms.api.sandbox.alpha.gov.bb/journey";
@@ -29,6 +32,7 @@ describe("journey events", () => {
     resetJourneyForTests();
     vi.useRealTimers();
     vi.unstubAllGlobals();
+    sessionStorage.clear();
     vi.restoreAllMocks();
   });
 
@@ -219,6 +223,177 @@ describe("journey events", () => {
     it("does nothing when flushed with an empty queue", () => {
       flushJourney();
       expect(beacon).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("journey ID", () => {
+    const UUID =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+    const LANDING_ID = "6f1c2a4e-8b3d-4c5e-9f60-1a2b3c4d5e6f";
+    // UUID-shaped, but the API's z.uuid() rejects it (no version or variant).
+    const NOT_RFC_UUID = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa";
+
+    // Storage that throws, as when the browser blocks site data.
+    const blocked = () => {
+      throw new DOMException("blocked", "SecurityError");
+    };
+
+    function sentEvents(): Record<string, unknown>[] {
+      flushJourney();
+      return sentBodies(beacon).flat() as Record<string, unknown>[];
+    }
+
+    it("is off, and stores nothing, while journey events are off", () => {
+      expect(getJourneyId()).toBeUndefined();
+      expect(withJourneyId("https://forms.test/forms/x")).toBe(
+        "https://forms.test/forms/x",
+      );
+      expect(sessionStorage.length).toBe(0);
+    });
+
+    describe("once configured", () => {
+      beforeEach(() => configureJourney({ url: URL_, app: "forms" }));
+
+      it("creates a random UUID once and keeps it for the tab", () => {
+        const id = getJourneyId();
+        expect(id).toMatch(UUID);
+        expect(getJourneyId()).toBe(id);
+        expect(sessionStorage.getItem("govbb_journey_id")).toBe(id);
+      });
+
+      it("is shared by every event, across page loads in the tab", () => {
+        sendJourney("pageview");
+        const first = sentEvents()[0];
+        // A new page load (the EzPay round trip) in the same tab.
+        resetJourneyForTests();
+        configureJourney({ url: URL_, app: "forms" });
+        sendJourney("pageview");
+        const second = sentEvents()[1];
+        expect(first.journey_id).toMatch(UUID);
+        expect(second.journey_id).toBe(first.journey_id);
+        expect(second.page_load_id).not.toBe(first.page_load_id);
+      });
+
+      it("is new in a new tab", () => {
+        const id = getJourneyId();
+        // A new tab starts with empty sessionStorage.
+        sessionStorage.clear();
+        expect(getJourneyId()).toMatch(UUID);
+        expect(getJourneyId()).not.toBe(id);
+      });
+
+      it.each(["not-a-uuid", NOT_RFC_UUID])(
+        "replaces a stored value the API would reject: %s",
+        (stored) => {
+          sessionStorage.setItem("govbb_journey_id", stored);
+          expect(getJourneyId()).toMatch(UUID);
+          expect(getJourneyId()).not.toBe(stored);
+        },
+      );
+
+      it("falls back to page_load_id when storage is blocked", () => {
+        vi.stubGlobal("sessionStorage", { getItem: blocked, setItem: blocked });
+        sendJourney("pageview");
+        const [e] = sentEvents();
+        expect(e.journey_id).toBe(e.page_load_id);
+      });
+
+      it("writes nothing to cookies or localStorage", () => {
+        const local = {
+          getItem: vi.fn(),
+          setItem: vi.fn(),
+          removeItem: vi.fn(),
+          clear: vi.fn(),
+        };
+        vi.stubGlobal("localStorage", local);
+        window.history.replaceState({}, "", `/forms/x?jid=${LANDING_ID}`);
+        adoptJourneyId();
+        getJourneyId();
+        withJourneyId("https://forms.test/forms/x");
+        sendJourney("pageview");
+        flushJourney();
+        expect(document.cookie).toBe("");
+        for (const fn of Object.values(local))
+          expect(fn).not.toHaveBeenCalled();
+      });
+
+      it("adds the ID to a link as ?jid=, keeping its other params", () => {
+        const id = getJourneyId();
+        expect(withJourneyId("https://forms.test/forms/x?a=1#top")).toBe(
+          `https://forms.test/forms/x?a=1&jid=${id}#top`,
+        );
+        // Clicking the same link twice must not add it twice.
+        expect(withJourneyId(withJourneyId("https://forms.test/forms/x"))).toBe(
+          `https://forms.test/forms/x?jid=${id}`,
+        );
+      });
+    });
+
+    describe("adoptJourneyId", () => {
+      it("keeps the ID from ?jid= and strips it from the address bar", () => {
+        configureJourney({ url: URL_, app: "forms" });
+        window.history.replaceState(
+          { key: "k" },
+          "",
+          `/forms/x?preview=p&jid=${LANDING_ID.toUpperCase()}#main`,
+        );
+        adoptJourneyId();
+        expect(window.location.pathname).toBe("/forms/x");
+        expect(window.location.search).toBe("?preview=p");
+        expect(window.location.hash).toBe("#main");
+        expect(window.history.state).toEqual({ key: "k" });
+        expect(getJourneyId()).toBe(LANDING_ID);
+      });
+
+      it("never puts jid in a logged path", () => {
+        configureJourney({ url: URL_, app: "forms" });
+        window.history.replaceState({}, "", `/forms/x?jid=${LANDING_ID}`);
+        sendJourney("pageview");
+        adoptJourneyId();
+        sendJourney("pageview");
+        for (const e of sentEvents()) {
+          expect(e.path).toBe("/forms/x");
+          expect(JSON.stringify(e)).not.toContain("jid");
+        }
+      });
+
+      it("strips jid without keeping it when journey events are off", () => {
+        window.history.replaceState({}, "", `/forms/x?jid=${LANDING_ID}`);
+        adoptJourneyId();
+        expect(window.location.search).toBe("");
+        expect(sessionStorage.length).toBe(0);
+      });
+
+      it.each(["<script>", NOT_RFC_UUID])(
+        "strips a jid the API would reject without keeping it: %s",
+        (jid) => {
+          configureJourney({ url: URL_, app: "forms" });
+          window.history.replaceState({}, "", `/forms/x?jid=${jid}`);
+          adoptJourneyId();
+          expect(window.location.search).toBe("");
+          expect(sessionStorage.length).toBe(0);
+        },
+      );
+
+      it("still strips jid when storage is blocked", () => {
+        configureJourney({ url: URL_, app: "forms" });
+        vi.stubGlobal("sessionStorage", { getItem: blocked, setItem: blocked });
+        window.history.replaceState({}, "", `/forms/x?jid=${LANDING_ID}`);
+        adoptJourneyId();
+        expect(window.location.search).toBe("");
+      });
+
+      it("leaves a URL without jid alone", () => {
+        window.history.replaceState({}, "", "/forms/x?step=two");
+        const replace = vi.spyOn(window.history, "replaceState");
+        adoptJourneyId();
+        expect(replace).not.toHaveBeenCalled();
+      });
+
+      it("does nothing during SSR", () => {
+        vi.stubGlobal("window", undefined);
+        expect(() => adoptJourneyId()).not.toThrow();
+      });
     });
   });
 });

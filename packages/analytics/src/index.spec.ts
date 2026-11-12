@@ -495,6 +495,23 @@ describe("journey events from trackEvent / trackPageview", () => {
     });
   });
 
+  it("sends the journey ID to /journey and never to Umami", () => {
+    const track = vi.fn<Track>();
+    window.umami = { track };
+    trackEvent("form-start", { form: "get-birth-certificate", category: "x" });
+    trackPageview();
+    flushJourney();
+    expect(sent()[0].journey_id).toMatch(/^[0-9a-f-]{36}$/);
+    for (const [arg] of track.mock.calls) {
+      const payload = typeof arg === "function" ? arg(TRACKER_PAYLOAD) : arg;
+      expect(JSON.stringify(payload)).not.toContain(
+        sent()[0].journey_id as string,
+      );
+      expect(JSON.stringify(payload)).not.toContain("journey");
+    }
+    expect(track).toHaveBeenCalledTimes(2);
+  });
+
   it("unpacks Umami's packed per-step names", () => {
     trackEvent(eventName("get-birth-certificate", "form-step-three"), {
       form: "get-birth-certificate",
@@ -632,4 +649,24 @@ describe("UMAMI_SCRIPT_ATTRIBUTES", () => {
   it("strips the query string from the URLs Umami records", () => {
     expect(UMAMI_SCRIPT_ATTRIBUTES["data-exclude-search"]).toBe("true");
   });
+});
+
+describe("dead-end form events fit the 50-char name (#3513)", () => {
+  const IDS = [
+    "get-birth-certificate",
+    "apply-for-temporary-restaurant-permit",
+    // The longest real form id in the recipes (84 chars).
+    "apply-for-national-summer-camp-programme-tropical-trails-and-tales-science-camp-2026",
+  ];
+
+  it.each(["form-closed-view", "form-load-error"])(
+    "%s stays within 50 chars and maps back to its name",
+    (event) => {
+      for (const id of IDS) {
+        const name = eventName(id, event);
+        expect(name.length).toBeLessThanOrEqual(50);
+        expect(canonicalEvent(name.slice(name.indexOf(":") + 1))).toBe(event);
+      }
+    },
+  );
 });

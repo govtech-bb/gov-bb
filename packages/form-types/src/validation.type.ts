@@ -1,5 +1,18 @@
 import { z } from "zod";
 import { durationTransformSchema } from "./behavior.type";
+import { kebabIdSchema } from "./id-pattern";
+
+// Optional scaling for the numeric bound rules (`min`/`max`/`gt`/`lt`, #3636).
+// The field's number is multiplied by `factors[<referenced answer>]` before the
+// bound is checked — e.g. an amount paid weekly × 4 against a monthly limit.
+// The reference resolves like a rule's own `referenceFieldId`/`targetStepId`,
+// but separately from them: those set the bound, this scales the value. An
+// empty answer skips the rule; an answer with no factor fails it.
+export const scaleBySchema = z.object({
+  referenceFieldId: kebabIdSchema,
+  targetStepId: kebabIdSchema.optional(),
+  factors: z.record(z.string(), z.number().positive()),
+});
 
 export const validationConfigSchema = z.object({
   error: z.string().optional(),
@@ -13,6 +26,7 @@ export const validationConfigSchema = z.object({
   // `transform: "yearsSince"` on a date-of-birth field enforces a minimum age.
   // Invalid/empty date → NaN → the bound fails (validation-fail).
   transform: durationTransformSchema.optional(),
+  scaleBy: scaleBySchema.optional(),
   // When true on a `minYear`/`maxYear` rule, the bound resolves to the current
   // year at validation time instead of a literal `value` — e.g. a "Year" field
   // that must not be in the future. Resolved fresh on every run, so it never

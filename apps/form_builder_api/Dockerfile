@@ -63,7 +63,13 @@ FROM node:24.22-alpine3.23@sha256:9b69af715c7f9d038150b54ccccbaeffa9064bbc93e290
 # Pick up Alpine security patches ahead of the base image's rebuild cadence
 # (e.g. openssl 3.5.8-r0 fixing CVE-2026-75803/CVE-2026-63073 while the base
 # still ships 3.5.7).
-RUN apk upgrade --no-cache
+#
+# BuildKit caches this layer by its text and the base digest, so with the
+# digest pinned it never re-ran: builds kept reusing an old cached result and
+# shipped zlib 1.3.2 after Alpine had released 1.4-r0 (CVE-2026-4738,
+# gov-bb-security#725). Changing the date below forces a fresh upgrade; bump
+# it whenever a Critical/High Alpine fix lands and the base has not caught up.
+RUN apk upgrade --no-cache # refreshed 2026-11-09
 
 # npm and corepack are dead weight AWS Inspector still scans (npm's vendored
 # tar/pacote/undici/ip-address/brace-expansion copies were all flagged);

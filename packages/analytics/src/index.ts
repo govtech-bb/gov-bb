@@ -10,6 +10,7 @@ export {
   journeyEnabled,
   sendJourney,
 } from "./journey";
+export { adoptJourneyId, getJourneyId, withJourneyId } from "./journey";
 export type {
   ToolId,
   ToolResult,
@@ -96,6 +97,17 @@ export interface TrackingData extends ToolTrackingData {
   search: { query: string; results: number };
   "search-result-click": { query: string; position: number; href: string };
   "search-no-results": { query: string };
+  // Dead ends (#3513): where a citizen was stopped before reaching a service.
+  "form-closed-view": { form: string };
+  /** `form` is absent on a route outside a form, and when the form is not found. */
+  "form-load-error": {
+    form?: string;
+    reason: "not-found" | "network" | "server";
+  };
+  "service-unavailable-view": Record<string, never>;
+  /** The app only, never the path, in the event data: a missing page's address
+   *  can hold typed text. */
+  "page-not-found": { app: string };
 }
 
 export type TrackingEventName = keyof TrackingData;
@@ -201,6 +213,8 @@ export const SHORT_EVENT: Readonly<Record<string, string>> = {
   "page-start-view": "pstvw",
   "payment-initiated": "pinit",
   "payment-returned": "pretn",
+  "form-closed-view": "fclsd",
+  "form-load-error": "flerr",
 };
 
 const CANONICAL_BY_SHORT: Readonly<Record<string, string>> = Object.fromEntries(

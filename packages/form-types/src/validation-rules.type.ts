@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { kebabIdSchema } from "./id-pattern";
 import { durationTransformSchema } from "./behavior.type";
+import { scaleBySchema } from "./validation.type";
 
 // ---------------------------------------------------------------------------
 // Shared optional base fields present on many rule schemas
@@ -19,6 +20,12 @@ const referenceFields = {
 // date value is passed through `durationSince` before the bound is checked.
 const transformField = {
   transform: durationTransformSchema.optional(),
+};
+
+// Optional factor the numeric rules scale the value by before the bound is
+// checked (#3636, see validation.type.ts).
+const scaleByField = {
+  scaleBy: scaleBySchema.optional(),
 };
 
 // ---------------------------------------------------------------------------
@@ -72,6 +79,7 @@ export const minRuleSchema = z.object({
   ...baseRuleFields,
   ...referenceFields,
   ...transformField,
+  ...scaleByField,
   value: z.number().optional(),
 });
 export type MinRule = z.infer<typeof minRuleSchema>;
@@ -80,6 +88,7 @@ export const maxRuleSchema = z.object({
   ...baseRuleFields,
   ...referenceFields,
   ...transformField,
+  ...scaleByField,
   value: z.number().optional(),
 });
 export type MaxRule = z.infer<typeof maxRuleSchema>;
@@ -88,6 +97,7 @@ export const gtRuleSchema = z.object({
   ...baseRuleFields,
   ...referenceFields,
   ...transformField,
+  ...scaleByField,
   value: z.number().optional(),
 });
 export type GtRule = z.infer<typeof gtRuleSchema>;
@@ -96,6 +106,7 @@ export const ltRuleSchema = z.object({
   ...baseRuleFields,
   ...referenceFields,
   ...transformField,
+  ...scaleByField,
   value: z.number().optional(),
 });
 export type LtRule = z.infer<typeof ltRuleSchema>;
