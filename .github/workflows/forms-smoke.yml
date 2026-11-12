@@ -4,10 +4,10 @@ name: Forms Live Smoke
 #
 # It is called (via `uses:`) from the workflows that have a deployed URL to
 # point at — job-level `needs:` only resolves within a single workflow file, so
-# the callers keep their dependency edge (deploy-sandbox's smoke jobs
-# `needs: amplify-forms`; pr-preview's smoke job `needs: preview-forms`) while
-# the steps below live in one place. See ADR 0027 (post-deploy smoke) and ADR
-# 0029 (per-PR preview smoke).
+# the callers keep their dependency edge (deploy-sandbox's smoke job
+# `needs: [amplify-forms, amplify-landing]`; pr-preview's smoke job
+# `needs: preview-forms`) while the steps below live in one place. See ADR 0027
+# (post-deploy smoke) and ADR 0029 (per-PR preview smoke).
 #
 # No AWS credentials: it drives a headless browser against the public deployed
 # URL, and any uploads use presigned URLs the deployed API issues server-side.
@@ -33,6 +33,15 @@ on:
         description: "Name for the Playwright trace artifact uploaded on failure."
         required: true
         type: string
+      landing_url:
+        description: >
+          Deployed landing URL (SMOKE_LANDING_URL). When set, the spec enters
+          its form through the landing start page's "Start now" link, and a
+          link to the wrong host or form fails the run (#3008). Empty = open
+          the form directly.
+        required: false
+        type: string
+        default: ""
     secrets:
       smoke_submission_token:
         description: >
@@ -91,6 +100,7 @@ jobs:
           # the preview caller, so it must never reach the script directly.
           SMOKE_BASE_URL: ${{ inputs.base_url }}
           SMOKE_SPEC: ${{ inputs.spec }}
+          SMOKE_LANDING_URL: ${{ inputs.landing_url }}
           # Drops all processors server-side for these submissions (no real
           # emails/webhooks). Empty when the secret is unset → API ignores it.
           SMOKE_SUBMISSION_TOKEN: ${{ secrets.smoke_submission_token }}

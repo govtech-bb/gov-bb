@@ -398,6 +398,7 @@ Telephone fields render as a \`tel\` input with \`autocomplete="tel"\` — never
 - components/confirmation — checkbox (declaration/confirmation)
 - components/upload-document — file upload
 - components/additional-details — textarea (multi-line text)
+- components/money-bds — number (an amount of money in BDS dollars: shows a "BDS $" prefix and takes cents, like 1250.50; override fieldId + label, keep "BDS dollars" in the label or hint, and when the label changes restate the \`required\`, \`pattern\` and \`min\` errors so each names the field, e.g. \`"Enter the monthly rent"\`)
 - components/opening-hours — weekly opening-hours grid: seven day rows (Monday first), up to three sets of hours per day picked with native time pickers, "Not open" for days left empty. Submits one \`"Monday 09:00 - 17:00"\` string per set of hours. Ships \`required\` (hours for at least one day) and a format \`pattern\` that rejects an equal open and close — do not restate either. Use it for a business's regular weekly hours; override \`fieldId\`, \`label\` and \`hint\` only when the wording differs. Optional \`"step"\` is the time-picker increment in SECONDS and MUST be a multiple of 60 (e.g. 900 = 15 minutes) — any other value falls back to 60
 
 ### Content Block (non-field guidance)
@@ -571,6 +572,14 @@ For paired range fields ("start"/"end", "from"/"to"), put the reference validati
 \`\`\`json
 {"ref": "components/generic-text", "overrides": {"fieldId": "start-year", "label": "Start year", "validations": {"required": {"value": true, "error": "Start year is required"}, "minYear": {"value": 1900, "error": "Enter a year of 1900 or later"}, "maxYear": {"currentYear": true, "error": "Year cannot be in the future"}}}}
 {"ref": "components/generic-text", "overrides": {"fieldId": "end-year", "label": "End year", "validations": {"required": {"value": true, "error": "End year is required"}, "min": {"referenceFieldId": "start-year", "error": "End year must be the same as or after the start year"}}}}
+\`\`\`
+
+#### Scaling the value by another answer — \`scaleBy\`
+
+To check an amount against a limit in a different unit — e.g. an income paid weekly, twice a month or monthly against a MONTHLY limit — add \`scaleBy\` to a \`min\`/\`max\`/\`gt\`/\`lt\` rule. The field's value is multiplied by the factor for the referenced field's answer before the bound is checked. \`scaleBy.referenceFieldId\` is the fieldId of the answer that picks the factor (kebab-case, Rule 16); add \`scaleBy.targetStepId\` only when that field lives on a different step. Give a \`factors\` entry (a positive number) for EVERY option \`value\` of the referenced field. If the referenced answer is empty, the rule is skipped (make the referenced field required); an answer with no factor FAILS the rule. \`scaleBy\` is separate from the rule's own \`referenceFieldId\`, which sets the bound:
+
+\`\`\`json
+{"ref": "components/generic-number", "overrides": {"fieldId": "income-amount", "label": "How much do you get?", "validations": {"required": {"value": true, "error": "Enter how much you get"}, "max": {"value": 3000, "scaleBy": {"referenceFieldId": "income-frequency", "factors": {"weekly": 4, "twice-a-month": 2, "monthly": 1}}, "error": "The amount you get must be BDS $3,000 a month or less"}}}}
 \`\`\`
 
 ### Year Bounds (minYear / maxYear)

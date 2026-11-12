@@ -2,7 +2,7 @@
 # ---- builder ------------------------------------------------------------
 # Compiles the NestJS app + the workspace packages it depends on into
 # /app/dist, using the full monorepo as context.
-FROM node:24.21-alpine3.23@sha256:9ec4a2e289874ed0d722e1772ec2de45d2801541db8612f3638b26f128c69ac2 AS builder
+FROM node:24.22-alpine3.23@sha256:9b69af715c7f9d038150b54ccccbaeffa9064bbc93e2904c29591ca097316af1 AS builder
 
 # Corepack must run as root — it writes to /usr/local/bin.
 RUN corepack enable && corepack prepare pnpm@11.6.0 --activate
@@ -99,12 +99,18 @@ RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store,uid=1001,gid=1001 \
 # (deploy-*.yml) runs the compiled data source directly —
 #   node node_modules/typeorm/cli.js migration:run -d dist/src/database/data-source.js
 # — so nothing here needs pnpm, corepack or ts-node.
-FROM node:24.21-alpine3.23@sha256:9ec4a2e289874ed0d722e1772ec2de45d2801541db8612f3638b26f128c69ac2 AS runner
+FROM node:24.22-alpine3.23@sha256:9b69af715c7f9d038150b54ccccbaeffa9064bbc93e2904c29591ca097316af1 AS runner
 
 # Pick up Alpine security patches ahead of the base image's rebuild cadence
 # (e.g. openssl 3.5.8-r0 fixing CVE-2026-75803/CVE-2026-63073 while the base
 # still ships 3.5.7).
-RUN apk upgrade --no-cache
+#
+# BuildKit caches this layer by its text and the base digest, so with the
+# digest pinned it never re-ran: builds kept reusing an old cached result and
+# shipped zlib 1.3.2 after Alpine had released 1.4-r0 (CVE-2026-4738,
+# gov-bb-security#725). Changing the date below forces a fresh upgrade; bump
+# it whenever a Critical/High Alpine fix lands and the base has not caught up.
+RUN apk upgrade --no-cache # refreshed 2026-11-09
 
 # npm and corepack are dead weight AWS Inspector still scans (npm's vendored
 # tar/pacote/undici/ip-address/brace-expansion copies were all flagged);

@@ -57,8 +57,8 @@ Set `VITE_UMAMI_WEBSITE_ID` (and optionally `VITE_UMAMI_SRC`) in the deploy envi
 
 ### How it works
 
-- **Script injection** happens in `src/main.tsx`, gated on `VITE_UMAMI_WEBSITE_ID`. The script is loaded with `data-auto-track="false"` so pageviews come from a single deterministic source — the TanStack Router subscriber.
-- **Pageviews** fire from `router.subscribe('onResolved', trackPageview)` in `src/main.tsx` — one event per resolved route, including step changes via the `?step=` search param.
+- **Script injection** happens in `src/main.tsx`, gated on `VITE_UMAMI_WEBSITE_ID`. `loadUmamiScript` (`src/lib/umami-script.ts`) adds it with `UMAMI_SCRIPT_ATTRIBUTES` from `@govtech-bb/analytics`: `data-auto-track="false"` so pageviews come from a single deterministic source — the TanStack Router subscriber — and `data-exclude-search="true"` so Umami records URLs without the query string, which carries `?draft=` and `?preview=` tokens.
+- **Pageviews** fire from `trackPageviewsOnPathChange(router)` (`src/lib/pageviews.ts`), called in `src/main.tsx`. It subscribes to the router's `onRendered` event, as landing does, and counts one page view per pathname change, the first load included. A change to only the `?step=` search param is not a page view, in Umami or in `/journey`. With auto-track off, Umami's tracker never updates the URL it read at load, so `trackPageview` and `trackEvent` pass it the current path (never the query string) and the previous path as the referrer (#3586). Forms has one route, so every step reports `/forms/<id>`. Step progress reaches Umami through the `form-step-*` events.
 - **Form-funnel events** are fired from React effects and event handlers, never from `data-umami-event` attributes. See the helper at [`src/lib/analytics.ts`](./src/lib/analytics.ts) (`trackEvent`, `trackPageview`) — both no-op when `window.umami` is absent.
 
 ### Event taxonomy
@@ -76,6 +76,9 @@ A small fixed set of event names; high-cardinality dimensions (`form_id`, `step_
 | `form-submit-success` | Submission API returns success / pending_payment | `form_id`, `step_count` |
 | `form-submit-error` | Submission API returns failed/error or network throws | `form_id`, `reason: 'server' \| 'network'` |
 | `form-file-select` | User picks a file in a file-upload field | `form_id`, `step_id`, `field_id`, `mime`, `size_kb` |
+| `form-file-error` | A picked file is not added: refused before upload, or the upload settles to a failure | `form`, `category`, `step`, `field`, `reason: 'rejected' \| 'error' \| 'timeout' \| 'infected' \| 'unscannable'` |
+| `form-file-remove` | User removes an added file | `form`, `category`, `step`, `field` |
+| `form-print` | User clicks Print on the confirmation page | `form`, `category` |
 
 ### Privacy
 

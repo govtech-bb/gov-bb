@@ -16,4 +16,18 @@ export class FormSubmissionRepository extends BaseRepository<FormSubmissionEntit
   ): Promise<void> {
     await this.update(submissionId, { processorsFailed: failedIndices });
   }
+
+  /**
+   * The submission with this exact reference, or null, for the status lookup
+   * (#3419). Reads only what a status answer needs: never `values` or `meta`,
+   * which hold the applicant's answers.
+   */
+  findByReference(
+    referenceCode: string,
+  ): Promise<Pick<FormSubmissionEntity, "formId" | "submittedAt"> | null> {
+    return this.findOne({
+      where: { referenceCode },
+      select: { formId: true, submittedAt: true },
+    });
+  }
 }

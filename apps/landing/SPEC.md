@@ -154,7 +154,7 @@ A documented convention links the landing site to the **forms app**:
 - A marker anchor `<a data-start-link>Start now</a>` is placed where the button should appear in the body.
 - A **build-time script** (`scripts/fetch-form-manifest.mjs`) hits `${VITE_FORMS_API_URL}/form-definitions` during `predev` and `prebuild`, validates the response, and writes a generated module `src/content/available-forms.gen.ts` exporting the set of available form IDs. The build **fails** if the API is unreachable.
 - At render time the Markdown component only renders the button if `form_id` ∈ `AVAILABLE_FORMS`. Otherwise the button is silently suppressed (with a `console.warn` in dev to catch authoring typos).
-- The button links to `${VITE_FORMS_URL}/forms/<form_id>` and emits an analytics event `<form_id>-start`.
+- The button links to `${VITE_FORMS_URL}/forms/<form_id>` and emits an analytics event `start-click` with the form id as `formId` data.
 
 This is governed by **ADR-0005** in the monorepo docs.
 
@@ -237,6 +237,8 @@ Reached from the **HelpfulBox** at the bottom of most pages. Features:
 
 A page that embeds an **external Tally form** ("Help Us Improve Government Services in Barbados") via iframe. Tally's embed script is loaded server-side via the route's `<head>`.
 
+A submit is counted as `tell-us-submit` (#3516). Tally posts a `Tally.FormSubmitted` message to the page; `src/lib/tally-submit.ts` accepts it only from `https://tally.so` and sends the event with no data, because the message carries every answer.
+
 ---
 
 ## 10. Analytics
@@ -245,8 +247,9 @@ Events go to Umami Cloud and, while Umami is being replaced, to the forms API's 
 
 - **Opt-in by env var**: the Umami script is only injected when `VITE_UMAMI_WEBSITE_ID` is set. Journey events are only sent when `VITE_JOURNEY_URL` is set, which is done per environment once its WAF has the per-IP rule for `/journey`. Local dev with the vars unset emits no events, keeping dev traffic out of the dataset.
 - **Auto-tracking disabled** (`data-auto-track="false"`); the app sends everything manually.
-- **Pageviews** are fired by subscribing to the router's `onRendered` lifecycle: one event on the first render and one each time the resolved address changes. `onResolved` is not used because it only fires on a pending-to-idle transition, which never happens on the first, server-rendered page or on a preloaded click.
-- **Click and lifecycle events** use either `data-umami-event="..."` attributes or `trackEvent()` calls from React effects. A document click listener sends the same `data-umami-event` clicks as journey events.
+- **Query strings excluded** (`data-exclude-search="true"`): Umami records the path only, because the query can carry tokens and typed text.
+- **Pageviews** are fired by subscribing to the router's `onRendered` lifecycle: one event on the first render and one each time the resolved address changes. `onResolved` is not used because it only fires on a pending-to-idle transition, which never happens on the first, server-rendered page or on a preloaded click. Each page view and event sends Umami the current path (no query string) and the previous path as the referrer, because with auto-track off its tracker keeps the URL it read at load (#3586).
+- **Click and lifecycle events** use either `data-umami-event="..."` attributes or `trackEvent()` calls from React effects. A document click listener (`installClickListener`) sends every `data-umami-event` click through `trackEvent`, to Umami and journey events alike; Umami's own handler for these attributes stays off.
 - A typed helper in `src/lib/analytics.ts` (`trackEvent`, `trackPageview`, `deriveStartEventName`) sends to each configured destination and no-ops for any that isn't configured (Umami not loaded, or `VITE_JOURNEY_URL` unset).
 - A documented naming convention covers fixed UI surfaces (`<surface>-<action>`), per-service and per-org clicks, and per-form `Start now` events.
 
@@ -293,7 +296,7 @@ These are points I noticed during exploration but couldn't fully resolve. Flaggi
 1. **`/contact` referenced but not implemented.** The 404, server-error, `javascript-required`, and `service-unavailable` pages all link to `/contact` as a secondary CTA, but no `/contact` route exists. Should it be added, or should those links go to `/feedback` / `/tell-us`?
 2. **`hasResearchAccess` flag.** `MarkdownContent` and `rehype-hide-start-links` accept a `hasResearchAccess` prop that gates whether `…/start` links are hidden and whether "There are N ways to apply" copy is rewritten. I couldn't find any code path that actually passes `hasResearchAccess: true`. Is this scaffolding for an upcoming gated-research feature, or is it intended to be wired up to a specific role / cookie / query param now?
 3. **Feedback submission is stubbed.** `sendFeedback` validates and then only `console.log`s the data — a comment says *"SES integration deferred — log the submission for now."* Worth confirming what the long-term backend is meant to be (SES email? a database? a Slack hook?) and whether this is currently providing any real signal.
-4. **`/tell-us` Tally embed.** Is the embedded Tally form a permanent solution, or interim while the in-house feedback flow matures? Either way, the dependency on a third-party iframe is worth flagging from a content-ownership and analytics-coverage perspective.
+4. **`/tell-us` Tally embed.** Is the embedded Tally form a permanent solution, or interim while the in-house feedback flow matures? Either way, the dependency on a third-party iframe is worth flagging from a content-ownership perspective. Analytics now counts submits (§9.2), but nothing inside the form, such as where people give up.
 5. **`/javascript-required` is reachable but not enforced.** There's a `/javascript-required` route and a friendly page, but I didn't see any `<noscript>` redirect, middleware, or progressive-enhancement check that actually routes users there. How is this page intended to surface to the no-JS user?
 6. **Form-route exceptions to the splat router.** The crop-over, severance and pension calculators are exposed as explicit routes under category paths (`/business-trade/crop-over-permits/form`, etc.) rather than as markdown pages. Is the intent that any future calculator-style flow follows this `<category>/<service>/form` pattern, or could some of them live entirely in the splat-routed markdown registry?
 7. **Bank-holiday data sources.** Holiday dates are computed in code with a `MIN_YEAR`/`MAX_YEAR` range of 2020–2050, but the page notes that the Government "may declare additional one-off public holidays." How are ad-hoc gazetted holidays (and their dates) intended to be incorporated, and what's the update process — code change + redeploy, or something more dynamic?

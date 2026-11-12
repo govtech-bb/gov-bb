@@ -316,3 +316,44 @@ describe("SlackStatsService.respond", () => {
     ).resolves.toBeUndefined();
   });
 });
+
+describe("SlackStatsService.postWeeklyDigest", () => {
+  const WEBHOOK = "https://hooks.slack.com/services/T1/B2/abc";
+  const fetchMock = vi.fn();
+  beforeEach(() => {
+    fetchMock.mockReset().mockResolvedValue({ ok: true, status: 200 });
+    vi.stubGlobal("fetch", fetchMock);
+    umami.reportFunnel.mockResolvedValue(funnel(10, 8, 5));
+  });
+  afterEach(() => vi.unstubAllGlobals());
+
+  const posted = () => JSON.parse(fetchMock.mock.calls[0][1].body as string);
+
+  it("posts last week's site-wide stats to the channel webhook", async () => {
+    await expect(service().postWeeklyDigest(WEBHOOK, NOW)).resolves.toBe(true);
+    expect(fetchMock.mock.calls[0][0]).toBe(WEBHOOK);
+    expect(posted().text).toMatch(/^📊 Last week:/);
+    expect(posted().blocks[0].text.text).toBe("📊 Site and forms · Last week");
+    expect(posted()).not.toHaveProperty("response_type");
+  });
+
+  it("posts an apology to the channel when Umami fails", async () => {
+    umami.stats.mockRejectedValue(new Error("Umami 500"));
+    await service().postWeeklyDigest(WEBHOOK, NOW);
+    expect(posted().text).toContain("couldn't get the stats");
+  });
+
+  it.each([
+    [
+      "Slack rejects the post",
+      () => fetchMock.mockResolvedValue({ ok: false, status: 404 }),
+    ],
+    [
+      "Slack is unreachable",
+      () => fetchMock.mockRejectedValue(new Error("ECONNRESET")),
+    ],
+  ])("resolves false when %s", async (_, fail) => {
+    fail();
+    await expect(service().postWeeklyDigest(WEBHOOK, NOW)).resolves.toBe(false);
+  });
+});

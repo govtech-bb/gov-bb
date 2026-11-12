@@ -536,6 +536,55 @@ jobs:
           EXPECT_CODES: "200,302,307"
         run: bash .github/scripts/smoke-test-url.sh
 
+  # Journey 1 on staging (#3008): each spec opens its landing start page, follows
+  # Start to the form, submits it and checks the reference. A Start link to the
+  # wrong host or form fails the run. Runs on every staging deploy, even when
+  # nothing changed, because Deploy Production only ships a commit whose staging
+  # run passed it (see deploy-prod.yml). Same forms and throttle budget as the
+  # sandbox matrix, not every public form; keep the two lists in step.
+  #
+  # SMOKE_SUBMISSION_TOKEN_STAGING must match the staging API's
+  # SMOKE_SUBMISSION_TOKEN (#3324). With a mismatch the API ignores the header
+  # and every processor fires, sending real emails from staging.
+  smoke-test-forms:
+    name: Smoke test forms
+    # ssr-smoke is listed directly: when it fails, amplify-landing is skipped
+    # (not failed), so without it this would smoke the previous landing build
+    # and the prod guard would accept a commit whose landing never deployed.
+    needs: [setup, deploy-api, ssr-smoke, amplify-forms, amplify-landing]
+    if: |
+      always() &&
+      needs.setup.result == 'success' &&
+      !contains(needs.*.result, 'failure') &&
+      !contains(needs.*.result, 'cancelled')
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        include:
+          - spec: project-protege-mentor.smoke.spec.ts
+            artifact_name: project-protege-mentor-smoke-trace
+          - spec: sports-training-programme-form-schema.smoke.spec.ts
+            artifact_name: sports-training-programme-smoke-trace
+          - spec: jobstart-plus-programme.smoke.spec.ts
+            artifact_name: jobstart-plus-smoke-trace
+          - spec: sell-goods-services-beach-park.smoke.spec.ts
+            artifact_name: beach-park-smoke-trace
+          - spec: get-birth-certificate.smoke.spec.ts
+            artifact_name: get-birth-certificate-smoke-trace
+          - spec: get-death-certificate.smoke.spec.ts
+            artifact_name: get-death-certificate-smoke-trace
+          - spec: get-marriage-certificate.smoke.spec.ts
+            artifact_name: get-marriage-certificate-smoke-trace
+    uses: ./.github/workflows/forms-smoke.yml
+    with:
+      base_url: https://forms.staging.alpha.gov.bb
+      landing_url: https://staging.alpha.gov.bb
+      spec: ${{ matrix.spec }}
+      artifact_name: ${{ matrix.artifact_name }}
+    secrets:
+      smoke_submission_token: ${{ secrets.SMOKE_SUBMISSION_TOKEN_STAGING }}
+
   # Journey 5 (#3012): pay for a certificate through the EZ Pay test host on
   # staging and check the confirmation (and, once the test inbox exists, the
   # confirmation email). Runs after the API + forms deploys — and on every run,
@@ -636,11 +685,14 @@ jobs:
 
   summary:
     name: Deployment summary
-    needs: [setup, deploy-api, ssr-smoke, amplify-forms, amplify-landing, amplify-feature-flagging, journey-5-payments]
+    needs: [setup, deploy-api, ssr-smoke, amplify-forms, amplify-landing, amplify-feature-flagging, smoke-test-forms, journey-5-payments]
     if: always()
     runs-on: ubuntu-latest
     steps:
       - name: Summary
+        env:
+          # Via env, not inline ${{ }} in the script (zizmor template-injection).
+          SMOKE_RESULT: ${{ needs.smoke-test-forms.result }}
         run: |
           row() {
             local label="$1" result="$2"
@@ -665,6 +717,7 @@ jobs:
             row "Amplify forms"        "${{ needs.amplify-forms.result }}"
             row "Amplify landing"      "${{ needs.amplify-landing.result }}"
             row "Amplify feature-flagging" "${{ needs.amplify-feature-flagging.result }}"
+            row "Forms smoke (J1)"     "$SMOKE_RESULT"
             row "Journey 5 (EZ Pay)"   "${{ needs.journey-5-payments.result }}"
             echo ""
             echo "**URLs (ALB / amplifyapp.com until DNS lands):**"

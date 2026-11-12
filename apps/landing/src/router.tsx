@@ -4,9 +4,12 @@ import { setupRouterSsrQueryIntegration } from '@tanstack/react-router-ssr-query
 import { routeTree } from './routeTree.gen'
 import {
   configureJourney,
-  installJourneyClickListener,
+  installClickListener,
+  installOutboundClickListener,
   trackPageview,
 } from './lib/analytics'
+import { FORMS_BASE_URL } from './config/env'
+import { SITE_URL } from './lib/site-url'
 
 export function getRouter() {
   const queryClient = new QueryClient()
@@ -31,7 +34,10 @@ export function getRouter() {
     url: import.meta.env.VITE_JOURNEY_URL as string | undefined,
     app: 'landing',
   })
-  installJourneyClickListener()
+  installClickListener()
+  // Landing and forms are one service, so a link to forms is not outbound.
+  // SITE_URL covers absolute links to landing read on another host.
+  installOutboundClickListener({ internalOrigins: [FORMS_BASE_URL, SITE_URL] })
   // onRendered, not onResolved: onResolved only fires when the router goes from
   // pending to idle, which never happens on the first, server-rendered page or
   // on a click whose loader data the `intent` preload already fetched, so most

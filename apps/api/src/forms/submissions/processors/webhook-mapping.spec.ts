@@ -3,6 +3,7 @@ import {
   readPath,
   isTestProgrammeCode,
   smokeAllowedProcessors,
+  sendsToCams,
 } from "./webhook-mapping";
 import type { ServiceContract, WebhookMapping } from "@govtech-bb/form-types";
 import type { SubmissionValues } from "../submissions.types";
@@ -528,6 +529,33 @@ describe("webhook-mapping", () => {
           { type: "webhook", config: { mapping: { programmeCode: "BYAC" } } },
         ]),
       ).toEqual([]);
+    });
+  });
+
+  describe("sendsToCams (#3046, #3419)", () => {
+    it("is true when a webhook processor carries a mapping", () => {
+      expect(
+        sendsToCams([
+          { type: "email", config: {} },
+          { type: "webhook", config: { mapping: { programmeCode: "MOH" } } },
+        ]),
+      ).toBe(true);
+    });
+
+    it("is false for a webhook without a mapping (a generic POST, not CaMS)", () => {
+      expect(
+        sendsToCams([{ type: "webhook", config: { url: "https://x.test" } }]),
+      ).toBe(false);
+    });
+
+    it("is false when no processor is a webhook", () => {
+      expect(sendsToCams([{ type: "email", config: { mapping: {} } }])).toBe(
+        false,
+      );
+    });
+
+    it("is false for no processors", () => {
+      expect(sendsToCams([])).toBe(false);
     });
   });
 });

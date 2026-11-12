@@ -213,6 +213,22 @@ export function smokeAllowedProcessors<
   });
 }
 
+/**
+ * Whether a form's submissions go to CaMS, so the application tracker can find
+ * their reference: the recipe has a webhook processor with a `mapping` (a
+ * mapped case payload), not a generic POST (#3046). The confirmation email's
+ * tracker link and the chat's status lookup (#3419) both key off this.
+ */
+export function sendsToCams(
+  processors: readonly { type: string; config?: unknown }[],
+): boolean {
+  return processors.some(
+    (p) =>
+      p.type === "webhook" &&
+      Boolean((p.config as { mapping?: unknown } | undefined)?.mapping),
+  );
+}
+
 export interface MappedCasePayload {
   code: string;
   programme_code: string;

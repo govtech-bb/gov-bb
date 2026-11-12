@@ -92,7 +92,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write # fast-forward the prod branch ref
-      actions: read # read staging's Journey 5 result (#3012)
+      actions: read # read staging's Journey 5 (#3012) and forms smoke (#3008) results
     outputs:
       # The SHA prod was serving BEFORE this deploy. `setup` uses it as the
       # affected base — see the rationale on its "Derive base/head SHAs" step.
@@ -134,6 +134,32 @@ jobs:
             fi
           done
           echo "::error title=Journey 5 not passed::No Deploy Staging run for $SHA has a passing Journey 5 (EZ Pay) job (failed, skipped or still running). Fix or re-run it on staging before deploying to prod."
+          exit 1
+
+      # Journey 1 (#3008): the landing → forms smoke runs on every staging
+      # deploy, so prod only ships a commit whose staging run passed every leg.
+      # A run with no smoke legs (a staging deploy from before the job existed)
+      # doesn't count. allow_non_staging skips this for a deliberate rollback.
+      - name: Guard — staging passed the forms smoke for this commit
+        if: inputs.allow_non_staging != true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          runs=$(gh api "repos/$REPO/actions/workflows/deploy-staging.yml/runs?head_sha=$SHA&per_page=20" \
+            --jq '.workflow_runs[].id')
+          for run in $runs; do
+            # One line per matrix leg; every leg must have succeeded.
+            legs=$(gh api "repos/$REPO/actions/runs/$run/jobs?per_page=100" \
+              --jq '[.jobs[] | select(.name | startswith("Smoke test forms")) | .conclusion]')
+            if [ "$(jq 'length > 0 and all(. == "success")' <<<"$legs")" = "true" ]; then
+              echo "✅ Forms smoke passed on staging for $SHA (run $run, $(jq length <<<"$legs") legs)"
+              exit 0
+            fi
+          done
+          echo "::error title=Forms smoke not passed::No Deploy Staging run for $SHA passed every forms smoke leg (failed, skipped, missing or still running). Fix or re-run it on staging before deploying to prod."
           exit 1
 
       # Read BEFORE the fast-forward below moves the ref — this is the SHA

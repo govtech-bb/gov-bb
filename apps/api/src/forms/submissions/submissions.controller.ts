@@ -2,6 +2,7 @@ import { Body, Controller, Headers, Logger, Post } from "@nestjs/common";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 import { Throttle } from "@nestjs/throttler";
 import { ConfigService } from "@nestjs/config";
+import { z } from "zod";
 import { SubmissionsService } from "./submissions.service";
 import { CreateSubmissionDto } from "./dto";
 import { CreateSubmissionDocs } from "./submissions.docs";
@@ -46,6 +47,7 @@ export class SubmissionsController {
     @Headers("x-smoke-submission") smokeToken: string | undefined,
     @Headers("x-recipe-preview") previewToken: string | undefined,
     @Body(SubmissionPayloadSizePipe) body: CreateSubmissionDto,
+    @Headers("x-journey-id") journeyIdHeader?: string,
   ): Promise<ApiResponseShape<FormSubmissionEntity>> {
     // Drop every processor for a smoke-originated submission — but only when
     // the header carries the configured SMOKE_SUBMISSION_TOKEN. Fail-closed:
@@ -80,6 +82,11 @@ export class SubmissionsController {
         previewToken,
       );
 
+    // The forms tab's journey ID (#3507), logged on submission_accepted so the
+    // journey's form-submit event can be joined to it. The same UUID check as
+    // /journey's journey_id; anything else is ignored, never logged.
+    const journeyId = z.uuid().safeParse(journeyIdHeader);
+
     const {
       data,
       message,
@@ -87,21 +94,27 @@ export class SubmissionsController {
       deferred,
       resolvedPolyclinic,
       resolvedPolyclinicContact,
+      trackable,
     } = await this.submissionsService.submit({
       ...body,
       idempotencyKey,
       ...(isSmokeSubmission && { isSmokeSubmission: true }),
       ...(bypassVisibility && { bypassVisibility: true }),
+      ...(journeyId.success && { journeyId: journeyId.data }),
     });
 
     // Extra outcome data rides on `meta` (like `deferred`): the resolved
     // polyclinic name and its contact line let the confirmation page name the
     // Environmental Health Department the request went to and show only its
-    // contact details. Only attach `meta` when there is something to carry.
+    // contact details. `trackable` tells the chat's receipt whether to offer
+    // tracking (#3419); `false` is an answer and is sent, while an absent value
+    // means the service could not tell. Only attach `meta` when there is
+    // something to carry.
     const meta = {
       ...(deferred && { deferred }),
       ...(resolvedPolyclinic && { resolvedPolyclinic }),
       ...(resolvedPolyclinicContact && { resolvedPolyclinicContact }),
+      ...(trackable !== undefined && { trackable }),
     };
 
     // `statusCode` is the outcome the service computed (201 new / 200 replay /

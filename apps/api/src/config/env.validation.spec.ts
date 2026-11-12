@@ -261,6 +261,7 @@ describe("envValidationSchema", () => {
     it("defaults the allow-empty token + URL vars to empty string", () => {
       const { value } = validate({ ...baseEnv });
       expect(value?.FORMS_BASE_URL).toBe("");
+      expect(value?.TRACKER_LOOKUP_API_URL).toBe("");
       expect(value?.WEBHOOK_URL).toBe("");
       expect(value?.S3_BUCKET).toBe("");
       expect(value?.RECIPE_PREVIEW_TOKEN).toBe("");
@@ -316,6 +317,17 @@ describe("envValidationSchema", () => {
       expect(error).toBeUndefined();
       expect(value?.AWS_REGION).toBe("ca-central-1");
       expect(value?.SES_ENDPOINT).toBe("http://localhost:8005");
+    });
+  });
+
+  describe("CHAT_CALLER_TOKEN (#3623)", () => {
+    it("defaults to empty, so no request gets the chat limit", () => {
+      expect(validate(baseEnv).value?.CHAT_CALLER_TOKEN).toBe("");
+    });
+
+    it("keeps a configured token", () => {
+      const { value } = validate({ ...baseEnv, CHAT_CALLER_TOKEN: "t0ken" });
+      expect(value?.CHAT_CALLER_TOKEN).toBe("t0ken");
     });
   });
 });

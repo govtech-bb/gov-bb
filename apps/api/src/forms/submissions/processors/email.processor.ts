@@ -24,8 +24,10 @@ import type { SubmissionCreatedEvent } from "../submissions.types";
 import { FormConfigService } from "@/forms/form-config/form-config.service";
 import { CatchmentContactService } from "@/catchment/catchment-contact.service";
 import { NonRetryableError } from "./non-retryable-error";
+import { sendsToCams } from "./webhook-mapping";
 import { redactPii } from "@/common/log-sanitize";
 import { NotificationLogRepository } from "../notification-log.repository";
+import { SUBMISSION_ID_TAG } from "../sqs/ses-event.types";
 import { NotificationOutcome } from "@/database/entities/notification-log.entity";
 
 // The detailed reviewer/MDA email: full field-by-field summary of the
@@ -255,7 +257,9 @@ export class EmailProcessor implements ISubmissionProcessor {
           Destination: { ToAddresses: toAddresses },
           Content: content,
           // EmailTags are forwarded to the SES event destination (SNS/EventBridge).
-          EmailTags: [{ Name: "submissionId", Value: payload.submissionId }],
+          // The submissionId tag also marks the send as tracked, so the
+          // SesEventConsumer never discards its events as untracked.
+          EmailTags: [{ Name: SUBMISSION_ID_TAG, Value: payload.submissionId }],
           ...(this.mailer.configurationSet && {
             ConfigurationSetName: this.mailer.configurationSet,
           }),
@@ -522,9 +526,7 @@ export class EmailProcessor implements ISubmissionProcessor {
       // them only for that template.
       ctx.coatOfArmsUrl = this.mailer.coatOfArmsUrl;
       if (templateId === RECEIVED_TEMPLATE) {
-        ctx.trackable = payload.processors.some(
-          (p) => p.type === "webhook" && Boolean(p.config.mapping),
-        );
+        ctx.trackable = sendsToCams(payload.processors);
         ctx.departmentName =
           (await this.formConfigService.resolveDepartmentName(
             payload.formId,

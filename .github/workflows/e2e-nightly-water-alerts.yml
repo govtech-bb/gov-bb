@@ -84,7 +84,7 @@ jobs:
         env:
           # Required by the smoke config; journey 6 drives landing instead.
           SMOKE_BASE_URL: https://forms.sandbox.alpha.gov.bb
-          E2E_LANDING_URL: https://landing.sandbox.alpha.gov.bb
+          E2E_LANDING_URL: https://sandbox.alpha.gov.bb
           E2E_INBOX_DOMAIN: ${{ vars.E2E_INBOX_DOMAIN }}
           E2E_INBOX_BUCKET: ${{ vars.E2E_INBOX_BUCKET }}
           E2E_INBOX_PREFIX: ${{ vars.E2E_INBOX_PREFIX }}

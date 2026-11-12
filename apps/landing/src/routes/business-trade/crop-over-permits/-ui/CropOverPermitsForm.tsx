@@ -12,7 +12,8 @@ import {
   Text,
 } from '@govtech-bb/react'
 import { useNavigate } from '@tanstack/react-router'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { trackEvent } from '@/lib/analytics'
 import { HelpfulBox } from '../../../../components/HelpfulBox'
 import { EVENT_TYPE_LABELS, SIZE_LABELS, VENUE_LABELS } from '../-lib/permits'
 import type { FeatureFlag, Permit, VenueFlag } from '../-lib/permits'
@@ -202,6 +203,17 @@ export function CropOverPermitsForm() {
   const [venueError, setVenueError] = useState('')
   const [sizeError, setSizeError] = useState('')
 
+  // One step view per question shown: the ref survives StrictMode's second
+  // effect run. The result step sends tool-result instead.
+  const viewedStep = useRef<Step | null>(null)
+  useEffect(() => {
+    if (viewedStep.current === step) return
+    viewedStep.current = step
+    if (step !== 'result') {
+      trackEvent('tool-step-view', { tool: 'crop-over-permits', step })
+    }
+  }, [step])
+
   const go = (next: Step) => {
     setStep(next)
     if (typeof window !== 'undefined') window.scrollTo({ top: 0 })
@@ -211,6 +223,11 @@ export function CropOverPermitsForm() {
     setEventError('')
     if (!eventType) {
       setEventError('Select the type of event you are putting on')
+      trackEvent('tool-error', {
+        tool: 'crop-over-permits',
+        step: 'q-event',
+        error: 'required',
+      })
       return
     }
     if (eventType === 'cruise') {
@@ -225,6 +242,11 @@ export function CropOverPermitsForm() {
     setVenueError('')
     if (!venue) {
       setVenueError('Select where you are holding the event')
+      trackEvent('tool-error', {
+        tool: 'crop-over-permits',
+        step: 'q-venue',
+        error: 'required',
+      })
       return
     }
     go('q-size')
@@ -234,9 +256,25 @@ export function CropOverPermitsForm() {
     setSizeError('')
     if (!size) {
       setSizeError('Select how many people you are expecting')
+      trackEvent('tool-error', {
+        tool: 'crop-over-permits',
+        step: 'q-size',
+        error: 'required',
+      })
       return
     }
     go('q-features')
+  }
+
+  function showPermits() {
+    trackEvent('tool-result', {
+      tool: 'crop-over-permits',
+      outcome: 'checklist',
+      event: eventType,
+      venue,
+      permits: getActivePermits(venue || null, features).length,
+    })
+    go('result')
   }
 
   const activePermits =
@@ -395,7 +433,7 @@ export function CropOverPermitsForm() {
           noValidate
           onSubmit={(e) => {
             e.preventDefault()
-            go('result')
+            showPermits()
           }}
         >
           <ServiceHeading service={SERVICE_TITLE}>
@@ -497,6 +535,12 @@ export function CropOverPermitsForm() {
 }
 
 function PermitCard({ permit }: { permit: Permit; displayStep: number }) {
+  const track = (action: string) =>
+    trackEvent('tool-action', {
+      tool: 'crop-over-permits',
+      action,
+      target: permit.id,
+    })
   return (
     <li className="rounded-sm border border-grey-20 p-s">
       <div className="flex items-start gap-s">
@@ -505,6 +549,7 @@ function PermitCard({ permit }: { permit: Permit; displayStep: number }) {
             {permit.link ? (
               <Link
                 href={permit.link}
+                onClick={() => track('agency-link')}
                 rel="noopener noreferrer"
                 target="_blank"
               >
@@ -551,6 +596,7 @@ function PermitCard({ permit }: { permit: Permit; displayStep: number }) {
                 <div className="mb-3">
                   <LinkButton
                     href={permit.applyOnline}
+                    onClick={() => track('apply-online')}
                     rel="noopener noreferrer"
                     target="_blank"
                   >
@@ -564,7 +610,15 @@ function PermitCard({ permit }: { permit: Permit; displayStep: number }) {
                   {permit.applyInPerson.tel && (
                     <>
                       <br />
-                      Tel: <strong>{permit.applyInPerson.tel}</strong>
+                      Tel:{' '}
+                      <strong>
+                        <Link
+                          href={`tel:+1${permit.applyInPerson.tel.replace(/\D/g, '')}`}
+                          onClick={() => track('call')}
+                        >
+                          {permit.applyInPerson.tel}
+                        </Link>
+                      </strong>
                     </>
                   )}
                   {permit.applyInPerson.email && (

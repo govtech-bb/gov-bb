@@ -7,6 +7,7 @@ import { UnknownRefError } from "./errors";
 import { getCatalog, getRegistryItem } from "./catalog";
 import type { RegistryCatalog } from "./catalog";
 import type { ServiceContractRecipe, Primitive } from "@govtech-bb/form-types";
+import { serviceContractRecipeSchema } from "@govtech-bb/form-types";
 import { REGISTRY_COMPONENTS } from "@govtech-bb/registry";
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
@@ -272,6 +273,41 @@ describe("hydrateForm", () => {
 
     const contract = hydrateForm(recipe, catalog);
     expect(contract.steps[0].elements[0].hint).toBe("Use work email");
+  });
+
+  it("keeps a conditionalHint override from the parsed recipe to the served field (#3637)", () => {
+    const conditionalHint = [
+      {
+        targetStepId: "applying-with",
+        targetFieldId: "applying-with",
+        operator: "equal" as const,
+        value: "with-another-person",
+        hint: "Include land or property you own on your own or with someone else.",
+      },
+    ];
+    // Parse first, as the recipe loader does: `fieldOverridesSchema` picks its
+    // keys, so a key missing from that pick is stripped here.
+    const recipe = serviceContractRecipeSchema.parse(
+      makeRecipe({
+        steps: [
+          {
+            stepId: "step-1",
+            title: "Step 1",
+            elements: [
+              {
+                ref: "components/generic-text",
+                overrides: { conditionalHint },
+              },
+            ],
+          },
+        ],
+      }),
+    );
+
+    const contract = hydrateForm(recipe, catalog);
+    expect(contract.steps[0].elements[0].conditionalHint).toEqual(
+      conditionalHint,
+    );
   });
 
   it("carries a content block's variant/content/summary overrides onto the resolved primitive (#2873)", () => {

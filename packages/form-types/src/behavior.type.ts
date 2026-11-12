@@ -121,6 +121,27 @@ export const conditionalLabelSchema = z.object({
 });
 export type ConditionalLabel = z.infer<typeof conditionalLabelSchema>;
 
+// A conditional field hint (#3637): the hint counterpart of `conditionalLabel`.
+// When its condition matches the submitted values, the field renders this
+// `hint` in place of its static `Primitive.hint`. Fields carry an ARRAY; the
+// first entry whose condition matches wins, and the static hint (if any) is the
+// fallback when none do.
+export const conditionalHintSchema = z.object({
+  targetFieldId: kebabIdSchema,
+  targetStepId: kebabIdSchema.optional(),
+  operator: equalityOperationsSchema,
+  transform: durationTransformSchema.optional(),
+  value: z.union([
+    z.string(),
+    z.number(),
+    z.boolean(),
+    z.array(z.string()),
+    z.array(z.number()),
+  ]),
+  hint: z.string(),
+});
+export type ConditionalHint = z.infer<typeof conditionalHintSchema>;
+
 // One conditionally-authored passage of confirmation markdown (#2068). Unlike
 // `conditionalTitle`/`conditionalLabel` — which swap a whole short string — a
 // confirmation body needs SEVERAL independent passages to vary at once (the
