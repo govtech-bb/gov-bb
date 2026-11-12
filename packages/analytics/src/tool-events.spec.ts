@@ -30,7 +30,7 @@ const ALLOWED_KEYS: {
   "tool-result": { [T in ToolId]: Record<keyof ResultFor<T>, true> };
 } = {
   "tool-step-view": { tool: true, step: true },
-  "tool-action": { tool: true, action: true, target: true },
+  "tool-action": { tool: true, action: true, target: true, step: true },
   "tool-error": { tool: true, error: true, step: true },
   "tool-result": {
     "pharmacy-finder": {
@@ -126,7 +126,12 @@ const EVENTS: { [E in ToolEventName]: [E, TrackingData[E]] } = {
   ],
   "tool-action": [
     "tool-action",
-    { tool: "shelter-finder", action: "call", target: "shelter-12" },
+    {
+      tool: "shelter-finder",
+      action: "call",
+      target: "shelter-12",
+      step: "find",
+    },
   ],
   "tool-error": [
     "tool-error",

@@ -19,11 +19,13 @@ import {
   Select,
   Text,
 } from '@govtech-bb/react'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
+import { trackEvent } from '@/lib/analytics'
 import { EMERGENCY_SHELTERS, PARISHES } from '../-data/emergency-shelters'
 import type { LatLon, Shelter } from '../-data/emergency-shelters'
 import { shelterDistance, userIsOnIsland } from '../-lib/shelter-distance'
+import { trackCall } from '../-lib/track-call'
 import { Chevron, CloseIcon, LocationIcon } from './icons'
 import { ShelterCard } from './shelter-card'
 
@@ -124,6 +126,21 @@ const LOCATION_ERRORS: Record<number, string> = {
   3: 'The location request timed out. Filter by parish instead.',
 }
 
+/** The location errors sent as tool-error (#3509). */
+const LOCATION_ERROR_EVENTS: Record<number, string> = {
+  1: 'location-denied',
+  2: 'location-unavailable',
+}
+
+/** How long search, filters and sort stay unchanged before tool-result is
+ *  sent, so typing a search sends one event, not one per keystroke. */
+const RESULT_SETTLE_MS = 1000
+
+/** A parish as the platform's parish code, e.g. "saint-michael". */
+function parishCode(parish: string): string {
+  return parish.replace('St. ', 'Saint ').toLowerCase().replaceAll(' ', '-')
+}
+
 /** Shelters shown before the "Show more" button appears. */
 const PAGE_SIZE = 12
 
@@ -196,6 +213,47 @@ export function ShelterFinder() {
     ).sort((a, b) => compareForSort(a, b, sort, userLocation))
   }, [parishes, categories, accessible, search, sort, userLocation])
 
+  // Send tool-result once search, filters and sort settle (#3509). The view on
+  // arrival is not a search, so it is not sent, and nothing is sent while a
+  // location request is open. Only whether there was a search text or a
+  // location is sent, never the text or the location. Parishes and categories
+  // can come from the URL, so only known values are sent, in a fixed order.
+  const arrived = useRef(false)
+  useEffect(() => {
+    if (!ready) return
+    if (!arrived.current) {
+      arrived.current = true
+      return
+    }
+    if (locationState === 'loading') return
+    const timer = setTimeout(() => {
+      trackEvent('tool-result', {
+        tool: 'shelter-finder',
+        outcome: results.length > 0 ? 'results' : 'no-results',
+        results: results.length,
+        parishes: PARISHES.filter((p) => parishes.includes(p))
+          .map(parishCode)
+          .join(','),
+        categories: ['1', '2'].filter((c) => categories.includes(c)).join(','),
+        amenities: accessible ? 1 : 0,
+        sort,
+        has_query: search.trim() !== '',
+        used_location: userLocation !== null,
+      })
+    }, RESULT_SETTLE_MS)
+    return () => clearTimeout(timer)
+  }, [
+    ready,
+    results,
+    parishes,
+    categories,
+    accessible,
+    search,
+    sort,
+    userLocation,
+    locationState,
+  ])
+
   const visibleShelters = results.slice(0, visibleCount)
 
   const requestLocation = useCallback(() => {
@@ -231,6 +289,13 @@ export function ShelterFinder() {
         )
       },
       (error) => {
+        const errorEvent = LOCATION_ERROR_EVENTS[error.code]
+        if (errorEvent) {
+          trackEvent('tool-error', {
+            tool: 'shelter-finder',
+            error: errorEvent,
+          })
+        }
         setUserLocation(null)
         setLocationState('idle')
         setSort('parish')
@@ -464,7 +529,11 @@ export function ShelterFinder() {
             <div className="border-blue-40 border-l-4 bg-blue-10 px-s py-xm">
               <Text as="p">
                 Try clearing a filter above, or call the Department of Emergency
-                Management on <Link href={DEM_TEL}>{DEM_NUMBER}</Link> for help.
+                Management on{' '}
+                <Link href={DEM_TEL} onClick={() => trackCall('find', 'dem')}>
+                  {DEM_NUMBER}
+                </Link>{' '}
+                for help.
               </Text>
             </div>
           ) : (
