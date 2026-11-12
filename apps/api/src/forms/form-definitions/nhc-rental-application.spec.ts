@@ -208,20 +208,21 @@ describe.each([
 ])("income cap (%s)", (prefix, who) => {
   const frequencyId = `${prefix}income-frequency`;
 
-  it("scales the amount to a month: weekly x4, twice a month x2, monthly x1", async () => {
+  it("scales the amount to a month: weekly x52/12, twice a month x2, monthly x1", async () => {
     const amount = await field("income", `${prefix}income-amount`);
     expect(amount.validations?.max).toMatchObject({
       value: 3000,
       error: `The amount ${who} receive is more than BDS $3,000 a month`,
       scaleBy: {
         referenceFieldId: frequencyId,
-        factors: { weekly: 4, "twice-a-month": 2, monthly: 1 },
+        factors: { weekly: 4.333333, "twice-a-month": 2, monthly: 1 },
       },
     });
   });
 
   it.each([
-    ["weekly", "750", "750.01"],
+    // 3000 / (52 / 12) = 692.307…, so 692.30 a week is the most that passes.
+    ["weekly", "692.30", "692.31"],
     ["twice-a-month", "1500", "1500.01"],
     ["monthly", "3000", "3000.01"],
   ])(

@@ -286,7 +286,7 @@
                 "scaleBy": {
                   "referenceFieldId": "income-frequency",
                   "factors": {
-                    "weekly": 4,
+                    "weekly": 4.333333,
                     "twice-a-month": 2,
                     "monthly": 1
                   }
@@ -437,7 +437,7 @@
                 "scaleBy": {
                   "referenceFieldId": "co-applicant-income-frequency",
                   "factors": {
-                    "weekly": 4,
+                    "weekly": 4.333333,
                     "twice-a-month": 2,
                     "monthly": 1
                   }
@@ -2763,7 +2763,7 @@
     }
   ],
   "createdAt": "2026-09-03T00:00:00.000Z",
-  "updatedAt": "2026-11-12T05:41:54.000Z",
+  "updatedAt": "2026-11-12T06:15:09.000Z",
   "meta": {
     "visibility": "preview"
   }

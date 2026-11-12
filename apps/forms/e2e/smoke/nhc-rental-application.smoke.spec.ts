@@ -32,9 +32,9 @@
  *  - There is no stop page. "No" to a citizen question or the combined
  *    income question is refused on its own step by a `^yes$` pattern, and an
  *    amount over BDS $3,000 a month is refused by a `max` rule that scales
- *    the amount by its frequency (`scaleBy`: weekly x4, twice a month x2,
- *    monthly x1). The first walk checks the cap live: BDS $800 a week
- *    (= $3,200 a month) is refused, BDS $700 a week passes.
+ *    the amount by its frequency (`scaleBy`: weekly x52/12, twice a month
+ *    x2, monthly x1). The first walk checks the cap live: BDS $700 a week
+ *    (about $3,033 a month) is refused, BDS $650 a week passes.
  *  - Money fields are `components/money-bds`: a text input with a "BDS $"
  *    prefix, so they are filled like text.
  *  - `national-id-number` has a hard mask, so its digits are typed, not filled.
@@ -240,7 +240,7 @@ test.describe("NHC rental application — Live Smoke", () => {
     await selectRadio(page, step, "income-type", "government-employee");
     await expect(page.getByText("How much are you paid?")).toBeVisible();
     await selectRadio(page, step, "income-frequency", "weekly");
-    await fillField(page, step, "income-amount", "800");
+    await fillField(page, step, "income-amount", "700");
     await page.getByRole("button", { name: /^Continue$/ }).click();
     await expect(
       page
@@ -248,7 +248,7 @@ test.describe("NHC rental application — Live Smoke", () => {
         .first(),
     ).toBeVisible({ timeout: STEP_TIMEOUT });
     expectStep(page, "income", { exact: true });
-    await fillField(page, step, "income-amount", "700");
+    await fillField(page, step, "income-amount", "650");
     await advance(page, step);
 
     await fillPersonDetails(
