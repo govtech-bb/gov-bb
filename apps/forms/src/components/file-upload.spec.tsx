@@ -489,6 +489,33 @@ describe("FileUpload", () => {
     ).toBeInTheDocument();
   });
 
+  // #2708 has recipes list extensions beside MIME types, so an untyped
+  // `photo.jpg` still passes. Each type must then be named once, not twice
+  // ("pdf, jpeg, png, .pdf, .jpg, .jpeg, or .png") — and .jpg is .jpeg.
+  it("names each file type once when MIME types and extensions are both listed", () => {
+    renderComponent({
+      field: {
+        ...baseField,
+        validations: {
+          fileTypes: {
+            value: [
+              "application/pdf",
+              "image/jpeg",
+              "image/png",
+              ".pdf",
+              ".jpg",
+              ".jpeg",
+              ".png",
+            ],
+          },
+        },
+      },
+    });
+    expect(
+      screen.getByText(/^attach a pdf, jpeg, or png file$/i),
+    ).toBeInTheDocument();
+  });
+
   it("warns in the console for a field with no fileTypes without blocking the applicant", () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     renderComponent({ field: { ...noFileTypesField, hint: undefined } });
