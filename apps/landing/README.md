@@ -410,12 +410,12 @@ The implementation lives in `src/lib/preview.ts` (token check, cookie, redirect)
 and is resolved once per request in `src/routes/__root.tsx`. The level
 comparison and per-page gating live in `src/content/registry.ts`.
 
-## Chat handoff (ChatAssistant)
+## Chat handoff (HomeHero)
 
-The `ChatAssistant` component on the homepage probes the chat app's
-`/api/health/public` for the live Online badge and, on submit, redirects
-to the chat app with the user's question prefilled via `?q=` so chat
-auto-sends on mount.
+The homepage hero's Ask Assistant mode (`HomeHero`) probes the chat app's
+`/api/health/public`, and disables Send and points people to Search while
+it is offline. On submit it redirects to the chat app with the user's
+question prefilled via `?q=` so chat auto-sends on mount.
 
 ### Environment variable
 
@@ -423,7 +423,7 @@ auto-sends on mount.
 | --------------- | ---------- | ----------------------------------------------------------------------------------------- |
 | `VITE_CHAT_URL` | build time | Base URL of the deployed chat app. Used for both the health probe and the submit handoff. |
 
-`ChatAssistant` defaults to `https://chat.sandbox.alpha.gov.bb` in code
+`HomeHero` defaults to `https://chat.sandbox.alpha.gov.bb` in code
 when `VITE_CHAT_URL` is unset, so deploys work with no Amplify Console
 config.
 
