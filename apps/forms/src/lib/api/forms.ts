@@ -6,6 +6,7 @@ import {
   type StepFieldEntry,
 } from "@govtech-bb/form-types";
 import { stepFieldIdConcactenator } from "../form-builder/field-mapper";
+import { getJourneyId } from "../analytics";
 import {
   ApiResponse,
   FormDefinitionResponse,
@@ -275,12 +276,17 @@ export const postFormSubmission = async (
 ) => {
   const endpoint = `/submissions`;
   const errorMessage = {};
+  // This tab's journey ID, which the API logs on submission_accepted so the
+  // journey's form-submit event can be joined to it (#3507). Undefined while
+  // journey events are off, and then no header is sent.
+  const journeyId = getJourneyId();
   const fetchArgs = {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       "idempotency-key": idempotencyKey,
       ...(previewToken ? { "X-Recipe-Preview": previewToken } : {}),
+      ...(journeyId ? { "X-Journey-Id": journeyId } : {}),
     },
     body: JSON.stringify({
       formId,
