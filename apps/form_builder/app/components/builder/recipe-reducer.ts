@@ -517,8 +517,18 @@ export function recipeReducer(
       // Spreading the union value from makeDefaultProcessor and adding the id
       // distributes over the discriminated union, so the result stays a valid
       // RecipeProcessorDraft with its type↔config correlation intact.
+      const seeded = makeDefaultProcessor(action.processorType);
+      // A CaMS seed excludes the required steps, but a recipe opened in the
+      // services workspace may lack some of them, and the CI webhook guard
+      // fails an excluded id that is not a step (#2684). Keep only the ones
+      // this draft has.
+      if (seeded.type === "webhook" && seeded.config.mapping) {
+        const stepIds = new Set(state.steps.map((s) => s.stepId));
+        seeded.config.mapping.excludeSteps =
+          seeded.config.mapping.excludeSteps.filter((id) => stepIds.has(id));
+      }
       const newProcessor: RecipeProcessorDraft = {
-        ...makeDefaultProcessor(action.processorType),
+        ...seeded,
         id: crypto.randomUUID(),
       };
       return {

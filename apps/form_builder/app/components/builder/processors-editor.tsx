@@ -136,9 +136,11 @@ export function ProcessorsEditor({
         {camsWithoutContact && (
           <Banner variant="alert" size="sm" role="alert">
             <div className="min-w-0 flex-1">
-              Choose an MDA contact under Contact details. Case Management
-              System (CaMS) submissions can't be sent without one, and the
-              contact must also be set up for CaMS delivery.
+              {/* The services workspace sets the contact with "Department
+                  notification email", not the builder's Contact details. */}
+              {embedded
+                ? "Choose a department under Email the department. Case Management System (CaMS) submissions can't be sent without one, and the department must also be set up for CaMS delivery."
+                : "Choose an MDA contact under Contact details. Case Management System (CaMS) submissions can't be sent without one, and the contact must also be set up for CaMS delivery."}
             </div>
           </Banner>
         )}

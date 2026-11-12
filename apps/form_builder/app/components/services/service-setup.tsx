@@ -808,6 +808,14 @@ function ServiceSubmissionActions({
     catchmentRouting: recipe.catchmentRouting,
     // So the CaMS-needs-an-MDA-contact warning (#2684) sees the pending pick.
     mdaContactId: value.pendingConfig.mdaContactId,
+    // So a CaMS action lists (and seeds its exclusions from) this recipe's
+    // steps, not EMPTY_DRAFT's required three. Never written back.
+    steps: (recipe.steps ?? []).map((s) => ({
+      stepId: s.stepId,
+      title: s.title,
+      fields: [],
+      behaviours: [],
+    })),
   };
   return (
     <ProcessorsEditor

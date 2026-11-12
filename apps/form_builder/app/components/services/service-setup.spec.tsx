@@ -416,13 +416,63 @@ it("only warns about a CaMS action's MDA contact when none is pending (#2684)", 
   await userEvent.click(
     screen.getByRole("button", { name: "Advanced action settings" }),
   );
-  expect(screen.queryByText(/choose an MDA contact/i)).not.toBeInTheDocument();
+  expect(screen.queryByText(/choose a department/i)).not.toBeInTheDocument();
   unmount();
   render(<Harness initial={withCams(null)} />);
   await userEvent.click(
     screen.getByRole("button", { name: "Advanced action settings" }),
   );
-  expect(screen.getByText(/choose an MDA contact/i)).toBeInTheDocument();
+  // The banner names this workspace's control, and doing what it says clears it.
+  expect(
+    screen.getByText(/choose a department under Email the department/i),
+  ).toBeInTheDocument();
+  await chooseOption(
+    screen.getByRole("combobox", { name: "Department notification email" }),
+    "Housing · housing@example.test",
+  );
+  expect(
+    screen.queryByText(/choose a department under Email the department/i),
+  ).not.toBeInTheDocument();
+});
+
+it("lists the recipe's own steps for a CaMS action to exclude (#2684)", async () => {
+  const initial = draft();
+  initial.recipe!.steps = [
+    { stepId: "contact", title: "Contact details", elements: [] },
+    { stepId: "about", title: "About you", elements: [] },
+  ] as unknown as NonNullable<ServiceDraft["recipe"]>["steps"];
+  initial.recipe!.processors!.push({
+    type: "webhook",
+    config: {
+      method: "POST",
+      signatureHeader: "X-Webhook-Signature",
+      timeoutMs: 10000,
+      mapping: {
+        programmeCode: "HOUSING",
+        applicant: {
+          name: "contact.name",
+          email: "contact.email",
+          phone: "contact.phone",
+        },
+        excludeSteps: [],
+        groupByStep: false,
+      },
+    },
+  });
+  render(<Harness initial={initial} />);
+  await userEvent.click(
+    screen.getByRole("button", { name: "Advanced action settings" }),
+  );
+  const group = screen.getByRole("group", { name: "Steps to exclude" });
+  expect(
+    within(group).getByRole("checkbox", { name: "Contact details (contact)" }),
+  ).toBeInTheDocument();
+  expect(
+    within(group).getByRole("checkbox", { name: "About you (about)" }),
+  ).toBeInTheDocument();
+  expect(
+    within(group).queryByRole("checkbox", { name: /check-your-answers/ }),
+  ).not.toBeInTheDocument();
 });
 
 it("keeps incomplete payments in the editor and explains what prevents saving", async () => {

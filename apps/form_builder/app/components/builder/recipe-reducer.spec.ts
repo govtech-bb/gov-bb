@@ -974,6 +974,33 @@ describe("ADD_PROCESSOR", () => {
     expect(added.config).toHaveProperty("mapping");
     expect(added.config).not.toHaveProperty("url");
   });
+
+  it("seeds a CaMS webhook's excludeSteps only with required steps the draft has (#2684)", () => {
+    const step = (stepId: string) => ({
+      stepId,
+      title: stepId,
+      fields: [],
+      behaviours: [],
+    });
+    const next = recipeReducer(
+      {
+        ...baseDraft(),
+        steps: [
+          step("contact"),
+          step("declaration"),
+          step("submission-confirmation"),
+        ],
+      },
+      { type: "ADD_PROCESSOR", processorType: "webhook-cams" },
+    );
+    const config = next.processors![0].config as {
+      mapping: { excludeSteps: string[] };
+    };
+    expect(config.mapping.excludeSteps).toEqual([
+      "declaration",
+      "submission-confirmation",
+    ]);
+  });
 });
 
 // ── REMOVE_PROCESSOR ─────────────────────────────────────────────────────────

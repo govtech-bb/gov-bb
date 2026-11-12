@@ -183,11 +183,14 @@ export function ProcessorConfigForm({
         const names = Array.isArray(mapping.applicant.name)
           ? mapping.applicant.name
           : [mapping.applicant.name];
+        // `name` is positional ([first, last]) and the schema refuses a blank
+        // path, so a last name needs a first name: the last-name picker waits
+        // for one, and clearing the first name clears both.
         const setName = (first: string, last: string) =>
           setMapping({
             applicant: {
               ...mapping.applicant,
-              name: [first, last].filter(Boolean),
+              name: first ? [first, last].filter(Boolean) : [],
             },
           });
         // Every step the author could exclude, keeping any already-excluded id
@@ -291,6 +294,7 @@ export function ProcessorConfigForm({
                 value={names[1] ?? ""}
                 fields={fields.filter((f) => fieldMatches(f, "name"))}
                 onChange={(last) => setName(names[0] ?? "", last)}
+                disabled={!names[0]}
               />
             </div>
 
@@ -320,10 +324,10 @@ export function ProcessorConfigForm({
               />
             </div>
 
-            <div className="mb-3.5 flex flex-col gap-1.25 [&_input]:box-border [&_input]:w-full [&_textarea]:box-border [&_textarea]:w-full [&_label]:text-[13px] [&_label]:font-medium [&_label]:text-ui-brand-hover [[data-field-row]>&]:w-full">
-              <div className="text-[13px] font-medium text-ui-brand-hover">
+            <fieldset className="mb-3.5 flex flex-col gap-1.25 [&_input]:box-border [&_input]:w-full [&_textarea]:box-border [&_textarea]:w-full [&_label]:text-[13px] [&_label]:font-medium [&_label]:text-ui-brand-hover [[data-field-row]>&]:w-full min-w-0">
+              <legend className="text-[13px] font-medium text-ui-brand-hover">
                 Steps to exclude
-              </div>
+              </legend>
               {stepIds.map((stepId) => {
                 const title = stepTitles.get(stepId);
                 return (
@@ -338,11 +342,17 @@ export function ProcessorConfigForm({
                           : excludeSteps.filter((s) => s !== stepId),
                       })
                     }
-                    label={title ? `${title} (${stepId})` : stepId}
+                    label={
+                      title === undefined
+                        ? `${stepId} (not in this form)`
+                        : title
+                          ? `${title} (${stepId})`
+                          : stepId
+                    }
                   />
                 );
               })}
-            </div>
+            </fieldset>
 
             <div className="mb-3.5 flex flex-col gap-1.25 [&_input]:box-border [&_input]:w-full [&_textarea]:box-border [&_textarea]:w-full [&_label]:text-[13px] [&_label]:font-medium [&_label]:text-ui-brand-hover [[data-field-row]>&]:w-full">
               <Checkbox

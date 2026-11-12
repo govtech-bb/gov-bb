@@ -1103,13 +1103,33 @@ it("writes applicant name as an ordered first/last list, and phone and email pat
   });
 });
 
-it("never saves a blank first-name path when only a last name is picked", async () => {
+it("keeps the applicant name pickers in order: the last name waits for a first name", async () => {
   render(<Harness initial={camsDraft()} fields={CAMS_FIELDS} />);
+  const last = () => screen.getByLabelText(/applicant last name/i);
+  expect(last()).toBeDisabled();
+
   await chooseOption(
-    screen.getByLabelText(/applicant last name/i),
-    /\(applicant\.last-name\)$/,
+    screen.getByLabelText(/applicant first name/i),
+    /\(applicant\.first-name\)$/,
   );
-  expect(mapping().applicant).toMatchObject({ name: ["applicant.last-name"] });
+  expect(last()).toBeEnabled();
+  await chooseOption(last(), /\(applicant\.last-name\)$/);
+  expect(mapping().applicant).toMatchObject({
+    name: ["applicant.first-name", "applicant.last-name"],
+  });
+  expect(screen.getByLabelText(/applicant first name/i)).toHaveTextContent(
+    "applicant.first-name",
+  );
+  expect(last()).toHaveTextContent("applicant.last-name");
+
+  // Clearing the first name clears both, so the last name never moves into
+  // the first-name slot (the list is positional: [first, last]).
+  await chooseOption(
+    screen.getByLabelText(/applicant first name/i),
+    "— select field —",
+  );
+  expect(mapping().applicant).toMatchObject({ name: [] });
+  expect(last()).toBeDisabled();
 });
 
 it("offers contact-number and mobile fields in the CaMS phone picker", async () => {
@@ -1159,6 +1179,29 @@ it("lists every draft step by title for exclusion, including content-only steps"
   expect(
     screen.getByRole("checkbox", { name: "Declaration (declaration)" }),
   ).toBeInTheDocument();
+});
+
+it("names the steps-to-exclude checkboxes as one group", () => {
+  render(<Harness initial={camsDraft()} fields={CAMS_FIELDS} />);
+  const group = screen.getByRole("group", { name: "Steps to exclude" });
+  expect(
+    within(group).getByRole("checkbox", { name: "Declaration (declaration)" }),
+  ).toBeInTheDocument();
+});
+
+it("keeps an excluded step id that is no longer in the form, marked, until it is cleared", async () => {
+  const draft = camsDraft();
+  const config = draft.processors![0].config as {
+    mapping: { excludeSteps: string[] };
+  };
+  config.mapping.excludeSteps = ["check-your-answers", "old-step"];
+  render(<Harness initial={draft} fields={CAMS_FIELDS} />);
+  const stale = screen.getByRole("checkbox", {
+    name: "old-step (not in this form)",
+  });
+  expect(stale).toBeChecked();
+  await userEvent.click(stale);
+  expect(mapping().excludeSteps).toEqual(["check-your-answers"]);
 });
 
 it("edits a CaMS mapping that leaves out the defaulted excludeSteps and groupByStep", async () => {
