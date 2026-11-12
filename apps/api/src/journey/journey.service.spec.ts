@@ -45,6 +45,17 @@ describe("JourneyService", () => {
     expect(line).not.toHaveProperty("service");
   });
 
+  it("logs the journey_id that joins one tab's events across apps", () => {
+    const journeyId = "0b7e2f1a-3c4d-4e5f-8a9b-0c1d2e3f4a5b";
+    expect(service.record(event({ journey_id: journeyId }), BROWSER)).toBe(1);
+    expect(logged(stdout)[0]).toMatchObject({ journey_id: journeyId });
+  });
+
+  it("still accepts an event without a journey_id", () => {
+    expect(service.record(event(), BROWSER)).toBe(1);
+    expect(logged(stdout)[0]).not.toHaveProperty("journey_id");
+  });
+
   it("accepts the text/plain JSON string that sendBeacon sends", () => {
     expect(service.record(JSON.stringify(event()), BROWSER)).toBe(1);
   });
@@ -103,6 +114,11 @@ describe("JourneyService", () => {
     ["name too long", event({ event: "a".repeat(101) })],
     ["path with a query string", event({ path: "/forms/x?token=abc" })],
     ["non-uuid id", event({ id: "123" })],
+    ["non-uuid journey_id", event({ journey_id: "a@b.com" })],
+    [
+      "journey_id with no UUID version",
+      event({ journey_id: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa" }),
+    ],
     ["unknown top-level field", event({ email: "a@b.com" })],
     ["nested prop", event({ props: { form: { id: "x" } } })],
     [

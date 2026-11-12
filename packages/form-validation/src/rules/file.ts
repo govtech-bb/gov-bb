@@ -42,7 +42,7 @@ const toBareExt = (allowed: string): string => {
 // reads nothing from the surrounding form state, and its two direct callers —
 // the browser pre-check and the API presign gate — validate a single file with
 // no such state to pass. Still assignable where RULE_REGISTRY wants a
-// RuleRunner, so the registry keeps calling it with all three.
+// RuleRunner, so the registry keeps calling it with the form state.
 export const fileTypesRunner: (
   value: unknown,
   config: ValidationConfig,

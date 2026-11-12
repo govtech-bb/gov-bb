@@ -53,3 +53,31 @@ describe("content primitive", () => {
     expect(o).toEqual({ content: "body" });
   });
 });
+
+describe("ui.prefix", () => {
+  it("parses a field with a ui.prefix", () => {
+    const parsed = primitiveSchema.parse({
+      fieldId: "monthly-rent",
+      label: "Monthly rent",
+      htmlType: "number",
+      ui: { prefix: "BDS $", width: "short" },
+    });
+    expect(parsed.ui).toEqual({ prefix: "BDS $", width: "short" });
+  });
+
+  it("rejects a non-string ui.prefix", () => {
+    expect(
+      primitiveSchema.safeParse({
+        fieldId: "monthly-rent",
+        label: "Monthly rent",
+        htmlType: "number",
+        ui: { prefix: 1 },
+      }).success,
+    ).toBe(false);
+  });
+
+  it("keeps ui.prefix through field overrides", () => {
+    const o = fieldOverridesSchema.parse({ ui: { prefix: "BDS $" } });
+    expect(o).toEqual({ ui: { prefix: "BDS $" } });
+  });
+});
