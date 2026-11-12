@@ -1,10 +1,17 @@
+import { StrictMode } from "react";
 import { render, screen } from "@testing-library/react";
+import { trackEvent } from "../lib/analytics";
 import ApplicationClosed from "./application-closed";
 
+vi.mock("../lib/analytics", () => ({ trackEvent: vi.fn() }));
+
 describe("ApplicationClosed", () => {
+  beforeEach(() => vi.mocked(trackEvent).mockClear());
+
   it("shows the heading, subtext, formatted deadline, and MDA contact prose", () => {
     render(
       <ApplicationClosed
+        formId="some-form"
         serviceTitle="National Science Camp 2026"
         closingDateTime="2026-07-09T23:59:00-04:00"
         contactDetails={{
@@ -46,6 +53,7 @@ describe("ApplicationClosed", () => {
   it("omits the contact section when contactDetails is absent", () => {
     render(
       <ApplicationClosed
+        formId="some-form"
         serviceTitle="Some Service"
         closingDateTime="2026-07-09T23:59:00-04:00"
       />,
@@ -58,5 +66,48 @@ describe("ApplicationClosed", () => {
     expect(
       screen.queryByRole("heading", { name: "Have a question?" }),
     ).not.toBeInTheDocument();
+  });
+
+  it("sends form-closed-view once for the view (#3513)", () => {
+    const { rerender } = render(
+      <StrictMode>
+        <ApplicationClosed
+          formId="national-science-camp"
+          serviceTitle="National Science Camp 2026"
+          closingDateTime="2026-07-09T23:59:00-04:00"
+        />
+      </StrictMode>,
+    );
+    rerender(
+      <StrictMode>
+        <ApplicationClosed
+          formId="national-science-camp"
+          serviceTitle="National Science Camp 2026"
+          closingDateTime="2026-07-09T23:59:00-04:00"
+        />
+      </StrictMode>,
+    );
+    expect(trackEvent).toHaveBeenCalledTimes(1);
+    expect(trackEvent).toHaveBeenCalledWith("form-closed-view", {
+      form: "national-science-camp",
+    });
+  });
+
+  it("sends form-closed-view again when the view moves to another closed form", () => {
+    const view = (formId: string) => (
+      <StrictMode>
+        <ApplicationClosed
+          formId={formId}
+          serviceTitle="Camp"
+          closingDateTime="2026-07-09T23:59:00-04:00"
+        />
+      </StrictMode>
+    );
+    const { rerender } = render(view("camp-a"));
+    rerender(view("camp-b"));
+    expect(vi.mocked(trackEvent).mock.calls).toEqual([
+      ["form-closed-view", { form: "camp-a" }],
+      ["form-closed-view", { form: "camp-b" }],
+    ]);
   });
 });
