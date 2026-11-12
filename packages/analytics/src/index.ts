@@ -11,6 +11,7 @@ export {
   sendJourney,
 } from "./journey";
 export { adoptJourneyId, getJourneyId, withJourneyId } from "./journey";
+export { installOutboundClickListener } from "./outbound";
 export type {
   ToolId,
   ToolResult,
@@ -108,6 +109,15 @@ export interface TrackingData extends ToolTrackingData {
   /** The app only, never the path, in the event data: a missing page's address
    *  can hold typed text. */
   "page-not-found": { app: string };
+  /**
+   * Citizen followed a link that leaves the service (#3512). `host` is set for
+   * web links only. Never the full URL, query string, number or address.
+   */
+  "outbound-click": {
+    kind: "link" | "tel" | "mailto";
+    host?: string;
+    page: string;
+  };
 }
 
 export type TrackingEventName = keyof TrackingData;
