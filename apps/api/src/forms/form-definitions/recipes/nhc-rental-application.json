@@ -2153,13 +2153,7 @@
               },
               "fileTypes": {
                 "value": [
-                  "application/pdf",
-                  "image/jpeg",
-                  "image/png",
-                  ".pdf",
-                  ".jpg",
-                  ".jpeg",
-                  ".png"
+                  "application/pdf", "image/jpeg", "image/png"
                 ],
                 "error": "The file must be a PDF, JPG or PNG"
               },
@@ -2182,13 +2176,7 @@
               },
               "fileTypes": {
                 "value": [
-                  "application/pdf",
-                  "image/jpeg",
-                  "image/png",
-                  ".pdf",
-                  ".jpg",
-                  ".jpeg",
-                  ".png"
+                  "application/pdf", "image/jpeg", "image/png"
                 ],
                 "error": "The file must be a PDF, JPG or PNG"
               },
@@ -2212,13 +2200,7 @@
               },
               "fileTypes": {
                 "value": [
-                  "application/pdf",
-                  "image/jpeg",
-                  "image/png",
-                  ".pdf",
-                  ".jpg",
-                  ".jpeg",
-                  ".png"
+                  "application/pdf", "image/jpeg", "image/png"
                 ],
                 "error": "The file must be a PDF, JPG or PNG"
               },
@@ -2257,13 +2239,7 @@
               },
               "fileTypes": {
                 "value": [
-                  "application/pdf",
-                  "image/jpeg",
-                  "image/png",
-                  ".pdf",
-                  ".jpg",
-                  ".jpeg",
-                  ".png"
+                  "application/pdf", "image/jpeg", "image/png"
                 ],
                 "error": "The file must be a PDF, JPG or PNG"
               },
@@ -2298,13 +2274,7 @@
               },
               "fileTypes": {
                 "value": [
-                  "application/pdf",
-                  "image/jpeg",
-                  "image/png",
-                  ".pdf",
-                  ".jpg",
-                  ".jpeg",
-                  ".png"
+                  "application/pdf", "image/jpeg", "image/png"
                 ],
                 "error": "The file must be a PDF, JPG or PNG"
               },
@@ -2337,13 +2307,7 @@
               },
               "fileTypes": {
                 "value": [
-                  "application/pdf",
-                  "image/jpeg",
-                  "image/png",
-                  ".pdf",
-                  ".jpg",
-                  ".jpeg",
-                  ".png"
+                  "application/pdf", "image/jpeg", "image/png"
                 ],
                 "error": "The file must be a PDF, JPG or PNG"
               },
@@ -2392,13 +2356,7 @@
               },
               "fileTypes": {
                 "value": [
-                  "application/pdf",
-                  "image/jpeg",
-                  "image/png",
-                  ".pdf",
-                  ".jpg",
-                  ".jpeg",
-                  ".png"
+                  "application/pdf", "image/jpeg", "image/png"
                 ],
                 "error": "The file must be a PDF, JPG or PNG"
               },
@@ -2447,13 +2405,7 @@
               },
               "fileTypes": {
                 "value": [
-                  "application/pdf",
-                  "image/jpeg",
-                  "image/png",
-                  ".pdf",
-                  ".jpg",
-                  ".jpeg",
-                  ".png"
+                  "application/pdf", "image/jpeg", "image/png"
                 ],
                 "error": "The file must be a PDF, JPG or PNG"
               },
@@ -2485,13 +2437,7 @@
               },
               "fileTypes": {
                 "value": [
-                  "application/pdf",
-                  "image/jpeg",
-                  "image/png",
-                  ".pdf",
-                  ".jpg",
-                  ".jpeg",
-                  ".png"
+                  "application/pdf", "image/jpeg", "image/png"
                 ],
                 "error": "The file must be a PDF, JPG or PNG"
               },
@@ -2524,13 +2470,7 @@
               },
               "fileTypes": {
                 "value": [
-                  "application/pdf",
-                  "image/jpeg",
-                  "image/png",
-                  ".pdf",
-                  ".jpg",
-                  ".jpeg",
-                  ".png"
+                  "application/pdf", "image/jpeg", "image/png"
                 ],
                 "error": "The file must be a PDF, JPG or PNG"
               },
@@ -2576,13 +2516,7 @@
               },
               "fileTypes": {
                 "value": [
-                  "application/pdf",
-                  "image/jpeg",
-                  "image/png",
-                  ".pdf",
-                  ".jpg",
-                  ".jpeg",
-                  ".png"
+                  "application/pdf", "image/jpeg", "image/png"
                 ],
                 "error": "The file must be a PDF, JPG or PNG"
               },
@@ -2624,13 +2558,7 @@
               },
               "fileTypes": {
                 "value": [
-                  "application/pdf",
-                  "image/jpeg",
-                  "image/png",
-                  ".pdf",
-                  ".jpg",
-                  ".jpeg",
-                  ".png"
+                  "application/pdf", "image/jpeg", "image/png"
                 ],
                 "error": "The file must be a PDF, JPG or PNG"
               },
@@ -2670,13 +2598,7 @@
               },
               "fileTypes": {
                 "value": [
-                  "application/pdf",
-                  "image/jpeg",
-                  "image/png",
-                  ".pdf",
-                  ".jpg",
-                  ".jpeg",
-                  ".png"
+                  "application/pdf", "image/jpeg", "image/png"
                 ],
                 "error": "The file must be a PDF, JPG or PNG"
               },
@@ -2739,13 +2661,7 @@
               },
               "fileTypes": {
                 "value": [
-                  "application/pdf",
-                  "image/jpeg",
-                  "image/png",
-                  ".pdf",
-                  ".jpg",
-                  ".jpeg",
-                  ".png"
+                  "application/pdf", "image/jpeg", "image/png"
                 ],
                 "error": "The file must be a PDF, JPG or PNG"
               },
@@ -2847,7 +2763,7 @@
     }
   ],
   "createdAt": "2026-09-03T00:00:00.000Z",
-  "updatedAt": "2026-11-12T05:06:52.000Z",
+  "updatedAt": "2026-11-12T05:41:54.000Z",
   "meta": {
     "visibility": "preview"
   }

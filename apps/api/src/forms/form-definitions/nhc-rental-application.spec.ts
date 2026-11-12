@@ -75,15 +75,9 @@ function gates(
   );
 }
 
-const FILE_TYPES = [
-  "application/pdf",
-  "image/jpeg",
-  "image/png",
-  ".pdf",
-  ".jpg",
-  ".jpeg",
-  ".png",
-];
+// MIME types only: the shared fileTypes rule accepts .jpg and .jpeg for
+// image/jpeg (#2708), so the recipe needs no extension list.
+const FILE_TYPES = ["application/pdf", "image/jpeg", "image/png"];
 
 // --- answer sets -----------------------------------------------------------
 
