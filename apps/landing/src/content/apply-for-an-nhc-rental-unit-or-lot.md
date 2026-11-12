@@ -1,6 +1,6 @@
 ---
-title: 'Apply for an NHC rental unit or lot'
-description: 'Use this service to apply to rent a unit or a lot from the National Housing Corporation (NHC). You must have a monthly income of BDS $3,000 or less to apply.'
+title: 'Apply for a National Housing Corporation (NHC) rental home or house lot'
+description: 'Use this service to apply for a National Housing Corporation (NHC) rental home or house lot. Your monthly income must be BDS $3,000 or less.'
 stage: 'alpha'
 publish_date: 2026-04-16
 category: housing
@@ -9,52 +9,79 @@ service_type: digital
 form_id: nhc-rental-application
 ---
 
-Use this service to apply to rent a unit or a lot from the National Housing Corporation (NHC).
+Use this service to apply for a National Housing Corporation (NHC) rental home or house lot. A house lot is land you can rent from NHC to build a home on. You cannot apply for both a rental home and a house lot at the same time.
 
 ## Who can apply
 
-You can apply if you are:
+You can apply on your own or with one other person.
 
-- a Barbadian citizen or permanent resident
-- earning a monthly income of BDS $3,000 or less
+To apply:
 
-If your monthly income is more than BDS $3,000, you will not be able to continue with the application.
+- you must be a Barbadian citizen. Anyone applying with you must also be a citizen.
+- if you apply on your own, your monthly income must be BDS $3,000 or less
+- if you apply with another person, your combined monthly income must be BDS $3,000 or less
+- if you apply together for a rental home, you must both plan to live there
+
+Income includes money from a job, self-employment or a pension.
 
 ## Before you start
 
-You will need:
+Each person applying will need:
 
-- your Barbados National Identification (ID) number, which is on your national ID card
-- your TAMIS number, if you have one
-- two recent pay slips
-- your national ID card
-- a job letter from your employer
-- a passport-size photograph
-- co-applicant details, if you are applying jointly
-- details of all the people who will live in the unit
+- a Barbados National Identification (ID) card (you'll need the number and a copy to upload)
+- a passport-size photo
+
+If you are employed, you will also need:
+
+- 2 recent payslips
+- a job letter
+
+If you are self-employed, you will also need:
+
+- a business registration certificate, if your business is registered
+- financial statements, if you have them. These show how much money your business makes and what it spends.
+
+If you do not have documents showing how much you earn, you can still apply. You will still need to tell us how much you earn.
+
+If you are retired, you will also need:
+
+- a document showing how much pension you receive
+
+If you are applying for a rental home, have the names and ages of anyone else who will live there, and their relationship to you.
 
 ## Complete the form
 
-Allow about 20 minutes to complete the form.
+There are 2 ways to apply. You can:
 
-You should complete your application in one go. At the moment, it is not possible to save your answers and come back to them later.
+1. **Apply online**
 
-<a data-start-link>Start now</a>
+   You should complete your application in one go. At the moment, it is not possible to save your answers and come back to them later.
+
+   <a data-start-link>Start now</a>
+
+2. **Apply using a paper form**
+
+   Get a paper form from the National Housing Corporation. Complete the form by hand and return it to the National Housing Corporation. The address is under Contact at the end of this page.
 
 ## Cost
 
-There is no cost to apply for an NHC rental unit or lot.
+There is no cost to apply.
+
+If your application is approved, NHC will tell you the fees for the rental home or house lot.
 
 ## What happens after you apply
 
-You will get a reference number and a confirmation email. Keep the reference number in case you need to contact NHC about your application.
-
-NHC will review your application and contact you within 10 working days.
-
-Submitting an application does not mean that you have been offered a rental unit or lot.
+- NHC will check your application and may contact you if it needs more information.
+- If you qualify, NHC may put you on a waiting list until a rental home or house lot is available.
 
 ## Contact
 
-If you need help with your application, contact the National Housing Corporation.
+National Housing Corporation\
+"The Garden"\
+Country Road\
+St. Michael\
+Barbados
 
-<!-- MDA NOTE: Confirm the telephone number, email address and opening hours for rental enquiries, then add them here. The purchase service lists PBX (246) 536-5300 and nhc.customerservice@barbados.gov.bb for Customer Service (Property Sales), which is likely to be the wrong team for rentals. -->
+Telephone: [(246) 536-5300](tel:+12465365300)
+
+Email: [NHC.CustomerService@barbados.gov.bb](mailto:NHC.CustomerService@barbados.gov.bb)

@@ -1,8 +1,73 @@
 {
   "formId": "nhc-rental-application",
-  "title": "Apply for an NHC rental unit or lot",
-  "description": "National Housing Corporation application form for a rental unit or lot",
+  "title": "Apply for an NHC rental home or house lot",
+  "description": "National Housing Corporation application for a rental home or house lot",
   "steps": [
+    {
+      "stepId": "application-type",
+      "title": "What are you applying for?",
+      "elements": [
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "application-type",
+            "label": "What are you applying for?",
+            "hint": "A house lot is land you can rent from NHC to build a home on.",
+            "ui": {
+              "hideLabel": true
+            },
+            "options": [
+              {
+                "label": "A rental home",
+                "value": "rental-home"
+              },
+              {
+                "label": "A house lot",
+                "value": "house-lot"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Select what you are applying for"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "stepId": "applying-with",
+      "title": "Are you applying on your own or with another person?",
+      "elements": [
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "applying-with",
+            "label": "Are you applying on your own or with another person?",
+            "ui": {
+              "hideLabel": true
+            },
+            "options": [
+              {
+                "label": "On my own",
+                "value": "on-my-own"
+              },
+              {
+                "label": "With another person",
+                "value": "with-another-person"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Select whether you are applying on your own or with another person"
+              }
+            }
+          }
+        }
+      ]
+    },
     {
       "stepId": "eligibility",
       "title": "Check if you can apply",
@@ -10,18 +75,9 @@
         {
           "ref": "components/generic-radio",
           "overrides": {
-            "fieldId": "income-eligible",
-            "label": "Is your monthly income BDS $3,000 or less?",
-            "validations": {
-              "required": {
-                "error": "Tell us whether your monthly income is BDS $3,000 or less",
-                "value": true
-              },
-              "pattern": {
-                "error": "You must have a monthly income of BDS $3,000 or less to apply",
-                "value": "^yes$"
-              }
-            },
+            "fieldId": "citizen",
+            "label": "Are you a citizen of Barbados?",
+            "hint": "You are a citizen if Barbados legally recognises you as Barbadian. This can be through birth, a Barbadian parent or being officially granted that status. Being a permanent resident does not make you a citizen.",
             "options": [
               {
                 "label": "Yes",
@@ -30,6 +86,68 @@
               {
                 "label": "No",
                 "value": "no"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Select whether you are a citizen of Barbados"
+              },
+              "pattern": {
+                "value": "^yes$",
+                "error": "You must be a citizen of Barbados to apply"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/content",
+          "overrides": {
+            "fieldId": "citizen-notice",
+            "variant": "warning",
+            "content": "**You cannot use this service**\n\nAll applicants must be Barbadian citizens.",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "citizen",
+                "operator": "equal",
+                "value": "no"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "co-applicant-citizen",
+            "label": "Is the person applying with you a citizen of Barbados?",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Select whether the person applying with you is a citizen of Barbados"
+              },
+              "pattern": {
+                "value": "^yes$",
+                "error": "The person applying with you must be a citizen of Barbados"
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "applying-with",
+                "targetStepId": "applying-with",
+                "operator": "equal",
+                "value": "with-another-person"
               }
             ]
           }
@@ -37,30 +155,349 @@
         {
           "ref": "components/content",
           "overrides": {
-            "fieldId": "income-ineligible-notice",
+            "fieldId": "co-applicant-citizen-notice",
+            "variant": "warning",
+            "content": "**You cannot use this service**\n\nAll applicants must be Barbadian citizens.",
             "behaviours": [
               {
                 "type": "fieldConditionalOn",
-                "targetFieldId": "income-eligible",
+                "targetFieldId": "applying-with",
+                "targetStepId": "applying-with",
+                "operator": "equal",
+                "value": "with-another-person"
+              },
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "co-applicant-citizen",
                 "operator": "equal",
                 "value": "no"
               }
-            ],
-            "content": "To apply for an NHC rental unit or lot, your monthly income must be BDS $3,000 or less. If your circumstances change, you can come back and apply again.",
-            "variant": "warning"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "stepId": "income",
+      "title": "Tell us about your income",
+      "elements": [
+        {
+          "ref": "components/content",
+          "overrides": {
+            "fieldId": "income-you-heading",
+            "variant": "text",
+            "content": "## You",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "applying-with",
+                "targetStepId": "applying-with",
+                "operator": "equal",
+                "value": "with-another-person"
+              }
+            ]
           }
         },
         {
           "ref": "components/generic-radio",
           "overrides": {
-            "fieldId": "has-co-applicant",
-            "label": "Are you applying with a co-applicant?",
+            "fieldId": "income-type",
+            "label": "Which of these describes you?",
+            "options": [
+              {
+                "label": "Government employee",
+                "value": "government-employee"
+              },
+              {
+                "label": "Private sector employee",
+                "value": "private-sector-employee"
+              },
+              {
+                "label": "Self-employed",
+                "value": "self-employed"
+              },
+              {
+                "label": "Retired",
+                "value": "retired"
+              }
+            ],
             "validations": {
               "required": {
-                "error": "Tell us if you are applying with a co-applicant",
-                "value": true
+                "value": true,
+                "error": "Select which of these describes you"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/money-bds",
+          "overrides": {
+            "fieldId": "income-amount",
+            "label": "How much do you receive?",
+            "conditionalLabel": [
+              {
+                "targetFieldId": "income-type",
+                "operator": "in",
+                "value": [
+                  "government-employee",
+                  "private-sector-employee"
+                ],
+                "label": "How much are you paid?"
+              },
+              {
+                "targetFieldId": "income-type",
+                "operator": "equal",
+                "value": "self-employed",
+                "label": "How much do you earn?"
+              },
+              {
+                "targetFieldId": "income-type",
+                "operator": "equal",
+                "value": "retired",
+                "label": "How much pension do you receive?"
+              }
+            ],
+            "conditionalHint": [
+              {
+                "targetFieldId": "income-type",
+                "operator": "in",
+                "value": [
+                  "government-employee",
+                  "private-sector-employee"
+                ],
+                "hint": "In BDS dollars. Give the amount before deductions."
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter the amount you receive"
+              },
+              "pattern": {
+                "value": "^-?\\d+(\\.\\d{1,2})?$",
+                "error": "Enter the amount you receive as a number, like 1250 or 1250.50"
+              },
+              "min": {
+                "value": 0,
+                "error": "The amount you receive must be 0 or more"
+              },
+              "max": {
+                "value": 3000,
+                "scaleBy": {
+                  "referenceFieldId": "income-frequency",
+                  "factors": {
+                    "weekly": 4,
+                    "twice-a-month": 2,
+                    "monthly": 1
+                  }
+                },
+                "error": "The amount you receive is more than BDS $3,000 a month"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "income-frequency",
+            "label": "How often do you receive this amount?",
+            "options": [
+              {
+                "label": "Weekly",
+                "value": "weekly"
+              },
+              {
+                "label": "Twice a month",
+                "value": "twice-a-month"
+              },
+              {
+                "label": "Monthly",
+                "value": "monthly"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Select how often you receive this amount"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/content",
+          "overrides": {
+            "fieldId": "income-co-applicant-heading",
+            "variant": "text",
+            "content": "## Person applying with you",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "applying-with",
+                "targetStepId": "applying-with",
+                "operator": "equal",
+                "value": "with-another-person"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "co-applicant-income-type",
+            "label": "Which of these describes the person applying with you?",
+            "options": [
+              {
+                "label": "Government employee",
+                "value": "government-employee"
+              },
+              {
+                "label": "Private sector employee",
+                "value": "private-sector-employee"
+              },
+              {
+                "label": "Self-employed",
+                "value": "self-employed"
+              },
+              {
+                "label": "Retired",
+                "value": "retired"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Select which of these describes the person applying with you"
               }
             },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "applying-with",
+                "targetStepId": "applying-with",
+                "operator": "equal",
+                "value": "with-another-person"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/money-bds",
+          "overrides": {
+            "fieldId": "co-applicant-income-amount",
+            "label": "How much do they receive?",
+            "conditionalLabel": [
+              {
+                "targetFieldId": "co-applicant-income-type",
+                "operator": "in",
+                "value": [
+                  "government-employee",
+                  "private-sector-employee"
+                ],
+                "label": "How much are they paid?"
+              },
+              {
+                "targetFieldId": "co-applicant-income-type",
+                "operator": "equal",
+                "value": "self-employed",
+                "label": "How much do they earn?"
+              },
+              {
+                "targetFieldId": "co-applicant-income-type",
+                "operator": "equal",
+                "value": "retired",
+                "label": "How much pension do they receive?"
+              }
+            ],
+            "conditionalHint": [
+              {
+                "targetFieldId": "co-applicant-income-type",
+                "operator": "in",
+                "value": [
+                  "government-employee",
+                  "private-sector-employee"
+                ],
+                "hint": "In BDS dollars. Give the amount before deductions."
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter the amount they receive"
+              },
+              "pattern": {
+                "value": "^-?\\d+(\\.\\d{1,2})?$",
+                "error": "Enter the amount they receive as a number, like 1250 or 1250.50"
+              },
+              "min": {
+                "value": 0,
+                "error": "The amount they receive must be 0 or more"
+              },
+              "max": {
+                "value": 3000,
+                "scaleBy": {
+                  "referenceFieldId": "co-applicant-income-frequency",
+                  "factors": {
+                    "weekly": 4,
+                    "twice-a-month": 2,
+                    "monthly": 1
+                  }
+                },
+                "error": "The amount they receive is more than BDS $3,000 a month"
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "applying-with",
+                "targetStepId": "applying-with",
+                "operator": "equal",
+                "value": "with-another-person"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "co-applicant-income-frequency",
+            "label": "How often do they receive this amount?",
+            "options": [
+              {
+                "label": "Weekly",
+                "value": "weekly"
+              },
+              {
+                "label": "Twice a month",
+                "value": "twice-a-month"
+              },
+              {
+                "label": "Monthly",
+                "value": "monthly"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Select how often they receive this amount"
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "applying-with",
+                "targetStepId": "applying-with",
+                "operator": "equal",
+                "value": "with-another-person"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "combined-income-eligible",
+            "label": "Is your combined monthly income BDS $3,000 or less?",
+            "hint": "Add up all the money you and the person applying with you usually get in a month.",
             "options": [
               {
                 "label": "Yes",
@@ -68,6 +505,48 @@
               },
               {
                 "label": "No",
+                "value": "no"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Select whether your combined monthly income is BDS $3,000 or less"
+              },
+              "pattern": {
+                "value": "^yes$",
+                "error": "Together, you receive more than BDS $3,000 a month"
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "applying-with",
+                "targetStepId": "applying-with",
+                "operator": "equal",
+                "value": "with-another-person"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/content",
+          "overrides": {
+            "fieldId": "combined-income-notice",
+            "variant": "warning",
+            "content": "**You cannot continue with this application**\n\nTogether, you receive more than BDS $3,000 a month.",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "applying-with",
+                "targetStepId": "applying-with",
+                "operator": "equal",
+                "value": "with-another-person"
+              },
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "combined-income-eligible",
+                "operator": "equal",
                 "value": "no"
               }
             ]
@@ -77,21 +556,47 @@
     },
     {
       "stepId": "applicant-details",
-      "title": "Your details",
+      "title": "Tell us about yourself",
       "elements": [
+        {
+          "ref": "components/title"
+        },
         {
           "ref": "components/first-name"
         },
         {
+          "ref": "components/middle-name",
+          "overrides": {
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
+          }
+        },
+        {
           "ref": "components/last-name"
+        },
+        {
+          "ref": "components/name",
+          "overrides": {
+            "fieldId": "maiden-name",
+            "label": "Maiden name",
+            "hint": "Your surname at birth, if different from your current surname.",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
+          }
         },
         {
           "ref": "components/date-of-birth",
           "overrides": {
             "validations": {
               "required": {
-                "error": "Enter your date of birth",
-                "value": true
+                "value": true,
+                "error": "Date of birth is required"
               }
             }
           }
@@ -102,53 +607,17 @@
             "hint": "For example, 850101-0001",
             "validations": {
               "required": {
-                "error": "Barbados National Identification (ID) number is required",
-                "value": true
+                "value": true,
+                "error": "Barbados National Identification (ID) number is required"
               }
             }
           }
         },
         {
-          "ref": "components/tamis-number"
-        },
-        {
-          "ref": "components/address",
-          "overrides": {
-            "label": "Home address",
-            "validations": {
-              "required": {
-                "error": "Enter your home address",
-                "value": true
-              }
-            }
-          }
-        },
-        {
-          "ref": "components/parish"
-        },
-        {
-          "ref": "components/postcode",
-          "overrides": {
-            "hint": "For example, BB17004"
-          }
-        },
-        {
-          "ref": "components/telephone"
-        },
-        {
-          "ref": "components/email"
-        },
-        {
-          "ref": "components/generic-select",
+          "ref": "components/generic-radio",
           "overrides": {
             "fieldId": "marital-status",
             "label": "Marital status",
-            "validations": {
-              "required": {
-                "error": "Choose your marital status",
-                "value": true
-              }
-            },
             "options": [
               {
                 "label": "Single",
@@ -159,39 +628,56 @@
                 "value": "married"
               },
               {
-                "label": "Divorced",
-                "value": "divorced"
-              },
-              {
                 "label": "Widowed",
                 "value": "widowed"
+              },
+              {
+                "label": "Divorced",
+                "value": "divorced"
               },
               {
                 "label": "Separated",
                 "value": "separated"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Marital status is required"
+              }
+            }
           }
         },
         {
-          "ref": "components/generic-radio",
+          "ref": "components/country",
           "overrides": {
-            "fieldId": "citizenship",
-            "label": "Citizenship status",
+            "fieldId": "country-of-residence",
+            "label": "Country of residence",
             "validations": {
               "required": {
-                "error": "Choose your citizenship status",
-                "value": true
+                "value": true,
+                "error": "Country of residence is required"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "other-country-of-residence",
+            "label": "State your country of residence",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter your country of residence"
               }
             },
-            "options": [
+            "behaviours": [
               {
-                "label": "Barbadian citizen",
-                "value": "barbadian-citizen"
-              },
-              {
-                "label": "Permanent resident",
-                "value": "permanent-resident"
+                "type": "fieldConditionalOn",
+                "targetFieldId": "country-of-residence",
+                "operator": "equal",
+                "value": "other"
               }
             ]
           }
@@ -199,22 +685,300 @@
       ]
     },
     {
-      "stepId": "co-applicant-details",
-      "title": "Co-applicant details",
+      "stepId": "applicant-contact",
+      "title": "Your contact details",
+      "elements": [
+        {
+          "ref": "components/address",
+          "overrides": {
+            "fieldId": "address-line-1",
+            "label": "Address line 1",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Address line 1 is required"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/address",
+          "overrides": {
+            "fieldId": "address-line-2",
+            "label": "Address line 2",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/parish",
+          "overrides": {
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "country-of-residence",
+                "targetStepId": "applicant-details",
+                "operator": "equal",
+                "value": "barbados"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/postcode",
+          "overrides": {
+            "label": "Postal code",
+            "hint": "For example, BB11000.",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/home-telephone",
+          "overrides": {
+            "label": "Home telephone number",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/work-telephone",
+          "overrides": {
+            "label": "Work telephone number",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/mobile-telephone",
+          "overrides": {
+            "label": "Mobile number",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Mobile number is required"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/email"
+        }
+      ]
+    },
+    {
+      "stepId": "applicant-work",
+      "title": "Tell us about your work",
+      "elements": [
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "employer-name",
+            "label": "Who do you work for?",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter who you work for"
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "income-type",
+                "targetStepId": "income",
+                "operator": "in",
+                "value": [
+                  "government-employee",
+                  "private-sector-employee"
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "job-title",
+            "label": "What is your job?",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter your job"
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "income-type",
+                "targetStepId": "income",
+                "operator": "in",
+                "value": [
+                  "government-employee",
+                  "private-sector-employee"
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "employment-length",
+            "label": "How long have you worked there?",
+            "ui": {
+              "width": "medium"
+            },
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter how long you have worked there"
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "income-type",
+                "targetStepId": "income",
+                "operator": "in",
+                "value": [
+                  "government-employee",
+                  "private-sector-employee"
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "self-employed-work",
+            "label": "What work do you do?",
+            "hint": "For example, plumbing, carpentry or hairdressing.",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter what work you do"
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "income-type",
+                "targetStepId": "income",
+                "operator": "equal",
+                "value": "self-employed"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "business-name",
+            "label": "Business name",
+            "hint": "Leave this blank if you do not use a business name.",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "income-type",
+                "targetStepId": "income",
+                "operator": "equal",
+                "value": "self-employed"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "self-employment-length",
+            "label": "How long have you been self-employed?",
+            "ui": {
+              "width": "medium"
+            },
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter how long you have been self-employed"
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "income-type",
+                "targetStepId": "income",
+                "operator": "equal",
+                "value": "self-employed"
+              }
+            ]
+          }
+        }
+      ],
       "behaviours": [
         {
           "type": "stepConditionalOn",
-          "targetFieldId": "has-co-applicant",
-          "targetStepId": "eligibility",
-          "operator": "equal",
-          "value": "yes"
+          "targetStepId": "income",
+          "targetFieldId": "income-type",
+          "operator": "notEqual",
+          "value": "retired"
         }
-      ],
+      ]
+    },
+    {
+      "stepId": "co-applicant-details",
+      "title": "Tell us about the person applying with you",
       "elements": [
+        {
+          "ref": "components/relationship",
+          "overrides": {
+            "fieldId": "co-applicant-relationship",
+            "label": "What is their relationship to you?",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Select their relationship to you"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/title",
+          "overrides": {
+            "fieldId": "co-applicant-title"
+          }
+        },
         {
           "ref": "components/first-name",
           "overrides": {
             "fieldId": "co-applicant-first-name"
+          }
+        },
+        {
+          "ref": "components/middle-name",
+          "overrides": {
+            "fieldId": "co-applicant-middle-name",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -224,13 +988,26 @@
           }
         },
         {
+          "ref": "components/name",
+          "overrides": {
+            "fieldId": "co-applicant-maiden-name",
+            "label": "Maiden name",
+            "hint": "Their surname at birth, if different from their current surname.",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
+          }
+        },
+        {
           "ref": "components/date-of-birth",
           "overrides": {
             "fieldId": "co-applicant-date-of-birth",
             "validations": {
               "required": {
-                "error": "Enter the co-applicant's date of birth",
-                "value": true
+                "value": true,
+                "error": "Date of birth is required"
               }
             }
           }
@@ -242,67 +1019,17 @@
             "hint": "For example, 850101-0001",
             "validations": {
               "required": {
-                "error": "Barbados National Identification (ID) number is required",
-                "value": true
+                "value": true,
+                "error": "Barbados National Identification (ID) number is required"
               }
             }
           }
         },
         {
-          "ref": "components/tamis-number",
-          "overrides": {
-            "fieldId": "co-applicant-tamis-number"
-          }
-        },
-        {
-          "ref": "components/address",
-          "overrides": {
-            "fieldId": "co-applicant-address",
-            "label": "Home address",
-            "validations": {
-              "required": {
-                "error": "Enter the co-applicant's home address",
-                "value": true
-              }
-            }
-          }
-        },
-        {
-          "ref": "components/parish",
-          "overrides": {
-            "fieldId": "co-applicant-parish"
-          }
-        },
-        {
-          "ref": "components/postcode",
-          "overrides": {
-            "fieldId": "co-applicant-postcode",
-            "hint": "For example, BB17004"
-          }
-        },
-        {
-          "ref": "components/telephone",
-          "overrides": {
-            "fieldId": "co-applicant-telephone"
-          }
-        },
-        {
-          "ref": "components/email",
-          "overrides": {
-            "fieldId": "co-applicant-email"
-          }
-        },
-        {
-          "ref": "components/generic-select",
+          "ref": "components/generic-radio",
           "overrides": {
             "fieldId": "co-applicant-marital-status",
             "label": "Marital status",
-            "validations": {
-              "required": {
-                "error": "Choose the co-applicant's marital status",
-                "value": true
-              }
-            },
             "options": [
               {
                 "label": "Single",
@@ -313,305 +1040,80 @@
                 "value": "married"
               },
               {
-                "label": "Divorced",
-                "value": "divorced"
-              },
-              {
                 "label": "Widowed",
                 "value": "widowed"
+              },
+              {
+                "label": "Divorced",
+                "value": "divorced"
               },
               {
                 "label": "Separated",
                 "value": "separated"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Marital status is required"
+              }
+            }
           }
         },
         {
-          "ref": "components/generic-radio",
+          "ref": "components/country",
           "overrides": {
-            "fieldId": "co-applicant-citizenship",
-            "label": "Citizenship status",
+            "fieldId": "co-applicant-country-of-residence",
+            "label": "Country of residence",
             "validations": {
               "required": {
-                "error": "Choose the co-applicant's citizenship status",
-                "value": true
+                "value": true,
+                "error": "Country of residence is required"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "co-applicant-other-country-of-residence",
+            "label": "State their country of residence",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter their country of residence"
               }
             },
-            "options": [
+            "behaviours": [
               {
-                "label": "Barbadian citizen",
-                "value": "barbadian-citizen"
-              },
-              {
-                "label": "Permanent resident",
-                "value": "permanent-resident"
+                "type": "fieldConditionalOn",
+                "targetFieldId": "co-applicant-country-of-residence",
+                "operator": "equal",
+                "value": "other"
               }
             ]
           }
         }
-      ]
-    },
-    {
-      "stepId": "applicant-employment",
-      "title": "Your employment",
-      "elements": [
-        {
-          "ref": "components/generic-text",
-          "overrides": {
-            "fieldId": "employer-name",
-            "label": "Employer's name",
-            "validations": {
-              "required": {
-                "error": "Enter the name of your employer",
-                "value": true
-              }
-            }
-          }
-        },
-        {
-          "ref": "components/generic-text",
-          "overrides": {
-            "fieldId": "occupation",
-            "label": "Your occupation",
-            "validations": {
-              "required": {
-                "error": "Enter your occupation",
-                "value": true
-              }
-            }
-          }
-        },
-        {
-          "ref": "components/generic-text",
-          "overrides": {
-            "fieldId": "period-of-employment",
-            "label": "How long have you worked there?",
-            "hint": "For example, 2 years 3 months",
-            "validations": {
-              "required": {
-                "value": false
-              }
-            },
-            "ui": {
-              "width": "medium"
-            }
-          }
-        },
-        {
-          "ref": "components/generic-number",
-          "overrides": {
-            "fieldId": "salary",
-            "label": "Monthly salary (BDS $)",
-            "validations": {
-              "required": {
-                "error": "Enter your monthly salary",
-                "value": true
-              }
-            },
-            "ui": {
-              "width": "short"
-            }
-          }
-        },
-        {
-          "ref": "components/generic-select",
-          "overrides": {
-            "fieldId": "pay-period",
-            "label": "How often are you paid?",
-            "validations": {
-              "required": {
-                "error": "Choose how often you are paid",
-                "value": true
-              }
-            },
-            "options": [
-              {
-                "label": "Weekly",
-                "value": "weekly"
-              },
-              {
-                "label": "Fortnightly",
-                "value": "fortnightly"
-              },
-              {
-                "label": "Monthly",
-                "value": "monthly"
-              }
-            ]
-          }
-        },
-        {
-          "ref": "components/generic-radio",
-          "overrides": {
-            "fieldId": "employment-status",
-            "label": "Employment status",
-            "validations": {
-              "required": {
-                "error": "Choose your employment status",
-                "value": true
-              }
-            },
-            "options": [
-              {
-                "label": "Employed",
-                "value": "employed"
-              },
-              {
-                "label": "Self-employed",
-                "value": "self-employed"
-              },
-              {
-                "label": "Unemployed",
-                "value": "unemployed"
-              }
-            ]
-          }
-        }
-      ]
-    },
-    {
-      "stepId": "co-applicant-employment",
-      "title": "Co-applicant employment",
+      ],
       "behaviours": [
         {
           "type": "stepConditionalOn",
-          "targetFieldId": "has-co-applicant",
-          "targetStepId": "eligibility",
+          "targetStepId": "applying-with",
+          "targetFieldId": "applying-with",
           "operator": "equal",
-          "value": "yes"
-        }
-      ],
-      "elements": [
-        {
-          "ref": "components/generic-text",
-          "overrides": {
-            "fieldId": "co-applicant-employer-name",
-            "label": "Employer's name",
-            "validations": {
-              "required": {
-                "error": "Enter the name of the co-applicant's employer",
-                "value": true
-              }
-            }
-          }
-        },
-        {
-          "ref": "components/generic-text",
-          "overrides": {
-            "fieldId": "co-applicant-occupation",
-            "label": "Occupation",
-            "validations": {
-              "required": {
-                "error": "Enter the co-applicant's occupation",
-                "value": true
-              }
-            }
-          }
-        },
-        {
-          "ref": "components/generic-text",
-          "overrides": {
-            "fieldId": "co-applicant-period-of-employment",
-            "label": "How long have they worked there?",
-            "hint": "For example, 2 years 3 months",
-            "validations": {
-              "required": {
-                "value": false
-              }
-            },
-            "ui": {
-              "width": "medium"
-            }
-          }
-        },
-        {
-          "ref": "components/generic-number",
-          "overrides": {
-            "fieldId": "co-applicant-salary",
-            "label": "Monthly salary (BDS $)",
-            "validations": {
-              "required": {
-                "error": "Enter the co-applicant's monthly salary",
-                "value": true
-              }
-            },
-            "ui": {
-              "width": "short"
-            }
-          }
-        },
-        {
-          "ref": "components/generic-select",
-          "overrides": {
-            "fieldId": "co-applicant-pay-period",
-            "label": "How often are they paid?",
-            "validations": {
-              "required": {
-                "error": "Choose how often the co-applicant is paid",
-                "value": true
-              }
-            },
-            "options": [
-              {
-                "label": "Weekly",
-                "value": "weekly"
-              },
-              {
-                "label": "Fortnightly",
-                "value": "fortnightly"
-              },
-              {
-                "label": "Monthly",
-                "value": "monthly"
-              }
-            ]
-          }
-        },
-        {
-          "ref": "components/generic-radio",
-          "overrides": {
-            "fieldId": "co-applicant-employment-status",
-            "label": "Employment status",
-            "validations": {
-              "required": {
-                "error": "Choose the co-applicant's employment status",
-                "value": true
-              }
-            },
-            "options": [
-              {
-                "label": "Employed",
-                "value": "employed"
-              },
-              {
-                "label": "Self-employed",
-                "value": "self-employed"
-              },
-              {
-                "label": "Unemployed",
-                "value": "unemployed"
-              }
-            ]
-          }
+          "value": "with-another-person"
         }
       ]
     },
     {
-      "stepId": "criteria",
-      "title": "Eligibility questions",
+      "stepId": "co-applicant-contact",
+      "title": "Their contact details",
       "elements": [
         {
           "ref": "components/generic-radio",
           "overrides": {
-            "fieldId": "owns-property",
-            "label": "Do you or your spouse own any land or property?",
-            "validations": {
-              "required": {
-                "error": "Tell us if you own any land or property",
-                "value": true
-              }
-            },
+            "fieldId": "co-applicant-same-address",
+            "label": "Do they live at the same address as you?",
             "options": [
               {
                 "label": "Yes",
@@ -621,18 +1123,401 @@
                 "label": "No",
                 "value": "no"
               }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Select whether they live at the same address as you"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/address",
+          "overrides": {
+            "fieldId": "co-applicant-address-line-1",
+            "label": "Address line 1",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Address line 1 is required"
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "co-applicant-same-address",
+                "operator": "equal",
+                "value": "no"
+              }
             ]
           }
         },
         {
           "ref": "components/address",
           "overrides": {
-            "fieldId": "property-address",
-            "label": "Address of the property",
+            "fieldId": "co-applicant-address-line-2",
+            "label": "Address line 2",
             "validations": {
               "required": {
-                "error": "Enter the address of the property",
-                "value": true
+                "value": false
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "co-applicant-same-address",
+                "operator": "equal",
+                "value": "no"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/parish",
+          "overrides": {
+            "fieldId": "co-applicant-parish",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "co-applicant-same-address",
+                "operator": "equal",
+                "value": "no"
+              },
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "co-applicant-country-of-residence",
+                "targetStepId": "co-applicant-details",
+                "operator": "equal",
+                "value": "barbados"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/postcode",
+          "overrides": {
+            "fieldId": "co-applicant-postcode",
+            "label": "Postal code",
+            "hint": "For example, BB11000.",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "co-applicant-same-address",
+                "operator": "equal",
+                "value": "no"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/home-telephone",
+          "overrides": {
+            "fieldId": "co-applicant-home-telephone",
+            "label": "Home telephone number",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/work-telephone",
+          "overrides": {
+            "fieldId": "co-applicant-work-telephone",
+            "label": "Work telephone number",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/mobile-telephone",
+          "overrides": {
+            "fieldId": "co-applicant-mobile-telephone",
+            "label": "Mobile number",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Mobile number is required"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/email",
+          "overrides": {
+            "fieldId": "co-applicant-email"
+          }
+        }
+      ],
+      "behaviours": [
+        {
+          "type": "stepConditionalOn",
+          "targetStepId": "applying-with",
+          "targetFieldId": "applying-with",
+          "operator": "equal",
+          "value": "with-another-person"
+        }
+      ]
+    },
+    {
+      "stepId": "co-applicant-work",
+      "title": "Tell us about their work",
+      "elements": [
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "co-applicant-employer-name",
+            "label": "Who do they work for?",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter who they work for"
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "co-applicant-income-type",
+                "targetStepId": "income",
+                "operator": "in",
+                "value": [
+                  "government-employee",
+                  "private-sector-employee"
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "co-applicant-job-title",
+            "label": "What is their job?",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter their job"
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "co-applicant-income-type",
+                "targetStepId": "income",
+                "operator": "in",
+                "value": [
+                  "government-employee",
+                  "private-sector-employee"
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "co-applicant-employment-length",
+            "label": "How long have they worked there?",
+            "ui": {
+              "width": "medium"
+            },
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter how long they have worked there"
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "co-applicant-income-type",
+                "targetStepId": "income",
+                "operator": "in",
+                "value": [
+                  "government-employee",
+                  "private-sector-employee"
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "co-applicant-self-employed-work",
+            "label": "What work do they do?",
+            "hint": "For example, plumbing, carpentry or hairdressing.",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter what work they do"
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "co-applicant-income-type",
+                "targetStepId": "income",
+                "operator": "equal",
+                "value": "self-employed"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "co-applicant-business-name",
+            "label": "Business name",
+            "hint": "Leave this blank if they do not use a business name.",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "co-applicant-income-type",
+                "targetStepId": "income",
+                "operator": "equal",
+                "value": "self-employed"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "co-applicant-self-employment-length",
+            "label": "How long have they been self-employed?",
+            "ui": {
+              "width": "medium"
+            },
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter how long they have been self-employed"
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "co-applicant-income-type",
+                "targetStepId": "income",
+                "operator": "equal",
+                "value": "self-employed"
+              }
+            ]
+          }
+        }
+      ],
+      "behaviours": [
+        {
+          "type": "stepConditionalOn",
+          "targetStepId": "applying-with",
+          "targetFieldId": "applying-with",
+          "operator": "equal",
+          "value": "with-another-person"
+        },
+        {
+          "type": "stepConditionalOn",
+          "targetStepId": "income",
+          "targetFieldId": "co-applicant-income-type",
+          "operator": "notEqual",
+          "value": "retired"
+        }
+      ]
+    },
+    {
+      "stepId": "housing",
+      "title": "Tell us about your housing",
+      "elements": [
+        {
+          "ref": "components/content",
+          "overrides": {
+            "fieldId": "housing-you-heading",
+            "variant": "text",
+            "content": "## You",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "applying-with",
+                "targetStepId": "applying-with",
+                "operator": "equal",
+                "value": "with-another-person"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "owns-property",
+            "label": "Do you own any land or property?",
+            "conditionalLabel": [
+              {
+                "targetStepId": "applying-with",
+                "targetFieldId": "applying-with",
+                "operator": "equal",
+                "value": "with-another-person",
+                "label": "Do you own any land or property?"
+              },
+              {
+                "targetStepId": "applicant-details",
+                "targetFieldId": "marital-status",
+                "operator": "equal",
+                "value": "married",
+                "label": "Do you or your spouse own land or property?"
+              }
+            ],
+            "conditionalHint": [
+              {
+                "targetStepId": "applying-with",
+                "targetFieldId": "applying-with",
+                "operator": "equal",
+                "value": "with-another-person",
+                "hint": "Include land or property you own on your own or with someone else."
+              }
+            ],
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Select whether you own any land or property"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "property-location",
+            "label": "Where is the land or property?",
+            "hint": "Give the address or describe where the land or property is. You can include the district, parish or a nearby landmark.",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter where the land or property is"
               }
             },
             "behaviours": [
@@ -648,14 +1533,8 @@
         {
           "ref": "components/generic-radio",
           "overrides": {
-            "fieldId": "nhc-debt",
-            "label": "Are you currently indebted to the NHC?",
-            "validations": {
-              "required": {
-                "error": "Tell us if you are indebted to the NHC",
-                "value": true
-              }
-            },
+            "fieldId": "previous-nhc-rental",
+            "label": "Have you ever lived in an NHC rental home?",
             "options": [
               {
                 "label": "Yes",
@@ -664,6 +1543,291 @@
               {
                 "label": "No",
                 "value": "no"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Select whether you have ever lived in an NHC rental home"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "previous-nhc-rental-location",
+            "label": "Where was the NHC rental home?",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter where the NHC rental home was"
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "previous-nhc-rental",
+                "operator": "equal",
+                "value": "yes"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/content",
+          "overrides": {
+            "fieldId": "housing-co-applicant-heading",
+            "variant": "text",
+            "content": "## Person applying with you",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "applying-with",
+                "targetStepId": "applying-with",
+                "operator": "equal",
+                "value": "with-another-person"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "co-applicant-owns-property",
+            "label": "Does the person applying with you own any land or property?",
+            "hint": "Include land or property they own on their own or with someone else.",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Select whether the person applying with you owns any land or property"
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "applying-with",
+                "targetStepId": "applying-with",
+                "operator": "equal",
+                "value": "with-another-person"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "co-applicant-property-location",
+            "label": "Where is the land or property?",
+            "hint": "Give the address or describe where the land or property is. You can include the district, parish or a nearby landmark.",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter where their land or property is"
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "applying-with",
+                "targetStepId": "applying-with",
+                "operator": "equal",
+                "value": "with-another-person"
+              },
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "co-applicant-owns-property",
+                "operator": "equal",
+                "value": "yes"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "co-applicant-previous-nhc-rental",
+            "label": "Has the person applying with you ever lived in an NHC rental home?",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Select whether the person applying with you has ever lived in an NHC rental home"
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "applying-with",
+                "targetStepId": "applying-with",
+                "operator": "equal",
+                "value": "with-another-person"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "overrides": {
+            "fieldId": "co-applicant-previous-nhc-rental-location",
+            "label": "Where was their NHC rental home?",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter where their NHC rental home was"
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "applying-with",
+                "targetStepId": "applying-with",
+                "operator": "equal",
+                "value": "with-another-person"
+              },
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "co-applicant-previous-nhc-rental",
+                "operator": "equal",
+                "value": "yes"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "stepId": "money-owed",
+      "title": "Tell us about money you owe",
+      "description": "This can help NHC assess your application.",
+      "elements": [
+        {
+          "ref": "components/content",
+          "overrides": {
+            "fieldId": "money-owed-you-heading",
+            "variant": "text",
+            "content": "## You",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "applying-with",
+                "targetStepId": "applying-with",
+                "operator": "equal",
+                "value": "with-another-person"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "has-debts",
+            "label": "Do you have any loans or other debts?",
+            "hint": "Include money owed to NHC, banks, credit unions or through hire purchase.",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-textarea",
+          "overrides": {
+            "fieldId": "debt-details",
+            "label": "Give details",
+            "ui": {
+              "width": "long"
+            },
+            "validations": {
+              "required": {
+                "value": false
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "has-debts",
+                "operator": "equal",
+                "value": "yes"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/content",
+          "overrides": {
+            "fieldId": "money-owed-co-applicant-heading",
+            "variant": "text",
+            "content": "## Person applying with you",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "applying-with",
+                "targetStepId": "applying-with",
+                "operator": "equal",
+                "value": "with-another-person"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "co-applicant-has-debts",
+            "label": "Does the person applying with you have any loans or other debts?",
+            "hint": "Include money owed to NHC, banks, credit unions or through hire purchase.",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "applying-with",
+                "targetStepId": "applying-with",
+                "operator": "equal",
+                "value": "with-another-person"
               }
             ]
           }
@@ -671,66 +1835,27 @@
         {
           "ref": "components/generic-textarea",
           "overrides": {
-            "fieldId": "nhc-debt-details",
-            "label": "Details of the debt",
-            "hint": "Tell us the amount owed and any payment arrangements",
-            "validations": {
-              "required": {
-                "error": "Tell us the details of your NHC debt",
-                "value": true
-              }
-            },
-            "behaviours": [
-              {
-                "type": "fieldConditionalOn",
-                "targetFieldId": "nhc-debt",
-                "operator": "equal",
-                "value": "yes"
-              }
-            ],
+            "fieldId": "co-applicant-debt-details",
+            "label": "Give details",
             "ui": {
               "width": "long"
-            }
-          }
-        },
-        {
-          "ref": "components/generic-radio",
-          "overrides": {
-            "fieldId": "previous-nhc-unit",
-            "label": "Have you previously occupied an NHC unit?",
-            "validations": {
-              "required": {
-                "error": "Tell us if you have previously occupied an NHC unit",
-                "value": true
-              }
             },
-            "options": [
-              {
-                "label": "Yes",
-                "value": "yes"
-              },
-              {
-                "label": "No",
-                "value": "no"
-              }
-            ]
-          }
-        },
-        {
-          "ref": "components/address",
-          "overrides": {
-            "fieldId": "previous-unit-address",
-            "label": "Address of the previous unit",
             "validations": {
               "required": {
-                "error": "Enter the address of the previous unit",
-                "value": true
+                "value": false
               }
             },
             "behaviours": [
               {
                 "type": "fieldConditionalOn",
-                "targetFieldId": "previous-nhc-unit",
+                "targetFieldId": "applying-with",
+                "targetStepId": "applying-with",
+                "operator": "equal",
+                "value": "with-another-person"
+              },
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "co-applicant-has-debts",
                 "operator": "equal",
                 "value": "yes"
               }
@@ -741,61 +1866,91 @@
     },
     {
       "stepId": "household",
-      "title": "People who will live in the unit",
+      "title": "Who will live in the rental home?",
       "elements": [
         {
-          "ref": "components/generic-number",
+          "ref": "components/content",
           "overrides": {
-            "fieldId": "adults-count",
-            "label": "How many adults (18 and over)?",
-            "validations": {
-              "required": {
-                "error": "Enter the number of adults who will live in the unit",
-                "value": true
+            "fieldId": "household-single-note",
+            "variant": "text",
+            "content": "We already have your details.\n\nThis helps NHC understand the size of home you need.",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "applying-with",
+                "targetStepId": "applying-with",
+                "operator": "equal",
+                "value": "on-my-own"
               }
-            },
-            "ui": {
-              "width": "short"
-            }
+            ]
           }
         },
         {
-          "ref": "components/generic-number",
+          "ref": "components/content",
           "overrides": {
-            "fieldId": "children-count",
-            "label": "How many children (under 18)?",
+            "fieldId": "household-joint-note",
+            "variant": "text",
+            "content": "We already have both applicants' details.\n\nThis helps NHC understand the size of home you need.",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "applying-with",
+                "targetStepId": "applying-with",
+                "operator": "equal",
+                "value": "with-another-person"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "overrides": {
+            "fieldId": "anyone-else",
+            "label": "Will anyone else live in the rental home?",
+            "options": [
+              {
+                "label": "Yes",
+                "value": "yes"
+              },
+              {
+                "label": "No",
+                "value": "no"
+              }
+            ],
             "validations": {
               "required": {
-                "error": "Enter the number of children who will live in the unit",
-                "value": true
+                "value": true,
+                "error": "Select whether anyone else will live in the rental home"
               }
-            },
-            "ui": {
-              "width": "short"
             }
           }
+        }
+      ],
+      "behaviours": [
+        {
+          "type": "stepConditionalOn",
+          "targetStepId": "application-type",
+          "targetFieldId": "application-type",
+          "operator": "equal",
+          "value": "rental-home"
         }
       ]
     },
     {
-      "stepId": "occupant-details",
-      "title": "Occupant details",
-      "description": "Tell us about each person who will live in the unit. You can add up to 5 people.",
-      "behaviours": [
-        {
-          "type": "repeatable",
-          "min": 1,
-          "max": 5,
-          "addAnotherLabel": "Do you need to add another person?",
-          "instanceLabel": "Person"
-        }
-      ],
+      "stepId": "other-occupants",
+      "title": "Add anyone else who will live in the rental home",
       "elements": [
         {
           "ref": "components/name",
           "overrides": {
             "fieldId": "occupant-name",
-            "label": "Full name"
+            "label": "Full name",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Full name is required"
+              }
+            }
           }
         },
         {
@@ -805,7 +1960,8 @@
             "label": "Relationship to you",
             "validations": {
               "required": {
-                "value": false
+                "value": true,
+                "error": "Relationship to you is required"
               }
             }
           }
@@ -817,7 +1973,12 @@
             "label": "Age",
             "validations": {
               "required": {
-                "value": false
+                "value": true,
+                "error": "Age is required"
+              },
+              "min": {
+                "value": 0,
+                "error": "Age must be 0 or more"
               }
             },
             "ui": {
@@ -838,20 +1999,47 @@
           }
         },
         {
-          "ref": "components/generic-number",
+          "ref": "components/money-bds",
           "overrides": {
             "fieldId": "occupant-income",
-            "label": "Monthly income (BDS $)",
-            "hint": "Enter 0 if they have no income",
+            "label": "Monthly income",
             "validations": {
               "required": {
                 "value": false
+              },
+              "pattern": {
+                "value": "^-?\\d+(\\.\\d{1,2})?$",
+                "error": "Enter the monthly income as a number, like 1250 or 1250.50"
+              },
+              "min": {
+                "value": 0,
+                "error": "The monthly income must be 0 or more"
               }
-            },
-            "ui": {
-              "width": "short"
             }
           }
+        }
+      ],
+      "behaviours": [
+        {
+          "type": "repeatable",
+          "min": 1,
+          "max": 20,
+          "addAnotherLabel": "Do you need to add another person?",
+          "instanceLabel": "Person"
+        },
+        {
+          "type": "stepConditionalOn",
+          "targetStepId": "application-type",
+          "targetFieldId": "application-type",
+          "operator": "equal",
+          "value": "rental-home"
+        },
+        {
+          "type": "stepConditionalOn",
+          "targetStepId": "household",
+          "targetFieldId": "anyone-else",
+          "operator": "equal",
+          "value": "yes"
         }
       ]
     },
@@ -860,107 +2048,645 @@
       "title": "Upload your documents",
       "elements": [
         {
+          "ref": "components/content",
+          "overrides": {
+            "fieldId": "documents-intro",
+            "variant": "text",
+            "content": "Upload the documents that apply to each person.\n\nAccepted formats: PDF, JPG or PNG. Maximum file size: 10 MB each."
+          }
+        },
+        {
+          "ref": "components/content",
+          "overrides": {
+            "fieldId": "documents-heading",
+            "variant": "text",
+            "content": "## Your documents"
+          }
+        },
+        {
           "ref": "components/generic-file",
           "overrides": {
-            "label": "Two recent pay slips",
-            "fieldId": "pay-slips",
+            "fieldId": "national-id-card",
+            "label": "Barbados National Identification (ID) card",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Upload your Barbados National Identification (ID) card"
+              },
+              "fileTypes": {
+                "value": [
+                  "application/pdf",
+                  "image/jpeg",
+                  "image/png",
+                  ".pdf",
+                  ".jpg",
+                  ".jpeg",
+                  ".png"
+                ],
+                "error": "The file must be a PDF, JPG or PNG"
+              },
+              "itemMaxSize": {
+                "value": 10485760,
+                "error": "The file must be 10 MB or smaller"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-file",
+          "overrides": {
+            "fieldId": "passport-photo",
+            "label": "Passport-size photo",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Upload your passport-size photo"
+              },
+              "fileTypes": {
+                "value": [
+                  "application/pdf",
+                  "image/jpeg",
+                  "image/png",
+                  ".pdf",
+                  ".jpg",
+                  ".jpeg",
+                  ".png"
+                ],
+                "error": "The file must be a PDF, JPG or PNG"
+              },
+              "itemMaxSize": {
+                "value": 10485760,
+                "error": "The file must be 10 MB or smaller"
+              }
+            }
+          }
+        },
+        {
+          "ref": "components/generic-file",
+          "overrides": {
+            "fieldId": "payslips",
+            "label": "2 recent payslips",
             "multiple": true,
             "validations": {
               "required": {
                 "value": true,
-                "error": "Upload two recent pay slips"
+                "error": "Upload your 2 recent payslips"
               },
               "fileTypes": {
                 "value": [
-                  "image/png",
+                  "application/pdf",
                   "image/jpeg",
-                  "application/pdf"
+                  "image/png",
+                  ".pdf",
+                  ".jpg",
+                  ".jpeg",
+                  ".png"
                 ],
-                "error": "Upload a PNG, JPG or PDF file"
+                "error": "The file must be a PDF, JPG or PNG"
               },
               "itemMaxSize": {
-                "value": 5242880,
-                "error": "Each file must be 5 MB or smaller"
+                "value": 10485760,
+                "error": "The file must be 10 MB or smaller"
               }
-            }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "income-type",
+                "targetStepId": "income",
+                "operator": "in",
+                "value": [
+                  "government-employee",
+                  "private-sector-employee"
+                ]
+              }
+            ]
           }
         },
         {
           "ref": "components/generic-file",
           "overrides": {
-            "label": "Your national ID card",
-            "fieldId": "national-id-card",
-            "validations": {
-              "required": {
-                "value": true,
-                "error": "Upload your national ID card"
-              },
-              "fileTypes": {
-                "value": [
-                  "image/png",
-                  "image/jpeg",
-                  "application/pdf"
-                ],
-                "error": "Upload a PNG, JPG or PDF file"
-              },
-              "itemMaxSize": {
-                "value": 5242880,
-                "error": "Each file must be 5 MB or smaller"
-              }
-            }
-          }
-        },
-        {
-          "ref": "components/generic-file",
-          "overrides": {
-            "label": "Job letter from your employer",
             "fieldId": "job-letter",
+            "label": "Job letter",
             "validations": {
               "required": {
                 "value": true,
-                "error": "Upload a job letter from your employer"
+                "error": "Upload your job letter"
               },
               "fileTypes": {
                 "value": [
-                  "image/png",
+                  "application/pdf",
                   "image/jpeg",
-                  "application/pdf"
+                  "image/png",
+                  ".pdf",
+                  ".jpg",
+                  ".jpeg",
+                  ".png"
                 ],
-                "error": "Upload a PNG, JPG or PDF file"
+                "error": "The file must be a PDF, JPG or PNG"
               },
               "itemMaxSize": {
-                "value": 5242880,
-                "error": "Each file must be 5 MB or smaller"
+                "value": 10485760,
+                "error": "The file must be 10 MB or smaller"
               }
-            }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "income-type",
+                "targetStepId": "income",
+                "operator": "in",
+                "value": [
+                  "government-employee",
+                  "private-sector-employee"
+                ]
+              }
+            ]
           }
         },
         {
           "ref": "components/generic-file",
           "overrides": {
-            "label": "Passport-size photograph",
-            "fieldId": "passport-photograph",
+            "fieldId": "business-registration-certificate",
+            "label": "Business registration certificate",
+            "hint": "If your business is registered.",
             "validations": {
               "required": {
-                "value": true,
-                "error": "Upload a passport-size photograph"
+                "value": false
               },
               "fileTypes": {
                 "value": [
+                  "application/pdf",
+                  "image/jpeg",
                   "image/png",
-                  "image/jpeg"
+                  ".pdf",
+                  ".jpg",
+                  ".jpeg",
+                  ".png"
                 ],
-                "error": "Upload a PNG or JPG file"
+                "error": "The file must be a PDF, JPG or PNG"
               },
               "itemMaxSize": {
-                "value": 5242880,
-                "error": "Each file must be 5 MB or smaller"
+                "value": 10485760,
+                "error": "The file must be 10 MB or smaller"
               }
-            }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "income-type",
+                "targetStepId": "income",
+                "operator": "equal",
+                "value": "self-employed"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-file",
+          "overrides": {
+            "fieldId": "financial-statements",
+            "label": "Financial statements",
+            "hint": "If you have them. These show how much money your business makes and what it spends.",
+            "multiple": true,
+            "validations": {
+              "required": {
+                "value": false
+              },
+              "fileTypes": {
+                "value": [
+                  "application/pdf",
+                  "image/jpeg",
+                  "image/png",
+                  ".pdf",
+                  ".jpg",
+                  ".jpeg",
+                  ".png"
+                ],
+                "error": "The file must be a PDF, JPG or PNG"
+              },
+              "itemMaxSize": {
+                "value": 10485760,
+                "error": "The file must be 10 MB or smaller"
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "income-type",
+                "targetStepId": "income",
+                "operator": "equal",
+                "value": "self-employed"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/content",
+          "overrides": {
+            "fieldId": "income-proof-note",
+            "variant": "inset",
+            "content": "If you do not have documents showing how much you earn, you can still apply. You will still need to tell us how much you earn.",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "income-type",
+                "targetStepId": "income",
+                "operator": "equal",
+                "value": "self-employed"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-file",
+          "overrides": {
+            "fieldId": "pension-document",
+            "label": "A document showing how much pension you receive",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Upload a document showing how much pension you receive"
+              },
+              "fileTypes": {
+                "value": [
+                  "application/pdf",
+                  "image/jpeg",
+                  "image/png",
+                  ".pdf",
+                  ".jpg",
+                  ".jpeg",
+                  ".png"
+                ],
+                "error": "The file must be a PDF, JPG or PNG"
+              },
+              "itemMaxSize": {
+                "value": 10485760,
+                "error": "The file must be 10 MB or smaller"
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "income-type",
+                "targetStepId": "income",
+                "operator": "equal",
+                "value": "retired"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/content",
+          "overrides": {
+            "fieldId": "co-applicant-documents-heading",
+            "variant": "text",
+            "content": "## Documents for the person applying with you",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "applying-with",
+                "targetStepId": "applying-with",
+                "operator": "equal",
+                "value": "with-another-person"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-file",
+          "overrides": {
+            "fieldId": "co-applicant-national-id-card",
+            "label": "Barbados National Identification (ID) card",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Upload their Barbados National Identification (ID) card"
+              },
+              "fileTypes": {
+                "value": [
+                  "application/pdf",
+                  "image/jpeg",
+                  "image/png",
+                  ".pdf",
+                  ".jpg",
+                  ".jpeg",
+                  ".png"
+                ],
+                "error": "The file must be a PDF, JPG or PNG"
+              },
+              "itemMaxSize": {
+                "value": 10485760,
+                "error": "The file must be 10 MB or smaller"
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "applying-with",
+                "targetStepId": "applying-with",
+                "operator": "equal",
+                "value": "with-another-person"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-file",
+          "overrides": {
+            "fieldId": "co-applicant-passport-photo",
+            "label": "Passport-size photo",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Upload their passport-size photo"
+              },
+              "fileTypes": {
+                "value": [
+                  "application/pdf",
+                  "image/jpeg",
+                  "image/png",
+                  ".pdf",
+                  ".jpg",
+                  ".jpeg",
+                  ".png"
+                ],
+                "error": "The file must be a PDF, JPG or PNG"
+              },
+              "itemMaxSize": {
+                "value": 10485760,
+                "error": "The file must be 10 MB or smaller"
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "applying-with",
+                "targetStepId": "applying-with",
+                "operator": "equal",
+                "value": "with-another-person"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-file",
+          "overrides": {
+            "fieldId": "co-applicant-payslips",
+            "label": "2 recent payslips",
+            "multiple": true,
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Upload their 2 recent payslips"
+              },
+              "fileTypes": {
+                "value": [
+                  "application/pdf",
+                  "image/jpeg",
+                  "image/png",
+                  ".pdf",
+                  ".jpg",
+                  ".jpeg",
+                  ".png"
+                ],
+                "error": "The file must be a PDF, JPG or PNG"
+              },
+              "itemMaxSize": {
+                "value": 10485760,
+                "error": "The file must be 10 MB or smaller"
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "applying-with",
+                "targetStepId": "applying-with",
+                "operator": "equal",
+                "value": "with-another-person"
+              },
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "co-applicant-income-type",
+                "targetStepId": "income",
+                "operator": "in",
+                "value": [
+                  "government-employee",
+                  "private-sector-employee"
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-file",
+          "overrides": {
+            "fieldId": "co-applicant-job-letter",
+            "label": "Job letter",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Upload their job letter"
+              },
+              "fileTypes": {
+                "value": [
+                  "application/pdf",
+                  "image/jpeg",
+                  "image/png",
+                  ".pdf",
+                  ".jpg",
+                  ".jpeg",
+                  ".png"
+                ],
+                "error": "The file must be a PDF, JPG or PNG"
+              },
+              "itemMaxSize": {
+                "value": 10485760,
+                "error": "The file must be 10 MB or smaller"
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "applying-with",
+                "targetStepId": "applying-with",
+                "operator": "equal",
+                "value": "with-another-person"
+              },
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "co-applicant-income-type",
+                "targetStepId": "income",
+                "operator": "in",
+                "value": [
+                  "government-employee",
+                  "private-sector-employee"
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-file",
+          "overrides": {
+            "fieldId": "co-applicant-business-registration-certificate",
+            "label": "Business registration certificate",
+            "hint": "If their business is registered.",
+            "validations": {
+              "required": {
+                "value": false
+              },
+              "fileTypes": {
+                "value": [
+                  "application/pdf",
+                  "image/jpeg",
+                  "image/png",
+                  ".pdf",
+                  ".jpg",
+                  ".jpeg",
+                  ".png"
+                ],
+                "error": "The file must be a PDF, JPG or PNG"
+              },
+              "itemMaxSize": {
+                "value": 10485760,
+                "error": "The file must be 10 MB or smaller"
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "applying-with",
+                "targetStepId": "applying-with",
+                "operator": "equal",
+                "value": "with-another-person"
+              },
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "co-applicant-income-type",
+                "targetStepId": "income",
+                "operator": "equal",
+                "value": "self-employed"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-file",
+          "overrides": {
+            "fieldId": "co-applicant-financial-statements",
+            "label": "Financial statements",
+            "hint": "If they have them. These show how much money their business makes and what it spends.",
+            "multiple": true,
+            "validations": {
+              "required": {
+                "value": false
+              },
+              "fileTypes": {
+                "value": [
+                  "application/pdf",
+                  "image/jpeg",
+                  "image/png",
+                  ".pdf",
+                  ".jpg",
+                  ".jpeg",
+                  ".png"
+                ],
+                "error": "The file must be a PDF, JPG or PNG"
+              },
+              "itemMaxSize": {
+                "value": 10485760,
+                "error": "The file must be 10 MB or smaller"
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "applying-with",
+                "targetStepId": "applying-with",
+                "operator": "equal",
+                "value": "with-another-person"
+              },
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "co-applicant-income-type",
+                "targetStepId": "income",
+                "operator": "equal",
+                "value": "self-employed"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/content",
+          "overrides": {
+            "fieldId": "co-applicant-income-proof-note",
+            "variant": "inset",
+            "content": "If they do not have documents showing how much they earn, they can still apply. They will still need to tell us how much they earn.",
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "applying-with",
+                "targetStepId": "applying-with",
+                "operator": "equal",
+                "value": "with-another-person"
+              },
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "co-applicant-income-type",
+                "targetStepId": "income",
+                "operator": "equal",
+                "value": "self-employed"
+              }
+            ]
+          }
+        },
+        {
+          "ref": "components/generic-file",
+          "overrides": {
+            "fieldId": "co-applicant-pension-document",
+            "label": "A document showing how much pension they receive",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Upload a document showing how much pension they receive"
+              },
+              "fileTypes": {
+                "value": [
+                  "application/pdf",
+                  "image/jpeg",
+                  "image/png",
+                  ".pdf",
+                  ".jpg",
+                  ".jpeg",
+                  ".png"
+                ],
+                "error": "The file must be a PDF, JPG or PNG"
+              },
+              "itemMaxSize": {
+                "value": 10485760,
+                "error": "The file must be 10 MB or smaller"
+              }
+            },
+            "behaviours": [
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "applying-with",
+                "targetStepId": "applying-with",
+                "operator": "equal",
+                "value": "with-another-person"
+              },
+              {
+                "type": "fieldConditionalOn",
+                "targetFieldId": "co-applicant-income-type",
+                "targetStepId": "income",
+                "operator": "equal",
+                "value": "retired"
+              }
+            ]
           }
         }
-      ],
-      "behaviours": []
+      ]
     },
     {
       "stepId": "declaration",
@@ -973,8 +2699,8 @@
             "label": "Declaration",
             "validations": {
               "required": {
-                "error": "You must confirm the declaration to continue.",
-                "value": true
+                "value": true,
+                "error": "You must confirm the declaration to continue."
               }
             },
             "options": [
@@ -990,7 +2716,29 @@
     {
       "stepId": "submission-confirmation",
       "title": "Application submitted",
-      "markdownContent": "## What happens next\n\nThe NHC will review your application and contact you within 10 working days. They may ask you to send in supporting documents such as your pay slips and ID card.\n\nWe have sent a confirmation to the email address you gave us.\n\nKeep your reference number safe. You will need it if you contact the NHC about your application.",
+      "markdownContent": "Your application for an NHC {applicationType} has been submitted.\n\nKeep your reference number in case you need to contact the National Housing Corporation about your application.\n\n## What happens next\n\nNHC will check your application and may contact you if it needs more information.\n\nIf you qualify, NHC may put you on a waiting list until a rental home or house lot is available.\n\n**National Housing Corporation**\n“The Garden”\nCountry Road\nSt. Michael\n\nTelephone: (246) 536-5300\nEmail: NHC.CustomerService@barbados.gov.bb",
+      "conditionalMarkdown": [
+        {
+          "token": "applicationType",
+          "default": "rental home or house lot",
+          "variants": [
+            {
+              "targetStepId": "application-type",
+              "targetFieldId": "application-type",
+              "operator": "equal",
+              "value": "rental-home",
+              "content": "rental home"
+            },
+            {
+              "targetStepId": "application-type",
+              "targetFieldId": "application-type",
+              "operator": "equal",
+              "value": "house-lot",
+              "content": "house lot"
+            }
+          ]
+        }
+      ],
       "elements": []
     }
   ],
@@ -998,8 +2746,8 @@
     {
       "type": "email",
       "config": {
-        "recipientField": "applicant-details.email",
-        "subject": "We have received your application for an NHC Rental Unit or Lot",
+        "recipientField": "applicant-contact.email",
+        "subject": "Your NHC application has been submitted",
         "label": "Applicant Email"
       }
     },
@@ -1007,13 +2755,13 @@
       "type": "email",
       "config": {
         "recipientField": "config.mdaEmail",
-        "subject": "Submission received for NHC Application for Rental Unit or Lot",
+        "subject": "A new NHC rental home or house lot application has been submitted",
         "label": "MDA Email"
       }
     }
   ],
   "createdAt": "2026-09-03T00:00:00.000Z",
-  "updatedAt": "2026-10-21T16:52:59.000Z",
+  "updatedAt": "2026-11-11T12:00:00.000Z",
   "meta": {
     "visibility": "preview"
   }
