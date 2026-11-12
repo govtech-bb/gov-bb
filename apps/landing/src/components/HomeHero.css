@@ -329,12 +329,16 @@
     color: color-mix(in srgb, var(--govbb-white-00) 40%, transparent);
   }
 
-  .home-hero :is(.home-hero__suggestions, .home-hero__notice) {
+  .home-hero .home-hero__suggestions {
     --govbb-link-color: var(--govbb-white-00);
   }
 
-  .home-hero__notice {
-    font-size: var(--govbb-font-size-body-sm);
+  /* The hero centres its text; the banner reads from the start. The service
+     variant's red-10 tint barely registers on the navy hero, so it takes the
+     next step up the red scale here. */
+  .home-hero .home-hero__status {
+    text-align: start;
+    background: var(--govbb-red-20);
   }
 
   .home-hero__link-button {

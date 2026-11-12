@@ -2,7 +2,7 @@ import { useEffect, useId, useRef, useState } from 'react'
 import type { RefObject } from 'react'
 import { flushSync } from 'react-dom'
 import { useNavigate } from '@tanstack/react-router'
-import { Autocomplete, Button, Heading } from '@govtech-bb/react'
+import { Autocomplete, Button, Heading, StatusBanner } from '@govtech-bb/react'
 import type { ViewLevel } from '../lib/frontmatter'
 import { trackEvent } from '../lib/analytics'
 import { CHAT_URL } from '../lib/chat-url'
@@ -345,16 +345,25 @@ export function HomeHero({ questions, viewer, overlay }: HomeHeroProps) {
                 </div>
               </form>
               {isChatOffline ? (
-                <p className="home-hero__notice">
-                  The assistant isn’t available right now.{' '}
-                  <button
-                    type="button"
-                    className="govbb-link home-hero__link-button"
-                    onClick={searchInstead}
-                  >
-                    Search for a service instead
-                  </button>
-                </p>
+                <StatusBanner
+                  variant="service"
+                  rounded
+                  role="status"
+                  className="home-hero__status"
+                >
+                  <p>
+                    <strong>The assistant is not available right now.</strong>{' '}
+                    You can still{' '}
+                    <button
+                      type="button"
+                      className="govbb-link home-hero__link-button"
+                      onClick={searchInstead}
+                    >
+                      search for a service
+                    </button>
+                    .
+                  </p>
+                </StatusBanner>
               ) : questions.length > 0 ? (
                 <div className="home-hero__suggestions">
                   <p className="home-hero__suggestions-label">Try asking:</p>

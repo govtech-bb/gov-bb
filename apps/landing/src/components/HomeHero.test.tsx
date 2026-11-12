@@ -238,8 +238,18 @@ describe('HomeHero', () => {
     fireEvent.submit(askInput())
     expect(assignedHref).toBeUndefined()
 
+    // The search box's combobox has its own status region, so find the banner by its text.
+    expect(
+      screen
+        .getByText('The assistant is not available right now.')
+        .closest('[role="status"]'),
+    ).toHaveProperty(
+      'className',
+      expect.stringContaining('govbb-status-banner'),
+    )
+
     fireEvent.click(
-      screen.getByRole('button', { name: 'Search for a service instead' }),
+      screen.getByRole('button', { name: 'search for a service' }),
     )
     expect(
       screen.getByRole<HTMLInputElement>('radio', { name: 'Search' }).checked,
