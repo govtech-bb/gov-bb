@@ -35,7 +35,7 @@ part of `TrackingData`:
 | ---------------- | ----------------- | ------------------------------------------------------------------------------------ |
 | `tool-step-view` | `tool`, `step`    | none                                                                                 |
 | `tool-result`    | `tool`, `outcome` | `results` (count), plus the flags and codes listed for that tool in `ToolResultData` |
-| `tool-action`    | `tool`, `action`  | `target` (an ID defined in code)                                                     |
+| `tool-action`    | `tool`, `action`  | `target` (an ID defined in code), `step`                                             |
 | `tool-error`     | `tool`, `error`   | `step`                                                                               |
 
 - **The tool is data, not part of the name.** `tool` is a `ToolId`; steps,

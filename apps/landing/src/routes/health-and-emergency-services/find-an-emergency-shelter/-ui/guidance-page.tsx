@@ -22,6 +22,7 @@ import {
 } from '../-data/guidance-data'
 import type { PhoneEntry } from '../-data/guidance-data'
 import { EMERGENCY_SHELTER_FIND_HREF } from '../-lib/routes'
+import { trackCall } from '../-lib/track-call'
 
 const DEM_TEL = 'tel:+12464387575'
 
@@ -43,6 +44,11 @@ const CONTENTS = [
   { id: 'hurricane-terms', label: 'Hurricane terms' },
   { id: 'phone-numbers', label: 'All phone numbers' },
 ]
+
+/** A district as tool-action's target, e.g. "deo-st-michael-west" (#3509). */
+function districtTarget(district: string): string {
+  return `deo-${district.toLowerCase().replaceAll('.', '').replaceAll(' ', '-')}`
+}
 
 const accessibleShelters = EMERGENCY_SHELTERS.filter(
   (shelter) => shelter.access,
@@ -233,7 +239,15 @@ export function EmergencyShelterGuidancePage() {
               >
                 <span className="font-bold">{chair.district}</span>
                 <span>
-                  {chair.name} — <Link href={chair.tel}>{chair.number}</Link>
+                  {chair.name} —{' '}
+                  <Link
+                    href={chair.tel}
+                    onClick={() =>
+                      trackCall('guidance', districtTarget(chair.district))
+                    }
+                  >
+                    {chair.number}
+                  </Link>
                 </span>
               </li>
             ))}
@@ -241,8 +255,11 @@ export function EmergencyShelterGuidancePage() {
           <Text as="p" className="mt-s text-grey-70" size="body-sm">
             Some districts (Christ Church South, Christ Church West Central and
             St. Michael North) currently have no listed chairperson. Contact DEM
-            on <Link href={DEM_TEL}>438-7575</Link> if your district is not
-            shown.
+            on{' '}
+            <Link href={DEM_TEL} onClick={() => trackCall('guidance', 'dem')}>
+              438-7575
+            </Link>{' '}
+            if your district is not shown.
           </Text>
         </ShowHide>
       </GuidanceSection>
@@ -343,7 +360,12 @@ function PhoneRow({ entry }: { entry: PhoneEntry }) {
         {entry.contacts.map((contact, index) => (
           <span key={contact.tel}>
             {index > 0 && ', '}
-            <Link href={contact.tel}>{contact.display}</Link>
+            <Link
+              href={contact.tel}
+              onClick={() => trackCall('guidance', entry.id)}
+            >
+              {contact.display}
+            </Link>
             {contact.note ? ` ${contact.note}` : ''}
           </span>
         ))}

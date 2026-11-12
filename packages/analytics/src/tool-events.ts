@@ -66,7 +66,13 @@ export interface ToolTrackingData {
   "tool-result": ToolResult;
   /** A link or button in a tool was used. `target` is an ID defined in code,
    *  never a URL that can hold user data. */
-  "tool-action": { tool: ToolId; action: string; target?: string };
+  "tool-action": {
+    tool: ToolId;
+    action: string;
+    target?: string;
+    /** The step or page the action was on, for a tool that has more than one. */
+    step?: string;
+  };
   /** A tool could not do what was asked, such as a refused location. */
   "tool-error": { tool: ToolId; error: string; step?: string };
 }
