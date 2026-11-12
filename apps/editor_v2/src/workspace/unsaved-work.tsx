@@ -71,8 +71,9 @@ export function useUnsavedWork(pageId: string, markdown: string, base: ServerPag
         version: base.page.version,
         keptAt: new Date().toISOString(),
       });
-    // What was found stays until it's answered, or newer changes take its place
-    else if (!found) forgetUnsavedWork(pageId);
+    // What was found stays until it's answered; changes typed over it take its place only while they last
+    else if (found) keepUnsavedWork(pageId, found);
+    else forgetUnsavedWork(pageId);
   }, [pageId, markdown, base, found]);
 
   return [found, () => setFound(undefined)] as const;

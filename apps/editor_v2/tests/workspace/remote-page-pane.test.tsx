@@ -921,6 +921,55 @@ test("discarding the open copy while a recovery offer waits offers the same reco
   expect(h.session().store.getSnapshot().committed).toBe(saved + "\n\nKept before the reload.");
 });
 
+test("undoing what was typed while a recovery offer waits puts the offer back, so a reload offers it again", async () => {
+  const first = await mountPage(async () => Response.json(page));
+  const saved = first.session().store.getSnapshot().committed;
+  await applySource(first.session(), saved + "\n\nKept before the reload.");
+  const offered = localStorage.getItem(keptKey);
+
+  const h = await reloadPage(async () => Response.json(page));
+  await applySource(h.session(), saved + "\n\nTyped after it.");
+  expect(localStorage.getItem(keptKey)).toContain("Typed after it.");
+
+  await act(async () => pageControl<HTMLButtonElement>('button[aria-label="Undo"]').click());
+  expect(h.session().store.getSnapshot().committed).toBe(saved);
+  expect(pageHasUnsavedChanges(h.session())).toBe(false);
+  expect(localStorage.getItem(keptKey)).toBe(offered);
+
+  const again = await reloadPage(async () => Response.json(page));
+  await act(async () => button("Restore changes")!.click());
+  expect(again.session().store.getSnapshot().committed).toBe(saved + "\n\nKept before the reload.");
+});
+
+test("saving what was typed while a recovery offer waits doesn't leave the saved changes to be offered later", async () => {
+  const first = await mountPage(async () => Response.json(page));
+  const saved = first.session().store.getSnapshot().committed;
+  await applySource(first.session(), saved + "\n\nKept before the reload.");
+  let current = page;
+
+  const request = async (_url: string, init?: RequestInit) => {
+    if (init?.method === "PUT") current = { ...page, ...JSON.parse(String(init.body)), version: 2 };
+
+    return Response.json(current);
+  };
+
+  const h = await reloadPage(request);
+  await applySource(h.session(), saved + "\n\nTyped and saved.");
+  await savePage();
+  await act(async () => {
+    await vi.waitFor(() => expect(pageHasUnsavedChanges(h.session())).toBe(false));
+  });
+  expect(localStorage.getItem(keptKey)).not.toContain("Typed and saved.");
+
+  // Someone else saves after it, so the saved changes no longer match the page
+  current = { ...current, version: 3, title: "Saved by someone else" };
+  const again = await reloadPage(request);
+  expect(document.body.textContent).toContain(KEPT);
+  await act(async () => button("Restore changes")!.click());
+  expect(again.session().store.getSnapshot().committed).toContain("Kept before the reload.");
+  expect(again.session().store.getSnapshot().committed).not.toContain("Typed and saved.");
+});
+
 test("changes kept over a version the page has moved past restore as changes to a page saved since, and can't be saved over it", async () => {
   const first = await mountPage(async () => Response.json(page));
   const unsaved = first.session().store.getSnapshot().committed + "\n\nWritten over version 1.";
