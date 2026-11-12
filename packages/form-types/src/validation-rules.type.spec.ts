@@ -266,6 +266,55 @@ describe("ltRuleSchema", () => {
 });
 
 // ---------------------------------------------------------------------------
+// scaleBy on the numeric bound rules (#3636)
+// ---------------------------------------------------------------------------
+
+describe("scaleBy on min / max / gt / lt", () => {
+  const scaleBy = {
+    referenceFieldId: "income-frequency",
+    factors: { weekly: 4, "twice-a-month": 2, monthly: 1 },
+  };
+
+  it.each([
+    ["min", minRuleSchema],
+    ["max", maxRuleSchema],
+    ["gt", gtRuleSchema],
+    ["lt", ltRuleSchema],
+  ] as const)("%s keeps a scaleBy", (_, schema) => {
+    const result = schema.safeParse({ value: 3000, scaleBy });
+    expect(result.success).toBe(true);
+    expect(result.data?.scaleBy).toEqual(scaleBy);
+  });
+
+  it("accepts a targetStepId inside scaleBy", () => {
+    expect(
+      maxRuleSchema.safeParse({
+        value: 3000,
+        scaleBy: { ...scaleBy, targetStepId: "income-details" },
+      }).success,
+    ).toBe(true);
+  });
+
+  it("rejects a snake_case referenceFieldId inside scaleBy", () => {
+    expect(
+      maxRuleSchema.safeParse({
+        value: 3000,
+        scaleBy: { ...scaleBy, referenceFieldId: "income_frequency" },
+      }).success,
+    ).toBe(false);
+  });
+
+  it("rejects a scaleBy without factors", () => {
+    expect(
+      maxRuleSchema.safeParse({
+        value: 3000,
+        scaleBy: { referenceFieldId: "income-frequency" },
+      }).success,
+    ).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // fileTypesRuleSchema
 // ---------------------------------------------------------------------------
 

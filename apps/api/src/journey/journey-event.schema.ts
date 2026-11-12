@@ -38,6 +38,12 @@ export const journeyEventSchema = z
     path: z.string().regex(PATHNAME).optional(),
     /** Random per page load (not stored anywhere), to group one visit's events. */
     page_load_id: z.uuid().optional(),
+    /**
+     * Random per browser tab, kept in the tab's sessionStorage and passed from
+     * landing to forms in the Start link, to join one journey's events across
+     * the apps and the EzPay round trip.
+     */
+    journey_id: z.uuid().optional(),
     client_ts: z.iso.datetime().optional(),
   })
   .strict();
