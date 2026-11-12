@@ -123,16 +123,26 @@ export class UmamiClient {
     return this.get<unknown>(`/websites/${websiteId}/stats`, { ...range });
   }
 
-  /** Distinct values + counts for one event's numeric/string property. */
+  /** Distinct values + counts for one event's numeric/string property.
+   *  `where` keeps only events whose string property equals a value, using
+   *  Umami's event property filter (`epf`, Umami 3.3+) — e.g. one tool's
+   *  `tool-result` outcomes (ADR 0079). */
   eventDataValues(
     websiteId: string,
     event: string,
     propertyName: string,
     range: Range,
+    where?: { property: string; equals: string },
   ): Promise<EventDataValue[]> {
     return this.get<EventDataValue[]>(
       `/websites/${websiteId}/event-data/values`,
-      { event, propertyName, ...range },
+      {
+        event,
+        propertyName,
+        ...range,
+        // <dataType 1 = string>.<operator>.<property>.<value>
+        ...(where ? { epf1: `1.eq.${where.property}.${where.equals}` } : {}),
+      },
     );
   }
 

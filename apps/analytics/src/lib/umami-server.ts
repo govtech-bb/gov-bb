@@ -30,6 +30,7 @@ import {
   type PageRow,
   type Range,
   type SourceRow,
+  type ToolId,
 } from '@govtech-bb/umami-analytics'
 import { memoize } from './cache'
 import { liveTools, pathMatchesPrefix, type Tool } from './tools-config'
@@ -1001,25 +1002,128 @@ export interface ToolRow {
    */
   visitors: number
   topSources: SourceRow[]
+  /**
+   * The tool's own events (ADR 0079). Null when it sent no `tool-result`,
+   * `tool-action` or `tool-error` in the window — the "no tool events" state,
+   * which every tool shows until it is instrumented.
+   */
+  events: ToolEventStats | null
+}
+
+/** What visitors got from a tool and did with it, from its `tool-*` events. */
+export interface ToolEventStats {
+  /** `tool-result` events. */
+  results: number
+  /**
+   * Share of results with the tool's `noResultOutcome` (no matches, not
+   * eligible), 0–1. Null when the tool has no such outcome or no results.
+   */
+  noResultRate: number | null
+  /** The most-sent `tool-action`; null when there were none. */
+  topAction: { action: string; count: number } | null
+  /** `tool-error` events. */
+  errors: number
+  /** errors ÷ (results + errors), 0–1, like a form's submit error rate. */
+  errorRate: number | null
+}
+
+/** The water outage alert sign-up funnel, as the water tool sends it (#3510). */
+export interface WaterAlertFunnel {
+  /** `tool-action` `subscribe-submit`. */
+  submitted: number
+  /** `tool-result` `subscribe-sent`: the confirmation email went out. */
+  sent: number
+  /** `tool-result` `confirmed` (sent only at step `confirm`). */
+  confirmed: number
+  /** `tool-result` `unsubscribed` (sent only at step `unsubscribe`). */
+  unsubscribed: number
+}
+
+/** The tool-event value rows read from Umami for the Tools tab. */
+export interface ToolEventRows {
+  /** The `tool` values of each event: its count per tool, for every tool. */
+  resultsByTool: EventDataValue[]
+  actionsByTool: EventDataValue[]
+  errorsByTool: EventDataValue[]
+  /** Per tool, the `outcome` values of its `tool-result` events. */
+  outcomes: Map<ToolId, EventDataValue[]>
+  /** Per tool, the `action` values of its `tool-action` events. */
+  actions: Map<ToolId, EventDataValue[]>
 }
 
 export interface ToolsData {
   tools: ToolRow[]
+  waterAlerts: WaterAlertFunnel
   range: string
   window: string
 }
 
+/** The summed count of the rows whose value is `value`. */
+function totalFor(rows: EventDataValue[], value: string): number {
+  return rows
+    .filter((r) => String(r.value) === value)
+    .reduce((s, r) => s + r.total, 0)
+}
+
+/**
+ * One tool's event metrics, or null when it sent no tool events (the empty
+ * state). Counts come from the every-tool `tool` values; the no-result rate and
+ * top action from the tool's own outcome and action values.
+ */
+export function shapeToolEvents(
+  tool: Tool,
+  rows: ToolEventRows,
+): ToolEventStats | null {
+  const results = totalFor(rows.resultsByTool, tool.id)
+  const errors = totalFor(rows.errorsByTool, tool.id)
+  if (results + errors + totalFor(rows.actionsByTool, tool.id) === 0) {
+    return null
+  }
+  const noResults = tool.noResultOutcome
+    ? totalFor(rows.outcomes.get(tool.id) ?? [], tool.noResultOutcome)
+    : 0
+  const top = (rows.actions.get(tool.id) ?? []).reduce<
+    EventDataValue | undefined
+  >((best, r) => (!best || r.total > best.total ? r : best), undefined)
+  return {
+    results,
+    noResultRate: tool.noResultOutcome && results ? noResults / results : null,
+    topAction: top ? { action: String(top.value), count: top.total } : null,
+    errors,
+    errorRate: results + errors ? errors / (results + errors) : null,
+  }
+}
+
+/**
+ * The alert sign-up funnel from the water tool's outcome and action values.
+ * Each outcome is sent at one step only, so the outcome alone tells a confirm
+ * or unsubscribe result apart.
+ */
+export function shapeWaterAlerts(
+  outcomeRows: EventDataValue[],
+  actionRows: EventDataValue[],
+): WaterAlertFunnel {
+  return {
+    submitted: totalFor(actionRows, 'subscribe-submit'),
+    sent: totalFor(outcomeRows, 'subscribe-sent'),
+    confirmed: totalFor(outcomeRows, 'confirmed'),
+    unsubscribed: totalFor(outcomeRows, 'unsubscribed'),
+  }
+}
+
 /**
  * Roll landing URL rows up into one row per tool: sum pageviews + visitors for
- * every URL under the tool's route prefix, and attach the tool's entry-path
- * referrers as its top source. Pure — the caller supplies the URL rows and a
- * `primaryPath → referrers` map, so it's fully unit-testable. Every tool is
- * returned (zeroes when it has no traffic) so owners always see it listed.
+ * every URL under the tool's route prefix, attach the tool's entry-path
+ * referrers as its top source, and its event metrics. Pure — the caller
+ * supplies the URL rows, a `primaryPath → referrers` map and the tool-event
+ * rows, so it's fully unit-testable. Every tool is returned (zeroes when it has
+ * no traffic) so owners always see it listed.
  */
 export function shapeTools(
   tools: Tool[],
   urlRows: ExpandedRow[],
   sourcesByPath: Map<string, SourceRow[]>,
+  eventRows: ToolEventRows,
 ): ToolRow[] {
   return tools.map((tool) => {
     let pageviews = 0
@@ -1036,8 +1140,54 @@ export function shapeTools(
       pageviews,
       visitors,
       topSources: sourcesByPath.get(tool.primaryPath) ?? [],
+      events: shapeToolEvents(tool, eventRows),
     }
   })
+}
+
+/**
+ * Read the tool events (ADR 0079) from Umami. Each event's `tool` values give
+ * every tool's count in one call. A tool's outcome and action values need
+ * Umami's property filter, one call each, so they are read only for the tools
+ * that sent that event in the window.
+ */
+async function fetchToolEventRows(
+  client: UmamiClient,
+  websiteId: string,
+  tools: Tool[],
+  r: Range,
+): Promise<ToolEventRows> {
+  const [resultsByTool, actionsByTool, errorsByTool] = await Promise.all([
+    eventValues(client, websiteId, 'tool-result', 'tool', r),
+    eventValues(client, websiteId, 'tool-action', 'tool', r),
+    eventValues(client, websiteId, 'tool-error', 'tool', r),
+  ])
+  const perTool = async (
+    event: string,
+    propertyName: string,
+    byTool: EventDataValue[],
+  ) =>
+    new Map(
+      await Promise.all(
+        tools
+          .filter((tool) => totalFor(byTool, tool.id) > 0)
+          .map(
+            async (tool) =>
+              [
+                tool.id,
+                await eventValues(client, websiteId, event, propertyName, r, {
+                  property: 'tool',
+                  equals: tool.id,
+                }),
+              ] as const,
+          ),
+      ),
+    )
+  const [outcomes, actions] = await Promise.all([
+    perTool('tool-result', 'outcome', resultsByTool),
+    perTool('tool-action', 'action', actionsByTool),
+  ])
+  return { resultsByTool, actionsByTool, errorsByTool, outcomes, actions }
 }
 
 /** Per-tool pageview/visitor rollup + entry-page referrers — the "Tools" tab. */
@@ -1050,7 +1200,10 @@ export async function fetchToolsData(
     const client = new UmamiClient({ apiKey: cfg.apiKey })
     const r = rangeForKey(range)
     const tools = liveTools()
-    const urlRows = await client.metricsUrls(cfg.landingWebsiteId, r)
+    const [urlRows, eventRows] = await Promise.all([
+      client.metricsUrls(cfg.landingWebsiteId, r),
+      fetchToolEventRows(client, cfg.landingWebsiteId, tools, r),
+    ])
     // One referrers call per tool entry path (throttled by the client), like
     // the Home tab's per-page "Top source".
     const sourcesByPath = new Map<string, SourceRow[]>()
@@ -1074,7 +1227,11 @@ export async function fetchToolsData(
       }),
     )
     return {
-      tools: shapeTools(tools, urlRows, sourcesByPath),
+      tools: shapeTools(tools, urlRows, sourcesByPath, eventRows),
+      waterAlerts: shapeWaterAlerts(
+        eventRows.outcomes.get('water-outages') ?? [],
+        eventRows.actions.get('water-outages') ?? [],
+      ),
       range,
       window: rangeLabel(range),
     }
@@ -1408,9 +1565,16 @@ async function eventValues(
   event: string,
   propertyName: string,
   r: Range,
+  where?: { property: string; equals: string },
 ): Promise<EventDataValue[]> {
   try {
-    return await client.eventDataValues(websiteId, event, propertyName, r)
+    return await client.eventDataValues(
+      websiteId,
+      event,
+      propertyName,
+      r,
+      where,
+    )
   } catch {
     return []
   }
