@@ -229,24 +229,23 @@ describe('HomeHero', () => {
   it('offers Search instead of questions when the assistant is offline', async () => {
     stubChatHealth(false)
     renderHero()
+    // Screen readers only announce changes inside a live region that was
+    // already there, so the banner must land in the region the questions were in.
+    const region = screen.getByText('Try asking:').closest('[role="status"]')
+    expect(region).not.toBeNull()
 
     const send = screen.getByRole<HTMLButtonElement>('button', { name: 'Send' })
     await waitFor(() => expect(send.disabled).toBe(true))
     expect(screen.queryByRole('link', { name: QUESTION })).toBeNull()
-
-    fireEvent.change(askInput(), { target: { value: 'Renew a passport' } })
-    fireEvent.submit(askInput())
-    expect(assignedHref).toBeUndefined()
-
-    // The search box's combobox has its own status region, so find the banner by its text.
     expect(
       screen
         .getByText('The assistant is not available right now.')
         .closest('[role="status"]'),
-    ).toHaveProperty(
-      'className',
-      expect.stringContaining('govbb-status-banner'),
-    )
+    ).toBe(region)
+
+    fireEvent.change(askInput(), { target: { value: 'Renew a passport' } })
+    fireEvent.submit(askInput())
+    expect(assignedHref).toBeUndefined()
 
     fireEvent.click(
       screen.getByRole('button', { name: 'search for a service' }),

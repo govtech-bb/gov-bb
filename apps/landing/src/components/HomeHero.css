@@ -4,13 +4,19 @@
 
 @layer components {
   /* Fills the first screen below the site chrome; HomeHero measures the
-     chrome into --home-hero-chrome-height. The fallback is the desktop chrome. */
+     chrome into --home-hero-chrome-height. Until then, the fallbacks are the
+     measured chrome on phones and desktops, so the hero doesn't jump on load.
+     Between the two the header wraps, so its height varies. */
   .home-hero {
+    --home-hero-chrome-fallback: 13.3125rem;
+
     position: relative;
     display: flex;
     flex-direction: column;
     justify-content: center;
-    min-height: calc(100svh - var(--home-hero-chrome-height, 13.25rem));
+    min-height: calc(
+      100svh - var(--home-hero-chrome-height, var(--home-hero-chrome-fallback))
+    );
     color: var(--govbb-white-00);
     background: var(--govbb-blue-80);
     isolation: isolate;
@@ -64,6 +70,10 @@
   }
 
   @media (width < 50rem) {
+    .home-hero {
+      --home-hero-chrome-fallback: 12.3125rem;
+    }
+
     /* Darker on phones, where the clock tower sits behind the text. */
     .home-hero::before {
       --home-hero-overlay: 80%;

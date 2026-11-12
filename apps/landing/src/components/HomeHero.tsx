@@ -32,22 +32,24 @@ function useChatStatus(): ChatStatus {
   const [status, setStatus] = useState<ChatStatus>('checking')
 
   useEffect(() => {
-    let probeId = 0
+    // Returning to the tab fires both focus and visibilitychange; one check covers both.
+    let checking = false
     let unmounted = false
 
     async function probe() {
-      const myId = ++probeId
+      if (checking) return
+      checking = true
       try {
         const r = await fetch(`${CHAT_URL}/api/health/public`, {
           cache: 'no-store',
           signal: AbortSignal.timeout(3000),
         })
-        if (unmounted || myId !== probeId) return
         const data = r.ok ? ((await r.json()) as { ok?: boolean }) : null
-        if (unmounted || myId !== probeId) return
-        setStatus(data?.ok === true ? 'online' : 'offline')
+        if (!unmounted) setStatus(data?.ok === true ? 'online' : 'offline')
       } catch {
-        if (!unmounted && myId === probeId) setStatus('offline')
+        if (!unmounted) setStatus('offline')
+      } finally {
+        checking = false
       }
     }
 
@@ -202,7 +204,7 @@ export function HomeHero({ questions, viewer, overlay }: HomeHeroProps) {
           className="home-hero__image"
           src="/images/home-hero.jpg"
           srcSet="/images/home-hero-small.jpg 1200w, /images/home-hero.jpg 2400w"
-          sizes="(width >= 64rem) 142vw, (width >= 50rem) 100vw, 346vw"
+          sizes="(orientation: portrait) and (50rem <= width <= 64rem) 100vw, (width >= 64rem) 142vw, (width >= 50rem) 100vw, 346vw"
           alt=""
           fetchPriority="high"
         />
@@ -344,49 +346,52 @@ export function HomeHero({ questions, viewer, overlay }: HomeHeroProps) {
                   </Button>
                 </div>
               </form>
-              {isChatOffline ? (
-                <StatusBanner
-                  variant="service"
-                  rounded
-                  role="status"
-                  className="home-hero__status"
-                >
-                  <p>
-                    <strong>The assistant is not available right now.</strong>{' '}
-                    You can still{' '}
-                    <button
-                      type="button"
-                      className="govbb-link home-hero__link-button"
-                      onClick={searchInstead}
-                    >
-                      search for a service
-                    </button>
-                    .
-                  </p>
-                </StatusBanner>
-              ) : questions.length > 0 ? (
-                <div className="home-hero__suggestions">
-                  <p className="home-hero__suggestions-label">Try asking:</p>
-                  <ul className="home-hero__suggestions-list" role="list">
-                    {questions.map((question) => (
-                      <li key={question}>
-                        <a
-                          className="govbb-link"
-                          href={chatHref(question)}
-                          onClick={() =>
-                            trackEvent('chat-suggestion', {
-                              question,
-                              source: SOURCE,
-                            })
-                          }
-                        >
-                          {question}
-                        </a>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ) : null}
+              {/* Always present, so screen readers announce the swap when the
+                  chat goes offline or comes back. */}
+              <div role="status">
+                {isChatOffline ? (
+                  <StatusBanner
+                    variant="service"
+                    rounded
+                    className="home-hero__status"
+                  >
+                    <p>
+                      <strong>The assistant is not available right now.</strong>{' '}
+                      You can still{' '}
+                      <button
+                        type="button"
+                        className="govbb-link home-hero__link-button"
+                        onClick={searchInstead}
+                      >
+                        search for a service
+                      </button>
+                      .
+                    </p>
+                  </StatusBanner>
+                ) : questions.length > 0 ? (
+                  <div className="home-hero__suggestions">
+                    <p className="home-hero__suggestions-label">Try asking:</p>
+                    <ul className="home-hero__suggestions-list" role="list">
+                      {questions.map((question) => (
+                        <li key={question}>
+                          <a
+                            className="govbb-link"
+                            href={chatHref(question)}
+                            onClick={() =>
+                              trackEvent('chat-suggestion', {
+                                question,
+                                source: SOURCE,
+                              })
+                            }
+                          >
+                            {question}
+                          </a>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
+              </div>
             </div>
           </div>
         </div>
