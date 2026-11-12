@@ -2,7 +2,7 @@
 
 API-backed service page authoring for GovBB. The workspace groups entry, start and supporting pages, with independent in-memory edits and undo history.
 
-Pages use Markdown with YAML frontmatter. Edits remain in memory until the author chooses **Save** or **Publish changes**. There is no browser draft persistence or autosave. Reusable form editors, presets and native v2 JSON/Markdown converters remain available for embedding, but form authoring is not a workspace flow.
+Pages use Markdown with YAML frontmatter. Only **Save** or **Publish changes** sends edits to the content API. Browser storage keeps a local recovery copy until then. Reusable form editors, presets and native v2 JSON/Markdown converters remain available for embedding, but form authoring is not a workspace flow.
 
 ## Run locally
 
@@ -25,7 +25,7 @@ For local development without Google sign-in, run `vite dev` with `VITE_AUTH_BYP
 
 `VITE_LANDING_ORIGIN` is the optional public site origin. When set, each service's path in the Services list links to its page there.
 
-Authentication gates the workspace and saving sends the page to the content API with the session. Leaving unsaved work, signing out or an expired-session redirect asks before discarding it; a pending save blocks departure. Cancel keeps the working copy and undo history. Unsaved work is lost on a crash, refresh, closed tab or confirmed departure; download a copy before leaving if it cannot be saved.
+Authentication gates the workspace. Leaving unsaved work, signing out or an expired-session redirect asks before discarding it; pending saves block departure. Cancel keeps the working copy and undo history. After a reload or crash, the page opens from the API with a choice to restore or discard its browser recovery copy. Discard asks for confirmation. Recovery needs working browser storage, so save or download work you cannot afford to lose.
 
 ## Checks
 
