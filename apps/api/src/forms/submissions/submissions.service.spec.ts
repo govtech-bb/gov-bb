@@ -231,6 +231,32 @@ describe("SubmissionsService", () => {
         });
         expect(line).not.toHaveProperty("values");
         expect(line).not.toHaveProperty("reference_code");
+        expect(line).not.toHaveProperty("journey_id");
+      } finally {
+        write.mockRestore();
+      }
+    });
+
+    // #3507: the same journey_id as the /journey events, so one query joins a
+    // journey's form-submit to this line.
+    it("adds journey_id to the submission_accepted line when the request had one", async () => {
+      const write = vi
+        .spyOn(process.stdout, "write")
+        .mockImplementation(() => true);
+      try {
+        const { service } = makeMocks();
+        const journeyId = "3f2b8c1e-4d5a-4b6c-8d7e-9f0a1b2c3d4e";
+        await service.submit({ ...BASE_DTO, journeyId });
+
+        const line = JSON.parse(
+          write.mock.calls
+            .map((c) => String(c[0]))
+            .find((s) => s.includes('"submission_accepted"'))!,
+        );
+        expect(line).toMatchObject({
+          event: "submission_accepted",
+          journey_id: journeyId,
+        });
       } finally {
         write.mockRestore();
       }

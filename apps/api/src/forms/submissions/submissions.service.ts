@@ -211,6 +211,9 @@ export class SubmissionsService {
       submission_id: saved.id,
       payment_required: hasGating,
       smoke: dto.isSmokeSubmission === true,
+      // Same name and value as the /journey events' journey_id (#3507).
+      // Undefined, and so left out of the line, when the request had none.
+      journey_id: dto.journeyId,
     });
 
     // Coordinate-based catchment routing: when the recipe declares which fields
