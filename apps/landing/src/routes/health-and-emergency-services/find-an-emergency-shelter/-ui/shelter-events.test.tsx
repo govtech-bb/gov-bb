@@ -130,7 +130,8 @@ describe('shelter finder tool-result (#3509)', () => {
           tool: 'shelter-finder',
           outcome: matched > 0 ? 'results' : 'no-results',
           results: matched,
-          parishes: 'saint-michael,christ-church',
+          // In the finder's own order, not the order they were chosen in.
+          parishes: 'christ-church,saint-michael',
           categories: '1',
           amenities: 1,
           sort: 'capacity',
@@ -148,6 +149,57 @@ describe('shelter finder tool-result (#3509)', () => {
       has_query: true,
     })
   })
+
+  it('sends only known parishes and categories from a shared link, never other text', () => {
+    window.history.replaceState(
+      {},
+      '',
+      '/?parish=john.doe@example.com,St.%20Lucy&cat=555-123-4567,2',
+    )
+    renderFinder()
+    fireEvent.change(screen.getByRole('combobox', { name: 'Sort by' }), {
+      target: { value: 'name' },
+    })
+    wait(1000)
+
+    expect(eventsNamed('tool-result')).toHaveLength(1)
+    expect(eventsNamed('tool-result')[0][1]).toMatchObject({
+      parishes: 'saint-lucy',
+      categories: '2',
+    })
+    expect(allData()).not.toMatch(/example|john|555|4567/)
+  })
+
+  it.each([
+    ['allowed', 'distance', true],
+    ['denied', 'parish', false],
+  ])(
+    'sends one result for Nearest first when location is %s after the prompt was open for over a second',
+    (answer, sort, usedLocation) => {
+      renderFinder()
+      fireEvent.change(screen.getByRole('combobox', { name: 'Sort by' }), {
+        target: { value: 'distance' },
+      })
+      wait(1500)
+      expect(eventsNamed('tool-result')).toHaveLength(0)
+
+      act(() => {
+        if (answer === 'allowed') {
+          success({
+            coords: { latitude: 13.0975, longitude: -59.6123 },
+          } as GeolocationPosition)
+        } else {
+          failure?.({ code: 1 } as GeolocationPositionError)
+        }
+      })
+      wait(5000)
+      expect(eventsNamed('tool-result')).toHaveLength(1)
+      expect(eventsNamed('tool-result')[0][1]).toMatchObject({
+        sort,
+        used_location: usedLocation,
+      })
+    },
+  )
 
   it('sends used_location for a location result, never the coordinates or a distance', () => {
     renderFinder()
@@ -235,7 +287,7 @@ describe('shelter finder tool-action call (#3509)', () => {
     expect(targets).toEqual(
       expect.arrayContaining([
         'dem',
-        'deo-st-michael-west-central',
+        'deo-saint-michael-west-central',
         'deo-city-of-bridgetown',
         'police',
         'chief-shelter-warden',

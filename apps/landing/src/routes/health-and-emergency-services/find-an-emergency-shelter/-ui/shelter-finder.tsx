@@ -214,8 +214,10 @@ export function ShelterFinder() {
   }, [parishes, categories, accessible, search, sort, userLocation])
 
   // Send tool-result once search, filters and sort settle (#3509). The view on
-  // arrival is not a search, so it is not sent. Only whether there was a
-  // search text or a location is sent, never the text or the location.
+  // arrival is not a search, so it is not sent, and nothing is sent while a
+  // location request is open. Only whether there was a search text or a
+  // location is sent, never the text or the location. Parishes and categories
+  // can come from the URL, so only known values are sent, in a fixed order.
   const arrived = useRef(false)
   useEffect(() => {
     if (!ready) return
@@ -223,13 +225,16 @@ export function ShelterFinder() {
       arrived.current = true
       return
     }
+    if (locationState === 'loading') return
     const timer = setTimeout(() => {
       trackEvent('tool-result', {
         tool: 'shelter-finder',
         outcome: results.length > 0 ? 'results' : 'no-results',
         results: results.length,
-        parishes: parishes.map(parishCode).join(','),
-        categories: categories.join(','),
+        parishes: PARISHES.filter((p) => parishes.includes(p))
+          .map(parishCode)
+          .join(','),
+        categories: ['1', '2'].filter((c) => categories.includes(c)).join(','),
         amenities: accessible ? 1 : 0,
         sort,
         has_query: search.trim() !== '',
@@ -246,6 +251,7 @@ export function ShelterFinder() {
     search,
     sort,
     userLocation,
+    locationState,
   ])
 
   const visibleShelters = results.slice(0, visibleCount)

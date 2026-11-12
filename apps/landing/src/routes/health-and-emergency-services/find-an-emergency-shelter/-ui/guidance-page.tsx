@@ -45,9 +45,10 @@ const CONTENTS = [
   { id: 'phone-numbers', label: 'All phone numbers' },
 ]
 
-/** A district as tool-action's target, e.g. "deo-st-michael-west" (#3509). */
+/** A district as tool-action's target, e.g. "deo-saint-michael-west", spelt
+ *  like the platform's parish codes (#3509). */
 function districtTarget(district: string): string {
-  return `deo-${district.toLowerCase().replaceAll('.', '').replaceAll(' ', '-')}`
+  return `deo-${district.replace('St. ', 'Saint ').toLowerCase().replaceAll(' ', '-')}`
 }
 
 const accessibleShelters = EMERGENCY_SHELTERS.filter(
