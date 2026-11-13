@@ -82,7 +82,7 @@ export default defineConfig({
      * fail-closed (the API ignores it), so sending an empty header buys nothing
      * — and a custom request header makes the submission a CORS-preflighted
      * request. The per-PR preview smoke runs against the *deployed* sandbox API,
-     * which only allows `X-Smoke-Submission` once this change ships (ADR 0051);
+     * which only allows `X-Smoke-Submission` once this change ships (ADR 0050);
      * sending it before then fails the preflight and blocks the submit. Omitting
      * it when unset keeps the smoke behaving exactly as before. */
     ...(process.env.SMOKE_SUBMISSION_TOKEN
