@@ -3,7 +3,7 @@ import type { ViewLevel } from '../lib/frontmatter'
 import { suggest } from '../lib/search'
 import { trackEvent } from '../lib/analytics'
 
-type SearchSource = 'services' | 'results' | 'home'
+export type SearchSource = 'services' | 'results' | 'home'
 
 interface ServiceSearchOptions {
   source: SearchSource

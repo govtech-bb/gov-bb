@@ -2,9 +2,10 @@ import { useId, useState } from 'react'
 import { Autocomplete } from '@govtech-bb/react'
 import type { ViewLevel } from '../lib/frontmatter'
 import { useServiceSearch } from './useServiceSearch'
+import type { SearchSource } from './useServiceSearch'
 
 interface ServiceSearchProps {
-  source: 'services' | 'results'
+  source: Exclude<SearchSource, 'home'>
   viewer: ViewLevel
   overlay?: ReadonlyMap<string, ViewLevel>
   defaultValue?: string
