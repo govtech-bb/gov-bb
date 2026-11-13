@@ -291,10 +291,7 @@ describe("a save to a public page", () => {
 describe("the seeded site pages, with no category or parent (#3500)", () => {
   it.each(
     ESTATE.pages.filter(
-      (page) =>
-        page.parent === null &&
-        page.category === null &&
-        page.visibility === "public",
+      (page) => page.parent === null && page.category === null,
     ),
   )(
     "keep $url live, with its metadata and exact body, through no-op, details and body saves",
