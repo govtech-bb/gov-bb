@@ -1,7 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import type { RefObject } from 'react'
 import { flushSync } from 'react-dom'
-import { useNavigate } from '@tanstack/react-router'
 import {
   Autocomplete,
   Button,
@@ -13,7 +12,7 @@ import { isVisible, PAGES } from '../content/registry'
 import type { ViewLevel } from '../lib/frontmatter'
 import { trackEvent } from '../lib/analytics'
 import { CHAT_URL } from '../lib/chat-url'
-import { suggest } from '../lib/search'
+import { useServiceSearch } from './useServiceSearch'
 import './HomeHero.css'
 
 const MAX_QUESTION_LENGTH = 2000
@@ -145,7 +144,6 @@ interface HomeHeroProps {
 }
 
 export function HomeHero({ questions, viewer, overlay }: HomeHeroProps) {
-  const navigate = useNavigate()
   const heroRef = useRef<HTMLElement>(null)
   const searchRadioRef = useRef<HTMLInputElement>(null)
   const searchInputRef = useRef<HTMLInputElement>(null)
@@ -173,8 +171,15 @@ export function HomeHero({ questions, viewer, overlay }: HomeHeroProps) {
   }, [])
 
   const isChatOffline = chatStatus === 'offline'
-  const searchHits =
-    mode === 'search' && hasTyped ? suggest(text, viewer, overlay) : []
+  const search = useServiceSearch({
+    source: SOURCE,
+    viewer,
+    overlay,
+    text,
+    setText,
+    suggesting: mode === 'search' && hasTyped,
+    emptyTo: '/services',
+  })
   const popularSearches = POPULAR_SEARCHES.filter(({ serviceId }) => {
     const page = PAGES.find(({ slug }) => slug === serviceId)
     return page ? isVisible(page, 'public', overlay) : false
@@ -192,16 +197,6 @@ export function HomeHero({ questions, viewer, overlay }: HomeHeroProps) {
     setMode(next)
     setHasTyped(false)
     setText(value)
-  }
-
-  const submitSearch = (value: string) => {
-    const query = value.trim()
-    trackEvent('search-submit', { query, source: SOURCE })
-    if (!query) {
-      void navigate({ to: '/services' })
-      return
-    }
-    void navigate({ to: '/search-results', search: { q: query } })
   }
 
   const submitQuestion = () => {
@@ -278,7 +273,7 @@ export function HomeHero({ questions, viewer, overlay }: HomeHeroProps) {
                 method="get"
                 onSubmit={(event) => {
                   event.preventDefault()
-                  submitSearch(text)
+                  search.submit(text)
                 }}
               >
                 <div className="home-hero__field">
@@ -296,26 +291,14 @@ export function HomeHero({ questions, viewer, overlay }: HomeHeroProps) {
                     placeholder="Search services"
                     autoComplete="off"
                     enterKeyHint="search"
-                    suggestions={searchHits.map((hit) => ({
+                    suggestions={search.hits.map((hit) => ({
                       value: hit.title,
                     }))}
                     onChange={(event) => {
                       setHasTyped(true)
                       setText(event.currentTarget.value)
                     }}
-                    onSuggestionSelect={(_, index) => {
-                      const hit = searchHits[index]
-                      if (!hit) return
-                      setText(hit.title)
-                      trackEvent('search-suggestion-select', {
-                        query: text.trim(),
-                        title: hit.title,
-                        href: hit.href,
-                        position: index + 1,
-                        source: SOURCE,
-                      })
-                      submitSearch(hit.title)
-                    }}
+                    onSuggestionSelect={search.onSuggestionSelect}
                   />
                   <Button type="submit">Search</Button>
                 </div>
