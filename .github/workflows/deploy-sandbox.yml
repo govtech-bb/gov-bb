@@ -734,11 +734,14 @@ jobs:
   # layer with no code change at all, as in #2029. Skipped only if an upstream
   # deploy actually failed.
   #
-  # Auth: `PUT /service_status` requires a GitHub *user* token (classic PAT) for
-  # an identity that is a team member / repo writer — the default GITHUB_TOKEN
-  # (a bot) does NOT qualify. Provision E2E_SERVICE_STATUS_TOKEN (a dedicated
-  # machine account's PAT with read:org) BEFORE merging, or this fails closed
-  # and blocks every staging promotion (by design — a gate must not pass blind).
+  # Auth: `PUT /service_status` requires a GitHub *user* token — the default
+  # GITHUB_TOKEN (a bot) does NOT qualify. E2E_SERVICE_STATUS_TOKEN is the
+  # govtech-bb-e2e fine-grained token (org Members: read only, member of
+  # `feature-management-sandbox` only, no repo access — so it can change sandbox
+  # service_status but never prod's), stored on the `sandbox-e2e` environment and
+  # restricted to `main`. See #3363 for the token setup (and the renewal owner /
+  # steps tracked there). Absent → this fails closed and blocks staging (by
+  # design — a gate must not pass blind).
   journey-feature-flag:
     name: Journey 3 — feature-flag reaches landing + forms
     needs: [deploy-api, amplify-forms, amplify-landing]
@@ -791,16 +794,9 @@ jobs:
           SMOKE_BASE_URL: https://forms.sandbox.alpha.gov.bb
           E2E_SERVICE_STATUS_TOKEN: ${{ secrets.E2E_SERVICE_STATUS_TOKEN }}
         run: |
-          # TEMPORARY soft-skip (#3363): the secret is not provisioned yet. Fail-
-          # closed (exit 1) would block EVERY sandbox→staging promotion, since this
-          # job gates promote-to-staging. So skip (exit 0, loud warning) while the
-          # token is absent, keeping staging flowing. This self-heals: the moment
-          # infra populates E2E_SERVICE_STATUS_TOKEN the branch below is never taken,
-          # the real journey runs, and the gate is fail-closed again. Revert this to
-          # `exit 1` once #3363 lands so a future missing/expired token fails closed.
           if [ -z "$E2E_SERVICE_STATUS_TOKEN" ]; then
-            echo "::warning::E2E_SERVICE_STATUS_TOKEN not provisioned yet (#3363) — SKIPPING the J3 gate so staging is not blocked. Revert the soft-skip to exit 1 once the secret lands."
-            exit 0
+            echo "::error::E2E_SERVICE_STATUS_TOKEN is not set in the sandbox-e2e environment — renew the govtech-bb-e2e fine-grained token (org Members: read only, member of feature-management-sandbox only, no repo access) per #3363 before this gate can pass."
+            exit 1
           fi
           pnpm --filter @govtech-bb/forms exec playwright test \
             --config playwright.journey.config.ts
