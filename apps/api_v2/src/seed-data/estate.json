@@ -459,6 +459,21 @@
       }
     },
     {
+      "url": "/business-trade/e2e-j2-publish-check",
+      "category": "business-trade",
+      "parent": null,
+      "title": "E2E publish check (test service)",
+      "description": "Internal end-to-end test service for the nightly form builder publish journey. Not a real government service.",
+      "visibility": "draft",
+      "form_id": "e2e-j2-publish-check",
+      "content_slug": "e2e-j2-publish-check",
+      "published_at": "2026-10-29T00:00:00.000Z",
+      "body_markdown": "This is an automated end-to-end test service (#3009). It is not a real government service and is never listed publicly.",
+      "frontmatter": {
+        "stage": "alpha"
+      }
+    },
+    {
       "url": "/business-trade/e2e-maintenance-check",
       "category": "business-trade",
       "parent": null,
@@ -549,21 +564,6 @@
       "frontmatter": {
         "stage": "alpha",
         "service_type": "information"
-      }
-    },
-    {
-      "url": "/e2e-j2-publish-check",
-      "category": null,
-      "parent": null,
-      "title": "E2E publish check (test service)",
-      "description": "Internal end-to-end test service for the nightly form builder publish journey. Not a real government service.",
-      "visibility": "draft",
-      "form_id": "e2e-j2-publish-check",
-      "content_slug": "e2e-j2-publish-check",
-      "published_at": "2026-10-29T00:00:00.000Z",
-      "body_markdown": "This is an automated end-to-end test service (#3009). It is not a real government service and is never listed publicly.",
-      "frontmatter": {
-        "stage": "alpha"
       }
     },
     {
