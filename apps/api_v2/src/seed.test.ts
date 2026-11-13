@@ -51,7 +51,7 @@ describe("seed", () => {
     ).toEqual([]);
   });
 
-  /** Landing renders these from its routes; the body is a note for editors. */
+  /** Landing renders these from its routes, so their body is empty. */
   it.each([
     ["/bank-holiday-calendar", "work-employment"],
     [
@@ -68,9 +68,9 @@ describe("seed", () => {
       category,
       parent: null,
       form_id: null,
+      visibility: "public",
       content_slug: url.slice(1),
-      body_markdown:
-        "This page is built in landing code. Only the title, description, category and keywords here are used, for listings and search. Changing visibility here does not take the page down.",
+      body_markdown: "",
     });
     expect(page?.frontmatter.keywords?.length).toBeGreaterThan(0);
   });

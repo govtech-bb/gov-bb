@@ -156,17 +156,6 @@ const KNOWN: Array<{ why: string; field: Field; urls: string[] }> = [
  */
 const NO_STATIC_PAGE: string[] = []
 
-/**
- * Seeded pages landing serves from their own routes, never the catch-all, so
- * api_v2's body for them (a note for editors, #3256) is never rendered: only
- * their fields are compared. Their static twin has no markdown.
- */
-const RENDERED_BY_ROUTE = [
-  'bank-holiday-calendar',
-  'health-and-emergency-services/find-an-emergency-shelter',
-  'health-and-emergency-services/water-outages',
-]
-
 /** The page's body and chrome as the catch-all route renders it. */
 function render(
   page: ContentPage,
@@ -195,11 +184,7 @@ const seededContacts = {
 
 describe('api_v2 render parity', () => {
   it('lists only seeded pages as known differences', () => {
-    const listed = [
-      ...KNOWN.flatMap((known) => known.urls),
-      ...NO_STATIC_PAGE,
-      ...RENDERED_BY_ROUTE,
-    ]
+    const listed = [...KNOWN.flatMap((known) => known.urls), ...NO_STATIC_PAGE]
     expect(listed.filter((url) => !seeded.includes(url))).toEqual([])
   })
 
@@ -253,12 +238,7 @@ describe('api_v2 render parity', () => {
       )
       const html = render(api, records)
       const staticHtml = render({ ...twin, frontmatter: expected })
-      if (RENDERED_BY_ROUTE.includes(url)) {
-        expect(
-          twin.body,
-          `${url} now has markdown: remove it from RENDERED_BY_ROUTE`,
-        ).toBe('')
-      } else if (url === stormReadyUrl) {
+      if (url === stormReadyUrl) {
         expect(refs).toEqual(
           STORMREADY_CONTACTS.map(({ key }) => ({
             collection: 'contacts',

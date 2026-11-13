@@ -16,7 +16,7 @@
  *   a page has one `category_id`. `content_slug` is the markdown path
  *   landing's registry keys the page by, `index.md`/`.md` stripped.
  * - feature-route pages: every `-meta.ts` under `apps/landing/src/routes`,
- *   from its `META`, with a note for editors as the body.
+ *   from its `META`, with an empty body.
  * - categories: `CATEGORY_TAXONOMY` in its order, each subcategory a
  *   category with a parent.
  *
@@ -170,10 +170,6 @@ interface FeatureMeta {
   visibility?: SeedPage["visibility"];
 }
 
-/** Landing renders these pages from their routes, never this body (#3256). */
-const FEATURE_NOTE =
-  "This page is built in landing code. Only the title, description, category and keywords here are used, for listings and search. Changing visibility here does not take the page down.";
-
 const featurePages: SeedPage[] = readdirSync(routesDir, {
   recursive: true,
   encoding: "utf8",
@@ -193,7 +189,9 @@ const featurePages: SeedPage[] = readdirSync(routesDir, {
       form_id: null,
       content_slug: META.url,
       published_at: null,
-      body_markdown: FEATURE_NOTE,
+      // Landing renders these pages from their routes, never this body, and
+      // chat ingests every body it is served, so none (#3256).
+      body_markdown: "",
       frontmatter: META.keywords ? { keywords: META.keywords } : {},
     };
   });

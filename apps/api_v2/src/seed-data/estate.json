@@ -256,7 +256,7 @@
       "form_id": null,
       "content_slug": "bank-holiday-calendar",
       "published_at": null,
-      "body_markdown": "This page is built in landing code. Only the title, description, category and keywords here are used, for listings and search. Changing visibility here does not take the page down.",
+      "body_markdown": "",
       "frontmatter": {
         "keywords": [
           "bank holiday",
@@ -1031,7 +1031,7 @@
       "form_id": null,
       "content_slug": "health-and-emergency-services/find-an-emergency-shelter",
       "published_at": null,
-      "body_markdown": "This page is built in landing code. Only the title, description, category and keywords here are used, for listings and search. Changing visibility here does not take the page down.",
+      "body_markdown": "",
       "frontmatter": {
         "keywords": [
           "shelter",
@@ -1131,7 +1131,7 @@
       "form_id": null,
       "content_slug": "health-and-emergency-services/water-outages",
       "published_at": null,
-      "body_markdown": "This page is built in landing code. Only the title, description, category and keywords here are used, for listings and search. Changing visibility here does not take the page down.",
+      "body_markdown": "",
       "frontmatter": {
         "keywords": [
           "water outage",
