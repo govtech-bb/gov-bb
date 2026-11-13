@@ -14,7 +14,6 @@ interface ServiceSearchProps {
   viewer: ViewLevel
   overlay?: ReadonlyMap<string, ViewLevel>
   defaultValue?: string
-  emptyHref?: '/services' | '/search-results'
   /** api_v2's search documents the page already has: a start, refreshed on edits. */
   documents?: readonly ApiV2SearchDocument[]
   /** Reads api_v2's search documents. */
@@ -26,7 +25,6 @@ export function ServiceSearch({
   viewer,
   overlay,
   defaultValue = '',
-  emptyHref = '/search-results',
   documents: givenDocuments,
   loadDocuments = loadApiV2SearchDocuments,
 }: ServiceSearchProps) {
