@@ -23,7 +23,7 @@ const SOURCE = 'home'
 const OFFLINE_MESSAGE = 'The assistant is not available right now.'
 
 // Each search leads to one service, so it's hidden while that service is.
-const POPULAR_SEARCHES = [
+export const POPULAR_SEARCHES = [
   { query: 'Birth certificates', serviceId: 'get-birth-certificate' },
   {
     query: 'Redirect my mail',
@@ -146,6 +146,9 @@ interface HomeHeroProps {
   overlay: ReadonlyMap<string, ViewLevel>
   /** Reads api_v2's search documents. */
   loadDocuments?: () => Promise<readonly ApiV2SearchDocument[]>
+  /** The popular searches' services api_v2 serves, when it is configured.
+   *  Unset, the static registry decides. */
+  servedServices?: readonly string[]
 }
 
 export function HomeHero({
@@ -153,6 +156,7 @@ export function HomeHero({
   viewer,
   overlay,
   loadDocuments = loadApiV2SearchDocuments,
+  servedServices,
 }: HomeHeroProps) {
   const navigate = useNavigate()
   const heroRef = useRef<HTMLElement>(null)
@@ -188,6 +192,7 @@ export function HomeHero({
       ? suggest(text, viewer, overlay, documents)
       : []
   const popularSearches = POPULAR_SEARCHES.filter(({ serviceId }) => {
+    if (servedServices) return servedServices.includes(serviceId)
     const page = PAGES.find(({ slug }) => slug === serviceId)
     return page ? isVisible(page, 'public', overlay) : false
   })

@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import {
   publicChatSuggestions,
   readServedChatSuggestions,
+  readServedServices,
   servedChatSuggestions,
 } from './chat-suggestions'
 
@@ -89,5 +90,30 @@ describe('readServedChatSuggestions', () => {
     for (const url of Object.keys(results)) {
       expect(v2Mocks.getApiV2Page).toHaveBeenCalledWith({ data: url })
     }
+  })
+})
+
+describe('readServedServices', () => {
+  it('keeps the services api_v2 serves, in the order asked, by the same rule', async () => {
+    const results: Record<string, unknown> = {
+      [BIRTH]: { kind: 'miss', reason: 'not_found', cacheControl: null },
+      [FINANCIAL]: { kind: 'miss', reason: 'compile', cacheControl: null },
+      [MAIL]: { kind: 'page', page: {}, cacheControl: null },
+    }
+    v2Mocks.getApiV2Page.mockImplementation(
+      async ({ data }: { data: string }) => results[data],
+    )
+
+    expect(
+      await readServedServices([
+        'post-office-redirection-individual',
+        'get-birth-certificate',
+        'apply-financial-assistance',
+        'no-such-service',
+      ]),
+    ).toEqual([
+      'post-office-redirection-individual',
+      'apply-financial-assistance',
+    ])
   })
 })

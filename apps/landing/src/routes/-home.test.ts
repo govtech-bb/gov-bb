@@ -8,6 +8,7 @@ import type { ServiceStatusEntry } from '../lib/service-status'
 
 const chatMocks = vi.hoisted(() => ({
   getServedChatSuggestions: vi.fn(),
+  getServedServices: vi.fn(),
 }))
 vi.mock('../lib/chat-suggestions', async (importOriginal) => ({
   ...(await importOriginal<typeof ChatModule>()),
@@ -21,6 +22,7 @@ beforeAll(async () => {
 
 beforeEach(() => {
   chatMocks.getServedChatSuggestions.mockReset()
+  chatMocks.getServedServices.mockReset()
 })
 
 const serviceStatuses: ServiceStatusEntry[] = [
@@ -28,27 +30,39 @@ const serviceStatuses: ServiceStatusEntry[] = [
 ]
 const loader = () => Route.options.loader as (a: unknown) => unknown
 
-describe('/ loader chat suggestions', () => {
+describe('/ loader chat suggestions and popular searches', () => {
   it('asks api_v2 when it is configured', async () => {
     chatMocks.getServedChatSuggestions.mockResolvedValue(['served'])
+    chatMocks.getServedServices.mockResolvedValue(['get-birth-certificate'])
     const result = await loader()({
       context: {
         serviceStatuses,
         categoryTree: { kind: 'found', categories: [] },
       },
     })
-    expect(result).toEqual(['served'])
+    expect(result).toEqual({
+      questions: ['served'],
+      servedServices: ['get-birth-certificate'],
+    })
+    expect(chatMocks.getServedServices).toHaveBeenCalledWith({
+      data: [
+        'get-birth-certificate',
+        'post-office-redirection-individual',
+        'apply-financial-assistance',
+      ],
+    })
   })
 
-  it('shows no chips when the server function call fails', async () => {
+  it('shows no chips or popular searches when the server function calls fail', async () => {
     chatMocks.getServedChatSuggestions.mockRejectedValue(new Error('offline'))
+    chatMocks.getServedServices.mockRejectedValue(new Error('offline'))
     const result = await loader()({
       context: {
         serviceStatuses,
         categoryTree: { kind: 'found', categories: [] },
       },
     })
-    expect(result).toEqual([])
+    expect(result).toEqual({ questions: [], servedServices: [] })
   })
 
   it('uses the static overlay when api_v2 is unset', async () => {
@@ -56,8 +70,11 @@ describe('/ loader chat suggestions', () => {
       context: { serviceStatuses, categoryTree: { kind: 'disabled' } },
     })
     expect(chatMocks.getServedChatSuggestions).not.toHaveBeenCalled()
-    expect(result).toEqual(
-      publicChatSuggestions(deriveVisibilityOverlay(serviceStatuses)),
-    )
+    expect(chatMocks.getServedServices).not.toHaveBeenCalled()
+    expect(result).toEqual({
+      questions: publicChatSuggestions(
+        deriveVisibilityOverlay(serviceStatuses),
+      ),
+    })
   })
 })

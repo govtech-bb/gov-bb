@@ -358,6 +358,27 @@ describe('HomeHero', () => {
       screen.getByRole('link', { name: 'Financial assistance' }),
     ).toBeTruthy()
   })
+
+  it('shows only the popular searches api_v2 serves, when it says', () => {
+    // Public in the static registry, so this tests api_v2's answer wins.
+    render(
+      <HomeHero
+        questions={[QUESTION]}
+        viewer="public"
+        overlay={new Map()}
+        servedServices={['apply-financial-assistance']}
+      />,
+    )
+    fireEvent.click(screen.getByRole('radio', { name: 'Search' }))
+
+    expect(
+      screen.queryByRole('link', { name: 'Birth certificates' }),
+    ).toBeNull()
+    expect(screen.queryByRole('link', { name: 'Redirect my mail' })).toBeNull()
+    expect(
+      screen.getByRole('link', { name: 'Financial assistance' }),
+    ).toBeTruthy()
+  })
 })
 
 describe('HomeHero before hydration', () => {
