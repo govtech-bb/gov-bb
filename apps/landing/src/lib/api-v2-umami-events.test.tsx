@@ -21,7 +21,7 @@ import { sitePath } from './breadcrumb-trail'
 /**
  * The Umami events an api_v2 page sends match its static twin's (#3258): the
  * page view (`page-service-view` / `page-start-view`), the Start button
- * (`<form_id>-start`), the breadcrumbs (`breadcrumb`) and the feedback link
+ * (`start-click`), the breadcrumbs (`breadcrumb`) and the feedback link
  * (`helpful-feedback`). No network: api_v2's `GET /pages` answer is a fixture
  * read through `resolveApiV2Page`, and `window.umami` is a stub.
  *
@@ -93,10 +93,11 @@ function events(page: ContentPage, trail?: PageResponse['breadcrumbs']) {
       <HelpfulBox />
     </>,
   )
-  const tracked: UmamiEvent[] = track.mock.calls.map(([name, data]) => ({
-    name,
-    data,
-  }))
+  // trackEvent hands Umami a payload builder (#3503), as Umami's tracker does.
+  const tracked: UmamiEvent[] = track.mock.calls.map(([build]) => {
+    const { name, data } = (build as (p: object) => UmamiEvent)({})
+    return { name, data }
+  })
   const clicks: UmamiEvent[] = [
     ...container.querySelectorAll<HTMLElement>('[data-umami-event]'),
   ].map((element) => {
@@ -165,7 +166,7 @@ describe('Umami events on api_v2 pages (#3258)', () => {
       crumb('/'),
       crumb('/work-employment'),
       // "Apply online" links to the /start page by href, so it sends no
-      // `<form_id>-start` event from either source.
+      // `start-click` event from either source.
       { name: 'helpful-feedback', data: { path: url } },
     ]
     expect(staticTwin(SERVICE_PAGE)).toEqual(expected)
@@ -182,7 +183,10 @@ describe('Umami events on api_v2 pages (#3258)', () => {
       crumb('/'),
       crumb('/work-employment'),
       crumb('/work-employment/apply-for-conductor-licence'),
-      { name: 'apply-for-conductor-licence-start', data: { from: url } },
+      {
+        name: 'start-click',
+        data: { 'form-id': 'apply-for-conductor-licence', from: url },
+      },
       { name: 'helpful-feedback', data: { path: url } },
     ]
     // Known difference: a static `/start` page names no category, so it
