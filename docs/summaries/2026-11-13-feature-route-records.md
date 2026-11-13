@@ -22,6 +22,10 @@
 - **`loadFeatureRouteServices` is not reused.** Its mapper keeps only url, title, category and visibility, for the services index. The snapshot also needs description and keywords, and widening the mapper would change api v1's services index for no gain there.
 - **The StormReady checklist is left out.** `routes/$.tsx` does `v2Page ?? findPage(splat)`, so an api_v2 row at the checklist's url would take precedence over the self-rendered `.tsx` and render the note. It waits on #3239.
 
+## What we almost got wrong
+
+- We ran only api_v2's tests before pushing, and CI's `landing:test` failed. Landing's render parity test (`apps/landing/src/lib/api-v2-render-parity.test.tsx`, #3135) reads `estate.json` and requires each seeded page to render the same HTML as its static twin. The note body made the three feature pages differ on purpose, so `RENDERED_BY_ROUTE` now exempts them from the HTML check but still compares their fields. It also fails if a listed page's twin gains markdown. A change to `estate.json` needs `landing:test` and `editor_v2:test` as well as api_v2's.
+
 ## Open questions
 
 - Sandbox already had its one-time import, so this snapshot doesn't reach it. #3256 step 2 creates the three pages there by hand in editor_v2. #3709 (drift between `estate.json` and deployed databases) may cover them instead, once this merges.
