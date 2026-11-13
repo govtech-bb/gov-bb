@@ -82,12 +82,13 @@ export interface SubmissionCreatedEvent {
   processorIndex?: number;
   /**
    * True when this submission came from the live smoke matrix (see
-   * SubmitDto.isSmokeSubmission). Every `submission.created` consumer that
-   * triggers a real side-effect must short-circuit on it — not just the
-   * `processors[]`-driven dispatch. Carried here because some consumers (e.g.
-   * YouthOpportunityWebhookListener) fire off `formId` and never read
-   * `processors`, so an empty `processors[]` alone does not suppress them
-   * (#1252).
+   * SubmitDto.isSmokeSubmission). Carried on the event so that any
+   * `submission.created` consumer which triggers a real side-effect off
+   * `formId`/config (rather than the `processors[]` the choke point filters) can
+   * short-circuit on it. Today the only side-effect dispatcher is
+   * `SubmissionProcessorListener` (`processors[]`-driven), so the choke-point
+   * filter is sufficient — but a future formId-driven consumer must gate here
+   * (#1252; ADR 0052 + its #3533 amendment).
    */
   isSmokeSubmission?: boolean;
   /**
@@ -148,10 +149,17 @@ export interface SubmitDto {
   /**
    * Set by the controller only when a request carries a valid
    * `X-Smoke-Submission` token (see SMOKE_SUBMISSION_TOKEN). When true the
-   * service drops every processor at the choke point — the submission still
-   * persists, validates, and gets a reference code, but no email / webhook /
+   * service drops the processor array at the choke point — the submission still
+   * persists, validates, and gets a reference code, but no email or
    * payment-gating processor runs. Lets the post-deploy live smoke matrix
    * exercise the real submit path without firing real side-effects (#1252).
+   *
+   * One exception (#3533, amends ADR 0052): a mapped (CaMS) webhook whose
+   * `mapping.programmeCode` is a reserved test code is KEPT, so E2E J4 (#3011)
+   * can follow a submission into a CaMS test programme. See
+   * `smokeAllowedProcessors` in `processors/webhook-mapping.ts`. Email, payment,
+   * and any webhook on a real programme code are still dropped, so a smoke
+   * submission never creates a real case, emails a citizen, or opens a payment.
    */
   isSmokeSubmission?: boolean;
   /**

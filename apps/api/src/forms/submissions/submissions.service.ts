@@ -28,6 +28,7 @@ import {
 import {
   programmeCodeFromProcessors,
   readPath,
+  smokeAllowedProcessors,
   sendsToCams,
 } from "./processors/webhook-mapping";
 import type {
@@ -138,16 +139,21 @@ export class SubmissionsService {
     const pinnedVersion = draft?.formVersion ?? dto.formVersion ?? null;
 
     // Smoke submissions exercise the full persist/validate/reference-code path
-    // but must fire zero processors (no real emails/webhooks/payment gating, and
-    // no case-management dispatch). Dropping them here, the single choke point
-    // for the `processors[]` array, makes hasGating false (→ SUBMITTED +
+    // but must fire zero real side-effects — dropping the `processors[]` array
+    // here, the single choke point, makes hasGating false (→ SUBMITTED +
     // submittedAt), emits an event carrying no processors, and the
-    // SubmissionProcessorListener dispatch loop iterates nothing. Every
-    // submission side-effect is now `processors[]`-driven, so this one drop
-    // covers them all (#1252).
+    // SubmissionProcessorListener dispatch loop iterates nothing (#1252).
+    //
+    // The one exception (#3533, amends ADR 0052): a mapped (CaMS) webhook whose
+    // programme code is a reserved TEST code is kept, so E2E J4 (#3011) can
+    // follow a submission into a CaMS test programme. `smokeAllowedProcessors`
+    // keeps only those; email, payment and any real-programme webhook are still
+    // dropped, so a smoke submission can never create a real case or email a
+    // citizen.
+    const allProcessors = contract.processors ?? [];
     const rawProcessors = dto.isSmokeSubmission
-      ? []
-      : (contract.processors ?? []);
+      ? smokeAllowedProcessors(allProcessors)
+      : allProcessors;
     const split = this.processorFactory.resolveSplit(rawProcessors);
 
     // A payment whose fee resolves to 0 (a fee-waiver branch / dynamic

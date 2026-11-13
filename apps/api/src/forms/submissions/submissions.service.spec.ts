@@ -659,6 +659,78 @@ describe("SubmissionsService", () => {
       );
     });
 
+    // #3533 (amends ADR 0052): the ONE exception — a mapped webhook on a reserved
+    // test programme code survives a smoke submission, so E2E J4 can reach a CaMS
+    // test programme. Everything else still drops.
+    function makeSmokeMocksWithProcessors(procs: unknown[]) {
+      const txRepo = {
+        findOne: vi.fn().mockResolvedValue(null),
+        create: vi.fn().mockImplementation((data) => ({ ...data })),
+        save: vi.fn().mockResolvedValue(makeEntity()),
+      };
+      const submissionRepo = {
+        findOne: vi.fn().mockResolvedValue(null),
+        tx: vi.fn().mockImplementation((cb) => cb(txRepo)),
+        count: vi.fn().mockResolvedValue(0),
+      } as unknown as FormSubmissionRepository;
+      const pipeline = {
+        run: vi.fn().mockResolvedValue({
+          draft: { formVersion: "1.0.0", lastActivePage: 0 },
+          contract: { processors: procs },
+          auditTrail: AUDIT_TRAIL,
+          normalizedValues: {},
+        }),
+      } as unknown as SubmissionPipelineService;
+      const eventEmitter = { emit: vi.fn() } as unknown as EventEmitter2;
+      const processorFactory = {
+        resolveSplit: vi.fn().mockImplementation((p: unknown[]) => ({
+          gating: [],
+          nonGating: p,
+        })),
+      } as unknown as ProcessorFactory;
+      const service = new SubmissionsService(
+        submissionRepo,
+        pipeline,
+        eventEmitter,
+        processorFactory,
+        expressions,
+        makeCatchmentRouting(),
+      );
+      return { service, eventEmitter };
+    }
+
+    it("keeps a webhook on a TEST programme code and drops email/payment (#3533)", async () => {
+      const testWebhook = {
+        type: "webhook",
+        config: { mapping: { programmeCode: "E2E_MAINTENANCE_CHECK" } },
+      };
+      const { service, eventEmitter } = makeSmokeMocksWithProcessors([
+        { type: "email", config: { to: "x@y" } },
+        { type: "payment", config: { amount: 10 } },
+        testWebhook,
+      ]);
+
+      await service.submit({ ...BASE_DTO, isSmokeSubmission: true });
+
+      expect(eventEmitter.emit as Mock).toHaveBeenCalledWith(
+        "submission.created",
+        expect.objectContaining({ processors: [testWebhook] }),
+      );
+    });
+
+    it("drops a webhook on a REAL programme code (#3533)", async () => {
+      const { service, eventEmitter } = makeSmokeMocksWithProcessors([
+        { type: "webhook", config: { mapping: { programmeCode: "BYAC" } } },
+      ]);
+
+      await service.submit({ ...BASE_DTO, isSmokeSubmission: true });
+
+      expect(eventEmitter.emit as Mock).toHaveBeenCalledWith(
+        "submission.created",
+        expect.objectContaining({ processors: [] }),
+      );
+    });
+
     it("persists status SUBMITTED with submittedAt when flag is set", async () => {
       const { service, txRepo } = makeSmokeMocks();
 
