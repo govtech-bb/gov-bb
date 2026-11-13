@@ -337,11 +337,11 @@ export class PostgresPages
     return rows.ok ? ok(rows.value.rows) : rows;
   }
 
-  /** The visibility of a page's `start` sub-page, or null when it has none. */
-  async startStepVisibility(
+  /** The visibility of each of a page's `start` sub-pages; none when it has none. */
+  async startStepVisibilities(
     pageId: PageId,
-  ): Promise<Result<Visibility | null, ContentStoreUnavailable>> {
-    const rows = await attempt("startStepVisibility", () =>
+  ): Promise<Result<Visibility[], ContentStoreUnavailable>> {
+    const rows = await attempt("startStepVisibilities", () =>
       this.db
         .select({ visibility: contentPages.visibility })
         .from(contentPages)
@@ -352,7 +352,7 @@ export class PostgresPages
           ),
         ),
     );
-    return rows.ok ? ok(rows.value[0]?.visibility ?? null) : rows;
+    return rows.ok ? ok(rows.value.map((row) => row.visibility)) : rows;
   }
 
   /** Every category, in the order the site lists them. */
@@ -510,15 +510,21 @@ export class PostgresPages
     });
   }
 
-  /** The url of every page with this slug. */
+  /** The url of every page with this slug and one of these visibilities. */
   async urlsWithSlug(
     slug: string,
+    visibilities: readonly Visibility[],
   ): Promise<Result<string[], ContentStoreUnavailable>> {
     const rows = await attempt("urlsWithSlug", () =>
       this.db
         .select({ url: contentPages.url })
         .from(contentPages)
-        .where(eq(contentPages.slug, slug)),
+        .where(
+          and(
+            eq(contentPages.slug, slug),
+            inArray(contentPages.visibility, [...visibilities]),
+          ),
+        ),
     );
     return rows.ok ? ok(rows.value.map((row) => row.url)) : rows;
   }

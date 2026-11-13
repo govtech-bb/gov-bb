@@ -90,7 +90,7 @@ const PageResponse = z
     body_markdown: z.string(),
     /** The form a href-less Start link in the markdown opens. */
     form_id: z.string().nullable().catch(null),
-    /** True when the start sub-page is hidden; form status comes from the forms API. */
+    /** True when the page has start sub-pages and none is visible; form status comes from the forms API. */
     hide_start_links: z.boolean(),
     breadcrumbs: z.array(z.object({ name: z.string(), url: z.string() })),
     /** First publication, not the last save. */

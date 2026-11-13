@@ -139,8 +139,8 @@ export const SCHEMAS = {
     description:
       "The site's read. A page is served only when it and every page above " +
       "it (by `parent_id`) are visible: public, or preview too with the " +
-      "preview token. `hide_start_links` is set when the page's `start` " +
-      "sub-page is not. A stored public redirect takes precedence over a page " +
+      "preview token. `hide_start_links` is set when the page has `start` " +
+      "sub-pages and none of them is. A stored public redirect takes precedence over a page " +
       "at its source, including Draft/Preview replacements, and returns 301 " +
       "with its stored Location and redirect body. Rules persist when the " +
       "destination is hidden or deleted; following one still applies normal " +
