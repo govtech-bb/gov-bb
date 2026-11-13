@@ -739,8 +739,9 @@ jobs:
   # govtech-bb-e2e fine-grained token (org Members: read only, member of
   # `feature-management-sandbox` only, no repo access — so it can change sandbox
   # service_status but never prod's), stored on the `sandbox-e2e` environment and
-  # restricted to `main`. See #3363 for the setup and renewal runbook. Absent →
-  # this fails closed and blocks staging (by design — a gate must not pass blind).
+  # restricted to `main`. See #3363 for the token setup (and the renewal owner /
+  # steps tracked there). Absent → this fails closed and blocks staging (by
+  # design — a gate must not pass blind).
   journey-feature-flag:
     name: Journey 3 — feature-flag reaches landing + forms
     needs: [deploy-api, amplify-forms, amplify-landing]

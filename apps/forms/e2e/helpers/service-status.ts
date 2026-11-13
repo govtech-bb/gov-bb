@@ -3,7 +3,9 @@
  * journey (J3, #3010).
  *
  * `PUT /service_status` is admin-gated by `GitHubAuthGuard`: it needs a real
- * GitHub *user* token (classic PAT) whose login is a team member / repo writer.
+ * GitHub *user* token. In CI this is E2E_SERVICE_STATUS_TOKEN — the
+ * `govtech-bb-e2e` fine-grained token (org Members: read only, member of
+ * `feature-management-sandbox` only, no repo access), scoped to sandbox (#3363).
  * Body is `{ slug, status }`; the author is the verified login, never the body.
  * The controller throttles (5/10s), so callers should flip sparingly.
  */
@@ -55,8 +57,15 @@ export async function setServiceStatus(
   });
   if (!res.ok) {
     const detail = await res.text().catch(() => "");
+    // The likeliest real failure (e.g. the 2027-02-01 expiry) is a still-set but
+    // invalid token → 401/403 here, not the empty-token guard in the workflow. So
+    // point on-call at the renewal path from this message too (#3363).
+    const hint =
+      res.status === 401 || res.status === 403
+        ? " — E2E_SERVICE_STATUS_TOKEN is expired or lacks access; renew it per #3363"
+        : "";
     throw new Error(
-      `PUT /service_status (${slug} → ${status}) failed: HTTP ${res.status} ${detail}`,
+      `PUT /service_status (${slug} → ${status}) failed: HTTP ${res.status} ${detail}${hint}`,
     );
   }
 }
