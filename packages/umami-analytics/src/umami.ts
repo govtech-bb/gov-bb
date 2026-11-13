@@ -126,7 +126,7 @@ export class UmamiClient {
   /** Distinct values + counts for one event's numeric/string property.
    *  `where` keeps only events whose string property equals a value, using
    *  Umami's event property filter (`epf`, Umami 3.3+) — e.g. one tool's
-   *  `tool-result` outcomes (ADR 0079). */
+   *  `tool-result` outcomes (ADR 0138). */
   eventDataValues(
     websiteId: string,
     event: string,

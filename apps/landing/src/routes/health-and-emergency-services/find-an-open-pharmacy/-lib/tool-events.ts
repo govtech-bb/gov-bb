@@ -1,5 +1,5 @@
 /**
- * Pharmacy finder analytics (ADR 0079).
+ * Pharmacy finder analytics (ADR 0138).
  * --------------------------------------------------------------
  * The codes this tool sends with the shared tool events. Only codes, counts
  * and yes/no flags leave the page: never the search text, the visitor's

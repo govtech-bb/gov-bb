@@ -573,7 +573,7 @@ describe('water outages events (#3510)', () => {
     })
   })
 
-  // Privacy bar (ADR 0079): no email address and no coordinates, ever.
+  // Privacy bar (ADR 0138): no email address and no coordinates, ever.
   it('never sends the email address or the coordinates', async () => {
     vi.mocked(locateParish).mockResolvedValue({
       value: 'saint-michael',

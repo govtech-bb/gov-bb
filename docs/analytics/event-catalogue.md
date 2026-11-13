@@ -42,7 +42,7 @@ before it is sent. Email addresses and numbers of 6 or more digits (phone, NIS
 and ID numbers) keep only their first and last character: `123456` is sent as
 `1****6`. Other words are sent as typed.
 
-**Data keys.** Event names are fixed strings ([ADR 0004](../decisions/0004-analytics-events-use-fixed-names-and-structured-data.md)).
+**Data keys.** Event names are fixed strings ([ADR 0010](../decisions/0010-analytics-events-use-fixed-names-and-structured-data.md)).
 The varying part (the form, step, tool or service) goes in the data.
 
 ## Page views
@@ -104,7 +104,7 @@ On landing. Every `query` is masked (see above).
 ## Interactive tools
 
 On landing. Every tool sends the same four events, with the tool in the data
-([ADR 0079](../decisions/0079-landing-tools-send-shared-fixed-name-events.md)).
+([ADR 0138](../decisions/0138-landing-tools-send-shared-fixed-name-events.md)).
 `tool` is one of `pharmacy-finder`, `shelter-finder`, `water-outages`,
 `crop-over-permits`, `severance-calculator`, `nis-self-employed`,
 `pension-calculator` and `bank-holidays`. Steps, outcomes, actions and errors

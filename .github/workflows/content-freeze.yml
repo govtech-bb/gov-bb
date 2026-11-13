@@ -2,7 +2,7 @@ name: Content Freeze
 
 # After the prod estate import the api_v2 database is the source of truth for
 # landing pages (#3154; ADR
-# 0077-deployed-content-databases-are-loaded-once-then-written-only-by-the-editor),
+# 0129-deployed-content-databases-are-loaded-once-then-written-only-by-the-editor),
 # so a markdown edit in the repo is silently lost. This fails any PR that adds, edits, renames or deletes
 # apps/landing/src/content/**/*.md or either categories.ts (landing's and
 # packages/content's) while the repository Actions variable

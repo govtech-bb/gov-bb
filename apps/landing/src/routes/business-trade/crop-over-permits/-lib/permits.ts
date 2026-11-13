@@ -21,7 +21,7 @@ interface ApplyInPerson {
 }
 
 export interface Permit {
-  /** A code sent in analytics events (ADR 0079), so never a URL or a name. */
+  /** A code sent in analytics events (ADR 0138), so never a URL or a name. */
   id: string
   step: number
   name: string

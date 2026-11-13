@@ -1002,7 +1002,7 @@ export interface ToolRow {
   visitors: number
   topSources: SourceRow[]
   /**
-   * The tool's own events (ADR 0079). Null when it sent no `tool-result`,
+   * The tool's own events (ADR 0138). Null when it sent no `tool-result`,
    * `tool-action` or `tool-error` in the window — the "no tool events" state,
    * which every tool shows until it is instrumented.
    */
@@ -1169,7 +1169,7 @@ export function shapeTools(
 }
 
 /**
- * Read the tool events (ADR 0079) from Umami. Each event's `tool` values give
+ * Read the tool events (ADR 0138) from Umami. Each event's `tool` values give
  * every tool's count in one call. A tool's outcome and action values need
  * Umami's property filter, one call each, so they are read only for the tools
  * that sent that event in the window.

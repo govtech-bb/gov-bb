@@ -14,7 +14,7 @@ const NUM = 'text-right tabular-nums'
 const CARD = 'overflow-x-auto rounded-lg border border-grey-00'
 
 // Sortable Tool / Visits / Pageviews / Results table, with each tool's event
-// metrics (ADR 0079) and top source. No detail page yet (out of scope for
+// metrics (ADR 0138) and top source. No detail page yet (out of scope for
 // #2119), so the tool name is plain text with its route shown beneath.
 // Defaults to Pageviews descending.
 export function ToolsTable({ tools }: { tools: ToolRow[] }) {

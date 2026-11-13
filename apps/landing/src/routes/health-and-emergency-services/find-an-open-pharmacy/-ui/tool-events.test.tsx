@@ -76,7 +76,7 @@ const search = (value: string) =>
     { target: { value } },
   )
 
-/** No event may carry search text, coordinates or a distance (ADR 0079). */
+/** No event may carry search text, coordinates or a distance (ADR 0138). */
 function expectNoPrivateData(...forbidden: string[]) {
   const payload = JSON.stringify(trackEvent.mock.calls).toLowerCase()
   for (const text of [...forbidden, '13.1', '-59.6', 'km', 'very close']) {

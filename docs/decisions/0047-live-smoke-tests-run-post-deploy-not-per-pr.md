@@ -19,7 +19,7 @@
 > landing deployed (`needs: [amplify-forms, amplify-landing]`, neither failed),
 > not only after `amplify-forms` as described below. Two accepted costs: every
 > landing-only merge now files the matrix's smoke submissions on sandbox (a few
-> minutes per run, processors dropped per ADR 0052); and a failed landing
+> minutes per run, processors dropped per ADR 0087); and a failed landing
 > deploy skips the forms smoke for that run — the run is already red.
 
 > **Amended 2026-11-03 ([#3008](https://github.com/govtech-bb/gov-bb/issues/3008)):**

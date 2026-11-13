@@ -139,7 +139,7 @@ const EVENTS: { [E in ToolEventName]: [E, TrackingData[E]] } = {
   ],
 };
 
-describe("tool events (ADR 0079)", () => {
+describe("tool events (ADR 0138)", () => {
   let beacon: Mock;
   let track: Mock<Track>;
 

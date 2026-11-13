@@ -4,7 +4,7 @@ import { trackEvent } from './analytics'
  * Counts Tell us submissions (#3516). The Tally form on /tell-us lives in an
  * iframe, so its submit never reaches our analytics. Tally posts a JSON string
  * to this window instead; we count `Tally.FormSubmitted` from tally.so only.
- * The payload holds every answer, so none of it is sent (ADR 0004).
+ * The payload holds every answer, so none of it is sent (ADR 0010).
  */
 const TALLY_ORIGIN = 'https://tally.so'
 

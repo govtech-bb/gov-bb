@@ -205,7 +205,7 @@ export function SeveranceCalculator() {
     years >= 2
 
   // Sent by the answer that settles the result, with the outcome code only:
-  // never the dates, pay or amount (ADR 0079).
+  // never the dates, pay or amount (ADR 0138).
   function showResult() {
     if (ineligibleKey) {
       trackEvent('tool-result', {
