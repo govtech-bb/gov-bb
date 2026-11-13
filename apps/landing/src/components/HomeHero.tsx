@@ -14,6 +14,8 @@ import type { ViewLevel } from '../lib/frontmatter'
 import { trackEvent } from '../lib/analytics'
 import { CHAT_URL } from '../lib/chat-url'
 import { suggest } from '../lib/search'
+import { loadApiV2SearchDocuments } from '../lib/api-v2-site'
+import type { ApiV2SearchDocument } from '../lib/api-v2-site'
 import './HomeHero.css'
 
 const MAX_QUESTION_LENGTH = 2000
@@ -142,9 +144,16 @@ interface HomeHeroProps {
   questions: Array<string>
   viewer: ViewLevel
   overlay: ReadonlyMap<string, ViewLevel>
+  /** Reads api_v2's search documents. */
+  loadDocuments?: () => Promise<readonly ApiV2SearchDocument[]>
 }
 
-export function HomeHero({ questions, viewer, overlay }: HomeHeroProps) {
+export function HomeHero({
+  questions,
+  viewer,
+  overlay,
+  loadDocuments = loadApiV2SearchDocuments,
+}: HomeHeroProps) {
   const navigate = useNavigate()
   const heroRef = useRef<HTMLElement>(null)
   const searchRadioRef = useRef<HTMLInputElement>(null)
@@ -160,6 +169,7 @@ export function HomeHero({ questions, viewer, overlay }: HomeHeroProps) {
   const [text, setText] = useState('')
   // Only typed text gets suggestions, not text carried over from Ask.
   const [hasTyped, setHasTyped] = useState(false)
+  const [documents, setDocuments] = useState<readonly ApiV2SearchDocument[]>()
   const chatStatus = useChatStatus()
   useHeightOfChromeAbove(heroRef)
 
@@ -174,7 +184,9 @@ export function HomeHero({ questions, viewer, overlay }: HomeHeroProps) {
 
   const isChatOffline = chatStatus === 'offline'
   const searchHits =
-    mode === 'search' && hasTyped ? suggest(text, viewer, overlay) : []
+    mode === 'search' && hasTyped
+      ? suggest(text, viewer, overlay, documents)
+      : []
   const popularSearches = POPULAR_SEARCHES.filter(({ serviceId }) => {
     const page = PAGES.find(({ slug }) => slug === serviceId)
     return page ? isVisible(page, 'public', overlay) : false
@@ -302,6 +314,8 @@ export function HomeHero({ questions, viewer, overlay }: HomeHeroProps) {
                     onChange={(event) => {
                       setHasTyped(true)
                       setText(event.currentTarget.value)
+                      // api_v2's pages, as ServiceSearch reads them.
+                      void loadDocuments().then(setDocuments)
                     }}
                     onSuggestionSelect={(_, index) => {
                       const hit = searchHits[index]

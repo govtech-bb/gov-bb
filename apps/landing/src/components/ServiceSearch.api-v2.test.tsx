@@ -34,7 +34,7 @@ function renderGiven(
   const loadDocuments = vi.fn(async () => lists.shift() ?? NONE)
   render(
     <ServiceSearch
-      source="home"
+      source="services"
       viewer="public"
       documents={documents}
       loadDocuments={loadDocuments}

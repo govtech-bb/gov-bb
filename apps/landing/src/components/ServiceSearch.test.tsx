@@ -54,7 +54,7 @@ function renderSearch(
 ) {
   return render(
     <ServiceSearch
-      source="home"
+      source="services"
       viewer="public"
       loadDocuments={loadDocumentsMock}
       {...props}
