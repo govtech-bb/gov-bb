@@ -125,7 +125,9 @@ describe("SubmissionStatusService (#3419)", () => {
   });
 
   describe("a form sent to CaMS", () => {
-    it("answers found with the tracker's status and when it changed", async () => {
+    // Exact equality, as for untracked. formId (#3624) lets the chat link a
+    // found answer, a rejected one above all, to the service's page.
+    it("answers found with the tracker's status, when it changed and the form", async () => {
       const { tracker, service } = makeService(
         SUBMITTED,
         camsRecipe,
@@ -140,6 +142,7 @@ describe("SubmissionStatusService (#3419)", () => {
         reference: "NRA-2609-7QK2M4D",
         status: "in_progress",
         updatedAt: "2026-10-21T18:28:00Z",
+        formId: "apply-for-a-thing",
       });
       expect(tracker.lookup as Mock).toHaveBeenCalledWith("NRA-2609-7QK2M4D");
     });
@@ -155,6 +158,7 @@ describe("SubmissionStatusService (#3419)", () => {
       await expect(service.lookup("NRA-2609-7QK2M4D")).resolves.toMatchObject({
         kind: "found",
         status: "closed",
+        formId: "apply-for-a-thing",
       });
     });
 
@@ -169,6 +173,7 @@ describe("SubmissionStatusService (#3419)", () => {
         reference: "NRA-2609-7QK2M4D",
         status: "received",
         updatedAt: "2026-09-12T14:04:00.000Z",
+        formId: "apply-for-a-thing",
       });
     });
   });
@@ -176,7 +181,9 @@ describe("SubmissionStatusService (#3419)", () => {
   // The recipe can't say whether the form went to CaMS any more, so the
   // tracker decides (Tarika, 3 Nov): a record means it did.
   describe("a form whose recipe has been deleted", () => {
-    it("answers found when the tracker has a record", async () => {
+    // The form id still goes out: the chat finds no page for a deleted form
+    // and keeps its wording without a link.
+    it("answers found, with the form, when the tracker has a record", async () => {
       const { service } = makeService(SUBMITTED, deletedRecipe, async () => ({
         found: true,
         status: "approved",
@@ -187,6 +194,7 @@ describe("SubmissionStatusService (#3419)", () => {
         reference: "NRA-2609-7QK2M4D",
         status: "approved",
         updatedAt: "2026-10-15T18:28:00Z",
+        formId: "apply-for-a-thing",
       });
     });
 
