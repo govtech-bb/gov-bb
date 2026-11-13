@@ -3,7 +3,7 @@ import { ApiOperation, ApiTags } from "@nestjs/swagger";
 import { SkipThrottle } from "@nestjs/throttler";
 import { JourneyService } from "./journey.service";
 
-// First-party journey analytics for the landing and forms sites, replacing
+// First-party journey analytics for the landing, forms and chat sites, replacing
 // Umami: page views, form starts, steps, drop-offs and searches, which only the
 // browser sees. Each event becomes one JSON log line (log_type
 // "journey_event"); dashboards are built from the logs.
@@ -31,7 +31,8 @@ export class JourneyController {
   // throttler called "default", and app.module registers short/medium/long.
   @SkipThrottle({ short: true, medium: true, long: true })
   @ApiOperation({
-    summary: "Record first-party journey events (landing and forms sites)",
+    summary:
+      "Record first-party journey events (landing, forms and chat sites)",
   })
   record(
     @Body() body: unknown,

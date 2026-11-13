@@ -1,6 +1,6 @@
 import { Loader } from "../ui/loader";
 import { useEffect, useRef, useState } from "react";
-import { requireEnv } from "../../config/env";
+import { LANDING_PREVIEW_URL } from "../../config/preview";
 
 /**
  * Live preview rendered by the landing app itself (Payload-style): we embed the
@@ -14,15 +14,9 @@ import { requireEnv } from "../../config/env";
  * (default :4000); point elsewhere with VITE_LANDING_PREVIEW_URL.
  */
 
-const PREVIEW_URL = requireEnv(
-  import.meta.env.VITE_LANDING_PREVIEW_URL,
-  "VITE_LANDING_PREVIEW_URL",
-  "http://localhost:4000/preview-start-page",
-);
-
 const TARGET_ORIGIN = (() => {
   try {
-    return new URL(PREVIEW_URL).origin;
+    return new URL(LANDING_PREVIEW_URL).origin;
   } catch {
     return "*";
   }
@@ -100,7 +94,7 @@ export function StartPagePreviewFrame({
     <div style={{ position: "relative", width: "100%", height: "100%" }}>
       <iframe
         ref={frameRef}
-        src={PREVIEW_URL}
+        src={LANDING_PREVIEW_URL}
         title="Live preview"
         onLoad={send}
         style={{

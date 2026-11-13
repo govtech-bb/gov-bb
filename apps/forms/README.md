@@ -57,25 +57,15 @@ Set `VITE_UMAMI_WEBSITE_ID` (and optionally `VITE_UMAMI_SRC`) in the deploy envi
 
 ### How it works
 
-- **Script injection** happens in `src/main.tsx`, gated on `VITE_UMAMI_WEBSITE_ID`. The script is loaded with `data-auto-track="false"` so pageviews come from a single deterministic source — the TanStack Router subscriber.
-- **Pageviews** fire from `router.subscribe('onResolved', trackPageview)` in `src/main.tsx` — one event per resolved route, including step changes via the `?step=` search param.
+- **Script injection** happens in `src/main.tsx`, gated on `VITE_UMAMI_WEBSITE_ID`. `loadUmamiScript` (`src/lib/umami-script.ts`) adds it with `UMAMI_SCRIPT_ATTRIBUTES` from `@govtech-bb/analytics`: `data-auto-track="false"` so pageviews come from a single deterministic source — the TanStack Router subscriber — and `data-exclude-search="true"` so Umami records URLs without the query string, which carries `?draft=` and `?preview=` tokens.
+- **Pageviews** fire from `trackPageviewsOnPathChange(router)` (`src/lib/pageviews.ts`), called in `src/main.tsx`. It subscribes to the router's `onRendered` event, as landing does, and counts one page view per pathname change, the first load included. A change to only the `?step=` search param is not a page view, in Umami or in `/journey`. With auto-track off, Umami's tracker never updates the URL it read at load, so `trackPageview` and `trackEvent` pass it the current path (never the query string) and the previous path as the referrer (#3586). Forms has one route, so every step reports `/forms/<id>`. Step progress reaches Umami through the `form-step-*` events.
 - **Form-funnel events** are fired from React effects and event handlers, never from `data-umami-event` attributes. See the helper at [`src/lib/analytics.ts`](./src/lib/analytics.ts) (`trackEvent`, `trackPageview`) — both no-op when `window.umami` is absent.
 
 ### Event taxonomy
 
-A small fixed set of event names; high-cardinality dimensions (`form_id`, `step_id`, `field_id`, `reason`) go in event data. This keeps Umami's dashboard sane — every new form/step/field doesn't add a new metric.
+A small fixed set of event names; high-cardinality dimensions (`form`, `step`, `field`, `reason`) go in event data. This keeps Umami's dashboard sane — every new form/step/field doesn't add a new metric.
 
-| Event name | Fires when | Data |
-|---|---|---|
-| `form-open` | Form route mounts | `form_id` |
-| `form-step-view` | A step becomes the resolved step | `form_id`, `step_id`, `step_index`, `step_count` |
-| `form-step-advance` | User advances past a step (non-repeatable transitions) | `form_id`, `from_step`, `to_step` |
-| `form-step-back` | User goes back a step | `form_id`, `from_step`, `to_step` |
-| `form-field-error` | A field fails client-side validation on advance-attempt | `form_id`, `step_id`, `field_id`, `reason: 'validation'` |
-| `form-submit` | Submit button clicked | `form_id` |
-| `form-submit-success` | Submission API returns success / pending_payment | `form_id`, `step_count` |
-| `form-submit-error` | Submission API returns failed/error or network throws | `form_id`, `reason: 'server' \| 'network'` |
-| `form-file-select` | User picks a file in a file-upload field | `form_id`, `step_id`, `field_id`, `mime`, `size_kb` |
+Every event, with its data and where it fires, is listed in the [event catalogue](../../docs/analytics/event-catalogue.md). Add a row there when you add an event to `TrackingData`: a landing test (`apps/landing/src/lib/event-catalogue.test.ts`) fails without one.
 
 ### Privacy
 

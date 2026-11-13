@@ -15,6 +15,7 @@ import {
   type CitationSidecar,
 } from "#/lib/chat/persistence";
 import type { LinkTokenMap } from "#/lib/chat/link-tokens";
+import { createAnswerTracker } from "#/lib/chat/analytics";
 import type { Citation } from "#/lib/rag/types";
 
 const EMPTY_SIDECAR: CitationSidecar = {
@@ -56,6 +57,8 @@ function Home() {
   }, []);
 
   const connection = useMemo(() => fetchServerSentEvents("/api/chat"), []);
+  // One chat-answer per chat-submit (see lib/chat/analytics).
+  const tracker = useMemo(() => createAnswerTracker(), []);
   const {
     messages,
     sendMessage,
@@ -72,11 +75,14 @@ function Home() {
     // ChatClientPersistence adapter). stop() / clear-during-stream handling come
     // for free with it.
     persistence: conversationPersistence,
+    onFinish: tracker.replied,
+    onError: tracker.failed,
     // The server emits a `citations` CUSTOM event after TEXT_MESSAGE_START,
     // keyed by messageId (the example's onCustomEvent pattern). Merge it into
     // the persisted sidecar so a restored reply keeps its Sources + links.
     onCustomEvent: (eventType, data) => {
       if (eventType !== "citations") return;
+      tracker.cited();
       const payload = data as CitationsEvent | undefined;
       const id = payload?.messageId;
       if (!id) return;
@@ -101,20 +107,32 @@ function Home() {
     },
   });
 
+  // Settle the turn's chat-answer when it stops loading.
+  useEffect(() => tracker.loading(isLoading), [isLoading, tracker]);
+
   // Auto-send the landing handoff query (`/chat?q=…`) once, on arrival.
   const { q } = Route.useSearch();
+  const navigate = Route.useNavigate();
   const autoSentRef = useRef(false);
   useEffect(() => {
     if (autoSentRef.current) return;
     const query = q?.trim().slice(0, MAX_QUERY_LENGTH);
     if (!query) return;
     autoSentRef.current = true;
+    tracker.asked("landing");
     sendMessage(query);
-  }, [q, sendMessage]);
+    // Drop q from the address bar, so a reload or Back doesn't ask it again
+    // (and count a second answer to landing's one chat-submit).
+    void navigate({ search: {}, replace: true });
+  }, [q, sendMessage, tracker, navigate]);
 
   const submit = () => {
     const text = input.trim();
     if (!text || isLoading) return;
+    // A typed answer to a form field is not a question (a pill answer isn't
+    // counted either). A typed reply to choice pills still counts: it can be a
+    // new question, such as after "No, I need something else".
+    if (!awaitingFieldAnswer(messages)) tracker.asked("chat");
     sendMessage(text);
     setInput("");
   };
@@ -136,6 +154,7 @@ function Home() {
 
   // Clear the conversation + its persisted sidecar (no server session to reset).
   const startAgain = () => {
+    tracker.stopped();
     clear();
     setSidecar(EMPTY_SIDECAR);
     saveCitationSidecar(EMPTY_SIDECAR);
@@ -185,7 +204,10 @@ function Home() {
         input={input}
         onChange={setInput}
         onSubmit={submit}
-        onStop={stop}
+        onStop={() => {
+          tracker.stopped();
+          stop();
+        }}
         streaming={isLoading}
         placeholder={
           awaitingFieldAnswer(messages)

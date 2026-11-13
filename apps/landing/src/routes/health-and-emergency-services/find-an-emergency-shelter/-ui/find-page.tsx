@@ -14,6 +14,7 @@ import {
   SHELTERS_NEXT_REVIEW,
 } from '../-data/emergency-shelters'
 import { EMERGENCY_SHELTER_GUIDANCE_HREF } from '../-lib/routes'
+import { trackCall } from '../-lib/track-call'
 import { ShelterFinder } from './shelter-finder'
 
 const DEM_TEL = 'tel:+12464387575'
@@ -42,7 +43,10 @@ export function FindEmergencyShelterPage() {
           Emergency Management activates shelters only during a hurricane or
           tropical storm. For the official list of open shelters, listen to
           local radio, follow DEM on social media, or call DEM on{' '}
-          <Link href={DEM_TEL}>{DEM_NUMBER}</Link>.
+          <Link href={DEM_TEL} onClick={() => trackCall('find', 'dem')}>
+            {DEM_NUMBER}
+          </Link>
+          .
         </Text>
       </div>
 

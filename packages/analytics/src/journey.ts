@@ -9,8 +9,13 @@
 // Events are queued and sent in batches with navigator.sendBeacon as
 // text/plain: no CORS preflight, and the last batch still goes out when the
 // page is closed.
+//
+// Every event carries a journey_id that lasts for one browser tab (see
+// getJourneyId), so landing's Start click, the form and the EzPay round trip
+// can be joined. It goes to /journey, and to POST /submissions as the
+// X-Journey-Id header (#3507), never to Umami.
 
-export type JourneyApp = "landing" | "forms";
+export type JourneyApp = "landing" | "forms" | "chat";
 export type JourneyProps = Record<string, string | number | boolean>;
 
 interface QueuedEvent {
@@ -20,20 +25,28 @@ interface QueuedEvent {
   props?: JourneyProps;
   path: string;
   page_load_id: string;
+  journey_id: string;
   client_ts: string;
 }
 
 // Limits mirror apps/api/src/journey/journey-event.schema.ts, so the sender
 // never builds an event the server would drop.
 const EVENT_NAME = /^[a-z0-9][a-z0-9:~_-]{0,99}$/;
-const PROP_KEY = /^[a-zA-Z][a-zA-Z0-9_]{0,39}$/;
-const MAX_PROPS = 20;
+export const PROP_KEY = /^[a-zA-Z][a-zA-Z0-9_]{0,39}$/;
+export const MAX_PROPS = 20;
 const MAX_STRING = 300;
 const MAX_PATH = 300;
 const MAX_EVENTS_PER_REQUEST = 25;
 // The WAF's SizeRestrictions_BODY rule blocks bodies over 8 KB; stay under it.
 const MAX_BODY_BYTES = 7_000;
 const FLUSH_DELAY_MS = 5_000;
+const JOURNEY_ID_KEY = "govbb_journey_id";
+// The Start link's query parameter that hands the journey ID to the forms app.
+const JOURNEY_ID_PARAM = "jid";
+// The API's z.uuid(): version 1-8 and the RFC variant. A looser check would
+// let a hand-edited ?jid= through, and the API would drop every event carrying it.
+const UUID =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 let config: { url: string; app: JourneyApp; pageLoadId: string } | null = null;
 let queue: QueuedEvent[] = [];
@@ -76,10 +89,77 @@ export function sendJourney(
     // A pathname only: the query string and fragment can carry tokens.
     path: window.location.pathname.slice(0, MAX_PATH),
     page_load_id: config.pageLoadId,
+    journey_id: tabJourneyId(config.pageLoadId),
     client_ts: new Date().toISOString(),
   });
   if (queue.length >= MAX_EVENTS_PER_REQUEST) flushJourney();
   else if (!timer) timer = setTimeout(flushJourney, FLUSH_DELAY_MS);
+}
+
+/**
+ * This tab's journey ID: a random UUID kept in sessionStorage, so it lasts
+ * across page loads in one tab (EzPay returns to the same tab) and is gone when
+ * the tab closes. Nothing goes in a cookie or localStorage. A new tab starts a
+ * new ID; a duplicated tab keeps it, because the browser copies sessionStorage.
+ * If storage is blocked, this page load's page_load_id instead. Undefined while
+ * journey events are off, so nothing is stored then.
+ */
+export function getJourneyId(): string | undefined {
+  return config ? tabJourneyId(config.pageLoadId) : undefined;
+}
+
+function tabJourneyId(pageLoadId: string): string {
+  try {
+    const stored = sessionStorage.getItem(JOURNEY_ID_KEY);
+    if (stored && UUID.test(stored)) return stored;
+    const id = crypto.randomUUID();
+    sessionStorage.setItem(JOURNEY_ID_KEY, id);
+    return id;
+  } catch {
+    return pageLoadId;
+  }
+}
+
+/**
+ * Add this tab's journey ID to a link into the forms app as ?jid=. The forms
+ * app is on another origin, so it can't read this tab's sessionStorage. Call it
+ * when the link is clicked: landing pages are server-rendered, and the ID only
+ * exists in the browser.
+ */
+export function withJourneyId(href: string): string {
+  const id = getJourneyId();
+  if (!id) return href;
+  const url = new URL(href, window.location.href);
+  url.searchParams.set(JOURNEY_ID_PARAM, id);
+  return url.toString();
+}
+
+/**
+ * Forms boot: keep the journey ID that landing passed in ?jid= for this tab,
+ * then remove jid from the address bar. Call it before the router starts, so
+ * no page view or logged path ever sees it. jid is removed even when journey
+ * events are off or it is not a UUID, so it never stays in a URL people copy.
+ */
+export function adoptJourneyId(): void {
+  if (typeof window === "undefined") return;
+  const url = new URL(window.location.href);
+  const jid = url.searchParams.get(JOURNEY_ID_PARAM);
+  if (jid === null) return;
+  // The link wins over an ID this tab already had on forms: that keeps the
+  // landing Start click joined to the form, which is what jid is for.
+  if (config && UUID.test(jid)) {
+    try {
+      sessionStorage.setItem(JOURNEY_ID_KEY, jid.toLowerCase());
+    } catch {
+      // Storage blocked: getJourneyId falls back to page_load_id.
+    }
+  }
+  url.searchParams.delete(JOURNEY_ID_PARAM);
+  window.history.replaceState(
+    window.history.state,
+    "",
+    url.pathname + url.search + url.hash,
+  );
 }
 
 /** Send everything queued, split into batches the API and WAF accept. */
@@ -151,38 +231,6 @@ function cleanProps(props?: Record<string, unknown>): JourneyProps | undefined {
 
 function byteLength(s: string): number {
   return new TextEncoder().encode(s).length;
-}
-
-/**
- * Landing tags clicks with data-umami-event="<name>" plus
- * data-umami-event-<key>="<value>". Umami's script reads those itself; this
- * sends the same clicks as journey events. Returns a function that removes the
- * listener.
- */
-export function installJourneyClickListener(): () => void {
-  if (typeof document === "undefined" || !config) return () => undefined;
-  const onClick = (e: MouseEvent) => {
-    const target = e.target instanceof Element ? e.target : null;
-    const el = target?.closest<HTMLElement>("[data-umami-event]");
-    if (!el) return;
-    const name = el.dataset.umamiEvent;
-    if (!name) return;
-    const props: Record<string, string> = {};
-    for (const [key, value] of Object.entries(el.dataset)) {
-      if (
-        key.startsWith("umamiEvent") &&
-        key !== "umamiEvent" &&
-        value !== undefined
-      ) {
-        const prop = key.slice("umamiEvent".length);
-        props[prop.charAt(0).toLowerCase() + prop.slice(1)] = value;
-      }
-    }
-    sendJourney(name, props);
-  };
-  document.addEventListener("click", onClick, { capture: true });
-  return () =>
-    document.removeEventListener("click", onClick, { capture: true });
 }
 
 /** For tests: forget configuration and anything queued. */

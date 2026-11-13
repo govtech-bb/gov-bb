@@ -13,8 +13,9 @@ import {
 } from '@govtech-bb/react'
 import type { DateInputValue } from '@govtech-bb/react'
 import { useNavigate } from '@tanstack/react-router'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
+import { trackEvent } from '@/lib/analytics'
 import { money } from '@/lib/money'
 import {
   avgWeeklyFromSimple,
@@ -162,6 +163,17 @@ export function SeveranceCalculator() {
   const [endError, setEndError] = useState('')
   const [payError, setPayError] = useState('')
 
+  // One step view per question shown: the ref survives StrictMode's second
+  // effect run. The result step sends tool-result instead.
+  const viewedStep = useRef<Step | null>(null)
+  useEffect(() => {
+    if (viewedStep.current === step) return
+    viewedStep.current = step
+    if (step !== 'result') {
+      trackEvent('tool-step-view', { tool: 'severance-calculator', step })
+    }
+  }, [step])
+
   const go = (next: Step) => {
     setStep(next)
     if (typeof window !== 'undefined') window.scrollTo({ top: 0 })
@@ -192,14 +204,37 @@ export function SeveranceCalculator() {
     reason !== Reason.Other &&
     years >= 2
 
+  // Sent by the answer that settles the result, with the outcome code only:
+  // never the dates, pay or amount (ADR 0138).
+  function showResult() {
+    if (ineligibleKey) {
+      trackEvent('tool-result', {
+        tool: 'severance-calculator',
+        outcome: 'not-eligible',
+        reason: ineligibleKey,
+      })
+    } else {
+      trackEvent('tool-result', {
+        tool: 'severance-calculator',
+        outcome: 'eligible',
+      })
+    }
+    go('result')
+  }
+
   function submitEmployment() {
     setEmploymentError('')
     if (!employment) {
       setEmploymentError('Select yes or no')
+      trackEvent('tool-error', {
+        tool: 'severance-calculator',
+        step: 'q-employment',
+        error: 'required',
+      })
       return
     }
     if (employment === Employment.Yes) {
-      go('result')
+      showResult()
       return
     }
     go('q-reason')
@@ -209,10 +244,15 @@ export function SeveranceCalculator() {
     setReasonError('')
     if (!reason) {
       setReasonError('Select why you were sent home')
+      trackEvent('tool-error', {
+        tool: 'severance-calculator',
+        step: 'q-reason',
+        error: 'required',
+      })
       return
     }
     if (reason === Reason.Other) {
-      go('result')
+      showResult()
       return
     }
     go('q-years')
@@ -243,9 +283,19 @@ export function SeveranceCalculator() {
     }
     setStartError(sErr)
     setEndError(eErr)
-    if (sErr || eErr) return
+    if (sErr || eErr) {
+      const missing = [startResult, endResult].some(
+        (r) => !r.ok && r.reason === 'incomplete',
+      )
+      trackEvent('tool-error', {
+        tool: 'severance-calculator',
+        step: 'q-years',
+        error: missing ? 'required' : 'format',
+      })
+      return
+    }
     if (years < 2) {
-      go('result')
+      showResult()
       return
     }
     go('q-pay')
@@ -255,12 +305,21 @@ export function SeveranceCalculator() {
     setPayError('')
     if (simpleAvgNum <= 0) {
       setPayError(`Enter your average ${periodLabels.adverb} pay`)
+      trackEvent('tool-error', {
+        tool: 'severance-calculator',
+        step: 'q-pay',
+        error: simpleAvg.trim() ? 'format' : 'required',
+      })
       return
     }
-    go('result')
+    showResult()
   }
 
   function restart() {
+    trackEvent('tool-action', {
+      tool: 'severance-calculator',
+      action: 'restart',
+    })
     setStep('q-employment')
     setEmployment('')
     setReason('')
@@ -549,8 +608,19 @@ export function SeveranceCalculator() {
             St. Michael
           </Text>
           <Text as="p" size="body">
-            Phone: <a href="tel:+12464317400">+1 246-431-7400</a>, extensions
-            1502 to 1509
+            Phone:{' '}
+            <a
+              href="tel:+12464317400"
+              onClick={() =>
+                trackEvent('tool-action', {
+                  tool: 'severance-calculator',
+                  action: 'call',
+                })
+              }
+            >
+              +1 246-431-7400
+            </a>
+            , extensions 1502 to 1509
           </Text>
           <div>
             <Button onClick={restart} type="button" variant="secondary">

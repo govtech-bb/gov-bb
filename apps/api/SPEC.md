@@ -55,6 +55,7 @@ Drafts have a **7-day inactivity TTL**. A daily cron job (`@Cron(EVERY_DAY_AT_MI
 | Method | Path | Description |
 |---|---|---|
 | `POST` | `/submissions` | Validate, persist, and dispatch a form submission. Requires the `Idempotency-Key` request header. Body is size-limited to **1 MiB** by `SubmissionPayloadSizePipe`. |
+| `GET` | `/submissions/:reference/status` | Where an application has got to, for the chat (#3419). Public and unauthenticated, like the application tracker: the reference is the access. `200` with `data.kind` `found` (`status`, `updatedAt`, `formId`), `untracked` (`receivedAt`, `formId`) or `not_found`; `503` when the tracker can't answer. The chat sends `X-Chat-Caller-Token` to be throttled as one caller (§6.2). |
 
 Submission semantics:
 
@@ -68,12 +69,21 @@ Submission semantics:
 - **Audit trail.** Each row stores a `meta` object (`SubmissionAuditTrailV2`) recording pinned form version, draft id, visible/hidden step and field ids (per-instance for repeatables), visited pages, and the submission timestamp. V1 trails remain readable for backward compatibility.
 - **Status lifecycle.** `submitted` (no payment) or `pending_payment` → `submitted` (after a successful EzPay callback). The schema also defines `draft`, `processing`, `complete`, `error` states; the latter three are not all written today but exist on the enum.
 - **Deferred response.** If the form contract contains a `payment` processor, the response includes a `meta.deferred` block with the hosted EzPay URL, payment id, amount, and description so the client can redirect the user.
+- **Trackable.** `meta.trackable` says whether the form sends to CaMS (`sendsToCams`), for the chat's receipt. Always true or false on a new submission. A replay works it out again from the recipe, and leaves it out if the recipe no longer resolves.
+
+Status lookup semantics:
+
+- **Reference.** Trimmed and uppercased, then matched exactly. Unknown, malformed and payment-pending (no `submitted_at`) all answer `not_found`, so a guess learns nothing extra.
+- **Not CaMS.** A form whose recipe doesn't send to CaMS answers `untracked`.
+- **CaMS.** The status comes from the application tracker's `GET /status/{reference}`, passed through unmapped (`received`, `in_progress`, `approved`, `rejected`, `closed`). With no tracker record yet it answers `found` + `received` as of `submitted_at`.
+- **Deleted recipe.** The tracker decides: a record answers `found`, none answers `untracked`.
+- **Tracker failures.** Not configured, an address with no AWS region in its hostname, unreachable, slower than 5 s, a non-2xx or an unreadable body all answer `503`. The log line gives the reason, never the reference.
 
 ### 2.5 Payments  *(tag: `Payments`)*
 
 | Method | Path | Description |
 |---|---|---|
-| `POST` | `/payments/ezpay/webhook` | EzPay server-to-server callback. Verified by HMAC signature (`X-EzPay-Signature` header) when `EZPAY_WEBHOOK_VERIFY_SIGNATURE=true`. Always returns `200 { acknowledged: true }` to avoid EzPay retry storms; failure modes are logged. The route is exempt from rate limiting because throttling EzPay's retries would drop legitimate callbacks. |
+| `POST` | `/payments/ezpay/webhook` | EzPay server-to-server callback. Verified by HMAC signature (`X-EzPay-Signature` header, over the raw request body) when `EZPAY_WEBHOOK_VERIFY_SIGNATURE=true`: a missing or wrong signature is refused with `403` and never reaches payment confirmation. Otherwise always returns `200 { acknowledged: true }` to avoid EzPay retry storms; failure modes are logged. The route is exempt from rate limiting because throttling EzPay's retries would drop legitimate callbacks. |
 | `GET` | `/payments/ezpay/redirect` | EzPay post-payment **return redirect** (browser GET, configured merchant-side as the return URL). EzPay appends `rid` (our payment reference), `tx` (transaction number) and `payment_status`. Confirms the payment via the same verify-and-finalise core as the webhook — so a return alone is enough to finalise and send emails even if the webhook isn't configured — then `302`-redirects the citizen to the form's confirmation page (`${FORMS_BASE_URL}/forms/<formId>/?step=submission-confirmation&payment=success\|failed`). Confirmation is idempotent with the webhook; errors never block the citizen (logged, redirect proceeds). Exempt from rate limiting. |
 
 ---
@@ -93,6 +103,7 @@ Submission semantics:
 ### 3.3 Submissions Module
 The largest module. Houses:
 - **Controller** — `POST /submissions` with payload-size pipe + tiered rate limit.
+- **Status controller and service** — `GET /submissions/:reference/status`. `TrackerLookupClient` calls the application tracker's lookup API, SigV4-signed for `execute-api`.
 - **Pipeline service** — expand → evaluate conditions → validate → fold errors → normalize.
 - **Service** — idempotency check, transactional insert, payment-gating split, event emission.
 - **Processor framework** — pluggable `ISubmissionProcessor` interface with five built-in implementations (see §4).
@@ -182,7 +193,11 @@ Three tiers configured globally (`short`/`medium`/`long`) and tuned per controll
 | `/form-definitions/*` | 20 / 10 s | 120 / 60 s | (default) |
 | `/form-drafts/*` | 5 / 10 s | 30 / 60 s | (default) |
 | `POST /submissions` | 3 / 10 s | 10 / 60 s | 50 / 1 h |
+| `GET /submissions/:reference/status` | (default) | (default) | (default) |
+| `GET /submissions/:reference/status` with a valid `X-Chat-Caller-Token` | 50 / 10 s | 300 / 60 s | 3000 / 1 h |
 | `/health`, `/payments/ezpay/webhook`, `/payments/ezpay/redirect` | bypassed | bypassed | bypassed |
+
+The status lookup is on the global default per IP, except for the chat (#3623). Every chat lookup comes from the chat's server, so per IP the whole chat would share one client's limit. A lookup carrying `X-Chat-Caller-Token` equal to `CHAT_CALLER_TOKEN` is counted on one counter for the whole chat, whatever address it comes from, with the higher limits above. A missing or wrong token is limited per IP, on the same counter as before. The chat limits each of its own users itself (govtech-bb/govbb-chatbot#173). The rule is on this route only (`chat-caller-throttle.ts`), so the token raises no other limit. Unset `CHAT_CALLER_TOKEN` ⇒ nobody gets the chat limit.
 
 The counters are per-process and in-memory — multi-task deployments rely on AWS WAF as the authoritative rate limiter.
 
@@ -238,6 +253,8 @@ Optional / conditionally required:
 - `SQS_MAX_RECEIVE_COUNT` (default `3`; must mirror the queue's AWS-side redrive policy — the consumer uses it to detect the terminal attempt that fires the operator alert)
 - `SLACK_ALERTS_WEBHOOK_URL` (operator alert webhook for permanently-failed submission dispatch, #2168; unset ⇒ silent no-op, logged once at boot)
 - `EZPAY_WEBHOOK_VERIFY_SIGNATURE`, `EZPAY_WEBHOOK_SECRET`
+- `TRACKER_LOOKUP_API_URL` (the application tracker's lookup API, its `lookup_api_endpoint`. Calls are SigV4-signed with the task role, except to `localhost`. Unset ⇒ CaMS status lookups answer `503`; everything else works)
+- `CHAT_CALLER_TOKEN` (the chat's caller token, #3623: the same value as the chat's `chat-caller-token` secret. Status lookups carrying it are throttled as one caller, §6.2. Unset ⇒ every lookup is throttled per IP. Never logged)
 - `SEED_ON_BOOT` (dev convenience — applies the seed form definitions in `database/seed.ts`)
 
 ---

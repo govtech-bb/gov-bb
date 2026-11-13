@@ -6,6 +6,7 @@ import {
   type StepFieldEntry,
 } from "@govtech-bb/form-types";
 import { stepFieldIdConcactenator } from "../form-builder/field-mapper";
+import { getJourneyId } from "../analytics";
 import {
   ApiResponse,
   FormDefinitionResponse,
@@ -23,13 +24,7 @@ import {
   RepeatableStepSettings,
   ClientPrimitive,
 } from "@forms/types";
-import { requireEnv } from "../../config/env";
-
-const API_URL = requireEnv(
-  import.meta.env.VITE_API_URL,
-  "VITE_API_URL",
-  "http://localhost:3001",
-);
+import { API_URL } from "../../config/api";
 
 /**
  * Thrown when a contract fetch fails. Carries the HTTP status code so callers
@@ -281,12 +276,17 @@ export const postFormSubmission = async (
 ) => {
   const endpoint = `/submissions`;
   const errorMessage = {};
+  // This tab's journey ID, which the API logs on submission_accepted so the
+  // journey's form-submit event can be joined to it (#3507). Undefined while
+  // journey events are off, and then no header is sent.
+  const journeyId = getJourneyId();
   const fetchArgs = {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       "idempotency-key": idempotencyKey,
       ...(previewToken ? { "X-Recipe-Preview": previewToken } : {}),
+      ...(journeyId ? { "X-Journey-Id": journeyId } : {}),
     },
     body: JSON.stringify({
       formId,

@@ -12,6 +12,7 @@ interface ValuePathPickerProps {
    * the `display (path)` format of field options.
    */
   extraOptions?: { value: string; label: string }[];
+  disabled?: boolean;
 }
 
 /**
@@ -29,6 +30,7 @@ export function ValuePathPicker({
   onChange,
   id,
   extraOptions = [],
+  disabled,
 }: ValuePathPickerProps) {
   const paths = fields.map((f) => `${f.stepId}.${f.fieldId}`);
   // Drop any extra option that collides with a real field path, so a step
@@ -45,6 +47,7 @@ export function ValuePathPicker({
     <Select
       id={id}
       value={value}
+      disabled={disabled}
       onValueChange={(nextValue) => {
         if (nextValue === null) return;
         onChange(nextValue);

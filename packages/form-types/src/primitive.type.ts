@@ -1,5 +1,9 @@
 import { z } from "zod";
-import { behaviourSchema, conditionalLabelSchema } from "./behavior.type";
+import {
+  behaviourSchema,
+  conditionalHintSchema,
+  conditionalLabelSchema,
+} from "./behavior.type";
 import { validationRuleSchema } from "./validation.type";
 import { kebabIdSchema } from "./id-pattern";
 
@@ -72,6 +76,11 @@ export const primitiveUISchema = z.object({
    * ask for the treatment. Set it on every field in the revealed run — adjacent
    * indented fields join into one continuous rail. */
   indent: z.boolean().optional(),
+  /** Text shown before the input, e.g. `"BDS $"`. Visual only (aria-hidden),
+   * so the label or hint must name what it means for screen-reader users.
+   * Rendered on text, number, tel and email fields. A prefixed number field
+   * renders as a text input, so it needs a `pattern` to reject non-numbers. */
+  prefix: z.string().optional(),
 });
 
 export type PrimitiveUI = z.infer<typeof primitiveUISchema>;
@@ -99,6 +108,9 @@ export const basePrimitiveSchema = z.object({
   htmlType: htmlTypesSchema,
   placeholder: z.string().optional(),
   hint: z.string().optional(),
+  // Per-answer hint overrides (#3637) — see conditionalHintSchema. The static
+  // `hint` above stays the fallback.
+  conditionalHint: z.array(conditionalHintSchema).optional(),
   defaultValue: z.any().optional(),
   value: z.any().optional(),
   isDisabled: z.boolean().optional(),
@@ -267,6 +279,7 @@ export const fieldOverridesSchema = basePrimitiveSchema
     // served contract.
     conditionalLabel: true,
     hint: true,
+    conditionalHint: true,
     placeholder: true,
     validations: true,
     defaultValue: true,

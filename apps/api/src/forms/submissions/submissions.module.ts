@@ -35,6 +35,9 @@ import { SesMailer } from "@/email/ses-mailer";
 import { PaymentRequiredListener } from "@/email/payment-required.listener";
 import { CatchmentModule } from "@/catchment/catchment.module";
 import { NotificationsModule } from "@/notifications/notifications.module";
+import { SubmissionStatusController } from "./status/submission-status.controller";
+import { SubmissionStatusService } from "./status/submission-status.service";
+import { TrackerLookupClient } from "./status/tracker-lookup.client";
 
 @Module({
   imports: [
@@ -51,9 +54,11 @@ import { NotificationsModule } from "@/notifications/notifications.module";
     ExpressionsModule,
     CatchmentModule,
   ],
-  controllers: [SubmissionsController],
+  controllers: [SubmissionsController, SubmissionStatusController],
   providers: [
     SubmissionsService,
+    SubmissionStatusService,
+    TrackerLookupClient,
     ReferencePrefixAuditService,
     FormSubmissionRepository,
     NotificationLogRepository,

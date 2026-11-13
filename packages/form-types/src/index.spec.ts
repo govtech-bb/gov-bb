@@ -389,6 +389,48 @@ describe("validationConfigSchema", () => {
         .success,
     ).toBe(true);
   });
+
+  // #3636: scaleBy multiplies the field value by a factor picked by another
+  // answer before a numeric bound is checked.
+  describe("scaleBy", () => {
+    const scaleBy = {
+      referenceFieldId: "income-frequency",
+      targetStepId: "income-details",
+      factors: { weekly: 4, "twice-a-month": 2, monthly: 1 },
+    };
+
+    it("keeps a scaleBy (not stripped as an unknown key)", () => {
+      const result = validationConfigSchema.safeParse({ value: 3000, scaleBy });
+      expect(result.success).toBe(true);
+      expect(result.data?.scaleBy).toEqual(scaleBy);
+    });
+
+    it("rejects a snake_case targetStepId inside scaleBy", () => {
+      expect(
+        validationConfigSchema.safeParse({
+          scaleBy: { ...scaleBy, targetStepId: "income_details" },
+        }).success,
+      ).toBe(false);
+    });
+
+    // A 0 factor would pass every max/lt for any amount (and a negative one
+    // would flip the bound), so a factor must be positive.
+    it.each([0, -4])("rejects a factor of %s", (factor) => {
+      expect(
+        validationConfigSchema.safeParse({
+          scaleBy: { ...scaleBy, factors: { weekly: factor } },
+        }).success,
+      ).toBe(false);
+    });
+
+    it("rejects a factor that is not a number", () => {
+      expect(
+        validationConfigSchema.safeParse({
+          scaleBy: { ...scaleBy, factors: { weekly: "4" } },
+        }).success,
+      ).toBe(false);
+    });
+  });
 });
 
 describe("validationTypeSchema", () => {

@@ -1,7 +1,8 @@
 # 0010 — Analytics events use fixed names and structured data
 
-**Status:** Deprecated (2026-11-10, #3120): about `apps/forms`, a v1 app; kept as a historical record. Previously: Accepted (2026-05-21)
+**Status:** Accepted (2026-11-13, #3706): restored, because ADR 0138 applies it to landing's tools and landing stays in v2. Previously: Deprecated (2026-11-10, #3120), as about `apps/forms` only; before that Accepted (2026-05-21)
 **Applies to:** `apps/forms`, and any future app adding analytics. `apps/landing` is explicitly exempt — see Consequences.
+**Amended by:** [ADR 0138](./0138-landing-tools-send-shared-fixed-name-events.md) — landing tools are no longer exempt.
 
 ## Context
 

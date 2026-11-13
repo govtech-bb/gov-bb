@@ -249,6 +249,9 @@ interface PhoneContact {
 }
 
 export interface PhoneEntry {
+  /** Sent as tool-action's target when one of its numbers is called (#3509).
+   *  Names the role, never the person or the number. */
+  id: string
   label: string
   contacts: PhoneContact[]
 }
@@ -263,6 +266,7 @@ export const PHONE_DIRECTORY: PhoneGroup[] = [
     heading: 'Emergency services',
     entries: [
       {
+        id: 'police',
         label: 'Police',
         contacts: [
           { display: '211', tel: 'tel:211', note: 'in an emergency' },
@@ -274,6 +278,7 @@ export const PHONE_DIRECTORY: PhoneGroup[] = [
         ],
       },
       {
+        id: 'fire-service',
         label: 'Fire Service',
         contacts: [
           { display: '311', tel: 'tel:311', note: 'in an emergency' },
@@ -284,16 +289,23 @@ export const PHONE_DIRECTORY: PhoneGroup[] = [
           },
         ],
       },
-      { label: 'Ambulance', contacts: [{ display: '511', tel: 'tel:511' }] },
       {
+        id: 'ambulance',
+        label: 'Ambulance',
+        contacts: [{ display: '511', tel: 'tel:511' }],
+      },
+      {
+        id: 'queen-elizabeth-hospital',
         label: 'Queen Elizabeth Hospital',
         contacts: [{ display: '436-6450', tel: 'tel:+12464366450' }],
       },
       {
+        id: 'barbados-defence-force',
         label: 'Barbados Defence Force',
         contacts: [{ display: '536-2000', tel: 'tel:+12465362000' }],
       },
       {
+        id: 'veterinary-services',
         label: 'Veterinary Services Department',
         contacts: [{ display: '535-0221', tel: 'tel:+12465350221' }],
       },
@@ -303,16 +315,19 @@ export const PHONE_DIRECTORY: PhoneGroup[] = [
     heading: 'Department of Emergency Management (DEM)',
     entries: [
       {
+        id: 'dem',
         label: 'DEM main switchboard',
         contacts: [{ display: '438-7575', tel: 'tel:+12464387575' }],
       },
       {
+        id: 'dem-director',
         label: 'Director — Ms. Kerry Hinds',
         contacts: [
           { display: '535-7153', tel: 'tel:+12465357153', note: '(direct)' },
         ],
       },
       {
+        id: 'dem-deputy-director',
         label: 'Deputy Director — Maj. Robert Harewood',
         contacts: [
           { display: '535-7166', tel: 'tel:+12465357166', note: '(direct)' },
@@ -324,6 +339,7 @@ export const PHONE_DIRECTORY: PhoneGroup[] = [
     heading: 'Shelter Wardens (Ministry of Educational Transformation)',
     entries: [
       {
+        id: 'chief-shelter-warden',
         label:
           'Chief Shelter Warden — Dr. Ramona Archer-Bradshaw, Chief Education Officer',
         contacts: [
@@ -332,6 +348,7 @@ export const PHONE_DIRECTORY: PhoneGroup[] = [
         ],
       },
       {
+        id: 'deputy-chief-shelter-warden',
         label: 'Deputy Chief Shelter Warden — Rev. Stephen Scott',
         contacts: [
           { display: '535-0614', tel: 'tel:+12465350614', note: '(work)' },
@@ -339,6 +356,7 @@ export const PHONE_DIRECTORY: PhoneGroup[] = [
         ],
       },
       {
+        id: 'deputy-chief-shelter-warden',
         label: 'Deputy Chief Shelter Warden — Ms. Julia Beckles',
         contacts: [
           { display: '535-0613', tel: 'tel:+12465350613', note: '(work)' },

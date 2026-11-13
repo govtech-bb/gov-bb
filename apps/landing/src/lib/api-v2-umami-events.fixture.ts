@@ -6,7 +6,7 @@ import type { PageResponse } from './api-v2-page'
  * (apps/api_v2/src/modules/page-visibility.ts). The bodies keep only the
  * Start links: the service page's "Apply online" link, which has an href and
  * so carries no Umami event, and the start page's "Start now" button, which
- * sends `<form_id>-start`. The test checks the category, form and Start links
+ * sends `start-click` with its `form-id`. The test checks the category, form and Start links
  * against api_v2's seed snapshot.
  */
 

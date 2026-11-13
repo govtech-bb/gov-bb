@@ -651,7 +651,7 @@ If any holds, stop, record it on the import issue, and fix forward.
 
 `apps/landing/src/content` freezes at the prod import. Until then it stays editable, and CI keeps `estate.json` current on every PR. `apps/landing` reads api_v2 when `VITE_API_V2_URL` is set and falls back to the markdown otherwise; deleting the directory is part of retiring the v1 content path (#3165).
 
-There is one switch: the GitHub repository variable `CONTENT_FREEZE=true`. #3236 adds the check that, while it is set, fails any PR into `main` that edits `apps/landing/src/content/**/*.md` or either `categories.ts`, including the PRs the v1 form builder opens. Turn it on as step 0 of the prod import, **before** the prod deploy whose snapshot is imported; a content PR merged in between is otherwise lost. A repository admin runs:
+There is one switch: the GitHub repository variable `CONTENT_FREEZE=true`. #3236 adds the check that, while it is set, fails any PR into `main` that edits `apps/landing/src/content/**/*.md` or either `categories.ts`, including the PRs the v1 form builder opens. Turn it on as step 0 of the prod import, **before** the prod deploy whose snapshot is imported; a content PR merged in between is otherwise lost. Turn it on only **after** `v2-rewrite` has merged into `main` (#3131): that merge PR edits landing markdown, so the check fails it while the freeze is on. A repository admin runs:
 
 ```sh
 gh variable set CONTENT_FREEZE --body true   # on

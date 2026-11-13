@@ -1,5 +1,6 @@
 import {
   Behaviour,
+  ConditionalHint,
   ConditionalLabel,
   ConditionalTitle,
   ContactDetails,
@@ -27,6 +28,9 @@ export interface ClientPrimitive {
   htmlType: HtmlTypes;
   placeholder?: string;
   hint?: string;
+  /** Per-answer hint overrides (#3637); the renderer resolves the effective
+   * hint from live form values via `resolveFieldHint`. */
+  conditionalHint?: ConditionalHint[];
   defaultValue?: unknown;
   disabled: boolean;
   hidden: boolean;
