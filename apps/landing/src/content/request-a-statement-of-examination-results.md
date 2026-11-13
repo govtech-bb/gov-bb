@@ -27,7 +27,7 @@ The form takes about 10 minutes to complete.
 
 ## How to apply
 
-<a data-start-link href="/education/request-a-statement-of-examination-results/start">Start now</a>
+<a data-start-link>Start now</a>
 
 ## What the form asks for
 

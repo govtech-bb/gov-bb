@@ -7,7 +7,7 @@ import { loadApiV2SearchDocuments } from '../lib/api-v2-site'
 import type { ApiV2SearchDocument } from '../lib/api-v2-site'
 import { trackEvent } from '../lib/analytics'
 
-type SearchSource = 'home' | 'services' | 'results'
+type SearchSource = 'services' | 'results'
 
 interface ServiceSearchProps {
   source: SearchSource
@@ -40,12 +40,6 @@ export function ServiceSearch({
   const submit = (value: string) => {
     const query = value.trim()
     trackEvent('search-submit', { query, source })
-
-    if (!query && emptyHref === '/services') {
-      void navigate({ to: '/services' })
-      return
-    }
-
     void navigate({ to: '/search-results', search: { q: query } })
   }
 

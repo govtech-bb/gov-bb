@@ -25,7 +25,7 @@ redeploy** — none of these are live-tunable. The only things read at runtime
 | `CHAT_DATABASE_NAME` | with creds ARN | DB name (non-secret, baked). | `chat` |
 | `CHAT_DATABASE_URL_SECRET_ARN` | legacy fallback | Secrets Manager ARN of a derived secret holding a full `postgresql://…` connection string. Used only when the preferred path above is not fully configured. Only the ARN is baked; the value is read at runtime via the compute role. | `arn:aws:secretsmanager:ca-central-1:…:secret:chat-db-xxxx` |
 | `FORM_API_URL` | if forms on | Forms API base (form definitions + submissions). | `https://forms.alpha.gov.bb` |
-| `LANDING_URL` | recommended | Landing-site origin for "go home" links + citation deep-links. **Defaults to prod** (`https://alpha.gov.bb`); set the sandbox origin in non-prod. | `https://landing.sandbox.alpha.gov.bb` |
+| `LANDING_URL` | recommended | Landing-site origin for "go home" links + citation deep-links. **Defaults to prod** (`https://alpha.gov.bb`); set the sandbox origin in non-prod. | `https://sandbox.alpha.gov.bb` |
 | `LLM_MODEL` | recommended | Chat model id. **Set explicitly** — the build default is `claude-sonnet-4-6`. | `claude-sonnet-4-6` |
 | `REWRITE_MODEL` | optional | Cheaper query-rewrite model (default `claude-haiku-4-5`). | `claude-haiku-4-5` |
 | `BEDROCK_REGION` | optional | Region for Bedrock chat + embeddings (default `ca-central-1`). | `ca-central-1` |
@@ -37,6 +37,9 @@ redeploy** — none of these are live-tunable. The only things read at runtime
 | `RAG_ONLY` | optional | `1`/`true` master kill-switch — forces every feature off (rollback to Q&A only). | `1` |
 | `BEDROCK_PROMPT_CACHE` | optional | `1`/`true` to cache the system prompt via a Bedrock cache point (model/region dependent). | `1` |
 | `TURN_TIMEOUT_MS` | optional | Wall-clock ceiling per streamed turn, ms (default `60000`). | `60000` |
+| `VITE_UMAMI_WEBSITE_ID` | optional | Umami website id for the chat app. Unset = no Umami script, no Umami events. | `xxxxxxxx-xxxx-…` |
+| `VITE_UMAMI_SRC` | optional | Umami script URL (default `https://cloud.umami.is/script.js`). | `https://cloud.umami.is/script.js` |
+| `VITE_JOURNEY_URL` | optional | The API's `/journey` URL for first-party journey events. Unset = none sent. Set it only where the WAF has the per-IP rule for `/journey`. | `https://forms.api.sandbox.alpha.gov.bb/journey` |
 
 Flags use `1`/`true` for on; anything else (incl. unset) is off.
 
@@ -109,7 +112,7 @@ Flags use `1`/`true` for on; anything else (incl. unset) is off.
 ```
 RAG_URL=https://chat.sandbox.alpha.gov.bb/api
 CHAT_DATABASE_URL_SECRET_ARN=arn:aws:secretsmanager:ca-central-1:…:secret:chat-db-sandbox-…
-LANDING_URL=https://landing.sandbox.alpha.gov.bb
+LANDING_URL=https://sandbox.alpha.gov.bb
 FORM_API_URL=https://forms-sandbox.alpha.gov.bb
 LLM_MODEL=claude-sonnet-4-6
 FEATURE_FORMS=1   FEATURE_FEEDBACK=1   FEATURE_OFFERS=1

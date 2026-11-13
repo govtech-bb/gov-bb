@@ -142,6 +142,19 @@ describe('MarkdownBody', () => {
     expect(html).toContain('/forms/birth')
   })
 
+  // #3502: Umami cuts event names off at 50 characters, and `<formId>-start`
+  // ran to 52 for some live forms. The form id travels as event data instead.
+  it('tags the Start button with one event name and the form id as data', async () => {
+    const formId = 'request-a-presidential-visit-for-a-centenarian'
+    const html = await renderBody('<a data-start-link>Start now</a>', {
+      formId,
+      forms: new Set([formId]),
+    })
+    expect(html).toContain('data-umami-event="start-click"')
+    expect(html).toContain(`data-umami-event-form-id="${formId}"`)
+    expect(html).toContain('data-umami-event-from="/test"')
+  })
+
   it('suppresses the Start button when the form is not available', async () => {
     const html = await renderBody('<a data-start-link>Start now</a>', {
       formId: 'birth',

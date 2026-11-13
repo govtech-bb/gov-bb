@@ -86,7 +86,8 @@
       "inputs": [
         "default",
         "^production",
-        "{workspaceRoot}/apps/api_v2/openapi.json"
+        "{workspaceRoot}/apps/api_v2/openapi.json",
+        "{workspaceRoot}/docs/analytics/event-catalogue.md"
       ],
       "options": {
         "command": "npm run test",

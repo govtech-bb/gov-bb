@@ -5,6 +5,7 @@ import { ScheduleModule } from "@nestjs/schedule";
 import { ThrottlerGuard, ThrottlerModule } from "@nestjs/throttler";
 import { EventEmitterModule } from "@nestjs/event-emitter";
 import { AppController } from "./app.controller";
+import { THROTTLERS } from "./common/throttlers";
 import { DatabaseModule } from "./database/database.module";
 import { RegistryModule } from "./registry/registry.module";
 import { FormsModule } from "./forms/forms.module";
@@ -18,6 +19,7 @@ import { GeocodeModule } from "./geocode/geocode.module";
 import { CatchmentGeometryModule } from "./catchment/catchment-geometry.module";
 import { WaterAlertsModule } from "./water-alerts/water-alerts.module";
 import { MonitoringModule } from "./monitoring/monitoring.module";
+import { SlackStatsModule } from "./slack-stats/slack-stats.module";
 import { TelemetryModule } from "./telemetry/telemetry.module";
 import { configs } from "./config";
 import { envValidationSchema } from "./config/env.validation";
@@ -39,11 +41,7 @@ import { envValidationSchema } from "./config/env.validation";
       // the parsed object rather than just throwing.
       validate: (config) => envValidationSchema.parse(config),
     }),
-    ThrottlerModule.forRoot([
-      { name: "short", ttl: 10_000, limit: 5 },
-      { name: "medium", ttl: 60_000, limit: 60 },
-      { name: "long", ttl: 3_600_000, limit: 1_000 },
-    ]),
+    ThrottlerModule.forRoot([...THROTTLERS]),
     EventEmitterModule.forRoot(),
     TelemetryModule,
     ScheduleModule.forRoot(),
@@ -60,6 +58,7 @@ import { envValidationSchema } from "./config/env.validation";
     CatchmentGeometryModule,
     WaterAlertsModule,
     MonitoringModule,
+    SlackStatsModule,
   ],
   controllers: [AppController],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],

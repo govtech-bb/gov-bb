@@ -14,12 +14,12 @@ const CURATED = [
     question: 'What financial assistance is available?',
   },
   {
-    serviceId: 'get-a-primary-school-textbook-grant',
-    question: 'How do I get a primary school textbook grant?',
-  },
-  {
     serviceId: 'post-office-redirection-individual',
     question: 'How do I redirect my personal mail?',
+  },
+  {
+    serviceId: 'get-a-primary-school-textbook-grant',
+    question: 'How do I get a primary school textbook grant?',
   },
   {
     serviceId: 'get-a-document-notarised',
@@ -32,7 +32,7 @@ function pick(show: (page: ContentPage) => boolean): Array<string> {
     const page = PAGES.find(({ slug }) => slug === serviceId)
     return page ? show(page) : false
   })
-    .slice(0, 4)
+    .slice(0, 3)
     .map(({ question }) => question)
 }
 

@@ -2,7 +2,7 @@
 
 The public-facing landing site for the Government of Barbados service portal, built with TanStack Start.
 
-Sandbox: https://landing.sandbox.alpha.gov.bb
+Sandbox: https://sandbox.alpha.gov.bb
 
 # Getting Started
 
@@ -214,22 +214,24 @@ See `apps/landing/.env.example` for the contract. When a variable is unset (incl
 
 ### How it works
 
-- **Script injection** happens at SSR time in `src/routes/__root.tsx`, gated on the env var. The script is loaded with `data-auto-track="false"` so Umami doesn't double-count alongside our manual tracking.
-- **Pageviews** fire from `router.subscribe('onRendered', ...)` in `src/router.tsx`: one event on the first render and one each time the resolved address changes. It is `onRendered`, not `onResolved`, because `onResolved` only fires when the router goes from pending to idle. That never happens on the first, server-rendered page, or on a click whose data the `intent` preload already fetched, so most page views were missed. `src/router.test.ts` guards this.
-- **Click and form-lifecycle events** are tagged via `data-umami-event="..."` attributes (and `data-umami-event-*` for properties) on the relevant elements, plus `trackEvent()` calls from React effects where the event is about state transition (form submit / success / error). For journey events, a document click listener (`installJourneyClickListener`) sends the same `data-umami-event` clicks.
+- **Script injection** happens at SSR time in `src/routes/__root.tsx`, gated on the env var. The script takes its settings from `UMAMI_SCRIPT_ATTRIBUTES` in `@govtech-bb/analytics`: `data-auto-track="false"` so Umami doesn't double-count alongside our manual tracking, and `data-exclude-search="true"` so Umami records URLs without the query string, which can carry water alert tokens and search text.
+- **Pageviews** fire from `router.subscribe('onRendered', ...)` in `src/router.tsx`: one event on the first render and one each time the resolved address changes. It is `onRendered`, not `onResolved`, because `onResolved` only fires when the router goes from pending to idle. That never happens on the first, server-rendered page, or on a click whose data the `intent` preload already fetched, so most page views were missed. `src/router.test.ts` guards this. Each page view and event tells Umami the current path (never the query string) and the previous path as the referrer: with auto-track off, its tracker never updates the URL it read at load (#3586).
+- **Click and form-lifecycle events** are tagged via `data-umami-event="..."` attributes (and `data-umami-event-*` for properties) on the relevant elements, plus `trackEvent()` calls from React effects where the event is about state transition (form submit / success / error). Umami does not read these attributes itself: its click handler is off with auto-track, and turning it on would cancel each link click and reload the page. A document click listener (`installClickListener` from `@govtech-bb/analytics`) sends every `data-umami-event` click through `trackEvent`, so it reaches Umami and journey events alike.
+- **Tell us submits** come from the Tally iframe on `/tell-us`, which our click listener can't see. While that page is open, `installTallySubmitListener` (`src/lib/tally-submit.ts`) listens for Tally's `Tally.FormSubmitted` message and sends `tell-us-submit` with no data. It only accepts messages from `https://tally.so`; if the form ever moves to a custom Tally domain, change `TALLY_ORIGIN` or the count drops to zero.
 - A typed helper at `src/lib/analytics.ts` (`trackEvent`, `trackPageview`, `deriveStartEventName`, re-exported from `@govtech-bb/analytics`) sends to each configured destination. It no-ops for Umami when the script isn't loaded, and for journey events when `VITE_JOURNEY_URL` is unset, so component code doesn't need defensive checks.
 - **The journey sender** (`packages/analytics/src/journey.ts`) queues events and sends them in batches with `navigator.sendBeacon`, falling back to a keepalive `fetch`. It sends after 5 seconds, at 25 events, or when the page is hidden. Batches stay under 7 KB because the WAF blocks bodies over 8 KB.
 
 ### Event-naming conventions
 
+Every event, with its data and where it fires, is listed in the [event catalogue](../../docs/analytics/event-catalogue.md). Add a row there when you add an event: a test fails on a `data-umami-event` value without one.
+
 | Pattern              | Example                                                        | Used for                                                                                                                                                         |
 | -------------------- | -------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `<surface>-<action>` | `header-home`, `footer-careers`, `feedback-submit`             | Fixed UI elements                                                                                                                                                |
-| `service-<slug>`     | `service-renew-passport`                                       | Per-service clicks on `/services` list                                                                                                                           |
-| `<slug>-start`       | `renew-passport-start`, `travel-renew-passport-start`          | Slug-prefixed start CTA clicks from a service root page into its `/start` flow (derived automatically by `deriveStartEventName()` from the link href)            |
-| `<form_id>-start`    | `get-birth-certificate-start`, `jobstart-plus-programme-start` | Click on a Start now button rendered from a page's `form_id` frontmatter. Keyed on the form actually started, not the page slug — see _Start now buttons_ below. |
+| `<surface>-<action>` | `footer-home`, `footer-careers`, `feedback-submit`             | Fixed UI elements                                                                                                                                                |
+| `service-click`      | `service-click` with `slug: business-trade/apply-for-food-business-licence` | Clicks on the `/services` list. One name for every service, slug as data: per-service names ran past Umami's 50-character limit and were cut off. |
+| `start-click`        | `start-click` with `formId: get-birth-certificate`, `from: /registry/birth-certificate` | Click on a Start now button rendered from a page's `form_id` frontmatter. Keyed on the form actually started, not the page slug — see _Start now buttons_ below. The form id is data, not part of the name, because some ids pushed the name past Umami's 50-character limit. |
 
-The per-service named events let each item show up as its own metric in Umami's dashboard. The `<slug>-start` events measure the conversion from root page to start page and are grouped separately so they're easy to find.
+Filter `service-click` by its `slug` property in Umami to see one service.
 
 ## Start now buttons (cross-app links to the forms app)
 
@@ -272,7 +274,7 @@ build:   apps/landing/scripts/fetch-form-manifest.mjs
 render:  MarkdownContent reads `form_id` from frontmatter
          → renders <a data-start-link>  only if form_id ∈ AVAILABLE_FORMS
          → button href = ${VITE_FORMS_URL}/forms/${form_id}
-         → Umami event = "<form_id>-start"
+         → click event = "start-click" with formId = <form_id>
 ```
 
 - **Build-time fetch** runs as the `predev` and `prebuild` lifecycle
@@ -362,7 +364,7 @@ The `preview` level is unlocked by a token matching a server-only env var
 - `?preview=<PREVIEW_SECRET>` grants the `preview` level.
 
 1. Visit **any** URL with the token appended, e.g.
-   `https://landing.sandbox.alpha.gov.bb/education?preview=THE_PREVIEW_SECRET`.
+   `https://sandbox.alpha.gov.bb/education?preview=THE_PREVIEW_SECRET`.
 2. On a match the server sets an httpOnly `preview` cookie holding only the
    granted **level** (never the secret) and redirects to the same path with the
    token stripped (so the secret never lingers in the URL or browser history).
@@ -397,12 +399,12 @@ The implementation lives in `src/lib/preview.ts` (token check, cookie, redirect)
 and is resolved once per request in `src/routes/__root.tsx`. The level
 comparison and per-page gating live in `src/content/registry.ts`.
 
-## Chat handoff (ChatAssistant)
+## Chat handoff (HomeHero)
 
-The `ChatAssistant` component on the homepage probes the chat app's
-`/api/health/public` for the live Online badge and, on submit, redirects
-to the chat app with the user's question prefilled via `?q=` so chat
-auto-sends on mount.
+The homepage hero's Ask Assistant mode (`HomeHero`) probes the chat app's
+`/api/health/public`, and disables Send and points people to Search while
+it is offline. On submit it redirects to the chat app with the user's
+question prefilled via `?q=` so chat auto-sends on mount.
 
 ### Environment variable
 
@@ -410,9 +412,9 @@ auto-sends on mount.
 | --------------- | ---------- | ----------------------------------------------------------------------------------------- |
 | `VITE_CHAT_URL` | build time | Base URL of the deployed chat app. Used for both the health probe and the submit handoff. |
 
-`ChatAssistant` defaults to `https://chat.sandbox.alpha.gov.bb` in code
-when `VITE_CHAT_URL` is unset, so deploys work with no Amplify Console
-config.
+`src/lib/chat-url.ts` defaults to `https://chat.sandbox.alpha.gov.bb`
+in dev only when `VITE_CHAT_URL` is unset; a production build fails fast
+without it (#1366).
 
 To override (e.g. run landing locally against a localhost chat instance,
 or point a build at a different chat deploy), set `VITE_CHAT_URL`

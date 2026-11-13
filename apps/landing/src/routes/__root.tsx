@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import {
   HeadContent,
   Outlet,
@@ -11,7 +12,7 @@ import { BreadcrumbRegion } from '../components/BreadcrumbRegion'
 import Header from '../components/Header'
 import { CATEGORY_BY_SLUG, isCategoryVisible } from '../content/registry'
 import { ErrorPage } from '../components/ErrorPage'
-import { trackEvent } from '../lib/analytics'
+import { trackEvent, UMAMI_SCRIPT_ATTRIBUTES } from '../lib/analytics'
 import { categoryTreeQuery } from '../lib/api-v2-categories'
 import { COOKIE_MAX_AGE_SECONDS, resolveViewLevel } from '../lib/preview'
 import {
@@ -181,7 +182,7 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
               src: UMAMI_SRC,
               defer: true,
               'data-website-id': UMAMI_WEBSITE_ID,
-              'data-auto-track': 'false',
+              ...UMAMI_SCRIPT_ATTRIBUTES,
             },
           ]
         : []),
@@ -208,6 +209,16 @@ function RootDocument({ children }: { children: React.ReactNode }) {
 }
 
 function NotFoundPage() {
+  // Once per view: the ref survives StrictMode's second effect run. The event
+  // data holds the app only, never the path: it can hold text the visitor
+  // typed (#3513).
+  const tracked = useRef(false)
+  useEffect(() => {
+    if (tracked.current) return
+    tracked.current = true
+    trackEvent('page-not-found', { app: 'landing' })
+  }, [])
+
   return (
     <ErrorPage
       title="We couldn't find that page"

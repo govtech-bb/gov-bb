@@ -10,9 +10,9 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as ApiRetrieveRouteImport } from './routes/api.retrieve'
-import { Route as ApiHealthRouteImport } from './routes/api.health'
 import { Route as ApiChatRouteImport } from './routes/api.chat'
+import { Route as ApiHealthRouteImport } from './routes/api.health'
+import { Route as ApiRetrieveRouteImport } from './routes/api.retrieve'
 import { Route as ApiHealthPublicRouteImport } from './routes/api.health.public'
 
 const IndexRoute = IndexRouteImport.update({
@@ -20,9 +20,9 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiRetrieveRoute = ApiRetrieveRouteImport.update({
-  id: '/api/retrieve',
-  path: '/api/retrieve',
+const ApiChatRoute = ApiChatRouteImport.update({
+  id: '/api/chat',
+  path: '/api/chat',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiHealthRoute = ApiHealthRouteImport.update({
@@ -30,9 +30,9 @@ const ApiHealthRoute = ApiHealthRouteImport.update({
   path: '/api/health',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiChatRoute = ApiChatRouteImport.update({
-  id: '/api/chat',
-  path: '/api/chat',
+const ApiRetrieveRoute = ApiRetrieveRouteImport.update({
+  id: '/api/retrieve',
+  path: '/api/retrieve',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiHealthPublicRoute = ApiHealthPublicRouteImport.update({
@@ -66,11 +66,7 @@ export interface FileRoutesById {
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    | '/'
-    | '/api/chat'
-    | '/api/health'
-    | '/api/retrieve'
-    | '/api/health/public'
+    '/' | '/api/chat' | '/api/health' | '/api/retrieve' | '/api/health/public'
   fileRoutesByTo: FileRoutesByTo
   to: '/' | '/api/chat' | '/api/health' | '/api/retrieve' | '/api/health/public'
   id:
@@ -98,11 +94,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/retrieve': {
-      id: '/api/retrieve'
-      path: '/api/retrieve'
-      fullPath: '/api/retrieve'
-      preLoaderRoute: typeof ApiRetrieveRouteImport
+    '/api/chat': {
+      id: '/api/chat'
+      path: '/api/chat'
+      fullPath: '/api/chat'
+      preLoaderRoute: typeof ApiChatRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/health': {
@@ -112,11 +108,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiHealthRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/chat': {
-      id: '/api/chat'
-      path: '/api/chat'
-      fullPath: '/api/chat'
-      preLoaderRoute: typeof ApiChatRouteImport
+    '/api/retrieve': {
+      id: '/api/retrieve'
+      path: '/api/retrieve'
+      fullPath: '/api/retrieve'
+      preLoaderRoute: typeof ApiRetrieveRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/health/public': {

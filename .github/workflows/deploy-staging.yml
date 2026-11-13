@@ -22,17 +22,13 @@ name: Deploy Staging
 #     `staging` in the Amplify console with auto-build set per app IaC.
 
 on:
-  # TRUNK: staging is NOT pushed to directly. It's dispatched by deploy-sandbox's
-  # `promote-to-staging` job once sandbox is fully green (the sequential gate),
-  # or manually from the Actions tab. This job fast-forwards the `staging` branch
-  # to the commit being deployed so Amplify (which builds the `staging` branch)
-  # stays consistent with the ECS deploys.
+  # TRUNK: staging is NOT pushed to directly. deploy-sandbox's
+  # `promote-to-staging` fast-forwards `staging` to the commit sandbox proved and
+  # dispatches this workflow ON `staging`, so the run deploys exactly that commit
+  # (#2756). A manual run from main (Actions tab) still works: advance-staging
+  # fast-forwards `staging` to main's HEAD first so Amplify, which builds the
+  # `staging` branch, matches the ECS deploys.
   workflow_dispatch:
-    inputs:
-      promoted_sha:
-        description: "Commit sandbox proved (for the audit log; the run deploys main's HEAD)."
-        required: false
-        type: string
 
 permissions:
   # Single-purpose deploy workflow: every job assumes the AWS deploy role via
@@ -45,8 +41,10 @@ permissions:
 
 # Queue deploys; never cancel one mid-flight. A half-applied deploy must
 # finish before the next starts.
+# One queue whichever branch the run is on — deploy-sandbox's promote job joins
+# it too, so `staging` never moves under an in-flight deploy.
 concurrency:
-  group: deploy-staging-${{ github.ref }}
+  group: deploy-staging
   cancel-in-progress: false
 
 env:
@@ -65,8 +63,9 @@ env:
 
 jobs:
   # Move the `staging` deploy pointer to the commit being deployed BEFORE any
-  # Amplify job runs (Amplify builds the `staging` branch). force=false →
-  # fast-forward only; staging is always behind main, so this always ff's.
+  # Amplify job runs (Amplify builds the `staging` branch). A promoted run is
+  # already on `staging` (promote-to-staging moved it), so only a manual run
+  # from main has anything to do. force=false → fast-forward only.
   advance-staging:
     name: Advance staging branch
     runs-on: ubuntu-latest
@@ -76,11 +75,25 @@ jobs:
       - name: Fast-forward staging → ${{ github.sha }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # Via env, not inline ${{ }}, so the user-supplied input can't expand
-          # into the shell (zizmor template-injection).
-          PROMOTED_SHA: ${{ inputs.promoted_sha }}
         run: |
-          echo "Promoted from sandbox: ${PROMOTED_SHA:-manual dispatch}"
+          case "$GITHUB_REF_NAME" in
+            staging)
+              # Amplify builds the staging tip while ECS deploys GITHUB_SHA;
+              # refuse to start if anything has moved staging since dispatch.
+              TIP=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/staging" --jq .object.sha)
+              if [ "$TIP" != "$GITHUB_SHA" ]; then
+                echo "❌ staging is at $TIP, not $GITHUB_SHA — Amplify and ECS would deploy different commits."
+                exit 1
+              fi
+              echo "Promoted from sandbox: staging is already at ${GITHUB_SHA}"
+              exit 0 ;;
+            main) ;;
+            *)
+              # Fast-forwarding staging onto an unmerged branch would ship code
+              # that never went through main or sandbox.
+              echo "❌ Deploy Staging runs from main (manual) or staging (promoted), not $GITHUB_REF_NAME."
+              exit 1 ;;
+          esac
           gh api -X PATCH "repos/${{ github.repository }}/git/refs/heads/staging" \
             -f sha="${{ github.sha }}" -F force=false
 
@@ -113,8 +126,9 @@ jobs:
       - run: pnpm install --frozen-lockfile
 
       # The affected base is the commit of the last successful deploy-staging
-      # run on main (runs are dispatched with --ref main), so a skipped or failed
-      # promotion is picked up by the next one.
+      # run — on `staging` (promoted) or main (manual) — so a skipped or failed
+      # promotion is picked up by the next one. head_sha is the commit that run
+      # deployed, because a promoted run is dispatched on `staging` (#2756).
       #
       # This replaced nrwl/nx-set-shas. That action only accepts a past run whose
       # commit is among the latest 100 on main (one page of GET /commits). After
@@ -131,11 +145,11 @@ jobs:
           echo "NX_HEAD=$GITHUB_SHA" >> "$GITHUB_ENV"
 
           BASE=$(gh api \
-            "repos/$GITHUB_REPOSITORY/actions/workflows/deploy-staging.yml/runs?branch=main&event=workflow_dispatch&status=success&per_page=1" \
-            --jq '.workflow_runs[0].head_sha // empty')
+            "repos/$GITHUB_REPOSITORY/actions/workflows/deploy-staging.yml/runs?event=workflow_dispatch&status=success&per_page=30" \
+            --jq '[.workflow_runs[] | select(.head_branch == "staging" or .head_branch == "main")][0].head_sha // empty')
 
           [ -n "$BASE" ] || {
-            echo "❌ No successful deploy-staging run on main, so the affected base is unknown."
+            echo "❌ No successful deploy-staging run on staging or main, so the affected base is unknown."
             exit 1
           }
           git cat-file -e "${BASE}^{commit}" 2>/dev/null || {
@@ -522,13 +536,163 @@ jobs:
           EXPECT_CODES: "200,302,307"
         run: bash .github/scripts/smoke-test-url.sh
 
+  # Journey 1 on staging (#3008): each spec opens its landing start page, follows
+  # Start to the form, submits it and checks the reference. A Start link to the
+  # wrong host or form fails the run. Runs on every staging deploy, even when
+  # nothing changed, because Deploy Production only ships a commit whose staging
+  # run passed it (see deploy-prod.yml). Same forms and throttle budget as the
+  # sandbox matrix, not every public form; keep the two lists in step.
+  #
+  # SMOKE_SUBMISSION_TOKEN_STAGING must match the staging API's
+  # SMOKE_SUBMISSION_TOKEN (#3324). With a mismatch the API ignores the header
+  # and every processor fires, sending real emails from staging.
+  smoke-test-forms:
+    name: Smoke test forms
+    # ssr-smoke is listed directly: when it fails, amplify-landing is skipped
+    # (not failed), so without it this would smoke the previous landing build
+    # and the prod guard would accept a commit whose landing never deployed.
+    needs: [setup, deploy-api, ssr-smoke, amplify-forms, amplify-landing]
+    if: |
+      always() &&
+      needs.setup.result == 'success' &&
+      !contains(needs.*.result, 'failure') &&
+      !contains(needs.*.result, 'cancelled')
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        include:
+          - spec: project-protege-mentor.smoke.spec.ts
+            artifact_name: project-protege-mentor-smoke-trace
+          - spec: sports-training-programme-form-schema.smoke.spec.ts
+            artifact_name: sports-training-programme-smoke-trace
+          - spec: jobstart-plus-programme.smoke.spec.ts
+            artifact_name: jobstart-plus-smoke-trace
+          - spec: sell-goods-services-beach-park.smoke.spec.ts
+            artifact_name: beach-park-smoke-trace
+          - spec: get-birth-certificate.smoke.spec.ts
+            artifact_name: get-birth-certificate-smoke-trace
+          - spec: get-death-certificate.smoke.spec.ts
+            artifact_name: get-death-certificate-smoke-trace
+          - spec: get-marriage-certificate.smoke.spec.ts
+            artifact_name: get-marriage-certificate-smoke-trace
+    uses: ./.github/workflows/forms-smoke.yml
+    with:
+      base_url: https://forms.staging.alpha.gov.bb
+      landing_url: https://staging.alpha.gov.bb
+      spec: ${{ matrix.spec }}
+      artifact_name: ${{ matrix.artifact_name }}
+    secrets:
+      smoke_submission_token: ${{ secrets.SMOKE_SUBMISSION_TOKEN_STAGING }}
+
+  # Journey 5 (#3012): pay for a certificate through the EZ Pay test host on
+  # staging and check the confirmation (and, once the test inbox exists, the
+  # confirmation email). Runs after the API + forms deploys — and on every run,
+  # even when neither changed, because Deploy Production requires it to have
+  # passed for the commit it ships.
+  #
+  # OFF until the repo variable E2E_PAYMENTS_ENABLED=true (needs the EZ Pay
+  # test card secrets and EZ Pay set in staging's form_config). While off this
+  # job is skipped, the staging run stays green, and the prod gate is off too.
+  # The email check also needs the test inbox (vars.E2E_INBOX_BUCKET); without
+  # it the journey stops at the confirmation page.
+  #
+  # No X-Smoke-Submission header: that token drops the payment, so every
+  # processor fires: a green run leaves one real, paid test submission on
+  # staging AND sends the MDA notification to staging's form_config mdaEmail
+  # for get-death-certificate — make sure that is a test inbox before enabling.
+  journey-5-payments:
+    # Deploy Production's guard finds this job by its name starting with
+    # "Journey 5" — keep that prefix if you rename it.
+    name: Journey 5 (EZ Pay payment → confirmation)
+    needs: [setup, deploy-api, amplify-forms]
+    if: |
+      always() &&
+      vars.E2E_PAYMENTS_ENABLED == 'true' &&
+      needs.setup.result == 'success' &&
+      !contains(needs.*.result, 'failure') &&
+      !contains(needs.*.result, 'cancelled')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      # The spec skips itself without a card, so a missing secret must fail
+      # here rather than pass the gate with nothing tested.
+      - name: Require the EZ Pay test card
+        env:
+          CARD_NUMBER: ${{ secrets.E2E_EZPAY_CARD_NUMBER }}
+          CARD_EXPIRY: ${{ secrets.E2E_EZPAY_CARD_EXPIRY }}
+          CARD_CVV: ${{ secrets.E2E_EZPAY_CARD_CVV }}
+        run: |
+          if [ -z "$CARD_NUMBER" ] || [ -z "$CARD_EXPIRY" ] || [ -z "$CARD_CVV" ]; then
+            echo "::error::Set the E2E_EZPAY_CARD_NUMBER / _EXPIRY / _CVV secrets (the EZ Pay test-host card)."
+            exit 1
+          fi
+      - name: Checkout
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version-file: ".nvmrc"
+          cache: "pnpm"
+      - run: pnpm install --frozen-lockfile
+      - name: Resolve Playwright version
+        id: playwright-version
+        run: |
+          version="$(pnpm --filter @govtech-bb/forms exec playwright --version | awk '{print $2}')"
+          test -n "$version" || { echo "could not resolve playwright version"; exit 1; }
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+      - name: Cache Playwright browsers
+        id: playwright-cache
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-chromium-${{ runner.os }}-${{ steps.playwright-version.outputs.version }}
+      - name: Install Playwright chromium
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        timeout-minutes: 10
+        run: pnpm --filter @govtech-bb/forms exec playwright install chromium
+      - name: Configure AWS credentials (test inbox, read-only)
+        if: vars.E2E_INBOX_BUCKET != ''
+        uses: aws-actions/configure-aws-credentials@254c19bd240aabef8777f48595e9d2d7b972184b # v6.2.1
+        with:
+          role-to-assume: ${{ secrets.E2E_INBOX_ROLE_ARN }}
+          aws-region: ${{ vars.E2E_INBOX_REGION }}
+      - name: Run journey 5
+        env:
+          SMOKE_BASE_URL: ${{ env.AMPLIFY_FORMS_URL }}
+          # The workflow-level AWS_REGION (ca-central-1) would otherwise win over
+          # the inbox region configure-aws-credentials sets.
+          AWS_REGION: ${{ vars.E2E_INBOX_REGION || env.AWS_REGION }}
+          E2E_EZPAY_CARD_NUMBER: ${{ secrets.E2E_EZPAY_CARD_NUMBER }}
+          E2E_EZPAY_CARD_EXPIRY: ${{ secrets.E2E_EZPAY_CARD_EXPIRY }}
+          E2E_EZPAY_CARD_CVV: ${{ secrets.E2E_EZPAY_CARD_CVV }}
+          E2E_INBOX_DOMAIN: ${{ vars.E2E_INBOX_DOMAIN }}
+          E2E_INBOX_BUCKET: ${{ vars.E2E_INBOX_BUCKET }}
+          E2E_INBOX_PREFIX: ${{ vars.E2E_INBOX_PREFIX }}
+        run: >
+          pnpm --filter @govtech-bb/forms exec playwright test
+          --config playwright.smoke.config.ts
+          journey-5-ezpay.smoke.spec.ts
+      - name: Upload Playwright trace on failure
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: journey-5-ezpay-trace
+          path: apps/forms/test-results/
+          retention-days: 7
+
   summary:
     name: Deployment summary
-    needs: [setup, deploy-api, ssr-smoke, amplify-forms, amplify-landing, amplify-feature-flagging]
+    needs: [setup, deploy-api, ssr-smoke, amplify-forms, amplify-landing, amplify-feature-flagging, smoke-test-forms, journey-5-payments]
     if: always()
     runs-on: ubuntu-latest
     steps:
       - name: Summary
+        env:
+          # Via env, not inline ${{ }} in the script (zizmor template-injection).
+          SMOKE_RESULT: ${{ needs.smoke-test-forms.result }}
         run: |
           row() {
             local label="$1" result="$2"
@@ -553,6 +717,8 @@ jobs:
             row "Amplify forms"        "${{ needs.amplify-forms.result }}"
             row "Amplify landing"      "${{ needs.amplify-landing.result }}"
             row "Amplify feature-flagging" "${{ needs.amplify-feature-flagging.result }}"
+            row "Forms smoke (J1)"     "$SMOKE_RESULT"
+            row "Journey 5 (EZ Pay)"   "${{ needs.journey-5-payments.result }}"
             echo ""
             echo "**URLs (ALB / amplifyapp.com until DNS lands):**"
             echo "- API: ${{ env.API_SMOKE_URL }}"

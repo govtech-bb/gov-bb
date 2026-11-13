@@ -10,9 +10,9 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as AnalyticsToolsRouteImport } from './routes/analytics/tools'
-import { Route as AnalyticsSearchRouteImport } from './routes/analytics/search'
 import { Route as AnalyticsPagesRouteImport } from './routes/analytics/pages'
+import { Route as AnalyticsSearchRouteImport } from './routes/analytics/search'
+import { Route as AnalyticsToolsRouteImport } from './routes/analytics/tools'
 import { Route as AnalyticsFormsIndexRouteImport } from './routes/analytics/forms/index'
 import { Route as AnalyticsFormsFormIdRouteImport } from './routes/analytics/forms/$formId'
 
@@ -21,9 +21,9 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AnalyticsToolsRoute = AnalyticsToolsRouteImport.update({
-  id: '/analytics/tools',
-  path: '/analytics/tools',
+const AnalyticsPagesRoute = AnalyticsPagesRouteImport.update({
+  id: '/analytics/pages',
+  path: '/analytics/pages',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AnalyticsSearchRoute = AnalyticsSearchRouteImport.update({
@@ -31,9 +31,9 @@ const AnalyticsSearchRoute = AnalyticsSearchRouteImport.update({
   path: '/analytics/search',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AnalyticsPagesRoute = AnalyticsPagesRouteImport.update({
-  id: '/analytics/pages',
-  path: '/analytics/pages',
+const AnalyticsToolsRoute = AnalyticsToolsRouteImport.update({
+  id: '/analytics/tools',
+  path: '/analytics/tools',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AnalyticsFormsIndexRoute = AnalyticsFormsIndexRouteImport.update({
@@ -117,11 +117,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/analytics/tools': {
-      id: '/analytics/tools'
-      path: '/analytics/tools'
-      fullPath: '/analytics/tools'
-      preLoaderRoute: typeof AnalyticsToolsRouteImport
+    '/analytics/pages': {
+      id: '/analytics/pages'
+      path: '/analytics/pages'
+      fullPath: '/analytics/pages'
+      preLoaderRoute: typeof AnalyticsPagesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/analytics/search': {
@@ -131,11 +131,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AnalyticsSearchRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/analytics/pages': {
-      id: '/analytics/pages'
-      path: '/analytics/pages'
-      fullPath: '/analytics/pages'
-      preLoaderRoute: typeof AnalyticsPagesRouteImport
+    '/analytics/tools': {
+      id: '/analytics/tools'
+      path: '/analytics/tools'
+      fullPath: '/analytics/tools'
+      preLoaderRoute: typeof AnalyticsToolsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/analytics/forms/': {

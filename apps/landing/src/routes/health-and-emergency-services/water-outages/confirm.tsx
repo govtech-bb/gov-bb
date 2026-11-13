@@ -1,4 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
+import { useEffect, useRef } from 'react'
+import { trackEvent } from '@/lib/analytics'
 import { pageHead } from '../../../lib/page-head'
 import { confirmSubscription } from './-lib/water-alerts'
 import type { TokenOutcome } from './-lib/water-alerts'
@@ -47,8 +49,30 @@ const MESSAGES: Record<
   },
 }
 
+// The tool-result outcome for each answer. Never the token.
+const RESULT_OUTCOME: Record<TokenOutcome, string> = {
+  done: 'confirmed',
+  already: 'already-confirmed',
+  invalid: 'invalid-token',
+  unavailable: 'unavailable',
+}
+
 function ConfirmPage() {
   const outcome = Route.useLoaderData()
+  // A link opened from the email loads on the server, where trackEvent cannot
+  // send, so the browser sends the result once it shows. The ref survives
+  // StrictMode's second effect run.
+  const tracked = useRef<TokenOutcome | null>(null)
+  useEffect(() => {
+    if (tracked.current === outcome) return
+    tracked.current = outcome
+    trackEvent('tool-result', {
+      tool: 'water-outages',
+      step: 'confirm',
+      outcome: RESULT_OUTCOME[outcome],
+    })
+  }, [outcome])
+
   const m = MESSAGES[outcome] ?? MESSAGES.invalid
   return <ResultNotice body={m.body} title={m.title} tone={m.tone} />
 }

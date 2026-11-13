@@ -21,6 +21,12 @@ overrides:
   js-yaml@>=4.0.0 <4.3.2: ^4.3.2 # @nestjs/swagger
   esbuild@<0.28.1: ^0.28.1 # @esbuild-kit/core-utils (via drizzle-kit)
   axios@>=1.0.0 <1.20.0: ^1.20.0 # nx pins 1.18.1
+  multer@>=2.0.0 <2.5.0: ^2.5.0 # @nestjs/platform-express 11 pins 2.4.0; Nest 12 ships 2.5.0
+  follow-redirects@>=1.16.0 <1.16.2: ^1.16.2 # nx's axios keeps resolving 1.16.0
+  # One router-core for all: router devtools and ssr-query take it as a peer and
+  # would pick the newest, a second copy beside react-router 1.170.42's (#3065).
+  # Move with the catalog's react-router pin; remove when react-start leaves 1.168.
+  "@tanstack/router-core": 1.171.35
   brace-expansion@>=5.0.0 <5.0.12: ^5.0.12 # nx pins 5.0.8
   nx>smol-toml@<1.9.0: ^1.9.0 # nx 22 pins 1.6.1
   "@tailwindcss/typography>postcss-selector-parser@<7.1.6": ^7.1.6 # pins 6.0.10
@@ -50,15 +56,20 @@ catalog:
   "@tanstack/devtools-vite": "^0.7.0"
   "@tanstack/react-devtools": "^0.10.5"
   "@tanstack/react-form": "^1.29.0"
-  "@tanstack/react-query": "^5.100.11"
+  "@tanstack/react-query": "^5.102.0" # react-router-ssr-query >=1.167.2 needs query-core >=5.102 (#3065)
   "@tanstack/react-query-devtools": "^5.100.11"
-  "@tanstack/react-router": "^1.170.9"
+  "@tanstack/react-router": "1.170.42"
   "@tanstack/react-router-devtools": "^1.167.0"
-  "@tanstack/react-router-ssr-query": "^1.167.0"
-  "@tanstack/react-start": "^1.168.16"
+  "@tanstack/react-router-ssr-query": "^1.167.3"
+  # react-start >=1.168.60 fixes GHSA-qx66-fv34-fjm8 (#3065). It pins react-router
+  # exactly, and router-plugin and react-router-ssr-query pair with that router
+  # (ssr-query <1.167.2 calls router-core's removed isDehydrated, a landing 500),
+  # so these move together. Held on 1.168.x: 1.169 drops the `.inputValidator()`
+  # alias that 31 server functions still call.
+  "@tanstack/react-start": "~1.168.61"
   "@tanstack/react-store": "^0.9.3"
   "@tanstack/react-virtual": "^3.13.26"
-  "@tanstack/router-plugin": "^1.167.22"
+  "@tanstack/router-plugin": "1.168.43"
   "@types/react": "^19.2.15"
   "@types/react-dom": "^19.2.3"
   react: "^19.2.6"

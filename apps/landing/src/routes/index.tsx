@@ -1,9 +1,8 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { Heading, Text } from '@govtech-bb/react'
-import { ChatAssistant } from '../components/ChatAssistant'
 import { Featured } from '../components/Featured'
 import { HelpfulBox } from '../components/HelpfulBox'
-import { ServiceSearch } from '../components/ServiceSearch'
+import { HomeHero } from '../components/HomeHero'
 import { CATEGORIES } from '../content/categories'
 import { isCategoryVisible } from '../content/registry'
 import type { CategoryTreeResult } from '../lib/api-v2-categories'
@@ -75,38 +74,7 @@ function Home() {
 
   return (
     <>
-      <section className="border-b-4 border-yellow-40 bg-blue-80 text-white-00">
-        <div className="govbb-width-container">
-          <div className="space-y-m py-[clamp(var(--spacing-m),5vw,var(--spacing-l))]">
-            <div className="max-w-210 space-y-s">
-              <Heading as="h1">
-                Find and use Barbados government services
-              </Heading>
-              <Text as="p" size="body-lg">
-                Ask anything — applications, certificates, licences, benefits,
-                and more. Get instant guidance.
-              </Text>
-            </div>
-            <ChatAssistant questions={questions} />
-          </div>
-        </div>
-      </section>
-
-      <section className="border-b-4 border-teal-40 bg-green-10">
-        <div className="govbb-width-container">
-          <div className="space-y-m py-m">
-            <Heading as="h4">
-              Or search all government services directly
-            </Heading>
-            <ServiceSearch
-              source="home"
-              viewer={level}
-              overlay={overlay}
-              emptyHref="/services"
-            />
-          </div>
-        </div>
-      </section>
+      <HomeHero questions={questions} viewer={level} overlay={overlay} />
 
       <section>
         <div className="govbb-width-container">

@@ -108,4 +108,20 @@ describe("POST /submissions — wire HTTP status", () => {
     expect(res.status).toBe(202);
     expect(res.body.statusCode).toBe(202);
   });
+
+  // The unit spec calls create() directly, so only a real request proves the
+  // header name the controller reads (#3507).
+  it("reads the journey ID from the X-Journey-Id header", async () => {
+    submit.mockResolvedValue({
+      outcome: "created",
+      data: makeEntity(),
+      message: "Submission created",
+      statusCode: HttpStatus.CREATED,
+    } satisfies SubmitResult);
+    const journeyId = "3f2b8c1e-4d5a-4b6c-8d7e-9f0a1b2c3d4e";
+
+    await post().set("X-Journey-Id", journeyId);
+
+    expect(submit).toHaveBeenCalledWith(expect.objectContaining({ journeyId }));
+  });
 });

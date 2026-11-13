@@ -63,6 +63,15 @@
         },
         {
           "env": "TURN_TIMEOUT_MS"
+        },
+        {
+          "env": "VITE_UMAMI_SRC"
+        },
+        {
+          "env": "VITE_UMAMI_WEBSITE_ID"
+        },
+        {
+          "env": "VITE_JOURNEY_URL"
         }
       ],
       "options": {

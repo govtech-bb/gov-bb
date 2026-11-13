@@ -138,8 +138,8 @@ describe('education pages link their published form (#911 Group A)', () => {
   // Each of these education pages must carry a working "Start now" button: the
   // form_id is baked onto a `data-start-link` anchor with NO authored href (an
   // authored href would win over form_id and point at a non-existent /start
-  // sub-page — see bakeStartLinkFormId / StartLink). All three forms are live
-  // in the forms API, so the button resolves once the page is visible.
+  // sub-page — see bakeStartLinkFormId / StartLink). These forms exist in the
+  // forms API, so the button resolves once the page and form are visible.
   const expected: Record<string, string> = {
     'education/apply-to-sit-the-bssee-early':
       'bssee-form-a-pupil-under-11-request',
@@ -147,6 +147,8 @@ describe('education pages link their published form (#911 Group A)', () => {
       'bssee-form-b-defer-examination',
     'education/apply-for-secondary-school-entry-for-a-non-national-child':
       'non-nationals-secondary-entry',
+    'education/apply-for-a-school-uniform-grant':
+      'school-uniform-grant-barbados',
   }
 
   function findStartLink(node: {
@@ -177,6 +179,27 @@ describe('education pages link their published form (#911 Group A)', () => {
       expect(startLink!.properties?.dataFormId).toBe(formId)
     })
   }
+})
+
+describe('start links to a /start step point at a page that exists (#3260)', () => {
+  // `/form` and `/find` hrefs are TanStack routes, not markdown pages, so only
+  // `/start` hrefs are checked.
+  type Node = { properties?: Record<string, unknown>; children?: unknown[] }
+  const hrefs = (node: Node): string[] => [
+    ...(isStartLink(node) && typeof node.properties?.href === 'string'
+      ? [node.properties.href]
+      : []),
+    ...((node.children ?? []) as Node[]).flatMap(hrefs),
+  ]
+
+  it('finds none', () => {
+    const dead = PAGES.flatMap((page) =>
+      hrefs(page.hast)
+        .filter((href) => href.endsWith('/start') && !findPage(href))
+        .map((href) => `${page.url} → ${href}`),
+    )
+    expect(dead).toEqual([])
+  })
 })
 
 describe('isSubPage', () => {
