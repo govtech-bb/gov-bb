@@ -494,25 +494,30 @@ describe("GET /editor/site-pages", () => {
   it("lists the seeded site pages by title, and Services lists none of them", async () => {
     await seed(db);
     const indexed = expectOk(await new PostgresPages(db).indexedPages());
-    const sitePages = [
-      "/terms-conditions",
-      "/what-we-mean-by-alpha",
-      "/whats-changing",
-    ].map(
-      (url) =>
-        indexed.find((page) => page.url === url) ?? expect.unreachable(url),
-    );
+    // main's nightly J2 test service has no category, so it is a site page
+    // too, and a draft one.
+    const sitePages = (
+      [
+        ["/e2e-j2-publish-check", "draft"],
+        ["/terms-conditions", "public"],
+        ["/what-we-mean-by-alpha", "public"],
+        ["/whats-changing", "public"],
+      ] as const
+    ).map(([url, visibility]) => ({
+      ...(indexed.find((page) => page.url === url) ?? expect.unreachable(url)),
+      visibility,
+    }));
 
     const response = await inject({ url: "/editor/site-pages" });
 
     expect(response.statusCode).toBe(200);
     expect(response.headers["cache-control"]).toBe("no-store");
     expect(response.json()).toEqual({
-      pages: sitePages.map(({ id, title, url }) => ({
+      pages: sitePages.map(({ id, title, url, visibility }) => ({
         id,
         title,
         url,
-        visibility: "public",
+        visibility,
       })),
     });
     const listed = await inject({ url: "/services" });
