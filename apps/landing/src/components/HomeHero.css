@@ -251,18 +251,34 @@
     }
   }
 
+  @media (hover: hover) {
+    .home-hero__toggle-option:not(:has(input:checked)):hover {
+      background: var(--govbb-overlay-dark-5);
+    }
+  }
+
+  /* The design system's button ring (button.css), with its gap, so the
+     focused pill reads as a focused button. */
   .home-hero__toggle-option:has(input:focus-visible) {
-    outline: 3px solid var(--govbb-color-focus);
+    outline: 4px solid var(--govbb-color-focus);
     outline-offset: 2px;
-    box-shadow: 0 0 0 6px var(--govbb-black-00);
+  }
+
+  /* The checked option opts out of forced colours, so the ring would keep
+     its teal; it takes a system colour instead. */
+  @media (forced-colors: active) {
+    .home-hero__toggle-option:has(input:focus-visible) {
+      outline-color: CanvasText;
+    }
   }
 
   .home-hero__form {
     text-align: start;
   }
 
-  /* The input and its button share one bordered box, which takes the focus
-     ring. The box anchors the suggestion list, so it spans the whole field. */
+  /* The input and its button share one bordered box, which takes the input's
+     hover shadow and focus ring. The box anchors the suggestion list, so it
+     spans the whole field. */
   .home-hero__field {
     position: relative;
     display: flex;
@@ -274,10 +290,16 @@
     background: var(--govbb-white-00);
   }
 
-  .home-hero__field:focus-within {
-    outline: 3px solid var(--govbb-color-focus);
-    outline-offset: 0;
-    box-shadow: inset 0 0 0 2px var(--govbb-black-00);
+  .home-hero__field:has(.home-hero__input:hover) {
+    box-shadow: var(--govbb-shadow-form-hover);
+  }
+
+  /* The design system's form-control ring, only while the input has focus:
+     the button shows its own ring. */
+  .home-hero__field:has(.home-hero__input:focus-visible) {
+    box-shadow: 0 0 0 4px var(--govbb-color-focus);
+    outline: 2px solid transparent;
+    outline-offset: 2px;
   }
 
   .home-hero__field .govbb-combobox {
@@ -320,7 +342,8 @@
     display: flex;
     flex-wrap: wrap;
     justify-content: center;
-    gap: var(--govbb-space-xs);
+    align-items: center;
+    gap: var(--govbb-space-xs) var(--govbb-space-xm);
     font-size: var(--govbb-font-size-body-sm);
   }
 
@@ -328,15 +351,47 @@
     font-weight: 700;
   }
 
+  /* Closer to its first link than the gap that holds a separator, unless the
+     link wraps (HomeHero marks the label data-line-end). */
+  .home-hero__suggestions-label:not([data-line-end]) {
+    margin-inline-end: calc(var(--govbb-space-xs) - var(--govbb-space-xm));
+  }
+
   .home-hero__suggestions-list {
     display: contents;
     list-style: none;
   }
 
-  .home-hero__suggestions-list li:not(:last-child)::after {
+  .home-hero__suggestions-list li {
+    position: relative;
+  }
+
+  /* The separator fills the gap after its link, out of the flow, so hiding
+     the one at the end of a line (HomeHero marks it data-line-end) doesn't
+     reflow the row. */
+  .home-hero__suggestions-list li:not(:last-child, [data-line-end])::after {
     content: '|' / '';
-    margin-inline-start: var(--govbb-space-xs);
+    position: absolute;
+    inset-block: 0;
+    inset-inline-start: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: var(--govbb-space-xm);
     color: color-mix(in srgb, var(--govbb-white-00) 40%, transparent);
+  }
+
+  /* Touch: each link is a 44px target, and the targets' own padding spaces
+     the lines. */
+  @media (pointer: coarse) {
+    .home-hero__suggestions {
+      row-gap: 0;
+    }
+
+    .home-hero__suggestions-list a {
+      display: inline-block;
+      padding-block: 0.625rem;
+    }
   }
 
   .home-hero .home-hero__suggestions {
@@ -356,5 +411,28 @@
     border: 0;
     background: none;
     font: inherit;
+  }
+
+  /* Without :has() the checked radio can't pick a mode, so the toggle goes,
+     both modes show one above the other, and the box takes any focus inside
+     it. */
+  @supports not selector(:has(*)) {
+    .home-hero__toggle {
+      display: none;
+    }
+
+    .home-hero__modes {
+      gap: var(--govbb-space-m);
+    }
+
+    .home-hero__mode {
+      grid-area: auto;
+    }
+
+    .home-hero__field:focus-within {
+      box-shadow: 0 0 0 4px var(--govbb-color-focus);
+      outline: 2px solid transparent;
+      outline-offset: 2px;
+    }
   }
 }
