@@ -165,15 +165,13 @@ function planActions(input: SyncInput): IssuePlan[] {
   if (linked.length === 0) return [];
 
   if (["opened", "reopened", "ready_for_review"].includes(input.action)) {
-    return linked.map(
-      (issue): IssuePlan => ({
-        issue,
-        actions: [
-          { type: "ensureOnBoard" },
-          { type: "setStatus", status: "In review" },
-        ],
-      }),
-    );
+    return linked.map((issue): IssuePlan => ({
+      issue,
+      actions: [
+        { type: "ensureOnBoard" },
+        { type: "setStatus", status: "In review" },
+      ],
+    }));
   }
 
   if (
@@ -182,20 +180,18 @@ function planActions(input: SyncInput): IssuePlan[] {
     MERGE_TARGETS.has(input.baseRef ?? "")
   ) {
     const prAuthor = input.prAuthor;
-    return linked.map(
-      (issue): IssuePlan => ({
-        issue,
-        actions: [
-          { type: "ensureOnBoard" },
-          { type: "setStatus", status: "Done" },
-          { type: "removeLabel", label: "progressing" },
-          ...(prAuthor
-            ? [{ type: "assignIfUnassigned", login: prAuthor } as const]
-            : []),
-          { type: "closeIssue" },
-        ],
-      }),
-    );
+    return linked.map((issue): IssuePlan => ({
+      issue,
+      actions: [
+        { type: "ensureOnBoard" },
+        { type: "setStatus", status: "Done" },
+        { type: "removeLabel", label: "progressing" },
+        ...(prAuthor
+          ? [{ type: "assignIfUnassigned", login: prAuthor } as const]
+          : []),
+        { type: "closeIssue" },
+      ],
+    }));
   }
 
   return [];

@@ -9,8 +9,9 @@
     "preview": "nitro preview",
     "start": "node .amplify-hosting/compute/default/server.js",
     "test": "vitest run",
-    "lint": "eslint",
-    "typecheck": "tsc --noEmit"
+    "test:types": "tsc --noEmit",
+    "lint:fix": "oxlint --fix",
+    "test:oxlint": "oxlint"
   },
   "dependencies": {
     "@fontsource/figtree": "^5.2.10",
@@ -35,7 +36,6 @@
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
     "@vitejs/plugin-react": "^6.0.2",
-    "eslint": "^10.2.0",
     "jsdom": "^28.1.0",
     "tailwindcss": "^4.3.0",
     "typescript": "catalog:",

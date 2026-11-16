@@ -1,0 +1,34 @@
+{
+  "$schema": "./node_modules/oxfmt/configuration_schema.json",
+  "printWidth": 80,
+  "sortPackageJson": false,
+  "ignorePatterns": [
+    "dist",
+    ".next",
+    "node_modules",
+    "**/*.gen.ts",
+    "pnpm-lock.yaml",
+    "package-lock.json",
+    "yarn.lock",
+    // Published form recipes are machine-written artifacts: the builder's
+    // publish flow overwrites recipes/{formId}.json verbatim and the PR diff is
+    // the record of change (#1196). Reformatting them on commit would create
+    // spurious diffs. Leave them untouched.
+    "apps/api/src/forms/form-definitions/recipes/",
+    // api_v2's OpenAPI document is a file snapshot its test compares byte for
+    // byte; reformatting it would fail that test on the next run.
+    "apps/api_v2/openapi.json",
+    // Prose, email templates and data, not code: landing's Markdown is live
+    // service content, and the .hbs/.html files are hand-tuned email markup.
+    "**/*.md",
+    "**/*.hbs",
+    "**/*.html",
+    "**/*.geojson"
+  ],
+  "overrides": [
+    {
+      "files": ["apps/landing/**", "apps/analytics/**"],
+      "options": { "semi": false, "singleQuote": true }
+    }
+  ]
+}

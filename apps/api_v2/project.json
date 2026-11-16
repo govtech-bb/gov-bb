@@ -15,12 +15,6 @@
     },
     "e2e": {
       "dependsOn": ["build"]
-    },
-    "lint": {
-      "executor": "@nx/eslint:lint",
-      "options": {
-        "lintFilePatterns": ["apps/api_v2/**/*.ts"]
-      }
     }
   },
   "tags": []

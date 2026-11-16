@@ -216,7 +216,7 @@
             "label": "Do you have permission to apply?",
             "validations": {
               "required": {
-                "error": "Select whether you have permission to apply.",
+                "error": "Select whether you have permission to apply for this person.",
                 "value": true
               },
               "pattern": {
@@ -252,7 +252,7 @@
             "label": "Do you have permission to apply?",
             "validations": {
               "required": {
-                "error": "Select whether you have permission to apply.",
+                "error": "Select whether you have permission to apply for this business or organisation.",
                 "value": true
               },
               "pattern": {
@@ -1031,7 +1031,7 @@
     }
   ],
   "createdAt": "2026-08-24T19:33:15.101Z",
-  "updatedAt": "2026-10-21T16:52:59.000Z",
+  "updatedAt": "2026-11-16T10:40:13.993Z",
   "meta": {
     "visibility": "preview"
   },

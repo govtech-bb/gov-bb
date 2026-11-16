@@ -593,7 +593,13 @@
           "ref": "components/first-name",
           "overrides": {
             "label": "Father's first name",
-            "fieldId": "father-first-name"
+            "fieldId": "father-first-name",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Father's first name is required"
+              }
+            }
           }
         },
         {
@@ -608,7 +614,13 @@
           "ref": "components/last-name",
           "overrides": {
             "label": "Father's last name",
-            "fieldId": "father-last-name"
+            "fieldId": "father-last-name",
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Father's last name is required"
+              }
+            }
           }
         },
         {
@@ -618,7 +630,7 @@
             "fieldId": "mother-first-name",
             "validations": {
               "required": {
-                "error": "First name is required",
+                "error": "Mother's first name is required",
                 "value": true
               }
             }
@@ -643,7 +655,7 @@
             "fieldId": "mother-last-name",
             "validations": {
               "required": {
-                "error": "Last name is required",
+                "error": "Mother's last name is required",
                 "value": true
               }
             }
@@ -730,7 +742,7 @@
     }
   ],
   "createdAt": "2026-06-10T15:48:50.342Z",
-  "updatedAt": "2026-10-21T16:52:59.000Z",
+  "updatedAt": "2026-11-16T10:40:13.993Z",
   "meta": {
     "visibility": "public"
   }

@@ -39,7 +39,7 @@ Copy [`.env.example`](./.env.example) to `.env`. Key variables:
 
 ```bash
 pnpm exec nx test form-builder-app   # Vitest 4
-pnpm exec nx run form-builder-app:typecheck   # same check CI runs; covers specs
+pnpm exec nx run form-builder-app:test:types  # same check CI runs; covers specs
 ```
 
 ## Workspace layout

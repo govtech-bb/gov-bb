@@ -141,7 +141,7 @@ See [the dialect guide](../../docs/content-markdown.md) for syntax and editing r
 ## Verify
 
 ```sh
-pnpm exec nx run govbbmarkd:typecheck
+pnpm exec nx run govbbmarkd:test:types
 pnpm exec nx run govbbmarkd:test
 pnpm exec nx run govbbmarkd:build
 pnpm exec nx run govbbmarkd:lint

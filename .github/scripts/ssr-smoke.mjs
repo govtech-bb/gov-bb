@@ -21,96 +21,98 @@
 //         redirect or not-found still proves the server handles requests.)
 // Fail  = server never listens, the request times out (a hang), or status >= 500.
 
-import { spawn } from 'node:child_process'
-import { request } from 'node:http'
-import { join } from 'node:path'
+import { spawn } from "node:child_process";
+import { request } from "node:http";
+import { join } from "node:path";
 
-const computeDir = process.argv[2]
-const label = process.argv[3] ?? computeDir
+const computeDir = process.argv[2];
+const label = process.argv[3] ?? computeDir;
 if (!computeDir) {
-  console.error('usage: node ssr-smoke.mjs <compute-dir> <label>')
-  process.exit(2)
+  console.error("usage: node ssr-smoke.mjs <compute-dir> <label>");
+  process.exit(2);
 }
 
 // Use ::1 when a local development server already owns the IPv4 listener.
-const HOST = process.env.SSR_SMOKE_HOST ?? '127.0.0.1'
-const PORT = 3000 // the Amplify compute preset hard-codes 3000
-const BOOT_TIMEOUT_MS = 30_000 // max wait for the server to start listening
-const REQUEST_TIMEOUT_MS = 10_000 // a healthy SSR root answers in <1s; a hang must fail fast
+const HOST = process.env.SSR_SMOKE_HOST ?? "127.0.0.1";
+const PORT = 3000; // the Amplify compute preset hard-codes 3000
+const BOOT_TIMEOUT_MS = 30_000; // max wait for the server to start listening
+const REQUEST_TIMEOUT_MS = 10_000; // a healthy SSR root answers in <1s; a hang must fail fast
 
-const origin = `http://${HOST.includes(':') ? `[${HOST}]` : HOST}:${PORT}`
-const entry = join(computeDir, 'index.mjs')
-console.log(`[smoke:${label}] booting ${entry} on :${PORT}`)
+const origin = `http://${HOST.includes(":") ? `[${HOST}]` : HOST}:${PORT}`;
+const entry = join(computeDir, "index.mjs");
+console.log(`[smoke:${label}] booting ${entry} on :${PORT}`);
 
-const server = spawn(process.execPath, ['index.mjs'], {
+const server = spawn(process.execPath, ["index.mjs"], {
   cwd: computeDir,
   env: { ...process.env, PORT: String(PORT), HOST },
-  stdio: ['ignore', 'pipe', 'pipe'],
-})
+  stdio: ["ignore", "pipe", "pipe"],
+});
 
-let serverOutput = ''
-server.stdout.on('data', (d) => {
-  serverOutput += d
-  process.stdout.write(`[smoke:${label}] ${d}`)
-})
-server.stderr.on('data', (d) => {
-  serverOutput += d
-  process.stderr.write(`[smoke:${label}] ${d}`)
-})
+let serverOutput = "";
+server.stdout.on("data", (d) => {
+  serverOutput += d;
+  process.stdout.write(`[smoke:${label}] ${d}`);
+});
+server.stderr.on("data", (d) => {
+  serverOutput += d;
+  process.stderr.write(`[smoke:${label}] ${d}`);
+});
 
-let exited = false
-server.on('exit', (code) => {
-  exited = true
+let exited = false;
+server.on("exit", (code) => {
+  exited = true;
   if (code !== 0 && code !== null) {
-    fail(`server process exited with code ${code} before/while serving`)
+    fail(`server process exited with code ${code} before/while serving`);
   }
-})
+});
 
 function cleanup() {
-  if (!exited) server.kill('SIGKILL')
+  if (!exited) server.kill("SIGKILL");
 }
 function pass(msg) {
-  console.log(`[smoke:${label}] ✅ ${msg}`)
-  cleanup()
-  process.exit(0)
+  console.log(`[smoke:${label}] ✅ ${msg}`);
+  cleanup();
+  process.exit(0);
 }
 function fail(msg) {
-  console.error(`[smoke:${label}] ❌ ${msg}`)
-  cleanup()
-  process.exit(1)
+  console.error(`[smoke:${label}] ❌ ${msg}`);
+  cleanup();
+  process.exit(1);
 }
 
 // Poll the port until the server is listening, then issue one request to /.
-const bootDeadline = Date.now() + BOOT_TIMEOUT_MS
+const bootDeadline = Date.now() + BOOT_TIMEOUT_MS;
 function waitForListen() {
-  if (exited) return // exit handler already failed us
-  if (serverOutput.includes('Listening on')) return hitRoot()
+  if (exited) return; // exit handler already failed us
+  if (serverOutput.includes("Listening on")) return hitRoot();
   if (Date.now() > bootDeadline) {
-    return fail(`server did not start listening within ${BOOT_TIMEOUT_MS}ms`)
+    return fail(`server did not start listening within ${BOOT_TIMEOUT_MS}ms`);
   }
-  setTimeout(waitForListen, 250)
+  setTimeout(waitForListen, 250);
 }
 
 function hitRoot() {
-  console.log(`[smoke:${label}] GET ${origin}/`)
-  const started = Date.now()
+  console.log(`[smoke:${label}] GET ${origin}/`);
+  const started = Date.now();
   const req = request(
-    { host: HOST, port: PORT, path: '/', method: 'GET' },
+    { host: HOST, port: PORT, path: "/", method: "GET" },
     (res) => {
-      const ms = Date.now() - started
-      res.resume() // drain
+      const ms = Date.now() - started;
+      res.resume(); // drain
       if (res.statusCode >= 500) {
-        return fail(`GET / returned ${res.statusCode} in ${ms}ms (server error)`)
+        return fail(
+          `GET / returned ${res.statusCode} in ${ms}ms (server error)`,
+        );
       }
-      pass(`GET / returned ${res.statusCode} in ${ms}ms`)
+      pass(`GET / returned ${res.statusCode} in ${ms}ms`);
     },
-  )
+  );
   req.setTimeout(REQUEST_TIMEOUT_MS, () => {
-    req.destroy()
-    fail(`GET / did not respond within ${REQUEST_TIMEOUT_MS}ms (runtime hang)`)
-  })
-  req.on('error', (e) => fail(`GET / failed: ${e.message}`))
-  req.end()
+    req.destroy();
+    fail(`GET / did not respond within ${REQUEST_TIMEOUT_MS}ms (runtime hang)`);
+  });
+  req.on("error", (e) => fail(`GET / failed: ${e.message}`));
+  req.end();
 }
 
-waitForListen()
+waitForListen();

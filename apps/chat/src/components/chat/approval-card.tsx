@@ -40,7 +40,10 @@ export function ApprovalCard({
 }) {
   let values: Record<string, string> = {};
   try {
-    values = (JSON.parse(argsJson ?? "{}").values ?? {}) as Record<string, string>;
+    values = (JSON.parse(argsJson ?? "{}").values ?? {}) as Record<
+      string,
+      string
+    >;
   } catch {
     values = {};
   }
@@ -48,7 +51,9 @@ export function ApprovalCard({
 
   return (
     <div className="flex max-w-[92%] flex-col gap-3">
-      <p className="text-bubble font-medium text-black-00">Check your answers</p>
+      <p className="text-bubble font-medium text-black-00">
+        Check your answers
+      </p>
       <dl className="flex flex-col divide-y divide-grey-00 rounded-lg border border-grey-00 bg-white-00 px-4">
         {entries.map(([fieldId, value]) => {
           const label = labels[fieldId] ?? humanise(fieldId);

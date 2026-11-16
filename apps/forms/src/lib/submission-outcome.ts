@@ -1,4 +1,4 @@
-import { FormSubmissionResponse, SubmissionState } from "@forms/types";
+import type { FormSubmissionResponse, SubmissionState } from "@forms/types";
 import type { SummarySection } from "@govtech-bb/submission-summary";
 
 type SubmissionEvent =

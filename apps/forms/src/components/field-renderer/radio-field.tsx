@@ -1,7 +1,7 @@
-import { JSX } from "react";
+import type { JSX } from "react";
 import { Fieldset, Hint, Radio } from "@govtech-bb/react";
 import ErrorMessage from "../error-message";
-import { FieldRenderContext } from "./render-context";
+import type { FieldRenderContext } from "./render-context";
 import FieldRenderer from "./index";
 
 export function renderRadioField(ctx: FieldRenderContext): JSX.Element {

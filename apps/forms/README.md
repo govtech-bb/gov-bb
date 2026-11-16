@@ -27,7 +27,7 @@ is deliberately no default to fall back on:
 
 ```bash
 # Against the deployed sandbox:
-SMOKE_BASE_URL=https://forms.sandbox.alpha.gov.bb pnpm exec nx run forms:smoke
+SMOKE_BASE_URL=https://forms.sandbox.alpha.gov.bb pnpm exec nx run forms:test:smoke
 
 # Against a local stack (Vite :3000 + API :3001 pointed at a real S3 bucket
 # via `aws sso login`). Vite is started for you if nothing is already serving

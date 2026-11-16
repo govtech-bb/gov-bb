@@ -761,7 +761,7 @@ A trigger on `page_revisions` bumps the page's version on every insert, update o
 
 ```sh
 pnpm exec nx run api_v2:build
-pnpm exec nx run api_v2:typecheck
+pnpm exec nx run api_v2:test:types
 pnpm exec nx run api_v2:test
 DB_HOST=localhost pnpm exec nx run api_v2:e2e
 ```

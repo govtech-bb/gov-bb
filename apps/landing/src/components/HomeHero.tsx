@@ -1,7 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import type { RefObject } from 'react'
 import { flushSync } from 'react-dom'
-import { useNavigate } from '@tanstack/react-router'
 import {
   Autocomplete,
   Button,
@@ -13,9 +12,8 @@ import { isVisible, PAGES } from '../content/registry'
 import type { ViewLevel } from '../lib/frontmatter'
 import { trackEvent } from '../lib/analytics'
 import { CHAT_URL } from '../lib/chat-url'
-import { suggest } from '../lib/search'
-import { loadApiV2SearchDocuments } from '../lib/api-v2-site'
 import type { ApiV2SearchDocument } from '../lib/api-v2-site'
+import { useServiceSearch } from './useServiceSearch'
 import './HomeHero.css'
 
 const MAX_QUESTION_LENGTH = 2000
@@ -155,10 +153,9 @@ export function HomeHero({
   questions,
   viewer,
   overlay,
-  loadDocuments = loadApiV2SearchDocuments,
+  loadDocuments,
   servedServices,
 }: HomeHeroProps) {
-  const navigate = useNavigate()
   const heroRef = useRef<HTMLElement>(null)
   const searchRadioRef = useRef<HTMLInputElement>(null)
   const searchInputRef = useRef<HTMLInputElement>(null)
@@ -173,7 +170,6 @@ export function HomeHero({
   const [text, setText] = useState('')
   // Only typed text gets suggestions, not text carried over from Ask.
   const [hasTyped, setHasTyped] = useState(false)
-  const [documents, setDocuments] = useState<readonly ApiV2SearchDocument[]>()
   const chatStatus = useChatStatus()
   useHeightOfChromeAbove(heroRef)
 
@@ -187,10 +183,16 @@ export function HomeHero({
   }, [])
 
   const isChatOffline = chatStatus === 'offline'
-  const searchHits =
-    mode === 'search' && hasTyped
-      ? suggest(text, viewer, overlay, documents)
-      : []
+  const search = useServiceSearch({
+    source: SOURCE,
+    viewer,
+    overlay,
+    text,
+    setText,
+    suggesting: mode === 'search' && hasTyped,
+    emptyTo: '/services',
+    loadDocuments,
+  })
   const popularSearches = POPULAR_SEARCHES.filter(({ serviceId }) => {
     if (servedServices) return servedServices.includes(serviceId)
     const page = PAGES.find(({ slug }) => slug === serviceId)
@@ -209,16 +211,6 @@ export function HomeHero({
     setMode(next)
     setHasTyped(false)
     setText(value)
-  }
-
-  const submitSearch = (value: string) => {
-    const query = value.trim()
-    trackEvent('search-submit', { query, source: SOURCE })
-    if (!query) {
-      void navigate({ to: '/services' })
-      return
-    }
-    void navigate({ to: '/search-results', search: { q: query } })
   }
 
   const submitQuestion = () => {
@@ -295,7 +287,7 @@ export function HomeHero({
                 method="get"
                 onSubmit={(event) => {
                   event.preventDefault()
-                  submitSearch(text)
+                  search.submit(text)
                 }}
               >
                 <div className="home-hero__field">
@@ -313,28 +305,15 @@ export function HomeHero({
                     placeholder="Search services"
                     autoComplete="off"
                     enterKeyHint="search"
-                    suggestions={searchHits.map((hit) => ({
+                    suggestions={search.hits.map((hit) => ({
                       value: hit.title,
                     }))}
                     onChange={(event) => {
                       setHasTyped(true)
                       setText(event.currentTarget.value)
-                      // api_v2's pages, as ServiceSearch reads them.
-                      void loadDocuments().then(setDocuments)
+                      search.refreshDocuments()
                     }}
-                    onSuggestionSelect={(_, index) => {
-                      const hit = searchHits[index]
-                      if (!hit) return
-                      setText(hit.title)
-                      trackEvent('search-suggestion-select', {
-                        query: text.trim(),
-                        title: hit.title,
-                        href: hit.href,
-                        position: index + 1,
-                        source: SOURCE,
-                      })
-                      submitSearch(hit.title)
-                    }}
+                    onSuggestionSelect={search.onSuggestionSelect}
                   />
                   <Button type="submit">Search</Button>
                 </div>
@@ -350,6 +329,12 @@ export function HomeHero({
                         <a
                           className="govbb-link"
                           href={`/search-results?${new URLSearchParams({ q: query })}`}
+                          onClick={() =>
+                            trackEvent('search-submit', {
+                              query,
+                              source: SOURCE,
+                            })
+                          }
                         >
                           {query}
                         </a>

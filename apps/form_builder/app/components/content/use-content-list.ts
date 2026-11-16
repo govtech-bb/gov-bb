@@ -53,13 +53,11 @@ export function useContentList(enabled: boolean): ContentListState {
       setReviewSnapshot((current) => ({ ...current, complete: false }));
       Promise.all([
         listLandingContentPages({ data: { force } }),
-        listOpenContentPRs().catch(
-          (): ContentReviewSnapshot => ({
-            claims: [],
-            complete: false,
-            warning: "Open pull requests could not be checked.",
-          }),
-        ),
+        listOpenContentPRs().catch((): ContentReviewSnapshot => ({
+          claims: [],
+          complete: false,
+          warning: "Open pull requests could not be checked.",
+        })),
       ])
         .then(([list, snapshot]) => {
           if (!isActive()) return;

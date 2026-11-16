@@ -119,14 +119,12 @@ async function propose() {
 
 it("requires a review and explicit approval before a client tool can change the draft", async () => {
   const apply = vi.fn();
-  const prepare = vi.fn(
-    async (): Promise<PreparedChange> => ({
-      before: { title: "Current" },
-      after: { title: "Proposed" },
-      warnings: ["Unknown component: repair before saving"],
-      apply,
-    }),
-  );
+  const prepare = vi.fn(async (): Promise<PreparedChange> => ({
+    before: { title: "Current" },
+    after: { title: "Proposed" },
+    warnings: ["Unknown component: repair before saving"],
+    apply,
+  }));
   const view = render(<Assistant {...props} prepare={prepare} />);
   await waitFor(() => expect(harness.options).toBeTruthy());
   const resolve = await propose();
