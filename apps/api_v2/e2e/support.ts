@@ -310,7 +310,7 @@ export async function runScript(
   script: string,
   args: string[],
   env: Record<string, string>,
-): Promise<{ code: number | null; output: string }> {
+): Promise<{ code: number | null; output: string; stdout: string }> {
   const child = spawn(
     join(root, "node_modules", ".bin", "tsx"),
     [script, ...args],
@@ -326,9 +326,13 @@ export async function runScript(
 async function exitOf(
   child: ChildProcess,
   timeout = 30_000,
-): Promise<{ code: number | null; output: string }> {
+): Promise<{ code: number | null; output: string; stdout: string }> {
   let output = "";
-  child.stdout?.on("data", (chunk) => (output += String(chunk)));
+  let stdout = "";
+  child.stdout?.on("data", (chunk) => {
+    output += String(chunk);
+    stdout += String(chunk);
+  });
   child.stderr?.on("data", (chunk) => (output += String(chunk)));
 
   const code = await new Promise<number | null>((resolve) => {
@@ -342,7 +346,7 @@ async function exitOf(
     });
   });
 
-  return { code, output };
+  return { code, output, stdout };
 }
 
 /** A database-backed BetterAuth session minted solely by this test harness. */
