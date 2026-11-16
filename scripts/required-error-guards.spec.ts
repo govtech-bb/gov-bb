@@ -33,6 +33,12 @@ const GENERIC_DATE: Primitive = {
   validations: { required: { value: true } },
 };
 
+const OPTIONAL_TEXT: Primitive = {
+  fieldId: "optional-text",
+  htmlType: "text",
+  label: "Text",
+};
+
 const PERSONAL_INFORMATION: Block = {
   blockId: "personal-information",
   blockDescription: "",
@@ -45,6 +51,7 @@ const REGISTRY = {
   "components/generic-radio": GENERIC_RADIO,
   "components/first-name": FIRST_NAME,
   "components/generic-date": GENERIC_DATE,
+  "components/optional-text": OPTIONAL_TEXT,
   "blocks/personal-information": PERSONAL_INFORMATION,
 };
 
@@ -52,9 +59,28 @@ function recipe(ref: string, overrides?: unknown) {
   return { steps: [{ stepId: "employment", elements: [{ ref, overrides }] }] };
 }
 
+function step(stepId: string, ...elements: unknown[]) {
+  return { stepId, elements };
+}
+
+// A generic text field carrying its own required message.
+function text(fieldId: string, error: string, extra?: object) {
+  return {
+    ref: "components/generic-text",
+    overrides: {
+      fieldId,
+      validations: { required: { value: true, error } },
+      ...extra,
+    },
+  };
+}
+
 function check(r: unknown) {
   return checkRequiredErrorsAreSpecific(r, "r.json", REGISTRY);
 }
+
+const IDENTICAL =
+  "as required.error, so the error summary shows identical links";
 
 describe("checkRequiredErrorsAreSpecific", () => {
   it("flags a generic primitive that only overrides fieldId and label", () => {
@@ -221,5 +247,190 @@ describe("checkRequiredErrorsAreSpecific", () => {
     expect(check(recipe("components/nope", { fieldId: "x" }))).toEqual([]);
     expect(check({})).toEqual([]);
     expect(check({ steps: [{ stepId: "s" }] })).toEqual([]);
+  });
+
+  // The error summary uses each message as its link text, so ANY two required
+  // fields on one step sharing a message give it identical links (#2723).
+  describe("duplicate messages on a step", () => {
+    it("flags two required fields on one step with the same message", () => {
+      const errors = check({
+        steps: [
+          step(
+            "parents",
+            text("father-first-name", "Enter the first name"),
+            text("mother-first-name", "Enter the first name"),
+          ),
+        ],
+      });
+      expect(errors).toEqual([
+        `r.json: step parents — father-first-name and mother-first-name both use "Enter the first name" ${IDENTICAL}; give each a message naming its field`,
+      ]);
+    });
+
+    it("flags messages that differ only by case or a trailing full stop", () => {
+      const errors = check({
+        steps: [
+          step(
+            "parents",
+            text("a", "Enter the first name"),
+            text("b", "enter the first name"),
+            text("c", "Enter the first name."),
+          ),
+        ],
+      });
+      expect(errors).toEqual([
+        `r.json: step parents — a, b and c all use "Enter the first name" ${IDENTICAL}; give each a message naming its field`,
+      ]);
+    });
+
+    it("accepts the same message on different steps", () => {
+      expect(
+        check({
+          steps: [
+            step("father", text("first-name", "Enter the first name")),
+            step("mother", text("first-name", "Enter the first name")),
+          ],
+        }),
+      ).toEqual([]);
+    });
+
+    // An unauthored date derives `Enter ${label}`, so it has no message to
+    // compare.
+    it("ignores unauthored dates", () => {
+      expect(
+        check({
+          steps: [
+            step(
+              "dates",
+              { ref: "components/generic-date", overrides: { fieldId: "a" } },
+              { ref: "components/generic-date", overrides: { fieldId: "b" } },
+              text("c", "Enter the date"),
+            ),
+          ],
+        }),
+      ).toEqual([]);
+    });
+
+    it("flags a date whose authored message matches another field's", () => {
+      const errors = check({
+        steps: [
+          step(
+            "dates",
+            {
+              ref: "components/generic-date",
+              overrides: {
+                fieldId: "start-date",
+                validations: {
+                  required: { value: true, error: "Enter a date" },
+                },
+              },
+            },
+            text("end-date", "Enter a date"),
+          ),
+        ],
+      });
+      expect(errors).toEqual([
+        `r.json: step dates — start-date and end-date both use "Enter a date" ${IDENTICAL}; give each a message naming its field`,
+      ]);
+    });
+
+    it("ignores fields that are not required", () => {
+      expect(
+        check({
+          steps: [
+            step(
+              "about",
+              text("nickname", "Enter a name"),
+              {
+                ref: "components/generic-text",
+                overrides: {
+                  fieldId: "alias",
+                  validations: {
+                    required: { value: false, error: "Enter a name" },
+                  },
+                },
+              },
+              { ref: "components/optional-text", overrides: { fieldId: "x" } },
+            ),
+          ],
+        }),
+      ).toEqual([]);
+    });
+
+    // Show/hide conditions are ignored on purpose: the rewritten messages are
+    // clearer either way, and reasoning about conditions is error-prone.
+    it("flags fields shown on different answers to the same question", () => {
+      const shownWhen = (value: string) => ({
+        behaviours: [
+          {
+            type: "fieldConditionalOn",
+            targetFieldId: "unit",
+            operator: "equal",
+            value,
+          },
+        ],
+      });
+      const errors = check({
+        steps: [
+          step(
+            "room",
+            text("length-metres", "Enter the length", shownWhen("metres")),
+            text("length-feet", "Enter the length", shownWhen("feet")),
+          ),
+        ],
+      });
+      expect(errors).toEqual([
+        `r.json: step room — length-metres and length-feet both use "Enter the length" ${IDENTICAL}; give each a message naming its field`,
+      ]);
+    });
+
+    it("flags block children that inherit the same message", () => {
+      const errors = check(recipe("blocks/personal-information"));
+      expect(errors).toEqual([
+        `r.json: step employment — first-name and last-name both use "First name is required" ${IDENTICAL}; give each a message naming its field`,
+      ]);
+    });
+
+    // The denylist already reports these; one defect, one error.
+    it("does not report generic, blank or missing messages again", () => {
+      const errors = check({
+        steps: [
+          step(
+            "employment",
+            { ref: "components/generic-text", overrides: { fieldId: "a" } },
+            { ref: "components/generic-text", overrides: { fieldId: "b" } },
+            text("c", "  "),
+            text("d", "  "),
+            {
+              ref: "components/first-name",
+              overrides: {
+                fieldId: "e",
+                validations: { required: { value: true } },
+              },
+            },
+            {
+              ref: "components/first-name",
+              overrides: {
+                fieldId: "f",
+                validations: { required: { value: true } },
+              },
+            },
+          ),
+        ],
+      });
+      expect(errors).toHaveLength(6);
+      expect(errors[0]).toContain("employment.a");
+      expect(errors[0]).toContain('uses the generic "This field is required"');
+      expect(errors[1]).toContain("employment.b");
+      expect(errors[1]).toContain("uses the generic");
+      expect(errors[2]).toContain("employment.c");
+      expect(errors[2]).toContain("blank required.error");
+      expect(errors[3]).toContain("employment.d");
+      expect(errors[3]).toContain("blank required.error");
+      expect(errors[4]).toContain("employment.e");
+      expect(errors[4]).toContain("has no required.error");
+      expect(errors[5]).toContain("employment.f");
+      expect(errors[5]).toContain("has no required.error");
+    });
   });
 });
