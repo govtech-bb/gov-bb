@@ -157,8 +157,8 @@ export interface FunnelStepResult {
   dropoff: number | null;
 }
 
-/** One journey path row. */
+/** One journey path row. Umami pads paths shorter than `steps` with null. */
 export interface JourneyPath {
-  items: string[];
+  items: (string | null)[];
   count: number;
 }
