@@ -13,18 +13,8 @@
         "main": "packages/content/src/index.ts"
       }
     },
-    "test": {
-      "executor": "nx:run-commands",
-      "options": {
-        "command": "vitest run",
-        "cwd": "packages/content"
-      }
-    },
-    "lint": {
-      "executor": "@nx/eslint:lint",
-      "options": {
-        "lintFilePatterns": ["packages/content/**/*.ts"]
-      }
+    "test:types": {
+      "dependsOn": ["^build"]
     }
   },
   "tags": []

@@ -1,6 +1,6 @@
-import { JSX, ReactNode } from "react";
+import type { JSX, ReactNode } from "react";
 import { Hint, ShowHide } from "@govtech-bb/react";
-import { FieldRenderContext } from "./render-context";
+import type { FieldRenderContext } from "./render-context";
 
 export function renderShowHideField(
   ctx: FieldRenderContext,

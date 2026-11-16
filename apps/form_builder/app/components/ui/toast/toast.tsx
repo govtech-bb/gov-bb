@@ -2,7 +2,8 @@ import { Toast } from "@base-ui/react/toast";
 import type React from "react";
 import { cn } from "../utils/cn";
 import { resolveVariant } from "../utils/resolve-variant";
-import { Button, ButtonProps } from "../button";
+import type { ButtonProps } from "../button";
+import { Button } from "../button";
 import {
   usePortalContainer,
   type PortalContainer,

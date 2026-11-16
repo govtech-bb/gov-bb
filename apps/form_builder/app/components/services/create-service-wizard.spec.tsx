@@ -287,9 +287,9 @@ it("keeps entered details when going back", async () => {
   expect(
     await screen.findByRole("textbox", { name: "Service name" }),
   ).toHaveValue("Pension advice");
-  expect(
-    screen.getByRole("combobox", { name: "Category" }),
-  ).toHaveTextContent("Education");
+  expect(screen.getByRole("combobox", { name: "Category" })).toHaveTextContent(
+    "Education",
+  );
 });
 
 it("offers to connect a form that already uses the service's name", async () => {

@@ -16,6 +16,6 @@ export default defineConfig({
     globals: true,
     environment: "node",
     // Root-level maintenance scripts live flat in this dir, not under src/.
-    include: ["*.spec.ts"],
+    include: ["*.spec.ts", "oxlint/*.spec.ts"],
   },
 });

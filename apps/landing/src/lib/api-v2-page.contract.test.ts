@@ -71,9 +71,9 @@ const optStr = { type: 'string', optional: true } as const
 // fails landing's typecheck.
 // The frontmatter is loose: its index signature is no field of its own.
 const FRONTMATTER: {
-  [K in keyof PageResponse['frontmatter'] as string extends K
-    ? never
-    : K]-?: FieldOf<PageResponse['frontmatter'][K]>
+  [
+    K in keyof PageResponse['frontmatter'] as string extends K ? never : K
+  ]-?: FieldOf<PageResponse['frontmatter'][K]>
 } = {
   lede: optStr,
   stage: optStr,

@@ -237,7 +237,7 @@ const get = async (path) => {
 /** A fragment's text for comparison, its tags stripped until none is left. */
 function textOf(fragment) {
   let text = fragment
-  for (let previous = ''; previous !== text; ) {
+  for (let previous = ''; previous !== text;) {
     previous = text
     text = text.replace(/<[^>]+>/g, '')
   }

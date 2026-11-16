@@ -195,7 +195,7 @@ const estate: SeedEstate = {
 
 writeFileSync(target, `${JSON.stringify(estate, null, 2)}\n`);
 // Formatted as lint-staged would, so committing it changes nothing.
-execFileSync("pnpm", ["exec", "prettier", "--write", target], { cwd: root });
+execFileSync("pnpm", ["exec", "oxfmt", target], { cwd: root });
 console.log(
   `Wrote ${pages.length} pages and ${estate.categories.length} categories ` +
     `to ${target}`,

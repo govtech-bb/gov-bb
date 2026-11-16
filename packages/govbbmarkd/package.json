@@ -72,5 +72,11 @@
     "react": "catalog:",
     "react-dom": "catalog:",
     "vitest": "^4.1.11"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "test:types": "tsc -p tsconfig.spec.json",
+    "lint:fix": "oxlint --fix",
+    "test:oxlint": "oxlint"
   }
 }

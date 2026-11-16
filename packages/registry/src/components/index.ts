@@ -168,12 +168,15 @@ const ALL = [
   ...PRIMITIVES,
 ] as const satisfies Primitive[];
 
-// Completeness guard: bump the literal type whenever you add a component to
+// Completeness guard: bump the length literal whenever you add a component to
 // ALL, so a registered-but-unlisted component fails the build.
-const _componentCount: 53 = ALL.length;
-
 export const REGISTRY_COMPONENTS: Record<`components/${string}`, Primitive> =
-  Object.fromEntries(ALL.map((c) => [`components/${c.fieldId}`, c]));
+  Object.fromEntries(
+    (ALL satisfies { readonly length: 53 }).map((c) => [
+      `components/${c.fieldId}`,
+      c,
+    ]),
+  );
 
 export const REGISTRY_PRIMITIVES: Record<`components/${string}`, Primitive> =
   Object.fromEntries(PRIMITIVES.map((c) => [`components/${c.fieldId}`, c]));

@@ -10,8 +10,8 @@ Run the app and the Nx checks from the repository root as shown in the [README](
 pnpm test
 pnpm exec vitest run tests/pages
 pnpm exec vitest run docs/examples
-pnpm typecheck
-pnpm lint
+pnpm test:types
+pnpm test:oxlint
 pnpm format:check
 pnpm check:boundaries
 pnpm check:coverage

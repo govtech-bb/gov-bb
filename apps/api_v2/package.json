@@ -7,13 +7,15 @@
     "start": "node dist/src/main.js",
     "test": "vitest run",
     "e2e": "vitest run --config vitest.e2e.config.ts",
-    "typecheck": "tsc -p tsconfig.check.json --noEmit",
+    "test:types": "tsc -p tsconfig.check.json --noEmit",
     "db:generate": "drizzle-kit generate",
     "seed-data": "tsx scripts/build-seed-data.ts",
     "import-estate": "tsx --env-file-if-exists=.env src/import-estate.ts",
     "check-import": "tsx scripts/check-import.ts",
     "reindex-search": "tsx --env-file-if-exists=.env src/reindex-search.ts",
-    "redact-change-events": "tsx --env-file-if-exists=.env src/redact-change-events.ts"
+    "redact-change-events": "tsx --env-file-if-exists=.env src/redact-change-events.ts",
+    "lint:fix": "oxlint --fix",
+    "test:oxlint": "oxlint"
   },
   "dependencies": {
     "@aws-sdk/client-sesv2": "^3.1136.0",

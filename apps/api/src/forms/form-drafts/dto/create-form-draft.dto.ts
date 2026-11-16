@@ -31,7 +31,8 @@ export class CreateFormDraftDto {
   formId!: string;
 
   @ApiProperty({
-    description: "Pin the draft to a specific form version. Defaults to the latest version.",
+    description:
+      "Pin the draft to a specific form version. Defaults to the latest version.",
     maxLength: 20,
     example: "1.0.0",
   })

@@ -1,5 +1,5 @@
-import { applyDecorators, Type } from '@nestjs/common';
-import { ApiExtraModels, ApiResponse, getSchemaPath } from '@nestjs/swagger';
+import { applyDecorators, Type } from "@nestjs/common";
+import { ApiExtraModels, ApiResponse, getSchemaPath } from "@nestjs/swagger";
 
 /**
  * Generates a typed `ApiResponseShape<T>` schema for Swagger responses.
@@ -10,7 +10,7 @@ import { ApiExtraModels, ApiResponse, getSchemaPath } from '@nestjs/swagger';
 export function ApiWrappedResponse<T extends Type<unknown>>({
   status = 200,
   type,
-  description = '',
+  description = "",
   isArray = false,
 }: {
   status?: number;
@@ -19,7 +19,7 @@ export function ApiWrappedResponse<T extends Type<unknown>>({
   isArray?: boolean;
 }) {
   const dataSchema = isArray
-    ? { type: 'array', items: { $ref: getSchemaPath(type) } }
+    ? { type: "array", items: { $ref: getSchemaPath(type) } }
     : { $ref: getSchemaPath(type) };
 
   return applyDecorators(
@@ -29,9 +29,9 @@ export function ApiWrappedResponse<T extends Type<unknown>>({
       description,
       schema: {
         properties: {
-          status: { type: 'string', enum: ['success', 'failed'] },
-          message: { type: 'string' },
-          statusCode: { type: 'number', example: status },
+          status: { type: "string", enum: ["success", "failed"] },
+          message: { type: "string" },
+          statusCode: { type: "number", example: status },
           data: dataSchema,
         },
       },

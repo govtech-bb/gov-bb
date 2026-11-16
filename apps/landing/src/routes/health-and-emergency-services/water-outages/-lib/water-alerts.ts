@@ -105,9 +105,8 @@ export async function postSubscribe(
 
 export const subscribeWaterAlerts = createServerFn({ method: 'POST' })
   .validator((raw: unknown) => raw as Record<string, unknown>)
-  .handler(
-    async ({ data }): Promise<SubscribeState> =>
-      postSubscribe(data, { apiBase: formsApiBase() }),
+  .handler(async ({ data }): Promise<SubscribeState> =>
+    postSubscribe(data, { apiBase: formsApiBase() }),
   )
 
 export type TokenOutcome = 'done' | 'already' | 'invalid' | 'unavailable'
@@ -137,16 +136,14 @@ export async function callTokenEndpoint(
 
 export const confirmSubscription = createServerFn({ method: 'GET' })
   .validator((raw: unknown) => (typeof raw === 'string' ? raw : ''))
-  .handler(
-    async ({ data }): Promise<TokenOutcome> =>
-      callTokenEndpoint('confirm', data, { apiBase: formsApiBase() }),
+  .handler(async ({ data }): Promise<TokenOutcome> =>
+    callTokenEndpoint('confirm', data, { apiBase: formsApiBase() }),
   )
 
 // POST from a button, not a page-load GET: mail scanners that pre-open every
 // link in an email must not unsubscribe the resident.
 export const unsubscribeSubscription = createServerFn({ method: 'POST' })
   .validator((raw: unknown) => (typeof raw === 'string' ? raw : ''))
-  .handler(
-    async ({ data }): Promise<TokenOutcome> =>
-      callTokenEndpoint('unsubscribe', data, { apiBase: formsApiBase() }),
+  .handler(async ({ data }): Promise<TokenOutcome> =>
+    callTokenEndpoint('unsubscribe', data, { apiBase: formsApiBase() }),
   )

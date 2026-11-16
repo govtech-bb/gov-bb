@@ -26,6 +26,8 @@
     "out/**",
     "src/routeTree.gen.ts",
     "src/api/openapi.d.ts",
-    ".tanstack/**"
+    ".tanstack/**",
+    // Prose, not code: the repo root's oxfmt config leaves Markdown alone too.
+    "**/*.md"
   ]
 }

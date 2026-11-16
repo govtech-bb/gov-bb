@@ -12,19 +12,6 @@
         "tsConfig": "packages/form-builder/tsconfig.json",
         "main": "packages/form-builder/src/index.ts"
       }
-    },
-    "test": {
-      "executor": "nx:run-commands",
-      "options": {
-        "command": "vitest run",
-        "cwd": "packages/form-builder"
-      }
-    },
-    "lint": {
-      "executor": "@nx/eslint:lint",
-      "options": {
-        "lintFilePatterns": ["packages/form-builder/**/*.ts"]
-      }
     }
   },
   "tags": []

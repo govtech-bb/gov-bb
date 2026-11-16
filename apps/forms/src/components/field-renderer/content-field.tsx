@@ -1,4 +1,4 @@
-import { JSX } from "react";
+import type { JSX } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import type { ClientPrimitive } from "@forms/types";

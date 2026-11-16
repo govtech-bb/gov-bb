@@ -59,9 +59,10 @@ vi.mock('../lib/preview-form-access', () => accessMocks)
 // api_v2 is asked first (#2944); a miss falls back to the registry, so the
 // static-page tests above keep their behaviour.
 const v2Mocks = vi.hoisted(() => ({
-  getApiV2Page: vi.fn(
-    async (): Promise<unknown> => ({ kind: 'miss', reason: 'not_found' }),
-  ),
+  getApiV2Page: vi.fn(async (): Promise<unknown> => ({
+    kind: 'miss',
+    reason: 'not_found',
+  })),
 }))
 vi.mock('../lib/api-v2-page', async (importOriginal) => ({
   ...(await importOriginal<object>()),

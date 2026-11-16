@@ -685,7 +685,17 @@ jobs:
 
   summary:
     name: Deployment summary
-    needs: [setup, deploy-api, ssr-smoke, amplify-forms, amplify-landing, amplify-feature-flagging, smoke-test-forms, journey-5-payments]
+    needs:
+      [
+        setup,
+        deploy-api,
+        ssr-smoke,
+        amplify-forms,
+        amplify-landing,
+        amplify-feature-flagging,
+        smoke-test-forms,
+        journey-5-payments,
+      ]
     if: always()
     runs-on: ubuntu-latest
     steps:

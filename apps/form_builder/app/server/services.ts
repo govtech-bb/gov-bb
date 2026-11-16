@@ -149,9 +149,9 @@ export const loadServiceSource = createServerFn({
     );
     const pendingConfig: ServiceSnapshot["pendingConfig"] = formId
       ? await api
-          .get<
-            ServiceSnapshot["pendingConfig"]
-          >(`/builder/forms/${formId}/config`)
+          .get<ServiceSnapshot["pendingConfig"]>(
+            `/builder/forms/${formId}/config`,
+          )
           .catch(() => ({ mdaContactId: null, processors: null }))
       : { mdaContactId: null, processors: null };
     // A published manifest is authored fact; a new one is seeded with what the

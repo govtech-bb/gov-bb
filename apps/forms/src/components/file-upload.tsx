@@ -1,6 +1,6 @@
 import React from "react";
 import { Button, FileUpload as GovFileUpload } from "@govtech-bb/react";
-import { FileUploadProps, UploadedFile } from "@forms/types";
+import type { FileUploadProps, UploadedFile } from "@forms/types";
 import ErrorMessage from "./error-message";
 import { optionalSuffix } from "./field-renderer/optional-suffix";
 import { trackEvent } from "../lib/analytics";

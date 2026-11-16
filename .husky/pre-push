@@ -9,7 +9,7 @@
 #
 # Local quick-feedback still lives in:
 #   - .husky/pre-commit (lint-staged + gitleaks on staged files)
-#   - `pnpm exec nx affected -t typecheck` when you want a focused check
+#   - `pnpm test:types` when you want a focused check
 #
 # To restore the full pre-push check, add back the `tsc -b` line.
 

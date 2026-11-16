@@ -6,7 +6,9 @@ import { FORMS_BASE_URL } from '@/config/env'
 import { withJourneyId } from '@/lib/analytics'
 
 // Live form ids, resolved server-side per request (see lib/available-forms.ts).
-export const AvailableFormsContext = createContext<ReadonlySet<string>>(new Set())
+export const AvailableFormsContext = createContext<ReadonlySet<string>>(
+  new Set(),
+)
 
 // Hand this tab's journey ID to the forms app, which is on another origin and
 // can't read landing's sessionStorage. Added when the link is clicked (auxclick
