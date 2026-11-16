@@ -88,6 +88,14 @@ export function createPool(
   }
 }
 
+/** Boot migration queries have ten minutes on both the driver and PostgreSQL. */
+export function createMigrationPool(
+  config: AppConfig["database"],
+  logger: Pick<Logger, "warn">,
+): Result<Pool, DatabaseFailure> {
+  return createPool(config, logger, { queryTimeoutMs: 10 * 60_000 });
+}
+
 /** Verify the shared pool before constructing adapters or accepting requests. */
 export async function connect(
   pool: Pool,

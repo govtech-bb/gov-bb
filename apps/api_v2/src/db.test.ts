@@ -3,7 +3,13 @@ import pino from "pino";
 import { Client } from "pg";
 import { describe, expect, it, vi } from "vitest";
 import type { DatabaseConfig } from "./config";
-import { connect, createPool, ping, type Database } from "./db";
+import {
+  connect,
+  createPool,
+  createMigrationPool,
+  ping,
+  type Database,
+} from "./db";
 import { Redacted } from "./modules/redacted";
 import type { Result } from "./modules/result";
 import { createEmptyDb, TEST_SERVER } from "./test-db";
@@ -133,6 +139,30 @@ describe("database setup", () => {
     } finally {
       await unlimited.end();
       await limited.end();
+    }
+  });
+
+  it("gives boot migrations ten minutes on the client and server", async () => {
+    const test = await createEmptyDb();
+    const pool = value(
+      createMigrationPool(
+        {
+          ...TEST_SERVER,
+          password: new Redacted(TEST_SERVER.password),
+          database: test.name,
+          production: false,
+        },
+        pino({ enabled: false }),
+      ),
+    );
+    try {
+      expect(pool.options.query_timeout).toBe(600_000);
+      expect((await pool.query("show statement_timeout")).rows).toEqual([
+        { statement_timeout: "10min" },
+      ]);
+    } finally {
+      await pool.end();
+      await test.close();
     }
   });
 

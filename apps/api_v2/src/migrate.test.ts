@@ -1,14 +1,3 @@
-/**
- * What the migrations owe the server that runs them at boot: they build the
- * schema, a second run applies nothing, instances booting together take
- * turns, and a database the hand-written runner migrated is taken over
- * without being rebuilt. And what they owe `schema.ts`: it never changes
- * without one.
- *
- * The rest are the triggers of `migrations/0001_triggers.sql`, which no
- * Drizzle type describes, so only their behaviour can be checked.
- */
-
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { sql } from "drizzle-orm";
@@ -22,11 +11,40 @@ import { createEmptyDb } from "./test-db";
 
 const JOURNAL = readJournal();
 const ALL = JOURNAL.map((entry) => entry.tag);
+const LEGACY_MIGRATIONS = [
+  "001_init",
+  "002_markdown_pages",
+  "003_auth",
+  "004_github_sessions",
+  "005_hierarchy_and_search",
+  "006_change_action_unpublished",
+  "007_change_history_trigger",
+  "008_user_roles",
+  "009_default_editor_role",
+  "010_page_revisions",
+  "011_revision_review",
+  "012_change_action_review",
+  "013_review_history_trigger",
+  "014_data_collections",
+  "015_revision_discarded",
+  "016_content_updated_at",
+  "017_change_events_no_truncate",
+  "018_snapshot_version",
+  "019_change_events_redaction",
+  "020_google_sessions",
+  "021_github_accounts",
+  "022_restored_from",
+  "023_change_event_counters",
+  "024_edit_versions",
+  "025_page_redirects",
+  "026_change_event_order",
+];
 
 /** Tables whose rows are not content, so the history does not record them. */
 const UNAUDITED = new Set([
   "change_event_counters",
   "change_events",
+  "schema_migrations",
   "search_chunks",
   "user_roles",
 ]);
@@ -48,7 +66,6 @@ const tableNames = async (db: Database) => {
     .map((row) => row.table_name);
 };
 
-/** What Drizzle's ledger holds: the journal time of each migration applied. */
 const ledger = async (exec: (script: string) => Promise<{ rows: unknown[] }>) =>
   z
     .array(z.object({ created_at: z.coerce.number() }))
@@ -80,6 +97,7 @@ describe("migrate", () => {
       "data_collections",
       "page_redirects",
       "page_revisions",
+      "schema_migrations",
       "search_chunks",
       "user_roles",
     ]);
@@ -88,6 +106,21 @@ describe("migrate", () => {
     ]);
     expect(await ledger(exec)).toEqual(JOURNAL.map((entry) => entry.when));
     await close();
+  });
+
+  it("marks legacy migrations as applied on a fresh database, so a rollback cannot replay them", async () => {
+    const { pool, exec, close } = await freshDb();
+    try {
+      await migrate(pool);
+
+      expect(
+        (
+          await exec("select name from schema_migrations order by name")
+        ).rows.map((row) => row.name),
+      ).toEqual(LEGACY_MIGRATIONS);
+    } finally {
+      await close();
+    }
   });
 
   it("runs a second time without error and applies nothing", async () => {
@@ -116,29 +149,67 @@ describe("migrate", () => {
     }
   });
 
-  it("takes over a database the hand-written runner migrated, without rebuilding it", async () => {
+  it("takes over a legacy database and applies only later migrations", async () => {
     const { pool, exec, close } = await freshDb();
     try {
-      // As that runner left it: these tables, recorded in its own ledger.
-      await migrate(pool);
-      await exec(`drop schema drizzle cascade;
-        create table schema_migrations (name text primary key, applied_at timestamptz not null default now());
-        insert into schema_migrations (name) values ('025_page_redirects'), ('026_change_event_order');
-        insert into content_pages (url, slug, title, body_markdown) values ('/kept', 'kept', 'Kept', '')`);
-
-      expect(await migrate(pool)).toEqual([]);
-
-      expect(await ledger(exec)).toEqual(
-        JOURNAL.slice(0, 2).map((entry) => entry.when),
+      // Only these two migrations describe the legacy schema.
+      for (const tag of ["0000_baseline", "0001_triggers"])
+        await exec(readFileSync(join(MIGRATIONS_FOLDER, `${tag}.sql`), "utf8"));
+      await exec(
+        "create table schema_migrations (name text primary key, applied_at timestamptz not null default now())",
       );
+      await pool.query(
+        "insert into schema_migrations (name) select unnest($1::text[])",
+        [LEGACY_MIGRATIONS],
+      );
+      await exec(`insert into content_pages (url, slug, title, body_markdown)
+        values ('/kept', 'kept', 'Kept', '')`);
+      const history = (await exec("select * from change_events")).rows;
+      const legacyLedger = (
+        await exec("select * from schema_migrations order by name")
+      ).rows;
+
+      expect(await migrate(pool)).toEqual(ALL.slice(2));
+
+      expect(await ledger(exec)).toEqual(JOURNAL.map((entry) => entry.when));
       expect((await exec("select url from content_pages")).rows).toEqual([
         { url: "/kept" },
       ]);
-      // Still there, so a rollback to that runner replays nothing.
+      expect((await exec("select * from change_events")).rows).toEqual(history);
       expect(
-        (await exec("select count(*)::int as n from schema_migrations")).rows,
-      ).toEqual([{ n: 2 }]);
+        (await exec("select * from schema_migrations order by name")).rows,
+      ).toEqual(legacyLedger);
       expect(await migrate(pool)).toEqual([]);
+    } finally {
+      await close();
+    }
+  });
+
+  it("rolls back the pending batch and releases the lock when a later migration fails", async () => {
+    const { db, pool, exec, close } = await freshDb();
+    try {
+      await exec(`create function record_change() returns trigger
+        language plpgsql as 'begin return null; end;'`);
+
+      await expect(migrate(pool)).rejects.toMatchObject({
+        cause: { code: "42723" },
+      });
+      expect(await tableNames(db)).toEqual([]);
+      expect(await ledger(exec)).toEqual([]);
+      expect(
+        (await exec("select to_regtype('change_action') as enum")).rows,
+      ).toEqual([{ enum: null }]);
+      expect(
+        (
+          await exec(`select count(*)::int as held from pg_locks
+          where locktype = 'advisory'
+            and database = (select oid from pg_database where datname = current_database())`)
+        ).rows,
+      ).toEqual([{ held: 0 }]);
+
+      await exec("drop function record_change()");
+      expect(await migrate(pool)).toEqual(ALL);
+      expect(await ledger(exec)).toEqual(JOURNAL.map((entry) => entry.when));
     } finally {
       await close();
     }
@@ -161,6 +232,25 @@ describe("migrate", () => {
     }
   });
 
+  it("refuses an unapplied migration older than the database head, even when the journal is sorted", async () => {
+    const { pool, exec, close } = await freshDb();
+    try {
+      await migrate(pool);
+      // The ledger shape of a migration merged before an already-applied entry.
+      await exec(`delete from drizzle.__drizzle_migrations
+        where created_at = (select min(created_at) from drizzle.__drizzle_migrations)`);
+      const before = await ledger(exec);
+
+      await expect(migrate(pool)).rejects.toMatchObject({
+        code: "MIGRATION_JOURNAL_GAP",
+        message: expect.stringContaining("0000_baseline"),
+      });
+      expect(await ledger(exec)).toEqual(before);
+    } finally {
+      await close();
+    }
+  });
+
   it("has a migration for every change to schema.ts", async () => {
     const latest = JOURNAL.at(-1)?.tag.slice(0, 4);
     const snapshot = JSON.parse(
@@ -170,19 +260,18 @@ describe("migrate", () => {
       ),
     );
 
-    // The SQL `pnpm db:generate` would write. If this lists any, run it.
-    expect(
-      await generateMigration(
-        snapshot,
-        generateDrizzleJson(schema, snapshot.id),
-      ),
-    ).toEqual([]);
+    const instruction =
+      "Schema drift check failed. Run `pnpm db:generate` in apps/api_v2.";
+    const migration = await generateMigration(
+      snapshot,
+      generateDrizzleJson(schema, snapshot.id),
+    ).catch((cause: unknown) => {
+      throw new Error(instruction, { cause });
+    });
+    expect(migration, instruction).toEqual([]);
   });
 
   it("dates every migration after the one before it", () => {
-    // Drizzle applies only what the journal dates after the newest migration
-    // it has recorded. One generated on a branch and merged after a later one
-    // would be skipped wherever the later one has run: generate it again.
     const times = JOURNAL.map((entry) => entry.when);
     expect(times).toEqual([...new Set(times)].sort((a, b) => a - b));
   });

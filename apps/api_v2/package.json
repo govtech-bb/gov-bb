@@ -33,7 +33,7 @@
     "@govtech-bb/content": "workspace:*",
     "@types/node": "^24.0.0",
     "@types/pg": "^8.20.0",
-    "drizzle-kit": "^0.31.10",
+    "drizzle-kit": "0.31.10",
     "gray-matter": "^4.0.3",
     "tsx": "^4.22.3",
     "typescript": "catalog:",

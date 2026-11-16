@@ -15,6 +15,13 @@
       "when": 1794854921020,
       "tag": "0001_triggers",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1794857240264,
+      "tag": "0002_legacy_rollback",
+      "breakpoints": true
     }
   ]
 }

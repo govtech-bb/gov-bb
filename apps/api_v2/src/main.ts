@@ -11,7 +11,13 @@ import { PostgresReviewRecipients } from "./adapters/postgres-review-recipients"
 import { moveEmails } from "./adapters/postgres-email-moves";
 import { PostgresRoles } from "./adapters/postgres-roles";
 import { parseConfig } from "./config";
-import { connect, createPool, ping, type DatabaseFailure } from "./db";
+import {
+  connect,
+  createPool,
+  createMigrationPool,
+  ping,
+  type DatabaseFailure,
+} from "./db";
 import { migrate } from "./migrate";
 import { authBypass, registerBypassEmployee } from "./adapters/auth-bypass";
 import type { AuthHandler } from "./routes/auth";
@@ -30,8 +36,6 @@ import { seed } from "./seed";
 
 /** A request's query fails after this long, so a quiet database answers 500 rather than hanging (#2845). */
 const QUERY_TIMEOUT_MS = 5_000;
-/** A boot migration's own limit, in place of the request one. */
-const MIGRATION_TIMEOUT_MS = 10 * 60_000;
 
 const logger = pino({
   redact: [
@@ -96,10 +100,7 @@ async function main(): Promise<void> {
     if (!connected.ok) return refuseToStart(connected.error);
     const db = connected.value;
     operation = "migrate";
-    // pg takes a query's limit from its pool, so the migrations get their own.
-    const migrating = createPool(config.database, logger, {
-      queryTimeoutMs: MIGRATION_TIMEOUT_MS,
-    });
+    const migrating = createMigrationPool(config.database, logger);
     if (!migrating.ok) return refuseToStart(migrating.error);
     let ran: string[];
     try {

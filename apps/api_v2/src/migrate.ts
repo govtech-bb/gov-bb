@@ -1,17 +1,3 @@
-/**
- * The migration runner: Drizzle's migrator, run at boot.
- *
- * `migrations/` holds what `pnpm db:generate` writes from `schema.ts`, and
- * hand-written SQL for what a Drizzle schema cannot describe (triggers,
- * functions, data fixes). Drizzle records what has run in
- * `drizzle.__drizzle_migrations` and applies the rest in one transaction, so
- * a boot lands every pending migration or none of them.
- *
- * Drizzle's migrator takes no lock, so two instances booting together would
- * both apply the same migration. Here they take turns: the run holds an
- * advisory lock on the one connection it uses.
- */
-
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { readMigrationFiles } from "drizzle-orm/migrator";
@@ -27,7 +13,7 @@ const Journal = z.object({
   entries: z.array(z.object({ tag: z.string(), when: z.number() })),
 });
 
-/** The migrations in the order they apply, as drizzle-kit's journal lists them. */
+/** Drizzle identifies pending migrations by timestamp, not filename. */
 export function readJournal() {
   const journal = readFileSync(
     join(MIGRATIONS_FOLDER, "meta", "_journal.json"),
@@ -36,24 +22,15 @@ export function readJournal() {
   return Journal.parse(JSON.parse(journal)).entries;
 }
 
-/** Serialises instances that boot together; released when its connection ends. */
+// Drizzle takes no lock; keep the old runner's key to serialize mixed-version boots.
 const LOCK = "select pg_advisory_lock(hashtext('api_v2 migrations'))";
 
 /** The last migration of the hand-written runner this one replaced. */
 const LEGACY_HEAD = "026_change_event_order";
-/** How many of ours build what that runner's 26 left: the baseline and its triggers. */
+// The baseline and triggers replace legacy migrations 001 through 026.
 const LEGACY_EQUIVALENT = 2;
 
-/**
- * Hands a database the previous runner migrated over to Drizzle. Its tables
- * already hold everything our first migrations create, so those are recorded
- * as applied instead of run. `schema_migrations` stays, so a rollback to the
- * previous runner finds its own work done instead of replaying it over live
- * content.
- *
- * Delete this once every database has booted on it, and drop
- * `schema_migrations` in a migration when no release can roll back that far.
- */
+/** Skip the baseline on legacy databases; keep their ledger for rollbacks. */
 async function adoptLegacyDatabase(client: PoolClient): Promise<void> {
   const { rows } = await client.query<{ legacy: boolean; adopted: boolean }>(
     `select to_regclass('schema_migrations') is not null as legacy,
@@ -74,8 +51,7 @@ async function adoptLegacyDatabase(client: PoolClient): Promise<void> {
   const baseline = readMigrationFiles({ migrationsFolder: MIGRATIONS_FOLDER })
     .slice(0, LEGACY_EQUIVALENT)
     .map(({ hash, folderMillis }) => `('${hash}', ${folderMillis})`);
-  // One script is one transaction, so the ledger never exists without its
-  // rows. The table is as drizzle-orm creates it.
+  // One implicit transaction: never leave an empty ledger that looks adopted.
   await client.query(`
     create schema if not exists drizzle;
     create table drizzle.__drizzle_migrations (
@@ -85,37 +61,45 @@ async function adoptLegacyDatabase(client: PoolClient): Promise<void> {
       values ${baseline.join(", ")};`);
 }
 
-/** The journal time of the newest migration Drizzle has recorded; 0 for none. */
-async function lastApplied(client: PoolClient): Promise<number> {
+/** Recorded journal times, including entries absent from an older release. */
+async function readAppliedMigrationTimes(
+  client: PoolClient,
+): Promise<Set<number>> {
   const ledger = await client.query<{ exists: boolean }>(
     "select to_regclass('drizzle.__drizzle_migrations') is not null as exists",
   );
-  if (!ledger.rows[0]?.exists) return 0;
-  const { rows } = await client.query<{ at: string | null }>(
-    "select max(created_at) as at from drizzle.__drizzle_migrations",
+  if (!ledger.rows[0]?.exists) return new Set();
+  const { rows } = await client.query<{ created_at: string }>(
+    "select created_at from drizzle.__drizzle_migrations",
   );
-  return Number(rows[0]?.at ?? 0);
+  return new Set(rows.map(({ created_at }) => Number(created_at)));
 }
 
-/**
- * Apply the pending migrations and name them. The pool's query limits apply,
- * so a caller serving requests migrates on a pool with a limit of its own.
- */
+/** Apply pending migrations in one transaction, using the pool's query limits. */
 export async function migrate(pool: Pool): Promise<string[]> {
   const journal = readJournal();
   const client = await pool.connect();
   try {
     await client.query(LOCK);
     await adoptLegacyDatabase(client);
-    // Drizzle applies whatever the journal dates after the newest it recorded.
-    const applied = await lastApplied(client);
+    const applied = await readAppliedMigrationTimes(client);
+    const latest = Math.max(0, ...applied);
+    const skipped = journal.find(
+      ({ when }) => when <= latest && !applied.has(when),
+    );
+    if (skipped)
+      throw Object.assign(
+        new Error(
+          `Migration journal would skip ${skipped.tag}; resolve the migration history before starting this release.`,
+        ),
+        { code: "MIGRATION_JOURNAL_GAP" },
+      );
     await applyPending(drizzle(client), {
       migrationsFolder: MIGRATIONS_FOLDER,
     });
-    return journal.filter(({ when }) => when > applied).map(({ tag }) => tag);
+    return journal.filter(({ when }) => when > latest).map(({ tag }) => tag);
   } finally {
-    // Not back to the pool: ending the session is what releases the lock,
-    // and takes with it anything a failed run left open.
+    // Close the session to release its lock and any unfinished transaction.
     client.release(true);
   }
 }

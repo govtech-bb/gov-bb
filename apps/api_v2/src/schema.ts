@@ -1,18 +1,9 @@
 /**
- * The Drizzle schema: the source of truth for every table, column, key, index,
- * enum and sequence. Change it here, then run `pnpm db:generate` to have
- * drizzle-kit write the migration into `migrations/`; `migrate.test.ts` fails
- * while a change here has none. BetterAuth reads and writes its four `auth_*`
- * tables through these definitions; their property keys are BetterAuth's
- * field names.
+ * Run `pnpm db:generate` after schema changes. Triggers and functions need
+ * custom SQL migrations (`pnpm db:generate --custom`).
  *
- * Triggers and functions are not Drizzle's to describe. They live in
- * hand-written migrations (`pnpm db:generate --custom`), starting with
- * `migrations/0001_triggers.sql`.
- *
- * Every key is named here (`_pkey`, `_key`, `_fkey`) rather than left to
- * drizzle-kit's defaults, because the adapters tell violations apart by
- * constraint name.
+ * Constraint names must match existing databases: adapters use them to
+ * identify violations. The `auth_*` property keys are BetterAuth's field names.
  *
  * `content_pages.body_markdown` is the page body, stored as written; the site
  * sanitises and renders it. The block document of

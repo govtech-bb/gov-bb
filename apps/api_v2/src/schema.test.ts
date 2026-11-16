@@ -1,15 +1,3 @@
-/**
- * "When migrations are pushed, then the resulting tables match the schema
- * column for column" — #2700.
- *
- * The migrations are generated from `schema.ts`, and `migrate.test.ts` fails
- * when it has a change they lack. This is the same promise checked from the
- * other end: the migrations run against a real Postgres, hand-written ones
- * included, and the tables they leave are compared to the Drizzle ones by
- * reading `information_schema`. The rest is what the schema must do, not
- * only declare.
- */
-
 import { getTableColumns } from "drizzle-orm";
 import { sql } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
