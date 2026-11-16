@@ -282,7 +282,7 @@
             ],
             "validations": {
               "required": {
-                "error": "NIS Number is required",
+                "error": "Select whether you have a National Insurance number (NIS)",
                 "value": true
               }
             }
@@ -307,7 +307,7 @@
             ],
             "validations": {
               "required": {
-                "error": "NIS Number is required",
+                "error": "National Insurance number (NIS) is required",
                 "value": true
               }
             }
@@ -1027,7 +1027,13 @@
                 "operator": "equal",
                 "targetFieldId": "has-previous-paid-job"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Name of employer is required"
+              }
+            }
           }
         },
         {
@@ -1042,7 +1048,13 @@
                 "operator": "equal",
                 "targetFieldId": "has-previous-paid-job"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Occupation is required"
+              }
+            }
           }
         },
         {
@@ -1412,5 +1424,5 @@
     }
   ],
   "createdAt": "2026-06-09T17:09:06.077Z",
-  "updatedAt": "2026-10-21T16:52:59.000Z"
+  "updatedAt": "2026-11-16T10:40:13.993Z"
 }

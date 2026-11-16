@@ -274,7 +274,12 @@
           "overrides": {
             "hint": "Please enter your religion if you wish to share.",
             "label": "Religion",
-            "fieldId": "applicant-religion"
+            "fieldId": "applicant-religion",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -406,7 +411,12 @@
                 "operator": "equal",
                 "targetFieldId": "applicant-highest-qualification"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         }
       ]
@@ -426,7 +436,12 @@
                 "label": "Asthma",
                 "value": "asthma"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -439,7 +454,12 @@
                 "label": "Epilepsy",
                 "value": "epilepsy"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -452,7 +472,12 @@
                 "label": "Hypertension",
                 "value": "hypertension"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -465,7 +490,12 @@
                 "label": "Diabetes",
                 "value": "diabetes"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -478,7 +508,12 @@
                 "label": "Allergies",
                 "value": "allergies"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -491,7 +526,12 @@
                 "label": "Physical Disability",
                 "value": "physical-disability"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -504,7 +544,12 @@
                 "label": "Learning Disability",
                 "value": "learning-disability"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -517,7 +562,12 @@
                 "label": "Behavioural Challenge",
                 "value": "behavioural-challenge"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -530,7 +580,12 @@
                 "label": "Mental Health Challenge",
                 "value": "mental-health-challenge"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -543,7 +598,12 @@
                 "label": "None of the above",
                 "value": "none"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -697,7 +757,7 @@
   "title": "Digital Media Training Programme – Application Form",
   "formId": "digital-media-training-programme-application",
   "createdAt": "2026-01-01T00:00:00Z",
-  "updatedAt": "2026-10-21T16:52:59.000Z",
+  "updatedAt": "2026-11-16T10:40:13.993Z",
   "processors": [
     {
       "type": "email",

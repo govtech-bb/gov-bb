@@ -329,7 +329,12 @@
                 "label": "Employed (Full-time)",
                 "value": "employed-fulltime"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -342,7 +347,12 @@
                 "label": "Employed (Part-time)",
                 "value": "employed-parttime"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -355,7 +365,12 @@
                 "label": "Self-employed",
                 "value": "self-employed"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -368,7 +383,12 @@
                 "label": "Unemployed",
                 "value": "unemployed"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -381,7 +401,12 @@
                 "label": "In School (Full-time)",
                 "value": "in-school-fulltime"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -394,7 +419,12 @@
                 "label": "In School (Part-time)",
                 "value": "in-school-parttime"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -547,8 +577,7 @@
             ],
             "validations": {
               "required": {
-                "error": "Please indicate your medical conditions or select None",
-                "value": true
+                "value": false
               }
             }
           }
@@ -563,7 +592,12 @@
                 "label": "Epilepsy",
                 "value": "epilepsy"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -576,7 +610,12 @@
                 "label": "Hypertension",
                 "value": "hypertension"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -589,7 +628,12 @@
                 "label": "Diabetes",
                 "value": "diabetes"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -602,7 +646,12 @@
                 "label": "Allergies",
                 "value": "allergies"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -615,7 +664,12 @@
                 "label": "Physical Disability",
                 "value": "physical-disability"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -628,7 +682,12 @@
                 "label": "Learning Disability",
                 "value": "learning-disability"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -641,7 +700,12 @@
                 "label": "Behavioural Challenges",
                 "value": "behavioural-challenges"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -654,7 +718,12 @@
                 "label": "Mental Health Challenges",
                 "value": "mental-health-challenges"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -667,7 +736,12 @@
                 "label": "None",
                 "value": "none"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -905,7 +979,7 @@
   "title": "Pathways Employability Programme: Application Form (2026)",
   "formId": "pathways-employability-programme-application-2026",
   "createdAt": "2026-01-01T00:00:00Z",
-  "updatedAt": "2026-10-21T16:52:59.000Z",
+  "updatedAt": "2026-11-16T10:40:13.993Z",
   "processors": [
     {
       "type": "email",
