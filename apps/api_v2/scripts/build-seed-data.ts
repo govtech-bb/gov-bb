@@ -12,8 +12,8 @@
  *   page is filed under its subcategory when it names one. A sub-page such
  *   as `<service>/start` hangs off its parent's url, takes its parent's
  *   category and records the parent; so do the pages landing nests without
- *   nesting their url (`NESTED_WITHOUT_URL`). A second category is dropped:
- *   a page has one `category_id`. `content_slug` is the markdown path
+ *   nesting their url (`NESTED_WITHOUT_URL`). A page that names a second
+ *   category fails the build: a page has one `category_id`. `content_slug` is the markdown path
  *   landing's registry keys the page by, `index.md`/`.md` stripped.
  * - categories: `CATEGORY_TAXONOMY` in its order, each subcategory a
  *   category with a parent.
@@ -31,6 +31,7 @@ import { CATEGORY_TAXONOMY } from "@govtech-bb/content/categories";
 import type { Frontmatter } from "../src/modules/page";
 import type { SeedEstate, SeedPage } from "../src/seed-data";
 import { convertStormReadyContacts } from "../src/seed-data/stormready-contacts";
+import { pageCategory } from "../src/seed-data/page-category";
 
 const root = join(__dirname, "..", "..", "..");
 const contentDir = join(root, "apps", "landing", "src", "content");
@@ -78,13 +79,7 @@ const parsed: Parsed[] = markdownFiles(contentDir).map((path) => {
     .replace(/\/index\.md$/, "")
     .replace(/\.md$/, "");
   const { data, content } = matter(readFileSync(path, "utf8"));
-  const categories = [
-    ...new Set<string>([
-      ...(data.category ? [data.category] : []),
-      ...(data.categories ?? []),
-    ]),
-  ];
-  const primary = categories[0];
+  const primary = pageCategory(slug, data);
   const subcategory: string | undefined = data.subcategory;
 
   // landing's `leafFromSlug`: nesting on disk under the category (and
