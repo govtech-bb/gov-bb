@@ -28,7 +28,8 @@ export interface CachedEntry<T> {
  * Resolve a cached value through a fixed set of freshness/fallback rules:
  *
  * - Fresh (younger than `ttlMs`): return the cached value, no fetch.
- * - Stale: refetch, update the cache, return the new value.
+ * - Stale: refetch, update the cache, return the new value. Concurrent callers
+ *   share one in-flight refresh, including cold-start retries and backoff.
  * - Fetch fails with a cached value present: return the last-known-good value,
  *   re-stamped with `now` so a down API isn't re-fetched (and blocked on the
  *   full timeout) on every request — it gets a fresh `ttlMs` cooldown.
@@ -41,6 +42,7 @@ export interface CachedEntry<T> {
  * `sleep` are injected so behaviour can be tested without the network or timers.
  */
 export async function resolveCachedValue<T>({
+  cache,
   now,
   ttlMs,
   fetcher,
@@ -51,6 +53,8 @@ export async function resolveCachedValue<T>({
   sleep = defaultSleep,
   onFetchFailure,
 }: {
+  /** Reuse the same holder for every caller of this feed. */
+  cache: { inFlight?: Promise<T> }
   now: number
   ttlMs: number
   fetcher: () => Promise<T>
@@ -70,24 +74,34 @@ export async function resolveCachedValue<T>({
     return cached.value
   }
 
-  const maxAttempts = cached ? 1 : 1 + Math.max(0, coldStartRetries)
-  let lastErr: unknown
-  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    try {
-      const value = await fetcher()
-      setCached({ value, fetchedAt: now })
-      return value
-    } catch (err) {
-      lastErr = err
-      if (attempt < maxAttempts) await sleep(retryDelayMs(attempt))
+  if (cache.inFlight) return cache.inFlight
+
+  cache.inFlight = (async () => {
+    const maxAttempts = cached ? 1 : 1 + Math.max(0, coldStartRetries)
+    let lastErr: unknown
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        const value = await fetcher()
+        setCached({ value, fetchedAt: now })
+        return value
+      } catch (err) {
+        lastErr = err
+        if (attempt < maxAttempts) await sleep(retryDelayMs(attempt))
+      }
     }
-  }
 
-  if (cached) {
-    setCached({ value: cached.value, fetchedAt: now })
-    return cached.value
-  }
+    if (cached) {
+      setCached({ value: cached.value, fetchedAt: now })
+      return cached.value
+    }
 
-  onFetchFailure?.(lastErr)
-  return emptyValue
+    onFetchFailure?.(lastErr)
+    return emptyValue
+  })()
+
+  try {
+    return await cache.inFlight
+  } finally {
+    cache.inFlight = undefined
+  }
 }
