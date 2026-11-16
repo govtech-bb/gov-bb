@@ -449,8 +449,9 @@ rules.
 
 #### Redirect rollout and rollback
 
-Merging API changes into `v2-rewrite` triggers
-[Deploy api_v2 to Sandbox](../../.github/workflows/deploy-api-v2-sandbox.yml).
+Merging API changes into `main` runs
+[Deploy api_v2 to Sandbox](../../.github/workflows/deploy-api-v2-sandbox.yml)
+from Deploy Sandbox.
 Agree the cutover window before merging; a rolling deployment alone does not
 stop an old instance from accepting edits.
 

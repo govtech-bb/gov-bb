@@ -4,36 +4,24 @@ name: Deploy editor_v2 to Sandbox
 # (https://editor-v2.sandbox.alpha.gov.bb). Infrastructure: alpha-infra
 # environments/sandbox/modular-forms-sandbox/amplify-editor-v2.tf (gov-bb#2962).
 #
-# The Amplify branch has auto-build OFF on purpose, so a push to v2-rewrite
-# builds nothing by itself. This workflow is what deploys the editor: it
-# starts a RELEASE build of the pushed commit, but only when something the
-# editor is built from changed (the `paths` below, same pattern as
-# deploy-api-v2-sandbox.yml). Run it by hand to rebuild without a change.
+# The editor builds from the Amplify app's `sandbox` branch, which has
+# auto-build OFF, so moving the `sandbox` pointer builds nothing by itself.
+# This workflow is what deploys the editor: it starts a RELEASE build of the
+# merged commit.
 #
-# Lives on v2-rewrite for the same reason as the api_v2 workflow: the file has
-# to exist on the branch that is pushed.
+# Reusable: deploy-sandbox.yml calls it (job `deploy-editor-v2`) on a merge to
+# main when nx marks editor_v2 as affected (or amplify.yml changed), after its
+# advance-sandbox job has moved the `sandbox` branch to that commit (#3119).
+# Run it by hand from main to rebuild without a change.
 #
 # The editor's prose template uses the shared Markdown dialect and the
 # design-system packages installed from the lockfile.
 #
 # Role: api-v2-github-actions-sandbox, which trusts gov-bb v2-rewrite and main
-# and may start/read jobs on this one Amplify branch only (alpha-infra#738).
+# and may start/read jobs on this app's `sandbox` branch (alpha-infra#738).
 
 on:
-  push:
-    branches: [v2-rewrite]
-    paths:
-      - "apps/editor_v2/**"
-      - "packages/govbbmarkd/**"
-      - "nx.json"
-      - "tsconfig.base.json"
-      - "tsconfig.json"
-      - "amplify.yml"
-      - "pnpm-lock.yaml"
-      - "pnpm-workspace.yaml"
-      - "package.json"
-      - ".nvmrc"
-      - ".github/workflows/deploy-editor-v2-sandbox.yml"
+  workflow_call:
   workflow_dispatch:
 
 permissions:
@@ -49,7 +37,7 @@ env:
   AWS_REGION: ca-central-1
   AWS_ROLE_ARN: arn:aws:iam::672203047922:role/api-v2-github-actions-sandbox
   AMPLIFY_APP_ID: d2bjaphcrcz9hl
-  AMPLIFY_BRANCH: v2-rewrite
+  AMPLIFY_BRANCH: sandbox
   APP_URL: https://editor-v2.sandbox.alpha.gov.bb
 
 jobs:
