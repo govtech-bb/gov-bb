@@ -553,6 +553,9 @@ importers:
       '@types/pg':
         specifier: ^8.20.0
         version: 8.20.0
+      drizzle-kit:
+        specifier: 0.31.10
+        version: 0.31.10
       gray-matter:
         specifier: ^4.0.3
         version: 4.0.3(patch_hash=4d3db6bd874f6db0fc4f9cb2b372ae022909b4f438a48cba722896f7bf5d305a)
@@ -693,7 +696,7 @@ importers:
         specifier: ^17.4.2
         version: 17.4.2
       drizzle-kit:
-        specifier: ^0.31.10
+        specifier: 0.31.10
         version: 0.31.10
       nitro:
         specifier: 3.0.260429-beta

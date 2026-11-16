@@ -62,7 +62,7 @@ describe.skipIf(!HAS_DATABASE)("api_v2 GET /pages query count", () => {
     const connected = await connect(pool, config.value.database);
     if (!connected.ok) throw connected.error;
     const db = connected.value;
-    await migrate(db, (script) => pool.query(script));
+    await migrate(pool);
     await seed(db);
     app = await createTestApp(db);
   });
