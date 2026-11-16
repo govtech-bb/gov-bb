@@ -7,23 +7,26 @@ import {
   findPolyclinicContactLines,
 } from "./polyclinic-contact-guards";
 
-// Both roots resolve from this file's location, not process.cwd(), for the
+// Every path resolves from this file's location, not process.cwd(), for the
 // reason validate-recipes.ts gives at its RECIPES_ROOT: a root resolved against
 // the wrong cwd finds nothing, and a guard that finds nothing passes (#504).
 //
 // Only `src/content` is walked, and only its `.md` files. Nothing under
 // `packages/` or `scripts/` is scanned: the guard module and
 // `confirmation-markdown.ts` quote the superseded spellings deliberately in
-// their doc comments. `apps/landing/src/routes/health-and-emergency-services/
-// find-an-open-pharmacy/-data/pharmacies.json` still says "Winston Scott
-// Polyclinic", and is deliberately out of scope — a different dataset whose
-// name doubles as a URL slug, tracked as #2719. It is excluded twice over by
-// construction: it sits under `src/routes`, not `src/content`, and it is
-// `.json`, which this walk never reads.
+// their doc comments. The pharmacy finder's dataset is the one file read
+// outside those roots, for names only: it has no Environmental Health contact
+// block, so the block rule doesn't apply. Its slugs are left alone — the
+// `winston-scott-polyclinic` slug is a public URL, and the name pattern only
+// matches the display spelling (#2719).
 const CONTENT_ROOT = path.resolve(__dirname, "../apps/landing/src/content");
 const RECIPES_ROOT = path.resolve(
   __dirname,
   "../apps/api/src/forms/form-definitions/recipes",
+);
+const PHARMACIES_FILE = path.resolve(
+  __dirname,
+  "../apps/landing/src/routes/health-and-emergency-services/find-an-open-pharmacy/-data/pharmacies.json",
 );
 
 async function listFiles(
@@ -74,6 +77,16 @@ async function main(): Promise<void> {
     errors.push(...checkNoSupersededNames(text, relative));
   }
 
+  // A missing file throws here and main().catch exits 1, so this read can't
+  // pass vacuously.
+  const pharmaciesRelative = path.relative(process.cwd(), PHARMACIES_FILE);
+  errors.push(
+    ...checkNoSupersededNames(
+      await fs.readFile(PHARMACIES_FILE, "utf8"),
+      pharmaciesRelative,
+    ),
+  );
+
   // A guard that inspects nothing passes vacuously (#504). Zero is the
   // tripwire, deliberately not today's counts: this runs on every content PR,
   // and a legitimate new EHO service page must not fail it.
@@ -99,7 +112,7 @@ async function main(): Promise<void> {
   }
 
   console.log(
-    `Checked ${pages.length} landing page(s), ${pagesWithBlock} with a polyclinic contact block, and ${recipes.length} recipe file(s). OK.`,
+    `Checked ${pages.length} landing page(s), ${pagesWithBlock} with a polyclinic contact block, ${recipes.length} recipe file(s) and ${pharmaciesRelative}. OK.`,
   );
 }
 
