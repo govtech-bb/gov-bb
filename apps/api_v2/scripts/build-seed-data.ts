@@ -33,6 +33,10 @@ import { CATEGORY_TAXONOMY } from "@govtech-bb/content/categories";
 import type { Frontmatter } from "../src/modules/page";
 import type { SeedEstate, SeedPage } from "../src/seed-data";
 import { convertStormReadyContacts } from "../src/seed-data/stormready-contacts";
+import {
+  type FeatureMeta,
+  featureRoutePage,
+} from "../src/seed-data/feature-route-pages";
 
 const root = join(__dirname, "..", "..", "..");
 const contentDir = join(root, "apps", "landing", "src", "content");
@@ -159,17 +163,6 @@ const parentUrlOf = (page: Parsed): string | null => {
   return parent ? urlOf(parent) : (nestedUrls.get(urlOf(page)) ?? null);
 };
 
-/** The fields of landing's `FeatureMeta` a feature-route page uses. */
-interface FeatureMeta {
-  url: string;
-  title: string;
-  description: string;
-  category: string;
-  subcategory?: string;
-  keywords?: string[];
-  visibility?: SeedPage["visibility"];
-}
-
 const featurePages: SeedPage[] = readdirSync(routesDir, {
   recursive: true,
   encoding: "utf8",
@@ -179,21 +172,7 @@ const featurePages: SeedPage[] = readdirSync(routesDir, {
   .map((file) => {
     // eslint-disable-next-line @typescript-eslint/no-require-imports -- tsx runs this as CommonJS, so no top-level await import()
     const { META }: { META: FeatureMeta } = require(join(routesDir, file));
-    return {
-      url: `/${META.url}`,
-      category: META.subcategory ?? META.category,
-      parent: null,
-      title: META.title,
-      description: META.description,
-      visibility: META.visibility ?? "public",
-      form_id: null,
-      content_slug: META.url,
-      published_at: null,
-      // Landing renders these pages from their routes, never this body, and
-      // chat ingests every body it is served, so none (#3256).
-      body_markdown: "",
-      frontmatter: META.keywords ? { keywords: META.keywords } : {},
-    };
+    return featureRoutePage(META);
   });
 
 const pages: SeedPage[] = parsed
