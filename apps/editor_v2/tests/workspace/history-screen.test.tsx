@@ -354,7 +354,7 @@ test("restoring confirms first, then sends the version and the page's version it
 
   await act(async () => buttons("Restore this version")[1]?.click());
   await until(() => expect(document.body.textContent).toContain("Restore this version?"));
-  expect(document.body.textContent).toContain("nothing is removed");
+  expect(document.body.textContent).toContain("Nothing is removed from history");
   expect(restores).toEqual([]);
 
   await act(async () => buttons("Restore version")[0]?.click());
@@ -406,7 +406,7 @@ test("a refreshed page cannot change an open restore confirmation; a conflict re
   ]);
   await until(() => expect(document.body.textContent).toContain("Version restored"));
   expect(document.body.textContent).toContain(
-    "It's saved as a change to this page. Submit it for review to publish it.",
+    "Saved as a change. Submit it for review to publish it.",
   );
 });
 
@@ -433,9 +433,7 @@ test.each([
     await act(async () => buttons("Restore this version")[1]?.click());
     await act(async () => buttons("Restore version")[0]?.click());
     await until(() =>
-      expect(document.body.textContent).toContain(
-        "We couldn’t confirm whether this version was restored.",
-      ),
+      expect(document.body.textContent).toContain("We couldn’t confirm the restore."),
     );
     expect(restores).toHaveLength(1);
     expect(document.body.textContent).not.toContain("Version restored");
@@ -485,9 +483,7 @@ test("restore sends once while pending, blocks dismissal and returns focus after
   expect(document.activeElement).toBe(trigger);
   expect(document.querySelectorAll('[aria-label="Dismiss"]')).toHaveLength(1);
   expect(document.body.textContent).toContain("Version restored");
-  expect(document.body.textContent).toContain(
-    "It's saved as a new change at the top of the history.",
-  );
+  expect(document.body.textContent).toContain("Saved as a new change at the top of the history.");
 });
 
 test("on a public page, the dialog says the restore waits for review", async () => {
@@ -514,9 +510,7 @@ test("a restored submitted revision is still described as waiting for review", a
   await act(async () => buttons("Restore version")[0]?.click());
   await until(() => expect(document.querySelector('[role="alertdialog"]')).toBeNull());
   expect(document.body.textContent).toContain("Version restored");
-  expect(document.body.textContent).toContain(
-    "It's saved in the change that is waiting for review.",
-  );
+  expect(document.body.textContent).toContain("The change is still waiting for review.");
 });
 
 test("a refused restore says why in the dialog, which stays open", async () => {

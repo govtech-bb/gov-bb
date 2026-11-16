@@ -1,7 +1,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { useLayoutEffect, useRef, useState } from "react";
-import type { ApiPage, EditorApi, PageHistoryEntry } from "../api/client";
+import type { EditorApi, PageHistoryEntry } from "../api/client";
 import { writes } from "../api/writes";
 import { pageFieldLabel } from "../api/page-fields";
 import { historyQuery, pageQuery, rolesQuery } from "../api/queries";
@@ -77,10 +77,16 @@ export function HistoryScreen({
   const entries = history.data;
   const [shown, setShown] = useState(SHOWN);
   const list = useRef<HTMLOListElement>(null);
-  const [restoring, setRestoring] = useState<{ entry: PageHistoryEntry; page: ApiPage }>();
+
+  const [restoring, setRestoring] = useState<{
+    entry: PageHistoryEntry;
+    pageId: string;
+    version: number;
+    isPublic: boolean;
+  }>();
+
   // The page's current version is the newest one: restoring it would change nothing
   const current = entries?.find((entry) => VERSIONS.has(entry.action))?.version_no;
-  const isPublic = restoring?.page.visibility === "public";
   const restore = useWrite(api, writes.restorePage);
   const outcome = restore.outcome;
 
@@ -90,10 +96,10 @@ export function HistoryScreen({
       toast("Version restored", {
         description:
           restoredPage.visibility !== "public"
-            ? "It's saved as a new change at the top of the history."
+            ? "Saved as a new change at the top of the history."
             : restoredPage.pending_revision?.status === "submitted"
-              ? "It's saved in the change that is waiting for review."
-              : "It's saved as a change to this page. Submit it for review to publish it.",
+              ? "The change is still waiting for review."
+              : "Saved as a change. Submit it for review to publish it.",
       });
       setRestoring(undefined);
     } else if (
@@ -171,8 +177,15 @@ export function HistoryScreen({
                       className="mt-1 w-fit"
                       onClick={() => {
                         if (!page.data) return;
+                        const { id, version, visibility } = page.data;
+
                         restore.forget();
-                        setRestoring({ entry, page: structuredClone(page.data) });
+                        setRestoring({
+                          entry,
+                          pageId: id,
+                          version,
+                          isPublic: visibility === "public",
+                        });
                       }}
                     >
                       Restore this version
@@ -201,9 +214,9 @@ export function HistoryScreen({
         title="Restore this version?"
         description={
           restoring &&
-          (isPublic
-            ? `The page as it was on ${formatDayAndTime(restoring.entry.occurred_at)} is saved as a change to it. Citizens keep seeing the live page until an approver publishes the change. Nothing in the history is removed.`
-            : `The page goes back to how it was on ${formatDayAndTime(restoring.entry.occurred_at)}. This is added to the history as a new change: nothing is removed. Who can see the page doesn't change.`)
+          (restoring.isPublic
+            ? `Restore the version from ${formatDayAndTime(restoring.entry.occurred_at)} as a change for review. Citizens keep seeing the live page until an approver publishes the change. Nothing is removed from history.`
+            : `Restore the version from ${formatDayAndTime(restoring.entry.occurred_at)} as a new change. Nothing is removed from history, and who can see the page won’t change.`)
         }
         confirmLabel={restore.state === "unsettled" ? "Retry restore" : "Restore version"}
         confirmDisabled={outcome?.kind === "conflict"}
@@ -214,17 +227,17 @@ export function HistoryScreen({
           outcome &&
           outcome.kind !== "landed" &&
           (outcome.kind === "unknown"
-            ? "We couldn’t confirm whether this version was restored. You can retry the same request, or cancel to check the page and its history."
+            ? "We couldn’t confirm the restore. Retry, or cancel to check the page and its history."
             : outcome.kind === "conflict"
               ? "This page changed. Cancel and review the latest version before restoring."
-              : outcome.message || "The version couldn't be restored. Try again.")
+              : outcome.message || "Couldn’t restore this version. Try again.")
         }
         onConfirm={() => {
           if (!restoring || outcome?.kind === "conflict") return;
           void restore.press(() => ({
-            id: restoring.page.id,
+            id: restoring.pageId,
             versionNo: restoring.entry.version_no,
-            version: restoring.page.version,
+            version: restoring.version,
           }));
         }}
       />
