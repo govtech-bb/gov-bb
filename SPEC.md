@@ -54,15 +54,17 @@ The workspace is declared in `pnpm-workspace.yaml` with the globs `apps/*` and `
 ### Nx configuration
 
 - `nx.json` sets the default base branch to `main`.
-- Build targets depend on `^build` (upstream-first) and are cached.
-- `test` and `test:oxlint` targets are also cached.
-- Each app/package contains a `project.json` describing its Nx targets.
+- Targets are inferred from each project's package.json scripts; `nx.json` `targetDefaults` set caching, inputs, outputs and `dependsOn` for `build`, `test`, `test:types` and `test:oxlint`.
+- Builds depend on `^build` (upstream-first), except the Vite apps, which bundle workspace packages from source (`dependsOn: []`).
+- Each app/package's `project.json` holds only Nx metadata (env inputs, overrides) and the `@nx/js:tsc` / `@nx/js:node` executors.
 
 ### Key root scripts (from `package.json`)
 
-- `pnpm build` → `nx run-many -t build`
+- `pnpm build` → `nx affected -t build`; `pnpm build:all` → `nx run-many -t build`
 - `pnpm test:oxlint` → `nx affected -t test:oxlint` (each project's `oxlint` script)
 - `pnpm test:all` → `nx run-many -t test`
+- `pnpm test:types` → `nx affected -t test:types`
+- `pnpm test:pr` / `pnpm test:ci` → oxlint, types, tests and build (affected / all) plus the format check
 - `pnpm format` / `pnpm test:format`
 - `pnpm dev:<app>` → `nx dev <app>` (e.g. `dev:forms`, `dev:api`, `dev:landing`)
 - TypeORM migration commands (`migration:create`, `migration:generate`, `migration:run`, `migration:revert`, `migration:show`) driven from `apps/api/typeorm.config.ts`.

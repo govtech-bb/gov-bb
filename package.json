@@ -10,10 +10,14 @@
     "packages/*"
   ],
   "scripts": {
-    "build": "nx run-many -t build",
+    "build": "nx affected -t build",
+    "build:all": "nx run-many -t build",
     "lint:deps": "sherif -i @tanstack/ai-client -i express -i @types/express -i react-markdown -i @govtech-bb/react -r root-package-dependencies",
     "test:all": "nx run-many -t test",
+    "test:pr": "nx affected -t test:oxlint,test:types,test,build && pnpm test:format",
+    "test:ci": "nx run-many -t test:oxlint,test:types,test,build && pnpm test:format",
     "test:oxlint": "nx affected -t test:oxlint",
+    "test:types": "nx affected -t test:types",
     "test:format": "oxfmt --check .",
     "dev:forms": "nx dev forms",
     "dev:api": "ln -sfn ../dist/src apps/api/node_modules/@ && nx dev api",

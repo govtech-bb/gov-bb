@@ -12,13 +12,6 @@
         "tsConfig": "packages/form-builder/tsconfig.json",
         "main": "packages/form-builder/src/index.ts"
       }
-    },
-    "test": {
-      "executor": "nx:run-commands",
-      "options": {
-        "command": "vitest run",
-        "cwd": "packages/form-builder"
-      }
     }
   },
   "tags": []

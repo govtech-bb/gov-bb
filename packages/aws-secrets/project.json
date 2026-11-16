@@ -12,13 +12,6 @@
         "tsConfig": "packages/aws-secrets/tsconfig.json",
         "main": "packages/aws-secrets/src/index.ts"
       }
-    },
-    "test": {
-      "executor": "nx:run-commands",
-      "options": {
-        "command": "vitest run",
-        "cwd": "packages/aws-secrets"
-      }
     }
   },
   "tags": []
