@@ -81,7 +81,7 @@ async function main(): Promise<void> {
       return;
     }
     const db = connected.value;
-    await migrate(db, (script) => pool.query(script));
+    await migrate(pool);
 
     const target = await db.execute(
       sql`select current_database() as database, inet_server_addr()::text as host`,
