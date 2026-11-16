@@ -414,7 +414,8 @@
             ],
             "validations": {
               "required": {
-                "value": false
+                "value": true,
+                "error": "Enter your other qualification"
               }
             }
           }
@@ -762,7 +763,7 @@
   "title": "Digital Media Training Programme – Application Form",
   "formId": "digital-media-training-programme-application",
   "createdAt": "2026-01-01T00:00:00Z",
-  "updatedAt": "2026-11-16T10:49:46.798Z",
+  "updatedAt": "2026-11-16T11:03:46.947Z",
   "processors": [
     {
       "type": "email",

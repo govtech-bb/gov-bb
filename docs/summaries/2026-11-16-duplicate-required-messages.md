@@ -18,23 +18,31 @@ jump to different fields. On `main` that was 32 groups (148 fields) in
 - Fixed the recipes:
   - 106 "select all that apply" checkboxes and 5 "Other (please specify)"
     boxes beside them made optional;
-  - 5 fields whose wording says they're optional made optional;
+  - 4 more fields made optional: digital-media religion ("if you wish to
+    share") and youth-cultural club names 2–4;
   - project-dawn's duplicate `employment-education` step deleted;
-  - 31 messages rewritten to name their field.
+  - 32 messages rewritten to name their field.
 
 ## Why we did it that way
 
 - **Most of the 148 weren't message bugs.** 106 were options in
   "select all that apply" lists built from separate `components/confirmation`
   checkboxes. That component is required by default, so applicants had to
-  tick every option: Asthma *and* Epilepsy *and* None. Rewording them would
+  tick every option: Asthma _and_ Epilepsy _and_ None. Rewording them would
   have hidden that. We set `required: false` instead of rebuilding each list
   as one `generic-checkbox` field. The rebuild is the right model, but each
   list needs a heading, a "pick at least one?" decision and new wording.
   These forms are disabled cohort forms (`…-2025`) that need content work
   before any re-run anyway, so the rebuild is tracked in #3720. The cost
-  until then: no list can require "at least one", and BSSEE Form B can be
-  sent with no deferral reason ticked (accepted).
+  until then: no list can require "at least one", BSSEE Form B can be sent
+  with no deferral reason ticked (accepted), and every optional checkbox
+  shows "(optional)" in its own legend. On the lists with `" "` labels,
+  that suffix is the whole legend.
+- **Fields outside the lists were judged one by one.** Religion says it's
+  optional. Club names 2–4 appear together with club 1 on a single Yes, so
+  requiring them meant naming four clubs. "Other qualification" only shows
+  after choosing Other, so it stays required with its own message. Making it
+  optional as well was the first attempt, which review caught.
 - **The same reasoning covered fields the check didn't flag.** The
   "Other (please specify)" boxes are `components/name`, which is required
   by default, and have no show/hide condition. Each is alone on its step, so
