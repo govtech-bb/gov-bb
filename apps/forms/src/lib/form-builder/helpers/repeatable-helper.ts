@@ -326,17 +326,15 @@ export const addRepeatableStep = ({
     nextStepId,
     getFullFieldId(currentStep.stepId, "addAnother"),
     sharedFieldsBehaviour,
-  ).map(
-    (field): ClientPrimitive => ({
-      ...field,
-      behaviours: field.behaviours?.map((b) =>
-        (b.type === "fieldConditionalOn" || b.type === "optionalIf") &&
-        b.targetStepId === currentStep.stepId
-          ? { ...b, targetStepId: nextStepId }
-          : b,
-      ),
-    }),
-  );
+  ).map((field): ClientPrimitive => ({
+    ...field,
+    behaviours: field.behaviours?.map((b) =>
+      (b.type === "fieldConditionalOn" || b.type === "optionalIf") &&
+      b.targetStepId === currentStep.stepId
+        ? { ...b, targetStepId: nextStepId }
+        : b,
+    ),
+  }));
   if (repeatableStepCount < max - 1) {
     nextStepFields.push(
       generateRepeatableAddAnotherField(

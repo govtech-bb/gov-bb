@@ -38,8 +38,12 @@
       "outputs": ["{projectRoot}/coverage"],
       "cache": true
     },
-    "lint": {
-      "inputs": ["default", "{workspaceRoot}/eslint.config.mts"],
+    "test:oxlint": {
+      "inputs": [
+        "default",
+        "{workspaceRoot}/.oxlintrc.json",
+        "{workspaceRoot}/scripts/oxlint/**/*"
+      ],
       "cache": true
     }
   },

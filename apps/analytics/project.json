@@ -38,13 +38,6 @@
         "cwd": "apps/analytics"
       }
     },
-    "lint": {
-      "executor": "nx:run-commands",
-      "options": {
-        "command": "pnpm run lint",
-        "cwd": "apps/analytics"
-      }
-    },
     "test": {
       "executor": "nx:run-commands",
       "options": {

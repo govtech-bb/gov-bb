@@ -60,12 +60,6 @@
         }
       ]
     },
-    "lint": {
-      "executor": "@nx/eslint:lint",
-      "options": {
-        "lintFilePatterns": ["apps/form_builder/**/*.{ts,tsx}"]
-      }
-    },
     "test": {
       "inputs": [
         "default",

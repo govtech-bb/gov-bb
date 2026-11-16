@@ -50,10 +50,9 @@ describe('PagesPage', () => {
 
   it('filters rows by the free-text query (title or path)', () => {
     render(<PagesPage data={data} />)
-    fireEvent.change(
-      screen.getByRole('searchbox', { name: /filter pages/i }),
-      { target: { value: 'stormready' } },
-    )
+    fireEvent.change(screen.getByRole('searchbox', { name: /filter pages/i }), {
+      target: { value: 'stormready' },
+    })
     expect(screen.getByText('StormReady Barbados')).toBeTruthy()
     expect(screen.queryByText('Get a copy of a birth certificate')).toBeNull()
   })

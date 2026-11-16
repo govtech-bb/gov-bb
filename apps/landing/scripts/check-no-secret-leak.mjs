@@ -21,9 +21,7 @@ function walk(dir) {
   let files = []
   for (const entry of readdirSync(dir)) {
     const path = join(dir, entry)
-    files = files.concat(
-      statSync(path).isDirectory() ? walk(path) : [path],
-    )
+    files = files.concat(statSync(path).isDirectory() ? walk(path) : [path])
   }
   return files
 }

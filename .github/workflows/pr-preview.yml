@@ -774,7 +774,15 @@ jobs:
   # terminal state (success, failure, or skip).
   comment:
     name: Post preview comment
-    needs: [setup, preview-forms, preview-landing, preview-chat, preview-form-builder, preview-analytics]
+    needs:
+      [
+        setup,
+        preview-forms,
+        preview-landing,
+        preview-chat,
+        preview-form-builder,
+        preview-analytics,
+      ]
     if: |
       always()
       && github.event.action != 'closed'

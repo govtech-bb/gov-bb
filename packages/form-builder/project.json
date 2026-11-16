@@ -19,12 +19,6 @@
         "command": "vitest run",
         "cwd": "packages/form-builder"
       }
-    },
-    "lint": {
-      "executor": "@nx/eslint:lint",
-      "options": {
-        "lintFilePatterns": ["packages/form-builder/**/*.ts"]
-      }
     }
   },
   "tags": []

@@ -18,13 +18,11 @@ export const isAllBlankStringArray = (value: readonly unknown[]): boolean =>
 
 export const valueIsEmpty = (value: FieldValue): boolean | undefined => {
   if (value === null || value === undefined) return true;
-  if (typeof value === "string")
-    return value.length === 0; // If required and no content, flag it.
+  if (typeof value === "string") return value.length === 0; // If required and no content, flag it.
   else if (Array.isArray(value)) {
     // Empty, or nothing but blank strings — either way, no answer.
     return value.length === 0 || isAllBlankStringArray(value);
-  } else if (typeof value === "boolean")
-    return !value; // It's a boolean. If it's required then it must be true
+  } else if (typeof value === "boolean") return !value; // It's a boolean. If it's required then it must be true
   else if (typeof value === "number") return value.toString().length === 0;
   else if ("day" in value || "month" in value || "year" in value) {
     // Checking for DateValueInput

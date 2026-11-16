@@ -56,12 +56,6 @@
           "env": "OAUTH_REDIRECT_BASE"
         }
       ]
-    },
-    "lint": {
-      "executor": "@nx/eslint:lint",
-      "options": {
-        "lintFilePatterns": ["apps/feature_flagging/**/*.{ts,tsx}"]
-      }
     }
   },
   "tags": []

@@ -5,15 +5,24 @@
   "targets": {
     "test": {
       "executor": "nx:run-commands",
+      "inputs": ["default", "{workspaceRoot}/.oxlintrc.json"],
       "options": {
         "command": "vitest run",
         "cwd": "scripts"
       }
     },
-    "lint": {
-      "executor": "@nx/eslint:lint",
+    "lint:fix": {
+      "executor": "nx:run-commands",
       "options": {
-        "lintFilePatterns": ["scripts/**/*.ts"]
+        "command": "oxlint --fix",
+        "cwd": "scripts"
+      }
+    },
+    "test:oxlint": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "oxlint",
+        "cwd": "scripts"
       }
     }
   },

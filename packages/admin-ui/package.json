@@ -6,7 +6,9 @@
   "main": "./src/index.ts",
   "types": "./src/index.ts",
   "scripts": {
-    "test": "vitest run"
+    "test": "vitest run",
+    "lint:fix": "oxlint --fix",
+    "test:oxlint": "oxlint"
   },
   "peerDependencies": {
     "react": "catalog:",

@@ -2,6 +2,10 @@
   "name": "@govtech-bb/form-builder",
   "version": "0.0.0",
   "private": true,
+  "scripts": {
+    "lint:fix": "oxlint --fix",
+    "test:oxlint": "oxlint"
+  },
   "main": "./src/index.js",
   "types": "./src/index.d.ts",
   "dependencies": {

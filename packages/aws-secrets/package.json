@@ -7,12 +7,11 @@
     ".": "./src/index.ts"
   },
   "scripts": {
-    "test": "vitest run"
+    "test": "vitest run",
+    "lint:fix": "oxlint --fix",
+    "test:oxlint": "oxlint"
   },
   "dependencies": {
     "@aws-sdk/client-secrets-manager": "^3.1136.0"
-  },
-  "lint-staged": {
-    "*.ts": "npx prettier --write"
   }
 }

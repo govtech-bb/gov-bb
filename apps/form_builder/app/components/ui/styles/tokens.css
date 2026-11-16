@@ -126,14 +126,14 @@
     --ui-info-tint-dark: oklch(0.29742 0.05689 254.46);
     --ui-success-light: oklch(0.41864 0.09945 148.57);
     --ui-success-dark: oklch(0.47793 0.11436 148.49);
-    --ui-success-text-light: oklch(0.43360 0.09014 165.866);
+    --ui-success-text-light: oklch(0.4336 0.09014 165.866);
     --ui-success-text-dark: oklch(0.83182 0.11129 151.92);
     --ui-success-tint-light: oklch(0.962 0.043 156.7 / 0.57);
     --ui-success-tint-dark: oklch(0.3094 0.06416 149.96);
     --ui-warning: oklch(0.86236 0.10529 83.46);
     --ui-warning-text-light: oklch(0.54 0.13 57.5);
     --ui-warning-text-dark: oklch(0.84619 0.11148 82.94);
-    --ui-warning-tint-light: oklch(0.931 0.107 94.6 / 0.20);
+    --ui-warning-tint-light: oklch(0.931 0.107 94.6 / 0.2);
     --ui-warning-tint-dark: oklch(0.33729 0.06457 76.27);
     --ui-danger: oklch(0.50128 0.17832 28.7);
     --ui-danger-text-light: oklch(0.50949 0.20858 28.513);

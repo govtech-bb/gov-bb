@@ -168,12 +168,12 @@ flowchart TB
 |---|---|
 | `pnpm build` | Build all apps and packages (`nx run-many -t build`) |
 | `pnpm test:all` | Run the full test suite (`nx run-many -t test`) |
-| `pnpm lint` | Lint all projects |
+| `pnpm test:oxlint` | Lint affected projects with oxlint (`nx affected -t test:oxlint`) |
 | `pnpm lint:deps` | Check workspace dependency consistency (sherif) |
 | `pnpm dev:forms` | Start the forms app in dev mode |
 | `pnpm dev:api` | Start the API in dev mode |
 | `pnpm dev:landing` | Start the landing app in dev mode |
-| `pnpm format` / `pnpm format:check` | Format (or check) with Prettier |
+| `pnpm format` / `pnpm test:format` | Format (or check) with oxfmt |
 | `pnpm validate-recipes` | Validate all recipe files |
 | `pnpm dump-recipes` | Dump recipes from the DB to files |
 | `pnpm migration:generate -- <path>` | Generate a migration from entity changes |

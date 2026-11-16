@@ -1,6 +1,6 @@
+import { execFileSync } from "node:child_process";
 import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { format, resolveConfig } from "prettier";
 import { buildFormCategories, loadContent } from "@govtech-bb/content";
 
 async function main() {
@@ -20,15 +20,14 @@ async function main() {
     "src",
     "form-categories.generated.ts",
   );
-  // Format with Prettier so the written file matches what the lint-staged
-  // pre-commit hook (`prettier --write`) would produce. Without this, the raw
+  // Format with oxfmt so the written file matches what the lint-staged
+  // pre-commit hook (`oxfmt`) would produce. Without this, the raw
   // JSON.stringify output (quoted keys, no line wrapping) always differs from
   // the committed file, so the CI drift guard could never gate this file on
   // anything but formatting noise. Same reasoning as
   // scripts/generate-services-index.ts.
-  const config = await resolveConfig(out);
-  const formatted = await format(body, { ...config, filepath: out });
-  await writeFile(out, formatted, "utf8");
+  await writeFile(out, body, "utf8");
+  execFileSync("oxfmt", [out]);
   console.log(
     `Wrote ${Object.keys(sorted).length} form→category entries to ${out}`,
   );

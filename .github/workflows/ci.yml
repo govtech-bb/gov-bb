@@ -41,7 +41,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
 
       # Fails on dependency-version drift across workspace packages.
-      # Deliberate splits (express 4/5, forms' eslint 9, react-markdown 9/10)
+      # Deliberate splits (express 4/5, react-markdown 9/10)
       # are ignored via flags in the script — see root package.json.
       # @govtech-bb/react is split while apps move to the new design system one
       # at a time: landing is on alpha.25, analytics still on alpha.17. Drop the
@@ -814,34 +814,13 @@ jobs:
           # base_ref is empty, so fall back to ref_name (= main).
           main-branch-name: ${{ github.base_ref || github.ref_name }}
 
-      - name: Lint affected projects
-        id: lint
-        run: |
-          # The trunk lint gate now runs over every affected app — no exclusions.
-          # The ratchet introduced during the prod→main resync (#1884) is fully
-          # burned down: analytics-app, landing, forms, api, form-builder-app
-          # all cleaned and enforced (#1885, PRs #1891/#1892/#1893/#1919/#1912).
-          pnpm exec nx affected -t lint --nxBail=false 2>&1 | tee lint-output.txt
-          exit ${PIPESTATUS[0]}
-        continue-on-error: true
+      # Each project's own `test:oxlint` script, over the affected projects.
+      - name: Lint affected projects (oxlint)
+        run: pnpm test:oxlint
 
-      - name: Report lint results
-        if: steps.lint.outcome == 'failure'
-        run: |
-          echo "## ❌ Lint Failed" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "<details><summary>View lint errors</summary>" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-          tail -100 lint-output.txt >> $GITHUB_STEP_SUMMARY
-          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-          echo "</details>" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Fix it locally:**" >> $GITHUB_STEP_SUMMARY
-          echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
-          echo "pnpm exec nx affected -t lint" >> $GITHUB_STEP_SUMMARY
-          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-          exit 1
+      - name: Check formatting (oxfmt)
+        if: ${{ !cancelled() }}
+        run: pnpm test:format
 
   affected-apps:
     # Which deployable apps this change touches, so the Docker jobs below only

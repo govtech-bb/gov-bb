@@ -17,7 +17,10 @@ export function SiteHeader() {
         imageAlt=""
         showLearnMore={false}
       />
-      <Header homeHref={LANDING_URL} homeLabel="Go to the alpha.gov.bb homepage" />
+      <Header
+        homeHref={LANDING_URL}
+        homeLabel="Go to the alpha.gov.bb homepage"
+      />
     </div>
   );
 }

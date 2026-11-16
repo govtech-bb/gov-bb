@@ -62,13 +62,6 @@
         "cwd": "apps/landing"
       }
     },
-    "lint": {
-      "executor": "nx:run-commands",
-      "options": {
-        "command": "npm run lint",
-        "cwd": "apps/landing"
-      }
-    },
     "test": {
       "executor": "nx:run-commands",
       "inputs": [
