@@ -56,9 +56,9 @@ jobs:
           exit ${PIPESTATUS[0]}
         continue-on-error: true
 
-      # Projects outside the `tsc -b` reference graph type-check through their
-      # own `test:types` script (`tsc --noEmit`).
-      - name: Type check projects outside tsc -b (test:types)
+      # Every project with a `test:types` script (`tsc --noEmit`) type-checks
+      # itself, including the apps outside the `tsc -b` reference graph.
+      - name: Type check each project (test:types)
         run: pnpm exec nx run-many -t test:types
 
       - name: Report type check results

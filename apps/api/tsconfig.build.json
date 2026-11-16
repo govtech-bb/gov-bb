@@ -30,6 +30,5 @@
     }
   ],
   "include": ["src/**/*.ts"],
-  "exclude": ["node_modules", "dist", "**/*.spec.ts"],
-  "compilerOptions": {}
+  "exclude": ["node_modules", "dist", "**/*.spec.ts"]
 }

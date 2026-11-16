@@ -168,7 +168,7 @@ flowchart TB
 |---|---|
 | `pnpm build` / `pnpm build:all` | Build affected projects (`nx affected -t build`) / every project |
 | `pnpm test:all` | Run the full test suite (`nx run-many -t test`) |
-| `pnpm test:types` | Type-check affected projects outside `tsc -b` (`nx affected -t test:types`) |
+| `pnpm test:types` | Type-check each affected project with its own `tsc --noEmit` (`nx affected -t test:types`) |
 | `pnpm test:pr` / `pnpm test:ci` | Everything CI checks (oxlint, types, tests, build, format) for affected / all projects |
 | `pnpm test:oxlint` | Lint affected projects with oxlint (`nx affected -t test:oxlint`) |
 | `pnpm lint:deps` | Check workspace dependency consistency (sherif) |

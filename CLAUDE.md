@@ -173,7 +173,7 @@ both on staged files:
 ```bash
 pnpm test:oxlint     # nx affected -t test:oxlint (.oxlintrc.json, nested in apps/forms + apps/landing)
 pnpm test:format     # oxfmt --check (.oxfmtrc.json); `pnpm format` writes
-pnpm test:types      # nx affected -t test:types (tsc --noEmit) for projects outside `tsc -b`
+pnpm test:types      # nx affected -t test:types: each project's own tsc --noEmit
 pnpm test:pr         # what CI checks, for affected projects: oxlint, types, tests, build + format
 ```
 
