@@ -24,7 +24,13 @@ import {
 import { z } from "zod";
 import type { Database } from "../db";
 import type { IndexedPage } from "../modules/estate-services";
-import type { CategoryRecord, ListablePage } from "../modules/navigation";
+import {
+  inCatalog,
+  searchDocumentsOf,
+  type CategoryRecord,
+  type ListablePage,
+  type SearchDocument,
+} from "../modules/navigation";
 import {
   CategoryBlockers,
   CategoryId,
@@ -620,8 +626,32 @@ export class PostgresPages
     );
   }
 
-  /** These pages' search chunks, in order. */
-  async searchChunksOf(
+  /** Keep visibility, metadata and chunks on one snapshot even when a page is unpublished and edited mid-read. */
+  async searchDocuments(
+    visibilities: readonly Visibility[],
+  ): Promise<Result<SearchDocument[], ContentStoreUnavailable>> {
+    const snapshot = await attempt("searchDocuments", () =>
+      this.db.transaction(
+        async (tx) => {
+          const records = new PostgresPages(tx);
+          const visible = await records.visiblePages(visibilities);
+          if (!visible.ok) return visible;
+          const pages = inCatalog(visible.value);
+          if (pages.length === 0) return ok([]);
+          const chunks = await records.searchChunksOf(
+            pages.map((page) => page.id),
+          );
+          if (!chunks.ok) return chunks;
+          return ok(searchDocumentsOf(pages, chunks.value));
+        },
+        { isolationLevel: "repeatable read", accessMode: "read only" },
+      ),
+    );
+    return snapshot.ok ? snapshot.value : snapshot;
+  }
+
+  /** These pages' search chunks, in order, within the search snapshot. */
+  private async searchChunksOf(
     pageIds: readonly string[],
   ): Promise<Result<Map<string, SearchChunk[]>, ContentStoreUnavailable>> {
     const rows = await attempt("searchChunksOf", () =>
