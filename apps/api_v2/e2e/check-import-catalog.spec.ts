@@ -62,11 +62,19 @@ describe("check-import stops on an unusable answer", () => {
   );
 
   it("fails a 200 that is not a page, and still finishes", async () => {
-    page = { status: 200, body: { visibility: "public" } };
+    // Passes bodyProblem on a public page, but has no breadcrumbs.
+    page = {
+      status: 200,
+      body: {
+        frontmatter: { title: "t" },
+        body_markdown: "",
+        visibility: "public",
+      },
+    };
     catalog = { status: 200, body: { pages: [] } };
     const { code, output } = await check();
     expect(code, output).toBe(1);
-    expect(output).toMatch(/^FAIL \/\S+ expected \w+: /m);
+    expect(output).toMatch(/^FAIL \/\S+ expected public: .*\(not a page\)/m);
     expect(output).toMatch(/^public: \d+ pages, \d+ failing$/m);
     expect(output).toMatch(/^\d+ failing of \d+ pages in snapshot /m);
     expect(output).not.toContain("TypeError");
