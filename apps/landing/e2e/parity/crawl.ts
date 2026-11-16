@@ -120,7 +120,8 @@ async function main() {
   }
   const servedByApiV2 = sources.get('api_v2') ?? 0
 
-  const cell = (s: string) => s.replace(/\|/g, '\\|').replace(/\n/g, ' ')
+  const cell = (s: string) =>
+    s.replace(/\\/g, '\\\\').replace(/\|/g, '\\|').replace(/\n/g, ' ')
   const lines = [
     '## Landing api_v2 parity crawl',
     '',
