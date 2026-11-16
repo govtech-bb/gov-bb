@@ -11,6 +11,7 @@ export { validateField, validateFieldEntries } from "./validate-field";
 export { defaultValidationMessage } from "./default-messages";
 export {
   requiredMessageDefect,
+  requiredMessageWording,
   isFieldlessRequiredWording,
 } from "./required-message";
 export type { RequiredMessageDefect } from "./required-message";

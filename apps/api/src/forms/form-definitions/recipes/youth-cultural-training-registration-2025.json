@@ -222,7 +222,12 @@
                 "label": "Dance",
                 "value": "dance"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -235,7 +240,12 @@
                 "label": "Drama",
                 "value": "drama"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -248,7 +258,12 @@
                 "label": "Steel Pan",
                 "value": "steel-pan"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -261,7 +276,12 @@
                 "label": "Stilt Walking",
                 "value": "stilt-walking"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -274,7 +294,12 @@
                 "label": "Shaggy Bear",
                 "value": "shaggy-bear"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -287,7 +312,12 @@
                 "label": "Landship",
                 "value": "landship"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -300,7 +330,12 @@
                 "label": "Violin",
                 "value": "violin"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -313,7 +348,12 @@
                 "label": "Drumming",
                 "value": "drumming"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -326,7 +366,12 @@
                 "label": "Voice Training",
                 "value": "voice-training"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         }
       ]
@@ -461,7 +506,12 @@
                 "label": "Asthma",
                 "value": "asthma"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -474,7 +524,12 @@
                 "label": "Diabetes",
                 "value": "diabetes"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -487,7 +542,12 @@
                 "label": "Hypertension",
                 "value": "hypertension"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -500,7 +560,12 @@
                 "label": "Epilepsy",
                 "value": "epilepsy"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -513,14 +578,24 @@
                 "label": "Allergies",
                 "value": "allergies"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
           "ref": "components/name",
           "overrides": {
             "label": "Other medical condition (please specify)",
-            "fieldId": "condition-other"
+            "fieldId": "condition-other",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -585,7 +660,13 @@
                 "operator": "equal",
                 "targetFieldId": "belongs-to-clubs"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "value": true,
+                "error": "Enter the name of a club, group or organisation"
+              }
+            }
           }
         },
         {
@@ -600,7 +681,12 @@
                 "operator": "equal",
                 "targetFieldId": "belongs-to-clubs"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -615,7 +701,12 @@
                 "operator": "equal",
                 "targetFieldId": "belongs-to-clubs"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -630,7 +721,12 @@
                 "operator": "equal",
                 "targetFieldId": "belongs-to-clubs"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         }
       ]
@@ -762,7 +858,7 @@
   "title": "National Community Cultural Training Programme Registration 2025–2026",
   "formId": "youth-cultural-training-registration-2025",
   "createdAt": "2025-01-01T00:00:00Z",
-  "updatedAt": "2026-10-21T16:52:59.000Z",
+  "updatedAt": "2026-11-16T10:49:46.798Z",
   "processors": [
     {
       "type": "email",

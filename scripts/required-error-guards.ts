@@ -9,6 +9,12 @@
  * empty (the NHC employment step in the audit showed three). That is a recipe
  * defect, so it is caught on the trunk instead of in production.
  *
+ * Any two required fields on one step sharing a message do the same, however
+ * well it is worded, so each step is also checked for duplicates (#2723). That
+ * is the general case; the denylist is the stricter tier, for a message that
+ * is bad even when it appears alone. Show/hide conditions are ignored, so two
+ * fields that never show together still need their own messages.
+ *
  * Unlike the file-field guard this one resolves refs and merges overrides the
  * way the serving path does (`applyFieldOverrides`), because the effective
  * message can come from either side:
@@ -31,6 +37,7 @@ import { applyFieldOverrides } from "@govtech-bb/form-types";
 import {
   defaultValidationMessage,
   requiredMessageDefect,
+  requiredMessageWording,
 } from "@govtech-bb/form-validation";
 
 interface Elementish {
@@ -78,6 +85,9 @@ export function checkRequiredErrorsAreSpecific(
     const elements = (step as { elements?: unknown }).elements;
     if (!Array.isArray(elements)) continue;
 
+    // Normalised message → the first authored wording and every field using it.
+    const groups = new Map<string, { message: string; fieldIds: string[] }>();
+
     for (const raw of elements) {
       const el = raw as Elementish;
       if (typeof el?.ref !== "string") continue;
@@ -104,8 +114,34 @@ export function checkRequiredErrorsAreSpecific(
       for (const field of resolved) {
         const where = `${relative}: ${String(stepId)}.${field.fieldId} (${el.ref})`;
         const error = checkField(field, where);
-        if (error) errors.push(error);
+        if (error) {
+          errors.push(error);
+          continue;
+        }
+        // A defective message is reported above, so it is not grouped again.
+        // An unauthored date is skipped: it shows `Enter ${label}` derived in
+        // validate-date.ts, which this check does not reproduce, so two dates
+        // with the same label on one step would still collide unseen.
+        const required = field.validations?.required;
+        if (!required || required.value === false) continue;
+        if (typeof required.error !== "string") continue;
+        const key = requiredMessageWording(required.error);
+        const group = groups.get(key);
+        if (group) group.fieldIds.push(field.fieldId);
+        else
+          groups.set(key, {
+            message: required.error,
+            fieldIds: [field.fieldId],
+          });
       }
+    }
+
+    for (const { message, fieldIds } of groups.values()) {
+      if (fieldIds.length < 2) continue;
+      const names = `${fieldIds.slice(0, -1).join(", ")} and ${fieldIds[fieldIds.length - 1]}`;
+      errors.push(
+        `${relative}: step ${String(stepId)} — ${names} ${fieldIds.length === 2 ? "both" : "all"} use "${message}" as required.error, so the error summary shows identical links; give each a message naming its field`,
+      );
     }
   }
 
