@@ -132,7 +132,7 @@ export function canonicalizeValue(field: Primitive, raw: string): string {
     const c = coerceBoolean(raw.trim());
     return "error" in c ? raw : String(c.value);
   }
-  if (fieldOptions(field).length) {
+  if (fieldOptions(field).length || field.groups?.length) {
     const c = COERCERS[field.htmlType](field, raw.trim());
     if ("error" in c) return raw;
     return Array.isArray(c.value)

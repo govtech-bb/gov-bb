@@ -90,6 +90,20 @@ test("checkbox-accordion matches options across its groups", () => {
   assert.ok("error" in coerceValue(services, "Hardware"));
 });
 
+test("canonicalizeValue stores a checkbox-accordion's option values, like a checkbox", () => {
+  const services = field({
+    htmlType: "checkbox-accordion",
+    groups: [
+      { label: "Food", options: [{ label: "Bakery", value: "bakery" }] },
+      { label: "Retail", options: [{ label: "Clothing", value: "clothing" }] },
+    ],
+  });
+  assert.equal(
+    canonicalizeValue(services, "Bakery, clothing"),
+    "bakery,clothing",
+  );
+});
+
 test("canonicalizeValue: show-hide→true/false, option→value, text→raw, multi→csv", () => {
   assert.equal(
     canonicalizeValue(field({ htmlType: "show-hide" }), "yes"),
