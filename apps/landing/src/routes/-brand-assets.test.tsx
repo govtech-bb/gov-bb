@@ -38,7 +38,8 @@ it('ships the brand SVGs under public/images with the logo optimised', () => {
   for (const name of ['govbb-crest.svg', 'govbb-logo.svg']) {
     expect(readFileSync(publicFile(`images/${name}`), 'utf8')).toMatch(/^<svg /)
   }
-  // Sized for the full-detail 60th anniversary mark; the standard logo fits in 12 KB.
+  // Sized for the full-detail 60th anniversary mark. Put back to 12_000 when
+  // the standard logo returns after Independence.
   expect(
     statSync(publicFile('images/govbb-logo.svg')).size,
   ).toBeLessThanOrEqual(16_000)
