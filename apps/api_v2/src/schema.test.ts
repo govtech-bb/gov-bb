@@ -2,12 +2,12 @@
  * "When migrations are pushed, then the resulting tables match the schema
  * column for column" — #2700.
  *
- * The DDL and the Drizzle definition are two spellings of one schema, and
- * nothing in TypeScript connects them: add a column to `schema.ts` and forget
- * the migration and every query still compiles, then fails at runtime with a
- * 42703 that names a column the code is certain exists. So the migration runs
- * against a real Postgres and the result is compared to the Drizzle tables by
- * reading `information_schema`, rather than by reading both files carefully.
+ * The migrations are generated from `schema.ts`, and `migrate.test.ts` fails
+ * when it has a change they lack. This is the same promise checked from the
+ * other end: the migrations run against a real Postgres, hand-written ones
+ * included, and the tables they leave are compared to the Drizzle ones by
+ * reading `information_schema`. The rest is what the schema must do, not
+ * only declare.
  */
 
 import { getTableColumns } from "drizzle-orm";
@@ -99,9 +99,8 @@ describe("the Drizzle schema and the migration", () => {
     const timestamps = (await rowsOf(db)).filter(
       (row) =>
         row.data_type === "timestamp with time zone" &&
-        // `schema_migrations` is the runner's own bookkeeping, and
-        // BetterAuth's tables are BetterAuth's; neither crosses the wire in
-        // a concurrency check, so their precision does not matter.
+        // BetterAuth's tables are BetterAuth's; they never cross the wire
+        // in a concurrency check, so their precision does not matter.
         row.table_name in TABLES &&
         !row.table_name.startsWith("auth_"),
     );

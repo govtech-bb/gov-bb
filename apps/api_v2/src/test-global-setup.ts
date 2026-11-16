@@ -9,7 +9,6 @@
  */
 
 import { randomUUID } from "node:crypto";
-import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 import type { TestProject } from "vitest/node";
 import { migrate } from "./migrate";
@@ -30,7 +29,7 @@ export default async function setup(project: TestProject) {
   }
   const pool = new Pool({ ...TEST_SERVER, database: template });
   try {
-    await migrate(drizzle(pool), (script) => pool.query(script));
+    await migrate(pool);
     await pool.query(
       `insert into auth_user (id, name, email, "emailVerified") values ($1, $2, $3, true)`,
       [TEST_EMPLOYEE.id, TEST_EMPLOYEE.name, TEST_EMPLOYEE.email],

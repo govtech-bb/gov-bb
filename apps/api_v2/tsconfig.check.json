@@ -11,7 +11,8 @@
     "src/**/*.json",
     "e2e/**/*.ts",
     "scripts/**/*.ts",
-    "vitest*.ts"
+    "vitest*.ts",
+    "drizzle.config.ts"
   ],
   "exclude": ["node_modules", "dist"]
 }

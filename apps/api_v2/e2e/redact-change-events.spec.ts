@@ -1,4 +1,3 @@
-import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { migrate } from "../src/migrate";
@@ -22,7 +21,7 @@ describe.skipIf(!HAS_DATABASE)("redact-change-events", () => {
   beforeEach(async () => {
     database = await createScratchDatabase();
     pool = new Pool({ ...DB, database });
-    await migrate(drizzle(pool), (script) => pool.query(script));
+    await migrate(pool);
     await pool.query(
       "insert into content_pages (url, slug, title, body_markdown) values ('/x', 'x', 'X', $1)",
       [PRIVATE_TEXT],

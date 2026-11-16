@@ -1,9 +1,6 @@
 import type { Pool } from "pg";
 import { describe, expect, it } from "vitest";
 import { createTestDb } from "./test-db";
-import { migrate } from "./migrate";
-import { SQL as CHANGE_HISTORY_SQL } from "./migrations/007_change_history_trigger";
-import { SQL as REVISION_DISCARDED_SQL } from "./migrations/015_revision_discarded";
 
 const PAGE = "55555555-5555-4555-8555-555555555555";
 const INSERT_PAGE = `insert into content_pages (id, url, slug, title, body_markdown)
@@ -136,99 +133,31 @@ describe("change event allocation", () => {
     }
   });
 
-  it("seeds all history on upgrade, preserves snapshots, and never rewinds on replay or recreation", async () => {
-    const { db, pool, close } = await createTestDb();
+  it("never rewinds an entity's numbering, through deletion, recreation or a counter ahead of its history", async () => {
+    const { pool, close } = await createTestDb();
     const exec = (script: string) => pool.query(script);
-    try {
-      // Restore the pre-023 schema and trigger bodies in this disposable clone.
-      await exec(`drop trigger allocate_version_no on change_events;
-        drop table change_event_counters;
-        delete from schema_migrations where name = '023_change_event_counters';
-        ${CHANGE_HISTORY_SQL}
-        ${REVISION_DISCARDED_SQL}`);
-      await exec(`${INSERT_PAGE}; delete from content_pages where id = '${PAGE}';
-        insert into change_events (entity_kind, entity_id, version_no, action, snapshot, snapshot_version)
-          values ('category', '${PAGE}', 4, 'created', '{"title":"Old"}', null),
-                 ('category', '${PAGE}', 12, 'deleted', '{"title":"Removed"}', 1),
-                 ('data_collection', 'deleted-collection', 6, 'deleted', '{}', 1),
-                 ('collection_record', 'deleted-record', 8, 'deleted', '{}', 1);
-        select set_config('app.redacting', 'on', true);
-        update change_events set snapshot = '{"redacted":true,"reason":"Privacy","by":"system"}'
-          where action = 'deleted';`);
-      const history = (
+    const numbered = async () =>
+      (
         await exec(
-          "select * from change_events order by entity_kind, version_no",
+          "select version_no, action from change_events order by version_no",
         )
       ).rows;
-      expect(await migrate(db, exec)).toEqual(["023_change_event_counters"]);
-      expect(
-        (
-          await exec(
-            "select * from change_events order by entity_kind, version_no",
-          )
-        ).rows,
-      ).toEqual(history);
-      expect(
-        (
-          await exec(
-            "select entity_kind, last_version from change_event_counters order by entity_kind",
-          )
-        ).rows,
-      ).toEqual([
-        { entity_kind: "category", last_version: 12 },
-        { entity_kind: "collection_record", last_version: 8 },
-        { entity_kind: "content_page", last_version: 2 },
-        { entity_kind: "data_collection", last_version: 6 },
+    try {
+      await exec(
+        `${INSERT_PAGE}; delete from content_pages where id = '${PAGE}'; ${INSERT_PAGE}`,
+      );
+      expect(await numbered()).toEqual([
+        { version_no: 1, action: "created" },
+        { version_no: 2, action: "deleted" },
+        { version_no: 3, action: "created" },
       ]);
 
-      // A counter ahead of retained history must survive replay, including one with no events.
-      await exec(`update change_event_counters set last_version = 20 where entity_kind = 'category';
-        insert into change_event_counters values ('content_page', 'counter-only', 30);
-        delete from schema_migrations where name = '023_change_event_counters'`);
-      expect(await migrate(db, exec)).toEqual(["023_change_event_counters"]);
-      expect(
-        (
-          await exec(
-            "select * from change_events order by entity_kind, version_no",
-          )
-        ).rows,
-      ).toEqual(history);
-      expect(
-        (
-          await exec(
-            "select last_version from change_event_counters where entity_id = 'counter-only'",
-          )
-        ).rows,
-      ).toEqual([{ last_version: 30 }]);
-      await exec(`${INSERT_PAGE};
-        insert into categories (id, slug, title) values ('${PAGE}', 'recreated', 'Recreated');`);
-      expect(
-        (
-          await exec(
-            "select entity_kind, version_no from change_events where snapshot->>'title' = 'Recreated' or (action = 'created' and version_no = 3) order by entity_kind",
-          )
-        ).rows,
-      ).toEqual([
-        { entity_kind: "category", version_no: 21 },
-        { entity_kind: "content_page", version_no: 3 },
-      ]);
-      await exec(
-        `delete from content_pages where id = '${PAGE}'; ${INSERT_PAGE}`,
-      );
-      expect(
-        (
-          await exec(
-            `select last_version from change_event_counters where entity_kind = 'content_page' and entity_id = '${PAGE}'`,
-          )
-        ).rows,
-      ).toEqual([{ last_version: 5 }]);
-      expect(
-        (
-          await exec(`select conname from pg_constraint
-        where conrelid = 'change_events'::regclass and contype = 'u'`)
-        ).rows,
-      ).toContainEqual({
-        conname: "change_events_entity_kind_entity_id_version_no_key",
+      // As after a redaction or an import: the counter is past the events kept.
+      await exec(`update change_event_counters set last_version = 20;
+        update content_pages set title = 'Later' where id = '${PAGE}'`);
+      expect((await numbered()).at(-1)).toEqual({
+        version_no: 21,
+        action: "updated",
       });
     } finally {
       await close();

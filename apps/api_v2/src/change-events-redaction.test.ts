@@ -1,7 +1,6 @@
 import { sql } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 import type { Database } from "./db";
-import { migrate } from "./migrate";
 import { createTestDb } from "./test-db";
 
 const EVENT = "11111111-1111-4111-8111-111111111111";
@@ -35,18 +34,12 @@ const eventRows = async (db: Database) =>
   (await db.execute(sql`select * from change_events`)).rows;
 
 describe("change_events redaction", () => {
-  it("replaces only the snapshot and keeps the removal notice immutable after replay", async () => {
-    const { db, pool, close } = await historyDb();
+  it("replaces only the snapshot and keeps the removal notice immutable", async () => {
+    const { db, close } = await historyDb();
     try {
       const before = await eventRows(db);
       await redact(db, replaceSnapshot(NOTICE));
       const expected = before.map((event) => ({ ...event, snapshot: NOTICE }));
-      await db.execute(
-        sql`delete from schema_migrations where name = '019_change_events_redaction'`,
-      );
-      expect(await migrate(db, (script) => pool.query(script))).toEqual([
-        "019_change_events_redaction",
-      ]);
       expect(await eventRows(db)).toEqual(expected);
       await expect(
         redact(db, replaceSnapshot({ ...NOTICE, by: "someone-else" })),

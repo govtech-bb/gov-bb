@@ -3,7 +3,7 @@ import pino from "pino";
 import { Client } from "pg";
 import { describe, expect, it, vi } from "vitest";
 import type { DatabaseConfig } from "./config";
-import { connect, createPool, migrationExec, ping, type Database } from "./db";
+import { connect, createPool, ping, type Database } from "./db";
 import { Redacted } from "./modules/redacted";
 import type { Result } from "./modules/result";
 import { createEmptyDb, TEST_SERVER } from "./test-db";
@@ -139,24 +139,6 @@ describe("database setup", () => {
   it("reports a database that does not answer within the cap", async () => {
     const db = { execute: () => new Promise(() => {}) } as unknown as Database;
     expect(await ping(db, 10)).toBe(false);
-  });
-
-  it("lets a migration outlast the pool's query limits", async () => {
-    const { test, pool } = await limitedPool(50);
-    try {
-      // The limits are live on this pool, so the migration passing proves the override.
-      await expect(pool.query("select pg_sleep(0.2)")).rejects.toThrow();
-      await expect(
-        migrationExec(pool)("select pg_sleep(0.2)"),
-      ).resolves.toBeDefined();
-      // The pool's only connection, back to the request limit for whoever borrows it next.
-      expect(pool.totalCount).toBe(1);
-      const { rows } = await pool.query("show statement_timeout");
-      expect(rows).toEqual([{ statement_timeout: "50ms" }]);
-    } finally {
-      await pool.end();
-      await test.close();
-    }
   });
 
   it("stops a timed-out request's work on the server too", async () => {

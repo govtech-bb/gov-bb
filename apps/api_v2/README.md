@@ -63,7 +63,7 @@ Route plugins receive their services and request identity readers explicitly thr
 
 On both first and returning sign-ins, the API admits a Google account only when the ID token's `email_verified` is true, its `hd` (hosted domain) claim is on `GOOGLE_ALLOWED_DOMAINS`, and the email's domain matches `hd`. A personal Gmail account has no `hd` and is refused. The `hd` authorize parameter only steers Google's account chooser, so the claim is checked on the server. Password login and client-supplied ID-token sign-in are disabled. Existing users can link Google through the same verified email only after passing the Workspace check; provider trust never bypasses email verification. OAuth tokens are discarded before account persistence. Sessions expire absolutely after eight hours; reads do not extend them. Session cookies are checked against PostgreSQL on every protected request, so revocation takes effect immediately. Workspace changes, such as a suspended account, are checked on the next Google sign-in; existing application sessions must be revoked when immediate removal is required.
 
-Migration `003_auth` adds BetterAuth's four core tables: `auth_user`, `auth_session`, `auth_account`, and `auth_verification`. It does not replace content tables or author data. BetterAuth reads and writes them through its Drizzle adapter, over the same tables defined in `schema.ts` (where `schema.test.ts` checks them column for column); migrations stay hand-written and replay-safe, never generated. The migration is checked against the installed BetterAuth schema in the PostgreSQL integration suite. Migration `004_github_sessions` revoked sessions without a linked GitHub account when sign-in briefly moved from Google to GitHub (6 Oct 2026). User IDs, accounts, content, audit history, and browser drafts were preserved. Migration `020_google_sessions` revokes every session without a linked Google account when sign-in moves to Google (#3412), so nobody keeps a session the Workspace check never admitted; users, accounts and roles stay. A Google sign-in links to an existing user, keeping their user ID, roles and history, only when their verified Google email equals the user's email. Migration `021_github_accounts` deletes the GitHub account links, which can never sign in again. A GitHub-era user whose email isn't their Workspace address is moved by `API_V2_EMAIL_MOVES` (#3418): comma-separated `old=new` pairs, applied on every boot before sign-in is served. A move keeps the user ID; if the person already signed in with Google, that new user is dropped when it has no history, and both are left alone (logged as `conflict`) when it has. Set it per environment, outside this public repo, and remove it once everyone has moved.
+BetterAuth has four core tables: `auth_user`, `auth_session`, `auth_account`, and `auth_verification`. BetterAuth reads and writes them through its Drizzle adapter, over the tables defined in `schema.ts`, which the migrations are generated from. The e2e suite checks them against the installed BetterAuth schema. Sessions without a linked GitHub account were revoked when sign-in briefly moved from Google to GitHub (6 Oct 2026). User IDs, accounts, content, audit history, and browser drafts were preserved. Every session without a linked Google account was revoked when sign-in moved to Google (#3412), so nobody kept a session the Workspace check never admitted; users, accounts and roles stayed. A Google sign-in links to an existing user, keeping their user ID, roles and history, only when their verified Google email equals the user's email. The GitHub account links, which can never sign in again, were deleted. A GitHub-era user whose email isn't their Workspace address is moved by `API_V2_EMAIL_MOVES` (#3418): comma-separated `old=new` pairs, applied on every boot before sign-in is served. A move keeps the user ID; if the person already signed in with Google, that new user is dropped when it has no history, and both are left alone (logged as `conflict`) when it has. Set it per environment, outside this public repo, and remove it once everyone has moved.
 
 ### Roles
 
@@ -201,11 +201,11 @@ erDiagram
     varchar(100) slug UK
     varchar(200) title
     text description "nullable"
-    timestamptz(3) created_at
-    timestamptz(3) updated_at
     uuid parent_id FK "nullable"
     int4 position
     int8 version
+    timestamptz(3) created_at
+    timestamptz(3) updated_at
   }
   change_event_counters {
     varchar(40) entity_kind PK
@@ -217,40 +217,40 @@ erDiagram
     varchar(40) entity_kind "unique (entity_kind, entity_id, version_no)"
     text entity_id
     int4 version_no
+    int8 event_order "nullable"
     change_action action
     jsonb snapshot
+    int4 snapshot_version "nullable"
     text actor FK
     timestamptz(3) occurred_at
-    int4 snapshot_version "nullable"
     int4 restored_from "nullable"
-    int8 event_order "nullable"
   }
   collection_records {
     uuid id PK
     varchar(100) collection_key FK "unique (collection_key, record_key)"
     varchar(200) record_key
     jsonb data
+    int8 version
     timestamptz(3) created_at
     timestamptz(3) updated_at
-    int8 version
   }
   content_pages {
     uuid id PK "unique (id, category_id)"
     varchar(512) url UK
     varchar(200) slug
+    uuid category_id FK "nullable"
+    uuid parent_id FK "nullable"
     varchar(300) title
     text description "nullable"
-    timestamptz(3) created_at
-    timestamptz(3) updated_at
-    uuid category_id FK "nullable"
     page_visibility visibility
     varchar(100) form_id "nullable"
     text body_markdown
     jsonb frontmatter
     timestamptz(3) published_at "nullable"
-    uuid parent_id FK "nullable"
     timestamptz(3) content_updated_at
     int8 version
+    timestamptz(3) created_at
+    timestamptz(3) updated_at
   }
   data_collections {
     uuid id PK
@@ -275,13 +275,13 @@ erDiagram
     timestamptz(3) live_updated_at
     text created_by
     text[] contributors
-    timestamptz(3) created_at
-    timestamptz(3) updated_at
     text submitted_by "nullable"
     timestamptz(3) submitted_at "nullable"
     text decided_by "nullable"
     timestamptz(3) decided_at "nullable"
     text comment "nullable"
+    timestamptz(3) created_at
+    timestamptz(3) updated_at
   }
   search_chunks {
     uuid id PK
@@ -456,9 +456,9 @@ stop an old instance from accepting edits.
 
 1. Pause editor writes and imports, and let in-flight writes finish.
 2. Deploy the API. `main.ts` runs migrations before opening its HTTP listener.
-   Confirm `025_page_redirects` and `026_change_event_order` are recorded in
-   `schema_migrations`, the expected image is serving, and all old writer
-   instances have drained. Do not backfill `event_order` or reimport content.
+   Confirm the `page_redirects` table and the `change_events.event_order`
+   column exist, the expected image is serving, and all old writer instances
+   have drained. Do not backfill `event_order` or reimport content.
 3. Deploy landing's `no-store` redirect change. With an approver and agreed
    test paths, publish A, then move it to B and C. Check that A and B both
    return 301 directly to C, with matching `Location` and `{ redirect }`, and
@@ -749,11 +749,19 @@ too. Another approver who did not contribute must publish the page.
 
 SIGINT/SIGTERM drain HTTP requests before closing the shared pool; startup failures also release acquired resources. JSON logs omit cookies, OAuth callback query parameters, provider tokens and raw driver error objects. The exact warning `idle database connection dropped` remains the operational alarm marker; its safe `code` identifies the failure. Public content failures continue to use the existing 500 response, while authentication outages fail closed with 503.
 
-The server's pool gives a request's query 5 s, a boot migration 10 min, and a new connection 2 s, and keeps its sockets alive with TCP keepalive. Postgres enforces the same query limits (`statement_timeout`), so a query that times out also stops on the server instead of keeping a connection open after the pool has replaced it. A database that goes quiet without hanging up (a failover or partition) therefore answers 500 `internal_error` from the driver's "Query read timeout" instead of hanging. A query waiting on a lock counts too, so editor writes fail after 5 s while `reindex-search` holds the content lock for longer than that. The jobs (`import-estate`, `reindex-search`, `redact-change-events`) have no query limit.
+The server's pool gives a request's query 5 s and a new connection 2 s, and keeps its sockets alive with TCP keepalive. Boot migrations run on a pool of their own, with 10 min a statement. Postgres enforces the same query limits (`statement_timeout`), so a query that times out also stops on the server instead of keeping a connection open after the pool has replaced it. A database that goes quiet without hanging up (a failover or partition) therefore answers 500 `internal_error` from the driver's "Query read timeout" instead of hanging. A query waiting on a lock counts too, so editor writes fail after 5 s while `reindex-search` holds the content lock for longer than that. The jobs (`import-estate`, `reindex-search`, `redact-change-events`) have no query limit.
 
 The site routes (`/pages`, `/categories…`, `/collections/:key/records`, `/site-version`, `/catalog`, `/search/documents`) are limited to 1,000 requests a minute per client, answering 429 beyond it; editor, auth and `/docs` routes are not limited. `trustProxy` trusts only private-address peers (the ALB), so the client is the address the ALB forwards and a client's own `X-Forwarded-For` entries are ignored. Buckets are in memory, per task. Landing is exempt: its server sends `LANDING_SECRET` as `x-landing-token`, and such requests skip the limit and carry no `x-ratelimit-*` headers. It has to be, because landing reads `/pages` on every uncached page view (and a category listing on every category page view, and `/site-version` on its poll) from a few shared egress addresses, so its rate follows citizen and bot traffic and no limit can be sized above it (#3129). With `LANDING_SECRET` unset, nobody is exempt.
 
-Migrations run at boot. Each script checks `schema_migrations` after acquiring the PostgreSQL advisory lock, then conditionally executes and records completion in the same transaction on the same connection. Each migration commits separately so later scripts can use newly added enum values. A runner with an outdated ledger read skips scripts another runner completed; scripts must still tolerate replay after lost bookkeeping.
+`src/schema.ts` is the one definition of the tables, and the migrations are generated from it. To change the schema, edit `schema.ts`, run `pnpm db:generate --name=<what-changed>` from this directory, and commit what drizzle-kit writes to `migrations/` (the SQL and its snapshot). `src/migrate.test.ts` fails while `schema.ts` holds a change with no migration. Triggers, functions and data fixes are not Drizzle's to describe: `pnpm db:generate --custom --name=<what>` makes an empty migration to write them in, with `--> statement-breakpoint` between statements.
+
+Migrations run at boot, before the HTTP listener opens. Drizzle records the ones it has applied in `drizzle.__drizzle_migrations` and applies the rest in one transaction, behind a PostgreSQL advisory lock, so instances that boot together take turns and a boot lands every pending migration or none. Three rules follow from how Drizzle tracks them:
+
+- Never edit or delete a migration that has merged. Undo it with a new one. To land a reverted migration again, revert the revert, so it keeps its place in the journal: generated afresh it would run a second time and fail on what its first run left.
+- Drizzle applies only what the journal dates after the newest migration it has recorded. One generated on a branch that merges after a later one would be skipped, so generate it again; `src/migrate.test.ts` fails until you do.
+- A new enum value can't be used by a later statement in the same boot, because Postgres refuses it inside the transaction that added it. Ship the value in one release and its use in the next. A function body that names it is fine.
+
+`0000_baseline` and `0001_triggers` build what the 26 hand-written scripts before them built (`001_init` to `026_change_event_order`, in git history); where this README names one of those, it is telling a feature's history. A database those scripts migrated is taken over on its first boot: the two are recorded as applied instead of run, and its `schema_migrations` table is left in place.
 
 Migration `024` gives pages, categories and collection records numeric edit versions from one noncycling sequence, capped at JavaScript's maximum safe integer. These identities are separate from timestamps and audit event numbers. Editor snapshots include them; public projections and audit snapshots do not.
 
