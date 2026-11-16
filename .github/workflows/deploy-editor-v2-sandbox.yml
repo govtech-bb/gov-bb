@@ -12,7 +12,8 @@ name: Deploy editor_v2 to Sandbox
 # Reusable: deploy-sandbox.yml calls it (job `deploy-editor-v2`) on a merge to
 # main when nx marks editor_v2 as affected (or amplify.yml changed), after its
 # advance-sandbox job has moved the `sandbox` branch to that commit (#3119).
-# Run it by hand from main to rebuild without a change.
+# Run it by hand from main to rebuild the current `sandbox` head without a
+# change.
 #
 # The editor's prose template uses the shared Markdown dialect and the
 # design-system packages installed from the lockfile.
@@ -57,19 +58,30 @@ jobs:
           role-to-assume: ${{ env.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
-      # --commit-id builds exactly the commit that triggered this run, not
-      # whatever the branch head is by the time Amplify clones it.
+      # From deploy-sandbox on a push, --commit-id builds exactly the merged
+      # commit (advance-sandbox has just put `sandbox` on it), not whatever the
+      # branch head is by the time Amplify clones it. On a manual dispatch,
+      # GITHUB_SHA is the head of the ref it was run from (often main), which
+      # may not be on `sandbox` yet, so build the `sandbox` head instead, as the
+      # other Amplify jobs in deploy-sandbox.yml do. In a called workflow,
+      # GITHUB_EVENT_NAME is the caller's event.
       - name: Start the Amplify build and wait for it
         run: |
+          COMMIT_ARGS=()
+          COMMIT_DESC="sandbox head"
+          if [ "$GITHUB_EVENT_NAME" != workflow_dispatch ]; then
+            COMMIT_ARGS=(--commit-id "$GITHUB_SHA")
+            COMMIT_DESC="commit $GITHUB_SHA"
+          fi
           JOB_ID=$(aws amplify start-job \
             --app-id "$AMPLIFY_APP_ID" \
             --branch-name "$AMPLIFY_BRANCH" \
             --job-type RELEASE \
-            --commit-id "$GITHUB_SHA" \
+            "${COMMIT_ARGS[@]}" \
             --commit-message "GitHub Actions run $GITHUB_RUN_ID" \
             --query jobSummary.jobId \
             --output text)
-          echo "Amplify editor_v2 job started: $JOB_ID (commit $GITHUB_SHA)"
+          echo "Amplify editor_v2 job started: $JOB_ID ($COMMIT_DESC)"
 
           # 40 x 30 s = 20 minutes. The 12 Oct build took about 4.
           for i in $(seq 1 40); do
