@@ -146,6 +146,43 @@ describe("estateDifferences", () => {
     ]);
   });
 
+  it("reports a description, form_id and parent difference", () => {
+    // /b/c has a "" description, no form and parent /b; served with a
+    // description and form, under /x.
+    const moved = served("/b/c", {
+      frontmatter: { title: "/b/c", description: "other" },
+      form_id: "g",
+      breadcrumbs: [
+        { name: "top", url: "/top" },
+        { name: "/x", url: "/x" },
+        { name: "/b/c", url: "/b/c" },
+      ],
+    });
+    expect(run({ "/b/c": moved })).toEqual([
+      {
+        kind: "field",
+        url: "/b/c",
+        field: "description",
+        expected: null,
+        actual: "other",
+      },
+      {
+        kind: "field",
+        url: "/b/c",
+        field: "form_id",
+        expected: null,
+        actual: "g",
+      },
+      {
+        kind: "field",
+        url: "/b/c",
+        field: "parent",
+        expected: "/b",
+        actual: "/x",
+      },
+    ]);
+  });
+
   it("reports a page served as 404 as missing", () => {
     expect(run({ "/loose": null })).toEqual([
       { kind: "missing", url: "/loose" },

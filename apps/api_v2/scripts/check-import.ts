@@ -15,8 +15,10 @@
  */
 
 import { parseArgs } from "node:util";
-import { estateDifferences } from "../src/modules/estate-drift";
-import type { Difference } from "../src/modules/estate-drift";
+import {
+  estateDifferences,
+  type Difference,
+} from "../src/modules/estate-drift";
 import type { Visibility } from "../src/modules/page";
 import type { PublicPage } from "../src/modules/page-visibility";
 import {

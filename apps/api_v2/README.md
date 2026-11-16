@@ -644,7 +644,8 @@ On sandbox, the `estate-drift` job in `.github/workflows/deploy-api-v2-sandbox.y
    ```
 
    Only `{"source","differences"}` goes to stdout, and the rows go to stderr. `-s` keeps pnpm's banner out of the file.
-6. Just before the landing switch (#3227 for staging, #3228 for prod), run step 5's command again. Use a checkout of the commit the environment's api_v2 runs now (step 3's image tag), not step 1's sha, so anything merged since the import shows. Resolve any difference before switching: with `sync-estate` (#3711) on a database editors have written to, or by the rules in "A database that already has content". Paste the output on the switch issue.
+
+6. Just before the landing switch (#3227 for staging, #3228 for prod), run step 5's command again. Use a checkout of the commit the environment's api_v2 runs now (read the running image's tag with step 3's `describe-tasks` command), not step 1's sha, so anything merged since the import shows. Resolve any difference before switching: with `sync-estate` (#3711) on a database editors have written to, or by the rules in "A database that already has content". Paste the output on the switch issue.
 
 ### A database that already has content
 
