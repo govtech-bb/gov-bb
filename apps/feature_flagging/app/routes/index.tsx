@@ -160,8 +160,7 @@ function ServicesPage() {
     typeFilter !== "all";
 
   function toggleSort(key: SortKey) {
-    const dir =
-      sortKey === key ? (sortDir === "asc" ? "desc" : "asc") : "asc";
+    const dir = sortKey === key ? (sortDir === "asc" ? "desc" : "asc") : "asc";
     update({ sortKey: key, sortDir: dir });
   }
 
@@ -280,10 +279,30 @@ function ServicesPage() {
           <table className="w-full border-collapse text-caption">
             <thead>
               <tr>
-                <SortHeader label="Service" col="service" sort={sort} onSort={toggleSort} />
-                <SortHeader label="Category" col="category" sort={sort} onSort={toggleSort} />
-                <SortHeader label="Type" col="type" sort={sort} onSort={toggleSort} />
-                <SortHeader label="Status" col="status" sort={sort} onSort={toggleSort} />
+                <SortHeader
+                  label="Service"
+                  col="service"
+                  sort={sort}
+                  onSort={toggleSort}
+                />
+                <SortHeader
+                  label="Category"
+                  col="category"
+                  sort={sort}
+                  onSort={toggleSort}
+                />
+                <SortHeader
+                  label="Type"
+                  col="type"
+                  sort={sort}
+                  onSort={toggleSort}
+                />
+                <SortHeader
+                  label="Status"
+                  col="status"
+                  sort={sort}
+                  onSort={toggleSort}
+                />
                 <th className="border-b border-grey-00 bg-white-00 px-s py-xs" />
               </tr>
             </thead>
@@ -351,7 +370,10 @@ function ServicesPage() {
               ))}
               {visible.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-m py-m text-center text-mid-grey-00">
+                  <td
+                    colSpan={5}
+                    className="px-m py-m text-center text-mid-grey-00"
+                  >
                     No services match your filters.
                   </td>
                 </tr>
@@ -360,25 +382,25 @@ function ServicesPage() {
           </table>
         </div>
 
-      {pending && (
-        <ConfirmStatusChange
-          pending={pending}
-          onCancel={() => setPending(null)}
-          onConfirm={() => {
-            const { row, next } = pending;
-            setPending(null);
-            void changeStatus(row, next);
-          }}
-        />
-      )}
+        {pending && (
+          <ConfirmStatusChange
+            pending={pending}
+            onCancel={() => setPending(null)}
+            onConfirm={() => {
+              const { row, next } = pending;
+              setPending(null);
+              void changeStatus(row, next);
+            }}
+          />
+        )}
 
-      {audit && (
-        <AuditDrawer
-          slug={audit.slug}
-          title={audit.title}
-          onClose={() => setAudit(null)}
-        />
-      )}
+        {audit && (
+          <AuditDrawer
+            slug={audit.slug}
+            title={audit.title}
+            onClose={() => setAudit(null)}
+          />
+        )}
       </div>
     </>
   );
@@ -432,7 +454,9 @@ function SortHeader({
   const active = sort.key === col;
   return (
     <th
-      aria-sort={active ? (sort.dir === "asc" ? "ascending" : "descending") : "none"}
+      aria-sort={
+        active ? (sort.dir === "asc" ? "ascending" : "descending") : "none"
+      }
       className="border-b border-grey-00 bg-white-00 px-s py-xs text-left text-caption-sm font-normal uppercase tracking-wide text-mid-grey-00"
     >
       <button

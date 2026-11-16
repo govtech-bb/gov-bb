@@ -1044,7 +1044,19 @@ jobs:
 
   summary:
     name: Deployment summary
-    needs: [setup, deploy-api, deploy-form-builder, amplify-forms, amplify-landing, amplify-form-builder, amplify-feature-flagging, amplify-analytics, smoke-test-forms, journey-feature-flag]
+    needs:
+      [
+        setup,
+        deploy-api,
+        deploy-form-builder,
+        amplify-forms,
+        amplify-landing,
+        amplify-form-builder,
+        amplify-feature-flagging,
+        amplify-analytics,
+        smoke-test-forms,
+        journey-feature-flag,
+      ]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -1110,7 +1122,19 @@ jobs:
 
   notify-failure:
     name: Notify Slack on failure
-    needs: [deploy-api, deploy-form-builder, amplify-forms, amplify-landing, amplify-form-builder, amplify-feature-flagging, amplify-analytics, smoke-test-forms, promote-to-staging, journey-feature-flag]
+    needs:
+      [
+        deploy-api,
+        deploy-form-builder,
+        amplify-forms,
+        amplify-landing,
+        amplify-form-builder,
+        amplify-feature-flagging,
+        amplify-analytics,
+        smoke-test-forms,
+        promote-to-staging,
+        journey-feature-flag,
+      ]
     if: always() && contains(needs.*.result, 'failure')
     runs-on: ubuntu-latest
     steps:
@@ -1140,7 +1164,19 @@ jobs:
   # that staging deploy finishes.
   promote-to-staging:
     name: Promote to staging (on sandbox green)
-    needs: [setup, deploy-api, deploy-form-builder, amplify-forms, amplify-landing, amplify-form-builder, amplify-feature-flagging, amplify-analytics, smoke-test-forms, journey-feature-flag]
+    needs:
+      [
+        setup,
+        deploy-api,
+        deploy-form-builder,
+        amplify-forms,
+        amplify-landing,
+        amplify-form-builder,
+        amplify-feature-flagging,
+        amplify-analytics,
+        smoke-test-forms,
+        journey-feature-flag,
+      ]
     if: ${{ github.event_name == 'push' && !failure() && !cancelled() }}
     runs-on: ubuntu-latest
     concurrency:

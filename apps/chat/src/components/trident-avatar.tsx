@@ -33,7 +33,8 @@ export function TridentAvatar({
       className={cn(
         "relative flex shrink-0 items-center justify-center",
         filled && "overflow-hidden rounded-full",
-        size === "lg" && "motion-safe:animate-[bot-hum_3s_ease-in-out_infinite]",
+        size === "lg" &&
+          "motion-safe:animate-[bot-hum_3s_ease-in-out_infinite]",
         dims,
         className,
       )}

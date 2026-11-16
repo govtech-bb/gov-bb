@@ -79,7 +79,9 @@ describe('FormPage', () => {
     expect(screen.getByText('267 of 320 visits')).toBeTruthy()
     expect(screen.getAllByText('Completion rate').length).toBeGreaterThan(0)
     expect(screen.getByText('56 of 267 starts')).toBeTruthy()
-    expect(screen.getAllByText('Avg time to complete').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('Avg time to complete').length).toBeGreaterThan(
+      0,
+    )
     expect(screen.getByText('15m 58s')).toBeTruthy() // 958s
     expect(
       screen.getAllByText('Field validation errors').length,

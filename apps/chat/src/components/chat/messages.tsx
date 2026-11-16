@@ -104,7 +104,11 @@ function renderParts(
       arguments?: string;
       approval?: { id: string };
     };
-    if (tc.type === "tool-call" && tc.name === "presentChoices" && tc.arguments) {
+    if (
+      tc.type === "tool-call" &&
+      tc.name === "presentChoices" &&
+      tc.arguments
+    ) {
       try {
         const args = JSON.parse(tc.arguments) as { choices?: string[] };
         if (Array.isArray(args.choices)) {
