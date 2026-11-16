@@ -15,7 +15,7 @@ import {
 // `packages/` or `scripts/` is scanned: the guard module and
 // `confirmation-markdown.ts` quote the superseded spellings deliberately in
 // their doc comments. The pharmacy finder's dataset is the one file read
-// outside those roots, for names only: it has no Environmental Health contact
+// outside CONTENT_ROOT and RECIPES_ROOT, for names only: it has no Environmental Health contact
 // block, so the block rule doesn't apply. Its slugs are left alone — the
 // `winston-scott-polyclinic` slug is a public URL, and the name pattern only
 // matches the display spelling (#2719).
