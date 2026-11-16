@@ -308,6 +308,18 @@ describe('HomeHero', () => {
     expect(screen.getByRole('link', { name: QUESTION })).toBeTruthy()
   })
 
+  it('tracks a popular search as a homepage search', () => {
+    renderHero()
+    fireEvent.click(screen.getByRole('radio', { name: 'Search' }))
+
+    fireEvent.click(screen.getByRole('link', { name: 'Redirect my mail' }))
+
+    expect(trackEventMock).toHaveBeenCalledWith('search-submit', {
+      query: 'Redirect my mail',
+      source: 'home',
+    })
+  })
+
   it('hides a popular search whose service is hidden', () => {
     renderHero([QUESTION], new Map([['get-birth-certificate', 'preview']]))
     fireEvent.click(screen.getByRole('radio', { name: 'Search' }))

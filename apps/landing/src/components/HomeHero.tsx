@@ -314,6 +314,12 @@ export function HomeHero({ questions, viewer, overlay }: HomeHeroProps) {
                         <a
                           className="govbb-link"
                           href={`/search-results?${new URLSearchParams({ q: query })}`}
+                          onClick={() =>
+                            trackEvent('search-submit', {
+                              query,
+                              source: SOURCE,
+                            })
+                          }
                         >
                           {query}
                         </a>
