@@ -107,7 +107,7 @@ export interface SearchSourceRow {
 }
 
 export interface SearchReport {
-  // --- `search-submit`: every search-box submission (home/services/results) ---
+  // --- `search-submit`: search boxes + homepage Popular searches links (home/services/results) ---
   /** total `search-submit` events in range (incl. empty submissions). */
   submitTotal: number;
   /** top non-empty queries from `search-submit`, by count. */

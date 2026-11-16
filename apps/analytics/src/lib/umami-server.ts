@@ -149,7 +149,7 @@ export interface SiteStats {
   bounceRate: number
   /** pageviews ÷ sessions. */
   avgStepsPerVisit: number
-  /** `search-submit` events (search-box submissions). */
+  /** `search-submit` events (search boxes and homepage Popular searches links). */
   searches: number
 }
 export interface OverviewData {
