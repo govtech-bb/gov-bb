@@ -314,10 +314,9 @@ describe('HomeHero', () => {
 
     fireEvent.click(screen.getByRole('link', { name: 'Redirect my mail' }))
 
-    expect(trackEventMock).toHaveBeenCalledWith('search-submit', {
-      query: 'Redirect my mail',
-      source: 'home',
-    })
+    expect(trackEventMock.mock.calls).toEqual([
+      ['search-submit', { query: 'Redirect my mail', source: 'home' }],
+    ])
   })
 
   it('hides a popular search whose service is hidden', () => {

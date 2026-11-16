@@ -93,13 +93,13 @@ Where a citizen was stopped before reaching a service.
 
 On landing. Every `query` is masked (see above).
 
-| Event                      | Data                                           | Fires when                                                                                                                                                  |
-| -------------------------- | ---------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `search-submit`            | `query`, `source`                              | A search is submitted. `source` is the search box: `home`, `services` or `results`. A homepage "Popular searches" link also sends it, with `source` `home`. |
-| `search-suggestion-select` | `query`, `title`, `href`, `position`, `source` | The citizen picks a suggestion under the search box. `query` is what they had typed.                                                                        |
-| `search`                   | `query`, `results`                             | The search results page loads. `results` is the number of results.                                                                                          |
-| `search-no-results`        | `query`                                        | The search results page has no results.                                                                                                                     |
-| `search-result-click`      | `query`, `position`, `href`                    | The citizen selects a search result. `position` starts at 1.                                                                                                |
+| Event                      | Data                                           | Fires when                                                                                                                          |
+| -------------------------- | ---------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| `search-submit`            | `query`, `source`                              | A search is submitted, from a search box or a homepage "Popular searches" link. `source` is where: `home`, `services` or `results`. |
+| `search-suggestion-select` | `query`, `title`, `href`, `position`, `source` | The citizen picks a suggestion under the search box. `query` is what they had typed.                                                |
+| `search`                   | `query`, `results`                             | The search results page loads. `results` is the number of results.                                                                  |
+| `search-no-results`        | `query`                                        | The search results page has no results.                                                                                             |
+| `search-result-click`      | `query`, `position`, `href`                    | The citizen selects a search result. `position` starts at 1.                                                                        |
 
 ## Interactive tools
 
