@@ -2,6 +2,10 @@
   "name": "@govtech-bb/content",
   "version": "0.0.0",
   "private": true,
+  "scripts": {
+    "lint:fix": "oxlint --fix",
+    "test:oxlint": "oxlint"
+  },
   "type": "module",
   "exports": {
     ".": "./src/index.ts",

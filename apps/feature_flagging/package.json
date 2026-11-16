@@ -8,7 +8,9 @@
     "build": "vite build",
     "preview": "nitro preview",
     "start": "node .amplify-hosting/compute/default/server.js",
-    "test": "vitest run"
+    "test": "vitest run",
+    "lint:fix": "oxlint --fix",
+    "test:oxlint": "oxlint"
   },
   "dependencies": {
     "@fontsource/figtree": "^5.2.10",

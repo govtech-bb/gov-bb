@@ -165,6 +165,16 @@ a fully offline `build` fails on that package. When verifying locally,
 run `pnpm exec nx run-many -t build --exclude=landing` and let CI build
 everything.
 
+Lint and formatting are oxlint and oxfmt. Every project has a cached
+`test:oxlint` script (and `lint:fix`); CI's "Lint" check runs it over the
+affected projects plus a whole-repo format check, and the pre-commit hook runs
+both on staged files:
+
+```bash
+pnpm test:oxlint     # nx affected -t test:oxlint (.oxlintrc.json, nested in apps/forms + apps/landing)
+pnpm test:format     # oxfmt --check (.oxfmtrc.json); `pnpm format` writes
+```
+
 ### Accessibility target
 
 The platform meets the WCAG version and level named on the Design System's

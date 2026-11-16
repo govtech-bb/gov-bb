@@ -19,12 +19,6 @@
         "command": "vitest run",
         "cwd": "packages/registry"
       }
-    },
-    "lint": {
-      "executor": "@nx/eslint:lint",
-      "options": {
-        "lintFilePatterns": ["packages/registry/**/*.ts"]
-      }
     }
   },
   "tags": []

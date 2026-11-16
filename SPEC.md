@@ -46,8 +46,8 @@ The workspace is declared in `pnpm-workspace.yaml` with the globs `apps/*` and `
 | Task orchestration & caching | **Nx v22.6.5** |
 | Type checking | TypeScript project references (`tsc -b`) |
 | Testing | **Vitest 4** is the standard runner across the monorepo (Jest has been removed); `apps/chat` uses the Node test runner (`tsx --test`) |
-| Linting | **ESLint** (flat config, `eslint.config.mts`) with `typescript-eslint`, `@eslint/json`, `@eslint/css` |
-| Formatting | **Prettier** — double quotes, trailing commas, semicolons, 80-column width, 2-space tabs |
+| Linting | **oxlint** (`.oxlintrc.json`, nested configs in `apps/forms` and `apps/landing`) |
+| Formatting | **oxfmt** (`.oxfmtrc.json`) — double quotes, trailing commas, semicolons, 80-column width, 2-space tabs; landing and analytics drop semicolons and use single quotes |
 | Secret scanning | **gitleaks** (optional pre-commit) |
 | Git hooks | **Husky** + **lint-staged** |
 
@@ -55,15 +55,15 @@ The workspace is declared in `pnpm-workspace.yaml` with the globs `apps/*` and `
 
 - `nx.json` sets the default base branch to `main`.
 - Build targets depend on `^build` (upstream-first) and are cached.
-- `lint` and `test` targets are also cached.
+- `test` and `test:oxlint` targets are also cached.
 - Each app/package contains a `project.json` describing its Nx targets.
 
 ### Key root scripts (from `package.json`)
 
 - `pnpm build` → `nx run-many -t build`
-- `pnpm lint` → `nx run-many -t lint`
+- `pnpm test:oxlint` → `nx affected -t test:oxlint` (each project's `oxlint` script)
 - `pnpm test:all` → `nx run-many -t test`
-- `pnpm format` / `pnpm format:check`
+- `pnpm format` / `pnpm test:format`
 - `pnpm dev:<app>` → `nx dev <app>` (e.g. `dev:forms`, `dev:api`, `dev:landing`)
 - TypeORM migration commands (`migration:create`, `migration:generate`, `migration:run`, `migration:revert`, `migration:show`) driven from `apps/api/typeorm.config.ts`.
 

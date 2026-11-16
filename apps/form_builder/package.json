@@ -9,7 +9,9 @@
     "preview": "nitro preview",
     "start": "node .amplify-hosting/compute/default/server.js",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit -p tsconfig.json"
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "lint:fix": "oxlint --fix",
+    "test:oxlint": "oxlint"
   },
   "dependencies": {
     "@base-ui/react": "^1.8.0",

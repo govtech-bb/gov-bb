@@ -37,22 +37,19 @@
     "demo": "node scripts/demo.mjs",
     "build": "vite build",
     "preview": "vite preview",
-    "lint": "eslint",
-    "lint:fix": "eslint --fix",
-    "format": "prettier --parser typescript --write **/*.{ts,tsx}",
     "test": "vitest run",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:report": "playwright show-report",
     "test:smoke": "playwright test --config playwright.smoke.config.ts",
     "test:journey": "playwright test --config playwright.journey.config.ts",
-    "test:a11y": "playwright test --config playwright.a11y.config.ts"
+    "test:a11y": "playwright test --config playwright.a11y.config.ts",
+    "lint:fix": "oxlint --fix",
+    "test:oxlint": "oxlint"
   },
   "devDependencies": {
     "@aws-sdk/client-s3": "^3.1136.0",
     "@axe-core/playwright": "^4.12.1",
-    "@eslint/css": "^1.1.0",
-    "@eslint/js": "^9.39.4",
     "@faker-js/faker": "^10.4.0",
     "@playwright/test": "^1.60.0",
     "@tanstack/router-plugin": "catalog:",
@@ -61,17 +58,8 @@
     "@testing-library/user-event": "^14.6.1",
     "@types/leaflet": "^1.9.20",
     "@vitejs/plugin-react": "^6.0.2",
-    "eslint": "^9.39.4",
-    "eslint-plugin-react": "^7.37.5",
-    "globals": "^17.5.0",
     "jest-axe": "^10.0.0",
-    "lint-staged": "^16.4.0",
     "postal-mime": "^4.1.4",
-    "prettier": "^3.8.1",
-    "typescript-eslint": "^8.58.2",
     "vite": "catalog:"
-  },
-  "lint-staged": {
-    "*.{json,ts,tsx}": "npx prettier --write"
   }
 }
