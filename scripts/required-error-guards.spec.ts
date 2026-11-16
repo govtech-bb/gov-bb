@@ -294,8 +294,9 @@ describe("checkRequiredErrorsAreSpecific", () => {
       ).toEqual([]);
     });
 
-    // An unauthored date derives `Enter ${label}`, so it has no message to
-    // compare.
+    // An unauthored date shows a derived `Enter ${label}`, which the check
+    // does not reproduce, so it is skipped (#2723 scoped dates out). These two
+    // would both show "Enter date" — a known gap, not a pass.
     it("ignores unauthored dates", () => {
       expect(
         check({

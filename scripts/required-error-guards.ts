@@ -118,8 +118,10 @@ export function checkRequiredErrorsAreSpecific(
           errors.push(error);
           continue;
         }
-        // A defective message is reported above, so it is not grouped again;
-        // an unauthored date has no message to compare.
+        // A defective message is reported above, so it is not grouped again.
+        // An unauthored date is skipped: it shows `Enter ${label}` derived in
+        // validate-date.ts, which this check does not reproduce, so two dates
+        // with the same label on one step would still collide unseen.
         const required = field.validations?.required;
         if (!required || required.value === false) continue;
         if (typeof required.error !== "string") continue;
