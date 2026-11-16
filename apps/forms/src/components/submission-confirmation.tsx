@@ -5,7 +5,7 @@ import { summaryValueToText } from "@govtech-bb/submission-summary";
 import { markdownUrlTransform } from "./markdown-url-transform";
 import { LANDING_URL } from "../config/landing";
 import { isSafePaymentUrl } from "../lib/security/safe-payment-url";
-import { SubmissionConfirmationProps } from "../types/props.type";
+import type { SubmissionConfirmationProps } from "../types/props.type";
 import {
   Button,
   Heading,

@@ -1,4 +1,4 @@
-import { AddressLookupPrimitive } from "@govtech-bb/form-types";
+import type { AddressLookupPrimitive } from "@govtech-bb/form-types";
 
 // A single-line address field backed by a Barbados-locked geocoder lookup.
 // Stores the same string a plain address text field would; the geocoder only

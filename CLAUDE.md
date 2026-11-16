@@ -194,6 +194,17 @@ for that `dist` layout, since `@nx/js:tsc` copies it into `dist/package.json`
 as-is. Don't point it at `.ts`. `pnpm build` is affected-only; `pnpm
 build:all` builds everything.
 
+### One tsconfig base; override only what differs
+
+Every project's tsconfig extends `tsconfig.base.json`. The base holds the
+shared settings: `strict`, `noUnusedLocals` and `noUnusedParameters`,
+`verbatimModuleSyntax`, bundler resolution and the `@govtech-bb/*` paths. A
+project sets only what genuinely differs. CommonJS builds (the api and the
+libraries it runs from `dist`) set `"module": "commonjs"`,
+`"moduleResolution": "node10"` and `"verbatimModuleSyntax": false`. React apps
+add `jsx`, DOM `lib`s and `noEmit`, and database adds the decorator flags.
+Don't restate a base setting in a project.
+
 ### Accessibility target
 
 The platform meets the WCAG version and level named on the Design System's

@@ -1,9 +1,9 @@
-import { JSX } from "react";
+import type { JSX } from "react";
 import { Fieldset, Hint, Input, Label } from "@govtech-bb/react";
 import ErrorMessage from "../error-message";
 import { parseDatePart } from "@forms/lib";
-import { DateValue } from "@govtech-bb/form-types";
-import { FieldRenderContext } from "./render-context";
+import type { DateValue } from "@govtech-bb/form-types";
+import type { FieldRenderContext } from "./render-context";
 
 export function renderDateField(ctx: FieldRenderContext): JSX.Element {
   const {

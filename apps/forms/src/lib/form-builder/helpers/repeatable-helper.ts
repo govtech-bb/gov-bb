@@ -1,4 +1,4 @@
-import {
+import type {
   ClientFormStep,
   ClientPrimitive,
   RepeatableStepSettings,
@@ -9,7 +9,7 @@ import {
   FormMeta,
 } from "@forms/types";
 import { getFullFieldId } from "../field-mapper";
-import {
+import type {
   RepeatableBehaviour,
   SharedFieldsBehaviour,
 } from "@govtech-bb/form-types";

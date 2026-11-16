@@ -1,9 +1,9 @@
 import React from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { AnyFormApi } from "@tanstack/react-form";
-import { ClientFormStep, ClientPrimitive, FormMeta } from "@forms/types";
+import type { AnyFormApi } from "@tanstack/react-form";
+import type { ClientFormStep, ClientPrimitive, FormMeta } from "@forms/types";
 import { getInstanceMarker, getVisibleFields } from "@forms/lib";
-import { DateValue } from "@govtech-bb/form-types";
+import type { DateValue } from "@govtech-bb/form-types";
 import { Heading, Link, SummaryList, Text } from "@govtech-bb/react";
 import {
   resolveFieldLabel,

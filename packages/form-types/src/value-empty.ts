@@ -1,4 +1,4 @@
-import { DateValueInput, FieldValue } from "./validation.type";
+import type { DateValueInput, FieldValue } from "./validation.type";
 
 // Emptiness semantics for a collected field value. Shared across the validation
 // boundary, the forms UI, and the submission reshaper (see reshape-submission).
