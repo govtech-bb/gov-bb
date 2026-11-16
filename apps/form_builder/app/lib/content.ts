@@ -246,8 +246,23 @@ export interface NewCategory {
   description?: string;
 }
 
+// A TS string literal as oxfmt prints it: double quotes, unless the value
+// holds more double quotes than single ones.
 function tsString(value: string): string {
-  return `"${value.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
+  const doubles = value.split('"').length - 1;
+  const singles = value.split("'").length - 1;
+  const quote = doubles > singles ? "'" : '"';
+  const escaped = value.replace(/\\/g, "\\\\").replaceAll(quote, `\\${quote}`);
+  return `${quote}${escaped}${quote}`;
+}
+
+// One `key: value,` line of a category entry. Past oxfmt's 80-column print
+// width (.oxfmtrc.json), oxfmt moves the value onto its own line, so the CI
+// format check passes on what the builder pushes.
+function categoryProperty(key: string, value: string): string {
+  const line = `    ${key}: ${tsString(value)},`;
+  if (line.length <= 80) return `${line}\n`;
+  return `    ${key}:\n      ${tsString(value)},\n`;
 }
 
 /**
@@ -269,9 +284,9 @@ export function insertCategoryEntry(
   const desc = cat.description?.trim();
   const entry =
     `  {\n` +
-    `    slug: ${tsString(cat.slug)},\n` +
-    `    title: ${tsString(cat.title)},\n` +
-    (desc ? `    description: ${tsString(desc)},\n` : "") +
+    categoryProperty("slug", cat.slug) +
+    categoryProperty("title", cat.title) +
+    (desc ? categoryProperty("description", desc) : "") +
     `  },\n`;
   return source.slice(0, idx) + entry + source.slice(idx);
 }

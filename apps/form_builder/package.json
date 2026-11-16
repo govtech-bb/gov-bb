@@ -69,6 +69,7 @@
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
     "@vitejs/plugin-react": "^6.0.2",
+    "oxfmt": "0.72.0",
     "typescript": "catalog:",
     "vite": "catalog:"
   }

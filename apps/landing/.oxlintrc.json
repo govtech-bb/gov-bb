@@ -2,7 +2,7 @@
   "$schema": "../../node_modules/oxlint/configuration_schema.json",
   // The @tanstack/eslint-config rule set plus the two classic react-hooks
   // rules.
-  "plugins": ["import", "typescript"],
+  "plugins": ["import", "typescript", "unicorn"],
   "categories": {
     "correctness": "off"
   },
@@ -59,6 +59,7 @@
         "no-var": "error",
         "no-with": "error",
         "prefer-const": "error",
+        "unicorn/prefer-node-protocol": "error",
         "require-yield": "error",
         "use-isnan": "error",
         "valid-typeof": "error",
