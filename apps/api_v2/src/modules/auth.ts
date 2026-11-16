@@ -67,9 +67,9 @@ export class Forbidden extends Error {
 export class NotApprover extends Error {
   /** Stable protocol-projection discriminator. */
   readonly _tag = "NotApprover";
-  /** Say who can make the change. */
-  constructor() {
-    super("Only approvers can change who can see a page.");
+  /** Say who can make the change, and why when it isn't a visibility change. */
+  constructor(message = "Only approvers can change who can see a page.") {
+    super(message);
   }
 }
 

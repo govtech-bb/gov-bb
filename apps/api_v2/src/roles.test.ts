@@ -86,6 +86,13 @@ const FORBIDDEN = {
   message: "Only approvers can change who can see a page.",
 };
 
+const START_LINK_FORBIDDEN = {
+  error: "forbidden",
+  message:
+    "A start page under a public page decides whether citizens see its Start " +
+    "link, so only an approver can add, move, rename or delete it.",
+};
+
 describe("a page's visibility", () => {
   it("is not changed by a non-approver's save, which leaves the page as it was", async () => {
     const page = await seedPage({ visibility: "preview" });
@@ -231,7 +238,7 @@ describe("a public page's Start link", () => {
     });
 
     expect(response.statusCode).toBe(403);
-    expect(response.json()).toEqual(FORBIDDEN);
+    expect(response.json()).toEqual(START_LINK_FORBIDDEN);
     expect(await hidden()).toBe(false);
   });
 
@@ -249,6 +256,7 @@ describe("a public page's Start link", () => {
     });
 
     expect(response.statusCode).toBe(403);
+    expect(response.json()).toEqual(START_LINK_FORBIDDEN);
     expect(await stored(start.id)).not.toBeNull();
     expect(await hidden()).toBe(true);
   });
@@ -276,6 +284,7 @@ describe("a public page's Start link", () => {
     });
 
     expect(response.statusCode).toBe(403);
+    expect(response.json()).toEqual(START_LINK_FORBIDDEN);
     expect(await hidden()).toBe(false);
   });
 
@@ -308,6 +317,7 @@ describe("a public page's Start link", () => {
     });
 
     expect(response.statusCode).toBe(403);
+    expect(response.json()).toEqual(START_LINK_FORBIDDEN);
     expect(await hiddenAt(ENTRY)).toBe(true);
     expect(await hiddenAt(OTHER)).toBe(false);
   });

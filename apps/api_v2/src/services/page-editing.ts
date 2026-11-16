@@ -188,7 +188,9 @@ export interface PageRecords {
  * commit with their search text or not at all, recorded against the
  * employee. Only an
  * approver changes what citizens see: sets a page's visibility, creates one
- * public, or deletes a public one. A save to a public page that keeps it
+ * public, deletes a public one, or adds, moves, renames or deletes a hidden
+ * `start` sub-page of a public page, which decides whether its Start link
+ * shows. A save to a public page that keeps it
  * public, whoever makes it, goes into the page's pending revision and leaves
  * the live page as it is (#3198). An editor submits the revision for review,
  * and an approver who neither changed nor submitted it rejects it or
@@ -742,6 +744,11 @@ export class PageEditing {
   }
 }
 
+/** Why an editor's start sub-page write is refused, since it isn't a visibility change. */
+const START_LINK_REFUSAL =
+  "A start page under a public page decides whether citizens see its Start " +
+  "link, so only an approver can add, move, rename or delete it.";
+
 /**
  * Refuse an editor's write that adds, removes, moves or renames a hidden
  * `start` sub-page of a public page. Such a sub-page can hide that page's
@@ -765,7 +772,7 @@ async function startLinkGate(
   // Compared by page, so moving one between public pages is refused too.
   return hidBefore.value === hidesAfter.value
     ? ok(undefined)
-    : err(new NotApprover());
+    : err(new NotApprover(START_LINK_REFUSAL));
 }
 
 /** Where a page sits, and who sees it: all that decides a Start link. */

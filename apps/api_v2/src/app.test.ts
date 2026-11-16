@@ -303,6 +303,20 @@ describe("GET /pages?url=", () => {
     expect((await read("/calculate-severance-pay")).statusCode).toBe(404);
   });
 
+  it("301s a reviewer's bare slug to the preview page past a draft that shares it", async () => {
+    await seedPage({ visibility: "preview" });
+    await seedPage({
+      url: "/zz-unpublished/calculate-severance-pay",
+      visibility: "draft",
+    });
+
+    const reviewer = await readPreview("/calculate-severance-pay");
+
+    expect(reviewer.statusCode).toBe(301);
+    expect(reviewer.headers.location).toBe(ENTRY);
+    expect((await read("/calculate-severance-pay")).statusCode).toBe(404);
+  });
+
   it("301s a bare slug past a hidden page that shares it, rather than revealing it", async () => {
     await seedPage();
     await seedPage({
