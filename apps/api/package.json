@@ -70,8 +70,10 @@
   },
   "devDependencies": {
     "@nestjs/testing": "^11.1.28",
+    "@swc/core": "^1.16.13",
     "@types/express": "^4.17.21",
     "@types/json-logic-js": "^2.0.7",
+    "@types/luxon": "^3.7.1",
     "@types/markdown-it": "^14.1.2",
     "@types/multer": "^1.4.12",
     "@types/supertest": "^7.2.0",

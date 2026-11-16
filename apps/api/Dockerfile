@@ -31,8 +31,8 @@ COPY --chown=app:app packages/registry/package.json packages/registry/
 COPY --chown=app:app packages/submission-summary/package.json packages/submission-summary/
 COPY --chown=app:app packages/umami-analytics/package.json packages/umami-analytics/
 COPY --chown=app:app packages/analytics/package.json packages/analytics/
-# content is never imported by the api, but the ROOT package.json pins it
-# (workspace:*), and the root project is part of the prod-deps install below.
+# content is never imported by the api, but the root package.json's
+# devDependencies pin it (workspace:*), and the builder installs the root project.
 COPY --chown=app:app packages/content/package.json packages/content/
 
 # BuildKit cache mount keeps the pnpm content-addressable store across builds,
@@ -76,11 +76,11 @@ EXPOSE 3001
 CMD ["pnpm", "exec", "nx", "dev", "api"]
 
 # ---- prod-deps ----------------------------------------------------------
-# node_modules for the runner: only what @govtech-bb/api needs at runtime
-# (plus the root project, whose runtime deps it shares) — no devDependencies,
-# nothing from the other apps or from packages the api never imports. The
-# builder's full install is ~900MB of nx/vitest/vite/react/playwright that
-# AWS Inspector scans and every task start pulls. Linked from the cache-mount
+# node_modules for the runner: only what @govtech-bb/api needs at runtime —
+# no devDependencies, nothing from the other apps or from packages the api
+# never imports. The builder's full install is ~900MB of
+# nx/vitest/vite/react/playwright that AWS Inspector scans and every task
+# start pulls. Linked from the cache-mount
 # store where possible and fetched otherwise: when the install layer above is
 # CACHED it never ran in this build, so the mount is empty.
 #
@@ -92,7 +92,7 @@ RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store,uid=1001,gid=1001 \
     rm -rf node_modules apps/api/node_modules packages/*/node_modules && \
     pnpm install --store-dir=/pnpm/store --frozen-lockfile --ignore-scripts --prefer-offline --prod \
       --config.node-linker=hoisted \
-      --filter @govtech-bb/api... --filter @govtech-bb/modular-forms-monorepo
+      --filter @govtech-bb/api...
 
 # ---- runner -------------------------------------------------------------
 # Slim runtime image: plain `node`, no package manager. The ECS migrate task

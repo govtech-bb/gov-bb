@@ -47,7 +47,7 @@ jobs:
       # at a time: landing is on alpha.25, analytics still on alpha.17. Drop the
       # flag once every app has migrated.
       - name: Dependency consistency (sherif)
-        run: pnpm lint:deps
+        run: pnpm test:sherif
 
       - name: Run type check (tsc --build)
         id: typecheck

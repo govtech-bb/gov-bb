@@ -41,10 +41,10 @@ RUN for d in packages/*/dist; do \
     done
 
 # ---- prod-deps ---------------------------------------------------------------
-# Runtime node_modules: only @govtech-bb/form-builder-api's graph (plus the root
-# project, whose runtime deps it shares), no devDependencies. Linked from the
-# cache-mount store where possible, fetched otherwise (a CACHED install layer
-# leaves the mount empty). Mirrors apps/api/Dockerfile.
+# Runtime node_modules: only @govtech-bb/form-builder-api's graph, no
+# devDependencies. Linked from the cache-mount store where possible, fetched
+# otherwise (a CACHED install layer leaves the mount empty). Mirrors
+# apps/api/Dockerfile.
 #
 # node-linker=hoisted here only: the workspace installs with pnpm's default
 # isolated layout (ADR 0004), but the runner resolves everything from a single
@@ -54,7 +54,7 @@ RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store,uid=1001,gid=1001 \
     rm -rf node_modules apps/form_builder_api/node_modules packages/*/node_modules && \
     pnpm install --store-dir=/pnpm/store --frozen-lockfile --ignore-scripts --prefer-offline --prod \
       --config.node-linker=hoisted \
-      --filter @govtech-bb/form-builder-api... --filter @govtech-bb/modular-forms-monorepo
+      --filter @govtech-bb/form-builder-api...
 
 # ---- runner ----------------------------------------------------------------
 # Matches the main API's runner pattern exactly.

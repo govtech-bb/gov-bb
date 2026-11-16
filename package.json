@@ -1,18 +1,13 @@
 {
-  "name": "@govtech-bb/modular-forms-monorepo",
-  "version": "0.0.0",
+  "name": "@govtech-bb/platform",
   "private": true,
   "engines": {
-    "node": ">=24"
+    "node": "24.x"
   },
-  "workspaces": [
-    "apps/*",
-    "packages/*"
-  ],
   "scripts": {
     "build": "nx affected -t build",
     "build:all": "nx run-many -t build",
-    "lint:deps": "sherif -i @tanstack/ai-client -i express -i @types/express -i react-markdown -i @govtech-bb/react -r root-package-dependencies",
+    "test:sherif": "sherif -i @tanstack/ai-client -i express -i @types/express -i react-markdown -i @govtech-bb/react",
     "test:all": "nx run-many -t test",
     "test:pr": "nx affected -t test:oxlint,test:types,test,build && pnpm test:format",
     "test:ci": "nx run-many -t test:oxlint,test:types,test,build && pnpm test:format",
@@ -50,16 +45,9 @@
     "@govtech-bb/form-validation": "workspace:*",
     "@govtech-bb/registry": "workspace:*",
     "@nx/js": "^22.7.12",
-    "@swc/core": "^1.15.41",
-    "@testing-library/jest-dom": "^6.9.1",
-    "@testing-library/react": "^16.3.2",
-    "@testing-library/user-event": "^14.6.1",
-    "@types/jest-axe": "^3.5.9",
-    "@types/luxon": "^3.7.1",
     "@types/node": "^24.0.0",
     "@vitest/coverage-istanbul": "^4.1.11",
     "husky": "^9.1.7",
-    "jest-axe": "^10.0.0",
     "jsdom": "^28.1.0",
     "lint-staged": "^16.4.0",
     "nx": "^22.7.12",
@@ -67,27 +55,14 @@
     "oxlint": "1.87.0",
     "pg": "^8.21.0",
     "reflect-metadata": "^0.2.0",
-    "rxjs": "^7.0.0",
     "sherif": "^1.11.1",
     "ts-node": "^10.9.2",
     "tsx": "^4.22.3",
     "typeorm": "^0.3.31",
     "typescript": "catalog:",
-    "unplugin-swc": "^1.5.9",
     "vitest": "^4.1.11"
   },
   "packageManager": "pnpm@11.6.0",
-  "dependencies": {
-    "@aws-sdk/client-sesv2": "^3.1136.0",
-    "@govtech-bb/design": "^1.0.0-alpha.17",
-    "@nestjs/event-emitter": "^3.0.1",
-    "@nestjs/swagger": "^11.3.2",
-    "@nestjs/throttler": "^6.5.0",
-    "class-transformer": "^0.5.1",
-    "class-validator": "^0.15.1",
-    "eventemitter2": "^6.4.9",
-    "luxon": "^3.7.2"
-  },
   "lint-staged": {
     "*.{js,jsx,ts,tsx,mjs,cjs,mts,cts}": "oxlint",
     "*": "oxfmt --no-error-on-unmatched-pattern",

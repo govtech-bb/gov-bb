@@ -31,7 +31,7 @@ The workspace is declared in `pnpm-workspace.yaml` with the globs `apps/*` and `
 ## 2. Languages & Runtime
 
 - **Primary language:** TypeScript (v5.7.x) across every app and package.
-- **Runtime:** Node.js **>= 20** (CI pins to Node 20).
+- **Runtime:** Node.js **24** (`engines` `24.x`, `.nvmrc`; CI and the Docker images use Node 24).
 - **Module style:** Strict TypeScript with ES2022 target and TypeScript project references.
 - **Path aliases** (`tsconfig.base.json`): `@govtech-bb/form-builder`, `@govtech-bb/form-types`, `@govtech-bb/form-conditions`, `@govtech-bb/form-validation`, `@govtech-bb/registry`, `@govtech-bb/database`, plus app-local aliases like `@forms/*`.
 
