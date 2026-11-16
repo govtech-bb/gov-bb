@@ -847,14 +847,13 @@ jobs:
     # Which deployable apps this change touches, so the Docker jobs below only
     # build an image whose inputs changed. Workspace-level Docker inputs that Nx
     # cannot attribute to a project (.dockerignore, pnpm-workspace.yaml,
-    # patches/, this workflow) force all three.
+    # patches/, this workflow) force both.
     name: Detect affected apps
     runs-on: ubuntu-latest
     timeout-minutes: 30
     outputs:
       api: ${{ steps.affected.outputs.api }}
       fbapi: ${{ steps.affected.outputs.fbapi }}
-      chat: ${{ steps.affected.outputs.chat }}
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
         with:
@@ -879,11 +878,10 @@ jobs:
           if git diff --name-only "$NX_BASE" "$NX_HEAD" \
               | grep -qE '^(\.dockerignore|pnpm-workspace\.yaml|patches/.*|\.github/workflows/ci\.yml)$'; then
             echo "Workspace-level Docker input changed: building all images"
-            printf 'api=true\nfbapi=true\nchat=true\n' >> "$GITHUB_OUTPUT"
+            printf 'api=true\nfbapi=true\n' >> "$GITHUB_OUTPUT"
           else
             echo "api=$(has api)" >> "$GITHUB_OUTPUT"
             echo "fbapi=$(has form-builder-api)" >> "$GITHUB_OUTPUT"
-            echo "chat=$(has chat)" >> "$GITHUB_OUTPUT"
           fi
 
   docker-build:
@@ -922,12 +920,6 @@ jobs:
             affected_key: fbapi
             smoke_args: -e NODE_ENV=development
             smoke: require('reflect-metadata'); require('/app/dist/app.js')
-          # Build only, no smoke: a one-shot tsx job, not a server. Nothing in
-          # this repo deploys it (the chatbot repo builds its own since #2163),
-          # but the Main CI Required ruleset still lists this check — #2670.
-          - label: chat-ingest
-            dockerfile: apps/chat/Dockerfile.ingest
-            affected_key: chat
     steps:
       # Step-level gating (not job-level) so a skipped image still reports the
       # required check as success instead of leaving it pending.

@@ -1,8 +1,8 @@
 # Simple Service Builder (SSB)
 
 Platform for building and delivering Barbados government digital services —
-online forms, a no-code form builder, a services landing site, and an assistant
-chatbot.
+online forms, a no-code form builder, and a services landing site. The assistant
+chatbot lives in [govtech-bb/govbb-chatbot](https://github.com/govtech-bb/govbb-chatbot).
 
 > The npm/monorepo package is still named `@govtech-bb/modular-forms-monorepo`
 > for historical reasons; the product is **SSB**.
@@ -35,8 +35,6 @@ apps/
                      issues presigned S3 upload URLs. Container on ECS.
   landing/           gov.bb services landing site (TanStack Start SSR).
                      Deployed on Amplify (compute).
-  chat/              Assistant chatbot (SSR) plus a RAG ingest task. Uses AWS
-                     Bedrock. Amplify (compute) + a Fargate ingest job.
 
 packages/
   form-types/        Shared TypeScript types for forms and recipes.
@@ -47,7 +45,6 @@ packages/
   form-builder/      Shared form-builder logic and components.
   database/          TypeORM entities, DB access, and recipe file loaders.
   git-publish/       Publishes recipes to the repo via git commits.
-  ai-bedrock/        Shared model aliases and static chat stream helpers.
   analytics/         Analytics event tracking.
   aws-secrets/       AWS Secrets Manager helpers.
   content/           Shared content / markdown loaders.
@@ -79,7 +76,6 @@ flowchart TB
   subgraph frontends_group [Frontends]
     direction LR
     analytics_app["analytics-app"]
-    chat["chat"]
     feature_flagging_app["feature-flagging-app"]
     form_builder_app["form-builder-app"]
     forms["forms"]
@@ -112,8 +108,6 @@ flowchart TB
     end
   end
 
-  chat --> api
-  chat --> landing
   feature_flagging_app --> api
   form_builder_api --> api
   form_builder_app --> api
@@ -122,7 +116,6 @@ flowchart TB
   forms --> api
   forms --> landing
   landing --> api
-  landing --> chat
   landing --> forms
 
   api -.-> aws_s3
@@ -130,9 +123,6 @@ flowchart TB
   api -.-> aws_sqs
   api -.-> ezpay
   api -.-> postgres
-  chat -.-> aws_bedrock
-  chat -.-> aws_secrets_mgr
-  chat -.-> postgres
   feature_flagging_app -.-> aws_secrets_mgr
   form_builder_api -.-> aws_bedrock
   form_builder_api -.-> aws_s3
@@ -147,7 +137,7 @@ flowchart TB
   classDef aws fill:#fff4e5,stroke:#c07a00,color:#5c3800;
   classDef data fill:#e6f4ea,stroke:#137333,color:#0d5223;
   classDef tp fill:#fce8f4,stroke:#b8156b,color:#6b0e42;
-  class analytics_app,chat,feature_flagging_app,form_builder_app,forms,landing frontend;
+  class analytics_app,feature_flagging_app,form_builder_app,forms,landing frontend;
   class api,form_builder_api backend;
   class aws_bedrock,aws_s3,aws_secrets_mgr,aws_ses,aws_sqs,aws_textract aws;
   class postgres data;
@@ -179,8 +169,8 @@ flowchart TB
 | `pnpm migration:generate -- <path>` | Generate a migration from entity changes |
 | `pnpm migration:run` / `:revert` / `:show` | Apply / revert / show migrations |
 
-Other apps run directly via nx, e.g. `pnpm exec nx dev chat`,
-`pnpm exec nx dev form-builder-app`, `pnpm exec nx serve form-builder-api`.
+Other apps run directly via nx, e.g. `pnpm exec nx dev form-builder-app`
+and `pnpm exec nx serve form-builder-api`.
 
 > **Local build caveat:** `landing`'s prebuild fetches from a live external
 > forms API, so a fully offline build fails on it; `cms` is deprecated. When
@@ -230,10 +220,9 @@ pnpm migration:show
 
 ## Deployment & branching
 
-- **Frontends** (`forms`, `landing`, `chat`, `form_builder`) deploy on **AWS
+- **Frontends** (`forms`, `landing`, `form_builder`) deploy on **AWS
   Amplify** — `forms` as a static site, the others as SSR compute apps.
-- **Backends** (`api`, `form_builder_api`) and the **chat RAG ingest** run as
-  containers on **ECS/Fargate**.
+- **Backends** (`api`, `form_builder_api`) run as containers on **ECS/Fargate**.
 - Environments: **`sandbox` → `staging` → `prod`**, each tied to its AWS
   environment.
 

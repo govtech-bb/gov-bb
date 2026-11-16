@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.7
 # TanStack Start form-builder app (Vite dev server inside the container for
-# local-stack parity, matching apps/landing, apps/forms, apps/chat). Talks
+# local-stack parity, matching apps/landing and apps/forms). Talks
 # directly to Postgres via @govtech-bb/database (no api hop) and to Anthropic
 # + AWS Bedrock for the AI-assisted authoring features. Production hosting is
 # separate — there's no production-build validation here (that lives in CI).
@@ -25,7 +25,6 @@ COPY --chown=app:app patches/ ./patches/
 COPY --chown=app:app apps/api/package.json apps/api/
 COPY --chown=app:app apps/landing/package.json apps/landing/
 COPY --chown=app:app apps/forms/package.json apps/forms/
-COPY --chown=app:app apps/chat/package.json apps/chat/
 COPY --chown=app:app apps/form_builder/package.json apps/form_builder/
 COPY --chown=app:app packages/content/package.json packages/content/
 COPY --chown=app:app packages/database/package.json packages/database/

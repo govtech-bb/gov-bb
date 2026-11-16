@@ -412,6 +412,7 @@ comparison and per-page gating live in `src/content/registry.ts`.
 
 ## Chat handoff (HomeHero)
 
+The chat app lives in [govtech-bb/govbb-chatbot](https://github.com/govtech-bb/govbb-chatbot).
 The homepage hero's Ask Assistant mode (`HomeHero`) probes the chat app's
 `/api/health/public`, and disables Send and points people to Search while
 it is offline. On submit it redirects to the chat app with the user's
@@ -442,9 +443,8 @@ explicitly:
 ### Why build-time, not runtime
 
 The SSR bundle runs in a Lambda where `process.env.*` reads are not
-reliably populated by Amplify. `apps/chat/src/config/env.ts` documents
-the same constraint. Treat changing this URL as a deploy: set the var,
-rebuild, ship.
+reliably populated by Amplify. Landing's `src/config/env.ts` validates these
+build-time values. To change this URL, set the variable, rebuild, and deploy.
 
 ## Application tracker links (cross-app)
 

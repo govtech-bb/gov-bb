@@ -23,8 +23,7 @@ Best practices that have earned their keep:
 
 - **Don't vibecode against fast-moving libraries.** For TanStack (Start/Router/
   Form/AI), Bedrock, and the shared form contract, read an example or the
-  installed `.d.ts` before writing — don't recall the API from memory. See
-  [apps/chat/CLAUDE.md](apps/chat/CLAUDE.md) for the canonical statement of this.
+  installed `.d.ts` before writing. Don't recall the API from memory.
 - **Scoped skills do the heavy lifting.** Domain workflows live as skills (e.g.
   form authoring in `.claude/skills/form-design/`); use them instead of
   re-deriving the process each time.
@@ -50,8 +49,8 @@ CLAUDE.md's *Goal-Driven Execution* is test-first in practice:
 - "Add validation" → write tests for the invalid inputs, then make them pass.
 - "Refactor X" → confirm tests pass before and after.
 
-Tests run on **Vitest 4** (Jest has been removed); `apps/chat` uses the Node
-test runner. The full suite is ~30s — run it freely:
+Tests run on **Vitest 4** (Jest has been removed). The full suite is ~30s, so
+run it freely:
 
 ```bash
 pnpm exec nx run-many -t test          # everything
