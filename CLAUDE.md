@@ -173,7 +173,37 @@ both on staged files:
 ```bash
 pnpm test:oxlint     # nx affected -t test:oxlint (.oxlintrc.json, nested in apps/forms + apps/landing)
 pnpm test:format     # oxfmt --check (.oxfmtrc.json); `pnpm format` writes
+pnpm test:types      # nx affected -t test:types: tsc --noEmit in each project that has the script
+pnpm test:pr         # what CI checks, for affected projects: oxlint, types, tests, build + format
 ```
+
+### Targets live in package.json scripts
+
+Each project's commands are its package.json scripts. nx infers a target from
+each one and runs it with pnpm. `project.json` only carries nx metadata (a
+build's env `inputs`, a `dependsOn` override) plus the two real executors,
+`@nx/js:tsc` for library and api builds and `@nx/js:node` for api dev/start.
+Shared cache, inputs, outputs and `dependsOn` live in `nx.json`
+`targetDefaults`. Don't wrap a script in an `nx:run-commands` target.
+
+Vite apps bundle workspace packages from source (tsconfig `paths`), so their
+`build` has `dependsOn: []` and never waits on library builds. The api and
+form-builder-api keep `^build`, because their Docker images run the
+libraries' compiled `dist`. A library's `main` (`./src/index.js`) is written
+for that `dist` layout, since `@nx/js:tsc` copies it into `dist/package.json`
+as-is. Don't point it at `.ts`. `pnpm build` is affected-only; `pnpm
+build:all` builds everything.
+
+### One tsconfig base; override only what differs
+
+Every project's tsconfig extends `tsconfig.base.json`. The base holds the
+shared settings: `strict`, `noUnusedLocals` and `noUnusedParameters`,
+`verbatimModuleSyntax`, bundler resolution and the `@govtech-bb/*` paths. A
+project sets only what genuinely differs. CommonJS builds (the api and the
+libraries it runs from `dist`) set `"module": "commonjs"`,
+`"moduleResolution": "node10"` and `"verbatimModuleSyntax": false`. React apps
+add `jsx`, DOM `lib`s and `noEmit`, and database adds the decorator flags.
+Don't restate a base setting in a project.
 
 ### Accessibility target
 

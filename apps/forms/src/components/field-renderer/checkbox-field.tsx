@@ -1,9 +1,9 @@
-import { JSX } from "react";
+import type { JSX } from "react";
 import { Checkbox, Fieldset, Hint } from "@govtech-bb/react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import ErrorMessage from "../error-message";
-import { FieldRenderContext } from "./render-context";
+import type { FieldRenderContext } from "./render-context";
 import FieldRenderer from "./index";
 
 export function renderCheckboxField(ctx: FieldRenderContext): JSX.Element {

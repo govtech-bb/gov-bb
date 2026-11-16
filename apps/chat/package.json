@@ -21,7 +21,8 @@
     "eval:sweep": "tsx --env-file-if-exists=.env.local --env-file-if-exists=.env eval/sweep.ts",
     "eval:responses": "tsx --env-file-if-exists=.env.local --env-file-if-exists=.env eval/responses/run.ts",
     "lint:fix": "oxlint --fix",
-    "test:oxlint": "oxlint"
+    "test:oxlint": "oxlint",
+    "test:types": "tsc --noEmit"
   },
   "dependencies": {
     "@aws-sdk/client-bedrock-runtime": "^3.1136.0",

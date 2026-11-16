@@ -12,13 +12,6 @@
         "tsConfig": "packages/expressions/tsconfig.json",
         "main": "packages/expressions/src/index.ts"
       }
-    },
-    "test": {
-      "executor": "nx:run-commands",
-      "options": {
-        "command": "vitest run",
-        "cwd": "packages/expressions"
-      }
     }
   },
   "tags": []

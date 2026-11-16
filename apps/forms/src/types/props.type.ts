@@ -1,9 +1,9 @@
-import { ContactDetails } from "@govtech-bb/form-types";
+import type { ContactDetails } from "@govtech-bb/form-types";
 import type { SummarySection } from "@govtech-bb/submission-summary";
-import { AnyFormApi } from "@tanstack/react-form";
-import { ClientFormStep, ClientPrimitive } from "./field-mapper.type";
-import { FormMeta } from "./renderer.type";
-import { RepeatableStepSettings } from "./repeatable.type";
+import type { AnyFormApi } from "@tanstack/react-form";
+import type { ClientFormStep, ClientPrimitive } from "./field-mapper.type";
+import type { FormMeta } from "./renderer.type";
+import type { RepeatableStepSettings } from "./repeatable.type";
 
 export interface FormRendererProps {
   form: AnyFormApi;

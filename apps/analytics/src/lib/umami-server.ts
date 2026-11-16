@@ -702,7 +702,10 @@ export function shapeJourneys(
   formId: string,
 ): JourneyPath[] {
   return rows
-    .map((j) => ({ items: j.items.filter(Boolean), count: j.count }))
+    .map((j) => ({
+      items: j.items.filter((p): p is string => Boolean(p)),
+      count: j.count,
+    }))
     .filter(
       (j) => j.items.length > 0 && j.items.some((p) => p.includes(formId)),
     )
@@ -739,7 +742,9 @@ const isTimeout = (err: unknown): boolean =>
   err instanceof DOMException &&
   (err.name === 'TimeoutError' || err.name === 'AbortError')
 
-export async function fetchFormList(cfg: UmamiConfig): Promise<FormListItem[]> {
+export async function fetchFormList(
+  cfg: UmamiConfig,
+): Promise<{ formId: string; title: string }[]> {
   const base = cfg.formsApiUrl.replace(/\/+$/, '')
   // The timeout must cover the body read too, not just the connection — a
   // server that sends headers then stalls the body would otherwise abort

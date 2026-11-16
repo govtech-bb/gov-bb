@@ -3,8 +3,9 @@
   "compilerOptions": {
     "composite": true,
     "outDir": "./dist",
-    "declaration": true,
     "module": "commonjs",
+    "moduleResolution": "node10",
+    "verbatimModuleSyntax": false,
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "types": ["vitest/globals"]
   },

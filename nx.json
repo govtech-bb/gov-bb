@@ -31,11 +31,16 @@
     "build": {
       "dependsOn": ["^build"],
       "inputs": ["production", "^production"],
+      "outputs": ["{projectRoot}/dist", "{projectRoot}/.amplify-hosting"],
       "cache": true
     },
     "test": {
       "inputs": ["default", "^production"],
       "outputs": ["{projectRoot}/coverage"],
+      "cache": true
+    },
+    "test:types": {
+      "inputs": ["default", "^production"],
       "cache": true
     },
     "test:oxlint": {

@@ -3,7 +3,7 @@ import {
   confirmationOutcome,
   paymentReturnOutcome,
 } from "./confirmation-analytics";
-import { SubmissionState } from "@forms/types";
+import type { SubmissionState } from "@forms/types";
 
 const base: SubmissionState = {
   hasPayment: false,

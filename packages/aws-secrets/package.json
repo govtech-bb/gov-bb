@@ -9,7 +9,8 @@
   "scripts": {
     "test": "vitest run",
     "lint:fix": "oxlint --fix",
-    "test:oxlint": "oxlint"
+    "test:oxlint": "oxlint",
+    "test:types": "tsc --noEmit"
   },
   "dependencies": {
     "@aws-sdk/client-secrets-manager": "^3.1136.0"

@@ -1,47 +1,53 @@
 {
-  "compileOnSave": false,
+  // Shared settings for every project. A project overrides only what it has
+  // to: CommonJS builds (the api and the libraries it runs from dist) set
+  // `module`/`moduleResolution` and turn `verbatimModuleSyntax` off; React apps
+  // add `jsx`, DOM `lib`s and `noEmit`.
   "compilerOptions": {
-    "rootDir": ".",
-    "sourceMap": true,
-    "declaration": true,
-    "moduleResolution": "node",
-    "ignoreDeprecations": "5.0",
-    "emitDecoratorMetadata": true,
-    "experimentalDecorators": true,
     "target": "ES2022",
-    "module": "ESNext",
     "lib": ["ES2022"],
-    "skipLibCheck": true,
-    "skipDefaultLibCheck": true,
-    "baseUrl": ".",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
     "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedSideEffectImports": true,
+    "verbatimModuleSyntax": true,
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "sourceMap": true,
     "paths": {
-      "@govtech-bb/admin-ui": ["packages/admin-ui/src/index.ts"],
-      "@govtech-bb/analytics": ["packages/analytics/src/index.ts"],
-      "@govtech-bb/content": ["packages/content/src/index.ts"],
-      "@govtech-bb/content/categories": ["packages/content/src/categories.ts"],
+      "@govtech-bb/admin-ui": ["./packages/admin-ui/src/index.ts"],
+      "@govtech-bb/analytics": ["./packages/analytics/src/index.ts"],
+      "@govtech-bb/content": ["./packages/content/src/index.ts"],
+      "@govtech-bb/content/categories": [
+        "./packages/content/src/categories.ts"
+      ],
       "@govtech-bb/content/form-categories": [
-        "packages/content/src/form-categories.ts"
+        "./packages/content/src/form-categories.ts"
       ],
-      "@govtech-bb/form-builder": ["packages/form-builder/src/index.ts"],
-      "@govtech-bb/form-types": ["packages/form-types/src/index.ts"],
-      "@govtech-bb/expressions": ["packages/expressions/src/index.ts"],
-      "@govtech-bb/form-conditions": ["packages/form-conditions/src/index.ts"],
-      "@govtech-bb/form-validation": ["packages/form-validation/src/index.ts"],
-      "@govtech-bb/registry": ["packages/registry/src/index.ts"],
+      "@govtech-bb/form-builder": ["./packages/form-builder/src/index.ts"],
+      "@govtech-bb/form-types": ["./packages/form-types/src/index.ts"],
+      "@govtech-bb/expressions": ["./packages/expressions/src/index.ts"],
+      "@govtech-bb/form-conditions": [
+        "./packages/form-conditions/src/index.ts"
+      ],
+      "@govtech-bb/form-validation": [
+        "./packages/form-validation/src/index.ts"
+      ],
+      "@govtech-bb/registry": ["./packages/registry/src/index.ts"],
       "@govtech-bb/submission-summary": [
-        "packages/submission-summary/src/index.ts"
+        "./packages/submission-summary/src/index.ts"
       ],
-      "@govtech-bb/database": ["packages/database/src/index.ts"],
-      "@govtech-bb/git-publish": ["packages/git-publish/src/index.ts"],
-      "@forms/types": ["apps/forms/src/types/index.ts"],
-      "@forms/lib": ["apps/forms/src/lib/form-builder/index.ts"],
-      "@forms/form-api": ["apps/forms/src/lib/api/forms.ts"],
-      "@forms/components": ["apps/forms/src/components"]
+      "@govtech-bb/database": ["./packages/database/src/index.ts"],
+      "@govtech-bb/git-publish": ["./packages/git-publish/src/index.ts"],
+      "@forms/types": ["./apps/forms/src/types/index.ts"],
+      "@forms/lib": ["./apps/forms/src/lib/form-builder/index.ts"],
+      "@forms/form-api": ["./apps/forms/src/lib/api/forms.ts"],
+      "@forms/components": ["./apps/forms/src/components"]
     }
-  },
-  "exclude": ["node_modules", "tmp"]
+  }
 }
