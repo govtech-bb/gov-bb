@@ -1,29 +1,17 @@
-/**
- * The migration's own acceptance criteria from #2700: it produces the schema,
- * and it survives being run twice.
- *
- * The second one is not hypothetical. A revert never runs a migration's
- * `down()`, so the column stays while the migrations-table row vanishes, and
- * re-landing a bare `ADD COLUMN` then crash-loops the service on boot with
- * 42701. That happened here on 2026-07-28. Idempotence is the cheap
- * insurance, and this test is what keeps it true.
- */
-
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { sql } from "drizzle-orm";
+import { generateDrizzleJson, generateMigration } from "drizzle-kit/api";
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
-import { migrate } from "./migrate";
-import { SQL as INIT_SQL } from "./migrations/001_init";
-import { SQL as MARKDOWN_PAGES_SQL } from "./migrations/002_markdown_pages";
-import { SQL as AUTH_SQL } from "./migrations/003_auth";
-import { SQL as GITHUB_SESSIONS_SQL } from "./migrations/004_github_sessions";
-import { SQL as HIERARCHY_SQL } from "./migrations/005_hierarchy_and_search";
-import { SQL as UNPUBLISHED_SQL } from "./migrations/006_change_action_unpublished";
-import { SQL as DEFAULT_EDITOR_SQL } from "./migrations/009_default_editor_role";
 import type { Database } from "./db";
+import { migrate, MIGRATIONS_FOLDER, readJournal } from "./migrate";
+import * as schema from "./schema";
 import { createEmptyDb } from "./test-db";
 
-const ALL = [
+const JOURNAL = readJournal();
+const ALL = JOURNAL.map((entry) => entry.tag);
+const LEGACY_MIGRATIONS = [
   "001_init",
   "002_markdown_pages",
   "003_auth",
@@ -78,10 +66,22 @@ const tableNames = async (db: Database) => {
     .map((row) => row.table_name);
 };
 
+const ledger = async (exec: (script: string) => Promise<{ rows: unknown[] }>) =>
+  z
+    .array(z.object({ created_at: z.coerce.number() }))
+    .parse(
+      (
+        await exec(
+          "select created_at from drizzle.__drizzle_migrations order by id",
+        )
+      ).rows,
+    )
+    .map((row) => row.created_at);
+
 describe("migrate", () => {
-  it("creates content and authentication tables plus its own bookkeeping", async () => {
-    const { db, exec, close } = await freshDb();
-    const ran = await migrate(db, exec);
+  it("creates the content and authentication tables, and the system user", async () => {
+    const { db, pool, exec, close } = await freshDb();
+    const ran = await migrate(pool);
 
     expect(ran).toEqual(ALL);
     expect(await tableNames(db)).toEqual([
@@ -101,137 +101,184 @@ describe("migrate", () => {
       "search_chunks",
       "user_roles",
     ]);
+    expect((await exec("select id, email from auth_user")).rows).toEqual([
+      { id: "system", email: "system@api-v2.invalid" },
+    ]);
+    expect(await ledger(exec)).toEqual(JOURNAL.map((entry) => entry.when));
     await close();
   });
 
-  it("runs a second time without error and applies nothing", async () => {
-    const { db, exec, close } = await freshDb();
-    await migrate(db, exec);
+  it("marks legacy migrations as applied on a fresh database, so a rollback cannot replay them", async () => {
+    const { pool, exec, close } = await freshDb();
+    try {
+      await migrate(pool);
 
-    const again = await migrate(db, exec);
+      expect(
+        (
+          await exec("select name from schema_migrations order by name")
+        ).rows.map((row) => row.name),
+      ).toEqual(LEGACY_MIGRATIONS);
+    } finally {
+      await close();
+    }
+  });
+
+  it("runs a second time without error and applies nothing", async () => {
+    const { pool, close } = await freshDb();
+    await migrate(pool);
+
+    const again = await migrate(pool);
 
     expect(again).toEqual([]);
     await close();
   });
 
-  it("is idempotent even if the bookkeeping row is lost", async () => {
-    // Exactly the revert scenario: the schema is there, the record that it
-    // ran is not. The DDL itself has to tolerate being replayed.
-    const { db, exec, close } = await freshDb();
-    await migrate(db, exec);
-    await db.execute(sql`delete from schema_migrations`);
+  it("lets instances that boot together take turns", async () => {
+    const { pool, exec, close } = await freshDb();
+    try {
+      const runs = await Promise.all([
+        migrate(pool),
+        migrate(pool),
+        migrate(pool),
+      ]);
 
-    await expect(migrate(db, exec)).resolves.toEqual(ALL);
-    await close();
+      expect(runs.filter((ran) => ran.length > 0)).toEqual([ALL]);
+      expect(await ledger(exec)).toEqual(JOURNAL.map((entry) => entry.when));
+    } finally {
+      await close();
+    }
   });
 
-  it("moves a database already holding block documents onto markdown", async () => {
-    // A laptop that booted the block-document api_v2 has 001 applied and
-    // seeded pages whose NOT NULL body the new columns cannot fill. 002
-    // clears them rather than failing, and the seed refills the estate.
-    const { db, exec, close } = await freshDb();
-    await exec(INIT_SQL);
-    await exec(
-      `insert into content_pages (url, slug, schema_name, document_type, title, body)
-       values ('/x', 'x', 'answer', 'answer', 'X',
-               '{"version":1,"blocks":[],"refs":{}}'::jsonb)`,
-    );
-    await exec(
-      `create table schema_migrations (name text primary key, applied_at timestamptz not null default now());
-       insert into schema_migrations (name) values ('001_init');`,
-    );
+  it("takes over a legacy database and applies only later migrations", async () => {
+    const { pool, exec, close } = await freshDb();
+    try {
+      // Only these two migrations describe the legacy schema.
+      for (const tag of ["0000_baseline", "0001_triggers"])
+        await exec(readFileSync(join(MIGRATIONS_FOLDER, `${tag}.sql`), "utf8"));
+      await exec(
+        "create table schema_migrations (name text primary key, applied_at timestamptz not null default now())",
+      );
+      await pool.query(
+        "insert into schema_migrations (name) select unnest($1::text[])",
+        [LEGACY_MIGRATIONS],
+      );
+      await exec(`insert into content_pages (url, slug, title, body_markdown)
+        values ('/kept', 'kept', 'Kept', '')`);
+      const history = (await exec("select * from change_events")).rows;
+      const legacyLedger = (
+        await exec("select * from schema_migrations order by name")
+      ).rows;
 
-    await expect(migrate(db, exec)).resolves.toEqual([
-      "002_markdown_pages",
-      "003_auth",
-      "004_github_sessions",
-      "005_hierarchy_and_search",
-      "006_change_action_unpublished",
-      "007_change_history_trigger",
-      "008_user_roles",
-      "009_default_editor_role",
-      "010_page_revisions",
-      "011_revision_review",
-      "012_change_action_review",
-      "013_review_history_trigger",
-      "014_data_collections",
-      "015_revision_discarded",
-      "016_content_updated_at",
-      "017_change_events_no_truncate",
-      "018_snapshot_version",
-      "019_change_events_redaction",
-      "020_google_sessions",
-      "021_github_accounts",
-      "022_restored_from",
-      "023_change_event_counters",
-      "024_edit_versions",
-      "025_page_redirects",
-      "026_change_event_order",
-    ]);
-    const pages = await exec("select count(*)::int as n from content_pages");
-    expect(pages.rows).toEqual([{ n: 0 }]);
-    await close();
+      expect(await migrate(pool)).toEqual(ALL.slice(2));
+
+      expect(await ledger(exec)).toEqual(JOURNAL.map((entry) => entry.when));
+      expect((await exec("select url from content_pages")).rows).toEqual([
+        { url: "/kept" },
+      ]);
+      expect((await exec("select * from change_events")).rows).toEqual(history);
+      expect(
+        (await exec("select * from schema_migrations order by name")).rows,
+      ).toEqual(legacyLedger);
+      expect(await migrate(pool)).toEqual([]);
+    } finally {
+      await close();
+    }
   });
 
-  it("clears the unstructured seed corpus the first time 005 runs, and only then", async () => {
-    // Pages seeded before the hierarchy have no parent, so every /start step
-    // would list as a service. 005 clears them and the seed refills them.
-    const { db, exec, close } = await freshDb();
-    for (const script of [
-      INIT_SQL,
-      MARKDOWN_PAGES_SQL,
-      AUTH_SQL,
-      GITHUB_SESSIONS_SQL,
-    ])
-      await exec(script);
-    await exec(
-      `create table schema_migrations (name text primary key, applied_at timestamptz not null default now());
-       insert into schema_migrations (name) values ('001_init'), ('002_markdown_pages'), ('003_auth'), ('004_github_sessions');
-       insert into categories (slug, title) values ('c', 'C');
-       insert into content_pages (url, slug, title, body_markdown) values ('/c/x', 'x', 'X', '');`,
+  it("rolls back the pending batch and releases the lock when a later migration fails", async () => {
+    const { db, pool, exec, close } = await freshDb();
+    try {
+      await exec(`create function record_change() returns trigger
+        language plpgsql as 'begin return null; end;'`);
+
+      await expect(migrate(pool)).rejects.toMatchObject({
+        cause: { code: "42723" },
+      });
+      expect(await tableNames(db)).toEqual([]);
+      expect(await ledger(exec)).toEqual([]);
+      expect(
+        (await exec("select to_regtype('change_action') as enum")).rows,
+      ).toEqual([{ enum: null }]);
+      expect(
+        (
+          await exec(`select count(*)::int as held from pg_locks
+          where locktype = 'advisory'
+            and database = (select oid from pg_database where datname = current_database())`)
+        ).rows,
+      ).toEqual([{ held: 0 }]);
+
+      await exec("drop function record_change()");
+      expect(await migrate(pool)).toEqual(ALL);
+      expect(await ledger(exec)).toEqual(JOURNAL.map((entry) => entry.when));
+    } finally {
+      await close();
+    }
+  });
+
+  it("refuses a database the hand-written runner left part-way", async () => {
+    const { pool, exec, close } = await freshDb();
+    try {
+      await exec(`create table schema_migrations (name text primary key, applied_at timestamptz not null default now());
+        insert into schema_migrations (name) values ('025_page_redirects')`);
+
+      await expect(migrate(pool)).rejects.toThrow(
+        "stop before 026_change_event_order",
+      );
+      expect(
+        (await exec("select to_regnamespace('drizzle') as ledger")).rows,
+      ).toEqual([{ ledger: null }]);
+    } finally {
+      await close();
+    }
+  });
+
+  it("refuses an unapplied migration older than the database head, even when the journal is sorted", async () => {
+    const { pool, exec, close } = await freshDb();
+    try {
+      await migrate(pool);
+      // The ledger shape of a migration merged before an already-applied entry.
+      await exec(`delete from drizzle.__drizzle_migrations
+        where created_at = (select min(created_at) from drizzle.__drizzle_migrations)`);
+      const before = await ledger(exec);
+
+      await expect(migrate(pool)).rejects.toMatchObject({
+        code: "MIGRATION_JOURNAL_GAP",
+        message: expect.stringContaining("0000_baseline"),
+      });
+      expect(await ledger(exec)).toEqual(before);
+    } finally {
+      await close();
+    }
+  });
+
+  it("has a migration for every change to schema.ts", async () => {
+    const latest = JOURNAL.at(-1)?.tag.slice(0, 4);
+    const snapshot = JSON.parse(
+      readFileSync(
+        join(MIGRATIONS_FOLDER, "meta", `${latest}_snapshot.json`),
+        "utf8",
+      ),
     );
 
-    await expect(migrate(db, exec)).resolves.toEqual([
-      "005_hierarchy_and_search",
-      "006_change_action_unpublished",
-      "007_change_history_trigger",
-      "008_user_roles",
-      "009_default_editor_role",
-      "010_page_revisions",
-      "011_revision_review",
-      "012_change_action_review",
-      "013_review_history_trigger",
-      "014_data_collections",
-      "015_revision_discarded",
-      "016_content_updated_at",
-      "017_change_events_no_truncate",
-      "018_snapshot_version",
-      "019_change_events_redaction",
-      "020_google_sessions",
-      "021_github_accounts",
-      "022_restored_from",
-      "023_change_event_counters",
-      "024_edit_versions",
-      "025_page_redirects",
-      "026_change_event_order",
-    ]);
-    await exec(
-      `insert into categories (slug, title) values ('c', 'C');
-       insert into content_pages (url, slug, title, body_markdown) values ('/c/x', 'x', 'X', '');
-       delete from schema_migrations where name = '005_hierarchy_and_search';`,
-    );
-    await migrate(db, exec);
+    const instruction =
+      "Schema drift check failed. Run `pnpm db:generate` in apps/api_v2.";
+    const migration = await generateMigration(
+      snapshot,
+      generateDrizzleJson(schema, snapshot.id),
+    ).catch((cause: unknown) => {
+      throw new Error(instruction, { cause });
+    });
+    expect(migration, instruction).toEqual([]);
+  });
 
-    const counts = await exec(
-      "select (select count(*)::int from content_pages) as pages, (select count(*)::int from categories) as categories",
-    );
-    expect(counts.rows).toEqual([{ pages: 1, categories: 1 }]);
-    await close();
+  it("dates every migration after the one before it", () => {
+    const times = JOURNAL.map((entry) => entry.when);
+    expect(times).toEqual([...new Set(times)].sort((a, b) => a - b));
   });
 
   it("keeps change_events append-only", async () => {
-    const { db, exec, close } = await freshDb();
-    await migrate(db, exec);
+    const { db, pool, close } = await freshDb();
+    await migrate(pool);
 
     await db.execute(
       sql`insert into change_events (entity_kind, entity_id, version_no, action, snapshot)
@@ -259,9 +306,9 @@ describe("migrate", () => {
   it.each([false, true])(
     "refuses TRUNCATE with existing history: %s",
     async (populated) => {
-      const { db, exec, close } = await freshDb();
+      const { pool, exec, close } = await freshDb();
       try {
-        await migrate(db, exec);
+        await migrate(pool);
         if (populated)
           await exec(`insert into change_events (entity_kind, entity_id, version_no, action, snapshot)
             values ('content_page', 'x', 1, 'created', '{"title":"Keep this"}')`);
@@ -279,18 +326,14 @@ describe("migrate", () => {
     },
   );
 
-  it("keeps every history guard after replaying the truncate migration", async () => {
-    const { db, exec, close } = await freshDb();
+  it("refuses to truncate, rewrite or delete history, and still appends", async () => {
+    const { pool, exec, close } = await freshDb();
     try {
-      await migrate(db, exec);
+      await migrate(pool);
       await exec(`insert into change_events (entity_kind, entity_id, version_no, action, snapshot)
-        values ('content_page', 'x', 1, 'created', '{}');
-        delete from schema_migrations where name = '017_change_events_no_truncate'`);
+        values ('content_page', 'x', 1, 'created', '{}')`);
       const before = (await exec("select * from change_events")).rows;
 
-      expect(await migrate(db, exec)).toEqual([
-        "017_change_events_no_truncate",
-      ]);
       for (const statement of [
         "truncate change_events",
         "update change_events set snapshot = '{}'",
@@ -306,156 +349,9 @@ describe("migrate", () => {
     }
   });
 
-  it("revokes every session without a linked Google account, keeping users, accounts and roles", async () => {
-    const { db, exec, close } = await freshDb();
-    await migrate(db, exec);
-    await exec(`
-      delete from schema_migrations where name = '020_google_sessions';
-      insert into auth_user (id, name, email, "emailVerified") values
-        ('github-user', 'GitHub user', 'member@gmail.com', true),
-        ('google-user', 'Google user', 'member@govtech.bb', true);
-      insert into auth_account (id, "accountId", "providerId", "userId", "updatedAt") values
-        ('github-account', 'github-id', 'github', 'github-user', now()),
-        ('google-account', 'google-id', 'google', 'google-user', now());
-      insert into user_roles (user_id, role) values ('github-user', 'editor');
-      insert into auth_session (id, token, "userId", "expiresAt", "updatedAt") values
-        ('github-session', 'github-token', 'github-user', now() + interval '1 hour', now()),
-        ('google-session', 'google-token', 'google-user', now() + interval '1 hour', now());
-    `);
-    expect(await migrate(db, exec)).toEqual(["020_google_sessions"]);
-    expect((await exec("select id from auth_session")).rows).toEqual([
-      { id: "google-session" },
-    ]);
-    // Only sessions go: #3418 moves these users to their Workspace accounts.
-    expect(
-      (await exec("select id from auth_account order by id")).rows,
-    ).toEqual([{ id: "github-account" }, { id: "google-account" }]);
-    expect((await exec("select user_id, role from user_roles")).rows).toEqual([
-      { user_id: "github-user", role: "editor" },
-    ]);
-    await close();
-  });
-
-  it("deletes GitHub account links, keeping users, Google accounts, roles and sessions", async () => {
-    const { db, exec, close } = await freshDb();
-    await migrate(db, exec);
-    await exec(`
-      delete from schema_migrations where name = '021_github_accounts';
-      insert into auth_user (id, name, email, "emailVerified") values
-        ('github-user', 'GitHub user', 'member@gmail.com', true),
-        ('google-user', 'Google user', 'member@govtech.bb', true);
-      insert into auth_account (id, "accountId", "providerId", "userId", "updatedAt") values
-        ('github-account', 'github-id', 'github', 'github-user', now()),
-        ('google-account', 'google-id', 'google', 'google-user', now());
-      insert into user_roles (user_id, role) values ('github-user', 'editor');
-      insert into auth_session (id, token, "userId", "expiresAt", "updatedAt") values
-        ('google-session', 'google-token', 'google-user', now() + interval '1 hour', now());
-    `);
-    expect(await migrate(db, exec)).toEqual(["021_github_accounts"]);
-    expect((await exec("select id from auth_account")).rows).toEqual([
-      { id: "google-account" },
-    ]);
-    expect(
-      (await exec("select id from auth_user where id <> 'system' order by id"))
-        .rows,
-    ).toEqual([{ id: "github-user" }, { id: "google-user" }]);
-    expect((await exec("select user_id from user_roles")).rows).toEqual([
-      { user_id: "github-user" },
-    ]);
-    expect((await exec("select id from auth_session")).rows).toEqual([
-      { id: "google-session" },
-    ]);
-    await close();
-  });
-
-  it("revokes legacy sessions while preserving users and admitted GitHub sessions", async () => {
-    const { db, exec, close } = await freshDb();
-    await migrate(db, exec);
-    await exec(`
-      delete from schema_migrations where name = '004_github_sessions';
-      insert into auth_user (id, name, email, "emailVerified") values
-        ('legacy', 'Legacy user', 'employee@govtech.bb', true),
-        ('member', 'GitHub member', 'member@example.com', true);
-      insert into auth_account (id, "accountId", "providerId", "userId", "updatedAt") values
-        ('google-account', 'google-id', 'google', 'legacy', now()),
-        ('github-account', 'github-id', 'github', 'member', now());
-      insert into auth_session (id, token, "userId", "expiresAt", "updatedAt") values
-        ('legacy-session', 'old-token', 'legacy', now() + interval '1 hour', now()),
-        ('member-session', 'new-token', 'member', now() + interval '1 hour', now());
-    `);
-    expect(await migrate(db, exec)).toEqual(["004_github_sessions"]);
-    expect((await exec("select id from auth_session")).rows).toEqual([
-      { id: "member-session" },
-    ]);
-    expect(
-      (
-        await exec(
-          "select count(*)::int as count from auth_user where id <> 'system'",
-        )
-      ).rows,
-    ).toEqual([{ count: 2 }]);
-    expect(
-      (await exec("select count(*)::int as count from auth_account")).rows,
-    ).toEqual([{ count: 2 }]);
-    await close();
-  });
-
-  it("makes everyone who has signed in an editor, once, so a revocation sticks", async () => {
-    const { db, exec, close } = await freshDb();
-    await migrate(db, exec);
-    await exec(`
-      delete from schema_migrations where name = '009_default_editor_role';
-      insert into auth_user (id, name, email, "emailVerified") values
-        ('editor', 'Editor already', 'editor@govtech.bb', true),
-        ('approver', 'Approver only', 'approver@govtech.bb', true),
-        ('nobody', 'No role yet', 'nobody@govtech.bb', true);
-      insert into user_roles (user_id, role, granted_by) values
-        ('editor', 'editor', 'admin'),
-        ('approver', 'approver', 'admin');
-    `);
-    const editors = async () =>
-      (
-        await exec(
-          "select user_id, granted_by from user_roles where role = 'editor' order by user_id",
-        )
-      ).rows;
-
-    expect(await migrate(db, exec)).toEqual(["009_default_editor_role"]);
-    expect(await editors()).toEqual([
-      { user_id: "approver", granted_by: null },
-      { user_id: "editor", granted_by: "admin" },
-      { user_id: "nobody", granted_by: null },
-    ]);
-
-    await exec("delete from user_roles where user_id = 'nobody'");
-    expect(await migrate(db, exec)).toEqual([]);
-    expect(await editors()).toEqual([
-      { user_id: "approver", granted_by: null },
-      { user_id: "editor", granted_by: "admin" },
-    ]);
-    await close();
-  });
-
-  it("does not give a revoked editor role back when 009 is replayed", async () => {
-    const { db, exec, close } = await freshDb();
-    await migrate(db, exec);
-    await exec(`
-      insert into auth_user (id, name, email, "emailVerified") values
-        ('revoked', 'Revoked editor', 'revoked@govtech.bb', true);
-    `);
-
-    await exec(DEFAULT_EDITOR_SQL);
-
-    expect(
-      (await exec("select user_id from user_roles where user_id = 'revoked'"))
-        .rows,
-    ).toEqual([]);
-    await close();
-  });
-
-  it("keeps revisions, and one open revision a page, draft or submitted, when 010 and 011 are replayed", async () => {
-    const { db, exec, close } = await freshDb();
-    await migrate(db, exec);
+  it("allows a page one open revision, draft or submitted, beside its closed ones", async () => {
+    const { pool, exec, close } = await freshDb();
+    await migrate(pool);
     await exec(`
       insert into content_pages (id, url, slug, title, body_markdown)
         values ('11111111-1111-4111-8111-111111111111', '/p', 'p', 'P', '');
@@ -463,20 +359,7 @@ describe("migrate", () => {
         select id, 'rejected', '{}', updated_at, 'a', '{a}', 'No' from content_pages;
       insert into page_revisions (page_id, status, fields, live_updated_at, created_by, contributors)
         select id, 'submitted', '{}', updated_at, 'a', '{a}' from content_pages;
-      delete from schema_migrations where name in ('010_page_revisions', '011_revision_review');
     `);
-
-    expect(await migrate(db, exec)).toEqual([
-      "010_page_revisions",
-      "011_revision_review",
-    ]);
-    expect(
-      (await exec("select status, comment from page_revisions order by status"))
-        .rows,
-    ).toEqual([
-      { status: "rejected", comment: "No" },
-      { status: "submitted", comment: null },
-    ]);
     const another = (status: string) =>
       exec(`insert into page_revisions (page_id, status, fields, live_updated_at, created_by, contributors)
               select id, '${status}', '{}', updated_at, 'b', '{b}' from content_pages`);
@@ -490,23 +373,15 @@ describe("migrate", () => {
     await close();
   });
 
-  it("records a review step once, numbered after the page's history, when 012 and 013 are replayed", async () => {
-    const { db, exec, close } = await freshDb();
-    await migrate(db, exec);
+  it("records a review step once, numbered after the page's history", async () => {
+    const { pool, exec, close } = await freshDb();
+    await migrate(pool);
     await exec(`
       insert into content_pages (id, url, slug, title, body_markdown)
         values ('11111111-1111-4111-8111-111111111111', '/p', 'p', 'P', '');
       insert into page_revisions (page_id, fields, live_updated_at, created_by, contributors)
         select id, '{}', updated_at, 'a', '{a}' from content_pages;
-      delete from schema_migrations
-        where name in ('012_change_action_review', '013_review_history_trigger', '014_data_collections');
     `);
-
-    expect(await migrate(db, exec)).toEqual([
-      "012_change_action_review",
-      "013_review_history_trigger",
-      "014_data_collections",
-    ]);
     await exec("update page_revisions set status = 'submitted'");
 
     expect(
@@ -522,22 +397,15 @@ describe("migrate", () => {
     await close();
   });
 
-  it("keeps collections and their records, and their history, when 014 is replayed", async () => {
-    const { db, exec, close } = await freshDb();
-    await migrate(db, exec);
+  it("records the history of collections and their records", async () => {
+    const { pool, exec, close } = await freshDb();
+    await migrate(pool);
     await exec(`
       insert into data_collections (key, title, record_key, schema)
         values ('contacts', 'Contacts', 'key', '{"fields":[]}');
       insert into collection_records (collection_key, record_key, data)
         values ('contacts', 'a', '{"key":"a"}');
-      delete from schema_migrations where name = '014_data_collections';
     `);
-
-    expect(await migrate(db, exec)).toEqual(["014_data_collections"]);
-    expect(
-      (await exec("select collection_key, record_key from collection_records"))
-        .rows,
-    ).toEqual([{ collection_key: "contacts", record_key: "a" }]);
     await exec(
       `update collection_records set data = '{"key":"b"}';
        delete from collection_records;`,
@@ -560,18 +428,15 @@ describe("migrate", () => {
     await close();
   });
 
-  it("closes a revision as discarded, logged once in its page's history, when 015 is replayed", async () => {
-    const { db, exec, close } = await freshDb();
-    await migrate(db, exec);
+  it("closes a revision as discarded, logged once in its page's history", async () => {
+    const { pool, exec, close } = await freshDb();
+    await migrate(pool);
     await exec(`
       insert into content_pages (id, url, slug, title, body_markdown)
         values ('11111111-1111-4111-8111-111111111111', '/p', 'p', 'P', '');
       insert into page_revisions (page_id, status, fields, live_updated_at, created_by, contributors)
         select id, 'submitted', '{}', updated_at, 'a', '{a}' from content_pages;
-      delete from schema_migrations where name = '015_revision_discarded';
     `);
-
-    expect(await migrate(db, exec)).toEqual(["015_revision_discarded"]);
     await exec("update page_revisions set status = 'discarded'");
 
     expect(
@@ -592,153 +457,13 @@ describe("migrate", () => {
     await close();
   });
 
-  it("dates existing pages' content when 016 runs, without touching their history or updated_at", async () => {
-    const { db, exec, close } = await freshDb();
-    await migrate(db, exec);
-    await exec(`
-      insert into content_pages (id, url, slug, title, body_markdown, visibility, published_at)
-        values ('11111111-1111-4111-8111-111111111111', '/p', 'p', 'P', '', 'public', '2026-01-22T00:00:00Z');
-      insert into content_pages (id, url, slug, title, body_markdown)
-        values ('22222222-2222-4222-8222-222222222222', '/d', 'd', 'D', '');
-      alter table content_pages drop column content_updated_at;
-      delete from schema_migrations where name = '016_content_updated_at';
-    `);
-    const before = await exec(
-      "select id, updated_at, created_at from content_pages order by id",
-    );
-
-    expect(await migrate(db, exec)).toEqual(["016_content_updated_at"]);
-
-    const after = await exec(
-      `select id, updated_at, content_updated_at = coalesce(published_at, created_at) as dated
-         from content_pages order by id`,
-    );
-    expect(after.rows).toEqual(
-      before.rows.map((row: { id: string; updated_at: Date }) => ({
-        id: row.id,
-        updated_at: row.updated_at,
-        dated: true,
-      })),
-    );
-    expect(
-      (await exec("select action from change_events order by version_no")).rows,
-    ).toEqual([{ action: "created" }, { action: "created" }]);
-    await close();
-  });
-
-  it("hands history written before the trigger to system, and replays", async () => {
-    const { db, exec, close } = await freshDb();
-    for (const script of [
-      INIT_SQL,
-      MARKDOWN_PAGES_SQL,
-      AUTH_SQL,
-      GITHUB_SESSIONS_SQL,
-      HIERARCHY_SQL,
-      UNPUBLISHED_SQL,
-    ])
-      await exec(script);
-    await exec(
-      `create table schema_migrations (name text primary key, applied_at timestamptz not null default now());
-       insert into schema_migrations (name) select unnest(array[${ALL.slice(
-         0,
-         6,
-       )
-         .map((name) => `'${name}'`)
-         .join(", ")}]);
-       insert into auth_user (id, name, email, "emailVerified")
-         values ('editor', 'Editor', 'editor@govtech.bb', true);
-       insert into change_events (entity_kind, entity_id, version_no, action, snapshot, actor)
-         values ('content_page', 'a', 1, 'created', '{}', 'spike'),
-                ('content_page', 'a', 2, 'updated', '{}', 'seed'),
-                ('content_page', 'a', 3, 'updated', '{}', 'import:abc force: why'),
-                ('content_page', 'a', 4, 'updated', '{}', 'editor');`,
-    );
-
-    expect(await migrate(db, exec)).toEqual(ALL.slice(6));
-    await db.execute(
-      sql`delete from schema_migrations where name = '007_change_history_trigger'`,
-    );
-    expect(await migrate(db, exec)).toEqual(["007_change_history_trigger"]);
-
-    const { rows } = await exec(
-      "select actor from change_events order by version_no",
-    );
-    expect(rows).toEqual([
-      { actor: "system" },
-      { actor: "system" },
-      { actor: "system" },
-      { actor: "editor" },
-    ]);
-    const orphans = await exec(
-      `select count(*)::int as n from change_events
-         where actor not in (select id from auth_user)`,
-    );
-    expect(orphans.rows).toEqual([{ n: 0 }]);
-    expect(
-      (await exec("select email from auth_user where id = 'system'")).rows,
-    ).toEqual([{ email: "system@api-v2.invalid" }]);
-    await close();
-  });
-
-  it("labels only new snapshots, including after the migration replays", async () => {
-    const { db, exec, close } = await freshDb();
+  it("records the history of a redirect rule under its own id", async () => {
+    const { pool, exec, close } = await freshDb();
     try {
-      await migrate(db, exec);
-      await exec(`alter table change_events drop column if exists snapshot_version;
-        delete from schema_migrations where name = '018_snapshot_version';
-        insert into content_pages (url, slug, title, body_markdown)
-          values ('/x', 'x', 'Before labels', '')`);
-      const legacy = (await exec("select * from change_events")).rows;
-
-      expect(await migrate(db, exec)).toEqual(["018_snapshot_version"]);
-      expect((await exec("select * from change_events")).rows).toEqual(
-        legacy.map((event) => ({ ...event, snapshot_version: null })),
-      );
-      await exec("update content_pages set title = 'Labeled'");
-      const labeled = (
-        await exec("select * from change_events order by version_no")
-      ).rows;
-      expect(labeled.map((event) => event.snapshot_version)).toEqual([null, 1]);
-
-      await exec(
-        "delete from schema_migrations where name = '018_snapshot_version'",
-      );
-      expect(await migrate(db, exec)).toEqual(["018_snapshot_version"]);
-      expect(
-        (await exec("select * from change_events order by version_no")).rows,
-      ).toEqual(labeled);
-      await exec("update content_pages set title = 'After replay'");
-      expect(
-        (
-          await exec(
-            "select snapshot_version from change_events order by version_no",
-          )
-        ).rows,
-      ).toEqual([
-        { snapshot_version: null },
-        { snapshot_version: 1 },
-        { snapshot_version: 1 },
-      ]);
-    } finally {
-      await close();
-    }
-  });
-
-  it("keeps redirect rules and their audit ids when 025 is replayed", async () => {
-    const { db, exec, close } = await freshDb();
-    try {
-      await migrate(db, exec);
+      await migrate(pool);
       await exec(`insert into page_redirects (source_url, destination_url)
         values ('/old', '/current')`);
       const rules = (await exec("select * from page_redirects")).rows;
-      const history = (await exec("select * from change_events")).rows;
-
-      await exec(
-        "delete from schema_migrations where name = '025_page_redirects'",
-      );
-      expect(await migrate(db, exec)).toEqual(["025_page_redirects"]);
-      expect((await exec("select * from page_redirects")).rows).toEqual(rules);
-      expect((await exec("select * from change_events")).rows).toEqual(history);
 
       await exec(`update page_redirects set destination_url = '/new';
         delete from page_redirects`);
@@ -761,56 +486,29 @@ describe("migrate", () => {
     }
   });
 
-  it("orders only new audit events and never backfills or rewinds order on replay", async () => {
-    const { db, exec, close } = await freshDb();
+  it("orders audit events as they are inserted, each once and for good", async () => {
+    const { pool, exec, close } = await freshDb();
     try {
-      await migrate(db, exec);
-      await exec(`alter table change_events drop column if exists event_order;
-        drop sequence if exists change_event_order_seq;
-        delete from schema_migrations where name = '026_change_event_order';
-        insert into content_pages (url, slug, title, body_markdown)
-          values ('/old', 'old', 'Before ordering', '')`);
-      const legacy = (await exec("select * from change_events")).rows;
-
-      expect(await migrate(db, exec)).toEqual(["026_change_event_order"]);
-      expect((await exec("select * from change_events")).rows).toEqual(
-        legacy.map((event) => ({ ...event, event_order: null })),
-      );
-      await exec("update content_pages set title = 'Ordered'");
-      const ordered = (
-        await exec("select * from change_events order by version_no")
-      ).rows;
-      expect(ordered[0].event_order).toBeNull();
-      expect(Number(ordered[1].event_order)).toBeGreaterThan(0);
-
-      await exec(
-        "delete from schema_migrations where name = '026_change_event_order'",
-      );
-      expect(await migrate(db, exec)).toEqual(["026_change_event_order"]);
-      expect(
-        (await exec("select * from change_events order by version_no")).rows,
-      ).toEqual(ordered);
-      await exec("update content_pages set title = 'After replay'");
-      const after = (
-        await exec("select * from change_events order by version_no")
-      ).rows;
-      expect(after[0].event_order).toBeNull();
-      expect(Number(after[2].event_order)).toBeGreaterThan(
-        Number(ordered[1].event_order),
-      );
+      await migrate(pool);
+      await exec(`insert into content_pages (url, slug, title, body_markdown)
+          values ('/x', 'x', 'First', '');
+        update content_pages set title = 'Second'`);
+      const events = (
+        await exec("select event_order from change_events order by version_no")
+      ).rows.map((event) => Number(event.event_order));
+      expect(events[0]).toBeGreaterThan(0);
+      expect(events[1]).toBeGreaterThan(Number(events[0]));
 
       await expect(
         exec(`insert into change_events (entity_kind, entity_id, action, snapshot, event_order)
         select entity_kind, entity_id, action, snapshot, event_order
-          from change_events where event_order is not null limit 1`),
+          from change_events limit 1`),
       ).rejects.toMatchObject({
         code: "23505",
         constraint: "change_events_event_order_unique",
       });
       await expect(
-        exec(
-          "update change_events set event_order = event_order + 100 where event_order is not null",
-        ),
+        exec("update change_events set event_order = event_order + 100"),
       ).rejects.toThrow("change_events is append-only");
     } finally {
       await close();
@@ -822,8 +520,8 @@ describe("migrate", () => {
     // history at all; this names it until its migration attaches the trigger.
     // A page's revisions record their review steps with `record_review`
     // instead; every other content table needs `record_change`.
-    const { db, exec, close } = await freshDb();
-    await migrate(db, exec);
+    const { pool, exec, close } = await freshDb();
+    await migrate(pool);
 
     const { rows } = await exec(
       `select c.relname as table from pg_class c

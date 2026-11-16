@@ -38,9 +38,11 @@ it('ships the brand SVGs under public/images with the logo optimised', () => {
   for (const name of ['govbb-crest.svg', 'govbb-logo.svg']) {
     expect(readFileSync(publicFile(`images/${name}`), 'utf8')).toMatch(/^<svg /)
   }
+  // Sized for the full-detail 60th anniversary mark. Put back to 12_000 when
+  // the standard logo returns after Independence.
   expect(
     statSync(publicFile('images/govbb-logo.svg')).size,
-  ).toBeLessThanOrEqual(12_000)
+  ).toBeLessThanOrEqual(16_000)
 })
 
 it('links the root icons and the static manifest from the root head', async () => {

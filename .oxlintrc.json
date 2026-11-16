@@ -1,0 +1,297 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  // ESLint's js/recommended (on JS and .ts files, not .tsx) plus
+  // typescript-eslint's recommended rules. apps/forms and apps/landing have
+  // their own nested .oxlintrc.json.
+  "plugins": ["typescript"],
+  "jsPlugins": ["./scripts/oxlint/semantic-colors.mjs"],
+  "categories": {
+    "correctness": "off"
+  },
+  "env": {
+    "builtin": true
+  },
+  "ignorePatterns": ["**/*.gen.ts", "**/dist/**", "**/.amplify-hosting/**"],
+  "rules": {
+    "no-array-constructor": "error",
+    "no-unused-expressions": "error",
+    "no-unused-vars": "error",
+    "typescript/ban-ts-comment": "error",
+    "typescript/no-duplicate-enum-values": "error",
+    "typescript/no-empty-object-type": "error",
+    "typescript/no-explicit-any": "error",
+    "typescript/no-extra-non-null-assertion": "error",
+    "typescript/no-misused-new": "error",
+    "typescript/no-namespace": "error",
+    "typescript/no-non-null-asserted-optional-chain": "error",
+    "typescript/no-require-imports": "error",
+    "typescript/no-this-alias": "error",
+    "typescript/no-unnecessary-type-constraint": "error",
+    "typescript/no-unsafe-declaration-merging": "error",
+    "typescript/no-unsafe-function-type": "error",
+    "typescript/no-wrapper-object-types": "error",
+    "typescript/prefer-as-const": "error",
+    "typescript/prefer-namespace-keyword": "error",
+    "typescript/triple-slash-reference": "error"
+  },
+  "overrides": [
+    {
+      "files": ["**/*.{js,mjs,cjs,ts,mts,cts}"],
+      "env": {
+        "browser": true,
+        "node": true
+      },
+      "globals": {
+        "AsyncDisposableStack": "readonly",
+        "DisposableStack": "readonly",
+        "SuppressedError": "readonly"
+      },
+      "rules": {
+        "constructor-super": "error",
+        "for-direction": "error",
+        "getter-return": "error",
+        "no-async-promise-executor": "error",
+        "no-case-declarations": "error",
+        "no-class-assign": "error",
+        "no-compare-neg-zero": "error",
+        "no-cond-assign": "error",
+        "no-const-assign": "error",
+        "no-constant-binary-expression": "error",
+        "no-constant-condition": "error",
+        "no-control-regex": "error",
+        "no-debugger": "error",
+        "no-delete-var": "error",
+        "no-dupe-class-members": "error",
+        "no-dupe-else-if": "error",
+        "no-dupe-keys": "error",
+        "no-duplicate-case": "error",
+        "no-empty": "error",
+        "no-empty-character-class": "error",
+        "no-empty-pattern": "error",
+        "no-empty-static-block": "error",
+        "no-ex-assign": "error",
+        "no-extra-boolean-cast": "error",
+        "no-fallthrough": "error",
+        "no-func-assign": "error",
+        "no-global-assign": "error",
+        "no-import-assign": "error",
+        "no-invalid-regexp": "error",
+        "no-irregular-whitespace": "error",
+        "no-loss-of-precision": "error",
+        "no-misleading-character-class": "error",
+        "no-new-native-nonconstructor": "error",
+        "no-nonoctal-decimal-escape": "error",
+        "no-obj-calls": "error",
+        "no-prototype-builtins": "error",
+        "no-redeclare": "error",
+        "no-regex-spaces": "error",
+        "no-self-assign": "error",
+        "no-setter-return": "error",
+        "no-shadow-restricted-names": "error",
+        "no-sparse-arrays": "error",
+        "no-this-before-super": "error",
+        "no-unassigned-vars": "error",
+        "no-unexpected-multiline": "error",
+        "no-unreachable": "error",
+        "no-unsafe-finally": "error",
+        "no-unsafe-negation": "error",
+        "no-unsafe-optional-chaining": "error",
+        "no-unused-labels": "error",
+        "no-unused-private-class-members": "error",
+        "no-useless-backreference": "error",
+        "no-useless-catch": "error",
+        "no-useless-escape": "error",
+        "no-with": "error",
+        "preserve-caught-error": "error",
+        "require-yield": "error",
+        "use-isnan": "error",
+        "valid-typeof": "error"
+      }
+    },
+    {
+      // typescript-eslint's eslint-recommended: rules TypeScript already checks.
+      "files": ["**/*.{ts,tsx,mts,cts}"],
+      "rules": {
+        "constructor-super": "off",
+        "getter-return": "off",
+        "no-class-assign": "off",
+        "no-const-assign": "off",
+        "no-dupe-class-members": "off",
+        "no-dupe-keys": "off",
+        "no-func-assign": "off",
+        "no-import-assign": "off",
+        "no-new-native-nonconstructor": "off",
+        "no-obj-calls": "off",
+        "no-redeclare": "off",
+        "no-setter-return": "off",
+        "no-this-before-super": "off",
+        "no-unreachable": "off",
+        "no-unsafe-negation": "off",
+        "no-var": "error",
+        "no-with": "off",
+        "prefer-const": "error",
+        "prefer-rest-params": "error",
+        "prefer-spread": "error"
+      }
+    },
+    {
+      // Honour the `_` prefix for intentionally-unused bindings in React files
+      // too, not just plain .ts.
+      "files": ["**/*.{ts,tsx,mts,cts,jsx}"],
+      "rules": {
+        "no-unused-vars": [
+          "error",
+          {
+            "argsIgnorePattern": "^_",
+            "varsIgnorePattern": "^_",
+            "caughtErrorsIgnorePattern": "^_",
+            "destructuredArrayIgnorePattern": "^_",
+            "ignoreRestSiblings": true
+          }
+        ]
+      }
+    },
+    {
+      // Only the two classic hooks rules (#1976), not react-hooks@7's
+      // React-Compiler rules.
+      "files": ["**/*.{jsx,tsx}"],
+      "plugins": ["react"],
+      "rules": {
+        "react/rules-of-hooks": "error",
+        "react/exhaustive-deps": "warn"
+      }
+    },
+    {
+      // Test files legitimately use `any` for mocks, fixtures and spies;
+      // no-explicit-any stays strict on production code.
+      "files": ["**/*.spec.{ts,tsx}", "**/*.test.{ts,tsx}"],
+      "rules": {
+        "typescript/no-explicit-any": "off"
+      }
+    },
+    {
+      // jest-dom's matchers are registered once, via the `/vitest` entry, in
+      // apps/form_builder/vitest.setup.ts. The bare entry references
+      // `@types/jest`, whose global `expect` silently shadows Vitest's for the
+      // whole app — and tsc cannot see that happen (skipLibCheck hides the
+      // duplicate declaration), so the type gate alone would not catch it.
+      "files": ["apps/form_builder/app/**/*.{ts,tsx}"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "paths": [
+              {
+                "name": "@testing-library/jest-dom",
+                "message": "Matchers are registered in vitest.setup.ts; this entry pulls in @types/jest and shadows Vitest's expect."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": [
+        "apps/form_builder/app/components/ui/**/*.{ts,tsx}",
+        "apps/form_builder/app/routes/-ui-catalogue.tsx",
+        "apps/form_builder/app/routes/dev.ui.tsx"
+      ],
+      "rules": {
+        "govtech/semantic-colors": "error"
+      }
+    },
+    // api_v2's architecture: domain modules and services depend on domain
+    // values and narrow ports; main.ts composes the infrastructure.
+    {
+      "files": ["apps/api_v2/src/{modules,services}/**/*.ts"],
+      "rules": {
+        "typescript/no-explicit-any": "error",
+        "typescript/no-non-null-assertion": "error",
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": [
+                  "better-auth",
+                  "better-auth/**",
+                  "fastify",
+                  "pg",
+                  "drizzle-orm",
+                  "drizzle-orm/**",
+                  "pino",
+                  "**/adapters/**",
+                  "**/routes/**",
+                  "**/config",
+                  "**/db",
+                  "**/app",
+                  "**/main",
+                  "**/schema"
+                ],
+                "message": "Domain modules and services depend on domain values and narrow ports; compose infrastructure in main.ts."
+              }
+            ]
+          }
+        ],
+        "no-restricted-globals": ["error", "Request", "Response", "fetch"]
+      }
+    },
+    // The HTTP adapter receives services through buildApp's options; only
+    // main.ts builds infrastructure.
+    {
+      "files": ["apps/api_v2/src/app.ts", "apps/api_v2/src/routes/**/*.ts"],
+      "plugins": ["typescript"],
+      "rules": {
+        "typescript/no-non-null-assertion": "error",
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": [
+                  "better-auth",
+                  "better-auth/**",
+                  "pg",
+                  "drizzle-orm",
+                  "drizzle-orm/**",
+                  "**/adapters/**",
+                  "**/config",
+                  "**/db",
+                  "**/main",
+                  "**/migrate",
+                  "**/schema",
+                  "**/seed"
+                ],
+                "message": "Routes receive services through buildApp's options; compose infrastructure in main.ts."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    // Read environment variables only in the composition root.
+    {
+      "files": ["apps/api_v2/src/**/*.ts"],
+      "plugins": ["node"],
+      "rules": {
+        "node/no-process-env": "error"
+      }
+    },
+    // The composition roots read the environment; the test harness reads its
+    // database settings.
+    {
+      "files": [
+        "apps/api_v2/src/main.ts",
+        "apps/api_v2/src/import-estate.ts",
+        "apps/api_v2/src/reindex-search.ts",
+        "apps/api_v2/src/redact-change-events.ts",
+        "apps/api_v2/src/test-db.ts",
+        "apps/api_v2/src/**/*.test.ts"
+      ],
+      "plugins": ["node"],
+      "rules": {
+        "node/no-process-env": "off"
+      }
+    }
+  ]
+}

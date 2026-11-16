@@ -1,12 +1,6 @@
-import {
-  InputHTMLAttributes,
-  JSX,
-  KeyboardEvent,
-  ReactNode,
-  useEffect,
-  useState,
-} from "react";
-import { GeocodeResult } from "../../lib/api/geocode";
+import type { InputHTMLAttributes, JSX, KeyboardEvent, ReactNode } from "react";
+import { useEffect, useState } from "react";
+import type { GeocodeResult } from "../../lib/api/geocode";
 
 /**
  * The address field's input and suggestion list — the WAI-ARIA editable

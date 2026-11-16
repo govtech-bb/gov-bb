@@ -6,7 +6,7 @@
     "#/*": "./src/*"
   },
   "engines": {
-    "node": ">=24"
+    "node": "24.x"
   },
   "scripts": {
     "test": "tsx --test \"src/**/*.test.ts\"",
@@ -19,7 +19,10 @@
     "db:reset": "tsx --env-file-if-exists=.env.local --env-file-if-exists=.env src/lib/db/reset.ts",
     "ingest": "tsx --env-file-if-exists=.env.local --env-file-if-exists=.env src/ingest/cli.ts",
     "eval:sweep": "tsx --env-file-if-exists=.env.local --env-file-if-exists=.env eval/sweep.ts",
-    "eval:responses": "tsx --env-file-if-exists=.env.local --env-file-if-exists=.env eval/responses/run.ts"
+    "eval:responses": "tsx --env-file-if-exists=.env.local --env-file-if-exists=.env eval/responses/run.ts",
+    "lint:fix": "oxlint --fix",
+    "test:oxlint": "oxlint",
+    "test:types": "tsc --noEmit"
   },
   "dependencies": {
     "@aws-sdk/client-bedrock-runtime": "^3.1136.0",
@@ -65,7 +68,7 @@
     "@types/react-dom": "catalog:",
     "@vitejs/plugin-react": "^6.0.2",
     "dotenv": "^17.4.2",
-    "drizzle-kit": "^0.31.10",
+    "drizzle-kit": "0.31.10",
     "nitro": "3.0.260429-beta",
     "tsx": "^4.22.3",
     "typescript": "catalog:",

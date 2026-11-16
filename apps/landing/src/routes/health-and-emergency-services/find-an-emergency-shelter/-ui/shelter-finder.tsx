@@ -356,11 +356,7 @@ export function ShelterFinder() {
 
   return (
     <section aria-label="Shelter finder">
-      <Text
-        as="p"
-        className="mb-s text-grey-70 print:hidden"
-        size="body-sm"
-      >
+      <Text as="p" className="mb-s text-grey-70 print:hidden" size="body-sm">
         <button
           className="underline"
           onClick={() => window.print()}

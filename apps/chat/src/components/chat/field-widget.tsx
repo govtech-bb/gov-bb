@@ -44,7 +44,9 @@ export function FieldWidget({
 
   let input: React.ReactNode = null;
   if (options.length > 0 && (spec.htmlType === "checkbox" || spec.multiple)) {
-    input = <MultiAnswer idBase={labelId} options={options} onAnswer={onAnswer} />;
+    input = (
+      <MultiAnswer idBase={labelId} options={options} onAnswer={onAnswer} />
+    );
   } else if (options.length > 0) {
     input = (
       <ChoicePills
@@ -56,7 +58,11 @@ export function FieldWidget({
   } else if (spec.htmlType === "show-hide") {
     // A disclosure toggle is always a Yes/No choice, never a text box.
     input = (
-      <ChoicePills labelledBy={labelId} choices={["Yes", "No"]} onPick={onAnswer} />
+      <ChoicePills
+        labelledBy={labelId}
+        choices={["Yes", "No"]}
+        onPick={onAnswer}
+      />
     );
   } else if (spec.htmlType === "checkbox") {
     input = <BooleanAnswer idBase={labelId} onAnswer={onAnswer} />;
@@ -82,7 +88,9 @@ export function FieldWidget({
     <div className="flex flex-col gap-2">
       <p id={labelId} className="text-bubble font-medium text-black-00">
         {spec.label}
-        {!spec.required && <span className="text-mid-grey-00"> (optional)</span>}
+        {!spec.required && (
+          <span className="text-mid-grey-00"> (optional)</span>
+        )}
       </p>
       {spec.hint && (
         <p className="text-disclaimer text-mid-grey-00">{spec.hint}</p>

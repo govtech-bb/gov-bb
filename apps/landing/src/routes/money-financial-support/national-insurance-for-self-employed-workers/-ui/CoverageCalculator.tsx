@@ -960,11 +960,7 @@ function PlanStep({
         <span className="font-semibold text-black-00 tabular-nums">
           {money(monthlyAvg)}
         </span>
-        <button
-          className="govbb-link ml-auto"
-          onClick={onBack}
-          type="button"
-        >
+        <button className="govbb-link ml-auto" onClick={onBack} type="button">
           Change your earnings
         </button>
       </div>

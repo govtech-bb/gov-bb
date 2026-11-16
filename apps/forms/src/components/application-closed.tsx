@@ -1,4 +1,5 @@
-import { ContactDetails, formatClosingDateTime } from "@govtech-bb/form-types";
+import type { ContactDetails } from "@govtech-bb/form-types";
+import { formatClosingDateTime } from "@govtech-bb/form-types";
 import { Heading, Link, ServiceHeading, Text } from "@govtech-bb/react";
 import React from "react";
 import { trackEvent } from "../lib/analytics";

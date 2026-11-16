@@ -11,8 +11,9 @@
   font-weight: 400 700;
   font-display: swap;
   src: url("@govtech-bb/frontend/assets/fonts/figtree-latin.woff2") format("woff2");
-  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
-    U+2212, U+2215, U+FEFF, U+FFFD;
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
+    U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 @font-face {
   font-family: Figtree;
@@ -20,8 +21,10 @@
   font-weight: 400 700;
   font-display: swap;
   src: url("@govtech-bb/frontend/assets/fonts/figtree-latin-ext.woff2") format("woff2");
-  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020,
-    U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+  unicode-range:
+    U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329,
+    U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F,
+    U+A720-A7FF;
 }
 @font-face {
   font-family: Figtree;
@@ -29,8 +32,9 @@
   font-weight: 400 700;
   font-display: swap;
   src: url("@govtech-bb/frontend/assets/fonts/figtree-latin-italic.woff2") format("woff2");
-  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
-    U+2212, U+2215, U+FEFF, U+FFFD;
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
+    U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 @font-face {
   font-family: Figtree;
@@ -38,8 +42,10 @@
   font-weight: 400 700;
   font-display: swap;
   src: url("@govtech-bb/frontend/assets/fonts/figtree-latin-ext-italic.woff2") format("woff2");
-  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020,
-    U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+  unicode-range:
+    U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329,
+    U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F,
+    U+A720-A7FF;
 }
 
 /*
@@ -88,7 +94,9 @@
   /* Roles */
   --color-ink: var(--govbb-color-ink); /* text, control borders */
   --color-muted: var(--govbb-color-muted); /* secondary text, hints, icons: 7:1 on white */
-  --color-subtle: var(--govbb-grey-70); /* ghost prompts in empty blocks: 7:1, as AA wants of text */
+  --color-subtle: var(
+    --govbb-grey-70
+  ); /* ghost prompts in empty blocks: 7:1, as AA wants of text */
   --color-line: var(--govbb-grey-20); /* dividers */
   --color-tint: var(--govbb-grey-10); /* quiet fills and hovers */
   --color-highlight: var(--govbb-color-highlight); /* selected blocks and rows */
@@ -153,7 +161,9 @@
   --shadow-press: inset 0 0 0 3px var(--govbb-overlay-dark-20);
   /* The tool floats over the form, the form never does: popups lift off it in navy-tinted shade (blue-90), so a
      menu can't pass for one of the form's 2px ink controls */
-  --shadow-popup: 0 0 0 1px var(--govbb-grey-40), 0 4px 8px -2px rgb(0 14 48 / 0.12), 0 16px 32px -8px rgb(0 14 48 / 0.24);
+  --shadow-popup:
+    0 0 0 1px var(--govbb-grey-40), 0 4px 8px -2px rgb(0 14 48 / 0.12),
+    0 16px 32px -8px rgb(0 14 48 / 0.24);
   /* The page the form is written on, over the grey desk */
   --shadow-sheet: 0 0 0 1px rgb(0 14 48 / 0.06), 0 1px 3px rgb(0 14 48 / 0.08);
 

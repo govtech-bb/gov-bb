@@ -44,12 +44,12 @@ If you prefer not to use Tailwind CSS:
 
 ## Linting & Formatting
 
-This project uses [eslint](https://eslint.org/) and [prettier](https://prettier.io/) for linting and formatting. Eslint is configured using [tanstack/eslint-config](https://tanstack.com/config/latest/docs/eslint). The following scripts are available:
+Linting uses [oxlint](https://oxc.rs/docs/guide/usage/linter) and formatting [oxfmt](https://oxc.rs/docs/guide/usage/formatter). This app's lint rules live in `.oxlintrc.json` here (the `@tanstack/eslint-config` rule set); its formatting (no semicolons, single quotes) is an override in the root `.oxfmtrc.json`.
 
 ```bash
-pnpm lint
-pnpm format
-pnpm check
+pnpm test:oxlint   # this app
+pnpm lint:fix
+pnpm -w format
 ```
 
 ## Routing

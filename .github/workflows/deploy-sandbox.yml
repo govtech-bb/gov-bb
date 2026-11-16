@@ -1202,7 +1202,19 @@ jobs:
   # that staging deploy finishes.
   promote-to-staging:
     name: Promote to staging (on sandbox green)
-    needs: [setup, deploy-api, deploy-form-builder, amplify-forms, amplify-landing, amplify-form-builder, amplify-feature-flagging, amplify-analytics, smoke-test-forms, journey-feature-flag]
+    needs:
+      [
+        setup,
+        deploy-api,
+        deploy-form-builder,
+        amplify-forms,
+        amplify-landing,
+        amplify-form-builder,
+        amplify-feature-flagging,
+        amplify-analytics,
+        smoke-test-forms,
+        journey-feature-flag,
+      ]
     if: ${{ github.event_name == 'push' && !failure() && !cancelled() }}
     runs-on: ubuntu-latest
     concurrency:

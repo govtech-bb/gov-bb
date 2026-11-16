@@ -1,4 +1,4 @@
-import { FormValues, SubmissionState } from "@forms/types";
+import type { FormValues, SubmissionState } from "@forms/types";
 
 function stripNonSerializableValues(value: unknown): unknown {
   if (typeof File !== "undefined" && value instanceof File) {

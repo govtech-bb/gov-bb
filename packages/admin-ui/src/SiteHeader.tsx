@@ -1,5 +1,5 @@
-import type { ReactNode } from 'react'
-import { Logo } from '@govtech-bb/react'
+import type { ReactNode } from "react";
+import { Logo } from "@govtech-bb/react";
 
 /**
  * Compact blue site bar shared by the platform's internal admin tools: the
@@ -15,12 +15,12 @@ import { Logo } from '@govtech-bb/react'
  */
 export function SiteHeader({
   label,
-  homeHref = '/',
+  homeHref = "/",
   children,
 }: {
-  label: string
-  homeHref?: string
-  children?: ReactNode
+  label: string;
+  homeHref?: string;
+  children?: ReactNode;
 }) {
   return (
     <div className="bg-blue-00 text-white-00">
@@ -40,5 +40,5 @@ export function SiteHeader({
         ) : null}
       </div>
     </div>
-  )
+  );
 }

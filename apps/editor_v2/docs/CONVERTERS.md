@@ -66,4 +66,4 @@ Generic editing state receives explicit source and codec/prepared-state contract
 
 ## Checks
 
-From `apps/editor_v2`, run `pnpm test`, `pnpm typecheck`, `pnpm check:boundaries` and `pnpm check:coverage`. The coverage matrix checks installed capabilities and their tests. Use `native-form-schema.mjs` with the [browser runner](DEVELOPMENT.md#browser-checks) to check JSON import and export in the UI. Keep legacy fixture expectations fixed unless the format changes intentionally.
+From `apps/editor_v2`, run `pnpm test`, `pnpm test:types`, `pnpm check:boundaries` and `pnpm check:coverage`. The coverage matrix checks installed capabilities and their tests. Use `native-form-schema.mjs` with the [browser runner](DEVELOPMENT.md#browser-checks) to check JSON import and export in the UI. Keep legacy fixture expectations fixed unless the format changes intentionally.

@@ -1,7 +1,8 @@
 // Responsible for fetching a form contract from the API.
 
-import { ClientServiceContract } from "@forms/types";
-import { ServiceContract, serviceContractSchema } from "@govtech-bb/form-types";
+import type { ClientServiceContract } from "@forms/types";
+import type { ServiceContract } from "@govtech-bb/form-types";
+import { serviceContractSchema } from "@govtech-bb/form-types";
 import { mapContractToLocale } from "./field-mapper";
 import exampleServiceContract from "../../../contracts/example-service-contract.json";
 import masterContract from "../../../contracts/master-contract.json";

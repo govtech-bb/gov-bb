@@ -1,11 +1,11 @@
-@import '@fontsource/figtree/400.css';
-@import '@fontsource/figtree/500.css';
-@import '@fontsource/figtree/600.css';
-@import '@fontsource/figtree/700.css';
-@import '@fontsource/figtree/800.css';
-@import 'tailwindcss';
+@import "@fontsource/figtree/400.css";
+@import "@fontsource/figtree/500.css";
+@import "@fontsource/figtree/600.css";
+@import "@fontsource/figtree/700.css";
+@import "@fontsource/figtree/800.css";
+@import "tailwindcss";
 /* Design tokens */
-@import '@govtech-bb/design';
+@import "@govtech-bb/design";
 
 /* Scan compiled DS output + the shared admin-ui source for class names.
    The DS path is this app's own node_modules: pnpm's isolated linker (ADR 0122)
@@ -15,7 +15,7 @@
 @source "../../../../packages/admin-ui/src/**/*.{ts,tsx}";
 
 @theme {
-  --font-sans: 'Figtree', ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Figtree", ui-sans-serif, system-ui, sans-serif;
 }
 
 * {

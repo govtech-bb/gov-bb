@@ -4,12 +4,11 @@ Platform for building and delivering Barbados government digital services —
 online forms, a no-code form builder, a services landing site, and an assistant
 chatbot.
 
-> The npm/monorepo package is still named `@govtech-bb/modular-forms-monorepo`
-> for historical reasons; the product is **SSB**.
+> The monorepo's root package is `@govtech-bb/platform`; the product is **SSB**.
 
 ## Prerequisites
 
-- Node.js >= 20
+- Node.js 24 (`.nvmrc`)
 - pnpm 11 (`corepack enable`, pinned to `pnpm@11.6.0` via `packageManager`)
 
 ## Getting started
@@ -166,14 +165,16 @@ flowchart TB
 
 | Command | Description |
 |---|---|
-| `pnpm build` | Build all apps and packages (`nx run-many -t build`) |
+| `pnpm build` / `pnpm build:all` | Build affected projects (`nx affected -t build`) / every project |
 | `pnpm test:all` | Run the full test suite (`nx run-many -t test`) |
-| `pnpm lint` | Lint all projects |
-| `pnpm lint:deps` | Check workspace dependency consistency (sherif) |
+| `pnpm test:types` | Type-check each affected project that has a `test:types` script, with its own `tsc --noEmit` (`nx affected -t test:types`) |
+| `pnpm test:pr` / `pnpm test:ci` | Everything CI checks (oxlint, types, tests, build, format) for affected / all projects |
+| `pnpm test:oxlint` | Lint affected projects with oxlint (`nx affected -t test:oxlint`) |
+| `pnpm test:sherif` | Check workspace dependency consistency (sherif) |
 | `pnpm dev:forms` | Start the forms app in dev mode |
 | `pnpm dev:api` | Start the API in dev mode |
 | `pnpm dev:landing` | Start the landing app in dev mode |
-| `pnpm format` / `pnpm format:check` | Format (or check) with Prettier |
+| `pnpm format` / `pnpm test:format` | Format (or check) with oxfmt |
 | `pnpm validate-recipes` | Validate all recipe files |
 | `pnpm dump-recipes` | Dump recipes from the DB to files |
 | `pnpm migration:generate -- <path>` | Generate a migration from entity changes |

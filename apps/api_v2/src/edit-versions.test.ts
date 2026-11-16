@@ -2,9 +2,6 @@ import { drizzle } from "drizzle-orm/node-postgres";
 import { assert, describe, expect, it } from "vitest";
 import { PostgresPages } from "./adapters/postgres-pages";
 import { PostgresCollections } from "./adapters/postgres-collections";
-import { migrate } from "./migrate";
-import { SQL as CHANGE_HISTORY_SQL } from "./migrations/007_change_history_trigger";
-import { SQL as COUNTERS_SQL } from "./migrations/023_change_event_counters";
 import { EditVersion } from "./modules/edit-concurrency";
 import { fieldsOf } from "./modules/page";
 import {
@@ -106,49 +103,6 @@ describe("database edit identities", () => {
       expect(recreated.every((version) => version > Math.max(...initial))).toBe(
         true,
       );
-    } finally {
-      await close();
-    }
-  });
-
-  it("backfills populated roots without audit or date writes and replays without replacing identities", async () => {
-    const { db, pool, close } = await createTestDb();
-    const exec = (script: string) => pool.query(script);
-    try {
-      for (const table of ROOTS)
-        await exec(
-          `drop trigger zz_edit_version on ${table}; alter table ${table} drop column version`,
-        );
-      await exec(`drop sequence content_edit_version_seq;
-        delete from schema_migrations where name = '024_edit_versions';
-        ${CHANGE_HISTORY_SQL}
-        ${COUNTERS_SQL}`);
-      await exec(ROOT_FIXTURES);
-      const before = (await exec(stateQuery)).rows.map(({ kind, row }) => ({
-        kind,
-        row,
-      }));
-      expect(await migrate(db, exec)).toEqual(["024_edit_versions"]);
-      const after = (await exec(stateQuery)).rows.map(({ kind, row }) => {
-        const { version: _version, ...content } = row;
-        return { kind, row: content };
-      });
-      expect(after).toEqual(before);
-      const versions = await Promise.all(
-        ROOTS.map((table) => storedVersion(pool, table)),
-      );
-      expect(new Set(versions).size).toBe(ROOTS.length);
-      const sequence = (await exec("select * from content_edit_version_seq"))
-        .rows;
-      const state = (await exec(stateQuery)).rows;
-      await exec(
-        "delete from schema_migrations where name = '024_edit_versions'",
-      );
-      expect(await migrate(db, exec)).toEqual(["024_edit_versions"]);
-      expect((await exec(stateQuery)).rows).toEqual(state);
-      expect(
-        (await exec("select * from content_edit_version_seq")).rows,
-      ).toEqual(sequence);
     } finally {
       await close();
     }

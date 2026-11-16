@@ -24,7 +24,10 @@ function SummaryCards({
       cards={[
         { label: 'Sessions', value: fmtInt(stats.sessions) },
         { label: 'Pageviews', value: fmtInt(stats.pageviews) },
-        { label: 'Avg steps / visit', value: stats.avgStepsPerVisit.toFixed(1) },
+        {
+          label: 'Avg steps / visit',
+          value: stats.avgStepsPerVisit.toFixed(1),
+        },
         { label: 'Bounce rate', value: fmtPct(stats.bounceRate * 100) },
         { label: 'Forms tracked', value: fmtInt(formsTracked) },
         { label: 'Searches', value: fmtInt(stats.searches) },
@@ -119,90 +122,112 @@ export default function AnalyticsPage({
         </Text>
 
         <div>
-        {/* Most common journeys (flowchart + table) */}
-        <JourneysSection flow={overview.flow} journeys={overview.journeys} />
+          {/* Most common journeys (flowchart + table) */}
+          <JourneysSection flow={overview.flow} journeys={overview.journeys} />
 
-        {/* Most visited pages */}
-        <section className="mb-l">
-          <div className="mb-s flex items-center justify-between gap-s">
-            <Heading as="h2" size="h3">
-              Most visited pages
-            </Heading>
-            <HowToButton target="uar-howto-pages" />
-          </div>
-          <div className={CARD}>
-            <table className="min-w-full">
-              <thead>
-                <tr>
-                  <SortHeader label="Path" colKey="path" sort={pageSort} className={TH} />
-                  <SortHeader label="Pageviews" colKey="pageviews" sort={pageSort} className={`${TH} ${NUM}`} />
-                  <SortHeader label="Visitors" colKey="visitors" sort={pageSort} className={`${TH} ${NUM}`} />
-                  <SortHeader label="Top source" colKey="source" sort={pageSort} className={TH} />
-                </tr>
-              </thead>
-              <tbody>
-                {pageSort.sorted.length === 0 ? (
-                  <tr>
-                    <td className={`${TD} text-mid-grey-00`} colSpan={4}>
-                      No page data.
-                    </td>
-                  </tr>
-                ) : (
-                  pageSort.sorted.map((p) => (
-                    <tr key={p.path}>
-                      <td className={TD}>{p.path}</td>
-                      <td className={`${TD} ${NUM}`}>{fmtInt(p.pageviews)}</td>
-                      <td className={`${TD} ${NUM}`}>{fmtInt(p.visitors)}</td>
-                      <SourceCell sources={p.topSources} onShow={setSrcPop} />
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </section>
-
-        {/* Forms */}
-        <section className="mb-l">
-          <div className="mb-s flex items-center justify-between gap-s">
-            <Heading as="h2" size="h3">
-              Most visited forms
-            </Heading>
-            <HowToButton target="uar-howto-forms" />
-          </div>
-          <Text as="p" size="caption" className="mb-s text-mid-grey-00">
-            Starts and completion for each form; open one for its funnel,
-            per-step drop-off and submit reliability.
-          </Text>
-          <FormsTable forms={overview.forms} range={overview.range} />
-        </section>
-      </div>
-
-      {srcPop ? (
-        <div
-          className="fixed z-[60] min-w-[210px] rounded-lg border border-grey-00 bg-white-00 p-s shadow-xl"
-          style={{ left: srcPop.x, top: srcPop.y }}
-        >
-          <Text
-            as="span"
-            size="small-caption"
-            className="mb-xs block uppercase text-mid-grey-00"
-          >
-            All sources
-          </Text>
-          {srcPop.sources.map((s) => (
-            <div
-              key={s.referrer}
-              className="flex justify-between gap-m py-xs text-caption"
-            >
-              <span>{s.referrer}</span>
-              <span className="text-mid-grey-00">{fmtInt(s.count)}</span>
+          {/* Most visited pages */}
+          <section className="mb-l">
+            <div className="mb-s flex items-center justify-between gap-s">
+              <Heading as="h2" size="h3">
+                Most visited pages
+              </Heading>
+              <HowToButton target="uar-howto-pages" />
             </div>
-          ))}
-        </div>
-      ) : null}
+            <div className={CARD}>
+              <table className="min-w-full">
+                <thead>
+                  <tr>
+                    <SortHeader
+                      label="Path"
+                      colKey="path"
+                      sort={pageSort}
+                      className={TH}
+                    />
+                    <SortHeader
+                      label="Pageviews"
+                      colKey="pageviews"
+                      sort={pageSort}
+                      className={`${TH} ${NUM}`}
+                    />
+                    <SortHeader
+                      label="Visitors"
+                      colKey="visitors"
+                      sort={pageSort}
+                      className={`${TH} ${NUM}`}
+                    />
+                    <SortHeader
+                      label="Top source"
+                      colKey="source"
+                      sort={pageSort}
+                      className={TH}
+                    />
+                  </tr>
+                </thead>
+                <tbody>
+                  {pageSort.sorted.length === 0 ? (
+                    <tr>
+                      <td className={`${TD} text-mid-grey-00`} colSpan={4}>
+                        No page data.
+                      </td>
+                    </tr>
+                  ) : (
+                    pageSort.sorted.map((p) => (
+                      <tr key={p.path}>
+                        <td className={TD}>{p.path}</td>
+                        <td className={`${TD} ${NUM}`}>
+                          {fmtInt(p.pageviews)}
+                        </td>
+                        <td className={`${TD} ${NUM}`}>{fmtInt(p.visitors)}</td>
+                        <SourceCell sources={p.topSources} onShow={setSrcPop} />
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </section>
 
-      <HowToPopovers />
+          {/* Forms */}
+          <section className="mb-l">
+            <div className="mb-s flex items-center justify-between gap-s">
+              <Heading as="h2" size="h3">
+                Most visited forms
+              </Heading>
+              <HowToButton target="uar-howto-forms" />
+            </div>
+            <Text as="p" size="caption" className="mb-s text-mid-grey-00">
+              Starts and completion for each form; open one for its funnel,
+              per-step drop-off and submit reliability.
+            </Text>
+            <FormsTable forms={overview.forms} range={overview.range} />
+          </section>
+        </div>
+
+        {srcPop ? (
+          <div
+            className="fixed z-[60] min-w-[210px] rounded-lg border border-grey-00 bg-white-00 p-s shadow-xl"
+            style={{ left: srcPop.x, top: srcPop.y }}
+          >
+            <Text
+              as="span"
+              size="small-caption"
+              className="mb-xs block uppercase text-mid-grey-00"
+            >
+              All sources
+            </Text>
+            {srcPop.sources.map((s) => (
+              <div
+                key={s.referrer}
+                className="flex justify-between gap-m py-xs text-caption"
+              >
+                <span>{s.referrer}</span>
+                <span className="text-mid-grey-00">{fmtInt(s.count)}</span>
+              </div>
+            ))}
+          </div>
+        ) : null}
+
+        <HowToPopovers />
       </div>
     </>
   )

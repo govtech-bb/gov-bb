@@ -14,7 +14,7 @@ import { parseConfig } from "./config";
 import {
   connect,
   createPool,
-  migrationExec,
+  createMigrationPool,
   ping,
   type DatabaseFailure,
 } from "./db";
@@ -100,7 +100,14 @@ async function main(): Promise<void> {
     if (!connected.ok) return refuseToStart(connected.error);
     const db = connected.value;
     operation = "migrate";
-    const ran = await migrate(db, migrationExec(pool));
+    const migrating = createMigrationPool(config.database, logger);
+    if (!migrating.ok) return refuseToStart(migrating.error);
+    let ran: string[];
+    try {
+      ran = await migrate(migrating.value);
+    } finally {
+      await migrating.value.end();
+    }
     if (ran.length > 0) logger.info({ migrations: ran }, "applied migrations");
     if (config.seed) {
       operation = "seed";

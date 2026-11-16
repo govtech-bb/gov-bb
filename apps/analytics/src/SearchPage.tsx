@@ -31,7 +31,12 @@ function QueriesTable({ data }: { data: SearchPayload }) {
       <table className="min-w-full">
         <thead>
           <tr>
-            <SortHeader label="Query" colKey="query" sort={sort} className={TH} />
+            <SortHeader
+              label="Query"
+              colKey="query"
+              sort={sort}
+              className={TH}
+            />
             <SortHeader
               label="Searches"
               colKey="searches"
@@ -128,8 +133,8 @@ export default function SearchPage({ data }: { data: SearchPayload }) {
               Top queries
             </Heading>
             <Text as="p" size="caption" className="mb-s text-mid-grey-00">
-              Most-searched terms, with per-query click-through. Click any column
-              to sort.
+              Most-searched terms, with per-query click-through. Click any
+              column to sort.
             </Text>
             <QueriesTable data={data} />
           </>

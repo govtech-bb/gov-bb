@@ -7,10 +7,7 @@ import { BaseRepository } from "./base.repository";
 // ---------------------------------------------------------------------------
 class TestRepository extends BaseRepository<object> {}
 
-function makeRepo(
-  txResult?: unknown,
-  txError?: Error,
-): {
+function makeRepo(txError?: Error): {
   repo: TestRepository;
   mockTransaction: Mock;
 } {

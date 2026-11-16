@@ -87,7 +87,8 @@ function Home() {
       const id = payload?.messageId;
       if (!id) return;
       setSidecar((prev) => {
-        const addCites = Array.isArray(payload.citations) && !prev.citations[id];
+        const addCites =
+          Array.isArray(payload.citations) && !prev.citations[id];
         const addTokens =
           !!payload.linkTokens &&
           Object.keys(payload.linkTokens).length > 0 &&
