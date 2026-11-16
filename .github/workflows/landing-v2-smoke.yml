@@ -80,6 +80,8 @@ jobs:
       # Smoke only once that rollout has finished, or this commit's api_v2
       # would go unchecked until the next push. The smoke gates on the deploy
       # job only: the run's `estate-drift` job (#3710) turning red doesn't skip it.
+      # The watch still waits for the whole run, `estate-drift` included, so
+      # the two don't share a minute of api_v2's per-IP rate limit.
       - name: Wait for this commit's api_v2 deploy, if any
         if: steps.build.outputs.superseded != 'true'
         env:
@@ -97,7 +99,7 @@ jobs:
           CONCLUSION=$(gh api "repos/$REPO/actions/runs/$RUN_ID/jobs" \
             --jq '.jobs[] | select(.name == "Build, Push & Deploy api_v2") | .conclusion')
           if [ "$CONCLUSION" != "success" ]; then
-            echo "::error::api_v2 deploy: $CONCLUSION"
+            echo "::error::api_v2 deploy: ${CONCLUSION:-not run}"
             exit 1
           fi
 
