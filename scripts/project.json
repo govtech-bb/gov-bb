@@ -5,6 +5,7 @@
   "targets": {
     "test": {
       "executor": "nx:run-commands",
+      "inputs": ["default", "{workspaceRoot}/.oxlintrc.json"],
       "options": {
         "command": "vitest run",
         "cwd": "scripts"
