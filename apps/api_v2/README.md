@@ -568,6 +568,8 @@ The snapshot's visibility is the markdown frontmatter's. Each environment's admi
 
 A page's key is its `form_id`, or its `content_slug` (landing's registry slug) when it has no form. A `/start` page that carries its parent's `form_id` shares its parent's row; one without a form (e.g. `calculate-severance-pay/start`) keys on its own slug, keeps its own level and is not listed in `visibility_changes`, but is still hidden whenever its parent is, because a page is served at the most restrictive level of itself and its ancestors. A row that matches no page is ignored. `published_at` stays the frontmatter `publish_date` whatever the level; an undated page is dated now only if it imports `public`.
 
+The two pages landing nests under `find-an-open-pharmacy` without nesting their url (`free-or-subsidised-medication` and `prescription-colours`, `NESTED_WITHOUT_URL` in `scripts/build-seed-data.ts`) work the same way: if a `disabled` row for `health-and-emergency-services/find-an-open-pharmacy` lowers it to `preview`, both are hidden from the public too, though `visibility_changes` does not list them unless their own rows change them. Landing kept them public in that case; api_v2 hiding them is deliberate (#3525).
+
 `--forms-api` is required. A missing flag, a network error, a non-2xx answer or a body that is not the `{"status":"success","data":[{slug,status}]}` envelope exits 1 before the database is opened, so nothing is written.
 
 Before every run, confirm in the Amplify Console that the environment's feature_flagging branch has no `EDITOR_V2_URL` set. If it is set, stop: that environment is past cutover, where a `disabled` row hides only the form (ADR 0110, "After cutover"), and the overlay would wrongly lower the page. The importer cannot detect this.
