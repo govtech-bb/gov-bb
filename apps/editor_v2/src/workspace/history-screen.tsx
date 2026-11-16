@@ -1,8 +1,8 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { useLayoutEffect, useRef, useState } from "react";
-import { ApiFailure, type EditorApi, type PageHistoryEntry } from "../api/client";
-import { apiMessage } from "../api/failure-messages";
+import type { ApiPage, EditorApi, PageHistoryEntry } from "../api/client";
+import { writes } from "../api/writes";
 import { pageFieldLabel } from "../api/page-fields";
 import { historyQuery, pageQuery, rolesQuery } from "../api/queries";
 import { Button } from "../ui/button";
@@ -14,6 +14,7 @@ import { ScreenHeader } from "../ui/screen-header";
 import { TextLink } from "../ui/text-link";
 import { toast } from "../ui/toast";
 import { listLoadView } from "./list-load-view";
+import { useWrite } from "./use-write";
 
 /** How many changes show at first, and how many more each Show older changes adds. */
 const SHOWN = 50;
@@ -76,33 +77,31 @@ export function HistoryScreen({
   const entries = history.data;
   const [shown, setShown] = useState(SHOWN);
   const list = useRef<HTMLOListElement>(null);
-  const [restoring, setRestoring] = useState<PageHistoryEntry>();
+  const [restoring, setRestoring] = useState<{ entry: PageHistoryEntry; page: ApiPage }>();
   // The page's current version is the newest one: restoring it would change nothing
   const current = entries?.find((entry) => VERSIONS.has(entry.action))?.version_no;
-  const isPublic = page.data?.visibility === "public";
-  // The restore updates a change already sent for review, and it stays waiting
-  const awaitingReview = page.data?.pending_revision?.status === "submitted";
+  const isPublic = restoring?.page.visibility === "public";
+  const restore = useWrite(api, writes.restorePage);
+  const outcome = restore.outcome;
 
-  const restore = useMutation({
-    mutationFn: ({ versionNo, read }: { versionNo: number; read: number }) =>
-      api.restoreVersion(pageId, versionNo, read),
-    onSuccess: () => {
+  useLayoutEffect(() => {
+    if (outcome?.kind === "landed") {
+      const restoredPage = outcome.answer;
       toast("Version restored", {
-        description: !isPublic
-          ? "It's saved as a new change at the top of the history."
-          : awaitingReview
-            ? "It's saved in the change that is waiting for review."
-            : "It's saved as a change to this page. Submit it for review to publish it.",
+        description:
+          restoredPage.visibility !== "public"
+            ? "It's saved as a new change at the top of the history."
+            : restoredPage.pending_revision?.status === "submitted"
+              ? "It's saved in the change that is waiting for review."
+              : "It's saved as a change to this page. Submit it for review to publish it.",
       });
       setRestoring(undefined);
+    } else if (
+      outcome?.kind === "conflict" ||
+      (outcome?.kind === "refused" && outcome.code === "not_restorable")
+    )
       void client.invalidateQueries({ queryKey: ["content"] });
-    },
-    onError: (error) => {
-      // The page moved on: read it and its history again, so trying again restores onto the current version
-      if (error instanceof ApiFailure && error.status === 409)
-        void client.invalidateQueries({ queryKey: ["content"] });
-    },
-  });
+  }, [outcome, client]);
 
   const back = serviceId ? (
     <Link to="/services/$serviceId/$documentId" params={{ serviceId, documentId: pageId }} />
@@ -171,8 +170,9 @@ export function HistoryScreen({
                       size="sm"
                       className="mt-1 w-fit"
                       onClick={() => {
-                        restore.reset();
-                        setRestoring(entry);
+                        if (!page.data) return;
+                        restore.forget();
+                        setRestoring({ entry, page: structuredClone(page.data) });
                       }}
                     >
                       Restore this version
@@ -202,26 +202,31 @@ export function HistoryScreen({
         description={
           restoring &&
           (isPublic
-            ? `The page as it was on ${formatDayAndTime(restoring.occurred_at)} is saved as a change to it. Citizens keep seeing the live page until an approver publishes the change. Nothing in the history is removed.`
-            : `The page goes back to how it was on ${formatDayAndTime(restoring.occurred_at)}. This is added to the history as a new change: nothing is removed. Who can see the page doesn't change.`)
+            ? `The page as it was on ${formatDayAndTime(restoring.entry.occurred_at)} is saved as a change to it. Citizens keep seeing the live page until an approver publishes the change. Nothing in the history is removed.`
+            : `The page goes back to how it was on ${formatDayAndTime(restoring.entry.occurred_at)}. This is added to the history as a new change: nothing is removed. Who can see the page doesn't change.`)
         }
-        confirmLabel="Restore version"
+        confirmLabel={restore.state === "unsettled" ? "Retry restore" : "Restore version"}
+        confirmDisabled={outcome?.kind === "conflict"}
         pendingLabel="Restoring…"
-        pending={restore.isPending}
+        pending={restore.state === "sending" || restore.state === "checking"}
         variant="accent"
         error={
-          restore.error &&
-          ((restore.error instanceof ApiFailure && apiMessage(restore.error)) ||
-            "The version couldn't be restored. Try again.")
+          outcome &&
+          outcome.kind !== "landed" &&
+          (outcome.kind === "unknown"
+            ? "We couldn’t confirm whether this version was restored. You can retry the same request, or cancel to check the page and its history."
+            : outcome.kind === "conflict"
+              ? "This page changed. Cancel and review the latest version before restoring."
+              : outcome.message || "The version couldn't be restored. Try again.")
         }
-        onConfirm={() =>
-          restoring &&
-          page.data &&
-          restore.mutate({
-            versionNo: restoring.version_no,
-            read: page.data.version,
-          })
-        }
+        onConfirm={() => {
+          if (!restoring || outcome?.kind === "conflict") return;
+          void restore.press(() => ({
+            id: restoring.page.id,
+            versionNo: restoring.entry.version_no,
+            version: restoring.page.version,
+          }));
+        }}
       />
     </>
   );

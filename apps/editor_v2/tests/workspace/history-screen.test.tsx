@@ -10,7 +10,8 @@ import {
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { createEditorApi, type PageHistoryEntry } from "../../src/api/client";
+import { createEditorApi, type ApiPage, type PageHistoryEntry } from "../../src/api/client";
+import { Toaster } from "../../src/ui/toast";
 import { HistoryScreen } from "../../src/workspace/history-screen";
 import { shownText } from "../helpers/shown-text";
 
@@ -52,8 +53,10 @@ afterEach(async () => {
 /** The page's version, as the restore must name it. */
 const READ = 7;
 
+let currentPage: ApiPage;
+
 /** What the restore route answers, and every request that reached it. */
-let restored: Response;
+let restored: Response | Promise<Response>;
 
 let restores: { url: string; init: RequestInit | undefined }[];
 
@@ -63,42 +66,50 @@ let restores: { url: string; init: RequestInit | undefined }[];
  */
 async function render(
   entries: PageHistoryEntry[] | null,
-  { roles = [], visibility = "draft" }: { roles?: string[]; visibility?: string } = {},
+  {
+    roles = [],
+    visibility = "draft",
+    pendingRevision = null,
+  }: {
+    roles?: string[];
+    visibility?: ApiPage["visibility"];
+    pendingRevision?: ApiPage["pending_revision"];
+  } = {},
 ) {
-  restored = Response.json({ id: PAGE });
+  currentPage = {
+    id: PAGE,
+    slug: "severance-pay",
+    url: "/severance-pay",
+    title: "Severance pay",
+    description: null,
+    category_id: null,
+    parent_id: null,
+    form_id: null,
+    visibility,
+    body_markdown: "",
+    frontmatter: {},
+    published_at: null,
+    created_at: "2026-10-01T12:00:00.000Z",
+    updated_at: "2026-10-28T14:00:00.000Z",
+    version: READ,
+    last_edited_by: null,
+    pending_revision: pendingRevision,
+  };
+  restored = Response.json({ ...currentPage, version: READ + 1 });
   restores = [];
   vi.stubGlobal(
     "fetch",
     vi.fn(async (url: string, init?: RequestInit) => {
       const path = new URL(url).pathname;
 
-      if (path === `/pages/${PAGE}`)
-        return Response.json({
-          id: PAGE,
-          slug: "severance-pay",
-          url: "/severance-pay",
-          title: "Severance pay",
-          description: null,
-          category_id: null,
-          parent_id: null,
-          form_id: null,
-          visibility,
-          body_markdown: "",
-          frontmatter: {},
-          published_at: null,
-          created_at: "2026-10-01T12:00:00.000Z",
-          updated_at: "2026-10-28T14:00:00.000Z",
-          version: READ,
-          last_edited_by: null,
-          pending_revision: null,
-        });
+      if (path === `/pages/${PAGE}`) return Response.json(currentPage);
 
       if (path === "/editor/me") return Response.json({ roles });
 
       if (path.endsWith("/restore")) {
         restores.push({ url: path, init });
 
-        return restored;
+        return (await restored).clone();
       }
 
       if (path === `/pages/${PAGE}/history` && entries) return Response.json({ entries });
@@ -133,6 +144,7 @@ async function render(
             pageId={PAGE}
             serviceId="service-1"
           />
+          <Toaster />
         </QueryClientProvider>
       </RouterContextProvider>,
     ),
@@ -352,6 +364,132 @@ test("restoring confirms first, then sends the version and the page's version it
   expect(JSON.parse(String(restores[0]?.init?.body))).toEqual({ expected_version: READ });
 });
 
+test("a refreshed page cannot change an open restore confirmation; a conflict requires a new confirmation", async () => {
+  await render(VERSIONS, { roles: ["editor"] });
+  await until(() => expect(buttons("Restore this version")).toHaveLength(2));
+  await act(async () => buttons("Restore this version")[1]?.click());
+
+  currentPage = { ...currentPage, version: READ + 1, title: "Newer edit", visibility: "public" };
+  await act(async () => {
+    await client.refetchQueries({ queryKey: ["content", "page", PAGE] });
+  });
+  await until(() => expect(host.textContent).toContain("History: Newer edit"));
+  restored = Response.json({ error: "version_conflict" }, { status: 409 });
+  await act(async () => buttons("Restore version")[0]?.click());
+
+  expect(JSON.parse(String(restores[0]?.init?.body))).toEqual({ expected_version: READ });
+  expect(document.querySelector('[role="alertdialog"]')?.textContent).not.toContain(
+    "Citizens keep seeing the live page",
+  );
+  await until(() => expect(buttons("Restore version")[0]?.disabled).toBe(true));
+  expect(document.body.textContent).toContain(
+    "Cancel and review the latest version before restoring.",
+  );
+  await act(async () => buttons("Restore version")[0]?.click());
+  expect(restores).toHaveLength(1);
+
+  await act(async () => buttons("Cancel")[0]?.click());
+  await act(async () => buttons("Restore this version")[1]?.click());
+  await until(() => expect(buttons("Restore version")[0]?.disabled).toBe(false));
+  expect(document.querySelector('[role="alertdialog"]')?.textContent).toContain(
+    "Citizens keep seeing the live page",
+  );
+  restored = Response.json({
+    ...currentPage,
+    version: READ + 2,
+    pending_revision: { status: "draft", comment: null },
+  });
+  await act(async () => buttons("Restore version")[0]?.click());
+  expect(restores.map(({ init }) => JSON.parse(String(init?.body)).expected_version)).toEqual([
+    READ,
+    READ + 1,
+  ]);
+  await until(() => expect(document.body.textContent).toContain("Version restored"));
+  expect(document.body.textContent).toContain(
+    "It's saved as a change to this page. Submit it for review to publish it.",
+  );
+});
+
+test.each([
+  { visibility: "draft" as const, pendingRevision: null, malformed: false },
+  {
+    visibility: "public" as const,
+    pendingRevision: { status: "draft" as const, comment: null },
+    malformed: true,
+  },
+  {
+    visibility: "public" as const,
+    pendingRevision: { status: "submitted" as const, comment: null },
+    malformed: false,
+  },
+])(
+  "an unanswered restore retains its request across refreshes: $visibility / $pendingRevision",
+  async (options) => {
+    await render(VERSIONS, { roles: ["editor"], ...options });
+    await until(() => expect(buttons("Restore this version")).toHaveLength(2));
+    restored = options.malformed
+      ? Response.json({ id: PAGE })
+      : new Response(null, { status: 503 });
+    await act(async () => buttons("Restore this version")[1]?.click());
+    await act(async () => buttons("Restore version")[0]?.click());
+    await until(() =>
+      expect(document.body.textContent).toContain(
+        "We couldn’t confirm whether this version was restored.",
+      ),
+    );
+    expect(restores).toHaveLength(1);
+    expect(document.body.textContent).not.toContain("Version restored");
+
+    currentPage = { ...currentPage, version: READ + 1, title: "Changed after dispatch" };
+    await act(async () => {
+      await client.refetchQueries({ queryKey: ["content", "page", PAGE] });
+    });
+    await until(() => expect(host.textContent).toContain("History: Changed after dispatch"));
+    restored = Response.json({ error: "version_conflict" }, { status: 409 });
+    await act(async () => buttons("Retry restore")[0]?.click());
+    await until(() => expect(restores).toHaveLength(2));
+    expect(restores.map(({ url, init }) => [url, JSON.parse(String(init?.body))])).toEqual([
+      [`/pages/${PAGE}/history/1/restore`, { expected_version: READ }],
+      [`/pages/${PAGE}/history/1/restore`, { expected_version: READ }],
+    ]);
+    expect(document.body.textContent).not.toContain("Version restored");
+  },
+);
+
+test("restore sends once while pending, blocks dismissal and returns focus after success", async () => {
+  await render(VERSIONS, { roles: ["editor"] });
+  await until(() => expect(buttons("Restore this version")).toHaveLength(2));
+  const trigger = buttons("Restore this version")[1]!;
+  await act(async () => {
+    trigger.focus();
+    trigger.click();
+  });
+  await until(() => expect(document.activeElement).toBe(buttons("Cancel")[0]));
+  let finish: (response: Response) => void = () => {};
+
+  restored = new Promise((resolve) => {
+    finish = resolve;
+  });
+  const confirm = buttons("Restore version")[0]!;
+  await act(async () => {
+    confirm.click();
+    confirm.click();
+  });
+  expect(restores).toHaveLength(1);
+  expect(buttons("Cancel")[0]?.disabled).toBe(true);
+  await act(async () => buttons("Cancel")[0]?.click());
+  expect(document.querySelector('[role="alertdialog"]')).not.toBeNull();
+
+  await act(async () => finish(Response.json({ ...currentPage, version: READ + 1 })));
+  await until(() => expect(document.querySelector('[role="alertdialog"]')).toBeNull());
+  expect(document.activeElement).toBe(trigger);
+  expect(document.querySelectorAll('[aria-label="Dismiss"]')).toHaveLength(1);
+  expect(document.body.textContent).toContain("Version restored");
+  expect(document.body.textContent).toContain(
+    "It's saved as a new change at the top of the history.",
+  );
+});
+
 test("on a public page, the dialog says the restore waits for review", async () => {
   await render(VERSIONS, { roles: ["editor"], visibility: "public" });
   await until(() => expect(buttons("Restore this version")).toHaveLength(2));
@@ -362,6 +500,22 @@ test("on a public page, the dialog says the restore waits for review", async () 
     expect(document.body.textContent).toContain(
       "Citizens keep seeing the live page until an approver publishes the change.",
     ),
+  );
+});
+
+test("a restored submitted revision is still described as waiting for review", async () => {
+  await render(VERSIONS, {
+    roles: ["editor"],
+    visibility: "public",
+    pendingRevision: { status: "submitted", comment: null },
+  });
+  await until(() => expect(buttons("Restore this version")).toHaveLength(2));
+  await act(async () => buttons("Restore this version")[0]?.click());
+  await act(async () => buttons("Restore version")[0]?.click());
+  await until(() => expect(document.querySelector('[role="alertdialog"]')).toBeNull());
+  expect(document.body.textContent).toContain("Version restored");
+  expect(document.body.textContent).toContain(
+    "It's saved in the change that is waiting for review.",
   );
 });
 

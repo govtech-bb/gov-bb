@@ -55,6 +55,7 @@ function fakeApi() {
     page: vi.fn<EditorApi["page"]>(),
     createPage: vi.fn<EditorApi["createPage"]>(),
     deletePage: vi.fn<EditorApi["deletePage"]>(),
+    restoreVersion: vi.fn<EditorApi["restoreVersion"]>(),
     services: vi.fn<EditorApi["services"]>(),
     service: vi.fn<EditorApi["service"]>(),
     sitePages: vi.fn<EditorApi["sitePages"]>(),
@@ -1424,6 +1425,68 @@ test("page create compares explicitly submitted optional fields instead of defau
   });
   expect((await writeAttempt(writes.createPage(api)).press(() => input)).kind).toBe("landed");
 });
+
+test("an answered history restore returns the checked page without reading back", async () => {
+  const api = fakeApi();
+  api.restoreVersion.mockResolvedValue(savedPage);
+  expect(
+    await writeAttempt(writes.restorePage(api)).press(() => ({
+      id: page.id,
+      versionNo: 4,
+      version: page.version,
+    })),
+  ).toEqual({ kind: "landed", answer: savedPage });
+  expect(api.restoreVersion).toHaveBeenCalledWith(page.id, 4, page.version);
+  expect(api.page).not.toHaveBeenCalled();
+});
+
+test.each([new ApiFailure(0), new ApiFailure(503), new ApiAnswerMalformed()])(
+  "a page read cannot prove an unanswered restore; retry keeps its page, target and version: %s",
+  async (failure) => {
+    const api = fakeApi();
+    api.restoreVersion
+      .mockRejectedValueOnce(failure)
+      .mockRejectedValueOnce(new ApiFailure(409, [], "Changed", "version_conflict"));
+    api.page.mockResolvedValue({ ...savedPage, version: 99 });
+    const request = { id: page.id, versionNo: 4, version: page.version };
+    const attempt = writeAttempt(writes.restorePage(api));
+    expect(await attempt.press(() => request)).toEqual({ kind: "unknown" });
+    expect(attempt.state).toBe("unsettled");
+    expect(api.restoreVersion).toHaveBeenCalledTimes(1);
+
+    request.id = "another-page";
+    request.versionNo = 5;
+    request.version = 99;
+    const newerRequest = vi.fn(() => request);
+    expect(await attempt.press(newerRequest)).toEqual({ kind: "conflict", message: "Changed" });
+    expect(newerRequest).not.toHaveBeenCalled();
+    expect(api.restoreVersion.mock.calls).toEqual([
+      [page.id, 4, page.version],
+      [page.id, 4, page.version],
+    ]);
+    expect(api.page.mock.calls).toEqual([[page.id], [page.id]]);
+    expect(api.page.mock.invocationCallOrder[1]).toBeLessThan(
+      api.restoreVersion.mock.invocationCallOrder[1]!,
+    );
+  },
+);
+
+test.each([new ApiFailure(404), new ApiFailure(503), new ApiAnswerMalformed()])(
+  "a failed restore read-back remains unconfirmed: %s",
+  async (failure) => {
+    const api = fakeApi();
+    api.restoreVersion.mockRejectedValue(new ApiFailure(503));
+    api.page.mockRejectedValue(failure);
+    expect(
+      await writeAttempt(writes.restorePage(api)).press(() => ({
+        id: page.id,
+        versionNo: 4,
+        version: page.version,
+      })),
+    ).toEqual({ kind: "unknown" });
+    expect(api.restoreVersion).toHaveBeenCalledTimes(1);
+  },
+);
 
 test("an answered page deletion needs no read-back", async () => {
   const api = fakeApi();
