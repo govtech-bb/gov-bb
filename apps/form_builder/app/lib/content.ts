@@ -256,12 +256,15 @@ function tsString(value: string): string {
   return `${quote}${escaped}${quote}`;
 }
 
-// One `key: value,` line of a category entry. Past oxfmt's 80-column print
-// width (.oxfmtrc.json), oxfmt moves the value onto its own line, so the CI
-// format check passes on what the builder pushes.
+// One `key: value,` line of a category entry, laid out as oxfmt prints it so
+// the CI format check passes on what the builder pushes. Past the 80-column
+// print width (.oxfmtrc.json), oxfmt moves the value onto its own line, except
+// after a key shorter than five characters, like `slug` (Prettier's short-key
+// rule). `.length` counts UTF-16 units, not display width, which is fine for
+// English names.
 function categoryProperty(key: string, value: string): string {
   const line = `    ${key}: ${tsString(value)},`;
-  if (line.length <= 80) return `${line}\n`;
+  if (line.length <= 80 || key.length < 5) return `${line}\n`;
   return `    ${key}:\n      ${tsString(value)},\n`;
 }
 

@@ -421,6 +421,17 @@ export const CATEGORY_BY_SLUG: Record<string, Category> = Object.fromEntries(
     });
     expect(next).toContain(`title: 'The "new" one',`);
   });
+
+  // oxfmt keeps a missing escape as it is, so the format check alone can't
+  // catch one: check the literal the writer produces.
+  it("escapes a backslash, so the value survives", () => {
+    const next = insertCategoryEntry(SOURCE, {
+      slug: "x",
+      title: "X",
+      description: "Use a \\ to separate",
+    });
+    expect(next).toContain('description: "Use a \\\\ to separate",');
+  });
 });
 
 // CI's Lint job runs `oxfmt --check` over the repo, so a category the builder
@@ -453,6 +464,7 @@ describe("insertCategoryEntry output passes oxfmt", () => {
     ["a title with double quotes", { title: 'The "new" one' }],
     ["a title with both kinds of quote", { title: `It's the "new" one` }],
     ["a description with an apostrophe", { description: "The Board's grants" }],
+    ["a slug longer than 80 columns", { slug: "a".repeat(70) }],
     ["a backslash", { description: "Use a \\ to separate" }],
   ];
 
