@@ -14,7 +14,7 @@
 
 - **Rebuild the whole catalogue rather than check `slug ∈ /form-definitions`.** One GET instead of three, but it answers differently from `statusEditable` for a landing page whose `formId` has no recipe yet. Reusing the UI's rule means the two can't drift.
 - **Refuse a slug that's in no list.** Before cutover that write creates a new row. After cutover a new row without a form can only be a page toggle, which does nothing.
-- **Fail closed.** A `/form-definitions` failure throws, so the write fails. A `/services` failure is already caught to `[]`, which drops the content rows, so content slugs find no row and are refused while form rows still resolve.
+- **Fail closed.** A `/form-definitions` or `/service_status` failure throws, so the write fails, even for a form row: a status-read outage now blocks form writes after cutover. That read never changes the answer (orphan and unknown slugs are both refused), but leaving it out would mean a second catalogue path. A `/services` failure is already caught to `[]`, which drops the content rows, so content slugs find no row and are refused while form rows still resolve.
 - **No extra fetches before cutover.** The guard sits behind the build-time `pagesInEditor`, so environments without `EDITOR_V2_URL` behave exactly as before.
 - **The spec mocks `../lib/service-url` with a getter.** `pagesInEditor` is a module-level const baked at load, so a plain mock value can't be switched per test.
 - **api v1's `PUT /service_status` is deliberately not enforced.** It's the only thing that would stop a direct API call that skips feature_flagging, but it needs a `forwardRef` around a circular module import and puts api v1 at risk for an accident-prevention freeze. api v1 already audits every write with the verified login, #3189 retires this part of it, and its only other writer (the sandbox Journey 3 smoke) toggles a slug that has a recipe.
@@ -22,4 +22,4 @@
 
 ## Open questions
 
-- CI never type-checks `apps/feature_flagging`: root `tsc -b` doesn't reference it and the "Type check apps" step lists only landing, form-builder-app and editor_v2. Checked by hand with `tsc --noEmit -p apps/feature_flagging/tsconfig.json`. Not filed.
+- CI never type-checks `apps/feature_flagging`: root `tsc -b` doesn't reference it and the "Type check apps" step lists only landing, form-builder-app and editor_v2. Checked by hand with `tsc --noEmit -p apps/feature_flagging/tsconfig.json`. Already tracked in #2747.

@@ -61,7 +61,7 @@ export function mapServicesIndex(
  * new landing pages appear without redeploying this app. If `GET /services`
  * fails the tool degrades to forms + statuses rather than erroring out.
  */
-export async function loadCatalogue(token: string): Promise<ServiceRow[]> {
+async function loadCatalogue(token: string): Promise<ServiceRow[]> {
   // Forward the user's GitHub token so /services and /form-definitions
   // return non-public (preview/draft) entries too — otherwise a new form
   // with no landing page never appears and can't be switched on (#2902).
@@ -108,9 +108,9 @@ export const setServiceStatus = createServerFn({ method: "POST" })
     // After cutover (ADR 0110, "After cutover") a row without a form is a page
     // toggle that does nothing and changes what a rollback (#3225) restores.
     // The UI hides its select; this refuses a stale tab or a hand-crafted call,
-    // by the same rule (statusEditable). Fails closed: a /form-definitions
-    // failure throws, and a /services failure drops the content rows, so a
-    // content slug finds no row.
+    // by the same rule (statusEditable). Fails closed: a /form-definitions or
+    // /service_status failure throws (so it blocks form-row writes too), and a
+    // /services failure drops the content rows, so a content slug finds no row.
     if (pagesInEditor) {
       const rows = await loadCatalogue(context.session.accessToken);
       const row = rows.find((r) => r.slug === data.slug);
