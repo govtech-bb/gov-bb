@@ -78,7 +78,8 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
       # A push that changes api_v2 also deploys it (deploy-api-v2-sandbox.yml).
       # Smoke only once that rollout has finished, or this commit's api_v2
-      # would go unchecked until the next push.
+      # would go unchecked until the next push. The smoke gates on the deploy
+      # job only: the run's `estate-drift` job (#3710) turning red doesn't skip it.
       - name: Wait for this commit's api_v2 deploy, if any
         if: steps.build.outputs.superseded != 'true'
         env:
@@ -92,7 +93,13 @@ jobs:
             echo "No api_v2 deploy for ${SHA:0:7}"
             exit 0
           fi
-          gh run watch "$RUN_ID" --repo "$REPO" --exit-status --interval 30
+          gh run watch "$RUN_ID" --repo "$REPO" --interval 30
+          CONCLUSION=$(gh api "repos/$REPO/actions/runs/$RUN_ID/jobs" \
+            --jq '.jobs[] | select(.name == "Build, Push & Deploy api_v2") | .conclusion')
+          if [ "$CONCLUSION" != "success" ]; then
+            echo "::error::api_v2 deploy: $CONCLUSION"
+            exit 1
+          fi
 
   smoke:
     name: Smoke (api_v2 source, Start links, visibility gating)
