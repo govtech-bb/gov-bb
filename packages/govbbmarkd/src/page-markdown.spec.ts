@@ -255,6 +255,31 @@ describe("GovBB Markdown", () => {
     });
   });
 
+  it.each([
+    ":::details[Help]\nBody\n:::",
+    ":::details[Help]\nBody\n:::\t ",
+    ":::details[Help]\nBody\n::::",
+    "> :::details[Help]\n> Body\n> :::",
+    ">:::details[Help]\n>Body\n>:::",
+    ">\t:::details[Help]\n>\tBody\n>\t:::",
+    "> > :::details[Help]\n> > Body\n> > :::",
+    ">> :::details[Help]\n>> Body\n>>:::",
+  ])("accepts the closing fence in %j", (source) => {
+    expect(parseContentMarkdown(source).errors).toEqual([]);
+  });
+
+  it("checks a long line of quote markers for a closing fence quickly", () => {
+    // The open code block keeps the markers as text, and the open component makes them its last line
+    const source = [
+      ":::details[Help]",
+      "```",
+      `>${"\t>".repeat(50_000)}x`,
+    ].join("\n");
+    const started = performance.now();
+    expect(parseContentMarkdown(source).errors[0]?.code).toBe("missing-fence");
+    expect(performance.now() - started).toBeLessThan(1000);
+  });
+
   it.each(["\n", "\r\n", "\r"])(
     "accepts closed fences with %j line endings",
     (ending) => {

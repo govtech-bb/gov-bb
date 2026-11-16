@@ -97,7 +97,7 @@ test("the form checks the address with the link policy, and a page picked applie
   await render(
     <LinkForm
       pages={pages}
-      toAddress={(typed) => (typed.startsWith("javascript:") ? null : `checked:${typed.trim()}`)}
+      toAddress={(typed) => (typed === "javascript:alert(1)" ? null : `checked:${typed.trim()}`)}
       onApply={(url, text) => applied.push([url, text])}
     />,
   );

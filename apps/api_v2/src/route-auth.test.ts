@@ -132,7 +132,7 @@ it("refuses every write without a session and leaves the database unchanged", as
     const response = await app.inject({
       // Fastify registered it, so inject can send it.
       method: method as InjectOptions["method"],
-      url: url.replace(/:\w+/g, randomUUID()).replace("*", "x"),
+      url: url.replace(/:\w+/g, randomUUID()).replaceAll("*", "x"),
       payload: aPage(),
       headers: { origin: TEST_HTTP_CONFIG.editorOrigin },
     });
@@ -186,7 +186,7 @@ it("refuses every write to an employee with no role and leaves the database unch
       url: url
         .replace(":id", page.id)
         .replace(":role", "editor")
-        .replace("*", "x"),
+        .replaceAll("*", "x"),
       payload: withDefaults(aPage({ url: "/written", visibility: "draft" })),
       headers: TEST_HEADERS,
     });
@@ -493,7 +493,7 @@ async function routesChangingWhatCitizensSee(employee: Employee) {
             url
               .replace(":version", "1")
               .replace(/:\w+/g, target)
-              .replace("*", "x") +
+              .replaceAll("*", "x") +
             (method === "DELETE" ? `?expected_version=${version}` : ""),
           payload:
             url.includes("/revision/") || url.endsWith("/restore")
