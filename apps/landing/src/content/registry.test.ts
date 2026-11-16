@@ -410,14 +410,13 @@ describe('categoryServices', () => {
     )
   })
 
-  it('lists severance under work-employment too, at the same canonical URL', () => {
+  // api_v2 gives a page one category, so a second one would silently
+  // drop out of its listing after cutover (#3713).
+  it('lists severance under money-financial-support only, not work-employment', () => {
     const inWork = categoryServices('work-employment', 'public').filter(
       (p) => p.slug === 'calculate-severance-pay',
     )
-    expect(inWork).toHaveLength(1)
-    expect(inWork[0].url).toBe(
-      'money-financial-support/calculate-severance-pay',
-    )
+    expect(inWork).toHaveLength(0)
   })
 
   it('drops a category whose only service is preview from the public listing', () => {
