@@ -11,14 +11,14 @@ import {
 // reason validate-recipes.ts gives at its RECIPES_ROOT: a root resolved against
 // the wrong cwd finds nothing, and a guard that finds nothing passes (#504).
 //
-// Only `src/content` is walked, and only its `.md` files. Nothing under
-// `packages/` or `scripts/` is scanned: the guard module and
+// `src/content` (`.md` only) and the flat recipe files are walked. Nothing
+// under `packages/` or `scripts/` is scanned: the guard module and
 // `confirmation-markdown.ts` quote the superseded spellings deliberately in
 // their doc comments. The pharmacy finder's dataset is the one file read
-// outside CONTENT_ROOT and RECIPES_ROOT, for names only: it has no Environmental Health contact
-// block, so the block rule doesn't apply. Its slugs are left alone — the
-// `winston-scott-polyclinic` slug is a public URL, and the name pattern only
-// matches the display spelling (#2719).
+// outside CONTENT_ROOT and RECIPES_ROOT, for names only: it has no
+// Environmental Health contact block, so the block rule doesn't apply. Its
+// slugs are left alone — the `winston-scott-polyclinic` slug is a public URL,
+// and the name pattern only matches the display spelling (#2719).
 const CONTENT_ROOT = path.resolve(__dirname, "../apps/landing/src/content");
 const RECIPES_ROOT = path.resolve(
   __dirname,
