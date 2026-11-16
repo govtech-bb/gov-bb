@@ -20,7 +20,7 @@ import {
   type Difference,
 } from "../src/modules/estate-drift";
 import type { Visibility } from "../src/modules/page";
-import type { PublicPage } from "../src/modules/page-visibility";
+import { PublicPage } from "../src/modules/page-visibility";
 import {
   ServiceStatuses,
   applyServiceStatuses,
@@ -110,11 +110,17 @@ async function main() {
         );
       }
       if (got.status === 429) throw new Stop(`rate limited by ${baseUrl}`);
-      const problem = got.status === 200 ? bodyProblem(got.body, level) : null;
+      // A 200 the schema refuses is a FAIL, never compared.
+      const parsed = got.status === 200 ? PublicPage.safeParse(got.body) : null;
+      const problem =
+        got.status === 200
+          ? (bodyProblem(got.body, level) ??
+            (parsed?.success ? null : "not a page"))
+          : null;
       if (got.status !== want || problem) ok = false;
       if (token) {
-        if (got.status === 200 && typeof got.body === "object" && got.body) {
-          served.set(page.url, got.body as PublicPage);
+        if (parsed?.success) {
+          served.set(page.url, parsed.data);
         } else if (got.status === 404 && level !== "draft") {
           served.set(page.url, null);
         }

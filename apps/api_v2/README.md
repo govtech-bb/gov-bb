@@ -643,7 +643,7 @@ On sandbox, the `estate-drift` job in `.github/workflows/deploy-api-v2-sandbox.y
    pnpm -s --filter @govtech-bb/api-v2 check-import --json --base-url https://<api origin> --forms-api "$FORMS_API" > differences.json
    ```
 
-   Only `{"source","differences"}` goes to stdout, and the rows go to stderr. `-s` keeps pnpm's banner out of the file.
+   Only `{"source","differences"}` goes to stdout, and the rows go to stderr. `-s` keeps pnpm's banner out of the file. A run that stops (`preview token refused`, `rate limited`, `catalog: <status> from <origin>`, or a `service_status` error) writes nothing to stdout and exits 1, so an empty `differences.json` means the check failed. A page whose read failed (a 5xx, a network error or a 301) is a `FAIL` row and is not compared, so exit 1 with `"differences":[]` is not a clean result.
 
 6. Just before the landing switch (#3227 for staging, #3228 for prod), run step 5's command again. Use a checkout of the commit the environment's api_v2 runs now (read the running image's tag with step 3's `describe-tasks` command), not step 1's sha, so anything merged since the import shows. Resolve any difference before switching: with `sync-estate` (#3711) on a database editors have written to, or by the rules in "A database that already has content". Paste the output on the switch issue.
 
