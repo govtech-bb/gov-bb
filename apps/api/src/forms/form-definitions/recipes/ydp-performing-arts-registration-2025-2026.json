@@ -508,7 +508,12 @@
           "ref": "components/name",
           "overrides": {
             "label": "Other medical condition (please specify)",
-            "fieldId": "medical-condition-other"
+            "fieldId": "medical-condition-other",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -698,7 +703,7 @@
   "title": "Youth Development Programme – Performing Arts Registration 2025–2026",
   "formId": "ydp-performing-arts-registration-2025-2026",
   "createdAt": "2025-01-01T00:00:00Z",
-  "updatedAt": "2026-11-16T10:40:13.993Z",
+  "updatedAt": "2026-11-16T10:49:46.798Z",
   "processors": [
     {
       "type": "email",

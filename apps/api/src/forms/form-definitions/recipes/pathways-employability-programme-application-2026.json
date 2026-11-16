@@ -432,7 +432,12 @@
           "overrides": {
             "hint": "If none of the above apply, please describe your current status",
             "label": "Other (please specify)",
-            "fieldId": "currently-other"
+            "fieldId": "currently-other",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         }
       ]
@@ -748,7 +753,12 @@
           "ref": "components/name",
           "overrides": {
             "label": "Other medical condition (please specify)",
-            "fieldId": "medical-other"
+            "fieldId": "medical-other",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -979,7 +989,7 @@
   "title": "Pathways Employability Programme: Application Form (2026)",
   "formId": "pathways-employability-programme-application-2026",
   "createdAt": "2026-01-01T00:00:00Z",
-  "updatedAt": "2026-11-16T10:40:13.993Z",
+  "updatedAt": "2026-11-16T10:49:46.798Z",
   "processors": [
     {
       "type": "email",
