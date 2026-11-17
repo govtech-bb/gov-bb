@@ -164,6 +164,7 @@ export const fetchTools = createServerFn({ method: 'GET' })
     const empty: ToolsPayload = {
       configured: false,
       tools: [],
+      waterAlerts: { submitted: 0, sent: 0, confirmed: 0, unsubscribed: 0 },
       range,
       window: rangeLabel(range),
     }

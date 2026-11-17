@@ -2,18 +2,23 @@
   "name": "@govtech-bb/content",
   "version": "0.0.0",
   "private": true,
+  "scripts": {
+    "lint:fix": "oxlint --fix",
+    "test:oxlint": "oxlint",
+    "test:types": "tsc --noEmit",
+    "test": "vitest run"
+  },
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
     "./categories": "./src/categories.ts",
     "./schemas": "./src/schemas.ts",
-    "./form-categories": "./src/form-categories.ts",
     "./load": "./src/load.ts",
     "./markdown-authoring": "./src/markdown-authoring.ts",
     "./types": "./src/types.ts"
   },
   "dependencies": {
-    "entities": "^8.0.0",
+    "@govtech-bb/govbbmarkd": "workspace:*",
     "gray-matter": "^4.0.3",
     "zod": "^4.4.3"
   }

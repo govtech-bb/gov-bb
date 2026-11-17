@@ -2,7 +2,7 @@
 
 **Issue:** [#556](https://github.com/govtech-bb/gov-bb/issues/556) (follows
 [#545](https://github.com/govtech-bb/gov-bb/issues/545),
-[ADR 0025](../decisions/0025-form-uniqueness-is-enforced-app-level-not-via-db-constraint.md))
+[ADR 0045](../decisions/0045-form-uniqueness-is-enforced-app-level-not-via-db-constraint.md))
 
 ## Context
 
@@ -13,7 +13,7 @@ the checks in `createFormHandler`/`updateFormHandler` saw only the drafts in
 local draft row) was blocked client-side but **accepted by the API**. A direct
 API call — or a save during the brief forms-list loading window — could create
 a form duplicating a published one. This was the asymmetry deliberately deferred
-from #545 and recorded as the open consequence in ADR 0025.
+from #545 and recorded as the open consequence in ADR 0045.
 
 ## What we did
 
@@ -38,7 +38,7 @@ from #545 and recorded as the open consequence in ADR 0025.
   `publishedToTitleRows` adapter maps `{formId,title}` → the `FormTitleRow`
   shape and concatenates with the DB rows.
 
-Docs: updated the `form-uniqueness.ts` scope note and ADR 0025's Consequences to
+Docs: updated the `form-uniqueness.ts` scope note and ADR 0045's Consequences to
 record the asymmetry as closed.
 
 Tests (`forms.uniqueness.spec.ts`, `fetch` mocked): published-only title

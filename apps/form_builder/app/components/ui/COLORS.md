@@ -9,7 +9,7 @@ GovTech UI uses semantic tokens: choose the role of the element, not a hue. All 
 </div>
 ```
 
-Raw Tailwind color classes and `dark:` classes are restricted by ESLint in the UI library and catalogue. Component code uses one class in both modes.
+Raw Tailwind color classes and `dark:` classes are rejected in the UI library and catalogue by oxlint (the `govtech/semantic-colors` rule in `scripts/oxlint/`). Component code uses one class in both modes.
 
 ## Mode and themes
 

@@ -1,0 +1,360 @@
+/* The homepage hero: photo backdrop, the Search / Ask Assistant toggle and one
+   input box per mode. The design system doesn't ship a mode toggle or a
+   button-in-field input yet, so they are built here from its tokens. */
+
+@layer components {
+  /* Fills the first screen below the site chrome; HomeHero measures the
+     chrome into --home-hero-chrome-height. Until then, the fallbacks are the
+     measured chrome on phones and desktops, so the hero doesn't jump on load.
+     Between the two the header wraps, so its height varies. */
+  .home-hero {
+    --home-hero-chrome-fallback: 13.3125rem;
+
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-height: calc(
+      100svh - var(--home-hero-chrome-height, var(--home-hero-chrome-fallback))
+    );
+    color: var(--govbb-white-00);
+    background: var(--govbb-blue-80);
+    isolation: isolate;
+  }
+
+  /* Crops the oversized photo to the hero. The hero itself doesn't clip, so
+     search suggestions can hang over the section below it. */
+  .home-hero__backdrop {
+    position: absolute;
+    inset: 0;
+    z-index: -2;
+    overflow: hidden;
+  }
+
+  .home-hero__image {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    max-width: none;
+    object-fit: cover;
+    object-position: 72% bottom;
+  }
+
+  .home-hero::before {
+    --home-hero-overlay: 70%;
+
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background:
+      linear-gradient(
+        color-mix(
+          in srgb,
+          var(--govbb-blue-80) var(--home-hero-overlay),
+          transparent
+        ),
+        color-mix(
+          in srgb,
+          var(--govbb-blue-80) var(--home-hero-overlay),
+          transparent
+        )
+      ),
+      linear-gradient(
+        0deg,
+        var(--govbb-blue-80) 0%,
+        color-mix(in srgb, var(--govbb-blue-60) 50%, transparent) 24.5%,
+        transparent 100%
+      );
+  }
+
+  @media (width < 50rem) {
+    .home-hero {
+      --home-hero-chrome-fallback: 12.3125rem;
+    }
+
+    /* Darker on phones, where the clock tower sits behind the text. */
+    .home-hero::before {
+      --home-hero-overlay: 80%;
+    }
+
+    /* The Figma small frame's crop: the clock tower behind the right of the heading. */
+    .home-hero__image {
+      inset: auto;
+      top: 0;
+      left: -146.8%;
+      width: 346%;
+      height: auto;
+      min-height: 122%;
+    }
+  }
+
+  @media (width >= 64rem) {
+    /* The Figma frame's crop, so the clock tower sits to the right of the panel. */
+    .home-hero__image {
+      inset: auto;
+      top: -7.64%;
+      left: -9.93%;
+      width: 142.33%;
+      height: auto;
+      min-height: 181%;
+    }
+  }
+
+  /* Portrait iPads, including the 1024px-wide 12.9" Pro, which would otherwise
+     get the desktop crop and blow the tower up behind the heading. */
+  @media (50rem <= width < 64rem),
+    (orientation: portrait) and (50rem <= width <= 64rem) {
+    .home-hero__image {
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      min-height: 0;
+      object-position: 55% bottom;
+    }
+  }
+
+  /* A full width, or the width container's auto margins shrink it to its
+     content inside the flex column, and the panel narrows with the text under it. */
+  .home-hero__inner {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--govbb-space-s);
+    padding-block: var(--govbb-space-ml) var(--govbb-space-m);
+    text-align: center;
+  }
+
+  .home-hero__title {
+    max-width: 48.5rem;
+  }
+
+  @media (width < 50rem) {
+    .home-hero__inner {
+      align-items: stretch;
+    }
+
+    /* Two classes, to beat .govbb-text-h1 in the same layer whatever order
+       the stylesheets load in. */
+    .home-hero .home-hero__title {
+      font-size: 2rem;
+      line-height: 2.5rem;
+    }
+  }
+
+  @media (width >= 50rem) {
+    .home-hero__inner {
+      padding-block: var(--govbb-space-l);
+    }
+  }
+
+  .home-hero__panel {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--govbb-space-xm);
+    width: 100%;
+    max-width: 52.5rem;
+  }
+
+  @media (width >= 50rem) {
+    .home-hero__panel {
+      padding: var(--govbb-space-xs) var(--govbb-space-m) var(--govbb-space-m);
+    }
+  }
+
+  /* Both modes share one grid cell, so the panel is as tall as the taller mode
+     and switching doesn't move the toggle or the page below. The inactive mode
+     keeps its space but is hidden, which also takes it out of the tab order
+     and the accessibility tree. The checked radio decides, so the toggle also
+     works before the page's script has loaded. */
+  .home-hero__modes {
+    display: grid;
+    width: 100%;
+  }
+
+  .home-hero__mode {
+    display: flex;
+    flex-direction: column;
+    gap: var(--govbb-space-xm);
+    grid-area: 1 / 1;
+  }
+
+  .home-hero__panel:has(input[value='search']:checked) [data-for='ask'],
+  .home-hero__panel:has(input[value='ask']:checked) [data-for='search'] {
+    visibility: hidden;
+  }
+
+  /* Search / Ask Assistant: a two-option radio group drawn as a pill. */
+  .home-hero__toggle {
+    display: inline-flex;
+    max-width: 100%;
+    margin: 0;
+    padding: var(--govbb-space-xxs);
+    border: 0;
+    border-radius: 999px;
+    background: var(--govbb-blue-10);
+  }
+
+  .home-hero__toggle-option {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--govbb-space-xs);
+    min-height: 2.875rem;
+    padding: var(--govbb-space-xs) var(--govbb-space-xm);
+    border-radius: 999px;
+    color: var(--govbb-color-brand);
+    font-size: var(--govbb-font-size-body);
+    font-weight: 600;
+    line-height: var(--govbb-line-height-base);
+    text-align: center;
+    cursor: pointer;
+  }
+
+  @media (width < 50rem) {
+    .home-hero__toggle-option {
+      justify-content: center;
+      min-height: 2.75rem;
+      padding: var(--govbb-space-xxs) var(--govbb-space-s);
+      font-size: var(--govbb-font-size-body-sm);
+    }
+  }
+
+  /* 320px (400% zoom): tighter still, and the labels may wrap rather than overflow. */
+  @media (width < 24rem) {
+    .home-hero__toggle-option {
+      padding-inline: var(--govbb-space-xs);
+    }
+  }
+
+  .home-hero__toggle-option input {
+    position: absolute;
+    inset: 0;
+    margin: 0;
+    opacity: 0;
+    cursor: pointer;
+  }
+
+  .home-hero__toggle-option:has(input:checked) {
+    background: var(--govbb-color-brand);
+    color: var(--govbb-white-00);
+  }
+
+  @media (forced-colors: active) {
+    .home-hero__toggle-option:has(input:checked) {
+      forced-color-adjust: none;
+      background: Highlight;
+      color: HighlightText;
+    }
+  }
+
+  .home-hero__toggle-option:has(input:focus-visible) {
+    outline: 3px solid var(--govbb-color-focus);
+    outline-offset: 2px;
+    box-shadow: 0 0 0 6px var(--govbb-black-00);
+  }
+
+  .home-hero__form {
+    text-align: start;
+  }
+
+  /* The input and its button share one bordered box, which takes the focus
+     ring. The box anchors the suggestion list, so it spans the whole field. */
+  .home-hero__field {
+    position: relative;
+    display: flex;
+    gap: var(--govbb-space-xs);
+    min-height: 3.875rem;
+    padding: var(--govbb-space-xxs);
+    border: var(--govbb-border-width-form) solid var(--govbb-color-ink);
+    border-radius: var(--govbb-radius);
+    background: var(--govbb-white-00);
+  }
+
+  .home-hero__field:focus-within {
+    outline: 3px solid var(--govbb-color-focus);
+    outline-offset: 0;
+    box-shadow: inset 0 0 0 2px var(--govbb-black-00);
+  }
+
+  .home-hero__field .govbb-combobox {
+    position: static;
+    display: flex;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .home-hero__field .govbb-button {
+    padding-block: 0;
+  }
+
+  /* At 320px (400% zoom) the default button padding leaves the placeholder no room. */
+  @media (width < 24rem) {
+    .home-hero__field .govbb-button {
+      padding-inline: var(--govbb-space-s);
+    }
+  }
+
+  /* The box draws the border and focus ring, so the input itself has neither. */
+  .home-hero .home-hero__field .home-hero__input,
+  .home-hero .home-hero__field .home-hero__input:is(:hover, :focus-visible) {
+    flex: 1;
+    width: 0; /* drop the input's intrinsic width, which overflows at 320px */
+    min-width: 0;
+    padding: var(--govbb-space-xs);
+    border: 0;
+    box-shadow: none;
+    outline: 0;
+    background: transparent;
+  }
+
+  .home-hero__input::placeholder {
+    color: var(--govbb-grey-70);
+    opacity: 1;
+  }
+
+  .home-hero__suggestions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: var(--govbb-space-xs);
+    font-size: var(--govbb-font-size-body-sm);
+  }
+
+  .home-hero__suggestions-label {
+    font-weight: 700;
+  }
+
+  .home-hero__suggestions-list {
+    display: contents;
+    list-style: none;
+  }
+
+  .home-hero__suggestions-list li:not(:last-child)::after {
+    content: '|' / '';
+    margin-inline-start: var(--govbb-space-xs);
+    color: color-mix(in srgb, var(--govbb-white-00) 40%, transparent);
+  }
+
+  .home-hero .home-hero__suggestions {
+    --govbb-link-color: var(--govbb-white-00);
+  }
+
+  /* The hero centres its text; the banner reads from the start. The service
+     variant's red-10 tint barely registers on the navy hero, so it takes the
+     next step up the red scale here. */
+  .home-hero .home-hero__status {
+    text-align: start;
+    background: var(--govbb-red-20);
+  }
+
+  .home-hero__link-button {
+    padding: 0;
+    border: 0;
+    background: none;
+    font: inherit;
+  }
+}

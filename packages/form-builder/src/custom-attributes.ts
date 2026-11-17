@@ -72,7 +72,7 @@ export type CustomAttributeDescriptor =
 
 // Which override keys each htmlType's renderer honours beyond Label/Hint, and
 // the control that edits each. Keyed by htmlType, not registry ref, because
-// the forms renderer switches on htmlType (ADR 0067) — so DB custom components
+// the forms renderer switches on htmlType (ADR 0115) — so DB custom components
 // and block children are covered too. Defaults are not recorded here: the
 // panel reads them off the base primitive at runtime (#789 pattern). An
 // htmlType with nothing type-specific gets `[]` and the reason.

@@ -7,7 +7,7 @@ import { serviceContractRecipeSchema } from "./service-contract.type";
  * A recipe is written by three parties — the form builder's Deploy, a hand or
  * AI edit, and anything that round-trips it through Zod — and each emitted its
  * own key order. Since a recipe is "edited in place and reviewed by diff"
- * (ADR 0041's supersede note), every crossing rewrote the whole file: 47% of
+ * (ADR 0071's supersede note), every crossing rewrote the whole file: 47% of
  * the lines changed across the last 60 Deploy commits were pure reordering,
  * with individual commits reaching 99% noise. Diff review is the only gate on
  * citizen-facing form changes, so that noise is a correctness risk, not just an

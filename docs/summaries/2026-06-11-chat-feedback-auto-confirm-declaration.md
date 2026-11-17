@@ -8,7 +8,7 @@ recipe's permit-style `declaration` step (cut version `1.2.0`) because confirmin
 a declaration is the wrong ceremony on a 30-second feedback form.
 
 It regressed. The recipe is republished through the form-builder, which always
-regenerates a required declaration step (ADR 0041) — `1.4.0` (#1140) and the
+regenerates a required declaration step (ADR 0070) — `1.4.0` (#1140) and the
 now-served `1.5.0` brought it back, so in-chat feedback was once again asking the
 user to confirm a declaration and listing it in check-your-answers. Deleting it
 from the recipe is not durable: the next republish re-adds it.
@@ -32,7 +32,7 @@ to the feedback form only (real forms' declarations are untouched):
   fields, so the invariant holds in every field-surfacing path even if a future
   recipe makes the declaration conditional.
 
-ADR 0049 records the principle. Gates: `nx run chat:test` (160 pass) +
+ADR 0084 records the principle. Gates: `nx run chat:test` (160 pass) +
 `nx run chat:build` green.
 
 ## Why we did it that way
@@ -40,7 +40,7 @@ ADR 0049 records the principle. Gates: `nx run chat:test` (160 pass) +
 **Auto-confirm, not recipe deletion.** #1114 deleted the step; the form-builder
 regenerated it. The durable lever is the chat pipeline, not the recipe. The
 recipe stays the source of truth for real forms; the chat adapts around the
-ceremony it owns. This supersedes #1114's approach (ADR 0049).
+ceremony it owns. This supersedes #1114's approach (ADR 0084).
 
 **Seed at the submission boundary, not in the session.** Because the seeded
 value lives only on the submit-time copy and never in `session.values`, the

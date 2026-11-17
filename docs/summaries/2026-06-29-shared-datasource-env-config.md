@@ -26,7 +26,7 @@ The duplication wasn't cosmetic — it was the *cause* of a security divergence.
 `form_builder_api` skipped DB certificate verification in production
 (`rejectUnauthorized: false`) while `apps/api` verified it. Sharing one helper
 removes the drift and makes the strict config canonical for both. See decision
-record [0061](../decisions/0061-api-datasource-bootstrap-is-shared-and-verifies-tls-in-production.md).
+record [0104](../decisions/0104-api-datasource-bootstrap-is-shared-and-verifies-tls-in-production.md).
 
 - **apps/api's SSL config is the canonical one.** It was already the stricter,
   more capable implementation (`rejectUnauthorized: true` + `DB_SSL_CA` PEM/path

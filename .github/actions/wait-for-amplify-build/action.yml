@@ -1,0 +1,100 @@
+# Waits for the Amplify build of one commit on one branch and reports
+# whether the checks that follow should run. Shared by the landing-v2
+# preview check workflows (#3152); AWS credentials must already be
+# configured by the caller.
+#
+# Amplify auto-builds the branch on push. If no job for the commit shows
+# up within 5 minutes, start one. A build CANCELLED because the branch
+# moved on is superseded, not a failure: `superseded=true`, callers skip.
+name: Wait for Amplify build
+description: Wait for an Amplify branch build of a commit to succeed
+inputs:
+  app-id:
+    description: Amplify app id
+    required: true
+  branch:
+    description: Amplify branch name
+    required: true
+  sha:
+    description: Commit the build must be for
+    required: true
+  url:
+    description: URL that must answer 200 once the build succeeds
+    required: true
+  github-token:
+    description: Token used to read the branch head on cancellation
+    required: true
+outputs:
+  superseded:
+    description: "'true' when a newer commit replaced this build"
+    value: ${{ steps.wait.outputs.superseded }}
+runs:
+  using: composite
+  steps:
+    - id: wait
+      shell: bash
+      env:
+        APP_ID: ${{ inputs.app-id }}
+        BRANCH: ${{ inputs.branch }}
+        SHA: ${{ inputs.sha }}
+        URL: ${{ inputs.url }}
+        GH_TOKEN: ${{ inputs.github-token }}
+        REPO: ${{ github.repository }}
+      run: |
+        echo "superseded=false" >> "$GITHUB_OUTPUT"
+        # --no-paginate: with --max-items and more pages left, text output
+        # appends a "None" line for NextToken, corrupting the job id.
+        find_job() {
+          aws amplify list-jobs --app-id "$APP_ID" --branch-name "$BRANCH" \
+            --max-results 20 --no-paginate --output text \
+            --query "jobSummaries[?commitId=='$SHA'] | [0].jobId"
+        }
+
+        JOB_ID=""
+        for i in $(seq 1 10); do
+          JOB_ID=$(find_job)
+          [ -n "$JOB_ID" ] && [ "$JOB_ID" != "None" ] && break
+          echo "[$i/10] no Amplify job for ${SHA:0:7} yet"
+          sleep 30
+        done
+        if [ -z "$JOB_ID" ] || [ "$JOB_ID" = "None" ]; then
+          JOB_ID=$(aws amplify start-job --app-id "$APP_ID" --branch-name "$BRANCH" \
+            --job-type RELEASE --commit-id "$SHA" \
+            --query jobSummary.jobId --output text)
+          echo "Started Amplify job $JOB_ID for ${SHA:0:7}"
+        fi
+
+        for i in $(seq 1 40); do
+          STATUS=$(aws amplify get-job --app-id "$APP_ID" --branch-name "$BRANCH" \
+            --job-id "$JOB_ID" --query job.summary.status --output text)
+          echo "[$i/40] Amplify job $JOB_ID: $STATUS"
+          case "$STATUS" in
+            SUCCEED)
+              for j in 1 2 3 4 5; do
+                CODE=$(curl -sS -o /dev/null -w "%{http_code}" --max-time 10 "$URL" || echo 000)
+                [ "$CODE" = "200" ] && exit 0
+                echo "[$j/5] $URL answered $CODE"
+                sleep 5
+              done
+              echo "::error::$URL not answering 200 after the build"
+              exit 1
+              ;;
+            FAILED)
+              echo "::error::Amplify build $JOB_ID failed"
+              exit 1
+              ;;
+            CANCELLED)
+              HEAD=$(gh api "repos/$REPO/commits/$BRANCH" --jq .sha || echo "")
+              if [ -n "$HEAD" ] && [ "$HEAD" != "$SHA" ]; then
+                echo "Build superseded by ${HEAD:0:7}; skipping checks"
+                echo "superseded=true" >> "$GITHUB_OUTPUT"
+                exit 0
+              fi
+              echo "::error::Amplify build $JOB_ID cancelled with no newer commit"
+              exit 1
+              ;;
+          esac
+          sleep 30
+        done
+        echo "::error::Amplify build $JOB_ID did not finish within 20 minutes"
+        exit 1

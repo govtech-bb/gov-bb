@@ -3,9 +3,12 @@
   "compilerOptions": {
     "composite": true,
     "outDir": "./dist",
-    "declaration": true,
     "module": "commonjs",
-    "strictPropertyInitialization": false
+    "moduleResolution": "node10",
+    "verbatimModuleSyntax": false,
+    "strictPropertyInitialization": false,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true
   },
   "references": [
     {

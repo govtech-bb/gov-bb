@@ -111,7 +111,7 @@ this. The form builder's auto-generated branches (`form-builder/<id>-<ts>`,
 `@govtech-bb/form-types`, which truncates the id or slug and appends a short
 hash when the name would overshoot. So a branch carries a *label* derived from
 the id, not necessarily the id: join an open Deploy PR to a form with
-`formIdFromDeployBranch(headRef) === deployBranchLabel(formId)` (see ADR 0070
+`formIdFromDeployBranch(headRef) === deployBranchLabel(formId)` (see ADR 0118
 for why the parser takes no candidate), never by comparing to `formId`.
 
 ### When creating a GitHub issue, assign it to the author
@@ -165,6 +165,46 @@ a fully offline `build` fails on that package. When verifying locally,
 run `pnpm exec nx run-many -t build --exclude=landing` and let CI build
 everything.
 
+Lint and formatting are oxlint and oxfmt. Every project has a cached
+`test:oxlint` script (and `lint:fix`); CI's "Lint" check runs it over the
+affected projects plus a whole-repo format check, and the pre-commit hook runs
+both on staged files:
+
+```bash
+pnpm test:oxlint     # nx affected -t test:oxlint (.oxlintrc.json, nested in apps/forms + apps/landing)
+pnpm test:format     # oxfmt --check (.oxfmtrc.json); `pnpm format` writes
+pnpm test:types      # nx affected -t test:types: tsc --noEmit in each project that has the script
+pnpm test:pr         # what CI checks, for affected projects: oxlint, types, tests, build + format
+```
+
+### Targets live in package.json scripts
+
+Each project's commands are its package.json scripts. nx infers a target from
+each one and runs it with pnpm. `project.json` only carries nx metadata (a
+build's env `inputs`, a `dependsOn` override) plus the two real executors,
+`@nx/js:tsc` for library and api builds and `@nx/js:node` for api dev/start.
+Shared cache, inputs, outputs and `dependsOn` live in `nx.json`
+`targetDefaults`. Don't wrap a script in an `nx:run-commands` target.
+
+Vite apps bundle workspace packages from source (tsconfig `paths`), so their
+`build` has `dependsOn: []` and never waits on library builds. The api and
+form-builder-api keep `^build`, because their Docker images run the
+libraries' compiled `dist`. A library's `main` (`./src/index.js`) is written
+for that `dist` layout, since `@nx/js:tsc` copies it into `dist/package.json`
+as-is. Don't point it at `.ts`. `pnpm build` is affected-only; `pnpm
+build:all` builds everything.
+
+### One tsconfig base; override only what differs
+
+Every project's tsconfig extends `tsconfig.base.json`. The base holds the
+shared settings: `strict`, `noUnusedLocals` and `noUnusedParameters`,
+`verbatimModuleSyntax`, bundler resolution and the `@govtech-bb/*` paths. A
+project sets only what genuinely differs. CommonJS builds (the api and the
+libraries it runs from `dist`) set `"module": "commonjs"`,
+`"moduleResolution": "node10"` and `"verbatimModuleSyntax": false`. React apps
+add `jsx`, DOM `lib`s and `noEmit`, and database adds the decorator flags.
+Don't restate a base setting in a project.
+
 ### Accessibility target
 
 The platform meets the WCAG version and level named on the Design System's
@@ -200,7 +240,7 @@ file list"):
 
 Library builds emit into the package's own `packages/<name>/dist` (the api into
 `apps/api/dist`), so declarations and compiled code resolve their externals from
-that package's `node_modules`. pnpm uses its default isolated linker (ADR 0004):
+that package's `node_modules`. pnpm uses its default isolated linker (ADR 0122):
 a project only sees dependencies its own `package.json` declares, so declare
 every import where it is used rather than relying on a sibling to pull it in.
 

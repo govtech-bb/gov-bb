@@ -435,6 +435,51 @@ describe("SubmissionsController", () => {
     });
   });
 
+  describe("journey ID header (X-Journey-Id, #3507)", () => {
+    const JOURNEY_ID = "3f2b8c1e-4d5a-4b6c-8d7e-9f0a1b2c3d4e";
+
+    beforeEach(() => {
+      (service.submit as Mock).mockResolvedValue({
+        data: makeEntity(),
+        message: "Submission created",
+        statusCode: HttpStatus.CREATED,
+      });
+    });
+
+    it("threads a UUID through to the service as journeyId", async () => {
+      await controller.create(
+        "key-abc",
+        undefined,
+        undefined,
+        baseDto,
+        JOURNEY_ID,
+      );
+
+      expect(service.submit).toHaveBeenCalledWith(
+        expect.objectContaining({ journeyId: JOURNEY_ID }),
+      );
+    });
+
+    it.each([
+      ["not a UUID", "not-a-uuid"],
+      ["a UUID with text after it", `${JOURNEY_ID} drop table`],
+      ["an email address", "someone@example.com"],
+      ["an empty value", ""],
+    ])("ignores %s", async (_label, header) => {
+      await controller.create("key-abc", undefined, undefined, baseDto, header);
+
+      const arg = (service.submit as Mock).mock.calls[0][0];
+      expect(arg).not.toHaveProperty("journeyId");
+    });
+
+    it("sends no journeyId when the header is absent", async () => {
+      await controller.create("key-abc", undefined, undefined, baseDto);
+
+      const arg = (service.submit as Mock).mock.calls[0][0];
+      expect(arg).not.toHaveProperty("journeyId");
+    });
+  });
+
   describe("preview-submission allowlist (PREVIEW_SUBMISSION_FORM_IDS)", () => {
     beforeEach(() => {
       (service.submit as Mock).mockResolvedValue({

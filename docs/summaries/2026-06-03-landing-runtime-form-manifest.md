@@ -4,7 +4,7 @@
 
 Landing's "Start now" buttons render only when a page's `form_id` is in the
 forms team's canonical list (`/form-definitions`). That list was **baked into
-the build** by a pre-build script (ADR-0005): it only changed on redeploy, so
+the build** by a pre-build script (ADR-0011): it only changed on redeploy, so
 when the forms team published or renamed a form, buttons went missing or pointed
 at the wrong place until the next deploy — the "stale links" problem (#497).
 
@@ -32,7 +32,7 @@ bypass; or (2) fetch the list live at runtime, cached briefly. The team chose
 - **Removed the build-time mechanism**: deleted `scripts/fetch-form-manifest.mjs`
   and `available-forms.gen.ts`, dropped the `prebuild`/`predev` hooks and the
   gitignore entry, updated stale comments in `frontmatter.ts` and `.env.example`.
-- **ADR-0030** records the decision (supersedes 0005). Tests: 11 new
+- **ADR-0052** records the decision (supersedes 0011). Tests: 11 new
   (cache/parser/retry), preview-gating test updated for the async loader.
 
 ## Why we did it that way

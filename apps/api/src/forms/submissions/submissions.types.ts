@@ -162,6 +162,13 @@ export interface SubmitDto {
    * `?preview=` link (#1682). Fail-closed: absent/invalid token → undefined.
    */
   bypassVisibility?: boolean;
+  /**
+   * The browser tab's journey ID, set by the controller only when the
+   * `X-Journey-Id` header holds a UUID (#3507). Logged on the
+   * `submission_accepted` line, so it can be joined to the journey's
+   * `form-submit` event. Never stored.
+   */
+  journeyId?: string;
 }
 
 type SubmitOutcome = "created" | "duplicate" | "in_progress";

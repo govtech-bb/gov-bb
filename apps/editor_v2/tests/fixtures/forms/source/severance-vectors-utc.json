@@ -1,0 +1,722 @@
+{
+  "timezone": "UTC",
+  "matchedIntegerTierCases": 101,
+  "ceilings": [
+    {
+      "year": 2015,
+      "weekly": 1060,
+      "monthly": 4360
+    },
+    {
+      "year": 2016,
+      "weekly": 1060,
+      "monthly": 4360
+    },
+    {
+      "year": 2017,
+      "weekly": 1073,
+      "monthly": 4650
+    },
+    {
+      "year": 2018,
+      "weekly": 1073,
+      "monthly": 4650
+    },
+    {
+      "year": 2019,
+      "weekly": 1112,
+      "monthly": 4820
+    },
+    {
+      "year": 2020,
+      "weekly": 1128,
+      "monthly": 4880
+    },
+    {
+      "year": 2021,
+      "weekly": 1128,
+      "monthly": 4880
+    },
+    {
+      "year": 2022,
+      "weekly": 1126,
+      "monthly": 4880
+    },
+    {
+      "year": 2023,
+      "weekly": 1182,
+      "monthly": 5120
+    },
+    {
+      "year": 2024,
+      "weekly": 1201,
+      "monthly": 5200
+    },
+    {
+      "year": 2025,
+      "weekly": 1219,
+      "monthly": 5280
+    },
+    {
+      "year": 2026,
+      "weekly": 1238,
+      "monthly": 5360
+    }
+  ],
+  "serviceYears": [
+    {
+      "years": 0,
+      "eligible": false,
+      "weeks": 0,
+      "weekly": 1000,
+      "severance": null
+    },
+    {
+      "years": 1,
+      "eligible": false,
+      "weeks": 2.5,
+      "weekly": 1000,
+      "severance": null
+    },
+    {
+      "years": 2,
+      "eligible": true,
+      "weeks": 5,
+      "weekly": 1000,
+      "severance": 5000
+    },
+    {
+      "years": 9,
+      "eligible": true,
+      "weeks": 22.5,
+      "weekly": 1000,
+      "severance": 22500
+    },
+    {
+      "years": 10,
+      "eligible": true,
+      "weeks": 25,
+      "weekly": 1000,
+      "severance": 25000
+    },
+    {
+      "years": 11,
+      "eligible": true,
+      "weeks": 28,
+      "weekly": 1000,
+      "severance": 28000
+    },
+    {
+      "years": 19,
+      "eligible": true,
+      "weeks": 52,
+      "weekly": 1000,
+      "severance": 52000
+    },
+    {
+      "years": 20,
+      "eligible": true,
+      "weeks": 55,
+      "weekly": 1000,
+      "severance": 55000
+    },
+    {
+      "years": 21,
+      "eligible": true,
+      "weeks": 58.5,
+      "weekly": 1000,
+      "severance": 58500
+    },
+    {
+      "years": 32,
+      "eligible": true,
+      "weeks": 97,
+      "weekly": 1000,
+      "severance": 97000
+    },
+    {
+      "years": 33,
+      "eligible": true,
+      "weeks": 100.5,
+      "weekly": 1000,
+      "severance": 100500
+    },
+    {
+      "years": 34,
+      "eligible": true,
+      "weeks": 100.5,
+      "weekly": 1000,
+      "severance": 100500
+    },
+    {
+      "years": 40,
+      "eligible": true,
+      "weeks": 100.5,
+      "weekly": 1000,
+      "severance": 100500
+    }
+  ],
+  "pay": [
+    {
+      "amount": 900,
+      "period": "weekly",
+      "year": 2025,
+      "weekly": 900,
+      "ceilingApplied": false,
+      "years": 10,
+      "weeks": 25,
+      "severance": 22500,
+      "display": "$22,500.00"
+    },
+    {
+      "amount": 1219,
+      "period": "weekly",
+      "year": 2025,
+      "weekly": 1219,
+      "ceilingApplied": false,
+      "years": 10,
+      "weeks": 25,
+      "severance": 30475,
+      "display": "$30,475.00"
+    },
+    {
+      "amount": 1219.01,
+      "period": "weekly",
+      "year": 2025,
+      "weekly": 1219,
+      "ceilingApplied": true,
+      "years": 10,
+      "weeks": 25,
+      "severance": 30475,
+      "display": "$30,475.00"
+    },
+    {
+      "amount": 2000,
+      "period": "weekly",
+      "year": 2025,
+      "weekly": 1219,
+      "ceilingApplied": true,
+      "years": 10,
+      "weeks": 25,
+      "severance": 30475,
+      "display": "$30,475.00"
+    },
+    {
+      "amount": 4000,
+      "period": "monthly",
+      "year": 2025,
+      "weekly": 923.0769230769231,
+      "ceilingApplied": false,
+      "years": 10,
+      "weeks": 25,
+      "severance": 23076.923076923078,
+      "display": "$23,076.92"
+    },
+    {
+      "amount": 5280,
+      "period": "monthly",
+      "year": 2025,
+      "weekly": 1218.4615384615386,
+      "ceilingApplied": false,
+      "years": 10,
+      "weeks": 25,
+      "severance": 30461.538461538465,
+      "display": "$30,461.54"
+    },
+    {
+      "amount": 5282.333333333333,
+      "period": "monthly",
+      "year": 2025,
+      "weekly": 1219,
+      "ceilingApplied": false,
+      "years": 10,
+      "weeks": 25,
+      "severance": 30475,
+      "display": "$30,475.00"
+    },
+    {
+      "amount": 5283,
+      "period": "monthly",
+      "year": 2025,
+      "weekly": 1219,
+      "ceilingApplied": true,
+      "years": 10,
+      "weeks": 25,
+      "severance": 30475,
+      "display": "$30,475.00"
+    },
+    {
+      "amount": 5360,
+      "period": "monthly",
+      "year": 2026,
+      "weekly": 1236.923076923077,
+      "ceilingApplied": false,
+      "years": 10,
+      "weeks": 25,
+      "severance": 30923.076923076922,
+      "display": "$30,923.08"
+    },
+    {
+      "amount": 5364.666666666667,
+      "period": "monthly",
+      "year": 2026,
+      "weekly": 1238,
+      "ceilingApplied": false,
+      "years": 10,
+      "weeks": 25,
+      "severance": 30950,
+      "display": "$30,950.00"
+    },
+    {
+      "amount": 6000,
+      "period": "monthly",
+      "year": 2026,
+      "weekly": 1238,
+      "ceilingApplied": true,
+      "years": 10,
+      "weeks": 25,
+      "severance": 30950,
+      "display": "$30,950.00"
+    },
+    {
+      "amount": 5000,
+      "period": "weekly",
+      "year": 1999,
+      "weekly": 5000,
+      "ceilingApplied": false,
+      "years": 10,
+      "weeks": 25,
+      "severance": 125000,
+      "display": "$125,000.00"
+    },
+    {
+      "amount": 5000,
+      "period": "weekly",
+      "year": 2027,
+      "weekly": 5000,
+      "ceilingApplied": false,
+      "years": 10,
+      "weeks": 25,
+      "severance": 125000,
+      "display": "$125,000.00"
+    },
+    {
+      "amount": 0,
+      "period": "weekly",
+      "year": 2026,
+      "weekly": 0,
+      "ceilingApplied": false,
+      "years": 10,
+      "weeks": 25,
+      "severance": 0,
+      "display": "$0.00"
+    },
+    {
+      "amount": -1,
+      "period": "weekly",
+      "year": 2026,
+      "weekly": 0,
+      "ceilingApplied": false,
+      "years": 10,
+      "weeks": 25,
+      "severance": 0,
+      "display": "$0.00"
+    }
+  ],
+  "ceilingEdges": [
+    {
+      "year": 2015,
+      "amount": 1059.99,
+      "weekly": 1059.99,
+      "ceilingApplied": false
+    },
+    {
+      "year": 2015,
+      "amount": 1060,
+      "weekly": 1060,
+      "ceilingApplied": false
+    },
+    {
+      "year": 2015,
+      "amount": 1060.01,
+      "weekly": 1060,
+      "ceilingApplied": true
+    },
+    {
+      "year": 2016,
+      "amount": 1059.99,
+      "weekly": 1059.99,
+      "ceilingApplied": false
+    },
+    {
+      "year": 2016,
+      "amount": 1060,
+      "weekly": 1060,
+      "ceilingApplied": false
+    },
+    {
+      "year": 2016,
+      "amount": 1060.01,
+      "weekly": 1060,
+      "ceilingApplied": true
+    },
+    {
+      "year": 2017,
+      "amount": 1072.99,
+      "weekly": 1072.99,
+      "ceilingApplied": false
+    },
+    {
+      "year": 2017,
+      "amount": 1073,
+      "weekly": 1073,
+      "ceilingApplied": false
+    },
+    {
+      "year": 2017,
+      "amount": 1073.01,
+      "weekly": 1073,
+      "ceilingApplied": true
+    },
+    {
+      "year": 2018,
+      "amount": 1072.99,
+      "weekly": 1072.99,
+      "ceilingApplied": false
+    },
+    {
+      "year": 2018,
+      "amount": 1073,
+      "weekly": 1073,
+      "ceilingApplied": false
+    },
+    {
+      "year": 2018,
+      "amount": 1073.01,
+      "weekly": 1073,
+      "ceilingApplied": true
+    },
+    {
+      "year": 2019,
+      "amount": 1111.99,
+      "weekly": 1111.99,
+      "ceilingApplied": false
+    },
+    {
+      "year": 2019,
+      "amount": 1112,
+      "weekly": 1112,
+      "ceilingApplied": false
+    },
+    {
+      "year": 2019,
+      "amount": 1112.01,
+      "weekly": 1112,
+      "ceilingApplied": true
+    },
+    {
+      "year": 2020,
+      "amount": 1127.99,
+      "weekly": 1127.99,
+      "ceilingApplied": false
+    },
+    {
+      "year": 2020,
+      "amount": 1128,
+      "weekly": 1128,
+      "ceilingApplied": false
+    },
+    {
+      "year": 2020,
+      "amount": 1128.01,
+      "weekly": 1128,
+      "ceilingApplied": true
+    },
+    {
+      "year": 2021,
+      "amount": 1127.99,
+      "weekly": 1127.99,
+      "ceilingApplied": false
+    },
+    {
+      "year": 2021,
+      "amount": 1128,
+      "weekly": 1128,
+      "ceilingApplied": false
+    },
+    {
+      "year": 2021,
+      "amount": 1128.01,
+      "weekly": 1128,
+      "ceilingApplied": true
+    },
+    {
+      "year": 2022,
+      "amount": 1125.99,
+      "weekly": 1125.99,
+      "ceilingApplied": false
+    },
+    {
+      "year": 2022,
+      "amount": 1126,
+      "weekly": 1126,
+      "ceilingApplied": false
+    },
+    {
+      "year": 2022,
+      "amount": 1126.01,
+      "weekly": 1126,
+      "ceilingApplied": true
+    },
+    {
+      "year": 2023,
+      "amount": 1181.99,
+      "weekly": 1181.99,
+      "ceilingApplied": false
+    },
+    {
+      "year": 2023,
+      "amount": 1182,
+      "weekly": 1182,
+      "ceilingApplied": false
+    },
+    {
+      "year": 2023,
+      "amount": 1182.01,
+      "weekly": 1182,
+      "ceilingApplied": true
+    },
+    {
+      "year": 2024,
+      "amount": 1200.99,
+      "weekly": 1200.99,
+      "ceilingApplied": false
+    },
+    {
+      "year": 2024,
+      "amount": 1201,
+      "weekly": 1201,
+      "ceilingApplied": false
+    },
+    {
+      "year": 2024,
+      "amount": 1201.01,
+      "weekly": 1201,
+      "ceilingApplied": true
+    },
+    {
+      "year": 2025,
+      "amount": 1218.99,
+      "weekly": 1218.99,
+      "ceilingApplied": false
+    },
+    {
+      "year": 2025,
+      "amount": 1219,
+      "weekly": 1219,
+      "ceilingApplied": false
+    },
+    {
+      "year": 2025,
+      "amount": 1219.01,
+      "weekly": 1219,
+      "ceilingApplied": true
+    },
+    {
+      "year": 2026,
+      "amount": 1237.99,
+      "weekly": 1237.99,
+      "ceilingApplied": false
+    },
+    {
+      "year": 2026,
+      "amount": 1238,
+      "weekly": 1238,
+      "ceilingApplied": false
+    },
+    {
+      "year": 2026,
+      "amount": 1238.01,
+      "weekly": 1238,
+      "ceilingApplied": true
+    }
+  ],
+  "dates": [
+    {
+      "startIso": "2010-01-01",
+      "endIso": "2020-01-01",
+      "years": 10
+    },
+    {
+      "startIso": "2010-06-01",
+      "endIso": "2020-05-31",
+      "years": 9
+    },
+    {
+      "startIso": "2024-01-01",
+      "endIso": "2025-12-31",
+      "years": 1
+    },
+    {
+      "startIso": "2024-01-01",
+      "endIso": "2026-01-01",
+      "years": 2
+    },
+    {
+      "startIso": "2016-02-29",
+      "endIso": "2018-02-28",
+      "years": 1
+    },
+    {
+      "startIso": "2016-02-29",
+      "endIso": "2018-03-01",
+      "years": 2
+    },
+    {
+      "startIso": "2020-03-01",
+      "endIso": "2022-03-01",
+      "years": 2
+    },
+    {
+      "startIso": "2020-03-01",
+      "endIso": "2022-03-02",
+      "years": 2
+    },
+    {
+      "startIso": "2020-01-01",
+      "endIso": "2020-01-01",
+      "years": 0
+    },
+    {
+      "startIso": "2020-06-01",
+      "endIso": "2019-01-01",
+      "years": 0
+    }
+  ],
+  "flows": [
+    {
+      "input": {
+        "employment": "no",
+        "reason": "redundancy",
+        "startIso": "2010-01-01",
+        "endIso": "2020-01-01",
+        "period": "weekly",
+        "simpleAvg": 1000
+      },
+      "result": {
+        "kind": "eligible",
+        "years": 10,
+        "avgWeekly": 1000,
+        "entitledWeeks": 25,
+        "severance": 25000,
+        "ceilingApplied": null
+      }
+    },
+    {
+      "input": {
+        "employment": "yes",
+        "reason": "redundancy",
+        "startIso": "2010-01-01",
+        "endIso": "2020-01-01",
+        "period": "weekly",
+        "simpleAvg": 1000
+      },
+      "result": {
+        "kind": "ineligible",
+        "reason": "self-employed"
+      }
+    },
+    {
+      "input": {
+        "employment": "no",
+        "reason": "other",
+        "startIso": "2010-01-01",
+        "endIso": "2020-01-01",
+        "period": "weekly",
+        "simpleAvg": 1000
+      },
+      "result": {
+        "kind": "ineligible",
+        "reason": "reason-not-covered"
+      }
+    },
+    {
+      "input": {
+        "employment": "no",
+        "reason": "closure",
+        "startIso": "2010-01-01",
+        "endIso": "2020-01-01",
+        "period": "weekly",
+        "simpleAvg": 1000
+      },
+      "result": {
+        "kind": "eligible",
+        "years": 10,
+        "avgWeekly": 1000,
+        "entitledWeeks": 25,
+        "severance": 25000,
+        "ceilingApplied": null
+      }
+    },
+    {
+      "input": {
+        "employment": "yes",
+        "reason": "other",
+        "startIso": "2010-01-01",
+        "endIso": "2020-01-01",
+        "period": "weekly",
+        "simpleAvg": 1000
+      },
+      "result": {
+        "kind": "ineligible",
+        "reason": "self-employed"
+      }
+    },
+    {
+      "input": {
+        "employment": "no",
+        "reason": "redundancy",
+        "startIso": "2019-01-01",
+        "endIso": "2020-01-01",
+        "period": "weekly",
+        "simpleAvg": 1000
+      },
+      "result": {
+        "kind": "ineligible",
+        "reason": "under-two-years"
+      }
+    },
+    {
+      "input": {
+        "employment": "no",
+        "reason": "redundancy",
+        "startIso": "2010-01-01",
+        "endIso": "2025-01-01",
+        "period": "weekly",
+        "simpleAvg": 5000
+      },
+      "result": {
+        "kind": "eligible",
+        "years": 15,
+        "avgWeekly": 1219,
+        "entitledWeeks": 40,
+        "severance": 48760,
+        "ceilingApplied": {
+          "weekly": 1219,
+          "monthly": 5280
+        }
+      }
+    }
+  ],
+  "gapExample": {
+    "years": 10,
+    "rawWeekly": 5000,
+    "usedWeekly": 1238,
+    "weeks": 25,
+    "mainEstimate": 30950,
+    "gapWeeks": 8,
+    "workedWeeks": 96,
+    "exampleWeekly": 4615.384615384615,
+    "exampleEstimate": 115384.61538461539
+  }
+}

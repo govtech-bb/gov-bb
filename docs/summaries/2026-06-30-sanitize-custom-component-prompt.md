@@ -49,7 +49,7 @@ direct DB access). The companion publish-time schema validation (#283) is alread
 closed.
 
 The principle is recorded in
-[ADR 0061](../decisions/0061-untrusted-db-content-is-sanitized-before-entering-llm-prompts.md).
+[ADR 0105](../decisions/0105-untrusted-db-content-is-sanitized-before-entering-llm-prompts.md).
 
 ## Tests
 

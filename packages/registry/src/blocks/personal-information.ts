@@ -1,4 +1,4 @@
-import { Block } from "@govtech-bb/form-types";
+import type { Block } from "@govtech-bb/form-types";
 import {
   DateOfBirth,
   FirstName,

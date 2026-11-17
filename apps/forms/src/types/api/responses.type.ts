@@ -1,10 +1,7 @@
-import {
-  ApiResponseShape,
-  ServiceContract,
-  type PublicFormSummary,
-} from "@govtech-bb/form-types";
-import { FormDraftResponseBody } from "./form-draft.type";
-import { FormSubmissionResponseBody } from "./form-submission.type";
+import type { ApiResponseShape, ServiceContract } from "@govtech-bb/form-types";
+import { type PublicFormSummary } from "@govtech-bb/form-types";
+import type { FormDraftResponseBody } from "./form-draft.type";
+import type { FormSubmissionResponseBody } from "./form-submission.type";
 
 // The public form-list contract is single-sourced in @govtech-bb/form-types
 // (#1403 / ARCH-01) so this consumer can't drift from apps/api's producer — in

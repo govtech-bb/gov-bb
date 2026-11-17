@@ -3,7 +3,7 @@
 ## Context
 
 After the prod estate import, the api_v2 database is the source of truth for
-landing pages (ADR 0077, "deployed content databases are loaded once then
+landing pages (ADR 0129, "deployed content databases are loaded once then
 written only by the editor", on `v2-rewrite`). Any landing markdown edit that
 merges to `main` after that is silently lost. #3236 asked for a CI check,
 switched by the repository variable `CONTENT_FREEZE`, that fails those PRs.

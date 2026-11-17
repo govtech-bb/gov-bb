@@ -1,0 +1,32 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    // A CommonJS build (no "type": "module"), so the shared base's
+    // verbatimModuleSyntax is off, as for the api.
+    "verbatimModuleSyntax": false,
+    "target": "ES2023",
+    "lib": ["ES2023"],
+    "outDir": "dist",
+    "rootDir": ".",
+    "declaration": false,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+    "noFallthroughCasesInSwitch": true,
+    "types": ["node"]
+  },
+  "references": [{ "path": "../../packages/govbbmarkd" }],
+  "include": ["src/**/*.ts", "src/**/*.json"],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "e2e",
+    "**/*.test.ts",
+    "src/test-db.ts",
+    "src/erd.ts"
+  ]
+}

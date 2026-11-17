@@ -78,12 +78,20 @@ function coerceCheckbox(field: Primitive, raw: string): Coerced {
   return coerceBoolean(raw);
 }
 
+// The accordion's options live in its groups; its value is the same flat list
+// of option values a plain checkbox field submits.
+function coerceCheckboxAccordion(field: Primitive, raw: string): Coerced {
+  const options = field.groups?.flatMap((g) => g.options) ?? [];
+  return coerceList({ ...field, options }, raw);
+}
+
 const COERCERS: Record<HtmlTypes, Coercer> = {
   text: (_f, raw) => ({ value: raw }),
   "address-lookup": (_f, raw) => ({ value: raw }),
   textarea: (_f, raw) => ({ value: raw }),
   email: (_f, raw) => ({ value: raw }),
   tel: (_f, raw) => ({ value: raw }),
+  time: (_f, raw) => ({ value: raw }),
   number: (_f, raw) => {
     const n = Number(raw);
     return Number.isFinite(n) ? { value: n } : { error: "must be a number" };
@@ -97,6 +105,7 @@ const COERCERS: Record<HtmlTypes, Coercer> = {
   select: coerceEnum,
   radio: coerceEnum,
   checkbox: coerceCheckbox,
+  "checkbox-accordion": coerceCheckboxAccordion,
   file: () => ({ error: "file fields can't be completed in chat" }),
   "show-hide": (_f, raw) => coerceBoolean(raw),
   // Weekly opening hours: the stored value is a string array of
@@ -123,7 +132,7 @@ export function canonicalizeValue(field: Primitive, raw: string): string {
     const c = coerceBoolean(raw.trim());
     return "error" in c ? raw : String(c.value);
   }
-  if (fieldOptions(field).length) {
+  if (fieldOptions(field).length || field.groups?.length) {
     const c = COERCERS[field.htmlType](field, raw.trim());
     if ("error" in c) return raw;
     return Array.isArray(c.value)

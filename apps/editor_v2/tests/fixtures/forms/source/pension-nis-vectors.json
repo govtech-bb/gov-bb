@@ -1,0 +1,2781 @@
+{
+  "sourceRoot": "/Users/phrog/Code/gov-bb",
+  "sourceSha256": {
+    "apps/landing/src/routes/pensions-and-gratuities/calculate-your-pension/-lib/compute.ts": "06b050bb74d6b1fe828423e40e6275d5ec555d23266897f8db722928f6d127ec",
+    "apps/landing/src/routes/money-financial-support/national-insurance-for-self-employed-workers/-lib/compute.ts": "9432a4883dd2d6d4865959116b397862d283d0c0f8189017503e8c9250368002"
+  },
+  "notice": "Source-parity reference only. NIS source marks figures unverified prototype placeholders. UI validation precedes these pure functions.",
+  "rounding": "No intermediate rounding except NIS suggested contributions to nearest 10. Display uses en-BB BBD with exactly two decimal places. NIS adds BDS prefix.",
+  "pension": [
+    {
+      "name": "known-20-years",
+      "input": {
+        "startMonth": 1,
+        "startYear": 2000,
+        "endMonth": 1,
+        "endYear": 2020,
+        "nopayMonths": 0,
+        "salary": 60000
+      },
+      "grossMonths": 240,
+      "expected": {
+        "months": 240,
+        "startMonth": 1,
+        "startYear": 2000,
+        "endMonth": 1,
+        "endYear": 2020,
+        "nopayMonths": 0,
+        "salary": 60000,
+        "fullAnnual": 24000,
+        "fullMonthly": 2000,
+        "reducedAnnual": 18000,
+        "reducedMonthly": 1500,
+        "gratuity": 75000,
+        "serviceWarning": false
+      },
+      "formatted": {
+        "fullAnnual": "$24,000.00",
+        "fullMonthly": "$2,000.00",
+        "reducedAnnual": "$18,000.00",
+        "reducedMonthly": "$1,500.00",
+        "gratuity": "$75,000.00"
+      }
+    },
+    {
+      "name": "21-years-less-12-months",
+      "input": {
+        "startMonth": 1,
+        "startYear": 2000,
+        "endMonth": 1,
+        "endYear": 2021,
+        "nopayMonths": 12,
+        "salary": 60000
+      },
+      "grossMonths": 240,
+      "expected": {
+        "months": 240,
+        "startMonth": 1,
+        "startYear": 2000,
+        "endMonth": 1,
+        "endYear": 2021,
+        "nopayMonths": 12,
+        "salary": 60000,
+        "fullAnnual": 24000,
+        "fullMonthly": 2000,
+        "reducedAnnual": 18000,
+        "reducedMonthly": 1500,
+        "gratuity": 75000,
+        "serviceWarning": false
+      },
+      "formatted": {
+        "fullAnnual": "$24,000.00",
+        "fullMonthly": "$2,000.00",
+        "reducedAnnual": "$18,000.00",
+        "reducedMonthly": "$1,500.00",
+        "gratuity": "$75,000.00"
+      }
+    },
+    {
+      "name": "cross-year-three-months",
+      "input": {
+        "startMonth": 10,
+        "startYear": 2000,
+        "endMonth": 1,
+        "endYear": 2001,
+        "nopayMonths": 0,
+        "salary": 60000
+      },
+      "grossMonths": 3,
+      "expected": {
+        "months": 3,
+        "startMonth": 10,
+        "startYear": 2000,
+        "endMonth": 1,
+        "endYear": 2001,
+        "nopayMonths": 0,
+        "salary": 60000,
+        "fullAnnual": 300,
+        "fullMonthly": 25,
+        "reducedAnnual": 225,
+        "reducedMonthly": 18.75,
+        "gratuity": 937.5,
+        "serviceWarning": true
+      },
+      "formatted": {
+        "fullAnnual": "$300.00",
+        "fullMonthly": "$25.00",
+        "reducedAnnual": "$225.00",
+        "reducedMonthly": "$18.75",
+        "gratuity": "$937.50"
+      }
+    },
+    {
+      "name": "119-month-warning",
+      "input": {
+        "startMonth": 1,
+        "startYear": 2000,
+        "endMonth": 1,
+        "endYear": 2010,
+        "nopayMonths": 1,
+        "salary": 50000
+      },
+      "grossMonths": 119,
+      "expected": {
+        "months": 119,
+        "startMonth": 1,
+        "startYear": 2000,
+        "endMonth": 1,
+        "endYear": 2010,
+        "nopayMonths": 1,
+        "salary": 50000,
+        "fullAnnual": 9916.666666666666,
+        "fullMonthly": 826.3888888888888,
+        "reducedAnnual": 7437.5,
+        "reducedMonthly": 619.7916666666666,
+        "gratuity": 30989.583333333332,
+        "serviceWarning": true
+      },
+      "formatted": {
+        "fullAnnual": "$9,916.67",
+        "fullMonthly": "$826.39",
+        "reducedAnnual": "$7,437.50",
+        "reducedMonthly": "$619.79",
+        "gratuity": "$30,989.58"
+      }
+    },
+    {
+      "name": "120-month-no-warning",
+      "input": {
+        "startMonth": 1,
+        "startYear": 2000,
+        "endMonth": 1,
+        "endYear": 2010,
+        "nopayMonths": 0,
+        "salary": 50000
+      },
+      "grossMonths": 120,
+      "expected": {
+        "months": 120,
+        "startMonth": 1,
+        "startYear": 2000,
+        "endMonth": 1,
+        "endYear": 2010,
+        "nopayMonths": 0,
+        "salary": 50000,
+        "fullAnnual": 10000,
+        "fullMonthly": 833.3333333333334,
+        "reducedAnnual": 7500,
+        "reducedMonthly": 625,
+        "gratuity": 31250,
+        "serviceWarning": false
+      },
+      "formatted": {
+        "fullAnnual": "$10,000.00",
+        "fullMonthly": "$833.33",
+        "reducedAnnual": "$7,500.00",
+        "reducedMonthly": "$625.00",
+        "gratuity": "$31,250.00"
+      }
+    },
+    {
+      "name": "600-month-cap-boundary",
+      "input": {
+        "startMonth": 1,
+        "startYear": 2000,
+        "endMonth": 1,
+        "endYear": 2050,
+        "nopayMonths": 0,
+        "salary": 100000
+      },
+      "grossMonths": 600,
+      "expected": {
+        "months": 600,
+        "startMonth": 1,
+        "startYear": 2000,
+        "endMonth": 1,
+        "endYear": 2050,
+        "nopayMonths": 0,
+        "salary": 100000,
+        "fullAnnual": 100000,
+        "fullMonthly": 8333.333333333334,
+        "reducedAnnual": 75000,
+        "reducedMonthly": 6250,
+        "gratuity": 312500,
+        "serviceWarning": false
+      },
+      "formatted": {
+        "fullAnnual": "$100,000.00",
+        "fullMonthly": "$8,333.33",
+        "reducedAnnual": "$75,000.00",
+        "reducedMonthly": "$6,250.00",
+        "gratuity": "$312,500.00"
+      }
+    },
+    {
+      "name": "601-month-capped",
+      "input": {
+        "startMonth": 1,
+        "startYear": 2000,
+        "endMonth": 2,
+        "endYear": 2050,
+        "nopayMonths": 0,
+        "salary": 100000
+      },
+      "grossMonths": 601,
+      "expected": {
+        "months": 600,
+        "startMonth": 1,
+        "startYear": 2000,
+        "endMonth": 2,
+        "endYear": 2050,
+        "nopayMonths": 0,
+        "salary": 100000,
+        "fullAnnual": 100000,
+        "fullMonthly": 8333.333333333334,
+        "reducedAnnual": 75000,
+        "reducedMonthly": 6250,
+        "gratuity": 312500,
+        "serviceWarning": false
+      },
+      "formatted": {
+        "fullAnnual": "$100,000.00",
+        "fullMonthly": "$8,333.33",
+        "reducedAnnual": "$75,000.00",
+        "reducedMonthly": "$6,250.00",
+        "gratuity": "$312,500.00"
+      }
+    },
+    {
+      "name": "100-years-capped",
+      "input": {
+        "startMonth": 1,
+        "startYear": 2000,
+        "endMonth": 1,
+        "endYear": 2100,
+        "nopayMonths": 0,
+        "salary": 100000
+      },
+      "grossMonths": 1200,
+      "expected": {
+        "months": 600,
+        "startMonth": 1,
+        "startYear": 2000,
+        "endMonth": 1,
+        "endYear": 2100,
+        "nopayMonths": 0,
+        "salary": 100000,
+        "fullAnnual": 100000,
+        "fullMonthly": 8333.333333333334,
+        "reducedAnnual": 75000,
+        "reducedMonthly": 6250,
+        "gratuity": 312500,
+        "serviceWarning": false
+      },
+      "formatted": {
+        "fullAnnual": "$100,000.00",
+        "fullMonthly": "$8,333.33",
+        "reducedAnnual": "$75,000.00",
+        "reducedMonthly": "$6,250.00",
+        "gratuity": "$312,500.00"
+      }
+    },
+    {
+      "name": "gratuity-30-years",
+      "input": {
+        "startMonth": 1,
+        "startYear": 2000,
+        "endMonth": 1,
+        "endYear": 2030,
+        "nopayMonths": 0,
+        "salary": 80000
+      },
+      "grossMonths": 360,
+      "expected": {
+        "months": 360,
+        "startMonth": 1,
+        "startYear": 2000,
+        "endMonth": 1,
+        "endYear": 2030,
+        "nopayMonths": 0,
+        "salary": 80000,
+        "fullAnnual": 48000,
+        "fullMonthly": 4000,
+        "reducedAnnual": 36000,
+        "reducedMonthly": 3000,
+        "gratuity": 150000,
+        "serviceWarning": false
+      },
+      "formatted": {
+        "fullAnnual": "$48,000.00",
+        "fullMonthly": "$4,000.00",
+        "reducedAnnual": "$36,000.00",
+        "reducedMonthly": "$3,000.00",
+        "gratuity": "$150,000.00"
+      }
+    },
+    {
+      "name": "compute-only-invalid-no-pay-clamped",
+      "input": {
+        "startMonth": 1,
+        "startYear": 2000,
+        "endMonth": 1,
+        "endYear": 2005,
+        "nopayMonths": 100,
+        "salary": 60000
+      },
+      "grossMonths": -40,
+      "expected": {
+        "months": 0,
+        "startMonth": 1,
+        "startYear": 2000,
+        "endMonth": 1,
+        "endYear": 2005,
+        "nopayMonths": 100,
+        "salary": 60000,
+        "fullAnnual": 0,
+        "fullMonthly": 0,
+        "reducedAnnual": 0,
+        "reducedMonthly": 0,
+        "gratuity": 0,
+        "serviceWarning": true
+      },
+      "formatted": {
+        "fullAnnual": "$0.00",
+        "fullMonthly": "$0.00",
+        "reducedAnnual": "$0.00",
+        "reducedMonthly": "$0.00",
+        "gratuity": "$0.00"
+      }
+    },
+    {
+      "name": "one-month-and-decimal-salary",
+      "input": {
+        "startMonth": 12,
+        "startYear": 2025,
+        "endMonth": 1,
+        "endYear": 2026,
+        "nopayMonths": 0,
+        "salary": 60000.01
+      },
+      "grossMonths": 1,
+      "expected": {
+        "months": 1,
+        "startMonth": 12,
+        "startYear": 2025,
+        "endMonth": 1,
+        "endYear": 2026,
+        "nopayMonths": 0,
+        "salary": 60000.01,
+        "fullAnnual": 100.00001666666668,
+        "fullMonthly": 8.333334722222224,
+        "reducedAnnual": 75.00001250000001,
+        "reducedMonthly": 6.250001041666668,
+        "gratuity": 312.5000520833334,
+        "serviceWarning": true
+      },
+      "formatted": {
+        "fullAnnual": "$100.00",
+        "fullMonthly": "$8.33",
+        "reducedAnnual": "$75.00",
+        "reducedMonthly": "$6.25",
+        "gratuity": "$312.50"
+      }
+    }
+  ],
+  "nis": [
+    {
+      "name": "existing-seasonal",
+      "input": {
+        "goodMonth": 4000,
+        "slowMonth": 2000,
+        "goodMonthsPerYear": 8
+      },
+      "annualIncome": 40000,
+      "monthlyAverage": 3333.3333333333335,
+      "minimumExplanation": false,
+      "suggestions": {
+        "minimum": 100,
+        "moderate": 330,
+        "stronger": 500
+      },
+      "tiers": {
+        "minimum": {
+          "expected": {
+            "monthlyContribution": 100,
+            "annualContribution": 1200,
+            "monthlyInsurable": 579.7101449275362,
+            "weeklyInsurable": 133.77926421404683,
+            "sicknessWeekly": 89.18617614269789,
+            "maternityWeekly": 133.77926421404683,
+            "paternityWeekly": 133.77926421404683,
+            "invalidityWeekly": 254,
+            "pensionWeekly": 53.511705685618736,
+            "survivorsWeekly": 53.511705685618736,
+            "funeralGrant": 2220,
+            "childGrant": 1280
+          },
+          "formatted": {
+            "monthlyContribution": "BDS $100.00",
+            "annualContribution": "BDS $1,200.00",
+            "monthlyInsurable": "BDS $579.71",
+            "weeklyInsurable": "BDS $133.78",
+            "sicknessWeekly": "BDS $89.19",
+            "maternityWeekly": "BDS $133.78",
+            "paternityWeekly": "BDS $133.78",
+            "invalidityWeekly": "BDS $254.00",
+            "pensionWeekly": "BDS $53.51",
+            "survivorsWeekly": "BDS $53.51",
+            "funeralGrant": "BDS $2,220.00",
+            "childGrant": "BDS $1,280.00"
+          },
+          "monthlyBenefitDisplay": {
+            "sicknessWeekly": "BDS $386.47",
+            "maternityWeekly": "BDS $579.71",
+            "paternityWeekly": "BDS $579.71",
+            "invalidityWeekly": "BDS $1,100.67",
+            "pensionWeekly": "BDS $231.88",
+            "survivorsWeekly": "BDS $231.88"
+          }
+        },
+        "moderate": {
+          "expected": {
+            "monthlyContribution": 330,
+            "annualContribution": 3960,
+            "monthlyInsurable": 1913.0434782608697,
+            "weeklyInsurable": 441.47157190635454,
+            "sicknessWeekly": 294.314381270903,
+            "maternityWeekly": 441.47157190635454,
+            "paternityWeekly": 441.47157190635454,
+            "invalidityWeekly": 254,
+            "pensionWeekly": 176.58862876254182,
+            "survivorsWeekly": 176.58862876254182,
+            "funeralGrant": 2220,
+            "childGrant": 1280
+          },
+          "formatted": {
+            "monthlyContribution": "BDS $330.00",
+            "annualContribution": "BDS $3,960.00",
+            "monthlyInsurable": "BDS $1,913.04",
+            "weeklyInsurable": "BDS $441.47",
+            "sicknessWeekly": "BDS $294.31",
+            "maternityWeekly": "BDS $441.47",
+            "paternityWeekly": "BDS $441.47",
+            "invalidityWeekly": "BDS $254.00",
+            "pensionWeekly": "BDS $176.59",
+            "survivorsWeekly": "BDS $176.59",
+            "funeralGrant": "BDS $2,220.00",
+            "childGrant": "BDS $1,280.00"
+          },
+          "monthlyBenefitDisplay": {
+            "sicknessWeekly": "BDS $1,275.36",
+            "maternityWeekly": "BDS $1,913.04",
+            "paternityWeekly": "BDS $1,913.04",
+            "invalidityWeekly": "BDS $1,100.67",
+            "pensionWeekly": "BDS $765.22",
+            "survivorsWeekly": "BDS $765.22"
+          }
+        },
+        "stronger": {
+          "expected": {
+            "monthlyContribution": 500,
+            "annualContribution": 6000,
+            "monthlyInsurable": 2898.5507246376815,
+            "weeklyInsurable": 668.8963210702342,
+            "sicknessWeekly": 445.93088071348944,
+            "maternityWeekly": 668.8963210702342,
+            "paternityWeekly": 668.8963210702342,
+            "invalidityWeekly": 267.55852842809367,
+            "pensionWeekly": 267.55852842809367,
+            "survivorsWeekly": 267.55852842809367,
+            "funeralGrant": 2220,
+            "childGrant": 1280
+          },
+          "formatted": {
+            "monthlyContribution": "BDS $500.00",
+            "annualContribution": "BDS $6,000.00",
+            "monthlyInsurable": "BDS $2,898.55",
+            "weeklyInsurable": "BDS $668.90",
+            "sicknessWeekly": "BDS $445.93",
+            "maternityWeekly": "BDS $668.90",
+            "paternityWeekly": "BDS $668.90",
+            "invalidityWeekly": "BDS $267.56",
+            "pensionWeekly": "BDS $267.56",
+            "survivorsWeekly": "BDS $267.56",
+            "funeralGrant": "BDS $2,220.00",
+            "childGrant": "BDS $1,280.00"
+          },
+          "monthlyBenefitDisplay": {
+            "sicknessWeekly": "BDS $1,932.37",
+            "maternityWeekly": "BDS $2,898.55",
+            "paternityWeekly": "BDS $2,898.55",
+            "invalidityWeekly": "BDS $1,159.42",
+            "pensionWeekly": "BDS $1,159.42",
+            "survivorsWeekly": "BDS $1,159.42"
+          }
+        }
+      }
+    },
+    {
+      "name": "existing-low-seasonal",
+      "input": {
+        "goodMonth": 1000,
+        "slowMonth": 500,
+        "goodMonthsPerYear": 6
+      },
+      "annualIncome": 9000,
+      "monthlyAverage": 750,
+      "minimumExplanation": false,
+      "suggestions": {
+        "minimum": 100,
+        "moderate": 150,
+        "stronger": 225
+      },
+      "tiers": {
+        "minimum": {
+          "expected": {
+            "monthlyContribution": 100,
+            "annualContribution": 1200,
+            "monthlyInsurable": 579.7101449275362,
+            "weeklyInsurable": 133.77926421404683,
+            "sicknessWeekly": 89.18617614269789,
+            "maternityWeekly": 133.77926421404683,
+            "paternityWeekly": 133.77926421404683,
+            "invalidityWeekly": 254,
+            "pensionWeekly": 53.511705685618736,
+            "survivorsWeekly": 53.511705685618736,
+            "funeralGrant": 2220,
+            "childGrant": 1280
+          },
+          "formatted": {
+            "monthlyContribution": "BDS $100.00",
+            "annualContribution": "BDS $1,200.00",
+            "monthlyInsurable": "BDS $579.71",
+            "weeklyInsurable": "BDS $133.78",
+            "sicknessWeekly": "BDS $89.19",
+            "maternityWeekly": "BDS $133.78",
+            "paternityWeekly": "BDS $133.78",
+            "invalidityWeekly": "BDS $254.00",
+            "pensionWeekly": "BDS $53.51",
+            "survivorsWeekly": "BDS $53.51",
+            "funeralGrant": "BDS $2,220.00",
+            "childGrant": "BDS $1,280.00"
+          },
+          "monthlyBenefitDisplay": {
+            "sicknessWeekly": "BDS $386.47",
+            "maternityWeekly": "BDS $579.71",
+            "paternityWeekly": "BDS $579.71",
+            "invalidityWeekly": "BDS $1,100.67",
+            "pensionWeekly": "BDS $231.88",
+            "survivorsWeekly": "BDS $231.88"
+          }
+        },
+        "moderate": {
+          "expected": {
+            "monthlyContribution": 150,
+            "annualContribution": 1800,
+            "monthlyInsurable": 869.5652173913045,
+            "weeklyInsurable": 200.66889632107026,
+            "sicknessWeekly": 133.77926421404683,
+            "maternityWeekly": 200.66889632107026,
+            "paternityWeekly": 200.66889632107026,
+            "invalidityWeekly": 254,
+            "pensionWeekly": 80.26755852842811,
+            "survivorsWeekly": 80.26755852842811,
+            "funeralGrant": 2220,
+            "childGrant": 1280
+          },
+          "formatted": {
+            "monthlyContribution": "BDS $150.00",
+            "annualContribution": "BDS $1,800.00",
+            "monthlyInsurable": "BDS $869.57",
+            "weeklyInsurable": "BDS $200.67",
+            "sicknessWeekly": "BDS $133.78",
+            "maternityWeekly": "BDS $200.67",
+            "paternityWeekly": "BDS $200.67",
+            "invalidityWeekly": "BDS $254.00",
+            "pensionWeekly": "BDS $80.27",
+            "survivorsWeekly": "BDS $80.27",
+            "funeralGrant": "BDS $2,220.00",
+            "childGrant": "BDS $1,280.00"
+          },
+          "monthlyBenefitDisplay": {
+            "sicknessWeekly": "BDS $579.71",
+            "maternityWeekly": "BDS $869.57",
+            "paternityWeekly": "BDS $869.57",
+            "invalidityWeekly": "BDS $1,100.67",
+            "pensionWeekly": "BDS $347.83",
+            "survivorsWeekly": "BDS $347.83"
+          }
+        },
+        "stronger": {
+          "expected": {
+            "monthlyContribution": 225,
+            "annualContribution": 2700,
+            "monthlyInsurable": 1304.3478260869567,
+            "weeklyInsurable": 301.0033444816054,
+            "sicknessWeekly": 200.66889632107024,
+            "maternityWeekly": 301.0033444816054,
+            "paternityWeekly": 301.0033444816054,
+            "invalidityWeekly": 254,
+            "pensionWeekly": 120.40133779264215,
+            "survivorsWeekly": 120.40133779264215,
+            "funeralGrant": 2220,
+            "childGrant": 1280
+          },
+          "formatted": {
+            "monthlyContribution": "BDS $225.00",
+            "annualContribution": "BDS $2,700.00",
+            "monthlyInsurable": "BDS $1,304.35",
+            "weeklyInsurable": "BDS $301.00",
+            "sicknessWeekly": "BDS $200.67",
+            "maternityWeekly": "BDS $301.00",
+            "paternityWeekly": "BDS $301.00",
+            "invalidityWeekly": "BDS $254.00",
+            "pensionWeekly": "BDS $120.40",
+            "survivorsWeekly": "BDS $120.40",
+            "funeralGrant": "BDS $2,220.00",
+            "childGrant": "BDS $1,280.00"
+          },
+          "monthlyBenefitDisplay": {
+            "sicknessWeekly": "BDS $869.57",
+            "maternityWeekly": "BDS $1,304.35",
+            "paternityWeekly": "BDS $1,304.35",
+            "invalidityWeekly": "BDS $1,100.67",
+            "pensionWeekly": "BDS $521.74",
+            "survivorsWeekly": "BDS $521.74"
+          }
+        }
+      }
+    },
+    {
+      "name": "existing-high",
+      "input": {
+        "goodMonth": 12000,
+        "slowMonth": 12000,
+        "goodMonthsPerYear": 12
+      },
+      "annualIncome": 144000,
+      "monthlyAverage": 12000,
+      "minimumExplanation": false,
+      "suggestions": {
+        "minimum": 100,
+        "moderate": 540,
+        "stronger": 924.5999999999999
+      },
+      "tiers": {
+        "minimum": {
+          "expected": {
+            "monthlyContribution": 100,
+            "annualContribution": 1200,
+            "monthlyInsurable": 579.7101449275362,
+            "weeklyInsurable": 133.77926421404683,
+            "sicknessWeekly": 89.18617614269789,
+            "maternityWeekly": 133.77926421404683,
+            "paternityWeekly": 133.77926421404683,
+            "invalidityWeekly": 254,
+            "pensionWeekly": 53.511705685618736,
+            "survivorsWeekly": 53.511705685618736,
+            "funeralGrant": 2220,
+            "childGrant": 1280
+          },
+          "formatted": {
+            "monthlyContribution": "BDS $100.00",
+            "annualContribution": "BDS $1,200.00",
+            "monthlyInsurable": "BDS $579.71",
+            "weeklyInsurable": "BDS $133.78",
+            "sicknessWeekly": "BDS $89.19",
+            "maternityWeekly": "BDS $133.78",
+            "paternityWeekly": "BDS $133.78",
+            "invalidityWeekly": "BDS $254.00",
+            "pensionWeekly": "BDS $53.51",
+            "survivorsWeekly": "BDS $53.51",
+            "funeralGrant": "BDS $2,220.00",
+            "childGrant": "BDS $1,280.00"
+          },
+          "monthlyBenefitDisplay": {
+            "sicknessWeekly": "BDS $386.47",
+            "maternityWeekly": "BDS $579.71",
+            "paternityWeekly": "BDS $579.71",
+            "invalidityWeekly": "BDS $1,100.67",
+            "pensionWeekly": "BDS $231.88",
+            "survivorsWeekly": "BDS $231.88"
+          }
+        },
+        "moderate": {
+          "expected": {
+            "monthlyContribution": 540,
+            "annualContribution": 6480,
+            "monthlyInsurable": 3130.434782608696,
+            "weeklyInsurable": 722.4080267558529,
+            "sicknessWeekly": 481.6053511705686,
+            "maternityWeekly": 722.4080267558529,
+            "paternityWeekly": 722.4080267558529,
+            "invalidityWeekly": 288.9632107023412,
+            "pensionWeekly": 288.9632107023412,
+            "survivorsWeekly": 288.9632107023412,
+            "funeralGrant": 2220,
+            "childGrant": 1280
+          },
+          "formatted": {
+            "monthlyContribution": "BDS $540.00",
+            "annualContribution": "BDS $6,480.00",
+            "monthlyInsurable": "BDS $3,130.43",
+            "weeklyInsurable": "BDS $722.41",
+            "sicknessWeekly": "BDS $481.61",
+            "maternityWeekly": "BDS $722.41",
+            "paternityWeekly": "BDS $722.41",
+            "invalidityWeekly": "BDS $288.96",
+            "pensionWeekly": "BDS $288.96",
+            "survivorsWeekly": "BDS $288.96",
+            "funeralGrant": "BDS $2,220.00",
+            "childGrant": "BDS $1,280.00"
+          },
+          "monthlyBenefitDisplay": {
+            "sicknessWeekly": "BDS $2,086.96",
+            "maternityWeekly": "BDS $3,130.43",
+            "paternityWeekly": "BDS $3,130.43",
+            "invalidityWeekly": "BDS $1,252.17",
+            "pensionWeekly": "BDS $1,252.17",
+            "survivorsWeekly": "BDS $1,252.17"
+          }
+        },
+        "stronger": {
+          "expected": {
+            "monthlyContribution": 924.5999999999999,
+            "annualContribution": 11095.199999999999,
+            "monthlyInsurable": 5360,
+            "weeklyInsurable": 1236.923076923077,
+            "sicknessWeekly": 824.6153846153845,
+            "maternityWeekly": 1236.923076923077,
+            "paternityWeekly": 1236.923076923077,
+            "invalidityWeekly": 494.7692307692308,
+            "pensionWeekly": 494.7692307692308,
+            "survivorsWeekly": 494.7692307692308,
+            "funeralGrant": 2220,
+            "childGrant": 1280
+          },
+          "formatted": {
+            "monthlyContribution": "BDS $924.60",
+            "annualContribution": "BDS $11,095.20",
+            "monthlyInsurable": "BDS $5,360.00",
+            "weeklyInsurable": "BDS $1,236.92",
+            "sicknessWeekly": "BDS $824.62",
+            "maternityWeekly": "BDS $1,236.92",
+            "paternityWeekly": "BDS $1,236.92",
+            "invalidityWeekly": "BDS $494.77",
+            "pensionWeekly": "BDS $494.77",
+            "survivorsWeekly": "BDS $494.77",
+            "funeralGrant": "BDS $2,220.00",
+            "childGrant": "BDS $1,280.00"
+          },
+          "monthlyBenefitDisplay": {
+            "sicknessWeekly": "BDS $3,573.33",
+            "maternityWeekly": "BDS $5,360.00",
+            "paternityWeekly": "BDS $5,360.00",
+            "invalidityWeekly": "BDS $2,144.00",
+            "pensionWeekly": "BDS $2,144.00",
+            "survivorsWeekly": "BDS $2,144.00"
+          }
+        }
+      }
+    },
+    {
+      "name": "existing-higher",
+      "input": {
+        "goodMonth": 20000,
+        "slowMonth": 20000,
+        "goodMonthsPerYear": 12
+      },
+      "annualIncome": 240000,
+      "monthlyAverage": 20000,
+      "minimumExplanation": false,
+      "suggestions": {
+        "minimum": 100,
+        "moderate": 540,
+        "stronger": 924.5999999999999
+      },
+      "tiers": {
+        "minimum": {
+          "expected": {
+            "monthlyContribution": 100,
+            "annualContribution": 1200,
+            "monthlyInsurable": 579.7101449275362,
+            "weeklyInsurable": 133.77926421404683,
+            "sicknessWeekly": 89.18617614269789,
+            "maternityWeekly": 133.77926421404683,
+            "paternityWeekly": 133.77926421404683,
+            "invalidityWeekly": 254,
+            "pensionWeekly": 53.511705685618736,
+            "survivorsWeekly": 53.511705685618736,
+            "funeralGrant": 2220,
+            "childGrant": 1280
+          },
+          "formatted": {
+            "monthlyContribution": "BDS $100.00",
+            "annualContribution": "BDS $1,200.00",
+            "monthlyInsurable": "BDS $579.71",
+            "weeklyInsurable": "BDS $133.78",
+            "sicknessWeekly": "BDS $89.19",
+            "maternityWeekly": "BDS $133.78",
+            "paternityWeekly": "BDS $133.78",
+            "invalidityWeekly": "BDS $254.00",
+            "pensionWeekly": "BDS $53.51",
+            "survivorsWeekly": "BDS $53.51",
+            "funeralGrant": "BDS $2,220.00",
+            "childGrant": "BDS $1,280.00"
+          },
+          "monthlyBenefitDisplay": {
+            "sicknessWeekly": "BDS $386.47",
+            "maternityWeekly": "BDS $579.71",
+            "paternityWeekly": "BDS $579.71",
+            "invalidityWeekly": "BDS $1,100.67",
+            "pensionWeekly": "BDS $231.88",
+            "survivorsWeekly": "BDS $231.88"
+          }
+        },
+        "moderate": {
+          "expected": {
+            "monthlyContribution": 540,
+            "annualContribution": 6480,
+            "monthlyInsurable": 3130.434782608696,
+            "weeklyInsurable": 722.4080267558529,
+            "sicknessWeekly": 481.6053511705686,
+            "maternityWeekly": 722.4080267558529,
+            "paternityWeekly": 722.4080267558529,
+            "invalidityWeekly": 288.9632107023412,
+            "pensionWeekly": 288.9632107023412,
+            "survivorsWeekly": 288.9632107023412,
+            "funeralGrant": 2220,
+            "childGrant": 1280
+          },
+          "formatted": {
+            "monthlyContribution": "BDS $540.00",
+            "annualContribution": "BDS $6,480.00",
+            "monthlyInsurable": "BDS $3,130.43",
+            "weeklyInsurable": "BDS $722.41",
+            "sicknessWeekly": "BDS $481.61",
+            "maternityWeekly": "BDS $722.41",
+            "paternityWeekly": "BDS $722.41",
+            "invalidityWeekly": "BDS $288.96",
+            "pensionWeekly": "BDS $288.96",
+            "survivorsWeekly": "BDS $288.96",
+            "funeralGrant": "BDS $2,220.00",
+            "childGrant": "BDS $1,280.00"
+          },
+          "monthlyBenefitDisplay": {
+            "sicknessWeekly": "BDS $2,086.96",
+            "maternityWeekly": "BDS $3,130.43",
+            "paternityWeekly": "BDS $3,130.43",
+            "invalidityWeekly": "BDS $1,252.17",
+            "pensionWeekly": "BDS $1,252.17",
+            "survivorsWeekly": "BDS $1,252.17"
+          }
+        },
+        "stronger": {
+          "expected": {
+            "monthlyContribution": 924.5999999999999,
+            "annualContribution": 11095.199999999999,
+            "monthlyInsurable": 5360,
+            "weeklyInsurable": 1236.923076923077,
+            "sicknessWeekly": 824.6153846153845,
+            "maternityWeekly": 1236.923076923077,
+            "paternityWeekly": 1236.923076923077,
+            "invalidityWeekly": 494.7692307692308,
+            "pensionWeekly": 494.7692307692308,
+            "survivorsWeekly": 494.7692307692308,
+            "funeralGrant": 2220,
+            "childGrant": 1280
+          },
+          "formatted": {
+            "monthlyContribution": "BDS $924.60",
+            "annualContribution": "BDS $11,095.20",
+            "monthlyInsurable": "BDS $5,360.00",
+            "weeklyInsurable": "BDS $1,236.92",
+            "sicknessWeekly": "BDS $824.62",
+            "maternityWeekly": "BDS $1,236.92",
+            "paternityWeekly": "BDS $1,236.92",
+            "invalidityWeekly": "BDS $494.77",
+            "pensionWeekly": "BDS $494.77",
+            "survivorsWeekly": "BDS $494.77",
+            "funeralGrant": "BDS $2,220.00",
+            "childGrant": "BDS $1,280.00"
+          },
+          "monthlyBenefitDisplay": {
+            "sicknessWeekly": "BDS $3,573.33",
+            "maternityWeekly": "BDS $5,360.00",
+            "paternityWeekly": "BDS $5,360.00",
+            "invalidityWeekly": "BDS $2,144.00",
+            "pensionWeekly": "BDS $2,144.00",
+            "survivorsWeekly": "BDS $2,144.00"
+          }
+        }
+      }
+    },
+    {
+      "name": "one-busy-month-zero-slow",
+      "input": {
+        "goodMonth": 1200,
+        "slowMonth": 0,
+        "goodMonthsPerYear": 1
+      },
+      "annualIncome": 1200,
+      "monthlyAverage": 100,
+      "minimumExplanation": true,
+      "suggestions": {
+        "minimum": 100,
+        "moderate": 150,
+        "stronger": 225
+      },
+      "tiers": {
+        "minimum": {
+          "expected": {
+            "monthlyContribution": 100,
+            "annualContribution": 1200,
+            "monthlyInsurable": 579.7101449275362,
+            "weeklyInsurable": 133.77926421404683,
+            "sicknessWeekly": 89.18617614269789,
+            "maternityWeekly": 133.77926421404683,
+            "paternityWeekly": 133.77926421404683,
+            "invalidityWeekly": 254,
+            "pensionWeekly": 53.511705685618736,
+            "survivorsWeekly": 53.511705685618736,
+            "funeralGrant": 2220,
+            "childGrant": 1280
+          },
+          "formatted": {
+            "monthlyContribution": "BDS $100.00",
+            "annualContribution": "BDS $1,200.00",
+            "monthlyInsurable": "BDS $579.71",
+            "weeklyInsurable": "BDS $133.78",
+            "sicknessWeekly": "BDS $89.19",
+            "maternityWeekly": "BDS $133.78",
+            "paternityWeekly": "BDS $133.78",
+            "invalidityWeekly": "BDS $254.00",
+            "pensionWeekly": "BDS $53.51",
+            "survivorsWeekly": "BDS $53.51",
+            "funeralGrant": "BDS $2,220.00",
+            "childGrant": "BDS $1,280.00"
+          },
+          "monthlyBenefitDisplay": {
+            "sicknessWeekly": "BDS $386.47",
+            "maternityWeekly": "BDS $579.71",
+            "paternityWeekly": "BDS $579.71",
+            "invalidityWeekly": "BDS $1,100.67",
+            "pensionWeekly": "BDS $231.88",
+            "survivorsWeekly": "BDS $231.88"
+          }
+        },
+        "moderate": {
+          "expected": {
+            "monthlyContribution": 150,
+            "annualContribution": 1800,
+            "monthlyInsurable": 869.5652173913045,
+            "weeklyInsurable": 200.66889632107026,
+            "sicknessWeekly": 133.77926421404683,
+            "maternityWeekly": 200.66889632107026,
+            "paternityWeekly": 200.66889632107026,
+            "invalidityWeekly": 254,
+            "pensionWeekly": 80.26755852842811,
+            "survivorsWeekly": 80.26755852842811,
+            "funeralGrant": 2220,
+            "childGrant": 1280
+          },
+          "formatted": {
+            "monthlyContribution": "BDS $150.00",
+            "annualContribution": "BDS $1,800.00",
+            "monthlyInsurable": "BDS $869.57",
+            "weeklyInsurable": "BDS $200.67",
+            "sicknessWeekly": "BDS $133.78",
+            "maternityWeekly": "BDS $200.67",
+            "paternityWeekly": "BDS $200.67",
+            "invalidityWeekly": "BDS $254.00",
+            "pensionWeekly": "BDS $80.27",
+            "survivorsWeekly": "BDS $80.27",
+            "funeralGrant": "BDS $2,220.00",
+            "childGrant": "BDS $1,280.00"
+          },
+          "monthlyBenefitDisplay": {
+            "sicknessWeekly": "BDS $579.71",
+            "maternityWeekly": "BDS $869.57",
+            "paternityWeekly": "BDS $869.57",
+            "invalidityWeekly": "BDS $1,100.67",
+            "pensionWeekly": "BDS $347.83",
+            "survivorsWeekly": "BDS $347.83"
+          }
+        },
+        "stronger": {
+          "expected": {
+            "monthlyContribution": 225,
+            "annualContribution": 2700,
+            "monthlyInsurable": 1304.3478260869567,
+            "weeklyInsurable": 301.0033444816054,
+            "sicknessWeekly": 200.66889632107024,
+            "maternityWeekly": 301.0033444816054,
+            "paternityWeekly": 301.0033444816054,
+            "invalidityWeekly": 254,
+            "pensionWeekly": 120.40133779264215,
+            "survivorsWeekly": 120.40133779264215,
+            "funeralGrant": 2220,
+            "childGrant": 1280
+          },
+          "formatted": {
+            "monthlyContribution": "BDS $225.00",
+            "annualContribution": "BDS $2,700.00",
+            "monthlyInsurable": "BDS $1,304.35",
+            "weeklyInsurable": "BDS $301.00",
+            "sicknessWeekly": "BDS $200.67",
+            "maternityWeekly": "BDS $301.00",
+            "paternityWeekly": "BDS $301.00",
+            "invalidityWeekly": "BDS $254.00",
+            "pensionWeekly": "BDS $120.40",
+            "survivorsWeekly": "BDS $120.40",
+            "funeralGrant": "BDS $2,220.00",
+            "childGrant": "BDS $1,280.00"
+          },
+          "monthlyBenefitDisplay": {
+            "sicknessWeekly": "BDS $869.57",
+            "maternityWeekly": "BDS $1,304.35",
+            "paternityWeekly": "BDS $1,304.35",
+            "invalidityWeekly": "BDS $1,100.67",
+            "pensionWeekly": "BDS $521.74",
+            "survivorsWeekly": "BDS $521.74"
+          }
+        }
+      }
+    },
+    {
+      "name": "all-busy-months-slow-ignored",
+      "input": {
+        "goodMonth": 4000,
+        "slowMonth": 10000,
+        "goodMonthsPerYear": 12
+      },
+      "annualIncome": 48000,
+      "monthlyAverage": 4000,
+      "minimumExplanation": false,
+      "suggestions": {
+        "minimum": 100,
+        "moderate": 400,
+        "stronger": 600
+      },
+      "tiers": {
+        "minimum": {
+          "expected": {
+            "monthlyContribution": 100,
+            "annualContribution": 1200,
+            "monthlyInsurable": 579.7101449275362,
+            "weeklyInsurable": 133.77926421404683,
+            "sicknessWeekly": 89.18617614269789,
+            "maternityWeekly": 133.77926421404683,
+            "paternityWeekly": 133.77926421404683,
+            "invalidityWeekly": 254,
+            "pensionWeekly": 53.511705685618736,
+            "survivorsWeekly": 53.511705685618736,
+            "funeralGrant": 2220,
+            "childGrant": 1280
+          },
+          "formatted": {
+            "monthlyContribution": "BDS $100.00",
+            "annualContribution": "BDS $1,200.00",
+            "monthlyInsurable": "BDS $579.71",
+            "weeklyInsurable": "BDS $133.78",
+            "sicknessWeekly": "BDS $89.19",
+            "maternityWeekly": "BDS $133.78",
+            "paternityWeekly": "BDS $133.78",
+            "invalidityWeekly": "BDS $254.00",
+            "pensionWeekly": "BDS $53.51",
+            "survivorsWeekly": "BDS $53.51",
+            "funeralGrant": "BDS $2,220.00",
+            "childGrant": "BDS $1,280.00"
+          },
+          "monthlyBenefitDisplay": {
+            "sicknessWeekly": "BDS $386.47",
+            "maternityWeekly": "BDS $579.71",
+            "paternityWeekly": "BDS $579.71",
+            "invalidityWeekly": "BDS $1,100.67",
+            "pensionWeekly": "BDS $231.88",
+            "survivorsWeekly": "BDS $231.88"
+          }
+        },
+        "moderate": {
+          "expected": {
+            "monthlyContribution": 400,
+            "annualContribution": 4800,
+            "monthlyInsurable": 2318.840579710145,
+            "weeklyInsurable": 535.1170568561873,
+            "sicknessWeekly": 356.74470457079155,
+            "maternityWeekly": 535.1170568561873,
+            "paternityWeekly": 535.1170568561873,
+            "invalidityWeekly": 254,
+            "pensionWeekly": 214.04682274247494,
+            "survivorsWeekly": 214.04682274247494,
+            "funeralGrant": 2220,
+            "childGrant": 1280
+          },
+          "formatted": {
+            "monthlyContribution": "BDS $400.00",
+            "annualContribution": "BDS $4,800.00",
+            "monthlyInsurable": "BDS $2,318.84",
+            "weeklyInsurable": "BDS $535.12",
+            "sicknessWeekly": "BDS $356.74",
+            "maternityWeekly": "BDS $535.12",
+            "paternityWeekly": "BDS $535.12",
+            "invalidityWeekly": "BDS $254.00",
+            "pensionWeekly": "BDS $214.05",
+            "survivorsWeekly": "BDS $214.05",
+            "funeralGrant": "BDS $2,220.00",
+            "childGrant": "BDS $1,280.00"
+          },
+          "monthlyBenefitDisplay": {
+            "sicknessWeekly": "BDS $1,545.89",
+            "maternityWeekly": "BDS $2,318.84",
+            "paternityWeekly": "BDS $2,318.84",
+            "invalidityWeekly": "BDS $1,100.67",
+            "pensionWeekly": "BDS $927.54",
+            "survivorsWeekly": "BDS $927.54"
+          }
+        },
+        "stronger": {
+          "expected": {
+            "monthlyContribution": 600,
+            "annualContribution": 7200,
+            "monthlyInsurable": 3478.260869565218,
+            "weeklyInsurable": 802.675585284281,
+            "sicknessWeekly": 535.1170568561873,
+            "maternityWeekly": 802.675585284281,
+            "paternityWeekly": 802.675585284281,
+            "invalidityWeekly": 321.07023411371244,
+            "pensionWeekly": 321.07023411371244,
+            "survivorsWeekly": 321.07023411371244,
+            "funeralGrant": 2220,
+            "childGrant": 1280
+          },
+          "formatted": {
+            "monthlyContribution": "BDS $600.00",
+            "annualContribution": "BDS $7,200.00",
+            "monthlyInsurable": "BDS $3,478.26",
+            "weeklyInsurable": "BDS $802.68",
+            "sicknessWeekly": "BDS $535.12",
+            "maternityWeekly": "BDS $802.68",
+            "paternityWeekly": "BDS $802.68",
+            "invalidityWeekly": "BDS $321.07",
+            "pensionWeekly": "BDS $321.07",
+            "survivorsWeekly": "BDS $321.07",
+            "funeralGrant": "BDS $2,220.00",
+            "childGrant": "BDS $1,280.00"
+          },
+          "monthlyBenefitDisplay": {
+            "sicknessWeekly": "BDS $2,318.84",
+            "maternityWeekly": "BDS $3,478.26",
+            "paternityWeekly": "BDS $3,478.26",
+            "invalidityWeekly": "BDS $1,391.30",
+            "pensionWeekly": "BDS $1,391.30",
+            "survivorsWeekly": "BDS $1,391.30"
+          }
+        }
+      }
+    },
+    {
+      "name": "slow-greater-than-busy-is-accepted",
+      "input": {
+        "goodMonth": 1000,
+        "slowMonth": 2000,
+        "goodMonthsPerYear": 6
+      },
+      "annualIncome": 18000,
+      "monthlyAverage": 1500,
+      "minimumExplanation": false,
+      "suggestions": {
+        "minimum": 100,
+        "moderate": 150,
+        "stronger": 230
+      },
+      "tiers": {
+        "minimum": {
+          "expected": {
+            "monthlyContribution": 100,
+            "annualContribution": 1200,
+            "monthlyInsurable": 579.7101449275362,
+            "weeklyInsurable": 133.77926421404683,
+            "sicknessWeekly": 89.18617614269789,
+            "maternityWeekly": 133.77926421404683,
+            "paternityWeekly": 133.77926421404683,
+            "invalidityWeekly": 254,
+            "pensionWeekly": 53.511705685618736,
+            "survivorsWeekly": 53.511705685618736,
+            "funeralGrant": 2220,
+            "childGrant": 1280
+          },
+          "formatted": {
+            "monthlyContribution": "BDS $100.00",
+            "annualContribution": "BDS $1,200.00",
+            "monthlyInsurable": "BDS $579.71",
+            "weeklyInsurable": "BDS $133.78",
+            "sicknessWeekly": "BDS $89.19",
+            "maternityWeekly": "BDS $133.78",
+            "paternityWeekly": "BDS $133.78",
+            "invalidityWeekly": "BDS $254.00",
+            "pensionWeekly": "BDS $53.51",
+            "survivorsWeekly": "BDS $53.51",
+            "funeralGrant": "BDS $2,220.00",
+            "childGrant": "BDS $1,280.00"
+          },
+          "monthlyBenefitDisplay": {
+            "sicknessWeekly": "BDS $386.47",
+            "maternityWeekly": "BDS $579.71",
+            "paternityWeekly": "BDS $579.71",
+            "invalidityWeekly": "BDS $1,100.67",
+            "pensionWeekly": "BDS $231.88",
+            "survivorsWeekly": "BDS $231.88"
+          }
+        },
+        "moderate": {
+          "expected": {
+            "monthlyContribution": 150,
+            "annualContribution": 1800,
+            "monthlyInsurable": 869.5652173913045,
+            "weeklyInsurable": 200.66889632107026,
+            "sicknessWeekly": 133.77926421404683,
+            "maternityWeekly": 200.66889632107026,
+            "paternityWeekly": 200.66889632107026,
+            "invalidityWeekly": 254,
+            "pensionWeekly": 80.26755852842811,
+            "survivorsWeekly": 80.26755852842811,
+            "funeralGrant": 2220,
+            "childGrant": 1280
+          },
+          "formatted": {
+            "monthlyContribution": "BDS $150.00",
+            "annualContribution": "BDS $1,800.00",
+            "monthlyInsurable": "BDS $869.57",
+            "weeklyInsurable": "BDS $200.67",
+            "sicknessWeekly": "BDS $133.78",
+            "maternityWeekly": "BDS $200.67",
+            "paternityWeekly": "BDS $200.67",
+            "invalidityWeekly": "BDS $254.00",
+            "pensionWeekly": "BDS $80.27",
+            "survivorsWeekly": "BDS $80.27",
+            "funeralGrant": "BDS $2,220.00",
+            "childGrant": "BDS $1,280.00"
+          },
+          "monthlyBenefitDisplay": {
+            "sicknessWeekly": "BDS $579.71",
+            "maternityWeekly": "BDS $869.57",
+            "paternityWeekly": "BDS $869.57",
+            "invalidityWeekly": "BDS $1,100.67",
+            "pensionWeekly": "BDS $347.83",
+            "survivorsWeekly": "BDS $347.83"
+          }
+        },
+        "stronger": {
+          "expected": {
+            "monthlyContribution": 230,
+            "annualContribution": 2760,
+            "monthlyInsurable": 1333.3333333333335,
+            "weeklyInsurable": 307.69230769230774,
+            "sicknessWeekly": 205.12820512820514,
+            "maternityWeekly": 307.69230769230774,
+            "paternityWeekly": 307.69230769230774,
+            "invalidityWeekly": 254,
+            "pensionWeekly": 123.0769230769231,
+            "survivorsWeekly": 123.0769230769231,
+            "funeralGrant": 2220,
+            "childGrant": 1280
+          },
+          "formatted": {
+            "monthlyContribution": "BDS $230.00",
+            "annualContribution": "BDS $2,760.00",
+            "monthlyInsurable": "BDS $1,333.33",
+            "weeklyInsurable": "BDS $307.69",
+            "sicknessWeekly": "BDS $205.13",
+            "maternityWeekly": "BDS $307.69",
+            "paternityWeekly": "BDS $307.69",
+            "invalidityWeekly": "BDS $254.00",
+            "pensionWeekly": "BDS $123.08",
+            "survivorsWeekly": "BDS $123.08",
+            "funeralGrant": "BDS $2,220.00",
+            "childGrant": "BDS $1,280.00"
+          },
+          "monthlyBenefitDisplay": {
+            "sicknessWeekly": "BDS $888.89",
+            "maternityWeekly": "BDS $1,333.33",
+            "paternityWeekly": "BDS $1,333.33",
+            "invalidityWeekly": "BDS $1,100.67",
+            "pensionWeekly": "BDS $533.33",
+            "survivorsWeekly": "BDS $533.33"
+          }
+        }
+      }
+    },
+    {
+      "name": "stronger-floor-before-round-up",
+      "input": {
+        "goodMonth": 1499,
+        "slowMonth": 1499,
+        "goodMonthsPerYear": 12
+      },
+      "annualIncome": 17988,
+      "monthlyAverage": 1499,
+      "minimumExplanation": false,
+      "suggestions": {
+        "minimum": 100,
+        "moderate": 150,
+        "stronger": 225
+      },
+      "tiers": {
+        "minimum": {
+          "expected": {
+            "monthlyContribution": 100,
+            "annualContribution": 1200,
+            "monthlyInsurable": 579.7101449275362,
+            "weeklyInsurable": 133.77926421404683,
+            "sicknessWeekly": 89.18617614269789,
+            "maternityWeekly": 133.77926421404683,
+            "paternityWeekly": 133.77926421404683,
+            "invalidityWeekly": 254,
+            "pensionWeekly": 53.511705685618736,
+            "survivorsWeekly": 53.511705685618736,
+            "funeralGrant": 2220,
+            "childGrant": 1280
+          },
+          "formatted": {
+            "monthlyContribution": "BDS $100.00",
+            "annualContribution": "BDS $1,200.00",
+            "monthlyInsurable": "BDS $579.71",
+            "weeklyInsurable": "BDS $133.78",
+            "sicknessWeekly": "BDS $89.19",
+            "maternityWeekly": "BDS $133.78",
+            "paternityWeekly": "BDS $133.78",
+            "invalidityWeekly": "BDS $254.00",
+            "pensionWeekly": "BDS $53.51",
+            "survivorsWeekly": "BDS $53.51",
+            "funeralGrant": "BDS $2,220.00",
+            "childGrant": "BDS $1,280.00"
+          },
+          "monthlyBenefitDisplay": {
+            "sicknessWeekly": "BDS $386.47",
+            "maternityWeekly": "BDS $579.71",
+            "paternityWeekly": "BDS $579.71",
+            "invalidityWeekly": "BDS $1,100.67",
+            "pensionWeekly": "BDS $231.88",
+            "survivorsWeekly": "BDS $231.88"
+          }
+        },
+        "moderate": {
+          "expected": {
+            "monthlyContribution": 150,
+            "annualContribution": 1800,
+            "monthlyInsurable": 869.5652173913045,
+            "weeklyInsurable": 200.66889632107026,
+            "sicknessWeekly": 133.77926421404683,
+            "maternityWeekly": 200.66889632107026,
+            "paternityWeekly": 200.66889632107026,
+            "invalidityWeekly": 254,
+            "pensionWeekly": 80.26755852842811,
+            "survivorsWeekly": 80.26755852842811,
+            "funeralGrant": 2220,
+            "childGrant": 1280
+          },
+          "formatted": {
+            "monthlyContribution": "BDS $150.00",
+            "annualContribution": "BDS $1,800.00",
+            "monthlyInsurable": "BDS $869.57",
+            "weeklyInsurable": "BDS $200.67",
+            "sicknessWeekly": "BDS $133.78",
+            "maternityWeekly": "BDS $200.67",
+            "paternityWeekly": "BDS $200.67",
+            "invalidityWeekly": "BDS $254.00",
+            "pensionWeekly": "BDS $80.27",
+            "survivorsWeekly": "BDS $80.27",
+            "funeralGrant": "BDS $2,220.00",
+            "childGrant": "BDS $1,280.00"
+          },
+          "monthlyBenefitDisplay": {
+            "sicknessWeekly": "BDS $579.71",
+            "maternityWeekly": "BDS $869.57",
+            "paternityWeekly": "BDS $869.57",
+            "invalidityWeekly": "BDS $1,100.67",
+            "pensionWeekly": "BDS $347.83",
+            "survivorsWeekly": "BDS $347.83"
+          }
+        },
+        "stronger": {
+          "expected": {
+            "monthlyContribution": 225,
+            "annualContribution": 2700,
+            "monthlyInsurable": 1304.3478260869567,
+            "weeklyInsurable": 301.0033444816054,
+            "sicknessWeekly": 200.66889632107024,
+            "maternityWeekly": 301.0033444816054,
+            "paternityWeekly": 301.0033444816054,
+            "invalidityWeekly": 254,
+            "pensionWeekly": 120.40133779264215,
+            "survivorsWeekly": 120.40133779264215,
+            "funeralGrant": 2220,
+            "childGrant": 1280
+          },
+          "formatted": {
+            "monthlyContribution": "BDS $225.00",
+            "annualContribution": "BDS $2,700.00",
+            "monthlyInsurable": "BDS $1,304.35",
+            "weeklyInsurable": "BDS $301.00",
+            "sicknessWeekly": "BDS $200.67",
+            "maternityWeekly": "BDS $301.00",
+            "paternityWeekly": "BDS $301.00",
+            "invalidityWeekly": "BDS $254.00",
+            "pensionWeekly": "BDS $120.40",
+            "survivorsWeekly": "BDS $120.40",
+            "funeralGrant": "BDS $2,220.00",
+            "childGrant": "BDS $1,280.00"
+          },
+          "monthlyBenefitDisplay": {
+            "sicknessWeekly": "BDS $869.57",
+            "maternityWeekly": "BDS $1,304.35",
+            "paternityWeekly": "BDS $1,304.35",
+            "invalidityWeekly": "BDS $1,100.67",
+            "pensionWeekly": "BDS $521.74",
+            "survivorsWeekly": "BDS $521.74"
+          }
+        }
+      }
+    },
+    {
+      "name": "stronger-half-ten-rounds-up",
+      "input": {
+        "goodMonth": 1500,
+        "slowMonth": 1500,
+        "goodMonthsPerYear": 12
+      },
+      "annualIncome": 18000,
+      "monthlyAverage": 1500,
+      "minimumExplanation": false,
+      "suggestions": {
+        "minimum": 100,
+        "moderate": 150,
+        "stronger": 230
+      },
+      "tiers": {
+        "minimum": {
+          "expected": {
+            "monthlyContribution": 100,
+            "annualContribution": 1200,
+            "monthlyInsurable": 579.7101449275362,
+            "weeklyInsurable": 133.77926421404683,
+            "sicknessWeekly": 89.18617614269789,
+            "maternityWeekly": 133.77926421404683,
+            "paternityWeekly": 133.77926421404683,
+            "invalidityWeekly": 254,
+            "pensionWeekly": 53.511705685618736,
+            "survivorsWeekly": 53.511705685618736,
+            "funeralGrant": 2220,
+            "childGrant": 1280
+          },
+          "formatted": {
+            "monthlyContribution": "BDS $100.00",
+            "annualContribution": "BDS $1,200.00",
+            "monthlyInsurable": "BDS $579.71",
+            "weeklyInsurable": "BDS $133.78",
+            "sicknessWeekly": "BDS $89.19",
+            "maternityWeekly": "BDS $133.78",
+            "paternityWeekly": "BDS $133.78",
+            "invalidityWeekly": "BDS $254.00",
+            "pensionWeekly": "BDS $53.51",
+            "survivorsWeekly": "BDS $53.51",
+            "funeralGrant": "BDS $2,220.00",
+            "childGrant": "BDS $1,280.00"
+          },
+          "monthlyBenefitDisplay": {
+            "sicknessWeekly": "BDS $386.47",
+            "maternityWeekly": "BDS $579.71",
+            "paternityWeekly": "BDS $579.71",
+            "invalidityWeekly": "BDS $1,100.67",
+            "pensionWeekly": "BDS $231.88",
+            "survivorsWeekly": "BDS $231.88"
+          }
+        },
+        "moderate": {
+          "expected": {
+            "monthlyContribution": 150,
+            "annualContribution": 1800,
+            "monthlyInsurable": 869.5652173913045,
+            "weeklyInsurable": 200.66889632107026,
+            "sicknessWeekly": 133.77926421404683,
+            "maternityWeekly": 200.66889632107026,
+            "paternityWeekly": 200.66889632107026,
+            "invalidityWeekly": 254,
+            "pensionWeekly": 80.26755852842811,
+            "survivorsWeekly": 80.26755852842811,
+            "funeralGrant": 2220,
+            "childGrant": 1280
+          },
+          "formatted": {
+            "monthlyContribution": "BDS $150.00",
+            "annualContribution": "BDS $1,800.00",
+            "monthlyInsurable": "BDS $869.57",
+            "weeklyInsurable": "BDS $200.67",
+            "sicknessWeekly": "BDS $133.78",
+            "maternityWeekly": "BDS $200.67",
+            "paternityWeekly": "BDS $200.67",
+            "invalidityWeekly": "BDS $254.00",
+            "pensionWeekly": "BDS $80.27",
+            "survivorsWeekly": "BDS $80.27",
+            "funeralGrant": "BDS $2,220.00",
+            "childGrant": "BDS $1,280.00"
+          },
+          "monthlyBenefitDisplay": {
+            "sicknessWeekly": "BDS $579.71",
+            "maternityWeekly": "BDS $869.57",
+            "paternityWeekly": "BDS $869.57",
+            "invalidityWeekly": "BDS $1,100.67",
+            "pensionWeekly": "BDS $347.83",
+            "survivorsWeekly": "BDS $347.83"
+          }
+        },
+        "stronger": {
+          "expected": {
+            "monthlyContribution": 230,
+            "annualContribution": 2760,
+            "monthlyInsurable": 1333.3333333333335,
+            "weeklyInsurable": 307.69230769230774,
+            "sicknessWeekly": 205.12820512820514,
+            "maternityWeekly": 307.69230769230774,
+            "paternityWeekly": 307.69230769230774,
+            "invalidityWeekly": 254,
+            "pensionWeekly": 123.0769230769231,
+            "survivorsWeekly": 123.0769230769231,
+            "funeralGrant": 2220,
+            "childGrant": 1280
+          },
+          "formatted": {
+            "monthlyContribution": "BDS $230.00",
+            "annualContribution": "BDS $2,760.00",
+            "monthlyInsurable": "BDS $1,333.33",
+            "weeklyInsurable": "BDS $307.69",
+            "sicknessWeekly": "BDS $205.13",
+            "maternityWeekly": "BDS $307.69",
+            "paternityWeekly": "BDS $307.69",
+            "invalidityWeekly": "BDS $254.00",
+            "pensionWeekly": "BDS $123.08",
+            "survivorsWeekly": "BDS $123.08",
+            "funeralGrant": "BDS $2,220.00",
+            "childGrant": "BDS $1,280.00"
+          },
+          "monthlyBenefitDisplay": {
+            "sicknessWeekly": "BDS $888.89",
+            "maternityWeekly": "BDS $1,333.33",
+            "paternityWeekly": "BDS $1,333.33",
+            "invalidityWeekly": "BDS $1,100.67",
+            "pensionWeekly": "BDS $533.33",
+            "survivorsWeekly": "BDS $533.33"
+          }
+        }
+      }
+    },
+    {
+      "name": "moderate-floor-before-round-up",
+      "input": {
+        "goodMonth": 1549,
+        "slowMonth": 1549,
+        "goodMonthsPerYear": 12
+      },
+      "annualIncome": 18588,
+      "monthlyAverage": 1549,
+      "minimumExplanation": false,
+      "suggestions": {
+        "minimum": 100,
+        "moderate": 150,
+        "stronger": 230
+      },
+      "tiers": {
+        "minimum": {
+          "expected": {
+            "monthlyContribution": 100,
+            "annualContribution": 1200,
+            "monthlyInsurable": 579.7101449275362,
+            "weeklyInsurable": 133.77926421404683,
+            "sicknessWeekly": 89.18617614269789,
+            "maternityWeekly": 133.77926421404683,
+            "paternityWeekly": 133.77926421404683,
+            "invalidityWeekly": 254,
+            "pensionWeekly": 53.511705685618736,
+            "survivorsWeekly": 53.511705685618736,
+            "funeralGrant": 2220,
+            "childGrant": 1280
+          },
+          "formatted": {
+            "monthlyContribution": "BDS $100.00",
+            "annualContribution": "BDS $1,200.00",
+            "monthlyInsurable": "BDS $579.71",
+            "weeklyInsurable": "BDS $133.78",
+            "sicknessWeekly": "BDS $89.19",
+            "maternityWeekly": "BDS $133.78",
+            "paternityWeekly": "BDS $133.78",
+            "invalidityWeekly": "BDS $254.00",
+            "pensionWeekly": "BDS $53.51",
+            "survivorsWeekly": "BDS $53.51",
+            "funeralGrant": "BDS $2,220.00",
+            "childGrant": "BDS $1,280.00"
+          },
+          "monthlyBenefitDisplay": {
+            "sicknessWeekly": "BDS $386.47",
+            "maternityWeekly": "BDS $579.71",
+            "paternityWeekly": "BDS $579.71",
+            "invalidityWeekly": "BDS $1,100.67",
+            "pensionWeekly": "BDS $231.88",
+            "survivorsWeekly": "BDS $231.88"
+          }
+        },
+        "moderate": {
+          "expected": {
+            "monthlyContribution": 150,
+            "annualContribution": 1800,
+            "monthlyInsurable": 869.5652173913045,
+            "weeklyInsurable": 200.66889632107026,
+            "sicknessWeekly": 133.77926421404683,
+            "maternityWeekly": 200.66889632107026,
+            "paternityWeekly": 200.66889632107026,
+            "invalidityWeekly": 254,
+            "pensionWeekly": 80.26755852842811,
+            "survivorsWeekly": 80.26755852842811,
+            "funeralGrant": 2220,
+            "childGrant": 1280
+          },
+          "formatted": {
+            "monthlyContribution": "BDS $150.00",
+            "annualContribution": "BDS $1,800.00",
+            "monthlyInsurable": "BDS $869.57",
+            "weeklyInsurable": "BDS $200.67",
+            "sicknessWeekly": "BDS $133.78",
+            "maternityWeekly": "BDS $200.67",
+            "paternityWeekly": "BDS $200.67",
+            "invalidityWeekly": "BDS $254.00",
+            "pensionWeekly": "BDS $80.27",
+            "survivorsWeekly": "BDS $80.27",
+            "funeralGrant": "BDS $2,220.00",
+            "childGrant": "BDS $1,280.00"
+          },
+          "monthlyBenefitDisplay": {
+            "sicknessWeekly": "BDS $579.71",
+            "maternityWeekly": "BDS $869.57",
+            "paternityWeekly": "BDS $869.57",
+            "invalidityWeekly": "BDS $1,100.67",
+            "pensionWeekly": "BDS $347.83",
+            "survivorsWeekly": "BDS $347.83"
+          }
+        },
+        "stronger": {
+          "expected": {
+            "monthlyContribution": 230,
+            "annualContribution": 2760,
+            "monthlyInsurable": 1333.3333333333335,
+            "weeklyInsurable": 307.69230769230774,
+            "sicknessWeekly": 205.12820512820514,
+            "maternityWeekly": 307.69230769230774,
+            "paternityWeekly": 307.69230769230774,
+            "invalidityWeekly": 254,
+            "pensionWeekly": 123.0769230769231,
+            "survivorsWeekly": 123.0769230769231,
+            "funeralGrant": 2220,
+            "childGrant": 1280
+          },
+          "formatted": {
+            "monthlyContribution": "BDS $230.00",
+            "annualContribution": "BDS $2,760.00",
+            "monthlyInsurable": "BDS $1,333.33",
+            "weeklyInsurable": "BDS $307.69",
+            "sicknessWeekly": "BDS $205.13",
+            "maternityWeekly": "BDS $307.69",
+            "paternityWeekly": "BDS $307.69",
+            "invalidityWeekly": "BDS $254.00",
+            "pensionWeekly": "BDS $123.08",
+            "survivorsWeekly": "BDS $123.08",
+            "funeralGrant": "BDS $2,220.00",
+            "childGrant": "BDS $1,280.00"
+          },
+          "monthlyBenefitDisplay": {
+            "sicknessWeekly": "BDS $888.89",
+            "maternityWeekly": "BDS $1,333.33",
+            "paternityWeekly": "BDS $1,333.33",
+            "invalidityWeekly": "BDS $1,100.67",
+            "pensionWeekly": "BDS $533.33",
+            "survivorsWeekly": "BDS $533.33"
+          }
+        }
+      }
+    },
+    {
+      "name": "moderate-half-ten-rounds-up",
+      "input": {
+        "goodMonth": 1550,
+        "slowMonth": 1550,
+        "goodMonthsPerYear": 12
+      },
+      "annualIncome": 18600,
+      "monthlyAverage": 1550,
+      "minimumExplanation": false,
+      "suggestions": {
+        "minimum": 100,
+        "moderate": 160,
+        "stronger": 230
+      },
+      "tiers": {
+        "minimum": {
+          "expected": {
+            "monthlyContribution": 100,
+            "annualContribution": 1200,
+            "monthlyInsurable": 579.7101449275362,
+            "weeklyInsurable": 133.77926421404683,
+            "sicknessWeekly": 89.18617614269789,
+            "maternityWeekly": 133.77926421404683,
+            "paternityWeekly": 133.77926421404683,
+            "invalidityWeekly": 254,
+            "pensionWeekly": 53.511705685618736,
+            "survivorsWeekly": 53.511705685618736,
+            "funeralGrant": 2220,
+            "childGrant": 1280
+          },
+          "formatted": {
+            "monthlyContribution": "BDS $100.00",
+            "annualContribution": "BDS $1,200.00",
+            "monthlyInsurable": "BDS $579.71",
+            "weeklyInsurable": "BDS $133.78",
+            "sicknessWeekly": "BDS $89.19",
+            "maternityWeekly": "BDS $133.78",
+            "paternityWeekly": "BDS $133.78",
+            "invalidityWeekly": "BDS $254.00",
+            "pensionWeekly": "BDS $53.51",
+            "survivorsWeekly": "BDS $53.51",
+            "funeralGrant": "BDS $2,220.00",
+            "childGrant": "BDS $1,280.00"
+          },
+          "monthlyBenefitDisplay": {
+            "sicknessWeekly": "BDS $386.47",
+            "maternityWeekly": "BDS $579.71",
+            "paternityWeekly": "BDS $579.71",
+            "invalidityWeekly": "BDS $1,100.67",
+            "pensionWeekly": "BDS $231.88",
+            "survivorsWeekly": "BDS $231.88"
+          }
+        },
+        "moderate": {
+          "expected": {
+            "monthlyContribution": 160,
+            "annualContribution": 1920,
+            "monthlyInsurable": 927.536231884058,
+            "weeklyInsurable": 214.04682274247492,
+            "sicknessWeekly": 142.6978818283166,
+            "maternityWeekly": 214.04682274247492,
+            "paternityWeekly": 214.04682274247492,
+            "invalidityWeekly": 254,
+            "pensionWeekly": 85.61872909698997,
+            "survivorsWeekly": 85.61872909698997,
+            "funeralGrant": 2220,
+            "childGrant": 1280
+          },
+          "formatted": {
+            "monthlyContribution": "BDS $160.00",
+            "annualContribution": "BDS $1,920.00",
+            "monthlyInsurable": "BDS $927.54",
+            "weeklyInsurable": "BDS $214.05",
+            "sicknessWeekly": "BDS $142.70",
+            "maternityWeekly": "BDS $214.05",
+            "paternityWeekly": "BDS $214.05",
+            "invalidityWeekly": "BDS $254.00",
+            "pensionWeekly": "BDS $85.62",
+            "survivorsWeekly": "BDS $85.62",
+            "funeralGrant": "BDS $2,220.00",
+            "childGrant": "BDS $1,280.00"
+          },
+          "monthlyBenefitDisplay": {
+            "sicknessWeekly": "BDS $618.36",
+            "maternityWeekly": "BDS $927.54",
+            "paternityWeekly": "BDS $927.54",
+            "invalidityWeekly": "BDS $1,100.67",
+            "pensionWeekly": "BDS $371.01",
+            "survivorsWeekly": "BDS $371.01"
+          }
+        },
+        "stronger": {
+          "expected": {
+            "monthlyContribution": 230,
+            "annualContribution": 2760,
+            "monthlyInsurable": 1333.3333333333335,
+            "weeklyInsurable": 307.69230769230774,
+            "sicknessWeekly": 205.12820512820514,
+            "maternityWeekly": 307.69230769230774,
+            "paternityWeekly": 307.69230769230774,
+            "invalidityWeekly": 254,
+            "pensionWeekly": 123.0769230769231,
+            "survivorsWeekly": 123.0769230769231,
+            "funeralGrant": 2220,
+            "childGrant": 1280
+          },
+          "formatted": {
+            "monthlyContribution": "BDS $230.00",
+            "annualContribution": "BDS $2,760.00",
+            "monthlyInsurable": "BDS $1,333.33",
+            "weeklyInsurable": "BDS $307.69",
+            "sicknessWeekly": "BDS $205.13",
+            "maternityWeekly": "BDS $307.69",
+            "paternityWeekly": "BDS $307.69",
+            "invalidityWeekly": "BDS $254.00",
+            "pensionWeekly": "BDS $123.08",
+            "survivorsWeekly": "BDS $123.08",
+            "funeralGrant": "BDS $2,220.00",
+            "childGrant": "BDS $1,280.00"
+          },
+          "monthlyBenefitDisplay": {
+            "sicknessWeekly": "BDS $888.89",
+            "maternityWeekly": "BDS $1,333.33",
+            "paternityWeekly": "BDS $1,333.33",
+            "invalidityWeekly": "BDS $1,100.67",
+            "pensionWeekly": "BDS $533.33",
+            "survivorsWeekly": "BDS $533.33"
+          }
+        }
+      }
+    },
+    {
+      "name": "moderate-invalidity-before-floor-crossing",
+      "input": {
+        "goodMonth": 4700,
+        "slowMonth": 4700,
+        "goodMonthsPerYear": 12
+      },
+      "annualIncome": 56400,
+      "monthlyAverage": 4700,
+      "minimumExplanation": false,
+      "suggestions": {
+        "minimum": 100,
+        "moderate": 470,
+        "stronger": 710
+      },
+      "tiers": {
+        "minimum": {
+          "expected": {
+            "monthlyContribution": 100,
+            "annualContribution": 1200,
+            "monthlyInsurable": 579.7101449275362,
+            "weeklyInsurable": 133.77926421404683,
+            "sicknessWeekly": 89.18617614269789,
+            "maternityWeekly": 133.77926421404683,
+            "paternityWeekly": 133.77926421404683,
+            "invalidityWeekly": 254,
+            "pensionWeekly": 53.511705685618736,
+            "survivorsWeekly": 53.511705685618736,
+            "funeralGrant": 2220,
+            "childGrant": 1280
+          },
+          "formatted": {
+            "monthlyContribution": "BDS $100.00",
+            "annualContribution": "BDS $1,200.00",
+            "monthlyInsurable": "BDS $579.71",
+            "weeklyInsurable": "BDS $133.78",
+            "sicknessWeekly": "BDS $89.19",
+            "maternityWeekly": "BDS $133.78",
+            "paternityWeekly": "BDS $133.78",
+            "invalidityWeekly": "BDS $254.00",
+            "pensionWeekly": "BDS $53.51",
+            "survivorsWeekly": "BDS $53.51",
+            "funeralGrant": "BDS $2,220.00",
+            "childGrant": "BDS $1,280.00"
+          },
+          "monthlyBenefitDisplay": {
+            "sicknessWeekly": "BDS $386.47",
+            "maternityWeekly": "BDS $579.71",
+            "paternityWeekly": "BDS $579.71",
+            "invalidityWeekly": "BDS $1,100.67",
+            "pensionWeekly": "BDS $231.88",
+            "survivorsWeekly": "BDS $231.88"
+          }
+        },
+        "moderate": {
+          "expected": {
+            "monthlyContribution": 470,
+            "annualContribution": 5640,
+            "monthlyInsurable": 2724.6376811594205,
+            "weeklyInsurable": 628.7625418060202,
+            "sicknessWeekly": 419.1750278706801,
+            "maternityWeekly": 628.7625418060202,
+            "paternityWeekly": 628.7625418060202,
+            "invalidityWeekly": 254,
+            "pensionWeekly": 251.50501672240807,
+            "survivorsWeekly": 251.50501672240807,
+            "funeralGrant": 2220,
+            "childGrant": 1280
+          },
+          "formatted": {
+            "monthlyContribution": "BDS $470.00",
+            "annualContribution": "BDS $5,640.00",
+            "monthlyInsurable": "BDS $2,724.64",
+            "weeklyInsurable": "BDS $628.76",
+            "sicknessWeekly": "BDS $419.18",
+            "maternityWeekly": "BDS $628.76",
+            "paternityWeekly": "BDS $628.76",
+            "invalidityWeekly": "BDS $254.00",
+            "pensionWeekly": "BDS $251.51",
+            "survivorsWeekly": "BDS $251.51",
+            "funeralGrant": "BDS $2,220.00",
+            "childGrant": "BDS $1,280.00"
+          },
+          "monthlyBenefitDisplay": {
+            "sicknessWeekly": "BDS $1,816.43",
+            "maternityWeekly": "BDS $2,724.64",
+            "paternityWeekly": "BDS $2,724.64",
+            "invalidityWeekly": "BDS $1,100.67",
+            "pensionWeekly": "BDS $1,089.86",
+            "survivorsWeekly": "BDS $1,089.86"
+          }
+        },
+        "stronger": {
+          "expected": {
+            "monthlyContribution": 710,
+            "annualContribution": 8520,
+            "monthlyInsurable": 4115.942028985507,
+            "weeklyInsurable": 949.8327759197323,
+            "sicknessWeekly": 633.2218506131549,
+            "maternityWeekly": 949.8327759197323,
+            "paternityWeekly": 949.8327759197323,
+            "invalidityWeekly": 379.93311036789294,
+            "pensionWeekly": 379.93311036789294,
+            "survivorsWeekly": 379.93311036789294,
+            "funeralGrant": 2220,
+            "childGrant": 1280
+          },
+          "formatted": {
+            "monthlyContribution": "BDS $710.00",
+            "annualContribution": "BDS $8,520.00",
+            "monthlyInsurable": "BDS $4,115.94",
+            "weeklyInsurable": "BDS $949.83",
+            "sicknessWeekly": "BDS $633.22",
+            "maternityWeekly": "BDS $949.83",
+            "paternityWeekly": "BDS $949.83",
+            "invalidityWeekly": "BDS $379.93",
+            "pensionWeekly": "BDS $379.93",
+            "survivorsWeekly": "BDS $379.93",
+            "funeralGrant": "BDS $2,220.00",
+            "childGrant": "BDS $1,280.00"
+          },
+          "monthlyBenefitDisplay": {
+            "sicknessWeekly": "BDS $2,743.96",
+            "maternityWeekly": "BDS $4,115.94",
+            "paternityWeekly": "BDS $4,115.94",
+            "invalidityWeekly": "BDS $1,646.38",
+            "pensionWeekly": "BDS $1,646.38",
+            "survivorsWeekly": "BDS $1,646.38"
+          }
+        }
+      }
+    },
+    {
+      "name": "moderate-invalidity-above-floor",
+      "input": {
+        "goodMonth": 4800,
+        "slowMonth": 4800,
+        "goodMonthsPerYear": 12
+      },
+      "annualIncome": 57600,
+      "monthlyAverage": 4800,
+      "minimumExplanation": false,
+      "suggestions": {
+        "minimum": 100,
+        "moderate": 480,
+        "stronger": 720
+      },
+      "tiers": {
+        "minimum": {
+          "expected": {
+            "monthlyContribution": 100,
+            "annualContribution": 1200,
+            "monthlyInsurable": 579.7101449275362,
+            "weeklyInsurable": 133.77926421404683,
+            "sicknessWeekly": 89.18617614269789,
+            "maternityWeekly": 133.77926421404683,
+            "paternityWeekly": 133.77926421404683,
+            "invalidityWeekly": 254,
+            "pensionWeekly": 53.511705685618736,
+            "survivorsWeekly": 53.511705685618736,
+            "funeralGrant": 2220,
+            "childGrant": 1280
+          },
+          "formatted": {
+            "monthlyContribution": "BDS $100.00",
+            "annualContribution": "BDS $1,200.00",
+            "monthlyInsurable": "BDS $579.71",
+            "weeklyInsurable": "BDS $133.78",
+            "sicknessWeekly": "BDS $89.19",
+            "maternityWeekly": "BDS $133.78",
+            "paternityWeekly": "BDS $133.78",
+            "invalidityWeekly": "BDS $254.00",
+            "pensionWeekly": "BDS $53.51",
+            "survivorsWeekly": "BDS $53.51",
+            "funeralGrant": "BDS $2,220.00",
+            "childGrant": "BDS $1,280.00"
+          },
+          "monthlyBenefitDisplay": {
+            "sicknessWeekly": "BDS $386.47",
+            "maternityWeekly": "BDS $579.71",
+            "paternityWeekly": "BDS $579.71",
+            "invalidityWeekly": "BDS $1,100.67",
+            "pensionWeekly": "BDS $231.88",
+            "survivorsWeekly": "BDS $231.88"
+          }
+        },
+        "moderate": {
+          "expected": {
+            "monthlyContribution": 480,
+            "annualContribution": 5760,
+            "monthlyInsurable": 2782.608695652174,
+            "weeklyInsurable": 642.1404682274248,
+            "sicknessWeekly": 428.09364548494983,
+            "maternityWeekly": 642.1404682274248,
+            "paternityWeekly": 642.1404682274248,
+            "invalidityWeekly": 256.8561872909699,
+            "pensionWeekly": 256.8561872909699,
+            "survivorsWeekly": 256.8561872909699,
+            "funeralGrant": 2220,
+            "childGrant": 1280
+          },
+          "formatted": {
+            "monthlyContribution": "BDS $480.00",
+            "annualContribution": "BDS $5,760.00",
+            "monthlyInsurable": "BDS $2,782.61",
+            "weeklyInsurable": "BDS $642.14",
+            "sicknessWeekly": "BDS $428.09",
+            "maternityWeekly": "BDS $642.14",
+            "paternityWeekly": "BDS $642.14",
+            "invalidityWeekly": "BDS $256.86",
+            "pensionWeekly": "BDS $256.86",
+            "survivorsWeekly": "BDS $256.86",
+            "funeralGrant": "BDS $2,220.00",
+            "childGrant": "BDS $1,280.00"
+          },
+          "monthlyBenefitDisplay": {
+            "sicknessWeekly": "BDS $1,855.07",
+            "maternityWeekly": "BDS $2,782.61",
+            "paternityWeekly": "BDS $2,782.61",
+            "invalidityWeekly": "BDS $1,113.04",
+            "pensionWeekly": "BDS $1,113.04",
+            "survivorsWeekly": "BDS $1,113.04"
+          }
+        },
+        "stronger": {
+          "expected": {
+            "monthlyContribution": 720,
+            "annualContribution": 8640,
+            "monthlyInsurable": 4173.913043478261,
+            "weeklyInsurable": 963.2107023411372,
+            "sicknessWeekly": 642.1404682274248,
+            "maternityWeekly": 963.2107023411372,
+            "paternityWeekly": 963.2107023411372,
+            "invalidityWeekly": 385.28428093645493,
+            "pensionWeekly": 385.28428093645493,
+            "survivorsWeekly": 385.28428093645493,
+            "funeralGrant": 2220,
+            "childGrant": 1280
+          },
+          "formatted": {
+            "monthlyContribution": "BDS $720.00",
+            "annualContribution": "BDS $8,640.00",
+            "monthlyInsurable": "BDS $4,173.91",
+            "weeklyInsurable": "BDS $963.21",
+            "sicknessWeekly": "BDS $642.14",
+            "maternityWeekly": "BDS $963.21",
+            "paternityWeekly": "BDS $963.21",
+            "invalidityWeekly": "BDS $385.28",
+            "pensionWeekly": "BDS $385.28",
+            "survivorsWeekly": "BDS $385.28",
+            "funeralGrant": "BDS $2,220.00",
+            "childGrant": "BDS $1,280.00"
+          },
+          "monthlyBenefitDisplay": {
+            "sicknessWeekly": "BDS $2,782.61",
+            "maternityWeekly": "BDS $4,173.91",
+            "paternityWeekly": "BDS $4,173.91",
+            "invalidityWeekly": "BDS $1,669.57",
+            "pensionWeekly": "BDS $1,669.57",
+            "survivorsWeekly": "BDS $1,669.57"
+          }
+        }
+      }
+    },
+    {
+      "name": "earnings-ceiling-exact",
+      "input": {
+        "goodMonth": 5360,
+        "slowMonth": 5360,
+        "goodMonthsPerYear": 12
+      },
+      "annualIncome": 64320,
+      "monthlyAverage": 5360,
+      "minimumExplanation": false,
+      "suggestions": {
+        "minimum": 100,
+        "moderate": 540,
+        "stronger": 800
+      },
+      "tiers": {
+        "minimum": {
+          "expected": {
+            "monthlyContribution": 100,
+            "annualContribution": 1200,
+            "monthlyInsurable": 579.7101449275362,
+            "weeklyInsurable": 133.77926421404683,
+            "sicknessWeekly": 89.18617614269789,
+            "maternityWeekly": 133.77926421404683,
+            "paternityWeekly": 133.77926421404683,
+            "invalidityWeekly": 254,
+            "pensionWeekly": 53.511705685618736,
+            "survivorsWeekly": 53.511705685618736,
+            "funeralGrant": 2220,
+            "childGrant": 1280
+          },
+          "formatted": {
+            "monthlyContribution": "BDS $100.00",
+            "annualContribution": "BDS $1,200.00",
+            "monthlyInsurable": "BDS $579.71",
+            "weeklyInsurable": "BDS $133.78",
+            "sicknessWeekly": "BDS $89.19",
+            "maternityWeekly": "BDS $133.78",
+            "paternityWeekly": "BDS $133.78",
+            "invalidityWeekly": "BDS $254.00",
+            "pensionWeekly": "BDS $53.51",
+            "survivorsWeekly": "BDS $53.51",
+            "funeralGrant": "BDS $2,220.00",
+            "childGrant": "BDS $1,280.00"
+          },
+          "monthlyBenefitDisplay": {
+            "sicknessWeekly": "BDS $386.47",
+            "maternityWeekly": "BDS $579.71",
+            "paternityWeekly": "BDS $579.71",
+            "invalidityWeekly": "BDS $1,100.67",
+            "pensionWeekly": "BDS $231.88",
+            "survivorsWeekly": "BDS $231.88"
+          }
+        },
+        "moderate": {
+          "expected": {
+            "monthlyContribution": 540,
+            "annualContribution": 6480,
+            "monthlyInsurable": 3130.434782608696,
+            "weeklyInsurable": 722.4080267558529,
+            "sicknessWeekly": 481.6053511705686,
+            "maternityWeekly": 722.4080267558529,
+            "paternityWeekly": 722.4080267558529,
+            "invalidityWeekly": 288.9632107023412,
+            "pensionWeekly": 288.9632107023412,
+            "survivorsWeekly": 288.9632107023412,
+            "funeralGrant": 2220,
+            "childGrant": 1280
+          },
+          "formatted": {
+            "monthlyContribution": "BDS $540.00",
+            "annualContribution": "BDS $6,480.00",
+            "monthlyInsurable": "BDS $3,130.43",
+            "weeklyInsurable": "BDS $722.41",
+            "sicknessWeekly": "BDS $481.61",
+            "maternityWeekly": "BDS $722.41",
+            "paternityWeekly": "BDS $722.41",
+            "invalidityWeekly": "BDS $288.96",
+            "pensionWeekly": "BDS $288.96",
+            "survivorsWeekly": "BDS $288.96",
+            "funeralGrant": "BDS $2,220.00",
+            "childGrant": "BDS $1,280.00"
+          },
+          "monthlyBenefitDisplay": {
+            "sicknessWeekly": "BDS $2,086.96",
+            "maternityWeekly": "BDS $3,130.43",
+            "paternityWeekly": "BDS $3,130.43",
+            "invalidityWeekly": "BDS $1,252.17",
+            "pensionWeekly": "BDS $1,252.17",
+            "survivorsWeekly": "BDS $1,252.17"
+          }
+        },
+        "stronger": {
+          "expected": {
+            "monthlyContribution": 800,
+            "annualContribution": 9600,
+            "monthlyInsurable": 4637.68115942029,
+            "weeklyInsurable": 1070.2341137123747,
+            "sicknessWeekly": 713.4894091415831,
+            "maternityWeekly": 1070.2341137123747,
+            "paternityWeekly": 1070.2341137123747,
+            "invalidityWeekly": 428.0936454849499,
+            "pensionWeekly": 428.0936454849499,
+            "survivorsWeekly": 428.0936454849499,
+            "funeralGrant": 2220,
+            "childGrant": 1280
+          },
+          "formatted": {
+            "monthlyContribution": "BDS $800.00",
+            "annualContribution": "BDS $9,600.00",
+            "monthlyInsurable": "BDS $4,637.68",
+            "weeklyInsurable": "BDS $1,070.23",
+            "sicknessWeekly": "BDS $713.49",
+            "maternityWeekly": "BDS $1,070.23",
+            "paternityWeekly": "BDS $1,070.23",
+            "invalidityWeekly": "BDS $428.09",
+            "pensionWeekly": "BDS $428.09",
+            "survivorsWeekly": "BDS $428.09",
+            "funeralGrant": "BDS $2,220.00",
+            "childGrant": "BDS $1,280.00"
+          },
+          "monthlyBenefitDisplay": {
+            "sicknessWeekly": "BDS $3,091.79",
+            "maternityWeekly": "BDS $4,637.68",
+            "paternityWeekly": "BDS $4,637.68",
+            "invalidityWeekly": "BDS $1,855.07",
+            "pensionWeekly": "BDS $1,855.07",
+            "survivorsWeekly": "BDS $1,855.07"
+          }
+        }
+      }
+    },
+    {
+      "name": "stronger-before-cap",
+      "input": {
+        "goodMonth": 6160,
+        "slowMonth": 6160,
+        "goodMonthsPerYear": 12
+      },
+      "annualIncome": 73920,
+      "monthlyAverage": 6160,
+      "minimumExplanation": false,
+      "suggestions": {
+        "minimum": 100,
+        "moderate": 540,
+        "stronger": 920
+      },
+      "tiers": {
+        "minimum": {
+          "expected": {
+            "monthlyContribution": 100,
+            "annualContribution": 1200,
+            "monthlyInsurable": 579.7101449275362,
+            "weeklyInsurable": 133.77926421404683,
+            "sicknessWeekly": 89.18617614269789,
+            "maternityWeekly": 133.77926421404683,
+            "paternityWeekly": 133.77926421404683,
+            "invalidityWeekly": 254,
+            "pensionWeekly": 53.511705685618736,
+            "survivorsWeekly": 53.511705685618736,
+            "funeralGrant": 2220,
+            "childGrant": 1280
+          },
+          "formatted": {
+            "monthlyContribution": "BDS $100.00",
+            "annualContribution": "BDS $1,200.00",
+            "monthlyInsurable": "BDS $579.71",
+            "weeklyInsurable": "BDS $133.78",
+            "sicknessWeekly": "BDS $89.19",
+            "maternityWeekly": "BDS $133.78",
+            "paternityWeekly": "BDS $133.78",
+            "invalidityWeekly": "BDS $254.00",
+            "pensionWeekly": "BDS $53.51",
+            "survivorsWeekly": "BDS $53.51",
+            "funeralGrant": "BDS $2,220.00",
+            "childGrant": "BDS $1,280.00"
+          },
+          "monthlyBenefitDisplay": {
+            "sicknessWeekly": "BDS $386.47",
+            "maternityWeekly": "BDS $579.71",
+            "paternityWeekly": "BDS $579.71",
+            "invalidityWeekly": "BDS $1,100.67",
+            "pensionWeekly": "BDS $231.88",
+            "survivorsWeekly": "BDS $231.88"
+          }
+        },
+        "moderate": {
+          "expected": {
+            "monthlyContribution": 540,
+            "annualContribution": 6480,
+            "monthlyInsurable": 3130.434782608696,
+            "weeklyInsurable": 722.4080267558529,
+            "sicknessWeekly": 481.6053511705686,
+            "maternityWeekly": 722.4080267558529,
+            "paternityWeekly": 722.4080267558529,
+            "invalidityWeekly": 288.9632107023412,
+            "pensionWeekly": 288.9632107023412,
+            "survivorsWeekly": 288.9632107023412,
+            "funeralGrant": 2220,
+            "childGrant": 1280
+          },
+          "formatted": {
+            "monthlyContribution": "BDS $540.00",
+            "annualContribution": "BDS $6,480.00",
+            "monthlyInsurable": "BDS $3,130.43",
+            "weeklyInsurable": "BDS $722.41",
+            "sicknessWeekly": "BDS $481.61",
+            "maternityWeekly": "BDS $722.41",
+            "paternityWeekly": "BDS $722.41",
+            "invalidityWeekly": "BDS $288.96",
+            "pensionWeekly": "BDS $288.96",
+            "survivorsWeekly": "BDS $288.96",
+            "funeralGrant": "BDS $2,220.00",
+            "childGrant": "BDS $1,280.00"
+          },
+          "monthlyBenefitDisplay": {
+            "sicknessWeekly": "BDS $2,086.96",
+            "maternityWeekly": "BDS $3,130.43",
+            "paternityWeekly": "BDS $3,130.43",
+            "invalidityWeekly": "BDS $1,252.17",
+            "pensionWeekly": "BDS $1,252.17",
+            "survivorsWeekly": "BDS $1,252.17"
+          }
+        },
+        "stronger": {
+          "expected": {
+            "monthlyContribution": 920,
+            "annualContribution": 11040,
+            "monthlyInsurable": 5333.333333333334,
+            "weeklyInsurable": 1230.769230769231,
+            "sicknessWeekly": 820.5128205128206,
+            "maternityWeekly": 1230.769230769231,
+            "paternityWeekly": 1230.769230769231,
+            "invalidityWeekly": 492.3076923076924,
+            "pensionWeekly": 492.3076923076924,
+            "survivorsWeekly": 492.3076923076924,
+            "funeralGrant": 2220,
+            "childGrant": 1280
+          },
+          "formatted": {
+            "monthlyContribution": "BDS $920.00",
+            "annualContribution": "BDS $11,040.00",
+            "monthlyInsurable": "BDS $5,333.33",
+            "weeklyInsurable": "BDS $1,230.77",
+            "sicknessWeekly": "BDS $820.51",
+            "maternityWeekly": "BDS $1,230.77",
+            "paternityWeekly": "BDS $1,230.77",
+            "invalidityWeekly": "BDS $492.31",
+            "pensionWeekly": "BDS $492.31",
+            "survivorsWeekly": "BDS $492.31",
+            "funeralGrant": "BDS $2,220.00",
+            "childGrant": "BDS $1,280.00"
+          },
+          "monthlyBenefitDisplay": {
+            "sicknessWeekly": "BDS $3,555.56",
+            "maternityWeekly": "BDS $5,333.33",
+            "paternityWeekly": "BDS $5,333.33",
+            "invalidityWeekly": "BDS $2,133.33",
+            "pensionWeekly": "BDS $2,133.33",
+            "survivorsWeekly": "BDS $2,133.33"
+          }
+        }
+      }
+    },
+    {
+      "name": "stronger-at-cap",
+      "input": {
+        "goodMonth": 6170,
+        "slowMonth": 6170,
+        "goodMonthsPerYear": 12
+      },
+      "annualIncome": 74040,
+      "monthlyAverage": 6170,
+      "minimumExplanation": false,
+      "suggestions": {
+        "minimum": 100,
+        "moderate": 540,
+        "stronger": 924.5999999999999
+      },
+      "tiers": {
+        "minimum": {
+          "expected": {
+            "monthlyContribution": 100,
+            "annualContribution": 1200,
+            "monthlyInsurable": 579.7101449275362,
+            "weeklyInsurable": 133.77926421404683,
+            "sicknessWeekly": 89.18617614269789,
+            "maternityWeekly": 133.77926421404683,
+            "paternityWeekly": 133.77926421404683,
+            "invalidityWeekly": 254,
+            "pensionWeekly": 53.511705685618736,
+            "survivorsWeekly": 53.511705685618736,
+            "funeralGrant": 2220,
+            "childGrant": 1280
+          },
+          "formatted": {
+            "monthlyContribution": "BDS $100.00",
+            "annualContribution": "BDS $1,200.00",
+            "monthlyInsurable": "BDS $579.71",
+            "weeklyInsurable": "BDS $133.78",
+            "sicknessWeekly": "BDS $89.19",
+            "maternityWeekly": "BDS $133.78",
+            "paternityWeekly": "BDS $133.78",
+            "invalidityWeekly": "BDS $254.00",
+            "pensionWeekly": "BDS $53.51",
+            "survivorsWeekly": "BDS $53.51",
+            "funeralGrant": "BDS $2,220.00",
+            "childGrant": "BDS $1,280.00"
+          },
+          "monthlyBenefitDisplay": {
+            "sicknessWeekly": "BDS $386.47",
+            "maternityWeekly": "BDS $579.71",
+            "paternityWeekly": "BDS $579.71",
+            "invalidityWeekly": "BDS $1,100.67",
+            "pensionWeekly": "BDS $231.88",
+            "survivorsWeekly": "BDS $231.88"
+          }
+        },
+        "moderate": {
+          "expected": {
+            "monthlyContribution": 540,
+            "annualContribution": 6480,
+            "monthlyInsurable": 3130.434782608696,
+            "weeklyInsurable": 722.4080267558529,
+            "sicknessWeekly": 481.6053511705686,
+            "maternityWeekly": 722.4080267558529,
+            "paternityWeekly": 722.4080267558529,
+            "invalidityWeekly": 288.9632107023412,
+            "pensionWeekly": 288.9632107023412,
+            "survivorsWeekly": 288.9632107023412,
+            "funeralGrant": 2220,
+            "childGrant": 1280
+          },
+          "formatted": {
+            "monthlyContribution": "BDS $540.00",
+            "annualContribution": "BDS $6,480.00",
+            "monthlyInsurable": "BDS $3,130.43",
+            "weeklyInsurable": "BDS $722.41",
+            "sicknessWeekly": "BDS $481.61",
+            "maternityWeekly": "BDS $722.41",
+            "paternityWeekly": "BDS $722.41",
+            "invalidityWeekly": "BDS $288.96",
+            "pensionWeekly": "BDS $288.96",
+            "survivorsWeekly": "BDS $288.96",
+            "funeralGrant": "BDS $2,220.00",
+            "childGrant": "BDS $1,280.00"
+          },
+          "monthlyBenefitDisplay": {
+            "sicknessWeekly": "BDS $2,086.96",
+            "maternityWeekly": "BDS $3,130.43",
+            "paternityWeekly": "BDS $3,130.43",
+            "invalidityWeekly": "BDS $1,252.17",
+            "pensionWeekly": "BDS $1,252.17",
+            "survivorsWeekly": "BDS $1,252.17"
+          }
+        },
+        "stronger": {
+          "expected": {
+            "monthlyContribution": 924.5999999999999,
+            "annualContribution": 11095.199999999999,
+            "monthlyInsurable": 5360,
+            "weeklyInsurable": 1236.923076923077,
+            "sicknessWeekly": 824.6153846153845,
+            "maternityWeekly": 1236.923076923077,
+            "paternityWeekly": 1236.923076923077,
+            "invalidityWeekly": 494.7692307692308,
+            "pensionWeekly": 494.7692307692308,
+            "survivorsWeekly": 494.7692307692308,
+            "funeralGrant": 2220,
+            "childGrant": 1280
+          },
+          "formatted": {
+            "monthlyContribution": "BDS $924.60",
+            "annualContribution": "BDS $11,095.20",
+            "monthlyInsurable": "BDS $5,360.00",
+            "weeklyInsurable": "BDS $1,236.92",
+            "sicknessWeekly": "BDS $824.62",
+            "maternityWeekly": "BDS $1,236.92",
+            "paternityWeekly": "BDS $1,236.92",
+            "invalidityWeekly": "BDS $494.77",
+            "pensionWeekly": "BDS $494.77",
+            "survivorsWeekly": "BDS $494.77",
+            "funeralGrant": "BDS $2,220.00",
+            "childGrant": "BDS $1,280.00"
+          },
+          "monthlyBenefitDisplay": {
+            "sicknessWeekly": "BDS $3,573.33",
+            "maternityWeekly": "BDS $5,360.00",
+            "paternityWeekly": "BDS $5,360.00",
+            "invalidityWeekly": "BDS $2,144.00",
+            "pensionWeekly": "BDS $2,144.00",
+            "survivorsWeekly": "BDS $2,144.00"
+          }
+        }
+      }
+    },
+    {
+      "name": "minimum-explanation-visible",
+      "input": {
+        "goodMonth": 579.7,
+        "slowMonth": 579.7,
+        "goodMonthsPerYear": 12
+      },
+      "annualIncome": 6956.400000000001,
+      "monthlyAverage": 579.7,
+      "minimumExplanation": true,
+      "suggestions": {
+        "minimum": 100,
+        "moderate": 150,
+        "stronger": 225
+      },
+      "tiers": {
+        "minimum": {
+          "expected": {
+            "monthlyContribution": 100,
+            "annualContribution": 1200,
+            "monthlyInsurable": 579.7101449275362,
+            "weeklyInsurable": 133.77926421404683,
+            "sicknessWeekly": 89.18617614269789,
+            "maternityWeekly": 133.77926421404683,
+            "paternityWeekly": 133.77926421404683,
+            "invalidityWeekly": 254,
+            "pensionWeekly": 53.511705685618736,
+            "survivorsWeekly": 53.511705685618736,
+            "funeralGrant": 2220,
+            "childGrant": 1280
+          },
+          "formatted": {
+            "monthlyContribution": "BDS $100.00",
+            "annualContribution": "BDS $1,200.00",
+            "monthlyInsurable": "BDS $579.71",
+            "weeklyInsurable": "BDS $133.78",
+            "sicknessWeekly": "BDS $89.19",
+            "maternityWeekly": "BDS $133.78",
+            "paternityWeekly": "BDS $133.78",
+            "invalidityWeekly": "BDS $254.00",
+            "pensionWeekly": "BDS $53.51",
+            "survivorsWeekly": "BDS $53.51",
+            "funeralGrant": "BDS $2,220.00",
+            "childGrant": "BDS $1,280.00"
+          },
+          "monthlyBenefitDisplay": {
+            "sicknessWeekly": "BDS $386.47",
+            "maternityWeekly": "BDS $579.71",
+            "paternityWeekly": "BDS $579.71",
+            "invalidityWeekly": "BDS $1,100.67",
+            "pensionWeekly": "BDS $231.88",
+            "survivorsWeekly": "BDS $231.88"
+          }
+        },
+        "moderate": {
+          "expected": {
+            "monthlyContribution": 150,
+            "annualContribution": 1800,
+            "monthlyInsurable": 869.5652173913045,
+            "weeklyInsurable": 200.66889632107026,
+            "sicknessWeekly": 133.77926421404683,
+            "maternityWeekly": 200.66889632107026,
+            "paternityWeekly": 200.66889632107026,
+            "invalidityWeekly": 254,
+            "pensionWeekly": 80.26755852842811,
+            "survivorsWeekly": 80.26755852842811,
+            "funeralGrant": 2220,
+            "childGrant": 1280
+          },
+          "formatted": {
+            "monthlyContribution": "BDS $150.00",
+            "annualContribution": "BDS $1,800.00",
+            "monthlyInsurable": "BDS $869.57",
+            "weeklyInsurable": "BDS $200.67",
+            "sicknessWeekly": "BDS $133.78",
+            "maternityWeekly": "BDS $200.67",
+            "paternityWeekly": "BDS $200.67",
+            "invalidityWeekly": "BDS $254.00",
+            "pensionWeekly": "BDS $80.27",
+            "survivorsWeekly": "BDS $80.27",
+            "funeralGrant": "BDS $2,220.00",
+            "childGrant": "BDS $1,280.00"
+          },
+          "monthlyBenefitDisplay": {
+            "sicknessWeekly": "BDS $579.71",
+            "maternityWeekly": "BDS $869.57",
+            "paternityWeekly": "BDS $869.57",
+            "invalidityWeekly": "BDS $1,100.67",
+            "pensionWeekly": "BDS $347.83",
+            "survivorsWeekly": "BDS $347.83"
+          }
+        },
+        "stronger": {
+          "expected": {
+            "monthlyContribution": 225,
+            "annualContribution": 2700,
+            "monthlyInsurable": 1304.3478260869567,
+            "weeklyInsurable": 301.0033444816054,
+            "sicknessWeekly": 200.66889632107024,
+            "maternityWeekly": 301.0033444816054,
+            "paternityWeekly": 301.0033444816054,
+            "invalidityWeekly": 254,
+            "pensionWeekly": 120.40133779264215,
+            "survivorsWeekly": 120.40133779264215,
+            "funeralGrant": 2220,
+            "childGrant": 1280
+          },
+          "formatted": {
+            "monthlyContribution": "BDS $225.00",
+            "annualContribution": "BDS $2,700.00",
+            "monthlyInsurable": "BDS $1,304.35",
+            "weeklyInsurable": "BDS $301.00",
+            "sicknessWeekly": "BDS $200.67",
+            "maternityWeekly": "BDS $301.00",
+            "paternityWeekly": "BDS $301.00",
+            "invalidityWeekly": "BDS $254.00",
+            "pensionWeekly": "BDS $120.40",
+            "survivorsWeekly": "BDS $120.40",
+            "funeralGrant": "BDS $2,220.00",
+            "childGrant": "BDS $1,280.00"
+          },
+          "monthlyBenefitDisplay": {
+            "sicknessWeekly": "BDS $869.57",
+            "maternityWeekly": "BDS $1,304.35",
+            "paternityWeekly": "BDS $1,304.35",
+            "invalidityWeekly": "BDS $1,100.67",
+            "pensionWeekly": "BDS $521.74",
+            "survivorsWeekly": "BDS $521.74"
+          }
+        }
+      }
+    },
+    {
+      "name": "minimum-explanation-hidden",
+      "input": {
+        "goodMonth": 579.72,
+        "slowMonth": 579.72,
+        "goodMonthsPerYear": 12
+      },
+      "annualIncome": 6956.64,
+      "monthlyAverage": 579.72,
+      "minimumExplanation": false,
+      "suggestions": {
+        "minimum": 100,
+        "moderate": 150,
+        "stronger": 225
+      },
+      "tiers": {
+        "minimum": {
+          "expected": {
+            "monthlyContribution": 100,
+            "annualContribution": 1200,
+            "monthlyInsurable": 579.7101449275362,
+            "weeklyInsurable": 133.77926421404683,
+            "sicknessWeekly": 89.18617614269789,
+            "maternityWeekly": 133.77926421404683,
+            "paternityWeekly": 133.77926421404683,
+            "invalidityWeekly": 254,
+            "pensionWeekly": 53.511705685618736,
+            "survivorsWeekly": 53.511705685618736,
+            "funeralGrant": 2220,
+            "childGrant": 1280
+          },
+          "formatted": {
+            "monthlyContribution": "BDS $100.00",
+            "annualContribution": "BDS $1,200.00",
+            "monthlyInsurable": "BDS $579.71",
+            "weeklyInsurable": "BDS $133.78",
+            "sicknessWeekly": "BDS $89.19",
+            "maternityWeekly": "BDS $133.78",
+            "paternityWeekly": "BDS $133.78",
+            "invalidityWeekly": "BDS $254.00",
+            "pensionWeekly": "BDS $53.51",
+            "survivorsWeekly": "BDS $53.51",
+            "funeralGrant": "BDS $2,220.00",
+            "childGrant": "BDS $1,280.00"
+          },
+          "monthlyBenefitDisplay": {
+            "sicknessWeekly": "BDS $386.47",
+            "maternityWeekly": "BDS $579.71",
+            "paternityWeekly": "BDS $579.71",
+            "invalidityWeekly": "BDS $1,100.67",
+            "pensionWeekly": "BDS $231.88",
+            "survivorsWeekly": "BDS $231.88"
+          }
+        },
+        "moderate": {
+          "expected": {
+            "monthlyContribution": 150,
+            "annualContribution": 1800,
+            "monthlyInsurable": 869.5652173913045,
+            "weeklyInsurable": 200.66889632107026,
+            "sicknessWeekly": 133.77926421404683,
+            "maternityWeekly": 200.66889632107026,
+            "paternityWeekly": 200.66889632107026,
+            "invalidityWeekly": 254,
+            "pensionWeekly": 80.26755852842811,
+            "survivorsWeekly": 80.26755852842811,
+            "funeralGrant": 2220,
+            "childGrant": 1280
+          },
+          "formatted": {
+            "monthlyContribution": "BDS $150.00",
+            "annualContribution": "BDS $1,800.00",
+            "monthlyInsurable": "BDS $869.57",
+            "weeklyInsurable": "BDS $200.67",
+            "sicknessWeekly": "BDS $133.78",
+            "maternityWeekly": "BDS $200.67",
+            "paternityWeekly": "BDS $200.67",
+            "invalidityWeekly": "BDS $254.00",
+            "pensionWeekly": "BDS $80.27",
+            "survivorsWeekly": "BDS $80.27",
+            "funeralGrant": "BDS $2,220.00",
+            "childGrant": "BDS $1,280.00"
+          },
+          "monthlyBenefitDisplay": {
+            "sicknessWeekly": "BDS $579.71",
+            "maternityWeekly": "BDS $869.57",
+            "paternityWeekly": "BDS $869.57",
+            "invalidityWeekly": "BDS $1,100.67",
+            "pensionWeekly": "BDS $347.83",
+            "survivorsWeekly": "BDS $347.83"
+          }
+        },
+        "stronger": {
+          "expected": {
+            "monthlyContribution": 225,
+            "annualContribution": 2700,
+            "monthlyInsurable": 1304.3478260869567,
+            "weeklyInsurable": 301.0033444816054,
+            "sicknessWeekly": 200.66889632107024,
+            "maternityWeekly": 301.0033444816054,
+            "paternityWeekly": 301.0033444816054,
+            "invalidityWeekly": 254,
+            "pensionWeekly": 120.40133779264215,
+            "survivorsWeekly": 120.40133779264215,
+            "funeralGrant": 2220,
+            "childGrant": 1280
+          },
+          "formatted": {
+            "monthlyContribution": "BDS $225.00",
+            "annualContribution": "BDS $2,700.00",
+            "monthlyInsurable": "BDS $1,304.35",
+            "weeklyInsurable": "BDS $301.00",
+            "sicknessWeekly": "BDS $200.67",
+            "maternityWeekly": "BDS $301.00",
+            "paternityWeekly": "BDS $301.00",
+            "invalidityWeekly": "BDS $254.00",
+            "pensionWeekly": "BDS $120.40",
+            "survivorsWeekly": "BDS $120.40",
+            "funeralGrant": "BDS $2,220.00",
+            "childGrant": "BDS $1,280.00"
+          },
+          "monthlyBenefitDisplay": {
+            "sicknessWeekly": "BDS $869.57",
+            "maternityWeekly": "BDS $1,304.35",
+            "paternityWeekly": "BDS $1,304.35",
+            "invalidityWeekly": "BDS $1,100.67",
+            "pensionWeekly": "BDS $521.74",
+            "survivorsWeekly": "BDS $521.74"
+          }
+        }
+      }
+    }
+  ],
+  "nisProgrammaticFallbacks": [
+    {
+      "input": 0,
+      "expected": 6
+    },
+    {
+      "input": 13,
+      "expected": 6
+    },
+    {
+      "input": 1.5,
+      "expected": 6
+    },
+    {
+      "input": "NaN",
+      "expected": 6
+    }
+  ]
+}

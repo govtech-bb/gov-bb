@@ -192,7 +192,7 @@ it.each([
 // with its own fieldConditionalOn. They are now one repeatable step, so the gate
 // that used to be per-field is the step's — and a step gate is invisible to
 // GATED_FIELDS above. `another-location` belongs in the gate alongside
-// `commercial-kitchen`: ADR 0068 keeps "the addresses where food is prepared
+// `commercial-kitchen`: ADR 0116 keeps "the addresses where food is prepared
 // elsewhere" on the form, and dropping it leaves that answer asking nothing.
 it("gates the off-site address step on both away-from-restaurant answers", async () => {
   const step = await hydratedStep("location-food-drink-prepared");

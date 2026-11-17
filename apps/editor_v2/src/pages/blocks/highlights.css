@@ -1,0 +1,40 @@
+/* Landing's highlights: teal cards, each a title the size of a Heading 3 over its text, two to a row from its small
+   breakpoint */
+.page-body [data-page-component="highlights"] {
+  display: grid;
+  gap: var(--govbb-space-s);
+  margin-block: 1rem;
+}
+@media (min-width: 40rem) {
+  .page-body [data-page-component="highlights"] {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+.page-body [data-page-component="highlight"] {
+  display: grid;
+  align-content: start;
+  gap: var(--govbb-space-xxs);
+  padding: var(--govbb-space-s);
+  background: var(--govbb-teal-10);
+}
+.page-body [data-page-component="highlight-title"] {
+  font-size: 1.375rem;
+  font-weight: 700;
+  line-height: 1.25;
+}
+/* An empty title or text says what goes there, as an empty heading does */
+.page-editable
+  :is([data-page-component="highlight-title"], [data-page-component="highlight-text"]):has(
+    > br:only-child
+  )::before {
+  float: inline-start;
+  block-size: 0;
+  color: var(--color-subtle);
+  pointer-events: none;
+}
+.page-editable [data-page-component="highlight-title"]:has(> br:only-child)::before {
+  content: "Title" / "";
+}
+.page-editable [data-page-component="highlight-text"]:has(> br:only-child)::before {
+  content: "Text" / "";
+}

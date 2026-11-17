@@ -1,10 +1,10 @@
-import {
+import type {
   Behaviour,
+  ConditionalHint,
   ConditionalLabel,
   ConditionalTitle,
   ContactDetails,
   DateTimeFormat,
-  fieldValueSchema,
   GeocodeTargets,
   HtmlTypes,
   Option,
@@ -13,6 +13,7 @@ import {
   SubmissionValues,
   ValidationRule,
 } from "@govtech-bb/form-types";
+import { fieldValueSchema } from "@govtech-bb/form-types";
 import z from "zod";
 
 export interface ClientPrimitive {
@@ -27,6 +28,9 @@ export interface ClientPrimitive {
   htmlType: HtmlTypes;
   placeholder?: string;
   hint?: string;
+  /** Per-answer hint overrides (#3637); the renderer resolves the effective
+   * hint from live form values via `resolveFieldHint`. */
+  conditionalHint?: ConditionalHint[];
   defaultValue?: unknown;
   disabled: boolean;
   hidden: boolean;
@@ -79,6 +83,8 @@ export interface ClientServiceContract {
   description?: string;
   contactDetails?: ContactDetails;
   closingDateTime?: DateTimeFormat;
+  /** Category slug of the service page that links the form (#3250). */
+  category?: string;
   steps: ClientFormStep[];
   createdAt: DateTimeFormat;
   updatedAt: DateTimeFormat;

@@ -1,0 +1,334 @@
+import { TextT, TextHTwo, TextHThree, TextHFour, Quotes, Minus } from "@phosphor-icons/react";
+import {
+  $createParagraphNode,
+  $createTextNode,
+  $createLineBreakNode,
+  $isParagraphNode,
+  $isTextNode,
+  $isLineBreakNode,
+  IS_BOLD,
+  IS_CODE,
+  IS_ITALIC,
+  IS_STRIKETHROUGH,
+  TextNode,
+  type LexicalEditor,
+  type LexicalNode,
+  type TextFormatType,
+} from "lexical";
+import {
+  $createHeadingNode,
+  $createQuoteNode,
+  $isHeadingNode,
+  $isQuoteNode,
+  HeadingNode,
+  QuoteNode,
+  type HeadingTagType,
+} from "@lexical/rich-text";
+import { $createLinkNode, $isLinkNode } from "@lexical/link";
+import { TextModule } from "@/editor/modules";
+import { lineHint } from "@/editor/react";
+import { isSafeContentUrl } from "@govtech-bb/govbbmarkd/content-url";
+import { isHtmlBreak } from "@govtech-bb/govbbmarkd/legacy";
+import type { MarkdownNode, PageHandler, PageModule } from "../definition";
+import { blocks, phrasing, UnsupportedPageContent } from "../markdown";
+import { registerPageBlockExit } from "../block-exit";
+import { pageInsertAction } from "../insertion";
+import { pageTurnInto } from "../turn-into";
+import { PageRuleNode } from "../nodes";
+import { $hasTrait } from "../blocks/node";
+
+/** Visual editing additionally excludes whitespace and scheme-relative destinations; empty links remain editable. */
+export function safePageUrl(value: string): boolean {
+  return (
+    (value === "" || isSafeContentUrl(value)) &&
+    !value.startsWith("//") &&
+    ![...value].some(
+      (character) => character.charCodeAt(0) <= 32 || character.charCodeAt(0) === 127,
+    )
+  );
+}
+
+const formats = { strong: "bold", emphasis: "italic", delete: "strikethrough" } satisfies Partial<
+  Record<MarkdownNode["type"], TextFormatType>
+>;
+
+function formatDescendants(node: LexicalNode, format: TextFormatType) {
+  if ($isTextNode(node)) {
+    if (!node.hasFormat(format)) node.toggleFormat(format);
+  } else if ("getChildren" in node) {
+    // SAFETY: This branch is only used with element nodes returned by the registered inline converters.
+    for (const child of (node as import("lexical").ElementNode).getChildren())
+      formatDescendants(child, format);
+  }
+}
+
+const text: PageHandler = {
+  accepts: (node) =>
+    [
+      "text",
+      "strong",
+      "emphasis",
+      "delete",
+      "inlineCode",
+      "break",
+      "link",
+      "paragraph",
+      "heading",
+      "blockquote",
+      "thematicBreak",
+    ].includes(node.type) || isHtmlBreak(node),
+  owns: (node) =>
+    $isTextNode(node) ||
+    $isLineBreakNode(node) ||
+    $isLinkNode(node) ||
+    $isParagraphNode(node) ||
+    $isHeadingNode(node) ||
+    $isQuoteNode(node) ||
+    node instanceof PageRuleNode,
+  $import(node, context) {
+    switch (node.type) {
+      case "text":
+        return [$createTextNode(node.value)];
+      case "inlineCode":
+        return [$createTextNode(node.value).toggleFormat("code")];
+      case "break":
+      case "html":
+        if (node.type === "html" && !isHtmlBreak(node)) throw new UnsupportedPageContent(node);
+
+        return [$createLineBreakNode()];
+      case "strong":
+      case "emphasis":
+      case "delete": {
+        const children = node.children.flatMap((child) => context.$import(child));
+
+        for (const child of children) formatDescendants(child, formats[node.type]);
+
+        return children;
+      }
+
+      case "link": {
+        if (!safePageUrl(node.url))
+          throw new UnsupportedPageContent(node, "This link destination needs source editing");
+
+        return [
+          $createLinkNode(node.url, { title: node.title }).append(
+            ...node.children.flatMap((child) => context.$import(child)),
+          ),
+        ];
+      }
+
+      case "paragraph":
+        return [
+          $createParagraphNode().append(
+            ...node.children.flatMap((child) => context.$import(child)),
+          ),
+        ];
+      case "heading": {
+        // SAFETY: mdast heading depth is restricted to 1–6.
+        const tag = `h${node.depth}` as HeadingTagType;
+
+        return [
+          $createHeadingNode(tag).append(
+            ...node.children.flatMap((child) => context.$import(child)),
+          ),
+        ];
+      }
+
+      case "blockquote": {
+        const unsupported = node.children.find(
+          (child) => !["paragraph", "heading", "list", "blockquote"].includes(child.type),
+        );
+
+        if (unsupported)
+          throw new UnsupportedPageContent(
+            unsupported,
+            "This quotation contains blocks that need Markdown source editing",
+          );
+
+        return [
+          $createQuoteNode().append(...node.children.flatMap((child) => context.$import(child))),
+        ];
+      }
+
+      case "thematicBreak":
+        return [new PageRuleNode()];
+      default:
+        throw new UnsupportedPageContent(node);
+    }
+  },
+  $export(node, context) {
+    if ($isTextNode(node)) {
+      let result: MarkdownNode = node.hasFormat("code")
+        ? { type: "inlineCode", value: node.getTextContent() }
+        : { type: "text", value: node.getTextContent() };
+
+      for (const [type, format] of Object.entries(formats)) {
+        if (node.hasFormat(format)) {
+          // SAFETY: The keys of formats are exactly the three mdast inline-format node types.
+          result = { type: type as "strong" | "emphasis" | "delete", children: phrasing([result]) };
+        }
+      }
+
+      return [result];
+    }
+
+    if ($isLineBreakNode(node))
+      return node.getParents().some((parent) => $hasTrait(parent, "button"))
+        ? [{ type: "break" }]
+        : [{ type: "html", value: "<br>" }];
+
+    if (node instanceof PageRuleNode) return [{ type: "thematicBreak" }];
+
+    if ($isLinkNode(node))
+      return [
+        {
+          type: "link",
+          url: node.getURL(),
+          title: node.getTitle(),
+          children: phrasing(node.getChildren().flatMap((child) => context.$export(child))),
+        },
+      ];
+
+    if ($isParagraphNode(node))
+      return [
+        {
+          type: "paragraph",
+          children: phrasing(node.getChildren().flatMap((child) => context.$export(child))),
+        },
+      ];
+
+    if ($isHeadingNode(node)) {
+      // SAFETY: HeadingNode tags have been validated against h1–h6 by the page definition.
+      const depth = Number(node.getTag().slice(1)) as 1 | 2 | 3 | 4 | 5 | 6;
+
+      return [
+        {
+          type: "heading",
+          depth,
+          children: phrasing(node.getChildren().flatMap((child) => context.$export(child))),
+        },
+      ];
+    }
+
+    if ($isQuoteNode(node)) {
+      const children = node.getChildren().flatMap((child) => context.$export(child));
+
+      const content = children.every((child) =>
+        ["paragraph", "heading", "list", "blockquote"].includes(child.type),
+      )
+        ? blocks(children)
+        : [{ type: "paragraph" as const, children: phrasing(children) }];
+
+      // SAFETY: The quote's supported block exporters return legal blockquote children.
+      return [{ type: "blockquote", children: content as import("mdast").BlockContent[] }];
+    }
+
+    throw new Error(`Unsupported text node ${node.getType()}`);
+  },
+};
+
+// The formats a page's Markdown keeps (see formats above): any other, such as underline or highlight pasted from
+// another app, would show in the editor and be gone from the published page
+const kept = IS_BOLD | IS_ITALIC | IS_STRIKETHROUGH | IS_CODE;
+
+function registerPageFormats(editor: LexicalEditor) {
+  return editor.registerNodeTransform(TextNode, (node) => {
+    if (node.getFormat() & ~kept) node.setFormat(node.getFormat() & kept);
+  });
+}
+
+export function PageTextModule(): PageModule {
+  const base = TextModule({ initialize: false });
+
+  return {
+    ...base,
+    registrations: [
+      ...(base.registrations ?? []),
+      { key: "page-formats", phase: "document", register: registerPageFormats },
+      { key: "page-block-exit", phase: "browser", register: registerPageBlockExit },
+    ],
+    nodes: [
+      ...(base.nodes ?? []),
+      { type: "heading", node: HeadingNode },
+      { type: "quote", node: QuoteNode },
+      { type: "page-rule", node: PageRuleNode },
+    ],
+    markdown: [text],
+    turnInto: pageTurnInto,
+    actions: [
+      pageInsertAction("page-paragraph", "Text", $createParagraphNode, {
+        group: "Text",
+        order: 10,
+        icon: <TextT />,
+        description: "Write a paragraph of text.",
+        aliases: ["paragraph", "plain text"],
+      }),
+      // The page's title is its Heading 1, and GOV.BB pages go no deeper than Heading 4, which only a search finds.
+      // Pages that use the others still open and keep them
+      pageInsertAction("page-h2", "Heading 2", () => $createHeadingNode("h2"), {
+        group: "Text",
+        order: 10,
+        icon: <TextHTwo />,
+        description: "Name a section of the page, such as ‘Who can apply’.",
+        aliases: ["h2", "subheading"],
+        markdown: "##",
+      }),
+      pageInsertAction("page-h3", "Heading 3", () => $createHeadingNode("h3"), {
+        group: "Text",
+        order: 10,
+        icon: <TextHThree />,
+        description: "Name part of a section, under a Heading 2.",
+        aliases: ["h3"],
+        markdown: "###",
+      }),
+      pageInsertAction("page-h4", "Heading 4", () => $createHeadingNode("h4"), {
+        group: "Text",
+        order: 10,
+        icon: <TextHFour />,
+        description: "Name part of a Heading 3 section.",
+        aliases: ["h4"],
+        markdown: "####",
+        searchOnly: true,
+      }),
+      pageInsertAction(
+        "page-quote",
+        "Quote",
+        () => $createQuoteNode().append($createParagraphNode()),
+        {
+          group: "Text",
+          order: 10,
+          icon: <Quotes />,
+          description: "Set a quotation apart from the text.",
+          aliases: ["blockquote", "quotation", "cite"],
+          markdown: ">",
+        },
+      ),
+      pageInsertAction("page-rule", "Separator", () => new PageRuleNode(), {
+        group: "Text",
+        order: 10,
+        icon: <Minus />,
+        description: "Separate sections with a horizontal line.",
+        aliases: ["divider", "horizontal rule", "line", "hr"],
+        markdown: "---",
+      }),
+    ],
+    theme: {
+      paragraph: `page-paragraph ${lineHint}`,
+      heading: {
+        h1: "page-h1",
+        h2: "page-h2",
+        h3: "page-h3",
+        h4: "page-h4",
+        h5: "page-h5",
+        h6: "page-h6",
+      },
+      quote: "page-quote",
+      text: {
+        bold: "font-bold",
+        italic: "italic",
+        strikethrough: "line-through",
+        code: "page-code",
+      },
+    },
+  };
+}

@@ -1,10 +1,10 @@
 import { z } from "zod";
 
-// Shape of a first-party journey event sent by the landing and forms sites
+// Shape of a first-party journey event sent by the landing, forms and chat sites
 // (replacing Umami, see journey.controller.ts).
 //
 // Event names are built at runtime (`<formId>:form-step-three`,
-// `service-<slug>`, `data-umami-event` values), so they are checked by SHAPE,
+// `data-umami-event` values), so they are checked by SHAPE,
 // not against a fixed list: a fixed list would silently drop real events.
 
 // Lower-case slug characters plus `:` (form-scoped names) and `~` (hashed long
@@ -27,7 +27,7 @@ export const journeyEventSchema = z
   .object({
     /** Random per-event id, so a retried send can be counted once. */
     id: z.uuid(),
-    app: z.enum(["landing", "forms"]),
+    app: z.enum(["landing", "forms", "chat"]),
     event: z.string().regex(EVENT_NAME),
     props: z
       .record(z.string().regex(PROP_KEY), propValue)
@@ -38,6 +38,12 @@ export const journeyEventSchema = z
     path: z.string().regex(PATHNAME).optional(),
     /** Random per page load (not stored anywhere), to group one visit's events. */
     page_load_id: z.uuid().optional(),
+    /**
+     * Random per browser tab, kept in the tab's sessionStorage and passed from
+     * landing to forms in the Start link, to join one journey's events across
+     * the apps and the EzPay round trip.
+     */
+    journey_id: z.uuid().optional(),
     client_ts: z.iso.datetime().optional(),
   })
   .strict();

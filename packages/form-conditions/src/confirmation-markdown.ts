@@ -44,7 +44,7 @@ type TokenSpec = {
  */
 export const POLYCLINIC_CONTACTS: Record<string, string> = {
   "Branford Taitt Polyclinic":
-    "Branford Taitt Polyclinic - [(246) 536-3700](tel:+12465363700), [EHD.BTPC@health.gov.bb](mailto:EHD.BTPC@health.gov.bb)",
+    "Branford Taitt Polyclinic - [(246) 536-3720](tel:+12465363720), [EHD.BTPC@health.gov.bb](mailto:EHD.BTPC@health.gov.bb)",
   "David Thompson Health & Social Services Complex":
     "David Thompson Health & Social Services Complex - [(246) 536-4453](tel:+12465364453), [DTHSSC.EHD@health.gov.bb](mailto:DTHSSC.EHD@health.gov.bb)",
   "Eunice Gibson Polyclinic":

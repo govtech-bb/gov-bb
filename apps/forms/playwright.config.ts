@@ -55,6 +55,8 @@ export default defineConfig({
     command: "npm run dev",
     url: "http://localhost:3000",
     reuseExistingServer: !process.env.CI,
+    // Journey events on, sent to a path e2e/journey-id.spec.ts intercepts.
+    env: { VITE_JOURNEY_URL: "http://localhost:3000/__e2e-journey" },
     timeout: 120_000,
     stderr: "pipe",
     stdout: "ignore",

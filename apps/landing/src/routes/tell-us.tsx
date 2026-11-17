@@ -1,4 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
+import { useEffect } from 'react'
+import { installTallySubmitListener } from '../lib/tally-submit'
 
 export const Route = createFileRoute('/tell-us')({
   head: () => ({
@@ -16,6 +18,8 @@ export const Route = createFileRoute('/tell-us')({
 })
 
 function TellUsPage() {
+  useEffect(() => installTallySubmitListener(), [])
+
   return (
     <div className="govbb-width-container govbb-main-wrapper">
       <iframe

@@ -69,6 +69,7 @@ async function bootstrap() {
       "X-Recipe-Preview",
       "X-Recipe-Draft",
       "X-Smoke-Submission",
+      "X-Journey-Id",
     ],
     credentials: true,
   });

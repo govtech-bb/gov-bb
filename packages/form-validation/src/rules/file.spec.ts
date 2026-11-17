@@ -112,6 +112,41 @@ describe("fileTypesRunner", () => {
       "Allowed file types: pdf",
     );
   });
+
+  // #2708: image/jpeg reduces to the subtype "jpeg", but the usual extension
+  // is ".jpg". Both spellings name the same type, whichever one is listed.
+  describe("treats .jpg and .jpeg as the same type (#2708)", () => {
+    const mimeList = ["application/pdf", "image/jpeg", "image/png"];
+
+    it.each([
+      ["photo.jpg", ""],
+      ["photo.jpg", "application/octet-stream"],
+      ["photo.JPG", undefined],
+      ["photo.jpeg", ""],
+    ])("accepts %s (type %j) under image/jpeg", (name, type) => {
+      expect(
+        fileTypesRunner([file(name, 100, type)], cfg(mimeList)),
+      ).toBeNull();
+    });
+
+    it.each([[".jpg"], ["jpg"], [".jpeg"], ["jpeg"]])(
+      "accepts both spellings when the list has %s",
+      (entry) => {
+        for (const name of ["photo.jpg", "photo.jpeg"]) {
+          expect(
+            fileTypesRunner([file(name, 100, "")], cfg([entry])),
+            name,
+          ).toBeNull();
+        }
+      },
+    );
+
+    it("still refuses a .jpg when no JPEG type is listed", () => {
+      expect(
+        fileTypesRunner([file("photo.jpg", 100, "")], cfg(["application/pdf"])),
+      ).toBe("Allowed file types: application/pdf");
+    });
+  });
 });
 
 describe("itemMaxSizeRunner", () => {

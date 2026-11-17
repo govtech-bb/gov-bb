@@ -1,7 +1,7 @@
 # Check-your-answers → govbb summary-list, payment receipt → plain `<dl>`
 
 **Branch:** `chore/migrate-forms-design-system` (follow-on to PR #259)
-**Related:** decision `docs/decisions/0007-forms-ui-styled-with-govbb-styles.md`, prior summary `2026-05-27-forms-design-system-migration.md`.
+**Related:** decision `docs/decisions/0027-forms-ui-styled-with-govbb-styles.md`, prior summary `2026-05-27-forms-design-system-migration.md`.
 
 ## What changed
 
@@ -13,7 +13,7 @@ Two semantic markup conversions in the forms app, plus a small responsive tweak:
 
 ## Why the code looks the way it does
 
-- **`govbb-summary-section` / `govbb-summary-list` aren't in the published `alpha.16`** (they're alpha.17-only, unreleased). Rather than wait on a release, the official `summary-list.css` was **ported into `govtech.css` under the real class names**, with its two `@apply govbb-font-*` lines swapped for the equivalent `var(--font-size-*)` declarations (the app's own Tailwind can't `@apply` the package's `@source inline` utilities). This is **forward-compatible**: when the package ships alpha.17 and the dep is bumped, that block in `govtech.css` can be deleted with no markup change. The approach matches ADR 0007's Consequence ("compose from existing classes + tokens" when the package lacks a component).
+- **`govbb-summary-section` / `govbb-summary-list` aren't in the published `alpha.16`** (they're alpha.17-only, unreleased). Rather than wait on a release, the official `summary-list.css` was **ported into `govtech.css` under the real class names**, with its two `@apply govbb-font-*` lines swapped for the equivalent `var(--font-size-*)` declarations (the app's own Tailwind can't `@apply` the package's `@source inline` utilities). This is **forward-compatible**: when the package ships alpha.17 and the dep is bumped, that block in `govtech.css` can be deleted with no markup change. The approach matches ADR 0027's Consequence ("compose from existing classes + tokens" when the package lacks a component).
 
 - **The payment receipt is a plain `<dl>`, not `govbb-summary-list`.** The user-pasted spec says summary-list is for answers the user can *change* (each section has a Change link). Post-submission payment data is **static reference** — there is no editing — so the spec recommends a plain definition list. The previous markup (alternating `<p>` tags inside a `form-page__payment-table` div) communicated nothing semantically; the `<dl>`/`<dt>`/`<dd>` pairs are a strict improvement that preserves the visual (Tailwind preflight zeroes `<dl>`/`<dd>` default margins, and `<dt>`/`<dd>` auto-flow into the existing `1fr 1fr` grid the same way the `<p>` pairs did).
 

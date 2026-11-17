@@ -270,9 +270,10 @@ function topNonEmptyQueries(
 
 /**
  * Summarise landing search from two events:
- *  - `search-submit` (every search-box submission): query frequency + a
- *    breakdown by where the search ran (home/services/results). This is the
- *    primary "what are people searching" signal and is always populated.
+ *  - `search-submit` (search boxes and homepage Popular searches links):
+ *    query frequency + a breakdown by where the search ran
+ *    (home/services/results). This is the primary "what are people searching"
+ *    signal and is always populated.
  *  - `search` (fired on the results page): the zero-results rate. May be empty
  *    in ranges where only `search-submit` is firing.
  * CTR is not derivable (no search-result click event).

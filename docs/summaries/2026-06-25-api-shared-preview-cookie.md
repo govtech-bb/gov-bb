@@ -34,9 +34,9 @@ Worked in worktree `recipe-visibility-phase3-api` (branch
   multi-cookie parse, no-cookie no-bypass, draft-header mints nothing).
 - **`apps/api/.env.example`** — documents `PREVIEW_COOKIE_DOMAIN` and the
   `RECIPE_PREVIEW_TOKEN == PREVIEW_SECRET` value-alignment.
-- **`docs/decisions/0011-…md`** — re-scoped to the `?draft=`/DB-scratch +
+- **`docs/decisions/0026-…md`** — re-scoped to the `?draft=`/DB-scratch +
   disabled-form path (it no longer governs the published-form visibility bypass).
-- **`docs/decisions/0058-…md`** (new) — the shared preview cookie as a forgeable
+- **`docs/decisions/0099-…md`** (new) — the shared preview cookie as a forgeable
   rollout gate.
 
 ## Why it looks this way
@@ -52,13 +52,13 @@ Worked in worktree `recipe-visibility-phase3-api` (branch
   signals are kept strictly separate: `bypassVisibility` (cookie OR valid token)
   vs `draft` (the `X-Recipe-Draft` secret header alone). A forged `preview=draft`
   cookie bypasses the 404 gate but cannot make the API serve the unpublished DB
-  scratch — that still requires the secret on every request (ADR 0011, which we
+  scratch — that still requires the secret on every request (ADR 0026, which we
   re-scoped to say exactly this). A spec test locks the asymmetry in.
 - **The bypass is deliberately forgeable.** Cookie presence is the grant; the
   value is only the level, never a secret. Anyone can hand-set
   `Cookie: preview=preview` and view a non-public *published* form. That's
   acceptable because `visibility` means "not public yet", not "secret" — the same
-  posture ADR 0013 took for landing content. ADR 0058 records this so it's a
+  posture ADR 0028 took for landing content. ADR 0099 records this so it's a
   deliberate constraint, not a latent surprise. Truly sensitive forms need real
   auth or the `form_disabled_overrides` 410 (which nothing bypasses).
 - **Secret alignment is an ops step, not code.** `RECIPE_PREVIEW_TOKEN` is set to
@@ -71,7 +71,7 @@ Worked in worktree `recipe-visibility-phase3-api` (branch
   in a code comment so a future reader doesn't "fix" the units.
 - **Staged to be safe to ship alone.** The API change is additive: reading the
   cookie is a no-op when absent, and minting only fires on a valid header. So PR
-  1 can land and deploy before the frontends rely on it. ADR 0058 carries a
+  1 can land and deploy before the frontends rely on it. ADR 0099 carries a
   sequencing caveat — `PREVIEW_COOKIE_DOMAIN` must stay unset until PR 2 wires
   landing's matching domain, or the browser would keep two same-name cookies.
 

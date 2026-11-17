@@ -289,7 +289,7 @@
             "label": "Parish",
             "validations": {
               "required": {
-                "error": "Enter your address.",
+                "error": "Select your parish.",
                 "value": true
               }
             }
@@ -469,7 +469,7 @@
             "label": "Parish",
             "validations": {
               "required": {
-                "error": "Enter the operator's address.",
+                "error": "Select the operator's parish.",
                 "value": true
               }
             }
@@ -558,7 +558,7 @@
             "label": "Parish",
             "validations": {
               "required": {
-                "error": "Enter the address of the business or organisation.",
+                "error": "Select the parish of the business or organisation.",
                 "value": true
               }
             }
@@ -652,7 +652,7 @@
             "label": "Parish",
             "validations": {
               "required": {
-                "error": "Enter the hotel address.",
+                "error": "Select the hotel's parish.",
                 "value": true
               }
             }
@@ -1504,5 +1504,5 @@
     }
   ],
   "createdAt": "2026-08-18T17:01:58.317Z",
-  "updatedAt": "2026-10-05T22:33:00.000Z"
+  "updatedAt": "2026-11-16T10:40:13.993Z"
 }

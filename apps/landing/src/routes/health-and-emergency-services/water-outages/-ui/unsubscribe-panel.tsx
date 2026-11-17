@@ -1,8 +1,17 @@
 import { Button, ButtonGroup, Heading, Link, Text } from '@govtech-bb/react'
 import { useState, useTransition } from 'react'
+import { trackEvent } from '@/lib/analytics'
 import { unsubscribeSubscription } from '../-lib/water-alerts'
 import type { TokenOutcome } from '../-lib/water-alerts'
 import { ResultNotice } from './result-notice'
+
+// The tool-result outcome for each answer. Never the token.
+const RESULT_OUTCOME: Record<TokenOutcome, string> = {
+  done: 'unsubscribed',
+  already: 'already-unsubscribed',
+  invalid: 'invalid-token',
+  unavailable: 'unavailable',
+}
 
 export const MESSAGES: Record<
   TokenOutcome,
@@ -53,11 +62,15 @@ export function UnsubscribePanel({ token }: { token: string }) {
             disabled={isPending}
             onClick={() =>
               startTransition(async () => {
-                try {
-                  setOutcome(await unsubscribeSubscription({ data: token }))
-                } catch {
-                  setOutcome('unavailable')
-                }
+                const result = await unsubscribeSubscription({
+                  data: token,
+                }).catch((): TokenOutcome => 'unavailable')
+                setOutcome(result)
+                trackEvent('tool-result', {
+                  tool: 'water-outages',
+                  step: 'unsubscribe',
+                  outcome: RESULT_OUTCOME[result],
+                })
               })
             }
             type="button"

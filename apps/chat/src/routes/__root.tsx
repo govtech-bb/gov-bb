@@ -1,8 +1,19 @@
 import { HeadContent, Scripts, createRootRoute } from "@tanstack/react-router";
 import { Footer, textVariants } from "@govtech-bb/react";
+import { UMAMI_SCRIPT_ATTRIBUTES } from "@govtech-bb/analytics";
 import { LANDING_URL } from "#/config/landing";
 
 import appCss from "../styles.css?url";
+
+// Umami Cloud, as on landing. Baked at build time (the SSR Lambda never sees
+// Amplify Console env vars). The id is public: it ships in the <script> tag.
+// When it is unset the script is left out, so nothing goes to Umami.
+const UMAMI_WEBSITE_ID = import.meta.env.VITE_UMAMI_WEBSITE_ID as
+  | string
+  | undefined;
+const UMAMI_SRC =
+  (import.meta.env.VITE_UMAMI_SRC as string | undefined) ??
+  "https://cloud.umami.is/script.js";
 
 const FOOTER_LINKS = [
   { label: "Home", href: `${LANDING_URL}/` },
@@ -25,6 +36,16 @@ export const Route = createRootRoute({
       { name: "robots", content: "noindex" },
     ],
     links: [{ rel: "stylesheet", href: appCss }],
+    scripts: UMAMI_WEBSITE_ID
+      ? [
+          {
+            src: UMAMI_SRC,
+            defer: true,
+            "data-website-id": UMAMI_WEBSITE_ID,
+            ...UMAMI_SCRIPT_ATTRIBUTES,
+          },
+        ]
+      : [],
   }),
   shellComponent: RootDocument,
 });

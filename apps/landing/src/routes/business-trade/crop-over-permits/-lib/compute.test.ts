@@ -34,6 +34,7 @@ describe('getActivePermits', () => {
     // the contract directly with a fixture.
     const permits: Array<Permit> = [
       {
+        id: 'two-condition',
         step: 1,
         name: 'Two-condition',
         agency: 'X',
@@ -88,6 +89,7 @@ describe('getActivePermits', () => {
 
 describe('renumberSteps', () => {
   const stub = (step: number, name: string): Permit => ({
+    id: name,
     step,
     name,
     agency: '',

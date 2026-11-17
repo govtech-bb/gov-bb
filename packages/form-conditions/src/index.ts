@@ -1,4 +1,5 @@
 import type {
+  ConditionalHint,
   ConditionalLabel,
   ConditionalTitle,
   FieldConditionalOnBehaviour,
@@ -81,6 +82,29 @@ export function resolveFieldLabel(
     if (evaluateCondition(entry, values, flatValues)) return entry.label;
   }
   return field.label;
+}
+
+/**
+ * Resolve a field's effective hint for a given set of submitted values.
+ *
+ * The hint counterpart of {@link resolveFieldLabel}: a field may carry
+ * `conditionalHint` entries (#3637) so its hint can change with an earlier
+ * answer. The first entry whose condition matches wins; the static `hint` is
+ * the fallback when there are no entries or none match, and `undefined` (no
+ * hint) when the field has no static hint either.
+ */
+export function resolveFieldHint(
+  field: { hint?: string; conditionalHint?: ConditionalHint[] },
+  values: StepScopedValues,
+): string | undefined {
+  const conditionalHints: ConditionalHint[] = field.conditionalHint ?? [];
+  if (conditionalHints.length === 0) return field.hint;
+
+  const flatValues = flattenStepValues(values);
+  for (const entry of conditionalHints) {
+    if (evaluateCondition(entry, values, flatValues)) return entry.hint;
+  }
+  return field.hint;
 }
 
 export type StepScopedValues = Record<

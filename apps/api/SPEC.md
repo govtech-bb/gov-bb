@@ -55,7 +55,7 @@ Drafts have a **7-day inactivity TTL**. A daily cron job (`@Cron(EVERY_DAY_AT_MI
 | Method | Path | Description |
 |---|---|---|
 | `POST` | `/submissions` | Validate, persist, and dispatch a form submission. Requires the `Idempotency-Key` request header. Body is size-limited to **1 MiB** by `SubmissionPayloadSizePipe`. |
-| `GET` | `/submissions/:reference/status` | Where an application has got to, for the chat (#3419). Public and unauthenticated, like the application tracker: the reference is the access. `200` with `data.kind` `found` (`status`, `updatedAt`), `untracked` (`receivedAt`, `formId`) or `not_found`; `503` when the tracker can't answer. |
+| `GET` | `/submissions/:reference/status` | Where an application has got to, for the chat (#3419). Public and unauthenticated, like the application tracker: the reference is the access. `200` with `data.kind` `found` (`status`, `updatedAt`, `formId`), `untracked` (`receivedAt`, `formId`) or `not_found`; `503` when the tracker can't answer. The chat sends `X-Chat-Caller-Token` to be throttled as one caller (§6.2). |
 
 Submission semantics:
 
@@ -194,9 +194,10 @@ Three tiers configured globally (`short`/`medium`/`long`) and tuned per controll
 | `/form-drafts/*` | 5 / 10 s | 30 / 60 s | (default) |
 | `POST /submissions` | 3 / 10 s | 10 / 60 s | 50 / 1 h |
 | `GET /submissions/:reference/status` | (default) | (default) | (default) |
+| `GET /submissions/:reference/status` with a valid `X-Chat-Caller-Token` | 50 / 10 s | 300 / 60 s | 3000 / 1 h |
 | `/health`, `/payments/ezpay/webhook`, `/payments/ezpay/redirect` | bypassed | bypassed | bypassed |
 
-The status lookup is on the global default. Every chat lookup comes from the chat's server, so these limits apply to the whole chat, not to one person (govtech-bb/govbb-chatbot#173).
+The status lookup is on the global default per IP, except for the chat (#3623). Every chat lookup comes from the chat's server, so per IP the whole chat would share one client's limit. A lookup carrying `X-Chat-Caller-Token` equal to `CHAT_CALLER_TOKEN` is counted on one counter for the whole chat, whatever address it comes from, with the higher limits above. A missing or wrong token is limited per IP, on the same counter as before. The chat limits each of its own users itself (govtech-bb/govbb-chatbot#173). The rule is on this route only (`chat-caller-throttle.ts`), so the token raises no other limit. Unset `CHAT_CALLER_TOKEN` ⇒ nobody gets the chat limit.
 
 The counters are per-process and in-memory — multi-task deployments rely on AWS WAF as the authoritative rate limiter.
 
@@ -210,6 +211,7 @@ The counters are per-process and in-memory — multi-task deployments rely on AW
 - `ConfigModule` is global, loads typed config namespaces (`app`, `database`, `email`, `spreadsheet`, `sqs`, plus `EZPAY_*` direct reads), and validates the environment with **Joi** at boot.
 - Joi rules enforce: production CORS safety, mandatory database creds, conditional SQS vars (only required when `SQS_ENABLED=true`), conditional EzPay webhook secret, and required EzPay base URL + department-keys JSON.
 - `FORMS_BASE_URL` — public forms site origin the EzPay return redirect bounces the citizen to. When empty it falls back to the first `CORS_ORIGIN` entry (the forms site on every deployed env), so it only needs setting if the two diverge.
+- `API_V2_URL` — api_v2 origin. When set, `GET /services` lists api_v2's `GET /catalog` (cached 60 s per instance, last good copy on a failed refresh, `503` on a cold failure) with api_v2's visibility, ignoring `service_status`; the read sends `RECIPE_PREVIEW_TOKEN` as `x-preview-token`, so the two secrets must match. When empty, the build-time snapshot + `service_status` (#3249).
 - `LANDING_BASE_URL` — public landing site origin, substituted into a recipe's `{landingUrl}` confirmation token so authored links to a service page point at this environment's landing site. Both confirmation surfaces sit off the landing origin (the page is served from the forms host; an email has no base URL at all), so a root-relative link would be broken on each. When empty, `@govtech-bb/form-conditions` substitutes the shared prod fallback `https://alpha.gov.bb` — the same fallback the forms app's `VITE_LANDING_URL` uses, so page and email can't diverge.
 
 ### 6.5 Boot sequence (`main.ts`)
@@ -252,6 +254,7 @@ Optional / conditionally required:
 - `SLACK_ALERTS_WEBHOOK_URL` (operator alert webhook for permanently-failed submission dispatch, #2168; unset ⇒ silent no-op, logged once at boot)
 - `EZPAY_WEBHOOK_VERIFY_SIGNATURE`, `EZPAY_WEBHOOK_SECRET`
 - `TRACKER_LOOKUP_API_URL` (the application tracker's lookup API, its `lookup_api_endpoint`. Calls are SigV4-signed with the task role, except to `localhost`. Unset ⇒ CaMS status lookups answer `503`; everything else works)
+- `CHAT_CALLER_TOKEN` (the chat's caller token, #3623: the same value as the chat's `chat-caller-token` secret. Status lookups carrying it are throttled as one caller, §6.2. Unset ⇒ every lookup is throttled per IP. Never logged)
 - `SEED_ON_BOOT` (dev convenience — applies the seed form definitions in `database/seed.ts`)
 
 ---

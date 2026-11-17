@@ -623,7 +623,7 @@
             "label": "Length in metres",
             "validations": {
               "required": {
-                "error": "Length is required",
+                "error": "Length in metres is required",
                 "value": true
               },
               "gt": {
@@ -652,7 +652,7 @@
             "label": "Width in metres",
             "validations": {
               "required": {
-                "error": "Width is required",
+                "error": "Width in metres is required",
                 "value": true
               },
               "gt": {
@@ -681,7 +681,7 @@
             "label": "Height in metres",
             "validations": {
               "required": {
-                "error": "Height is required",
+                "error": "Height in metres is required",
                 "value": true
               },
               "gt": {
@@ -710,7 +710,7 @@
             "label": "Length in feet",
             "validations": {
               "required": {
-                "error": "Length is required",
+                "error": "Length in feet is required",
                 "value": true
               },
               "gt": {
@@ -739,7 +739,7 @@
             "label": "Width in feet",
             "validations": {
               "required": {
-                "error": "Width is required",
+                "error": "Width in feet is required",
                 "value": true
               },
               "gt": {
@@ -768,7 +768,7 @@
             "label": "Height in feet",
             "validations": {
               "required": {
-                "error": "Height is required",
+                "error": "Height in feet is required",
                 "value": true
               },
               "gt": {
@@ -1650,7 +1650,7 @@
     }
   ],
   "createdAt": "2026-08-24T23:54:14.187Z",
-  "updatedAt": "2026-10-13T12:15:17.000Z",
+  "updatedAt": "2026-11-16T10:40:13.993Z",
   "meta": {
     "visibility": "preview"
   },

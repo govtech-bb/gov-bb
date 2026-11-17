@@ -50,7 +50,8 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
   },
   {
     slug: "apply-for-an-nhc-rental-unit-or-lot",
-    title: "Apply for an NHC rental unit or lot",
+    title:
+      "Apply for a National Housing Corporation (NHC) rental home or house lot",
     category: "housing",
     formId: "nhc-rental-application",
     visibility: "preview",
@@ -319,6 +320,7 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
   {
     slug: "e2e-j2-publish-check",
     title: "E2E publish check (test service)",
+    category: "business-trade",
     formId: "e2e-j2-publish-check",
     visibility: "draft",
   },

@@ -362,7 +362,7 @@ describe("seedServiceManifest", () => {
     });
   });
 
-  it("leaves a decided value alone (ADR 0073)", () => {
+  it("leaves a decided value alone (ADR 0121)", () => {
     expect(
       seed({ applicantEmail: "none", delivery: "none" }).setup,
     ).toMatchObject({ applicantEmail: "none", delivery: "none" });

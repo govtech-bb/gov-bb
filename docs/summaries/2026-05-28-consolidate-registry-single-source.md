@@ -19,8 +19,8 @@ of truth. Executed from the plan in
   (`registry.service.ts`, `resolution.ts`, `registry.service.spec.ts`) from
   `./builtins` to the package, and deleted `apps/api/src/registry/builtins/`
   (57 files, incl. the dead `behaviors/`).
-- Recorded [ADR 0018](../decisions/0018-registry-is-sole-home-for-builtin-definitions.md)
-  and added a "superseded in part" note to ADR 0008.
+- Recorded [ADR 0037](../decisions/0037-registry-is-sole-home-for-builtin-definitions.md)
+  and added a "superseded in part" note to ADR 0018.
 
 ## Why we did it that way
 
@@ -52,5 +52,5 @@ and correct lockfile change.
 
 ## Open questions
 
-None. The save-boundary ref validation gap noted in ADR 0008 remains tracked
+None. The save-boundary ref validation gap noted in ADR 0018 remains tracked
 separately and is out of scope here.

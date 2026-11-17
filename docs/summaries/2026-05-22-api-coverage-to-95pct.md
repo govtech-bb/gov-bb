@@ -18,7 +18,7 @@ config factories (`app.config.ts`, `database.config.ts`, `email.config.ts`,
 `registry/builtins/behaviors/**`. This removed zero-coverage infrastructure files from
 the denominator and alone pushed branches from 64.89% to ~92%.
 
-See ADR 0006 for the policy this establishes.
+See ADR 0015 for the policy this establishes.
 
 ### New spec files
 

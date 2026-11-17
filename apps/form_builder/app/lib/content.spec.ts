@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { format } from "oxfmt";
 import {
   isValidSlug,
   isContentPath,
@@ -15,6 +17,7 @@ import {
   buildDeployPayload,
   type StartPageInput,
   type FormState,
+  type NewCategory,
 } from "./content";
 import {
   renderStartPageMarkdown,
@@ -411,12 +414,72 @@ export const CATEGORY_BY_SLUG: Record<string, Category> = Object.fromEntries(
     ).toBeNull();
   });
 
-  it("escapes quotes in titles", () => {
+  it("single-quotes a title that holds double quotes, as oxfmt does", () => {
     const next = insertCategoryEntry(SOURCE, {
       slug: "x",
       title: 'The "new" one',
     });
-    expect(next).toContain('title: "The \\"new\\" one",');
+    expect(next).toContain(`title: 'The "new" one',`);
+  });
+
+  // oxfmt keeps a missing escape as it is, so the format check alone can't
+  // catch one: check the literal the writer produces.
+  it("escapes a backslash, so the value survives", () => {
+    const next = insertCategoryEntry(SOURCE, {
+      slug: "x",
+      title: "X",
+      description: "Use a \\ to separate",
+    });
+    expect(next).toContain('description: "Use a \\\\ to separate",');
+  });
+});
+
+// CI's Lint job runs `oxfmt --check` over the repo, so a category the builder
+// pushes must already be formatted the way oxfmt formats it.
+describe("insertCategoryEntry output passes oxfmt", () => {
+  const categories = readFileSync(
+    new URL("../../../../packages/content/src/categories.ts", import.meta.url),
+    "utf8",
+  );
+  // Fills `    description: "…",` to exactly 80 columns.
+  const fits = "d".repeat(80 - '    description: "",'.length);
+  const cases: [string, Partial<NewCategory>][] = [
+    ["a short description", { description: "Find housing support" }],
+    ["a description at exactly 80 columns", { description: fits }],
+    ["a description one column past 80", { description: `${fits}d` }],
+    [
+      "a description longer than a whole line",
+      {
+        description:
+          "Apply for housing support, land titles and building permits, and find out what help is available to first-time buyers",
+      },
+    ],
+    [
+      "a title longer than 80 columns",
+      {
+        title:
+          "Housing, land, building permits and everything else about where you live in Barbados",
+      },
+    ],
+    ["a title with double quotes", { title: 'The "new" one' }],
+    ["a title with both kinds of quote", { title: `It's the "new" one` }],
+    ["a description with an apostrophe", { description: "The Board's grants" }],
+    ["a slug longer than 80 columns", { slug: "a".repeat(70) }],
+    ["a backslash", { description: "Use a \\ to separate" }],
+  ];
+
+  it.each(cases)("%s", async (_name, over) => {
+    const next = insertCategoryEntry(categories, {
+      slug: "housing-and-land",
+      title: "Housing and land",
+      ...over,
+    });
+    expect(next).not.toBeNull();
+    const { code, errors } = await format("categories.ts", next!, {
+      printWidth: 80,
+    });
+    expect(errors).toEqual([]);
+    expect(code).toBe(next);
   });
 });
 

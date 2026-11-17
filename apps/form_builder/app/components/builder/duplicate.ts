@@ -126,6 +126,13 @@ function copyFields(
         step.stepId,
         copyStep,
       );
+    if (effective.conditionalHint !== undefined)
+      overrides.conditionalHint = remapRules(
+        effective.conditionalHint,
+        ids,
+        step.stepId,
+        copyStep,
+      );
     if (effective.geocodeTargets !== undefined)
       overrides.geocodeTargets = remapRules(
         effective.geocodeTargets,

@@ -730,7 +730,16 @@ jobs:
 
   summary:
     name: Deployment summary
-    needs: [setup, deploy-api, ssr-smoke, amplify-forms, amplify-landing, amplify-feature-flagging, amplify-analytics]
+    needs:
+      [
+        setup,
+        deploy-api,
+        ssr-smoke,
+        amplify-forms,
+        amplify-landing,
+        amplify-feature-flagging,
+        amplify-analytics,
+      ]
     if: always()
     runs-on: ubuntu-latest
     steps:

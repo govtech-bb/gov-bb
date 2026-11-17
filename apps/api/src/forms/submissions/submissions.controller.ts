@@ -2,6 +2,7 @@ import { Body, Controller, Headers, Logger, Post } from "@nestjs/common";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 import { Throttle } from "@nestjs/throttler";
 import { ConfigService } from "@nestjs/config";
+import { z } from "zod";
 import { SubmissionsService } from "./submissions.service";
 import { CreateSubmissionDto } from "./dto";
 import { CreateSubmissionDocs } from "./submissions.docs";
@@ -22,14 +23,14 @@ export class SubmissionsController {
     private readonly configService: ConfigService,
   ) {
     // ALLOW_PREVIEW_SUBMISSIONS was retired in favour of the per-form
-    // allowlist below (ADR 0066). The env schema is .passthrough(), so a value
+    // allowlist below (ADR 0114). The env schema is .passthrough(), so a value
     // still sitting in a deployed task definition is silently ignored — say so
     // once at boot rather than leaving the behaviour change to be rediscovered.
     if (this.configService.get<string>("ALLOW_PREVIEW_SUBMISSIONS")) {
       this.logger.warn(
         "ALLOW_PREVIEW_SUBMISSIONS is set but no longer read — preview " +
           "submissions are now scoped per form via PREVIEW_SUBMISSION_FORM_IDS " +
-          "(ADR 0066).",
+          "(ADR 0114).",
       );
     }
   }
@@ -46,6 +47,7 @@ export class SubmissionsController {
     @Headers("x-smoke-submission") smokeToken: string | undefined,
     @Headers("x-recipe-preview") previewToken: string | undefined,
     @Body(SubmissionPayloadSizePipe) body: CreateSubmissionDto,
+    @Headers("x-journey-id") journeyIdHeader?: string,
   ): Promise<ApiResponseShape<FormSubmissionEntity>> {
     // Drop every processor for a smoke-originated submission — but only when
     // the header carries the configured SMOKE_SUBMISSION_TOKEN. Fail-closed:
@@ -65,8 +67,8 @@ export class SubmissionsController {
     // feature-flagged form can be tested end-to-end. Every other form still
     // needs the token. It only reaches non-public *published file* recipes —
     // DB-only builder drafts still resolve from the files source and stay
-    // unsubmittable (ADR 0043 / #145). Empty by default, so production has no
-    // env-level bypass at all (ADR 0066, superseding the blanket ADR 0065).
+    // unsubmittable (ADR 0075 / #145). Empty by default, so production has no
+    // env-level bypass at all (ADR 0114, superseding the blanket ADR 0113).
     const previewSubmissionFormIds = this.configService
       .get<string>("PREVIEW_SUBMISSION_FORM_IDS", "")
       .split(",")
@@ -79,6 +81,11 @@ export class SubmissionsController {
         this.configService.get<string>("RECIPE_PREVIEW_TOKEN", ""),
         previewToken,
       );
+
+    // The forms tab's journey ID (#3507), logged on submission_accepted so the
+    // journey's form-submit event can be joined to it. The same UUID check as
+    // /journey's journey_id; anything else is ignored, never logged.
+    const journeyId = z.uuid().safeParse(journeyIdHeader);
 
     const {
       data,
@@ -93,6 +100,7 @@ export class SubmissionsController {
       idempotencyKey,
       ...(isSmokeSubmission && { isSmokeSubmission: true }),
       ...(bypassVisibility && { bypassVisibility: true }),
+      ...(journeyId.success && { journeyId: journeyId.data }),
     });
 
     // Extra outcome data rides on `meta` (like `deferred`): the resolved

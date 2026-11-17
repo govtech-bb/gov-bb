@@ -38,11 +38,11 @@ origin coming from an env var documented in `.env.example`.
   the bundle with a `define` block (mirroring `form_builder`'s existing
   `BUILDER_API_URL` etc.). That was **wrong**: those existing vars are only
   read in *server* entries, whereas the preview helper is bundled into the
-  *browser*. [ADR-0005](../decisions/0005-vite-env-vars-use-import-meta-env-only.md)
+  *browser*. [ADR-0013](../decisions/0013-vite-env-vars-use-import-meta-env-only.md)
   explicitly forbids `process.env`/`define` for browser-readable config in
   `apps/form_builder` and mandates `VITE_`-prefixed vars via `import.meta.env`.
   We renamed to `VITE_FORMS_URL` — the exact var the landing app already uses
-  for forms links ([ADR-0004](../decisions/0004-form-scheme-for-cross-app-links.md))
+  for forms links ([ADR-0008](../decisions/0008-form-scheme-for-cross-app-links.md))
   — so the monorepo has one name for "the forms origin." The user picked this
   over keeping `FORM_URL` (which would have required a superseding ADR).
 - **The jest wrinkle.** `form_builder` runs ts-jest in CJS mode, where
@@ -59,7 +59,7 @@ origin coming from an env var documented in `.env.example`.
 ## What we almost got wrong
 
 The whole thing initially shipped (uncommitted) using `process.env` + `define`,
-which silently violated ADR-0005 — caught only while scanning existing decision
+which silently violated ADR-0013 — caught only while scanning existing decision
 records during the dev-finish wrap, not during the build. Lesson: check
 `docs/decisions/` for the area you're touching *before* implementing, not after.
 

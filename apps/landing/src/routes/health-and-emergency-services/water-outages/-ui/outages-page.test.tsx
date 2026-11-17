@@ -4,12 +4,14 @@ import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { renderToString } from 'react-dom/server'
 import { useState } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { trackEvent } from '@/lib/analytics'
 import { locateParish } from '../-lib/geo'
 import { subscribeWaterAlerts } from '../-lib/water-alerts'
 import type { WaterOutagesData } from '../-lib/water-alerts'
 import { TITLE, WaterOutagesPage } from './outages-page'
 import { SubscribeForm } from './subscribe-form'
 
+vi.mock('@/lib/analytics', () => ({ trackEvent: vi.fn() }))
 vi.mock('../-lib/water-alerts', () => ({ subscribeWaterAlerts: vi.fn() }))
 vi.mock('../-lib/geo', () => ({ locateParish: vi.fn() }))
 vi.mock('./outage-map', () => ({
@@ -72,6 +74,7 @@ const DATA: WaterOutagesData = {
 }
 
 let success: PositionCallback
+let fail: PositionErrorCallback
 const retry = vi.fn()
 
 function TestPage({ data }: { data: WaterOutagesData }) {
@@ -93,9 +96,12 @@ beforeEach(() => {
     Object.create(navigator, {
       geolocation: {
         value: {
-          getCurrentPosition: vi.fn((onSuccess: PositionCallback) => {
-            success = onSuccess
-          }),
+          getCurrentPosition: vi.fn(
+            (onSuccess: PositionCallback, onError: PositionErrorCallback) => {
+              success = onSuccess
+              fail = onError
+            },
+          ),
         },
       },
     }),
@@ -106,6 +112,7 @@ afterEach(() => {
   cleanup()
   vi.resetAllMocks()
   vi.unstubAllGlobals()
+  vi.useRealTimers()
 })
 
 describe('water outages page', () => {
@@ -287,5 +294,321 @@ describe('water outages page', () => {
       screen.getByRole<HTMLButtonElement>('button', { name: 'Cancel' })
         .disabled,
     ).toBe(false)
+  })
+})
+
+describe('water outages events (#3510)', () => {
+  const tool = 'water-outages'
+
+  // Keeps jsdom from following the BWA and phone links when they are clicked.
+  function stopNavigation() {
+    document.addEventListener('click', (e) => e.preventDefault(), {
+      once: true,
+    })
+  }
+
+  // Lets a parish choice settle: parish-chosen waits a second.
+  function settle(ms = 1000) {
+    act(() => {
+      vi.advanceTimersByTime(ms)
+    })
+  }
+
+  it('sends tool-result when a parish is chosen from the list, the map or the location', async () => {
+    vi.mocked(locateParish).mockResolvedValue({
+      value: 'saint-john',
+      exact: true,
+    })
+    render(<TestPage data={DATA} />)
+    const map = await screen.findByRole('button', { name: /Map St. Michael/ })
+    vi.useFakeTimers()
+    fireEvent.change(
+      screen.getByRole('combobox', { name: 'Choose a parish' }),
+      {
+        target: { value: 'saint-john' },
+      },
+    )
+    settle()
+    fireEvent.click(map)
+    settle()
+    fireEvent.click(screen.getByRole('button', { name: 'Use my location' }))
+    await act(async () => {
+      success({
+        coords: { latitude: 13.1, longitude: -59.61 },
+      } as GeolocationPosition)
+    })
+    settle()
+    const john = (chosen_by: string) => ({
+      tool,
+      outcome: 'parish-chosen',
+      parish: 'saint-john',
+      chosen_by,
+      active_notices: 1,
+      past_notices: 0,
+    })
+    expect(vi.mocked(trackEvent).mock.calls).toEqual([
+      ['tool-result', john('list')],
+      [
+        'tool-result',
+        {
+          tool,
+          outcome: 'parish-chosen',
+          parish: 'saint-michael',
+          chosen_by: 'map',
+          active_notices: 1,
+          past_notices: 1,
+        },
+      ],
+      ['tool-result', john('location')],
+    ])
+  })
+
+  it('sends one tool-result for the parish the list settles on, and none for All of Barbados', () => {
+    vi.useFakeTimers()
+    render(<TestPage data={DATA} />)
+    const parish = screen.getByRole('combobox', { name: 'Choose a parish' })
+    // Arrow keys on a closed list change the parish at each press.
+    for (const value of ['saint-andrew', 'saint-george', 'saint-john']) {
+      fireEvent.change(parish, { target: { value } })
+    }
+    settle(999)
+    expect(trackEvent).not.toHaveBeenCalled()
+    settle(1)
+    expect(vi.mocked(trackEvent).mock.calls).toEqual([
+      [
+        'tool-result',
+        expect.objectContaining({ parish: 'saint-john', chosen_by: 'list' }),
+      ],
+    ])
+    vi.mocked(trackEvent).mockClear()
+    fireEvent.change(parish, { target: { value: 'saint-lucy' } })
+    fireEvent.change(parish, { target: { value: '' } })
+    settle()
+    expect(trackEvent).not.toHaveBeenCalled()
+  })
+
+  it('sends nothing when the map picks the parish already shown', async () => {
+    render(<TestPage data={DATA} />)
+    const map = await screen.findByRole('button', { name: /Map St. Michael/ })
+    vi.useFakeTimers()
+    fireEvent.click(map)
+    settle()
+    vi.mocked(trackEvent).mockClear()
+    fireEvent.click(map)
+    settle()
+    expect(trackEvent).not.toHaveBeenCalled()
+  })
+
+  it('drops a choice still waiting when Back or Forward changes the parish', () => {
+    vi.useFakeTimers()
+    const page = (selected: string) => (
+      <WaterOutagesPage
+        data={DATA}
+        onRetry={retry}
+        onSelect={vi.fn()}
+        retrying={false}
+        selected={selected}
+      />
+    )
+    const { rerender } = render(page(''))
+    fireEvent.change(
+      screen.getByRole('combobox', { name: 'Choose a parish' }),
+      {
+        target: { value: 'saint-john' },
+      },
+    )
+    rerender(page('saint-john'))
+    rerender(page(''))
+    settle()
+    expect(trackEvent).not.toHaveBeenCalled()
+  })
+
+  it('drops a choice still waiting when the page closes', () => {
+    vi.useFakeTimers()
+    const { unmount } = render(<TestPage data={DATA} />)
+    fireEvent.change(
+      screen.getByRole('combobox', { name: 'Choose a parish' }),
+      {
+        target: { value: 'saint-john' },
+      },
+    )
+    unmount()
+    vi.advanceTimersByTime(1000)
+    expect(trackEvent).not.toHaveBeenCalled()
+  })
+
+  it('sends tool-action for a BWA notice link and the BWA phone number', () => {
+    render(<TestPage data={DATA} />)
+    stopNavigation()
+    fireEvent.click(
+      screen.getByRole('link', {
+        name: 'Read the BWA notice about Michael repair',
+      }),
+    )
+    stopNavigation()
+    fireEvent.click(screen.getByRole('link', { name: '246-434-4292' }))
+    expect(vi.mocked(trackEvent).mock.calls).toEqual([
+      ['tool-action', { tool, action: 'open-notice' }],
+      ['tool-action', { tool, action: 'call' }],
+    ])
+  })
+
+  it.each([
+    ['refused', 'location-denied', { code: 1 }],
+    ['timed out', 'location-unavailable', { code: 3 }],
+  ])('sends tool-error when the location is %s', (_, error, positionError) => {
+    render(<TestPage data={DATA} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Use my location' }))
+    act(() => {
+      fail({
+        ...positionError,
+        PERMISSION_DENIED: 1,
+      } as GeolocationPositionError)
+    })
+    expect(trackEvent).toHaveBeenCalledOnce()
+    expect(trackEvent).toHaveBeenCalledWith('tool-error', { tool, error })
+  })
+
+  it.each(['outside Barbados', 'boundary load rejection'])(
+    'sends location-unavailable for %s',
+    async (failure) => {
+      if (failure === 'outside Barbados')
+        vi.mocked(locateParish).mockResolvedValue(null)
+      else vi.mocked(locateParish).mockRejectedValue(new Error('lookup failed'))
+      render(<TestPage data={DATA} />)
+      fireEvent.click(screen.getByRole('button', { name: 'Use my location' }))
+      await act(async () => {
+        success({
+          coords: { latitude: 51.5, longitude: -0.1 },
+        } as GeolocationPosition)
+      })
+      expect(trackEvent).toHaveBeenCalledOnce()
+      expect(trackEvent).toHaveBeenCalledWith('tool-error', {
+        tool,
+        error: 'location-unavailable',
+      })
+    },
+  )
+
+  it('sends location-unavailable when the browser has no location', () => {
+    vi.stubGlobal(
+      'navigator',
+      Object.create(navigator, { geolocation: { value: undefined } }),
+    )
+    render(<TestPage data={DATA} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Use my location' }))
+    expect(trackEvent).toHaveBeenCalledWith('tool-error', {
+      tool,
+      error: 'location-unavailable',
+    })
+  })
+
+  it('sends invalid-email from our check and from the browser check, and never submits', () => {
+    render(<SubscribeForm selectedArea="" selectedLabel={null} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Get email alerts' }))
+    const input = screen.getByRole('textbox', { name: 'Your email address' })
+    fireEvent.change(input, { target: { value: 'resident@example' } })
+    fireEvent.submit(screen.getByRole('form'))
+    fireEvent.invalid(input)
+    const invalid = ['tool-error', { tool, error: 'invalid-email' }]
+    expect(vi.mocked(trackEvent).mock.calls).toEqual([invalid, invalid])
+    expect(subscribeWaterAlerts).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    [
+      'sent',
+      'subscribe-sent',
+      () => Promise.resolve({ ok: true, message: 'Check your email.' }),
+    ],
+    [
+      'refused',
+      'subscribe-failed',
+      () => Promise.resolve({ ok: false, message: 'Try again.' }),
+    ],
+    ['failed', 'subscribe-failed', () => Promise.reject(new Error('network'))],
+  ])(
+    'sends subscribe-submit with the parish, then the outcome when the request is %s',
+    async (_, outcome, respond) => {
+      vi.mocked(subscribeWaterAlerts).mockImplementation(respond)
+      render(
+        <SubscribeForm selectedArea="saint-john" selectedLabel="St. John" />,
+      )
+      fireEvent.click(screen.getByRole('button', { name: 'Get email alerts' }))
+      fireEvent.change(
+        screen.getByRole('textbox', { name: 'Your email address' }),
+        { target: { value: 'resident@example.com' } },
+      )
+      await act(async () => {
+        fireEvent.submit(screen.getByRole('form'))
+      })
+      expect(vi.mocked(trackEvent).mock.calls).toEqual([
+        [
+          'tool-action',
+          { tool, action: 'subscribe-submit', target: 'saint-john' },
+        ],
+        ['tool-result', { tool, outcome }],
+      ])
+    },
+  )
+
+  it('sends the target "all" for a sign-up to All of Barbados', async () => {
+    vi.mocked(subscribeWaterAlerts).mockResolvedValue({
+      ok: true,
+      message: 'Check your email.',
+    })
+    render(<SubscribeForm selectedArea="" selectedLabel={null} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Get email alerts' }))
+    fireEvent.change(
+      screen.getByRole('textbox', { name: 'Your email address' }),
+      { target: { value: 'resident@example.com' } },
+    )
+    await act(async () => {
+      fireEvent.submit(screen.getByRole('form'))
+    })
+    expect(trackEvent).toHaveBeenCalledWith('tool-action', {
+      tool,
+      action: 'subscribe-submit',
+      target: 'all',
+    })
+  })
+
+  // Privacy bar (ADR 0138): no email address and no coordinates, ever.
+  it('never sends the email address or the coordinates', async () => {
+    vi.mocked(locateParish).mockResolvedValue({
+      value: 'saint-michael',
+      exact: false,
+    })
+    vi.mocked(subscribeWaterAlerts).mockResolvedValue({
+      ok: true,
+      message: 'Check your email.',
+    })
+    vi.useFakeTimers()
+    render(<TestPage data={DATA} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Use my location' }))
+    await act(async () => {
+      success({
+        coords: { latitude: 13.0987, longitude: -59.6145 },
+      } as GeolocationPosition)
+    })
+    settle()
+    fireEvent.click(screen.getByRole('button', { name: 'Get email alerts' }))
+    const input = screen.getByRole('textbox', { name: 'Your email address' })
+    fireEvent.change(input, { target: { value: 'resident' } })
+    fireEvent.submit(screen.getByRole('form'))
+    fireEvent.change(input, { target: { value: 'resident@example.com' } })
+    await act(async () => {
+      fireEvent.submit(screen.getByRole('form'))
+    })
+    const sent = JSON.stringify(vi.mocked(trackEvent).mock.calls)
+    expect(vi.mocked(trackEvent).mock.calls.map(([name]) => name)).toEqual([
+      'tool-result',
+      'tool-error',
+      'tool-action',
+      'tool-result',
+    ])
+    for (const secret of ['resident', 'example.com', '@', '13.09', '59.61']) {
+      expect(sent).not.toContain(secret)
+    }
   })
 })

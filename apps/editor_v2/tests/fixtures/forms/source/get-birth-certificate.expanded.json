@@ -1,0 +1,900 @@
+{
+  "source": "apps/api/src/forms/form-definitions/recipes/get-birth-certificate.json",
+  "sha256": "b4aeacfa4a4e9d37245bf82ea78446982349940ff3a699a0253ceb4be721827d",
+  "formId": "get-birth-certificate",
+  "title": "Get a copy of a birth certificate",
+  "description": "Apply for a certified copy of a birth certificate.",
+  "steps": [
+    {
+      "stepId": "applicant-details",
+      "title": "Tell us about yourself",
+      "elements": [
+        {
+          "ref": "components/title",
+          "fieldId": "applicant-title",
+          "htmlType": "select",
+          "label": "Title",
+          "options": [
+            {
+              "label": "Mr",
+              "value": "mr"
+            },
+            {
+              "label": "Miss",
+              "value": "miss"
+            },
+            {
+              "label": "Ms",
+              "value": "ms"
+            },
+            {
+              "label": "Mrs",
+              "value": "mrs"
+            },
+            {
+              "label": "Dr",
+              "value": "dr"
+            }
+          ],
+          "multiple": false,
+          "validations": {
+            "required": {
+              "error": "Title is required",
+              "value": true
+            }
+          },
+          "ui": {
+            "width": "short"
+          }
+        },
+        {
+          "ref": "components/first-name",
+          "fieldId": "applicant-first-name",
+          "label": "First name",
+          "htmlType": "text",
+          "validations": {
+            "required": {
+              "error": "First name is required",
+              "value": true
+            },
+            "minLength": {
+              "error": "First name must be at least 2 characters",
+              "value": 2
+            },
+            "pattern": {
+              "value": "^\\s*\\p{L}(?:[\\p{L}\\p{M}\\s'’.-]*[\\p{L}\\p{M}.])?\\s*$",
+              "error": "First name must contain only letters, spaces, hyphens, apostrophes, or periods"
+            }
+          }
+        },
+        {
+          "ref": "components/middle-name",
+          "fieldId": "applicant-middle-name",
+          "label": "Middle name",
+          "htmlType": "text",
+          "hint": "Provide only if known",
+          "validations": {
+            "minLength": {
+              "value": 2,
+              "error": "Middle name must be at least 2 characters"
+            },
+            "pattern": {
+              "value": "^\\s*\\p{L}(?:[\\p{L}\\p{M}\\s'’.-]*[\\p{L}\\p{M}.])?\\s*$",
+              "error": "Middle name must contain only letters, spaces, hyphens, apostrophes, or periods"
+            }
+          }
+        },
+        {
+          "ref": "components/last-name",
+          "fieldId": "applicant-last-name",
+          "label": "Last name",
+          "htmlType": "text",
+          "validations": {
+            "required": {
+              "error": "Last name is required",
+              "value": true
+            },
+            "minLength": {
+              "error": "Last name must be at least 2 characters",
+              "value": 2
+            },
+            "pattern": {
+              "value": "^\\s*\\p{L}(?:[\\p{L}\\p{M}\\s'’.-]*[\\p{L}\\p{M}.])?\\s*$",
+              "error": "Last name must contain only letters, spaces, hyphens, apostrophes, or periods"
+            }
+          }
+        },
+        {
+          "ref": "components/address",
+          "fieldId": "applicant-address-1",
+          "htmlType": "text",
+          "label": "Address Line 1",
+          "validations": {
+            "required": {
+              "error": "Address line 1 is required",
+              "value": true
+            },
+            "minLength": {
+              "error": "Address must be at least 5 characters",
+              "value": 5
+            }
+          }
+        },
+        {
+          "ref": "components/address",
+          "fieldId": "applicant-address-2",
+          "htmlType": "text",
+          "label": "Address Line 2",
+          "validations": {
+            "required": {
+              "value": false
+            },
+            "minLength": {
+              "value": 5,
+              "error": "Address must be at least 5 characters"
+            }
+          }
+        },
+        {
+          "ref": "components/parish",
+          "fieldId": "applicant-parish",
+          "label": "Parish",
+          "htmlType": "select",
+          "options": [
+            {
+              "label": "Christ Church",
+              "value": "christ-church"
+            },
+            {
+              "label": "St. Andrew",
+              "value": "st-andrew"
+            },
+            {
+              "label": "St. George",
+              "value": "st-george"
+            },
+            {
+              "label": "St. James",
+              "value": "st-james"
+            },
+            {
+              "label": "St. John",
+              "value": "st-john"
+            },
+            {
+              "label": "St. Joseph",
+              "value": "st-joseph"
+            },
+            {
+              "label": "St. Lucy",
+              "value": "st-lucy"
+            },
+            {
+              "label": "St. Michael",
+              "value": "st-michael"
+            },
+            {
+              "label": "St. Peter",
+              "value": "st-peter"
+            },
+            {
+              "label": "St. Philip",
+              "value": "st-philip"
+            },
+            {
+              "label": "St. Thomas",
+              "value": "st-thomas"
+            }
+          ],
+          "multiple": false,
+          "validations": {
+            "required": {
+              "error": "Parish is required",
+              "value": true
+            }
+          },
+          "ui": {
+            "width": "long"
+          }
+        },
+        {
+          "ref": "components/postcode",
+          "fieldId": "applicant-postcode",
+          "label": "Postcode",
+          "htmlType": "text",
+          "hint": "For example, BB17004",
+          "validations": {
+            "pattern": {
+              "value": "^[Bb]{2} ?\\d{5}$",
+              "error": "Enter a valid postcode (for example, BB17004)"
+            }
+          },
+          "ui": {
+            "width": "short"
+          }
+        },
+        {
+          "ref": "components/national-id-number",
+          "fieldId": "applicant-nid",
+          "label": "National Identification (ID) Number",
+          "htmlType": "text",
+          "mask": "999999-9999",
+          "behaviours": [
+            {
+              "type": "optionalIf",
+              "value": true,
+              "operator": "equal",
+              "targetFieldId": "passport-toggle"
+            }
+          ],
+          "validations": {
+            "pattern": {
+              "value": "^\\d{6}-\\d{4}$",
+              "error": "Enter a valid National ID number (for example, 850101-0001)"
+            },
+            "required": {
+              "error": "ID Number is required",
+              "value": true
+            }
+          },
+          "ui": {
+            "width": "medium"
+          }
+        },
+        {
+          "ref": "components/show-hide",
+          "fieldId": "passport-toggle",
+          "htmlType": "show-hide",
+          "label": "Use passport number instead",
+          "hint": "If you don't have a National ID number, you can use your passport number instead."
+        },
+        {
+          "ref": "components/passport-number",
+          "fieldId": "applicant-passport-number",
+          "label": "Passport Number",
+          "htmlType": "text",
+          "behaviours": [
+            {
+              "type": "fieldConditionalOn",
+              "value": true,
+              "operator": "equal",
+              "targetFieldId": "passport-toggle"
+            }
+          ],
+          "validations": {
+            "minLength": {
+              "error": "Passport number must be at least 6 characters",
+              "value": 6
+            },
+            "required": {
+              "error": "Passport number is required",
+              "value": true
+            }
+          },
+          "ui": {
+            "width": "short"
+          }
+        },
+        {
+          "ref": "components/email",
+          "fieldId": "applicant-email",
+          "htmlType": "email",
+          "label": "Email address",
+          "validations": {
+            "required": {
+              "error": "Email address is required",
+              "value": true
+            },
+            "email": {
+              "value": true,
+              "error": "Please enter a valid email address"
+            }
+          }
+        },
+        {
+          "ref": "components/telephone",
+          "fieldId": "applicant-telephone",
+          "label": "Telephone number",
+          "htmlType": "tel",
+          "hint": "For example, 421-1234 for Barbados or +1 876 210 1234 for numbers outside Barbados",
+          "validations": {
+            "required": {
+              "error": "Telephone number is required",
+              "value": true
+            },
+            "phone": {
+              "value": true,
+              "error": "Please enter a valid phone number"
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "applying-for-yourself",
+      "title": "Are you applying for your own birth certificate?",
+      "elements": [
+        {
+          "ref": "components/generic-radio",
+          "fieldId": "applying-for-yourself",
+          "htmlType": "radio",
+          "label": "Are you applying for your own birth certificate?",
+          "options": [
+            {
+              "label": "Yes - the certificate is for me",
+              "value": "yes"
+            },
+            {
+              "label": "No - the certificate is for someone else",
+              "value": "no"
+            }
+          ],
+          "validations": {
+            "required": {
+              "error": "Select whether you are applying for your own birth certificate",
+              "value": true
+            }
+          },
+          "ui": {
+            "hideLabel": true
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "relationship-to-person",
+      "title": "What is your relationship to the person?",
+      "elements": [
+        {
+          "ref": "components/relationship",
+          "fieldId": "relationship-to-person",
+          "htmlType": "select",
+          "label": "What is your relationship to the person?",
+          "options": [
+            {
+              "label": "Spouse",
+              "value": "spouse"
+            },
+            {
+              "label": "Parent",
+              "value": "parent"
+            },
+            {
+              "label": "Child",
+              "value": "child"
+            },
+            {
+              "label": "Sibling",
+              "value": "sibling"
+            },
+            {
+              "label": "Grandparent",
+              "value": "grandparent"
+            },
+            {
+              "label": "Grandchild",
+              "value": "grandchild"
+            },
+            {
+              "label": "Friend",
+              "value": "friend"
+            },
+            {
+              "label": "Colleague",
+              "value": "colleague"
+            },
+            {
+              "label": "Other",
+              "value": "other"
+            }
+          ],
+          "multiple": false,
+          "validations": {
+            "required": {
+              "error": "Relationship is required",
+              "value": true
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "fieldId": "relationship-other-description",
+          "htmlType": "text",
+          "label": "Please describe your relationship",
+          "hint": "For example, nephew, researcher, historian, or authorised representative.",
+          "behaviours": [
+            {
+              "type": "fieldConditionalOn",
+              "value": "other",
+              "operator": "equal",
+              "targetFieldId": "relationship-to-person"
+            }
+          ],
+          "validations": {
+            "required": {
+              "error": "Please describe your relationship",
+              "value": true
+            }
+          }
+        }
+      ],
+      "behaviours": [
+        {
+          "type": "stepConditionalOn",
+          "value": "no",
+          "operator": "equal",
+          "targetStepId": "applying-for-yourself",
+          "targetFieldId": "applying-for-yourself"
+        }
+      ]
+    },
+    {
+      "stepId": "reason-for-certificate",
+      "title": "Tell us why you are ordering a birth certificate",
+      "elements": [
+        {
+          "ref": "components/additional-details",
+          "fieldId": "reason-for-ordering",
+          "label": "Reason",
+          "htmlType": "textarea",
+          "validations": {
+            "required": {
+              "error": "Reason is required",
+              "value": true
+            },
+            "minLength": {
+              "error": "Please provide at least 5 characters",
+              "value": 5
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "person-deceased",
+      "title": "Is the person deceased?",
+      "elements": [
+        {
+          "ref": "components/generic-radio",
+          "fieldId": "person-is-deceased",
+          "htmlType": "radio",
+          "label": "Is the person deceased?",
+          "options": [
+            {
+              "label": "Yes",
+              "value": "yes"
+            },
+            {
+              "label": "No",
+              "value": "no"
+            }
+          ],
+          "validations": {
+            "required": {
+              "error": "Select whether the person is deceased",
+              "value": true
+            }
+          },
+          "ui": {
+            "hideLabel": true
+          }
+        },
+        {
+          "ref": "components/date",
+          "fieldId": "person-death-date",
+          "label": "Date of death",
+          "hint": "For example, 15 3 2023",
+          "htmlType": "date",
+          "behaviours": [
+            {
+              "type": "fieldConditionalOn",
+              "value": "yes",
+              "operator": "equal",
+              "targetStepId": "person-deceased",
+              "targetFieldId": "person-is-deceased"
+            }
+          ],
+          "validations": {
+            "pastOrToday": {}
+          }
+        }
+      ],
+      "behaviours": [
+        {
+          "type": "stepConditionalOn",
+          "value": "no",
+          "operator": "equal",
+          "targetStepId": "applying-for-yourself",
+          "targetFieldId": "applying-for-yourself"
+        }
+      ]
+    },
+    {
+      "stepId": "person-details",
+      "title": "Tell us about the person you are applying for",
+      "elements": [
+        {
+          "ref": "components/first-name",
+          "fieldId": "person-first-name",
+          "label": "First name",
+          "htmlType": "text",
+          "validations": {
+            "required": {
+              "error": "First name is required",
+              "value": true
+            },
+            "minLength": {
+              "error": "First name must be at least 2 characters",
+              "value": 2
+            },
+            "pattern": {
+              "value": "^\\s*\\p{L}(?:[\\p{L}\\p{M}\\s'’.-]*[\\p{L}\\p{M}.])?\\s*$",
+              "error": "First name must contain only letters, spaces, hyphens, apostrophes, or periods"
+            }
+          }
+        },
+        {
+          "ref": "components/middle-name",
+          "fieldId": "person-middle-name",
+          "label": "Middle name",
+          "htmlType": "text",
+          "hint": "Provide only if known",
+          "validations": {
+            "minLength": {
+              "value": 2,
+              "error": "Middle name must be at least 2 characters"
+            },
+            "pattern": {
+              "value": "^\\s*\\p{L}(?:[\\p{L}\\p{M}\\s'’.-]*[\\p{L}\\p{M}.])?\\s*$",
+              "error": "Middle name must contain only letters, spaces, hyphens, apostrophes, or periods"
+            }
+          }
+        },
+        {
+          "ref": "components/last-name",
+          "fieldId": "person-last-name",
+          "label": "Last name",
+          "htmlType": "text",
+          "validations": {
+            "required": {
+              "error": "Last name is required",
+              "value": true
+            },
+            "minLength": {
+              "error": "Last name must be at least 2 characters",
+              "value": 2
+            },
+            "pattern": {
+              "value": "^\\s*\\p{L}(?:[\\p{L}\\p{M}\\s'’.-]*[\\p{L}\\p{M}.])?\\s*$",
+              "error": "Last name must contain only letters, spaces, hyphens, apostrophes, or periods"
+            }
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "fieldId": "person-has-nis",
+          "htmlType": "radio",
+          "label": "Do they have a National Insurance (NIS) number?",
+          "options": [
+            {
+              "label": "Yes",
+              "value": "yes"
+            },
+            {
+              "label": "No",
+              "value": "no"
+            }
+          ],
+          "validations": {
+            "required": {
+              "error": "Select whether they have a National Insurance (NIS) number",
+              "value": true
+            }
+          }
+        },
+        {
+          "ref": "components/national-insurance-number",
+          "fieldId": "person-nis-number",
+          "label": "National Insurance number",
+          "htmlType": "text",
+          "mask": "999999",
+          "behaviours": [
+            {
+              "type": "fieldConditionalOn",
+              "value": "yes",
+              "operator": "equal",
+              "targetFieldId": "person-has-nis"
+            }
+          ],
+          "validations": {
+            "pattern": {
+              "value": "^\\d{6}$",
+              "error": "Enter a valid National Insurance number (for example, 123456)"
+            },
+            "required": {
+              "error": "NIS number is required",
+              "value": true
+            }
+          },
+          "ui": {
+            "width": "short"
+          }
+        }
+      ],
+      "behaviours": [
+        {
+          "type": "stepConditionalOn",
+          "value": "no",
+          "operator": "equal",
+          "targetStepId": "applying-for-yourself",
+          "targetFieldId": "applying-for-yourself"
+        }
+      ]
+    },
+    {
+      "stepId": "birth-details",
+      "title": "Provide the person's birth details",
+      "conditionalTitle": [
+        {
+          "targetStepId": "applying-for-yourself",
+          "targetFieldId": "applying-for-yourself",
+          "operator": "equal",
+          "value": "yes",
+          "title": "Provide your birth details"
+        }
+      ],
+      "description": "Answer as accurately as possible",
+      "elements": [
+        {
+          "ref": "components/date-of-birth",
+          "fieldId": "birth-date-of-birth",
+          "htmlType": "date",
+          "label": "Date of birth",
+          "hint": "For example, 30 12 1986",
+          "validations": {
+            "past": {
+              "value": true,
+              "error": "Date of birth must be in the past"
+            },
+            "required": {
+              "error": "Date of birth is required",
+              "value": true
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "fieldId": "place-of-birth",
+          "htmlType": "text",
+          "label": "Place of birth",
+          "validations": {
+            "required": {
+              "error": "Place of birth is required",
+              "value": true
+            },
+            "minLength": {
+              "error": "Must be at least 2 characters",
+              "value": 2
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "fieldId": "place-of-baptism",
+          "htmlType": "text",
+          "label": "Place of baptism",
+          "validations": {
+            "required": {
+              "value": false
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "parents",
+      "title": "Tell us their parents' names",
+      "conditionalTitle": [
+        {
+          "targetStepId": "applying-for-yourself",
+          "targetFieldId": "applying-for-yourself",
+          "operator": "equal",
+          "value": "yes",
+          "title": "Tell us your parents' names"
+        }
+      ],
+      "elements": [
+        {
+          "ref": "components/first-name",
+          "fieldId": "father-first-name",
+          "label": "Father's first name",
+          "htmlType": "text",
+          "validations": {
+            "required": {
+              "value": true,
+              "error": "First name is required"
+            },
+            "minLength": {
+              "value": 2,
+              "error": "First name must be at least 2 characters"
+            },
+            "pattern": {
+              "value": "^\\s*\\p{L}(?:[\\p{L}\\p{M}\\s'’.-]*[\\p{L}\\p{M}.])?\\s*$",
+              "error": "First name must contain only letters, spaces, hyphens, apostrophes, or periods"
+            }
+          }
+        },
+        {
+          "ref": "components/middle-name",
+          "fieldId": "father-middle-name",
+          "label": "Father's middle name",
+          "htmlType": "text",
+          "hint": "Provide only if known",
+          "validations": {
+            "minLength": {
+              "value": 2,
+              "error": "Middle name must be at least 2 characters"
+            },
+            "pattern": {
+              "value": "^\\s*\\p{L}(?:[\\p{L}\\p{M}\\s'’.-]*[\\p{L}\\p{M}.])?\\s*$",
+              "error": "Middle name must contain only letters, spaces, hyphens, apostrophes, or periods"
+            }
+          }
+        },
+        {
+          "ref": "components/last-name",
+          "fieldId": "father-last-name",
+          "label": "Father's last name",
+          "htmlType": "text",
+          "validations": {
+            "required": {
+              "value": true,
+              "error": "Last name is required"
+            },
+            "minLength": {
+              "value": 2,
+              "error": "Last name must be at least 2 characters"
+            },
+            "pattern": {
+              "value": "^\\s*\\p{L}(?:[\\p{L}\\p{M}\\s'’.-]*[\\p{L}\\p{M}.])?\\s*$",
+              "error": "Last name must contain only letters, spaces, hyphens, apostrophes, or periods"
+            }
+          }
+        },
+        {
+          "ref": "components/first-name",
+          "fieldId": "mother-first-name",
+          "label": "Mother's first name",
+          "htmlType": "text",
+          "validations": {
+            "required": {
+              "error": "First name is required",
+              "value": true
+            },
+            "minLength": {
+              "value": 2,
+              "error": "First name must be at least 2 characters"
+            },
+            "pattern": {
+              "value": "^\\s*\\p{L}(?:[\\p{L}\\p{M}\\s'’.-]*[\\p{L}\\p{M}.])?\\s*$",
+              "error": "First name must contain only letters, spaces, hyphens, apostrophes, or periods"
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "fieldId": "mother-other-names",
+          "htmlType": "text",
+          "label": "Mother's other names",
+          "validations": {
+            "required": {
+              "value": false
+            }
+          }
+        },
+        {
+          "ref": "components/last-name",
+          "fieldId": "mother-last-name",
+          "label": "Mother's last name",
+          "htmlType": "text",
+          "validations": {
+            "required": {
+              "error": "Last name is required",
+              "value": true
+            },
+            "minLength": {
+              "value": 2,
+              "error": "Last name must be at least 2 characters"
+            },
+            "pattern": {
+              "value": "^\\s*\\p{L}(?:[\\p{L}\\p{M}\\s'’.-]*[\\p{L}\\p{M}.])?\\s*$",
+              "error": "Last name must contain only letters, spaces, hyphens, apostrophes, or periods"
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "fieldId": "mother-maiden-name",
+          "htmlType": "text",
+          "label": "Mother's maiden name",
+          "validations": {
+            "required": {
+              "value": false
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "order-details",
+      "title": "How many copies will you be ordering?",
+      "elements": [
+        {
+          "ref": "components/generic-number",
+          "fieldId": "number-of-copies",
+          "htmlType": "number",
+          "label": "Number of copies",
+          "defaultValue": 1,
+          "validations": {
+            "required": {
+              "error": "Number of copies is required",
+              "value": true
+            },
+            "min": {
+              "value": 0,
+              "error": "This field must be greater than or equal to 0"
+            }
+          },
+          "ui": {
+            "width": "short"
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "check-your-answers",
+      "title": "Check your answers",
+      "description": "Review all the information you have provided before submitting your application.",
+      "elements": [],
+      "behaviours": []
+    },
+    {
+      "stepId": "declaration",
+      "title": "Declaration",
+      "elements": [
+        {
+          "ref": "components/confirmation",
+          "fieldId": "declaration-confirmed",
+          "htmlType": "checkbox",
+          "label": "Declaration",
+          "options": [
+            {
+              "label": "I confirm that my information is correct and I am happy for it to be verified. I understand that false details may lead to my application being rejected, and that the Government of Barbados will keep my information confidential.",
+              "value": "confirmed"
+            }
+          ],
+          "validations": {
+            "required": {
+              "error": "You must confirm the declaration to continue",
+              "value": true
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "submission-confirmation",
+      "title": "Application submitted",
+      "elements": [],
+      "behaviours": [],
+      "markdownContent": "## What happens next\n\nYou will receive a confirmation email with:\n\n- your application reference number\n- the cost of the certificate(s)\n- the expected completion date"
+    }
+  ]
+}

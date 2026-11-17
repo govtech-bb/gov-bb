@@ -277,15 +277,29 @@
  * reveals a field today. If one does, a revealed field with no hint inherits
  * the select's cap, and a `short` field under a `medium` select gets 38ch
  * (equal specificity, `medium` wins by source order) — add rules scoped to
- * `.govbb-select__conditional .govbb-form-group[...]` then. */
+ * `.govbb-select__conditional .govbb-form-group[...]` then. A prefixed input
+ * (`ui.prefix`) draws its border on `.govbb-input-wrapper`, so the cap goes
+ * there too or the border would run the full column width. */
 @media (min-width: 768px) {
   .govbb-form-group[data-field-width="short"]
-    :is(.govbb-input, .govbb-select, .govbb-textarea, .govbb-combobox) {
+    :is(
+      .govbb-input,
+      .govbb-input-wrapper,
+      .govbb-select,
+      .govbb-textarea,
+      .govbb-combobox
+    ) {
     max-width: 24ch;
   }
 
   .govbb-form-group[data-field-width="medium"]
-    :is(.govbb-input, .govbb-select, .govbb-textarea, .govbb-combobox) {
+    :is(
+      .govbb-input,
+      .govbb-input-wrapper,
+      .govbb-select,
+      .govbb-textarea,
+      .govbb-combobox
+    ) {
     max-width: 38ch;
   }
 }

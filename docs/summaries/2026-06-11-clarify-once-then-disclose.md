@@ -19,7 +19,7 @@ Resolved on `chat-clarify-once-then-disclose` (targets `sandbox`).
   noContext)` transition in `form/funnel.ts`: a miss increments the streak, any
   non-miss turn resets it, and it returns `{ clarifyExhausted }` (true on the
   2nd+ consecutive miss). It sits with the other code-derived funnel transitions
-  (ADR 0048) — the model only executes the chosen disclosure.
+  (ADR 0083) — the model only executes the chosen disclosure.
 - New `buildCantHelpDisclosure()` in `prompts.ts`: warmly says it can't help,
   forbids another clarifying question, invents nothing, no paper/in-person push,
   and ends with the exact line `Anything else I can help with?`.
@@ -59,7 +59,7 @@ Resolved on `chat-clarify-once-then-disclose` (targets `sandbox`).
 The dev-plan was written against the pre-funnel chat code. By implementation the
 sandbox had moved on: `buildSystemPrompts` now lives in `prompt-builder.ts` as a
 pure function over `PromptTurnState`, session state is fronted by the
-`form/funnel.ts` state machine (ADR 0048), and the miss path no longer carries an
+`form/funnel.ts` state machine (ADR 0083), and the miss path no longer carries an
 illegitimate-request carve-out (fraud declines lean on the base model now). The
 implementation followed the actual sandbox shape; the design held.
 

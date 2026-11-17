@@ -20,7 +20,7 @@ reordering, with individual commits reaching 99% noise.
   `apps/form_builder`, plus the dormant `form_builder_api` one)
 - a non-blocking canonical check plus `--write` in `scripts/validate-recipes.ts`
 - corpus invariants in `apps/api/.../recipe-invariants.spec.ts`
-- see [ADR 0071](../decisions/0071-recipe-files-have-one-canonical-serialization.md)
+- see [ADR 0119](../decisions/0119-recipe-files-have-one-canonical-serialization.md)
 
 ## Why we did it that way
 

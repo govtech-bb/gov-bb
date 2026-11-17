@@ -5,6 +5,9 @@
   "main": "./src/index.js",
   "types": "./src/index.d.ts",
   "scripts": {
-    "test": "vitest run"
+    "test": "vitest run",
+    "lint:fix": "oxlint --fix",
+    "test:oxlint": "oxlint",
+    "test:types": "tsc --noEmit"
   }
 }

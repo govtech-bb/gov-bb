@@ -1,0 +1,836 @@
+{
+  "source": "apps/api/src/forms/form-definitions/recipes/get-death-certificate.json",
+  "sha256": "63f4553d8be2b01cda4fe72bd8a0ef6ddc13c073fd7a8d92e60253e840dbf73f",
+  "formId": "get-death-certificate",
+  "title": "Get a Death Certificate",
+  "description": "Apply for a certified copy of a death certificate",
+  "processors": [
+    {
+      "type": "email",
+      "config": {
+        "recipientField": "applicant-details.applicant-email",
+        "subject": "Your death certificate request has been received"
+      }
+    },
+    {
+      "type": "email",
+      "config": {
+        "recipientField": "config.mdaEmail",
+        "subject": "Death certificate application submitted."
+      }
+    }
+  ],
+  "steps": [
+    {
+      "stepId": "applicant-details",
+      "title": "Tell us about yourself",
+      "elements": [
+        {
+          "ref": "components/title",
+          "fieldId": "applicant-title",
+          "htmlType": "select",
+          "label": "Title",
+          "options": [
+            {
+              "label": "Mr",
+              "value": "mr"
+            },
+            {
+              "label": "Miss",
+              "value": "miss"
+            },
+            {
+              "label": "Ms",
+              "value": "ms"
+            },
+            {
+              "label": "Mrs",
+              "value": "mrs"
+            },
+            {
+              "label": "Dr",
+              "value": "dr"
+            }
+          ],
+          "multiple": false,
+          "validations": {
+            "required": {
+              "error": "Title is required",
+              "value": true
+            }
+          },
+          "ui": {
+            "width": "short"
+          }
+        },
+        {
+          "ref": "components/first-name",
+          "fieldId": "applicant-first-name",
+          "label": "First name",
+          "htmlType": "text",
+          "validations": {
+            "required": {
+              "error": "First name is required",
+              "value": true
+            },
+            "minLength": {
+              "error": "First name must be at least 2 characters",
+              "value": 2
+            },
+            "pattern": {
+              "value": "^\\s*\\p{L}(?:[\\p{L}\\p{M}\\s'’.-]*[\\p{L}\\p{M}.])?\\s*$",
+              "error": "First name must contain only letters, spaces, hyphens, apostrophes, or periods"
+            }
+          }
+        },
+        {
+          "ref": "components/middle-name",
+          "fieldId": "applicant-middle-name",
+          "label": "Middle name",
+          "htmlType": "text",
+          "hint": "Provide only if known",
+          "validations": {
+            "minLength": {
+              "value": 2,
+              "error": "Middle name must be at least 2 characters"
+            },
+            "pattern": {
+              "value": "^\\s*\\p{L}(?:[\\p{L}\\p{M}\\s'’.-]*[\\p{L}\\p{M}.])?\\s*$",
+              "error": "Middle name must contain only letters, spaces, hyphens, apostrophes, or periods"
+            }
+          }
+        },
+        {
+          "ref": "components/last-name",
+          "fieldId": "applicant-last-name",
+          "label": "Last name",
+          "htmlType": "text",
+          "validations": {
+            "required": {
+              "error": "Last name is required",
+              "value": true
+            },
+            "minLength": {
+              "error": "Last name must be at least 2 characters",
+              "value": 2
+            },
+            "pattern": {
+              "value": "^\\s*\\p{L}(?:[\\p{L}\\p{M}\\s'’.-]*[\\p{L}\\p{M}.])?\\s*$",
+              "error": "Last name must contain only letters, spaces, hyphens, apostrophes, or periods"
+            }
+          }
+        },
+        {
+          "ref": "components/address",
+          "fieldId": "applicant-address-line-1",
+          "htmlType": "text",
+          "label": "Address Line 1",
+          "validations": {
+            "required": {
+              "error": "Address line 1 is required",
+              "value": true
+            },
+            "minLength": {
+              "error": "Address must be at least 5 characters",
+              "value": 5
+            }
+          }
+        },
+        {
+          "ref": "components/address",
+          "fieldId": "applicant-address-line-2",
+          "htmlType": "text",
+          "label": "Address Line 2",
+          "validations": {
+            "required": {
+              "value": false
+            },
+            "minLength": {
+              "value": 5,
+              "error": "Address must be at least 5 characters"
+            }
+          }
+        },
+        {
+          "ref": "components/parish",
+          "fieldId": "applicant-parish",
+          "label": "Parish",
+          "htmlType": "select",
+          "options": [
+            {
+              "label": "Christ Church",
+              "value": "christ-church"
+            },
+            {
+              "label": "St. Andrew",
+              "value": "st-andrew"
+            },
+            {
+              "label": "St. George",
+              "value": "st-george"
+            },
+            {
+              "label": "St. James",
+              "value": "st-james"
+            },
+            {
+              "label": "St. John",
+              "value": "st-john"
+            },
+            {
+              "label": "St. Joseph",
+              "value": "st-joseph"
+            },
+            {
+              "label": "St. Lucy",
+              "value": "st-lucy"
+            },
+            {
+              "label": "St. Michael",
+              "value": "st-michael"
+            },
+            {
+              "label": "St. Peter",
+              "value": "st-peter"
+            },
+            {
+              "label": "St. Philip",
+              "value": "st-philip"
+            },
+            {
+              "label": "St. Thomas",
+              "value": "st-thomas"
+            }
+          ],
+          "multiple": false,
+          "validations": {
+            "required": {
+              "error": "Parish is required",
+              "value": true
+            }
+          },
+          "ui": {
+            "width": "long"
+          }
+        },
+        {
+          "ref": "components/postcode",
+          "fieldId": "applicant-postcode",
+          "label": "Postcode",
+          "htmlType": "text",
+          "hint": "For example, BB17004",
+          "validations": {
+            "pattern": {
+              "value": "^[Bb]{2} ?\\d{5}$",
+              "error": "Enter a valid postcode (for example, BB17004)"
+            }
+          },
+          "ui": {
+            "width": "short"
+          }
+        },
+        {
+          "ref": "components/national-id-number",
+          "fieldId": "applicant-id-number",
+          "label": "National Identification (ID) Number",
+          "htmlType": "text",
+          "mask": "999999-9999",
+          "placeholder": "for example, 850101-0001",
+          "behaviours": [
+            {
+              "type": "optionalIf",
+              "targetFieldId": "passport-toggle",
+              "operator": "equal",
+              "value": true
+            }
+          ],
+          "validations": {
+            "pattern": {
+              "value": "^\\d{6}-\\d{4}$",
+              "error": "Enter a valid National ID number (for example, 850101-0001)"
+            },
+            "required": {
+              "error": "ID Number is required",
+              "value": true
+            }
+          },
+          "ui": {
+            "width": "medium"
+          }
+        },
+        {
+          "ref": "components/show-hide",
+          "fieldId": "passport-toggle",
+          "htmlType": "show-hide",
+          "label": "Use passport number instead",
+          "hint": "If you don't have a National ID number, you can use your passport number instead."
+        },
+        {
+          "ref": "components/passport-number",
+          "fieldId": "applicant-passport-number",
+          "label": "Passport Number",
+          "htmlType": "text",
+          "behaviours": [
+            {
+              "type": "fieldConditionalOn",
+              "targetFieldId": "passport-toggle",
+              "operator": "equal",
+              "value": true
+            }
+          ],
+          "validations": {
+            "minLength": {
+              "error": "Passport number must be at least 6 characters",
+              "value": 6
+            },
+            "required": {
+              "error": "Passport number is required",
+              "value": true
+            }
+          },
+          "ui": {
+            "width": "short"
+          }
+        },
+        {
+          "ref": "components/email",
+          "fieldId": "applicant-email",
+          "htmlType": "email",
+          "label": "Email address",
+          "validations": {
+            "required": {
+              "error": "Email address is required",
+              "value": true
+            },
+            "email": {
+              "value": true,
+              "error": "Please enter a valid email address"
+            }
+          }
+        },
+        {
+          "ref": "components/telephone",
+          "fieldId": "applicant-telephone",
+          "label": "Telephone number",
+          "htmlType": "tel",
+          "hint": "For example, 421-1234 for Barbados or +1 876 210 1234 for numbers outside Barbados",
+          "validations": {
+            "required": {
+              "error": "Telephone number is required",
+              "value": true
+            },
+            "phone": {
+              "value": true,
+              "error": "Please enter a valid phone number"
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "relationship-to-person",
+      "title": "Tell us your relationship with the deceased",
+      "description": "For example, spouse, child, parent, sibling, executor, or authorised representative.",
+      "elements": [
+        {
+          "ref": "components/relationship",
+          "fieldId": "relationship",
+          "htmlType": "select",
+          "label": "Relationship",
+          "options": [
+            {
+              "label": "Spouse",
+              "value": "spouse"
+            },
+            {
+              "label": "Parent",
+              "value": "parent"
+            },
+            {
+              "label": "Child",
+              "value": "child"
+            },
+            {
+              "label": "Sibling",
+              "value": "sibling"
+            },
+            {
+              "label": "Grandparent",
+              "value": "grandparent"
+            },
+            {
+              "label": "Grandchild",
+              "value": "grandchild"
+            },
+            {
+              "label": "Friend",
+              "value": "friend"
+            },
+            {
+              "label": "Legal guardian",
+              "value": "legal-guardian"
+            },
+            {
+              "label": "Legal representive",
+              "value": "legal-representive"
+            },
+            {
+              "label": "Colleague",
+              "value": "colleague"
+            },
+            {
+              "label": "Other (please describe)",
+              "value": "other"
+            }
+          ],
+          "multiple": false,
+          "validations": {
+            "required": {
+              "value": true,
+              "error": "Relationship is required"
+            }
+          }
+        },
+        {
+          "ref": "components/name",
+          "fieldId": "relationship-other-description",
+          "label": "Please describe your relationship",
+          "htmlType": "text",
+          "behaviours": [
+            {
+              "type": "fieldConditionalOn",
+              "targetFieldId": "relationship",
+              "operator": "equal",
+              "value": "other"
+            }
+          ],
+          "validations": {
+            "required": {
+              "error": "Please describe your relationship",
+              "value": true
+            },
+            "minLength": {
+              "error": "Please provide at least 2 characters",
+              "value": 2
+            },
+            "pattern": {
+              "value": "^\\s*\\p{L}(?:[\\p{L}\\p{M}\\s'’.-]*[\\p{L}\\p{M}.])?\\s*$",
+              "error": "Name must contain only letters, spaces, hyphens, apostrophes, or periods"
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "reason-for-certificate",
+      "title": "Tell us about why you need this certificate",
+      "description": "Give the reason in a short sentence.",
+      "elements": [
+        {
+          "ref": "components/name",
+          "fieldId": "reason-for-certificate",
+          "label": "Reason for requesting the certificate",
+          "htmlType": "text",
+          "validations": {
+            "required": {
+              "error": "Reason is required",
+              "value": true
+            },
+            "minLength": {
+              "error": "Please provide at least 10 characters",
+              "value": 10
+            },
+            "pattern": {
+              "value": "^\\s*\\p{L}(?:[\\p{L}\\p{M}\\s'’.-]*[\\p{L}\\p{M}.])?\\s*$",
+              "error": "Name must contain only letters, spaces, hyphens, apostrophes, or periods"
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "deceased-details",
+      "title": "Tell us about the deceased",
+      "description": "Provide as much information as you can to help us find the correct record.",
+      "elements": [
+        {
+          "ref": "components/first-name",
+          "fieldId": "deceased-first-name",
+          "label": "First name",
+          "htmlType": "text",
+          "validations": {
+            "required": {
+              "error": "First name is required",
+              "value": true
+            },
+            "minLength": {
+              "error": "First name must be at least 2 characters",
+              "value": 2
+            },
+            "pattern": {
+              "value": "^\\s*\\p{L}(?:[\\p{L}\\p{M}\\s'’.-]*[\\p{L}\\p{M}.])?\\s*$",
+              "error": "First name must contain only letters, spaces, hyphens, apostrophes, or periods"
+            }
+          }
+        },
+        {
+          "ref": "components/middle-name",
+          "fieldId": "deceased-middle-name",
+          "label": "Middle name",
+          "htmlType": "text",
+          "hint": "Leave blank if not known",
+          "validations": {
+            "minLength": {
+              "value": 2,
+              "error": "Middle name must be at least 2 characters"
+            },
+            "pattern": {
+              "value": "^\\s*\\p{L}(?:[\\p{L}\\p{M}\\s'’.-]*[\\p{L}\\p{M}.])?\\s*$",
+              "error": "Middle name must contain only letters, spaces, hyphens, apostrophes, or periods"
+            }
+          }
+        },
+        {
+          "ref": "components/last-name",
+          "fieldId": "deceased-last-name",
+          "label": "Last name",
+          "htmlType": "text",
+          "validations": {
+            "required": {
+              "error": "Last name is required",
+              "value": true
+            },
+            "minLength": {
+              "error": "Last name must be at least 2 characters",
+              "value": 2
+            },
+            "pattern": {
+              "value": "^\\s*\\p{L}(?:[\\p{L}\\p{M}\\s'’.-]*[\\p{L}\\p{M}.])?\\s*$",
+              "error": "Last name must contain only letters, spaces, hyphens, apostrophes, or periods"
+            }
+          }
+        },
+        {
+          "ref": "components/generic-radio",
+          "fieldId": "deceased-known-date-of-death",
+          "htmlType": "radio",
+          "label": "Do you know the date the person died?",
+          "options": [
+            {
+              "label": "Yes",
+              "value": "yes"
+            },
+            {
+              "label": "No",
+              "value": "no"
+            }
+          ],
+          "validations": {
+            "required": {
+              "error": "Whether date of death is known is required",
+              "value": true
+            }
+          }
+        },
+        {
+          "ref": "components/generic-date",
+          "fieldId": "deceased-date-of-death",
+          "htmlType": "date",
+          "label": "Date of death",
+          "behaviours": [
+            {
+              "type": "fieldConditionalOn",
+              "targetFieldId": "deceased-known-date-of-death",
+              "operator": "equal",
+              "value": "yes"
+            }
+          ],
+          "validations": {
+            "required": {
+              "value": true
+            }
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "fieldId": "deceased-estimated-date-of-death",
+          "htmlType": "text",
+          "label": "Provide the two-year search range you want us to check",
+          "hint": "Enter a 2-year period, for example 1990 to 1991. If you are not sure, give your best estimate.",
+          "behaviours": [
+            {
+              "type": "fieldConditionalOn",
+              "targetFieldId": "deceased-known-date-of-death",
+              "targetStepId": "deceased-details",
+              "operator": "equal",
+              "value": "no"
+            }
+          ],
+          "validations": {
+            "required": {
+              "error": "Estimate is required",
+              "value": true
+            }
+          }
+        },
+        {
+          "ref": "components/national-id-number",
+          "fieldId": "deceased-id-number",
+          "label": "National Identification (ID) Number",
+          "htmlType": "text",
+          "mask": "999999-9999",
+          "hint": "Enter only if known",
+          "validations": {
+            "pattern": {
+              "value": "^\\d{6}-\\d{4}$",
+              "error": "Enter a valid National ID number (for example, 850101-0001)"
+            }
+          },
+          "ui": {
+            "width": "medium"
+          }
+        },
+        {
+          "ref": "components/generic-text",
+          "fieldId": "deceased-place-of-death",
+          "htmlType": "text",
+          "label": "Place of death",
+          "hint": "Enter the location where the person died. If you do not know the exact address, provide the town, city, or country.",
+          "validations": {
+            "required": {
+              "error": "Place of death is required",
+              "value": true
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "order-details",
+      "title": "How many copies do you need?",
+      "description": "Each copy costs $5.00 BBD for a certificate",
+      "elements": [
+        {
+          "ref": "components/generic-number",
+          "fieldId": "number-of-copies",
+          "htmlType": "number",
+          "label": "Number of copies",
+          "validations": {
+            "required": {
+              "error": "Number of copies is required",
+              "value": true
+            },
+            "min": {
+              "value": 0,
+              "error": "This field must be greater than or equal to 0"
+            }
+          },
+          "ui": {
+            "width": "short"
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "check-your-answers",
+      "title": "Check your answers",
+      "description": "Review all the information you have provided before submitting your application.",
+      "elements": [],
+      "behaviours": []
+    },
+    {
+      "stepId": "declaration",
+      "title": "Declaration",
+      "elements": [
+        {
+          "ref": "components/confirmation",
+          "fieldId": "declaration-confirmed",
+          "htmlType": "checkbox",
+          "label": "Declaration",
+          "options": [
+            {
+              "label": "I confirm that my information is correct and I am happy for it to be verified. I understand that false details may lead to my application being rejected, and that the Government of Barbados will keep my information confidential.",
+              "value": "confirmed"
+            }
+          ],
+          "validations": {
+            "required": {
+              "error": "You must confirm the declaration to continue",
+              "value": true
+            }
+          }
+        }
+      ],
+      "behaviours": []
+    },
+    {
+      "stepId": "submission-confirmation",
+      "title": "Application submitted",
+      "elements": [],
+      "behaviours": [],
+      "markdownContent": "## What happens next\n\nYou will receive a confirmation email with:\n\n- your application reference number\n- the cost of the certificate(s)\n- the expected completion date"
+    }
+  ],
+  "createdAt": "2026-06-08T21:18:47.989Z",
+  "updatedAt": "2026-06-12T00:00:00.000Z",
+  "meta": {
+    "visibility": "public"
+  },
+  "sourceFiles": [
+    {
+      "path": "apps/api/src/forms/form-definitions/recipes/get-death-certificate.json",
+      "sha256": "63f4553d8be2b01cda4fe72bd8a0ef6ddc13c073fd7a8d92e60253e840dbf73f"
+    },
+    {
+      "path": "packages/form-types/src/resolution-merge.ts",
+      "sha256": "3498634a67334aadac340457f6de6def715294e0481972fba7af4768f2710f65"
+    },
+    {
+      "path": "packages/form-types/src/merge.ts",
+      "sha256": "e5a336ebae61677c0ffa97ccc7ae0261c99cb1db40b32abc0b96efeff52f4524"
+    },
+    {
+      "path": "packages/registry/src/person-name-pattern.ts",
+      "sha256": "670ab5f5f55ba980cfe6e17226fa37b1149d7f0d04bd8ab4db8a727e4bb7161c"
+    },
+    {
+      "path": "packages/registry/src/barbados-id-patterns.ts",
+      "sha256": "8dec6adc57aa98353fe5aa0dac8fdc9c74d32e1079b0895ad55934f7ed046a76"
+    },
+    {
+      "path": "apps/forms/src/lib/form-builder/build-form.ts",
+      "sha256": "83587308e43832864559f29f018cbbed241054c3bec776df632e905da0d5b102"
+    },
+    {
+      "path": "apps/forms/src/lib/form-builder/helpers/behavior-helper.ts",
+      "sha256": "2f93b2baf78625c80cda1382ef02fc0fca93861cd29b4987a278a9e0f73baf97"
+    },
+    {
+      "path": "apps/forms/src/lib/form-builder/validation-builder.ts",
+      "sha256": "e3e5355e727b79491aafd1cef09a1d2898df747cc96cf647a7a133901370c594"
+    },
+    {
+      "path": "packages/form-conditions/src/index.ts",
+      "sha256": "bf0b06780248030e52d68d300a47d2ae93fd3070fb18da3209aa8fdee997dfd7"
+    },
+    {
+      "path": "packages/form-conditions/src/internals.ts",
+      "sha256": "c49394fd49565103b4ada86ad451ab6ef6950b236ab2684ac79bdc44acccda41"
+    },
+    {
+      "path": "apps/forms/src/components/form-renderer.tsx",
+      "sha256": "367cf606e6b1e273b1696f83cec27403b8f00776729fdfd05f5d651217c6eb9f"
+    },
+    {
+      "path": "apps/forms/src/components/applicant-name-display.tsx",
+      "sha256": "84508e9e063fce78820b1fdfd6ebaac194c3c4e396a6d77936d24c9904782301"
+    },
+    {
+      "path": "apps/forms/src/components/review.tsx",
+      "sha256": "5d44d7d2546fa09cd5f7f91026a81424bad514248cb21454f44df52427fc35a8"
+    },
+    {
+      "path": "apps/forms/src/components/submission-confirmation.tsx",
+      "sha256": "5cf33917a4da8c4a251f99f1ab8108129cffad9349fd8542dfe9051e32637976"
+    },
+    {
+      "path": "apps/forms/src/components/field-renderer/show-hide-field.tsx",
+      "sha256": "5e769733cb49542f5f9a0431738560d0f031da7fcfef01761e635b90a5c26d15"
+    },
+    {
+      "path": "apps/forms/src/components/field-renderer/date-field.tsx",
+      "sha256": "72e835c4ed8d1eaa41d98f57f651ba2cc72f084832390a14a91fb7512585b5cc"
+    },
+    {
+      "path": "apps/forms/e2e/smoke/get-death-certificate.smoke.spec.ts",
+      "sha256": "9581c71252f4ec0d5acd328707ba829136ea7b4c83b6773e08da2bf7f51d8133"
+    },
+    {
+      "path": "packages/registry/src/components/title.ts",
+      "sha256": "7ff37c6866ad527623815c1567211bcb759a7c17fd53c389bd549d608d436ea6"
+    },
+    {
+      "path": "packages/registry/src/components/first-name.ts",
+      "sha256": "970877ec4e2f38e0348794d64f2991daea4f185d9c22eda546f995c2384bfac7"
+    },
+    {
+      "path": "packages/registry/src/components/middle-name.ts",
+      "sha256": "d87a60742b08d7d2325e2b916c14bb5b73488ea521fc019a761d794ee6d73f89"
+    },
+    {
+      "path": "packages/registry/src/components/last-name.ts",
+      "sha256": "d542f9605e3571e93140555ad27eb1c777c7529ac587c26d8c2e8312f3bfe990"
+    },
+    {
+      "path": "packages/registry/src/components/address.ts",
+      "sha256": "a669d03f411b84ebf66becaefaf8b111ff6c61da582075012484ffcd280998bc"
+    },
+    {
+      "path": "packages/registry/src/components/parish.ts",
+      "sha256": "a93a39d77ab3d4872b0e4bfed00f851bb58e7805e3b95438511c0aad182b6ce9"
+    },
+    {
+      "path": "packages/registry/src/components/post-code.ts",
+      "sha256": "550b5ea68a2c98298a7321825dbfcf5edeadebe7b1b0d81abbd989c75451e25a"
+    },
+    {
+      "path": "packages/registry/src/components/national-id.ts",
+      "sha256": "66d6a6ec5c42730a24bbc83e81723f4cf5974ee4b21f9e0ceb51602c4eeb0e86"
+    },
+    {
+      "path": "packages/registry/src/components/show-hide.ts",
+      "sha256": "ed38dd017481fe859c8c0e3bcc502b521fb99162a753cf7c8263621ee4a3b04d"
+    },
+    {
+      "path": "packages/registry/src/components/passport-number.ts",
+      "sha256": "4a73b05428ee805911bb62885b6edfa1600ad224db1efbdc1135115d140274dc"
+    },
+    {
+      "path": "packages/registry/src/components/email.ts",
+      "sha256": "c7b4acaaa522ba38782c1222d1855f99e816bb624997ce523754d81e6ff05da2"
+    },
+    {
+      "path": "packages/registry/src/components/telephone.ts",
+      "sha256": "642847d22bb8fe6ee78e7a83389be01f1761ff5296eb0af19f1c32bfb20ce078"
+    },
+    {
+      "path": "packages/registry/src/components/relationship.ts",
+      "sha256": "fcf6119832124b4c9b0bbc5ddd0b88ff03dd49bf640a017eb7d8c06fa0532e38"
+    },
+    {
+      "path": "packages/registry/src/components/name.ts",
+      "sha256": "0cf02bcbe48fb2d01640b20a3a4b4a509e8fd01e4ac9ed98f507d9e8e97158b8"
+    },
+    {
+      "path": "packages/registry/src/components/generic-radio.ts",
+      "sha256": "21b8627d5867448174054b6898529be469e0697a010ed32d33722aab95ea1622"
+    },
+    {
+      "path": "packages/registry/src/components/generic-date.ts",
+      "sha256": "d3a50be98a3f0e31808e7bf5184ed36acce9dd179033c165262ac2bddbd59f9d"
+    },
+    {
+      "path": "packages/registry/src/components/generic-text.ts",
+      "sha256": "cfb9c2e41598f67bab804954c1c5ede09d325b0144bdf9e177f1416f74839845"
+    },
+    {
+      "path": "packages/registry/src/components/generic-number.ts",
+      "sha256": "6814f6d0e48d8693729e6bea9390c373850703578c6c3e3a8067d0eb928fc24e"
+    },
+    {
+      "path": "packages/registry/src/components/confirmation.ts",
+      "sha256": "3bceb8eadd146ce7fe36fc67f5978666ddde6a5a67b53846e9daae7c62d1ce6a"
+    }
+  ],
+  "runtime": {
+    "review": "Existing authored check-your-answers retained exactly once. Review excludes declaration/confirmation/show-hide controls and blank or inactive fields.",
+    "conditionalAnswers": "Keep but hide; evaluate current conditions for review/submission.",
+    "optionalIf": "National ID remains visible; required relaxed when passport-toggle is true.",
+    "confirmation": "Original runtime requires a real successful submission; reference does not fabricate a government receipt."
+  }
+}

@@ -203,7 +203,7 @@ describe("over-length branch names (#2488)", () => {
     });
   });
 
-  // The artifact↔PR join (ADR 0070): the candidate-free parser recovers the
+  // The artifact↔PR join (ADR 0118): the candidate-free parser recovers the
   // branch's label, and the caller compares it to deployBranchLabel(formId).
   describe("deployBranchLabel ↔ formIdFromDeployBranch", () => {
     it("is the id itself when it fits", () => {

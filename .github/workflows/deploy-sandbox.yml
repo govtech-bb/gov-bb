@@ -106,6 +106,8 @@ jobs:
       fb-app: ${{ steps.affected.outputs.fb-app }}
       ff-app: ${{ steps.affected.outputs.ff-app }}
       analytics: ${{ steps.affected.outputs.analytics }}
+      api-v2: ${{ steps.affected.outputs.api-v2 }}
+      editor-v2: ${{ steps.affected.outputs.editor-v2 }}
       migrations: ${{ steps.affected.outputs.migrations }}
       amplify-config: ${{ steps.affected.outputs.amplify-config }}
     steps:
@@ -178,6 +180,8 @@ jobs:
           echo "fb-app=$(has form-builder-app)" >> "$GITHUB_OUTPUT"
           echo "ff-app=$(has feature-flagging-app)" >> "$GITHUB_OUTPUT"
           echo "analytics=$(has analytics-app)" >> "$GITHUB_OUTPUT"
+          echo "api-v2=$(has api_v2)" >> "$GITHUB_OUTPUT"
+          echo "editor-v2=$(has editor_v2)" >> "$GITHUB_OUTPUT"
 
           # Migrations: precise path-grep (from PR #216) on the unified base. The
           # migration task is a ~1.5-3 min cold Fargate run; migration:run is
@@ -666,7 +670,7 @@ jobs:
   # the others.
   #
   # NOT listed (its spec is test.fixme): referral-student-support-services has
-  # an unsubmittable required-checkbox-with-empty-options recipe bug (ADR 0027).
+  # an unsubmittable required-checkbox-with-empty-options recipe bug (ADR 0047).
   # Add it to the matrix once that is fixed.
   #
   # ALSO NOT listed — gated `visibility: preview` (#1646) pending the misrouted
@@ -714,7 +718,7 @@ jobs:
     uses: ./.github/workflows/forms-smoke.yml
     with:
       base_url: https://forms.sandbox.alpha.gov.bb
-      landing_url: https://landing.sandbox.alpha.gov.bb
+      landing_url: https://sandbox.alpha.gov.bb
       spec: ${{ matrix.spec }}
       artifact_name: ${{ matrix.artifact_name }}
     secrets:
@@ -790,7 +794,7 @@ jobs:
           # shell. The token is a GitHub user PAT; the others are fixed sandbox
           # URLs. A clear fail if the token is unset (see the note above).
           E2E_API_BASE_URL: https://forms.api.sandbox.alpha.gov.bb
-          E2E_LANDING_URL: https://landing.sandbox.alpha.gov.bb
+          E2E_LANDING_URL: https://sandbox.alpha.gov.bb
           SMOKE_BASE_URL: https://forms.sandbox.alpha.gov.bb
           E2E_SERVICE_STATUS_TOKEN: ${{ secrets.E2E_SERVICE_STATUS_TOKEN }}
         run: |
@@ -921,7 +925,7 @@ jobs:
           # Needed for the CANCELLED→superseded check below to call gh api.
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           APP_LABEL: landing
-          APP_URL: https://landing.sandbox.alpha.gov.bb
+          APP_URL: https://sandbox.alpha.gov.bb
         run: |
           JOB_ID=$(aws amplify start-job \
             --app-id "$AMPLIFY_APP_ID" \
@@ -1038,9 +1042,46 @@ jobs:
           echo "❌ Amplify $APP_LABEL build did not finish within 15 minutes"
           exit 1
 
+  # api_v2 and editor_v2 (#3119). Their steps live in the reusable
+  # deploy-api-v2-sandbox.yml and deploy-editor-v2-sandbox.yml. They deploy
+  # with their own role (api-v2-github-actions-sandbox), whose OIDC trust
+  # matches this workflow's `ref:refs/heads/main` subject, so neither job may
+  # set `environment:`.
+  #
+  # Not in promote-to-staging's needs: staging has no api_v2 or editor_v2
+  # yet, so a v2 failure must not hold back the v1 staging deploy. A failure
+  # still turns this run red and alerts Slack (notify-failure). A red run is
+  # not the next affected base, so everything changed since the last green run
+  # (v2 included) deploys again on the next merge.
+  deploy-api-v2:
+    name: Deploy api_v2
+    needs: setup
+    if: needs.setup.outputs.api-v2 == 'true'
+    uses: ./.github/workflows/deploy-api-v2-sandbox.yml
+
+  deploy-editor-v2:
+    name: Deploy editor_v2
+    needs: setup
+    if: needs.setup.outputs.editor-v2 == 'true' || needs.setup.outputs.amplify-config == 'true'
+    uses: ./.github/workflows/deploy-editor-v2-sandbox.yml
+
   summary:
     name: Deployment summary
-    needs: [setup, deploy-api, deploy-form-builder, amplify-forms, amplify-landing, amplify-form-builder, amplify-feature-flagging, amplify-analytics, smoke-test-forms, journey-feature-flag]
+    needs:
+      [
+        setup,
+        deploy-api,
+        deploy-form-builder,
+        amplify-forms,
+        amplify-landing,
+        amplify-form-builder,
+        amplify-feature-flagging,
+        amplify-analytics,
+        smoke-test-forms,
+        journey-feature-flag,
+        deploy-api-v2,
+        deploy-editor-v2,
+      ]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -1054,6 +1095,8 @@ jobs:
           FF_APP_RESULT: ${{ needs.amplify-feature-flagging.result }}
           ANALYTICS_RESULT: ${{ needs.amplify-analytics.result }}
           SMOKE_RESULT: ${{ needs.smoke-test-forms.result }}
+          API_V2_RESULT: ${{ needs.deploy-api-v2.result }}
+          EDITOR_V2_RESULT: ${{ needs.deploy-editor-v2.result }}
           MIGRATIONS_GATE: ${{ needs.setup.outputs.migrations }}
         run: |
           # Report each target's ACTUAL job result, not just the
@@ -1096,17 +1139,35 @@ jobs:
             echo "| Amplify feature-flagging | $(outcome "$FF_APP_RESULT") |"
             echo "| Amplify analytics | $(outcome "$ANALYTICS_RESULT") |"
             echo "| Forms live smoke | $(outcome "$SMOKE_RESULT" | sed 's/deployed/passed/') |"
+            echo "| api_v2 | $(outcome "$API_V2_RESULT") |"
+            echo "| Amplify editor_v2 | $(outcome "$EDITOR_V2_RESULT") |"
             echo ""
             echo "**API URL:** https://forms.api.sandbox.alpha.gov.bb"
-            echo "**Landing URL:** https://landing.sandbox.alpha.gov.bb"
+            echo "**Landing URL:** https://sandbox.alpha.gov.bb"
             echo "**Forms URL:** https://forms.sandbox.alpha.gov.bb"
             echo "**Form Builder URL:** https://builder.sandbox.alpha.gov.bb"
             echo "**Feature Flagging URL:** https://feature-flagging.sandbox.alpha.gov.bb"
+            echo "**api_v2 URL:** https://api.sandbox.alpha.gov.bb/v2"
+            echo "**editor_v2 URL:** https://editor.sandbox.alpha.gov.bb"
           } >> "$GITHUB_STEP_SUMMARY"
 
   notify-failure:
     name: Notify Slack on failure
-    needs: [deploy-api, deploy-form-builder, amplify-forms, amplify-landing, amplify-form-builder, amplify-feature-flagging, amplify-analytics, smoke-test-forms, promote-to-staging, journey-feature-flag]
+    needs:
+      [
+        deploy-api,
+        deploy-form-builder,
+        amplify-forms,
+        amplify-landing,
+        amplify-form-builder,
+        amplify-feature-flagging,
+        amplify-analytics,
+        smoke-test-forms,
+        promote-to-staging,
+        journey-feature-flag,
+        deploy-api-v2,
+        deploy-editor-v2,
+      ]
     if: always() && contains(needs.*.result, 'failure')
     runs-on: ubuntu-latest
     steps:
@@ -1125,7 +1186,8 @@ jobs:
   # every affected target deployed cleanly — a skipped/unaffected job is fine,
   # but any failure or cancellation stops the chain, so staging never receives
   # code sandbox couldn't ship. That includes the live forms smoke and the
-  # analytics build (#2756).
+  # analytics build (#2756). api_v2 and editor_v2 are left out on purpose:
+  # staging does not run them yet (see deploy-api-v2).
   #
   # Staging deploys the exact commit sandbox proved: this job fast-forwards the
   # `staging` branch to it and dispatches deploy-staging ON `staging`, so every
@@ -1136,7 +1198,19 @@ jobs:
   # that staging deploy finishes.
   promote-to-staging:
     name: Promote to staging (on sandbox green)
-    needs: [setup, deploy-api, deploy-form-builder, amplify-forms, amplify-landing, amplify-form-builder, amplify-feature-flagging, amplify-analytics, smoke-test-forms, journey-feature-flag]
+    needs:
+      [
+        setup,
+        deploy-api,
+        deploy-form-builder,
+        amplify-forms,
+        amplify-landing,
+        amplify-form-builder,
+        amplify-feature-flagging,
+        amplify-analytics,
+        smoke-test-forms,
+        journey-feature-flag,
+      ]
     if: ${{ github.event_name == 'push' && !failure() && !cancelled() }}
     runs-on: ubuntu-latest
     concurrency:

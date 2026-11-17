@@ -24,7 +24,7 @@ import { defineConfig, devices } from "@playwright/test";
  * Enter a form through its landing start page's "Start now" link instead. Name
  * the spec: only specs that pass a `landingStartPath` support this, and the
  * rest throw (see openSmokeForm, #3008):
- *   SMOKE_LANDING_URL=https://landing.sandbox.alpha.gov.bb SMOKE_BASE_URL=https://forms.sandbox.alpha.gov.bb pnpm --filter @govtech-bb/forms test:smoke project-protege-mentor.smoke.spec.ts
+ *   SMOKE_LANDING_URL=https://sandbox.alpha.gov.bb SMOKE_BASE_URL=https://forms.sandbox.alpha.gov.bb pnpm --filter @govtech-bb/forms test:smoke project-protege-mentor.smoke.spec.ts
  */
 
 const rawBaseURL = process.env.SMOKE_BASE_URL?.trim();
@@ -82,7 +82,7 @@ export default defineConfig({
      * fail-closed (the API ignores it), so sending an empty header buys nothing
      * — and a custom request header makes the submission a CORS-preflighted
      * request. The per-PR preview smoke runs against the *deployed* sandbox API,
-     * which only allows `X-Smoke-Submission` once this change ships (ADR 0029);
+     * which only allows `X-Smoke-Submission` once this change ships (ADR 0050);
      * sending it before then fails the preflight and blocks the submit. Omitting
      * it when unset keeps the smoke behaving exactly as before. */
     ...(process.env.SMOKE_SUBMISSION_TOKEN

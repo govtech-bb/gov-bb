@@ -70,27 +70,39 @@ interface UmamiEvent {
   data: Record<string, unknown>;
 }
 
-/** Record every custom event the page sends to Umami's `/api/send`. */
-function captureUmamiEvents(page: Page): UmamiEvent[] {
+/**
+ * Record every custom event the page sends to Umami's `/api/send`, and the URL
+ * of every request, page views included.
+ */
+function captureUmamiRequests(page: Page): {
+  events: UmamiEvent[];
+  urls: string[];
+} {
   const events: UmamiEvent[] = [];
+  const urls: string[] = [];
   page.on("request", (req) => {
     if (req.method() !== "POST") return;
     if (!new URL(req.url()).pathname.endsWith("/api/send")) return;
     let body: {
       type?: string;
-      payload?: { name?: string; data?: Record<string, unknown> };
+      payload?: {
+        name?: string;
+        data?: Record<string, unknown>;
+        url?: string;
+      };
     } | null;
     try {
       body = req.postDataJSON();
     } catch {
       return;
     }
+    if (body?.payload?.url) urls.push(body.payload.url);
     // Pageviews are `type: "event"` too, but carry no name.
     if (body?.type === "event" && body.payload?.name) {
       events.push({ name: body.payload.name, data: body.payload.data ?? {} });
     }
   });
-  return events;
+  return { events, urls };
 }
 
 async function readFunnel(
@@ -132,7 +144,7 @@ test.describe("Journey 7 — forms analytics reach Umami and the dashboard", () 
     const before = await test.step("read the dashboard baseline", () =>
       readFunnel(dashboard, dashboardUrl));
 
-    const events = captureUmamiEvents(page);
+    const { events, urls } = captureUmamiRequests(page);
 
     await test.step("walk and submit the test form", async () => {
       await openSmokeForm(page, FORM_ID);
@@ -183,6 +195,19 @@ test.describe("Journey 7 — forms analytics reach Umami and the dashboard", () 
           FORM_ID,
         );
       }
+    });
+
+    await test.step("Umami requests carry no query string", async () => {
+      // #3503: the walk's URLs carry ?preview=<token>. trackPageview and
+      // trackEvent send Umami location.pathname (#3586), and
+      // data-exclude-search covers what the tracker builds itself. This fails
+      // if either regresses, e.g. someone passes location.href. The message
+      // shows paths only, so a failure doesn't print the token.
+      expect(urls.length, "Umami requests captured").toBeGreaterThan(0);
+      expect(
+        urls.filter((u) => u.includes("?")).map((u) => u.split("?")[0]),
+        "Umami URLs that kept their query string",
+      ).toEqual([]);
     });
 
     await test.step("the dashboard shows the new events", async () => {

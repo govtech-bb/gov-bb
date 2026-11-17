@@ -15,7 +15,7 @@ end-to-end by intercepting the POST in a Playwright drive of `/forms/master`.
 
 ## What we did
 
-Three commits on `worktree-737-stale-conditional-answers`, plus ADR 0040:
+Three commits on `worktree-737-stale-conditional-answers`, plus ADR 0067:
 
 - `feat(forms)`: added `getVisibleFields(step, formApi)` to
   `behavior-helper.ts` — evaluates each field's `fieldConditionalOn`
@@ -36,7 +36,7 @@ the answer back restores what the user typed.
 - **Evaluate, don't re-render.** The alternative — forcing the flag
   mutation to run for unmounted fields — keeps truth coupled to rendering;
   the same class of bug recurs with the next render-order change. Visibility
-  is now derived from form state on demand (ADR 0040).
+  is now derived from form state on demand (ADR 0067).
 - **Keep-but-hide, not clear-on-change.** Clearing dependent values on a
   controlling-answer change destroys user input on a mis-click; the GDS
   pattern hides data, it doesn't erase it.

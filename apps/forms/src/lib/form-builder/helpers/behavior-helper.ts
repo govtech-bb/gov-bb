@@ -1,15 +1,15 @@
-import {
+import type {
   FieldConditionalOnBehaviour,
   FieldValue,
   StepConditionalOnBehaviour,
 } from "@govtech-bb/form-types";
-import { AnyFormApi } from "@tanstack/react-form";
-import { ClientFormStep, ClientPrimitive } from "@forms/types";
+import type { AnyFormApi } from "@tanstack/react-form";
+import type { ClientFormStep, ClientPrimitive } from "@forms/types";
 import {
   evaluateCondition,
   flattenStepValues,
 } from "@govtech-bb/form-conditions";
-import { RequiredState } from "../validation-methods";
+import type { RequiredState } from "../validation-methods";
 import { buildStepScopedValues } from "./value-tree";
 
 export const checkConditionalOn = (

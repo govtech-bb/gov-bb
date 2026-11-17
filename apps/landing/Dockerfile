@@ -24,6 +24,7 @@ COPY --chown=app:app apps/api/package.json apps/api/
 COPY --chown=app:app apps/landing/package.json apps/landing/
 COPY --chown=app:app apps/forms/package.json apps/forms/
 COPY --chown=app:app packages/expressions/package.json packages/expressions/
+COPY --chown=app:app packages/govbbmarkd/package.json packages/govbbmarkd/
 COPY --chown=app:app packages/form-conditions/package.json packages/form-conditions/
 COPY --chown=app:app packages/form-types/package.json packages/form-types/
 COPY --chown=app:app packages/form-validation/package.json packages/form-validation/
@@ -35,6 +36,7 @@ RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store,uid=1001,gid=1001 \
     pnpm install --store-dir=/pnpm/store --frozen-lockfile --ignore-scripts
 
 COPY --chown=app:app apps/landing/ apps/landing/
+COPY --chown=app:app packages/govbbmarkd/ packages/govbbmarkd/
 
 ENV NODE_ENV=development
 EXPOSE 3000

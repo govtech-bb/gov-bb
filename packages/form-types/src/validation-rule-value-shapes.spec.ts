@@ -108,6 +108,20 @@ describe("recipe schema rejects off-shape rule values (#2384)", () => {
     ).toBe(true);
   });
 
+  it("accepts a numeric bound scaled by another answer (#3636)", () => {
+    const max = {
+      value: 3000,
+      scaleBy: {
+        referenceFieldId: "income-frequency",
+        factors: { weekly: 4, "twice-a-month": 2, monthly: 1 },
+      },
+    };
+    const result = serviceContractRecipeSchema.safeParse(recipeWith({ max }));
+    expect(result.success).toBe(true);
+    // Parsed, not stripped: the factors reach the served contract.
+    expect(JSON.stringify(result.data)).toContain(JSON.stringify(max.scaleBy));
+  });
+
   it("leaves deliberately loose rules alone", () => {
     expect(
       serviceContractRecipeSchema.safeParse(
