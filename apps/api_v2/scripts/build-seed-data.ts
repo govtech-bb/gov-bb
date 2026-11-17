@@ -15,6 +15,8 @@
  *   nesting their url (`NESTED_WITHOUT_URL`). A second category is dropped:
  *   a page has one `category_id`. `content_slug` is the markdown path
  *   landing's registry keys the page by, `index.md`/`.md` stripped.
+ * - feature-route pages: every `-meta.ts` under `apps/landing/src/routes`,
+ *   from its `META`, with an empty body.
  * - categories: `CATEGORY_TAXONOMY` in its order, each subcategory a
  *   category with a parent.
  *
@@ -24,16 +26,21 @@
  */
 
 import { readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
-import { join, relative } from "node:path";
+import { basename, join, relative } from "node:path";
 import { execFileSync } from "node:child_process";
 import matter from "gray-matter";
 import { CATEGORY_TAXONOMY } from "@govtech-bb/content/categories";
 import type { Frontmatter } from "../src/modules/page";
 import type { SeedEstate, SeedPage } from "../src/seed-data";
 import { convertStormReadyContacts } from "../src/seed-data/stormready-contacts";
+import {
+  type FeatureMeta,
+  featureRoutePage,
+} from "../src/seed-data/feature-route-pages";
 
 const root = join(__dirname, "..", "..", "..");
 const contentDir = join(root, "apps", "landing", "src", "content");
+const routesDir = join(root, "apps", "landing", "src", "routes");
 const target = join(__dirname, "..", "src", "seed-data", "estate.json");
 
 const FRONTMATTER_KEYS = [
@@ -156,6 +163,18 @@ const parentUrlOf = (page: Parsed): string | null => {
   return parent ? urlOf(parent) : (nestedUrls.get(urlOf(page)) ?? null);
 };
 
+const featurePages: SeedPage[] = readdirSync(routesDir, {
+  recursive: true,
+  encoding: "utf8",
+})
+  .filter((file) => basename(file) === "-meta.ts")
+  .sort()
+  .map((file) => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports -- tsx runs this as CommonJS, so no top-level await import()
+    const { META }: { META: FeatureMeta } = require(join(routesDir, file));
+    return featureRoutePage(META);
+  });
+
 const pages: SeedPage[] = parsed
   .map((entry) => ({
     url: urlOf(entry),
@@ -163,6 +182,7 @@ const pages: SeedPage[] = parsed
     category: categoryOf(entry),
     parent: parentUrlOf(entry),
   }))
+  .concat(featurePages)
   .sort((a, b) => a.url.localeCompare(b.url));
 
 // A sub-page takes its parent's category: the database requires it.

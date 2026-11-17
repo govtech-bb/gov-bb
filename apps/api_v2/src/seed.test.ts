@@ -51,6 +51,30 @@ describe("seed", () => {
     ).toEqual([]);
   });
 
+  /** Landing renders these from its routes, so their body is empty. */
+  it.each([
+    ["/bank-holiday-calendar", "work-employment"],
+    [
+      "/health-and-emergency-services/find-an-emergency-shelter",
+      "health-and-emergency-services",
+    ],
+    [
+      "/health-and-emergency-services/water-outages",
+      "health-and-emergency-services",
+    ],
+  ])("files the feature route %s under %s", (url, category) => {
+    const page = ESTATE.pages.find((p) => p.url === url);
+    expect(page).toMatchObject({
+      category,
+      parent: null,
+      form_id: null,
+      visibility: "public",
+      content_slug: url.slice(1),
+      body_markdown: "",
+    });
+    expect(page?.frontmatter.keywords?.length).toBeGreaterThan(0);
+  });
+
   it("loads every page and category, and a second run adds nothing", async () => {
     const { db, close } = await createTestDb();
 
