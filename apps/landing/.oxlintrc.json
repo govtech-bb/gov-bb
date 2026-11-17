@@ -11,6 +11,8 @@
   },
   "ignorePatterns": [
     ".amplify-hosting/**",
+    ".size-limit.js",
+    "public/cms-preview/**",
     "**/coverage/**",
     "**/vite.config.*.timestamp-*.*"
   ],

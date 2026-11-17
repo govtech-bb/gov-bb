@@ -18,7 +18,7 @@ notes.
 - The recipe, edited in place: three steps deleted, two added, twelve field-level
   changes. Diff speaks for itself.
 - `apply-for-food-business-licence.spec.ts` — hydration guard, see below.
-- [ADR 0068](../decisions/0068-environmental-health-forms-do-not-ask-what-the-inspection-verifies.md)
+- [ADR 0116](../decisions/0116-environmental-health-forms-do-not-ask-what-the-inspection-verifies.md)
   — the principle behind most of the deletions, previously unwritten.
 
 ## Why it looks the way it does

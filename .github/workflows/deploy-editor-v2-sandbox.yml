@@ -1,0 +1,143 @@
+name: Deploy editor_v2 to Sandbox
+
+# Builds apps/editor_v2 on its Amplify app, gov-bb-editor-v2-sandbox
+# (https://editor-v2.sandbox.alpha.gov.bb). Infrastructure: alpha-infra
+# environments/sandbox/modular-forms-sandbox/amplify-editor-v2.tf (gov-bb#2962).
+#
+# The editor builds from the Amplify app's `sandbox` branch, which has
+# auto-build OFF, so moving the `sandbox` pointer builds nothing by itself.
+# This workflow is what deploys the editor: it starts a RELEASE build of the
+# merged commit.
+#
+# Reusable: deploy-sandbox.yml calls it (job `deploy-editor-v2`) on a merge to
+# main when nx marks editor_v2 as affected (or amplify.yml changed), after its
+# advance-sandbox job has moved the `sandbox` branch to that commit (#3119).
+# Run it by hand from main to rebuild the current `sandbox` head without a
+# change.
+#
+# The editor's prose template uses the shared Markdown dialect and the
+# design-system packages installed from the lockfile.
+#
+# Role: api-v2-github-actions-sandbox, which trusts gov-bb v2-rewrite and main
+# and may start/read jobs on this app's `sandbox` branch (alpha-infra#738).
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Queue deploys; never cancel one mid-flight. Amplify also refuses a second
+# RELEASE job while one is running on the branch.
+concurrency:
+  group: deploy-editor-v2-sandbox
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: ca-central-1
+  AWS_ROLE_ARN: arn:aws:iam::672203047922:role/api-v2-github-actions-sandbox
+  AMPLIFY_APP_ID: d2bjaphcrcz9hl
+  AMPLIFY_BRANCH: sandbox
+  APP_URL: https://editor-v2.sandbox.alpha.gov.bb
+
+jobs:
+  deploy:
+    name: Build editor_v2 on Amplify
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write # assume the deploy role via OIDC
+      contents: read
+    # No `environment:` here: it would change the OIDC subject to
+    # repo:...:environment:<name>, which the deploy role does not trust.
+    # No checkout either: Amplify clones the commit itself.
+    steps:
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@254c19bd240aabef8777f48595e9d2d7b972184b # v6.2.1
+        with:
+          role-to-assume: ${{ env.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      # From deploy-sandbox on a push, --commit-id builds exactly the merged
+      # commit (advance-sandbox has just put `sandbox` on it), not whatever the
+      # branch head is by the time Amplify clones it. On a manual dispatch,
+      # GITHUB_SHA is the head of the ref it was run from (often main), which
+      # may not be on `sandbox` yet, so build the `sandbox` head instead, as the
+      # other Amplify jobs in deploy-sandbox.yml do. In a called workflow,
+      # GITHUB_EVENT_NAME is the caller's event.
+      - name: Start the Amplify build and wait for it
+        run: |
+          COMMIT_ARGS=()
+          COMMIT_DESC="sandbox head"
+          if [ "$GITHUB_EVENT_NAME" != workflow_dispatch ]; then
+            COMMIT_ARGS=(--commit-id "$GITHUB_SHA")
+            COMMIT_DESC="commit $GITHUB_SHA"
+          fi
+          JOB_ID=$(aws amplify start-job \
+            --app-id "$AMPLIFY_APP_ID" \
+            --branch-name "$AMPLIFY_BRANCH" \
+            --job-type RELEASE \
+            "${COMMIT_ARGS[@]}" \
+            --commit-message "GitHub Actions run $GITHUB_RUN_ID" \
+            --query jobSummary.jobId \
+            --output text)
+          echo "Amplify editor_v2 job started: $JOB_ID ($COMMIT_DESC)"
+
+          # 40 x 30 s = 20 minutes. The 12 Oct build took about 4.
+          for i in $(seq 1 40); do
+            STATUS=$(aws amplify get-job \
+              --app-id "$AMPLIFY_APP_ID" \
+              --branch-name "$AMPLIFY_BRANCH" \
+              --job-id "$JOB_ID" \
+              --query job.summary.status \
+              --output text)
+            echo "[$i/40] Amplify editor_v2 status: $STATUS"
+            case "$STATUS" in
+              SUCCEED) exit 0 ;;
+              FAILED|CANCELLED)
+                echo "::error::Amplify job $JOB_ID ended $STATUS. Logs: Amplify console, app $AMPLIFY_APP_ID, branch $AMPLIFY_BRANCH, job $JOB_ID."
+                exit 1 ;;
+            esac
+            sleep 30
+          done
+          echo "::error::Amplify job $JOB_ID still running after 20 minutes."
+          exit 1
+
+      # The CDN can serve the previous build for a few seconds after SUCCEED.
+      - name: Smoke test
+        run: |
+          for j in 1 2 3 4 5; do
+            CODE=$(curl -s -o /dev/null -w '%{http_code}' --max-time 15 "$APP_URL/" || echo 000)
+            echo "attempt $j: $APP_URL -> $CODE"
+            [ "$CODE" = "200" ] && exit 0
+            sleep 10
+          done
+          echo "::error::$APP_URL did not answer 200 after the build."
+          exit 1
+
+  preview-smoke:
+    name: Open and close page preview
+    needs: deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version-file: ".nvmrc"
+          cache: "pnpm"
+      - run: pnpm install --frozen-lockfile
+      - name: Install Chromium
+        timeout-minutes: 5
+        run: pnpm --filter @govtech-bb/forms exec playwright install chromium
+      # Real deployed UI/assets and CSP; fixture authentication/API, with all mutations blocked.
+      - name: Verify prose preview and unsaved edits
+        run: |
+          PLAYWRIGHT_MODULE_PATH="$(pnpm --filter @govtech-bb/forms exec node -p "require.resolve('playwright', { paths: [require.resolve('@playwright/test')] })")"
+          export PLAYWRIGHT_MODULE_PATH
+          pnpm --dir apps/editor_v2 exec node scripts/browser/site-preview-smoke.mjs "$APP_URL"

@@ -31,7 +31,7 @@ shape `{ slug, status }`.
 ### `PUT /service_status`
 
 Admin-guarded (`@UseGuards(new AdminTokenGuard("SERVICE_STATUS_ADMIN_TOKEN",
-"ARCHIVE_DRAFTS_TOKEN"))` on the method — ADR-0061 dev-bypass token pattern),
+"ARCHIVE_DRAFTS_TOKEN"))` on the method — ADR-0106 dev-bypass token pattern),
 `@ApiBearerAuth()`, `@HttpCode(200)`.
 
 Body DTO `UpdateServiceStatusDto`:

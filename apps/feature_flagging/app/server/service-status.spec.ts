@@ -11,6 +11,13 @@ vi.mock("./slack-notif", async (importOriginal) => ({
   sendSlackNotification,
 }));
 
+const flags = vi.hoisted(() => ({ pagesInEditor: false }));
+vi.mock("../lib/service-url", () => ({
+  get pagesInEditor() {
+    return flags.pagesInEditor;
+  },
+}));
+
 import {
   getServiceAudit,
   listServices,
@@ -20,6 +27,7 @@ import {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  flags.pagesInEditor = false;
 });
 
 const CTX = {
@@ -352,6 +360,98 @@ describe("setServiceStatus", () => {
     } as never);
 
     expect(sendSlackNotification).not.toHaveBeenCalled();
+  });
+
+  it("writes without a catalogue lookup before cutover", async () => {
+    put.mockResolvedValue({
+      slug: "info-only",
+      status: "enabled",
+      previousStatus: "enabled",
+    });
+
+    await setServiceStatus({
+      data: { slug: "info-only", status: "enabled", title: "Info only" },
+      ...(CTX as object),
+    } as never);
+
+    expect(get).not.toHaveBeenCalled();
+    expect(put).toHaveBeenCalledWith(
+      "/service_status",
+      { slug: "info-only", status: "enabled" },
+      "gh_tok",
+    );
+  });
+});
+
+describe("setServiceStatus after cutover (pagesInEditor)", () => {
+  const REFUSAL =
+    "This service has no form, so its status can't be changed here. Change its page in the content editor.";
+
+  beforeEach(() => {
+    flags.pagesInEditor = true;
+    get.mockImplementation((path: string) => {
+      if (path === "/services")
+        return Promise.resolve([
+          { slug: "info-only", title: "Info only" },
+          { slug: "family/get-x", title: "Get X", formId: "get-x" },
+        ]);
+      if (path === "/form-definitions")
+        return Promise.resolve([
+          { formId: "get-x", title: "Get X form" },
+          { formId: "form-only", title: "Form only" },
+        ]);
+      if (path === "/service_status")
+        return Promise.resolve([{ slug: "stray", status: "enabled" }]);
+      return Promise.resolve([]);
+    });
+    put.mockImplementation((_path: string, body: { slug: string }) =>
+      Promise.resolve({
+        slug: body.slug,
+        status: "enabled",
+        previousStatus: "enabled",
+      }),
+    );
+  });
+
+  const set = (slug: string) =>
+    setServiceStatus({
+      data: { slug, status: "enabled", title: slug },
+      ...(CTX as object),
+    } as never);
+
+  it.each([
+    ["a content-only page", "info-only"],
+    ["an orphan status row", "stray"],
+    ["a slug in no list", "nowhere"],
+  ])("refuses %s", async (_label, slug) => {
+    await expect(set(slug)).rejects.toThrow(REFUSAL);
+    expect(put).not.toHaveBeenCalled();
+    expect(sendSlackNotification).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["a form with a page", "get-x"],
+    ["a form with no page", "form-only"],
+  ])("writes %s, reading the catalogue with the token", async (_l, slug) => {
+    await set(slug);
+
+    expect(get).toHaveBeenCalledWith("/form-definitions", "gh_tok");
+    expect(put).toHaveBeenCalledWith(
+      "/service_status",
+      { slug, status: "enabled" },
+      "gh_tok",
+    );
+  });
+
+  it("fails closed when /form-definitions fails", async () => {
+    get.mockImplementation((path: string) =>
+      path === "/form-definitions"
+        ? Promise.reject(new Error("boom"))
+        : Promise.resolve([]),
+    );
+
+    await expect(set("get-x")).rejects.toThrow("boom");
+    expect(put).not.toHaveBeenCalled();
   });
 });
 

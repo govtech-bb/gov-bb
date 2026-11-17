@@ -124,7 +124,7 @@ export const loadServiceSource = createServerFn({
     // reports the missing form and the next load retries. Read through the
     // same resolver as getRecipe so a stale draft row is re-synced with the
     // committed recipe on first adoption too, not only on the next
-    // getServiceDraft refresh (#2897, ADR 0075).
+    // getServiceDraft refresh (#2897, ADR 0125).
     const recipe = formId
       ? await resolveCurrentRecipe(formId, token).catch(() => null)
       : null;

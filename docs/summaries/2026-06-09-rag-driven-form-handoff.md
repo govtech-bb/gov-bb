@@ -26,7 +26,7 @@ Police Certificate of Character upload). Resolved on
   info-only services don't trigger a doomed form-definition fetch + 404 warning.
 - Tests: new `retrieval.test.ts` (threshold incl. boundary, non-service ids,
   empty slug, top-only semantics, exclusion); widened the `test` script glob.
-- Recorded the principle in `docs/decisions/0045-chat-form-handoff-can-be-rag-driven.md`.
+- Recorded the principle in `docs/decisions/0078-chat-form-handoff-can-be-rag-driven.md`.
 
 ## Why we did it that way
 
@@ -48,7 +48,7 @@ Police Certificate of Character upload). Resolved on
   commits the chat to multi-turn field-gathering, so it stays behind the
   explicit matcher. The RAG fallback only ever hands over a link — a
   low-commitment action — so it's safe to trigger on the fuzzier signal. See
-  ADR 0045.
+  ADR 0078.
 - **Top-source-only, reusing the citation bar.** The helper considers only
   `sources[0]` (the turn's actual topic) rather than scanning for any
   upload-form lower in the list, and reuses `SCORE_THRESHOLD` so it fires on the

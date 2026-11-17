@@ -1,0 +1,1411 @@
+{
+  "kind": "Expected visibility and optionalIf results from original evaluateFormConditions; review exclusions from original review.tsx",
+  "fixtures": [
+    {
+      "name": "passport-false-relationship-spouse-known-yes",
+      "values": {
+        "applicant-details": {
+          "applicant-title": "mr",
+          "applicant-first-name": "Example",
+          "applicant-middle-name": "Example",
+          "applicant-last-name": "Example",
+          "applicant-address-line-1": "Example",
+          "applicant-address-line-2": "Example",
+          "applicant-parish": "christ-church",
+          "applicant-postcode": "Example",
+          "applicant-id-number": "Example",
+          "passport-toggle": false,
+          "applicant-passport-number": "Example",
+          "applicant-email": "Example",
+          "applicant-telephone": "Example"
+        },
+        "relationship-to-person": {
+          "relationship": "spouse",
+          "relationship-other-description": "Example"
+        },
+        "reason-for-certificate": {
+          "reason-for-certificate": "Example"
+        },
+        "deceased-details": {
+          "deceased-first-name": "Example",
+          "deceased-middle-name": "Example",
+          "deceased-last-name": "Example",
+          "deceased-known-date-of-death": "yes",
+          "deceased-date-of-death": {
+            "day": "2",
+            "month": "1",
+            "year": "2000"
+          },
+          "deceased-estimated-date-of-death": "Example",
+          "deceased-id-number": "Example",
+          "deceased-place-of-death": "Example"
+        },
+        "order-details": {
+          "number-of-copies": 0
+        },
+        "check-your-answers": {},
+        "declaration": {
+          "declaration-confirmed": "confirmed"
+        },
+        "submission-confirmation": {}
+      },
+      "expectedActive": [
+        "applicant-title",
+        "applicant-first-name",
+        "applicant-middle-name",
+        "applicant-last-name",
+        "applicant-address-line-1",
+        "applicant-address-line-2",
+        "applicant-parish",
+        "applicant-postcode",
+        "applicant-id-number",
+        "passport-toggle",
+        "applicant-email",
+        "applicant-telephone",
+        "relationship",
+        "reason-for-certificate",
+        "deceased-first-name",
+        "deceased-middle-name",
+        "deceased-last-name",
+        "deceased-known-date-of-death",
+        "deceased-date-of-death",
+        "deceased-id-number",
+        "deceased-place-of-death",
+        "number-of-copies",
+        "declaration-confirmed"
+      ],
+      "expectedRequired": [
+        "applicant-title",
+        "applicant-first-name",
+        "applicant-last-name",
+        "applicant-address-line-1",
+        "applicant-parish",
+        "applicant-id-number",
+        "applicant-email",
+        "applicant-telephone",
+        "relationship",
+        "reason-for-certificate",
+        "deceased-first-name",
+        "deceased-last-name",
+        "deceased-known-date-of-death",
+        "deceased-date-of-death",
+        "deceased-place-of-death",
+        "number-of-copies",
+        "declaration-confirmed"
+      ],
+      "expectedReview": [
+        "applicant-title",
+        "applicant-first-name",
+        "applicant-middle-name",
+        "applicant-last-name",
+        "applicant-address-line-1",
+        "applicant-address-line-2",
+        "applicant-parish",
+        "applicant-postcode",
+        "applicant-id-number",
+        "applicant-email",
+        "applicant-telephone",
+        "relationship",
+        "reason-for-certificate",
+        "deceased-first-name",
+        "deceased-middle-name",
+        "deceased-last-name",
+        "deceased-known-date-of-death",
+        "deceased-date-of-death",
+        "deceased-id-number",
+        "deceased-place-of-death",
+        "number-of-copies"
+      ]
+    },
+    {
+      "name": "passport-false-relationship-spouse-known-no",
+      "values": {
+        "applicant-details": {
+          "applicant-title": "mr",
+          "applicant-first-name": "Example",
+          "applicant-middle-name": "Example",
+          "applicant-last-name": "Example",
+          "applicant-address-line-1": "Example",
+          "applicant-address-line-2": "Example",
+          "applicant-parish": "christ-church",
+          "applicant-postcode": "Example",
+          "applicant-id-number": "Example",
+          "passport-toggle": false,
+          "applicant-passport-number": "Example",
+          "applicant-email": "Example",
+          "applicant-telephone": "Example"
+        },
+        "relationship-to-person": {
+          "relationship": "spouse",
+          "relationship-other-description": "Example"
+        },
+        "reason-for-certificate": {
+          "reason-for-certificate": "Example"
+        },
+        "deceased-details": {
+          "deceased-first-name": "Example",
+          "deceased-middle-name": "Example",
+          "deceased-last-name": "Example",
+          "deceased-known-date-of-death": "no",
+          "deceased-date-of-death": {
+            "day": "2",
+            "month": "1",
+            "year": "2000"
+          },
+          "deceased-estimated-date-of-death": "Example",
+          "deceased-id-number": "Example",
+          "deceased-place-of-death": "Example"
+        },
+        "order-details": {
+          "number-of-copies": 0
+        },
+        "check-your-answers": {},
+        "declaration": {
+          "declaration-confirmed": "confirmed"
+        },
+        "submission-confirmation": {}
+      },
+      "expectedActive": [
+        "applicant-title",
+        "applicant-first-name",
+        "applicant-middle-name",
+        "applicant-last-name",
+        "applicant-address-line-1",
+        "applicant-address-line-2",
+        "applicant-parish",
+        "applicant-postcode",
+        "applicant-id-number",
+        "passport-toggle",
+        "applicant-email",
+        "applicant-telephone",
+        "relationship",
+        "reason-for-certificate",
+        "deceased-first-name",
+        "deceased-middle-name",
+        "deceased-last-name",
+        "deceased-known-date-of-death",
+        "deceased-estimated-date-of-death",
+        "deceased-id-number",
+        "deceased-place-of-death",
+        "number-of-copies",
+        "declaration-confirmed"
+      ],
+      "expectedRequired": [
+        "applicant-title",
+        "applicant-first-name",
+        "applicant-last-name",
+        "applicant-address-line-1",
+        "applicant-parish",
+        "applicant-id-number",
+        "applicant-email",
+        "applicant-telephone",
+        "relationship",
+        "reason-for-certificate",
+        "deceased-first-name",
+        "deceased-last-name",
+        "deceased-known-date-of-death",
+        "deceased-estimated-date-of-death",
+        "deceased-place-of-death",
+        "number-of-copies",
+        "declaration-confirmed"
+      ],
+      "expectedReview": [
+        "applicant-title",
+        "applicant-first-name",
+        "applicant-middle-name",
+        "applicant-last-name",
+        "applicant-address-line-1",
+        "applicant-address-line-2",
+        "applicant-parish",
+        "applicant-postcode",
+        "applicant-id-number",
+        "applicant-email",
+        "applicant-telephone",
+        "relationship",
+        "reason-for-certificate",
+        "deceased-first-name",
+        "deceased-middle-name",
+        "deceased-last-name",
+        "deceased-known-date-of-death",
+        "deceased-estimated-date-of-death",
+        "deceased-id-number",
+        "deceased-place-of-death",
+        "number-of-copies"
+      ]
+    },
+    {
+      "name": "passport-false-relationship-spouse-known-blank",
+      "values": {
+        "applicant-details": {
+          "applicant-title": "mr",
+          "applicant-first-name": "Example",
+          "applicant-middle-name": "Example",
+          "applicant-last-name": "Example",
+          "applicant-address-line-1": "Example",
+          "applicant-address-line-2": "Example",
+          "applicant-parish": "christ-church",
+          "applicant-postcode": "Example",
+          "applicant-id-number": "Example",
+          "passport-toggle": false,
+          "applicant-passport-number": "Example",
+          "applicant-email": "Example",
+          "applicant-telephone": "Example"
+        },
+        "relationship-to-person": {
+          "relationship": "spouse",
+          "relationship-other-description": "Example"
+        },
+        "reason-for-certificate": {
+          "reason-for-certificate": "Example"
+        },
+        "deceased-details": {
+          "deceased-first-name": "Example",
+          "deceased-middle-name": "Example",
+          "deceased-last-name": "Example",
+          "deceased-known-date-of-death": "",
+          "deceased-date-of-death": {
+            "day": "2",
+            "month": "1",
+            "year": "2000"
+          },
+          "deceased-estimated-date-of-death": "Example",
+          "deceased-id-number": "Example",
+          "deceased-place-of-death": "Example"
+        },
+        "order-details": {
+          "number-of-copies": 0
+        },
+        "check-your-answers": {},
+        "declaration": {
+          "declaration-confirmed": "confirmed"
+        },
+        "submission-confirmation": {}
+      },
+      "expectedActive": [
+        "applicant-title",
+        "applicant-first-name",
+        "applicant-middle-name",
+        "applicant-last-name",
+        "applicant-address-line-1",
+        "applicant-address-line-2",
+        "applicant-parish",
+        "applicant-postcode",
+        "applicant-id-number",
+        "passport-toggle",
+        "applicant-email",
+        "applicant-telephone",
+        "relationship",
+        "reason-for-certificate",
+        "deceased-first-name",
+        "deceased-middle-name",
+        "deceased-last-name",
+        "deceased-known-date-of-death",
+        "deceased-id-number",
+        "deceased-place-of-death",
+        "number-of-copies",
+        "declaration-confirmed"
+      ],
+      "expectedRequired": [
+        "applicant-title",
+        "applicant-first-name",
+        "applicant-last-name",
+        "applicant-address-line-1",
+        "applicant-parish",
+        "applicant-id-number",
+        "applicant-email",
+        "applicant-telephone",
+        "relationship",
+        "reason-for-certificate",
+        "deceased-first-name",
+        "deceased-last-name",
+        "deceased-known-date-of-death",
+        "deceased-place-of-death",
+        "number-of-copies",
+        "declaration-confirmed"
+      ],
+      "expectedReview": [
+        "applicant-title",
+        "applicant-first-name",
+        "applicant-middle-name",
+        "applicant-last-name",
+        "applicant-address-line-1",
+        "applicant-address-line-2",
+        "applicant-parish",
+        "applicant-postcode",
+        "applicant-id-number",
+        "applicant-email",
+        "applicant-telephone",
+        "relationship",
+        "reason-for-certificate",
+        "deceased-first-name",
+        "deceased-middle-name",
+        "deceased-last-name",
+        "deceased-id-number",
+        "deceased-place-of-death",
+        "number-of-copies"
+      ]
+    },
+    {
+      "name": "passport-false-relationship-other-known-yes",
+      "values": {
+        "applicant-details": {
+          "applicant-title": "mr",
+          "applicant-first-name": "Example",
+          "applicant-middle-name": "Example",
+          "applicant-last-name": "Example",
+          "applicant-address-line-1": "Example",
+          "applicant-address-line-2": "Example",
+          "applicant-parish": "christ-church",
+          "applicant-postcode": "Example",
+          "applicant-id-number": "Example",
+          "passport-toggle": false,
+          "applicant-passport-number": "Example",
+          "applicant-email": "Example",
+          "applicant-telephone": "Example"
+        },
+        "relationship-to-person": {
+          "relationship": "other",
+          "relationship-other-description": "Example"
+        },
+        "reason-for-certificate": {
+          "reason-for-certificate": "Example"
+        },
+        "deceased-details": {
+          "deceased-first-name": "Example",
+          "deceased-middle-name": "Example",
+          "deceased-last-name": "Example",
+          "deceased-known-date-of-death": "yes",
+          "deceased-date-of-death": {
+            "day": "2",
+            "month": "1",
+            "year": "2000"
+          },
+          "deceased-estimated-date-of-death": "Example",
+          "deceased-id-number": "Example",
+          "deceased-place-of-death": "Example"
+        },
+        "order-details": {
+          "number-of-copies": 0
+        },
+        "check-your-answers": {},
+        "declaration": {
+          "declaration-confirmed": "confirmed"
+        },
+        "submission-confirmation": {}
+      },
+      "expectedActive": [
+        "applicant-title",
+        "applicant-first-name",
+        "applicant-middle-name",
+        "applicant-last-name",
+        "applicant-address-line-1",
+        "applicant-address-line-2",
+        "applicant-parish",
+        "applicant-postcode",
+        "applicant-id-number",
+        "passport-toggle",
+        "applicant-email",
+        "applicant-telephone",
+        "relationship",
+        "relationship-other-description",
+        "reason-for-certificate",
+        "deceased-first-name",
+        "deceased-middle-name",
+        "deceased-last-name",
+        "deceased-known-date-of-death",
+        "deceased-date-of-death",
+        "deceased-id-number",
+        "deceased-place-of-death",
+        "number-of-copies",
+        "declaration-confirmed"
+      ],
+      "expectedRequired": [
+        "applicant-title",
+        "applicant-first-name",
+        "applicant-last-name",
+        "applicant-address-line-1",
+        "applicant-parish",
+        "applicant-id-number",
+        "applicant-email",
+        "applicant-telephone",
+        "relationship",
+        "relationship-other-description",
+        "reason-for-certificate",
+        "deceased-first-name",
+        "deceased-last-name",
+        "deceased-known-date-of-death",
+        "deceased-date-of-death",
+        "deceased-place-of-death",
+        "number-of-copies",
+        "declaration-confirmed"
+      ],
+      "expectedReview": [
+        "applicant-title",
+        "applicant-first-name",
+        "applicant-middle-name",
+        "applicant-last-name",
+        "applicant-address-line-1",
+        "applicant-address-line-2",
+        "applicant-parish",
+        "applicant-postcode",
+        "applicant-id-number",
+        "applicant-email",
+        "applicant-telephone",
+        "relationship",
+        "relationship-other-description",
+        "reason-for-certificate",
+        "deceased-first-name",
+        "deceased-middle-name",
+        "deceased-last-name",
+        "deceased-known-date-of-death",
+        "deceased-date-of-death",
+        "deceased-id-number",
+        "deceased-place-of-death",
+        "number-of-copies"
+      ]
+    },
+    {
+      "name": "passport-false-relationship-other-known-no",
+      "values": {
+        "applicant-details": {
+          "applicant-title": "mr",
+          "applicant-first-name": "Example",
+          "applicant-middle-name": "Example",
+          "applicant-last-name": "Example",
+          "applicant-address-line-1": "Example",
+          "applicant-address-line-2": "Example",
+          "applicant-parish": "christ-church",
+          "applicant-postcode": "Example",
+          "applicant-id-number": "Example",
+          "passport-toggle": false,
+          "applicant-passport-number": "Example",
+          "applicant-email": "Example",
+          "applicant-telephone": "Example"
+        },
+        "relationship-to-person": {
+          "relationship": "other",
+          "relationship-other-description": "Example"
+        },
+        "reason-for-certificate": {
+          "reason-for-certificate": "Example"
+        },
+        "deceased-details": {
+          "deceased-first-name": "Example",
+          "deceased-middle-name": "Example",
+          "deceased-last-name": "Example",
+          "deceased-known-date-of-death": "no",
+          "deceased-date-of-death": {
+            "day": "2",
+            "month": "1",
+            "year": "2000"
+          },
+          "deceased-estimated-date-of-death": "Example",
+          "deceased-id-number": "Example",
+          "deceased-place-of-death": "Example"
+        },
+        "order-details": {
+          "number-of-copies": 0
+        },
+        "check-your-answers": {},
+        "declaration": {
+          "declaration-confirmed": "confirmed"
+        },
+        "submission-confirmation": {}
+      },
+      "expectedActive": [
+        "applicant-title",
+        "applicant-first-name",
+        "applicant-middle-name",
+        "applicant-last-name",
+        "applicant-address-line-1",
+        "applicant-address-line-2",
+        "applicant-parish",
+        "applicant-postcode",
+        "applicant-id-number",
+        "passport-toggle",
+        "applicant-email",
+        "applicant-telephone",
+        "relationship",
+        "relationship-other-description",
+        "reason-for-certificate",
+        "deceased-first-name",
+        "deceased-middle-name",
+        "deceased-last-name",
+        "deceased-known-date-of-death",
+        "deceased-estimated-date-of-death",
+        "deceased-id-number",
+        "deceased-place-of-death",
+        "number-of-copies",
+        "declaration-confirmed"
+      ],
+      "expectedRequired": [
+        "applicant-title",
+        "applicant-first-name",
+        "applicant-last-name",
+        "applicant-address-line-1",
+        "applicant-parish",
+        "applicant-id-number",
+        "applicant-email",
+        "applicant-telephone",
+        "relationship",
+        "relationship-other-description",
+        "reason-for-certificate",
+        "deceased-first-name",
+        "deceased-last-name",
+        "deceased-known-date-of-death",
+        "deceased-estimated-date-of-death",
+        "deceased-place-of-death",
+        "number-of-copies",
+        "declaration-confirmed"
+      ],
+      "expectedReview": [
+        "applicant-title",
+        "applicant-first-name",
+        "applicant-middle-name",
+        "applicant-last-name",
+        "applicant-address-line-1",
+        "applicant-address-line-2",
+        "applicant-parish",
+        "applicant-postcode",
+        "applicant-id-number",
+        "applicant-email",
+        "applicant-telephone",
+        "relationship",
+        "relationship-other-description",
+        "reason-for-certificate",
+        "deceased-first-name",
+        "deceased-middle-name",
+        "deceased-last-name",
+        "deceased-known-date-of-death",
+        "deceased-estimated-date-of-death",
+        "deceased-id-number",
+        "deceased-place-of-death",
+        "number-of-copies"
+      ]
+    },
+    {
+      "name": "passport-false-relationship-other-known-blank",
+      "values": {
+        "applicant-details": {
+          "applicant-title": "mr",
+          "applicant-first-name": "Example",
+          "applicant-middle-name": "Example",
+          "applicant-last-name": "Example",
+          "applicant-address-line-1": "Example",
+          "applicant-address-line-2": "Example",
+          "applicant-parish": "christ-church",
+          "applicant-postcode": "Example",
+          "applicant-id-number": "Example",
+          "passport-toggle": false,
+          "applicant-passport-number": "Example",
+          "applicant-email": "Example",
+          "applicant-telephone": "Example"
+        },
+        "relationship-to-person": {
+          "relationship": "other",
+          "relationship-other-description": "Example"
+        },
+        "reason-for-certificate": {
+          "reason-for-certificate": "Example"
+        },
+        "deceased-details": {
+          "deceased-first-name": "Example",
+          "deceased-middle-name": "Example",
+          "deceased-last-name": "Example",
+          "deceased-known-date-of-death": "",
+          "deceased-date-of-death": {
+            "day": "2",
+            "month": "1",
+            "year": "2000"
+          },
+          "deceased-estimated-date-of-death": "Example",
+          "deceased-id-number": "Example",
+          "deceased-place-of-death": "Example"
+        },
+        "order-details": {
+          "number-of-copies": 0
+        },
+        "check-your-answers": {},
+        "declaration": {
+          "declaration-confirmed": "confirmed"
+        },
+        "submission-confirmation": {}
+      },
+      "expectedActive": [
+        "applicant-title",
+        "applicant-first-name",
+        "applicant-middle-name",
+        "applicant-last-name",
+        "applicant-address-line-1",
+        "applicant-address-line-2",
+        "applicant-parish",
+        "applicant-postcode",
+        "applicant-id-number",
+        "passport-toggle",
+        "applicant-email",
+        "applicant-telephone",
+        "relationship",
+        "relationship-other-description",
+        "reason-for-certificate",
+        "deceased-first-name",
+        "deceased-middle-name",
+        "deceased-last-name",
+        "deceased-known-date-of-death",
+        "deceased-id-number",
+        "deceased-place-of-death",
+        "number-of-copies",
+        "declaration-confirmed"
+      ],
+      "expectedRequired": [
+        "applicant-title",
+        "applicant-first-name",
+        "applicant-last-name",
+        "applicant-address-line-1",
+        "applicant-parish",
+        "applicant-id-number",
+        "applicant-email",
+        "applicant-telephone",
+        "relationship",
+        "relationship-other-description",
+        "reason-for-certificate",
+        "deceased-first-name",
+        "deceased-last-name",
+        "deceased-known-date-of-death",
+        "deceased-place-of-death",
+        "number-of-copies",
+        "declaration-confirmed"
+      ],
+      "expectedReview": [
+        "applicant-title",
+        "applicant-first-name",
+        "applicant-middle-name",
+        "applicant-last-name",
+        "applicant-address-line-1",
+        "applicant-address-line-2",
+        "applicant-parish",
+        "applicant-postcode",
+        "applicant-id-number",
+        "applicant-email",
+        "applicant-telephone",
+        "relationship",
+        "relationship-other-description",
+        "reason-for-certificate",
+        "deceased-first-name",
+        "deceased-middle-name",
+        "deceased-last-name",
+        "deceased-id-number",
+        "deceased-place-of-death",
+        "number-of-copies"
+      ]
+    },
+    {
+      "name": "passport-true-relationship-spouse-known-yes",
+      "values": {
+        "applicant-details": {
+          "applicant-title": "mr",
+          "applicant-first-name": "Example",
+          "applicant-middle-name": "Example",
+          "applicant-last-name": "Example",
+          "applicant-address-line-1": "Example",
+          "applicant-address-line-2": "Example",
+          "applicant-parish": "christ-church",
+          "applicant-postcode": "Example",
+          "applicant-id-number": "Example",
+          "passport-toggle": true,
+          "applicant-passport-number": "Example",
+          "applicant-email": "Example",
+          "applicant-telephone": "Example"
+        },
+        "relationship-to-person": {
+          "relationship": "spouse",
+          "relationship-other-description": "Example"
+        },
+        "reason-for-certificate": {
+          "reason-for-certificate": "Example"
+        },
+        "deceased-details": {
+          "deceased-first-name": "Example",
+          "deceased-middle-name": "Example",
+          "deceased-last-name": "Example",
+          "deceased-known-date-of-death": "yes",
+          "deceased-date-of-death": {
+            "day": "2",
+            "month": "1",
+            "year": "2000"
+          },
+          "deceased-estimated-date-of-death": "Example",
+          "deceased-id-number": "Example",
+          "deceased-place-of-death": "Example"
+        },
+        "order-details": {
+          "number-of-copies": 0
+        },
+        "check-your-answers": {},
+        "declaration": {
+          "declaration-confirmed": "confirmed"
+        },
+        "submission-confirmation": {}
+      },
+      "expectedActive": [
+        "applicant-title",
+        "applicant-first-name",
+        "applicant-middle-name",
+        "applicant-last-name",
+        "applicant-address-line-1",
+        "applicant-address-line-2",
+        "applicant-parish",
+        "applicant-postcode",
+        "applicant-id-number",
+        "passport-toggle",
+        "applicant-passport-number",
+        "applicant-email",
+        "applicant-telephone",
+        "relationship",
+        "reason-for-certificate",
+        "deceased-first-name",
+        "deceased-middle-name",
+        "deceased-last-name",
+        "deceased-known-date-of-death",
+        "deceased-date-of-death",
+        "deceased-id-number",
+        "deceased-place-of-death",
+        "number-of-copies",
+        "declaration-confirmed"
+      ],
+      "expectedRequired": [
+        "applicant-title",
+        "applicant-first-name",
+        "applicant-last-name",
+        "applicant-address-line-1",
+        "applicant-parish",
+        "applicant-passport-number",
+        "applicant-email",
+        "applicant-telephone",
+        "relationship",
+        "reason-for-certificate",
+        "deceased-first-name",
+        "deceased-last-name",
+        "deceased-known-date-of-death",
+        "deceased-date-of-death",
+        "deceased-place-of-death",
+        "number-of-copies",
+        "declaration-confirmed"
+      ],
+      "expectedReview": [
+        "applicant-title",
+        "applicant-first-name",
+        "applicant-middle-name",
+        "applicant-last-name",
+        "applicant-address-line-1",
+        "applicant-address-line-2",
+        "applicant-parish",
+        "applicant-postcode",
+        "applicant-id-number",
+        "applicant-passport-number",
+        "applicant-email",
+        "applicant-telephone",
+        "relationship",
+        "reason-for-certificate",
+        "deceased-first-name",
+        "deceased-middle-name",
+        "deceased-last-name",
+        "deceased-known-date-of-death",
+        "deceased-date-of-death",
+        "deceased-id-number",
+        "deceased-place-of-death",
+        "number-of-copies"
+      ]
+    },
+    {
+      "name": "passport-true-relationship-spouse-known-no",
+      "values": {
+        "applicant-details": {
+          "applicant-title": "mr",
+          "applicant-first-name": "Example",
+          "applicant-middle-name": "Example",
+          "applicant-last-name": "Example",
+          "applicant-address-line-1": "Example",
+          "applicant-address-line-2": "Example",
+          "applicant-parish": "christ-church",
+          "applicant-postcode": "Example",
+          "applicant-id-number": "Example",
+          "passport-toggle": true,
+          "applicant-passport-number": "Example",
+          "applicant-email": "Example",
+          "applicant-telephone": "Example"
+        },
+        "relationship-to-person": {
+          "relationship": "spouse",
+          "relationship-other-description": "Example"
+        },
+        "reason-for-certificate": {
+          "reason-for-certificate": "Example"
+        },
+        "deceased-details": {
+          "deceased-first-name": "Example",
+          "deceased-middle-name": "Example",
+          "deceased-last-name": "Example",
+          "deceased-known-date-of-death": "no",
+          "deceased-date-of-death": {
+            "day": "2",
+            "month": "1",
+            "year": "2000"
+          },
+          "deceased-estimated-date-of-death": "Example",
+          "deceased-id-number": "Example",
+          "deceased-place-of-death": "Example"
+        },
+        "order-details": {
+          "number-of-copies": 0
+        },
+        "check-your-answers": {},
+        "declaration": {
+          "declaration-confirmed": "confirmed"
+        },
+        "submission-confirmation": {}
+      },
+      "expectedActive": [
+        "applicant-title",
+        "applicant-first-name",
+        "applicant-middle-name",
+        "applicant-last-name",
+        "applicant-address-line-1",
+        "applicant-address-line-2",
+        "applicant-parish",
+        "applicant-postcode",
+        "applicant-id-number",
+        "passport-toggle",
+        "applicant-passport-number",
+        "applicant-email",
+        "applicant-telephone",
+        "relationship",
+        "reason-for-certificate",
+        "deceased-first-name",
+        "deceased-middle-name",
+        "deceased-last-name",
+        "deceased-known-date-of-death",
+        "deceased-estimated-date-of-death",
+        "deceased-id-number",
+        "deceased-place-of-death",
+        "number-of-copies",
+        "declaration-confirmed"
+      ],
+      "expectedRequired": [
+        "applicant-title",
+        "applicant-first-name",
+        "applicant-last-name",
+        "applicant-address-line-1",
+        "applicant-parish",
+        "applicant-passport-number",
+        "applicant-email",
+        "applicant-telephone",
+        "relationship",
+        "reason-for-certificate",
+        "deceased-first-name",
+        "deceased-last-name",
+        "deceased-known-date-of-death",
+        "deceased-estimated-date-of-death",
+        "deceased-place-of-death",
+        "number-of-copies",
+        "declaration-confirmed"
+      ],
+      "expectedReview": [
+        "applicant-title",
+        "applicant-first-name",
+        "applicant-middle-name",
+        "applicant-last-name",
+        "applicant-address-line-1",
+        "applicant-address-line-2",
+        "applicant-parish",
+        "applicant-postcode",
+        "applicant-id-number",
+        "applicant-passport-number",
+        "applicant-email",
+        "applicant-telephone",
+        "relationship",
+        "reason-for-certificate",
+        "deceased-first-name",
+        "deceased-middle-name",
+        "deceased-last-name",
+        "deceased-known-date-of-death",
+        "deceased-estimated-date-of-death",
+        "deceased-id-number",
+        "deceased-place-of-death",
+        "number-of-copies"
+      ]
+    },
+    {
+      "name": "passport-true-relationship-spouse-known-blank",
+      "values": {
+        "applicant-details": {
+          "applicant-title": "mr",
+          "applicant-first-name": "Example",
+          "applicant-middle-name": "Example",
+          "applicant-last-name": "Example",
+          "applicant-address-line-1": "Example",
+          "applicant-address-line-2": "Example",
+          "applicant-parish": "christ-church",
+          "applicant-postcode": "Example",
+          "applicant-id-number": "Example",
+          "passport-toggle": true,
+          "applicant-passport-number": "Example",
+          "applicant-email": "Example",
+          "applicant-telephone": "Example"
+        },
+        "relationship-to-person": {
+          "relationship": "spouse",
+          "relationship-other-description": "Example"
+        },
+        "reason-for-certificate": {
+          "reason-for-certificate": "Example"
+        },
+        "deceased-details": {
+          "deceased-first-name": "Example",
+          "deceased-middle-name": "Example",
+          "deceased-last-name": "Example",
+          "deceased-known-date-of-death": "",
+          "deceased-date-of-death": {
+            "day": "2",
+            "month": "1",
+            "year": "2000"
+          },
+          "deceased-estimated-date-of-death": "Example",
+          "deceased-id-number": "Example",
+          "deceased-place-of-death": "Example"
+        },
+        "order-details": {
+          "number-of-copies": 0
+        },
+        "check-your-answers": {},
+        "declaration": {
+          "declaration-confirmed": "confirmed"
+        },
+        "submission-confirmation": {}
+      },
+      "expectedActive": [
+        "applicant-title",
+        "applicant-first-name",
+        "applicant-middle-name",
+        "applicant-last-name",
+        "applicant-address-line-1",
+        "applicant-address-line-2",
+        "applicant-parish",
+        "applicant-postcode",
+        "applicant-id-number",
+        "passport-toggle",
+        "applicant-passport-number",
+        "applicant-email",
+        "applicant-telephone",
+        "relationship",
+        "reason-for-certificate",
+        "deceased-first-name",
+        "deceased-middle-name",
+        "deceased-last-name",
+        "deceased-known-date-of-death",
+        "deceased-id-number",
+        "deceased-place-of-death",
+        "number-of-copies",
+        "declaration-confirmed"
+      ],
+      "expectedRequired": [
+        "applicant-title",
+        "applicant-first-name",
+        "applicant-last-name",
+        "applicant-address-line-1",
+        "applicant-parish",
+        "applicant-passport-number",
+        "applicant-email",
+        "applicant-telephone",
+        "relationship",
+        "reason-for-certificate",
+        "deceased-first-name",
+        "deceased-last-name",
+        "deceased-known-date-of-death",
+        "deceased-place-of-death",
+        "number-of-copies",
+        "declaration-confirmed"
+      ],
+      "expectedReview": [
+        "applicant-title",
+        "applicant-first-name",
+        "applicant-middle-name",
+        "applicant-last-name",
+        "applicant-address-line-1",
+        "applicant-address-line-2",
+        "applicant-parish",
+        "applicant-postcode",
+        "applicant-id-number",
+        "applicant-passport-number",
+        "applicant-email",
+        "applicant-telephone",
+        "relationship",
+        "reason-for-certificate",
+        "deceased-first-name",
+        "deceased-middle-name",
+        "deceased-last-name",
+        "deceased-id-number",
+        "deceased-place-of-death",
+        "number-of-copies"
+      ]
+    },
+    {
+      "name": "passport-true-relationship-other-known-yes",
+      "values": {
+        "applicant-details": {
+          "applicant-title": "mr",
+          "applicant-first-name": "Example",
+          "applicant-middle-name": "Example",
+          "applicant-last-name": "Example",
+          "applicant-address-line-1": "Example",
+          "applicant-address-line-2": "Example",
+          "applicant-parish": "christ-church",
+          "applicant-postcode": "Example",
+          "applicant-id-number": "Example",
+          "passport-toggle": true,
+          "applicant-passport-number": "Example",
+          "applicant-email": "Example",
+          "applicant-telephone": "Example"
+        },
+        "relationship-to-person": {
+          "relationship": "other",
+          "relationship-other-description": "Example"
+        },
+        "reason-for-certificate": {
+          "reason-for-certificate": "Example"
+        },
+        "deceased-details": {
+          "deceased-first-name": "Example",
+          "deceased-middle-name": "Example",
+          "deceased-last-name": "Example",
+          "deceased-known-date-of-death": "yes",
+          "deceased-date-of-death": {
+            "day": "2",
+            "month": "1",
+            "year": "2000"
+          },
+          "deceased-estimated-date-of-death": "Example",
+          "deceased-id-number": "Example",
+          "deceased-place-of-death": "Example"
+        },
+        "order-details": {
+          "number-of-copies": 0
+        },
+        "check-your-answers": {},
+        "declaration": {
+          "declaration-confirmed": "confirmed"
+        },
+        "submission-confirmation": {}
+      },
+      "expectedActive": [
+        "applicant-title",
+        "applicant-first-name",
+        "applicant-middle-name",
+        "applicant-last-name",
+        "applicant-address-line-1",
+        "applicant-address-line-2",
+        "applicant-parish",
+        "applicant-postcode",
+        "applicant-id-number",
+        "passport-toggle",
+        "applicant-passport-number",
+        "applicant-email",
+        "applicant-telephone",
+        "relationship",
+        "relationship-other-description",
+        "reason-for-certificate",
+        "deceased-first-name",
+        "deceased-middle-name",
+        "deceased-last-name",
+        "deceased-known-date-of-death",
+        "deceased-date-of-death",
+        "deceased-id-number",
+        "deceased-place-of-death",
+        "number-of-copies",
+        "declaration-confirmed"
+      ],
+      "expectedRequired": [
+        "applicant-title",
+        "applicant-first-name",
+        "applicant-last-name",
+        "applicant-address-line-1",
+        "applicant-parish",
+        "applicant-passport-number",
+        "applicant-email",
+        "applicant-telephone",
+        "relationship",
+        "relationship-other-description",
+        "reason-for-certificate",
+        "deceased-first-name",
+        "deceased-last-name",
+        "deceased-known-date-of-death",
+        "deceased-date-of-death",
+        "deceased-place-of-death",
+        "number-of-copies",
+        "declaration-confirmed"
+      ],
+      "expectedReview": [
+        "applicant-title",
+        "applicant-first-name",
+        "applicant-middle-name",
+        "applicant-last-name",
+        "applicant-address-line-1",
+        "applicant-address-line-2",
+        "applicant-parish",
+        "applicant-postcode",
+        "applicant-id-number",
+        "applicant-passport-number",
+        "applicant-email",
+        "applicant-telephone",
+        "relationship",
+        "relationship-other-description",
+        "reason-for-certificate",
+        "deceased-first-name",
+        "deceased-middle-name",
+        "deceased-last-name",
+        "deceased-known-date-of-death",
+        "deceased-date-of-death",
+        "deceased-id-number",
+        "deceased-place-of-death",
+        "number-of-copies"
+      ]
+    },
+    {
+      "name": "passport-true-relationship-other-known-no",
+      "values": {
+        "applicant-details": {
+          "applicant-title": "mr",
+          "applicant-first-name": "Example",
+          "applicant-middle-name": "Example",
+          "applicant-last-name": "Example",
+          "applicant-address-line-1": "Example",
+          "applicant-address-line-2": "Example",
+          "applicant-parish": "christ-church",
+          "applicant-postcode": "Example",
+          "applicant-id-number": "Example",
+          "passport-toggle": true,
+          "applicant-passport-number": "Example",
+          "applicant-email": "Example",
+          "applicant-telephone": "Example"
+        },
+        "relationship-to-person": {
+          "relationship": "other",
+          "relationship-other-description": "Example"
+        },
+        "reason-for-certificate": {
+          "reason-for-certificate": "Example"
+        },
+        "deceased-details": {
+          "deceased-first-name": "Example",
+          "deceased-middle-name": "Example",
+          "deceased-last-name": "Example",
+          "deceased-known-date-of-death": "no",
+          "deceased-date-of-death": {
+            "day": "2",
+            "month": "1",
+            "year": "2000"
+          },
+          "deceased-estimated-date-of-death": "Example",
+          "deceased-id-number": "Example",
+          "deceased-place-of-death": "Example"
+        },
+        "order-details": {
+          "number-of-copies": 0
+        },
+        "check-your-answers": {},
+        "declaration": {
+          "declaration-confirmed": "confirmed"
+        },
+        "submission-confirmation": {}
+      },
+      "expectedActive": [
+        "applicant-title",
+        "applicant-first-name",
+        "applicant-middle-name",
+        "applicant-last-name",
+        "applicant-address-line-1",
+        "applicant-address-line-2",
+        "applicant-parish",
+        "applicant-postcode",
+        "applicant-id-number",
+        "passport-toggle",
+        "applicant-passport-number",
+        "applicant-email",
+        "applicant-telephone",
+        "relationship",
+        "relationship-other-description",
+        "reason-for-certificate",
+        "deceased-first-name",
+        "deceased-middle-name",
+        "deceased-last-name",
+        "deceased-known-date-of-death",
+        "deceased-estimated-date-of-death",
+        "deceased-id-number",
+        "deceased-place-of-death",
+        "number-of-copies",
+        "declaration-confirmed"
+      ],
+      "expectedRequired": [
+        "applicant-title",
+        "applicant-first-name",
+        "applicant-last-name",
+        "applicant-address-line-1",
+        "applicant-parish",
+        "applicant-passport-number",
+        "applicant-email",
+        "applicant-telephone",
+        "relationship",
+        "relationship-other-description",
+        "reason-for-certificate",
+        "deceased-first-name",
+        "deceased-last-name",
+        "deceased-known-date-of-death",
+        "deceased-estimated-date-of-death",
+        "deceased-place-of-death",
+        "number-of-copies",
+        "declaration-confirmed"
+      ],
+      "expectedReview": [
+        "applicant-title",
+        "applicant-first-name",
+        "applicant-middle-name",
+        "applicant-last-name",
+        "applicant-address-line-1",
+        "applicant-address-line-2",
+        "applicant-parish",
+        "applicant-postcode",
+        "applicant-id-number",
+        "applicant-passport-number",
+        "applicant-email",
+        "applicant-telephone",
+        "relationship",
+        "relationship-other-description",
+        "reason-for-certificate",
+        "deceased-first-name",
+        "deceased-middle-name",
+        "deceased-last-name",
+        "deceased-known-date-of-death",
+        "deceased-estimated-date-of-death",
+        "deceased-id-number",
+        "deceased-place-of-death",
+        "number-of-copies"
+      ]
+    },
+    {
+      "name": "passport-true-relationship-other-known-blank",
+      "values": {
+        "applicant-details": {
+          "applicant-title": "mr",
+          "applicant-first-name": "Example",
+          "applicant-middle-name": "Example",
+          "applicant-last-name": "Example",
+          "applicant-address-line-1": "Example",
+          "applicant-address-line-2": "Example",
+          "applicant-parish": "christ-church",
+          "applicant-postcode": "Example",
+          "applicant-id-number": "Example",
+          "passport-toggle": true,
+          "applicant-passport-number": "Example",
+          "applicant-email": "Example",
+          "applicant-telephone": "Example"
+        },
+        "relationship-to-person": {
+          "relationship": "other",
+          "relationship-other-description": "Example"
+        },
+        "reason-for-certificate": {
+          "reason-for-certificate": "Example"
+        },
+        "deceased-details": {
+          "deceased-first-name": "Example",
+          "deceased-middle-name": "Example",
+          "deceased-last-name": "Example",
+          "deceased-known-date-of-death": "",
+          "deceased-date-of-death": {
+            "day": "2",
+            "month": "1",
+            "year": "2000"
+          },
+          "deceased-estimated-date-of-death": "Example",
+          "deceased-id-number": "Example",
+          "deceased-place-of-death": "Example"
+        },
+        "order-details": {
+          "number-of-copies": 0
+        },
+        "check-your-answers": {},
+        "declaration": {
+          "declaration-confirmed": "confirmed"
+        },
+        "submission-confirmation": {}
+      },
+      "expectedActive": [
+        "applicant-title",
+        "applicant-first-name",
+        "applicant-middle-name",
+        "applicant-last-name",
+        "applicant-address-line-1",
+        "applicant-address-line-2",
+        "applicant-parish",
+        "applicant-postcode",
+        "applicant-id-number",
+        "passport-toggle",
+        "applicant-passport-number",
+        "applicant-email",
+        "applicant-telephone",
+        "relationship",
+        "relationship-other-description",
+        "reason-for-certificate",
+        "deceased-first-name",
+        "deceased-middle-name",
+        "deceased-last-name",
+        "deceased-known-date-of-death",
+        "deceased-id-number",
+        "deceased-place-of-death",
+        "number-of-copies",
+        "declaration-confirmed"
+      ],
+      "expectedRequired": [
+        "applicant-title",
+        "applicant-first-name",
+        "applicant-last-name",
+        "applicant-address-line-1",
+        "applicant-parish",
+        "applicant-passport-number",
+        "applicant-email",
+        "applicant-telephone",
+        "relationship",
+        "relationship-other-description",
+        "reason-for-certificate",
+        "deceased-first-name",
+        "deceased-last-name",
+        "deceased-known-date-of-death",
+        "deceased-place-of-death",
+        "number-of-copies",
+        "declaration-confirmed"
+      ],
+      "expectedReview": [
+        "applicant-title",
+        "applicant-first-name",
+        "applicant-middle-name",
+        "applicant-last-name",
+        "applicant-address-line-1",
+        "applicant-address-line-2",
+        "applicant-parish",
+        "applicant-postcode",
+        "applicant-id-number",
+        "applicant-passport-number",
+        "applicant-email",
+        "applicant-telephone",
+        "relationship",
+        "relationship-other-description",
+        "reason-for-certificate",
+        "deceased-first-name",
+        "deceased-middle-name",
+        "deceased-last-name",
+        "deceased-id-number",
+        "deceased-place-of-death",
+        "number-of-copies"
+      ]
+    }
+  ]
+}

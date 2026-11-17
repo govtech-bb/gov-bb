@@ -6,8 +6,8 @@
 **Related:**
 [Issue #145](https://github.com/govtech-bb/gov-bb/issues/145),
 [Issue #1196](https://github.com/govtech-bb/gov-bb/issues/1196) (versioning removed),
-[Decision 0007](decisions/0007-runtime-recipes-load-from-files-not-form_definitions-table.md),
-[Decision 0057](decisions/0057-recipe-versioning-removed-one-flat-file-per-form.md)
+[Decision 0017](decisions/0017-runtime-recipes-load-from-files-not-form_definitions-table.md),
+[Decision 0097](decisions/0097-recipe-versioning-removed-one-flat-file-per-form.md)
 
 > **Recipe versioning was removed (#1196).** Each form is now a single mutable
 > file `recipes/{formId}.json`; publishing overwrites it and the PR diff *is* the
@@ -237,7 +237,7 @@ Editing the flat file by hand (via PR) is fine — the file *is* the canonical
 recipe and the PR diff is the audit trail. Restart the API on merge.
 
 Set `updatedAt` to the time of the edit. The form builder uses it to tell a
-stale draft row from a fresh one (ADR 0075, #2878), so
+stale draft row from a fresh one (ADR 0125, #2878), so
 `pnpm validate-recipe-updated-at` fails in CI and in the pre-commit hook when
 a recipe's content changes without that stamp moving forward.
 

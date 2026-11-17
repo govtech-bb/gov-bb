@@ -17,7 +17,7 @@ api-only, one migration package-only). Session executed the plan from issue
   files; smoke specs now import migration classes from the package.
 - New `FormDraftResponseDto` / `FormSubmissionResponseDto` carry the swagger
   shapes; entities are decorator-free. See
-  [ADR 0034](../decisions/0034-persistence-entities-stay-swagger-free.md).
+  [ADR 0058](../decisions/0058-persistence-entities-stay-swagger-free.md).
 - Commit `fda3b6b3` on `worktree-dedupe-typeorm-721`.
 
 ## Why we did it that way

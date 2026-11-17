@@ -2,7 +2,7 @@
 
 **Date:** 2026-05-22
 **Branch:** fix/forms-failing-tests
-**Decision record:** [docs/decisions/0006-valueIsEmpty-treats-false-as-empty-by-design.md](../decisions/0006-valueIsEmpty-treats-false-as-empty-by-design.md)
+**Decision record:** [docs/decisions/0016-valueIsEmpty-treats-false-as-empty-by-design.md](../decisions/0016-valueIsEmpty-treats-false-as-empty-by-design.md)
 
 ## What was built
 

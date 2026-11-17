@@ -7,7 +7,7 @@ Implemented from `docs/plans/recipe-ref-validation-guard.md` on worktree branch
 [#504](https://github.com/govtech-bb/gov-bb/issues/504).
 
 A recipe with a ref that resolves nowhere in the registry passes the Zod schema
-(which checks ref *format* only, by design — 0010/0017) and detonates lazily at
+(which checks ref *format* only, by design — 0020/0036) and detonates lazily at
 render time. #349 added `non-nationals-secondary-entry/1.1.0.json` carrying
 pre-migration slash refs; the guard that should have caught it
 (`recipe-registry-refs.spec.ts`) was `nx affected`-gated, #349's CI didn't
@@ -31,7 +31,7 @@ where the live catalog is available.
 - **CI hardening** — fixed `scripts/validate-recipes.ts`'s dead root path and
   folded the ref/slash/orphan guards into it (pure logic in
   `recipe-ref-guards.ts`); deleted the affected-gated spec. See ADR
-  [0026](../decisions/0026-repo-recipe-integrity-guards-must-be-always-run.md).
+  [0043](../decisions/0043-repo-recipe-integrity-guards-must-be-always-run.md).
 - Section E (vestigial `BUILTIN_COMPONENTS`) deferred to
   [#515](https://github.com/govtech-bb/gov-bb/issues/515).
 
@@ -60,7 +60,7 @@ where the live catalog is available.
   Tightening the nx-affected config or adding the spec to more projects would have
   papered over the real lesson: a guard protecting a *shared committed artifact*
   must run on every PR, full stop. Hence the always-run `validate-recipes` job is
-  now the single source of truth (ADR 0023). It must stay DB-free, so it resolves
+  now the single source of truth (ADR 0042). It must stay DB-free, so it resolves
   against the static `BUILTIN_REGISTRY` and falls back to ban-lists for slash refs;
   full-catalog resolution stays at the server `/validate` endpoint.
 

@@ -4,6 +4,7 @@ import { requireSession } from "./auth/require-session";
 import { api } from "./api-client";
 import {
   reconcileCatalogue,
+  statusEditable,
   type FormSummary,
   type LandingService,
   type ServiceRow,
@@ -13,6 +14,7 @@ import {
   SERVICE_STATUS_VALUES,
   type ServiceStatus,
 } from "../lib/service-status";
+import { pagesInEditor } from "../lib/service-url";
 import { mrkdwnEscape, sendSlackNotification } from "./slack-notif";
 
 export interface AuditEntry {
@@ -59,31 +61,36 @@ export function mapServicesIndex(
  * new landing pages appear without redeploying this app. If `GET /services`
  * fails the tool degrades to forms + statuses rather than erroring out.
  */
+async function loadCatalogue(token: string): Promise<ServiceRow[]> {
+  // Forward the user's GitHub token so /services and /form-definitions
+  // return non-public (preview/draft) entries too — otherwise a new form
+  // with no landing page never appears and can't be switched on (#2902).
+  // /service_status is a public read.
+  const [services, forms, statuses] = await Promise.all([
+    api
+      .get<ServiceIndexEntry[]>("/services", token)
+      .catch(() => [] as ServiceIndexEntry[]),
+    api.get<FormSummary[]>("/form-definitions", token),
+    api.get<StatusRow[]>("/service_status"),
+  ]);
+  return reconcileCatalogue({
+    landing: mapServicesIndex(services),
+    forms,
+    statuses,
+  });
+}
+
+/** The catalogue for the admin table (see `loadCatalogue`). */
 export const listServices = createServerFn({ method: "GET" })
   .middleware([requireSession])
   .handler(async ({ context }): Promise<ServiceRow[]> => {
-    // Forward the user's GitHub token so /services and /form-definitions
-    // return non-public (preview/draft) entries too — otherwise a new form
-    // with no landing page never appears and can't be switched on (#2902).
-    // /service_status is a public read.
-    const token = context.session.accessToken;
-    const [services, forms, statuses] = await Promise.all([
-      api
-        .get<ServiceIndexEntry[]>("/services", token)
-        .catch(() => [] as ServiceIndexEntry[]),
-      api.get<FormSummary[]>("/form-definitions", token),
-      api.get<StatusRow[]>("/service_status"),
-    ]);
-    return reconcileCatalogue({
-      landing: mapServicesIndex(services),
-      forms,
-      statuses,
-    });
+    return loadCatalogue(context.session.accessToken);
   });
 
 /**
  * Set a service's status. Forwards the user's GitHub token; the API verifies it
  * and records the audit author from the verified login (never client-supplied).
+ * After cutover it refuses a row without a form, the same rule as the UI.
  */
 export const setServiceStatus = createServerFn({ method: "POST" })
   .middleware([requireSession])
@@ -98,6 +105,22 @@ export const setServiceStatus = createServerFn({ method: "POST" })
     }),
   )
   .handler(async ({ data, context }): Promise<StatusUpdateResult> => {
+    // After cutover (ADR 0110, "After cutover") a row without a form is a page
+    // toggle that does nothing and changes what a rollback (#3225) restores.
+    // The UI hides its select; this refuses a stale tab or a hand-crafted call,
+    // by the same rule (statusEditable). Fails closed: a /form-definitions or
+    // /service_status failure throws (so it blocks form-row writes too), and a
+    // /services failure drops the content rows, so a content slug finds no row.
+    if (pagesInEditor) {
+      const rows = await loadCatalogue(context.session.accessToken);
+      const row = rows.find((r) => r.slug === data.slug);
+      if (!row || !statusEditable(row, true)) {
+        throw new Error(
+          "This service has no form, so its status can't be changed here. Change its page in the content editor.",
+        );
+      }
+    }
+
     const result = await api.put<StatusUpdateResult>(
       "/service_status",
       { slug: data.slug, status: data.status },

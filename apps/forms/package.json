@@ -5,7 +5,6 @@
   "type": "module",
   "dependencies": {
     "@govtech-bb/analytics": "workspace:*",
-    "@govtech-bb/content": "workspace:*",
     "@govtech-bb/form-conditions": "workspace:*",
     "@govtech-bb/form-types": "workspace:*",
     "@govtech-bb/form-validation": "workspace:*",

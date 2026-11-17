@@ -254,7 +254,7 @@ it("catchmentRouting paths point at a field on an unconditional step", async () 
   expect(problems).toEqual([]);
 });
 
-// The declaration step holds only the confirmation checkbox (ADR 0041). A name
+// The declaration step holds only the confirmation checkbox (ADR 0070). A name
 // or date field there repeats what the form already has: the applicant's name
 // is asked on an earlier step and every submission is timestamped. #2166
 // removed such dates from 34 recipes, but a form-builder publish or a

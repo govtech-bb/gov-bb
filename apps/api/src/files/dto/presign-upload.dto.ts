@@ -11,7 +11,7 @@ import {
 import { ApiProperty } from "@nestjs/swagger";
 
 // Lowercase-only (no `i` flag): a formId is a canonical lowercase kebab-case id
-// (ADR 0028). Rejecting uppercase at presign keeps it consistent with confirm's
+// (ADR 0048). Rejecting uppercase at presign keeps it consistent with confirm's
 // KEY_PATTERN, so an uppercase id can't presign then fail at confirm (#1853).
 const FORM_ID_PATTERN = /^[a-z0-9-]+$/;
 const SLUG_PATTERN = /^[a-z0-9-]+$/i;

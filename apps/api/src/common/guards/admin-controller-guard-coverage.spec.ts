@@ -3,7 +3,7 @@ import { join } from "node:path";
 
 /**
  * Regression tripwire for the unguarded-admin-controller bug (#11 / #1406,
- * ADR 0061): apps/api's admin endpoints originally shipped with only a
+ * ADR 0106): apps/api's admin endpoints originally shipped with only a
  * Swagger `@ApiBearerAuth()` decorator and no code-level auth. `AdminTokenGuard`
  * fixed the known controllers, but it's applied per-controller via
  * `@UseGuards(AdminTokenGuard)` (or `@UseGuards(new AdminTokenGuard(...))`) —

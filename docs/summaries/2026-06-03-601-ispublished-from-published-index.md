@@ -38,13 +38,13 @@ when the draft wins, the draft's own `isPublished: false` survives, and the set
 membership is the only thing that recovers the truth.
 
 This is governed by the existing principle in
-`docs/decisions/0028-form-removal-semantics-split-by-publish-state.md`: a form
+`docs/decisions/0049-form-removal-semantics-split-by-publish-state.md`: a form
 that is live to the public must not have its formId freed (Delete drops all
 rows). Keying the picker's Delete-vs-Disable affordance off true publish-state
 falls straight out of fixing `isPublished` — a published form with a newer draft
 now correctly offers Disable/Enable instead of Delete. We considered writing a
 new decision record for "isPublished = index membership" but judged it already
-implied by 0028; this was a bug fix, not a new convention.
+implied by 0049; this was a bug fix, not a new convention.
 
 ### Accepted UI consequences (confirmed in the plan discussion)
 

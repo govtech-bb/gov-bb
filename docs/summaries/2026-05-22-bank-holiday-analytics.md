@@ -21,7 +21,7 @@ The page already had no analytics at all (no `data-umami-event` attributes, no `
 
 The year switcher is a navigation click, so the declarative pattern matches. `Breadcrumbs.tsx` already proves TanStack `<Link>` passes `data-umami-event` through to the underlying anchor, so no wrapper or workaround was needed.
 
-The names follow the `<surface>-<action>` convention from the README. ADR-0004 explicitly exempts `apps/landing` from the fixed-enum naming rule that applies to `apps/forms`, so per-surface names are on-pattern. The target year is stored in event *data* (`data-umami-event-year`) rather than embedded in the name, keeping Umami's dashboard small.
+The names follow the `<surface>-<action>` convention from the README. ADR-0010 explicitly exempts `apps/landing` from the fixed-enum naming rule that applies to `apps/forms`, so per-surface names are on-pattern. The target year is stored in event *data* (`data-umami-event-year`) rather than embedded in the name, keeping Umami's dashboard small.
 
 ## Why the disclosure was skipped
 

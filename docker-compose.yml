@@ -245,7 +245,7 @@ services:
       # Leaving it empty is the supported path, not a broken one. Unset,
       # getSessionSecret() throws, and require-session.ts catches that to
       # synthesise a {login: "dev"} session — the sanctioned dev bypass from
-      # ADR 0061 ("no secret + non-prod → passthrough"). So `docker compose up`
+      # ADR 0106 ("no secret + non-prod → passthrough"). So `docker compose up`
       # with no .env still boots and /builder still works.
       #
       # Set it in .env (`openssl rand -base64 32`) to exercise the real

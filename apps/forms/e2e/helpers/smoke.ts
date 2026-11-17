@@ -10,7 +10,7 @@
  * step order, masks, repeatables, conditionals).
  *
  * The smoke SPECS run ONLY via playwright.smoke.config.ts — never the mocked
- * `test:e2e` suite (see ADR 0027 / 0029). The upload helpers below are also
+ * `test:e2e` suite (see ADR 0047 / 0051). The upload helpers below are also
  * tested in that mocked suite (e2e/upload-helpers.spec.ts, #2423), so keep
  * this file free of anything that needs a live environment to import.
  *

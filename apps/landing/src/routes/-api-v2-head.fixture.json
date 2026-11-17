@@ -1,0 +1,56 @@
+{
+  "public": {
+    "url": "/family-birth-relationships/replace-a-lost-birth-record",
+    "frontmatter": {
+      "title": "Replace a lost birth record",
+      "description": "How to replace a lost birth record in Barbados",
+      "stage": "alpha",
+      "service_type": "information"
+    },
+    "body_markdown": "## Who can apply\n\nThe person named on the record can apply.",
+    "form_id": null,
+    "hide_start_links": false,
+    "breadcrumbs": [
+      {
+        "name": "Births (api_v2 trail)",
+        "url": "/family-birth-relationships"
+      },
+      {
+        "name": "Lost birth record (api_v2 trail)",
+        "url": "/family-birth-relationships/replace-a-lost-birth-record"
+      }
+    ],
+    "published_at": "2026-01-15T00:00:00.000Z",
+    "content_updated_at": "2026-01-15T00:00:00.000Z",
+    "updated_at": "2026-01-15T00:00:00.000Z",
+    "category": "family-birth-relationships",
+    "subcategory": null,
+    "visibility": "public"
+  },
+  "preview": {
+    "url": "/family-birth-relationships/register-a-stillbirth",
+    "frontmatter": {
+      "title": "Register a stillbirth",
+      "description": "How to register a stillbirth in Barbados"
+    },
+    "body_markdown": "## Who can register\n\nA parent can register the stillbirth.",
+    "form_id": null,
+    "hide_start_links": false,
+    "breadcrumbs": [
+      {
+        "name": "Births (api_v2 trail)",
+        "url": "/family-birth-relationships"
+      },
+      {
+        "name": "Register a stillbirth",
+        "url": "/family-birth-relationships/register-a-stillbirth"
+      }
+    ],
+    "published_at": null,
+    "content_updated_at": "2026-01-15T00:00:00.000Z",
+    "updated_at": "2026-01-15T00:00:00.000Z",
+    "category": "family-birth-relationships",
+    "subcategory": null,
+    "visibility": "preview"
+  }
+}

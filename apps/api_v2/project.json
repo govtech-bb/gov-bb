@@ -1,0 +1,28 @@
+{
+  "name": "api_v2",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "apps/api_v2/src",
+  "projectType": "application",
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "apps/api_v2/dist",
+        "tsConfig": "apps/api_v2/tsconfig.json",
+        "main": "apps/api_v2/src/main.ts",
+        "assets": [
+          {
+            "glob": "**/*",
+            "input": "apps/api_v2/migrations",
+            "output": "migrations"
+          }
+        ]
+      }
+    },
+    "e2e": {
+      "dependsOn": ["build"]
+    }
+  },
+  "tags": []
+}

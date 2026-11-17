@@ -1,0 +1,1052 @@
+{
+  "schemaVersion": 2,
+  "id": "nis-prototype-calculator",
+  "title": "Estimate self-employed NIS contributions — unverified prototype",
+  "mode": "calculator",
+  "locale": "en-BB",
+  "timeZone": "America/Barbados",
+  "settings": {
+    "visibility": "preview",
+    "hiddenAnswers": "clear"
+  },
+  "blocks": [
+    {
+      "id": "income-page",
+      "type": "page",
+      "role": "questions",
+      "title": "Your earnings"
+    },
+    {
+      "id": "nis-prototype-notice",
+      "type": "content",
+      "kind": "callout",
+      "content": "UNVERIFIED PROTOTYPE. Every rate, ceiling, minimum and grant is a placeholder from the existing GovBB prototype. Do not use this reference as verified entitlement guidance."
+    },
+    {
+      "id": "earningsVary",
+      "type": "question",
+      "kind": "boolean",
+      "key": "earningsVary",
+      "label": "Do your earnings change during the year?",
+      "required": {
+        "value": true,
+        "message": "Select whether your earnings change during the year"
+      }
+    },
+    {
+      "id": "usualMonth",
+      "type": "question",
+      "kind": "number",
+      "key": "usualMonth",
+      "label": "How much do you usually earn each month?",
+      "required": {
+        "value": true,
+        "message": "Enter how much you usually earn each month"
+      },
+      "validation": [
+        {
+          "id": "minimum",
+          "type": "minimum",
+          "value": 0,
+          "inclusive": false,
+          "message": "Monthly earnings must be an amount greater than 0"
+        }
+      ],
+      "visible": false
+    },
+    {
+      "id": "goodMonth",
+      "type": "question",
+      "kind": "number",
+      "key": "goodMonth",
+      "label": "What does a busy month look like?",
+      "required": {
+        "value": true,
+        "message": "Enter your earnings in a busy month"
+      },
+      "validation": [
+        {
+          "id": "minimum",
+          "type": "minimum",
+          "value": 0,
+          "inclusive": false,
+          "message": "Busy month earnings must be an amount greater than 0"
+        }
+      ],
+      "visible": false
+    },
+    {
+      "id": "slowMonth",
+      "type": "question",
+      "kind": "number",
+      "key": "slowMonth",
+      "label": "And a slow month?",
+      "required": {
+        "value": true,
+        "message": "Enter your earnings in a slow month"
+      },
+      "validation": [
+        {
+          "id": "minimum",
+          "type": "minimum",
+          "value": 0,
+          "inclusive": true,
+          "message": "Slow month earnings must be 0 or more"
+        }
+      ],
+      "visible": false
+    },
+    {
+      "id": "goodMonths",
+      "type": "question",
+      "kind": "number",
+      "key": "goodMonths",
+      "label": "How many busy months do you usually have in a year?",
+      "required": {
+        "value": true,
+        "message": "Enter how many busy months you have in a year"
+      },
+      "validation": [
+        {
+          "id": "minimum",
+          "type": "minimum",
+          "value": 1,
+          "inclusive": true,
+          "message": "Enter a whole number of busy months from 1 to 12"
+        },
+        {
+          "id": "maximum",
+          "type": "maximum",
+          "value": 12,
+          "message": "Enter a whole number of busy months from 1 to 12"
+        },
+        {
+          "id": "whole-number",
+          "type": "integer",
+          "message": "Enter a whole number of busy months from 1 to 12"
+        }
+      ],
+      "visible": false
+    },
+    {
+      "id": "income-ceiling-notice",
+      "type": "content",
+      "kind": "callout",
+      "content": "Earnings above the monthly insurable ceiling do not increase insured benefits.",
+      "visible": false
+    },
+    {
+      "id": "annualIncome",
+      "type": "calculated",
+      "valueType": "number"
+    },
+    {
+      "id": "monthlyAverage",
+      "type": "calculated",
+      "valueType": "number",
+      "expression": {
+        "op": "divide",
+        "args": [
+          {
+            "value": "annualIncome"
+          },
+          12
+        ]
+      }
+    },
+    {
+      "id": "minimum",
+      "type": "calculated",
+      "valueType": "number",
+      "expression": 100
+    },
+    {
+      "id": "moderate",
+      "type": "calculated",
+      "valueType": "number",
+      "expression": {
+        "op": "max",
+        "args": [
+          150,
+          {
+            "op": "round",
+            "args": [
+              {
+                "op": "multiply",
+                "args": [
+                  {
+                    "op": "min",
+                    "args": [
+                      {
+                        "value": "monthlyAverage"
+                      },
+                      5360
+                    ]
+                  },
+                  0.1
+                ]
+              }
+            ],
+            "increment": 10,
+            "ties": "towardPositiveInfinity"
+          }
+        ]
+      }
+    },
+    {
+      "id": "stronger",
+      "type": "calculated",
+      "valueType": "number",
+      "expression": {
+        "op": "min",
+        "args": [
+          {
+            "op": "multiply",
+            "args": [
+              5360,
+              0.1725
+            ]
+          },
+          {
+            "op": "max",
+            "args": [
+              225,
+              {
+                "op": "round",
+                "args": [
+                  {
+                    "op": "multiply",
+                    "args": [
+                      {
+                        "value": "monthlyAverage"
+                      },
+                      0.15
+                    ]
+                  }
+                ],
+                "increment": 10,
+                "ties": "towardPositiveInfinity"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "plan-page",
+      "type": "page",
+      "role": "questions",
+      "title": "Choose a contribution to compare"
+    },
+    {
+      "id": "minimum-explanation",
+      "type": "content",
+      "kind": "paragraph",
+      "content": "The minimum contribution is a flat amount, even when 17.25% of average monthly earnings would be less.",
+      "visible": false
+    },
+    {
+      "id": "tier",
+      "type": "question",
+      "kind": "choice",
+      "key": "tier",
+      "label": "Which monthly amount would you like to compare?",
+      "required": {
+        "value": true,
+        "message": "Select an amount to compare"
+      },
+      "config": {
+        "selection": "single"
+      },
+      "options": [
+        {
+          "id": "minimum",
+          "label": [
+            "Minimum contribution — ",
+            {
+              "value": "minimum",
+              "format": {
+                "type": "currency",
+                "currency": "BBD",
+                "fractionDigits": 2
+              }
+            }
+          ],
+          "value": "minimum"
+        },
+        {
+          "id": "moderate",
+          "label": [
+            "Moderate — ",
+            {
+              "value": "moderate",
+              "format": {
+                "type": "currency",
+                "currency": "BBD",
+                "fractionDigits": 2
+              }
+            }
+          ],
+          "value": "moderate"
+        },
+        {
+          "id": "stronger",
+          "label": [
+            "Stronger — ",
+            {
+              "value": "stronger",
+              "format": {
+                "type": "currency",
+                "currency": "BBD",
+                "fractionDigits": 2
+              }
+            }
+          ],
+          "value": "stronger"
+        }
+      ]
+    },
+    {
+      "id": "monthlyContribution",
+      "type": "calculated",
+      "valueType": "number"
+    },
+    {
+      "id": "annualContribution",
+      "type": "calculated",
+      "valueType": "number",
+      "expression": {
+        "op": "multiply",
+        "args": [
+          {
+            "value": "monthlyContribution"
+          },
+          12
+        ]
+      }
+    },
+    {
+      "id": "weeklyContribution",
+      "type": "calculated",
+      "valueType": "number",
+      "expression": {
+        "op": "divide",
+        "args": [
+          {
+            "value": "annualContribution"
+          },
+          52
+        ]
+      }
+    },
+    {
+      "id": "monthlyInsurable",
+      "type": "calculated",
+      "valueType": "number",
+      "expression": {
+        "op": "min",
+        "args": [
+          5360,
+          {
+            "op": "divide",
+            "args": [
+              {
+                "value": "annualContribution"
+              },
+              0.1725,
+              12
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "weeklyInsurable",
+      "type": "calculated",
+      "valueType": "number",
+      "expression": {
+        "op": "divide",
+        "args": [
+          {
+            "op": "multiply",
+            "args": [
+              {
+                "value": "monthlyInsurable"
+              },
+              12
+            ]
+          },
+          52
+        ]
+      }
+    },
+    {
+      "id": "sicknessWeekly",
+      "type": "calculated",
+      "valueType": "number",
+      "expression": {
+        "op": "multiply",
+        "args": [
+          {
+            "value": "weeklyInsurable"
+          },
+          {
+            "op": "divide",
+            "args": [
+              2,
+              3
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "maternityWeekly",
+      "type": "calculated",
+      "valueType": "number",
+      "expression": {
+        "value": "weeklyInsurable"
+      }
+    },
+    {
+      "id": "paternityWeekly",
+      "type": "calculated",
+      "valueType": "number",
+      "expression": {
+        "value": "weeklyInsurable"
+      }
+    },
+    {
+      "id": "invalidityWeekly",
+      "type": "calculated",
+      "valueType": "number",
+      "expression": {
+        "op": "max",
+        "args": [
+          254,
+          {
+            "op": "multiply",
+            "args": [
+              {
+                "value": "weeklyInsurable"
+              },
+              0.4
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "pensionWeekly",
+      "type": "calculated",
+      "valueType": "number",
+      "expression": {
+        "op": "multiply",
+        "args": [
+          {
+            "value": "weeklyInsurable"
+          },
+          0.4
+        ]
+      }
+    },
+    {
+      "id": "survivorsWeekly",
+      "type": "calculated",
+      "valueType": "number",
+      "expression": {
+        "op": "multiply",
+        "args": [
+          {
+            "value": "weeklyInsurable"
+          },
+          0.4
+        ]
+      }
+    },
+    {
+      "id": "funeralGrant",
+      "type": "calculated",
+      "valueType": "number",
+      "expression": 2220
+    },
+    {
+      "id": "childGrant",
+      "type": "calculated",
+      "valueType": "number",
+      "expression": 1280
+    },
+    {
+      "id": "sicknessWeeklyMonthly",
+      "type": "calculated",
+      "valueType": "number",
+      "expression": {
+        "op": "divide",
+        "args": [
+          {
+            "op": "multiply",
+            "args": [
+              {
+                "value": "sicknessWeekly"
+              },
+              52
+            ]
+          },
+          12
+        ]
+      }
+    },
+    {
+      "id": "maternityWeeklyMonthly",
+      "type": "calculated",
+      "valueType": "number",
+      "expression": {
+        "op": "divide",
+        "args": [
+          {
+            "op": "multiply",
+            "args": [
+              {
+                "value": "maternityWeekly"
+              },
+              52
+            ]
+          },
+          12
+        ]
+      }
+    },
+    {
+      "id": "paternityWeeklyMonthly",
+      "type": "calculated",
+      "valueType": "number",
+      "expression": {
+        "op": "divide",
+        "args": [
+          {
+            "op": "multiply",
+            "args": [
+              {
+                "value": "paternityWeekly"
+              },
+              52
+            ]
+          },
+          12
+        ]
+      }
+    },
+    {
+      "id": "invalidityWeeklyMonthly",
+      "type": "calculated",
+      "valueType": "number",
+      "expression": {
+        "op": "divide",
+        "args": [
+          {
+            "op": "multiply",
+            "args": [
+              {
+                "value": "invalidityWeekly"
+              },
+              52
+            ]
+          },
+          12
+        ]
+      }
+    },
+    {
+      "id": "survivorsWeeklyMonthly",
+      "type": "calculated",
+      "valueType": "number",
+      "expression": {
+        "op": "divide",
+        "args": [
+          {
+            "op": "multiply",
+            "args": [
+              {
+                "value": "survivorsWeekly"
+              },
+              52
+            ]
+          },
+          12
+        ]
+      }
+    },
+    {
+      "id": "pensionWeeklyMonthly",
+      "type": "calculated",
+      "valueType": "number",
+      "expression": {
+        "op": "divide",
+        "args": [
+          {
+            "op": "multiply",
+            "args": [
+              {
+                "value": "pensionWeekly"
+              },
+              52
+            ]
+          },
+          12
+        ]
+      }
+    },
+    {
+      "id": "nis-rules",
+      "type": "logic",
+      "rules": [
+        {
+          "id": "steady-income",
+          "when": {
+            "op": "eq",
+            "left": {
+              "answer": "earningsVary"
+            },
+            "right": false
+          },
+          "actions": [
+            {
+              "type": "setVisible",
+              "targets": [
+                "usualMonth"
+              ],
+              "value": true
+            },
+            {
+              "type": "setValue",
+              "target": "annualIncome",
+              "value": {
+                "op": "multiply",
+                "args": [
+                  {
+                    "answer": "usualMonth"
+                  },
+                  12
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "id": "varying-income",
+          "when": {
+            "op": "eq",
+            "left": {
+              "answer": "earningsVary"
+            },
+            "right": true
+          },
+          "actions": [
+            {
+              "type": "setVisible",
+              "targets": [
+                "goodMonth",
+                "slowMonth",
+                "goodMonths"
+              ],
+              "value": true
+            },
+            {
+              "type": "setValue",
+              "target": "annualIncome",
+              "value": {
+                "op": "add",
+                "args": [
+                  {
+                    "op": "multiply",
+                    "args": [
+                      {
+                        "answer": "goodMonth"
+                      },
+                      {
+                        "answer": "goodMonths"
+                      }
+                    ]
+                  },
+                  {
+                    "op": "multiply",
+                    "args": [
+                      {
+                        "answer": "slowMonth"
+                      },
+                      {
+                        "op": "subtract",
+                        "args": [
+                          12,
+                          {
+                            "answer": "goodMonths"
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "id": "show-income-ceiling",
+          "when": {
+            "op": "all",
+            "conditions": [
+              {
+                "op": "eq",
+                "left": {
+                  "answer": "earningsVary"
+                },
+                "right": false
+              },
+              {
+                "op": "gt",
+                "left": {
+                  "answer": "usualMonth"
+                },
+                "right": 5360
+              }
+            ]
+          },
+          "actions": [
+            {
+              "type": "setVisible",
+              "targets": [
+                "income-ceiling-notice"
+              ],
+              "value": true
+            }
+          ]
+        },
+        {
+          "id": "flat-minimum-explanation",
+          "when": {
+            "op": "lt",
+            "left": {
+              "op": "multiply",
+              "args": [
+                {
+                  "value": "monthlyAverage"
+                },
+                0.1725
+              ]
+            },
+            "right": 100
+          },
+          "actions": [
+            {
+              "type": "setVisible",
+              "targets": [
+                "minimum-explanation"
+              ],
+              "value": true
+            }
+          ]
+        },
+        {
+          "id": "choose-minimum",
+          "when": {
+            "op": "selected",
+            "question": "tier",
+            "option": "minimum"
+          },
+          "actions": [
+            {
+              "type": "setValue",
+              "target": "monthlyContribution",
+              "value": {
+                "value": "minimum"
+              }
+            }
+          ]
+        },
+        {
+          "id": "choose-moderate",
+          "when": {
+            "op": "selected",
+            "question": "tier",
+            "option": "moderate"
+          },
+          "actions": [
+            {
+              "type": "setValue",
+              "target": "monthlyContribution",
+              "value": {
+                "value": "moderate"
+              }
+            }
+          ]
+        },
+        {
+          "id": "choose-stronger",
+          "when": {
+            "op": "selected",
+            "question": "tier",
+            "option": "stronger"
+          },
+          "actions": [
+            {
+              "type": "setValue",
+              "target": "monthlyContribution",
+              "value": {
+                "value": "stronger"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "nis-result",
+      "type": "page",
+      "role": "result",
+      "title": "Your prototype estimate"
+    },
+    {
+      "id": "nis-result-notice",
+      "type": "content",
+      "kind": "callout",
+      "content": "UNVERIFIED PROTOTYPE. These figures are not a decision about eligibility or entitlement."
+    },
+    {
+      "id": "chosen-contribution",
+      "type": "content",
+      "kind": "paragraph",
+      "content": [
+        "Your selected contribution is ",
+        {
+          "value": "monthlyContribution",
+          "format": {
+            "type": "currency",
+            "currency": "BBD",
+            "fractionDigits": 2
+          }
+        },
+        " per month, ",
+        {
+          "value": "weeklyContribution",
+          "format": {
+            "type": "currency",
+            "currency": "BBD",
+            "fractionDigits": 2
+          }
+        },
+        " per week, or ",
+        {
+          "value": "annualContribution",
+          "format": {
+            "type": "currency",
+            "currency": "BBD",
+            "fractionDigits": 2
+          }
+        },
+        " per year."
+      ]
+    },
+    {
+      "id": "sicknessWeekly-result",
+      "type": "content",
+      "kind": "paragraph",
+      "content": [
+        "Sickness",
+        ": ",
+        {
+          "value": "sicknessWeekly",
+          "format": {
+            "type": "currency",
+            "currency": "BBD",
+            "fractionDigits": 2
+          }
+        },
+        " per week (approximately ",
+        {
+          "value": "sicknessWeeklyMonthly",
+          "format": {
+            "type": "currency",
+            "currency": "BBD",
+            "fractionDigits": 2
+          }
+        },
+        " per month)."
+      ]
+    },
+    {
+      "id": "maternityWeekly-result",
+      "type": "content",
+      "kind": "paragraph",
+      "content": [
+        "Maternity",
+        ": ",
+        {
+          "value": "maternityWeekly",
+          "format": {
+            "type": "currency",
+            "currency": "BBD",
+            "fractionDigits": 2
+          }
+        },
+        " per week (approximately ",
+        {
+          "value": "maternityWeeklyMonthly",
+          "format": {
+            "type": "currency",
+            "currency": "BBD",
+            "fractionDigits": 2
+          }
+        },
+        " per month)."
+      ]
+    },
+    {
+      "id": "paternityWeekly-result",
+      "type": "content",
+      "kind": "paragraph",
+      "content": [
+        "Paternity",
+        ": ",
+        {
+          "value": "paternityWeekly",
+          "format": {
+            "type": "currency",
+            "currency": "BBD",
+            "fractionDigits": 2
+          }
+        },
+        " per week (approximately ",
+        {
+          "value": "paternityWeeklyMonthly",
+          "format": {
+            "type": "currency",
+            "currency": "BBD",
+            "fractionDigits": 2
+          }
+        },
+        " per month)."
+      ]
+    },
+    {
+      "id": "invalidityWeekly-result",
+      "type": "content",
+      "kind": "paragraph",
+      "content": [
+        "Invalidity",
+        ": ",
+        {
+          "value": "invalidityWeekly",
+          "format": {
+            "type": "currency",
+            "currency": "BBD",
+            "fractionDigits": 2
+          }
+        },
+        " per week (approximately ",
+        {
+          "value": "invalidityWeeklyMonthly",
+          "format": {
+            "type": "currency",
+            "currency": "BBD",
+            "fractionDigits": 2
+          }
+        },
+        " per month)."
+      ]
+    },
+    {
+      "id": "survivorsWeekly-result",
+      "type": "content",
+      "kind": "paragraph",
+      "content": [
+        "Survivors",
+        ": ",
+        {
+          "value": "survivorsWeekly",
+          "format": {
+            "type": "currency",
+            "currency": "BBD",
+            "fractionDigits": 2
+          }
+        },
+        " per week (approximately ",
+        {
+          "value": "survivorsWeeklyMonthly",
+          "format": {
+            "type": "currency",
+            "currency": "BBD",
+            "fractionDigits": 2
+          }
+        },
+        " per month)."
+      ]
+    },
+    {
+      "id": "pensionWeekly-result",
+      "type": "content",
+      "kind": "paragraph",
+      "content": [
+        "Old-Age Contributory Pension",
+        ": ",
+        {
+          "value": "pensionWeekly",
+          "format": {
+            "type": "currency",
+            "currency": "BBD",
+            "fractionDigits": 2
+          }
+        },
+        " per week (approximately ",
+        {
+          "value": "pensionWeeklyMonthly",
+          "format": {
+            "type": "currency",
+            "currency": "BBD",
+            "fractionDigits": 2
+          }
+        },
+        " per month)."
+      ]
+    },
+    {
+      "id": "funeral-grant-result",
+      "type": "content",
+      "kind": "paragraph",
+      "content": [
+        "Funeral Grant: ",
+        {
+          "value": "funeralGrant",
+          "format": {
+            "type": "currency",
+            "currency": "BBD",
+            "fractionDigits": 2
+          }
+        },
+        "."
+      ]
+    },
+    {
+      "id": "child-grant-result",
+      "type": "content",
+      "kind": "paragraph",
+      "content": [
+        "Survivors' child grant: ",
+        {
+          "value": "childGrant",
+          "format": {
+            "type": "currency",
+            "currency": "BBD",
+            "fractionDigits": 2
+          }
+        },
+        "."
+      ]
+    },
+    {
+      "id": "nis-next-steps",
+      "type": "content",
+      "kind": "paragraph",
+      "content": "Contact the NIS Self-Employed Unit to confirm rates and contribution requirements. Benefit eligibility depends on the relevant rules and your contribution record. This calculator sends no submission."
+    }
+  ]
+}

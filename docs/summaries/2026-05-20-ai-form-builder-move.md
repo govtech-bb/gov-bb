@@ -4,7 +4,7 @@
 **Branch:** `platform/merge-builders`  
 **Plan:** `docs/superpowers/plans/2026-05-20-ai-form-builder-move.md`  
 **Spec:** `docs/superpowers/specs/2026-05-20-ai-form-builder-move-design.md`  
-**Decision:** `docs/decisions/0003-form-authoring-lives-in-form_builder.md`
+**Decision:** `docs/decisions/0007-form-authoring-lives-in-form_builder.md`
 
 ## What was built
 

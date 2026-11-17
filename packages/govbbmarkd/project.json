@@ -1,0 +1,26 @@
+{
+  "name": "govbbmarkd",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "packages/govbbmarkd/src",
+  "projectType": "library",
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "packages/govbbmarkd/dist",
+        "tsConfig": "packages/govbbmarkd/tsconfig.json",
+        "main": "packages/govbbmarkd/src/index.ts"
+      }
+    },
+    "test": {
+      "dependsOn": ["test:types"],
+      "inputs": [
+        "default",
+        "^production",
+        "{workspaceRoot}/docs/content-markdown.md"
+      ]
+    }
+  },
+  "tags": []
+}

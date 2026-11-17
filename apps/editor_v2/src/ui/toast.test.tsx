@@ -1,0 +1,107 @@
+/** @vitest-environment jsdom */
+import { act } from "react";
+import { createRoot, type Root } from "react-dom/client";
+import { afterEach, beforeEach, expect, test, vi } from "vitest";
+import { dismissToast, toast, Toaster } from "./toast";
+
+let host: HTMLDivElement;
+
+let root: Root;
+
+beforeEach(async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  host = document.createElement("div");
+  document.body.append(host);
+  root = createRoot(host);
+  await act(async () => root.render(<Toaster />));
+});
+
+afterEach(async () => {
+  await act(async () => root.unmount());
+  host.remove();
+  vi.unstubAllGlobals();
+});
+
+test("a toast raised outside React shows its title and description, and Dismiss removes it", async () => {
+  await act(async () => {
+    toast("Version 3 restored", { description: "Save to make it the current version." });
+  });
+
+  expect(document.body.textContent).toContain("Version 3 restored");
+  expect(document.body.textContent).toContain("Save to make it the current version.");
+
+  await act(async () => document.querySelector<HTMLElement>('[aria-label="Dismiss"]')!.click());
+  await act(async () => new Promise((resolve) => setTimeout(resolve, 50)));
+
+  expect(document.body.textContent).not.toContain("Version 3 restored");
+});
+
+test("a toast's action is a named button that acts once and takes the toast away", async () => {
+  const undo = vi.fn();
+  await act(async () => {
+    toast("Page deleted", { action: { label: "Undo", onClick: undo } });
+  });
+
+  const button = [...document.querySelectorAll("button")].find((b) => b.textContent === "Undo");
+  expect(button).toBeDefined();
+
+  await act(async () => button!.click());
+  await act(async () => new Promise((resolve) => setTimeout(resolve, 50)));
+
+  expect(undo).toHaveBeenCalledTimes(1);
+  expect(document.body.textContent).not.toContain("Page deleted");
+});
+
+test("dismissToast takes a toast away early, and a toast without an action has no action button", async () => {
+  let id = "";
+  await act(async () => {
+    id = toast("Changes published");
+  });
+
+  expect(document.querySelectorAll("button")).toHaveLength(1); // only Dismiss
+  await act(async () => dismissToast(id));
+  await act(async () => new Promise((resolve) => setTimeout(resolve, 50)));
+
+  expect(document.body.textContent).not.toContain("Changes published");
+});
+
+test("its action is a kit Button, a finger's size on a touch screen, in teal apart from Dismiss", async () => {
+  await act(async () => {
+    toast("Page deleted", { action: { label: "Undo", onClick: () => {} } });
+  });
+
+  const undo = [...document.querySelectorAll("button")].find((b) => b.textContent === "Undo")!;
+
+  expect(undo.classList).toContain("pointer-coarse:min-h-11");
+  expect(undo.classList).toContain("text-interactive");
+  expect(undo.getAttribute("type")).toBe("button");
+});
+
+test("an error stays until dismissed, while other toasts keep the default timeout", async () => {
+  vi.useFakeTimers();
+
+  const long =
+    "Its unpublished changes were discarded, but your open copy still contains them, so check it carefully against the live page before you save it again, or download a copy first.";
+
+  await act(async () => {
+    toast("This change couldn’t be submitted for review", {
+      tone: "error",
+      description: "Check you are still signed in, then try again.",
+    });
+    toast("Changes published");
+    toast("The page is no longer public", { tone: "info", description: long });
+  });
+
+  await act(async () => vi.advanceTimersByTime(6000));
+  expect(document.body.textContent).not.toContain("Changes published");
+  expect(document.body.textContent).not.toContain("The page is no longer public");
+
+  await act(async () => vi.advanceTimersByTime(60_000));
+  expect(document.body.textContent).toContain("This change couldn’t be submitted for review");
+
+  await act(async () => document.querySelector<HTMLElement>('[aria-label="Dismiss"]')!.click());
+  await act(async () => vi.advanceTimersByTime(1000));
+  expect(document.body.textContent).not.toContain("This change couldn’t be submitted for review");
+
+  vi.useRealTimers();
+});
