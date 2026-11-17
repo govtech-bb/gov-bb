@@ -94,9 +94,10 @@ Keep it that way:
 - **401 or 403 from `PUT /service_status`:** the token has expired, was
   revoked, or the bot is no longer on `feature-management-sandbox`. Run the
   checks in step 4 with the current token if you have it. Otherwise renew.
-- **A warning that the token is not provisioned, and the job passes:** the
-  secret is empty or missing from `sandbox-e2e`. The check did not run. Store
-  the token again (step 5).
+- **An `E2E_SERVICE_STATUS_TOKEN is not set` error, and the job fails:** the
+  secret is empty or missing from `sandbox-e2e`. Store the token again
+  (step 5). Until #3581 merges, this case shows as a warning and the job
+  passes without running the check.
 - **A human can no longer change a service's status in sandbox:** check that
   `content-and-feature-management` still has `feature-management-sandbox` as its
   parent team, and that sandbox's `GITHUB_TEAM_SLUG` is still
@@ -104,6 +105,17 @@ Keep it that way:
 
 ## If the token leaks
 
-Sign in as `govtech-bb-e2e`, delete the token, then follow "Renew the token".
-The leaked token can only change `service_status` in sandbox and read org
-membership.
+Revoke it first. Either route works:
+
+- Sign in as `govtech-bb-e2e` and delete the token. Only the owner can do this.
+- An org owner revokes it under Organisation settings → Personal access
+  tokens → Active tokens. This does not need the bot's sign-in, so use it if
+  the owner can't be reached.
+
+Then follow "Renew the token". Renewal still needs the owner.
+
+In sandbox, the leaked token can change any service's status, not just
+`e2e-maintenance-check`. It can also read the status audit log, which includes
+the GitHub logins of the people who made each change, and list non-public
+content and forms. It has *Members: read* on the org. It has no access to
+staging or prod.
