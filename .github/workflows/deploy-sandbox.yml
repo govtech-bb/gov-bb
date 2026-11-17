@@ -1151,8 +1151,8 @@ jobs:
             echo "**Forms URL:** https://forms.sandbox.alpha.gov.bb"
             echo "**Form Builder URL:** https://builder.sandbox.alpha.gov.bb"
             echo "**Feature Flagging URL:** https://feature-flagging.sandbox.alpha.gov.bb"
-            echo "**api_v2 URL:** https://api-v2.sandbox.alpha.gov.bb"
-            echo "**editor_v2 URL:** https://editor-v2.sandbox.alpha.gov.bb"
+            echo "**api_v2 URL:** https://api.sandbox.alpha.gov.bb/v2"
+            echo "**editor_v2 URL:** https://editor.sandbox.alpha.gov.bb"
           } >> "$GITHUB_STEP_SUMMARY"
 
   notify-failure:

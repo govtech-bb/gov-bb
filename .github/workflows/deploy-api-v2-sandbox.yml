@@ -1,7 +1,7 @@
 name: Deploy api_v2 to Sandbox
 
 # Builds apps/api_v2 and rolls the api-v2-sandbox ECS service
-# (https://api-v2.sandbox.alpha.gov.bb). Infrastructure: alpha-infra
+# (https://api.sandbox.alpha.gov.bb/v2, #3745). Infrastructure: alpha-infra
 # environments/sandbox/modular-forms-sandbox/api-v2-ecs.tf (gov-bb#2962).
 #
 # Reusable: deploy-sandbox.yml calls it (job `deploy-api-v2`) on a merge to
@@ -36,7 +36,8 @@ env:
   ECS_CLUSTER: modular-forms-sandbox
   ECS_SERVICE: api-v2-sandbox
   TASK_FAMILY: api-v2-sandbox
-  API_URL: https://api-v2.sandbox.alpha.gov.bb
+  # api_v2's base URL: the smoke paths below are appended to it.
+  API_URL: https://api.sandbox.alpha.gov.bb/v2
 
 jobs:
   deploy:
