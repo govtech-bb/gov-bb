@@ -78,9 +78,12 @@ confirmed applied in sandbox, staging and prod on #3322). Sandbox has no
 - The two refusal messages live in `@govtech-bb/form-validation`
   (`file-scan-messages.ts`), so the submit refusal and the upload page show the
   same text. Content design owns the wording (#2940).
-- **Known gap: the check is point-in-time.** The presigned PUT URL stays valid
-  for `UPLOAD_PRESIGN_TTL_SECONDS` (15 min), and the email processor downloads
-  the object's *current* bytes later. So a caller could overwrite a file after
-  submit passes. GuardDuty re-tags the new bytes, but nothing re-reads the tag.
-  Closing this, for example by presigning with `If-None-Match: *` or by pinning
-  the version checked at submit, is tracked in #3332.
+- **Overwrites are refused, so the point-in-time check holds (#3332).** The
+  presigned PUT URL stays valid for `UPLOAD_PRESIGN_TTL_SECONDS` (15 min), and
+  the email processor downloads the object's *current* bytes later. Without a
+  guard, a caller could overwrite a file after submit passed it. The API signs
+  `If-None-Match: *` into the presigned PUT and the forms client sends it
+  (#3421), so S3 refuses any PUT to a key that already has an object (412). A
+  PUT without the header fails the signature (403). This was chosen over
+  pinning the version checked at submit, which would change the stored file
+  value, the email processor and the signed links.
