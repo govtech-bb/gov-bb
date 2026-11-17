@@ -13,8 +13,9 @@
  *   as `<service>/start` hangs off its parent's url, takes its parent's
  *   category and records the parent; so do the pages landing nests without
  *   nesting their url (`NESTED_WITHOUT_URL`). A page that names a second
- *   category fails the build: a page has one `category_id`. `content_slug` is the markdown path
- *   landing's registry keys the page by, `index.md`/`.md` stripped.
+ *   category fails the build: a page has one `category_id`. `content_slug`
+ *   is the markdown path landing's registry keys the page by,
+ *   `index.md`/`.md` stripped.
  * - categories: `CATEGORY_TAXONOMY` in its order, each subcategory a
  *   category with a parent.
  *

@@ -33,4 +33,17 @@ describe("pageCategory", () => {
       "calculate-severance-pay names 2 categories (money-financial-support, work-employment)",
     );
   });
+
+  // Most pages use the scalar `category`, so adding `categories` to one is
+  // the likeliest way a second category gets in.
+  it("fails when `category` and `categories` name different categories", () => {
+    expect(() =>
+      pageCategory("a", {
+        category: "work-employment",
+        categories: ["money-financial-support"],
+      }),
+    ).toThrow(
+      "a names 2 categories (work-employment, money-financial-support)",
+    );
+  });
 });
