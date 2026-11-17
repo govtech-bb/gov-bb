@@ -15,15 +15,13 @@ name: Deploy api_v2 to Sandbox
 #
 # The service starts at desired_count = 0 in tofu (which ignores later
 # changes to desired_count and task_definition), so this job sets it to 1.
-#
-# A second job, estate-drift, then compares sandbox's page content with
-# estate.json after each deploy (#3710).
 
 on:
   workflow_call:
   workflow_dispatch:
 
 permissions:
+  id-token: write # assume the deploy role via OIDC
   contents: read
 
 # Queue deploys; never cancel one mid-flight.
@@ -44,9 +42,6 @@ jobs:
   deploy:
     name: Build, Push & Deploy api_v2
     runs-on: ubuntu-latest
-    permissions:
-      id-token: write # assume the deploy role via OIDC
-      contents: read
     # No `environment:` here: it would change the OIDC subject to
     # repo:...:environment:<name>, which the deploy role does not trust.
     steps:
@@ -225,32 +220,3 @@ jobs:
             echo "::error::GET /pages p95 ${p95} ms is above the ${CEILING_MS} ms ceiling"
             exit 1
           fi
-
-  # Compares sandbox's api_v2 pages with this commit's estate.json (#3710):
-  # the database is loaded once, so a newer snapshot leaves it behind.
-  # Its own job, so a deploy that worked stays green and drift turns the
-  # run red. Inherits only contents: read, not the deploy role's id-token.
-  # #3311 deletes this job at sandbox's cutover: from then on the database
-  # is the source of truth and differences are editors' work.
-  estate-drift:
-    name: Compare sandbox with estate.json
-    needs: deploy
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    steps:
-      - name: Checkout
-        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
-        with:
-          persist-credentials: false
-      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
-      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
-        with:
-          node-version-file: ".nvmrc"
-          cache: "pnpm"
-      - run: pnpm install --frozen-lockfile
-      - name: Check every snapshot page
-        env:
-          # Equals sandbox api_v2's PREVIEW_SECRET (see landing-v2-smoke.yml).
-          PREVIEW_SECRET: ${{ secrets.RECIPE_PREVIEW_TOKEN }}
-          FORMS_API: https://forms.api.sandbox.alpha.gov.bb
-        run: pnpm --filter @govtech-bb/api-v2 check-import --base-url "$API_URL" --forms-api "$FORMS_API"

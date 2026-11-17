@@ -1,0 +1,51 @@
+name: Compare sandbox api_v2 with estate.json
+
+# Runs check-import against sandbox api_v2: every snapshot page's status, and
+# the content of each page the preview token can read, against main's
+# estate.json (#3710). The database is loaded once, so a newer snapshot leaves
+# it behind, and this run goes red.
+#
+# A workflow of its own, so drift never turns Deploy Sandbox red (its Slack
+# alert, and the next merge's deploy base). It runs after each Deploy Sandbox
+# run and nightly. Both triggers fire only for this file on main. Run it by
+# hand from main to re-check.
+#
+# #3311 deletes this workflow at sandbox's cutover: from then on the database
+# is the source of truth and differences are editors' work.
+
+on:
+  # Deploy Sandbox runs only on a push to main or by hand, and this job checks
+  # out main, never the triggering run's code, and reads no artifacts.
+  workflow_run: # zizmor: ignore[dangerous-triggers]
+    workflows: [Deploy Sandbox]
+    types: [completed]
+  schedule:
+    - cron: "17 6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  estate-drift:
+    name: Compare sandbox with estate.json
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version-file: ".nvmrc"
+          cache: "pnpm"
+      - run: pnpm install --frozen-lockfile
+      - name: Check every snapshot page
+        env:
+          # Equals sandbox api_v2's PREVIEW_SECRET (see landing-v2-smoke.yml).
+          PREVIEW_SECRET: ${{ secrets.RECIPE_PREVIEW_TOKEN }}
+          API_URL: https://api-v2.sandbox.alpha.gov.bb
+          FORMS_API: https://forms.api.sandbox.alpha.gov.bb
+        run: pnpm --filter @govtech-bb/api-v2 check-import --base-url "$API_URL" --forms-api "$FORMS_API"
