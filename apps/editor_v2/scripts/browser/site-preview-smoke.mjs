@@ -43,9 +43,11 @@ await context.route("**/*", (route) => {
   const request = route.request();
   const url = new URL(request.url());
 
+  // The API may sit under a base path, as deployed editors' /v2 (#3745).
+  const apiPath = url.pathname.replace(/^\/v2(?=\/)/, "");
+
   if (["GET", "HEAD", "OPTIONS"].includes(request.method())) {
-    if (request.resourceType() !== "document" && fixturePaths.has(url.pathname))
-      return route.fallback();
+    if (request.resourceType() !== "document" && fixturePaths.has(apiPath)) return route.fallback();
 
     if (
       url.origin === origin &&
