@@ -489,7 +489,11 @@ jobs:
           POSTGRES_PASSWORD: postgres
         ports:
           - 5432:5432
+        # Data dir on tmpfs: every per-test clone (strategy file_copy) forces
+        # a checkpoint, which is slow on the runner's disk and free in RAM.
+        # The database is thrown away after the run, so nothing is lost (#3764).
         options: >-
+          --tmpfs /var/lib/postgresql/data
           --health-cmd "pg_isready -U postgres"
           --health-interval 2s
           --health-timeout 5s
