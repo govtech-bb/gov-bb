@@ -78,6 +78,39 @@ describe("auth configuration", () => {
       }).ok,
     ).toBe(true);
   });
+  it("takes a base path on BETTER_AUTH_URL, keeping its origin rules (#3745)", () => {
+    const parsed = (url: string, env: Record<string, string> = {}) =>
+      parseConfig({ ...required, ...env, BETTER_AUTH_URL: url });
+    const at = (url: string) => {
+      const result = parsed(url);
+      if (!result.ok) throw result.error;
+      return [result.value.auth.apiOrigin, result.value.auth.apiBasePath];
+    };
+    expect(at("http://localhost:3020")).toEqual(["http://localhost:3020", ""]);
+    expect(at("http://localhost:3020/v2")).toEqual([
+      "http://localhost:3020",
+      "/v2",
+    ]);
+    expect(at("http://localhost:3020/v2/")).toEqual([
+      "http://localhost:3020",
+      "/v2",
+    ]);
+    for (const url of [
+      "http://user:pass@localhost:3020/v2",
+      "http://localhost:3020/v2?x=1",
+      "http://localhost:3020/v2#x",
+      "http://localhost:3020//v2",
+      "http://localhost:3020/v2/../admin",
+      "http://localhost:3020/v%32",
+    ])
+      expect(parsed(url).ok, url).toBe(false);
+    const production = {
+      NODE_ENV: "production",
+      EDITOR_ORIGIN: "https://editor.example",
+    };
+    expect(parsed("http://api.example/v2", production).ok).toBe(false);
+    expect(parsed("https://api.example/v2", production).ok).toBe(true);
+  });
   it("seeds only when asked to, in any spelling of yes", () => {
     const seed = (value: string | undefined) => {
       const result = parseConfig({ ...required, SEED: value });
