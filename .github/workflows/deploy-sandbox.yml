@@ -739,9 +739,9 @@ jobs:
   # govtech-bb-e2e fine-grained token (org Members: read only, member of
   # `feature-management-sandbox` only, no repo access — so it can change sandbox
   # service_status but never prod's), stored on the `sandbox-e2e` environment and
-  # restricted to `main`. See #3363 for the token setup (and the renewal owner /
-  # steps tracked there). Absent → this fails closed and blocks staging (by
-  # design — a gate must not pass blind).
+  # restricted to `main`. Owner, expiry and renewal steps:
+  # docs/e2e-service-status-token.md. Absent → this fails closed and blocks
+  # staging (by design — a gate must not pass blind).
   journey-feature-flag:
     name: Journey 3 — feature-flag reaches landing + forms
     needs: [deploy-api, amplify-forms, amplify-landing]
@@ -795,7 +795,7 @@ jobs:
           E2E_SERVICE_STATUS_TOKEN: ${{ secrets.E2E_SERVICE_STATUS_TOKEN }}
         run: |
           if [ -z "$E2E_SERVICE_STATUS_TOKEN" ]; then
-            echo "::error::E2E_SERVICE_STATUS_TOKEN is not set in the sandbox-e2e environment — renew the govtech-bb-e2e fine-grained token (org Members: read only, member of feature-management-sandbox only, no repo access) per #3363 before this gate can pass."
+            echo "::error::E2E_SERVICE_STATUS_TOKEN is not set in the sandbox-e2e environment — renew the govtech-bb-e2e fine-grained token per docs/e2e-service-status-token.md before this gate can pass."
             exit 1
           fi
           pnpm --filter @govtech-bb/forms exec playwright test \

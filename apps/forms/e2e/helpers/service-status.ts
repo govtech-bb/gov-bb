@@ -62,7 +62,7 @@ export async function setServiceStatus(
     // point on-call at the renewal path from this message too (#3363).
     const hint =
       res.status === 401 || res.status === 403
-        ? " — E2E_SERVICE_STATUS_TOKEN is expired or lacks access; renew it per #3363"
+        ? " — E2E_SERVICE_STATUS_TOKEN is expired or lacks access; renew it per docs/e2e-service-status-token.md"
         : "";
     throw new Error(
       `PUT /service_status (${slug} → ${status}) failed: HTTP ${res.status} ${detail}${hint}`,
