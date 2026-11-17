@@ -136,6 +136,29 @@ Every new issue should carry the labels that describe what it relates to. Run
 
 Pick labels from the issue's actual content, not just its title.
 
+#### Size each issue so one PR closes it
+
+Before you create an issue, ask: can one PR close all of it? If not, split it.
+Don't list "step 1, step 2, step 3" in one issue or in a steps comment. That
+leads to "Part of #N" PRs, and the issue stays open with no clear record of
+what is left (#3256 and #3716).
+
+- Make the issue a **parent**. Give each step, or each area the work touches
+  (for example the api_v2 import, then landing search, then the sitemap), its
+  own **sub-issue**. Use GitHub sub-issues, not a checklist.
+- Give each sub-issue one area, its own labels and its own "Done when". One PR
+  must be able to complete it with `Closes #N`.
+- The parent's "Done when" is "all sub-issues are closed".
+- Attach a sub-issue with its numeric id, not its number:
+
+  ```bash
+  id=$(gh api repos/govtech-bb/gov-bb/issues/<child> --jq .id)
+  gh api repos/govtech-bb/gov-bb/issues/<parent>/sub_issues -F sub_issue_id="$id"
+  ```
+
+If you have to work on an existing issue that has steps, split it into
+sub-issues first. Don't open a "Part of" PR.
+
 ### Run the build, and the tests for what you touched, before committing or pushing
 
 CI runs the full build and the full test suite. Run the build the same way
