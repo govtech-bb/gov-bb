@@ -44,18 +44,18 @@ function fakeApi(
 }
 
 describe('readSmokeEnv', () => {
-  it('requires every origin, with no default', () => {
+  it('requires every origin, with no default, keeping the api_v2 base path (#3745)', () => {
     expect(() => readSmokeEnv({})).toThrow('SMOKE_LANDING_URL is required')
     expect(
       readSmokeEnv({
         SMOKE_LANDING_URL: 'https://landing.test/',
-        SMOKE_API_V2_URL: 'https://api.test/x',
+        SMOKE_API_V2_URL: 'https://api.test/v2/',
         SMOKE_FORMS_URL: 'https://forms.test',
         SMOKE_FORMS_API_URL: 'https://forms-api.test/',
       }),
     ).toEqual({
       landing: 'https://landing.test',
-      apiV2: 'https://api.test',
+      apiV2: 'https://api.test/v2',
       forms: 'https://forms.test',
       formsApi: 'https://forms-api.test',
     })
