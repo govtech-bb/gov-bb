@@ -20,6 +20,11 @@ token is stored.
 | Secret | `E2E_SERVICE_STATUS_TOKEN` on the `sandbox-e2e` GitHub Environment in gov-bb, last set 2026-11-03 |
 | Environment | `sandbox-e2e`, deployable from `main` only, no required reviewers |
 
+There is no second owner yet. One will be added once the team decides how the
+bot's sign-in is shared. The likely approach is to keep its 2FA recovery codes
+in a shared vault. Until then, only the owner can renew the token, so this
+should be settled before the first renewal on 2027-01-25.
+
 ## Why it is set up this way
 
 The API lets a caller change `service_status` if their GitHub token belongs to
