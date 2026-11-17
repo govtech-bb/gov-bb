@@ -1,6 +1,6 @@
 import { useEffect, useCallback } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { ClientFormStep, UseStepGuardProps } from "@forms/types";
+import type { ClientFormStep, UseStepGuardProps } from "@forms/types";
 import {
   getFirstIncompleteActiveStep,
   getReviewReturnStep,

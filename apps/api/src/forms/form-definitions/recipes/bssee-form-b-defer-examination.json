@@ -201,7 +201,12 @@
                 "label": "My child was scoring less than 20% in both Mathematics and English over six (6) consecutive terms in Class 2 and Class 3.",
                 "value": "low-scores"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -214,7 +219,12 @@
                 "label": "My child missed a significant portion of their instruction due to trauma, illness, or significant learning difficulties.",
                 "value": "missed-instruction"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -337,5 +347,5 @@
     }
   ],
   "createdAt": "2026-06-02T13:52:44.173Z",
-  "updatedAt": "2026-10-08T21:50:00.000Z"
+  "updatedAt": "2026-11-16T10:40:13.993Z"
 }

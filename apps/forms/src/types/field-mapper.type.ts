@@ -1,11 +1,10 @@
-import {
+import type {
   Behaviour,
   ConditionalHint,
   ConditionalLabel,
   ConditionalTitle,
   ContactDetails,
   DateTimeFormat,
-  fieldValueSchema,
   GeocodeTargets,
   HtmlTypes,
   Option,
@@ -14,6 +13,7 @@ import {
   SubmissionValues,
   ValidationRule,
 } from "@govtech-bb/form-types";
+import { fieldValueSchema } from "@govtech-bb/form-types";
 import z from "zod";
 
 export interface ClientPrimitive {

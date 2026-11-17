@@ -35,7 +35,12 @@ export function ToolsTable({ tools }: { tools: ToolRow[] }) {
         <table className="min-w-full">
           <thead>
             <tr>
-              <SortHeader label="Tool" colKey="name" sort={sort} className={TH} />
+              <SortHeader
+                label="Tool"
+                colKey="name"
+                sort={sort}
+                className={TH}
+              />
               <SortHeader
                 label="Visits"
                 colKey="visitors"

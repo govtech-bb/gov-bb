@@ -23,8 +23,7 @@
  *
  * Deliberately not an nx target: nx's `default` inputs skip content-only
  * changes, so this has to be an always-run step (ci.yml "Validate Recipes"
- * and `lint-staged` in apps/api/package.json — lint-staged routes each file
- * to its closest config, so a root-level glob never sees a recipe). The
+ * and the recipes glob in the root package.json's `lint-staged`). The
  * backfill that landed with it set every recipe's `updatedAt` to its last
  * commit date, so the guard holds from there on.
  */

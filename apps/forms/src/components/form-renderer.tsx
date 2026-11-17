@@ -1,4 +1,4 @@
-import {
+import type {
   ClientFormStep,
   ClientPrimitive,
   FieldValidationErrors,
@@ -6,7 +6,8 @@ import {
   FormRendererProps,
   FormValues,
 } from "@forms/types";
-import FieldRenderer, { InsetFieldEntry } from "./field-renderer";
+import type { InsetFieldEntry } from "./field-renderer";
+import FieldRenderer from "./field-renderer";
 import React from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -14,7 +15,7 @@ import ErrorSummary from "./error-summary";
 import { useStore } from "@tanstack/react-form";
 import { shallow } from "@tanstack/react-store";
 import { isDateValidationError } from "@govtech-bb/form-validation";
-import { Behaviour } from "@govtech-bb/form-types";
+import type { Behaviour } from "@govtech-bb/form-types";
 import { useStepGuard } from "../hooks/use-step-guard";
 import { unmarkStepsCompleted } from "../lib/session-storage";
 import Review from "./review";

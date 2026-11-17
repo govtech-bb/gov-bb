@@ -1,5 +1,25 @@
 [
   {
+    "path": "/business-trade",
+    "reason": "Lists the 13 Environmental Health licence pages that sandbox service_status publishes and staging does not (see the /business-trade/apply-for-* entries).",
+    "diffs": [
+      "main text 54.7% similar",
+      "link not in static: \"/business-trade/apply-for-food-business-licence\"",
+      "link not in static: \"/business-trade/apply-for-funeral-director-licence\"",
+      "link not in static: \"/business-trade/apply-for-funeral-establishment-licence\"",
+      "link not in static: \"/business-trade/apply-for-hairdresser-licence\"",
+      "link not in static: \"/business-trade/apply-for-hair-salon-licence\"",
+      "link not in static: \"/business-trade/apply-for-restaurant-licence\"",
+      "link not in static: \"/business-trade/apply-for-temporary-restaurant-permit\"",
+      "link not in static: \"/business-trade/apply-for-funeral-embalmer-licence\"",
+      "link not in static: \"/business-trade/apply-for-hotel-licence\"",
+      "link not in static: \"/business-trade/apply-for-swimming-pool-licence\"",
+      "link not in static: \"/business-trade/apply-for-offensive-matter-licence\"",
+      "link not in static: \"/business-trade/apply-for-offensive-waste-licence\"",
+      "link not in static: \"/business-trade/apply-for-lodging-barracks-licence\""
+    ]
+  },
+  {
     "path": "/business-trade/apply-for-food-business-licence",
     "reason": "Environment data, not content: the markdown says visibility: preview, and sandbox service_status publishes it while staging does not (404 there). The preview serves it from static markdown.",
     "diffs": ["status: 200 ≠ static 404"]

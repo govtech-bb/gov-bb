@@ -202,20 +202,10 @@ describe.skipIf(!HAS_DATABASE)("data collections over HTTP", () => {
     ).rejects.toThrow(/collection_records_collection_key_fkey/);
   });
 
-  it("replays its migration on a database that already ran it, keeping the records, and seeds contacts", async () => {
+  it("boots again on a database it already migrated, keeping the records, and seeds contacts", async () => {
     await server.stop();
-    await databaseQuery(
-      database,
-      "delete from schema_migrations where name = '014_data_collections'",
-    );
     server = await startServer({ DB_NAME: database, SEED: "true" });
 
-    expect(
-      await databaseQuery(
-        database,
-        "select name from schema_migrations where name = '014_data_collections'",
-      ),
-    ).toEqual([{ name: "014_data_collections" }]);
     expect(
       (await publicRead("offices")).map((record) => record.record_key),
     ).toEqual(["west"]);

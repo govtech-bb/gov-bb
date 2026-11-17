@@ -24,7 +24,13 @@ import {
 import { z } from "zod";
 import type { Database } from "../db";
 import type { IndexedPage } from "../modules/estate-services";
-import type { CategoryRecord, ListablePage } from "../modules/navigation";
+import {
+  inCatalog,
+  searchDocumentsOf,
+  type CategoryRecord,
+  type ListablePage,
+  type SearchDocument,
+} from "../modules/navigation";
 import {
   CategoryBlockers,
   CategoryId,
@@ -337,11 +343,11 @@ export class PostgresPages
     return rows.ok ? ok(rows.value.rows) : rows;
   }
 
-  /** The visibility of a page's `start` sub-page, or null when it has none. */
-  async startStepVisibility(
+  /** The visibility of each of a page's `start` sub-pages; none when it has none. */
+  async startStepVisibilities(
     pageId: PageId,
-  ): Promise<Result<Visibility | null, ContentStoreUnavailable>> {
-    const rows = await attempt("startStepVisibility", () =>
+  ): Promise<Result<Visibility[], ContentStoreUnavailable>> {
+    const rows = await attempt("startStepVisibilities", () =>
       this.db
         .select({ visibility: contentPages.visibility })
         .from(contentPages)
@@ -352,7 +358,7 @@ export class PostgresPages
           ),
         ),
     );
-    return rows.ok ? ok(rows.value[0]?.visibility ?? null) : rows;
+    return rows.ok ? ok(rows.value.map((row) => row.visibility)) : rows;
   }
 
   /** Every category, in the order the site lists them. */
@@ -510,15 +516,21 @@ export class PostgresPages
     });
   }
 
-  /** The url of every page with this slug. */
+  /** The url of every page with this slug and one of these visibilities. */
   async urlsWithSlug(
     slug: string,
+    visibilities: readonly Visibility[],
   ): Promise<Result<string[], ContentStoreUnavailable>> {
     const rows = await attempt("urlsWithSlug", () =>
       this.db
         .select({ url: contentPages.url })
         .from(contentPages)
-        .where(eq(contentPages.slug, slug)),
+        .where(
+          and(
+            eq(contentPages.slug, slug),
+            inArray(contentPages.visibility, [...visibilities]),
+          ),
+        ),
     );
     return rows.ok ? ok(rows.value.map((row) => row.url)) : rows;
   }
@@ -620,8 +632,32 @@ export class PostgresPages
     );
   }
 
-  /** These pages' search chunks, in order. */
-  async searchChunksOf(
+  /** Keep visibility, metadata and chunks on one snapshot even when a page is unpublished and edited mid-read. */
+  async searchDocuments(
+    visibilities: readonly Visibility[],
+  ): Promise<Result<SearchDocument[], ContentStoreUnavailable>> {
+    const snapshot = await attempt("searchDocuments", () =>
+      this.db.transaction(
+        async (tx) => {
+          const records = new PostgresPages(tx);
+          const visible = await records.visiblePages(visibilities);
+          if (!visible.ok) return visible;
+          const pages = inCatalog(visible.value);
+          if (pages.length === 0) return ok([]);
+          const chunks = await records.searchChunksOf(
+            pages.map((page) => page.id),
+          );
+          if (!chunks.ok) return chunks;
+          return ok(searchDocumentsOf(pages, chunks.value));
+        },
+        { isolationLevel: "repeatable read", accessMode: "read only" },
+      ),
+    );
+    return snapshot.ok ? snapshot.value : snapshot;
+  }
+
+  /** These pages' search chunks, in order, within the search snapshot. */
+  private async searchChunksOf(
     pageIds: readonly string[],
   ): Promise<Result<Map<string, SearchChunk[]>, ContentStoreUnavailable>> {
     const rows = await attempt("searchChunksOf", () =>

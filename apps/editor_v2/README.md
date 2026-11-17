@@ -30,7 +30,7 @@ Authentication gates the workspace. Leaving unsaved work, signing out or an expi
 ## Checks
 
 ```sh
-VITE_API_ORIGIN=https://api.example.gov.bb pnpm exec nx run-many -p editor_v2 -t build test typecheck lint format:check check:boundaries check:coverage
+VITE_API_ORIGIN=https://api.example.gov.bb pnpm exec nx run-many -p editor_v2 -t build test test:types test:oxlint format:check check:boundaries check:coverage
 ```
 
 The static app is built into `apps/editor_v2/dist/client`. Serve existing assets first, then rewrite application URLs to `/_shell.html` with HTTP 200. The generated server build creates the shell; static hosting does not run it. Old browser drafts are intentionally ignored and left untouched, without migration or recovery. Clipboard data and UI preferences are unchanged.

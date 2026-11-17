@@ -1,4 +1,4 @@
-import { Block } from "@govtech-bb/form-types";
+import type { Block } from "@govtech-bb/form-types";
 import { Address, Country, Parish, Postcode, Town } from "../components";
 
 export const PhysicalAddress: Block = {

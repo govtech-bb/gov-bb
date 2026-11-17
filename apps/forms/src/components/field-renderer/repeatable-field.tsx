@@ -1,6 +1,6 @@
-import { JSX } from "react";
+import type { JSX } from "react";
 import { AddAnother, AddAnotherItem } from "@govtech-bb/react";
-import { FieldRenderContext } from "./render-context";
+import type { FieldRenderContext } from "./render-context";
 
 /**
  * Per-row input props for the "Add another" array paths. Each repeated input

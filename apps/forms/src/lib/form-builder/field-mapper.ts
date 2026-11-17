@@ -1,7 +1,11 @@
 // Responsible for mapping ServiceContract and ServiceContract.FormStep to localized versions.
 
-import { FormStep, Primitive, ServiceContract } from "@govtech-bb/form-types";
-import {
+import type {
+  FormStep,
+  Primitive,
+  ServiceContract,
+} from "@govtech-bb/form-types";
+import type {
   ClientServiceContract,
   ClientFormStep,
   ClientPrimitive,

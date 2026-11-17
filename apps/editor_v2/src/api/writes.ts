@@ -60,6 +60,8 @@ type PageSubmission = { base: ServerPageBaseline; categories: readonly Category[
 
 type PageDeletion = { id: string; version: number };
 
+type PageRestoration = { id: string; versionNo: number; version: number };
+
 // oxlint-disable-next-line anti-slop/no-unknown-parameters -- Preserve dialog refusal precedence before classification drops HTTP status.
 function pageDialogRefusal(error: unknown, creating: boolean): never {
   if (error instanceof ApiFailure && error.status > 0 && error.status < 500) {
@@ -201,6 +203,12 @@ export const writes = {
     },
     readBack: (sent) => readPage(api, sent.id),
     landed: (found) => found === undefined,
+  }),
+  restorePage: (api: EditorApi): Write<PageRestoration, ApiPage> => ({
+    send: (sent) => api.restoreVersion(sent.id, sent.versionNo, sent.version),
+    readBack: (sent) => readPage(api, sent.id),
+    // Page reads do not identify the restored history version, including for pending revisions.
+    landed: () => false,
   }),
   publishRevision: (api: EditorApi): Write<ApiRevision, RevisionPublication> => ({
     send: async (reviewed) => {

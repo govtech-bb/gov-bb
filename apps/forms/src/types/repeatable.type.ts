@@ -2,7 +2,7 @@
 // behavior-helper.type / renderer.type so both can import these without forming
 // an import cycle (#1407).
 
-import { FormValues } from "./field-mapper.type";
+import type { FormValues } from "./field-mapper.type";
 
 type sourceStepId = string;
 type stepId = string;

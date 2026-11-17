@@ -1,5 +1,5 @@
-import { JSX } from "react";
-import { ClientPrimitive } from "@forms/types";
+import type { JSX } from "react";
+import type { ClientPrimitive } from "@forms/types";
 
 /**
  * The muted "(optional)" appended inside a field's label/legend. Required

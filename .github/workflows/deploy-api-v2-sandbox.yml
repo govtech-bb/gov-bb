@@ -4,9 +4,10 @@ name: Deploy api_v2 to Sandbox
 # (https://api-v2.sandbox.alpha.gov.bb). Infrastructure: alpha-infra
 # environments/sandbox/modular-forms-sandbox/api-v2-ecs.tf (gov-bb#2962).
 #
-# Separate from deploy-sandbox.yml because api_v2 lives on v2-rewrite, and
-# deploy-sandbox.yml only runs on main. The workflow file has to exist on the
-# branch that is pushed, so it lives on v2-rewrite and triggers there.
+# Reusable: deploy-sandbox.yml calls it (job `deploy-api-v2`) on a merge to
+# main when nx marks api_v2 as affected, so it runs after CI like the other
+# sandbox deploys (#3119). Run it by hand from main to redeploy without a
+# change.
 #
 # The deploy role trusts gov-bb v2-rewrite and main only, and can do one job:
 # push to the gov-bb-api-v2 ECR repo and roll the api-v2-sandbox service. Its
@@ -19,14 +20,7 @@ name: Deploy api_v2 to Sandbox
 # estate.json after each deploy (#3710).
 
 on:
-  push:
-    branches: [v2-rewrite]
-    paths:
-      - "apps/api_v2/**"
-      - "pnpm-lock.yaml"
-      - "pnpm-workspace.yaml"
-      - "package.json"
-      - ".github/workflows/deploy-api-v2-sandbox.yml"
+  workflow_call:
   workflow_dispatch:
 
 permissions:

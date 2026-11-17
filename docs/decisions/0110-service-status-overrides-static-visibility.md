@@ -5,7 +5,8 @@
 [#1928](https://github.com/govtech-bb/gov-bb/pull/1928), which also gates
 sitemap and search; see "Accepted gaps"; amended 2026-10-30 — page
 visibility is set in api_v2 in any environment whose landing reads it, see
-"After cutover"; the form column is unchanged)
+"After cutover"; the form column is unchanged; amended 2026-11-16 — the
+server function enforces the page-row freeze too, see "After cutover")
 **Related:** [#1650](https://github.com/govtech-bb/gov-bb/issues/1650) (epic:
 feature-flagging on `service_status`), [#1896](https://github.com/govtech-bb/gov-bb/issues/1896)
 (forms API gate), [#1897](https://github.com/govtech-bb/gov-bb/issues/1897)
@@ -161,7 +162,11 @@ Consequences:
   can be retired.
 - Setting `EDITOR_V2_URL` freezes the page-only rows in the UI, the freeze
   [#3226](https://github.com/govtech-bb/gov-bb/issues/3226) needs at cutover.
-  The server function still accepts a write for any slug.
+  The `setServiceStatus` server function refuses those writes too
+  ([#3465](https://github.com/govtech-bb/gov-bb/issues/3465)). api v1's
+  `PUT /service_status` still accepts a direct write, on purpose: it audits
+  every write with the verified login, and
+  [#3189](https://github.com/govtech-bb/gov-bb/issues/3189) retires it.
 - api v1's `GET /services` reads api_v2's catalog where `API_V2_URL` is set
   ([#3249](https://github.com/govtech-bb/gov-bb/issues/3249)): it lists
   api_v2's visibility and ignores `service_status` there.

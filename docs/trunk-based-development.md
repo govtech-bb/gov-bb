@@ -76,7 +76,7 @@ URLs). Required (block the merge):
 | **Type Check** | `sherif` dependency-consistency + `tsc -b` (whole repo compiles) |
 | **Test** | `nx affected -t test` — unit tests (+ coverage, enforced in Jest) |
 | **Build** | `nx affected -t build` |
-| **Lint** | `nx affected -t lint` |
+| **Lint** | `pnpm test:oxlint` (oxlint, `nx affected`) + `pnpm test:format` (oxfmt) |
 | **Secrets Scan** | Gitleaks (current commit + history) |
 | **Security Scan** | CodeQL |
 | **Validate Recipes** | recipe-file validation |
