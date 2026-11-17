@@ -33,7 +33,7 @@ env:
   # Trusts gov-bb v2-rewrite and main. Not a secret (see deploy-api-v2-sandbox.yml).
   AWS_ROLE_ARN: arn:aws:iam::672203047922:role/api-v2-github-actions-sandbox
   SMOKE_LANDING_URL: https://v2-rewrite.d3kbl8o0ovutw4.amplifyapp.com
-  SMOKE_API_V2_URL: https://api-v2.sandbox.alpha.gov.bb
+  SMOKE_API_V2_URL: https://api.sandbox.alpha.gov.bb/v2
   # Must equal the Amplify v2-rewrite branch's VITE_FORMS_URL: the walk
   # looks for Start links to exactly <this>/forms/<form_id>.
   SMOKE_FORMS_URL: https://forms.sandbox.alpha.gov.bb

@@ -74,7 +74,8 @@ export async function installPageApi(context, service, initialPages) {
 
   await context.route("**/*", async (route) => {
     const request = route.request(),
-      path = decodeURIComponent(new URL(request.url()).pathname);
+      // Without the API's base path, as deployed editors' /v2 (#3745).
+      path = decodeURIComponent(new URL(request.url()).pathname).replace(/^\/v2(?=\/)/, "");
 
     if (
       request.resourceType() === "document" ||
