@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   PINNED_PAGES,
   contentSourceProblem,
+  featureRouteUrls,
   gatedForms,
   gatedPages,
   pagesToCheck,
@@ -86,12 +87,36 @@ describe('contentSourceProblem', () => {
   })
 })
 
+describe('featureRouteUrls', () => {
+  it('is the URL of each -meta.ts and ignores other route files', () => {
+    expect(
+      featureRouteUrls([
+        'bank-holiday-calendar/-meta.ts',
+        'bank-holiday-calendar/index.tsx',
+        'health-and-emergency-services/water-outages/-meta.ts',
+        'health-and-emergency-services\\find-an-emergency-shelter\\-meta.ts',
+        'health-and-emergency-services/water-outages/-ui/meta.ts',
+      ]),
+    ).toEqual([
+      '/bank-holiday-calendar',
+      '/health-and-emergency-services/water-outages',
+      '/health-and-emergency-services/find-an-emergency-shelter',
+    ])
+  })
+})
+
 describe('pagesToCheck', () => {
   it('is the pinned pages plus the catalog, once each', async () => {
     const urls = await pagesToCheck(API, fakeApi())
     expect(urls.slice(0, PINNED_PAGES.length)).toEqual(PINNED_PAGES)
     expect(new Set(urls).size).toBe(urls.length)
     expect(urls).toContain(SUMMER)
+  })
+
+  it('leaves out the URLs to skip', async () => {
+    const urls = await pagesToCheck(API, fakeApi(), [SUMMER])
+    expect(urls).not.toContain(SUMMER)
+    expect(urls.slice(0, PINNED_PAGES.length)).toEqual(PINNED_PAGES)
   })
 
   it('fails on an empty api_v2', async () => {
