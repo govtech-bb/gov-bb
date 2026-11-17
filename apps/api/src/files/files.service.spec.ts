@@ -133,6 +133,14 @@ describe("FilesService", () => {
       expect(r.maxSize).toBe(2 * 1024 * 1024);
     });
 
+    it("signs If-None-Match so a second PUT to the key is refused (#3332)", async () => {
+      const r = await service.presignUpload(dto);
+      const signed = new URL(r.uploadUrl).searchParams.get(
+        "X-Amz-SignedHeaders",
+      );
+      expect(signed?.split(";")).toContain("if-none-match");
+    });
+
     it("rejects unknown form", async () => {
       formDefs.findByFormId.mockRejectedValue(new Error("nope"));
       await expect(service.presignUpload(dto)).rejects.toThrow(
