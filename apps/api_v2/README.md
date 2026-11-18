@@ -587,6 +587,8 @@ Before every run, confirm in the Amplify Console that the environment's feature_
 
 Sandbox re-imports while no editor has written there (#3234). Staging (#3229) and prod (#3230) import after `v2-rewrite` merges into `main` (#3131), inside the #3164 cutover windows. Every run imports the snapshot on the deploying branch at the deployed commit.
 
+On sandbox, `.github/workflows/check-estate-drift.yml` runs step 5's check after each Deploy Sandbox run and nightly. Both triggers fire only for the file on `main`. Drift turns that workflow's run red, never the deploy's. #3311 deletes the workflow at sandbox's cutover, because from then on the database is the source of truth.
+
 1. Pick the snapshot: the content you want is merged, and the api_v2 deploy of that commit has finished, so the running image carries its `estate.json`. Note the commit sha. The `source` the import reports is a sha1 of that commit's parsed `estate.json` (`ESTATE_SOURCE` in `src/seed-data/index.ts`), not of the file's bytes, so `sha1sum estate.json` will not match it.
 2. Set up the shell for the environment, then confirm the task definition does not set `SEED`. Sandbox's no longer does (since revision `api-v2-sandbox:9`, alpha-infra#748); staging's and prod's (#3130) must never set it. If it does, stop: production mode refuses to boot with it (#3052). The staging and prod cluster and service names follow sandbox's pattern; confirm them against #3130's task definitions.
 
@@ -635,6 +637,18 @@ Sandbox re-imports while no editor has written there (#3234). Staging (#3229) an
    ```
 
    No `--` before the flags (pnpm forwards it and tsx rejects it). Each failing page prints `FAIL <url> expected <level>: no token <status>, token <status>`, with the problem in brackets after a 200 whose body is wrong (a status of `ERR …` is a network error). Then one `<level>: <n> pages, <n> failing` line per level, and a last line with the failure count and the snapshot's `source` hash, which must match the import's. It exits 1 on any failure. `preview token refused` means `PREVIEW_SECRET` is wrong, or unset on the API, and `rate limited` means the site routes' 1,000-requests-a-minute limit was hit; both stop the run at once. Paste the output on the import issue with step 4's lines.
+
+   The check also compares each page it can read with the token with the snapshot: `body_markdown`, `title`, `description`, `category`, `subcategory`, `form_id` and `parent`, for public and preview pages. Draft pages 404 even with the token, so only their status is checked. A snapshot page that 404s with the token is reported as `missing`, and a page that `/catalog` lists with the token but the snapshot does not have is reported as `extra`. `/catalog` doesn't list `start` steps or pages under a hidden parent, so neither is reported as `extra`. Each difference prints `DIFF <url> <field>: snapshot <excerpt> api_v2 <excerpt>`, `DIFF <url> missing` or `DIFF <url> extra`, then `<n> differences in <m> pages compared` comes before the last line. It exits 1 on any difference as well as any failure. There is no transform list, because the snapshot already carries the StormReady conversion.
+
+   For #3711's input, add `--json` and redirect stdout:
+
+   ```sh
+   pnpm -s --filter @govtech-bb/api-v2 check-import --json --base-url https://<api origin> --forms-api "$FORMS_API" > differences.json
+   ```
+
+   Only `{"source","differences"}` goes to stdout, and the rows go to stderr. `-s` keeps pnpm's banner out of the file. A run that stops (`preview token refused`, `rate limited`, `catalog: <status> from <origin>`, or a `service_status` error) writes nothing to stdout and exits 1, so an empty `differences.json` means the check failed. A page whose read failed (a 5xx, a network error or a 301) is a `FAIL` row and is not compared, so exit 1 with `"differences":[]` is not a clean result.
+
+6. Just before the landing switch (#3227 for staging, #3228 for prod), run step 5's command again. Use a checkout of the commit the environment's api_v2 runs now (read the running image's tag with step 3's `describe-tasks` command), not step 1's sha, so anything merged since the import shows. Resolve any difference before switching: with `sync-estate` (#3711) on a database editors have written to, or by the rules in "A database that already has content". Paste the output on the switch issue.
 
 ### A database that already has content
 
