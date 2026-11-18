@@ -1048,11 +1048,10 @@ jobs:
   # matches this workflow's `ref:refs/heads/main` subject, so neither job may
   # set `environment:`.
   #
-  # Not in promote-to-staging's needs: staging has no api_v2 or editor_v2
-  # yet, so a v2 failure must not hold back the v1 staging deploy. A failure
-  # still turns this run red and alerts Slack (notify-failure). A red run is
-  # not the next affected base, so everything changed since the last green run
-  # (v2 included) deploys again on the next merge.
+  # In promote-to-staging's needs since staging runs both (#3130): a v2
+  # failure here holds back the whole staging deploy, as any other target's
+  # does. A red run is not the next affected base, so everything changed since
+  # the last green run (v2 included) deploys again on the next merge.
   deploy-api-v2:
     name: Deploy api_v2
     needs: setup
@@ -1186,8 +1185,7 @@ jobs:
   # every affected target deployed cleanly — a skipped/unaffected job is fine,
   # but any failure or cancellation stops the chain, so staging never receives
   # code sandbox couldn't ship. That includes the live forms smoke and the
-  # analytics build (#2756). api_v2 and editor_v2 are left out on purpose:
-  # staging does not run them yet (see deploy-api-v2).
+  # analytics build (#2756), and api_v2 and editor_v2 (#3130).
   #
   # Staging deploys the exact commit sandbox proved: this job fast-forwards the
   # `staging` branch to it and dispatches deploy-staging ON `staging`, so every
@@ -1208,6 +1206,8 @@ jobs:
         amplify-form-builder,
         amplify-feature-flagging,
         amplify-analytics,
+        deploy-api-v2,
+        deploy-editor-v2,
         smoke-test-forms,
         journey-feature-flag,
       ]
