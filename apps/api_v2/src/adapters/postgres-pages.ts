@@ -1,0 +1,1416 @@
+/**
+ * Content storage in PostgreSQL: every content query lives here.
+ *
+ * Rows become domain values on the way out. The database's own refusals
+ * become `PageRejected`, and every other failure becomes
+ * `ContentStoreUnavailable` with the driver's error kept only as its cause.
+ * The hierarchy is `parent_id`; recursive reads carry Postgres's `cycle`
+ * clause, so a loop that got into the data ends a read rather than hanging it.
+ */
+
+import {
+  and,
+  count,
+  desc,
+  eq,
+  inArray,
+  isNull,
+  max,
+  or,
+  sql,
+  TransactionRollbackError,
+  type SQL,
+} from "drizzle-orm";
+import { z } from "zod";
+import type { Database } from "../db";
+import type { IndexedPage } from "../modules/estate-services";
+import {
+  inCatalog,
+  searchDocumentsOf,
+  type CategoryRecord,
+  type ListablePage,
+  type SearchDocument,
+} from "../modules/navigation";
+import {
+  CategoryBlockers,
+  CategoryId,
+  CategoryRejected,
+  EditorCategory,
+  isCategoryAnchor,
+  type CategoryValues,
+} from "../modules/category";
+import type { UserId } from "../modules/auth";
+import type { LastEditedBy } from "../modules/content-attribution";
+import { EditVersion } from "../modules/edit-concurrency";
+import type { CategoryRecords } from "../services/category-editing";
+import {
+  ContentStoreUnavailable,
+  OPEN_REVISION_STATUSES,
+  PageRejected,
+  PageUrl,
+  type FieldError,
+  type Frontmatter,
+  type PageDocument,
+  type PageId,
+  type PendingRevision,
+  type ReviewQueueEntry,
+  type Visibility,
+} from "../modules/page";
+import type { PageChangeEvent, PageEvent } from "../modules/page-history";
+import { visibleTo, type Ancestor } from "../modules/page-visibility";
+import {
+  PAGE_REDIRECT_LIVE_ACTIONS,
+  PageRedirectHistory,
+  redirectsAfterWrite,
+  routingChanged,
+} from "../modules/page-redirect-history";
+import { err, ok, type Result } from "../modules/result";
+import { chunkMarkdown, type SearchChunk } from "../modules/search-text";
+import {
+  authUser,
+  categories,
+  changeEvents,
+  contentPages,
+  pageRedirects,
+  pageRevisions,
+  searchChunks,
+} from "../schema";
+import type { EstateVersion, IndexReads } from "../services/editor-index";
+import type {
+  LivePageWrite,
+  NewPageRecord,
+  PageRecords,
+  PageEditorSnapshot,
+  PageRevision,
+  PendingRevisionRecord,
+  RevisionMark,
+} from "../services/page-editing";
+import type { PageRoute, PublicPageReads } from "../services/page-resolution";
+import type { NavigationReads } from "../services/site-navigation";
+
+const categoryDatabaseRow = EditorCategory.omit({
+  updated_at: true,
+  reserved_route: true,
+  last_edited_by: true,
+}).extend({
+  updated_at: z.string().pipe(z.coerce.date()),
+  version: z.coerce.number().pipe(EditVersion),
+  actor: z.string().nullable(),
+  name: z.string().nullable(),
+});
+
+const attributionOf = (
+  event: { actor: string | null; name: string | null } | undefined,
+): LastEditedBy =>
+  event && event.actor !== null
+    ? {
+        id: event.actor,
+        name: event.actor === "system" ? "System" : event.name,
+      }
+    : null;
+
+type PageRow = typeof contentPages.$inferSelect;
+
+export const toDocument = (row: PageRow): PageDocument => ({
+  id: row.id,
+  url: row.url,
+  slug: row.slug,
+  category_id: row.categoryId,
+  parent_id: row.parentId,
+  title: row.title,
+  description: row.description,
+  visibility: row.visibility,
+  form_id: row.formId,
+  body_markdown: row.bodyMarkdown,
+  frontmatter: row.frontmatter,
+  published_at: row.publishedAt?.toISOString() ?? null,
+  created_at: row.createdAt.toISOString(),
+  updated_at: row.updatedAt.toISOString(),
+});
+
+type RevisionRow = typeof pageRevisions.$inferSelect;
+
+const toRevision = (row: RevisionRow): PendingRevision => ({
+  id: row.id,
+  page_id: row.pageId,
+  status: row.status,
+  fields: row.fields,
+  live_updated_at: row.liveUpdatedAt.toISOString(),
+  created_by: row.createdBy,
+  contributors: row.contributors,
+  submitted_by: row.submittedBy,
+  submitted_at: row.submittedAt?.toISOString() ?? null,
+  decided_by: row.decidedBy,
+  decided_at: row.decidedAt?.toISOString() ?? null,
+  comment: row.comment,
+  created_at: row.createdAt.toISOString(),
+  updated_at: row.updatedAt.toISOString(),
+});
+
+/** A page's one open revision, as the partial unique index defines it. */
+const isOpen = inArray(pageRevisions.status, OPEN_REVISION_STATUSES);
+
+/** The constraints a write can break, as the field an editor can fix. */
+const REFUSALS: Readonly<Record<string, FieldError>> = {
+  content_pages_category_id_fkey: {
+    field: "category_id",
+    message: "No category with that id.",
+  },
+  content_pages_parent_id_fkey: {
+    field: "parent_id",
+    message: "No page with that id.",
+  },
+  content_pages_parent_category_fkey: {
+    field: "parent_id",
+    message: "A sub-page must be in the same category as its parent page.",
+  },
+  content_pages_pkey: {
+    field: "id",
+    message: "Another page already has this id.",
+  },
+  content_pages_url_key: {
+    field: "url",
+    message: "Another page already has this url.",
+  },
+};
+
+const HAS_SUB_PAGES: FieldError = {
+  field: "id",
+  message: "This page has sub-pages. Move or delete them before deleting it.",
+};
+
+/** Drizzle wraps the driver's error, so the SQLSTATE and constraint are on the cause. */
+const violation = z.object({
+  cause: z.object({
+    code: z.string(),
+    constraint: z.string().optional(),
+  }),
+});
+
+function rejectionOf(error: unknown): PageRejected | null {
+  const broken = violation.safeParse(error);
+  const refusal = broken.success
+    ? REFUSALS[broken.data.cause.constraint ?? ""]
+    : undefined;
+  return refusal ? new PageRejected([refusal]) : null;
+}
+
+function categoryRejectionOf(error: unknown): CategoryRejected | null {
+  const broken = violation.safeParse(error);
+  if (!broken.success) return null;
+  switch (broken.data.cause.constraint) {
+    case "categories_slug_key":
+      return new CategoryRejected([
+        { field: "slug", message: "Another category already uses this slug." },
+      ]);
+    case "categories_parent_id_fkey":
+      return new CategoryRejected([
+        {
+          field: "parent_id",
+          message: "Choose an existing top-level category.",
+        },
+      ]);
+    default:
+      return null;
+  }
+}
+
+/** A delete is refused only by a sub-page still pointing at the page. */
+function refusedDelete(error: unknown): PageRejected | null {
+  const broken = violation.safeParse(error);
+  return broken.success && broken.data.cause.code === "23503"
+    ? new PageRejected([HAS_SUB_PAGES])
+    : null;
+}
+
+async function attempt<T, E extends Error = never>(
+  operation: string,
+  run: () => Promise<T>,
+  refused: (error: unknown) => E | null = () => null,
+): Promise<Result<T, E | ContentStoreUnavailable>> {
+  try {
+    return ok(await run());
+  } catch (cause) {
+    return err(refused(cause) ?? new ContentStoreUnavailable(operation, cause));
+  }
+}
+
+/** `column in (…)` over the given visibilities, each one bound as a parameter. */
+const visibilityIn = (column: SQL, visibilities: readonly Visibility[]) =>
+  sql`${column} in (${sql.join(
+    visibilities.map((visibility) => sql`${visibility}`),
+    sql`, `,
+  )})`;
+
+/** Write a page's search chunks in place of whatever it had. */
+export async function writeSearchChunks(
+  db: Database,
+  pageId: string,
+  chunks: readonly SearchChunk[],
+): Promise<void> {
+  await db.delete(searchChunks).where(eq(searchChunks.pageId, pageId));
+  if (chunks.length === 0) return;
+  await db
+    .insert(searchChunks)
+    .values(chunks.map((chunk, ordinal) => ({ pageId, ordinal, ...chunk })));
+}
+
+/** Pages, categories, search text and the change log, in the content database. */
+export class PostgresPages
+  implements
+    PublicPageReads,
+    NavigationReads,
+    PageRecords,
+    IndexReads,
+    CategoryRecords
+{
+  /** The root supplies the drizzle database over its shared pool. */
+  constructor(private readonly db: Database) {}
+
+  /**
+   * Run `work` in one transaction as `actorId`, whom the change-log trigger
+   * records, after taking the shared content lock; an error result rolls back
+   * everything it wrote. The setting is transaction-local, so a pooled
+   * connection never carries it into another request.
+   */
+  async atomically<R extends Result<unknown, Error>>(
+    actorId: UserId,
+    work: (records: PostgresPages) => Promise<R>,
+  ): Promise<R | Result<never, ContentStoreUnavailable>> {
+    let refused: R | undefined;
+    try {
+      return await this.db.transaction(async (tx) => {
+        await tx.execute(
+          sql`select pg_advisory_xact_lock(hashtext('content_pages.parent_id'))`,
+        );
+        await tx.execute(
+          sql`select set_config('app.user_id', ${actorId}, true)`,
+        );
+        const result = await work(new PostgresPages(tx));
+        if (!result.ok) {
+          refused = result;
+          tx.rollback();
+        }
+        return result;
+      });
+    } catch (cause) {
+      return refused ?? err(new ContentStoreUnavailable("transaction", cause));
+    }
+  }
+
+  /** Read the rule and exact page together, so a concurrent move cannot fall between two lookups. */
+  pageOrRedirectAt(
+    url: string,
+  ): Promise<Result<PageRoute | null, ContentStoreUnavailable>> {
+    return attempt<PageRoute | null>("pageOrRedirectAt", async () => {
+      const [row] = await this.db
+        .select({
+          destinationUrl: pageRedirects.destinationUrl,
+          page: contentPages,
+        })
+        .from(sql`(select 1) as source`)
+        .leftJoin(pageRedirects, eq(pageRedirects.sourceUrl, url))
+        .leftJoin(
+          contentPages,
+          and(eq(contentPages.url, url), isNull(pageRedirects.id)),
+        );
+      if (row && row.destinationUrl !== null)
+        return { kind: "redirect", destinationUrl: row.destinationUrl };
+      return row?.page ? { kind: "page", page: row.page } : null;
+    });
+  }
+
+  /** The pages above this one, root first. */
+  async ancestorsOf(
+    pageId: PageId,
+  ): Promise<Result<Ancestor[], ContentStoreUnavailable>> {
+    const rows = await attempt("ancestorsOf", () =>
+      this.db.execute<{
+        url: string;
+        title: string;
+        visibility: Visibility;
+      }>(sql`
+        with recursive chain as (
+          select id, parent_id, url, title, visibility, 0 as depth
+            from content_pages where id = ${pageId}
+          union all
+          select p.id, p.parent_id, p.url, p.title, p.visibility, chain.depth + 1
+            from content_pages p join chain on p.id = chain.parent_id
+        ) cycle id set is_cycle using path
+        select url, title, visibility from chain
+          where not is_cycle order by depth desc`),
+    );
+    return rows.ok ? ok(rows.value.rows) : rows;
+  }
+
+  /** The visibility of each of a page's `start` sub-pages; none when it has none. */
+  async startStepVisibilities(
+    pageId: PageId,
+  ): Promise<Result<Visibility[], ContentStoreUnavailable>> {
+    const rows = await attempt("startStepVisibilities", () =>
+      this.db
+        .select({ visibility: contentPages.visibility })
+        .from(contentPages)
+        .where(
+          and(
+            eq(contentPages.parentId, pageId),
+            eq(contentPages.slug, "start"),
+          ),
+        ),
+    );
+    return rows.ok ? ok(rows.value.map((row) => row.visibility)) : rows;
+  }
+
+  /** Every category, in the order the site lists them. */
+  categories(): Promise<Result<CategoryRecord[], ContentStoreUnavailable>> {
+    return attempt("categories", () =>
+      this.db
+        .select({
+          id: categories.id,
+          slug: categories.slug,
+          title: categories.title,
+          description: categories.description,
+          parentId: categories.parentId,
+        })
+        .from(categories)
+        .orderBy(categories.position, categories.title),
+    );
+  }
+
+  /** Parsed category rows and direct-service counts, including unpublished roots. */
+  editorCategories(): Promise<
+    Result<EditorCategory[], ContentStoreUnavailable>
+  > {
+    return attempt("editorCategories", async () => {
+      const rows = await this.db.execute(sql`
+        select c.id, c.parent_id, c.slug, c.title, c.description, c.position, c.updated_at, c.version,
+          latest.actor, u.name,
+          case when p.id is null then '/' || c.slug else '/' || p.slug || '/' || c.slug end as url,
+          (select count(*)::int from content_pages pages
+            where pages.category_id = c.id and pages.parent_id is null) as services
+        from categories c left join categories p on p.id = c.parent_id
+        left join lateral (
+          select actor from change_events
+          where entity_kind = 'category' and entity_id = c.id::text
+          order by version_no desc limit 1
+        ) latest on true
+        left join auth_user u on u.id = latest.actor
+        order by c.position, c.title, c.id`);
+      return rows.rows.map((value) => {
+        const { actor, name, ...row } = categoryDatabaseRow.parse(value);
+        return {
+          ...row,
+          last_edited_by: attributionOf({ actor, name }),
+          updated_at: row.updated_at.toISOString(),
+          reserved_route: isCategoryAnchor(row.url),
+        };
+      });
+    });
+  }
+
+  /** Count every assigned page and immediate child while the content lock is held. */
+  categoryBlockers(
+    id: CategoryId,
+  ): Promise<
+    Result<Omit<CategoryBlockers, "reserved_route">, ContentStoreUnavailable>
+  > {
+    return attempt("categoryBlockers", async () => {
+      const rows = await this.db.execute(sql`
+        select (select count(*)::int from content_pages where category_id = ${id}) as pages,
+          (select count(*)::int from categories where parent_id = ${id}) as subcategories`);
+      return CategoryBlockers.omit({ reserved_route: true }).parse(
+        rows.rows[0],
+      );
+    });
+  }
+
+  /** Exact page URL ownership includes drafts and supporting pages. */
+  pageOwnsCategoryUrl(
+    url: string,
+  ): Promise<Result<boolean, ContentStoreUnavailable>> {
+    return attempt("pageOwnsCategoryUrl", async () => {
+      const rows = await this.db
+        .select({ id: contentPages.id })
+        .from(contentPages)
+        .where(eq(contentPages.url, url))
+        .limit(1);
+      return rows.length > 0;
+    });
+  }
+
+  /** A page cannot newly claim a category URL, even when that category is empty. */
+  async checkPageUrl(
+    url: string,
+  ): Promise<Result<void, PageRejected | ContentStoreUnavailable>> {
+    const occupied = await attempt("checkPageUrl", async () => {
+      const rows = await this.db.execute(sql`
+        select c.id from categories c left join categories p on p.id = c.parent_id
+        where case when p.id is null then '/' || c.slug else '/' || p.slug || '/' || c.slug end = ${url}
+        limit 1`);
+      return rows.rows.length > 0;
+    });
+    if (!occupied.ok) return occupied;
+    return occupied.value
+      ? err(
+          new PageRejected([
+            { field: "url", message: "A category already uses this url." },
+          ]),
+        )
+      : ok(undefined);
+  }
+
+  /** Insert an appended category with its server-generated id. */
+  insertCategory(
+    fields: CategoryValues,
+    position: number,
+  ): Promise<Result<CategoryId, CategoryRejected | ContentStoreUnavailable>> {
+    return attempt(
+      "insertCategory",
+      async () => {
+        const rows = await this.db
+          .insert(categories)
+          .values({
+            title: fields.title,
+            slug: fields.slug,
+            parentId: fields.parent_id,
+            description: fields.description,
+            position,
+          })
+          .returning({ id: categories.id });
+        return CategoryId.parse(rows[0]?.id);
+      },
+      categoryRejectionOf,
+    );
+  }
+
+  /** Update one category without changing its siblings or any pages. */
+  replaceCategory(
+    id: CategoryId,
+    fields: CategoryValues,
+    position: number,
+  ): Promise<Result<void, CategoryRejected | ContentStoreUnavailable>> {
+    return attempt(
+      "replaceCategory",
+      async () => {
+        await this.db
+          .update(categories)
+          .set({
+            title: fields.title,
+            slug: fields.slug,
+            parentId: fields.parent_id,
+            description: fields.description,
+            position,
+          })
+          .where(eq(categories.id, id));
+      },
+      categoryRejectionOf,
+    );
+  }
+
+  /** Delete only after the workflow has checked occupancy and the opened version. */
+  removeCategory(
+    id: CategoryId,
+  ): Promise<Result<void, ContentStoreUnavailable>> {
+    return attempt("removeCategory", async () => {
+      await this.db.delete(categories).where(eq(categories.id, id));
+    });
+  }
+
+  /** The url of every page with this slug and one of these visibilities. */
+  async urlsWithSlug(
+    slug: string,
+    visibilities: readonly Visibility[],
+  ): Promise<Result<string[], ContentStoreUnavailable>> {
+    const rows = await attempt("urlsWithSlug", () =>
+      this.db
+        .select({ url: contentPages.url })
+        .from(contentPages)
+        .where(
+          and(
+            eq(contentPages.slug, slug),
+            inArray(contentPages.visibility, [...visibilities]),
+          ),
+        ),
+    );
+    return rows.ok ? ok(rows.value.map((row) => row.url)) : rows;
+  }
+
+  /** The categories with at least one page of these visibilities at their root. */
+  async listingCategoryIds(
+    visibilities: readonly Visibility[],
+  ): Promise<Result<Set<string>, ContentStoreUnavailable>> {
+    const rows = await attempt("listingCategoryIds", () =>
+      this.db
+        .selectDistinct({ categoryId: contentPages.categoryId })
+        .from(contentPages)
+        .where(
+          and(
+            isNull(contentPages.parentId),
+            inArray(contentPages.visibility, [...visibilities]),
+          ),
+        ),
+    );
+    return rows.ok
+      ? ok(new Set(rows.value.flatMap((row) => row.categoryId ?? [])))
+      : rows;
+  }
+
+  /** The pages of these visibilities at a category's root. */
+  rootPagesIn(
+    categoryId: string,
+    visibilities: readonly Visibility[],
+  ): Promise<Result<ListablePage[], ContentStoreUnavailable>> {
+    return attempt("rootPagesIn", () =>
+      this.db
+        .select({
+          id: contentPages.id,
+          parentId: contentPages.parentId,
+          slug: contentPages.slug,
+          url: contentPages.url,
+          title: contentPages.title,
+          description: contentPages.description,
+          formId: contentPages.formId,
+          frontmatter: contentPages.frontmatter,
+          categoryId: contentPages.categoryId,
+          visibility: contentPages.visibility,
+        })
+        .from(contentPages)
+        .where(
+          and(
+            eq(contentPages.categoryId, categoryId),
+            isNull(contentPages.parentId),
+            inArray(contentPages.visibility, [...visibilities]),
+          ),
+        ),
+    );
+  }
+
+  /** Every page of these visibilities beneath only pages of them. */
+  async visiblePages(
+    visibilities: readonly Visibility[],
+  ): Promise<Result<ListablePage[], ContentStoreUnavailable>> {
+    const rows = await attempt("visiblePages", () =>
+      this.db.execute<{
+        id: PageId;
+        parent_id: PageId | null;
+        slug: string;
+        url: string;
+        title: string;
+        description: string | null;
+        form_id: string | null;
+        frontmatter: Frontmatter;
+        category_id: string | null;
+        visibility: Visibility;
+      }>(sql`
+        with recursive visible as (
+          select id, parent_id, slug, url, title, description, form_id, frontmatter, category_id, visibility
+            from content_pages
+            where parent_id is null
+              and ${visibilityIn(sql.raw("visibility"), visibilities)}
+          union all
+          select p.id, p.parent_id, p.slug, p.url, p.title, p.description, p.form_id, p.frontmatter, p.category_id, p.visibility
+            from content_pages p join visible v on p.parent_id = v.id
+            where ${visibilityIn(sql.raw("p.visibility"), visibilities)}
+        ) cycle id set is_cycle using path
+        select id, parent_id, slug, url, title, description, form_id, frontmatter, category_id, visibility
+          from visible where not is_cycle`),
+    );
+    if (!rows.ok) return rows;
+    return ok(
+      rows.value.rows.map((row) => ({
+        id: row.id,
+        parentId: row.parent_id,
+        slug: row.slug,
+        url: row.url,
+        title: row.title,
+        description: row.description,
+        formId: row.form_id,
+        frontmatter: row.frontmatter,
+        categoryId: row.category_id,
+        visibility: row.visibility,
+      })),
+    );
+  }
+
+  /** Keep visibility, metadata and chunks on one snapshot even when a page is unpublished and edited mid-read. */
+  async searchDocuments(
+    visibilities: readonly Visibility[],
+  ): Promise<Result<SearchDocument[], ContentStoreUnavailable>> {
+    const snapshot = await attempt("searchDocuments", () =>
+      this.db.transaction(
+        async (tx) => {
+          const records = new PostgresPages(tx);
+          const visible = await records.visiblePages(visibilities);
+          if (!visible.ok) return visible;
+          const pages = inCatalog(visible.value);
+          if (pages.length === 0) return ok([]);
+          const chunks = await records.searchChunksOf(
+            pages.map((page) => page.id),
+          );
+          if (!chunks.ok) return chunks;
+          return ok(searchDocumentsOf(pages, chunks.value));
+        },
+        { isolationLevel: "repeatable read", accessMode: "read only" },
+      ),
+    );
+    return snapshot.ok ? snapshot.value : snapshot;
+  }
+
+  /** These pages' search chunks, in order, within the search snapshot. */
+  private async searchChunksOf(
+    pageIds: readonly string[],
+  ): Promise<Result<Map<string, SearchChunk[]>, ContentStoreUnavailable>> {
+    const rows = await attempt("searchChunksOf", () =>
+      this.db
+        .select({
+          pageId: searchChunks.pageId,
+          heading: searchChunks.heading,
+          body: searchChunks.body,
+        })
+        .from(searchChunks)
+        .where(inArray(searchChunks.pageId, [...pageIds]))
+        .orderBy(searchChunks.pageId, searchChunks.ordinal),
+    );
+    if (!rows.ok) return rows;
+    const byPage = new Map<string, SearchChunk[]>();
+    for (const { pageId, heading, body } of rows.value) {
+      byPage.set(pageId, [...(byPage.get(pageId) ?? []), { heading, body }]);
+    }
+    return ok(byPage);
+  }
+
+  /** The page with this id, or null. */
+  async find(
+    id: PageId,
+  ): Promise<Result<PageDocument | null, ContentStoreUnavailable>> {
+    const rows = await attempt("find", () =>
+      this.db.select().from(contentPages).where(eq(contentPages.id, id)),
+    );
+    return rows.ok ? ok(firstDocument(rows.value)) : rows;
+  }
+
+  /** The page with this id, its row locked until the transaction ends, or null. */
+  async lock(
+    id: PageId,
+  ): Promise<Result<PageDocument | null, ContentStoreUnavailable>> {
+    const rows = await attempt("lock", () =>
+      this.db
+        .select()
+        .from(contentPages)
+        .where(eq(contentPages.id, id))
+        .for("update"),
+    );
+    return rows.ok ? ok(firstDocument(rows.value)) : rows;
+  }
+
+  /** The ids of the pages above this one, the page itself included. */
+  async ancestorIds(
+    pageId: PageId,
+  ): Promise<Result<string[], ContentStoreUnavailable>> {
+    const rows = await attempt("ancestorIds", () =>
+      this.db.execute<{ id: string }>(sql`
+        with recursive chain as (
+          select id, parent_id from content_pages where id = ${pageId}
+          union all
+          select p.id, p.parent_id from content_pages p
+            join chain on p.id = chain.parent_id
+        ) cycle id set is_cycle using path
+        select id from chain`),
+    );
+    return rows.ok ? ok(rows.value.rows.map((row) => row.id)) : rows;
+  }
+
+  /** A page's category, or null when it has none or there is no such page. */
+  async categoryOf(
+    pageId: PageId,
+  ): Promise<Result<string | null, ContentStoreUnavailable>> {
+    const rows = await attempt("categoryOf", () =>
+      this.db
+        .select({ categoryId: contentPages.categoryId })
+        .from(contentPages)
+        .where(eq(contentPages.id, pageId)),
+    );
+    return rows.ok ? ok(rows.value[0]?.categoryId ?? null) : rows;
+  }
+
+  /** Insert a page; the database refuses an unknown category or parent, a mismatched category, and a taken url or id. */
+  async insert(
+    page: NewPageRecord,
+  ): Promise<Result<PageDocument, PageRejected | ContentStoreUnavailable>> {
+    const rows = await attempt(
+      "insert",
+      () =>
+        this.db
+          .insert(contentPages)
+          .values({
+            ...(page.id ? { id: page.id } : {}),
+            ...page.values,
+            publishedAt: page.publishedAt,
+          })
+          .returning(),
+      rejectionOf,
+    );
+    return rows.ok ? ok(onlyDocument(rows.value)) : rows;
+  }
+
+  /** Overwrite a page that exists; the database refuses what an insert would. */
+  private async replace(
+    id: PageId,
+    page: PageRevision,
+  ): Promise<Result<PageDocument, PageRejected | ContentStoreUnavailable>> {
+    const rows = await attempt(
+      "replace",
+      () =>
+        this.db
+          .update(contentPages)
+          .set({
+            ...page.values,
+            updatedAt: page.updatedAt,
+            publishedAt: page.publishedAt,
+          })
+          .where(eq(contentPages.id, id))
+          .returning(),
+      rejectionOf,
+    );
+    return rows.ok ? ok(onlyDocument(rows.value)) : rows;
+  }
+
+  /**
+   * Insert or overwrite a live page with its sub-pages' categories, its
+   * redirects and its search chunks, in this order (ADR 0137). Former public
+   * addresses are read before the page is written, which the content lock
+   * holds still; which of them redirect where is `redirectsAfterWrite`'s.
+   */
+  async writeLivePage(
+    write: LivePageWrite,
+  ): Promise<Result<PageDocument, PageRejected | ContentStoreUnavailable>> {
+    const rerouted = routingChanged(write.current, write.page.values);
+    const sources =
+      rerouted && write.current !== null
+        ? await this.redirectSourcesInSubtree(write.current.id)
+        : ok([]);
+    if (!sources.ok) return sources;
+    const saved =
+      write.current === null
+        ? await this.insert(write.page)
+        : await this.replace(write.current.id, write.page);
+    if (!saved.ok) return saved;
+    const { id, category_id, body_markdown } = saved.value;
+    if (category_id !== null) {
+      const filed = await this.fileUncategorisedBelow(id, category_id);
+      if (!filed.ok) return filed;
+    }
+    if (rerouted) {
+      const publicPages = await this.publicPagesInSubtree(id);
+      if (!publicPages.ok) return publicPages;
+      for (const { source, destination } of redirectsAfterWrite(
+        sources.value,
+        publicPages.value,
+      )) {
+        if (source !== null) {
+          const moved = await this.recordPageRedirectMove(source, destination);
+          if (!moved.ok) return moved;
+        }
+        const cleared = await this.removePageRedirectAt(destination);
+        if (!cleared.ok) return cleared;
+      }
+    }
+    const indexed = await this.replaceSearchChunks(
+      id,
+      chunkMarkdown(body_markdown),
+    );
+    return indexed.ok ? saved : indexed;
+  }
+
+  private async redirectSubtree(pageId: PageId) {
+    const result = await this.db.execute<{
+      id: PageId;
+      url: string;
+      parentId: PageId | null;
+      visibility: Visibility;
+      isPublic: boolean;
+    }>(sql`
+      with recursive above as (
+        select id, parent_id, visibility from content_pages where id = ${pageId}
+        union all
+        select p.id, p.parent_id, p.visibility
+          from content_pages p join above a on p.id = a.parent_id
+      ) cycle id set is_cycle using path,
+      subtree as (
+        select p.id, p.url, p.parent_id, p.visibility,
+          not exists (select 1 from above a
+            where a.is_cycle or not ${visibilityIn(sql`a.visibility`, visibleTo("public"))}) as is_public
+          from content_pages p where p.id = ${pageId}
+        union all
+        select p.id, p.url, p.parent_id, p.visibility,
+          s.is_public and ${visibilityIn(sql`p.visibility`, visibleTo("public"))}
+          from content_pages p join subtree s on p.parent_id = s.id
+      ) cycle id set is_cycle using path
+      select id, url, parent_id as "parentId", visibility, is_public as "isPublic"
+        from subtree where not is_cycle
+    `);
+    return result.rows;
+  }
+
+  /** Public addresses in the locked subtree, including visibility above its root. */
+  publicPagesInSubtree(
+    pageId: PageId,
+  ): Promise<
+    Result<readonly { id: PageId; url: string }[], ContentStoreUnavailable>
+  > {
+    return attempt("publicPagesInSubtree", async () =>
+      (await this.redirectSubtree(pageId))
+        .filter((page) => page.isPublic)
+        .map(({ id, url }) => ({ id, url })),
+    );
+  }
+
+  /** Capture former public addresses before any live write, never through gaps or reclaimed ownership. */
+  redirectSourcesInSubtree(
+    pageId: PageId,
+  ): Promise<
+    Result<readonly { id: PageId; url: string }[], ContentStoreUnavailable>
+  > {
+    return attempt("redirectSourcesInSubtree", async () => {
+      const pages = await this.redirectSubtree(pageId);
+      const sources = pages
+        .filter((page) => page.isPublic && PageUrl.safeParse(page.url).success)
+        .map(({ id, url }) => ({ id, url }));
+      const hidden = pages.filter((page) => !page.isPublic);
+      if (hidden.length === 0) return sources;
+      const previouslyPublic = await this.db
+        .selectDistinct({ id: changeEvents.entityId })
+        .from(changeEvents)
+        .where(
+          and(
+            eq(changeEvents.entityKind, "content_page"),
+            inArray(
+              changeEvents.entityId,
+              hidden.map((page) => page.id),
+            ),
+            inArray(changeEvents.action, PAGE_REDIRECT_LIVE_ACTIONS),
+            sql`${changeEvents.eventOrder} is not null and ${changeEvents.snapshot}->>'visibility' = 'public'`,
+          ),
+        );
+      if (previouslyPublic.length === 0) return sources;
+      const candidateIds = new Set(previouslyPublic.map(({ id }) => id));
+
+      const history = new PageRedirectHistory(
+        await this.db
+          .select({
+            entityId: changeEvents.entityId,
+            versionNo: changeEvents.versionNo,
+            action: changeEvents.action,
+            eventOrder: changeEvents.eventOrder,
+            snapshotVersion: changeEvents.snapshotVersion,
+            snapshot: sql<unknown>`jsonb_build_object(
+          'id', ${changeEvents.snapshot}->'id',
+          'url', ${changeEvents.snapshot}->'url',
+          'visibility', ${changeEvents.snapshot}->'visibility',
+          'redacted', ${changeEvents.snapshot}->'redacted')
+          || case when ${changeEvents.snapshot} ? 'parent_id'
+            then jsonb_build_object('parent_id', ${changeEvents.snapshot}->'parent_id')
+            else '{}'::jsonb end`,
+          })
+          .from(changeEvents)
+          .where(
+            and(
+              eq(changeEvents.entityKind, "content_page"),
+              inArray(changeEvents.action, PAGE_REDIRECT_LIVE_ACTIONS),
+            ),
+          ),
+      );
+      for (const page of hidden) {
+        if (!candidateIds.has(page.id)) continue;
+        const source = history.sourceFor(page);
+        if (source === null) continue;
+        const occupied = await this.db.execute(sql`
+          select 1 from content_pages where url = ${source} and id <> ${page.id}
+          union all
+          select 1 from page_redirects where source_url = ${source}
+          union all
+          select 1 from categories c left join categories p on p.id = c.parent_id
+            where case when p.id is null then '/' || c.slug
+              else '/' || p.slug || '/' || c.slug end = ${source}
+          limit 1
+        `);
+        if (occupied.rows.length === 0)
+          sources.push({ id: page.id, url: source });
+      }
+      return sources;
+    });
+  }
+
+  /** Remove a page redirect in the caller's actor-bearing, content-locked transaction. */
+  removePageRedirectAt(
+    url: string,
+  ): Promise<Result<void, ContentStoreUnavailable>> {
+    return attempt("removePageRedirectAt", async () => {
+      await this.db
+        .delete(pageRedirects)
+        .where(eq(pageRedirects.sourceUrl, url));
+    });
+  }
+
+  /** Record a validated public move in the caller's locked transaction; destinations stay terminal. */
+  recordPageRedirectMove(
+    sourceUrl: string,
+    destinationUrl: string,
+  ): Promise<Result<void, ContentStoreUnavailable>> {
+    if (sourceUrl === destinationUrl) return Promise.resolve(ok(undefined));
+
+    return attempt("recordPageRedirectMove", async () => {
+      // Moving back must remove the destination's rule before flattening, or it becomes a self-redirect.
+      await this.db
+        .delete(pageRedirects)
+        .where(eq(pageRedirects.sourceUrl, destinationUrl));
+
+      await this.db
+        .update(pageRedirects)
+        .set({ destinationUrl })
+        .where(eq(pageRedirects.destinationUrl, sourceUrl));
+
+      await this.db
+        .insert(pageRedirects)
+        .values({ sourceUrl, destinationUrl })
+        .onConflictDoUpdate({
+          target: pageRedirects.sourceUrl,
+          set: { destinationUrl },
+        });
+    });
+  }
+
+  /** Refuse what `replace` would: it writes in a savepoint and rolls it back. */
+  checkReplace(
+    id: PageId,
+    page: PageRevision,
+  ): Promise<Result<void, PageRejected | ContentStoreUnavailable>> {
+    return attempt(
+      "checkReplace",
+      async () => {
+        try {
+          await this.db.transaction(async (savepoint) => {
+            await savepoint
+              .update(contentPages)
+              .set({
+                ...page.values,
+                updatedAt: page.updatedAt,
+                publishedAt: page.publishedAt,
+              })
+              .where(eq(contentPages.id, id));
+            savepoint.rollback();
+          });
+        } catch (error) {
+          if (!(error instanceof TransactionRollbackError)) throw error;
+        }
+      },
+      rejectionOf,
+    );
+  }
+
+  /**
+   * File a page's uncategorised sub-pages, all the way down, under its
+   * category. `on update cascade` moves sub-pages that had the parent's old
+   * category, but the composite key skips a row whose category is null, so a
+   * parent that gains its first category would otherwise leave them behind.
+   */
+  private async fileUncategorisedBelow(
+    id: PageId,
+    categoryId: string,
+  ): Promise<Result<void, ContentStoreUnavailable>> {
+    const filed = await attempt("fileUncategorisedBelow", () =>
+      this.db.execute(sql`
+        with recursive below as (
+          select id from content_pages where parent_id = ${id}
+          union all
+          select p.id from content_pages p join below b on p.parent_id = b.id
+        ) cycle id set is_cycle using path
+        update content_pages set category_id = ${categoryId}
+          where category_id is null
+            and id in (select id from below where not is_cycle)`),
+    );
+    return filed.ok ? ok(undefined) : filed;
+  }
+
+  /** Live fields, working revision and latest attribution share one statement snapshot. */
+  editorSnapshot(
+    id: PageId,
+  ): Promise<Result<PageEditorSnapshot | null, ContentStoreUnavailable>> {
+    return attempt("editorSnapshot", async () => {
+      const revision = this.db
+        .select()
+        .from(pageRevisions)
+        .where(
+          and(
+            eq(pageRevisions.pageId, contentPages.id),
+            or(
+              isOpen,
+              and(
+                eq(pageRevisions.status, "rejected"),
+                eq(pageRevisions.liveUpdatedAt, contentPages.updatedAt),
+                // Closing a newer revision must not revive a rejection when live content is unchanged.
+                sql`not exists (select 1 from page_revisions newer
+                  where newer.page_id = ${contentPages.id}
+                    and newer.created_at > ${pageRevisions.createdAt})`,
+              ),
+            ),
+          ),
+        )
+        .orderBy(
+          sql`${pageRevisions.status} = 'rejected'`,
+          desc(pageRevisions.decidedAt),
+        )
+        .limit(1)
+        .as("current_revision");
+      const latest = this.db
+        .select({ actor: changeEvents.actor, name: authUser.name })
+        .from(changeEvents)
+        .leftJoin(authUser, eq(authUser.id, changeEvents.actor))
+        .where(
+          and(
+            eq(changeEvents.entityKind, "content_page"),
+            eq(changeEvents.entityId, sql`${contentPages.id}::text`),
+          ),
+        )
+        .orderBy(desc(changeEvents.versionNo))
+        .limit(1)
+        .as("latest_actor");
+      const [row] = await this.db
+        .select({
+          live: contentPages,
+          revision: {
+            id: revision.id,
+            pageId: revision.pageId,
+            fields: revision.fields,
+            status: revision.status,
+            liveUpdatedAt: revision.liveUpdatedAt,
+            createdBy: revision.createdBy,
+            contributors: revision.contributors,
+            submittedBy: revision.submittedBy,
+            submittedAt: revision.submittedAt,
+            decidedBy: revision.decidedBy,
+            decidedAt: revision.decidedAt,
+            comment: revision.comment,
+            createdAt: revision.createdAt,
+            updatedAt: revision.updatedAt,
+          },
+          actor: latest.actor,
+          name: latest.name,
+        })
+        .from(contentPages)
+        .leftJoinLateral(revision, sql`true`)
+        .leftJoinLateral(latest, sql`true`)
+        .where(eq(contentPages.id, id));
+      return row
+        ? {
+            live: toDocument(row.live),
+            revision: row.revision ? toRevision(row.revision) : null,
+            version: EditVersion.parse(row.live.version),
+            last_edited_by: attributionOf(row),
+          }
+        : null;
+    });
+  }
+
+  /** Start a page's open revision, or overwrite it, keeping who started it. */
+  async writeRevision(
+    pageId: PageId,
+    revision: PendingRevisionRecord,
+  ): Promise<Result<PendingRevision, ContentStoreUnavailable>> {
+    const rows = await attempt("writeRevision", () =>
+      this.db
+        .insert(pageRevisions)
+        .values({
+          pageId,
+          fields: revision.fields,
+          liveUpdatedAt: revision.liveUpdatedAt,
+          createdBy: revision.createdBy,
+          contributors: [...revision.contributors],
+          createdAt: revision.updatedAt,
+          updatedAt: revision.updatedAt,
+        })
+        .onConflictDoUpdate({
+          target: pageRevisions.pageId,
+          targetWhere: sql`status in ('draft', 'submitted')`,
+          set: {
+            fields: revision.fields,
+            liveUpdatedAt: revision.liveUpdatedAt,
+            contributors: [...revision.contributors],
+            updatedAt: revision.updatedAt,
+          },
+        })
+        .returning(),
+    );
+    if (!rows.ok) return rows;
+    const [row] = rows.value;
+    if (!row) throw new Error("Postgres returned no row for a write");
+    return ok(toRevision(row));
+  }
+
+  /** Discard a page's open revision, if it has one. */
+  dropRevision(pageId: PageId): Promise<Result<void, ContentStoreUnavailable>> {
+    return attempt("dropRevision", async () => {
+      await this.db
+        .delete(pageRevisions)
+        .where(and(eq(pageRevisions.pageId, pageId), isOpen));
+    });
+  }
+
+  /** Move a revision to a review status, recording who moved it; a rejection moves its version to its time, and a discard closes it. */
+  async markRevision(
+    revisionId: string,
+    mark: RevisionMark,
+  ): Promise<Result<PendingRevision, ContentStoreUnavailable>> {
+    const rows = await attempt("markRevision", () =>
+      this.db
+        .update(pageRevisions)
+        .set(
+          mark.status === "submitted"
+            ? {
+                status: mark.status,
+                submittedBy: mark.by,
+                submittedAt: mark.at,
+              }
+            : mark.status === "rejected"
+              ? {
+                  status: mark.status,
+                  decidedBy: mark.by,
+                  decidedAt: mark.at,
+                  comment: mark.comment,
+                  // So an editor holding the earlier version reloads and sees why.
+                  updatedAt: mark.at,
+                }
+              : { status: mark.status, decidedBy: mark.by, decidedAt: mark.at },
+        )
+        .where(eq(pageRevisions.id, revisionId))
+        .returning(),
+    );
+    if (!rows.ok) return rows;
+    const [row] = rows.value;
+    if (!row) throw new Error("Postgres returned no row for a write");
+    return ok(toRevision(row));
+  }
+
+  /** Replace a page's search chunks. */
+  private replaceSearchChunks(
+    pageId: PageId,
+    chunks: readonly SearchChunk[],
+  ): Promise<Result<void, ContentStoreUnavailable>> {
+    return attempt("replaceSearchChunks", () =>
+      writeSearchChunks(this.db, pageId, chunks),
+    );
+  }
+
+  /** Delete a page, returning it as it stood, or null when there was none; one with sub-pages is refused. */
+  async remove(
+    id: PageId,
+  ): Promise<
+    Result<PageDocument | null, PageRejected | ContentStoreUnavailable>
+  > {
+    const rows = await attempt(
+      "remove",
+      () =>
+        this.db.delete(contentPages).where(eq(contentPages.id, id)).returning(),
+      refusedDelete,
+    );
+    return rows.ok ? ok(firstDocument(rows.value)) : rows;
+  }
+
+  /**
+   * Who changed a page's content since it was last public, or ever when it
+   * never was, from its history: the actors of each created, updated,
+   * published, unpublished or reverted entry whose row differs from the one before it
+   * in more than visibility and stamps. A sub-page's category is left out
+   * too: it follows its parent's, so a write above it that carries it along
+   * changes nothing of its own. Review events are left out, since their
+   * snapshot is a revision row. A redacted event still counts as a change:
+   * identical removal notices must not erase their actors from this check.
+   */
+  async changedSincePublic(
+    id: PageId,
+  ): Promise<Result<string[], ContentStoreUnavailable>> {
+    const rows = await attempt("changedSincePublic", () =>
+      this.db.execute<{ actor: string }>(sql`
+        with entries as (
+          select version_no, actor,
+                 snapshot->'redacted' = 'true'::jsonb as redacted,
+                 snapshot->>'visibility' = 'public' as public,
+                 snapshot - array['visibility', 'published_at', 'content_updated_at', 'updated_at', 'created_at', 'version']
+                   - case when snapshot->>'parent_id' is null then '' else 'category_id' end
+                   as content
+            from change_events
+           where entity_kind = 'content_page' and entity_id = ${id}
+             and action in ('created', 'updated', 'published', 'unpublished', 'reverted')
+        ), history as (
+          select *, lag(content) over (order by version_no) as before from entries
+        )
+        select distinct actor from history
+         where version_no > coalesce((select max(version_no) from history where public), 0)
+           and (redacted or content is distinct from before)`),
+    );
+    return rows.ok ? ok(rows.value.rows.map((row) => row.actor)) : rows;
+  }
+
+  /** Every page with its category, for the service index. */
+  async indexedPages(): Promise<
+    Result<IndexedPage[], ContentStoreUnavailable>
+  > {
+    const rows = await attempt("indexedPages", () =>
+      this.db
+        .select({
+          id: contentPages.id,
+          parentId: contentPages.parentId,
+          slug: contentPages.slug,
+          url: contentPages.url,
+          title: contentPages.title,
+          visibility: contentPages.visibility,
+          formId: contentPages.formId,
+          updatedAt: contentPages.updatedAt,
+          categorySlug: categories.slug,
+          categoryTitle: categories.title,
+        })
+        .from(contentPages)
+        .leftJoin(categories, eq(contentPages.categoryId, categories.id)),
+    );
+    if (!rows.ok) return rows;
+    return ok(
+      rows.value.map(({ categorySlug, categoryTitle, ...page }) => ({
+        ...page,
+        category:
+          categorySlug && categoryTitle
+            ? { slug: categorySlug, title: categoryTitle }
+            : null,
+      })),
+    );
+  }
+
+  /** The change log's size and newest timestamp. */
+  changeLogVersion(): Promise<Result<EstateVersion, ContentStoreUnavailable>> {
+    return attempt("changeLogVersion", async () => {
+      const [row] = await this.db
+        .select({ count: count(), latest: max(changeEvents.occurredAt) })
+        .from(changeEvents);
+      return {
+        count: row?.count ?? 0,
+        latest: row?.latest?.toISOString() ?? null,
+      };
+    });
+  }
+
+  /** A page's `change_events`, oldest first, with each actor's name. */
+  async pageEvents(
+    id: PageId,
+  ): Promise<Result<PageChangeEvent[], ContentStoreUnavailable>> {
+    const rows = await attempt("pageEvents", () =>
+      this.db
+        .select({ event: changeEvents, name: authUser.name })
+        .from(changeEvents)
+        .leftJoin(authUser, eq(authUser.id, changeEvents.actor))
+        .where(
+          and(
+            eq(changeEvents.entityKind, "content_page"),
+            eq(changeEvents.entityId, id),
+          ),
+        )
+        .orderBy(changeEvents.versionNo),
+    );
+    if (!rows.ok) return rows;
+    return ok(
+      rows.value.map(({ event, name }) => ({
+        versionNo: event.versionNo,
+        action: event.action,
+        actor: event.actor,
+        actorName: name,
+        occurredAt: event.occurredAt,
+        snapshot: event.snapshot as Record<string, unknown>,
+        restoredFrom: event.restoredFrom,
+      })),
+    );
+  }
+
+  /** One of a page's `change_events`, by version, or null. */
+  async pageEvent(
+    id: PageId,
+    versionNo: number,
+  ): Promise<Result<PageEvent | null, ContentStoreUnavailable>> {
+    const rows = await attempt("pageEvent", () =>
+      this.db
+        .select({
+          versionNo: changeEvents.versionNo,
+          action: changeEvents.action,
+          snapshot: changeEvents.snapshot,
+        })
+        .from(changeEvents)
+        .where(
+          and(
+            eq(changeEvents.entityKind, "content_page"),
+            eq(changeEvents.entityId, id),
+            eq(changeEvents.versionNo, versionNo),
+          ),
+        ),
+    );
+    if (!rows.ok) return rows;
+    const row = rows.value[0];
+    return ok(
+      row
+        ? { ...row, snapshot: row.snapshot as Record<string, unknown> }
+        : null,
+    );
+  }
+
+  /** Record this transaction's update of the page as restoring that version. */
+  async markRestore(
+    id: PageId,
+    versionNo: number,
+  ): Promise<Result<void, ContentStoreUnavailable>> {
+    const set = await attempt("markRestore", () =>
+      this.db.execute(
+        sql`select set_config('app.restored_page', ${id}, true),
+                   set_config('app.restored_from', ${String(versionNo)}, true)`,
+      ),
+    );
+    return set.ok ? ok(undefined) : set;
+  }
+
+  /** Every revision waiting for review, with its submitter's name, the longest-waiting first. */
+  async submittedRevisions(): Promise<
+    Result<ReviewQueueEntry[], ContentStoreUnavailable>
+  > {
+    const rows = await attempt("submittedRevisions", () =>
+      this.db
+        .select({ revision: pageRevisions, name: authUser.name })
+        .from(pageRevisions)
+        .leftJoin(authUser, eq(authUser.id, pageRevisions.submittedBy))
+        .where(eq(pageRevisions.status, "submitted"))
+        .orderBy(pageRevisions.submittedAt, pageRevisions.id),
+    );
+    if (!rows.ok) return rows;
+    return ok(
+      rows.value.map(({ revision, name }) => ({
+        id: revision.id,
+        page_id: revision.pageId,
+        title: revision.fields.title,
+        url: revision.fields.url,
+        // A submitted revision always records who submitted it, and when.
+        submitted_by: revision.submittedBy ?? "",
+        submitted_by_name: name,
+        submitted_at: (
+          revision.submittedAt ?? revision.updatedAt
+        ).toISOString(),
+        updated_at: revision.updatedAt.toISOString(),
+      })),
+    );
+  }
+}
+
+function firstDocument(rows: readonly PageRow[]): PageDocument | null {
+  const [row] = rows;
+  return row ? toDocument(row) : null;
+}
+
+/** A write's `returning()` always yields the row it wrote. */
+function onlyDocument(rows: readonly PageRow[]): PageDocument {
+  const [row] = rows;
+  if (!row) throw new Error("Postgres returned no row for a write");
+  return toDocument(row);
+}

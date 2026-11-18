@@ -1,6 +1,7 @@
 import { useId, useState } from 'react'
 import { Autocomplete } from '@govtech-bb/react'
 import type { ViewLevel } from '../lib/frontmatter'
+import type { ApiV2SearchDocument } from '../lib/api-v2-site'
 import { useServiceSearch } from './useServiceSearch'
 import type { SearchSource } from './useServiceSearch'
 
@@ -9,6 +10,10 @@ interface ServiceSearchProps {
   viewer: ViewLevel
   overlay?: ReadonlyMap<string, ViewLevel>
   defaultValue?: string
+  /** api_v2's search documents the page already has: a start, refreshed on edits. */
+  documents?: readonly ApiV2SearchDocument[]
+  /** Reads api_v2's search documents. */
+  loadDocuments?: () => Promise<readonly ApiV2SearchDocument[]>
 }
 
 export function ServiceSearch({
@@ -16,18 +21,23 @@ export function ServiceSearch({
   viewer,
   overlay,
   defaultValue = '',
+  documents: givenDocuments,
+  loadDocuments,
 }: ServiceSearchProps) {
   const inputId = useId()
   const [inputValue, setInputValue] = useState(defaultValue)
   const [hasTyped, setHasTyped] = useState(false)
-  const { hits, submit, onSuggestionSelect } = useServiceSearch({
-    source,
-    viewer,
-    overlay,
-    text: inputValue,
-    setText: setInputValue,
-    suggesting: hasTyped,
-  })
+  const { hits, submit, onSuggestionSelect, refreshDocuments } =
+    useServiceSearch({
+      source,
+      viewer,
+      overlay,
+      text: inputValue,
+      setText: setInputValue,
+      suggesting: hasTyped,
+      documents: givenDocuments,
+      loadDocuments,
+    })
 
   return (
     <form
@@ -54,6 +64,7 @@ export function ServiceSearch({
           onChange={(event) => {
             setHasTyped(true)
             setInputValue(event.currentTarget.value)
+            refreshDocuments()
           }}
           onSuggestionSelect={onSuggestionSelect}
         />

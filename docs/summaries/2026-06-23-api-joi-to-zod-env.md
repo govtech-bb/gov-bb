@@ -6,7 +6,7 @@ Phase 2 of issue [#1422](https://github.com/govtech-bb/gov-bb/issues/1422) /
 TECH-05. Phase 1 (#1627) gave `form_builder_api` a boot-time Zod schema; this
 session migrated `apps/api`'s ~40-var Joi schema to Zod, making Zod the single
 env-validation library across the Node services and retiring Joi. Phase 3 — the
-convention ADR — was folded into this PR (see decision 0057) since this change
+convention ADR — was folded into this PR (see decision 0098) since this change
 is what completes the convention.
 
 Worked in worktree `gov-bb-wt-1422b` (branch `1422-api-joi-to-zod`, targets
@@ -31,7 +31,7 @@ Worked in worktree `gov-bb-wt-1422b` (branch `1422-api-joi-to-zod`, targets
 - **`env.validation.bootstrap.spec.ts`** (new) — boots the real NestJS
   `ConfigModule` to prove the `validate:` contract end-to-end.
 - **Removed `joi`** from `apps/api/package.json` (+ lockfile).
-- **`docs/decisions/0057-env-config-validated-with-zod-at-boot.md`** — the
+- **`docs/decisions/0098-env-config-validated-with-zod-at-boot.md`** — the
   convention ADR (Phase 3).
 
 ## Why it looks this way

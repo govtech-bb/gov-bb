@@ -205,7 +205,7 @@ export default function FileUpload({
    * Sends the file (unless it is already in S3), waits for the scan verdict,
    * and adds it to the form only when it is clean. A missing verdict counts as
    * clean: the upload page is for the person's benefit, and the API still
-   * refuses a file that isn't clean at submit (ADR 0078). A verdict we don't
+   * refuses a file that isn't clean at submit (ADR 0133). A verdict we don't
    * know is treated as "couldn't check".
    */
   const runUpload = async (id: number, file: File, sentKey?: string) => {

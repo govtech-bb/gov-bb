@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { buildSitemapXml, collectSitemapEntries } from './sitemap'
+import { CATEGORIES } from '../content/categories'
+import type { CategoryTreeResult } from './api-v2-categories'
 
 describe('collectSitemapEntries', () => {
   const entries = collectSitemapEntries()
@@ -44,5 +46,109 @@ describe('buildSitemapXml', () => {
       'https://alpha.gov.bb',
     )
     expect(xml).toContain('<loc>https://alpha.gov.bb/a&amp;b</loc>')
+  })
+})
+
+describe('collectSitemapEntries in api_v2 mode', () => {
+  const legacy = collectSitemapEntries()
+  const staticCategory = '/health-and-emergency-services'
+
+  it('lists api_v2 categories and subcategories instead of the static ones', () => {
+    const paths = collectSitemapEntries(undefined, {
+      kind: 'found',
+      categories: [
+        {
+          slug: 'new-category',
+          url: '/new-category',
+          title: 'New',
+          description: null,
+          subcategories: [
+            {
+              slug: 'child',
+              url: '/new-category/child',
+              title: 'Child',
+              description: null,
+            },
+          ],
+        },
+      ],
+    }).map((e) => e.path)
+
+    expect(paths).toContain('/new-category')
+    expect(paths).toContain('/new-category/child')
+  })
+
+  it.each([
+    ['unavailable', { kind: 'unavailable' }],
+    ['malformed', { kind: 'malformed' }],
+    ['empty', { kind: 'found', categories: [] }],
+  ] satisfies Array<[string, CategoryTreeResult]>)(
+    'drops only the category entries when the tree is %s',
+    (_, tree) => {
+      const entries = collectSitemapEntries(undefined, tree)
+      const paths = entries.map((e) => e.path)
+      // No static category resurrected…
+      expect(legacy.map((e) => e.path)).toContain(staticCategory)
+      expect(paths).not.toContain(staticCategory)
+      // …while home, services, every page and app route stay: only the
+      // static category addresses are gone.
+      const categoryPaths = new Set(
+        CATEGORIES.flatMap((cat) => [
+          `/${cat.slug}`,
+          ...(cat.subcategories ?? []).map((sub) => `/${cat.slug}/${sub.slug}`),
+        ]),
+      )
+
+      expect(paths).toEqual(
+        legacy.map((e) => e.path).filter((path) => !categoryPaths.has(path)),
+      )
+    },
+  )
+})
+
+describe('collectSitemapEntries with api_v2 pages', () => {
+  it('keeps unsafe stored page and category URLs out of sitemap paths', () => {
+    const url = '/\\outside.test/page'
+    const entries = collectSitemapEntries(
+      undefined,
+      {
+        kind: 'found',
+        categories: [
+          {
+            slug: 'legacy',
+            url,
+            title: 'Legacy',
+            description: null,
+            subcategories: [],
+          },
+        ],
+      },
+      [url, '/safe-page'],
+    )
+
+    expect(entries.map((entry) => entry.path)).not.toContain(url)
+    expect(entries.map((entry) => entry.path)).toContain('/safe-page')
+    expect(entries.filter((entry) => entry.path === '/')).toHaveLength(1)
+    for (const entry of entries) {
+      expect(new URL(entry.path, 'https://site.test').origin).toBe(
+        'https://site.test',
+      )
+    }
+  })
+
+  it('lists each api_v2 page once, beside the static pages', () => {
+    const legacy = collectSitemapEntries()
+    const staticPage = '/family-birth-relationships/get-birth-certificate'
+    expect(legacy.map((e) => e.path)).toContain(staticPage)
+    const paths = collectSitemapEntries(undefined, undefined, [
+      '/work-employment/only-in-api-v2',
+      staticPage,
+    ]).map((e) => e.path)
+
+    expect(
+      paths.filter((p) => p === '/work-employment/only-in-api-v2'),
+    ).toEqual(['/work-employment/only-in-api-v2'])
+    expect(paths.filter((p) => p === staticPage)).toHaveLength(1)
+    expect(paths).toHaveLength(legacy.length + 1)
   })
 })

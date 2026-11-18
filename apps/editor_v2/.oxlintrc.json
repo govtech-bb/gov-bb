@@ -1,0 +1,696 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "ignorePatterns": [
+    ".agent/**",
+    ".agents/**",
+    ".claude/**",
+    ".codex/**",
+    ".continue/**",
+    ".cursor/**",
+    ".gemini/**",
+    ".opencode/**",
+    ".pi/**",
+    ".roo/**",
+    ".windsurf/**",
+    ".impeccable/**",
+    "tools/oxlint/anti-slop/**",
+    "reference/**",
+    "plans/**",
+    "tests/fixtures/**",
+    "scripts/browser/fixtures/**",
+    "dist/**",
+    "out/**",
+    "src/routeTree.gen.ts",
+    "src/api/openapi.d.ts",
+    ".tanstack/**"
+  ],
+  "jsPlugins": [
+    {
+      "name": "anti-slop",
+      "specifier": "./tools/oxlint/anti-slop/index.ts"
+    }
+  ],
+  "rules": {
+    "oxc/no-accumulating-spread": "error",
+    "anti-slop/no-array-filter-map": "error",
+    "anti-slop/no-reduce-accumulator-copy": "error",
+    "anti-slop/no-chained-type-assertions": "error",
+    "anti-slop/no-conditional-empty-object-spread": "error",
+    "anti-slop/no-known-value-widening": "error",
+    "anti-slop/no-module-mocking": "error",
+    "anti-slop/no-object-parameters": "error",
+    "anti-slop/no-reflect-apply": "error",
+    "anti-slop/no-reflect-get": "error",
+    "anti-slop/no-runtime-typeof": "error",
+    "anti-slop/no-unsafe-dictionary-type": "error",
+    "anti-slop/no-shape-in-symbol-names": "error",
+    "anti-slop/no-unknown-parameters": "error",
+    "anti-slop/no-unknown-returns": "error",
+    "anti-slop/no-unknown-type-aliases": "error",
+    "anti-slop/no-widen-then-assert": "error",
+    "anti-slop/require-readable-spacing": "error",
+    "anti-slop/require-safety-comment-for-type-assertion": "error"
+  },
+  "overrides": [
+    {
+      "files": ["scripts/check-native-form-coverage.ts"],
+      "rules": {
+        "anti-slop/no-runtime-typeof": "off",
+        "anti-slop/no-unknown-parameters": "off",
+        "anti-slop/no-unknown-returns": "off"
+      }
+    },
+    {
+      "files": ["src/converters/form-schema-to-lexical.ts"],
+      "rules": {
+        "anti-slop/no-unknown-parameters": "off"
+      }
+    },
+    {
+      "files": ["src/editor/core/contributions.ts"],
+      "rules": {
+        "anti-slop/no-unknown-parameters": "off"
+      }
+    },
+    {
+      "files": ["src/editor/core/definition.ts"],
+      "rules": {
+        "anti-slop/no-runtime-typeof": "off",
+        "anti-slop/no-unknown-parameters": "off"
+      }
+    },
+    {
+      "files": ["src/forms/canvas/block-state.ts"],
+      "rules": {
+        "anti-slop/no-runtime-typeof": "off"
+      }
+    },
+    {
+      "files": ["src/editor/core/immutable.ts"],
+      "rules": {
+        "anti-slop/no-runtime-typeof": "off",
+        "anti-slop/no-unknown-parameters": "off"
+      }
+    },
+    {
+      "files": ["src/editor/core/module.ts"],
+      "rules": {
+        "anti-slop/no-unsafe-dictionary-type": "off"
+      }
+    },
+    {
+      "files": ["src/forms/content/list-nodes.ts"],
+      "rules": {
+        "anti-slop/no-runtime-typeof": "off"
+      }
+    },
+    {
+      "files": ["src/editor/modules/text/module.ts"],
+      "rules": {
+        "anti-slop/no-runtime-typeof": "off"
+      }
+    },
+    {
+      "files": ["src/forms/formats/legacy-ssb/projection/capabilities.ts"],
+      "rules": {
+        "anti-slop/no-runtime-typeof": "off",
+        "anti-slop/no-unknown-parameters": "off",
+        "anti-slop/no-unsafe-dictionary-type": "off"
+      }
+    },
+    {
+      "files": ["src/forms/formats/legacy-ssb/projection/logic-rules.ts"],
+      "rules": {
+        "anti-slop/no-runtime-typeof": "off"
+      }
+    },
+    {
+      "files": ["src/forms/formats/legacy-ssb/projection/validation.ts"],
+      "rules": {
+        "anti-slop/no-runtime-typeof": "off"
+      }
+    },
+    {
+      "files": ["src/forms/model/dates.ts"],
+      "rules": {
+        "anti-slop/no-runtime-typeof": "off",
+        "anti-slop/no-unknown-parameters": "off"
+      }
+    },
+    {
+      "files": ["src/forms/model/dynamic-text.ts"],
+      "rules": {
+        "anti-slop/no-runtime-typeof": "off",
+        "anti-slop/no-unknown-parameters": "off"
+      }
+    },
+    {
+      "files": ["src/forms/model/form-settings.ts"],
+      "rules": {
+        "anti-slop/no-runtime-typeof": "off",
+        "anti-slop/no-unknown-parameters": "off",
+        "anti-slop/no-unsafe-dictionary-type": "off"
+      }
+    },
+    {
+      "files": ["src/forms/model/logic-age.ts"],
+      "rules": {
+        "anti-slop/no-runtime-typeof": "off"
+      }
+    },
+    {
+      "files": ["src/forms/model/pages.ts"],
+      "rules": {
+        "anti-slop/no-runtime-typeof": "off",
+        "anti-slop/no-unknown-parameters": "off"
+      }
+    },
+    {
+      "files": ["src/forms/model/provenance.ts"],
+      "rules": {
+        "anti-slop/no-runtime-typeof": "off"
+      }
+    },
+    {
+      "files": ["src/forms/model/references.ts"],
+      "rules": {
+        "anti-slop/no-runtime-typeof": "off"
+      }
+    },
+    {
+      "files": ["src/forms/model/repetition.ts"],
+      "rules": {
+        "anti-slop/no-runtime-typeof": "off"
+      }
+    },
+    {
+      "files": ["src/forms/definition.ts"],
+      "rules": {
+        "anti-slop/no-runtime-typeof": "off"
+      }
+    },
+    {
+      "files": ["src/forms/canvas/answer-nodes.tsx"],
+      "rules": {
+        "anti-slop/no-runtime-typeof": "off",
+        "anti-slop/no-unknown-parameters": "off"
+      }
+    },
+    {
+      "files": ["src/forms/canvas/form-compile.ts"],
+      "rules": {
+        "anti-slop/no-runtime-typeof": "off"
+      }
+    },
+    {
+      "files": ["src/forms/formats/legacy-ssb/legacy-field-mappings.ts"],
+      "rules": {
+        "anti-slop/no-runtime-typeof": "off"
+      }
+    },
+    {
+      "files": ["src/forms/formats/native/native-authoring.ts"],
+      "rules": {
+        "anti-slop/no-runtime-typeof": "off"
+      }
+    },
+    {
+      "files": ["src/forms/formats/native/native-bindings.ts"],
+      "rules": {
+        "anti-slop/no-runtime-typeof": "off",
+        "anti-slop/no-unsafe-dictionary-type": "off"
+      }
+    },
+    {
+      "files": ["src/forms/formats/native/native-copy.ts"],
+      "rules": {
+        "anti-slop/no-runtime-typeof": "off",
+        "anti-slop/no-unsafe-dictionary-type": "off"
+      }
+    },
+    {
+      "files": ["src/forms/formats/native/native-form-settings.ts"],
+      "rules": {
+        "anti-slop/no-runtime-typeof": "off"
+      }
+    },
+    {
+      "files": ["src/forms/formats/native/native-legacy-logic.ts"],
+      "rules": {
+        "anti-slop/no-object-parameters": "off",
+        "anti-slop/no-runtime-typeof": "off"
+      }
+    },
+    {
+      "files": ["src/forms/formats/native/native-preparation.ts"],
+      "rules": {
+        "anti-slop/no-runtime-typeof": "off",
+        "anti-slop/no-unknown-parameters": "off",
+        "anti-slop/no-unsafe-dictionary-type": "off"
+      }
+    },
+    {
+      "files": [
+        "src/forms/settings/define-setting.ts",
+        "src/forms/settings/shared-settings.ts",
+        "src/forms/fields/date-limits.ts"
+      ],
+      "rules": {
+        "anti-slop/no-runtime-typeof": "off",
+        "anti-slop/no-unknown-parameters": "off",
+        "anti-slop/no-unknown-returns": "off",
+        "anti-slop/no-unsafe-dictionary-type": "off"
+      }
+    },
+    {
+      "files": ["src/forms/formats/native/native-settings.ts"],
+      "rules": {
+        "anti-slop/no-runtime-typeof": "off",
+        "anti-slop/no-unknown-parameters": "off",
+        "anti-slop/no-unknown-returns": "off",
+        "anti-slop/no-unsafe-dictionary-type": "off"
+      }
+    },
+    {
+      "files": ["src/forms/formats/native/native-source.ts"],
+      "rules": {
+        "anti-slop/no-runtime-typeof": "off",
+        "anti-slop/no-unknown-parameters": "off",
+        "anti-slop/no-unsafe-dictionary-type": "off"
+      }
+    },
+    {
+      "files": ["src/forms/formats/native/native-state.ts"],
+      "rules": {
+        "anti-slop/no-runtime-typeof": "off",
+        "anti-slop/no-unsafe-dictionary-type": "off"
+      }
+    },
+    {
+      "files": ["src/forms/formats/native/native-text.ts"],
+      "rules": {
+        "anti-slop/no-runtime-typeof": "off",
+        "anti-slop/no-unsafe-dictionary-type": "off"
+      }
+    },
+    {
+      "files": ["src/forms/canvas/form-nodes.tsx"],
+      "rules": {
+        "anti-slop/no-runtime-typeof": "off"
+      }
+    },
+    {
+      "files": ["src/forms/canvas/page-settings.ts"],
+      "rules": {
+        "anti-slop/no-runtime-typeof": "off"
+      }
+    },
+    {
+      "files": ["src/forms/canvas/form-registry-insertion.ts"],
+      "rules": {
+        "anti-slop/no-runtime-typeof": "off"
+      }
+    },
+    {
+      "files": ["src/forms/canvas/form-runtime.ts"],
+      "rules": {
+        "anti-slop/no-unknown-parameters": "off",
+        "anti-slop/no-unsafe-dictionary-type": "off"
+      }
+    },
+    {
+      "files": ["src/forms/canvas/source-keys.ts"],
+      "rules": {
+        "anti-slop/no-runtime-typeof": "off"
+      }
+    },
+    {
+      "files": ["src/forms/formats/legacy-ssb/legacy-ssb-rules.ts"],
+      "rules": {
+        "anti-slop/no-runtime-typeof": "off"
+      }
+    },
+    {
+      "files": ["src/forms/canvas/structure/structure-blocks.ts"],
+      "rules": {
+        "anti-slop/no-runtime-typeof": "off"
+      }
+    },
+    {
+      "files": ["src/forms/fields/address-lookup.tsx"],
+      "rules": {
+        "anti-slop/no-runtime-typeof": "off"
+      }
+    },
+    {
+      "files": ["src/forms/fields/grouped-checkboxes-groups.ts"],
+      "rules": {
+        "anti-slop/no-runtime-typeof": "off",
+        "anti-slop/no-unsafe-dictionary-type": "off"
+      }
+    },
+    {
+      "files": ["src/forms/fields/grouped-checkboxes-native-presentation.tsx"],
+      "rules": {
+        "anti-slop/no-runtime-typeof": "off"
+      }
+    },
+    {
+      "files": ["src/forms/fields/date-input-controls.tsx"],
+      "rules": {
+        "anti-slop/no-runtime-typeof": "off"
+      }
+    },
+    {
+      "files": ["src/forms/fields/email-address.tsx"],
+      "rules": {
+        "anti-slop/no-runtime-typeof": "off"
+      }
+    },
+    {
+      "files": ["src/forms/fields/file-upload.tsx"],
+      "rules": {
+        "anti-slop/no-runtime-typeof": "off"
+      }
+    },
+    {
+      "files": ["src/forms/fields/file-upload-file-types.ts"],
+      "rules": {
+        "anti-slop/no-runtime-typeof": "off"
+      }
+    },
+    {
+      "files": ["src/forms/fields/file-upload-presentation.tsx"],
+      "rules": {
+        "anti-slop/no-runtime-typeof": "off"
+      }
+    },
+    {
+      "files": ["src/forms/conditional-logic/logic-authoring.ts"],
+      "rules": {
+        "anti-slop/no-runtime-typeof": "off"
+      }
+    },
+    {
+      "files": ["src/forms/conditional-logic/logic-migration.ts"],
+      "rules": {
+        "anti-slop/no-runtime-typeof": "off"
+      }
+    },
+    {
+      "files": ["src/forms/conditional-logic/logic-native-authoring.ts"],
+      "rules": {
+        "anti-slop/no-runtime-typeof": "off"
+      }
+    },
+    {
+      "files": ["src/forms/conditional-logic/logic-native-controls.tsx"],
+      "rules": {
+        "anti-slop/no-runtime-typeof": "off",
+        "anti-slop/no-unsafe-dictionary-type": "off"
+      }
+    },
+    {
+      "files": ["src/forms/conditional-logic/logic-native-presentation.tsx"],
+      "rules": {
+        "anti-slop/no-runtime-typeof": "off"
+      }
+    },
+    {
+      "files": ["src/forms/conditional-logic/logic-presentation.tsx"],
+      "rules": {
+        "anti-slop/no-runtime-typeof": "off"
+      }
+    },
+    {
+      "files": ["src/forms/conditional-logic/logic-queries.ts"],
+      "rules": {
+        "anti-slop/no-runtime-typeof": "off"
+      }
+    },
+    {
+      "files": ["src/forms/fields/textarea.tsx"],
+      "rules": {
+        "anti-slop/no-runtime-typeof": "off"
+      }
+    },
+    {
+      "files": ["src/forms/mentions/mention-editor.ts"],
+      "rules": {
+        "anti-slop/no-runtime-typeof": "off"
+      }
+    },
+    {
+      "files": ["src/forms/mentions/mention-node.ts"],
+      "rules": {
+        "anti-slop/no-runtime-typeof": "off"
+      }
+    },
+    {
+      "files": ["src/forms/fields/opening-hours.tsx"],
+      "rules": {
+        "anti-slop/no-runtime-typeof": "off"
+      }
+    },
+    {
+      "files": ["src/forms/form-pages/form-page-buttons.tsx"],
+      "rules": {
+        "anti-slop/no-runtime-typeof": "off"
+      }
+    },
+    {
+      "files": ["src/forms/form-pages/form-page-headings.tsx"],
+      "rules": {
+        "anti-slop/no-runtime-typeof": "off"
+      }
+    },
+    {
+      "files": ["src/forms/fields/phone-number.tsx"],
+      "rules": {
+        "anti-slop/no-runtime-typeof": "off"
+      }
+    },
+    {
+      "files": ["src/forms/fields/field-increments.ts"],
+      "rules": {
+        "anti-slop/no-runtime-typeof": "off",
+        "anti-slop/no-unknown-parameters": "off"
+      }
+    },
+    {
+      "files": ["src/forms/fields/field-setting-checks.ts"],
+      "rules": {
+        "anti-slop/no-runtime-typeof": "off"
+      }
+    },
+    {
+      "files": ["src/forms/fields/text-input.tsx"],
+      "rules": {
+        "anti-slop/no-runtime-typeof": "off"
+      }
+    },
+    {
+      "files": ["src/forms/native.ts"],
+      "rules": {
+        "anti-slop/no-runtime-typeof": "off",
+        "anti-slop/no-unsafe-dictionary-type": "off"
+      }
+    },
+    {
+      "files": ["src/forms/canvas/form-gutter.tsx"],
+      "rules": {
+        "anti-slop/no-runtime-typeof": "off"
+      }
+    },
+    {
+      "files": ["src/forms/conditional-logic/logic-pickers.tsx"],
+      "rules": {
+        "anti-slop/no-runtime-typeof": "off"
+      }
+    },
+    {
+      "files": ["src/forms/canvas/settings-controls.tsx"],
+      "rules": {
+        "anti-slop/no-runtime-typeof": "off"
+      }
+    },
+    {
+      "files": ["src/forms/form-registry/validation.ts"],
+      "rules": {
+        "anti-slop/no-runtime-typeof": "off"
+      }
+    },
+    {
+      "files": ["src/forms/formats/native/schema/references.ts"],
+      "rules": {
+        "anti-slop/no-runtime-typeof": "off",
+        "anti-slop/no-unsafe-dictionary-type": "off"
+      }
+    },
+    {
+      "files": ["src/forms/formats/native/schema/semantics.ts"],
+      "rules": {
+        "anti-slop/no-known-value-widening": "off",
+        "anti-slop/no-runtime-typeof": "off",
+        "anti-slop/no-unknown-parameters": "off",
+        "anti-slop/no-unknown-returns": "off",
+        "anti-slop/no-unsafe-dictionary-type": "off"
+      }
+    },
+    {
+      "files": ["src/forms/formats/native/schema/validation.ts"],
+      "rules": {
+        "anti-slop/no-known-value-widening": "off",
+        "anti-slop/no-object-parameters": "off",
+        "anti-slop/no-runtime-typeof": "off",
+        "anti-slop/no-unknown-parameters": "off",
+        "anti-slop/no-unsafe-dictionary-type": "off"
+      }
+    },
+    {
+      "files": ["src/forms/formats/markdown/dialect.ts"],
+      "rules": {
+        "anti-slop/no-known-value-widening": "off",
+        "anti-slop/no-object-parameters": "off",
+        "anti-slop/no-runtime-typeof": "off",
+        "anti-slop/no-unknown-parameters": "off",
+        "anti-slop/no-unknown-returns": "off",
+        "anti-slop/no-unsafe-dictionary-type": "off"
+      }
+    },
+    {
+      "files": ["src/forms/formats/markdown/field.ts"],
+      "rules": {
+        "anti-slop/no-unsafe-dictionary-type": "off"
+      }
+    },
+    {
+      "files": ["src/persistence/draft-store.test.ts"],
+      "rules": {
+        "anti-slop/no-runtime-typeof": "off",
+        "anti-slop/no-unknown-parameters": "off"
+      }
+    },
+    {
+      "files": ["src/persistence/types.ts"],
+      "rules": {
+        "anti-slop/no-unknown-parameters": "off"
+      }
+    },
+    {
+      "files": ["src/presets/form-registry/preview.tsx"],
+      "rules": {
+        "anti-slop/no-runtime-typeof": "off"
+      }
+    },
+    {
+      "files": ["tests/extensions/notice-form.ts"],
+      "rules": {
+        "anti-slop/no-runtime-typeof": "off",
+        "anti-slop/no-unknown-parameters": "off"
+      }
+    },
+    {
+      "files": ["tests/extensions/reference-field.ts"],
+      "rules": {
+        "anti-slop/no-runtime-typeof": "off",
+        "anti-slop/no-unknown-parameters": "off"
+      }
+    },
+    {
+      "files": ["tests/forms/field-definitions.test.ts"],
+      "rules": {
+        "anti-slop/no-runtime-typeof": "off"
+      }
+    },
+    {
+      "files": ["tests/forms/native-form-copy.test.ts"],
+      "rules": {
+        "anti-slop/no-runtime-typeof": "off"
+      }
+    },
+    {
+      "files": ["tests/forms/native-form-fixtures.test.ts"],
+      "rules": {
+        "anti-slop/no-runtime-typeof": "off"
+      }
+    },
+    {
+      "files": ["tests/forms/native-logic-controls.test.tsx"],
+      "rules": {
+        "anti-slop/no-runtime-typeof": "off"
+      }
+    },
+    {
+      "files": ["tests/forms/native-module-contracts.test.ts"],
+      "rules": {
+        "anti-slop/no-runtime-typeof": "off"
+      }
+    },
+    {
+      "files": ["tests/forms/native-schema.test.ts"],
+      "rules": {
+        "anti-slop/no-runtime-typeof": "off"
+      }
+    },
+    {
+      "files": ["tests/helpers/form-editor.ts"],
+      "rules": {
+        "anti-slop/no-runtime-typeof": "off"
+      }
+    },
+    {
+      "files": ["tests/helpers/native-definition.ts"],
+      "rules": {
+        "anti-slop/no-unknown-parameters": "off"
+      }
+    },
+    {
+      "files": ["tests/helpers/native-fixture-interpreter.ts"],
+      "rules": {
+        "anti-slop/no-runtime-typeof": "off"
+      }
+    },
+    {
+      "files": ["tests/helpers/registry-preservation.ts"],
+      "rules": {
+        "anti-slop/no-runtime-typeof": "off",
+        "anti-slop/no-unknown-parameters": "off"
+      }
+    },
+    {
+      "files": ["tests/helpers/serialized-test-data.ts"],
+      "rules": {
+        "anti-slop/no-runtime-typeof": "off",
+        "anti-slop/no-unknown-parameters": "off"
+      }
+    },
+    {
+      "files": ["src/api/page-markdown.ts", "src/workspace/page-sync.ts"],
+      "rules": {
+        "anti-slop/no-runtime-typeof": "off"
+      }
+    },
+    {
+      "files": ["src/pages/metadata.ts", "src/pages/metadata-yaml.ts"],
+      "rules": {
+        "anti-slop/no-runtime-typeof": "off"
+      }
+    },
+    {
+      "files": ["src/workspace/validation.ts"],
+      "rules": {
+        "anti-slop/no-runtime-typeof": "off",
+        "anti-slop/no-unsafe-dictionary-type": "off"
+      }
+    },
+    {
+      "files": ["src/auth/session.ts"],
+      "rules": {
+        "anti-slop/no-runtime-typeof": "off",
+        "anti-slop/no-unknown-parameters": "off",
+        "anti-slop/no-unsafe-dictionary-type": "off"
+      }
+    }
+  ]
+}

@@ -66,7 +66,7 @@ decision records:
 - **[ADR 0001](docs/decisions/0001-coverage-thresholds-track-actuals-not-targets.md)
   — thresholds track actuals, not targets.** Set a threshold 1–2 points *below*
   measured coverage. Its job is to catch regressions, not declare an aspiration.
-- **[ADR 0003](docs/decisions/0003-90pct-coverage-target-and-exemptions.md)
+- **[ADR 0004](docs/decisions/0004-90pct-coverage-target-and-exemptions.md)
   — 90% target, exemptions, and the ratchet policy.** As test-first work raises
   real coverage, thresholds ratchet **up** toward 90% and never slip back. Some
   paths carry documented structural exemptions (e.g. `form-types` exports Zod

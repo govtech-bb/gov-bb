@@ -1,0 +1,574 @@
+import {
+  ArrowElbowDownRight,
+  CaretDown,
+  CaretUp,
+  DotsThree,
+  PencilSimple,
+  Trash,
+} from "@phosphor-icons/react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  createContext,
+  memo,
+  useCallback,
+  useContext,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import {
+  categoryRows,
+  moveOrder,
+  withSavedCategories,
+  type Category,
+  type CategoryOrder,
+  type CategoryRow,
+} from "../api/categories";
+import type { EditorApi } from "../api/client";
+import { categoriesQuery } from "../api/queries";
+import { writeAttempt } from "../api/write-attempt";
+import { writes, type CategoryOrderAnswer } from "../api/writes";
+import { Banner } from "../ui/banner";
+import { Button } from "../ui/button";
+import { Menu } from "../ui/menu";
+import { ListScreen } from "../ui/list-screen";
+import { NameCell } from "../ui/table/cell-components";
+import { createAppColumnHelper, useAppTable } from "../ui/table/table-hooks";
+import { Tip } from "../ui/tooltip";
+import { useLatched } from "../ui/use-latched";
+import { CategoryDialog, DeleteCategoryDialog } from "./category-dialogs";
+import { listLoadView } from "./list-load-view";
+
+/** Up the list, or down it. */
+type Direction = -1 | 1;
+
+/**
+ * What a row's controls do: a move says which control asked, so that control gets the focus back. `moving` says
+ * whether its sibling group has a move still being saved, when its moves wait; `pressed`, whether a move button is the
+ * one that move came from, which turns until it's settled.
+ */
+type RowActions = {
+  move: (row: CategoryRow, by: Direction, from: "button" | "menu") => void;
+  moving: (row: CategoryRow) => boolean;
+  pressed: (row: CategoryRow, by: Direction) => boolean;
+  /** Nothing can be moved, edited or deleted, for someone who can’t change categories. */
+  readOnly: boolean;
+  edit: (row: CategoryRow) => void;
+  remove: (row: CategoryRow) => void;
+};
+
+const Actions = createContext<RowActions>({
+  move: () => {},
+  moving: () => false,
+  pressed: () => false,
+  readOnly: false,
+  edit: () => {},
+  remove: () => {},
+});
+
+/** The dialog open over the list, if any: a new category, or one to edit or delete as it was when it opened. */
+type ListDialog = { kind: "add" } | { kind: "edit" | "delete"; category: Category };
+
+// A sibling group's key: its parent's id, or the top level's
+const groupOf = (category: Pick<Category, "parent_id">) => category.parent_id ?? "";
+
+// A lost move's order found in the list: someone may have made it, so it isn't reported as saved
+const UNCONFIRMED_MOVE = {
+  tone: "warning",
+  text: "We didn’t get an answer for that move. The list now shows it in that order, but we can’t confirm your move made it. Check the order before moving again.",
+} as const;
+
+/**
+ * Its name and address; narrow, its count too, where its column was. A subcategory hangs from an elbow under its
+ * parent, its name in the regular weight where a parent's is semibold, and tells a screen reader whose subcategory it
+ * is.
+ */
+function CategoryCell({ row, parent }: { row: CategoryRow; parent?: Category }) {
+  const cell = (
+    <NameCell
+      className={parent && "flex-1"}
+      name={
+        <>
+          <span className={parent && "font-normal"}>{row.title}</span>
+          {parent && <span className="sr-only">, subcategory of {parent.title}</span>}
+        </>
+      }
+      path={row.url}
+      details={
+        <>
+          <span>
+            {row.services} {row.services === 1 ? "service" : "services"}
+          </span>
+          {row.last_edited_by && (
+            <span className="wrap-anywhere">
+              Edited by <bdi>{row.last_edited_by.name ?? "a former employee"}</bdi>
+            </span>
+          )}
+        </>
+      }
+    />
+  );
+
+  if (!parent) return cell;
+
+  // The elbow sits in its own column, so a name or address that wraps stays lined up under itself
+  return (
+    <div className="flex min-w-0 gap-2 ps-1">
+      <ArrowElbowDownRight
+        aria-hidden="true"
+        className="pointer-events-none mt-1 size-4 shrink-0 text-grey-60"
+      />
+      {cell}
+    </div>
+  );
+}
+
+/**
+ * Sibling moves, edit and delete: labelled icon buttons that collapse into a menu on narrow screens. Memoised with
+ * its row: the table renders every cell whenever the screen does, so without it a dialog opening would re-render every
+ * row's buttons, whatever the actions context holds.
+ */
+const CategoryActions = memo(function CategoryActions({ row }: { row: CategoryRow }) {
+  const actions = useContext(Actions);
+  const first = row.place === 1;
+  const last = row.place === row.siblings;
+  // While its group's last move is saved, its moves stay focusable and named, but wait, looking unavailable; the one
+  // that was pressed turns
+  const waiting = actions.moving(row);
+
+  return (
+    <>
+      <div className="flex justify-end gap-1 @max-xl:hidden">
+        <Tip content="Move up">
+          <Button
+            icon={<CaretUp />}
+            aria-label={`Move ${row.title} up`}
+            data-move={row.id}
+            data-by={-1}
+            disabled={first || actions.readOnly}
+            pending={actions.pressed(row, -1)}
+            aria-disabled={waiting || undefined}
+            onClick={() => actions.move(row, -1, "button")}
+          />
+        </Tip>
+        <Tip content="Move down">
+          <Button
+            icon={<CaretDown />}
+            aria-label={`Move ${row.title} down`}
+            data-move={row.id}
+            data-by={1}
+            disabled={last || actions.readOnly}
+            pending={actions.pressed(row, 1)}
+            aria-disabled={waiting || undefined}
+            onClick={() => actions.move(row, 1, "button")}
+          />
+        </Tip>
+        <Tip content="Edit">
+          <Button
+            icon={<PencilSimple />}
+            aria-label={`Edit ${row.title}`}
+            disabled={actions.readOnly}
+            onClick={() => actions.edit(row)}
+          />
+        </Tip>
+        <Tip content="Delete">
+          <Button
+            icon={<Trash />}
+            aria-label={`Delete ${row.title}`}
+            disabled={actions.readOnly}
+            onClick={() => actions.remove(row)}
+          />
+        </Tip>
+      </div>
+      <Menu.Root>
+        <Menu.Trigger
+          render={
+            <Button
+              icon={<DotsThree />}
+              aria-label={`Actions for ${row.title}`}
+              data-row-menu={row.id}
+              className="ms-auto hidden @max-xl:flex"
+            />
+          }
+        />
+        <Menu.Content aria-label={`Actions for ${row.title}`} align="end">
+          <Menu.Item
+            icon={<CaretUp />}
+            disabled={first || waiting || actions.readOnly}
+            onClick={() => actions.move(row, -1, "menu")}
+          >
+            Move up
+          </Menu.Item>
+          <Menu.Item
+            icon={<CaretDown />}
+            disabled={last || waiting || actions.readOnly}
+            onClick={() => actions.move(row, 1, "menu")}
+          >
+            Move down
+          </Menu.Item>
+          <Menu.Item
+            icon={<PencilSimple />}
+            disabled={actions.readOnly}
+            onClick={() => actions.edit(row)}
+          >
+            Edit
+          </Menu.Item>
+          <Menu.Item
+            icon={<Trash />}
+            variant="danger"
+            disabled={actions.readOnly}
+            onClick={() => actions.remove(row)}
+          >
+            Delete
+          </Menu.Item>
+        </Menu.Content>
+      </Menu.Root>
+    </>
+  );
+});
+
+const column = createAppColumnHelper<CategoryRow>();
+
+const columns = column.columns([
+  column.accessor("title", {
+    header: "Name",
+    // Its parent from the list itself, so the words follow a renamed parent
+    cell: ({ row, table }) => (
+      <CategoryCell
+        row={row.original}
+        parent={table.options.data.find((item) => item.id === row.original.parent_id)}
+      />
+    ),
+  }),
+  // Narrow, the count rides under the name instead
+  column.accessor("services", {
+    header: () => <span className="block text-end">Services</span>,
+    meta: { secondary: true, width: "w-28" },
+    cell: ({ row }) => (
+      <span className="block text-end text-14 tabular-nums">{row.original.services}</span>
+    ),
+  }),
+  column.accessor((row) => row.last_edited_by?.name, {
+    id: "edited_by",
+    header: "Edited by",
+    meta: { secondary: true, width: "w-40" },
+    cell: ({ row: { original } }) =>
+      original.last_edited_by && (
+        <bdi className="block text-14 wrap-anywhere text-muted">
+          {original.last_edited_by.name ?? "a former employee"}
+        </bdi>
+      ),
+  }),
+  // Room for its four buttons, 44px each under a coarse pointer, or for the one that opens their menu once they fold
+  // into it
+  column.display({
+    id: "actions",
+    header: () => <span className="block text-end">Actions</span>,
+    meta: { width: "w-44 @max-xl:w-20 pointer-coarse:@xl:w-56" },
+    cell: ({ row }) => <CategoryActions row={row.original} />,
+  }),
+]);
+
+/**
+ * The one shared category list, from the content API: add, edit, move among siblings and delete. A move is saved with
+ * every sibling's version, one at a time in each sibling group; a dialog keeps the category as it opened with it.
+ */
+export function CategoriesScreen({
+  api,
+  readOnly = false,
+  why,
+}: {
+  api: EditorApi;
+  /** Categories can't be added, moved, edited or deleted, for someone who isn't an approver (#3201). */
+  readOnly?: boolean;
+  /** Why they can't, once that is known. */
+  why?: string;
+}) {
+  const client = useQueryClient();
+  const categories = useQuery(categoriesQuery(api));
+  const load = listLoadView(categories, "categories");
+
+  const rows = useMemo(() => categoryRows(categories.data ?? []), [categories.data]);
+
+  // A dialog keeps the category it opened with, whatever the list does meanwhile, and shows it until it has faded away
+  const [dialog, setDialog] = useState<ListDialog | null>(null);
+  const shown = useLatched(dialog);
+  // Counts the openings, so each opens afresh: nothing typed, and no answer left from the last time
+  const [opened, setOpened] = useState(0);
+
+  const openDialog = useCallback((next: ListDialog) => {
+    setOpened((count) => count + 1);
+    setDialog(next);
+  }, []);
+
+  const [moved, setMoved] = useState("");
+  // What went wrong with a move, in the card over the rows until the next one: a toast would leave while its buttons stay
+  const [problem, setProblem] = useState<{ tone: "error" | "warning"; text: string } | null>(null);
+  // The row that last moved, tinted while moves go on, so a pointer can follow it to its new place
+  const [marked, setMarked] = useState<string>();
+  const unmark = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const add = useRef<HTMLButtonElement>(null);
+  const card = useRef<HTMLDivElement>(null);
+  // The control a move came from, to have the focus back once its row is in its new place
+  const refocus = useRef<{ id: string; by: Direction; from: "button" | "menu" }>(undefined);
+
+  const attempts = useRef(
+    new Map<
+      string,
+      {
+        attempt: ReturnType<typeof writeAttempt<CategoryOrder, CategoryOrderAnswer>>;
+        control: { id: string; by: Direction; from: "button" | "menu" };
+      }
+    >(),
+  );
+
+  const [moving, setMoving] = useState<ReadonlySet<string>>(new Set());
+  // The move button a save or a check came from, which turns while its group waits
+  const [pressed, setPressed] = useState<{ group: string; id: string; by: Direction }>();
+
+  // Says where a moved row is now, keeps its control focused and tints it for a while
+  const showMoved = useCallback(
+    (list: readonly Category[], id: string, by: Direction, from: "button" | "menu") => {
+      refocus.current = { id, by, from };
+      setMarked(id);
+      clearTimeout(unmark.current);
+      unmark.current = setTimeout(() => setMarked(undefined), 2000);
+
+      const row = categoryRows(list).find((item) => item.id === id);
+
+      setProblem(null);
+
+      if (row)
+        setMoved(`${row.title} moved ${by < 0 ? "up" : "down"}: ${row.place} of ${row.siblings}`);
+    },
+    [],
+  );
+
+  const move = useCallback(
+    async (row: CategoryRow, by: Direction, from: "button" | "menu") => {
+      const group = groupOf(row);
+      let entry = attempts.current.get(group);
+
+      if (entry?.attempt.state === "sending" || entry?.attempt.state === "checking") return;
+
+      if (!entry) {
+        const write = writes.orderCategories(api);
+        entry = {
+          control: { id: row.id, by, from },
+          attempt: writeAttempt({
+            ...write,
+            readBack: (sent: CategoryOrder) => {
+              setMoved("Checking whether the move was saved…");
+              void client.invalidateQueries({ queryKey: ["content"] });
+
+              return write.readBack(sent);
+            },
+          }),
+        };
+        attempts.current.set(group, entry);
+      }
+
+      const order = moveOrder(categories.data ?? [], row.id, by);
+
+      if (entry.attempt.state !== "unsettled") {
+        if (!order) return;
+        entry.control = { id: row.id, by, from };
+      }
+
+      setMoving((current) => new Set(current).add(group));
+      setPressed({ group, id: row.id, by });
+      setProblem(null);
+
+      const result = await entry.attempt.press(() => {
+        if (!order) throw new Error("Category move requires a sibling order.");
+
+        return order;
+      });
+
+      if (result.kind === "landed") {
+        // A pre-write background read must not restore the replaced order.
+        void client.cancelQueries({ queryKey: categoriesQuery(api).queryKey });
+
+        const list = client.setQueryData(categoriesQuery(api).queryKey, (current) =>
+          withSavedCategories(current ?? [], result.answer.categories),
+        );
+
+        const control = entry.control;
+        showMoved(list ?? [], control.id, control.by, control.from);
+
+        if (result.answer.checked) {
+          setMoved("");
+          setProblem(UNCONFIRMED_MOVE);
+        }
+
+        void client.invalidateQueries({ queryKey: ["content"] });
+      } else {
+        setMoved("");
+
+        switch (result.kind) {
+          case "unknown":
+            setProblem({
+              tone: "error",
+              text: "We couldn’t tell whether the category moved. Check your connection, then try again.",
+            });
+            break;
+          case "conflict":
+            setProblem({
+              tone: "error",
+              text: "Someone changed these categories first. The list now shows their changes: move it again.",
+            });
+            void client.invalidateQueries({ queryKey: ["content"] });
+            break;
+          default:
+            setProblem({
+              tone: "error",
+              text:
+                result.kind === "signed-out"
+                  ? "Your session has ended. Sign in again, then move the category."
+                  : result.kind === "forbidden"
+                    ? result.message || "You do not have access to change categories."
+                    : "The category could not be moved. Try again.",
+            });
+        }
+      }
+
+      setMoving((current) => {
+        const next = new Set(current);
+        next.delete(group);
+
+        return next;
+      });
+      setPressed((button) => (button?.group === group ? undefined : button));
+    },
+    [api, categories.data, client, showMoved],
+  );
+
+  // One value until a move's list or its groups' state changes, so the rest of the screen's updates leave rows be
+  const actions = useMemo<RowActions>(
+    () => ({
+      move: (row, by, from) => void move(row, by, from),
+      moving: (row) => moving.has(groupOf(row)),
+      pressed: (row, by) => pressed?.id === row.id && pressed.by === by,
+      readOnly,
+      edit: (row) => openDialog({ kind: "edit", category: row }),
+      remove: (row) => openDialog({ kind: "delete", category: row }),
+    }),
+    [move, moving, pressed, readOnly, openDialog],
+  );
+
+  useEffect(() => () => clearTimeout(unmark.current), []);
+
+  // A moved row's control keeps the focus; at the end of the list, the other way's button takes it
+  useLayoutEffect(() => {
+    const target = refocus.current;
+
+    if (!target || !card.current) return;
+    refocus.current = undefined;
+    const control = (selector: string) => card.current?.querySelector<HTMLButtonElement>(selector);
+
+    if (target.from === "menu") return void control(`[data-row-menu="${target.id}"]`)?.focus();
+    const same = control(`[data-move="${target.id}"][data-by="${target.by}"]`);
+
+    (same?.disabled
+      ? control(`[data-move="${target.id}"][data-by="${-target.by}"]`)
+      : same
+    )?.focus();
+  }, [rows]);
+
+  const table = useAppTable({
+    columns,
+    data: rows,
+    getRowId: (row) => row.id,
+    // Categories are few and move in place: one page, in their own order
+    manualPagination: true,
+    enableSorting: false,
+  });
+
+  const close = () => setDialog(null);
+
+  return (
+    <Actions value={actions}>
+      <table.AppTable>
+        <ListScreen
+          ref={card}
+          title="Categories"
+          lead="People browse these to find services on the site."
+          action={
+            <Button
+              ref={add}
+              variant="accent"
+              size="md"
+              disabled={readOnly}
+              onClick={() => openDialog({ kind: "add" })}
+            >
+              Add category
+            </Button>
+          }
+          status={load.status}
+          notices={
+            <>
+              {readOnly && why && (
+                <Banner tone="info" layout="strip" inset="card">
+                  {why}
+                </Banner>
+              )}
+              {load.notices}
+              {problem && (
+                <Banner tone={problem.tone} layout="strip" inset="card">
+                  {problem.text}
+                </Banner>
+              )}
+            </>
+          }
+          failure={load.failure}
+        >
+          <table.DataTable
+            caption="Categories"
+            loading={categories.isPending}
+            marked={marked}
+            empty={{
+              title: "No categories yet",
+              description: "Add one, so services can be filed under it.",
+              // The header holds the teal Add category, so this one is grey
+              actions: (
+                <Button
+                  variant="secondary"
+                  disabled={readOnly}
+                  onClick={() => openDialog({ kind: "add" })}
+                >
+                  Add category
+                </Button>
+              ),
+            }}
+          />
+        </ListScreen>
+        <p role="status" className="sr-only">
+          {moved}
+        </p>
+        {(shown?.kind === "add" || shown?.kind === "edit") && (
+          <CategoryDialog
+            key={opened}
+            api={api}
+            open={dialog !== null}
+            category={shown.kind === "edit" ? shown.category : undefined}
+            categories={categories.data ?? []}
+            onClose={close}
+          />
+        )}
+        {shown?.kind === "delete" && (
+          <DeleteCategoryDialog
+            key={opened}
+            api={api}
+            open={dialog !== null}
+            category={shown.category}
+            categories={categories.data ?? []}
+            onClose={close}
+            focusAfter={add}
+          />
+        )}
+      </table.AppTable>
+    </Actions>
+  );
+}

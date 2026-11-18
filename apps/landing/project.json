@@ -3,6 +3,7 @@
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
   "sourceRoot": "apps/landing/src",
   "projectType": "application",
+  "implicitDependencies": ["api_v2"],
   "namedInputs": {
     "default": ["{projectRoot}/**/*", "sharedGlobals"]
   },
@@ -11,10 +12,11 @@
       "inputs": [
         "production",
         "^production",
-        { "env": "DRAFT_SECRET" },
+        { "env": "LANDING_SECRET" },
         { "env": "PREVIEW_COOKIE_DOMAIN" },
         { "env": "PREVIEW_SECRET" },
         { "env": "VITE_ALLOW_INDEXING" },
+        { "env": "VITE_API_V2_URL" },
         { "env": "VITE_CHAT_URL" },
         { "env": "VITE_FORMS_API_URL" },
         { "env": "VITE_FORMS_URL" },
@@ -26,10 +28,14 @@
       ],
       "dependsOn": []
     },
+    "size": {
+      "dependsOn": ["build"]
+    },
     "test": {
       "inputs": [
         "default",
         "^production",
+        "{workspaceRoot}/apps/api_v2/openapi.json",
         "{workspaceRoot}/docs/analytics/event-catalogue.md"
       ]
     }

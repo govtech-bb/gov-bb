@@ -1,0 +1,215 @@
+import {
+  $createParagraphNode,
+  $getRoot,
+  $isParagraphNode,
+  type SerializedEditorState,
+} from "lexical";
+import type { Root } from "mdast";
+import { parseContentMarkdown } from "@govtech-bb/govbbmarkd";
+import { createHeadlessEditor } from "@/editor";
+import {
+  SourceError,
+  type DraftCodec,
+  type DraftSnapshot,
+  type PreparedSource,
+} from "../persistence/types";
+import type { PageEditorDefinition } from "./definition";
+import { PageMetadataNode, $pageMetadataNode, validateMetadata } from "./metadata";
+import { pageMetadataFromYaml, stateMetadata } from "./metadata-yaml";
+import {
+  blocks,
+  pageConversion,
+  parsePageMarkdown,
+  splitPageMarkdown,
+  stringifyPageMarkdown,
+  UnsupportedPageContent,
+} from "./markdown";
+
+export function readPageMetadata(source: string) {
+  const frontmatter = parsePageMarkdown(source).children[0];
+
+  return pageMetadataFromYaml(frontmatter?.type === "yaml" ? frontmatter.value : "");
+}
+
+/**
+ * A draft's page metadata, read as every key is typed: from the YAML its editor state holds, far cheaper than parsing
+ * the page's Markdown. Without a state, or during a recovery, when the state can be ahead of the Markdown, it reads the
+ * committed Markdown.
+ */
+export function draftPageMetadata(draft: Pick<DraftSnapshot, "state" | "committed" | "recovery">) {
+  return (
+    (!draft.recovery && draft.state && stateMetadata(draft.state)) ||
+    readPageMetadata(draft.committed)
+  );
+}
+
+function $encode(definition: PageEditorDefinition) {
+  const context = pageConversion(definition);
+  const metadata = $pageMetadataNode();
+
+  const content = $getRoot()
+    .getChildren()
+    .filter((node) => !(node instanceof PageMetadataNode));
+
+  // The empty line the editor keeps at the end of a page, to write on, isn't content
+  const $emptyLast = () => {
+    const last = content.at(-1);
+
+    return content.length > 1 && $isParagraphNode(last) && last.isEmpty();
+  };
+
+  while ($emptyLast()) content.pop();
+
+  const body: Root = {
+    type: "root",
+    children: blocks(content.flatMap((node) => context.$export(node))),
+  };
+
+  const yaml = metadata.getYaml();
+  const frontmatter = yaml ? `---\n${yaml.trimEnd()}\n---\n\n` : "";
+  const bodyMarkdown = stringifyPageMarkdown(body);
+
+  return { metadata, canonical: frontmatter + bodyMarkdown, frontmatter, body: bodyMarkdown };
+}
+
+export function pageMarkdownToLexical(
+  source: string,
+  definition: PageEditorDefinition,
+): PreparedSource {
+  const parsed = parseContentMarkdown(source);
+  const root = parsed.root;
+  const first = root.children[0];
+  const yaml = first?.type === "yaml" ? first.value : "";
+
+  try {
+    if (/^\uFEFF?---\r?\n/.test(source) && first?.type !== "yaml")
+      throw new Error("Close the page metadata with a second --- line");
+    validateMetadata(yaml);
+  } catch (error) {
+    throw new SourceError("Correct the page metadata before applying changes", [
+      {
+        code: "page-metadata",
+        severity: "fatal",
+        message: error instanceof Error ? error.message : String(error),
+        line: first?.position?.start.line ?? 1,
+        column: 1,
+      },
+    ]);
+  }
+
+  if (parsed.errors.length)
+    return {
+      mode: "source",
+      source,
+      diagnostics: parsed.errors.map((error) => ({
+        code: error.code,
+        severity: "warning",
+        message: error.message,
+        line: error.line,
+        column: error.column,
+      })),
+    };
+
+  const editor = createHeadlessEditor(definition, undefined, { prepare: false });
+
+  try {
+    editor.update(
+      () => {
+        const context = pageConversion(definition);
+        const metadata = new PageMetadataNode(yaml);
+        $getRoot().append(metadata);
+
+        for (const node of root.children) {
+          if (node === first && node.type === "yaml") continue;
+          $getRoot().append(...context.$import(node));
+        }
+
+        if ($getRoot().getChildrenSize() === 1) $getRoot().append($createParagraphNode());
+      },
+      { discrete: true },
+    );
+    // Adjacent text nodes are normalized when the import update commits.
+    editor.update(() => $pageMetadataNode().setOriginal(source, $encode(definition).canonical), {
+      discrete: true,
+    });
+
+    return { mode: "visual", state: editor.getEditorState().toJSON(), source, diagnostics: [] };
+  } catch (error) {
+    if (!(error instanceof UnsupportedPageContent)) throw error;
+
+    return {
+      mode: "source",
+      source,
+      diagnostics: [
+        {
+          code: "page-source-only",
+          severity: "warning",
+          message: error.message,
+          line: error.node.position?.start.line ?? 1,
+          column: error.node.position?.start.column ?? 1,
+        },
+      ],
+    };
+  } finally {
+    editor.dispose();
+  }
+}
+
+export function lexicalToPageMarkdown(
+  state: SerializedEditorState,
+  definition: PageEditorDefinition,
+) {
+  const editor = createHeadlessEditor(definition, state);
+
+  try {
+    return editor.getEditorState().read(
+      () => {
+        const { metadata, canonical, frontmatter, body } = $encode(definition);
+
+        if (canonical === metadata.__fingerprint) return metadata.__original;
+
+        if (body === splitPageMarkdown(metadata.__fingerprint).body)
+          return frontmatter + splitPageMarkdown(metadata.__original).body;
+
+        return canonical;
+      },
+      { editor },
+    );
+  } finally {
+    editor.dispose();
+  }
+}
+
+export function createPageDraftCodec(definition: PageEditorDefinition): DraftCodec {
+  return {
+    prepare: (source) => pageMarkdownToLexical(source, definition),
+    encode: (state) => lexicalToPageMarkdown(state, definition),
+    prepareLegacy() {
+      throw new Error("Import page documents as Markdown");
+    },
+  };
+}
+
+export function createEmptyPage(title = ""): SerializedEditorState {
+  const children = [
+    {
+      type: "page-metadata",
+      version: 1,
+      yaml: title ? `title: ${JSON.stringify(title)}\n` : "",
+      original: "",
+      fingerprint: "",
+    },
+    {
+      type: "paragraph",
+      version: 1,
+      direction: null,
+      format: "",
+      indent: 0,
+      children: [],
+      textFormat: 0,
+      textStyle: "",
+    },
+  ];
+
+  return { root: { type: "root", version: 1, direction: null, format: "", indent: 0, children } };
+}

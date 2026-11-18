@@ -34,7 +34,7 @@ email. The trade-off, accepted explicitly: the email **domain** stays visible
 in logs — a smaller exposure than the full address.
 
 The principle this establishes is recorded in
-[ADR 0058](../decisions/0058-personal-data-is-masked-before-logging.md).
+[ADR 0100](../decisions/0100-personal-data-is-masked-before-logging.md).
 
 ## Tests
 

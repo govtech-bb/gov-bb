@@ -15,7 +15,7 @@ overrides. Issue #642 asked to show the ref and let the author change it.
   migrated overrides in place, normalizing `kind` to `"component"`.
 - "Field type" row + generic-peer picker in `-field-edit-panel.tsx`, with local
   `ref` state that live-migrates overrides on swap.
-- ADR [0030](../decisions/0030-field-resolved-id-is-stable-identity.md) — the
+- ADR [0053](../decisions/0053-field-resolved-id-is-stable-identity.md) — the
   stable-identity principle behind the fieldId auto-pin.
 
 ## Why we did it that way
@@ -55,7 +55,7 @@ swap control (no single htmlType, no natural peers) and own `childOverrides`.
 auto-pin); the user reversed that here. A field on its registry default fieldId
 would silently re-resolve to the new ref's default and dangle references, so the
 panel pins the old resolved default as an explicit override before migrating.
-Reasoning recorded in ADR 0030.
+Reasoning recorded in ADR 0053.
 
 **`kind` normalization came out of code review.** A `kind: "custom"` field could
 surface swap peers (the picker keys off htmlType, not kind) and end up with

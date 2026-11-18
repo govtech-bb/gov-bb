@@ -3,7 +3,7 @@
 **Date:** 2026-05-21
 **Branch:** feat/forms-links-mapping
 **Plan:** [docs/plans/start-now-form-links.md](../plans/start-now-form-links.md)
-**Decision record:** [docs/decisions/0004-form-scheme-for-cross-app-links.md](../decisions/0004-form-scheme-for-cross-app-links.md)
+**Decision record:** [docs/decisions/0008-form-scheme-for-cross-app-links.md](../decisions/0008-form-scheme-for-cross-app-links.md)
 
 ## What was built
 
@@ -55,7 +55,7 @@ app. Diagnosis: react-markdown's default sanitiser only allows
 component handler ran. `safeHref ?? '#'` then resolved to the current
 URL. Added a `urlTransform` that explicitly passes `form:` through.
 This is now a documented obligation for any future scheme added under
-ADR 0004.
+ADR 0008.
 
 **Per-slug analytics events preserved.** `StartLink` calls
 `deriveStartEventName(href)` from `analytics.ts` to emit a
@@ -118,7 +118,7 @@ Not part of this session's work; excluded from the commit.
 
 ## Decisions worth flagging
 
-- **The `form:` scheme is now a convention, not a one-off.** ADR 0004
+- **The `form:` scheme is now a convention, not a one-off.** ADR 0008
   is broader than this PR — it constrains _any_ future cross-app link
   from Markdown. The list of allowed schemes in `urlTransform` is the
   enforcement point.

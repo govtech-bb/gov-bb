@@ -29,7 +29,7 @@ after #950 merged.
   comparison. Age bands are authored as ordered first-match rules (`age < 16 →
   $5`, `age < 66 → $10`, otherwise `$20`).
 - **Fixed a shipped bug** in the same compiler: the `values.` var prefix (see
-  ADR 0044).
+  ADR 0077).
 - Specs rewritten test-first: `-amount-rule.spec.ts` (15) and
   `-amount-editor.spec.tsx` (7).
 
@@ -43,13 +43,13 @@ after #950 merged.
   `undefined`: every conditional amount would have fallen through to its default
   in production. The unit tests were structural and the resolver tests separate,
   so nothing caught it. Folding the fix into this PR was cheapest (same file,
-  same compiler, no recipe uses conditional amounts yet) — recorded as ADR 0044,
+  same compiler, no recipe uses conditional amounts yet) — recorded as ADR 0077,
   with a regression test pinning the pre-fix shape to the read-only advanced
   fallback.
 - **`age` is a server op we reuse, not new logic.** `@govtech-bb/expressions`
   already registers `age` and the API resolver tests already exercise
   `{ ">=": [{ age: [{ var: "values.applicant.dob" }] }, 60] }`. So this stays a
-  builder-only change (ADR 0043): the compiler emits exactly that shape. The
+  builder-only change (ADR 0074): the compiler emits exactly that shape. The
   byte-for-byte match against the resolver's own test fixtures is the
   cross-check the equality slice lacked.
 - **Bands as ordered rules, not a range widget.** JSONLogic `if` is first-match

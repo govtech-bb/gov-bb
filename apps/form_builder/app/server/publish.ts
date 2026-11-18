@@ -117,7 +117,7 @@ function renderPrBody({
 /**
  * The `updatedAt` a recipe write carries: now, whatever the payload said. The
  * committed `updatedAt` is what the builder compares a draft row against to
- * decide it is stale (#2878, ADR 0075), so every write — builder Deploy here,
+ * decide it is stale (#2878, ADR 0125), so every write — builder Deploy here,
  * the services publication in services.ts — must move it. Date.now() is the
  * clock deployBranchName already uses.
  */

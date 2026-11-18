@@ -45,7 +45,7 @@ export const UMAMI_SCRIPT_ATTRIBUTES = {
 } as const;
 
 // Landing tool events (tool-step-view, tool-result, tool-action, tool-error)
-// are in tool-events.ts (ADR 0079).
+// are in tool-events.ts (ADR 0138).
 export interface TrackingData extends ToolTrackingData {
   "form-start": { form: string; category: string };
   "form-step-back": { form: string; category: string; step: string };
@@ -164,7 +164,7 @@ export function trackEvent<E extends TrackingEventName>(
   data: TrackingData[E],
 ): void;
 // Any other name. A tool event name is refused here, so wrong tool data fails
-// type-check instead of falling through to this overload (ADR 0079).
+// type-check instead of falling through to this overload (ADR 0138).
 export function trackEvent<N extends string>(
   event: N extends keyof ToolTrackingData ? never : N,
   data?: Record<string, unknown>,

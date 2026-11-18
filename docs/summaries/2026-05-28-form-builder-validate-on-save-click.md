@@ -4,7 +4,7 @@
 **Branch:** `form-builder/validate-on-save-click` (off `sandbox`, merges back into `sandbox`)
 **Issue:** supersedes [#344](https://github.com/govtech-bb/gov-bb/issues/344)
 **Plan:** `docs/plans/form-builder-validate-on-save-click.md`
-**ADR:** `docs/decisions/0017-builder-commit-actions-self-validate-on-click.md`
+**ADR:** `docs/decisions/0035-builder-commit-actions-self-validate-on-click.md`
 
 ## Context
 
@@ -42,7 +42,7 @@ flow. We removed the gate entirely instead.
   fresh validation synchronously — no effect, no extra ref, no second render.
 - **Validate-on-click beats reset-on-edit (#344).** Re-validating the live draft
   every click removes the stale-cache bug at the root and sidesteps the in-flight
-  race #344's reset approach still had. See ADR 0017.
+  race #344's reset approach still had. See ADR 0035.
 - **`canSubmit`'s pre-flight checks were redundant.** `hasEditableSteps`,
   every-step-has-fields, and no-collisions were *also* pre-flight checks inside
   `runValidation`, each with a friendly message. With validate-on-click those

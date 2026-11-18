@@ -118,7 +118,7 @@ export function serviceStatus(service: ServiceRow): string {
   if (service.form?.isDisabled) return "Disabled";
   if (service.form) {
     // The form's status as apps/api reports it, in the words the picker and
-    // toolbar use (#2875, ADR 0074); an unpublished form has no status yet.
+    // toolbar use (#2875, ADR 0124); an unpublished form has no status yet.
     const status = formStatus(service.form);
     return status ? FORM_STATUS_LABEL[status] : "Draft";
   }

@@ -14,7 +14,7 @@ leave.
   (years, "under 11") untouched.
 - **`packages/analytics/src/index.ts`** — `trackEvent` masks a `query` string
   property (on a shallow copy) before dispatch, and re-exports `maskSearchQuery`.
-- Decision recorded in `docs/decisions/0064-mask-pii-in-analytics-search-queries.md`.
+- Decision recorded in `docs/decisions/0111-mask-pii-in-analytics-search-queries.md`.
 
 ## Why it looks the way it does
 
@@ -37,7 +37,7 @@ leave.
   same `trackEvent`. Masking there covers them all — none can forget — instead of
   editing six sites.
 
-## Known limits (accepted, see ADR-0064)
+## Known limits (accepted, see ADR-0111)
 
 - A free-text **name** isn't masked (no digits); top-N frequency hides one-offs.
 - The digit threshold is **6+** (team decision) so form-name numbers — years

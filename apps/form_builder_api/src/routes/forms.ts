@@ -84,7 +84,7 @@ async function upsertFormConfig(
 
 // The save/update body may also carry a sibling `processors` array, the
 // author-time payment (and other) processor config that now lives in
-// `form_config.config` rather than the recipe (#716, ADR 0033). Unlike
+// `form_config.config` rather than the recipe (#716, ADR 0057). Unlike
 // mdaContactId, an invalid value is NOT silently dropped: silently discarding a
 // payment processor would make a paid form free, so a malformed array fails the
 // request with a 400. Tri-state, mirroring mdaContactId:
@@ -158,7 +158,7 @@ function validateRecipeProcessors(recipe: unknown): string | null {
 
 // Merge the processors change into the per-form `config` JSONB blob within the
 // recipe-save transaction. Reads the current blob first and spreads it so
-// unknown future keys survive (the blob is a shared envelope — ADR 0033); only
+// unknown future keys survive (the blob is a shared envelope — ADR 0057); only
 // the `processors` key is set or deleted. `result.kind` is guaranteed to be
 // "set" or "clear" here (the handler returns 400 before reaching this on
 // "invalid", and skips the call entirely on "absent").

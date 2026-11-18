@@ -29,7 +29,7 @@ consumer gates from the approved plan as parallel, file-disjoint workstreams
   and every runtime call site (homepage, services listing, `$.tsx` incl.
   Start-link computation, four static feature routes); shared `lib/forms-api.ts`
   HTTP helpers.
-- **ADR 0063** records the mapping and "row fully overrides seed" semantics for
+- **ADR 0110** records the mapping and "row fully overrides seed" semantics for
   both consumers; see it rather than this summary for the decision itself.
 
 ## Why we did it that way
@@ -37,7 +37,7 @@ consumer gates from the approved plan as parallel, file-disjoint workstreams
 - **DB read per request on the API, cached fetch on landing.** The API is the
   same app as the table — one read per request is exactly the freshness #1896
   asks for, with no cache to invalidate. Landing is a separate app hitting the
-  API over HTTP, so it reuses the ADR-0030 available-forms pattern (60s TTL,
+  API over HTTP, so it reuses the ADR-0052 available-forms pattern (60s TTL,
   last-known-good, cold-start retries) instead of inventing a second freshness
   model.
 - **`disabled` maps to `preview`, not `draft`** — it gates visibility only;
@@ -74,7 +74,7 @@ consumer gates from the approved plan as parallel, file-disjoint workstreams
 
 ## Open questions
 
-- Accepted gaps (in ADR 0063): `lib/sitemap.ts` and `lib/search.ts` stay
+- Accepted gaps (in ADR 0110): `lib/sitemap.ts` and `lib/search.ts` stay
   frontmatter-only — a DB-disabled page lingers there but its URL 404s.
   Revisit if SEO complains.
 - Operational: the API now honors rows immediately per request — keep

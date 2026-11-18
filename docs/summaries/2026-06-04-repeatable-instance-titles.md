@@ -13,9 +13,9 @@ recipes; instance 1 is never marked.
 - `instanceLabel` on `repeatableBehaviourSchema` + form-builder text param,
   mirroring the `addAnotherLabel` precedent (d185a52a).
 - `getInstanceMarker(step)` in `repeatable-helper.ts` as the single home for
-  marker logic (63ec7046, ADR 0039).
+  marker logic (63ec7046, ADR 0066).
 - Renderer caption / title suffix and review heading suffix (bf71b29c), with
-  the caption moved inside the `<h1>` after review (86c2c7ec, ADR 0038).
+  the caption moved inside the `<h1>` after review (86c2c7ec, ADR 0065).
 - Verified end-to-end in the running app across all three layouts; filed
   #811 for unrelated e2e-suite rot found along the way.
 
@@ -27,7 +27,7 @@ recipes; instance 1 is never marked.
 - **The plan's `~N` → N+1 assumption was wrong for sharedFields recipes.**
   In that layout the base step is a separate shared-values page and `~1` *is*
   instance 1. Orientation against `setupRepeatSteps` caught this before any
-  rendering code was written; the helper is layout-aware (see ADR 0039 — the
+  rendering code was written; the helper is layout-aware (see ADR 0066 — the
   trap, and why all surfaces must go through `getInstanceMarker`).
 - **Label case = caption, fallback = title suffix.** A suffix on a
   plural-phrased title ("Tell us about your dependent(s) — 2") reads
@@ -46,7 +46,7 @@ recipes; instance 1 is never marked.
 
 - Shipping the caption as a sibling above the `<h1>`: visually fine,
   identical accessible names for every instance. Caught in review; fixed per
-  ADR 0038.
+  ADR 0065.
 - Debugging the false e2e FAIL as if it were a marker bug — the systematic
   route (read the served bundle, check who owns the port) resolved it in two
   steps.

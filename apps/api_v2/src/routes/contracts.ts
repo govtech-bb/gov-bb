@@ -1,0 +1,822 @@
+/**
+ * Request and response contracts for every route, in Zod.
+ *
+ * Fastify validates requests and serialises responses with these objects, and
+ * the OpenAPI document is generated from them, so the spec cannot drift from
+ * the behaviour: `openapi.test.ts` snapshots the result into `openapi.json`.
+ */
+
+import type { FastifySchema } from "fastify";
+import { z } from "zod";
+import { isSitePath } from "@govtech-bb/govbbmarkd/content-url";
+import { ServiceDetail, ServiceSummary } from "../modules/estate-services";
+import {
+  CatalogEntry,
+  CategoryListing,
+  CategoryNode,
+  SearchDocument,
+} from "../modules/navigation";
+import { EmployeeView, Role } from "../modules/auth";
+import {
+  EditorPage,
+  NewPage,
+  PageId,
+  ReviewQueueEntry,
+  RevisionComment,
+  RevisionView,
+  SaveFields,
+  SitePageSummary,
+} from "../modules/page";
+import {
+  CategoryBlockers,
+  CategoryFields,
+  CategoryId,
+  CategoryOrder,
+  EditorCategory,
+} from "../modules/category";
+import {
+  CollectionKey,
+  CollectionRecord,
+  EditorCollectionRecord,
+  RecordEnvelope,
+  CollectionSummary,
+  CollectionView,
+  RecordBody,
+  RecordKey,
+} from "../modules/collection";
+import { PageHistoryEntry } from "../modules/page-history";
+import { PublicPage } from "../modules/page-visibility";
+import { EstateVersion } from "../services/editor-index";
+import {
+  expectedVersionFields,
+  ExpectedVersionQuery,
+  VersionCommandBody,
+} from "../modules/edit-concurrency";
+
+/** No credentials, or the preview token. */
+const previewSecurity: Array<Record<string, string[]>> = [
+  {},
+  { previewToken: [] },
+];
+
+/** Site reads: the public's view, or a reviewer's with the preview token. */
+const siteRead = {
+  headers: z.object({
+    "x-preview-token": z
+      .string()
+      .optional()
+      .describe(
+        "The site's PREVIEW_SECRET. With it, `preview` content is served " +
+          "too, uncached (`no-store`); a wrong one is a 401.",
+      ),
+  }),
+  security: previewSecurity,
+};
+
+const error = z.looseObject({
+  error: z.string(),
+  message: z.string().optional(),
+});
+
+const validationFailed = z.looseObject({
+  error: z.literal("validation_failed"),
+  message: z.string().optional(),
+  errors: z.array(z.object({ field: z.string(), message: z.string() })),
+});
+
+const conflict = z.looseObject({
+  error: z.literal("version_conflict"),
+  message: z.string(),
+  documentId: z.guid(),
+});
+
+/** A review step refused because the revision is not in the state it needs. */
+const revisionState = z.object({
+  error: z.enum(["under_review", "not_submitted"]),
+  message: z.string(),
+});
+
+const idParams = z.object({ id: PageId });
+
+const editorSecurity = [{ editorSession: [] }];
+const authErrors = { 401: error, 403: error, 503: error };
+const categoryConflict = z.object({
+  error: z.literal("version_conflict"),
+  message: z.string(),
+});
+const categoryInUse = z.object({
+  error: z.literal("category_in_use"),
+  message: z.string(),
+  blockers: CategoryBlockers,
+});
+const roleParams = z.object({ id: z.string().min(1), role: Role });
+
+const categoryParams = z.object({ id: CategoryId });
+const categoryErrors = {
+  400: error,
+  422: validationFailed.extend({ message: z.string() }),
+  500: error,
+  ...authErrors,
+};
+
+const collectionParams = z.object({ key: CollectionKey });
+const recordParams = z.object({ key: CollectionKey, recordKey: RecordKey });
+const recordConflict = z.object({
+  error: z.enum(["version_conflict", "record_exists"]),
+  message: z.string(),
+});
+const recordErrors = {
+  400: z.union([validationFailed.extend({ message: z.string() }), error]),
+  404: error,
+  500: error,
+  ...authErrors,
+};
+
+/** Request and response contracts shared by serving and documentation. */
+export const SCHEMAS = {
+  getPageByUrl: {
+    summary: "Get a public page by its url",
+    description:
+      "The site's read. A page is served only when it and every page above " +
+      "it (by `parent_id`) are visible: public, or preview too with the " +
+      "preview token. `hide_start_links` is set when the page has `start` " +
+      "sub-pages and none of them is. A stored public redirect takes precedence over a page " +
+      "at its source, including Draft/Preview replacements, and returns 301 " +
+      "with its stored Location and redirect body. Rules persist when the " +
+      "destination is hidden or deleted; following one still applies normal " +
+      "page visibility. With neither a rule nor an exact page, a bare " +
+      "`/<slug>` redirects (301) to the one visible page with that slug.",
+    tags: ["pages"],
+    ...siteRead,
+    // A url no page could have is a 400, not a lookup: some (a NUL) would
+    // fail in Postgres and answer 500.
+    querystring: z.object({
+      url: z
+        .string()
+        .min(1)
+        .max(512)
+        .refine(
+          isSitePath,
+          "Use a site path without backslashes, whitespace or control characters.",
+        ),
+    }),
+    response: {
+      200: PublicPage,
+      301: z.object({ redirect: z.string() }),
+      400: error,
+      401: error,
+      404: error,
+      500: error,
+    },
+  },
+
+  getCategories: {
+    summary: "The categories the site lists",
+    description:
+      "In order, each with its subcategories. A category is listed when it " +
+      "or one of its subcategories has a visible page at its root.",
+    tags: ["categories"],
+    ...siteRead,
+    response: {
+      200: z.object({ categories: z.array(CategoryNode) }),
+      401: error,
+      500: error,
+    },
+  },
+
+  getCategory: {
+    summary: "A category and what it lists",
+    description:
+      "Its subcategories and the visible pages at its root. 404 when it " +
+      "lists nothing.",
+    tags: ["categories"],
+    ...siteRead,
+    params: z.object({ slug: z.string() }),
+    response: {
+      200: CategoryListing,
+      401: error,
+      404: error,
+      500: error,
+    },
+  },
+
+  getSubcategory: {
+    summary: "A subcategory and what it lists",
+    tags: ["categories"],
+    ...siteRead,
+    params: z.object({ category: z.string(), slug: z.string() }),
+    response: {
+      200: CategoryListing,
+      401: error,
+      404: error,
+      500: error,
+    },
+  },
+
+  getCatalog: {
+    summary: "Every visible page",
+    description:
+      "Sub-pages included, `start` steps not, A to Z: for the sitemap and " +
+      "service lists. Each page carries its category, subcategory, form " +
+      "(else its `start` step's) and visibility, so it doubles as the " +
+      "public service index.",
+    tags: ["pages"],
+    ...siteRead,
+    response: {
+      200: z.object({ pages: z.array(CatalogEntry) }),
+      401: error,
+      500: error,
+    },
+  },
+
+  getSearchDocuments: {
+    summary: "What search indexes",
+    description:
+      "Every page the catalog lists, with its keywords and its body as " +
+      "plain-text chunks.",
+    tags: ["search"],
+    ...siteRead,
+    response: {
+      200: z.object({ documents: z.array(SearchDocument) }),
+      401: error,
+      500: error,
+    },
+  },
+
+  getSiteVersion: {
+    summary: "A token that moves whenever content changes",
+    description:
+      "Opaque. The site polls it and drops its cached pages when it moves, " +
+      "so a published change shows within seconds instead of after the " +
+      "pages' max-age. Moves on any change, drafts included.",
+    tags: ["meta"],
+    response: {
+      200: z.object({ version: z.string() }),
+      500: error,
+    },
+  },
+
+  getPage: {
+    summary: "Get a page by id",
+    description:
+      "The editor's read: any visibility, markdown included. A public page " +
+      "with a pending revision is read with the revision laid over it.",
+    tags: ["pages"],
+    params: idParams,
+    security: editorSecurity,
+    response: {
+      200: EditorPage,
+      400: error,
+      404: error,
+      500: error,
+      ...authErrors,
+    },
+  },
+
+  createPage: {
+    summary: "Create a page",
+    description:
+      "Requires an employee session, the editor's Origin header and the " +
+      "editor role (403 otherwise). " +
+      "Creating a page as `public` needs the approver role, and an approver " +
+      "can't make a page they wrote public (403): create it as `preview` or " +
+      "`draft`, and another approver makes it public.",
+    tags: ["pages"],
+    body: NewPage,
+    security: editorSecurity,
+    response: {
+      201: EditorPage,
+      422: validationFailed,
+      500: error,
+      ...authErrors,
+    },
+  },
+
+  savePage: {
+    summary: "Save a page",
+    description:
+      "Requires an employee session, the editor's Origin header and the " +
+      "editor role (403 otherwise). " +
+      "Send every field: a save replaces the page and defaults none, except " +
+      "that leaving `parent_id` out keeps the page's parent. " +
+      "Send the page version you last read as `expected_version`. " +
+      "If the stored row, or the page's pending revision, has moved on since, " +
+      "the save is refused with a 409 rather than silently discarding " +
+      "whoever wrote first. Changing `url` " +
+      "moves this page alone: its sub-pages keep their urls and stay beneath " +
+      "it by `parent_id`, and nothing redirects from the old url. " +
+      "Changing `visibility` needs the approver role (403 otherwise). " +
+      "Making a page public is refused (403) to an approver who changed its " +
+      "content since it was last public, in this save or before: another " +
+      "approver makes it public. " +
+      "A save that keeps a `public` page public, whoever sends it, goes into " +
+      "the page's pending revision: citizens keep seeing the live page until " +
+      "an approver publishes it. An approver's save that takes a `public` page out of " +
+      "public view changes only its `visibility`: the other fields sent " +
+      "are ignored, the live content stays, and the page's open revision " +
+      "is discarded: a draft is dropped, and one waiting for review is " +
+      "closed as `discarded`, which the page's history records. A save to " +
+      "a page whose revision is waiting for review updates that revision, " +
+      "which stays waiting; the saver joins its `contributors`, so may not " +
+      "approve it. A stale version receives 409 `version_conflict`. " +
+      "Returns the page as the editor now works on it.",
+    tags: ["pages"],
+    params: idParams,
+    body: SaveFields.extend(expectedVersionFields),
+    security: editorSecurity,
+    response: {
+      200: EditorPage,
+      400: error,
+      404: error,
+      409: conflict,
+      422: validationFailed,
+      500: error,
+      ...authErrors,
+    },
+  },
+
+  getPageHistory: {
+    summary: "Get a page's history",
+    description:
+      "What happened to the page, newest first, from `change_events`: each " +
+      "change to the live page with the fields it changed, and each review " +
+      "step, with who did it and when. A restore adds a `reverted` entry " +
+      "naming the version it restored in `restored_from`; it never removes " +
+      "one. 404 when the page has no history.",
+    tags: ["pages"],
+    params: idParams,
+    security: editorSecurity,
+    response: {
+      200: z.object({ entries: z.array(PageHistoryEntry) }),
+      400: error,
+      404: error,
+      500: error,
+      ...authErrors,
+    },
+  },
+  restorePageVersion: {
+    summary: "Restore a version from a page's history",
+    description:
+      "Requires an employee session, the editor's Origin header and the " +
+      "editor role (403 otherwise). Saves the page's fields as history " +
+      "entry `version` left them over the page as it stands now, keeping " +
+      "its current `visibility`, so the restore is a new change and every " +
+      "earlier entry stays (ADR 0135). It is a save in every other way: " +
+      "a page that isn't `public` is written, and its history gains a " +
+      "`reverted` entry with `restored_from`; a `public` page's restore " +
+      "goes into its pending revision, to be submitted and approved like " +
+      "any other change. Send the page version you last read as " +
+      "`expected_version`: a page changed since is a 409 " +
+      "`version_conflict`. 404 when there is no such page or version; 409 " +
+      "`not_restorable` for a review step, a deletion, a redacted entry or " +
+      "one recorded before the page's current fields. Returns the page as " +
+      "the editor now works on it.",
+    tags: ["pages"],
+    params: idParams.extend({ version: z.coerce.number().int().positive() }),
+    body: VersionCommandBody,
+    security: editorSecurity,
+    response: {
+      200: EditorPage,
+      400: error,
+      404: error,
+      409: z.union([
+        conflict,
+        z.object({ error: z.literal("not_restorable"), message: z.string() }),
+      ]),
+      422: validationFailed,
+      500: error,
+      ...authErrors,
+    },
+  },
+  getRevision: {
+    summary: "Get a page's pending revision",
+    description:
+      "The change to a `public` page that is waiting for an approver: a " +
+      "draft, or one submitted for review. A rejected one is returned " +
+      "until a save starts a new draft, or the live page changes. " +
+      "`changes` lists the fields it changes against the live page. 404 " +
+      "when the page has none.",
+    tags: ["pages"],
+    params: idParams,
+    security: editorSecurity,
+    response: {
+      200: RevisionView,
+      400: error,
+      404: error,
+      500: error,
+      ...authErrors,
+    },
+  },
+
+  listRevisions: {
+    summary: "List the changes waiting for review",
+    description:
+      "Any signed-in employee, as for other reads: editors see what waits, " +
+      "and approvers, who may hold no other role, what to review. Every " +
+      "revision submitted for " +
+      "review and not yet published or rejected, the longest-waiting first, " +
+      "with its page and who submitted it. Read one with " +
+      "`GET /pages/{id}/revision` to compare it with the live page.",
+    tags: ["pages"],
+    querystring: z.object({
+      status: z
+        .enum(["submitted"])
+        .describe("Which revisions: only `submitted` is listed."),
+    }),
+    security: editorSecurity,
+    response: {
+      200: z.object({ revisions: z.array(ReviewQueueEntry) }),
+      400: error,
+      500: error,
+      ...authErrors,
+    },
+  },
+
+  submitRevision: {
+    summary: "Submit a page's draft revision for review",
+    description:
+      "Needs the editor role (403 otherwise). Records the submitter, who " +
+      "may not then approve it. 404 when the page has no draft revision; " +
+      "409 `under_review` when it is already submitted, or `version_conflict` when " +
+      "the required page `expected_version` is stale. Saves made while it " +
+      "waits update it, and it keeps waiting. A rejected revision can be submitted again " +
+      "as it is: it is copied into a new submitted revision with the same " +
+      "`updated_at`, and the rejected one keeps its comment. The copy's " +
+      "`contributors` gain the rejected round's submitter, who may not " +
+      "approve it either.",
+    tags: ["pages"],
+    params: idParams,
+    body: VersionCommandBody,
+    security: editorSecurity,
+    response: {
+      200: RevisionView,
+      400: error,
+      404: error,
+      409: z.union([conflict, revisionState]),
+      500: error,
+      ...authErrors,
+    },
+  },
+
+  rejectRevision: {
+    summary: "Reject a submitted revision with a comment",
+    description:
+      "Needs the approver role, and the approver must not have changed or " +
+      "submitted the revision (403 otherwise). The live page is unchanged; " +
+      "the revision is kept with the comment, and the next save starts a " +
+      "new draft from it. Rejecting moves the page version, so " +
+      "an editor holding the earlier one reloads and sees why. " +
+      "The page `expected_version` is required. 404 when nothing is " +
+      "waiting for review; 409 `not_submitted` for a draft, or `version_conflict` " +
+      "when the page is no longer the version reviewed.",
+    tags: ["pages"],
+    params: idParams,
+    body: z.object({
+      ...expectedVersionFields,
+      comment: RevisionComment.describe("Why, for the editor."),
+    }),
+    security: editorSecurity,
+    response: {
+      200: RevisionView,
+      400: error,
+      404: error,
+      409: z.union([conflict, revisionState]),
+      500: error,
+      ...authErrors,
+    },
+  },
+
+  publishRevision: {
+    summary: "Approve a submitted revision and publish it",
+    description:
+      "Needs the approver role, and the approver must not have changed or " +
+      "submitted the revision (403 otherwise). Writes the revision to the " +
+      "live page as a save would, re-indexes it and records the approver " +
+      "in `change_events`, all in one transaction. A revision that has gone " +
+      "stale while it waited (its parent or category gone, or its url " +
+      "taken) is refused with a 422 naming the field, and nothing changes. " +
+      "The page `expected_version` is required. 404 when nothing is " +
+      "waiting for review; 409 `not_submitted` for a draft, or `version_conflict` " +
+      "when the page is no longer the version reviewed. " +
+      "Returns the page as it now stands.",
+    tags: ["pages"],
+    params: idParams,
+    body: VersionCommandBody,
+    security: editorSecurity,
+    response: {
+      200: EditorPage,
+      400: error,
+      404: error,
+      409: z.union([conflict, revisionState]),
+      422: validationFailed,
+      500: error,
+      ...authErrors,
+    },
+  },
+
+  deletePage: {
+    summary: "Delete a page",
+    description:
+      "Requires an employee session, the editor's Origin header and the " +
+      "editor role (403 otherwise). A page with sub-pages is refused (422) " +
+      "until they are moved or deleted. " +
+      "Deleting a `public` page needs the approver role (403 otherwise). " +
+      "Its pending revision goes with it. Send `expected_version` in the query " +
+      "string: stale is 409 `version_conflict`, and absent is 404.",
+    tags: ["pages"],
+    params: idParams,
+    querystring: ExpectedVersionQuery,
+    security: editorSecurity,
+    response: {
+      204: z.undefined(),
+      400: error,
+      404: error,
+      409: conflict,
+      422: validationFailed,
+      500: error,
+      ...authErrors,
+    },
+  },
+
+  pagePaths: {
+    summary: "List internal page link targets",
+    description:
+      "Every stored page path, including drafts, previews and uncategorised pages, " +
+      "plus unambiguous bare-slug redirects. For editor link checks, not a promise " +
+      "that a page is public. Requires an employee session.",
+    tags: ["pages"],
+    security: editorSecurity,
+    response: { 200: z.array(z.string()), 500: error, ...authErrors },
+  },
+
+  listSitePages: {
+    summary: "List site pages",
+    description:
+      "Uncategorised root pages, ordered by title, in every visibility. " +
+      "Uses stored live metadata, not pending revisions. Requires an employee session.",
+    tags: ["pages"],
+    security: editorSecurity,
+    response: {
+      200: z.object({ pages: z.array(SitePageSummary) }),
+      500: error,
+      ...authErrors,
+    },
+  },
+
+  listServices: {
+    summary: "List services",
+    description:
+      "The editor's index, ordered by title. A categorised page at the root " +
+      "of its category is an entry, and every page beneath it by " +
+      "`parent_id` belongs to it.",
+    tags: ["pages"],
+    security: editorSecurity,
+    response: { 200: z.array(ServiceSummary), 500: error, ...authErrors },
+  },
+
+  getService: {
+    summary: "Open a service",
+    description:
+      "Its entry page and every page below it by `parent_id`, each before " +
+      "the pages below it. 404 when the page is not a service's entry.",
+    tags: ["pages"],
+    params: idParams,
+    security: editorSecurity,
+    response: {
+      200: ServiceDetail,
+      400: error,
+      404: error,
+      500: error,
+      ...authErrors,
+    },
+  },
+
+  editorCategories: {
+    summary:
+      "Every shared category, including empty categories and private service counts",
+    tags: ["categories"],
+    security: editorSecurity,
+    response: {
+      200: z.object({ categories: z.array(EditorCategory) }),
+      500: error,
+      ...authErrors,
+    },
+  },
+  createCategory: {
+    summary: "Append a category or subcategory",
+    description:
+      "Needs the approver role (403 otherwise), so landing shows only " +
+      "category changes an approver made.",
+    tags: ["categories"],
+    security: editorSecurity,
+    body: CategoryFields,
+    response: { 201: EditorCategory, ...categoryErrors },
+  },
+  updateCategory: {
+    summary: "Edit a category using its last-read version",
+    description:
+      "Needs the approver role (403 otherwise), so landing shows only " +
+      "category changes an approver made.",
+    tags: ["categories"],
+    security: editorSecurity,
+    params: categoryParams,
+    body: CategoryFields.extend(expectedVersionFields),
+    response: {
+      200: EditorCategory,
+      404: error,
+      409: categoryConflict,
+      ...categoryErrors,
+    },
+  },
+  orderCategories: {
+    summary: "Atomically reorder a complete, versioned sibling snapshot",
+    description:
+      "Needs the approver role (403 otherwise), so landing shows only " +
+      "category changes an approver made.",
+    tags: ["categories"],
+    security: editorSecurity,
+    body: CategoryOrder,
+    response: {
+      200: z.object({ categories: z.array(EditorCategory) }),
+      409: categoryConflict,
+      ...categoryErrors,
+    },
+  },
+  deleteCategory: {
+    summary: "Delete an empty, unanchored category using its last-read version",
+    description:
+      "Needs the approver role (403 otherwise), so landing shows only " +
+      "category changes an approver made.",
+    tags: ["categories"],
+    security: editorSecurity,
+    params: categoryParams,
+    querystring: ExpectedVersionQuery,
+    response: {
+      204: z.undefined(),
+      400: error,
+      404: error,
+      409: z.union([categoryConflict, categoryInUse]),
+      500: error,
+      ...authErrors,
+    },
+  },
+
+  listCollections: {
+    summary: "Every data collection, with its field list and record count",
+    description:
+      "A collection keeps facts many pages repeat, such as a department's " +
+      "phone number, as records. `schema.fields` is what a record may hold. " +
+      "Field lists are set by developers; editors change records.",
+    tags: ["collections"],
+    security: editorSecurity,
+    response: {
+      200: z.object({ collections: z.array(CollectionSummary) }),
+      500: error,
+      ...authErrors,
+    },
+  },
+
+  getCollectionRecords: {
+    summary: "A data collection and its records",
+    description:
+      "Public: the site and the editor both read it. Records are ordered by " +
+      "`record_key`. 404 when there is no such collection.",
+    tags: ["collections"],
+    ...siteRead,
+    params: collectionParams,
+    response: {
+      200: z.object({
+        collection: CollectionView,
+        records: z.array(CollectionRecord),
+      }),
+      400: error,
+      401: error,
+      404: error,
+      500: error,
+    },
+  },
+
+  getRecord: {
+    summary: "A record and its definition from one editor snapshot",
+    tags: ["collections"],
+    security: editorSecurity,
+    params: recordParams,
+    response: { 200: RecordEnvelope, ...recordErrors },
+  },
+
+  createRecord: {
+    summary: "Add a record to a collection",
+    description:
+      "Needs the editor role (403 otherwise). `data` is checked against the " +
+      "collection's field list: a field it does not have, or a value of the " +
+      "wrong kind, is a 400 `validation_failed` naming the field. 404 when " +
+      "there is no such collection; 409 `record_exists` when the record key " +
+      "is taken.",
+    tags: ["collections"],
+    security: editorSecurity,
+    params: recordParams,
+    body: RecordBody,
+    response: {
+      201: EditorCollectionRecord,
+      409: recordConflict,
+      ...recordErrors,
+    },
+  },
+
+  saveRecord: {
+    summary: "Replace a record's data",
+    description:
+      "Needs the editor role (403 otherwise). Send every field to keep: " +
+      "the record becomes `data`. Checked as a create is. Send the " +
+      "record's `expected_version`; stale is 409 `version_conflict`. 404 when " +
+      "there is no such collection or record.",
+    tags: ["collections"],
+    security: editorSecurity,
+    params: recordParams,
+    body: RecordBody.extend(expectedVersionFields),
+    response: {
+      200: RecordEnvelope,
+      409: recordConflict,
+      ...recordErrors,
+    },
+  },
+
+  deleteRecord: {
+    summary: "Delete a record",
+    description:
+      "Needs the editor role (403 otherwise). Send the record `expected_version` " +
+      "in the query: stale is 409 `version_conflict`. 404 " +
+      "when there is no such collection or record.",
+    tags: ["collections"],
+    security: editorSecurity,
+    params: recordParams,
+    querystring: ExpectedVersionQuery,
+    response: {
+      204: z.undefined(),
+      409: recordConflict,
+      ...recordErrors,
+    },
+  },
+
+  me: {
+    summary: "The signed-in employee and their roles",
+    tags: ["auth"],
+    security: editorSecurity,
+    response: { 200: EmployeeView, ...authErrors },
+  },
+
+  listEmployees: {
+    summary: "Everyone who has signed in, with their roles",
+    description: "Needs the admin role (403 otherwise).",
+    tags: ["admin"],
+    security: editorSecurity,
+    response: {
+      200: z.object({ employees: z.array(EmployeeView) }),
+      500: error,
+      ...authErrors,
+    },
+  },
+  grantRole: {
+    summary: "Grant an employee a role",
+    description:
+      "Needs the admin role (403 otherwise). Records the admin as the " +
+      "grantor; a role already held is left as it was. 404 for someone " +
+      "who has never signed in.",
+    tags: ["admin"],
+    security: editorSecurity,
+    params: roleParams,
+    response: {
+      204: z.undefined(),
+      400: error,
+      404: error,
+      500: error,
+      ...authErrors,
+    },
+  },
+  revokeRole: {
+    summary: "Revoke an employee's role",
+    description:
+      "Needs the admin role (403 otherwise). It applies to their next " +
+      "request. A role they do not hold is not an error.",
+    tags: ["admin"],
+    security: editorSecurity,
+    params: roleParams,
+    response: { 204: z.undefined(), 400: error, 500: error, ...authErrors },
+  },
+
+  version: {
+    summary: "A version token for recorded content changes",
+    description:
+      "`change_events` records every page, category and collection record " +
+      "change, and each " +
+      "review step of a page's revision. Its count " +
+      "and newest timestamp identify those changes without reading the content.",
+    tags: ["meta"],
+    security: editorSecurity,
+    response: {
+      ...authErrors,
+      200: EstateVersion,
+      500: error,
+    },
+  },
+} satisfies Record<string, FastifySchema>;
