@@ -34,7 +34,7 @@ import { createPortal } from "react-dom";
 import { cn } from "../../cn";
 import { rankActions } from "@/editor";
 import { Button } from "../../ui/button";
-import { Calendar } from "../../ui/calendar";
+import { Calendar } from "../../ui/calendar-lazy";
 import { formatDay, parseDay, shortDate } from "../model/dates";
 import { Pill, pill, pillChevron, pillIcon } from "../../ui/pill";
 import { Menu } from "../../ui/menu";
