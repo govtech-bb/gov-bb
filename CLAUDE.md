@@ -143,12 +143,32 @@ Don't list "step 1, step 2, step 3" in one issue or in a steps comment. That
 leads to "Part of #N" PRs, and the issue stays open with no clear record of
 what is left (#3256 and #3716).
 
-- Make the issue a **parent**. Give each step, or each area the work touches
-  (for example the api_v2 import, then landing search, then the sitemap), its
-  own **sub-issue**. Use GitHub sub-issues, not a checklist.
-- Give each sub-issue one area, its own labels and its own "Done when". One PR
-  must be able to complete it with `Closes #N`.
-- The parent's "Done when" is "all sub-issues are closed".
+Issues come in three tiers, and each is a sub-issue of the tier above it. A
+parent is not always an epic: pick the tier from the size and purpose of the
+work, not from whether it has sub-issues.
+
+| Tier    | Label and template                   | Purpose                                                                                                             | Size                                          | Example                                                                            |
+| ------- | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------- | --------------------------------------------- | ---------------------------------------------------------------------------------- |
+| Epic    | `EPIC`, Epic template                | A large body of work tied to one meaningful outcome                                                                 | Several sprints, often months; may span teams | "Let citizens renew their driving licence online"                                  |
+| Story   | `user-story`, title starts `[STORY]` | Value for one kind of user: "As a …, I want …, so that …". It says what the user needs and why, not how to build it | One sprint                                    | "As a driver, I want to pay by debit card so that I don't have to visit an office" |
+| Feature | `feature`, Feature template          | One deliverable change, written for the team: a technical or practical step towards a story                         | Hours to a few days; **one PR**               | "Integrate the payment gateway API"                                                |
+
+A feature here is the unit Agile calls a task. Agile's own "feature" tier,
+between epic and story, is not used in this repo.
+
+- Only a feature is closed by a PR. If the work needs more than one PR, it is a
+  story or an epic: give each step, or each area the work touches (for example
+  the api_v2 import, then landing search, then the sitemap), its own feature
+  sub-issue. Use GitHub sub-issues, not a checklist.
+- If the issue you are splitting is already a sub-issue (for example feature
+  #3256 under story #3280), don't nest another level. Open the steps as sibling
+  features under the same parent, and close the original as split.
+- Give each feature one area, its own labels and its own "Acceptance
+  criteria". One PR must be able to complete it with `Closes #N`.
+- An epic is done when all its sub-issues are closed; the sub-issue progress
+  bar shows this, so it needs no acceptance criteria of its own. A story's
+  acceptance criteria describe what the user can do, and it closes when they
+  hold and all its features are closed.
 - Attach a sub-issue with its numeric id, not its number:
 
   ```bash
