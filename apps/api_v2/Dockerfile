@@ -59,8 +59,10 @@ RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store,uid=1001,gid=1001 \
 # migrate step.
 FROM node:24.22-alpine3.23@sha256:9b69af715c7f9d038150b54ccccbaeffa9064bbc93e2904c29591ca097316af1 AS runner
 
-# Alpine security patches ahead of the base image's rebuild cadence.
-RUN apk upgrade --no-cache
+# Alpine security patches ahead of the base image's rebuild cadence. The date
+# busts BuildKit's layer cache; bump it when an Alpine fix must land (see
+# apps/api/Dockerfile).
+RUN apk upgrade --no-cache # refreshed 2026-11-18
 
 # npm, corepack and node's OpenSSL headers are unused here and flagged by
 # AWS Inspector (see apps/api/Dockerfile).
