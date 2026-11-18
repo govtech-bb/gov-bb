@@ -27,12 +27,19 @@ function origin(name: string, value: string | undefined): string {
   return new URL(value.trim()).origin
 }
 
+/** An origin and its base path, such as api_v2's `/v2` (#3745), with no trailing slash. */
+function baseUrl(name: string, value: string | undefined): string {
+  if (!value?.trim()) throw new Error(`${name} is required (no default)`)
+  const url = new URL(value.trim())
+  return `${url.origin}${url.pathname.replace(/\/+$/, '')}`
+}
+
 export function readSmokeEnv(
   env: Record<string, string | undefined>,
 ): SmokeEnv {
   return {
     landing: origin('SMOKE_LANDING_URL', env.SMOKE_LANDING_URL),
-    apiV2: origin('SMOKE_API_V2_URL', env.SMOKE_API_V2_URL),
+    apiV2: baseUrl('SMOKE_API_V2_URL', env.SMOKE_API_V2_URL),
     forms: origin('SMOKE_FORMS_URL', env.SMOKE_FORMS_URL),
     formsApi: origin('SMOKE_FORMS_API_URL', env.SMOKE_FORMS_API_URL),
   }

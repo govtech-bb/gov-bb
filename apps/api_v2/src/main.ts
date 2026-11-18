@@ -176,6 +176,7 @@ async function main(): Promise<void> {
       config: {
         apiOrigin: config.auth.apiOrigin,
         editorOrigin: config.auth.editorOrigin,
+        basePath: config.auth.apiBasePath,
       },
       ...(config.previewSecret ? { previewSecret: config.previewSecret } : {}),
       ...(config.landingSecret ? { landingSecret: config.landingSecret } : {}),

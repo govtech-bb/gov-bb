@@ -48,7 +48,9 @@ export function betterAuthOptions(
   return {
     appName: "GovBB service editor",
     baseURL: config.apiOrigin,
-    basePath: "/api/auth",
+    // Under the API's own base path. better-auth ignores basePath when
+    // baseURL has a path, so baseURL stays the bare origin.
+    basePath: `${config.apiBasePath}/api/auth`,
     secret: config.secret.reveal(),
     // The adapter defaults to no transactions; a first sign-in must insert its
     // user and account together or not at all.
