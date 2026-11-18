@@ -46,6 +46,6 @@ jobs:
         env:
           # Equals sandbox api_v2's PREVIEW_SECRET (see landing-v2-smoke.yml).
           PREVIEW_SECRET: ${{ secrets.RECIPE_PREVIEW_TOKEN }}
-          API_URL: https://api-v2.sandbox.alpha.gov.bb
+          API_URL: https://api.sandbox.alpha.gov.bb/v2
           FORMS_API: https://forms.api.sandbox.alpha.gov.bb
         run: pnpm --filter @govtech-bb/api-v2 check-import --base-url "$API_URL" --forms-api "$FORMS_API"
