@@ -88,13 +88,29 @@ export async function fetchCatalogUrls(
   return urls
 }
 
-/** The pages #3140 checks: the pinned floor plus the catalog. */
+/**
+ * Landing's feature-route pages, one per `src/routes/<url>/-meta.ts` (the same
+ * files build-seed-data.ts reads). api_v2 lists them (#3256) so search and
+ * listings find them, but landing renders them from their own routes, so they
+ * never carry `x-content-source` (#3759). Takes paths relative to `src/routes`.
+ */
+export function featureRouteUrls(routeFiles: string[]): string[] {
+  return routeFiles
+    .map((file) => file.replaceAll('\\', '/'))
+    .filter((file) => file.endsWith('/-meta.ts'))
+    .map((file) => `/${file.slice(0, -'/-meta.ts'.length)}`)
+}
+
+/** The pages #3140 checks: the pinned floor plus the catalog, less `skip`. */
 export async function pagesToCheck(
   apiV2: string,
   fetchImpl: Fetch = fetch,
+  skip: string[] = [],
 ): Promise<string[]> {
   const catalog = await fetchCatalogUrls(apiV2, fetchImpl)
-  return [...new Set([...PINNED_PAGES, ...catalog])]
+  return [...new Set([...PINNED_PAGES, ...catalog])].filter(
+    (url) => !skip.includes(url),
+  )
 }
 
 /** One api_v2 page, or null when api_v2 has none at that URL (404). */
