@@ -147,14 +147,15 @@ Issues come in three tiers, and each is a sub-issue of the tier above it. A
 parent is not always an epic: pick the tier from the size and purpose of the
 work, not from whether it has sub-issues.
 
-| Tier    | Label and template                   | Purpose                                                                                                             | Size                                          | Example                                                                            |
-| ------- | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------- | --------------------------------------------- | ---------------------------------------------------------------------------------- |
-| Epic    | `EPIC`, Epic template                | A large body of work tied to one meaningful outcome                                                                 | Several sprints, often months; may span teams | "Let citizens renew their driving licence online"                                  |
-| Story   | `user-story`, title starts `[STORY]` | Value for one kind of user: "As a …, I want …, so that …". It says what the user needs and why, not how to build it | One sprint                                    | "As a driver, I want to pay by debit card so that I don't have to visit an office" |
-| Feature | `feature`, Feature template          | One deliverable change, written for the team: a technical or practical step towards a story                         | Hours to a few days; **one PR**               | "Integrate the payment gateway API"                                                |
+| Tier    | Label and template                           | Purpose                                                                                                             | Size                                          | Example                                                                            |
+| ------- | -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- | --------------------------------------------- | ---------------------------------------------------------------------------------- |
+| Epic    | `EPIC`, Epic template                        | A large body of work tied to one meaningful outcome                                                                 | Several sprints, often months; may span teams | "Let citizens renew their driving licence online"                                  |
+| Story   | `user-story`, title starts `[STORY]`         | Value for one kind of user: "As a …, I want …, so that …". It says what the user needs and why, not how to build it | One sprint                                    | "As a driver, I want to pay by debit card so that I don't have to visit an office" |
+| Feature | Feature template, then add `feature` by hand | One deliverable change, written for the team: a technical or practical step towards a story                         | Hours to a few days; **one PR**               | "Integrate the payment gateway API"                                                |
 
 A feature here is the unit Agile calls a task. Agile's own "feature" tier,
-between epic and story, is not used in this repo.
+between epic and story, is not used in this repo. The Feature
+template applies `enhancement` but not `feature`, so add `feature` yourself.
 
 - Only a feature is closed by a PR. If the work needs more than one PR, it is a
   story or an epic: give each step, or each area the work touches (for example
