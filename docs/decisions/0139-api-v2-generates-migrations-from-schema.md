@@ -1,7 +1,7 @@
 # 0139. api_v2 generates migrations from schema.ts
 
 **Date:** 2026-11-16
-**Status:** Proposed in [PR #3742](https://github.com/govtech-bb/gov-bb/pull/3742)
+**Status:** Accepted in [PR #3742](https://github.com/govtech-bb/gov-bb/pull/3742)
 
 ## Context
 

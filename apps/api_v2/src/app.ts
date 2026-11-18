@@ -27,8 +27,8 @@ import type { PageEditing } from "./services/page-editing";
 import type { PageResolution } from "./services/page-resolution";
 import type { SiteNavigation } from "./services/site-navigation";
 
-/** A Scalar reference page over the generated spec. */
-const DOCS_HTML = `<!doctype html>
+/** A Scalar reference page over the generated spec, served under `basePath`. */
+const docsHtml = (basePath: string) => `<!doctype html>
 <html>
   <head>
     <title>api_v2</title>
@@ -36,7 +36,7 @@ const DOCS_HTML = `<!doctype html>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
   </head>
   <body>
-    <script id="api-reference" data-url="/docs/openapi.json"></script>
+    <script id="api-reference" data-url="${basePath}/docs/openapi.json"></script>
     <script
       src="https://cdn.jsdelivr.net/npm/@scalar/api-reference@1.73.0/dist/browser/standalone.js"
       integrity="sha384-OKyMdsDX84ypSZEhVun8YElXk5c2GQaH3EXPOc6ItmVcLDUAvKHYwvDLvAgsqVtB"
@@ -64,6 +64,8 @@ export interface AppOptions {
   readonly config: {
     readonly apiOrigin: string;
     readonly editorOrigin: string;
+    /** Where every route is mounted: "" for the root, or e.g. "/v2" (#3745). */
+    readonly basePath?: string;
   };
   /** The site's preview token; without it, preview reads are refused. */
   readonly previewSecret?: Redacted<string>;
@@ -102,6 +104,7 @@ class RequestLog extends LogController {
 /** Construct HTTP transport around explicit application capabilities. */
 export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
   const { logger, config } = options;
+  const basePath = config.basePath ?? "";
   const app = Fastify({
     // The ALB is the only peer with a private address, so request.ip is the
     // client it forwards; a numeric hop count is disabled since Fastify 5.12.1.
@@ -123,20 +126,6 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
     openapi: OPENAPI_DOCUMENT,
     transform: jsonSchemaTransform,
   });
-  app.get("/docs/openapi.json", { schema: { hide: true } }, async () =>
-    app.swagger(),
-  );
-  app.get("/docs", { schema: { hide: true } }, async (_request, reply) =>
-    reply.type("text/html; charset=utf-8").send(DOCS_HTML),
-  );
-  app.get("/health", { schema: { hide: true } }, async () => ({
-    status: "ok",
-  }));
-  app.get("/health/db", { schema: { hide: true } }, async (_request, reply) =>
-    (await options.ready())
-      ? { status: "ok" }
-      : reply.status(503).send({ error: "database_unavailable" }),
-  );
 
   app.setErrorHandler((error: FastifyError, request, reply) => {
     // Fastify's own refusals (invalid JSON, wrong content type, too large,
@@ -163,25 +152,49 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
     }),
   );
 
-  await app.register(siteRoutes, {
-    resolution: options.resolution,
-    navigation: options.navigation,
-    collections: options.collections,
-    previewSecret: options.previewSecret,
-    landingSecret: options.landingSecret,
-  });
-  await app.register(editorRoutes, {
-    editing: options.editing,
-    index: options.index,
-    categories: options.categories,
-    collections: options.collections,
-    access: options.access,
-    roles: options.roles,
-    editorOrigin: config.editorOrigin,
-  });
-  await app.register(authRoutes, {
-    auth: options.auth,
-    apiOrigin: config.apiOrigin,
-  });
+  // Every route sits under the base path, and nothing answers at the root
+  // when there is one: the host's other paths belong to another API (#3745).
+  await app.register(
+    async (api) => {
+      api.get("/docs/openapi.json", { schema: { hide: true } }, async () =>
+        app.swagger(),
+      );
+      api.get("/docs", { schema: { hide: true } }, async (_request, reply) =>
+        reply.type("text/html; charset=utf-8").send(docsHtml(basePath)),
+      );
+      api.get("/health", { schema: { hide: true } }, async () => ({
+        status: "ok",
+      }));
+      api.get(
+        "/health/db",
+        { schema: { hide: true } },
+        async (_request, reply) =>
+          (await options.ready())
+            ? { status: "ok" }
+            : reply.status(503).send({ error: "database_unavailable" }),
+      );
+      await api.register(siteRoutes, {
+        resolution: options.resolution,
+        navigation: options.navigation,
+        collections: options.collections,
+        previewSecret: options.previewSecret,
+        landingSecret: options.landingSecret,
+      });
+      await api.register(editorRoutes, {
+        editing: options.editing,
+        index: options.index,
+        categories: options.categories,
+        collections: options.collections,
+        access: options.access,
+        roles: options.roles,
+        editorOrigin: config.editorOrigin,
+      });
+      await api.register(authRoutes, {
+        auth: options.auth,
+        apiOrigin: config.apiOrigin,
+      });
+    },
+    { prefix: basePath },
+  );
   return app;
 }

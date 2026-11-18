@@ -1,7 +1,7 @@
 name: Deploy editor_v2 to Sandbox
 
 # Builds apps/editor_v2 on its Amplify app, gov-bb-editor-v2-sandbox
-# (https://editor-v2.sandbox.alpha.gov.bb). Infrastructure: alpha-infra
+# (https://editor.sandbox.alpha.gov.bb, #3745). Infrastructure: alpha-infra
 # environments/sandbox/modular-forms-sandbox/amplify-editor-v2.tf (gov-bb#2962).
 #
 # The editor builds from the Amplify app's `sandbox` branch, which has
@@ -39,7 +39,7 @@ env:
   AWS_ROLE_ARN: arn:aws:iam::672203047922:role/api-v2-github-actions-sandbox
   AMPLIFY_APP_ID: d2bjaphcrcz9hl
   AMPLIFY_BRANCH: sandbox
-  APP_URL: https://editor-v2.sandbox.alpha.gov.bb
+  APP_URL: https://editor.sandbox.alpha.gov.bb
 
 jobs:
   deploy:

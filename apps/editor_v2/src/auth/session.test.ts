@@ -22,11 +22,33 @@ describe("authentication boundaries", () => {
       "",
       "http://api.govtech.bb",
       "https://user:secret@api.govtech.bb",
-      "https://api.govtech.bb/path",
       "https://api.govtech.bb?key=x",
       "https://api.govtech.bb#x",
     ]) {
       expect(parseApiOrigin(value, true).ok).toBe(false);
+    }
+  });
+
+  it("takes a base path on the API URL, such as /v2 (#3745)", () => {
+    for (const value of [
+      "https://api.staging.alpha.gov.bb/v2",
+      "https://api.staging.alpha.gov.bb/v2/",
+    ])
+      expect(parseApiOrigin(value, true)).toEqual({
+        ok: true,
+        value: "https://api.staging.alpha.gov.bb/v2",
+      });
+
+    for (const value of [
+      "http://api.govtech.bb/v2",
+      "https://user:secret@api.govtech.bb/v2",
+      "https://api.govtech.bb/v2?key=x",
+      "https://api.govtech.bb/v2#x",
+      "https://api.govtech.bb//v2",
+      "https://api.govtech.bb/v2/../admin",
+      "https://api.govtech.bb/v%32",
+    ]) {
+      expect(parseApiOrigin(value, true).ok, value).toBe(false);
     }
   });
 

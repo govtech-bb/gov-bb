@@ -131,12 +131,6 @@ const KNOWN: Array<{ why: string; field: Field; urls: string[] }> = [
     ],
   },
   {
-    // The markdown names two categories; a page has one `category_id` (#3242).
-    why: '#3242',
-    field: 'categories',
-    urls: ['money-financial-support/calculate-severance-pay'],
-  },
-  {
     // `description: ''` in the markdown; api_v2 omits a falsy description.
     // Landing treats '' and undefined alike, so nothing renders differently.
     why: "description '' vs absent",

@@ -6,7 +6,6 @@ service_type: digital
 publish_date: 2026-05-12
 categories:
   - money-financial-support
-  - work-employment
 keywords:
   - redundancy pay
   - redundancy payment

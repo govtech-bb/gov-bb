@@ -125,6 +125,41 @@ describe("GET /health", () => {
   });
 });
 
+describe("under a base path (#3745)", () => {
+  it("answers every route under it and nothing at the root", async () => {
+    const requests: string[] = [];
+    const prefixed = await createTestApp(db, {
+      config: { ...TEST_HTTP_CONFIG, basePath: "/v2" },
+      auth: {
+        handle: async (request) => {
+          requests.push(request.url);
+          return Response.json({ ok: true });
+        },
+      },
+    });
+    try {
+      for (const url of ["/v2/health", "/v2/health/db", "/v2/docs"])
+        expect((await prefixed.inject({ url })).statusCode, url).toBe(200);
+      for (const url of ["/health", "/docs", "/api/auth/get-session"])
+        expect((await prefixed.inject({ url })).statusCode, url).toBe(404);
+      const docs = await prefixed.inject({ url: "/v2/docs" });
+      expect(docs.body).toContain('data-url="/v2/docs/openapi.json"');
+      const spec = await prefixed.inject({ url: "/v2/docs/openapi.json" });
+      expect(Object.keys(spec.json().paths)).toContain("/v2/pages");
+      const auth = await prefixed.inject({
+        url: "/v2/api/auth/get-session",
+        headers: TEST_HEADERS,
+      });
+      expect(auth.statusCode).toBe(200);
+      expect(requests).toEqual([
+        "http://localhost:3020/v2/api/auth/get-session",
+      ]);
+    } finally {
+      await prefixed.close();
+    }
+  });
+});
+
 describe("GET /pages?url=", () => {
   it("400s when url is missing", async () => {
     const response = await inject({ url: "/pages" });
