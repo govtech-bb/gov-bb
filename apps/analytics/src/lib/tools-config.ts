@@ -6,7 +6,7 @@ import type { ToolId } from '@govtech-bb/umami-analytics'
  * extended by adding a row here, not by editing the component/shaper.
  *
  * Each tool spans one or more landing routes:
- * - `id` — the `tool` value the tool sends in its `tool-*` events (ADR 0079),
+ * - `id` — the `tool` value the tool sends in its `tool-*` events (ADR 0138),
  *   which the row's event metrics are filtered by.
  * - `prefix` — every landing URL under this prefix rolls up into the tool
  *   (e.g. the shelter finder's `/find` and `/guidance` sub-pages).

@@ -1,0 +1,494 @@
+{
+  "schemaVersion": 2,
+  "id": "all-native-bindings",
+  "title": "Every installed field",
+  "mode": "application",
+  "locale": "en-BB",
+  "timeZone": "America/Barbados",
+  "settings": {
+    "visibility": "preview",
+    "hiddenAnswers": "retain"
+  },
+  "blocks": [
+    {
+      "id": "page",
+      "type": "page",
+      "role": "questions",
+      "title": "Questions",
+      "navigation": {
+        "nextLabel": "Save and continue",
+        "backLabel": "Go back"
+      }
+    },
+    {
+      "id": "text",
+      "type": "question",
+      "kind": "text",
+      "key": "text",
+      "label": "text"
+    },
+    {
+      "id": "long-text",
+      "type": "question",
+      "kind": "long-text",
+      "key": "long-text",
+      "label": "long-text"
+    },
+    {
+      "id": "email",
+      "type": "question",
+      "kind": "email",
+      "key": "email",
+      "label": "email"
+    },
+    {
+      "id": "phone",
+      "type": "question",
+      "kind": "phone",
+      "key": "phone",
+      "label": "phone"
+    },
+    {
+      "id": "number",
+      "type": "question",
+      "kind": "number",
+      "key": "number",
+      "label": "number"
+    },
+    {
+      "id": "time",
+      "type": "question",
+      "kind": "time",
+      "key": "time",
+      "label": "time"
+    },
+    {
+      "id": "address-lookup",
+      "type": "question",
+      "kind": "address-lookup",
+      "key": "address-lookup",
+      "label": "address-lookup"
+    },
+    {
+      "id": "opening-hours",
+      "type": "question",
+      "kind": "opening-hours",
+      "key": "opening-hours",
+      "label": "opening-hours"
+    },
+    {
+      "id": "boolean",
+      "type": "question",
+      "kind": "boolean",
+      "key": "boolean",
+      "label": "boolean",
+      "default": false
+    },
+    {
+      "id": "date",
+      "type": "question",
+      "kind": "date",
+      "key": "date",
+      "label": "Date",
+      "default": {
+        "context": "today"
+      },
+      "validation": [
+        {
+          "id": "past",
+          "type": "dateBefore",
+          "value": {
+            "context": "today"
+          },
+          "inclusive": true,
+          "message": "Use today or before"
+        },
+        {
+          "id": "dates",
+          "type": "dateIn",
+          "value": [
+            "2026-10-04"
+          ],
+          "message": "Choose an available day"
+        }
+      ]
+    },
+    {
+      "id": "file",
+      "type": "question",
+      "kind": "file",
+      "key": "file",
+      "label": "Files",
+      "config": {
+        "multiple": true
+      },
+      "validation": [
+        {
+          "id": "types",
+          "type": "fileTypes",
+          "value": [
+            "application/pdf"
+          ],
+          "message": "Upload a PDF"
+        },
+        {
+          "id": "size",
+          "type": "maxFileSize",
+          "value": 5,
+          "unit": "MB",
+          "message": "Use 5MB or less"
+        }
+      ]
+    },
+    {
+      "id": "radio",
+      "type": "question",
+      "kind": "choice",
+      "key": "radio",
+      "label": "radio",
+      "config": {
+        "selection": "single",
+        "presentation": "radio",
+        "width": "long"
+      },
+      "options": [
+        {
+          "id": "zero",
+          "value": 0,
+          "label": [
+            {
+              "text": "Zero",
+              "marks": [
+                "bold"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "two",
+          "value": 2,
+          "label": "Two"
+        }
+      ]
+    },
+    {
+      "id": "nested",
+      "type": "question",
+      "kind": "text",
+      "key": "nested",
+      "label": "Under zero",
+      "layout": {
+        "under": {
+          "question": "radio",
+          "option": "zero"
+        }
+      },
+      "visible": false
+    },
+    {
+      "id": "checkboxes",
+      "type": "question",
+      "kind": "choice",
+      "key": "checkboxes",
+      "label": "checkboxes",
+      "config": {
+        "selection": "multiple",
+        "presentation": "checkboxes",
+        "width": "long"
+      },
+      "options": [
+        {
+          "id": "zero",
+          "value": 0,
+          "label": [
+            {
+              "text": "Zero",
+              "marks": [
+                "bold"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "two",
+          "value": 2,
+          "label": "Two"
+        }
+      ]
+    },
+    {
+      "id": "dropdown",
+      "type": "question",
+      "kind": "choice",
+      "key": "dropdown",
+      "label": "dropdown",
+      "config": {
+        "selection": "single",
+        "presentation": "dropdown",
+        "width": "long"
+      },
+      "options": [
+        {
+          "id": "zero",
+          "value": 0,
+          "label": [
+            {
+              "text": "Zero",
+              "marks": [
+                "bold"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "two",
+          "value": 2,
+          "label": "Two"
+        }
+      ]
+    },
+    {
+      "id": "accordion",
+      "type": "question",
+      "kind": "choice",
+      "key": "accordion",
+      "label": "Activities",
+      "config": {
+        "selection": "multiple",
+        "presentation": "accordion",
+        "groups": [
+          {
+            "id": "category",
+            "label": [
+              {
+                "text": "Category",
+                "marks": [
+                  "bold"
+                ]
+              }
+            ],
+            "higherRisk": false,
+            "optionIds": [
+              "choice-a",
+              "choice-b"
+            ]
+          }
+        ]
+      },
+      "options": [
+        {
+          "id": "choice-a",
+          "label": [
+            {
+              "link": "https://example.com",
+              "content": "First"
+            }
+          ],
+          "value": true
+        },
+        {
+          "id": "choice-b",
+          "label": "Second",
+          "value": false,
+          "visible": false
+        }
+      ]
+    },
+    {
+      "id": "rich-hint",
+      "type": "question",
+      "kind": "text",
+      "key": "richHint",
+      "label": "Structured hint",
+      "hint": [
+        {
+          "id": "hint-list",
+          "type": "content",
+          "kind": "list",
+          "content": "Bring these documents",
+          "config": {
+            "ordered": true,
+            "items": [
+              {
+                "id": "hint-item",
+                "content": [
+                  "Your ",
+                  {
+                    "text": "passport",
+                    "marks": [
+                      "bold"
+                    ]
+                  }
+                ],
+                "visible": false
+              }
+            ]
+          }
+        },
+        {
+          "id": "hint-disclosure",
+          "type": "content",
+          "kind": "expandable",
+          "content": "More help",
+          "config": {
+            "blocks": [
+              {
+                "id": "hint-nested-disclosure",
+                "type": "content",
+                "kind": "expandable",
+                "content": "Even more help",
+                "config": {
+                  "blocks": [
+                    {
+                      "id": "hint-details",
+                      "type": "content",
+                      "kind": "paragraph",
+                      "content": [
+                        {
+                          "link": "https://example.com",
+                          "content": "Read help"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "parts": {
+        "hint": {
+          "visible": false
+        }
+      }
+    },
+    {
+      "id": "list",
+      "type": "content",
+      "kind": "list",
+      "content": [
+        "Remember ",
+        {
+          "text": "these",
+          "marks": [
+            "italic"
+          ]
+        }
+      ],
+      "config": {
+        "ordered": false,
+        "items": [
+          {
+            "id": "item",
+            "content": "First",
+            "visible": false
+          }
+        ]
+      }
+    },
+    {
+      "id": "disclosure",
+      "type": "content",
+      "kind": "expandable",
+      "content": "Details",
+      "config": {
+        "blocks": [
+          {
+            "id": "inside-list",
+            "type": "content",
+            "kind": "list",
+            "content": "Inside list",
+            "config": {
+              "items": [
+                {
+                  "id": "inside-item",
+                  "content": "Inside"
+                }
+              ]
+            }
+          },
+          {
+            "id": "inside-disclosure",
+            "type": "content",
+            "kind": "expandable",
+            "content": "More details",
+            "config": {
+              "blocks": [
+                {
+                  "id": "inside-paragraph",
+                  "type": "content",
+                  "kind": "paragraph",
+                  "content": "The deepest text"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "heading",
+      "type": "content",
+      "kind": "heading",
+      "content": "Heading",
+      "config": {
+        "level": 2
+      }
+    },
+    {
+      "id": "callout",
+      "type": "content",
+      "kind": "callout",
+      "content": "Read this",
+      "config": {
+        "tone": "warning"
+      }
+    },
+    {
+      "id": "paragraph",
+      "type": "content",
+      "kind": "paragraph",
+      "content": "A paragraph"
+    },
+    {
+      "id": "question-label",
+      "type": "content",
+      "kind": "question-label",
+      "content": "An independent question label"
+    },
+    {
+      "id": "heading-one",
+      "type": "content",
+      "kind": "heading",
+      "content": "First level heading",
+      "config": {
+        "level": 1
+      }
+    },
+    {
+      "id": "heading-three",
+      "type": "content",
+      "kind": "heading",
+      "content": "Third level heading",
+      "config": {
+        "level": 3
+      }
+    },
+    {
+      "id": "inset-callout",
+      "type": "content",
+      "kind": "callout",
+      "content": "An inset callout",
+      "config": {
+        "tone": "inset"
+      }
+    },
+    {
+      "id": "confirmation",
+      "type": "page",
+      "role": "confirmation",
+      "title": "Confirmation"
+    }
+  ]
+}

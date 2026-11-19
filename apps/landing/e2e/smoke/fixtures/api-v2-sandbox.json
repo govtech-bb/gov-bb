@@ -1,0 +1,73 @@
+{
+  "recorded": "2026-10-30 from https://api-v2.sandbox.alpha.gov.bb, bodies trimmed to their start links",
+  "catalog": {
+    "pages": [
+      {
+        "url": "/money-financial-support/calculate-severance-pay",
+        "title": "Find out how much severance payment you are owed",
+        "description": "Estimate the severance payment you may be owed under the Severance Payments Act (Cap. 355A) if you were made redundant, your workplace was damaged by a disaster, you were laid off, or your employer died.",
+        "digital": true,
+        "stage": "alpha"
+      },
+      {
+        "url": "/family-birth-relationships/get-birth-certificate",
+        "title": "Get a copy of a birth certificate",
+        "description": "Apply online to get a certified copy of a birth certificate for anyone whose birth was registered in Barbados. Certificates are issued by the Registration Department.",
+        "digital": true,
+        "stage": "alpha"
+      },
+      {
+        "url": "/family-birth-relationships/register-a-birth",
+        "title": "Register a birth",
+        "description": "Register a birth in Barbados online. All births must be legally registered within 28 days. A birth registration is required before a birth certificate can be issued.",
+        "digital": false,
+        "stage": "alpha"
+      },
+      {
+        "url": "/work-employment/register-summer-camp",
+        "title": "Register for a summer camp",
+        "description": "Register your child for a free government summer camp in Barbados, available for children aged 4 to 15. Camps cover sports, arts, culture, entrepreneurship, and special needs.",
+        "digital": true,
+        "stage": "alpha"
+      }
+    ]
+  },
+  "pages": {
+    "/money-financial-support/calculate-severance-pay": {
+      "url": "/money-financial-support/calculate-severance-pay",
+      "form_id": null,
+      "hide_start_links": false,
+      "body_markdown": "## How to apply\n\n<a data-start-link href=\"/money-financial-support/calculate-severance-pay/start\">Start your estimate now</a>"
+    },
+    "/money-financial-support/calculate-severance-pay/start": {
+      "url": "/money-financial-support/calculate-severance-pay/start",
+      "form_id": null,
+      "hide_start_links": false,
+      "body_markdown": "## How to apply\n\n<a data-start-link href=\"/money-financial-support/calculate-severance-pay/form\">Start your estimate now</a>"
+    },
+    "/family-birth-relationships/get-birth-certificate": {
+      "url": "/family-birth-relationships/get-birth-certificate",
+      "form_id": "get-birth-certificate",
+      "hide_start_links": false,
+      "body_markdown": "## How to apply\n\n<a data-start-link href=\"/family-birth-relationships/get-birth-certificate/start\">Complete the online form</a>"
+    },
+    "/family-birth-relationships/get-birth-certificate/start": {
+      "url": "/family-birth-relationships/get-birth-certificate/start",
+      "form_id": "get-birth-certificate",
+      "hide_start_links": false,
+      "body_markdown": "## How to apply\n\n<a data-start-link>Start</a>"
+    },
+    "/family-birth-relationships/register-a-birth": {
+      "url": "/family-birth-relationships/register-a-birth",
+      "form_id": null,
+      "hide_start_links": false,
+      "body_markdown": "## How to apply"
+    },
+    "/work-employment/register-summer-camp": {
+      "url": "/work-employment/register-summer-camp",
+      "form_id": "national-summer-camp-2025-registration",
+      "hide_start_links": false,
+      "body_markdown": "## How to apply\n\n<a data-start-link>Start now</a>"
+    }
+  }
+}

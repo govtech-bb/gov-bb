@@ -1,6 +1,12 @@
-import { getServiceGitHistory, type ServiceGitCommit } from "../../server/services";
+import {
+  getServiceGitHistory,
+  type ServiceGitCommit,
+} from "../../server/services";
 import { useEffect, useState } from "react";
-import type { ServiceCheckpoint, ServiceSnapshot } from "@govtech-bb/form-types";
+import type {
+  ServiceCheckpoint,
+  ServiceSnapshot,
+} from "@govtech-bb/form-types";
 import {
   retryServiceCheckpoint,
   createServiceCheckpoint,
@@ -52,10 +58,13 @@ export function serviceChanges(
   )
     changes.push("Changed form page order");
   if (
-    JSON.stringify(before.recipe?.processors) !== JSON.stringify(after.recipe?.processors)
+    JSON.stringify(before.recipe?.processors) !==
+    JSON.stringify(after.recipe?.processors)
   )
     changes.push("Changed delivery actions");
-  if (JSON.stringify(before.pendingConfig) !== JSON.stringify(after.pendingConfig))
+  if (
+    JSON.stringify(before.pendingConfig) !== JSON.stringify(after.pendingConfig)
+  )
     changes.push("Changed department or payment settings");
   if (JSON.stringify(before.manifest) !== JSON.stringify(after.manifest))
     changes.push("Changed service details, links, or setup");
@@ -72,7 +81,9 @@ export function ServiceHistory({ workspace }: { workspace: ServiceState }) {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [gitHistory, setGitHistory] = useState<ServiceGitCommit[] | null>(null);
-  const [gitPath, setGitPath] = useState(`services/${draft.manifest.serviceId}.json`);
+  const [gitPath, setGitPath] = useState(
+    `services/${draft.manifest.serviceId}.json`,
+  );
   const [publication, setPublication] = useState("");
   const confirm = useConfirmation();
   const refresh = async () =>
@@ -96,7 +107,9 @@ export function ServiceHistory({ workspace }: { workspace: ServiceState }) {
       try {
         await refresh();
       } catch (e) {
-        setError(e instanceof Error ? e.message : "History could not be refreshed");
+        setError(
+          e instanceof Error ? e.message : "History could not be refreshed",
+        );
       }
       setBusy(false);
     }
@@ -107,8 +120,8 @@ export function ServiceHistory({ workspace }: { workspace: ServiceState }) {
       <div>
         <h2 className="text-xl font-semibold">Publish</h2>
         <p className="mt-2 text-sm text-ui-subtle">
-          Save named versions in Git, compare changes, and restore earlier work. Recent
-          version shortcuts are saved in this browser.
+          Save named versions in Git, compare changes, and restore earlier work.
+          Recent version shortcuts are saved in this browser.
         </p>
       </div>
       {error && (
@@ -166,7 +179,8 @@ export function ServiceHistory({ workspace }: { workspace: ServiceState }) {
                 <span className="flex flex-col gap-1">
                   <span>{item.label}</span>
                   <span className="text-xs font-normal text-ui-subtle">
-                    {item.createdBy} · {new Date(item.createdAt).toLocaleString()}
+                    {item.createdBy} ·{" "}
+                    {new Date(item.createdAt).toLocaleString()}
                   </span>
                   <span className="text-xs font-normal text-ui-subtle">
                     {item.gitSha ? "Saved in Git" : "Git checkpoint incomplete"}
@@ -345,11 +359,14 @@ export function ServiceHistory({ workspace }: { workspace: ServiceState }) {
         )}
       </div>
       <Collapsible.Root className="border-t border-ui-hairline pt-5">
-        <Collapsible.DefaultTrigger>Earlier changes in Git</Collapsible.DefaultTrigger>
+        <Collapsible.DefaultTrigger>
+          Earlier changes in Git
+        </Collapsible.DefaultTrigger>
         <Collapsible.Panel>
           <p className="my-3 text-sm text-ui-subtle">
-            Browse the latest 25 changes to a service page or application, including
-            changes made before this workspace. Open a change to compare it in GitHub.
+            Browse the latest 25 changes to a service page or application,
+            including changes made before this workspace. Open a change to
+            compare it in GitHub.
           </p>
           <div className="flex flex-wrap items-end gap-3">
             <Select

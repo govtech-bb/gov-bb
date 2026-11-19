@@ -74,7 +74,7 @@ full `evaluateFormConditions` contract walk.
 - **Option A, not B.** Driving the client wholesale from
   `evaluateFormConditions` (the server's array model) would force reconciling the
   client's synthetic-step representation with the server's — a large
-  blast-radius refactor disproportionate to the bug. ADR 0029 already records
+  blast-radius refactor disproportionate to the bug. ADR 0051 already records
   consolidation as incremental; this is the next increment, so no new ADR.
 - **No `instanceLocal` on the client.** The client materialises each repeatable
   instance as its own synthetic step and rewrites each conditional's

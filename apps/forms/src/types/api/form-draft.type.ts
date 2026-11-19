@@ -1,4 +1,5 @@
-import { FormValues, formValuesSchema } from "../field-mapper.type";
+import type { FormValues } from "../field-mapper.type";
+import { formValuesSchema } from "../field-mapper.type";
 import { z } from "zod";
 
 export interface FormDraft {

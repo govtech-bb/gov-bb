@@ -39,7 +39,7 @@ Copy [`.env.example`](./.env.example) to `.env`. Key variables:
 
 ```bash
 pnpm exec nx test form-builder-app   # Vitest 4
-pnpm exec nx run form-builder-app:typecheck   # same check CI runs; covers specs
+pnpm exec nx run form-builder-app:test:types  # same check CI runs; covers specs
 ```
 
 ## Workspace layout
@@ -159,4 +159,4 @@ approval. Delete chat removes its transcript and document reference.
 Streams go directly to the API using a short-lived token obtained through an
 authenticated server function. Configure the API's `CORS_ORIGIN` to include
 this app's exact origin. The admin token stays on the server. See
-[the architecture decision](../../docs/decisions/0072-builder-ai-streams-with-reviewed-client-edits.md).
+[the architecture decision](../../docs/decisions/0120-builder-ai-streams-with-reviewed-client-edits.md).

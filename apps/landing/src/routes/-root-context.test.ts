@@ -56,11 +56,20 @@ beforeEach(() => {
 
 describe('root beforeLoad context resolution', () => {
   it('resolves the level and service statuses on first navigation', async () => {
+    // A fresh category tree in the shared query is reused, not reread.
+    const queryClient = freshClient()
+    queryClient.setQueryData(['root', 'category-tree'], { kind: 'disabled' })
+
     const result = await beforeLoad({
-      context: { queryClient: freshClient() },
+      context: { queryClient },
       location: { search: {} },
     })
-    expect(result).toEqual({ level: 'public', serviceStatuses: [] })
+
+    expect(result).toEqual({
+      level: 'public',
+      serviceStatuses: [],
+      categoryTree: { kind: 'disabled' },
+    })
     expect(previewMocks.resolveViewLevel).toHaveBeenCalledTimes(1)
     expect(statusMocks.getServiceStatuses).toHaveBeenCalledTimes(1)
   })
@@ -80,7 +89,7 @@ describe('root beforeLoad context resolution', () => {
 
   it('caps the view-level cache at the grant cookie lifetime, not Infinity', async () => {
     // A finite staleTime is what forces a re-resolve once the 4h grant cookie
-    // has expired, so an expired preview/draft grant can't linger in a long-open
+    // has expired, so an expired preview grant can't linger in a long-open
     // tab. Assert the value directly — a regression to `Infinity` fails here.
     const queryClient = freshClient()
     const spy = vi.spyOn(queryClient, 'fetchQuery')
@@ -98,7 +107,7 @@ describe('root beforeLoad context resolution', () => {
     expect(staleTime).not.toBe(Infinity)
   })
 
-  it('bypasses the cache when a preview/draft token is present', async () => {
+  it('bypasses the cache when a preview token is present', async () => {
     const queryClient = freshClient()
 
     // Warm the cache with an ordinary navigation.

@@ -8,6 +8,8 @@ import { BreadcrumbRegion, usePreviewBreadcrumbPath } from './BreadcrumbRegion'
 interface MockMatch {
   status: 'success' | 'error'
   staticData: { breadcrumbMode?: 'location' | 'preview' }
+  /** Every router match has one; the root's carries the category tree. */
+  context: { categoryTree?: { kind: 'disabled' } }
 }
 
 const router = vi.hoisted(() => ({ matches: [] as MockMatch[] }))
@@ -37,6 +39,7 @@ describe('BreadcrumbRegion', () => {
       {
         status: 'success',
         staticData: { breadcrumbMode: 'location' },
+        context: { categoryTree: { kind: 'disabled' } },
       },
     ]
 
@@ -58,6 +61,7 @@ describe('BreadcrumbRegion', () => {
       {
         status: 'error',
         staticData: { breadcrumbMode: 'location' },
+        context: {},
       },
     ]
 
@@ -75,6 +79,7 @@ describe('BreadcrumbRegion', () => {
       {
         status: 'success',
         staticData: { breadcrumbMode: 'preview' },
+        context: { categoryTree: { kind: 'disabled' } },
       },
     ]
 

@@ -61,8 +61,8 @@ the DB after only a presence-style `recipe?.formId` truthiness check.
   (`forms.config`, `forms.presence`, `forms.rekey`, `forms.uniqueness`) would
   have started 400-ing; each got `steps: []` added. The plan named three of the
   four — `forms.presence.spec.ts` was the miss.
-- **ADR 0010 is misattributed in the issue/plan.** Both cite "ADR 0010 — raw
-  drafts may lack createdAt/updatedAt/version", but ADR 0010 is about fieldId
+- **ADR 0020 is misattributed in the issue/plan.** Both cite "ADR 0020 — raw
+  drafts may lack createdAt/updatedAt/version", but ADR 0020 is about fieldId
   uniqueness. The substantive justification (real drafts stamp timestamps via
   `serializeRecipeDraft`) is sound regardless, so the code comments describe the
   mechanism rather than citing the wrong ADR.

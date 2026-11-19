@@ -35,7 +35,12 @@ export function FormsTable({
       <table className="min-w-full">
         <thead>
           <tr>
-            <SortHeader label="Form" colKey="title" sort={sort} className={TH} />
+            <SortHeader
+              label="Form"
+              colKey="title"
+              sort={sort}
+              className={TH}
+            />
             <SortHeader
               label="Starts"
               colKey="starts"

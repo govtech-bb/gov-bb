@@ -21,7 +21,7 @@ sharp edge was #992: a 1903 DOB was accepted for an eligibility form because
   `packages/form-validation` (transform in the `min/max/gt/lt` runners) to honour
   them.
 - Surfaced the new operators + transform in the two builder editors.
-- Recorded the principle in **ADR 0045**.
+- Recorded the principle in **ADR 0079**.
 
 ## Why we did it that way
 
@@ -32,7 +32,7 @@ sharp edge was #992: a 1903 DOB was accepted for an eligibility form because
   overkill for "turn a date into one number." We landed on a single
   `durationSince` consumed by both engines through a `transform` field, with
   ranges falling out of the existing implicit AND across stacked conditions. ADR
-  0045 is the durable record.
+  0079 is the durable record.
 - **`durationSince` accepts `unknown` (string *or* `{day,month,year}`), not just
   a string** — a deliberate deviation from the plan's `date: string` signature,
   agreed up front. Date fields store the `{day,month,year}` object;

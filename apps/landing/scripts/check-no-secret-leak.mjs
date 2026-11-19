@@ -15,15 +15,16 @@ import { join } from 'node:path'
 const CLIENT_DIR = '.amplify-hosting/static'
 
 /** Secrets that must not appear in any client asset, keyed by name for output. */
-const SECRETS = { PREVIEW_SECRET: process.env.PREVIEW_SECRET }
+const SECRETS = {
+  PREVIEW_SECRET: process.env.PREVIEW_SECRET,
+  LANDING_SECRET: process.env.LANDING_SECRET,
+}
 
 function walk(dir) {
   let files = []
   for (const entry of readdirSync(dir)) {
     const path = join(dir, entry)
-    files = files.concat(
-      statSync(path).isDirectory() ? walk(path) : [path],
-    )
+    files = files.concat(statSync(path).isDirectory() ? walk(path) : [path])
   }
   return files
 }

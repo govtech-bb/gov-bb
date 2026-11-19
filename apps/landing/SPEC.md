@@ -156,7 +156,7 @@ A documented convention links the landing site to the **forms app**:
 - At render time the Markdown component only renders the button if `form_id` ∈ `AVAILABLE_FORMS`. Otherwise the button is silently suppressed (with a `console.warn` in dev to catch authoring typos).
 - The button links to `${VITE_FORMS_URL}/forms/<form_id>` and emits an analytics event `start-click` with the form id as `formId` data.
 
-This is governed by **ADR-0005** in the monorepo docs.
+This is governed by **ADR-0011** in the monorepo docs.
 
 ---
 
@@ -251,7 +251,7 @@ Events go to Umami Cloud and, while Umami is being replaced, to the forms API's 
 - **Pageviews** are fired by subscribing to the router's `onRendered` lifecycle: one event on the first render and one each time the resolved address changes. `onResolved` is not used because it only fires on a pending-to-idle transition, which never happens on the first, server-rendered page or on a preloaded click. Each page view and event sends Umami the current path (no query string) and the previous path as the referrer, because with auto-track off its tracker keeps the URL it read at load (#3586).
 - **Click and lifecycle events** use either `data-umami-event="..."` attributes or `trackEvent()` calls from React effects. A document click listener (`installClickListener`) sends every `data-umami-event` click through `trackEvent`, to Umami and journey events alike; Umami's own handler for these attributes stays off.
 - A typed helper in `src/lib/analytics.ts` (`trackEvent`, `trackPageview`, `deriveStartEventName`) sends to each configured destination and no-ops for any that isn't configured (Umami not loaded, or `VITE_JOURNEY_URL` unset).
-- A documented naming convention covers fixed UI surfaces (`<surface>-<action>`), per-service and per-org clicks, and per-form `Start now` events.
+- Every event, with its data and where it fires, is listed in the [event catalogue](../../docs/analytics/event-catalogue.md). A test fails when a `data-umami-event` value has no row there.
 
 ---
 

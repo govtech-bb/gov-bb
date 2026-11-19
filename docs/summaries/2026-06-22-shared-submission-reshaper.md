@@ -44,7 +44,7 @@ type"). Both were tackled this session, narrowed.
   `Record<fieldId, string>`, one value per field — so porting the collapse into
   a shared helper chat calls would be dead code. The 422 risk the issue
   describes is partly structural, not just missing code. (Recorded as a
-  consequence in ADR 0054.)
+  consequence in ADR 0092.)
 
 - **`valueIsEmpty`/`isDateComplete` moved into `form-types`.** The filter needs
   an emptiness primitive; that primitive lived in forms and its own comment

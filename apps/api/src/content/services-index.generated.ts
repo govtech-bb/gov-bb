@@ -320,6 +320,7 @@ export const SERVICES_INDEX: ServiceIndexEntry[] = [
   {
     slug: "e2e-j2-publish-check",
     title: "E2E publish check (test service)",
+    category: "business-trade",
     formId: "e2e-j2-publish-check",
     visibility: "draft",
   },

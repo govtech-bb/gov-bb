@@ -4,7 +4,7 @@
 **Branch:** raw-primitive-components (worktree, branched off `sandbox`)
 **Issue:** [#310](https://github.com/govtech-bb/gov-bb/issues/310) — "form_builder: Add a tab for creating fields from raw primitives"
 **Plan:** [docs/plans/raw-primitive-components.md](../plans/raw-primitive-components.md)
-**ADR:** [docs/decisions/0015-generic-primitives-via-registry-entries.md](../decisions/0015-generic-primitives-via-registry-entries.md)
+**ADR:** [docs/decisions/0032-generic-primitives-via-registry-entries.md](../decisions/0032-generic-primitives-via-registry-entries.md)
 
 ## What was built
 
@@ -37,7 +37,7 @@ defer until a need surfaces.
 ## Why it looks the way it does
 
 **Why curated registry entries instead of a contract extension** —
-captured at length in [ADR 0015](../decisions/0015-generic-primitives-via-registry-entries.md).
+captured at length in [ADR 0032](../decisions/0032-generic-primitives-via-registry-entries.md).
 Short version: extending `recipeFormStepFieldSchema` ripples through the
 recipe-loader boot path, which is the exact path that ECS-rolls-back deploys
 when it throws. Registry data is ~200 lines for the same user-facing outcome.
@@ -55,8 +55,8 @@ at hydration and the plan's stated smoke check would fail.
 
 So Session 1 grew to 10 + 10 files: ten in the package, ten in the api mirror,
 with the api's barrel `index.ts` extended to re-export them. The mirror lives
-under ADR 0008's "form-builder catalog aligns with api registry" umbrella; the
-new ADR 0015 makes the sync obligation explicit for raw entries.
+under ADR 0018's "form-builder catalog aligns with api registry" umbrella; the
+new ADR 0032 makes the sync obligation explicit for raw entries.
 
 **Bumped the `ALL` array's compile-time literal-count guard from 33 to 43.**
 The guard exists so adding a component to the imports without adding it to
@@ -130,7 +130,7 @@ and Session 2 already touches that code.
 | `packages/registry/tsconfig.json` | Added `"types": ["jest"]` so specs type-check under `tsc -b` |
 | `apps/api/src/registry/builtins/components/raw-*.ts` (×10) | New — api-side per-file mirror |
 | `apps/api/src/registry/builtins/components/index.ts` | Extend barrel with the 10 raw re-exports |
-| `docs/decisions/0015-generic-primitives-via-registry-entries.md` | New ADR |
+| `docs/decisions/0032-generic-primitives-via-registry-entries.md` | New ADR |
 
 ## Out of scope (Session 2)
 

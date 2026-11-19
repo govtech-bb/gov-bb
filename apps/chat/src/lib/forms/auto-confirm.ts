@@ -8,7 +8,7 @@ import type { Primitive, ServiceContract } from "@govtech-bb/form-types";
 // always regenerates a required declaration step on republish, so we can't keep
 // it out of the recipe — we adapt around it in the chat pipeline instead:
 // never ask for it, never show it in the Check-your-answers card, but DO send it
-// upstream (the forms API still requires it). (ADR 0049, ported as the WHAT.)
+// upstream (the forms API still requires it). (ADR 0084, ported as the WHAT.)
 const AUTO_CONFIRMED_STEPS: ReadonlyMap<string, string> = new Map([
   ["chat-feedback", "declaration"],
 ]);

@@ -2,14 +2,14 @@
 
 **Date:** 2026-07-17
 **Status:** Design (awaiting review)
-**Related:** ADR-0007 (runtime recipes load from files, not `form_definitions`), ADR-0013/0058 (preview is a rollout gate, not a confidentiality boundary), ADR-0043 (preview is view-only; submissions require a published version), ADR-0057 (recipe versioning removed — one flat file per form), ADR-0003 (form authoring lives in form_builder), the `hydrateStep`/`conditionalTitle` drift history.
+**Related:** ADR-0017 (runtime recipes load from files, not `form_definitions`), ADR-0028/0099 (preview is a rollout gate, not a confidentiality boundary), ADR-0075 (preview is view-only; submissions require a published version), ADR-0097 (recipe versioning removed — one flat file per form), ADR-0007 (form authoring lives in form_builder), the `hydrateStep`/`conditionalTitle` drift history.
 
 ## Problem
 
 A new form recipe added in a PR is only a `recipes/{formId}.json` file **on the PR branch**. It cannot be rendered in a shareable preview link before merge:
 
 - `apps/forms` is a static SPA that fetches an already-hydrated `ServiceContract` from `GET {VITE_API_URL}/form-definitions/{formId}` at runtime.
-- On any deployed environment the API serves recipes **only from files baked into its Docker image** (ADR-0007 / #145), read once at boot.
+- On any deployed environment the API serves recipes **only from files baked into its Docker image** (ADR-0017 / #145), read once at boot.
 - Per-PR previews rebuild **only the frontend apps** on Amplify; the forms preview points `VITE_API_URL` at the **sandbox API**, whose image is built from `main`.
 - So a recipe that exists only on the PR branch is absent from the sandbox API → `GET /form-definitions/{formId}` → 404 → "The form could not be found." It becomes renderable only after merge redeploys the API.
 
@@ -28,7 +28,7 @@ Therefore `apps/forms` can render a recipe entirely on its own: no DB, no API ch
 ## Scope
 
 - **In scope:** rendering a **brand-new** form recipe (a file present only on the PR branch) in the existing per-PR forms Amplify preview, at prod fidelity, client-side.
-- **Out of scope:** previewing **edits** to an already-published form (the sandbox API returns the live version with a 200, so the client fallback never triggers — see Known limitations); test-submission (ADR-0043 keeps preview view-only); shipping preview recipes to any public environment.
+- **Out of scope:** previewing **edits** to an already-published form (the sandbox API returns the live version with a 200, so the client fallback never triggers — see Known limitations); test-submission (ADR-0075 keeps preview view-only); shipping preview recipes to any public environment.
 
 ## Decisions taken
 
@@ -45,10 +45,10 @@ Touch points to update in lockstep:
 - **API loader** — `RecipeFileLoaderService` recipe-dir path ([recipe-file-loader.service.ts](../../../apps/api/src/forms/form-definitions/recipe-file-loader.service.ts) `__dirname/recipes` resolution).
 - **API Docker image** — the `COPY` of the recipes dir into `dist/...` ([apps/api/Dockerfile:177](../../../apps/api/Dockerfile)).
 - **Publish flow** — form_builder commit target `apps/api/.../recipes/{formId}.json` ([apps/form_builder/app/server/publish.ts:161](../../../apps/form_builder/app/server/publish.ts)) and the `RECIPES_BASE` constant + `listVersions`/`fetchRecipeFile` path ([apps/form_builder/app/server/github-recipes.ts:8](../../../apps/form_builder/app/server/github-recipes.ts)).
-- **Ref-integrity guard** — recipe-dir path in [scripts/recipe-ref-guards.ts](../../../scripts/recipe-ref-guards.ts) (ADR-0026 keeps this always-run).
+- **Ref-integrity guard** — recipe-dir path in [scripts/recipe-ref-guards.ts](../../../scripts/recipe-ref-guards.ts) (ADR-0043 keeps this always-run).
 - Any tests/fixtures that reference the old path.
 
-This move does not change how recipes load at runtime (still files, ADR-0007) — only where the files live.
+This move does not change how recipes load at runtime (still files, ADR-0017) — only where the files live.
 
 ### B. Consolidate hydration to one implementation
 
@@ -64,7 +64,7 @@ Result: `apps/api` and `apps/forms` expand recipes with byte-identical logic —
 
 - Add `@govtech-bb/form-builder` and `@govtech-bb/registry` to `apps/forms` (`package.json` dep + `tsconfig.json` reference).
 - In [`fetchFormDefinition`](../../../apps/forms/src/lib/api/forms.ts) (`apps/forms/src/lib/api/forms.ts`): try the sandbox API as today; **on a 404**, and only in a preview build (`import.meta.env.VITE_PREVIEW_BUILD === "true"`), fetch the recipe from the app's own origin at `/preview-recipes/{formId}.json`, validate with `serviceContractRecipeSchema`, and hydrate: `hydrateForm(recipe, getCatalog())` → `ServiceContract`.
-- **Force view-only** for a client-hydrated contract: thread an `isPreview` signal so the renderer disables Submit (reuse the ADR-0043 mechanism; the fallback recipe is by definition unpublished). This does not depend on the `?preview` URL flag.
+- **Force view-only** for a client-hydrated contract: thread an `isPreview` signal so the renderer disables Submit (reuse the ADR-0075 mechanism; the fallback recipe is by definition unpublished). This does not depend on the `?preview` URL flag.
 - Outside preview builds the fallback is inert: a 404 stays a 404 (a genuinely missing form on sandbox/prod).
 
 ### D. Build & deploy wiring
@@ -84,13 +84,13 @@ Result: `apps/api` and `apps/forms` expand recipes with byte-identical logic —
 
 - **No new secret, no new network surface, no API change.** The whole path is static assets + client code.
 - **Preview recipes never reach a public environment.** The copy step and `VITE_PREVIEW_BUILD` are gated to per-PR preview branches; `main`/`sandbox`/`staging`/`prod` builds ship neither the `preview-recipes/` assets nor the flag, so no draft-visibility recipe is fetchable there. This is the only real guardrail and must be enforced in `amplify.yml`.
-- **Forgeable by design, acceptable.** Anyone with a per-PR preview URL can fetch its `preview-recipes/*.json`. This matches the accepted rollout-gate posture for preview environments (ADR-0013/0058): a per-PR preview is "not public yet", not secret.
-- **View-only preserved.** No submission record is produced from an unmerged recipe (ADR-0043); Submit is disabled on the client-hydrated path.
+- **Forgeable by design, acceptable.** Anyone with a per-PR preview URL can fetch its `preview-recipes/*.json`. This matches the accepted rollout-gate posture for preview environments (ADR-0028/0099): a per-PR preview is "not public yet", not secret.
+- **View-only preserved.** No submission record is produced from an unmerged recipe (ADR-0075); Submit is disabled on the client-hydrated path.
 
 ## Known limitations
 
 - **Edits to existing forms show the live version.** For a PR that modifies an already-published form, the sandbox API returns the current (main) version with a 200, so the fallback never fires and the preview shows the pre-edit form. This honours the agreed "new forms only" scope. Extending to edited forms is a small, natural follow-up: in preview builds prefer the bundled recipe when present (bundle-first instead of API-first). Deferred deliberately.
-- **DB-sourced processor config is not merged on the client path.** The API's `findByFormId` merges per-form processor config from `form_config` (ADR-0033: config never enters the recipe). A client-hydrated preview reflects the recipe only. Acceptable because preview is view-only (no submission/payment is exercised); flagged so it isn't mistaken for a bug.
+- **DB-sourced processor config is not merged on the client path.** The API's `findByFormId` merges per-form processor config from `form_config` (ADR-0057: config never enters the recipe). A client-hydrated preview reflects the recipe only. Acceptable because preview is view-only (no submission/payment is exercised); flagged so it isn't mistaken for a bug.
 
 ## Testing
 

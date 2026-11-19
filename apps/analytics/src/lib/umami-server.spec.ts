@@ -610,7 +610,7 @@ describe('shapeTools (per-tool rollup)', () => {
   })
 })
 
-describe("shapeToolEvents (a tool's own events, ADR 0079)", () => {
+describe("shapeToolEvents (a tool's own events, ADR 0138)", () => {
   const pharmacy: Tool = {
     id: 'pharmacy-finder',
     name: 'Find an open pharmacy',

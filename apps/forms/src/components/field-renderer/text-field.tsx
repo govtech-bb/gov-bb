@@ -1,9 +1,9 @@
-import { JSX } from "react";
+import type { JSX } from "react";
 import { FormGroup, Hint, Label, NumberInput } from "@govtech-bb/react";
 import ErrorMessage from "../error-message";
 import { MaskedInput } from "../masked-input";
 import { renderRepeatableOrSingle, rowInputProps } from "./repeatable-field";
-import { FieldRenderContext } from "./render-context";
+import type { FieldRenderContext } from "./render-context";
 
 /** Renders the `text` / `number` / `tel` / `email` field types. */
 export function renderTextField(ctx: FieldRenderContext): JSX.Element {

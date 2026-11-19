@@ -6,28 +6,11 @@
   "targets": {
     "build": {
       "executor": "@nx/js:tsc",
-      "outputs": [
-        "{options.outputPath}"
-      ],
+      "outputs": ["{options.outputPath}"],
       "options": {
         "outputPath": "packages/form-validation/dist",
         "tsConfig": "packages/form-validation/tsconfig.json",
         "main": "packages/form-validation/src/index.ts"
-      }
-    },
-    "test": {
-      "executor": "nx:run-commands",
-      "options": {
-        "command": "vitest run",
-        "cwd": "packages/form-validation"
-      }
-    },
-    "lint": {
-      "executor": "@nx/eslint:lint",
-      "options": {
-        "lintFilePatterns": [
-          "packages/form-validation/**/*.ts"
-        ]
       }
     }
   },

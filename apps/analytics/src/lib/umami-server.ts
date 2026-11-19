@@ -149,7 +149,7 @@ export interface SiteStats {
   bounceRate: number
   /** pageviews ÷ sessions. */
   avgStepsPerVisit: number
-  /** `search-submit` events (search-box submissions). */
+  /** `search-submit` events (search boxes and homepage Popular searches links). */
   searches: number
 }
 export interface OverviewData {
@@ -702,7 +702,10 @@ export function shapeJourneys(
   formId: string,
 ): JourneyPath[] {
   return rows
-    .map((j) => ({ items: j.items.filter(Boolean), count: j.count }))
+    .map((j) => ({
+      items: j.items.filter((p): p is string => Boolean(p)),
+      count: j.count,
+    }))
     .filter(
       (j) => j.items.length > 0 && j.items.some((p) => p.includes(formId)),
     )
@@ -739,7 +742,9 @@ const isTimeout = (err: unknown): boolean =>
   err instanceof DOMException &&
   (err.name === 'TimeoutError' || err.name === 'AbortError')
 
-export async function fetchFormList(cfg: UmamiConfig): Promise<FormListItem[]> {
+export async function fetchFormList(
+  cfg: UmamiConfig,
+): Promise<{ formId: string; title: string }[]> {
   const base = cfg.formsApiUrl.replace(/\/+$/, '')
   // The timeout must cover the body read too, not just the connection — a
   // server that sends headers then stalls the body would otherwise abort
@@ -1002,7 +1007,7 @@ export interface ToolRow {
   visitors: number
   topSources: SourceRow[]
   /**
-   * The tool's own events (ADR 0079). Null when it sent no `tool-result`,
+   * The tool's own events (ADR 0138). Null when it sent no `tool-result`,
    * `tool-action` or `tool-error` in the window — the "no tool events" state,
    * which every tool shows until it is instrumented.
    */
@@ -1169,7 +1174,7 @@ export function shapeTools(
 }
 
 /**
- * Read the tool events (ADR 0079) from Umami. Each event's `tool` values give
+ * Read the tool events (ADR 0138) from Umami. Each event's `tool` values give
  * every tool's count in one call. A tool's outcome and action values need
  * Umami's property filter, one call each, so they are read only for the tools
  * that sent that event in the window.

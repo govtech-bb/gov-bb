@@ -6,7 +6,7 @@
 
 The runtime already resolves a `contactDetails.`-prefixed `recipientField` from
 the service contract (the reserved-namespace convention recorded in
-[ADR 0023](../decisions/0023-contact-details-is-a-reserved-recipientfield-namespace.md),
+[ADR 0042](../decisions/0042-contact-details-is-a-reserved-recipientfield-namespace.md),
 seeded onto the "MDA Email" processor by #501). But in the builder, an author
 could not **choose** `contactDetails.email` from scratch.
 

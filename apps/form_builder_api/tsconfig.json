@@ -3,22 +3,16 @@
   "compilerOptions": {
     "module": "Node16",
     "moduleResolution": "Node16",
-    "target": "ES2022",
+    "verbatimModuleSyntax": false,
     "outDir": "dist",
     "rootDir": "src",
-    "esModuleInterop": true,
-    "strict": true,
-    "skipLibCheck": true,
-    "declaration": false,
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
     "isolatedModules": true,
-    "paths": {
-      "@govtech-bb/database": ["../../packages/database/src/index.ts"],
-      "@govtech-bb/form-builder": ["../../packages/form-builder/src/index.ts"],
-      "@govtech-bb/form-types": ["../../packages/form-types/src/index.ts"],
-      "@govtech-bb/registry": ["../../packages/registry/src/index.ts"]
-    }
+    // Compile only src/: workspace packages resolve through node_modules as
+    // external packages (the runtime loads their built dist), not as source
+    // pulled into this program — which `rootDir: "src"` would reject.
+    "paths": {}
   },
   "include": ["src/**/*.ts"],
   "exclude": ["dist", "**/*.spec.ts", "src/test-helpers"]

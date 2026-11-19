@@ -20,6 +20,17 @@ function sourceFiles(dir: string): string[] {
   })
 }
 
+// Every event needs a row in the catalogue, the list dashboard builders read
+// (#3518). A row starts with the event name in code: | `start-click` | …
+const catalogued = new Set(
+  [
+    ...readFileSync(
+      new URL('../../../../docs/analytics/event-catalogue.md', import.meta.url),
+      'utf8',
+    ).matchAll(/^\|\s*`([^`]+)`\s*\|/gm),
+  ].map((m) => m[1]),
+)
+
 const tags = sourceFiles(SRC).flatMap((file) =>
   [...readFileSync(file, 'utf8').matchAll(/data-umami-event=(\S+)/g)].map(
     (m) => ({ file: relative(SRC, file), value: m[1] }),
@@ -39,4 +50,11 @@ describe('data-umami-event names in landing', () => {
       expect(literal![1].length).toBeLessThanOrEqual(MAX_EVENT_NAME_LENGTH)
     },
   )
+
+  it.each(tags)('$file: $value is in the event catalogue', ({ value }) => {
+    expect(
+      catalogued.has(value.replace(/^"|"$/g, '')),
+      'add a row for it to docs/analytics/event-catalogue.md',
+    ).toBe(true)
+  })
 })

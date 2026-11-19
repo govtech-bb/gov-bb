@@ -1,6 +1,7 @@
 ---
 title: 'E2E publish check (test service)'
 description: 'Internal end-to-end test service for the nightly form builder publish journey. Not a real government service.'
+category: business-trade
 stage: 'alpha'
 publish_date: 2026-10-29
 visibility: draft

@@ -46,7 +46,7 @@ export const isDateValidationError = (e: unknown): e is DateValidationError => {
 /**
  * Returns true when `value` is the complete `{ day, month, year }` object the
  * date picker stores: all three parts present. Tolerant of both shapes during
- * the number→string parts migration (#815 / ADR 0043) — a part counts as
+ * the number→string parts migration (#815 / ADR 0076) — a part counts as
  * present when it is a finite number or a non-empty string.
  */
 export const isCompleteDateValue = (value: unknown): value is DateValue => {
@@ -133,7 +133,7 @@ const isPartsObject = (
   typeof v === "object" && v !== null && !Array.isArray(v);
 
 // Parts arrive as either numbers or the digit-strings the date input stores —
-// tolerant during the number→string migration (#815 / ADR 0043). Parse to a
+// tolerant during the number→string migration (#815 / ADR 0076). Parse to a
 // number for the range arithmetic below; empty/absent/non-numeric → undefined
 // so the incompleteness checks still fire.
 const asPart = (v: unknown): number | undefined => {

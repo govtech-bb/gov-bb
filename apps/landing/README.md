@@ -44,12 +44,12 @@ If you prefer not to use Tailwind CSS:
 
 ## Linting & Formatting
 
-This project uses [eslint](https://eslint.org/) and [prettier](https://prettier.io/) for linting and formatting. Eslint is configured using [tanstack/eslint-config](https://tanstack.com/config/latest/docs/eslint). The following scripts are available:
+Linting uses [oxlint](https://oxc.rs/docs/guide/usage/linter) and formatting [oxfmt](https://oxc.rs/docs/guide/usage/formatter). This app's lint rules live in `.oxlintrc.json` here (the `@tanstack/eslint-config` rule set); its formatting (no semicolons, single quotes) is an override in the root `.oxfmtrc.json`.
 
 ```bash
-pnpm lint
-pnpm format
-pnpm check
+pnpm test:oxlint   # this app
+pnpm lint:fix
+pnpm -w format
 ```
 
 ## Routing
@@ -194,6 +194,10 @@ function PeopleComponent() {
 
 Loaders simplify your data fetching logic dramatically. Check out more information in the [Loader documentation](https://tanstack.com/router/latest/docs/framework/react/guide/data-loading#loader-parameters).
 
+## CMS page preview
+
+Editor v2 builds its own prose-page template with `@govtech-bb/react`, `@govtech-bb/frontend` and `govbbmarkd`. Landing serves no renderer bundle to the editor. Both applications use the shared Markdown renderer, including retained legacy blocks and form-link transformations. The older builder preview transport is unchanged. See [the editor preview guide](../editor_v2/docs/SITE-PREVIEW.md).
+
 ## Analytics (Umami and journey events)
 
 The landing app sends pageview and click events to two places, each only when configured:
@@ -219,14 +223,15 @@ See `apps/landing/.env.example` for the contract. When a variable is unset (incl
 
 ### Event-naming conventions
 
+Every event, with its data and where it fires, is listed in the [event catalogue](../../docs/analytics/event-catalogue.md). Add a row there when you add an event: a test fails on a `data-umami-event` value without one.
+
 | Pattern              | Example                                                        | Used for                                                                                                                                                         |
 | -------------------- | -------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `<surface>-<action>` | `header-home`, `footer-careers`, `feedback-submit`             | Fixed UI elements                                                                                                                                                |
+| `<surface>-<action>` | `footer-home`, `footer-careers`, `feedback-submit`             | Fixed UI elements                                                                                                                                                |
 | `service-click`      | `service-click` with `slug: business-trade/apply-for-food-business-licence` | Clicks on the `/services` list. One name for every service, slug as data: per-service names ran past Umami's 50-character limit and were cut off. |
-| `<slug>-start`       | `renew-passport-start`, `travel-renew-passport-start`          | Slug-prefixed start CTA clicks from a service root page into its `/start` flow (derived automatically by `deriveStartEventName()` from the link href)            |
 | `start-click`        | `start-click` with `formId: get-birth-certificate`, `from: /registry/birth-certificate` | Click on a Start now button rendered from a page's `form_id` frontmatter. Keyed on the form actually started, not the page slug — see _Start now buttons_ below. The form id is data, not part of the name, because some ids pushed the name past Umami's 50-character limit. |
 
-Filter `service-click` by its `slug` property in Umami to see one service. The `<slug>-start` events measure the conversion from root page to start page and are grouped separately so they're easy to find.
+Filter `service-click` by its `slug` property in Umami to see one service.
 
 ## Start now buttons (cross-app links to the forms app)
 
@@ -236,7 +241,7 @@ Service pages that have a corresponding form in the forms API can render a
 is no hand-maintained mapping file in this repo.
 
 The full architectural rationale is in
-[ADR-0005](../../docs/decisions/0005-build-time-manifest-for-cross-app-link-availability.md).
+[ADR-0011](../../docs/decisions/0011-build-time-manifest-for-cross-app-link-availability.md).
 
 ### Authoring
 
@@ -316,27 +321,23 @@ dev warning).
 ## Feature flagging: the content rollout gate (`visibility`)
 
 Pages can be hidden from the public while still being reviewable. The
-`visibility` frontmatter field has **three hierarchical levels** (the default is
-`public`):
+`visibility` frontmatter field has **two viewer levels** plus `draft` (the
+default is `public`):
 
-| Level     | Seen by the public? | Seen by a `preview` token? | Seen by a `draft` token? |
-| --------- | ------------------- | -------------------------- | ------------------------ |
-| `public`  | ✅                  | ✅                         | ✅                       |
-| `preview` | ❌                  | ✅                         | ✅                       |
-| `draft`   | ❌                  | ❌                         | ✅                       |
+| Level     | Seen by the public? | Seen by a `preview` token? |
+| --------- | ------------------- | -------------------------- |
+| `public`  | ✅                  | ✅                         |
+| `preview` | ❌                  | ✅                         |
+| `draft`   | ❌                  | ❌                         |
 
-The levels are ordered `public < preview < draft`: a viewer sees everything at
-**or below** the level their token grants. So a `draft` reviewer also sees
-`preview` and `public` content, and a `preview` reviewer also sees `public`
-content — but **`draft` content is hidden even from `preview` reviewers**. Use
-`draft` for content that isn't ready for the wider review audience yet; use
-`preview` for content that's ready to review but not to publish.
+`public < preview`: a `preview` reviewer also sees `public`. A `draft` page is
+visible to no site viewer; it is editor-only once content lives in api_v2.
 
 ```yaml
 ---
 title: 'Register as a private CSEC candidate'
 category: education
-visibility: draft # or: preview
+visibility: preview # or: draft (hidden from everyone)
 ---
 ```
 
@@ -353,20 +354,17 @@ sub-pages too.
 > Like `preview`, `draft` is a **rollout gate, not a confidentiality
 > boundary** — the content still ships in the client bundle and is downloadable
 > by anyone who inspects it (see
-> `docs/decisions/0013-content-preview-is-a-rollout-gate-not-a-confidentiality-boundary.md`).
-> `draft` only sits one rung above `preview`; it is **not** for embargoed or
-> sensitive material.
+> `docs/decisions/0028-content-preview-is-a-rollout-gate-not-a-confidentiality-boundary.md`).
 
 ### Viewing a gated page
 
-Each level is unlocked by its own token, matching a server-only env var (never
-`VITE_`-prefixed, so neither is shipped to the browser):
+The `preview` level is unlocked by a token matching a server-only env var
+(never `VITE_`-prefixed, so it is not shipped to the browser):
 
-- `?preview=<PREVIEW_SECRET>` grants the `preview` level,
-- `?draft=<DRAFT_SECRET>` grants the `draft` level.
+- `?preview=<PREVIEW_SECRET>` grants the `preview` level.
 
 1. Visit **any** URL with the token appended, e.g.
-   `https://sandbox.alpha.gov.bb/education?draft=THE_DRAFT_SECRET`.
+   `https://sandbox.alpha.gov.bb/education?preview=THE_PREVIEW_SECRET`.
 2. On a match the server sets an httpOnly `preview` cookie holding only the
    granted **level** (never the secret) and redirects to the same path with the
    token stripped (so the secret never lingers in the URL or browser history).
@@ -376,45 +374,37 @@ Each level is unlocked by its own token, matching a server-only env var (never
 A wrong token is simply stripped from the URL, leaving any existing grant
 intact.
 
-> [!IMPORTANT]
-> `PREVIEW_SECRET` and `DRAFT_SECRET` **must be different values**. The whole
-> point of `draft` is that it's hidden from `preview` reviewers — and those
-> reviewers know the preview secret. If the two secrets matched, a preview
-> reviewer could reach draft content just by swapping `?preview=` for `?draft=`.
-
 ### Exiting
 
-Visit `?preview=exit` (or `?draft=exit`) on any URL. This clears the cookie and
+Visit `?preview=exit` on any URL. This clears the cookie and
 redirects **home** — not back to the current page, which may be gated and would
 otherwise 404 once the grant is gone.
 
 ### Environment variables
 
-| Variable         | When used | Purpose                                                                                                                                                     |
-| ---------------- | --------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `PREVIEW_SECRET` | run time  | The token reviewers append as `?preview=<value>` to unlock `preview`. Server-only. When unset, no preview token works.                                      |
-| `DRAFT_SECRET`   | run time  | The token reviewers append as `?draft=<value>` to unlock `draft`. Server-only, and **must differ** from `PREVIEW_SECRET`. When unset, no draft token works. |
+| Variable         | When used | Purpose                                                                                                                |
+| ---------------- | --------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `PREVIEW_SECRET` | run time  | The token reviewers append as `?preview=<value>` to unlock `preview`. Server-only. When unset, no preview token works. |
 
-Set them per environment in the deploy console (Amplify) — or, locally, in
+Set it per environment in the deploy console (Amplify) — or, locally, in
 `apps/landing/.env`:
 
 ```bash
 PREVIEW_SECRET=some-local-preview-secret
-DRAFT_SECRET=some-other-local-draft-secret
 pnpm dev
-# then visit http://localhost:3000/...?draft=some-other-local-draft-secret
+# then visit http://localhost:3000/...?preview=some-local-preview-secret
 ```
 
 The implementation lives in `src/lib/preview.ts` (token check, cookie, redirect)
 and is resolved once per request in `src/routes/__root.tsx`. The level
 comparison and per-page gating live in `src/content/registry.ts`.
 
-## Chat handoff (ChatAssistant)
+## Chat handoff (HomeHero)
 
-The `ChatAssistant` component on the homepage probes the chat app's
-`/api/health/public` for the live Online badge and, on submit, redirects
-to the chat app with the user's question prefilled via `?q=` so chat
-auto-sends on mount.
+The homepage hero's Ask Assistant mode (`HomeHero`) probes the chat app's
+`/api/health/public`, and disables Send and points people to Search while
+it is offline. On submit it redirects to the chat app with the user's
+question prefilled via `?q=` so chat auto-sends on mount.
 
 ### Environment variable
 
@@ -422,9 +412,9 @@ auto-sends on mount.
 | --------------- | ---------- | ----------------------------------------------------------------------------------------- |
 | `VITE_CHAT_URL` | build time | Base URL of the deployed chat app. Used for both the health probe and the submit handoff. |
 
-`ChatAssistant` defaults to `https://chat.sandbox.alpha.gov.bb` in code
-when `VITE_CHAT_URL` is unset, so deploys work with no Amplify Console
-config.
+`src/lib/chat-url.ts` defaults to `https://chat.sandbox.alpha.gov.bb`
+in dev only when `VITE_CHAT_URL` is unset; a production build fails fast
+without it (#1366).
 
 To override (e.g. run landing locally against a localhost chat instance,
 or point a build at a different chat deploy), set `VITE_CHAT_URL`

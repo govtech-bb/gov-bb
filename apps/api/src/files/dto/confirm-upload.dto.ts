@@ -9,7 +9,7 @@ import { ApiProperty } from "@nestjs/swagger";
 import { SUBMISSION_KEY_PATTERN } from "../submission-key";
 
 // Lowercase-only (no `i` flag): a formId is a canonical lowercase kebab-case id
-// (ADR 0028). Rejecting uppercase here matches SUBMISSION_KEY_PATTERN's
+// (ADR 0048). Rejecting uppercase here matches SUBMISSION_KEY_PATTERN's
 // lowercase formId segment, so an uppercase id can't presign then fail at
 // confirm (#1853).
 const FORM_ID_PATTERN = /^[a-z0-9-]+$/;

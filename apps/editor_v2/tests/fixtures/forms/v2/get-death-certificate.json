@@ -1,0 +1,951 @@
+{
+  "schemaVersion": 2,
+  "id": "get-death-certificate",
+  "title": "Get a Death Certificate",
+  "description": "Apply for a certified copy of a death certificate",
+  "mode": "application",
+  "locale": "en-BB",
+  "timeZone": "America/Barbados",
+  "settings": {
+    "visibility": "draft",
+    "hiddenAnswers": "retain",
+    "notifications": {
+      "department": {
+        "enabled": true,
+        "recipient": {
+          "context": "departmentEmail"
+        }
+      }
+    }
+  },
+  "blocks": [
+    {
+      "id": "page-applicant-details",
+      "type": "page",
+      "role": "questions",
+      "title": "Tell us about yourself"
+    },
+    {
+      "id": "applicant-title",
+      "type": "question",
+      "kind": "choice",
+      "key": "applicant-title",
+      "label": "Title",
+      "options": [
+        {
+          "id": "option-1",
+          "label": "Mr",
+          "value": "mr"
+        },
+        {
+          "id": "option-2",
+          "label": "Miss",
+          "value": "miss"
+        },
+        {
+          "id": "option-3",
+          "label": "Ms",
+          "value": "ms"
+        },
+        {
+          "id": "option-4",
+          "label": "Mrs",
+          "value": "mrs"
+        },
+        {
+          "id": "option-5",
+          "label": "Dr",
+          "value": "dr"
+        }
+      ],
+      "config": {
+        "selection": "single",
+        "presentation": "dropdown",
+        "width": "short"
+      },
+      "required": {
+        "value": true,
+        "message": "Title is required"
+      }
+    },
+    {
+      "id": "applicant-first-name",
+      "type": "question",
+      "kind": "text",
+      "key": "applicant-first-name",
+      "label": "First name",
+      "required": {
+        "value": true,
+        "message": "First name is required"
+      },
+      "validation": [
+        {
+          "id": "minLength",
+          "type": "minLength",
+          "message": "First name must be at least 2 characters",
+          "value": 2
+        },
+        {
+          "id": "pattern",
+          "type": "pattern",
+          "message": "First name must contain only letters, spaces, hyphens, apostrophes, or periods",
+          "pattern": "^\\s*\\p{L}(?:[\\p{L}\\p{M}\\s'’.-]*[\\p{L}\\p{M}.])?\\s*$",
+          "flags": "u"
+        }
+      ]
+    },
+    {
+      "id": "applicant-middle-name",
+      "type": "question",
+      "kind": "text",
+      "key": "applicant-middle-name",
+      "label": "Middle name",
+      "hint": "Provide only if known",
+      "validation": [
+        {
+          "id": "minLength",
+          "type": "minLength",
+          "message": "Middle name must be at least 2 characters",
+          "value": 2
+        },
+        {
+          "id": "pattern",
+          "type": "pattern",
+          "message": "Middle name must contain only letters, spaces, hyphens, apostrophes, or periods",
+          "pattern": "^\\s*\\p{L}(?:[\\p{L}\\p{M}\\s'’.-]*[\\p{L}\\p{M}.])?\\s*$",
+          "flags": "u"
+        }
+      ]
+    },
+    {
+      "id": "applicant-last-name",
+      "type": "question",
+      "kind": "text",
+      "key": "applicant-last-name",
+      "label": "Last name",
+      "required": {
+        "value": true,
+        "message": "Last name is required"
+      },
+      "validation": [
+        {
+          "id": "minLength",
+          "type": "minLength",
+          "message": "Last name must be at least 2 characters",
+          "value": 2
+        },
+        {
+          "id": "pattern",
+          "type": "pattern",
+          "message": "Last name must contain only letters, spaces, hyphens, apostrophes, or periods",
+          "pattern": "^\\s*\\p{L}(?:[\\p{L}\\p{M}\\s'’.-]*[\\p{L}\\p{M}.])?\\s*$",
+          "flags": "u"
+        }
+      ]
+    },
+    {
+      "id": "applicant-address-line-1",
+      "type": "question",
+      "kind": "text",
+      "key": "applicant-address-line-1",
+      "label": "Address Line 1",
+      "required": {
+        "value": true,
+        "message": "Address line 1 is required"
+      },
+      "validation": [
+        {
+          "id": "minLength",
+          "type": "minLength",
+          "message": "Address must be at least 5 characters",
+          "value": 5
+        }
+      ]
+    },
+    {
+      "id": "applicant-address-line-2",
+      "type": "question",
+      "kind": "text",
+      "key": "applicant-address-line-2",
+      "label": "Address Line 2",
+      "required": {
+        "value": false,
+        "message": ""
+      },
+      "validation": [
+        {
+          "id": "minLength",
+          "type": "minLength",
+          "message": "Address must be at least 5 characters",
+          "value": 5
+        }
+      ]
+    },
+    {
+      "id": "applicant-parish",
+      "type": "question",
+      "kind": "choice",
+      "key": "applicant-parish",
+      "label": "Parish",
+      "options": [
+        {
+          "id": "option-1",
+          "label": "Christ Church",
+          "value": "christ-church"
+        },
+        {
+          "id": "option-2",
+          "label": "St. Andrew",
+          "value": "st-andrew"
+        },
+        {
+          "id": "option-3",
+          "label": "St. George",
+          "value": "st-george"
+        },
+        {
+          "id": "option-4",
+          "label": "St. James",
+          "value": "st-james"
+        },
+        {
+          "id": "option-5",
+          "label": "St. John",
+          "value": "st-john"
+        },
+        {
+          "id": "option-6",
+          "label": "St. Joseph",
+          "value": "st-joseph"
+        },
+        {
+          "id": "option-7",
+          "label": "St. Lucy",
+          "value": "st-lucy"
+        },
+        {
+          "id": "option-8",
+          "label": "St. Michael",
+          "value": "st-michael"
+        },
+        {
+          "id": "option-9",
+          "label": "St. Peter",
+          "value": "st-peter"
+        },
+        {
+          "id": "option-10",
+          "label": "St. Philip",
+          "value": "st-philip"
+        },
+        {
+          "id": "option-11",
+          "label": "St. Thomas",
+          "value": "st-thomas"
+        }
+      ],
+      "config": {
+        "selection": "single",
+        "presentation": "dropdown",
+        "width": "long"
+      },
+      "required": {
+        "value": true,
+        "message": "Parish is required"
+      }
+    },
+    {
+      "id": "applicant-postcode",
+      "type": "question",
+      "kind": "text",
+      "key": "applicant-postcode",
+      "label": "Postcode",
+      "hint": "For example, BB17004",
+      "config": {
+        "width": "short"
+      },
+      "validation": [
+        {
+          "id": "pattern",
+          "type": "pattern",
+          "message": "Enter a valid postcode (for example, BB17004)",
+          "pattern": "^[Bb]{2} ?\\d{5}$",
+          "flags": ""
+        }
+      ]
+    },
+    {
+      "id": "applicant-id-number",
+      "type": "question",
+      "kind": "text",
+      "key": "applicant-id-number",
+      "label": "National Identification (ID) Number",
+      "config": {
+        "mask": "999999-9999",
+        "placeholder": "for example, 850101-0001",
+        "width": "medium"
+      },
+      "required": {
+        "value": true,
+        "message": "ID Number is required"
+      },
+      "validation": [
+        {
+          "id": "pattern",
+          "type": "pattern",
+          "message": "Enter a valid National ID number (for example, 850101-0001)",
+          "pattern": "^\\d{6}-\\d{4}$",
+          "flags": ""
+        }
+      ]
+    },
+    {
+      "id": "passport-toggle",
+      "type": "question",
+      "kind": "boolean",
+      "key": "passport-toggle",
+      "label": "Use passport number instead",
+      "hint": "If you don't have a National ID number, you can use your passport number instead.",
+      "default": false,
+      "submit": false,
+      "review": false
+    },
+    {
+      "id": "applicant-passport-number",
+      "type": "question",
+      "kind": "text",
+      "key": "applicant-passport-number",
+      "label": "Passport Number",
+      "config": {
+        "width": "short"
+      },
+      "required": {
+        "value": true,
+        "message": "Passport number is required"
+      },
+      "validation": [
+        {
+          "id": "minLength",
+          "type": "minLength",
+          "message": "Passport number must be at least 6 characters",
+          "value": 6
+        }
+      ],
+      "visible": false
+    },
+    {
+      "id": "applicant-email",
+      "type": "question",
+      "kind": "email",
+      "key": "applicant-email",
+      "label": "Email address",
+      "required": {
+        "value": true,
+        "message": "Email address is required"
+      },
+      "validation": [
+        {
+          "id": "email",
+          "type": "email",
+          "message": "Please enter a valid email address"
+        }
+      ]
+    },
+    {
+      "id": "applicant-telephone",
+      "type": "question",
+      "kind": "phone",
+      "key": "applicant-telephone",
+      "label": "Telephone number",
+      "hint": "For example, 421-1234 for Barbados or +1 876 210 1234 for numbers outside Barbados",
+      "required": {
+        "value": true,
+        "message": "Telephone number is required"
+      },
+      "validation": [
+        {
+          "id": "phone",
+          "type": "phone",
+          "message": "Please enter a valid phone number"
+        }
+      ]
+    },
+    {
+      "id": "applicant-details-logic",
+      "type": "logic",
+      "rules": [
+        {
+          "id": "applicant-id-number-optionalIf-1",
+          "when": {
+            "op": "eq",
+            "left": {
+              "answer": "passport-toggle"
+            },
+            "right": true
+          },
+          "actions": [
+            {
+              "type": "setRequired",
+              "target": "applicant-id-number",
+              "value": false
+            }
+          ]
+        },
+        {
+          "id": "applicant-passport-number-fieldConditionalOn-1",
+          "when": {
+            "op": "eq",
+            "left": {
+              "answer": "passport-toggle"
+            },
+            "right": true
+          },
+          "actions": [
+            {
+              "type": "setVisible",
+              "targets": [
+                "applicant-passport-number"
+              ],
+              "value": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "page-relationship-to-person",
+      "type": "page",
+      "role": "questions",
+      "title": "Tell us your relationship with the deceased",
+      "description": "For example, spouse, child, parent, sibling, executor, or authorised representative."
+    },
+    {
+      "id": "relationship",
+      "type": "question",
+      "kind": "choice",
+      "key": "relationship",
+      "label": "Relationship",
+      "options": [
+        {
+          "id": "option-1",
+          "label": "Spouse",
+          "value": "spouse"
+        },
+        {
+          "id": "option-2",
+          "label": "Parent",
+          "value": "parent"
+        },
+        {
+          "id": "option-3",
+          "label": "Child",
+          "value": "child"
+        },
+        {
+          "id": "option-4",
+          "label": "Sibling",
+          "value": "sibling"
+        },
+        {
+          "id": "option-5",
+          "label": "Grandparent",
+          "value": "grandparent"
+        },
+        {
+          "id": "option-6",
+          "label": "Grandchild",
+          "value": "grandchild"
+        },
+        {
+          "id": "option-7",
+          "label": "Friend",
+          "value": "friend"
+        },
+        {
+          "id": "option-8",
+          "label": "Legal guardian",
+          "value": "legal-guardian"
+        },
+        {
+          "id": "option-9",
+          "label": "Legal representive",
+          "value": "legal-representive"
+        },
+        {
+          "id": "option-10",
+          "label": "Colleague",
+          "value": "colleague"
+        },
+        {
+          "id": "option-11",
+          "label": "Other (please describe)",
+          "value": "other"
+        }
+      ],
+      "config": {
+        "selection": "single",
+        "presentation": "dropdown"
+      },
+      "required": {
+        "value": true,
+        "message": "Relationship is required"
+      }
+    },
+    {
+      "id": "relationship-other-description",
+      "type": "question",
+      "kind": "text",
+      "key": "relationship-other-description",
+      "label": "Please describe your relationship",
+      "required": {
+        "value": true,
+        "message": "Please describe your relationship"
+      },
+      "validation": [
+        {
+          "id": "minLength",
+          "type": "minLength",
+          "message": "Please provide at least 2 characters",
+          "value": 2
+        },
+        {
+          "id": "pattern",
+          "type": "pattern",
+          "message": "Name must contain only letters, spaces, hyphens, apostrophes, or periods",
+          "pattern": "^\\s*\\p{L}(?:[\\p{L}\\p{M}\\s'’.-]*[\\p{L}\\p{M}.])?\\s*$",
+          "flags": "u"
+        }
+      ],
+      "visible": false
+    },
+    {
+      "id": "relationship-to-person-logic",
+      "type": "logic",
+      "rules": [
+        {
+          "id": "relationship-other-description-fieldConditionalOn-1",
+          "when": {
+            "op": "eq",
+            "left": {
+              "answer": "relationship"
+            },
+            "right": "other"
+          },
+          "actions": [
+            {
+              "type": "setVisible",
+              "targets": [
+                "relationship-other-description"
+              ],
+              "value": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "page-reason-for-certificate",
+      "type": "page",
+      "role": "questions",
+      "title": "Tell us about why you need this certificate",
+      "description": "Give the reason in a short sentence."
+    },
+    {
+      "id": "reason-for-certificate",
+      "type": "question",
+      "kind": "text",
+      "key": "reason-for-certificate",
+      "label": "Reason for requesting the certificate",
+      "required": {
+        "value": true,
+        "message": "Reason is required"
+      },
+      "validation": [
+        {
+          "id": "minLength",
+          "type": "minLength",
+          "message": "Please provide at least 10 characters",
+          "value": 10
+        },
+        {
+          "id": "pattern",
+          "type": "pattern",
+          "message": "Name must contain only letters, spaces, hyphens, apostrophes, or periods",
+          "pattern": "^\\s*\\p{L}(?:[\\p{L}\\p{M}\\s'’.-]*[\\p{L}\\p{M}.])?\\s*$",
+          "flags": "u"
+        }
+      ]
+    },
+    {
+      "id": "page-deceased-details",
+      "type": "page",
+      "role": "questions",
+      "title": "Tell us about the deceased",
+      "description": "Provide as much information as you can to help us find the correct record."
+    },
+    {
+      "id": "deceased-first-name",
+      "type": "question",
+      "kind": "text",
+      "key": "deceased-first-name",
+      "label": "First name",
+      "required": {
+        "value": true,
+        "message": "First name is required"
+      },
+      "validation": [
+        {
+          "id": "minLength",
+          "type": "minLength",
+          "message": "First name must be at least 2 characters",
+          "value": 2
+        },
+        {
+          "id": "pattern",
+          "type": "pattern",
+          "message": "First name must contain only letters, spaces, hyphens, apostrophes, or periods",
+          "pattern": "^\\s*\\p{L}(?:[\\p{L}\\p{M}\\s'’.-]*[\\p{L}\\p{M}.])?\\s*$",
+          "flags": "u"
+        }
+      ]
+    },
+    {
+      "id": "deceased-middle-name",
+      "type": "question",
+      "kind": "text",
+      "key": "deceased-middle-name",
+      "label": "Middle name",
+      "hint": "Leave blank if not known",
+      "validation": [
+        {
+          "id": "minLength",
+          "type": "minLength",
+          "message": "Middle name must be at least 2 characters",
+          "value": 2
+        },
+        {
+          "id": "pattern",
+          "type": "pattern",
+          "message": "Middle name must contain only letters, spaces, hyphens, apostrophes, or periods",
+          "pattern": "^\\s*\\p{L}(?:[\\p{L}\\p{M}\\s'’.-]*[\\p{L}\\p{M}.])?\\s*$",
+          "flags": "u"
+        }
+      ]
+    },
+    {
+      "id": "deceased-last-name",
+      "type": "question",
+      "kind": "text",
+      "key": "deceased-last-name",
+      "label": "Last name",
+      "required": {
+        "value": true,
+        "message": "Last name is required"
+      },
+      "validation": [
+        {
+          "id": "minLength",
+          "type": "minLength",
+          "message": "Last name must be at least 2 characters",
+          "value": 2
+        },
+        {
+          "id": "pattern",
+          "type": "pattern",
+          "message": "Last name must contain only letters, spaces, hyphens, apostrophes, or periods",
+          "pattern": "^\\s*\\p{L}(?:[\\p{L}\\p{M}\\s'’.-]*[\\p{L}\\p{M}.])?\\s*$",
+          "flags": "u"
+        }
+      ]
+    },
+    {
+      "id": "deceased-known-date-of-death",
+      "type": "question",
+      "kind": "choice",
+      "key": "deceased-known-date-of-death",
+      "label": "Do you know the date the person died?",
+      "options": [
+        {
+          "id": "option-1",
+          "label": "Yes",
+          "value": "yes"
+        },
+        {
+          "id": "option-2",
+          "label": "No",
+          "value": "no"
+        }
+      ],
+      "config": {
+        "selection": "single",
+        "presentation": "radio"
+      },
+      "required": {
+        "value": true,
+        "message": "Whether date of death is known is required"
+      }
+    },
+    {
+      "id": "deceased-date-of-death",
+      "type": "question",
+      "kind": "date",
+      "key": "deceased-date-of-death",
+      "label": "Date of death",
+      "required": {
+        "value": true,
+        "message": "Enter date of death"
+      },
+      "visible": false
+    },
+    {
+      "id": "deceased-estimated-date-of-death",
+      "type": "question",
+      "kind": "text",
+      "key": "deceased-estimated-date-of-death",
+      "label": "Provide the two-year search range you want us to check",
+      "hint": "Enter a 2-year period, for example 1990 to 1991. If you are not sure, give your best estimate.",
+      "required": {
+        "value": true,
+        "message": "Estimate is required"
+      },
+      "visible": false
+    },
+    {
+      "id": "deceased-id-number",
+      "type": "question",
+      "kind": "text",
+      "key": "deceased-id-number",
+      "label": "National Identification (ID) Number",
+      "hint": "Enter only if known",
+      "config": {
+        "mask": "999999-9999",
+        "width": "medium"
+      },
+      "validation": [
+        {
+          "id": "pattern",
+          "type": "pattern",
+          "message": "Enter a valid National ID number (for example, 850101-0001)",
+          "pattern": "^\\d{6}-\\d{4}$",
+          "flags": ""
+        }
+      ]
+    },
+    {
+      "id": "deceased-place-of-death",
+      "type": "question",
+      "kind": "text",
+      "key": "deceased-place-of-death",
+      "label": "Place of death",
+      "hint": "Enter the location where the person died. If you do not know the exact address, provide the town, city, or country.",
+      "required": {
+        "value": true,
+        "message": "Place of death is required"
+      }
+    },
+    {
+      "id": "deceased-details-logic",
+      "type": "logic",
+      "rules": [
+        {
+          "id": "deceased-date-of-death-fieldConditionalOn-1",
+          "when": {
+            "op": "eq",
+            "left": {
+              "answer": "deceased-known-date-of-death"
+            },
+            "right": "yes"
+          },
+          "actions": [
+            {
+              "type": "setVisible",
+              "targets": [
+                "deceased-date-of-death"
+              ],
+              "value": true
+            }
+          ]
+        },
+        {
+          "id": "deceased-estimated-date-of-death-fieldConditionalOn-1",
+          "when": {
+            "op": "eq",
+            "left": {
+              "answer": "deceased-known-date-of-death"
+            },
+            "right": "no"
+          },
+          "actions": [
+            {
+              "type": "setVisible",
+              "targets": [
+                "deceased-estimated-date-of-death"
+              ],
+              "value": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "page-order-details",
+      "type": "page",
+      "role": "questions",
+      "title": "How many copies do you need?",
+      "description": "Each copy costs $5.00 BBD for a certificate"
+    },
+    {
+      "id": "number-of-copies",
+      "type": "question",
+      "kind": "number",
+      "key": "number-of-copies",
+      "label": "Number of copies",
+      "config": {
+        "width": "short"
+      },
+      "required": {
+        "value": true,
+        "message": "Number of copies is required"
+      },
+      "validation": [
+        {
+          "id": "min",
+          "type": "minimum",
+          "message": "This field must be greater than or equal to 0",
+          "value": 0
+        }
+      ]
+    },
+    {
+      "id": "page-check-your-answers",
+      "type": "page",
+      "role": "review",
+      "title": "Check your answers",
+      "description": "Review all the information you have provided before submitting your application.",
+      "review": {
+        "questions": "preceding",
+        "emptyAnswers": "omit",
+        "changeLinks": true
+      }
+    },
+    {
+      "id": "page-declaration",
+      "type": "page",
+      "role": "declaration",
+      "title": "Declaration"
+    },
+    {
+      "id": "declaration-applicant",
+      "type": "content",
+      "kind": "paragraph",
+      "content": [
+        "Applicant: ",
+        {
+          "answer": "applicant-first-name"
+        },
+        " ",
+        {
+          "answer": "applicant-middle-name",
+          "fallback": ""
+        },
+        " ",
+        {
+          "answer": "applicant-last-name"
+        }
+      ]
+    },
+    {
+      "id": "declaration-date",
+      "type": "content",
+      "kind": "paragraph",
+      "content": [
+        "Date: ",
+        {
+          "context": "today",
+          "format": {
+            "type": "date",
+            "style": "short"
+          }
+        }
+      ]
+    },
+    {
+      "id": "declaration-confirmed",
+      "type": "question",
+      "kind": "choice",
+      "key": "declaration-confirmed",
+      "label": "Declaration",
+      "review": false,
+      "options": [
+        {
+          "id": "option-1",
+          "label": "I confirm that my information is correct and I am happy for it to be verified. I understand that false details may lead to my application being rejected, and that the Government of Barbados will keep my information confidential.",
+          "value": "confirmed"
+        }
+      ],
+      "config": {
+        "selection": "single",
+        "presentation": "radio"
+      },
+      "required": {
+        "value": true,
+        "message": "You must confirm the declaration to continue"
+      }
+    },
+    {
+      "id": "page-submission-confirmation",
+      "type": "page",
+      "role": "confirmation",
+      "title": "Application submitted"
+    },
+    {
+      "id": "confirmation-receipt",
+      "type": "content",
+      "kind": "paragraph",
+      "content": [
+        "Your reference: ",
+        {
+          "context": "submissionReference"
+        }
+      ]
+    },
+    {
+      "id": "confirmation-next-heading",
+      "type": "content",
+      "kind": "heading",
+      "content": "What happens next",
+      "config": {
+        "level": 2
+      }
+    },
+    {
+      "id": "confirmation-next-copy",
+      "type": "content",
+      "kind": "paragraph",
+      "content": "You will receive a confirmation email with:"
+    },
+    {
+      "id": "confirmation-next-items",
+      "type": "content",
+      "kind": "list",
+      "content": "",
+      "config": {
+        "ordered": false,
+        "items": [
+          {
+            "id": "reference",
+            "content": "your application reference number"
+          },
+          {
+            "id": "cost",
+            "content": "the cost of the certificate(s)"
+          },
+          {
+            "id": "completion",
+            "content": "the expected completion date"
+          }
+        ]
+      }
+    }
+  ]
+}

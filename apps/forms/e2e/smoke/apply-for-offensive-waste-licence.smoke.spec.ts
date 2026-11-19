@@ -13,7 +13,7 @@
  *
  * Like the other specs under e2e/smoke it runs ONLY via
  * playwright.smoke.config.ts — the normal `test:e2e` / CI suite ignores this
- * directory (ADR 0027 / 0029), and no workflow runs it automatically.
+ * directory (ADR 0047 / 0051), and no workflow runs it automatically.
  *
  * Run on demand (from the repo root):
  *   SMOKE_BASE_URL=https://forms.sandbox.alpha.gov.bb PREVIEW_TOKEN=… \

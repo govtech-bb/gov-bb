@@ -3,7 +3,7 @@
  * Recipe `updatedAt` guard (#2878).
  *
  * The form builder decides whether a draft row is stale by comparing the
- * row's `updated_at` with the committed recipe's own `updatedAt` (ADR 0075 as
+ * row's `updated_at` with the committed recipe's own `updatedAt` (ADR 0125 as
  * amended by #2878). That only holds if every change to a recipe's content
  * moves `updatedAt` forward: the builder's Deploy stamps it at the write, but
  * a hand edit in a PR can forget. This fails when a flat recipe file's content
@@ -23,8 +23,7 @@
  *
  * Deliberately not an nx target: nx's `default` inputs skip content-only
  * changes, so this has to be an always-run step (ci.yml "Validate Recipes"
- * and `lint-staged` in apps/api/package.json — lint-staged routes each file
- * to its closest config, so a root-level glob never sees a recipe). The
+ * and the recipes glob in the root package.json's `lint-staged`). The
  * backfill that landed with it set every recipe's `updatedAt` to its last
  * commit date, so the guard holds from there on.
  */

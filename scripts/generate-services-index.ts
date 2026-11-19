@@ -5,9 +5,9 @@
 // The output is owned by apps/api (compiled into its own bundle) so the api
 // needs no runtime dependency on @govtech-bb/content — see
 // docs/superpowers/specs/2026-07-07-services-index-endpoint-design.md.
+import { execFileSync } from "node:child_process";
 import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { format, resolveConfig } from "prettier";
 import {
   buildServicesIndex,
   loadContent,
@@ -35,14 +35,13 @@ async function main() {
     "content",
     "services-index.generated.ts",
   );
-  // Format with Prettier so the written file matches what the lint-staged
-  // pre-commit hook (`prettier --write`) would produce — otherwise the raw
+  // Format with oxfmt so the written file matches what the lint-staged
+  // pre-commit hook (`oxfmt`) would produce — otherwise the raw
   // JSON.stringify output (quoted keys, no trailing commas) always differs from
   // the committed file, and the CI drift guard would fail on formatting alone.
-  // `filepath` lets Prettier infer the TypeScript parser, exactly as the hook does.
-  const config = await resolveConfig(out);
-  const formatted = await format(body, { ...config, filepath: out });
-  await writeFile(out, formatted, "utf8");
+  // Running the CLI on the file picks up .oxfmtrc.json, exactly as the hook does.
+  await writeFile(out, body, "utf8");
+  execFileSync("oxfmt", [out]);
   console.log(`Wrote ${index.length} services to ${out}`);
 }
 

@@ -5,6 +5,7 @@
 /* Keep design-system components below application utilities in the cascade. */
 @import '@govtech-bb/frontend/css' layer(components);
 @plugin "@tailwindcss/typography";
+@source "../../../packages/govbbmarkd/src";
 
 /* The design system spaces header nav items 64px apart, which wraps the nav
    onto extra rows at common laptop widths. Remove once
@@ -12,5 +13,15 @@
 @container (width >= 50rem) {
   .govbb-header__nav-inner {
     column-gap: var(--govbb-space-m);
+  }
+}
+
+/* Forced colours leave images alone, so in a dark high-contrast theme the
+   logo's black wordmark disappears into the header. Remove once a design
+   system release with govtech-bb/govbb-design-system#321's header rule
+   reaches landing. */
+@media (forced-colors: active) and (prefers-color-scheme: dark) {
+  .govbb-header__logo {
+    filter: brightness(0) invert(1);
   }
 }

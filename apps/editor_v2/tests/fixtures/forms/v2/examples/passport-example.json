@@ -1,0 +1,255 @@
+{
+  "schemaVersion": 2,
+  "id": "illustrative-identity-application",
+  "title": "Illustrative identity application",
+  "mode": "application",
+  "locale": "en-BB",
+  "timeZone": "America/Barbados",
+  "settings": {
+    "visibility": "preview",
+    "hiddenAnswers": "retain"
+  },
+  "blocks": [
+    {
+      "id": "identity-page",
+      "type": "page",
+      "role": "questions",
+      "title": "Tell us about yourself",
+      "description": "An illustrative identity form using the certificate examples' passport alternative. This is not a complete certificate application."
+    },
+    {
+      "id": "first-name",
+      "type": "question",
+      "kind": "text",
+      "key": "firstName",
+      "label": "First name",
+      "required": {
+        "value": true,
+        "message": "First name is required"
+      },
+      "validation": [
+        {
+          "id": "first-name-length",
+          "type": "minLength",
+          "value": 2,
+          "message": "First name must be at least 2 characters"
+        },
+        {
+          "id": "first-name-characters",
+          "type": "pattern",
+          "pattern": "^\\s*\\p{L}(?:[\\p{L}\\p{M}\\s'’.-]*[\\p{L}\\p{M}.])?\\s*$",
+          "flags": "u",
+          "message": "First name must contain only letters, spaces, hyphens, apostrophes, or periods"
+        }
+      ]
+    },
+    {
+      "id": "middle-name",
+      "type": "question",
+      "kind": "text",
+      "key": "middleName",
+      "label": "Middle name",
+      "hint": "Provide only if known",
+      "validation": [
+        {
+          "id": "middle-name-length",
+          "type": "minLength",
+          "value": 2,
+          "message": "Middle name must be at least 2 characters"
+        },
+        {
+          "id": "middle-name-characters",
+          "type": "pattern",
+          "pattern": "^\\s*\\p{L}(?:[\\p{L}\\p{M}\\s'’.-]*[\\p{L}\\p{M}.])?\\s*$",
+          "flags": "u",
+          "message": "Middle name must contain only letters, spaces, hyphens, apostrophes, or periods"
+        }
+      ]
+    },
+    {
+      "id": "last-name",
+      "type": "question",
+      "kind": "text",
+      "key": "lastName",
+      "label": "Last name",
+      "required": {
+        "value": true,
+        "message": "Last name is required"
+      },
+      "validation": [
+        {
+          "id": "last-name-length",
+          "type": "minLength",
+          "value": 2,
+          "message": "Last name must be at least 2 characters"
+        },
+        {
+          "id": "last-name-characters",
+          "type": "pattern",
+          "pattern": "^\\s*\\p{L}(?:[\\p{L}\\p{M}\\s'’.-]*[\\p{L}\\p{M}.])?\\s*$",
+          "flags": "u",
+          "message": "Last name must contain only letters, spaces, hyphens, apostrophes, or periods"
+        }
+      ]
+    },
+    {
+      "id": "national-id",
+      "type": "question",
+      "kind": "text",
+      "key": "nationalId",
+      "label": "National Identification (ID) Number",
+      "hint": "For example, 850101-0001",
+      "required": {
+        "value": true,
+        "message": "ID Number is required"
+      },
+      "validation": [
+        {
+          "id": "national-id-format",
+          "type": "pattern",
+          "pattern": "^\\d{6}-\\d{4}$",
+          "flags": "u",
+          "message": "Enter a valid National ID number (for example, 850101-0001)"
+        }
+      ]
+    },
+    {
+      "id": "use-passport",
+      "type": "question",
+      "kind": "boolean",
+      "key": "usePassport",
+      "label": "Use passport number instead",
+      "hint": [
+        "If you do not have a National ID number, you can use your ",
+        {
+          "text": "passport number",
+          "marks": ["bold"]
+        },
+        " instead."
+      ],
+      "default": false,
+      "submit": false,
+      "review": false
+    },
+    {
+      "id": "passport-number",
+      "type": "question",
+      "kind": "text",
+      "key": "passportNumber",
+      "label": "Passport number",
+      "visible": false,
+      "required": {
+        "value": true,
+        "message": "Passport number is required"
+      },
+      "validation": [
+        {
+          "id": "passport-number-length",
+          "type": "minLength",
+          "value": 6,
+          "message": "Passport number must be at least 6 characters"
+        }
+      ]
+    },
+    {
+      "id": "passport-alternative",
+      "type": "logic",
+      "rules": [
+        {
+          "id": "use-passport-instead",
+          "when": {
+            "op": "eq",
+            "left": {"answer": "use-passport"},
+            "right": true
+          },
+          "actions": [
+            {
+              "type": "setRequired",
+              "target": "national-id",
+              "value": false
+            },
+            {
+              "type": "setVisible",
+              "targets": ["passport-number"],
+              "value": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "review-page",
+      "type": "page",
+      "role": "review",
+      "title": "Check your answers",
+      "review": {
+        "questions": "preceding",
+        "emptyAnswers": "omit",
+        "changeLinks": true
+      }
+    },
+    {
+      "id": "declaration-page",
+      "type": "page",
+      "role": "declaration",
+      "title": "Declaration"
+    },
+    {
+      "id": "applicant-declaration-name",
+      "type": "content",
+      "kind": "paragraph",
+      "content": [
+        "Applicant: ",
+        {"answer": "first-name"},
+        " ",
+        {"answer": "last-name"},
+        ". Date: ",
+        {"context": "today"},
+        "."
+      ]
+    },
+    {
+      "id": "declaration-confirmed",
+      "type": "question",
+      "kind": "boolean",
+      "key": "declarationConfirmed",
+      "label": "I confirm that the information in this illustrative application is correct",
+      "default": false,
+      "review": false,
+      "required": {
+        "value": true,
+        "message": "You must confirm the declaration to continue"
+      },
+      "validation": [
+        {
+          "id": "declaration-must-be-confirmed",
+          "type": "equals",
+          "value": true,
+          "message": "You must confirm the declaration to continue"
+        }
+      ]
+    },
+    {
+      "id": "confirmation-page",
+      "type": "page",
+      "role": "confirmation",
+      "title": "Illustrative application submitted"
+    },
+    {
+      "id": "confirmation-reference",
+      "type": "content",
+      "kind": "paragraph",
+      "content": [
+        "Your reference is ",
+        {"context": "submissionReference"},
+        "."
+      ]
+    },
+    {
+      "id": "confirmation-explanation",
+      "type": "content",
+      "kind": "paragraph",
+      "content": "This page appears only after the host confirms a successful submission. This illustrative form does not apply for a government certificate."
+    }
+  ]
+}

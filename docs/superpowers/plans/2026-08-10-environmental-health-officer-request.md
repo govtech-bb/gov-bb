@@ -1617,7 +1617,7 @@ Create `apps/forms/e2e/smoke/request-an-environmental-health-officer.smoke.spec.
  *
  * Like the other specs under e2e/smoke they run ONLY via
  * playwright.smoke.config.ts — the normal `test:e2e` / CI suite ignores this
- * directory (ADR 0027 / 0029), and no workflow runs them automatically.
+ * directory (ADR 0047 / 0051), and no workflow runs them automatically.
  *
  * Run them on demand (from the repo root):
  *   PREVIEW_TOKEN=… pnpm --filter @govtech-bb/forms exec playwright test \

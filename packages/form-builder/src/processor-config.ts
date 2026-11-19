@@ -5,7 +5,7 @@ import {
 import type { RecipeProcessorDraft } from "./types";
 
 /**
- * Payment processors are now per-environment DB config (#716, ADR 0033): they
+ * Payment processors are now per-environment DB config (#716, ADR 0057): they
  * live in `form_config.config.processors`, never in the committed recipe. The
  * builder still edits them in the single processor editor alongside the
  * recipe-resident processors, so these helpers reconcile the two sources on

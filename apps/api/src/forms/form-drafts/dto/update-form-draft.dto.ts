@@ -3,7 +3,8 @@ import { ApiProperty } from "@nestjs/swagger";
 
 export class UpdateFormDraftDto {
   @ApiProperty({
-    description: "Partial field values to merge into the draft. Existing keys not included are preserved.",
+    description:
+      "Partial field values to merge into the draft. Existing keys not included are preserved.",
     type: "object",
     additionalProperties: true,
     example: { firstName: "John" },

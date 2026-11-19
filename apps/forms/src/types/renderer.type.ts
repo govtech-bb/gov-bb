@@ -1,9 +1,9 @@
 // These will be the types used internally in the system to render a form.
 
-import { ContactDetails } from "@govtech-bb/form-types";
-import { ClientFormStep } from "./field-mapper.type";
-import { FieldValidationProperties } from "./validation.type";
-import { RepeatableStepSettings } from "./repeatable.type";
+import type { ContactDetails } from "@govtech-bb/form-types";
+import type { ClientFormStep } from "./field-mapper.type";
+import type { FieldValidationProperties } from "./validation.type";
+import type { RepeatableStepSettings } from "./repeatable.type";
 type stepId = string;
 type fieldId = string;
 

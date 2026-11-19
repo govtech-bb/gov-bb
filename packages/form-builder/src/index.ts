@@ -7,6 +7,7 @@ export type {
   RecipeFieldDraft,
   RecipeProcessorDraft,
   AuthorableProcessorType,
+  AuthorableProcessorPreset,
   ChildOverrides,
 } from "./types";
 
@@ -43,7 +44,7 @@ export type {
 } from "./custom-attributes";
 
 // Processor authoring defaults
-export { makeDefaultProcessor } from "./processor-defaults";
+export { makeDefaultProcessor, REQUIRED_STEP_IDS } from "./processor-defaults";
 
 // Payment processors as a DB sibling (#716): reconcile recipe + DB on open,
 // split them back apart on save.

@@ -11,6 +11,7 @@ import { listServices, setServiceStatus } from "../server/service-status";
 import {
   serviceTypeLabel,
   sortServiceRows,
+  statusEditable,
   type ServiceRow,
   type SortDir,
   type SortKey,
@@ -27,7 +28,7 @@ import {
   type StatusFilter,
 } from "../lib/search-params";
 import { useRowAnimations } from "../lib/use-row-animations";
-import { serviceUrl } from "../lib/service-url";
+import { EDITOR_V2_URL, pagesInEditor, serviceUrl } from "../lib/service-url";
 import { AuditDrawer } from "./-audit-drawer";
 
 export const Route = createFileRoute("/")({
@@ -160,8 +161,7 @@ function ServicesPage() {
     typeFilter !== "all";
 
   function toggleSort(key: SortKey) {
-    const dir =
-      sortKey === key ? (sortDir === "asc" ? "desc" : "asc") : "asc";
+    const dir = sortKey === key ? (sortDir === "asc" ? "desc" : "asc") : "asc";
     update({ sortKey: key, sortDir: dir });
   }
 
@@ -224,6 +224,21 @@ function ServicesPage() {
             : `${rows.length} services.`}{" "}
           Changing a status writes to the service_status audit log against your
           GitHub login.
+          {pagesInEditor && (
+            <>
+              {" "}
+              Page visibility is set in the{" "}
+              <a
+                href={`${EDITOR_V2_URL}/services`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-100 underline hover:no-underline"
+              >
+                content editor
+              </a>
+              ; the statuses here change forms only.
+            </>
+          )}
         </p>
 
         <div className="mb-s flex flex-wrap gap-xs">
@@ -280,10 +295,30 @@ function ServicesPage() {
           <table className="w-full border-collapse text-caption">
             <thead>
               <tr>
-                <SortHeader label="Service" col="service" sort={sort} onSort={toggleSort} />
-                <SortHeader label="Category" col="category" sort={sort} onSort={toggleSort} />
-                <SortHeader label="Type" col="type" sort={sort} onSort={toggleSort} />
-                <SortHeader label="Status" col="status" sort={sort} onSort={toggleSort} />
+                <SortHeader
+                  label="Service"
+                  col="service"
+                  sort={sort}
+                  onSort={toggleSort}
+                />
+                <SortHeader
+                  label="Category"
+                  col="category"
+                  sort={sort}
+                  onSort={toggleSort}
+                />
+                <SortHeader
+                  label="Type"
+                  col="type"
+                  sort={sort}
+                  onSort={toggleSort}
+                />
+                <SortHeader
+                  label="Status"
+                  col="status"
+                  sort={sort}
+                  onSort={toggleSort}
+                />
                 <th className="border-b border-grey-00 bg-white-00 px-s py-xs" />
               </tr>
             </thead>
@@ -315,26 +350,32 @@ function ServicesPage() {
                     )}
                   </td>
                   <td className="border-b border-grey-00 px-s py-xs align-middle">
-                    <select
-                      className={`rounded-sm border border-grey-00 bg-white-00 px-xs py-[6px] text-caption disabled:opacity-50 ${STATUS_TEXT[row.status]}`}
-                      value={row.status}
-                      disabled={saving[row.slug]}
-                      onChange={(e) => {
-                        const next = e.target.value as ServiceStatus;
-                        if (next !== row.status) setPending({ row, next });
-                      }}
-                      aria-label={`Status for ${row.title}`}
-                    >
-                      {SERVICE_STATUS_VALUES.map((s) => (
-                        <option
-                          key={s}
-                          value={s}
-                          disabled={s === "form_disabled" && !row.hasForm}
-                        >
-                          {STATUS_LABELS[s]}
-                        </option>
-                      ))}
-                    </select>
+                    {statusEditable(row, pagesInEditor) ? (
+                      <select
+                        className={`rounded-sm border border-grey-00 bg-white-00 px-xs py-[6px] text-caption disabled:opacity-50 ${STATUS_TEXT[row.status]}`}
+                        value={row.status}
+                        disabled={saving[row.slug]}
+                        onChange={(e) => {
+                          const next = e.target.value as ServiceStatus;
+                          if (next !== row.status) setPending({ row, next });
+                        }}
+                        aria-label={`Status for ${row.title}`}
+                      >
+                        {SERVICE_STATUS_VALUES.map((s) => (
+                          <option
+                            key={s}
+                            value={s}
+                            disabled={s === "form_disabled" && !row.hasForm}
+                          >
+                            {STATUS_LABELS[s]}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <span>
+                        {row.landingUrl ? "Set in content editor" : "—"}
+                      </span>
+                    )}
                   </td>
                   <td className="border-b border-grey-00 px-s py-xs align-middle">
                     <button
@@ -351,7 +392,10 @@ function ServicesPage() {
               ))}
               {visible.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-m py-m text-center text-mid-grey-00">
+                  <td
+                    colSpan={5}
+                    className="px-m py-m text-center text-mid-grey-00"
+                  >
                     No services match your filters.
                   </td>
                 </tr>
@@ -360,25 +404,25 @@ function ServicesPage() {
           </table>
         </div>
 
-      {pending && (
-        <ConfirmStatusChange
-          pending={pending}
-          onCancel={() => setPending(null)}
-          onConfirm={() => {
-            const { row, next } = pending;
-            setPending(null);
-            void changeStatus(row, next);
-          }}
-        />
-      )}
+        {pending && (
+          <ConfirmStatusChange
+            pending={pending}
+            onCancel={() => setPending(null)}
+            onConfirm={() => {
+              const { row, next } = pending;
+              setPending(null);
+              void changeStatus(row, next);
+            }}
+          />
+        )}
 
-      {audit && (
-        <AuditDrawer
-          slug={audit.slug}
-          title={audit.title}
-          onClose={() => setAudit(null)}
-        />
-      )}
+        {audit && (
+          <AuditDrawer
+            slug={audit.slug}
+            title={audit.title}
+            onClose={() => setAudit(null)}
+          />
+        )}
       </div>
     </>
   );
@@ -432,7 +476,9 @@ function SortHeader({
   const active = sort.key === col;
   return (
     <th
-      aria-sort={active ? (sort.dir === "asc" ? "ascending" : "descending") : "none"}
+      aria-sort={
+        active ? (sort.dir === "asc" ? "ascending" : "descending") : "none"
+      }
       className="border-b border-grey-00 bg-white-00 px-s py-xs text-left text-caption-sm font-normal uppercase tracking-wide text-mid-grey-00"
     >
       <button
@@ -488,10 +534,20 @@ function ConfirmStatusChange({
           to <span className={STATUS_TEXT[next]}>{STATUS_LABELS[next]}</span>.
         </p>
         <p className="rounded-sm border border-yellow-40 bg-yellow-10 px-s py-xs text-caption">
-          This changes what the public can see for this service. The change is
-          saved immediately, but the public site caches service statuses for up
-          to 60 seconds — so it can take a little over a minute to appear live.
+          {pagesInEditor
+            ? "This changes the form for this service."
+            : "This changes what the public can see for this service."}{" "}
+          The change is saved immediately, but the public site caches service
+          statuses for up to 60 seconds — so it can take a little over a minute
+          to appear live.
         </p>
+        {pagesInEditor && next === "disabled" && (
+          <p className="mt-s rounded-sm border border-yellow-40 bg-yellow-10 px-s py-xs text-caption">
+            This hides the form only. The page stays as set in the content
+            editor, without its Start button — set it to Preview there too to
+            unpublish the service.
+          </p>
+        )}
         <div className="mt-xm flex justify-end gap-xs">
           <Button type="button" variant="secondary" onClick={onCancel}>
             Cancel

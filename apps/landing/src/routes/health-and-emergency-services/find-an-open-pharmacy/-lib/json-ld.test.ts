@@ -6,7 +6,7 @@ const CLOSED = [] as const
 
 describe('pharmacyJsonLd', () => {
   const pharmacy: Pharmacy = {
-    name: 'Winston Scott Polyclinic',
+    name: 'Sir Winston Scott Polyclinic',
     slug: 'winston-scott-polyclinic',
     type: 'government',
     pppStatus: 'not-applicable',

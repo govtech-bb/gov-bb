@@ -63,7 +63,7 @@ field is required" today.
 
 Four of those five were fixed by **deleting** the authored message rather than
 writing a better one, so `validateDateField` derives it from the label — the
-state the exemption assumes, and the one that survives a rename (ADR 0073). The
+state the exemption assumes, and the one that survives a rename (ADR 0121). The
 fifth, `restaurant-expected-start-date`, has a question-shaped label ("What date
 do you expect the restaurant to start operations?") that derives as "Enter what
 date do you expect…", so it got an authored string. That is the

@@ -43,7 +43,7 @@ Plan: `docs/plans/form-builder-inherited-validation-rules.md`.
 - **Read-only + Override, not pre-filled inputs.** We deliberately did *not*
   pre-fill editable inputs with base values. Doing so would copy base values
   into `overrides.validations` on save, bloating the recipe with non-deltas and
-  violating the override contract (ADRs 0013/0014/0024). Nothing is written
+  violating the override contract (ADRs 0029/0030/0044). Nothing is written
   until the author explicitly overrides; Reset removes the key; an emptied
   override set collapses to `undefined` so the recipe holds only genuine deltas.
 - **`required` excluded entirely from this editor.** It is owned by the

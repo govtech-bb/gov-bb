@@ -6,33 +6,25 @@ import {
   createRootRouteWithContext,
   redirect,
 } from '@tanstack/react-router'
-import { Footer, FooterLink, SkipLink } from '@govtech-bb/react'
+import { SkipLink } from '@govtech-bb/react'
+import { SiteFooter } from '../components/SiteFooter'
 import { BreadcrumbRegion } from '../components/BreadcrumbRegion'
 import Header from '../components/Header'
+import { CATEGORY_BY_SLUG, isCategoryVisible } from '../content/registry'
 import { ErrorPage } from '../components/ErrorPage'
 import { trackEvent, UMAMI_SCRIPT_ATTRIBUTES } from '../lib/analytics'
+import { categoryTreeQuery } from '../lib/api-v2-categories'
 import { COOKIE_MAX_AGE_SECONDS, resolveViewLevel } from '../lib/preview'
-import { getServiceStatuses } from '../lib/service-status'
+import {
+  deriveVisibilityOverlay,
+  getServiceStatuses,
+} from '../lib/service-status'
 import { SITE_URL } from '../lib/site-url'
 import { buildOrganizationLd, buildWebSiteLd } from '../lib/structured-data'
 
 import appCss from '../styles.css?url'
 
 import type { QueryClient } from '@tanstack/react-query'
-
-const FOOTER_LINKS = [
-  { label: 'Home', href: '/', onClick: () => trackEvent('footer-home') },
-  {
-    label: 'Terms & Conditions',
-    href: '/terms-conditions',
-    onClick: () => trackEvent('footer-terms'),
-  },
-  {
-    label: 'Careers',
-    href: 'https://job-boards.greenhouse.io/govtechbarbados',
-    onClick: () => trackEvent('footer-careers'),
-  },
-]
 
 interface MyRouterContext {
   queryClient: QueryClient
@@ -47,7 +39,7 @@ const ROOT_SERVICE_STATUSES_STALE_MS = 60_000
 // Cap the view-level cache at the grant cookie's own lifetime (derived from
 // preview.ts, not hardcoded, so the two can't drift). Without a cap, a reviewer
 // who leaves a tab open past the 4h cookie expiry would keep seeing
-// preview/draft content client-side after the grant has lapsed server-side.
+// preview content client-side after the grant has lapsed server-side.
 const ROOT_VIEW_LEVEL_STALE_MS = COOKIE_MAX_AGE_SECONDS * 1000
 
 // Umami analytics. The website id is a `VITE_`-prefixed var, so Vite inlines it
@@ -82,24 +74,31 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
   //
   // Isolation: the QueryClient is created per `getRouter()` call — one per
   // request on the server, one per session on the client — so a viewer's
-  // `preview`/`draft` grant is never shared across requests. The view-level
+  // `preview` grant is never shared across requests. The view-level
   // cache is capped at the grant cookie's lifetime (see below) rather than held
   // forever, so an expired grant can't linger in a long-open tab.
   //
-  // A `?preview=`/`?draft=` token bypasses the cache entirely: the grant is
+  // A `?preview=` token bypasses the cache entirely: the grant is
   // changing, so it must resolve fresh and run its cookie + redirect
   // side-effects, and must never be cached under the shared query key.
   beforeLoad: async ({ context, location }) => {
     const search = location.search as Record<string, unknown>
-    if (search.preview !== undefined || search.draft !== undefined) {
+    const { queryClient } = context
+    // The public category tree (api_v2 mode) holds no grant, so even a token
+    // navigation reads it through the shared query. It never rejects: an
+    // outage is a value the routes that list categories show, and every other
+    // route ignores.
+    const categoryTree = queryClient.fetchQuery(categoryTreeQuery())
+
+    if (search.preview !== undefined) {
       const { level, redirectTo } = await resolveViewLevel()
       if (redirectTo) throw redirect({ href: redirectTo })
       const serviceStatuses = await getServiceStatuses()
-      return { level, serviceStatuses }
+
+      return { level, serviceStatuses, categoryTree: await categoryTree }
     }
 
-    const { queryClient } = context
-    const [level, serviceStatuses] = await Promise.all([
+    const [level, serviceStatuses, tree] = await Promise.all([
       // The grant only changes via a token (handled above, with a full
       // redirect), so within a document it's effectively fixed — but it's capped
       // at the cookie's lifetime so an expired grant can't linger in a tab left
@@ -118,8 +117,10 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
         staleTime: ROOT_SERVICE_STATUSES_STALE_MS,
         gcTime: ROOT_SERVICE_STATUSES_STALE_MS,
       }),
+      categoryTree,
     ])
-    return { level, serviceStatuses }
+
+    return { level, serviceStatuses, categoryTree: tree }
   },
   head: () => ({
     meta: [
@@ -256,28 +257,33 @@ function ServerErrorPage() {
 }
 
 function RootLayout() {
+  const { level, serviceStatuses, categoryTree } = Route.useRouteContext()
+  // api_v2 mode (ADR 0132): listed only when the public tree lists it. An
+  // unreadable tree hides it too, never falling back to the static category.
+  const showAboutBarbados =
+    categoryTree.kind === 'disabled'
+      ? isCategoryVisible(
+          CATEGORY_BY_SLUG['about-barbados'],
+          level,
+          deriveVisibilityOverlay(serviceStatuses),
+        )
+      : categoryTree.kind === 'found' &&
+        categoryTree.categories.some(
+          (category) => category.url === '/about-barbados',
+        )
+
   return (
     <>
       <SkipLink href="#main-content" />
       <div className="print:hidden">
-        <Header />
+        <Header showAboutBarbados={showAboutBarbados} />
       </div>
       <BreadcrumbRegion>
         <main id="main-content" tabIndex={-1}>
           <Outlet />
         </main>
       </BreadcrumbRegion>
-      <Footer
-        className="print:hidden"
-        coatSrc="/images/govbb-crest.svg"
-        copy={`© ${new Date().getFullYear()} Government of Barbados`}
-      >
-        {FOOTER_LINKS.map(({ label, ...link }) => (
-          <FooterLink key={label} {...link}>
-            {label}
-          </FooterLink>
-        ))}
-      </Footer>
+      <SiteFooter onNavigate={trackEvent} />
     </>
   )
 }

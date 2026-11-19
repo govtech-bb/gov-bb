@@ -1,0 +1,120 @@
+{
+  "address-lookup": {
+    "fieldId": "address-lookup",
+    "label": "Address"
+  },
+  "opening-hours": {
+    "fieldId": "opening-hours",
+    "label": "Opening hours"
+  },
+  "first-name": {
+    "fieldId": "first-name",
+    "label": "First name"
+  },
+  "middle-name": {
+    "fieldId": "middle-name",
+    "label": "Middle name(s)"
+  },
+  "last-name": {
+    "fieldId": "last-name",
+    "label": "Last name"
+  },
+  "name": {
+    "fieldId": "name",
+    "label": "Full name"
+  },
+  "title": {
+    "fieldId": "title",
+    "label": "Title"
+  },
+  "date-of-birth": {
+    "fieldId": "date-of-birth",
+    "label": "Date of birth"
+  },
+  "sex": {
+    "fieldId": "sex",
+    "label": "Sex"
+  },
+  "national-id-number": {
+    "fieldId": "national-id-number",
+    "label": "National Identification (ID) number"
+  },
+  "national-insurance-number": {
+    "fieldId": "national-insurance-number",
+    "label": "National Insurance number"
+  },
+  "passport-number": {
+    "fieldId": "passport-number",
+    "label": "Passport number"
+  },
+  "tamis-number": {
+    "fieldId": "tamis-number",
+    "label": "TAMIS number"
+  },
+  "address": {
+    "fieldId": "address",
+    "label": "Address line 1"
+  },
+  "parish": {
+    "fieldId": "parish",
+    "label": "Parish"
+  },
+  "postcode": {
+    "fieldId": "postcode",
+    "label": "Postcode"
+  },
+  "country": {
+    "fieldId": "country",
+    "label": "Country",
+    "optionValues": {
+      "Democratic Republic of the Congo": "dr-congo"
+    }
+  },
+  "nationality": {
+    "fieldId": "nationality",
+    "label": "Nationality"
+  },
+  "relationship": {
+    "fieldId": "relationship",
+    "label": "Relationship"
+  },
+  "marital-status": {
+    "fieldId": "marital-status",
+    "label": "Marital status"
+  },
+  "primary-school": {
+    "fieldId": "primary-school",
+    "label": "Primary school",
+    "optionValues": {
+      "Bayley's Primary": "bayleys-primary",
+      "Hillaby Turner's Hall": "hillaby-turners-hall",
+      "St. Bernard's Primary": "st-bernards-primary",
+      "St. Catherine's Primary": "st-catherines-primary",
+      "St. John's Primary": "st-johns-primary",
+      "St. Jude's Primary": "st-judes-primary",
+      "St. Lucy's Primary": "st-lucys-primary",
+      "St. Margaret's Primary School": "st-margarets-primary-school",
+      "St. Mary's Primary": "st-marys-primary",
+      "St. Matthew's Primary": "st-matthews-primary",
+      "St. Stephen's Primary": "st-stephens-primary",
+      "Workman's Primary": "workmans-primary"
+    }
+  },
+  "secondary-school": {
+    "fieldId": "secondary-school",
+    "label": "Secondary school",
+    "optionValues": {
+      "Queen's College": "queens-college",
+      "The Frederick Smith Secondary School": "frederick-smith-secondary-school",
+      "The Lester Vaughan School": "lester-vaughan-school",
+      "The Lodge School": "lodge-school",
+      "The St. George Secondary School": "st-george-secondary-school",
+      "The St. Leonard's Boys' Secondary School": "st-leonards-boys-secondary-school",
+      "The St. Michael School": "st-michael-school"
+    }
+  },
+  "account-type": {
+    "fieldId": "account-type",
+    "label": "Account type"
+  }
+}

@@ -37,7 +37,7 @@ export interface RecipeStepDraft {
 }
 
 // Editor-only id mirrors RecipeFieldDraft.id: minted on deserialize, stripped on
-// serialize, never persisted (per ADR 0009). Intersecting with the Processor
+// serialize, never persisted (per ADR 0019). Intersecting with the Processor
 // discriminated union keeps the `type` discriminant intact across all members.
 export type RecipeProcessorDraft = Processor & { id: string };
 
@@ -46,6 +46,13 @@ export type RecipeProcessorDraft = Processor & { id: string };
 // `form_config.config` (never the recipe), unlike the other types which live in
 // the recipe. So this is just every processor type.
 export type AuthorableProcessorType = Processor["type"];
+
+// What the builder's "Add" list offers: every authorable type, plus UI-only
+// presets that seed a processor of an existing type with a different shape.
+// `webhook-cams` seeds a mapped (Case Management System) webhook (#2684).
+export type AuthorableProcessorPreset =
+  | AuthorableProcessorType
+  | "webhook-cams";
 
 export interface RecipeDraft {
   formId: string;

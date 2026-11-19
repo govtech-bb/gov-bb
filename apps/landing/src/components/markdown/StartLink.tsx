@@ -6,7 +6,9 @@ import { FORMS_BASE_URL } from '@/config/env'
 import { withJourneyId } from '@/lib/analytics'
 
 // Live form ids, resolved server-side per request (see lib/available-forms.ts).
-export const AvailableFormsContext = createContext<ReadonlySet<string>>(new Set())
+export const AvailableFormsContext = createContext<ReadonlySet<string>>(
+  new Set(),
+)
 
 // Hand this tab's journey ID to the forms app, which is on another origin and
 // can't read landing's sessionStorage. Added when the link is clicked (auxclick
@@ -30,7 +32,7 @@ type StartLinkProps = {
 } & Record<string, unknown>
 
 // An authored href wins over formId; an unavailable formId suppresses the
-// button. See docs/decisions/0005.
+// button. See docs/decisions/0011.
 export function StartLink({ href, formId, children, ...rest }: StartLinkProps) {
   const availableForms = useContext(AvailableFormsContext)
   const { pathname } = useLocation()

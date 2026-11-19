@@ -70,6 +70,40 @@ test("multi-select → array of matched values", () => {
   assert.deepEqual(coerceValue(multi, "A, b"), { value: ["a", "b"] });
 });
 
+test("time keeps the typed string", () => {
+  assert.deepEqual(coerceValue(field({ htmlType: "time" }), "09:30"), {
+    value: "09:30",
+  });
+});
+
+test("checkbox-accordion matches options across its groups", () => {
+  const services = field({
+    htmlType: "checkbox-accordion",
+    groups: [
+      { label: "Food", options: [{ label: "Bakery", value: "bakery" }] },
+      { label: "Retail", options: [{ label: "Clothing", value: "clothing" }] },
+    ],
+  });
+  assert.deepEqual(coerceValue(services, "Bakery, clothing"), {
+    value: ["bakery", "clothing"],
+  });
+  assert.ok("error" in coerceValue(services, "Hardware"));
+});
+
+test("canonicalizeValue stores a checkbox-accordion's option values, like a checkbox", () => {
+  const services = field({
+    htmlType: "checkbox-accordion",
+    groups: [
+      { label: "Food", options: [{ label: "Bakery", value: "bakery" }] },
+      { label: "Retail", options: [{ label: "Clothing", value: "clothing" }] },
+    ],
+  });
+  assert.equal(
+    canonicalizeValue(services, "Bakery, clothing"),
+    "bakery,clothing",
+  );
+});
+
 test("canonicalizeValue: show-hide→true/false, option→value, text→raw, multi→csv", () => {
   assert.equal(
     canonicalizeValue(field({ htmlType: "show-hide" }), "yes"),

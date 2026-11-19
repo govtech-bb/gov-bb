@@ -335,7 +335,7 @@ describe("WebhookProcessor — mapped mode (per-MDA destination)", () => {
       makeDestinations(DEST),
       formDefinitions,
     );
-    // No `version`: recipes are versionless since ADR 0057 (#1196), so the
+    // No `version`: recipes are versionless since ADR 0097 (#1196), so the
     // served contract has no such field. The fixture mirrors that.
     findByFormId.mockResolvedValue({
       formId: "science-camp",

@@ -1,6 +1,6 @@
 import { forwardRef } from 'react'
 import type { ComponentPropsWithoutRef } from 'react'
-import { Link, useRouteContext } from '@tanstack/react-router'
+import { Link } from '@tanstack/react-router'
 import {
   Header as GovHeader,
   Link as GovLink,
@@ -8,9 +8,8 @@ import {
   OfficialBanner,
   StatusBanner,
 } from '@govtech-bb/react'
-import { CATEGORY_BY_SLUG, isCategoryVisible } from '../content/registry'
+import { assetUrl } from '../lib/asset-url'
 import { CHAT_URL } from '../lib/chat-url'
-import { deriveVisibilityOverlay } from '../lib/service-status'
 import { TRACKER_URL } from '../lib/tracker-url'
 
 // The DS Header renders links via `href`; map it to TanStack Router's `to` for
@@ -21,25 +20,28 @@ const RouterLink = forwardRef<HTMLAnchorElement, RouterLinkProps>(
 )
 RouterLink.displayName = 'RouterLink'
 
-export default function Header() {
-  const { level, serviceStatuses } = useRouteContext({ from: '__root__' })
-  const showAboutBarbados = isCategoryVisible(
-    CATEGORY_BY_SLUG['about-barbados'],
-    level,
-    deriveVisibilityOverlay(serviceStatuses),
-  )
-
+/**
+ * The site chrome. Callers decide whether About Barbados is listed: the public
+ * root from its route context; the CMS preview cannot know, and omits it.
+ */
+export default function Header({
+  assetBase,
+  showAboutBarbados,
+}: {
+  assetBase?: string
+  showAboutBarbados: boolean
+}) {
   return (
     <>
       <OfficialBanner
-        imageSrc="/images/govbb-crest.svg"
+        imageSrc={assetUrl('/images/govbb-crest.svg', assetBase)}
         imageAlt=""
         showLearnMore={false}
       />
       <GovHeader
         homeHref="/"
         logoAlt="Go to the alpha.gov.bb homepage"
-        logoSrc="/images/govbb-logo.svg"
+        logoSrc={assetUrl('/images/govbb-logo.svg', assetBase)}
         linkComponent={RouterLink}
         nav={
           <>

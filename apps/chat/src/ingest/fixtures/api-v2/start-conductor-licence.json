@@ -1,0 +1,30 @@
+{
+  "url": "/work-employment/apply-for-conductor-licence/start",
+  "frontmatter": {
+    "stage": "alpha",
+    "title": "Apply for a conductor's licence"
+  },
+  "body_markdown": "You should complete your application in one go. At the moment, it is not possible to save your answers and come back to them later.\n\n## How long does it take?\n\nIt shouldn’t take longer than 10 minutes.\n\n### What you will need\n\nYou will need to share:\n\n- the licence number and issue date for conductor’s licences you hold, or have held\n- the licence number and issue date for driver’s licences you hold, or have held\n- the details of any endorsements you have (or have had) such as penalty points on your conductor’s or driver’s licence\n- the reason why you are (or have been) disqualified from getting a conductor’s or driver’s licence\n- whether you have ever been convicted in a criminal court\n- a copy of your [Police Certificate of Character](https://forms.gov.bb/CertificateOfCharacter)\n\n### What happens after you apply\n\nWe will review your application.\n\nYou must contact the department (246-536-0282) to schedule your in-person oral test.\n\n<a data-start-link>Start now</a>",
+  "form_id": "apply-for-conductor-licence",
+  "hide_start_links": false,
+  "breadcrumbs": [
+    {
+      "name": "Work and employment",
+      "url": "/work-employment"
+    },
+    {
+      "name": "Apply for a conductor's licence",
+      "url": "/work-employment/apply-for-conductor-licence"
+    },
+    {
+      "name": "Apply for a conductor's licence",
+      "url": "/work-employment/apply-for-conductor-licence/start"
+    }
+  ],
+  "category": "work-employment",
+  "subcategory": null,
+  "visibility": "public",
+  "published_at": "2026-03-06T00:00:00.000Z",
+  "content_updated_at": "2026-03-06T00:00:00.000Z",
+  "updated_at": "2026-10-22T18:56:44.337Z"
+}
