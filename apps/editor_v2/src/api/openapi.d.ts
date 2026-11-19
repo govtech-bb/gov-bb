@@ -3370,7 +3370,7 @@ export interface paths {
         put?: never;
         /**
          * Add a data collection
-         * @description Needs the admin or the approver role (403 otherwise). Checked against the collection rules: a key in the wrong format, no title, no fields, a field without a key or label, two fields with the same key, an unknown field type, or a `record_key` that isn't one of its `slug` fields is a 422 `validation_failed` naming the field, such as `schema.fields.1.type`. 409 `collection_exists` when the key is taken. A collection's field list can't be changed once it is created.
+         * @description Needs the admin or the approver role (403 otherwise). Checked against the collection rules: a key in the wrong format, no title, no fields, a field key in the wrong format, a field without a label, two fields with the same key, an unknown field type, or a `record_key` that isn't one of its `slug` fields is a 422 `validation_failed` naming the field, such as `schema.fields.1.type`. 409 `collection_exists` when the key is taken. A collection's field list can't be changed once it is created.
          */
         post: {
             parameters: {
@@ -3391,7 +3391,7 @@ export interface paths {
                         schema: {
                             /** @description At least one field. */
                             fields: {
-                                /** @description Unique among the collection's fields. */
+                                /** @description Lowercase letters, numbers and hyphens, up to 100 characters; unique among the collection's fields. */
                                 key: string;
                                 label: string;
                                 /** @description One of `text`, `slug`, `email`. */

@@ -168,6 +168,30 @@ describe("the rules a new collection must keep", () => {
       },
       "schema.fields.1.type",
     ],
+    ...["__proto__", "phone,email", "has space", "Name", " key"].map(
+      (key): [string, object, string] => [
+        `a field key in the wrong format (${JSON.stringify(key)})`,
+        {
+          schema: {
+            fields: [
+              { key: "key", label: "Key", type: "slug" },
+              { key, label: "Odd", type: "text" },
+            ],
+          },
+        },
+        "schema.fields.1.key",
+      ],
+    ),
+    ["a title with a NUL", { title: "Off\u0000ices" }, "title"],
+    [
+      "a label with a NUL",
+      {
+        schema: {
+          fields: [{ key: "key", label: "K\u0000ey", type: "slug" }],
+        },
+      },
+      "schema.fields.0.label",
+    ],
     ["a record key that isn't a field", { record_key: "code" }, "record_key"],
     [
       "a record key that isn't a slug field",

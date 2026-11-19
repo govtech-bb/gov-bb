@@ -410,7 +410,13 @@ export const writes = {
       !!found &&
       found.title === sent.title &&
       found.record_key === sent.record_key &&
-      JSON.stringify(found.schema.fields) === JSON.stringify(sent.schema.fields),
+      found.schema.fields.length === sent.schema.fields.length &&
+      found.schema.fields.every(
+        (field, index) =>
+          field.key === sent.schema.fields[index]?.key &&
+          field.label === sent.schema.fields[index]?.label &&
+          field.type === sent.schema.fields[index]?.type,
+      ),
   }),
   deleteRecord: (api: EditorApi): Write<RecordDeletion, RecordDetail | undefined> => ({
     send: async (sent) => {

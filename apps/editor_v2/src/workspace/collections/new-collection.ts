@@ -84,6 +84,8 @@ export function collectionProblems(
     if (!field.key) problem(`${at}.key`, "Enter a key");
     else if (field.key.length > FIELD_KEY_MAX)
       problem(`${at}.key`, `Keep the key to ${FIELD_KEY_MAX} characters or fewer`);
+    else if (!KEY.test(field.key))
+      problem(`${at}.key`, "Use only lower-case letters, numbers and single hyphens between words");
     else if (seen.has(field.key)) problem(`${at}.key`, "Another field already has this key");
     seen.add(field.key);
 

@@ -148,8 +148,8 @@ export function CollectionScreen({
     setAdding(true);
   };
 
-  // Arriving at a collection with no records, and with the focus nowhere, as just after adding it, its first record is
-  // what comes next
+  // Arriving at a collection with no records, and with the focus nowhere, as just after adding it or following a link
+  // to it, its first record is what comes next
   const empty = !readOnly && detail.data?.records.length === 0;
 
   useEffect(() => {

@@ -764,7 +764,8 @@ export const SCHEMAS = {
     description:
       "Needs the admin or the approver role (403 otherwise). Checked " +
       "against the collection rules: a key in the wrong format, no title, " +
-      "no fields, a field without a key or label, two fields with the same " +
+      "no fields, a field key in the wrong format, a field without a label, " +
+      "two fields with the same " +
       "key, an unknown field type, or a `record_key` that isn't one of its " +
       "`slug` fields is a 422 `validation_failed` naming the field, such as " +
       "`schema.fields.1.type`. 409 `collection_exists` when the key is " +

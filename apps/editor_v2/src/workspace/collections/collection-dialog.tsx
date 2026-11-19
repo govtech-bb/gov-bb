@@ -1,6 +1,6 @@
 import { Plus, Trash } from "@phosphor-icons/react";
 import { useQueryClient } from "@tanstack/react-query";
-import { useEffect, useEffectEvent, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useEffectEvent, useId, useLayoutEffect, useRef, useState } from "react";
 import type { Collection, EditorApi, FieldError } from "../../api/client";
 import { FIELD_TYPES } from "../../api/field-types";
 import { collectionQuery } from "../../api/queries";
@@ -64,7 +64,8 @@ export function AddCollectionDialog({
   const [checks, setChecks] = useState(0);
   // The row just added, whose key takes the focus
   const [added, setAdded] = useState<number>();
-  const body = useRef<HTMLDivElement>(null);
+  const body = useRef<HTMLFieldSetElement>(null);
+  const fieldListError = useId();
   const addField = useRef<HTMLButtonElement>(null);
   const save = useWrite(api, writes.createCollection);
   const working = save.state === "sending" || save.state === "checking";
@@ -93,7 +94,11 @@ export function AddCollectionDialog({
   }, [outcome]);
 
   useLayoutEffect(() => {
-    if (checks > 0) body.current?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus();
+    if (checks === 0) return;
+    // With no fields, there is no field to mark: Add field, which the problem describes, is what to press
+    (
+      body.current?.querySelector<HTMLElement>('[aria-invalid="true"]') ?? addField.current
+    )?.focus();
   }, [checks]);
 
   useLayoutEffect(() => {
@@ -206,7 +211,8 @@ export function AddCollectionDialog({
         </Button>
       }
     >
-      <div ref={body} className="contents">
+      {/* A create whose answer was lost resends what it sent, so nothing can change until it's settled */}
+      <fieldset ref={body} disabled={unsettled} className="contents">
         <Field label="Title" error={errorOf("title")}>
           <Input
             value={draft.title}
@@ -237,7 +243,7 @@ export function AddCollectionDialog({
             }}
           />
         </Field>
-        <FieldGroup label="Fields" error={errorOf(FIELD_LIST)}>
+        <FieldGroup label="Fields">
           <p className="text-14 text-muted">What each record holds, one value per field.</p>
           {draft.fields.map((row, index) => (
             <div
@@ -293,9 +299,15 @@ export function AddCollectionDialog({
             variant="secondary"
             icon={<Plus />}
             onClick={addRow}
+            aria-describedby={errorOf(FIELD_LIST) ? fieldListError : undefined}
           >
             Add field
           </Button>
+          {errorOf(FIELD_LIST) && (
+            <p id={fieldListError} className="text-14 text-error">
+              {errorOf(FIELD_LIST)}
+            </p>
+          )}
         </FieldGroup>
         <Field
           label="Record key"
@@ -303,7 +315,10 @@ export function AddCollectionDialog({
           error={errorOf("record_key")}
         >
           <NativeSelect
-            value={draft.recordKey === undefined ? "" : String(draft.recordKey)}
+            value={String(
+              draft.fields.find((row) => row.id === draft.recordKey && row.type === "slug")?.id ??
+                "",
+            )}
             onChange={(event) => {
               const chosen = event.target.value;
               edit(
@@ -315,16 +330,19 @@ export function AddCollectionDialog({
               );
             }}
           >
-            <option value="">Choose a field</option>
-            {draft.fields.map((row, index) => (
-              <option key={row.id} value={row.id}>
-                {fieldName(row, index)}
-              </option>
-            ))}
+            <option value="">Choose a slug field</option>
+            {draft.fields.map(
+              (row, index) =>
+                row.type === "slug" && (
+                  <option key={row.id} value={row.id}>
+                    {fieldName(row, index)}
+                  </option>
+                ),
+            )}
           </NativeSelect>
         </Field>
         <ApiProblems messages={messages} />
-      </div>
+      </fieldset>
     </FormDialog>
   );
 }

@@ -229,7 +229,12 @@ export const NewCollection = z.strictObject({
     fields: z
       .array(
         z.strictObject({
-          key: z.string().describe("Unique among the collection's fields."),
+          key: z
+            .string()
+            .describe(
+              "Lowercase letters, numbers and hyphens, up to 100 " +
+                "characters; unique among the collection's fields.",
+            ),
           label: z.string(),
           type: z
             .string()
@@ -253,6 +258,9 @@ export type CollectionDefinition = Pick<
 /** The longest field key: the record key field's key is stored in `data_collections.record_key`. */
 const FIELD_KEY_MAX = 100;
 const TITLE_MAX = 200;
+/** Characters PostgreSQL refuses in text (NUL) or that have no place in a name. */
+// oxlint-disable-next-line no-control-regex -- matching control characters is the point
+const CONTROL = /[\u0000-\u001f\u007f]/;
 
 /**
  * Check a new collection against the rules: a key in the `CollectionKey`
@@ -271,20 +279,22 @@ export function parseNewCollection(
         "Use lowercase letters, numbers and hyphens, up to 100 characters.",
     });
   const title = input.title.trim();
-  if (!title || title.length > TITLE_MAX)
+  if (!title || title.length > TITLE_MAX || CONTROL.test(title))
     errors.push({
       field: "title",
-      message: `Enter a title, up to ${TITLE_MAX} characters.`,
+      message: `Enter a title, up to ${TITLE_MAX} characters, without control characters.`,
     });
   const fields: CollectionField[] = [];
   const seen = new Set<string>();
   input.schema.fields.forEach((field, index) => {
     const at = `schema.fields.${index}`;
     const key = field.key;
-    if (!key.trim() || key !== key.trim() || key.length > FIELD_KEY_MAX)
+    // The slug rule a collection key keeps, so a field key is never `__proto__`
+    // in a record's data, nor has spaces or punctuation a reference trips on
+    if (!CollectionKey.safeParse(key).success)
       errors.push({
         field: `${at}.key`,
-        message: `Enter a key without spaces at either end, up to ${FIELD_KEY_MAX} characters.`,
+        message: `Use lowercase letters, numbers and hyphens, up to ${FIELD_KEY_MAX} characters.`,
       });
     else if (seen.has(key))
       errors.push({
@@ -293,8 +303,11 @@ export function parseNewCollection(
       });
     seen.add(key);
     const label = field.label.trim();
-    if (!label)
-      errors.push({ field: `${at}.label`, message: "Enter a label." });
+    if (!label || CONTROL.test(label))
+      errors.push({
+        field: `${at}.label`,
+        message: "Enter a label, without control characters.",
+      });
     const type = CollectionField.shape.type.safeParse(field.type);
     if (!type.success)
       errors.push({

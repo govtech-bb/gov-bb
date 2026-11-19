@@ -31,15 +31,18 @@ const CONTACTS = {
   record_count: 0,
 };
 
-type Answer = { status: number; body: unknown };
+type Answer = { status: number; body: unknown } | "lost";
 
 /**
- * api_v2's collection list and its create route. A create answers with `answers`' next entry, or else as api_v2 does
- * for a definition it takes.
+ * api_v2's collection list, its create route and its collection read. A create answers with `answers`' next entry
+ * ("lost": no answer reaches the browser), or else as api_v2 does for a definition it takes. A read finds what
+ * `stored` holds under that key, or 404s.
  */
 function contentApi() {
   const posts: unknown[] = [];
   const answers: Answer[] = [];
+  const stored = new Map<string, unknown>();
+  const reads: string[] = [];
 
   const fetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     const path = new URL(input instanceof Request ? input.url : input).pathname;
@@ -53,6 +56,8 @@ function contentApi() {
       posts.push(body);
       const answer = answers.shift();
 
+      if (answer === "lost") throw new TypeError("Failed to fetch");
+
       return answer
         ? Response.json(answer.body, { status: answer.status })
         : Response.json(
@@ -61,10 +66,28 @@ function contentApi() {
           );
     }
 
+    const read = /^\/collections\/([^/]+)\/records$/.exec(path)?.[1];
+
+    if (read) {
+      reads.push(read);
+      const collection = stored.get(read);
+
+      return collection
+        ? Response.json({ collection, records: [] })
+        : Response.json({ error: "not_found" }, { status: 404 });
+    }
+
     return Response.json({ error: "not_found" }, { status: 404 });
   });
 
-  return { fetch, posts, answer: (next: Answer) => void answers.push(next) };
+  return {
+    fetch,
+    posts,
+    reads,
+    answer: (next: Answer) => void answers.push(next),
+    /** A collection api_v2 holds under its key, as a later read finds it. */
+    store: (collection: { key: string }) => void stored.set(collection.key, collection),
+  };
 }
 
 const rootRoute = createRootRoute();
@@ -251,6 +274,19 @@ describe("the new collection's checks", () => {
       },
       "schema.fields.1.label",
     ],
+    ...["__proto__", "has space", "phone,email"].map(
+      (key) =>
+        [
+          `a field key in the wrong format (${key})`,
+          {
+            fields: [
+              { id: 0, key: "key", label: "Key", type: "slug" },
+              { id: 1, key, label: "Odd", type: "text" },
+            ],
+          },
+          "schema.fields.1.key",
+        ] as const,
+    ),
     ["no record key", { recordKey: undefined }, "record_key"],
     ["a record key that isn't a slug field", { recordKey: 1 }, "record_key"],
   ] as const)("finds %s, naming the field as api_v2 does", (_, change, field) => {
@@ -289,10 +325,8 @@ test("adds a collection with its fields and record key, then opens it to take it
   await enter(control("Label", 2), "Email");
   await enter(control("Type", 2), "email");
   expect(options("Record key").map((option) => option.text)).toEqual([
-    "Choose a field",
+    "Choose a slug field",
     "Key (key)",
-    "Name (name)",
-    "Email (email)",
   ]);
 
   await submit();
@@ -403,7 +437,13 @@ test("removing a field gives the focus to Add field, and a removed record key mu
   expect(document.activeElement).toBe(buttons("Add field")[0]);
   await submit();
   expect(server.posts).toEqual([]);
-  expect(dialog()?.textContent).toContain("Add at least one field");
+  // With no field to mark, Add field takes the focus, the problem read out with it
+  const addField = buttons("Add field")[0]!;
+
+  expect(document.activeElement).toBe(addField);
+  expect(
+    document.getElementById(addField.getAttribute("aria-describedby") ?? "")?.textContent,
+  ).toBe("Add at least one field");
 });
 
 test("someone who is neither an admin nor an approver can't add a collection, and is told why", async () => {
@@ -412,4 +452,80 @@ test("someone who is neither an admin nor an approver can't add a collection, an
 
   expect(buttons("Add collection")[0]!.disabled).toBe(true);
   expect(host.textContent).toContain("Only admins and approvers can add collections.");
+});
+
+describe("a create whose answer was lost", () => {
+  const OFFICES = {
+    key: "offices",
+    title: "Offices",
+    record_key: "key",
+    schema: { fields: [{ key: "key", label: "Key", type: "slug" }] },
+    schema_version: 1,
+    updated_at: "2026-11-19T12:01:00.000Z",
+  };
+
+  const lose = async () => {
+    await opened();
+    await enter(control("Title"), "Offices");
+    server.answer("lost");
+    await submit();
+  };
+
+  test("is checked first, and counts as added when api_v2 holds exactly this collection", async () => {
+    server.store(OFFICES);
+    await lose();
+
+    await until(() => expect(router.state.location.pathname).toBe("/collections/offices"));
+    expect(server.posts).toHaveLength(1);
+    expect(server.reads).toContain("offices");
+  });
+
+  test("leaves the dialog unsettled, its fields locked, until Check again settles it", async () => {
+    await lose();
+
+    // A 404 read-back proves nothing either way
+    await until(() => expect(buttons("Check again")).toHaveLength(1));
+    expect(dialog()?.textContent).toContain("We couldn’t tell whether the collection was added.");
+    expect(control("Title").matches(":disabled")).toBe(true);
+    expect(buttons("Add field")[0]!.matches(":disabled")).toBe(true);
+    expect(router.state.location.pathname).toBe("/collections");
+
+    // Check again reads first; finding nothing, it resends exactly what was sent, which lands
+    await press("Check again");
+    await until(() => expect(router.state.location.pathname).toBe("/collections/offices"));
+    expect(server.posts).toHaveLength(2);
+    expect(server.posts[1]).toEqual(server.posts[0]);
+  });
+
+  test.each([
+    ["title", { title: "Someone else’s offices" }],
+    [
+      "record key",
+      { record_key: "code", schema: { fields: [{ key: "code", label: "Code", type: "slug" }] } },
+    ],
+    ["fields", { schema: { fields: [{ key: "key", label: "Office key", type: "slug" }] } }],
+  ])(
+    "isn't ours when api_v2 holds a collection under its key with another %s: it's sent again and refused on Key",
+    async (_, change) => {
+      server.store({ ...OFFICES, ...change });
+      await lose();
+      await until(() => expect(buttons("Check again")).toHaveLength(1));
+
+      server.answer({
+        status: 409,
+        body: {
+          error: "collection_exists",
+          message: "There is already a collection offices.",
+          errors: [{ field: "key", message: "There is already a collection offices." }],
+        },
+      });
+      await press("Check again");
+
+      await until(() =>
+        expect(errorOf(control("Key"))).toBe("Another collection already has this key"),
+      );
+      expect(server.posts).toHaveLength(2);
+      expect(router.state.location.pathname).toBe("/collections");
+    },
+  );
 });

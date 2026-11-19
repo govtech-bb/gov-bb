@@ -173,6 +173,30 @@ describe.skipIf(!HAS_DATABASE)(
       ],
       ["a record key that isn't a field", { record_key: "code" }, "record_key"],
       ["a key in the wrong format", { key: "Not A Key" }, "key"],
+      [
+        "a field key of __proto__",
+        {
+          schema: {
+            fields: [
+              { key: "key", label: "Key", type: "slug" },
+              { key: "__proto__", label: "Odd", type: "text" },
+            ],
+          },
+        },
+        "schema.fields.1.key",
+      ],
+      [
+        "a field key with a space",
+        {
+          schema: {
+            fields: [
+              { key: "key", label: "Key", type: "slug" },
+              { key: "opening hours", label: "Hours", type: "text" },
+            ],
+          },
+        },
+        "schema.fields.1.key",
+      ],
     ] as const)(
       "refuses %s, naming the field, and writes nothing",
       async (_, change, field) => {
