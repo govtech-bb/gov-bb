@@ -141,6 +141,18 @@ describe('holidaysForYear', () => {
     expect(holidaysForYear(2028, oneOffs)).toEqual(getBankHolidaysForYear(2028))
   })
 
+  it('lists a holiday once when a record repeats it', () => {
+    const holidays = holidaysForYear(
+      2027,
+      oneOffHolidays([
+        FINAL,
+        { ...FINAL, key: 'again' },
+        { key: 'christmas', name: 'Christmas Day', date: '2027-12-25' },
+      ]),
+    )
+    expect(holidays).toEqual(holidaysForYear(2027, oneOffHolidays([FINAL])))
+  })
+
   it('gives a one-off holiday on a Sunday no substitution day', () => {
     // 14 March 2027 is a Sunday.
     const holidays = holidaysForYear(

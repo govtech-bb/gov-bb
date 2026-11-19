@@ -64,7 +64,8 @@ export const CONTACTS: SeedCollection = {
  * (#3205). Landing calculates the statutory holidays and their substitution
  * days itself and adds these to the calendar for their year. `date` is text
  * holding an ISO `YYYY-MM-DD` date; landing ignores a record whose date isn't
- * one. No records: deployed environments get theirs through the editor.
+ * one. No records. The seed runs only locally: deployed environments get the
+ * collection through #3681 (created in the editor) or #3783 (imported).
  */
 export const PUBLIC_HOLIDAYS: SeedCollection = {
   key: "public-holidays",

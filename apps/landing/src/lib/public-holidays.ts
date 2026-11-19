@@ -51,21 +51,24 @@ export function oneOffHolidays(
 
 /**
  * The year's calculated holidays with its one-off holidays, sorted by date.
- * A one-off holiday brings no substitution day.
+ * A one-off holiday brings no substitution day, and one already listed (same
+ * date and name) isn't listed again.
  */
 export function holidaysForYear(
   year: number,
   oneOffs: Array<OneOffHoliday>,
 ): Array<Holiday> {
-  const added: Array<Holiday> = []
+  const holidays = getBankHolidaysForYear(year)
+  const listed = new Set(holidays.map((h) => `${h.date.getTime()} ${h.name}`))
   for (const { date, name, note } of oneOffs) {
     const parsed = parseIsoDate(date)
-    if (parsed?.getUTCFullYear() === year)
-      added.push(note ? { date: parsed, name, note } : { date: parsed, name })
+    if (parsed?.getUTCFullYear() !== year) continue
+    const id = `${parsed.getTime()} ${name}`
+    if (listed.has(id)) continue
+    listed.add(id)
+    holidays.push(note ? { date: parsed, name, note } : { date: parsed, name })
   }
-  return [...getBankHolidaysForYear(year), ...added].sort(
-    (a, b) => a.date.getTime() - b.date.getTime(),
-  )
+  return holidays.sort((a, b) => a.date.getTime() - b.date.getTime())
 }
 
 /** The collection's holidays, or none when api_v2 isn't configured or the read fails. */
