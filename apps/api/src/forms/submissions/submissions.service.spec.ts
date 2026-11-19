@@ -695,6 +695,7 @@ describe("SubmissionsService", () => {
         processorFactory,
         expressions,
         makeCatchmentRouting(),
+        {} as FormDefinitionsService,
       );
       return { service, eventEmitter };
     }
