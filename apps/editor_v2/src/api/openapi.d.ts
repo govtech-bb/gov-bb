@@ -3270,7 +3270,7 @@ export interface paths {
         };
         /**
          * Every data collection, with its field list and record count
-         * @description A collection keeps facts many pages repeat, such as a department's phone number, as records. `schema.fields` is what a record may hold. Field lists are set by developers; editors change records.
+         * @description A collection keeps facts many pages repeat, such as a department's phone number, as records. `schema.fields` is what a record may hold. Admins and approvers add collections; editors change records.
          */
         get: {
             parameters: {
@@ -3368,7 +3368,175 @@ export interface paths {
             };
         };
         put?: never;
-        post?: never;
+        /**
+         * Add a data collection
+         * @description Needs the admin or the approver role (403 otherwise). Checked against the collection rules: a key in the wrong format, no title, no fields, a field key in the wrong format, a field without a label, two fields with the same key, an unknown field type, or a `record_key` that isn't one of its `slug` fields is a 422 `validation_failed` naming the field, such as `schema.fields.1.type`. 409 `collection_exists` when the key is taken. A collection's field list can't be changed once it is created.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        /** @description The collection's name in urls: lowercase letters, numbers and hyphens, up to 100 characters. No other collection may have it. */
+                        key: string;
+                        /** @description What editors see it called, up to 200 characters. */
+                        title: string;
+                        /** @description The key of the `slug` field whose value names each record in its url. */
+                        record_key: string;
+                        schema: {
+                            /** @description At least one field. */
+                            fields: {
+                                /** @description Lowercase letters, numbers and hyphens, up to 100 characters; unique among the collection's fields. */
+                                key: string;
+                                label: string;
+                                /** @description One of `text`, `slug`, `email`. */
+                                type: string;
+                            }[];
+                        };
+                    };
+                };
+            };
+            responses: {
+                /** @description Default Response */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            key: string;
+                            title: string;
+                            /** @description The field whose value is each record's `record_key`. */
+                            record_key: string;
+                            schema: {
+                                fields: {
+                                    key: string;
+                                    label: string;
+                                    /** @enum {string} */
+                                    type: "text" | "slug" | "email";
+                                }[];
+                            };
+                            schema_version: number;
+                            /** Format: date-time */
+                            updated_at: string;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @enum {string} */
+                            error: "collection_exists";
+                            message: string;
+                            errors: {
+                                field: string;
+                                message: string;
+                            }[];
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @enum {string} */
+                            error: "validation_failed";
+                            message: string;
+                            errors: {
+                                field: string;
+                                message: string;
+                            }[];
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+        };
         delete?: never;
         options?: never;
         head?: never;

@@ -85,6 +85,9 @@ type CreateRecordInput = Json<
   paths["/collections/{key}/records/{recordKey}"]["post"]["requestBody"]
 >;
 
+/** What creating a collection sends: its key, title, field list and the field that names each record. */
+export type NewCollectionInput = Json<paths["/collections"]["post"]["requestBody"]>;
+
 /** The estate's change token. */
 export type EstateVersion = Json<paths["/version"]["get"]["responses"][200]>;
 
@@ -450,6 +453,7 @@ export function createEditorApi(apiOrigin: string, landingOrigin?: string) {
       | CategoryOrder
       | RecordInput
       | CreateRecordInput
+      | NewCollectionInput
       | { expected_version: number; comment?: string },
   ) {
     const headers = new Headers();
@@ -670,6 +674,9 @@ export function createEditorApi(apiOrigin: string, landingOrigin?: string) {
     deleteRecord: async (key: string, recordKey: string, expectedVersion: number) => {
       await send("DELETE", `${recordPath(key, recordKey)}?expected_version=${expectedVersion}`);
     },
+    /** Adds a collection; only an admin or an approver may. */
+    createCollection: async (input: NewCollectionInput) =>
+      checkedReply(await send("POST", "/collections", input), isEditorCollection),
     version: () => read<EstateVersion>("/version"),
     me: () => read<Me>("/editor/me"),
     page: async (id: string) => checkedReply(await send("GET", `/pages/${id}`), isPage),

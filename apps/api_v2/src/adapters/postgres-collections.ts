@@ -11,6 +11,7 @@ import type { Database } from "../db";
 import type { UserId } from "../modules/auth";
 import {
   CollectionSchema,
+  type CollectionDefinition,
   type EditorCollectionRecord,
   type RecordEnvelope,
   type CollectionRecord,
@@ -223,5 +224,25 @@ export class PostgresCollections implements CollectionStore {
       this.db.delete(collectionRecords).where(recordIs(key, recordKey)),
     );
     return rows.ok ? ok(undefined) : rows;
+  }
+
+  async insertCollection(
+    definition: CollectionDefinition,
+  ): Promise<Result<CollectionView | null, ContentStoreUnavailable>> {
+    const rows = await attempt("insertCollection", () =>
+      this.db
+        .insert(dataCollections)
+        .values({
+          key: definition.key,
+          title: definition.title,
+          recordKey: definition.record_key,
+          schema: definition.schema,
+        })
+        .onConflictDoNothing({ target: dataCollections.key })
+        .returning(),
+    );
+    if (!rows.ok) return rows;
+    const [row] = rows.value;
+    return ok(row ? toView(row) : null);
   }
 }

@@ -24,11 +24,12 @@ import { editorRoleRoutes } from "./roles";
 declare module "fastify" {
   interface FastifyContextConfig {
     /**
-     * The role a route needs (ADR 0134). Every write route names one, and
-     * a read may; the editor scope refuses a write that names none, so a new
-     * route fails closed rather than open.
+     * The role a route needs (ADR 0134), or the roles any one of which will
+     * do (#3681). Every write route names at least one, and a read may; the
+     * editor scope refuses a write that names none, so a new route fails
+     * closed rather than open.
      */
-    role?: Role;
+    role?: Role | readonly [Role, ...Role[]];
   }
 }
 
@@ -134,17 +135,25 @@ export const editorRoutes: FastifyPluginAsyncZod<{
       return reply.status(403).send({ error: "forbidden" });
     }
     const { role } = request.routeOptions.config;
+    const needed: readonly Role[] = role === undefined ? [] : [role].flat();
     // Fail closed: a write route that names no role is a bug, which
     // route-auth.test.ts catches before it ships.
-    if (role === undefined && !["GET", "HEAD"].includes(request.method))
+    if (needed.length === 0 && !["GET", "HEAD"].includes(request.method))
       return reply.status(403).send({
         error: "forbidden",
         message: "Nobody can make this change: its route names no role.",
       });
-    if (role !== undefined && !employee.value.roles.includes(role))
-      return reply
-        .status(403)
-        .send({ error: "forbidden", message: NEEDS_ROLE[role] });
+    if (
+      needed.length > 0 &&
+      !needed.some((one) => employee.value.roles.includes(one))
+    )
+      return reply.status(403).send({
+        error: "forbidden",
+        message:
+          needed.length === 1 && needed[0]
+            ? NEEDS_ROLE[needed[0]]
+            : `You need the ${needed.join(" or ")} role to do this.`,
+      });
     request.setDecorator("employee", employee.value);
   });
 
