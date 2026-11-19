@@ -7,7 +7,7 @@
   "scripts": {
     "build": "nx affected -t build",
     "build:all": "nx run-many -t build",
-    "test:sherif": "sherif -p @govtech-bb/editor-v2 -i @tanstack/ai-client -i express -i @types/express -i react-markdown -i @govtech-bb/react",
+    "test:sherif": "sherif -p @govtech-bb/editor-v2 -i express -i @types/express -i react-markdown -i @govtech-bb/react",
     "test:all": "nx run-many -t test",
     "test:pr": "nx affected -t test:oxlint,test:types,test,build && pnpm test:format",
     "test:ci": "nx run-many -t test:oxlint,test:types,test,build && pnpm test:format",
