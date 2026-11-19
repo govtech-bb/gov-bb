@@ -134,10 +134,14 @@ missing collection or a failed read.
   objects as one field is a change to this decision. Find an open pharmacy
   has two such fields today, `verification` and `bankHolidayHours`, and
   #3206 decides how each is flattened or dropped.
-- Landing's collection reader parses each record's values as strings
-  (`data` in `api-v2-collections.ts`). It must accept the new field types
-  (#3782). If it doesn't, a typed record reads as malformed and the tool
-  falls back to its in-code data with no error to show it.
+- Landing's collection reader requires every value to be a string
+  (`CollectionRecords` in `api-v2-collections.ts`). A collection with one
+  non-string value fails to parse as a whole: the tool falls back to its
+  in-code data, and any `::contact` block on that collection shows nothing.
+  The read is logged as `malformed` and counts toward the shared api_v2
+  breaker, so repeated reads can turn away every api_v2 read, pages included,
+  for 30 s at a time. The reader must accept the new field types before
+  #3782 lets any collection store them.
 - A calculator's tests cover its code, not the rates an editor stores. A
   wrong rate in api_v2 gives a wrong answer until an editor corrects it.
 - Landing parses and checks values that an editor types as text, such as the
