@@ -62,6 +62,16 @@ describe('bank holiday calendar', () => {
     expect(html).toContain('15 bank holidays will be observed in 2027')
   })
 
+  it('gives a one-off holiday no statutory holiday’s observed date', async () => {
+    // Emancipation Day 2027 is a Sunday, observed on Tuesday 3 August.
+    publicHolidays.mockResolvedValue([
+      { date: '2027-08-04', name: 'Emancipation Day' },
+    ])
+    const html = await render2027()
+    expect(html.match(/Observed: Tuesday 3 Aug/g)).toHaveLength(1)
+    expect(html.match(/>Emancipation Day</g)).toHaveLength(2)
+  })
+
   it.each([
     ['no one-off holidays', () => publicHolidays.mockResolvedValue([])],
     [

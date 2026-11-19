@@ -94,7 +94,7 @@ export function holidaysForYear(
     const id = `${parsed.getTime()} ${name}`
     if (listed.has(id)) continue
     listed.add(id)
-    holidays.push(note ? { date: parsed, name, note } : { date: parsed, name })
+    holidays.push({ date: parsed, name, ...(note && { note }), oneOff: true })
   }
   return holidays.sort((a, b) => a.date.getTime() - b.date.getTime())
 }

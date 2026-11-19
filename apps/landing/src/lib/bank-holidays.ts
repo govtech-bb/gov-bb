@@ -4,6 +4,8 @@ export interface Holiday {
   note?: string
   /** True when this row is a "Monday/Tuesday in lieu" substitution. */
   substitute?: boolean
+  /** True for a declared one-off holiday, which never has a substitution day. */
+  oneOff?: boolean
 }
 
 export const MIN_YEAR = 2020

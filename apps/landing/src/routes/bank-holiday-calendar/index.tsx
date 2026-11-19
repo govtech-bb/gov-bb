@@ -443,7 +443,8 @@ function HolidaySection({
               isNext={Boolean(highlightFirst && i === 0)}
               key={`${h.date.toISOString()}-${h.name}`}
               muted={muted}
-              substitute={substituteMap.get(h.name)}
+              // Substitutions are matched by name, which a one-off may share.
+              substitute={h.oneOff ? undefined : substituteMap.get(h.name)}
             />
           ))}
         </ul>

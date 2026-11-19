@@ -173,6 +173,7 @@ describe('holidaysForYear', () => {
       date: new Date(Date.UTC(2027, 2, 15)),
       name: 'Cricket World Cup Final',
       note: 'Declared by the Government',
+      oneOff: true,
     })
   })
 
