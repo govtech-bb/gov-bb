@@ -74,5 +74,24 @@ describe('bank holiday calendar', () => {
     expect(html).toContain('14 bank holidays will be observed in 2027')
     expect(html).toContain('Errol Barrow Day')
     expect(html).not.toContain('Cricket World Cup Final')
+    expect(html).toContain('Last updated on 5 May 2026')
+  })
+
+  it.each([
+    [
+      'a newer record moves it on',
+      '2026-10-02T15:00:00.000Z',
+      '2 October 2026',
+    ],
+    ['an older record leaves it', '2026-01-10T15:00:00.000Z', '5 May 2026'],
+  ])('shows when the page last changed: %s', async (_, updatedAt, shown) => {
+    publicHolidays.mockResolvedValue([
+      {
+        date: '2027-03-15',
+        name: 'Cricket World Cup Final',
+        updated_at: updatedAt,
+      },
+    ])
+    expect(await render2027()).toContain(`Last updated on ${shown}`)
   })
 })

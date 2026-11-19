@@ -8,6 +8,7 @@ import {
   fmtDayNum,
   fmtDayOfWeek,
   fmtFullDate,
+  fmtLongDate,
   fmtMonthShort,
   fmtSubstituteDate,
   MAX_YEAR,
@@ -15,9 +16,14 @@ import {
   startOfDay,
 } from '../../lib/bank-holidays'
 import type { Holiday } from '../../lib/bank-holidays'
-import { getPublicHolidays, holidaysForYear } from '../../lib/public-holidays'
+import {
+  getPublicHolidays,
+  holidaysForYear,
+  lastUpdated,
+} from '../../lib/public-holidays'
 
-const LAST_UPDATED = '5 May 2026'
+/** When the page last changed; a later one-off record moves it on. */
+const LAST_UPDATED = new Date(Date.UTC(2026, 4, 5))
 
 const SearchParams = z.object({
   year: z.coerce.number().int().min(MIN_YEAR).max(MAX_YEAR).optional(),
@@ -90,7 +96,7 @@ function BankHolidaysPage() {
               Bank holidays
             </Heading>
             <Text as="p" className="text-grey-70">
-              Last updated on {LAST_UPDATED}
+              Last updated on {fmtLongDate(lastUpdated(LAST_UPDATED, oneOffs))}
             </Text>
           </div>
           <div className="mt-6 flex w-full justify-end lg:w-auto">

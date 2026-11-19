@@ -1,7 +1,7 @@
 import { createServerFn } from '@tanstack/react-start'
 import { fetchCollectionRecords } from './api-v2-collections'
 import { apiV2Base, landingToken } from './api-v2-page'
-import { getBankHolidaysForYear } from './bank-holidays'
+import { getBankHolidaysForYear, startOfDay } from './bank-holidays'
 import type { Holiday } from './bank-holidays'
 
 /**
@@ -20,6 +20,8 @@ export interface OneOffHoliday {
   date: string
   name: string
   note?: string
+  /** When the record last changed, as api_v2 sends it. */
+  updated_at?: string
 }
 
 /** The UTC date `YYYY-MM-DD` names, or null when it isn't a real date. */
@@ -36,17 +38,43 @@ export function parseIsoDate(value: string): Date | null {
 
 /** The records that are a holiday: a name and a real date. Any other is left out. */
 export function oneOffHolidays(
-  records: Array<Record<string, string>>,
+  records: Array<{ data: Record<string, string>; updated_at?: string }>,
 ): Array<OneOffHoliday> {
   const holidays: Array<OneOffHoliday> = []
-  for (const record of records) {
-    const name = record.name?.trim()
-    const date = record.date?.trim()
+  for (const { data, updated_at } of records) {
+    const name = data.name?.trim()
+    const date = data.date?.trim()
     if (!name || !date || !parseIsoDate(date)) continue
-    const note = record.note?.trim()
-    holidays.push(note ? { date, name, note } : { date, name })
+    const note = data.note?.trim()
+    holidays.push({
+      date,
+      name,
+      ...(note && { note }),
+      ...(updated_at && { updated_at }),
+    })
   }
   return holidays
+}
+
+/** Barbados keeps UTC-4 all year (no daylight saving). */
+const BARBADOS_OFFSET_MS = -4 * 60 * 60 * 1000
+
+/**
+ * The page's "Last updated" day: `pageDate`, or the Barbados day the newest
+ * one-off record changed on when that is later.
+ */
+export function lastUpdated(
+  pageDate: Date,
+  oneOffs: Array<OneOffHoliday>,
+): Date {
+  let latest = pageDate
+  for (const { updated_at } of oneOffs) {
+    const changed = new Date(updated_at ?? '').getTime()
+    if (Number.isNaN(changed)) continue
+    const day = startOfDay(new Date(changed + BARBADOS_OFFSET_MS))
+    if (day > latest) latest = day
+  }
+  return latest
 }
 
 /**
@@ -84,7 +112,7 @@ export async function resolvePublicHolidays(
     fetchImpl,
     landingToken,
   )
-  return body ? oneOffHolidays(body.records.map((row) => row.data)) : []
+  return body ? oneOffHolidays(body.records) : []
 }
 
 /** Server function: `resolvePublicHolidays` against the configured api_v2. */

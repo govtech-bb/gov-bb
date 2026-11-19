@@ -39,7 +39,9 @@ describe('golden holidays (python holidays, Cap. 352)', () => {
   it.each([2021, 2023])(
     'with the declared one-off holidays, gives the full set for %i',
     (year) => {
-      const records = golden.oneOff.map(({ date, name }) => ({ date, name }))
+      const records = golden.oneOff.map(({ date, name }) => ({
+        data: { date, name },
+      }))
       const declared = golden.oneOff
         .map(({ date }) => date)
         .filter((date) => date.startsWith(`${year}-`))

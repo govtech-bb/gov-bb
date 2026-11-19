@@ -98,6 +98,8 @@ export const fmtDayNum = (d: Date) => d.getUTCDate()
 export const fmtDayOfWeek = (d: Date) => DAYS_LONG[d.getUTCDay()]
 export const fmtFullDate = (d: Date) =>
   `${DAYS_LONG[d.getUTCDay()]}, ${d.getUTCDate()} ${MONTHS_LONG[d.getUTCMonth()]} ${d.getUTCFullYear()}`
+export const fmtLongDate = (d: Date) =>
+  `${d.getUTCDate()} ${MONTHS_LONG[d.getUTCMonth()]} ${d.getUTCFullYear()}`
 export const fmtSubstituteDate = (d: Date) =>
   `${DAYS_LONG[d.getUTCDay()]} ${d.getUTCDate()} ${MONTHS_SHORT[d.getUTCMonth()]}`
 

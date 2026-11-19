@@ -3,6 +3,7 @@ import { apiV2Breaker } from './api-v2-reader'
 import { getBankHolidaysForYear, MAX_YEAR, MIN_YEAR } from './bank-holidays'
 import {
   holidaysForYear,
+  lastUpdated,
   oneOffHolidays,
   parseIsoDate,
   resolvePublicHolidays,
@@ -17,6 +18,10 @@ const FINAL = {
   date: '2027-03-15',
   note: 'Declared by the Government',
 }
+
+/** Records as api_v2 sends them, by their data alone. */
+const rows = (...data: Array<Record<string, string>>) =>
+  data.map((row) => ({ data: row }))
 
 const records = (...data: Array<Record<string, string>>) => ({
   collection: {
@@ -76,7 +81,7 @@ describe('parseIsoDate', () => {
 
 describe('oneOffHolidays', () => {
   it('keeps a record with a name and a real date, and its note', () => {
-    expect(oneOffHolidays([FINAL])).toEqual([
+    expect(oneOffHolidays(rows(FINAL))).toEqual([
       {
         date: '2027-03-15',
         name: 'Cricket World Cup Final',
@@ -87,19 +92,55 @@ describe('oneOffHolidays', () => {
 
   it('ignores a record with an invalid or missing date, or no name', () => {
     expect(
-      oneOffHolidays([
-        { ...FINAL, date: '15 March 2027' },
-        { ...FINAL, date: '2027-02-30' },
-        { key: 'no-date', name: 'No date' },
-        { ...FINAL, name: '  ' },
-      ]),
+      oneOffHolidays(
+        rows(
+          { ...FINAL, date: '15 March 2027' },
+          { ...FINAL, date: '2027-02-30' },
+          { key: 'no-date', name: 'No date' },
+          { ...FINAL, name: '  ' },
+        ),
+      ),
     ).toEqual([])
   })
 
+  it('keeps when the record last changed', () => {
+    expect(
+      oneOffHolidays([{ data: FINAL, updated_at: '2027-01-02T00:00:00.000Z' }]),
+    ).toEqual([
+      expect.objectContaining({ updated_at: '2027-01-02T00:00:00.000Z' }),
+    ])
+  })
+
   it('leaves out an empty note', () => {
-    expect(oneOffHolidays([{ ...FINAL, note: ' ' }])).toEqual([
+    expect(oneOffHolidays(rows({ ...FINAL, note: ' ' }))).toEqual([
       { date: '2027-03-15', name: 'Cricket World Cup Final' },
     ])
+  })
+})
+
+describe('lastUpdated', () => {
+  const PAGE = new Date(Date.UTC(2026, 4, 5))
+  const changed = (updated_at: string) => [
+    { date: '2027-03-15', name: 'Cricket World Cup Final', updated_at },
+  ]
+
+  it('is the page’s date with no records', () => {
+    expect(lastUpdated(PAGE, [])).toEqual(PAGE)
+  })
+
+  it('is the page’s date when every record is older', () => {
+    expect(lastUpdated(PAGE, changed('2026-01-10T15:00:00.000Z'))).toEqual(PAGE)
+  })
+
+  it('is the Barbados day the newest record changed on, when later', () => {
+    expect(
+      lastUpdated(PAGE, [
+        ...changed('2026-09-01T12:00:00.000Z'),
+        // 1 March 2027, 02:00 UTC is still 28 February in Barbados.
+        ...changed('2027-03-01T02:00:00.000Z'),
+        ...changed('not a date'),
+      ]),
+    ).toEqual(new Date(Date.UTC(2027, 1, 28)))
   })
 })
 
@@ -110,7 +151,7 @@ describe('holidaysForYear', () => {
   })
 
   it('adds a one-off holiday to its year, in date order', () => {
-    const holidays = holidaysForYear(2027, oneOffHolidays([FINAL]))
+    const holidays = holidaysForYear(2027, oneOffHolidays(rows(FINAL)))
     expect(holidays.map((h) => `${iso(h.date)} ${h.name}`)).toEqual([
       "2027-01-01 New Year's Day",
       '2027-01-21 Errol Barrow Day',
@@ -136,7 +177,7 @@ describe('holidaysForYear', () => {
   })
 
   it('leaves a one-off holiday out of every other year', () => {
-    const oneOffs = oneOffHolidays([FINAL])
+    const oneOffs = oneOffHolidays(rows(FINAL))
     expect(holidaysForYear(2026, oneOffs)).toEqual(getBankHolidaysForYear(2026))
     expect(holidaysForYear(2028, oneOffs)).toEqual(getBankHolidaysForYear(2028))
   })
@@ -144,20 +185,22 @@ describe('holidaysForYear', () => {
   it('lists a holiday once when a record repeats it', () => {
     const holidays = holidaysForYear(
       2027,
-      oneOffHolidays([
-        FINAL,
-        { ...FINAL, key: 'again' },
-        { key: 'christmas', name: 'Christmas Day', date: '2027-12-25' },
-      ]),
+      oneOffHolidays(
+        rows(
+          FINAL,
+          { ...FINAL, key: 'again' },
+          { key: 'christmas', name: 'Christmas Day', date: '2027-12-25' },
+        ),
+      ),
     )
-    expect(holidays).toEqual(holidaysForYear(2027, oneOffHolidays([FINAL])))
+    expect(holidays).toEqual(holidaysForYear(2027, oneOffHolidays(rows(FINAL))))
   })
 
   it('gives a one-off holiday on a Sunday no substitution day', () => {
     // 14 March 2027 is a Sunday.
     const holidays = holidaysForYear(
       2027,
-      oneOffHolidays([{ ...FINAL, date: '2027-03-14' }]),
+      oneOffHolidays(rows({ ...FINAL, date: '2027-03-14' })),
     )
     expect(new Date(Date.UTC(2027, 2, 14)).getUTCDay()).toBe(0)
     expect(holidays).toHaveLength(getBankHolidaysForYear(2027).length + 1)
@@ -172,9 +215,14 @@ describe('holidaysForYear', () => {
 describe('resolvePublicHolidays', () => {
   it('reads the public-holidays collection with landing’s token', async () => {
     const fetchImpl = stubFetch(json(200, records(FINAL)))
-    expect(await resolvePublicHolidays(BASE, fetchImpl, 'secret')).toEqual(
-      oneOffHolidays([FINAL]),
-    )
+    expect(await resolvePublicHolidays(BASE, fetchImpl, 'secret')).toEqual([
+      {
+        date: '2027-03-15',
+        name: 'Cricket World Cup Final',
+        note: 'Declared by the Government',
+        updated_at: '2026-11-19T00:00:00.000Z',
+      },
+    ])
     const [url, init] = fetchImpl.mock.calls[0] as [string, RequestInit]
     expect(url).toBe(`${BASE}/collections/public-holidays/records`)
     expect(init.headers).toEqual({ 'x-landing-token': 'secret' })
@@ -187,7 +235,7 @@ describe('resolvePublicHolidays', () => {
         BASE,
         stubFetch(json(200, records(bad, FINAL))),
       ),
-    ).toEqual(oneOffHolidays([FINAL]))
+    ).toEqual(oneOffHolidays(records(FINAL).records))
   })
 
   it('is empty, with no request, when api_v2 isn’t configured', async () => {
