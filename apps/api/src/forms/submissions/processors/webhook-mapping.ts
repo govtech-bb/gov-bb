@@ -190,26 +190,30 @@ export function isTestProgrammeCode(code: string | undefined): boolean {
 }
 
 /**
- * The processors a SMOKE submission is allowed to run (#3533, amends ADR 0052).
+ * The processors a SMOKE submission is allowed to run (#3533, amends ADR 0087).
  * A smoke submission still produces zero real side-effects — EXCEPT a mapped
- * (CaMS) webhook whose `mapping.programmeCode` is a reserved test code
+ * (CaMS) webhook whose effective programme code is a reserved test code
  * ({@link isTestProgrammeCode}), so E2E J4 (#3011) can follow a submission into
  * a CaMS test programme. Everything else — email, payment, and any webhook on a
  * real programme — is still dropped. A smoke submission can therefore never
  * create a real case, email a citizen, or open a payment.
  *
- * Keyed on the static recipe `mapping.programmeCode`, not a catchment-resolved
- * override: a catchment-routed form composes its per-polyclinic code from a real
- * base code, so it never classifies as test and stays suppressed.
+ * Classify the code the webhook actually SENDS, not just the static mapping:
+ * when catchment routing resolves, `WebhookProcessor` sends
+ * `programmeCodeOverride` (the catchment-composed code) for every mapped webhook
+ * (see webhook.processor.ts), so pass it here. A real base code composes to a
+ * real code → not test → dropped. A webhook with no `mapping` is a generic POST,
+ * not CaMS, and is always dropped.
  */
 export function smokeAllowedProcessors<
   T extends { type: string; config?: unknown },
->(processors: readonly T[]): T[] {
+>(processors: readonly T[], programmeCodeOverride?: string): T[] {
   return processors.filter((processor) => {
     if (processor.type !== "webhook") return false;
     const mapping = (processor.config as { mapping?: unknown } | undefined)
       ?.mapping as { programmeCode?: string } | undefined;
-    return isTestProgrammeCode(mapping?.programmeCode);
+    if (!mapping) return false;
+    return isTestProgrammeCode(programmeCodeOverride ?? mapping.programmeCode);
   });
 }
 

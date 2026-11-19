@@ -530,6 +530,21 @@ describe("webhook-mapping", () => {
         ]),
       ).toEqual([]);
     });
+
+    it("classifies the override (the sent code) over the static mapping when given", () => {
+      const webhooks = [
+        { type: "webhook", config: { mapping: { programmeCode: "E2E_X" } } },
+        { type: "webhook", config: { mapping: { programmeCode: "ENV_REAL" } } },
+      ];
+      // A real composed override → every mapped webhook is dropped, even the E2E one.
+      expect(
+        smokeAllowedProcessors(webhooks, "ENV_REAL_BRANFORD_TAITT"),
+      ).toEqual([]);
+      // A test composed override → all kept.
+      expect(smokeAllowedProcessors(webhooks, "E2E_X_BRANFORD_TAITT")).toEqual(
+        webhooks,
+      );
+    });
   });
 
   describe("sendsToCams (#3046, #3419)", () => {

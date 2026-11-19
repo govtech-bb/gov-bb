@@ -659,10 +659,16 @@ describe("SubmissionsService", () => {
       );
     });
 
-    // #3533 (amends ADR 0052): the ONE exception — a mapped webhook on a reserved
+    // #3533 (amends ADR 0087): the ONE exception — a mapped webhook on a reserved
     // test programme code survives a smoke submission, so E2E J4 can reach a CaMS
     // test programme. Everything else still drops.
-    function makeSmokeMocksWithProcessors(procs: unknown[]) {
+    // `catchmentResolvedCode`, when set, makes the contract catchment-routed and
+    // the routing service resolve that composed code — the code the webhook
+    // actually sends (#3533).
+    function makeSmokeMocksWithProcessors(
+      procs: unknown[],
+      catchmentResolvedCode?: string,
+    ) {
       const txRepo = {
         findOne: vi.fn().mockResolvedValue(null),
         create: vi.fn().mockImplementation((data) => ({ ...data })),
@@ -676,9 +682,24 @@ describe("SubmissionsService", () => {
       const pipeline = {
         run: vi.fn().mockResolvedValue({
           draft: { formVersion: "1.0.0", lastActivePage: 0 },
-          contract: { processors: procs },
+          contract: {
+            processors: procs,
+            ...(catchmentResolvedCode
+              ? {
+                  catchmentRouting: {
+                    coordinatesField: "loc.coords",
+                    parishField: "loc.parish",
+                  },
+                }
+              : {}),
+          },
           auditTrail: AUDIT_TRAIL,
-          normalizedValues: {},
+          // A catchment-routed contract needs a routable coordinate, or submit
+          // rejects before the gate. The resolver is mocked, so any valid
+          // coordinate string reaches it.
+          normalizedValues: catchmentResolvedCode
+            ? { loc: { coords: "13.0975,-59.6167" } }
+            : {},
         }),
       } as unknown as SubmissionPipelineService;
       const eventEmitter = { emit: vi.fn() } as unknown as EventEmitter2;
@@ -688,13 +709,20 @@ describe("SubmissionsService", () => {
           nonGating: p,
         })),
       } as unknown as ProcessorFactory;
+      const catchmentRouting = catchmentResolvedCode
+        ? makeCatchmentRouting(() => ({
+            programmeCode: catchmentResolvedCode,
+            polyclinic: "Branford Taitt",
+            polyclinicContact: "contact",
+          }))
+        : makeCatchmentRouting();
       const service = new SubmissionsService(
         submissionRepo,
         pipeline,
         eventEmitter,
         processorFactory,
         expressions,
-        makeCatchmentRouting(),
+        catchmentRouting,
         {} as FormDefinitionsService,
       );
       return { service, eventEmitter };
@@ -729,6 +757,47 @@ describe("SubmissionsService", () => {
       expect(eventEmitter.emit as Mock).toHaveBeenCalledWith(
         "submission.created",
         expect.objectContaining({ processors: [] }),
+      );
+    });
+
+    it("drops every mapped webhook when catchment resolves a REAL code, even with an E2E mapping present (#3533)", async () => {
+      // The catchment override is composed from the FIRST mapped webhook and
+      // WebhookProcessor applies it to every mapped webhook, so the gate must
+      // classify the SENT code, not the static per-webhook mapping. First webhook
+      // is real → the composed code is real → all dropped, even the E2E one.
+      const { service, eventEmitter } = makeSmokeMocksWithProcessors(
+        [
+          {
+            type: "webhook",
+            config: { mapping: { programmeCode: "ENV_HEALTH_REAL" } },
+          },
+          { type: "webhook", config: { mapping: { programmeCode: "E2E_J4" } } },
+        ],
+        "ENV_HEALTH_REAL_BRANFORD_TAITT",
+      );
+
+      await service.submit({ ...BASE_DTO, isSmokeSubmission: true });
+
+      expect(eventEmitter.emit as Mock).toHaveBeenCalledWith(
+        "submission.created",
+        expect.objectContaining({ processors: [] }),
+      );
+    });
+
+    it("keeps mapped webhooks when catchment resolves a TEST code (#3533)", async () => {
+      const webhooks = [
+        { type: "webhook", config: { mapping: { programmeCode: "E2E_J4" } } },
+      ];
+      const { service, eventEmitter } = makeSmokeMocksWithProcessors(
+        webhooks,
+        "E2E_J4_BRANFORD_TAITT",
+      );
+
+      await service.submit({ ...BASE_DTO, isSmokeSubmission: true });
+
+      expect(eventEmitter.emit as Mock).toHaveBeenCalledWith(
+        "submission.created",
+        expect.objectContaining({ processors: webhooks }),
       );
     });
 

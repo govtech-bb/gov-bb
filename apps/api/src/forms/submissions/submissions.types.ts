@@ -88,7 +88,7 @@ export interface SubmissionCreatedEvent {
    * short-circuit on it. Today the only side-effect dispatcher is
    * `SubmissionProcessorListener` (`processors[]`-driven), so the choke-point
    * filter is sufficient — but a future formId-driven consumer must gate here
-   * (#1252; ADR 0052 + its #3533 amendment).
+   * (#1252; ADR 0087 + its #3533 amendment).
    */
   isSmokeSubmission?: boolean;
   /**
@@ -154,7 +154,7 @@ export interface SubmitDto {
    * payment-gating processor runs. Lets the post-deploy live smoke matrix
    * exercise the real submit path without firing real side-effects (#1252).
    *
-   * One exception (#3533, amends ADR 0052): a mapped (CaMS) webhook whose
+   * One exception (#3533, amends ADR 0087): a mapped (CaMS) webhook whose
    * `mapping.programmeCode` is a reserved test code is KEPT, so E2E J4 (#3011)
    * can follow a submission into a CaMS test programme. See
    * `smokeAllowedProcessors` in `processors/webhook-mapping.ts`. Email, payment,

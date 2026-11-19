@@ -81,9 +81,11 @@ case, email a citizen, or open a payment.** It holds because:
 
 - No real MDA programme code uses the `E2E_` prefix (the convention predates this
   — `E2E_PUBLISH_CHECK`), so the classifier cannot match a live programme.
-- The exception keys on the **static recipe `mapping.programmeCode`**, never a
-  catchment-resolved override — a catchment-routed (real health) form composes
-  its per-polyclinic code from a real base code, so it never classifies as test.
+- The exception keys on the programme code the webhook actually **sends**: the
+  catchment-resolved code when the form is catchment-routed, else the static
+  `mapping.programmeCode`. A real form composes its code from a real base code,
+  so it never classifies as test. A webhook with no `mapping` is a generic POST,
+  not CaMS, and is dropped.
 - The gate is still the single `rawProcessors` choke point: for a smoke
   submission, `smokeAllowedProcessors` keeps only test-programme webhooks and
   drops everything else, so the `SubmissionProcessorListener` dispatch loop sees
