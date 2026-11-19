@@ -14,6 +14,7 @@ import {
   type ApiPage,
   type CreatePageInput,
   type ApiRevision,
+  type PageHistoryEntry,
   type RecordDetail,
 } from "./client";
 import { writeAttempt } from "./write-attempt";
@@ -56,6 +57,7 @@ function fakeApi() {
     createPage: vi.fn<EditorApi["createPage"]>(),
     deletePage: vi.fn<EditorApi["deletePage"]>(),
     restoreVersion: vi.fn<EditorApi["restoreVersion"]>(),
+    history: vi.fn<EditorApi["history"]>(),
     services: vi.fn<EditorApi["services"]>(),
     service: vi.fn<EditorApi["service"]>(),
     sitePages: vi.fn<EditorApi["sitePages"]>(),
@@ -1426,29 +1428,92 @@ test("page create compares explicitly submitted optional fields instead of defau
   expect((await writeAttempt(writes.createPage(api)).press(() => input)).kind).toBe("landed");
 });
 
+const historyEntry = (
+  version_no: number,
+  action: PageHistoryEntry["action"],
+  restored_from: number | null = null,
+): PageHistoryEntry => ({
+  version_no,
+  action,
+  restored_from,
+  actor: "editor",
+  actor_name: "Editor",
+  occurred_at: page.updated_at,
+  changed: [],
+  comment: null,
+});
+
+/** The history on screen when the restore of version 2 was confirmed. */
+const shown = [
+  historyEntry(4, "updated"),
+  historyEntry(3, "submitted"),
+  historyEntry(2, "updated"),
+  historyEntry(1, "created"),
+];
+
+const restoredEntry = historyEntry(5, "reverted", 2);
+
+const restoreRequest = {
+  id: page.id,
+  versionNo: 2,
+  version: page.version,
+  isPublic: false,
+  historyVersion: 4,
+};
+
 test("an answered history restore returns the checked page without reading back", async () => {
   const api = fakeApi();
   api.restoreVersion.mockResolvedValue(savedPage);
-  expect(
-    await writeAttempt(writes.restorePage(api)).press(() => ({
-      id: page.id,
-      versionNo: 4,
-      version: page.version,
-    })),
-  ).toEqual({ kind: "landed", answer: savedPage });
-  expect(api.restoreVersion).toHaveBeenCalledWith(page.id, 4, page.version);
-  expect(api.page).not.toHaveBeenCalled();
+  expect(await writeAttempt(writes.restorePage(api)).press(() => restoreRequest)).toEqual({
+    kind: "landed",
+    answer: savedPage,
+  });
+  expect(api.restoreVersion).toHaveBeenCalledWith(page.id, 2, page.version);
+  expect(api.history).not.toHaveBeenCalled();
 });
 
 test.each([new ApiFailure(0), new ApiFailure(503), new ApiAnswerMalformed()])(
-  "a page read cannot prove an unanswered restore; retry keeps its page, target and version: %s",
+  "a lost restore of a page that isn't public is confirmed by its new history entry: %s",
+  async (failure) => {
+    const api = fakeApi();
+    api.restoreVersion.mockRejectedValue(failure);
+    const history = [historyEntry(6, "submitted"), restoredEntry, ...shown];
+    api.history.mockResolvedValue(history);
+    expect(await writeAttempt(writes.restorePage(api)).press(() => restoreRequest)).toEqual({
+      kind: "landed",
+      answer: history,
+    });
+    expect(api.history).toHaveBeenCalledExactlyOnceWith(page.id);
+    expect(api.restoreVersion).toHaveBeenCalledTimes(1);
+  },
+);
+
+test.each([
+  ["a public page's restore, which adds no entry", { isPublic: true }, [restoredEntry, ...shown]],
+  ["a restore of another version", {}, [historyEntry(5, "reverted", 1), ...shown]],
+  ["a restore already on screen", { historyVersion: 5 }, [restoredEntry, ...shown]],
+  // Someone restored version 2, then edited, while the list on screen failed to refresh
+  ["a restore changed since", {}, [historyEntry(6, "updated"), restoredEntry, ...shown]],
+  ["no new version, as after a restore that changed nothing", {}, shown],
+])("a lost restore is not confirmed by %s", async (_case, request, history) => {
+  const api = fakeApi();
+  api.restoreVersion.mockRejectedValue(new ApiFailure(503));
+  api.history.mockResolvedValue(history);
+  expect(
+    await writeAttempt(writes.restorePage(api)).press(() => ({ ...restoreRequest, ...request })),
+  ).toEqual({ kind: "unknown" });
+  expect(api.restoreVersion).toHaveBeenCalledTimes(1);
+});
+
+test.each([new ApiFailure(0), new ApiFailure(503), new ApiAnswerMalformed()])(
+  "an unconfirmed restore is checked again, then resent as first confirmed: %s",
   async (failure) => {
     const api = fakeApi();
     api.restoreVersion
       .mockRejectedValueOnce(failure)
       .mockRejectedValueOnce(new ApiFailure(409, [], "Changed", "version_conflict"));
-    api.page.mockResolvedValue({ ...savedPage, version: 99 });
-    const request = { id: page.id, versionNo: 4, version: page.version };
+    api.history.mockResolvedValue(shown);
+    const request = { ...restoreRequest };
     const attempt = writeAttempt(writes.restorePage(api));
     expect(await attempt.press(() => request)).toEqual({ kind: "unknown" });
     expect(attempt.state).toBe("unsettled");
@@ -1457,33 +1522,41 @@ test.each([new ApiFailure(0), new ApiFailure(503), new ApiAnswerMalformed()])(
     request.id = "another-page";
     request.versionNo = 5;
     request.version = 99;
+    request.historyVersion = 100;
     const newerRequest = vi.fn(() => request);
     expect(await attempt.press(newerRequest)).toEqual({ kind: "conflict", message: "Changed" });
     expect(newerRequest).not.toHaveBeenCalled();
     expect(api.restoreVersion.mock.calls).toEqual([
-      [page.id, 4, page.version],
-      [page.id, 4, page.version],
+      [page.id, 2, page.version],
+      [page.id, 2, page.version],
     ]);
-    expect(api.page.mock.calls).toEqual([[page.id], [page.id]]);
-    expect(api.page.mock.invocationCallOrder[1]).toBeLessThan(
+    expect(api.history.mock.calls).toEqual([[page.id], [page.id]]);
+    expect(api.history.mock.invocationCallOrder[1]).toBeLessThan(
       api.restoreVersion.mock.invocationCallOrder[1]!,
     );
   },
 );
+
+test("a restore found on the author's later check isn't sent again", async () => {
+  const api = fakeApi();
+  api.restoreVersion.mockRejectedValue(new ApiFailure(503));
+  api.history.mockResolvedValueOnce(shown).mockResolvedValue([restoredEntry, ...shown]);
+  const attempt = writeAttempt(writes.restorePage(api));
+  expect(await attempt.press(() => restoreRequest)).toEqual({ kind: "unknown" });
+
+  expect((await attempt.press(() => restoreRequest)).kind).toBe("landed");
+  expect(api.restoreVersion).toHaveBeenCalledTimes(1);
+});
 
 test.each([new ApiFailure(404), new ApiFailure(503), new ApiAnswerMalformed()])(
   "a failed restore read-back remains unconfirmed: %s",
   async (failure) => {
     const api = fakeApi();
     api.restoreVersion.mockRejectedValue(new ApiFailure(503));
-    api.page.mockRejectedValue(failure);
-    expect(
-      await writeAttempt(writes.restorePage(api)).press(() => ({
-        id: page.id,
-        versionNo: 4,
-        version: page.version,
-      })),
-    ).toEqual({ kind: "unknown" });
+    api.history.mockRejectedValue(failure);
+    expect(await writeAttempt(writes.restorePage(api)).press(() => restoreRequest)).toEqual({
+      kind: "unknown",
+    });
     expect(api.restoreVersion).toHaveBeenCalledTimes(1);
   },
 );

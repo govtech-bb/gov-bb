@@ -2,9 +2,11 @@ import {
   ApiFailure,
   CategoryRefused,
   isText,
+  PAGE_VERSIONS,
   type CategoryResult,
   type CreatePageInput,
   type ApiPage,
+  type PageHistoryEntry,
   type ApiRevision,
   type Collection,
   type EditorApi,
@@ -72,7 +74,14 @@ type PageSubmission = { base: ServerPageBaseline; categories: readonly Category[
 
 type PageDeletion = { id: string; version: number };
 
-type PageRestoration = { id: string; versionNo: number; version: number };
+type PageRestoration = {
+  id: string;
+  versionNo: number;
+  version: number;
+  isPublic: boolean;
+  /** The page's newest version in the history on screen when the restore was confirmed. */
+  historyVersion: number;
+};
 
 // oxlint-disable-next-line anti-slop/no-unknown-parameters -- Preserve dialog refusal precedence before classification drops HTTP status.
 function pageDialogRefusal(error: unknown, creating: boolean): never {
@@ -216,11 +225,22 @@ export const writes = {
     readBack: (sent) => readPage(api, sent.id),
     landed: (found) => found === undefined,
   }),
-  restorePage: (api: EditorApi): Write<PageRestoration, ApiPage> => ({
+  restorePage: (api: EditorApi): Write<PageRestoration, ApiPage | PageHistoryEntry[]> => ({
     send: (sent) => api.restoreVersion(sent.id, sent.versionNo, sent.version),
-    readBack: (sent) => readPage(api, sent.id),
-    // Page reads do not identify the restored history version, including for pending revisions.
-    landed: () => false,
+    readBack: (sent) => api.history(sent.id),
+    // Only a page that isn't public gets a `reverted` entry naming the version: a public page's restore goes into its
+    // pending revision. The entry must still be the page's newest version, so a stale list on screen can't let an
+    // older restore that was since changed confirm this one.
+    landed: (found, sent) => {
+      if (sent.isPublic || !Array.isArray(found)) return false;
+      const newest = found.find((entry) => PAGE_VERSIONS.has(entry.action));
+
+      return (
+        newest?.action === "reverted" &&
+        newest.restored_from === sent.versionNo &&
+        newest.version_no > sent.historyVersion
+      );
+    },
   }),
   publishRevision: (api: EditorApi): Write<ApiRevision, RevisionPublication> => ({
     send: async (reviewed) => {

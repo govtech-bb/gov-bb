@@ -37,6 +37,15 @@ export type PageHistoryEntry = Json<
   paths["/pages/{id}/history"]["get"]["responses"][200]
 >["entries"][number];
 
+/** Entries whose snapshot is the page itself: a restore can bring one back, and the newest is the page as it stands. */
+export const PAGE_VERSIONS = new Set<PageHistoryEntry["action"]>([
+  "created",
+  "updated",
+  "published",
+  "unpublished",
+  "reverted",
+]);
+
 /** What rejecting a change sends: why, for the editor. */
 
 /** One row of the services list. */
