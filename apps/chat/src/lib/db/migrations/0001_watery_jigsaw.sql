@@ -1,1 +1,0 @@
-DROP TABLE "rag_documents" CASCADE;
