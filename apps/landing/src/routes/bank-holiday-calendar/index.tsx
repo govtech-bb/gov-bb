@@ -10,12 +10,12 @@ import {
   fmtFullDate,
   fmtMonthShort,
   fmtSubstituteDate,
-  getBankHolidaysForYear,
   MAX_YEAR,
   MIN_YEAR,
   startOfDay,
 } from '../../lib/bank-holidays'
 import type { Holiday } from '../../lib/bank-holidays'
+import { getPublicHolidays, holidaysForYear } from '../../lib/public-holidays'
 
 const LAST_UPDATED = '5 May 2026'
 
@@ -26,6 +26,9 @@ const SearchParams = z.object({
 export const Route = createFileRoute('/bank-holiday-calendar/')({
   staticData: { breadcrumbMode: 'location' },
   validateSearch: SearchParams,
+  // The one-off holidays (#3205). The server fn never throws, but a client
+  // navigation's call to it can: the calendar then shows the calculated ones.
+  loader: () => getPublicHolidays().catch(() => []),
   head: () => ({
     meta: [
       { title: 'Bank holidays | Government of Barbados' },
@@ -41,14 +44,15 @@ export const Route = createFileRoute('/bank-holiday-calendar/')({
 
 function BankHolidaysPage() {
   const { year: yearParam } = Route.useSearch()
+  const oneOffs = Route.useLoaderData()
 
   const today = useMemo(() => startOfDay(new Date()), [])
   const currentRealYear = today.getUTCFullYear()
   const selectedYear = yearParam ?? currentRealYear
 
   const holidays = useMemo(
-    () => getBankHolidaysForYear(selectedYear),
-    [selectedYear],
+    () => holidaysForYear(selectedYear, oneOffs),
+    [selectedYear, oneOffs],
   )
 
   const substituteMap = useMemo(() => {
