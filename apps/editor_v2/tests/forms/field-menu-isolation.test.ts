@@ -1,0 +1,70 @@
+import { expect, test } from "vitest";
+import { $createTextNode, $getRoot } from "lexical";
+import { createHeadlessEditor } from "../../src/editor/core/create-editor";
+import { $settings, $setSettings } from "../../src/forms/canvas/block-state";
+import { $createNumberNode } from "../../src/forms/content/list-nodes";
+import { $createDrawnInput } from "../../src/forms/canvas/field-nodes";
+import { $describe } from "../../src/forms/canvas/form-gutter";
+import { $createFormTitleNode } from "../../src/forms/canvas/form-nodes";
+import { govbbFormEditor } from "../../src/presets/govbb-form";
+import { lexicalToFormMarkdown } from "../../src/converters/lexical-to-form-markdown";
+import { formMarkdownToLexical } from "../../src/converters/form-markdown-to-lexical";
+
+test("Number input and numbered list have distinct menu roles while source retains opaque list settings", () => {
+  const editor = createHeadlessEditor(govbbFormEditor);
+
+  let inputKey = "",
+    listKey = "";
+
+  try {
+    editor.update(
+      () => {
+        const input = $createDrawnInput("number", { required: true });
+
+        const list = $setSettings($createNumberNode().append($createTextNode("Bring evidence")), {
+          step: 7,
+        });
+
+        $getRoot()
+          .clear()
+          .append($createFormTitleNode().append($createTextNode("Menu ownership")), input, list);
+        govbbFormEditor.$normalizeInitial();
+        inputKey = input.getKey();
+        listKey = list.getKey();
+      },
+      { discrete: true },
+    );
+
+    const models = editor
+      .getEditorState()
+      .read(() => [$describe(inputKey)!.menu, $describe(listKey)!.menu], { editor });
+
+    expect(models[0]!.header).toBeDefined();
+    expect(models[1]!.header).toBeUndefined();
+
+    const source = lexicalToFormMarkdown(editor.getEditorState().toJSON(), govbbFormEditor);
+    const parsed = formMarkdownToLexical(source, govbbFormEditor);
+    expect(parsed.diagnostics.filter((issue) => issue.severity === "fatal")).toEqual([]);
+    expect(parsed.diagnostics.some((issue) => issue.code === "native-preparation")).toBe(true);
+    expect(parsed.state).toBeDefined();
+    const restored = createHeadlessEditor(govbbFormEditor, parsed.state!);
+
+    try {
+      restored.getEditorState().read(
+        () => {
+          const list = $getRoot()
+            .getChildren()
+            .find((node) => node.getType() === "number")!;
+
+          expect(list.getTextContent()).toBe("Bring evidence");
+          expect($settings(list).step).toBe(7);
+        },
+        { editor: restored },
+      );
+    } finally {
+      restored.dispose();
+    }
+  } finally {
+    editor.dispose();
+  }
+});

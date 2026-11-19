@@ -1,0 +1,223 @@
+name: Deploy api_v2 to Sandbox
+
+# Builds apps/api_v2 and rolls the api-v2-sandbox ECS service
+# (https://api.sandbox.alpha.gov.bb/v2, #3745). Infrastructure: alpha-infra
+# environments/sandbox/modular-forms-sandbox/api-v2-ecs.tf (gov-bb#2962).
+#
+# Reusable: deploy-sandbox.yml calls it (job `deploy-api-v2`) on a merge to
+# main when nx marks api_v2 as affected, so it runs after CI like the other
+# sandbox deploys (#3119). Run it by hand from main to redeploy without a
+# change.
+#
+# The deploy role trusts gov-bb v2-rewrite and main only, and can do one job:
+# push to the gov-bb-api-v2 ECR repo and roll the api-v2-sandbox service. Its
+# ARN is not a secret, so it sits here rather than in repo secrets.
+#
+# The service starts at desired_count = 0 in tofu (which ignores later
+# changes to desired_count and task_definition), so this job sets it to 1.
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+permissions:
+  id-token: write # assume the deploy role via OIDC
+  contents: read
+
+# Queue deploys; never cancel one mid-flight.
+concurrency:
+  group: deploy-api-v2-sandbox
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: ca-central-1
+  AWS_ROLE_ARN: arn:aws:iam::672203047922:role/api-v2-github-actions-sandbox
+  ECR_REPOSITORY: gov-bb-api-v2
+  ECS_CLUSTER: modular-forms-sandbox
+  ECS_SERVICE: api-v2-sandbox
+  TASK_FAMILY: api-v2-sandbox
+  # api_v2's base URL: the smoke paths below are appended to it.
+  API_URL: https://api.sandbox.alpha.gov.bb/v2
+
+jobs:
+  deploy:
+    name: Build, Push & Deploy api_v2
+    runs-on: ubuntu-latest
+    # No `environment:` here: it would change the OIDC subject to
+    # repo:...:environment:<name>, which the deploy role does not trust.
+    steps:
+      - name: Checkout
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          persist-credentials: false
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@254c19bd240aabef8777f48595e9d2d7b972184b # v6.2.1
+        with:
+          role-to-assume: ${{ env.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to ECR
+        id: ecr-login
+        uses: aws-actions/amazon-ecr-login@d539f0932e70871a027e9d5a9d8fc38589180a64 # v2.1.6
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
+
+      # :latest as well as the SHA: tofu's task definition revision 1 points
+      # at :latest, so the two stay in step.
+      - name: Build and push api_v2 image
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
+        with:
+          context: .
+          file: apps/api_v2/Dockerfile
+          platforms: linux/amd64
+          push: true
+          provenance: false
+          tags: |
+            ${{ steps.ecr-login.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}
+            ${{ steps.ecr-login.outputs.registry }}/${{ env.ECR_REPOSITORY }}:latest
+          cache-from: type=gha,scope=deploy-api-v2-sandbox
+          cache-to: type=gha,mode=max,scope=deploy-api-v2-sandbox
+
+      - name: Image reference
+        id: image
+        env:
+          REGISTRY: ${{ steps.ecr-login.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: echo "image=$REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> "$GITHUB_OUTPUT"
+
+      # Copy the live task definition (env, secrets and roles are tofu's) and
+      # change only the image. Nothing from it is printed: DB_SSL_CA and the
+      # secret ARNs are in there.
+      - name: Register task definition and roll the service
+        env:
+          NEW_IMAGE: ${{ steps.image.outputs.image }}
+        run: |
+          aws ecs describe-task-definition \
+            --task-definition "$TASK_FAMILY" \
+            --query taskDefinition \
+            --output json > task-def.json
+
+          jq --arg img "$NEW_IMAGE" \
+            '.containerDefinitions[0].image = $img | del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities, .registeredAt, .registeredBy)' \
+            task-def.json > task-def-new.json
+
+          TASK_DEF_ARN=$(aws ecs register-task-definition \
+            --cli-input-json file://task-def-new.json \
+            --query taskDefinition.taskDefinitionArn \
+            --output text)
+          echo "Registered $TASK_DEF_ARN"
+
+          aws ecs update-service \
+            --cluster "$ECS_CLUSTER" \
+            --service "$ECS_SERVICE" \
+            --task-definition "$TASK_DEF_ARN" \
+            --desired-count 1 \
+            --query "service.deployments[0].rolloutState" \
+            --output text
+
+      # services-stable alone passes after a circuit-breaker rollback, so also
+      # check the primary deployment runs the image this job built (#412).
+      - name: Wait and verify the running image
+        env:
+          EXPECTED_IMAGE: ${{ steps.image.outputs.image }}
+        run: |
+          aws ecs wait services-stable --cluster "$ECS_CLUSTER" --services "$ECS_SERVICE"
+
+          RUNNING_TASK_DEF=$(aws ecs describe-services \
+            --cluster "$ECS_CLUSTER" \
+            --services "$ECS_SERVICE" \
+            --query 'services[0].deployments[?status==`PRIMARY`].taskDefinition | [0]' \
+            --output text)
+          RUNNING_IMAGE=$(aws ecs describe-task-definition \
+            --task-definition "$RUNNING_TASK_DEF" \
+            --query 'taskDefinition.containerDefinitions[0].image' \
+            --output text)
+
+          echo "Expected image: $EXPECTED_IMAGE"
+          echo "Running image:  $RUNNING_IMAGE"
+          if [ "$RUNNING_IMAGE" != "$EXPECTED_IMAGE" ]; then
+            echo "::error::The circuit breaker rolled back. Check the logs: aws logs tail /ecs/api-v2-sandbox --since 15m"
+            exit 1
+          fi
+
+      # /health proves the route the ALB checks is live (#3128): the target
+      # group checks /v2/health (#3745), and API_URL carries the /v2.
+      # /categories proves the database answers and categories read.
+      # /pages proves a seeded public page resolves with its content, since
+      # landing reads every page from it (#3146). Sandbox content is edited,
+      # not reseeded, so that page must stay public there: unpublishing,
+      # moving or deleting it fails this step on every deploy.
+      - name: Smoke test
+        run: |
+          for path in /health /docs/openapi.json /categories; do
+            status=$(curl -s -o /dev/null -w '%{http_code}' --max-time 15 "$API_URL$path")
+            echo "$path -> $status"
+            if [ "$status" != "200" ]; then
+              echo "::error::$API_URL$path returned $status"
+              exit 1
+            fi
+          done
+
+          page_path="/pages?url=/family-birth-relationships/register-a-birth"
+          page_json="$RUNNER_TEMP/page.json"
+          status=$(curl -s -o "$page_json" -w '%{http_code}' --max-time 15 "$API_URL$page_path")
+          echo "$page_path -> $status"
+          if [ "$status" != "200" ]; then
+            echo "::error::$API_URL$page_path returned $status"
+            exit 1
+          fi
+          if ! jq -e '(.frontmatter.title | type == "string" and length > 0) and (.body_markdown | type == "string" and length > 0)' "$page_json" > /dev/null; then
+            echo "::error::$API_URL$page_path has no frontmatter.title or body_markdown"
+            exit 1
+          fi
+
+      # GET /pages p50 and p95 after each deploy (#3150): landing asks for
+      # every page here, so a slow query or an N+1 shows up as landing latency.
+      # 100 sequential reads of the page the smoke test pins (so the same "must
+      # stay public on sandbox" rule covers it), each a fresh connection, so
+      # the time includes TLS. Fails only above a generous ceiling: from a client
+      # 90 ms away in Oct 2026, p50 was ~285 ms and p95 300-400 ms, nearly all
+      # of it network (the server answers in under 10 ms). 100 requests sit
+      # far under the site routes' 1,000/min per-client limit (#3356), and a
+      # 429 fails the step rather than skewing the sample.
+      - name: GET /pages latency (p50, p95)
+        env:
+          PAGE_URL: /family-birth-relationships/register-a-birth
+          SAMPLES: "100"
+          CEILING_MS: "500"
+        run: |
+          times=$(mktemp)
+          for _ in $(seq "$SAMPLES"); do
+            read -r status seconds < <(curl -s -o /dev/null --max-time 15 \
+              -w '%{http_code} %{time_total}\n' "$API_URL/pages?url=$PAGE_URL" || echo "000 0")
+            if [ "$status" = "429" ]; then
+              echo "::error::GET /pages was rate limited (429), so the latency sample is void"
+              exit 1
+            fi
+            if [ "$status" != "200" ]; then
+              echo "::error::GET /pages?url=$PAGE_URL returned $status"
+              exit 1
+            fi
+            echo "$seconds" >> "$times"
+          done
+          # Nearest-rank percentiles, in whole milliseconds.
+          read -r count p50 p95 < <(sort -n "$times" | awk '
+            { ms[NR] = $1 * 1000 }
+            END {
+              i50 = int(NR * 0.50 + 0.999999); i95 = int(NR * 0.95 + 0.999999)
+              printf "%d %.0f %.0f\n", NR, ms[i50], ms[i95]
+            }')
+          {
+            echo "### api_v2 GET /pages latency"
+            echo ""
+            echo "| Samples | p50 | p95 | p95 ceiling |"
+            echo "| --- | --- | --- | --- |"
+            echo "| $count | ${p50} ms | ${p95} ms | ${CEILING_MS} ms |"
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "GET /pages: $count samples, p50 ${p50} ms, p95 ${p95} ms"
+          if [ "$p95" -gt "$CEILING_MS" ]; then
+            echo "::error::GET /pages p95 ${p95} ms is above the ${CEILING_MS} ms ceiling"
+            exit 1
+          fi

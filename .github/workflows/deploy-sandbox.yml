@@ -106,6 +106,8 @@ jobs:
       fb-app: ${{ steps.affected.outputs.fb-app }}
       ff-app: ${{ steps.affected.outputs.ff-app }}
       analytics: ${{ steps.affected.outputs.analytics }}
+      api-v2: ${{ steps.affected.outputs.api-v2 }}
+      editor-v2: ${{ steps.affected.outputs.editor-v2 }}
       migrations: ${{ steps.affected.outputs.migrations }}
       amplify-config: ${{ steps.affected.outputs.amplify-config }}
     steps:
@@ -178,6 +180,8 @@ jobs:
           echo "fb-app=$(has form-builder-app)" >> "$GITHUB_OUTPUT"
           echo "ff-app=$(has feature-flagging-app)" >> "$GITHUB_OUTPUT"
           echo "analytics=$(has analytics-app)" >> "$GITHUB_OUTPUT"
+          echo "api-v2=$(has api_v2)" >> "$GITHUB_OUTPUT"
+          echo "editor-v2=$(has editor_v2)" >> "$GITHUB_OUTPUT"
 
           # Migrations: precise path-grep (from PR #216) on the unified base. The
           # migration task is a ~1.5-3 min cold Fargate run; migration:run is
@@ -666,7 +670,7 @@ jobs:
   # the others.
   #
   # NOT listed (its spec is test.fixme): referral-student-support-services has
-  # an unsubmittable required-checkbox-with-empty-options recipe bug (ADR 0027).
+  # an unsubmittable required-checkbox-with-empty-options recipe bug (ADR 0047).
   # Add it to the matrix once that is fixed.
   #
   # ALSO NOT listed — gated `visibility: preview` (#1646) pending the misrouted
@@ -734,11 +738,14 @@ jobs:
   # layer with no code change at all, as in #2029. Skipped only if an upstream
   # deploy actually failed.
   #
-  # Auth: `PUT /service_status` requires a GitHub *user* token (classic PAT) for
-  # an identity that is a team member / repo writer — the default GITHUB_TOKEN
-  # (a bot) does NOT qualify. Provision E2E_SERVICE_STATUS_TOKEN (a dedicated
-  # machine account's PAT with read:org) BEFORE merging, or this fails closed
-  # and blocks every staging promotion (by design — a gate must not pass blind).
+  # Auth: `PUT /service_status` requires a GitHub *user* token — the default
+  # GITHUB_TOKEN (a bot) does NOT qualify. E2E_SERVICE_STATUS_TOKEN is the
+  # govtech-bb-e2e fine-grained token (org Members: read only, member of
+  # `feature-management-sandbox` only, no repo access — so it can change sandbox
+  # service_status but never prod's), stored on the `sandbox-e2e` environment and
+  # restricted to `main`. Owner, expiry and renewal steps:
+  # docs/e2e-service-status-token.md. Absent → this fails closed and blocks
+  # staging (by design — a gate must not pass blind).
   journey-feature-flag:
     name: Journey 3 — feature-flag reaches landing + forms
     needs: [deploy-api, amplify-forms, amplify-landing]
@@ -791,16 +798,9 @@ jobs:
           SMOKE_BASE_URL: https://forms.sandbox.alpha.gov.bb
           E2E_SERVICE_STATUS_TOKEN: ${{ secrets.E2E_SERVICE_STATUS_TOKEN }}
         run: |
-          # TEMPORARY soft-skip (#3363): the secret is not provisioned yet. Fail-
-          # closed (exit 1) would block EVERY sandbox→staging promotion, since this
-          # job gates promote-to-staging. So skip (exit 0, loud warning) while the
-          # token is absent, keeping staging flowing. This self-heals: the moment
-          # infra populates E2E_SERVICE_STATUS_TOKEN the branch below is never taken,
-          # the real journey runs, and the gate is fail-closed again. Revert this to
-          # `exit 1` once #3363 lands so a future missing/expired token fails closed.
           if [ -z "$E2E_SERVICE_STATUS_TOKEN" ]; then
-            echo "::warning::E2E_SERVICE_STATUS_TOKEN not provisioned yet (#3363) — SKIPPING the J3 gate so staging is not blocked. Revert the soft-skip to exit 1 once the secret lands."
-            exit 0
+            echo "::error::E2E_SERVICE_STATUS_TOKEN is not set in the sandbox-e2e environment — renew the govtech-bb-e2e fine-grained token per docs/e2e-service-status-token.md before this gate can pass."
+            exit 1
           fi
           pnpm --filter @govtech-bb/forms exec playwright test \
             --config playwright.journey.config.ts
@@ -1042,6 +1042,28 @@ jobs:
           echo "❌ Amplify $APP_LABEL build did not finish within 15 minutes"
           exit 1
 
+  # api_v2 and editor_v2 (#3119). Their steps live in the reusable
+  # deploy-api-v2-sandbox.yml and deploy-editor-v2-sandbox.yml. They deploy
+  # with their own role (api-v2-github-actions-sandbox), whose OIDC trust
+  # matches this workflow's `ref:refs/heads/main` subject, so neither job may
+  # set `environment:`.
+  #
+  # In promote-to-staging's needs since staging runs both (#3130): a v2
+  # failure here holds back the whole staging deploy, as any other target's
+  # does. A red run is not the next affected base, so everything changed since
+  # the last green run (v2 included) deploys again on the next merge.
+  deploy-api-v2:
+    name: Deploy api_v2
+    needs: setup
+    if: needs.setup.outputs.api-v2 == 'true'
+    uses: ./.github/workflows/deploy-api-v2-sandbox.yml
+
+  deploy-editor-v2:
+    name: Deploy editor_v2
+    needs: setup
+    if: needs.setup.outputs.editor-v2 == 'true' || needs.setup.outputs.amplify-config == 'true'
+    uses: ./.github/workflows/deploy-editor-v2-sandbox.yml
+
   summary:
     name: Deployment summary
     needs:
@@ -1056,6 +1078,8 @@ jobs:
         amplify-analytics,
         smoke-test-forms,
         journey-feature-flag,
+        deploy-api-v2,
+        deploy-editor-v2,
       ]
     if: always()
     runs-on: ubuntu-latest
@@ -1070,6 +1094,8 @@ jobs:
           FF_APP_RESULT: ${{ needs.amplify-feature-flagging.result }}
           ANALYTICS_RESULT: ${{ needs.amplify-analytics.result }}
           SMOKE_RESULT: ${{ needs.smoke-test-forms.result }}
+          API_V2_RESULT: ${{ needs.deploy-api-v2.result }}
+          EDITOR_V2_RESULT: ${{ needs.deploy-editor-v2.result }}
           MIGRATIONS_GATE: ${{ needs.setup.outputs.migrations }}
         run: |
           # Report each target's ACTUAL job result, not just the
@@ -1112,12 +1138,16 @@ jobs:
             echo "| Amplify feature-flagging | $(outcome "$FF_APP_RESULT") |"
             echo "| Amplify analytics | $(outcome "$ANALYTICS_RESULT") |"
             echo "| Forms live smoke | $(outcome "$SMOKE_RESULT" | sed 's/deployed/passed/') |"
+            echo "| api_v2 | $(outcome "$API_V2_RESULT") |"
+            echo "| Amplify editor_v2 | $(outcome "$EDITOR_V2_RESULT") |"
             echo ""
             echo "**API URL:** https://forms.api.sandbox.alpha.gov.bb"
             echo "**Landing URL:** https://sandbox.alpha.gov.bb"
             echo "**Forms URL:** https://forms.sandbox.alpha.gov.bb"
             echo "**Form Builder URL:** https://builder.sandbox.alpha.gov.bb"
             echo "**Feature Flagging URL:** https://feature-flagging.sandbox.alpha.gov.bb"
+            echo "**api_v2 URL:** https://api.sandbox.alpha.gov.bb/v2"
+            echo "**editor_v2 URL:** https://editor.sandbox.alpha.gov.bb"
           } >> "$GITHUB_STEP_SUMMARY"
 
   notify-failure:
@@ -1134,6 +1164,8 @@ jobs:
         smoke-test-forms,
         promote-to-staging,
         journey-feature-flag,
+        deploy-api-v2,
+        deploy-editor-v2,
       ]
     if: always() && contains(needs.*.result, 'failure')
     runs-on: ubuntu-latest
@@ -1153,7 +1185,7 @@ jobs:
   # every affected target deployed cleanly — a skipped/unaffected job is fine,
   # but any failure or cancellation stops the chain, so staging never receives
   # code sandbox couldn't ship. That includes the live forms smoke and the
-  # analytics build (#2756).
+  # analytics build (#2756), and api_v2 and editor_v2 (#3130).
   #
   # Staging deploys the exact commit sandbox proved: this job fast-forwards the
   # `staging` branch to it and dispatches deploy-staging ON `staging`, so every
@@ -1174,6 +1206,8 @@ jobs:
         amplify-form-builder,
         amplify-feature-flagging,
         amplify-analytics,
+        deploy-api-v2,
+        deploy-editor-v2,
         smoke-test-forms,
         journey-feature-flag,
       ]

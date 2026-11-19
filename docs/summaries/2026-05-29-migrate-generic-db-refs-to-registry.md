@@ -39,12 +39,12 @@ primitives, leaving 5 orphans (`table`, `signature`, `repeater`, `display`,
   an unknown ref crashes the API in `onModuleInit`. It doesn't: the recipe
   *loader* only validates schema/formId (and logs per-file errors rather than
   throwing). Ref *resolution* is lazy and happens at `hydrateForm` —
-  per [0017](../decisions/0017-recipe-ref-resolution-fails-loud.md) it fails
+  per [0036](../decisions/0036-recipe-ref-resolution-fails-loud.md) it fails
   loud there (`UnresolvableComponentError` in prod, `UnknownRefError` in
   preview), but only when that form is actually hydrated, which CI build/test
   never triggers. The guard asserts every `components/generic-*`/`show-hide`
   recipe ref is a key in `BUILTIN_REGISTRY` (the first thing `resolve()` checks,
-  per [0018](../decisions/0018-registry-is-sole-home-for-builtin-definitions.md))
+  per [0037](../decisions/0037-registry-is-sole-home-for-builtin-definitions.md))
   and that no migrated slash ref reappears — catching typos, registry drift, and
   regressions at CI time. A membership check, not a full resolver invocation, so
   it stays cheap and doesn't pull NestJS DI into the test.

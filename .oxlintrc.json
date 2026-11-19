@@ -199,6 +199,99 @@
       "rules": {
         "govtech/semantic-colors": "error"
       }
+    },
+    // api_v2's architecture: domain modules and services depend on domain
+    // values and narrow ports; main.ts composes the infrastructure.
+    {
+      "files": ["apps/api_v2/src/{modules,services}/**/*.ts"],
+      "rules": {
+        "typescript/no-explicit-any": "error",
+        "typescript/no-non-null-assertion": "error",
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": [
+                  "better-auth",
+                  "better-auth/**",
+                  "fastify",
+                  "pg",
+                  "drizzle-orm",
+                  "drizzle-orm/**",
+                  "pino",
+                  "**/adapters/**",
+                  "**/routes/**",
+                  "**/config",
+                  "**/db",
+                  "**/app",
+                  "**/main",
+                  "**/schema"
+                ],
+                "message": "Domain modules and services depend on domain values and narrow ports; compose infrastructure in main.ts."
+              }
+            ]
+          }
+        ],
+        "no-restricted-globals": ["error", "Request", "Response", "fetch"]
+      }
+    },
+    // The HTTP adapter receives services through buildApp's options; only
+    // main.ts builds infrastructure.
+    {
+      "files": ["apps/api_v2/src/app.ts", "apps/api_v2/src/routes/**/*.ts"],
+      "plugins": ["typescript"],
+      "rules": {
+        "typescript/no-non-null-assertion": "error",
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": [
+                  "better-auth",
+                  "better-auth/**",
+                  "pg",
+                  "drizzle-orm",
+                  "drizzle-orm/**",
+                  "**/adapters/**",
+                  "**/config",
+                  "**/db",
+                  "**/main",
+                  "**/migrate",
+                  "**/schema",
+                  "**/seed"
+                ],
+                "message": "Routes receive services through buildApp's options; compose infrastructure in main.ts."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    // Read environment variables only in the composition root.
+    {
+      "files": ["apps/api_v2/src/**/*.ts"],
+      "plugins": ["node"],
+      "rules": {
+        "node/no-process-env": "error"
+      }
+    },
+    // The composition roots read the environment; the test harness reads its
+    // database settings.
+    {
+      "files": [
+        "apps/api_v2/src/main.ts",
+        "apps/api_v2/src/import-estate.ts",
+        "apps/api_v2/src/reindex-search.ts",
+        "apps/api_v2/src/redact-change-events.ts",
+        "apps/api_v2/src/test-db.ts",
+        "apps/api_v2/src/**/*.test.ts"
+      ],
+      "plugins": ["node"],
+      "rules": {
+        "node/no-process-env": "off"
+      }
     }
   ]
 }

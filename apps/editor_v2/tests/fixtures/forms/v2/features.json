@@ -1,0 +1,218 @@
+{
+  "schemaVersion": 2,
+  "id": "feature-proof",
+  "title": "Native feature coverage",
+  "mode": "calculator",
+  "locale": "en-BB",
+  "timeZone": "America/Barbados",
+  "settings": {
+    "visibility": "draft",
+    "hiddenAnswers": "retain"
+  },
+  "blocks": [
+    {
+      "id": "questions",
+      "type": "page",
+      "role": "questions",
+      "title": "Questions"
+    },
+    {
+      "id": "name",
+      "type": "question",
+      "key": "name",
+      "kind": "text",
+      "label": "name"
+    },
+    {
+      "id": "amount",
+      "type": "question",
+      "key": "amount",
+      "kind": "number",
+      "label": "amount"
+    },
+    {
+      "id": "enabled",
+      "type": "question",
+      "key": "enabled",
+      "kind": "boolean",
+      "label": "enabled"
+    },
+    {
+      "id": "choice",
+      "type": "question",
+      "key": "choice",
+      "kind": "choice",
+      "label": "choice",
+      "config": {
+        "selection": "single",
+        "presentation": "radio"
+      },
+      "options": [
+        {
+          "id": "first",
+          "label": "First",
+          "value": "first"
+        },
+        {
+          "id": "second",
+          "label": "Second",
+          "value": "second"
+        }
+      ]
+    },
+    {
+      "id": "months",
+      "type": "calculated",
+      "valueType": "number",
+      "expression": {
+        "op": "monthsBetween",
+        "args": [
+          "2026-01-01",
+          "2026-03-01"
+        ]
+      }
+    },
+    {
+      "id": "days",
+      "type": "calculated",
+      "valueType": "number",
+      "expression": {
+        "op": "daysBetween",
+        "args": [
+          "2026-01-01",
+          "2026-03-01"
+        ]
+      }
+    },
+    {
+      "id": "label",
+      "type": "calculated",
+      "valueType": "string",
+      "expression": {
+        "op": "concat",
+        "args": [
+          "Amount: ",
+          {
+            "op": "toText",
+            "args": [
+              {
+                "answer": "amount"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "rules",
+      "type": "logic",
+      "rules": [
+        {
+          "id": "branch",
+          "when": {
+            "op": "any",
+            "conditions": [
+              {
+                "op": "ne",
+                "left": {
+                  "answer": "name"
+                },
+                "right": "name"
+              },
+              {
+                "op": "contains",
+                "left": {
+                  "answer": "name"
+                },
+                "right": "a"
+              },
+              {
+                "op": "startsWith",
+                "left": {
+                  "answer": "name"
+                },
+                "right": "a"
+              },
+              {
+                "op": "endsWith",
+                "left": {
+                  "answer": "name"
+                },
+                "right": "z"
+              }
+            ]
+          },
+          "actions": [
+            {
+              "type": "setLabel",
+              "target": "name",
+              "value": "Updated label"
+            },
+            {
+              "type": "setCompletionEnabled",
+              "value": false
+            },
+            {
+              "type": "goTo",
+              "target": "result"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "formats",
+      "type": "content",
+      "kind": "paragraph",
+      "content": [
+        {
+          "answer": "amount",
+          "format": {
+            "type": "number",
+            "fractionDigits": 2
+          }
+        },
+        " ",
+        {
+          "answer": "choice",
+          "format": {
+            "type": "choice-label"
+          }
+        },
+        " ",
+        {
+          "answer": "enabled",
+          "format": {
+            "type": "boolean-label",
+            "trueLabel": "Enabled",
+            "falseLabel": "Disabled"
+          }
+        }
+      ]
+    },
+    {
+      "id": "result",
+      "type": "page",
+      "role": "result",
+      "title": "Result"
+    },
+    {
+      "id": "summary",
+      "type": "content",
+      "kind": "paragraph",
+      "content": [
+        {
+          "value": "months"
+        },
+        " ",
+        {
+          "value": "days"
+        },
+        " ",
+        {
+          "value": "label"
+        }
+      ]
+    }
+  ]
+}

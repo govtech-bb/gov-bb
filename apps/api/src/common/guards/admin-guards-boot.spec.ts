@@ -7,7 +7,7 @@ import { ServiceStatusController } from "@/services/service-status.controller";
 import { ServiceStatusService } from "@/services/service-status.service";
 
 /**
- * Boot-safety pin for the admin guards (ADR 0061): compiles the REAL admin
+ * Boot-safety pin for the admin guards (ADR 0106): compiles the REAL admin
  * controllers into a Nest testing module and inits the app, exercising Nest's
  * enhancer resolution for them — something no unit spec does (they construct
  * controllers directly, bypassing the DI container entirely).

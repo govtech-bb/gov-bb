@@ -5,10 +5,9 @@ import { SERVICE_STATUS_SEED_ROWS } from "./service-status-seed.data";
  * One-time seed of `service_status` from the platform's current *static*
  * visibility (#1650). Every existing service gets a row so the #1898 admin UI
  * shows the true state of every service from day one, instead of defaulting
- * no-row services to `enabled`. The rows are generated at authoring time by
- * `scripts/generate-service-status-seed.ts` (committed in
- * `service-status-seed.data.ts`) and applied once per environment by the deploy
- * migrate gate.
+ * no-row services to `enabled`. The rows are frozen in
+ * `service-status-seed.data.ts` (its generator was retired in #3251) and
+ * applied once per environment by the deploy migrate gate.
  *
  * Insert-only: a slug that already has a row (an admin toggled it before this
  * ran) is left untouched by `ON CONFLICT (slug) DO NOTHING` and gets no audit

@@ -1,0 +1,344 @@
+import { z } from "zod";
+import { Redacted } from "./modules/redacted";
+import { err, ok, type Result } from "./modules/result";
+
+/** A user's old email and the Workspace address they sign in with now. */
+export interface EmailMove {
+  readonly from: string;
+  readonly to: string;
+}
+
+/** Explicit database settings, unwrapped only by the Postgres adapter. */
+export interface DatabaseConfig {
+  readonly host: string;
+  readonly port: number;
+  readonly user: string;
+  readonly password: Redacted<string>;
+  readonly database: string;
+  readonly production: boolean;
+  readonly ca?: string;
+}
+
+/** Auth configuration shared only with the auth adapter and HTTP root. */
+export interface AuthConfig {
+  readonly apiOrigin: string;
+  /**
+   * Where the API is mounted on its origin: "" at the root, or a path such as
+   * "/v2" when it shares a host with another API (#3745). No trailing slash.
+   */
+  readonly apiBasePath: string;
+  readonly editorOrigin: string;
+  readonly secret: Redacted<string>;
+  readonly googleClientId: string;
+  readonly googleClientSecret: Redacted<string>;
+  /** Workspace domains, lowercased, whose verified accounts may sign in. */
+  readonly allowedDomains: readonly string[];
+}
+
+/**
+ * How review emails go out (#3267): not at all, to the log for local runs and
+ * tests, or through SES from a verified sender.
+ */
+export type NotificationsConfig =
+  | { readonly transport: "off" | "log" }
+  | {
+      readonly transport: "ses";
+      readonly from: string;
+      readonly region: string;
+    };
+
+/** The process's parsed settings; inner modules never read environment variables. */
+export interface AppConfig {
+  readonly port: number;
+  readonly seed: boolean;
+  /** The site's preview token; without it, every preview read is refused. */
+  readonly previewSecret?: Redacted<string>;
+  /** Landing's token; without it, landing is rate-limited like any client. */
+  readonly landingSecret?: Redacted<string>;
+  readonly database: DatabaseConfig;
+  readonly auth: AuthConfig;
+  /** Emails, lowercased, granted the admin role whenever they sign in. */
+  readonly adminEmails: readonly string[];
+  /** GitHub-era users to move to their Workspace address on boot (#3418). */
+  readonly emailMoves: readonly EmailMove[];
+  /**
+   * Local development only: skip sign-in and run every editor request as a
+   * fixed developer. Refused in production and unless the editor is local.
+   */
+  readonly authBypass: boolean;
+  /** Review emails to approvers and submitters; off unless an environment turns them on. */
+  readonly notifications: NotificationsConfig;
+}
+
+/** Invalid startup settings, reporting field names but never supplied values. */
+export class ConfigurationError extends Error {
+  /** Stable failure tag for startup diagnostics. */
+  readonly _tag = "ConfigurationError";
+  /**
+   * Names of settings that need correction, and the reasons this module wrote
+   * for its own rules. Neither carries a supplied value.
+   */
+  constructor(
+    readonly fields: readonly string[],
+    readonly reasons: readonly string[] = [],
+  ) {
+    super(`Invalid configuration: ${fields.join(", ")}`);
+  }
+}
+
+const origin = z
+  .url()
+  .refine((value) => {
+    if (!URL.canParse(value)) return false;
+    const url = new URL(value);
+    return (
+      ["http:", "https:"].includes(url.protocol) &&
+      url.pathname === "/" &&
+      !url.username &&
+      !url.password &&
+      !url.search &&
+      !url.hash
+    );
+  })
+  .transform((value) => new URL(value).origin);
+/**
+ * An origin that may carry a base path (#3745): letters, digits, `-` and `_`
+ * in each segment, so nothing a URL parser would rewrite (`..`, `%2F`, `//`).
+ */
+const baseUrl = z
+  .url()
+  .refine((value) => {
+    if (!URL.canParse(value)) return false;
+    const url = new URL(value);
+    return (
+      ["http:", "https:"].includes(url.protocol) &&
+      /^(\/[\w-]+)*\/?$/.test(url.pathname) &&
+      !/\/\.\.?(\/|$)/.test(value) &&
+      !url.username &&
+      !url.password &&
+      !url.search &&
+      !url.hash
+    );
+  })
+  .transform((value) => {
+    const url = new URL(value);
+    return { origin: url.origin, basePath: url.pathname.replace(/\/$/, "") };
+  });
+const environment = z
+  .object({
+    NODE_ENV: z.string().optional(),
+    PORT: z.coerce.number().int().min(0).max(65535).default(3020),
+    // Opt-in: re-seeding on every boot would bring back pages editors deleted.
+    SEED: z.stringbool().default(false),
+    DB_HOST: z.string().default("localhost"),
+    DB_PORT: z.coerce.number().int().min(1).max(65535).default(5432),
+    DB_USERNAME: z.string().default("postgres"),
+    DB_PASSWORD: z.string().default("postgres"),
+    DB_NAME: z.string().default("gov_bb_v2"),
+    DB_SSL_CA: z.string().optional(),
+    BETTER_AUTH_URL: baseUrl,
+    EDITOR_ORIGIN: origin,
+    BETTER_AUTH_SECRET: z.string().min(32),
+    GOOGLE_CLIENT_ID: z.string().min(1),
+    GOOGLE_CLIENT_SECRET: z.string().min(1),
+    // Comma-separated Workspace domains whose accounts may sign in.
+    GOOGLE_ALLOWED_DOMAINS: z
+      .string()
+      .transform((value) =>
+        value
+          .split(",")
+          .map((domain) => domain.trim().toLowerCase())
+          .filter(Boolean),
+      )
+      .pipe(
+        z
+          .array(
+            z
+              .string()
+              .regex(
+                /^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/,
+              ),
+          )
+          .min(1),
+      ),
+    AUTH_BYPASS: z.enum(["true", "false"]).optional(),
+    PREVIEW_SECRET: z.string().min(1).optional(),
+    LANDING_SECRET: z.string().min(1).optional(),
+    // Comma-separated; how an environment always has an admin (ADR 0134).
+    API_V2_ADMIN_EMAILS: z
+      .string()
+      .default("")
+      .transform((value) =>
+        value
+          .split(",")
+          .map((email) => email.trim().toLowerCase())
+          .filter(Boolean),
+      )
+      .pipe(z.array(z.email())),
+    // Comma-separated old=new pairs: a GitHub-era user's email and their
+    // Workspace address. Applied on every boot; remove once everyone has moved.
+    API_V2_EMAIL_MOVES: z
+      .string()
+      .default("")
+      .transform((value) =>
+        value
+          .split(",")
+          .map((pair) => pair.trim().toLowerCase())
+          .filter(Boolean)
+          .map((pair) => pair.split("=").map((email) => email.trim())),
+      )
+      // Exactly one "=" per pair, so a pasted typo is refused, not trimmed.
+      .pipe(
+        z
+          .array(z.tuple([z.email(), z.email()]))
+          .transform((pairs) => pairs.map(([from, to]) => ({ from, to }))),
+      ),
+    // Off by default: an environment turns review emails on (#3267).
+    REVIEW_NOTIFICATIONS: z.enum(["off", "log", "ses"]).default("off"),
+    // The same sender settings as apps/api's SES mailer.
+    SES_FROM_ADDRESS: z.string().min(1).optional(),
+    SES_REGION: z.string().min(1).optional(),
+    AWS_DEFAULT_REGION: z.string().min(1).optional(),
+  })
+  .superRefine((value, context) => {
+    // Without an admin nobody can grant approver, so nobody can change what citizens see.
+    if (value.AUTH_BYPASS !== "true" && value.API_V2_ADMIN_EMAILS.length === 0)
+      context.addIssue({
+        code: "custom",
+        path: ["API_V2_ADMIN_EMAILS"],
+        message:
+          "Set API_V2_ADMIN_EMAILS to at least one admin's email: without an admin nobody can grant the approver role (ADR 0134)",
+      });
+    // A bypassed API admits any caller, so it is only for an editor on this machine.
+    if (
+      value.AUTH_BYPASS === "true" &&
+      (value.NODE_ENV === "production" ||
+        !["localhost", "127.0.0.1"].includes(
+          new URL(value.EDITOR_ORIGIN).hostname,
+        ))
+    )
+      context.addIssue({
+        code: "custom",
+        path: ["AUTH_BYPASS"],
+        message:
+          "Auth can only be bypassed for a local editor outside production",
+      });
+    if (value.REVIEW_NOTIFICATIONS === "ses" && !value.SES_FROM_ADDRESS)
+      context.addIssue({
+        code: "custom",
+        path: ["SES_FROM_ADDRESS"],
+        message:
+          "Set SES_FROM_ADDRESS to a verified SES sender: REVIEW_NOTIFICATIONS=ses sends review emails from it",
+      });
+    if (value.NODE_ENV !== "production") return;
+    // A deployed database gets the estate once, from import-estate (#3052).
+    if (value.SEED)
+      context.addIssue({
+        code: "custom",
+        path: ["SEED"],
+        message: "Production does not seed on boot",
+      });
+    // On in production means emails reach people, not only the log.
+    if (value.REVIEW_NOTIFICATIONS === "log")
+      context.addIssue({
+        code: "custom",
+        path: ["REVIEW_NOTIFICATIONS"],
+        message:
+          "Production sends review emails with SES or not at all: set REVIEW_NOTIFICATIONS to ses or off",
+      });
+    for (const [field, url] of [
+      ["BETTER_AUTH_URL", value.BETTER_AUTH_URL.origin],
+      ["EDITOR_ORIGIN", value.EDITOR_ORIGIN],
+    ] as const) {
+      if (!url.startsWith("https://"))
+        context.addIssue({
+          code: "custom",
+          path: [field],
+          message: "Production origins require HTTPS",
+        });
+    }
+  })
+  .superRefine(
+    (value, context) => {
+      // The messages name no address: they reach the boot log.
+      for (const { from, to } of value.API_V2_EMAIL_MOVES) {
+        // Both sides would find the same user, and the move would delete it.
+        if (from === to)
+          context.addIssue({
+            code: "custom",
+            path: ["API_V2_EMAIL_MOVES"],
+            message:
+              "Each API_V2_EMAIL_MOVES pair needs two different addresses",
+          });
+        // A move to an address Google won't admit would strand the user.
+        if (
+          !value.GOOGLE_ALLOWED_DOMAINS.includes(to.slice(to.indexOf("@") + 1))
+        )
+          context.addIssue({
+            code: "custom",
+            path: ["API_V2_EMAIL_MOVES"],
+            message: "Move users only to an address on GOOGLE_ALLOWED_DOMAINS",
+          });
+      }
+    },
+    // Only once every pair parsed: a malformed one has no addresses to check.
+    { when: (payload) => payload.issues.length === 0 },
+  );
+
+/** Parse the root's environment once and retain only typed, redacted settings. */
+export function parseConfig(
+  input: Readonly<Record<string, string | undefined>>,
+): Result<AppConfig, ConfigurationError> {
+  const parsed = environment.safeParse(input);
+  if (!parsed.success)
+    return err(
+      new ConfigurationError(
+        [...new Set(parsed.error.issues.map((issue) => String(issue.path[0])))],
+        // Only this module's own messages: Zod's can quote what was supplied.
+        parsed.error.issues
+          .filter((issue) => issue.code === "custom")
+          .map((issue) => issue.message),
+      ),
+    );
+  const env = parsed.data;
+  return ok({
+    port: env.PORT,
+    seed: env.SEED,
+    ...(env.PREVIEW_SECRET
+      ? { previewSecret: new Redacted(env.PREVIEW_SECRET) }
+      : {}),
+    ...(env.LANDING_SECRET
+      ? { landingSecret: new Redacted(env.LANDING_SECRET) }
+      : {}),
+    database: {
+      host: env.DB_HOST,
+      port: env.DB_PORT,
+      user: env.DB_USERNAME,
+      password: new Redacted(env.DB_PASSWORD),
+      database: env.DB_NAME,
+      production: env.NODE_ENV === "production",
+      ...(env.DB_SSL_CA ? { ca: env.DB_SSL_CA } : {}),
+    },
+    auth: {
+      apiOrigin: env.BETTER_AUTH_URL.origin,
+      apiBasePath: env.BETTER_AUTH_URL.basePath,
+      editorOrigin: env.EDITOR_ORIGIN,
+      secret: new Redacted(env.BETTER_AUTH_SECRET),
+      googleClientId: env.GOOGLE_CLIENT_ID,
+      googleClientSecret: new Redacted(env.GOOGLE_CLIENT_SECRET),
+      allowedDomains: env.GOOGLE_ALLOWED_DOMAINS,
+    },
+    adminEmails: env.API_V2_ADMIN_EMAILS,
+    emailMoves: env.API_V2_EMAIL_MOVES,
+    authBypass: env.AUTH_BYPASS === "true",
+    // The refinement above refuses ses without a sender.
+    notifications:
+      env.REVIEW_NOTIFICATIONS === "ses" && env.SES_FROM_ADDRESS
+        ? {
+            transport: "ses",
+            from: env.SES_FROM_ADDRESS,
+            region: env.SES_REGION ?? env.AWS_DEFAULT_REGION ?? "us-east-1",
+          }
+        : { transport: env.REVIEW_NOTIFICATIONS === "log" ? "log" : "off" },
+  });
+}

@@ -1,0 +1,803 @@
+/** @vitest-environment jsdom */
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { createMemoryHistory, createRouter, RouterProvider } from "@tanstack/react-router";
+import { act, type ReactNode } from "react";
+import { afterEach, beforeAll, expect, test, vi } from "vitest";
+import { createEditorApi, type ApiPage, type ServiceDetail } from "../../src/api/client";
+import { AuthFailure, type EditorAuth } from "../../src/auth/session";
+import { routeTree } from "../../src/routeTree.gen";
+import { loadPageEditor } from "../../src/workspace/preload";
+import { renderInPage } from "../helpers/page-editor";
+import { shownText } from "../helpers/shown-text";
+
+// The page editor loads apart from the workspace: import it once up front, not within the first test to open a page
+beforeAll(() => loadPageEditor());
+
+const stamp = "2026-10-07T12:00:00.000Z";
+
+const pages = new Map(
+  ["service", "fees", "other", "fourth"].map((id, index) => [
+    id,
+    {
+      id,
+      version: index + 1,
+      title: id,
+      url: `/family/service/${id}`,
+      slug: id,
+      parent_id: id === "service" ? null : "service",
+      category_id: null,
+      visibility: "draft",
+      form_id: null,
+      body_markdown: `Body of ${id}`,
+      frontmatter: {},
+      description: null,
+      published_at: null,
+      created_at: stamp,
+      updated_at: stamp,
+      pending_revision: null,
+      last_edited_by: null,
+    } satisfies ApiPage,
+  ]),
+);
+
+const sitePages: ApiPage[] = (
+  [
+    ["terms-conditions", "Terms & Conditions"],
+    ["what-we-mean-by-alpha", "What we mean by alpha"],
+    ["whats-changing", "What's changing?"],
+  ] as const
+).map(([slug, title]) => ({
+  id: slug,
+  version: 1,
+  slug,
+  title,
+  url: `/${slug}`,
+  parent_id: null,
+  category_id: null,
+  visibility: "public",
+  form_id: null,
+  body_markdown: "\nSite information.  \nKeep this body exactly.\n\n",
+  frontmatter: { source_url: `https://www.gov.bb/${slug}` },
+  description: null,
+  published_at: stamp,
+  created_at: stamp,
+  updated_at: stamp,
+  pending_revision: null,
+  last_edited_by: null,
+}));
+
+const detail: ServiceDetail = {
+  service: {
+    id: "service",
+    title: "API service",
+    url: "/family/service",
+    category: { slug: "family", title: "Family" },
+    visibility: "draft",
+    form_id: "existing-form",
+    has_start_page: false,
+    page_count: 4,
+    updated_at: stamp,
+  },
+  pages: [...pages.values()].map((page) => ({
+    ...page,
+    role: page.id === "service" ? "entry" : "supporting",
+  })),
+};
+
+const clients: QueryClient[] = [];
+
+afterEach(() => {
+  clients.splice(0).forEach((client) => client.clear());
+  localStorage.clear();
+});
+
+async function mountWorkspace(
+  path = "/services/service/fees",
+  {
+    roles = ["editor", "approver"],
+    publicIds = [],
+    me,
+    serverPages = new Map<string, ApiPage>([
+      ...pages,
+      ...sitePages.map((page) => [page.id, page] as const),
+    ]),
+  }: {
+    roles?: readonly string[];
+    publicIds?: readonly string[];
+    /** How /editor/me answers, when not at once with `roles`. */
+    me?: () => Promise<Response>;
+    /** The pages /pages/:id reads and saves, kept across mounts when passed in. */
+    serverPages?: Map<string, ApiPage>;
+  } = {},
+) {
+  vi.stubGlobal("matchMedia", (query: string) => ({
+    matches: true,
+    media: query,
+    addEventListener: () => {},
+    removeEventListener: () => {},
+  }));
+  vi.stubGlobal("scrollTo", () => {});
+
+  const auth: EditorAuth = {
+    session: vi.fn<EditorAuth["session"]>(async () => ({
+      ok: true,
+      value: { email: "author@govtech.bb", expiresAt: Date.now() + 3600000 },
+    })),
+    signIn: vi.fn<EditorAuth["signIn"]>(async (_origin, returnTo) => ({
+      ok: true,
+      value: returnTo,
+    })),
+    signOut: vi.fn<EditorAuth["signOut"]>(async () => ({ ok: true, value: undefined })),
+  };
+
+  const writes: RequestInit[] = [];
+  const asked: string[] = [];
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (url: string, init?: RequestInit) => {
+      const path = new URL(url).pathname;
+      asked.push(path);
+
+      if (path === "/editor/site-pages")
+        return Response.json({
+          pages: sitePages.map(({ id, title, url, visibility }) => ({
+            id,
+            title,
+            url,
+            visibility,
+          })),
+        });
+
+      if (path === "/services") return Response.json([detail.service]);
+
+      if (path === "/services/service")
+        return Response.json({
+          ...detail,
+          pages: detail.pages.map((page) =>
+            publicIds.includes(page.id) ? { ...page, visibility: "public" } : page,
+          ),
+        });
+
+      if (path === "/editor/me")
+        return me
+          ? me()
+          : Response.json({ id: "me", email: "author@govtech.bb", name: "Author", roles });
+
+      if (path === "/editor/categories") return Response.json({ categories: [] });
+
+      if (path === "/collections")
+        return Response.json({ collections: [{ ...contacts, record_count: 1 }] });
+
+      if (path === "/collections/contacts/records")
+        return Response.json({
+          collection: contacts,
+          records: [{ record_key: "nis", data: { key: "nis" }, updated_at: stamp }],
+        });
+
+      if (path === "/version") return Response.json({ count: 1, latest: stamp });
+      const page = serverPages.get(path.replace("/pages/", ""));
+
+      if (page && init?.method === "PUT") {
+        writes.push(init);
+        const { expected_version: _, ...fields } = JSON.parse(String(init.body));
+
+        // As api_v2 does, a save to a public page waits in its revision
+        const saved: ApiPage = {
+          ...page,
+          ...fields,
+          version: page.version + 1,
+          updated_at: "2026-10-07T13:00:00.000Z",
+          pending_revision:
+            page.visibility === "public" ? { status: "draft", comment: null } : null,
+        };
+
+        serverPages.set(page.id, saved);
+
+        return Response.json(saved);
+      }
+
+      return page ? Response.json(page) : Response.json({}, { status: 404 });
+    }),
+  );
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  clients.push(client);
+  // The real app routes, without nesting an HTML document inside the test's div.
+  Object.assign(routeTree.options, {
+    shellComponent: ({ children }: { children: ReactNode }) => <>{children}</>,
+  });
+
+  const router = createRouter({
+    routeTree,
+    context: { auth, api: createEditorApi("http://localhost:3020"), queryClient: client },
+    history: createMemoryHistory({ initialEntries: [path] }),
+    Wrap: ({ children }) => <QueryClientProvider client={client}>{children}</QueryClientProvider>,
+  });
+
+  await renderInPage(<RouterProvider router={router} />);
+  await act(async () => router.load());
+  await act(async () => {
+    await vi.waitFor(() =>
+      expect(document.querySelector("header")?.textContent).toContain("Sign out"),
+    );
+  });
+
+  return { router, auth, writes, client, asked, serverPages };
+}
+
+const until = (ready: () => void) =>
+  act(async () => {
+    await vi.waitFor(ready);
+  });
+
+test.each([0, 503, 401, 403, 404])(
+  "a service refresh failure (%s) preserves the shell and draft without showing a second full-page state",
+  async (status) => {
+    const h = await mountWorkspace();
+    await editTitle("Keep during refresh");
+    const header = document.querySelector("header");
+    const currentFetch = vi.mocked(fetch).getMockImplementation()!;
+    vi.mocked(fetch).mockImplementation(async (url, init) => {
+      if (String(url).endsWith("/services/service")) {
+        if (status === 0) throw new TypeError("Offline");
+
+        return Response.json({}, { status });
+      }
+
+      return currentFetch(url, init);
+    });
+    await act(async () => {
+      await h.client.refetchQueries({ queryKey: ["content", "service", "service"] });
+    });
+    await until(() =>
+      expect(h.client.getQueryState(["content", "service", "service"])?.status).toBe("error"),
+    );
+    expect(document.querySelector("header")).toBe(header);
+    expect(document.body.textContent).not.toContain("We could not load this service");
+
+    if (status === 404) {
+      await until(() =>
+        expect(document.querySelector("#workspace-content h1")?.textContent).toBe(
+          "Document not found",
+        ),
+      );
+      expect(
+        document.querySelector('textarea[aria-label="Page title"]')?.closest("[hidden]"),
+      ).not.toBeNull();
+    } else {
+      expect(activeTitle().value).toBe("Keep during refresh");
+      await until(() =>
+        expect(document.body.textContent).toContain(
+          status === 401
+            ? "Your session has ended"
+            : status === 403
+              ? "You no longer have access to this service"
+              : "We could not refresh this service",
+        ),
+      );
+    }
+
+    vi.mocked(fetch).mockImplementation(currentFetch);
+    await act(async () => {
+      await h.client.refetchQueries({ queryKey: ["content", "service", "service"] });
+    });
+    await until(() => expect(activeTitle().value).toBe("Keep during refresh"));
+  },
+);
+
+test.each([
+  [["editor"], true],
+  [["editor", "approver"], false],
+])(
+  "Delete page on a public page, for someone with roles %j, is held back with the reason: %s",
+  async (roles, blocked) => {
+    await mountWorkspace("/services/service/fees", { roles, publicIds: ["fees"] });
+
+    const deleteButton = () =>
+      [...document.querySelectorAll("button")].find(
+        (button) => button.textContent === "Delete page",
+      )!;
+
+    await until(() => expect(deleteButton().disabled).toBe(blocked));
+    const reason = deleteButton().getAttribute("aria-describedby");
+    expect(reason && document.getElementById(reason)?.textContent).toBe(
+      blocked ? "Only approvers can delete a public page." : null,
+    );
+  },
+);
+
+test("the workspace opens with the roles read, so a read-only notice is there from the start", async () => {
+  const answer = Promise.withResolvers<void>();
+
+  const mounting = mountWorkspace("/services", {
+    roles: [],
+    me: async () => {
+      await answer.promise;
+
+      return Response.json({ id: "me", email: "author@govtech.bb", name: "Author", roles: [] });
+    },
+  });
+
+  // Still checking: none of the workspace shows yet, so nothing in it moves when the roles arrive
+  await new Promise((resolve) => setTimeout(resolve, 50));
+  expect(document.querySelector("header")).toBeNull();
+
+  answer.resolve();
+  await mounting;
+  expect(document.body.textContent).toContain("you don’t have the editor role");
+});
+
+test("roles that can't be read are said to be unchecked, with Try again, never that a role is missing", async () => {
+  let reachable = false;
+
+  await mountWorkspace("/services/service/fees", {
+    publicIds: ["fees"],
+    me: async () =>
+      reachable
+        ? Response.json({
+            id: "me",
+            email: "a@govtech.bb",
+            name: "A",
+            roles: ["editor", "approver"],
+          })
+        : Response.json({}, { status: 503 }),
+  });
+
+  // By the words it shows, its pending words aside
+  const button = (name: string) =>
+    [...document.querySelectorAll("button")].find((item) => item.textContent?.startsWith(name))!;
+
+  await until(() =>
+    expect(document.body.textContent).toContain("We couldn’t check your permissions."),
+  );
+  expect(document.body.textContent).not.toContain("Only approvers can delete a public page.");
+  const reason = button("Delete page").getAttribute("aria-describedby");
+  expect(reason && document.getElementById(reason)?.textContent).toBe(
+    "We couldn’t check your permissions.",
+  );
+
+  // Read at last: the notice goes, with its focused Try again, and the content takes the focus
+  reachable = true;
+  const again = button("Try again");
+  again.focus();
+  await act(async () => again.click());
+  await until(() =>
+    expect(document.body.textContent).not.toContain("We couldn’t check your permissions."),
+  );
+  expect(button("Delete page").disabled).toBe(false);
+  expect(document.activeElement).toBe(document.getElementById("workspace-content"));
+});
+
+test("someone without the editor role is told why, and can't add, delete or create", async () => {
+  const h = await mountWorkspace("/services/service/fees", { roles: [] });
+
+  const button = (name: string) =>
+    [...document.querySelectorAll("button")].find((item) => item.textContent === name)!;
+
+  await until(() => expect(document.body.textContent).toContain("you don’t have the editor role"));
+  await until(() => expect(button("Delete page").disabled).toBe(true));
+  expect(button("Add document").disabled).toBe(true);
+  const reason = button("Add document").getAttribute("aria-describedby");
+  expect(reason && document.getElementById(reason)?.textContent).toBe(
+    "You need the editor role to add or delete pages.",
+  );
+  expect(button("Delete page").getAttribute("aria-describedby")).toBe(reason);
+
+  await act(async () => {
+    await h.router.navigate({ to: "/services" });
+  });
+  await until(() => expect(button("Create service").disabled).toBe(true));
+});
+
+test("an editor is offered adding and creating, with no read-only notice", async () => {
+  await mountWorkspace("/services/service/fees", { roles: ["editor"] });
+
+  const button = (name: string) =>
+    [...document.querySelectorAll("button")].find((item) => item.textContent === name)!;
+
+  await until(() => expect(button("Delete page").disabled).toBe(false));
+  expect(button("Add document").disabled).toBe(false);
+  expect(document.body.textContent).not.toContain("you don’t have the editor role");
+});
+
+test("malformed old workspaces and drafts cannot shadow API pages or create browser-only flows", async () => {
+  localStorage.setItem("govbb-editor:workspace:v1", "{broken");
+  localStorage.setItem("govbb-editor:documents:fees:markdown", "Old local page");
+  localStorage.setItem("govbb-editor:draft:markdown:v2", "Old local form");
+  const read = vi.spyOn(Storage.prototype, "getItem");
+  const write = vi.spyOn(Storage.prototype, "setItem");
+  await mountWorkspace();
+  await until(() =>
+    expect(document.querySelector('[aria-label="Page content"]')?.textContent).toContain(
+      "Body of fees",
+    ),
+  );
+  expect(document.body.textContent).not.toMatch(
+    /Old local|Drafts in this browser|Create browser draft|Application form/,
+  );
+  // Only the sidebar's preference and the open page's own unsaved work are asked for
+  expect(
+    read.mock.calls.every(([key]) =>
+      ["govbb-editor:sidebar-collapsed", "govbb-editor:unsaved-work:fees"].includes(key),
+    ),
+  ).toBe(true);
+  expect(write).not.toHaveBeenCalled();
+});
+
+test("old local URLs use normal API not-found behavior", async () => {
+  localStorage.setItem(
+    "govbb-editor:workspace:v1",
+    JSON.stringify({
+      version: 1,
+      services: [{ id: "local", title: "Old service", documents: [] }],
+    }),
+  );
+  await mountWorkspace("/services/local/form-original");
+  await until(() => expect(document.body.textContent).toContain("Document not found"));
+  expect(document.body.textContent).not.toContain("Old service");
+});
+
+const control = (label: string, scope: ParentNode = document) => {
+  const button = [...scope.querySelectorAll("button")].find(
+    (item) => shownText(item) === label || item.getAttribute("aria-label") === label,
+  );
+
+  if (!button) throw Error("Missing button: " + label);
+
+  return button;
+};
+
+const activeTitle = () =>
+  [...document.querySelectorAll<HTMLTextAreaElement>('textarea[aria-label="Page title"]')].find(
+    (input) => !input.closest("[hidden]"),
+  )!;
+
+const question = () => document.querySelector<HTMLElement>('[role="alertdialog"]')!;
+
+async function editTitle(value: string) {
+  await act(async () => {
+    const input = activeTitle();
+    input.focus();
+    Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(
+      input,
+      value,
+    );
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+}
+
+const click = (label: string, scope: ParentNode = document) =>
+  act(async () => control(label, scope).click());
+
+test("Cancel preserves route, edited title and focus; confirmed Leave cannot resurrect discarded edits or undo", async () => {
+  const h = await mountWorkspace();
+  await editTitle("Unsaved title");
+  await act(async () => {
+    void h.router.navigate({ to: "/services" });
+  });
+  await until(() => expect(question()?.textContent).toContain("Leave without saving?"));
+  expect(h.router.state.location.pathname).toBe("/services/service/fees");
+  await until(() => expect(document.activeElement).toBe(control("Cancel", question())));
+  await click("Cancel", question());
+  await until(() => expect(question()).toBeNull());
+  expect(activeTitle().value).toBe("Unsaved title");
+  expect(h.writes).toHaveLength(0);
+  await act(async () => {
+    void h.router.navigate({ to: "/services" });
+  });
+  await until(() => expect(question()).not.toBeNull());
+  expect(localStorage.getItem("govbb-editor:unsaved-work:fees")).toContain("Unsaved title");
+  await click("Leave without saving", question());
+  await until(() => expect(h.router.state.location.pathname).toBe("/services"));
+  await act(async () =>
+    h.router.navigate({
+      to: "/services/$serviceId/$documentId",
+      params: { serviceId: "service", documentId: "fees" },
+    }),
+  );
+  await until(() => expect(activeTitle()?.value).toBe("fees"));
+  expect(control("Undo").disabled).toBe(true);
+  // Given up, the edits aren't kept in this browser to be offered back either
+  expect(localStorage.getItem("govbb-editor:unsaved-work:fees")).toBeNull();
+  expect(document.body.textContent).not.toContain("This browser kept your unsaved changes");
+});
+
+test("sign-out asks before revoking auth and does not show a second route prompt", async () => {
+  const h = await mountWorkspace();
+  await editTitle("Keep before sign-out");
+  await click("Sign out");
+  await until(() => expect(question()?.textContent).toContain("Sign out?"));
+  expect(h.auth.signOut).not.toHaveBeenCalled();
+  await click("Cancel", question());
+  expect(activeTitle().value).toBe("Keep before sign-out");
+  await click("Sign out");
+  await click("Sign out", question());
+  await until(() => expect(h.router.state.location.pathname).toBe("/auth"));
+  expect(h.auth.signOut).toHaveBeenCalledOnce();
+  expect(question()).toBeNull();
+  expect(document.body.textContent).not.toContain("remain in this browser");
+});
+
+test("failed sign-out and a cancelled session-expiry redirect keep the working copy", async () => {
+  const h = await mountWorkspace();
+  await editTitle("Keep on auth failure");
+  const answer = Promise.withResolvers<Awaited<ReturnType<EditorAuth["signOut"]>>>();
+  vi.mocked(h.auth.signOut).mockReturnValue(answer.promise);
+  await click("Sign out");
+  await click("Sign out", question());
+  // While it works it keeps its colour and its place for the keyboard, rather than greying out
+  await until(() => expect(control("Signing out…").hasAttribute("data-pending")).toBe(true));
+  expect(control("Signing out…").disabled).toBe(false);
+  await act(async () => answer.resolve({ ok: false, error: new AuthFailure("unavailable") }));
+  await until(() => expect(document.body.textContent).toContain("We could not sign you out"));
+  expect(control("Sign out").hasAttribute("data-pending")).toBe(false);
+  expect(activeTitle().value).toBe("Keep on auth failure");
+  vi.mocked(h.auth.session).mockResolvedValue({ ok: true, value: null });
+  await act(async () => window.dispatchEvent(new Event("focus")));
+  await until(() => expect(question()).not.toBeNull());
+  await click("Cancel", question());
+  expect(h.router.state.location.pathname).toBe("/services/service/fees");
+  expect(activeTitle().value).toBe("Keep on auth failure");
+  expect(h.auth.signIn).not.toHaveBeenCalled();
+});
+
+test("pending saves block departure but the navigation question can still be cancelled", async () => {
+  const h = await mountWorkspace();
+  await editTitle("Saving title");
+  let complete: (response: Response) => void = () => {};
+
+  const response = new Promise<Response>((resolve) => {
+    complete = resolve;
+  });
+
+  const originalFetch = fetch;
+  vi.stubGlobal("fetch", (url: RequestInfo | URL, init?: RequestInit) =>
+    init?.method === "PUT" ? response : originalFetch(url, init),
+  );
+  await click("Save");
+  await act(async () => {
+    void h.router.navigate({ to: "/services" });
+  });
+  await until(() => expect(question()?.textContent).toContain("A save is in progress"));
+  expect(control("Leave without saving", question()).disabled).toBe(true);
+  expect(control("Cancel", question()).disabled).toBe(false);
+  await click("Cancel", question());
+  expect(h.router.state.location.pathname).toBe("/services/service/fees");
+  await act(async () => {
+    complete(
+      Response.json({
+        ...pages.get("fees"),
+        title: "Saving title",
+        updated_at: "2026-10-07T13:00:00.000Z",
+      }),
+    );
+  });
+  // Nothing left to save: unusable, though it keeps its place for the keyboard
+  await until(() => expect(control("Save").getAttribute("aria-disabled")).toBe("true"));
+});
+
+test("clean navigation keeps at most three page views and retains API navigation", async () => {
+  const h = await mountWorkspace();
+
+  for (const documentId of ["other", "fourth", "service"]) {
+    await act(async () =>
+      h.router.navigate({
+        to: "/services/$serviceId/$documentId",
+        params: { serviceId: "service", documentId },
+      }),
+    );
+    await until(() => expect(activeTitle()?.value).toBe(documentId));
+    expect(question()).toBeNull();
+  }
+
+  expect(document.querySelectorAll("main > section[aria-label]").length).toBe(3);
+  await act(async () =>
+    h.router.navigate({
+      to: "/services/$serviceId/$documentId",
+      params: { serviceId: "service", documentId: "fees" },
+    }),
+  );
+  await until(() => expect(activeTitle()?.value).toBe("fees"));
+  expect(question()).toBeNull();
+});
+
+const contacts = {
+  key: "contacts",
+  title: "Ministries and departments",
+  record_key: "key",
+  schema: { fields: [{ key: "key", label: "Key", type: "slug" }] },
+  schema_version: 1,
+  updated_at: "2026-10-07T12:00:00.000Z",
+};
+
+const menuLink = (name: string) =>
+  [...document.querySelectorAll<HTMLAnchorElement>('nav[aria-label="Menu"] a')].find(
+    (link) => link.textContent === name,
+  );
+
+test("the menu names the editor's screens, folded to icons beside a service's own pages", async () => {
+  const h = await mountWorkspace();
+
+  // Inside a service: a rail of icons, each still named, and the bar's way back to the list
+  expect(menuLink("Services")?.getAttribute("aria-current")).toBe("page");
+  expect(menuLink("Categories")?.querySelector(".sr-only")?.textContent).toBe("Categories");
+  expect(document.querySelector('nav[aria-label="Service documents"]')).not.toBeNull();
+  expect(document.querySelector("header a")?.textContent).toBe("Services");
+
+  await act(async () => h.router.navigate({ to: "/categories" }));
+  await until(() => expect(document.querySelector("h1")?.textContent).toBe("Categories"));
+
+  // On a screen of its own: the whole column, its screen marked, and the bar's trail starting there
+  expect(menuLink("Categories")?.getAttribute("aria-current")).toBe("page");
+  expect(menuLink("Categories")?.querySelector(".sr-only")).toBeNull();
+  expect(menuLink("Services")?.hasAttribute("aria-current")).toBe(false);
+  expect(document.querySelector('nav[aria-label="Service documents"]')).toBeNull();
+  expect(document.querySelector("header a")?.textContent).toBe("Categories");
+  await until(() => expect(document.body.textContent).toContain("No categories yet"));
+});
+
+test.each(sitePages)(
+  "Site pages opens $url without a service or a category, and its saved change reopens",
+  async (page) => {
+    const h = await mountWorkspace("/services");
+    await act(async () => menuLink("Site pages")?.click());
+    await until(() => expect(document.querySelector("h1")?.textContent).toBe("Site pages"));
+
+    const link = document.querySelector<HTMLAnchorElement>(`main a[href="/site-pages/${page.id}"]`);
+
+    expect(link?.textContent).toBe(page.title);
+    await act(async () => link?.click());
+    await until(() => expect(activeTitle()?.value).toBe(page.title));
+    expect(menuLink("Site pages")?.getAttribute("aria-current")).toBe("page");
+    expect(document.querySelector("header")?.textContent).toContain(page.title);
+    expect(document.querySelector('nav[aria-label="Service documents"]')).toBeNull();
+    expect(control("Save").getAttribute("aria-disabled")).toBe("true");
+
+    // Even with categories to offer, a site page is offered none
+    await act(async () => {
+      h.client.setQueryData(
+        ["content", "categories"],
+        [
+          {
+            id: "00000000-0000-4000-8000-000000000099",
+            parent_id: null,
+            slug: "family",
+            title: "Family",
+            description: null,
+            url: "/family",
+            position: 0,
+            services: 1,
+            version: 1,
+            reserved_route: false,
+            last_edited_by: null,
+            updated_at: stamp,
+          },
+        ],
+      );
+    });
+    await click("Page settings");
+    expect(document.querySelector('option[value="family"]')).toBeNull();
+    await editTitle(`${page.title} updated`);
+    await click("Save");
+    await until(() => expect(h.writes).toHaveLength(1));
+    expect(JSON.parse(String(h.writes[0]?.body))).toEqual({
+      title: `${page.title} updated`,
+      url: page.url,
+      category_id: null,
+      visibility: page.visibility,
+      description: page.description,
+      form_id: page.form_id,
+      body_markdown: page.body_markdown,
+      frontmatter: page.frontmatter,
+      expected_version: page.version,
+    });
+    await until(() => expect(document.body.textContent).toContain("saved but not live"));
+    await renderInPage(null);
+
+    const reopened = await mountWorkspace(`/site-pages/${page.id}`, {
+      serverPages: h.serverPages,
+    });
+
+    await until(() => expect(activeTitle()?.value).toBe(`${page.title} updated`));
+    expect(document.body.textContent).toContain("saved but not live");
+    expect(reopened.asked).toContain(`/pages/${page.id}`);
+    expect([...h.asked, ...reopened.asked].some((path) => path.startsWith("/services/"))).toBe(
+      false,
+    );
+  },
+);
+
+test("an unknown site page says it isn't there, and leads back to Site pages", async () => {
+  await mountWorkspace("/site-pages/gone");
+  await until(() => expect(document.body.textContent).toContain("Document not found"));
+  expect(document.body.textContent).not.toContain("We could not load this page");
+  expect(document.querySelector('a[href="/history/gone"]')).toBeNull();
+  expect(document.querySelector('main a[href="/site-pages"]')?.textContent).toBe(
+    "Back to site pages",
+  );
+});
+
+test("leaving a site page asks about unsaved changes, and its history leads back to it", async () => {
+  const h = await mountWorkspace("/site-pages/terms-conditions");
+  await until(() => expect(activeTitle()?.value).toBe("Terms & Conditions"));
+  await editTitle("Keep this unsaved title");
+
+  const history = () =>
+    document.querySelector<HTMLAnchorElement>('a[href="/history/terms-conditions"]');
+
+  await act(async () => history()?.click());
+  await until(() => expect(question()?.textContent).toContain("Leave without saving?"));
+  await click("Cancel", question());
+  expect(activeTitle().value).toBe("Keep this unsaved title");
+  await act(async () => history()?.click());
+  await until(() => expect(question()).not.toBeNull());
+  await click("Leave without saving", question());
+  await until(() => expect(document.body.textContent).toContain("No history yet"));
+  expect(h.writes).toHaveLength(0);
+
+  const back = document.querySelector<HTMLAnchorElement>(
+    'main a[href="/site-pages/terms-conditions"]',
+  );
+
+  expect(back?.textContent).toBe("Back to the page");
+  await act(async () => back?.click());
+  await until(() => expect(activeTitle()?.value).toBe("Terms & Conditions"));
+  expect(control("Undo").disabled).toBe(true);
+});
+
+test("Collections is in the menu, and a record's dialog follows the address", async () => {
+  const h = await mountWorkspace("/collections");
+
+  await until(() => expect(document.querySelector("h1")?.textContent).toBe("Collections"));
+  expect(menuLink("Collections")?.getAttribute("aria-current")).toBe("page");
+  expect(document.querySelector("header a")?.textContent).toBe("Collections");
+
+  await act(async () =>
+    h.router.navigate({ to: "/collections/$key", params: { key: "contacts" } }),
+  );
+  await until(() =>
+    expect(document.querySelector("h1")?.textContent).toBe("Ministries and departments"),
+  );
+  // Still the Collections screen in the menu, beside one of its collections
+  expect(menuLink("Collections")?.getAttribute("aria-current")).toBe("page");
+
+  // The address a page's contact block links to opens the record's dialog
+  await act(async () =>
+    h.router.navigate({
+      to: "/collections/$key",
+      params: { key: "contacts" },
+      search: { record: "nis" },
+    }),
+  );
+  await until(() =>
+    expect(document.querySelector('[role="dialog"]')?.textContent).toContain("Edit nis"),
+  );
+
+  // Closing it takes the record out of the address
+  await act(async () =>
+    [...document.querySelectorAll("button")].find((item) => item.textContent === "Cancel")!.click(),
+  );
+  await until(() => expect(h.router.state.location.search).toEqual({}));
+  expect(h.router.state.location.pathname).toBe("/collections/contacts");
+});
+
+test("menu and bar links keep the focus as the screen changes and the menu folds or opens out", async () => {
+  await mountWorkspace();
+
+  // From a service, the rail's Categories opens out into the menu's row, still focused
+  const categories = menuLink("Categories")!;
+
+  categories.focus();
+  await act(async () => categories.click());
+  await until(() => expect(document.querySelector("h1")?.textContent).toBe("Categories"));
+  expect(document.activeElement).toBe(categories);
+  expect(categories.querySelector(".sr-only")).toBeNull();
+
+  // The bar's trail starts with the same link, whichever screen it names
+  const crumb = document.querySelector<HTMLAnchorElement>("header a")!;
+
+  crumb.focus();
+  await act(async () => menuLink("Services")!.click());
+  await until(() => expect(document.querySelector("h1")?.textContent).toBe("Services"));
+  expect(crumb.isConnected).toBe(true);
+  expect(crumb.textContent).toBe("Services");
+});

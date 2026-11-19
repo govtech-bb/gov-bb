@@ -12,6 +12,9 @@
         "tsConfig": "packages/content/tsconfig.json",
         "main": "packages/content/src/index.ts"
       }
+    },
+    "test:types": {
+      "dependsOn": ["^build"]
     }
   },
   "tags": []

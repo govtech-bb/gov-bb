@@ -11,6 +11,7 @@
         "^production",
         { "env": "AWS_APP_ID" },
         { "env": "AWS_BRANCH" },
+        { "env": "EDITOR_V2_URL" },
         { "env": "FEATURE_FLAGGING_API_URL" },
         { "env": "FEATURE_FLAGGING_GITHUB_OAUTH_SECRET_ARN" },
         { "env": "FEATURE_FLAGGING_TOKENS_SECRET_ARN" },

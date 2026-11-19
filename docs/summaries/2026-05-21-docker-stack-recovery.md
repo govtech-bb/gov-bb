@@ -2,7 +2,7 @@
 
 **Date:** 2026-05-21
 **Branch:** fix/docker-stack-recovery
-**ADR:** [docs/decisions/0003-containerised-api-needs-explicit-workspace-symlinks.md](../decisions/0003-containerised-api-needs-explicit-workspace-symlinks.md)
+**ADR:** [docs/decisions/0009-containerised-api-needs-explicit-workspace-symlinks.md](../decisions/0009-containerised-api-needs-explicit-workspace-symlinks.md)
 **Closes:** #15
 **Builds on:** [PR #23 (docker-compose for local dev stack)](https://github.com/govtech-bb/gov-bb/pull/23)
 
@@ -63,7 +63,7 @@ Verified `docker compose exec <svc> id` on each: `uid=100(app) gid=101(app)` not
 | `apps/forms/Dockerfile`                                                      | Full rewrite: every `apps/web` reference → `apps/forms`; nx target `web:build` → `forms:build`. Added non-root user.                                |
 | `apps/api/Dockerfile`                                                        | Added non-root user block before CMD. (Workspace symlinks already present from PR #23.)                                                             |
 | `apps/landing/Dockerfile`                                                    | Fixed stale `apps/web/package.json` COPY → `apps/forms/package.json`. Added non-root user block.                                                    |
-| `docs/decisions/0003-containerised-api-needs-explicit-workspace-symlinks.md` | New ADR. Records the constraint that future workspace deps must be added to the api Dockerfile's symlink block.                                     |
+| `docs/decisions/0009-containerised-api-needs-explicit-workspace-symlinks.md` | New ADR. Records the constraint that future workspace deps must be added to the api Dockerfile's symlink block.                                     |
 | `docs/summaries/2026-05-21-docker-stack-recovery.md`                         | This file.                                                                                                                                          |
 
 ## Verification
@@ -88,5 +88,5 @@ Local (Apple Silicon, Docker 29.5.1):
 - **Image slimming** — runtime images still carry build-stage dev deps; ~1 GB each. Worth a focused pass.
 - **Declare `@nestjs/cli`** in the monorepo — would unblock api hot reload in the dev overlay (currently devs run `pnpm dev:api` natively).
 - **Stale `npm run` strings in `apps/*/project.json`** — cosmetic.
-- **CI smoke-test that boots the api image and probes `/health`** — would catch missing workspace symlinks (ADR 0003) before merge.
+- **CI smoke-test that boots the api image and probes `/health`** — would catch missing workspace symlinks (ADR 0009) before merge.
 - **Wire chat into compose** — commented placeholder is in place; chat dev fills in.

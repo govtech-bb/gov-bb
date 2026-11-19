@@ -43,7 +43,7 @@ changed; each recipe's applicant recipient is untouched.
 ## Decisions worth the reasoning
 
 **Degrade on a resolved miss, not on an infra error** — recorded as
-[ADR 0032](../decisions/0032-recipient-resolution-degrades-on-miss-not-on-infra-error.md).
+[ADR 0056](../decisions/0056-recipient-resolution-degrades-on-miss-not-on-infra-error.md).
 A null lookup (sandbox, no contact, blank email) falls back to
 `SES_DEFAULT_RECIPIENT`; a DB outage propagates (SQS retry/DLQ) rather than
 silently misrouting a production notification to the test inbox. An earlier

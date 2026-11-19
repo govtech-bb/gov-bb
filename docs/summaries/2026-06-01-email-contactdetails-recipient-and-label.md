@@ -21,7 +21,7 @@ skipped silently.
   `contactDetails.` prefix; refactored the old inline lookup into
   `resolveSubmittedRecipient` / `resolveContactRecipient`.
 - Documented the reserved prefix in `FORM-CREATION-GUIDE.md` and recorded the
-  convention in [ADR 0023](../decisions/0023-contact-details-is-a-reserved-recipientfield-namespace.md).
+  convention in [ADR 0042](../decisions/0042-contact-details-is-a-reserved-recipientfield-namespace.md).
 - Tests across all three layers, including the non-string-key edge
   (`contactDetails.address` is an object → skip).
 
@@ -33,7 +33,7 @@ skipped silently.
   `label` is pure metadata the runtime ignores for delivery. This keeps the
   discriminated union untouched and the serializer change-free (`config` is
   carried verbatim). The full rationale and the resulting "`contactDetails` is a
-  banned step id" constraint live in ADR 0023.
+  banned step id" constraint live in ADR 0042.
 - **Accessor on `EmailBodyBuilder`, not `FormDefinitionsService` in the
   processor.** The builder already fetches and caches the contract per
   `formId:version` for the email body. Injecting `FormDefinitionsService` into

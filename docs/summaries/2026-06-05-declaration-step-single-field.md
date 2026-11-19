@@ -22,7 +22,7 @@ contract: exactly one field, `components/confirmation`, fieldId
   both `makeRequiredSteps()` (new form / RESET) and the `LOAD_DRAFT`
   missing-step fallback. TDD: 4 reducer specs written red first.
 - Decision record:
-  `docs/decisions/0041-declaration-step-contains-exactly-one-field.md`.
+  `docs/decisions/0070-declaration-step-contains-exactly-one-field.md`.
 
 ## Why we did it that way
 
@@ -36,7 +36,7 @@ contract: exactly one field, `components/confirmation`, fieldId
   stays the registry default ("I confirm") for hand-built forms — per Isaiah's
   spec — while the AI fills in the full statement it extracts from the source
   document. Reviewed and accepted as intentional divergence; only
-  fieldId/label/required are the fixed contract (see ADR 0041).
+  fieldId/label/required are the fixed contract (see ADR 0070).
 - **Fixed example over new prose where possible.** The Rule 1 example was
   doubly wrong (extra field in the declaration step *and* `date-of-birth`
   repurposed for a non-birth date, contradicting the prompt's own CATEGORY 0);
@@ -51,5 +51,5 @@ contract: exactly one field, `components/confirmation`, fieldId
 ## Open questions
 
 - None. (Server-side recipe validation does not yet *enforce* the single-field
-  contract on submitted recipes — ADR 0041 notes reviewers/validators may
+  contract on submitted recipes — ADR 0070 notes reviewers/validators may
   treat violations as defects, but adding a hard validator was out of scope.)

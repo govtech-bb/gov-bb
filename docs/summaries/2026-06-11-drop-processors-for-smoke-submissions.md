@@ -20,7 +20,7 @@ from `docs/plans/1252-...md`.
   passes the secret through `forms-smoke.yml`'s `workflow_call` to both callers.
 - Follow-up (review-driven): threaded `isSmokeSubmission` onto
   `SubmissionCreatedEvent` and gated `YouthOpportunityWebhookListener` on it.
-- Recorded the principle in **ADR 0052**; carried an unrelated CLAUDE.md edit
+- Recorded the principle in **ADR 0087**; carried an unrelated CLAUDE.md edit
   as its own commit. Three commits total.
 
 ## Why we did it that way
@@ -52,7 +52,7 @@ fans out to *every* subscriber; `YouthOpportunityWebhookListener` fires off
 suppress it — a youth-opportunity smoke would still have hit the external
 webhook (latent: no such form is in the matrix today). Caught in the
 code-review pass. Fixed at the right altitude by carrying `isSmokeSubmission`
-on the event so any side-effecting consumer can gate on it (ADR 0052), rather
+on the event so any side-effecting consumer can gate on it (ADR 0087), rather
 than special-casing one listener. The overstated comments were tightened to
 stop implying a global guarantee the drop doesn't provide.
 

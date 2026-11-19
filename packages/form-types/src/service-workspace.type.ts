@@ -218,7 +218,7 @@ export function deriveServiceSetup(
 
 /**
  * Seeds the manifest with what the recipe already decides, leaving an
- * author's own choice alone (ADR 0073): a field is replaced while it still
+ * author's own choice alone (ADR 0121): a field is replaced while it still
  * reads as the system default, `undecided`. The earlier seed decided
  * `delivery` alone — `configured` for any action, including the applicant
  * email, which readiness rejects as "Add a delivery action" — and never

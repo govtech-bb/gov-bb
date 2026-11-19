@@ -14,7 +14,7 @@ const COMPARE_KEY = randomBytes(32);
  * token's length is not leaked via timing.
  *
  * DELIBERATELY DUPLICATED from apps/api/src/common/secret-token.ts
- * (`isValidSecretToken`) — see ADR 0061. The two backend services keep their
+ * (`isValidSecretToken`) — see ADR 0106. The two backend services keep their
  * own copy of the dev-bypass policy rather than share a workspace package, to
  * avoid a cross-package build edge for ~15 lines of logic. Keep them in sync.
  */
@@ -31,7 +31,7 @@ function isValidSecretToken(
 }
 
 /**
- * The single dev-bypass + token-match policy decision — see ADR 0061.
+ * The single dev-bypass + token-match policy decision — see ADR 0106.
  *
  *   - `misconfigured` — no secret configured in production: fail closed.
  *   - `passthrough`   — no secret configured outside production: dev bypass.
@@ -44,7 +44,7 @@ function isValidSecretToken(
  * itself to keep the existing 401-vs-403 distinction.
  *
  * DELIBERATELY DUPLICATED from apps/api/src/common/resolve-token-auth.ts — see
- * ADR 0061. Keep the two copies (and their specs) in sync.
+ * ADR 0106. Keep the two copies (and their specs) in sync.
  */
 export type TokenAuthDecision =
   | "ok"

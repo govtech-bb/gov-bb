@@ -1,0 +1,692 @@
+{
+  "scenarios": [
+    {
+      "answers": {
+        "applying-for-yourself": "yes",
+        "passport-toggle": false,
+        "relationship-to-person": "parent",
+        "person-is-deceased": "no",
+        "person-has-nis": "no"
+      },
+      "route": [
+        "applicant-details",
+        "applying-for-yourself",
+        "reason-for-certificate",
+        "birth-details",
+        "parents",
+        "order-details",
+        "check-your-answers",
+        "declaration",
+        "submission-confirmation"
+      ]
+    },
+    {
+      "answers": {
+        "applying-for-yourself": "yes",
+        "passport-toggle": false,
+        "relationship-to-person": "parent",
+        "person-is-deceased": "no",
+        "person-has-nis": "yes"
+      },
+      "route": [
+        "applicant-details",
+        "applying-for-yourself",
+        "reason-for-certificate",
+        "birth-details",
+        "parents",
+        "order-details",
+        "check-your-answers",
+        "declaration",
+        "submission-confirmation"
+      ]
+    },
+    {
+      "answers": {
+        "applying-for-yourself": "yes",
+        "passport-toggle": false,
+        "relationship-to-person": "parent",
+        "person-is-deceased": "yes",
+        "person-has-nis": "no"
+      },
+      "route": [
+        "applicant-details",
+        "applying-for-yourself",
+        "reason-for-certificate",
+        "birth-details",
+        "parents",
+        "order-details",
+        "check-your-answers",
+        "declaration",
+        "submission-confirmation"
+      ]
+    },
+    {
+      "answers": {
+        "applying-for-yourself": "yes",
+        "passport-toggle": false,
+        "relationship-to-person": "parent",
+        "person-is-deceased": "yes",
+        "person-has-nis": "yes"
+      },
+      "route": [
+        "applicant-details",
+        "applying-for-yourself",
+        "reason-for-certificate",
+        "birth-details",
+        "parents",
+        "order-details",
+        "check-your-answers",
+        "declaration",
+        "submission-confirmation"
+      ]
+    },
+    {
+      "answers": {
+        "applying-for-yourself": "yes",
+        "passport-toggle": false,
+        "relationship-to-person": "other",
+        "person-is-deceased": "no",
+        "person-has-nis": "no"
+      },
+      "route": [
+        "applicant-details",
+        "applying-for-yourself",
+        "reason-for-certificate",
+        "birth-details",
+        "parents",
+        "order-details",
+        "check-your-answers",
+        "declaration",
+        "submission-confirmation"
+      ]
+    },
+    {
+      "answers": {
+        "applying-for-yourself": "yes",
+        "passport-toggle": false,
+        "relationship-to-person": "other",
+        "person-is-deceased": "no",
+        "person-has-nis": "yes"
+      },
+      "route": [
+        "applicant-details",
+        "applying-for-yourself",
+        "reason-for-certificate",
+        "birth-details",
+        "parents",
+        "order-details",
+        "check-your-answers",
+        "declaration",
+        "submission-confirmation"
+      ]
+    },
+    {
+      "answers": {
+        "applying-for-yourself": "yes",
+        "passport-toggle": false,
+        "relationship-to-person": "other",
+        "person-is-deceased": "yes",
+        "person-has-nis": "no"
+      },
+      "route": [
+        "applicant-details",
+        "applying-for-yourself",
+        "reason-for-certificate",
+        "birth-details",
+        "parents",
+        "order-details",
+        "check-your-answers",
+        "declaration",
+        "submission-confirmation"
+      ]
+    },
+    {
+      "answers": {
+        "applying-for-yourself": "yes",
+        "passport-toggle": false,
+        "relationship-to-person": "other",
+        "person-is-deceased": "yes",
+        "person-has-nis": "yes"
+      },
+      "route": [
+        "applicant-details",
+        "applying-for-yourself",
+        "reason-for-certificate",
+        "birth-details",
+        "parents",
+        "order-details",
+        "check-your-answers",
+        "declaration",
+        "submission-confirmation"
+      ]
+    },
+    {
+      "answers": {
+        "applying-for-yourself": "yes",
+        "passport-toggle": true,
+        "relationship-to-person": "parent",
+        "person-is-deceased": "no",
+        "person-has-nis": "no"
+      },
+      "route": [
+        "applicant-details",
+        "applying-for-yourself",
+        "reason-for-certificate",
+        "birth-details",
+        "parents",
+        "order-details",
+        "check-your-answers",
+        "declaration",
+        "submission-confirmation"
+      ]
+    },
+    {
+      "answers": {
+        "applying-for-yourself": "yes",
+        "passport-toggle": true,
+        "relationship-to-person": "parent",
+        "person-is-deceased": "no",
+        "person-has-nis": "yes"
+      },
+      "route": [
+        "applicant-details",
+        "applying-for-yourself",
+        "reason-for-certificate",
+        "birth-details",
+        "parents",
+        "order-details",
+        "check-your-answers",
+        "declaration",
+        "submission-confirmation"
+      ]
+    },
+    {
+      "answers": {
+        "applying-for-yourself": "yes",
+        "passport-toggle": true,
+        "relationship-to-person": "parent",
+        "person-is-deceased": "yes",
+        "person-has-nis": "no"
+      },
+      "route": [
+        "applicant-details",
+        "applying-for-yourself",
+        "reason-for-certificate",
+        "birth-details",
+        "parents",
+        "order-details",
+        "check-your-answers",
+        "declaration",
+        "submission-confirmation"
+      ]
+    },
+    {
+      "answers": {
+        "applying-for-yourself": "yes",
+        "passport-toggle": true,
+        "relationship-to-person": "parent",
+        "person-is-deceased": "yes",
+        "person-has-nis": "yes"
+      },
+      "route": [
+        "applicant-details",
+        "applying-for-yourself",
+        "reason-for-certificate",
+        "birth-details",
+        "parents",
+        "order-details",
+        "check-your-answers",
+        "declaration",
+        "submission-confirmation"
+      ]
+    },
+    {
+      "answers": {
+        "applying-for-yourself": "yes",
+        "passport-toggle": true,
+        "relationship-to-person": "other",
+        "person-is-deceased": "no",
+        "person-has-nis": "no"
+      },
+      "route": [
+        "applicant-details",
+        "applying-for-yourself",
+        "reason-for-certificate",
+        "birth-details",
+        "parents",
+        "order-details",
+        "check-your-answers",
+        "declaration",
+        "submission-confirmation"
+      ]
+    },
+    {
+      "answers": {
+        "applying-for-yourself": "yes",
+        "passport-toggle": true,
+        "relationship-to-person": "other",
+        "person-is-deceased": "no",
+        "person-has-nis": "yes"
+      },
+      "route": [
+        "applicant-details",
+        "applying-for-yourself",
+        "reason-for-certificate",
+        "birth-details",
+        "parents",
+        "order-details",
+        "check-your-answers",
+        "declaration",
+        "submission-confirmation"
+      ]
+    },
+    {
+      "answers": {
+        "applying-for-yourself": "yes",
+        "passport-toggle": true,
+        "relationship-to-person": "other",
+        "person-is-deceased": "yes",
+        "person-has-nis": "no"
+      },
+      "route": [
+        "applicant-details",
+        "applying-for-yourself",
+        "reason-for-certificate",
+        "birth-details",
+        "parents",
+        "order-details",
+        "check-your-answers",
+        "declaration",
+        "submission-confirmation"
+      ]
+    },
+    {
+      "answers": {
+        "applying-for-yourself": "yes",
+        "passport-toggle": true,
+        "relationship-to-person": "other",
+        "person-is-deceased": "yes",
+        "person-has-nis": "yes"
+      },
+      "route": [
+        "applicant-details",
+        "applying-for-yourself",
+        "reason-for-certificate",
+        "birth-details",
+        "parents",
+        "order-details",
+        "check-your-answers",
+        "declaration",
+        "submission-confirmation"
+      ]
+    },
+    {
+      "answers": {
+        "applying-for-yourself": "no",
+        "passport-toggle": false,
+        "relationship-to-person": "parent",
+        "person-is-deceased": "no",
+        "person-has-nis": "no"
+      },
+      "route": [
+        "applicant-details",
+        "applying-for-yourself",
+        "relationship-to-person",
+        "reason-for-certificate",
+        "person-deceased",
+        "person-details",
+        "birth-details",
+        "parents",
+        "order-details",
+        "check-your-answers",
+        "declaration",
+        "submission-confirmation"
+      ]
+    },
+    {
+      "answers": {
+        "applying-for-yourself": "no",
+        "passport-toggle": false,
+        "relationship-to-person": "parent",
+        "person-is-deceased": "no",
+        "person-has-nis": "yes"
+      },
+      "route": [
+        "applicant-details",
+        "applying-for-yourself",
+        "relationship-to-person",
+        "reason-for-certificate",
+        "person-deceased",
+        "person-details",
+        "birth-details",
+        "parents",
+        "order-details",
+        "check-your-answers",
+        "declaration",
+        "submission-confirmation"
+      ]
+    },
+    {
+      "answers": {
+        "applying-for-yourself": "no",
+        "passport-toggle": false,
+        "relationship-to-person": "parent",
+        "person-is-deceased": "yes",
+        "person-has-nis": "no"
+      },
+      "route": [
+        "applicant-details",
+        "applying-for-yourself",
+        "relationship-to-person",
+        "reason-for-certificate",
+        "person-deceased",
+        "person-details",
+        "birth-details",
+        "parents",
+        "order-details",
+        "check-your-answers",
+        "declaration",
+        "submission-confirmation"
+      ]
+    },
+    {
+      "answers": {
+        "applying-for-yourself": "no",
+        "passport-toggle": false,
+        "relationship-to-person": "parent",
+        "person-is-deceased": "yes",
+        "person-has-nis": "yes"
+      },
+      "route": [
+        "applicant-details",
+        "applying-for-yourself",
+        "relationship-to-person",
+        "reason-for-certificate",
+        "person-deceased",
+        "person-details",
+        "birth-details",
+        "parents",
+        "order-details",
+        "check-your-answers",
+        "declaration",
+        "submission-confirmation"
+      ]
+    },
+    {
+      "answers": {
+        "applying-for-yourself": "no",
+        "passport-toggle": false,
+        "relationship-to-person": "other",
+        "person-is-deceased": "no",
+        "person-has-nis": "no"
+      },
+      "route": [
+        "applicant-details",
+        "applying-for-yourself",
+        "relationship-to-person",
+        "reason-for-certificate",
+        "person-deceased",
+        "person-details",
+        "birth-details",
+        "parents",
+        "order-details",
+        "check-your-answers",
+        "declaration",
+        "submission-confirmation"
+      ]
+    },
+    {
+      "answers": {
+        "applying-for-yourself": "no",
+        "passport-toggle": false,
+        "relationship-to-person": "other",
+        "person-is-deceased": "no",
+        "person-has-nis": "yes"
+      },
+      "route": [
+        "applicant-details",
+        "applying-for-yourself",
+        "relationship-to-person",
+        "reason-for-certificate",
+        "person-deceased",
+        "person-details",
+        "birth-details",
+        "parents",
+        "order-details",
+        "check-your-answers",
+        "declaration",
+        "submission-confirmation"
+      ]
+    },
+    {
+      "answers": {
+        "applying-for-yourself": "no",
+        "passport-toggle": false,
+        "relationship-to-person": "other",
+        "person-is-deceased": "yes",
+        "person-has-nis": "no"
+      },
+      "route": [
+        "applicant-details",
+        "applying-for-yourself",
+        "relationship-to-person",
+        "reason-for-certificate",
+        "person-deceased",
+        "person-details",
+        "birth-details",
+        "parents",
+        "order-details",
+        "check-your-answers",
+        "declaration",
+        "submission-confirmation"
+      ]
+    },
+    {
+      "answers": {
+        "applying-for-yourself": "no",
+        "passport-toggle": false,
+        "relationship-to-person": "other",
+        "person-is-deceased": "yes",
+        "person-has-nis": "yes"
+      },
+      "route": [
+        "applicant-details",
+        "applying-for-yourself",
+        "relationship-to-person",
+        "reason-for-certificate",
+        "person-deceased",
+        "person-details",
+        "birth-details",
+        "parents",
+        "order-details",
+        "check-your-answers",
+        "declaration",
+        "submission-confirmation"
+      ]
+    },
+    {
+      "answers": {
+        "applying-for-yourself": "no",
+        "passport-toggle": true,
+        "relationship-to-person": "parent",
+        "person-is-deceased": "no",
+        "person-has-nis": "no"
+      },
+      "route": [
+        "applicant-details",
+        "applying-for-yourself",
+        "relationship-to-person",
+        "reason-for-certificate",
+        "person-deceased",
+        "person-details",
+        "birth-details",
+        "parents",
+        "order-details",
+        "check-your-answers",
+        "declaration",
+        "submission-confirmation"
+      ]
+    },
+    {
+      "answers": {
+        "applying-for-yourself": "no",
+        "passport-toggle": true,
+        "relationship-to-person": "parent",
+        "person-is-deceased": "no",
+        "person-has-nis": "yes"
+      },
+      "route": [
+        "applicant-details",
+        "applying-for-yourself",
+        "relationship-to-person",
+        "reason-for-certificate",
+        "person-deceased",
+        "person-details",
+        "birth-details",
+        "parents",
+        "order-details",
+        "check-your-answers",
+        "declaration",
+        "submission-confirmation"
+      ]
+    },
+    {
+      "answers": {
+        "applying-for-yourself": "no",
+        "passport-toggle": true,
+        "relationship-to-person": "parent",
+        "person-is-deceased": "yes",
+        "person-has-nis": "no"
+      },
+      "route": [
+        "applicant-details",
+        "applying-for-yourself",
+        "relationship-to-person",
+        "reason-for-certificate",
+        "person-deceased",
+        "person-details",
+        "birth-details",
+        "parents",
+        "order-details",
+        "check-your-answers",
+        "declaration",
+        "submission-confirmation"
+      ]
+    },
+    {
+      "answers": {
+        "applying-for-yourself": "no",
+        "passport-toggle": true,
+        "relationship-to-person": "parent",
+        "person-is-deceased": "yes",
+        "person-has-nis": "yes"
+      },
+      "route": [
+        "applicant-details",
+        "applying-for-yourself",
+        "relationship-to-person",
+        "reason-for-certificate",
+        "person-deceased",
+        "person-details",
+        "birth-details",
+        "parents",
+        "order-details",
+        "check-your-answers",
+        "declaration",
+        "submission-confirmation"
+      ]
+    },
+    {
+      "answers": {
+        "applying-for-yourself": "no",
+        "passport-toggle": true,
+        "relationship-to-person": "other",
+        "person-is-deceased": "no",
+        "person-has-nis": "no"
+      },
+      "route": [
+        "applicant-details",
+        "applying-for-yourself",
+        "relationship-to-person",
+        "reason-for-certificate",
+        "person-deceased",
+        "person-details",
+        "birth-details",
+        "parents",
+        "order-details",
+        "check-your-answers",
+        "declaration",
+        "submission-confirmation"
+      ]
+    },
+    {
+      "answers": {
+        "applying-for-yourself": "no",
+        "passport-toggle": true,
+        "relationship-to-person": "other",
+        "person-is-deceased": "no",
+        "person-has-nis": "yes"
+      },
+      "route": [
+        "applicant-details",
+        "applying-for-yourself",
+        "relationship-to-person",
+        "reason-for-certificate",
+        "person-deceased",
+        "person-details",
+        "birth-details",
+        "parents",
+        "order-details",
+        "check-your-answers",
+        "declaration",
+        "submission-confirmation"
+      ]
+    },
+    {
+      "answers": {
+        "applying-for-yourself": "no",
+        "passport-toggle": true,
+        "relationship-to-person": "other",
+        "person-is-deceased": "yes",
+        "person-has-nis": "no"
+      },
+      "route": [
+        "applicant-details",
+        "applying-for-yourself",
+        "relationship-to-person",
+        "reason-for-certificate",
+        "person-deceased",
+        "person-details",
+        "birth-details",
+        "parents",
+        "order-details",
+        "check-your-answers",
+        "declaration",
+        "submission-confirmation"
+      ]
+    },
+    {
+      "answers": {
+        "applying-for-yourself": "no",
+        "passport-toggle": true,
+        "relationship-to-person": "other",
+        "person-is-deceased": "yes",
+        "person-has-nis": "yes"
+      },
+      "route": [
+        "applicant-details",
+        "applying-for-yourself",
+        "relationship-to-person",
+        "reason-for-certificate",
+        "person-deceased",
+        "person-details",
+        "birth-details",
+        "parents",
+        "order-details",
+        "check-your-answers",
+        "declaration",
+        "submission-confirmation"
+      ]
+    }
+  ]
+}

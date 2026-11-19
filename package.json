@@ -7,7 +7,7 @@
   "scripts": {
     "build": "nx affected -t build",
     "build:all": "nx run-many -t build",
-    "test:sherif": "sherif -i @tanstack/ai-client -i express -i @types/express -i react-markdown -i @govtech-bb/react",
+    "test:sherif": "sherif -p @govtech-bb/editor-v2 -i express -i @types/express -i react-markdown -i @govtech-bb/react",
     "test:all": "nx run-many -t test",
     "test:pr": "nx affected -t test:oxlint,test:types,test,build && pnpm test:format",
     "test:ci": "nx run-many -t test:oxlint,test:types,test,build && pnpm test:format",
@@ -22,10 +22,8 @@
     "start:api": "ln -sfn ../dist/src apps/api/node_modules/@ && nx start api",
     "format": "oxfmt .",
     "generate:architecture-diagram": "tsx scripts/generate-architecture-diagram.ts",
-    "generate:form-categories": "tsx scripts/generate-form-categories.ts",
     "generate:services-index": "tsx scripts/generate-services-index.ts",
-    "generate:service-status-seed": "tsx scripts/generate-service-status-seed.ts",
-    "seed:service-status": "tsx scripts/seed-service-status-from-content.ts",
+    "generate:seed-data": "pnpm --filter @govtech-bb/api-v2 seed-data",
     "validate-recipes": "tsx scripts/validate-recipes.ts",
     "validate-recipe-updated-at": "tsx scripts/validate-recipe-updated-at.ts",
     "validate-content-names": "tsx scripts/validate-content-names.ts",
@@ -36,7 +34,8 @@
     "migration:run": "TS_NODE_PROJECT=apps/api/tsconfig.json typeorm-ts-node-commonjs migration:run -d apps/api/typeorm.config.ts",
     "migration:revert": "TS_NODE_PROJECT=apps/api/tsconfig.json typeorm-ts-node-commonjs migration:revert -d apps/api/typeorm.config.ts",
     "migration:show": "TS_NODE_PROJECT=apps/api/tsconfig.json typeorm-ts-node-commonjs migration:show -d apps/api/typeorm.config.ts",
-    "prepare": "husky"
+    "prepare": "husky",
+    "dev:editor_v2": "nx dev editor_v2"
   },
   "devDependencies": {
     "@govtech-bb/content": "workspace:*",

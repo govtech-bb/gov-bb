@@ -1,0 +1,618 @@
+/**
+ * The seed is the whole estate, so it is also the widest test the schema
+ * gets: every page's category and parent have to satisfy their keys, and a
+ * sub-page has to share its parent's category.
+ */
+
+import { sql } from "drizzle-orm";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import type { Database } from "./db";
+import { importEstate, seed } from "./seed";
+import { ESTATE, ESTATE_SOURCE } from "./seed-data";
+import { COLLECTIONS } from "./seed-data/collections";
+import { Redacted } from "./modules/redacted";
+import { applyServiceStatuses } from "./modules/service-status";
+import { PREVIEW_TOKEN } from "./routes/site";
+import {
+  createTestApp,
+  createTestDb,
+  createTestServices,
+  expectOk,
+} from "./test-db";
+
+/** What the seed adds besides the estate: its collections and their records. */
+const SEEDED = {
+  collections: COLLECTIONS.length,
+  records: COLLECTIONS.reduce((n, c) => n + c.records.length, 0),
+};
+/** The history the seed writes, an event per row. */
+const SEEDED_EVENTS =
+  ESTATE.pages.length +
+  ESTATE.categories.length +
+  SEEDED.collections +
+  SEEDED.records;
+
+describe("seed", () => {
+  it("names the snapshot by a hash of its content", () => {
+    expect(ESTATE_SOURCE).toMatch(/^[0-9a-f]{40}$/);
+  });
+
+  it("files every page under a known category and parent", () => {
+    const slugs = new Set(ESTATE.categories.map((category) => category.slug));
+    const urls = new Set(ESTATE.pages.map((page) => page.url));
+    expect(
+      ESTATE.pages
+        .filter(
+          (page) =>
+            (page.category !== null && !slugs.has(page.category)) ||
+            (page.parent !== null && !urls.has(page.parent)),
+        )
+        .map((page) => page.url),
+    ).toEqual([]);
+  });
+
+  /** Landing renders these from its routes, so their body is empty. */
+  it.each([
+    ["/bank-holiday-calendar", "work-employment"],
+    [
+      "/health-and-emergency-services/find-an-emergency-shelter",
+      "health-and-emergency-services",
+    ],
+    [
+      "/health-and-emergency-services/water-outages",
+      "health-and-emergency-services",
+    ],
+  ])("files the feature route %s under %s", (url, category) => {
+    const page = ESTATE.pages.find((p) => p.url === url);
+    expect(page).toMatchObject({
+      category,
+      parent: null,
+      form_id: null,
+      visibility: "public",
+      content_slug: url.slice(1),
+      body_markdown: "",
+    });
+    expect(page?.frontmatter.keywords?.length).toBeGreaterThan(0);
+  });
+
+  it("loads every page and category, and a second run adds nothing", async () => {
+    const { db, close } = await createTestDb();
+
+    expect(await seed(db)).toEqual({
+      categories: ESTATE.categories.length,
+      documents: ESTATE.pages.length,
+      ...SEEDED,
+    });
+    expect(await seed(db)).toEqual({
+      categories: 0,
+      documents: 0,
+      collections: 0,
+      records: 0,
+    });
+    // Each seeded row's history starts where the seed left it, and only once.
+    expect(expectOk(await createTestServices(db).index.version()).count).toBe(
+      SEEDED_EVENTS,
+    );
+
+    await close();
+  }, 60_000);
+
+  it("serves a seeded public page with its category crumb", async () => {
+    const { db, close } = await createTestDb();
+    await seed(db);
+
+    const resolved = expectOk(
+      await createTestServices(db).resolution.resolve(
+        "/money-financial-support/calculate-severance-pay",
+        "public",
+      ),
+    );
+
+    expect(resolved).toMatchObject({
+      kind: "page",
+      page: {
+        category: "money-financial-support",
+        subcategory: null,
+        breadcrumbs: [
+          {
+            name: "Money and financial support",
+            url: "/money-financial-support",
+          },
+          {
+            name: "Find out how much severance payment you are owed",
+            url: "/money-financial-support/calculate-severance-pay",
+          },
+        ],
+      },
+    });
+
+    await close();
+  }, 60_000);
+
+  it("crumbs the seeded pharmacy sub-pages through their parent page", async () => {
+    const { db, close } = await createTestDb();
+    await seed(db);
+    const { resolution } = createTestServices(db);
+    const title = (url: string) =>
+      ESTATE.pages.find((page) => page.url === url)?.title;
+    const slug = "health-and-emergency-services";
+    const category = `/${slug}`;
+    const parent = `${category}/find-an-open-pharmacy`;
+
+    for (const url of [
+      `${category}/prescription-colours`,
+      `${category}/free-or-subsidised-medication`,
+    ]) {
+      const resolved = expectOk(await resolution.resolve(url, "public"));
+      expect(resolved).toMatchObject({
+        kind: "page",
+        page: {
+          breadcrumbs: [
+            {
+              name: ESTATE.categories.find((c) => c.slug === slug)?.title,
+              url: category,
+            },
+            { name: title(parent), url: parent },
+            { name: title(url), url },
+          ],
+        },
+      });
+    }
+
+    await close();
+  }, 60_000);
+
+  it("serves a seeded subcategory page only in preview with its taxonomy and publish date", async ({
+    onTestFinished,
+  }) => {
+    const { db, close } = await createTestDb();
+    onTestFinished(close);
+    await seed(db);
+    const app = await createTestApp(db, {
+      previewSecret: new Redacted("preview"),
+    });
+    onTestFinished(() => app.close());
+    const url =
+      "/pages?url=%2Fyouth-and-community%2Farts-culture%2Fcommunity-canvas";
+
+    expect((await app.inject({ url })).statusCode).toBe(404);
+    const response = await app.inject({
+      url,
+      headers: { [PREVIEW_TOKEN]: "preview" },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      category: "youth-and-community",
+      subcategory: "arts-culture",
+    });
+
+    // A preview page keeps its frontmatter date, so it shows the static
+    // page's "Last updated" and keeps that date when it goes public.
+    const preview = ESTATE.pages.filter(
+      (page) => page.visibility === "preview",
+    );
+    const dated = preview.find((page) => page.published_at)!;
+    const undated = preview.find((page) => !page.published_at)!;
+    const served = async (pageUrl: string) =>
+      (
+        await app.inject({
+          url: `/pages?url=${encodeURIComponent(pageUrl)}`,
+          headers: { [PREVIEW_TOKEN]: "preview" },
+        })
+      ).json();
+
+    expect(await served(dated.url)).toMatchObject({
+      published_at: dated.published_at,
+      content_updated_at: dated.published_at,
+    });
+    expect(await served(undated.url)).toMatchObject({ published_at: null });
+  }, 60_000);
+
+  it("files subcategories, sub-pages and the pages landing nests by hand", async () => {
+    const { db, close } = await createTestDb();
+    await seed(db);
+
+    const { rows } = await db.execute<{
+      url: string;
+      parent: string | null;
+      category: string | null;
+    }>(
+      sql`select p.url, parent.url as parent, c.slug as category
+          from content_pages p
+          left join content_pages parent on parent.id = p.parent_id
+          left join categories c on c.id = p.category_id
+          where p.url in (
+            '/health-and-emergency-services/prescription-colours',
+            '/business-trade/sell-goods-services-beach-park/start',
+            '/youth-and-community/arts-culture/community-canvas'
+          )
+          order by p.url`,
+    );
+    expect(rows).toEqual([
+      {
+        url: "/business-trade/sell-goods-services-beach-park/start",
+        parent: "/business-trade/sell-goods-services-beach-park",
+        category: "business-trade",
+      },
+      {
+        url: "/health-and-emergency-services/prescription-colours",
+        parent: "/health-and-emergency-services/find-an-open-pharmacy",
+        category: "health-and-emergency-services",
+      },
+      {
+        url: "/youth-and-community/arts-culture/community-canvas",
+        parent: null,
+        category: "arts-culture",
+      },
+    ]);
+
+    const subcategory = await db.execute<{ parent: string; position: number }>(
+      sql`select parent.slug as parent, c.position from categories c
+          join categories parent on parent.id = c.parent_id
+          where c.slug = 'arts-culture'`,
+    );
+    expect(subcategory.rows).toEqual([
+      { parent: "youth-and-community", position: 3 },
+    ]);
+
+    const topLevel = await db.execute<{ slug: string }>(
+      sql`select slug from categories where parent_id is null order by position`,
+    );
+    expect(topLevel.rows.map((row) => row.slug)).toEqual(
+      ESTATE.categories
+        .filter((category) => category.parent === null)
+        .map((category) => category.slug),
+    );
+
+    await close();
+  }, 60_000);
+
+  it("indexes every page with a body for search", async () => {
+    const { db, close } = await createTestDb();
+    await seed(db);
+
+    const { rows } = await db.execute<{ unindexed: number }>(
+      sql`select count(*)::int as unindexed from content_pages p
+          where btrim(p.body_markdown) <> ''
+            and not exists (select 1 from search_chunks s where s.page_id = p.id)`,
+    );
+    expect(rows).toEqual([{ unindexed: 0 }]);
+
+    await close();
+  }, 60_000);
+
+  it("serves every seeded url, to the public and in preview, without a 500", async () => {
+    // Responses are checked against their schema on the way out, so a page
+    // the contract cannot describe would fail here rather than in production.
+    const { db, close } = await createTestDb();
+    await seed(db);
+    const app = await createTestApp(db, {
+      previewSecret: new Redacted("preview"),
+    });
+
+    const failed: string[] = [];
+    for (const { url } of ESTATE.pages) {
+      for (const headers of [{}, { [PREVIEW_TOKEN]: "preview" }]) {
+        const response = await app.inject({
+          url: `/pages?url=${encodeURIComponent(url)}`,
+          headers,
+        });
+        if (response.statusCode >= 500) failed.push(url);
+      }
+    }
+    expect(failed).toEqual([]);
+
+    await app.close();
+    await close();
+  }, 60_000);
+
+  it("imports the estate once as system, naming the markdown commit in its report", async () => {
+    const { db, close } = await createTestDb();
+
+    const report = await importEstate(db, { dryRun: false });
+
+    expect(report).toEqual({
+      source: ESTATE_SOURCE,
+      reason: null,
+      existing: 0,
+      actors: {},
+      revisions: 0,
+      categories: ESTATE.categories.length,
+      documents: ESTATE.pages.length,
+      ...SEEDED,
+    });
+    const { rows } = await db.execute<{ actor: string }>(
+      sql`select distinct actor from change_events`,
+    );
+    expect(rows.map((row) => row.actor)).toEqual(["system"]);
+
+    await close();
+  }, 60_000);
+
+  it("refuses when content already exists and writes nothing", async () => {
+    const { db, close } = await createTestDb();
+    await seed(db);
+    const history = await countOf(db, "change_events");
+
+    const refusal = importEstate(db, { dryRun: false });
+    await expect(refusal).rejects.toThrow(/refusing/);
+    await expect(refusal).rejects.toThrow(`system=${SEEDED_EVENTS}`);
+    expect(await countOf(db, "content_pages")).toBe(ESTATE.pages.length);
+    expect(await countOf(db, "change_events")).toBe(history);
+
+    await close();
+  }, 60_000);
+
+  it("dry run reports the counts and leaves nothing behind", async () => {
+    const { db, close } = await createTestDb();
+
+    expect(await importEstate(db, { dryRun: true })).toEqual({
+      source: ESTATE_SOURCE,
+      reason: null,
+      existing: 0,
+      actors: {},
+      revisions: 0,
+      categories: ESTATE.categories.length,
+      documents: ESTATE.pages.length,
+      ...SEEDED,
+    });
+    expect(await countOf(db, "content_pages")).toBe(0);
+    expect(await countOf(db, "categories")).toBe(0);
+    expect(await countOf(db, "change_events")).toBe(0);
+
+    await close();
+  }, 60_000);
+
+  it("dry run with force leaves existing content and history untouched", async () => {
+    const { db, close } = await createTestDb();
+    await seed(db);
+    const history = await countOf(db, "change_events");
+
+    const report = await importEstate(db, { dryRun: true, force: "rehearsal" });
+
+    expect(report.existing).toBe(ESTATE.pages.length);
+    expect(report.categories).toBe(ESTATE.categories.length);
+    expect(report.documents).toBe(ESTATE.pages.length);
+    expect(await countOf(db, "content_pages")).toBe(ESTATE.pages.length);
+    expect(await countOf(db, "categories")).toBe(ESTATE.categories.length);
+    expect(await countOf(db, "change_events")).toBe(history);
+
+    await close();
+  }, 60_000);
+
+  it("force replaces existing content in one transaction and reports the reason", async () => {
+    const { db, close } = await createTestDb();
+    await seed(db);
+
+    const report = await importEstate(db, {
+      dryRun: false,
+      force: "test replace",
+    });
+
+    expect(report).toEqual({
+      source: ESTATE_SOURCE,
+      reason: "test replace",
+      existing: ESTATE.pages.length,
+      actors: { system: SEEDED_EVENTS },
+      revisions: 0,
+      categories: ESTATE.categories.length,
+      documents: ESTATE.pages.length,
+      // Collections are not content an import replaces: editors' records stay.
+      collections: 0,
+      records: 0,
+    });
+    expect(await countOf(db, "content_pages")).toBe(ESTATE.pages.length);
+
+    await close();
+  }, 60_000);
+
+  it("force records the replaced pages and categories as deleted", async () => {
+    const { db, close } = await createTestDb();
+    await seed(db);
+    const { rows: replaced } = await db.execute<{ id: string }>(
+      sql`select id from content_pages union all select id from categories`,
+    );
+
+    await importEstate(db, { dryRun: false, force: "test history" });
+
+    const { rows: latest } = await db.execute<{
+      entity_id: string;
+      action: string;
+      actor: string;
+    }>(
+      sql`select distinct on (entity_id) entity_id, action, actor
+            from change_events order by entity_id, version_no desc`,
+    );
+    const ids = new Set(replaced.map((row) => row.id));
+    const last = latest.filter((row) => ids.has(row.entity_id));
+    expect(last).toHaveLength(replaced.length);
+    expect(new Set(last.map((row) => `${row.action}:${row.actor}`))).toEqual(
+      new Set(["deleted:system"]),
+    );
+
+    await close();
+  }, 60_000);
+
+  it("force also clears categories left behind without pages", async () => {
+    const { db, close } = await createTestDb();
+    await seed(db);
+    await db.execute(
+      sql`truncate search_chunks, page_revisions, content_pages`,
+    );
+
+    const report = await importEstate(db, {
+      dryRun: false,
+      force: "test leftovers",
+    });
+
+    expect(report.existing).toBe(0);
+    expect(report.categories).toBe(ESTATE.categories.length);
+    expect(report.documents).toBe(ESTATE.pages.length);
+    expect(await countOf(db, "categories")).toBe(ESTATE.categories.length);
+
+    await close();
+  }, 60_000);
+
+  it("import applies the environment's service_status", async () => {
+    const { db, close } = await createTestDb();
+    const keyOf = (page: (typeof ESTATE.pages)[number]) =>
+      page.form_id ?? page.content_slug;
+    // One page per key, so each status moves exactly one page.
+    const sole = (page: (typeof ESTATE.pages)[number]) =>
+      ESTATE.pages.filter((other) => keyOf(other) === keyOf(page)).length === 1;
+    const P = ESTATE.pages.find(
+      (page) =>
+        page.visibility === "public" &&
+        page.form_id &&
+        page.published_at &&
+        sole(page),
+    )!;
+    const Q = ESTATE.pages.find(
+      (page) =>
+        page.visibility === "preview" && !page.published_at && sole(page),
+    )!;
+    const R = ESTATE.pages.find(
+      (page) => page.visibility === "public" && page.form_id && page !== P,
+    )!;
+    const D = ESTATE.pages.find(
+      (page) => page.visibility === "draft" && sole(page),
+    )!;
+    const statuses = new Map([
+      [P.form_id!, "disabled"],
+      [keyOf(Q), "enabled"],
+      [R.form_id!, "form_disabled"],
+      [keyOf(D), "disabled"],
+      ["no-such-service", "disabled"],
+    ] as const);
+
+    const { pages, changes } = applyServiceStatuses(ESTATE.pages, statuses);
+    expect(changes).toEqual(
+      [
+        { url: P.url, from: "public", to: "preview" },
+        { url: Q.url, from: "preview", to: "public" },
+        { url: D.url, from: "draft", to: "preview" },
+      ].sort(
+        (a, b) =>
+          ESTATE.pages.findIndex((page) => page.url === a.url) -
+          ESTATE.pages.findIndex((page) => page.url === b.url),
+      ),
+    );
+
+    const report = await importEstate(db, {
+      dryRun: false,
+      estate: { ...ESTATE, pages },
+    });
+    expect(report.documents).toBe(ESTATE.pages.length);
+    const { rows } = await db.execute<{
+      url: string;
+      visibility: string;
+      published_at: string | null;
+    }>(
+      sql`select url, visibility, published_at from content_pages
+          where url in (${P.url}, ${Q.url}, ${R.url}, ${D.url})`,
+    );
+    const stored = new Map(rows.map((row) => [row.url, row]));
+    expect(stored.get(P.url)).toMatchObject({ visibility: "preview" });
+    // The frontmatter date stays (#3331).
+    expect(new Date(stored.get(P.url)!.published_at!).toISOString()).toBe(
+      P.published_at,
+    );
+    expect(stored.get(Q.url)!.visibility).toBe("public");
+    expect(stored.get(Q.url)!.published_at).not.toBeNull();
+    expect(stored.get(D.url)!.visibility).toBe("preview");
+    expect(stored.get(R.url)!.visibility).toBe(R.visibility);
+
+    await close();
+  }, 60_000);
+
+  it("reports pending revisions before a replace", async () => {
+    const { db, close } = await createTestDb();
+    expect((await importEstate(db, { dryRun: false })).revisions).toBe(0);
+    await db.execute(
+      sql`insert into page_revisions (page_id, fields, live_updated_at, created_by, contributors)
+          select id, '{}', now(), 'system', '{system}' from content_pages limit 1`,
+    );
+
+    await expect(importEstate(db, { dryRun: false })).rejects.toThrow(
+      "revisions: 1",
+    );
+    const report = await importEstate(db, {
+      dryRun: true,
+      force: "rehearsal",
+    });
+    expect(report.revisions).toBe(1);
+
+    await close();
+  }, 60_000);
+
+  it("a failure part-way leaves no partial estate", async () => {
+    const { db, close } = await createTestDb();
+    // The first page's search chunks fail after the categories and that page
+    // went in.
+    await db.execute(sql`drop table search_chunks`);
+
+    await expect(importEstate(db, { dryRun: false })).rejects.toThrow();
+    expect(await countOf(db, "categories")).toBe(0);
+    expect(await countOf(db, "content_pages")).toBe(0);
+
+    await close();
+  }, 60_000);
+});
+
+/**
+ * Every seeded page's `category`/`subcategory` as `GET /pages` serves them,
+ * against what the snapshot's category rows imply. This is the test of the
+ * API mapping; landing's render-parity test restates the mapping to build its
+ * input from the same snapshot and tests only landing's side.
+ */
+describe("GET /pages taxonomy for every seeded page", () => {
+  const expected = (slug: string | null) => {
+    const row = ESTATE.categories.find((category) => category.slug === slug);
+    if (!row) return { category: null, subcategory: null };
+    return row.parent
+      ? { category: row.parent, subcategory: row.slug }
+      : { category: row.slug, subcategory: null };
+  };
+  let app: Awaited<ReturnType<typeof createTestApp>>;
+  let close: () => Promise<void>;
+
+  beforeAll(async () => {
+    const test = await createTestDb();
+    close = test.close;
+    await seed(test.db);
+    // Drafts are visible to nobody; the mapping doesn't depend on visibility.
+    await test.db.execute(
+      sql`update content_pages set visibility = 'preview' where visibility = 'draft'`,
+    );
+    app = await createTestApp(test.db, {
+      previewSecret: new Redacted("preview"),
+    });
+  }, 60_000);
+
+  afterAll(async () => {
+    await app?.close();
+    await close?.();
+  });
+
+  it.each(ESTATE.pages.map((page) => [page.url, page.category] as const))(
+    "%s",
+    async (url, category) => {
+      const response = await app.inject({
+        url: `/pages?url=${encodeURIComponent(url)}`,
+        headers: { [PREVIEW_TOKEN]: "preview" },
+      });
+
+      expect(response.statusCode).toBe(200);
+      const { category: served, subcategory } = response.json();
+      expect({ category: served, subcategory }).toEqual(expected(category));
+    },
+  );
+});
+
+async function countOf(db: Database, table: string) {
+  const { rows } = await db.execute<{ n: number }>(
+    sql`select count(*)::int as n from ${sql.identifier(table)}`,
+  );
+  return rows[0]!.n;
+}

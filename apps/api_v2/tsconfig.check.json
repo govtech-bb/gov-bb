@@ -1,0 +1,18 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "incremental": false,
+    // The seed builder reads the category taxonomy from packages/content's source.
+    "rootDir": "../.."
+  },
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.json",
+    "e2e/**/*.ts",
+    "scripts/**/*.ts",
+    "vitest*.ts",
+    "drizzle.config.ts"
+  ],
+  "exclude": ["node_modules", "dist"]
+}

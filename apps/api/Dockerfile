@@ -34,6 +34,7 @@ COPY --chown=app:app packages/analytics/package.json packages/analytics/
 # content is never imported by the api, but the root package.json's
 # devDependencies pin it (workspace:*), and the builder installs the root project.
 COPY --chown=app:app packages/content/package.json packages/content/
+COPY --chown=app:app packages/govbbmarkd/package.json packages/govbbmarkd/
 
 # BuildKit cache mount keeps the pnpm content-addressable store across builds,
 # so a cache-invalidating change to the lockfile or any package.json re-installs
@@ -85,7 +86,7 @@ CMD ["pnpm", "exec", "nx", "dev", "api"]
 # CACHED it never ran in this build, so the mount is empty.
 #
 # node-linker=hoisted here only: the workspace installs with pnpm's default
-# isolated layout (ADR 0004), but the runner resolves everything from a single
+# isolated layout (ADR 0122), but the runner resolves everything from a single
 # /app/node_modules, so this stage lays the prod deps out flat, npm-style.
 FROM builder AS prod-deps
 RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store,uid=1001,gid=1001 \
