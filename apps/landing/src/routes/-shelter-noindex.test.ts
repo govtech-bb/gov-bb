@@ -47,6 +47,11 @@ describe.each(PAGES.map(([name]) => name))('shelter %s page', (page) => {
     expect(head.meta).not.toContainEqual(NOINDEX)
   })
 
+  it('stays indexable for a preview viewer when the tool is public', () => {
+    const head = headFor(page, 'preview', [[KEY, 'enabled']])
+    expect(head.meta).not.toContainEqual(NOINDEX)
+  })
+
   it('404s for the public and is noindexed when service_status puts it in Preview', () => {
     const serviceStatuses: ServiceStatusEntry[] = [[KEY, 'disabled']]
     expect(() =>
