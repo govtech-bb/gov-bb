@@ -83,7 +83,8 @@ function ServicesPage() {
                   <Link
                     href={item.href}
                     className="text-body leading-normal"
-                    data-umami-event={`service-${item.slug.replace(/\//g, '-')}`}
+                    data-umami-event="service-click"
+                    data-umami-event-slug={item.slug}
                     data-umami-event-title={item.title}
                   >
                     {item.title}

@@ -10,4 +10,6 @@ export { isSupportedLinkUrl, linkAddress, normalizeLinkUrl } from "./links/url";
 
 export { FormattingModule } from "./formatting/module";
 
-export type { TextColours } from "./formatting/toolbar";
+export { SELECTION_TOOLBAR, keepSelection } from "./formatting/toolbar";
+
+export { TextColourMenu, type TextColour, type TextColours } from "./formatting/colour-menu";

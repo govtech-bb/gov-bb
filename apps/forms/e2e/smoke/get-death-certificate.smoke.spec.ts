@@ -35,140 +35,29 @@
  *  - `check-your-answers` is auto-injected by the renderer before declaration
  *    (guarded advance).
  *  - `declaration` is the explicit final step; its single-option confirmation
- *    checkbox input is `declaration_declaration-confirmed`. The
- *    optional `declaration-date` date widget is filled with a past date.
- *  - The `submission-confirmation` step title is "Application submitted" and the
- *    recipe sets no processing message; on the payment flow the helper's default
- *    "saved" subheading does not render, so the subheading is omitted and the
- *    heading is matched against the step title.
+ *    checkbox input is `declaration_declaration-confirmed`.
+ *  - The walk itself lives in ../helpers/get-death-certificate so Journey 5
+ *    (the EZ Pay payment journey, #3012) can reuse it.
+ *  - The `submission-confirmation` step title is "Application submitted". What
+ *    sits under it depends on payment: with SMOKE_SUBMISSION_TOKEN (the deploy
+ *    smoke) the API drops the payment, so it reads "Your submission has been
+ *    saved"; without it the form is payment-gated and shows "Complete your
+ *    payment" with the EZ Pay link. Either one means the submission persisted.
  */
-import { faker } from "@faker-js/faker";
 import { test } from "@playwright/test";
-import {
-  STEP_TIMEOUT,
-  openSmokeForm,
-  advance,
-  currentStep,
-  expectStep,
-  fillDate,
-  fillField,
-  selectDropdown,
-  selectRadio,
-  submitAndConfirm,
-} from "../helpers/smoke";
+import { fillDeathCertificate } from "../helpers/get-death-certificate";
+import { submitAndConfirm } from "../helpers/smoke";
 
-const FORM_ID = "get-death-certificate";
-
-// PARKED (test.fixme) — and intentionally NOT wired into deploy-sandbox.yml.
-//
-// This spec drives the whole form correctly and the submission SUCCEEDS:
-// `POST /submissions` returns 200 with `status: "success"`, a real
-// `referenceCode` (e.g. GDC-…), `status: "pending_payment"` and a
-// `meta.deferred.paymentUrl` to EZ Pay ($5/copy). But the deployed
-// `submission-confirmation` screen then renders the generic error state
-// ("Something went wrong — We could not process your submission. No
-// information has been saved.") instead of redirecting to EZ Pay / showing the
-// success heading — reproducibly (3/3 incl. retries). The sibling payment form
-// get-marriage-certificate reaches "Application submitted" on the same path, so
-// this is a death-certificate-specific deployed-app bug, not a spec defect.
-// Tracked in #919; un-fixme this and re-add its smoke-test job once the
-// payment-confirmation flow is fixed. (See the referral-student-support-services
-// precedent in deploy-sandbox.yml.)
 test.describe("Get a Death Certificate — Live Smoke", () => {
-  test.fixme("submits the real form end-to-end and reaches the confirmation screen", async ({
+  test("submits the real form end-to-end and reaches the confirmation screen", async ({
     page,
   }) => {
-    await openSmokeForm(page, FORM_ID);
-    await page.waitForURL((url) => !!url.searchParams.get("step"), {
-      timeout: STEP_TIMEOUT,
-    });
-
-    // ─── Tell us about yourself ──────────────────────────────────────────────
-    let step = expectStep(page, "applicant-details", { exact: true });
-    await selectDropdown(page, step, "applicant-title", "mr");
-    await fillField(
-      page,
-      step,
-      "applicant-first-name",
-      faker.person.firstName(),
-    );
-    await fillField(page, step, "applicant-last-name", faker.person.lastName());
-    await fillField(
-      page,
-      step,
-      "applicant-address-line-1",
-      faker.location.streetAddress(),
-    );
-    await selectDropdown(page, step, "applicant-parish", "st-michael");
-    // Masked National ID (999999-9999) — supply the `850101-0001` shape; a bare
-    // numeric string fails the mask's `^\d{6}-\d{4}$` pattern.
-    await fillField(page, step, "applicant-id-number", "850101-0001");
-    await fillField(page, step, "applicant-email", "testing@govtech.bb");
-    await fillField(page, step, "applicant-telephone", "246-418-1234");
-    // passport-toggle left OFF → applicant-passport-number stays hidden.
-    await advance(page, step);
-
-    // ─── Your relationship with the deceased ("spouse" hides the conditional) ─
-    // The relationship <select>'s fieldId is the component default `relationship`
-    // (the recipe sets no fieldId override), NOT `relationship-to-person`.
-    step = expectStep(page, "relationship-to-person", { exact: true });
-    await selectDropdown(page, step, "relationship", "spouse");
-    await advance(page, step);
-
-    // ─── Why you need this certificate (reason, min 10 chars) ────────────────
-    step = expectStep(page, "reason-for-certificate", { exact: true });
-    // `reason-for-certificate` uses the `components/name` validator (letters,
-    // spaces, hyphens and apostrophes only) — no periods, commas or digits.
-    await fillField(
-      page,
-      step,
-      "reason-for-certificate",
-      "To settle the deceased estate and close outstanding accounts",
-    );
-    await advance(page, step);
-
-    // ─── Tell us about the deceased (known date of death → date widget) ──────
-    step = expectStep(page, "deceased-details", { exact: true });
-    await fillField(
-      page,
-      step,
-      "deceased-first-name",
-      faker.person.firstName(),
-    );
-    await fillField(page, step, "deceased-last-name", faker.person.lastName());
-    await selectRadio(page, step, "deceased-known-date-of-death", "yes");
-    await fillDate(page, step, "deceased-date-of-death", 3, 4, 2020);
-    // `deceased-place-of-death` also uses the `components/name` validator — no
-    // commas/periods.
-    await fillField(
-      page,
-      step,
-      "deceased-place-of-death",
-      "Bridgetown Saint Michael",
-    );
-    await advance(page, step);
-
-    // ─── How many copies do you need? ────────────────────────────────────────
-    step = expectStep(page, "order-details", { exact: true });
-    await fillField(page, step, "number-of-copies", "1");
-    await advance(page, step);
-
-    // ─── Check your answers (auto-injected before declaration) ───────────────
-    if (currentStep(page).includes("check-your-answers")) {
-      await advance(page, "check-your-answers");
-    }
-
-    // ─── Declaration ─────────────────────────────────────────────────────────
-    step = expectStep(page, "declaration", { exact: true });
-    await page
-      .locator(`fieldset[id="declaration_declaration-confirmed"]`)
-      .getByRole("checkbox")
-      .check();
-    await fillDate(page, step, "declaration-date", 6, 6, 2026);
+    await fillDeathCertificate(page, { email: "testing@govtech.bb" });
 
     // ─── Submit + Submission Confirmation ────────────────────────────────────
     await submitAndConfirm(page, {
       heading: "Application submitted",
+      subheading: /Your submission has been saved|Complete your payment/,
     });
   });
 });

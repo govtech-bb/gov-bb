@@ -5,9 +5,10 @@ import {
   type CategoryResult,
   type CreatePageInput,
   type ApiPage,
-  type PageHistoryEntry,
   type ApiRevision,
+  type Collection,
   type EditorApi,
+  type NewCollectionInput,
   type RecordDetail,
   type SavePageInput,
 } from "./client";
@@ -42,6 +43,16 @@ async function readRecord(api: EditorApi, collection: string, key: string) {
   }
 }
 
+/** A collection as api_v2 has it, or undefined when it has none by that key. */
+async function readCollection(api: EditorApi, key: string) {
+  try {
+    return (await api.collection(key)).collection;
+  } catch (error) {
+    if (error instanceof ApiFailure && error.status === 404) return undefined;
+    throw error;
+  }
+}
+
 /** The exact page version and submitted Markdown last loaded or saved in this session. */
 export type ServerPageBaseline = { page: ApiPage; markdown: string };
 
@@ -61,14 +72,7 @@ type PageSubmission = { base: ServerPageBaseline; categories: readonly Category[
 
 type PageDeletion = { id: string; version: number };
 
-/** A restore's first-press page version and newest displayed history number are separate guards. */
-export type PageRestoreRequest = {
-  pageId: string;
-  versionNo: number;
-  read: number;
-  historyVersion: number;
-  isPublic: boolean;
-};
+type PageRestoration = { id: string; versionNo: number; version: number };
 
 // oxlint-disable-next-line anti-slop/no-unknown-parameters -- Preserve dialog refusal precedence before classification drops HTTP status.
 function pageDialogRefusal(error: unknown, creating: boolean): never {
@@ -161,32 +165,6 @@ function reviewedFieldsMatch(found: ApiRevision["fields"], reviewed: ApiRevision
 
 /** Each migrated write's send, independent read-back and landed check. */
 export const writes = {
-  restoreVersion: (api: EditorApi): Write<PageRestoreRequest, ApiPage | PageHistoryEntry[]> => ({
-    send: async (sent) => {
-      try {
-        return await api.restoreVersion(sent.pageId, sent.versionNo, sent.read);
-      } catch (error) {
-        // History refreshes after every answered 409, not just version conflicts.
-        if (
-          error instanceof ApiFailure &&
-          error.status === 409 &&
-          error.code !== "version_conflict"
-        )
-          throw new ApiFailure(409, error.errors, apiMessage(error), "restore_conflict");
-        throw error;
-      }
-    },
-    readBack: (sent) => api.history(sent.pageId),
-    landed: (found, sent) =>
-      !sent.isPublic &&
-      Array.isArray(found) &&
-      found.some(
-        (entry) =>
-          entry.action === "reverted" &&
-          entry.restored_from === sent.versionNo &&
-          entry.version_no > sent.historyVersion,
-      ),
-  }),
   createPage: (api: EditorApi): Write<CreatePageInput, ApiPage> => ({
     send: async (sent) => {
       try {
@@ -237,6 +215,12 @@ export const writes = {
     },
     readBack: (sent) => readPage(api, sent.id),
     landed: (found) => found === undefined,
+  }),
+  restorePage: (api: EditorApi): Write<PageRestoration, ApiPage> => ({
+    send: (sent) => api.restoreVersion(sent.id, sent.versionNo, sent.version),
+    readBack: (sent) => readPage(api, sent.id),
+    // Page reads do not identify the restored history version, including for pending revisions.
+    landed: () => false,
   }),
   publishRevision: (api: EditorApi): Write<ApiRevision, RevisionPublication> => ({
     send: async (reviewed) => {
@@ -416,6 +400,23 @@ export const writes = {
       !!sent.record &&
       found.record.version !== sent.record.version &&
       !valuesDiffer(sent.collection, sent.data, found.record),
+  }),
+  // A lost answer is settled only by a collection with this key and exactly this definition: someone else's under
+  // the same key isn't this one
+  createCollection: (api: EditorApi): Write<NewCollectionInput, Collection> => ({
+    send: (sent) => api.createCollection(sent),
+    readBack: (sent) => readCollection(api, sent.key),
+    landed: (found, sent) =>
+      !!found &&
+      found.title === sent.title &&
+      found.record_key === sent.record_key &&
+      found.schema.fields.length === sent.schema.fields.length &&
+      found.schema.fields.every(
+        (field, index) =>
+          field.key === sent.schema.fields[index]?.key &&
+          field.label === sent.schema.fields[index]?.label &&
+          field.type === sent.schema.fields[index]?.type,
+      ),
   }),
   deleteRecord: (api: EditorApi): Write<RecordDeletion, RecordDetail | undefined> => ({
     send: async (sent) => {

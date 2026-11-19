@@ -22,6 +22,11 @@ export interface DatabaseConfig {
 /** Auth configuration shared only with the auth adapter and HTTP root. */
 export interface AuthConfig {
   readonly apiOrigin: string;
+  /**
+   * Where the API is mounted on its origin: "" at the root, or a path such as
+   * "/v2" when it shares a host with another API (#3745). No trailing slash.
+   */
+  readonly apiBasePath: string;
   readonly editorOrigin: string;
   readonly secret: Redacted<string>;
   readonly googleClientId: string;
@@ -96,6 +101,29 @@ const origin = z
     );
   })
   .transform((value) => new URL(value).origin);
+/**
+ * An origin that may carry a base path (#3745): letters, digits, `-` and `_`
+ * in each segment, so nothing a URL parser would rewrite (`..`, `%2F`, `//`).
+ */
+const baseUrl = z
+  .url()
+  .refine((value) => {
+    if (!URL.canParse(value)) return false;
+    const url = new URL(value);
+    return (
+      ["http:", "https:"].includes(url.protocol) &&
+      /^(\/[\w-]+)*\/?$/.test(url.pathname) &&
+      !/\/\.\.?(\/|$)/.test(value) &&
+      !url.username &&
+      !url.password &&
+      !url.search &&
+      !url.hash
+    );
+  })
+  .transform((value) => {
+    const url = new URL(value);
+    return { origin: url.origin, basePath: url.pathname.replace(/\/$/, "") };
+  });
 const environment = z
   .object({
     NODE_ENV: z.string().optional(),
@@ -108,7 +136,7 @@ const environment = z
     DB_PASSWORD: z.string().default("postgres"),
     DB_NAME: z.string().default("gov_bb_v2"),
     DB_SSL_CA: z.string().optional(),
-    BETTER_AUTH_URL: origin,
+    BETTER_AUTH_URL: baseUrl,
     EDITOR_ORIGIN: origin,
     BETTER_AUTH_SECRET: z.string().min(32),
     GOOGLE_CLIENT_ID: z.string().min(1),
@@ -218,8 +246,11 @@ const environment = z
         message:
           "Production sends review emails with SES or not at all: set REVIEW_NOTIFICATIONS to ses or off",
       });
-    for (const field of ["BETTER_AUTH_URL", "EDITOR_ORIGIN"] as const) {
-      if (!value[field].startsWith("https://"))
+    for (const [field, url] of [
+      ["BETTER_AUTH_URL", value.BETTER_AUTH_URL.origin],
+      ["EDITOR_ORIGIN", value.EDITOR_ORIGIN],
+    ] as const) {
+      if (!url.startsWith("https://"))
         context.addIssue({
           code: "custom",
           path: [field],
@@ -289,7 +320,8 @@ export function parseConfig(
       ...(env.DB_SSL_CA ? { ca: env.DB_SSL_CA } : {}),
     },
     auth: {
-      apiOrigin: env.BETTER_AUTH_URL,
+      apiOrigin: env.BETTER_AUTH_URL.origin,
+      apiBasePath: env.BETTER_AUTH_URL.basePath,
       editorOrigin: env.EDITOR_ORIGIN,
       secret: new Redacted(env.BETTER_AUTH_SECRET),
       googleClientId: env.GOOGLE_CLIENT_ID,

@@ -3,6 +3,9 @@
   "compilerOptions": {
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
+    // A CommonJS build (no "type": "module"), so the shared base's
+    // verbatimModuleSyntax is off, as for the api.
+    "verbatimModuleSyntax": false,
     "target": "ES2023",
     "lib": ["ES2023"],
     "outDir": "dist",

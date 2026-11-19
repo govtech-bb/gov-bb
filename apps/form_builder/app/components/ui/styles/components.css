@@ -203,7 +203,7 @@
   }
 }
 
-/* eslint-disable css/no-important -- Shiki renders inline colors; these scoped rules select its dark theme. */
+/* Shiki renders inline colors, so these scoped rules need !important to select its dark theme. */
 /* Shiki supplies inline token colors; dark mode switches to its alternate values. */
 .ui-shiki pre {
   background: transparent !important;
@@ -229,8 +229,6 @@
   padding-inline-start: 0.75rem;
   line-height: 1.625;
 }
-
-/* eslint-enable css/no-important */
 
 @keyframes ui-shimmer {
   from {

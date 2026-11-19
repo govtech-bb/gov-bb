@@ -3,7 +3,9 @@
 **Date:** 2026-10-28
 **Status:** Accepted (amended 2026-11-02: sign-in moves to Google Workspace
 and a new user gets no role, see the amendments under Decision;
-[#3412](https://github.com/govtech-bb/gov-bb/issues/3412))
+[#3412](https://github.com/govtech-bb/gov-bb/issues/3412). Amended 2026-11-16:
+a hidden `start` sub-page of a public page is an approver's;
+[#3618](https://github.com/govtech-bb/gov-bb/pull/3618))
 
 ## Context
 
@@ -33,6 +35,14 @@ can hold any of three roles:
   changes an approver made. An editor can still create a page as Preview or Draft, so
   the Preview default from #3191 works for editors (decided in #3187 on
   25 Oct 2026).
+
+  > **Amended 2026-11-16 ([#3618](https://github.com/govtech-bb/gov-bb/pull/3618)).**
+  > Except a `start` sub-page of a public page. Whether citizens see a
+  > page's Start link depends on whether they can see its `start` sub-pages,
+  > so adding, moving, renaming or deleting a hidden one changes the public
+  > page. Only an approver does that. An editor can still edit one where it
+  > stands.
+
 - `admin` can grant and revoke roles.
 
 Sign-in itself doesn't change: GitHub org membership still decides who can
@@ -91,6 +101,10 @@ second approver: an approver who unpublishes a page, deletes a public page
 or changes a category does so straight away. Deleting a Preview or Draft
 page needs only the editor role (#3187).
 
+> **Amended 2026-11-16 ([#3618](https://github.com/govtech-bb/gov-bb/pull/3618)).**
+> Except a `start` sub-page of a public page, for the reason amended under
+> the roles above: deleting it can show that page's Start link.
+
 **Making a page public is self-approval too.** It approves the page's
 content, so an approver can't make public a page whose content they changed
 since it was last public, or ever when it never was, and can't create a
@@ -146,6 +160,7 @@ can try the whole flow.
   > or deleting their Workspace account and revoking their roles. Until
   > their session ends they keep their access, and their role rows come
   > back if the account is restored.
+
 - An approver who writes a new page needs a second approver to make it
   public, as they do for a change to a public page.
 - An editor who isn't an approver can no longer change categories. They ask

@@ -95,6 +95,8 @@ An action's preview draws the block alone: the insertion dialog puts every previ
 
 `RendererHost` resolves a named renderer in the current editor; `EditorSlot` renders that editor's ordered slot contributions. Missing renderer contributions fail explicitly. Names include their role, such as `field-preview:text` and `widget:file-upload`, so unrelated content and answer kinds cannot collide.
 
+The selection toolbar has a slot of its own, `SELECTION_TOOLBAR`: a module adds a control to it without editing the toolbar, as the page's Muted text adds its colour menu (`TextColourMenu`). A control reads the selection itself and keeps it with `keepSelection`; [the extension test](../tests/extensions/selection-toolbar.test.tsx) adds one using only the public API.
+
 Form composition adds typed field/content/source capabilities. The default structural module requires Pages and Repetition; omitting either fails composition before a draft is loaded. Capability removal is deliberate: an unavailable saved subtype is rejected before Lexical can turn it into a fallback node. Recovery retains the original source bytes.
 
 ## Persistence and conversion
@@ -121,7 +123,7 @@ Page metadata lives in a hidden document node, retaining its YAML document, orig
 
 The editable site preview mounts landing's public renderer inside the CMS document. Title, introduction and body reuse the active editor session and history; the workspace retains save and publication ownership. See [Site preview](SITE-PREVIEW.md) for the runtime contract, style isolation and delivery requirements.
 
-Services and pages come only from the API. Form IDs remain page metadata, without a browser-form join. The workspace keeps three clean views and pins any additional dirty/error/pending views. Reopened clean sessions compare API versions; confirmed discard also drops undo. One coordinated guard covers page/workspace departure, sign-out and unload. Cancel changes neither location nor working copies. Old local workspace/draft keys are inert and left untouched. Historical ADR 0007 describes the former local workspace.
+Services and pages come only from the API. Form IDs remain page metadata, without a browser-form join. The workspace keeps three clean views and pins any additional dirty/error/pending views. Reopened clean sessions compare API versions; confirmed discard also drops undo. One coordinated guard covers page/workspace departure, sign-out and unload. Cancel changes neither location nor working copies. `workspace/unsaved-work.tsx` stores unsaved page Markdown and its base version in `localStorage`. Reopening a page offers Restore or Discard; discard requires confirmation. Older-version recovery carries its write version in editor NodeState so undo and redo preserve the save guard. `DraftStore` still has no storage. Old local workspace/draft keys are inert and left untouched. Historical ADR 0007 describes the former local workspace.
 
 Remote page sessions live in `workspace/remote-page-pane.tsx`; navigation has its own UI modules. `remote-page-dialogs.tsx` uses `ui/form-dialog.tsx` for creation and `ui/confirm-dialog.tsx` for deletion. There are no local-document dialogs or production form-editor route.
 

@@ -1,5 +1,7 @@
+import { useEffect, useRef } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
 import { ErrorPage } from '../components/ErrorPage'
+import { trackEvent } from '../lib/analytics'
 
 export const Route = createFileRoute('/service-unavailable')({
   head: () => ({
@@ -9,6 +11,15 @@ export const Route = createFileRoute('/service-unavailable')({
 })
 
 function ServiceUnavailable() {
+  // Once per view: the ref survives StrictMode's second effect run. No link
+  // here carries a form id yet, so the form is never known (#3513).
+  const tracked = useRef(false)
+  useEffect(() => {
+    if (tracked.current) return
+    tracked.current = true
+    trackEvent('service-unavailable-view', {})
+  }, [])
+
   return (
     <ErrorPage
       title="This service is temporarily unavailable"

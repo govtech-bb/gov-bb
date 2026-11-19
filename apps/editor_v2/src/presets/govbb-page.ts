@@ -4,7 +4,7 @@ import { PageMetadataModule } from "../pages/modules/metadata";
 import { pageBlocks } from "../pages/blocks";
 import { $isHighlightPart } from "../pages/blocks/highlights";
 import { PageContactModule } from "../pages/modules/contact";
-import { PageMutedModule, pageTextColours } from "../pages/modules/muted";
+import { PageMutedModule } from "../pages/modules/muted";
 import { PageTextModule } from "../pages/modules/text";
 import { PageListsModule } from "../pages/modules/lists";
 import { PageTablesModule } from "../pages/modules/tables";
@@ -21,11 +21,7 @@ export const govbbPageEditor = definePageEditor([
   LinksModule({ isValidLink: isSupportedLinkUrl }),
   PageListsModule(),
   PageTablesModule(),
-  FormattingModule({
-    isValidLink: isSupportedLinkUrl,
-    isPlainText: $isHighlightPart,
-    colours: pageTextColours,
-  }),
+  FormattingModule({ isValidLink: isSupportedLinkUrl, isPlainText: $isHighlightPart }),
 ]);
 
 export const govbbPageCodec = createPageDraftCodec(govbbPageEditor);

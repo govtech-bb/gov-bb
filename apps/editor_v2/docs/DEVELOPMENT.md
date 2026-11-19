@@ -10,8 +10,8 @@ Run the app and the Nx checks from the repository root as shown in the [README](
 pnpm test
 pnpm exec vitest run tests/pages
 pnpm exec vitest run docs/examples
-pnpm typecheck
-pnpm lint
+pnpm test:types
+pnpm test:oxlint
 pnpm format:check
 pnpm check:boundaries
 pnpm check:coverage
@@ -32,7 +32,7 @@ Use [Code quality](CODE-QUALITY.md) for formatting commands and the validation e
 
 ## App shell and routes
 
-TanStack Start builds a static shell and renders the workspace in the browser. Keep the root document safe to render during builds. Editing state belongs to the client-only workspace; browser storage is used only for unrelated clipboard data and UI preferences.
+TanStack Start builds a static shell and renders the workspace in the browser. Keep the root document safe to render during builds. Editing state belongs to the client-only workspace; browser storage holds only clipboard data, UI preferences and open pages' unsaved changes.
 
 Routes use `/services`, `/services/$serviceId`, `/services/$serviceId/$documentId`, `/site-pages`, `/site-pages/$pageId` and `/categories`; `/` opens Services. Site pages reads `GET /editor/site-pages` and opens each page through the existing `GET /pages/:id` and `RemotePagePane`, without needing a service or cached list. Its content queries share invalidation with Services. Saves, pending revisions, version conflicts and history use the same page APIs; site pages do not have separate write endpoints. Old `/#/services/...` links are replaced on startup. Clean views are cached with per-page undo; dirty/error/pending views cannot be silently evicted. Leaving unsaved work asks before changing documents. Confirmed discard removes the copy and its undo session; navigation never flushes or saves.
 
@@ -59,11 +59,13 @@ The runner resolves an existing `playwright` or `playwright-core` installation, 
 
 App UI suites supply employee/API responses at the HTTP boundary. `authentication.mjs` covers explicit sign-in, duplicate activation, delayed session/callback checks, deep-link return paths, outages, sign-out and cancelled expiry without revoking auth prematurely. It also captures transient framework-error screens and uncaught errors. Reusable form and page-canvas suites use `buildBrowserFixture` and `tests/browser/editor-host.tsx`, intercepted only by Playwright—not a production route. `openDemoForm` and `seedFormSource` supply explicit source; `reloadEditorFromSource` explicitly exports and reopens it to test conversion. A normal reload restores only fixture input. No production draft-storage seeding is needed. Real Google consent/cookies still require a deployment smoke test.
 
-`remote-page-editing.mjs` checks explicit saves, version conflicts, undo/redo, safe preview links, the absence of history controls/requests and API reloads; `service-workspace.mjs` checks API creation/deletion and holds list/service/page/category responses to verify contextual loading without remounting the header. Run the auth and service-workspace suites against both development and production-built `dist/client` served with the documented `/_shell.html` rewrite; keep auth bypass off for these checks. `routing.mjs` checks cancelled links/Back/Forward, reload/tab-close warnings and clean-view eviction. `persistence-isolation.mjs` seeds malformed old keys and proves editing/lifecycle events neither read nor write them.
+`remote-page-editing.mjs` checks explicit saves, version conflicts, undo/redo, safe preview links, the absence of history controls/requests and API reloads; `service-workspace.mjs` checks API creation/deletion and holds list/service/page/category responses to verify contextual loading without remounting the header. Run the auth and service-workspace suites against both development and production-built `dist/client` served with the documented `/_shell.html` rewrite; keep auth bypass off for these checks. `routing.mjs` checks cancelled links/Back/Forward, reload/tab-close warnings, recovery after a reload, recovery undo/redo, discard confirmation and clean-view eviction. `persistence-isolation.mjs` seeds malformed old keys and proves editing/lifecycle events neither read nor write them.
 
 `categories.mjs` answers `/editor/categories` with a versioned fixture at the HTTP boundary. It checks loading, versioned keyboard moves with focus and announcements, app-route and in-use locks, refused slugs, renamed-category service links by slug, unmatched bookmark filters, the shared Create service and page settings pickers, a failed load and Try again, long names, and the 390px drawer and row menu. Touch contexts check 44px targets; fine-pointer geometry is not evidence of touch size.
 
 `collections.mjs` answers api_v2's `/collections` routes with a versioned fixture at the HTTP boundary. It reaches Collections from the menu by keyboard, opens a collection's table and a record's dialog from its row, checks `?record=` in the address, a field refused by `validation_failed`, the stale-save choices, keyboard add and delete with focus returned, visible focus at each stop, and the table at 390px. Screenshots go to `/tmp/c3184-collections-*.png`.
+
+`collection-create.mjs` answers `GET` and `POST /collections` and the new collection's record routes with a fixture that checks a create as api_v2 does. An approver adds a collection by keyboard only, with visible focus at each stop: a field the dialog refuses takes the focus, a taken key shows on Key, the new collection opens with the focus on Add record, and its first record is added. An editor without `admin` or `approver` sees Add collection turned off with the reason, and an admin doesn't. It also checks the dialog at 390px. Screenshots go to `/tmp/c3681-collection-create-*.png`.
 
 `categories-live.mjs` is opt-in and never in the default list. It writes to a real api_v2 over a disposable database, with nothing intercepted. Follow the [API local setup](../../api_v2/README.md#run-locally), using that database, `SEED=false`, `AUTH_BYPASS=true`, `PORT=43107`, `BETTER_AUTH_URL=http://127.0.0.1:43107` and `EDITOR_ORIGIN=http://localhost:43108`. Start the editor in a separate terminal, then run the suite from this directory:
 
@@ -100,9 +102,15 @@ The writer fixture bundles the same local template and needs no preview setting 
 
 ## Persistence and recovery
 
-Unsaved edits exist only in memory. Save/Publish validates and sends the applied snapshot with the baseline's numeric `version` as `expected_version`. Failed requests preserve work for retry or download. HTTP 409 `version_conflict` preserves the draft and baseline until explicit discard-and-reload; uncertain retries retain the exact original request; background reads never silently advance the write token.
+Unsaved edits live in memory. Pages also keep a recovery copy in browser storage. Save/Publish validates and sends the applied snapshot with the baseline's numeric `version` as `expected_version`. Failed requests preserve work for retry or download. HTTP 409 `version_conflict` preserves the draft and baseline until explicit discard-and-reload; uncertain retries retain the exact original request; background reads never silently advance the write token.
 
-Apply is not Save. Invalid/unapplied source and serialization errors also count as unsaved work. Cancelled navigation/sign-out retains edits and undo. Pending saves block departure. A crash, refresh, closed tab or confirmed departure loses unsaved work; unload warnings are best-effort, not recovery.
+Apply is not Save. Invalid/unapplied source and serialization errors also count as unsaved work. Cancelled navigation/sign-out retains edits and undo. Pending saves block departure. A confirmed departure loses unsaved work; unload warnings are best-effort.
+
+`workspace/unsaved-work.tsx` stores unsaved page Markdown, its base version and timestamp in `localStorage` under `govbb-editor:unsaved-work:<page id>`. Reopening the page loads the API content and asks whether to restore or discard the recovery copy. Discard requires confirmation. Restore waits for pending requests and uncertain requests that still need a retry.
+
+An older-version restore stores `recoveredPageVersion` in the editor root's NodeState, not in Markdown. Undo and redo move this version with the recovered content. The save guard uses it to prevent overwriting a newer server version; undo returns to the pre-recovery baseline without adopting background reads. Unsupported pages have no visual undo history and retain the recovered version directly.
+
+Saving or confirmed discard removes the recovery copy, unless a recovery offer is still unanswered. Edits made while an offer is unanswered take its place in storage only while they last: once the page has no unsaved changes again (undo, a save, or discard-and-reload), the offer goes back into storage and is offered again after a reload. Discarding the offer waits for a discard-and-reload to finish. A confirmed departure (Leave without saving, sign-out or an expired-session redirect) removes the stored copy of each page it discards, offer included, and deleting a page removes its copy. Departure discards only pages with unsaved changes, so copies for clean or closed pages stay in this browser after sign-out. Recovery is per browser, not per account, and does not preserve undo history. Blocked or full browser storage leaves edits in memory only.
 
 The sidebar preference `govbb-editor:sidebar-collapsed` and clipboard storage remain. Old `govbb-editor:draft*`, `documents:*`, form/workspace and server-baseline records are left untouched and never loaded.
 

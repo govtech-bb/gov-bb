@@ -109,7 +109,7 @@ describe('pharmacy dataset', () => {
 
   it('keeps the reviewed opening hours (spot check)', () => {
     const winstonScott = ALL_PHARMACIES.find(
-      (p) => p.name === 'Winston Scott Polyclinic',
+      (p) => p.name === 'Sir Winston Scott Polyclinic',
     )
     expect(winstonScott?.hours?.mon).toEqual([
       { opens: '08:15', closes: '22:00' },

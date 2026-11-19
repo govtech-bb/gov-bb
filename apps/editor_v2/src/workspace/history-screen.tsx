@@ -1,9 +1,8 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { useLayoutEffect, useRef, useState } from "react";
-import type { ApiPage, EditorApi, PageHistoryEntry } from "../api/client";
+import type { EditorApi, PageHistoryEntry } from "../api/client";
 import { writes } from "../api/writes";
-import { useWrite } from "./use-write";
 import { pageFieldLabel } from "../api/page-fields";
 import { historyQuery, pageQuery, rolesQuery } from "../api/queries";
 import { Button } from "../ui/button";
@@ -15,6 +14,7 @@ import { ScreenHeader } from "../ui/screen-header";
 import { TextLink } from "../ui/text-link";
 import { toast } from "../ui/toast";
 import { listLoadView } from "./list-load-view";
+import { useWrite } from "./use-write";
 
 /** How many changes show at first, and how many more each Show older changes adds. */
 const SHOWN = 50;
@@ -69,6 +69,7 @@ export function HistoryScreen({
   pageId: string;
   serviceId?: string;
 }) {
+  const client = useQueryClient();
   const history = useQuery(historyQuery(api, pageId));
   const page = useQuery(pageQuery(api, pageId));
   const editor = useQuery(rolesQuery(api)).data?.includes("editor") ?? false;
@@ -79,12 +80,34 @@ export function HistoryScreen({
 
   const [restoring, setRestoring] = useState<{
     entry: PageHistoryEntry;
-    opened: number;
-    open: boolean;
+    pageId: string;
+    version: number;
+    isPublic: boolean;
   }>();
 
   // The page's current version is the newest one: restoring it would change nothing
   const current = entries?.find((entry) => VERSIONS.has(entry.action))?.version_no;
+  const restore = useWrite(api, writes.restorePage);
+  const outcome = restore.outcome;
+
+  useLayoutEffect(() => {
+    if (outcome?.kind === "landed") {
+      const restoredPage = outcome.answer;
+      toast("Version restored", {
+        description:
+          restoredPage.visibility !== "public"
+            ? "Saved as a new change at the top of the history."
+            : restoredPage.pending_revision?.status === "submitted"
+              ? "The change is still waiting for review."
+              : "Saved as a change. Submit it for review to publish it.",
+      });
+      setRestoring(undefined);
+    } else if (
+      outcome?.kind === "conflict" ||
+      (outcome?.kind === "refused" && outcome.code === "not_restorable")
+    )
+      void client.invalidateQueries({ queryKey: ["content"] });
+  }, [outcome, client]);
 
   const back = serviceId ? (
     <Link to="/services/$serviceId/$documentId" params={{ serviceId, documentId: pageId }} />
@@ -153,11 +176,16 @@ export function HistoryScreen({
                       size="sm"
                       className="mt-1 w-fit"
                       onClick={() => {
-                        setRestoring((previous) => ({
+                        if (!page.data) return;
+                        const { id, version, visibility } = page.data;
+
+                        restore.forget();
+                        setRestoring({
                           entry,
-                          opened: (previous?.opened ?? 0) + 1,
-                          open: true,
-                        }));
+                          pageId: id,
+                          version,
+                          isPublic: visibility === "public",
+                        });
                       }}
                     >
                       Restore this version
@@ -178,119 +206,41 @@ export function HistoryScreen({
           )}
         </>
       )}
-      {restoring && (
-        <RestoreVersionDialog
-          key={`${pageId}:${restoring.opened}`}
-          api={api}
-          pageId={pageId}
-          page={page.data}
-          entries={entries ?? []}
-          entry={restoring.entry}
-          open={restoring.open}
-          onClose={() => setRestoring({ ...restoring, open: false })}
-        />
-      )}
+      <ConfirmDialog
+        open={restoring !== undefined}
+        onOpenChange={(open) => {
+          if (!open) setRestoring(undefined);
+        }}
+        title="Restore this version?"
+        description={
+          restoring &&
+          (restoring.isPublic
+            ? `Restore the version from ${formatDayAndTime(restoring.entry.occurred_at)} as a change for review. Citizens keep seeing the live page until an approver publishes the change. Nothing is removed from history.`
+            : `Restore the version from ${formatDayAndTime(restoring.entry.occurred_at)} as a new change. Nothing is removed from history, and who can see the page won’t change.`)
+        }
+        confirmLabel={restore.state === "unsettled" ? "Retry restore" : "Restore version"}
+        confirmDisabled={outcome?.kind === "conflict"}
+        pendingLabel="Restoring…"
+        pending={restore.state === "sending" || restore.state === "checking"}
+        variant="accent"
+        error={
+          outcome &&
+          outcome.kind !== "landed" &&
+          (outcome.kind === "unknown"
+            ? "We couldn’t confirm the restore. Retry, or cancel to check the page and its history."
+            : outcome.kind === "conflict"
+              ? "This page changed. Cancel and review the latest version before restoring."
+              : outcome.message || "Couldn’t restore this version. Try again.")
+        }
+        onConfirm={() => {
+          if (!restoring || outcome?.kind === "conflict") return;
+          void restore.press(() => ({
+            id: restoring.pageId,
+            versionNo: restoring.entry.version_no,
+            version: restoring.version,
+          }));
+        }}
+      />
     </>
-  );
-}
-
-/** Each opening owns its attempt; closing an unknown restore cannot carry it into another version. */
-function RestoreVersionDialog({
-  api,
-  pageId,
-  page,
-  entries,
-  entry,
-  open,
-  onClose,
-}: {
-  api: EditorApi;
-  pageId: string;
-  page: ApiPage | undefined;
-  entries: readonly PageHistoryEntry[];
-  entry: PageHistoryEntry;
-  open: boolean;
-  onClose: () => void;
-}) {
-  const client = useQueryClient();
-  const restore = useWrite(api, writes.restoreVersion);
-  const handled = useRef(restore.outcome);
-  // Presentation only: the attempt owns the frozen request and history boundary.
-  const [submitted, setSubmitted] = useState<{ isPublic: boolean; awaitingReview: boolean }>();
-
-  const held =
-    restore.state !== "idle" || restore.outcome?.kind === "landed" ? submitted : undefined;
-
-  const isPublic = held?.isPublic ?? page?.visibility === "public";
-  const awaitingReview = held?.awaitingReview ?? page?.pending_revision?.status === "submitted";
-
-  const description = !isPublic
-    ? "It's saved as a new change at the top of the history."
-    : awaitingReview
-      ? "It's saved in the change that is waiting for review."
-      : "It's saved as a change to this page. Submit it for review to publish it.";
-
-  useLayoutEffect(() => {
-    const outcome = restore.outcome;
-
-    if (!outcome || handled.current === outcome) return;
-    handled.current = outcome;
-
-    if (outcome.kind === "landed") {
-      toast("Version restored", { description });
-      onClose();
-    } else if (
-      outcome.kind === "conflict" ||
-      (outcome.kind === "refused" && outcome.code === "restore_conflict")
-    ) {
-      // An answered conflict releases the attempt; the next press may use the refreshed page version.
-      void client.invalidateQueries({ queryKey: ["content"] });
-    }
-  }, [restore.outcome, description, client, onClose]);
-
-  const outcome = restore.outcome;
-
-  const error =
-    !outcome || outcome.kind === "landed"
-      ? undefined
-      : outcome.kind === "unknown"
-        ? "We couldn’t tell whether that went through. Check your connection, then check again before you try again."
-        : outcome.message || "The version couldn't be restored. Try again.";
-
-  return (
-    <ConfirmDialog
-      open={open}
-      onOpenChange={(next) => {
-        if (!next) onClose();
-      }}
-      title="Restore this version?"
-      description={
-        isPublic
-          ? `The page as it was on ${formatDayAndTime(entry.occurred_at)} is saved as a change to it. Citizens keep seeing the live page until an approver publishes the change. Nothing in the history is removed.`
-          : `The page goes back to how it was on ${formatDayAndTime(entry.occurred_at)}. This is added to the history as a new change: nothing is removed. Who can see the page doesn't change.`
-      }
-      confirmLabel={restore.state === "unsettled" ? "Check again" : "Restore version"}
-      pendingLabel="Restoring…"
-      pending={restore.state === "sending" || restore.state === "checking"}
-      variant="accent"
-      error={error}
-      onConfirm={() => {
-        if (!page || outcome?.kind === "landed") return;
-        void restore.press(() => {
-          setSubmitted({
-            isPublic: page.visibility === "public",
-            awaitingReview: page.pending_revision?.status === "submitted",
-          });
-
-          return {
-            pageId,
-            versionNo: entry.version_no,
-            read: page.version,
-            historyVersion: Math.max(0, ...entries.map((item) => item.version_no)),
-            isPublic: page.visibility === "public",
-          };
-        });
-      }}
-    />
   );
 }

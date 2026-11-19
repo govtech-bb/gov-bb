@@ -15,3 +15,13 @@
     column-gap: var(--govbb-space-m);
   }
 }
+
+/* Forced colours leave images alone, so in a dark high-contrast theme the
+   logo's black wordmark disappears into the header. Remove once a design
+   system release with govtech-bb/govbb-design-system#321's header rule
+   reaches landing. */
+@media (forced-colors: active) and (prefers-color-scheme: dark) {
+  .govbb-header__logo {
+    filter: brightness(0) invert(1);
+  }
+}

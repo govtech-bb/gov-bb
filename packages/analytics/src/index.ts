@@ -1,24 +1,52 @@
 import { maskSearchQuery } from "./mask-search-query";
 import { journeyEnabled, sendJourney } from "./journey";
+import { sendUmamiEvent, sendUmamiPageview, type UmamiPayload } from "./umami";
+import type { ToolTrackingData } from "./tool-events";
 
 export { maskSearchQuery } from "./mask-search-query";
 export {
   configureJourney,
   flushJourney,
-  installJourneyClickListener,
   journeyEnabled,
   sendJourney,
 } from "./journey";
+export { adoptJourneyId, getJourneyId, withJourneyId } from "./journey";
+export { installOutboundClickListener } from "./outbound";
+export type {
+  ToolId,
+  ToolResult,
+  ToolResultData,
+  ToolTrackingData,
+} from "./tool-events";
 
 declare global {
   interface Window {
     umami?: {
-      track: (name?: string, data?: Record<string, unknown>) => void;
+      track: (
+        name?: string | ((payload: UmamiPayload) => UmamiPayload),
+        data?: Record<string, unknown>,
+      ) => void;
     };
   }
 }
 
-export interface TrackingData {
+/**
+ * Attributes every app puts on its Umami <script> tag, besides the website id.
+ * - data-auto-track="false": page views come from each app's router, and
+ *   Umami's own click handler stays off, because it cancels data-umami-event
+ *   link clicks and reloads the page (#3502).
+ * - data-exclude-search="true": Umami records URLs without the query string,
+ *   which can hold water alert tokens, search text and forms preview tokens
+ *   (#3503).
+ */
+export const UMAMI_SCRIPT_ATTRIBUTES = {
+  "data-auto-track": "false",
+  "data-exclude-search": "true",
+} as const;
+
+// Landing tool events (tool-step-view, tool-result, tool-action, tool-error)
+// are in tool-events.ts (ADR 0138).
+export interface TrackingData extends ToolTrackingData {
   "form-start": { form: string; category: string };
   "form-step-back": { form: string; category: string; step: string };
   "form-step-edit": { form: string; category: string; step: string };
@@ -67,9 +95,66 @@ export interface TrackingData {
     outcome: string;
     hasPayment: boolean;
   };
+  // File upload failures, removals and printing (#3514). `reason` is the
+  // status the upload settled to: rejected (refused before upload, for its
+  // type or size), error, timeout, infected or unscannable.
+  "form-file-error": {
+    form: string;
+    category: string;
+    step: string;
+    field: string;
+    reason: string;
+  };
+  "form-file-remove": {
+    form: string;
+    category: string;
+    step: string;
+    field: string;
+  };
+  "form-print": { form: string; category: string };
   search: { query: string; results: number };
   "search-result-click": { query: string; position: number; href: string };
   "search-no-results": { query: string };
+  // Dead ends (#3513): where a citizen was stopped before reaching a service.
+  "form-closed-view": { form: string };
+  /** `form` is absent on a route outside a form, and when the form is not found. */
+  "form-load-error": {
+    form?: string;
+    reason: "not-found" | "network" | "server";
+  };
+  "service-unavailable-view": Record<string, never>;
+  /** The app only, never the path, in the event data: a missing page's address
+   *  can hold typed text. */
+  "page-not-found": { app: string };
+  /**
+   * Citizen followed a link that leaves the service (#3512). `host` is set for
+   * web links only. Never the full URL, query string, number or address.
+   */
+  "outbound-click": {
+    kind: "link" | "tel" | "mailto";
+    host?: string;
+    page: string;
+  };
+  // Chat (#3515). Never the question or answer text.
+  /**
+   * A question asked. `source` is where: a landing placement such as "home",
+   * or "chat" when typed in the chat app.
+   */
+  "chat-submit": { source: string };
+  /**
+   * The chat app's reply to one question, sent when the turn ends. `source` is
+   * where it was asked: "chat" (typed there; the chat app sent chat-submit) or
+   * "landing" (carried over in `?q=`; landing sent chat-submit or
+   * chat-suggestion). `outcome` is "error" when the request failed or no reply
+   * text came back; a reply the server cuts off at its turn timeout after
+   * text started reads as "answered". `cited` is true when the reply came with
+   * cited alpha.gov.bb pages.
+   */
+  "chat-answer": {
+    outcome: "answered" | "error" | "stopped";
+    source: "chat" | "landing";
+    cited: boolean;
+  };
 }
 
 export type TrackingEventName = keyof TrackingData;
@@ -78,7 +163,12 @@ export function trackEvent<E extends TrackingEventName>(
   event: E,
   data: TrackingData[E],
 ): void;
-export function trackEvent(event: string, data?: Record<string, unknown>): void;
+// Any other name. A tool event name is refused here, so wrong tool data fails
+// type-check instead of falling through to this overload (ADR 0138).
+export function trackEvent<N extends string>(
+  event: N extends keyof ToolTrackingData ? never : N,
+  data?: Record<string, unknown>,
+): void;
 export function trackEvent(
   event: string,
   data?: Record<string, unknown>,
@@ -100,11 +190,9 @@ export function trackEvent(
     typeof safe.form === "string" &&
     !event.includes(":")
   ) {
-    window.umami.track(eventName(safe.form, event), safe);
-  } else if (safe === undefined) {
-    window.umami.track(event);
+    sendUmamiEvent(eventName(safe.form, event), safe);
   } else {
-    window.umami.track(event, safe);
+    sendUmamiEvent(event, safe);
   }
 }
 
@@ -172,6 +260,12 @@ export const SHORT_EVENT: Readonly<Record<string, string>> = {
   "page-start-view": "pstvw",
   "payment-initiated": "pinit",
   "payment-returned": "pretn",
+  "form-closed-view": "fclsd",
+  "form-load-error": "flerr",
+  // File upload failures, removals and printing (#3514).
+  "form-file-error": "fferr",
+  "form-file-remove": "ffrem",
+  "form-print": "fprnt",
 };
 
 const CANONICAL_BY_SHORT: Readonly<Record<string, string>> = Object.fromEntries(
@@ -255,7 +349,44 @@ export function stepFromEvent(event: string): number | null {
 export function trackPageview(): void {
   if (typeof window === "undefined") return;
   sendJourney("pageview");
-  window.umami?.track();
+  sendUmamiPageview();
+}
+
+/**
+ * Landing tags clicks with data-umami-event="<name>" plus
+ * data-umami-event-<key>="<value>". This sends each one through trackEvent,
+ * so it reaches Umami and /journey alike. Umami's own handler for these
+ * attributes stays off (data-auto-track="false"): it cancels the click and
+ * reloads the page, which breaks TanStack <Link> navigation (#3502). So this
+ * listener must never call preventDefault. Prop keys arrive in camelCase, as
+ * dataset gives them (data-umami-event-form-id becomes formId), because
+ * /journey rejects hyphens in prop keys. Name a form id prop formId, never form:
+ * trackEvent packs the event name as <form>:<event> when it sees a form prop.
+ * Returns a function that removes it.
+ */
+export function installClickListener(): () => void {
+  if (typeof document === "undefined") return () => undefined;
+  const onClick = (e: MouseEvent) => {
+    const target = e.target instanceof Element ? e.target : null;
+    const el = target?.closest<HTMLElement>("[data-umami-event]");
+    const name = el?.dataset.umamiEvent;
+    if (!el || !name) return;
+    const props: Record<string, string> = {};
+    for (const [key, value] of Object.entries(el.dataset)) {
+      if (
+        key.startsWith("umamiEvent") &&
+        key !== "umamiEvent" &&
+        value !== undefined
+      ) {
+        const prop = key.slice("umamiEvent".length);
+        props[prop.charAt(0).toLowerCase() + prop.slice(1)] = value;
+      }
+    }
+    trackEvent(name, props);
+  };
+  document.addEventListener("click", onClick, { capture: true });
+  return () =>
+    document.removeEventListener("click", onClick, { capture: true });
 }
 
 /**

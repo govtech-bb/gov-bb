@@ -326,6 +326,13 @@ describe("AI system prompt", () => {
     expect(prompt).toContain('"fieldId": "end-year"');
   });
 
+  it("documents scaleBy on the numeric bound validations (#3636)", () => {
+    expect(prompt).toContain("#### Scaling the value by another answer");
+    expect(prompt).toContain(
+      '"scaleBy": {"referenceFieldId": "income-frequency", "factors": {"weekly": 4',
+    );
+  });
+
   it("pins the declaration step to the declaration-confirmed checkbox", () => {
     // Rule 17 + the Declaration Checkbox Pattern: one standard confirmation
     // checkbox with fixed fieldId/label/statement, required. Only a

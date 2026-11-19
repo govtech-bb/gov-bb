@@ -53,8 +53,10 @@ afterEach(async () => {
 /** The page's version, as the restore must name it. */
 const READ = 7;
 
+let currentPage: ApiPage;
+
 /** What the restore route answers, and every request that reached it. */
-let restored: Response;
+let restored: Response | Promise<Response>;
 
 let restores: { url: string; init: RequestInit | undefined }[];
 
@@ -64,9 +66,17 @@ let restores: { url: string; init: RequestInit | undefined }[];
  */
 async function render(
   entries: PageHistoryEntry[] | null,
-  { roles = [], visibility = "draft" }: { roles?: string[]; visibility?: string } = {},
+  {
+    roles = [],
+    visibility = "draft",
+    pendingRevision = null,
+  }: {
+    roles?: string[];
+    visibility?: ApiPage["visibility"];
+    pendingRevision?: ApiPage["pending_revision"];
+  } = {},
 ) {
-  let currentPage: ApiPage = {
+  currentPage = {
     id: PAGE,
     slug: "severance-pay",
     url: "/severance-pay",
@@ -75,7 +85,7 @@ async function render(
     category_id: null,
     parent_id: null,
     form_id: null,
-    visibility: visibility === "public" ? "public" : "draft",
+    visibility,
     body_markdown: "",
     frontmatter: {},
     published_at: null,
@@ -83,42 +93,26 @@ async function render(
     updated_at: "2026-10-28T14:00:00.000Z",
     version: READ,
     last_edited_by: null,
-    pending_revision: null,
+    pending_revision: pendingRevision,
   };
-
-  restored = Response.json(currentPage);
+  restored = Response.json({ ...currentPage, version: READ + 1 });
   restores = [];
-  let restoreReply = async () => restored.clone();
-
-  let historyReply = async () =>
-    entries ? Response.json({ entries }) : Response.json({ error: "not_found" }, { status: 404 });
-
-  let historyReads = 0;
-  let pageReads = 0;
   vi.stubGlobal(
     "fetch",
     vi.fn(async (url: string, init?: RequestInit) => {
       const path = new URL(url).pathname;
 
-      if (path === `/pages/${PAGE}`) {
-        pageReads += 1;
-
-        return Response.json(currentPage);
-      }
+      if (path === `/pages/${PAGE}`) return Response.json(currentPage);
 
       if (path === "/editor/me") return Response.json({ roles });
 
       if (path.endsWith("/restore")) {
         restores.push({ url: path, init });
 
-        return restoreReply();
+        return (await restored).clone();
       }
 
-      if (path === `/pages/${PAGE}/history`) {
-        historyReads += 1;
-
-        return historyReply();
-      }
+      if (path === `/pages/${PAGE}/history` && entries) return Response.json({ entries });
 
       return Response.json({ error: "not_found" }, { status: 404 });
     }),
@@ -140,40 +134,21 @@ async function render(
     history: createMemoryHistory({ initialEntries: [`/history/${PAGE}`] }),
   });
 
-  const api = createEditorApi("https://api.example.test");
   await act(() => router.load());
-
-  const rerender = () =>
-    act(async () =>
-      root.render(
-        <RouterContextProvider router={router}>
-          <QueryClientProvider client={client}>
-            <HistoryScreen api={api} pageId={PAGE} serviceId="service-1" />
-            <Toaster />
-          </QueryClientProvider>
-        </RouterContextProvider>,
-      ),
-    );
-
-  await rerender();
-
-  return {
-    api,
-    rerender,
-    page: (next: Partial<ApiPage>) => {
-      currentPage = { ...currentPage, ...next };
-    },
-    entries: (next: PageHistoryEntry[]) => {
-      entries = next;
-    },
-    answer: (next: () => Promise<Response>) => {
-      restoreReply = next;
-    },
-    history: (next: () => Promise<Response>) => {
-      historyReply = next;
-    },
-    reads: () => ({ history: historyReads, page: pageReads }),
-  };
+  await act(async () =>
+    root.render(
+      <RouterContextProvider router={router}>
+        <QueryClientProvider client={client}>
+          <HistoryScreen
+            api={createEditorApi("https://api.example.test")}
+            pageId={PAGE}
+            serviceId="service-1"
+          />
+          <Toaster />
+        </QueryClientProvider>
+      </RouterContextProvider>,
+    ),
+  );
 }
 
 const until = (ready: () => void) => act(async () => vi.waitFor(ready));
@@ -379,7 +354,7 @@ test("restoring confirms first, then sends the version and the page's version it
 
   await act(async () => buttons("Restore this version")[1]?.click());
   await until(() => expect(document.body.textContent).toContain("Restore this version?"));
-  expect(document.body.textContent).toContain("nothing is removed");
+  expect(document.body.textContent).toContain("Nothing is removed from history");
   expect(restores).toEqual([]);
 
   await act(async () => buttons("Restore version")[0]?.click());
@@ -387,6 +362,128 @@ test("restoring confirms first, then sends the version and the page's version it
   expect(restores[0]?.url).toBe(`/pages/${PAGE}/history/1/restore`);
   expect(restores[0]?.init?.method).toBe("POST");
   expect(JSON.parse(String(restores[0]?.init?.body))).toEqual({ expected_version: READ });
+});
+
+test("a refreshed page cannot change an open restore confirmation; a conflict requires a new confirmation", async () => {
+  await render(VERSIONS, { roles: ["editor"] });
+  await until(() => expect(buttons("Restore this version")).toHaveLength(2));
+  await act(async () => buttons("Restore this version")[1]?.click());
+
+  currentPage = { ...currentPage, version: READ + 1, title: "Newer edit", visibility: "public" };
+  await act(async () => {
+    await client.refetchQueries({ queryKey: ["content", "page", PAGE] });
+  });
+  await until(() => expect(host.textContent).toContain("History: Newer edit"));
+  restored = Response.json({ error: "version_conflict" }, { status: 409 });
+  await act(async () => buttons("Restore version")[0]?.click());
+
+  expect(JSON.parse(String(restores[0]?.init?.body))).toEqual({ expected_version: READ });
+  expect(document.querySelector('[role="alertdialog"]')?.textContent).not.toContain(
+    "Citizens keep seeing the live page",
+  );
+  await until(() => expect(buttons("Restore version")[0]?.disabled).toBe(true));
+  expect(document.body.textContent).toContain(
+    "Cancel and review the latest version before restoring.",
+  );
+  await act(async () => buttons("Restore version")[0]?.click());
+  expect(restores).toHaveLength(1);
+
+  await act(async () => buttons("Cancel")[0]?.click());
+  await act(async () => buttons("Restore this version")[1]?.click());
+  await until(() => expect(buttons("Restore version")[0]?.disabled).toBe(false));
+  expect(document.querySelector('[role="alertdialog"]')?.textContent).toContain(
+    "Citizens keep seeing the live page",
+  );
+  restored = Response.json({
+    ...currentPage,
+    version: READ + 2,
+    pending_revision: { status: "draft", comment: null },
+  });
+  await act(async () => buttons("Restore version")[0]?.click());
+  expect(restores.map(({ init }) => JSON.parse(String(init?.body)).expected_version)).toEqual([
+    READ,
+    READ + 1,
+  ]);
+  await until(() => expect(document.body.textContent).toContain("Version restored"));
+  expect(document.body.textContent).toContain(
+    "Saved as a change. Submit it for review to publish it.",
+  );
+});
+
+test.each([
+  { visibility: "draft" as const, pendingRevision: null, malformed: false },
+  {
+    visibility: "public" as const,
+    pendingRevision: { status: "draft" as const, comment: null },
+    malformed: true,
+  },
+  {
+    visibility: "public" as const,
+    pendingRevision: { status: "submitted" as const, comment: null },
+    malformed: false,
+  },
+])(
+  "an unanswered restore retains its request across refreshes: $visibility / $pendingRevision",
+  async (options) => {
+    await render(VERSIONS, { roles: ["editor"], ...options });
+    await until(() => expect(buttons("Restore this version")).toHaveLength(2));
+    restored = options.malformed
+      ? Response.json({ id: PAGE })
+      : new Response(null, { status: 503 });
+    await act(async () => buttons("Restore this version")[1]?.click());
+    await act(async () => buttons("Restore version")[0]?.click());
+    await until(() =>
+      expect(document.body.textContent).toContain("We couldn’t confirm the restore."),
+    );
+    expect(restores).toHaveLength(1);
+    expect(document.body.textContent).not.toContain("Version restored");
+
+    currentPage = { ...currentPage, version: READ + 1, title: "Changed after dispatch" };
+    await act(async () => {
+      await client.refetchQueries({ queryKey: ["content", "page", PAGE] });
+    });
+    await until(() => expect(host.textContent).toContain("History: Changed after dispatch"));
+    restored = Response.json({ error: "version_conflict" }, { status: 409 });
+    await act(async () => buttons("Retry restore")[0]?.click());
+    await until(() => expect(restores).toHaveLength(2));
+    expect(restores.map(({ url, init }) => [url, JSON.parse(String(init?.body))])).toEqual([
+      [`/pages/${PAGE}/history/1/restore`, { expected_version: READ }],
+      [`/pages/${PAGE}/history/1/restore`, { expected_version: READ }],
+    ]);
+    expect(document.body.textContent).not.toContain("Version restored");
+  },
+);
+
+test("restore sends once while pending, blocks dismissal and returns focus after success", async () => {
+  await render(VERSIONS, { roles: ["editor"] });
+  await until(() => expect(buttons("Restore this version")).toHaveLength(2));
+  const trigger = buttons("Restore this version")[1]!;
+  await act(async () => {
+    trigger.focus();
+    trigger.click();
+  });
+  await until(() => expect(document.activeElement).toBe(buttons("Cancel")[0]));
+  let finish: (response: Response) => void = () => {};
+
+  restored = new Promise((resolve) => {
+    finish = resolve;
+  });
+  const confirm = buttons("Restore version")[0]!;
+  await act(async () => {
+    confirm.click();
+    confirm.click();
+  });
+  expect(restores).toHaveLength(1);
+  expect(buttons("Cancel")[0]?.disabled).toBe(true);
+  await act(async () => buttons("Cancel")[0]?.click());
+  expect(document.querySelector('[role="alertdialog"]')).not.toBeNull();
+
+  await act(async () => finish(Response.json({ ...currentPage, version: READ + 1 })));
+  await until(() => expect(document.querySelector('[role="alertdialog"]')).toBeNull());
+  expect(document.activeElement).toBe(trigger);
+  expect(document.querySelectorAll('[aria-label="Dismiss"]')).toHaveLength(1);
+  expect(document.body.textContent).toContain("Version restored");
+  expect(document.body.textContent).toContain("Saved as a new change at the top of the history.");
 });
 
 test("on a public page, the dialog says the restore waits for review", async () => {
@@ -400,6 +497,20 @@ test("on a public page, the dialog says the restore waits for review", async () 
       "Citizens keep seeing the live page until an approver publishes the change.",
     ),
   );
+});
+
+test("a restored submitted revision is still described as waiting for review", async () => {
+  await render(VERSIONS, {
+    roles: ["editor"],
+    visibility: "public",
+    pendingRevision: { status: "submitted", comment: null },
+  });
+  await until(() => expect(buttons("Restore this version")).toHaveLength(2));
+  await act(async () => buttons("Restore this version")[0]?.click());
+  await act(async () => buttons("Restore version")[0]?.click());
+  await until(() => expect(document.querySelector('[role="alertdialog"]')).toBeNull());
+  expect(document.body.textContent).toContain("Version restored");
+  expect(document.body.textContent).toContain("The change is still waiting for review.");
 });
 
 test("a refused restore says why in the dialog, which stays open", async () => {
@@ -440,240 +551,3 @@ test("a restore reads as restoring the version from its date", async () => {
   await until(() => expect(items()).toHaveLength(2));
   expect(items()[0]).toMatch(/^Restored the version from .+ by Ada Editor/);
 });
-
-const uncertainty =
-  "We couldn’t tell whether that went through. Check your connection, then check again before you try again.";
-
-const dialog = () => document.querySelector('[role="alertdialog"]');
-
-const restoredTitles = () =>
-  [...document.querySelectorAll("*")].filter(
-    (node) => node.children.length === 0 && node.textContent === "Version restored",
-  );
-
-async function openRestore(index = 0) {
-  await until(() => expect(buttons("Restore this version")).toHaveLength(2));
-  await act(async () => buttons("Restore this version")[index]!.click());
-  await until(() => expect(dialog()).not.toBeNull());
-}
-
-function watchRestoreNotices() {
-  const notices: string[] = [];
-
-  const check = (text: string | null) => {
-    if (
-      text &&
-      /couldn.t be restored|couldn’t tell|We could not refresh|Another|deleted since/.test(text)
-    )
-      notices.push(text);
-  };
-
-  const observer = new MutationObserver((changes) => {
-    check(document.body.textContent);
-
-    for (const change of changes) {
-      if (change.type === "characterData") check(change.target.textContent);
-
-      for (const node of [...change.addedNodes, ...change.removedNodes]) check(node.textContent);
-    }
-  });
-
-  observer.observe(document.body, { subtree: true, childList: true, characterData: true });
-
-  return { notices, stop: () => observer.disconnect() };
-}
-
-test.each([
-  ["draft", null, "It's saved as a new change at the top of the history."],
-  ["public", "submitted", "It's saved in the change that is waiting for review."],
-  ["public", "draft", "It's saved as a change to this page. Submit it for review to publish it."],
-] as const)(
-  "ordinary restore keeps the pressed %s/%s description across refetches",
-  async (visibility, status, description) => {
-    const server = await render(VERSIONS, { roles: ["editor"], visibility });
-
-    if (status) {
-      server.page({ pending_revision: { status, comment: null } });
-      await act(async () => client.invalidateQueries({ queryKey: ["content"] }));
-    }
-
-    await openRestore();
-    const sent = Promise.withResolvers<Response>();
-    server.answer(() => sent.promise);
-    const wording = dialog()!.textContent!;
-    const observing = watchRestoreNotices();
-    await act(async () => {
-      buttons("Restore version")[0]!.click();
-      buttons("Restore version")[0]?.click();
-    });
-    await until(() => expect(restores).toHaveLength(1));
-    server.page({
-      visibility: visibility === "public" ? "draft" : "public",
-      version: 99,
-      pending_revision: null,
-    });
-    server.entries([entry({ version_no: 5, action: "reverted", restored_from: 2 }), ...VERSIONS]);
-    await act(async () => client.invalidateQueries({ queryKey: ["content"] }));
-    await server.rerender();
-    expect(dialog()).not.toBeNull();
-    expect(dialog()!.textContent).toContain(
-      visibility === "public" ? "Citizens keep seeing" : "Who can see the page doesn't change.",
-    );
-    expect(wording).toContain(
-      visibility === "public" ? "Citizens keep seeing" : "Who can see the page doesn't change.",
-    );
-    expect(restoredTitles()).toHaveLength(0);
-    await act(async () =>
-      dialog()!.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })),
-    );
-    expect(dialog()).not.toBeNull();
-    await act(async () => sent.resolve(restored.clone()));
-    await until(() => expect(dialog()).toBeNull());
-    expect(document.body.textContent).toContain(description);
-    expect(restoredTitles()).toHaveLength(1);
-    await act(async () => client.invalidateQueries({ queryKey: ["content"] }));
-    await server.rerender();
-    expect(restoredTitles()).toHaveLength(1);
-    expect(restores).toHaveLength(1);
-    expect(observing.notices).toEqual([]);
-    observing.stop();
-  },
-);
-
-test("a lost restore confirms from independent history while its own queries run ahead", async () => {
-  const server = await render(VERSIONS, { roles: ["editor"] });
-  await openRestore();
-  const restoredEntry = entry({ version_no: 5, action: "reverted", restored_from: 2 });
-  const proof = Promise.withResolvers<Response>();
-  let reads = 0;
-  server.answer(async () => new Response(null, { status: 503 }));
-  server.history(async () =>
-    ++reads === 2 ? proof.promise : Response.json({ entries: [restoredEntry, ...VERSIONS] }),
-  );
-  server.page({ version: 99, visibility: "public" });
-  const observing = watchRestoreNotices();
-  await act(async () => buttons("Restore version")[0]!.click());
-  await until(() => expect(reads).toBe(2));
-  await until(() => expect(items()).toHaveLength(5));
-  await server.rerender();
-  expect(dialog()).not.toBeNull();
-  expect(dialog()!.textContent).toContain("Who can see the page doesn't change.");
-  expect(buttons("Restoring…")).toHaveLength(1);
-  expect(restoredTitles()).toHaveLength(0);
-  await act(async () => proof.resolve(Response.json({ entries: [restoredEntry, ...VERSIONS] })));
-  await until(() => expect(dialog()).toBeNull());
-  expect(document.body.textContent).toContain(
-    "It's saved as a new change at the top of the history.",
-  );
-  expect(restoredTitles()).toHaveLength(1);
-  await server.rerender();
-  expect(restoredTitles()).toHaveLength(1);
-  expect(restores).toHaveLength(1);
-  expect(observing.notices).toEqual([]);
-  observing.stop();
-});
-
-test("the first press captures the newest displayed history boundary and page version, not the opening's", async () => {
-  const server = await render(VERSIONS, { roles: ["editor"] });
-  await openRestore();
-  server.page({ version: 9 });
-  server.entries([entry({ version_no: 8, action: "reverted", restored_from: 2 }), ...VERSIONS]);
-  await act(async () => client.invalidateQueries({ queryKey: ["content"] }));
-  await server.rerender();
-  server.answer(async () => new Response(null, { status: 503 }));
-  await act(async () => buttons("Restore version")[0]!.click());
-  await until(() => expect(dialog()!.textContent).toContain(uncertainty));
-  expect(JSON.parse(String(restores[0]!.init!.body))).toEqual({ expected_version: 9 });
-  expect(restoredTitles()).toHaveLength(0);
-});
-
-test.each(["draft", "public"] as const)(
-  "an unconfirmed %s restore resends the frozen version after background refresh",
-  async (visibility) => {
-    const server = await render(VERSIONS, { roles: ["editor"], visibility });
-    await openRestore();
-    server.answer(async () => new Response(null, { status: 503 }));
-    await act(async () => buttons("Restore version")[0]!.click());
-    await until(() => expect(dialog()!.textContent).toContain(uncertainty));
-    expect(buttons("Check again")).toHaveLength(1);
-    expect(restores).toHaveLength(1);
-    expect(restoredTitles()).toHaveLength(0);
-    server.page({ version: 99, visibility: visibility === "public" ? "draft" : "public" });
-    server.entries([entry({ version_no: 100, action: "updated" }), ...VERSIONS]);
-    await act(async () => client.invalidateQueries({ queryKey: ["content"] }));
-    await server.rerender();
-    expect(dialog()).not.toBeNull();
-    expect(dialog()!.textContent).toContain(
-      visibility === "public" ? "Citizens keep seeing" : "Who can see the page doesn't change.",
-    );
-    server.answer(async () =>
-      Response.json(
-        { error: "version_conflict", message: "The page changed since you opened it." },
-        { status: 409 },
-      ),
-    );
-    await act(async () => buttons("Check again")[0]!.click());
-    await until(() =>
-      expect(dialog()!.textContent).toContain("The page changed since you opened it."),
-    );
-    expect(restores.map(({ url, init }) => [url, JSON.parse(String(init!.body))])).toEqual([
-      [`/pages/${PAGE}/history/2/restore`, { expected_version: READ }],
-      [`/pages/${PAGE}/history/2/restore`, { expected_version: READ }],
-    ]);
-    expect(restoredTitles()).toHaveLength(0);
-  },
-);
-
-test("closing an unknown restore of A and opening B cannot resend A", async () => {
-  const server = await render(VERSIONS, { roles: ["editor"] });
-  await openRestore(0);
-  server.answer(async () => new Response(null, { status: 503 }));
-  await act(async () => buttons("Restore version")[0]!.click());
-  await until(() => expect(dialog()!.textContent).toContain(uncertainty));
-  await act(async () => buttons("Cancel")[0]!.click());
-  await until(() => expect(dialog()).toBeNull());
-  await openRestore(1);
-  expect(dialog()!.textContent).not.toContain(uncertainty);
-  expect(buttons("Restore version")).toHaveLength(1);
-  server.answer(async () => restored.clone());
-  await act(async () => buttons("Restore version")[0]!.click());
-  await until(() => expect(dialog()).toBeNull());
-  expect(restores.map(({ url }) => url)).toEqual([
-    `/pages/${PAGE}/history/2/restore`,
-    `/pages/${PAGE}/history/1/restore`,
-  ]);
-  expect(restoredTitles()).toHaveLength(1);
-});
-
-test.each([
-  [400, "bad_request", "The request was not accepted."],
-  [401, "signed_out", "Sign in first."],
-  [403, "forbidden", "You need the editor role."],
-  [404, "version_not_found", "This page has no version 2 in its history."],
-  [409, "not_restorable", "Version 2 was removed from the history."],
-  [409, "version_conflict", "This page changed."],
-  [409, "not_restorable", undefined],
-  [422, "validation_failed", "The earlier path is taken."],
-] as const)(
-  "restore keeps the %s/%s refusal and only refreshes on 409",
-  async (status, error, message) => {
-    const server = await render(VERSIONS, { roles: ["editor"] });
-    await openRestore();
-    const reads = server.reads();
-    server.answer(async () => Response.json({ error, message }, { status }));
-    await act(async () => buttons("Restore version")[0]!.click());
-    await until(() =>
-      expect(dialog()!.textContent).toContain(
-        message ?? "The version couldn't be restored. Try again.",
-      ),
-    );
-    expect(restoredTitles()).toHaveLength(0);
-
-    if (status === 409) {
-      await until(() => expect(server.reads().history).toBe(reads.history + 1));
-      expect(server.reads().page).toBe(reads.page + 1);
-    } else {
-      expect(server.reads()).toEqual(reads);
-    }
-  },
-);

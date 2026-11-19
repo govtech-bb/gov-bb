@@ -204,3 +204,159 @@ export class RecordRejected extends Error {
     super(errors.map((error) => error.message).join(" "));
   }
 }
+
+/**
+ * What creating a collection sends (#3681). Only its shape is checked on the
+ * way in; `parseNewCollection` checks the rules, so each refusal names the
+ * field it is about.
+ */
+export const NewCollection = z.strictObject({
+  key: z
+    .string()
+    .describe(
+      "The collection's name in urls: lowercase letters, numbers and " +
+        "hyphens, up to 100 characters. No other collection may have it.",
+    ),
+  title: z
+    .string()
+    .describe("What editors see it called, up to 200 characters."),
+  record_key: z
+    .string()
+    .describe(
+      "The key of the `slug` field whose value names each record in its url.",
+    ),
+  schema: z.strictObject({
+    fields: z
+      .array(
+        z.strictObject({
+          key: z
+            .string()
+            .describe(
+              "Lowercase letters, numbers and hyphens, up to 100 " +
+                "characters; unique among the collection's fields.",
+            ),
+          label: z.string(),
+          type: z
+            .string()
+            .describe(
+              `One of ${FIELD_TYPES.map((type) => `\`${type}\``).join(", ")}.`,
+            ),
+        }),
+      )
+      .describe("At least one field."),
+  }),
+});
+/** What creating a collection sends, before its rules are checked. */
+export type NewCollection = z.infer<typeof NewCollection>;
+
+/** A collection's definition as it is written: one that passed every rule. */
+export type CollectionDefinition = Pick<
+  CollectionView,
+  "key" | "title" | "record_key" | "schema"
+>;
+
+/** The longest field key: the record key field's key is stored in `data_collections.record_key`. */
+const FIELD_KEY_MAX = 100;
+const TITLE_MAX = 200;
+/** Characters PostgreSQL refuses in text (NUL) or that have no place in a name. */
+// oxlint-disable-next-line no-control-regex -- matching control characters is the point
+const CONTROL = /[\u0000-\u001f\u007f]/;
+
+/**
+ * Check a new collection against the rules: a key in the `CollectionKey`
+ * format, a title, at least one field, each with a key no other field has, a
+ * label and one of `FIELD_TYPES`, and a record key that names one of its
+ * `slug` fields, since a record's key is a slug in its url.
+ */
+export function parseNewCollection(
+  input: NewCollection,
+): Result<CollectionDefinition, CollectionRejected> {
+  const errors: FieldError[] = [];
+  if (!CollectionKey.safeParse(input.key).success)
+    errors.push({
+      field: "key",
+      message:
+        "Use lowercase letters, numbers and hyphens, up to 100 characters.",
+    });
+  const title = input.title.trim();
+  if (!title || title.length > TITLE_MAX || CONTROL.test(title))
+    errors.push({
+      field: "title",
+      message: `Enter a title, up to ${TITLE_MAX} characters, without control characters.`,
+    });
+  const fields: CollectionField[] = [];
+  const seen = new Set<string>();
+  input.schema.fields.forEach((field, index) => {
+    const at = `schema.fields.${index}`;
+    const key = field.key;
+    // The slug rule a collection key keeps, so a field key is never `__proto__`
+    // in a record's data, nor has spaces or punctuation a reference trips on
+    if (!CollectionKey.safeParse(key).success)
+      errors.push({
+        field: `${at}.key`,
+        message: `Use lowercase letters, numbers and hyphens, up to ${FIELD_KEY_MAX} characters.`,
+      });
+    else if (seen.has(key))
+      errors.push({
+        field: `${at}.key`,
+        message: `Another field already has the key ${key}.`,
+      });
+    seen.add(key);
+    const label = field.label.trim();
+    if (!label || CONTROL.test(label))
+      errors.push({
+        field: `${at}.label`,
+        message: "Enter a label, without control characters.",
+      });
+    const type = CollectionField.shape.type.safeParse(field.type);
+    if (!type.success)
+      errors.push({
+        field: `${at}.type`,
+        message: `Choose one of ${FIELD_TYPES.join(", ")}.`,
+      });
+    else fields.push({ key, label, type: type.data });
+  });
+  if (input.schema.fields.length === 0)
+    errors.push({ field: "schema.fields", message: "Add at least one field." });
+  const named = input.schema.fields.find(
+    (field) => field.key === input.record_key,
+  );
+  // With no fields at all, the field list's own refusal says what to do
+  if (!named) {
+    if (input.schema.fields.length > 0)
+      errors.push({
+        field: "record_key",
+        message: "Choose one of the collection's fields as the record key.",
+      });
+  } else if (named.type !== "slug")
+    errors.push({
+      field: "record_key",
+      message:
+        "The record key must be a slug field: its value names each record in its url.",
+    });
+  if (errors.length > 0) return err(new CollectionRejected(errors));
+  return ok({
+    key: input.key,
+    title,
+    record_key: input.record_key,
+    schema: { fields },
+  });
+}
+
+/** A new collection's definition breaks a rule. */
+export class CollectionRejected extends Error {
+  /** Stable protocol-projection discriminator. */
+  readonly _tag = "CollectionRejected" as const;
+  constructor(readonly errors: readonly FieldError[]) {
+    super(errors.map((error) => error.message).join(" "));
+  }
+}
+
+/** A create named a collection that is already there. */
+export class CollectionExists extends Error {
+  /** Stable protocol-projection discriminator. */
+  readonly _tag = "CollectionExists" as const;
+  constructor(readonly key: string) {
+    super(`There is already a collection ${key}.`);
+  }
+}

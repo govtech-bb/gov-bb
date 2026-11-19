@@ -15,7 +15,7 @@ import {
   type FormSearchParams,
 } from "../../../types/form-search-param.type";
 import { useForm, useStore, revalidateLogic } from "@tanstack/react-form";
-import {
+import type {
   RepeatableStepSettings,
   FormValues,
   FormMeta,
@@ -142,6 +142,7 @@ function RouteComponent() {
   ) {
     return (
       <ApplicationClosed
+        formId={formMeta.formId}
         serviceTitle={formMeta.formTitle}
         closingDateTime={closingDateTime}
         contactDetails={formMeta.contactDetails}

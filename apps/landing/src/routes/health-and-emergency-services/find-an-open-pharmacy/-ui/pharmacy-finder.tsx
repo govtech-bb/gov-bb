@@ -11,6 +11,7 @@
  */
 
 import { Button, Heading, Text } from '@govtech-bb/react'
+import { trackEvent } from '@/lib/analytics'
 import {
   useCallback,
   useEffect,
@@ -31,6 +32,7 @@ import {
   paramsFromFilters,
 } from '../-lib/finder-filters'
 import { pharmacyDistanceKm } from '../-lib/pharmacy-distance'
+import { parishCode } from '../-lib/tool-events'
 import { FilterSidebar } from './filter-sidebar'
 import { NoResultsPanel } from './no-results-panel'
 import { PharmacyCard } from './pharmacy-card'
@@ -63,6 +65,9 @@ type LocationState = 'idle' | 'loading' | 'success'
 /** Pharmacies shown before the "Show more" button appears. */
 const PAGE_SIZE = 12
 
+/** Quiet time before a filter change counts as a settled result. */
+const RESULT_SETTLE_MS = 1000
+
 export function PharmacyFinder() {
   const [filters, dispatchFilters] = useReducer(filtersReducer, DEFAULT_FILTERS)
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
@@ -93,6 +98,10 @@ export function PharmacyFinder() {
   const requestLocation = useCallback(() => {
     const requestId = ++locationRequest.current
     if (!navigator.geolocation) {
+      trackEvent('tool-error', {
+        tool: 'pharmacy-finder',
+        error: 'location-unavailable',
+      })
       setLocationStatus(
         'Your browser cannot share your location. You can still filter by parish.',
       )
@@ -114,6 +123,10 @@ export function PharmacyFinder() {
       },
       (error) => {
         if (!mounted.current || requestId !== locationRequest.current) return
+        trackEvent('tool-error', {
+          tool: 'pharmacy-finder',
+          error: error.code === 1 ? 'location-denied' : 'location-unavailable',
+        })
         setUserLocation(null)
         setLocationState('idle')
         setLocationStatus(
@@ -186,6 +199,29 @@ export function PharmacyFinder() {
       ).sort((a, b) => compareForSort(a, b, now, userLocation)),
     [filters, now, userLocation],
   )
+
+  // One tool-result per settled result: changes less than a second apart
+  // (keystrokes, the URL hydrate after mount) restart the wait. The minute
+  // tick sends again only when it changes the count (under "Open right now").
+  const resultCount = results.length
+  const usedLocation = locationState === 'success'
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      trackEvent('tool-result', {
+        tool: 'pharmacy-finder',
+        outcome: resultCount > 0 ? 'results' : 'no-results',
+        results: resultCount,
+        parishes: filters.parishes.map(parishCode).join(',') || undefined,
+        type: filters.type,
+        slip: filters.slip,
+        subsidised_only: filters.subsidisedOnly,
+        open_now: filters.openNow,
+        has_query: filters.search.trim() !== '',
+        used_location: usedLocation,
+      })
+    }, RESULT_SETTLE_MS)
+    return () => clearTimeout(timer)
+  }, [filters, resultCount, usedLocation])
 
   // The complete default directory remains usable without JavaScript.
   const visiblePharmacies =

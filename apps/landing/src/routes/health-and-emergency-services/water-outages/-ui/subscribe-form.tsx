@@ -8,6 +8,7 @@ import {
   Text,
 } from '@govtech-bb/react'
 import { useRef, useState, useTransition } from 'react'
+import { trackEvent } from '@/lib/analytics'
 import { PARISHES } from '../-lib/parishes'
 import { subscribeWaterAlerts } from '../-lib/water-alerts'
 
@@ -43,16 +44,28 @@ export function SubscribeForm({
     setOpen(true)
   }
 
+  // Never the address itself, only that it was refused.
+  function trackInvalidEmail() {
+    trackEvent('tool-error', { tool: 'water-outages', error: 'invalid-email' })
+  }
+
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     const address = email.trim()
     if (!EMAIL_RE.test(address)) {
       setEmailError('Please enter a valid email address.')
+      trackInvalidEmail()
       emailInput.current?.focus()
       return
     }
     setEmailError(undefined)
+    trackEvent('tool-action', {
+      tool: 'water-outages',
+      action: 'subscribe-submit',
+      target: area || 'all',
+    })
     startTransition(async () => {
+      let sent = false
       try {
         const result = await subscribeWaterAlerts({
           data: { email: address, area },
@@ -60,12 +73,17 @@ export function SubscribeForm({
         if (result.ok) {
           setDoneMessage(result.message)
           setStatus('done')
+          sent = true
         } else {
           setStatus('error')
         }
       } catch {
         setStatus('error')
       }
+      trackEvent('tool-result', {
+        tool: 'water-outages',
+        outcome: sent ? 'subscribe-sent' : 'subscribe-failed',
+      })
     })
   }
 
@@ -129,6 +147,8 @@ export function SubscribeForm({
         maxLength={254}
         name="email"
         onChange={(e) => setEmail(e.target.value)}
+        // The browser's own check stops most bad addresses before onSubmit.
+        onInvalid={trackInvalidEmail}
         ref={emailInput}
         required
         type="email"

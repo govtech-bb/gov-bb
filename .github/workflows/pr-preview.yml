@@ -51,7 +51,6 @@ jobs:
     outputs:
       forms: ${{ steps.affected.outputs.forms }}
       landing: ${{ steps.affected.outputs.landing }}
-      chat: ${{ steps.affected.outputs.chat }}
       fb-app: ${{ steps.affected.outputs.fb-app }}
       analytics: ${{ steps.affected.outputs.analytics }}
       amplify-config: ${{ steps.affected.outputs.amplify-config }}
@@ -127,12 +126,11 @@ jobs:
 
           echo "forms=$(has forms)" >> "$GITHUB_OUTPUT"
           echo "landing=$(has landing)" >> "$GITHUB_OUTPUT"
-          echo "chat=$(has chat)" >> "$GITHUB_OUTPUT"
           echo "fb-app=$(has form-builder-app)" >> "$GITHUB_OUTPUT"
           echo "analytics=$(has analytics-app)" >> "$GITHUB_OUTPUT"
 
           # amplify.yml is a workspace-root file nx can't attribute to
-          # any app. Force all 6 frontend gates when it or this
+          # any app. Force all 4 frontend gates when it or this
           # workflow itself changes (same escape hatch as
           # deploy-sandbox.yml).
           if git diff --name-only "$NX_BASE" "$NX_HEAD" \
@@ -144,7 +142,7 @@ jobs:
 
           # The per-PR preview smoke drives the jobstart-plus-programme form on
           # the preview frontend, which fetches contracts from the SANDBOX API —
-          # so it can only validate a recipe already live on sandbox (ADR 0051).
+          # so it can only validate a recipe already live on sandbox (ADR 0050).
           # (It must be a PUBLIC form: the preview frontend hits the sandbox API,
           # which 404s non-public forms (#1646).) When this PR changes that recipe
           # (or its smoke spec), the preview would run the new spec against the
@@ -287,7 +285,7 @@ jobs:
     # jobstart-plus-programme recipe/spec AND it doesn't target prod. A contract
     # change can't be preview-smoked — the preview frontend serves the sandbox
     # API's OLD recipe, so the updated spec would always fail until the new
-    # version ships (ADR 0051). The same skew applies to prod-targeted PRs
+    # version ships (ADR 0050). The same skew applies to prod-targeted PRs
     # (hotfixes/restores): their frontend carries prod's contract, which can lag
     # the sandbox API the preview always points at, so the smoke would spuriously
     # fail. Both cases are covered post-deploy by smoke-test-forms in
@@ -344,119 +342,6 @@ jobs:
         env:
           AMPLIFY_APP_ID: d3kbl8o0ovutw4
           APP_LABEL: landing
-          BRANCH_NAME: ${{ github.event.pull_request.head.ref }}
-        run: |
-          if ! aws amplify get-branch \
-                --app-id "$AMPLIFY_APP_ID" \
-                --branch-name "$BRANCH_NAME" \
-                --region "$AWS_REGION" >/dev/null 2>&1; then
-            echo "Creating Amplify branch $BRANCH_NAME on $AMPLIFY_APP_ID"
-            aws amplify create-branch \
-              --app-id "$AMPLIFY_APP_ID" \
-              --branch-name "$BRANCH_NAME" \
-              --region "$AWS_REGION" >/dev/null
-          else
-            echo "Amplify branch $BRANCH_NAME already exists on $AMPLIFY_APP_ID"
-          fi
-
-          SUBDOMAIN="${BRANCH_NAME//\//-}"
-          URL="https://${SUBDOMAIN}.${AMPLIFY_APP_ID}.amplifyapp.com"
-          echo "url=$URL" >> "$GITHUB_OUTPUT"
-          echo "Preview URL: $URL"
-
-          # Cancel any in-flight Amplify jobs on this branch before
-          # queueing a new one. start-job fails with
-          # LimitExceededException if a non-terminal job already exists
-          # for the branch — our latest-commit-wins concurrency model
-          # means we want the older build dropped. Scoped per branch:
-          # list-jobs and stop-job both require --branch-name, so this
-          # cannot touch sandbox/staging/prod or other PR branches.
-          IN_FLIGHT=$(aws amplify list-jobs \
-            --app-id "$AMPLIFY_APP_ID" \
-            --branch-name "$BRANCH_NAME" \
-            --region "$AWS_REGION" \
-            --query "jobSummaries[?status=='CREATED' || status=='PENDING' || status=='PROVISIONING' || status=='RUNNING'].jobId" \
-            --output text)
-          for J in $IN_FLIGHT; do
-            echo "Cancelling in-flight Amplify $APP_LABEL job $J"
-            aws amplify stop-job \
-              --app-id "$AMPLIFY_APP_ID" \
-              --branch-name "$BRANCH_NAME" \
-              --job-id "$J" \
-              --region "$AWS_REGION" >/dev/null \
-              || echo "stop-job failed for $J (continuing)"
-          done
-          # Brief wait so the cancellation registers before start-job.
-          [ -n "$IN_FLIGHT" ] && sleep 5
-
-          JOB_ID=$(aws amplify start-job \
-            --app-id "$AMPLIFY_APP_ID" \
-            --branch-name "$BRANCH_NAME" \
-            --job-type RELEASE \
-            --region "$AWS_REGION" \
-            --query jobSummary.jobId \
-            --output text 2>&1) || {
-            echo "❌ Amplify $APP_LABEL start-job failed: $JOB_ID"
-            echo "status=START_FAILED" >> "$GITHUB_OUTPUT"
-            exit 1
-          }
-          echo "Amplify $APP_LABEL job started: $JOB_ID"
-
-          for i in $(seq 1 30); do
-            STATUS=$(aws amplify get-job \
-              --app-id "$AMPLIFY_APP_ID" \
-              --branch-name "$BRANCH_NAME" \
-              --job-id "$JOB_ID" \
-              --region "$AWS_REGION" \
-              --query job.summary.status \
-              --output text)
-            echo "[$i/30] Amplify $APP_LABEL status: $STATUS"
-            if [ "$STATUS" = "SUCCEED" ]; then
-              echo "✅ Amplify $APP_LABEL build succeeded"
-              echo "status=SUCCEED" >> "$GITHUB_OUTPUT"
-              exit 0
-            elif [ "$STATUS" = "FAILED" ] || [ "$STATUS" = "CANCELLED" ]; then
-              echo "❌ Amplify $APP_LABEL build $STATUS"
-              echo "status=$STATUS" >> "$GITHUB_OUTPUT"
-              exit 1
-            fi
-            sleep 30
-          done
-          echo "❌ Amplify $APP_LABEL build did not finish within 15 minutes"
-          echo "status=TIMED_OUT" >> "$GITHUB_OUTPUT"
-          exit 1
-
-  preview-chat:
-    name: Preview (chat)
-    needs: setup
-    # DISABLED 2026-07-30: the gov-bb-chat Amplify app (d3snq1f0c10466) was
-    # repointed to the govtech-bb/govbb-chatbot repo during the chat cutover.
-    # A RELEASE build for a gov-bb PR head branch now fails — Amplify checks
-    # that branch out of govbb-chatbot, where it does not exist, so every
-    # gov-bb PR got a red X here. Gate the job off (always skips) while
-    # keeping the scaffolding in place; chat previews now belong in the
-    # govbb-chatbot repo's own workflow. To re-enable, restore the
-    # affected-apps condition on the line below.
-    if: false
-    # if: needs.setup.outputs.chat == 'true' || needs.setup.outputs.amplify-config == 'true'
-    runs-on: ubuntu-latest
-    permissions:
-      id-token: write # OIDC for the AWS role (configure-aws-credentials)
-      contents: read
-    outputs:
-      status: ${{ steps.build.outputs.status }}
-      url: ${{ steps.build.outputs.url }}
-    steps:
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@254c19bd240aabef8777f48595e9d2d7b972184b # v6.2.1
-        with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-          aws-region: ${{ env.AWS_REGION }}
-      - name: Create branch and trigger preview build
-        id: build
-        env:
-          AMPLIFY_APP_ID: d3snq1f0c10466
-          APP_LABEL: chat
           BRANCH_NAME: ${{ github.event.pull_request.head.ref }}
         run: |
           if ! aws amplify get-branch \
@@ -774,7 +659,14 @@ jobs:
   # terminal state (success, failure, or skip).
   comment:
     name: Post preview comment
-    needs: [setup, preview-forms, preview-landing, preview-chat, preview-form-builder, preview-analytics]
+    needs:
+      [
+        setup,
+        preview-forms,
+        preview-landing,
+        preview-form-builder,
+        preview-analytics,
+      ]
     if: |
       always()
       && github.event.action != 'closed'
@@ -792,9 +684,6 @@ jobs:
           LANDING_RESULT: ${{ needs.preview-landing.result }}
           LANDING_STATUS: ${{ needs.preview-landing.outputs.status }}
           LANDING_URL: ${{ needs.preview-landing.outputs.url }}
-          CHAT_RESULT: ${{ needs.preview-chat.result }}
-          CHAT_STATUS: ${{ needs.preview-chat.outputs.status }}
-          CHAT_URL: ${{ needs.preview-chat.outputs.url }}
           FB_RESULT: ${{ needs.preview-form-builder.result }}
           FB_STATUS: ${{ needs.preview-form-builder.outputs.status }}
           FB_URL: ${{ needs.preview-form-builder.outputs.url }}
@@ -842,7 +731,6 @@ jobs:
             echo "|---|---|---|"
             row "forms"           "$FORMS_RESULT"     "$FORMS_STATUS"     "$FORMS_URL"
             row "landing"         "$LANDING_RESULT"   "$LANDING_STATUS"   "$LANDING_URL"
-            row "chat"            "$CHAT_RESULT"      "$CHAT_STATUS"      "$CHAT_URL"
             row "form-builder"    "$FB_RESULT"        "$FB_STATUS"        "$FB_URL"
             row "analytics"       "$ANALYTICS_RESULT" "$ANALYTICS_STATUS" "$ANALYTICS_URL"
             echo ""
@@ -860,7 +748,7 @@ jobs:
           header: amplify-pr-preview
           path: comment.md
 
-  # On PR close, delete the per-PR Amplify branch from the 5 per-PR apps
+  # On PR close, delete the per-PR Amplify branch from the 4 per-PR apps
   # (feature-flagging is excluded — it uses a shared, permanent slot).
   # The branch only exists on apps that were affected at some point in
   # this PR's life, so "not found" errors are swallowed.
@@ -877,7 +765,7 @@ jobs:
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
-      - name: Delete branches on the 5 per-PR sandbox Amplify apps
+      - name: Delete branches on the 4 per-PR sandbox Amplify apps
         env:
           BRANCH_NAME: ${{ github.event.pull_request.head.ref }}
         run: |
@@ -896,7 +784,6 @@ jobs:
           for entry in \
               "forms:d1j7z1k0h7u5nb" \
               "landing:d3kbl8o0ovutw4" \
-              "chat:d3snq1f0c10466" \
               "form-builder:d16oo4n0w76zwn" \
               "analytics:d363pae4e63dc6"; do
             label="${entry%%:*}"

@@ -161,7 +161,7 @@ available. Location coordinates stay in the browser. OpenStreetMap supplies tile
 ```sh
 pnpm --filter @govtech-bb/api exec vitest run src/water-alerts --coverage.enabled=false
 pnpm --filter @govtech-bb/landing exec vitest run src/routes/health-and-emergency-services/water-outages
-pnpm --filter @govtech-bb/landing typecheck
+pnpm --filter @govtech-bb/landing test:types
 pnpm --filter @govtech-bb/landing build
 pnpm exec nx run-many -t build --exclude=landing
 ```

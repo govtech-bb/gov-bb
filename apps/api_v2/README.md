@@ -29,7 +29,7 @@ For local development only, `AUTH_BYPASS=true` skips sign-in. BetterAuth is not 
 | `DB_SSL_CA`                                        | Optional PEM contents or CA file path; production uses verified TLS                                                                                                                                                     |
 | `PORT`                                             | `3020`                                                                                                                                                                                                                  |
 | `SEED`                                             | `true` loads the committed estate snapshot on boot. Local development only: an additive seed on every boot brings back a page an editor deleted, so no deployed environment may set it, and production refuses to boot  |
-| `BETTER_AUTH_URL`                                  | Required public API origin                                                                                                                                                                                              |
+| `BETTER_AUTH_URL`                                  | Required public API URL: an origin, or an origin and the base path every route is mounted under (`/v2`, #3745)                                                                                                          |
 | `EDITOR_ORIGIN`                                    | Required editor origin; the exact credentialed CORS and write-origin allowlist                                                                                                                                          |
 | `BETTER_AUTH_SECRET`                               | Required secret of at least 32 characters                                                                                                                                                                               |
 | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`         | Required server-side Google OAuth client credentials                                                                                                                                                                    |
@@ -63,23 +63,23 @@ Route plugins receive their services and request identity readers explicitly thr
 
 On both first and returning sign-ins, the API admits a Google account only when the ID token's `email_verified` is true, its `hd` (hosted domain) claim is on `GOOGLE_ALLOWED_DOMAINS`, and the email's domain matches `hd`. A personal Gmail account has no `hd` and is refused. The `hd` authorize parameter only steers Google's account chooser, so the claim is checked on the server. Password login and client-supplied ID-token sign-in are disabled. Existing users can link Google through the same verified email only after passing the Workspace check; provider trust never bypasses email verification. OAuth tokens are discarded before account persistence. Sessions expire absolutely after eight hours; reads do not extend them. Session cookies are checked against PostgreSQL on every protected request, so revocation takes effect immediately. Workspace changes, such as a suspended account, are checked on the next Google sign-in; existing application sessions must be revoked when immediate removal is required.
 
-Migration `003_auth` adds BetterAuth's four core tables: `auth_user`, `auth_session`, `auth_account`, and `auth_verification`. It does not replace content tables or author data. BetterAuth reads and writes them through its Drizzle adapter, over the same tables defined in `schema.ts` (where `schema.test.ts` checks them column for column); migrations stay hand-written and replay-safe, never generated. The migration is checked against the installed BetterAuth schema in the PostgreSQL integration suite. Migration `004_github_sessions` revoked sessions without a linked GitHub account when sign-in briefly moved from Google to GitHub (6 Oct 2026). User IDs, accounts, content, audit history, and browser drafts were preserved. Migration `020_google_sessions` revokes every session without a linked Google account when sign-in moves to Google (#3412), so nobody keeps a session the Workspace check never admitted; users, accounts and roles stay. A Google sign-in links to an existing user, keeping their user ID, roles and history, only when their verified Google email equals the user's email. Migration `021_github_accounts` deletes the GitHub account links, which can never sign in again. A GitHub-era user whose email isn't their Workspace address is moved by `API_V2_EMAIL_MOVES` (#3418): comma-separated `old=new` pairs, applied on every boot before sign-in is served. A move keeps the user ID; if the person already signed in with Google, that new user is dropped when it has no history, and both are left alone (logged as `conflict`) when it has. Set it per environment, outside this public repo, and remove it once everyone has moved.
+BetterAuth has four core tables: `auth_user`, `auth_session`, `auth_account`, and `auth_verification`. BetterAuth reads and writes them through its Drizzle adapter, over the tables defined in `schema.ts`, which the migrations are generated from. The e2e suite checks them against the installed BetterAuth schema. Sessions without a linked GitHub account were revoked when sign-in briefly moved from Google to GitHub (6 Oct 2026). User IDs, accounts, content, audit history, and browser drafts were preserved. Every session without a linked Google account was revoked when sign-in moved to Google (#3412), so nobody kept a session the Workspace check never admitted; users, accounts and roles stayed. A Google sign-in links to an existing user, keeping their user ID, roles and history, only when their verified Google email equals the user's email. The GitHub account links, which can never sign in again, were deleted. A GitHub-era user whose email isn't their Workspace address is moved by `API_V2_EMAIL_MOVES` (#3418): comma-separated `old=new` pairs, applied on every boot before sign-in is served. A move keeps the user ID; if the person already signed in with Google, that new user is dropped when it has no history, and both are left alone (logged as `conflict`) when it has. Set it per environment, outside this public repo, and remove it once everyone has moved.
 
 ### Roles
 
 Signing in decides who is an employee; roles decide what they can do (ADR 0134). Roles are rows in `user_roles` (migration `008_user_roles`, numbered after #3340's 006 and 007), read on every request, so a revocation applies to the employee's next request.
 
 - `editor` writes: creating, saving and deleting pages. A new user has no role at their first sign-in: they can read the editor but not write until an admin grants `editor` (ADR 0134, amended for #3412). Under GitHub sign-in api_v2 granted it by default, and migration `009_default_editor_role` granted it once to everyone who had signed in before; those grants stay.
-- `approver` changes what citizens see: changing a page's `visibility`, deleting a `public` page, rejecting or publishing a pending revision, and creating, editing, reordering and deleting categories, so landing shows only category changes an approver made (#3201). These are direct actions, with no request waiting for a second approver, except that an approver can't make public content they changed (see Making a page public). An editor who isn't an approver can make every other edit, and submit a revision for review.
-- `admin` lists employees and grants and revokes roles (`/editor/employees…`), recording who granted each. A signed-in employee whose email `API_V2_ADMIN_EMAILS` lists is granted `admin` and `editor`, with no grantor, if they lack them, so a listed admin can write as well as grant roles; an admin cannot revoke a listed admin's roles for good.
+- `approver` changes what citizens see: changing a page's `visibility`, deleting a `public` page, adding, moving, renaming or deleting a hidden `start` sub-page of a `public` page (it decides whether that page's Start link shows), rejecting or publishing a pending revision, and creating, editing, reordering and deleting categories, so landing shows only category changes an approver made (#3201). These are direct actions, with no request waiting for a second approver, except that an approver can't make public content they changed (see Making a page public). An editor who isn't an approver can make every other edit, and submit a revision for review.
+- `admin` lists employees and grants and revokes roles (`/editor/employees…`), recording who granted each. An admin or an approver creates data collections (`POST /collections`, #3681). A signed-in employee whose email `API_V2_ADMIN_EMAILS` lists is granted `admin` and `editor`, with no grantor, if they lack them, so a listed admin can write as well as grant roles; an admin cannot revoke a listed admin's roles for good.
 
-A refusal is a 403 `{error: "forbidden", message}` and the database is unchanged. Reads stay open to every signed-in employee, roles or not. Each write route names the role it needs in its route options (`config: { role: "editor" }`, or `"approver"` for publishing and rejecting revisions and for every category write), and the editor scope's `onRequest` hook enforces it; a write route that names none is refused to everyone, and `src/route-auth.test.ts` fails until it names one. That test also fails when a route that changes what citizens see names neither `approver` nor is one of the page writes (`POST`, `PUT` and `DELETE /pages…`) whose approver check sits in `PageEditing`, because only some of their writes need one.
+A refusal is a 403 `{error: "forbidden", message}` and the database is unchanged. Reads stay open to every signed-in employee, roles or not. Each write route names the role it needs in its route options (`config: { role: "editor" }`, or `"approver"` for publishing and rejecting revisions and for every category write), or several roles any one of which will do (`["admin", "approver"]` for creating a collection, whose 403 names both), and the editor scope's `onRequest` hook enforces it; a write route that names none is refused to everyone, and `src/route-auth.test.ts` fails until it names one. That test also fails when a route that changes what citizens see names neither `approver` nor is one of the page writes (`POST`, `PUT` and `DELETE /pages…`) whose approver check sits in `PageEditing`, because only some of their writes need one.
 
 ### Making a page public
 
 Making a page public approves its content, so the self-approval rule (ADR 0134) applies to it as it does to a revision (#3201). A save that makes a page public is a 403, and nothing is written, when the approver changed the page's content since it was last public, or ever when it never was: in an earlier save, or in this one. Another approver makes it public. Who changed it comes from the page's `change_events`: the actor of each `created`, `updated`, `published`, `unpublished` or `reverted` entry since the last one whose snapshot is public, counting only entries whose row differs from the one before in more than `visibility` and its stamps (and, for a sub-page, its category, which follows its parent's when a write above it carries it along), so an approver who only took the page out of public view, or moved it between Draft and Preview, may still make it public. Creating a page as `public` needs the approver role, and is refused to an approver for the same reason, so outside `AUTH_BYPASS` nobody creates a page as `public`: create it as Preview or Draft. Under `AUTH_BYPASS` the rule is relaxed, as it is for revisions. So an approver can't skip review by taking a public page private, editing it and making it public again, nor by deleting it and creating it again as `public`.
 
-Unpublishing a page and deleting a `public` page stay direct approver actions: they take content away from citizens rather than show them unreviewed content. Deleting a Preview or Draft page needs only the editor role (#3187).
+Unpublishing a page and deleting a `public` page stay direct approver actions: they take content away from citizens rather than show them unreviewed content. Deleting a Preview or Draft page needs only the editor role (#3187), unless it is a `start` sub-page of a `public` page: that is an approver's, because removing it can show the page's Start link.
 
 Under `AUTH_BYPASS` the local developer holds every role. `GET /editor/me` returns the signed-in employee and their roles, which the editor uses to hide what they cannot do.
 
@@ -201,11 +201,11 @@ erDiagram
     varchar(100) slug UK
     varchar(200) title
     text description "nullable"
-    timestamptz(3) created_at
-    timestamptz(3) updated_at
     uuid parent_id FK "nullable"
     int4 position
     int8 version
+    timestamptz(3) created_at
+    timestamptz(3) updated_at
   }
   change_event_counters {
     varchar(40) entity_kind PK
@@ -217,40 +217,40 @@ erDiagram
     varchar(40) entity_kind "unique (entity_kind, entity_id, version_no)"
     text entity_id
     int4 version_no
+    int8 event_order "nullable"
     change_action action
     jsonb snapshot
+    int4 snapshot_version "nullable"
     text actor FK
     timestamptz(3) occurred_at
-    int4 snapshot_version "nullable"
     int4 restored_from "nullable"
-    int8 event_order "nullable"
   }
   collection_records {
     uuid id PK
     varchar(100) collection_key FK "unique (collection_key, record_key)"
     varchar(200) record_key
     jsonb data
+    int8 version
     timestamptz(3) created_at
     timestamptz(3) updated_at
-    int8 version
   }
   content_pages {
     uuid id PK "unique (id, category_id)"
     varchar(512) url UK
     varchar(200) slug
+    uuid category_id FK "nullable"
+    uuid parent_id FK "nullable"
     varchar(300) title
     text description "nullable"
-    timestamptz(3) created_at
-    timestamptz(3) updated_at
-    uuid category_id FK "nullable"
     page_visibility visibility
     varchar(100) form_id "nullable"
     text body_markdown
     jsonb frontmatter
     timestamptz(3) published_at "nullable"
-    uuid parent_id FK "nullable"
     timestamptz(3) content_updated_at
     int8 version
+    timestamptz(3) created_at
+    timestamptz(3) updated_at
   }
   data_collections {
     uuid id PK
@@ -275,13 +275,13 @@ erDiagram
     timestamptz(3) live_updated_at
     text created_by
     text[] contributors
-    timestamptz(3) created_at
-    timestamptz(3) updated_at
     text submitted_by "nullable"
     timestamptz(3) submitted_at "nullable"
     text decided_by "nullable"
     timestamptz(3) decided_at "nullable"
     text comment "nullable"
+    timestamptz(3) created_at
+    timestamptz(3) updated_at
   }
   search_chunks {
     uuid id PK
@@ -341,14 +341,15 @@ erDiagram
 | PUT      | `/editor/categories/order`             | Approver; reorder a complete expected sibling snapshot                 |
 | DELETE   | `/editor/categories/:id`               | Approver; delete an empty category with query `expected_version`                |
 | GET      | `/collections`                         | Employee; every data collection with its field list and record count   |
+| POST     | `/collections`                         | Admin or approver; create a collection and its field list              |
 | GET      | `/collections/:key/records/:recordKey` | Employee; coherent versioned `{ collection, record }` snapshot |
 | POST     | `/collections/:key/records/:recordKey` | Editor; add a record                                         |
 | PUT      | `/collections/:key/records/:recordKey` | Editor; replace data with record and collection versions              |
 | DELETE   | `/collections/:key/records/:recordKey` | Editor; delete a record with query `expected_version`                      |
 | GET      | `/version`                             | Employee change token                                                  |
-| POST     | `/pages`                               | Employee create; as `public`, refused (approver under `AUTH_BYPASS`)   |
+| POST     | `/pages`                               | Employee create; as `public`, refused (approver under `AUTH_BYPASS`); a hidden `start` sub-page of a `public` page, approver only |
 | PUT      | `/pages/:id`                           | Editor save with body `expected_version`; public pages save to a revision |
-| DELETE   | `/pages/:id`                           | Employee delete; a `public` page, approver only                        |
+| DELETE   | `/pages/:id`                           | Employee delete; a `public` page, or a hidden `start` sub-page of one, approver only |
 | POST     | `/pages/:id/history/:version/restore`  | Editor; save a history version's fields as a new change (ADR 0135)     |
 | POST     | `/pages/:id/revision/submit`           | Editor; submit the draft revision for review                           |
 | POST     | `/pages/:id/revision/reject`           | Approver, not its author or submitter; reject with a `comment`         |
@@ -369,13 +370,15 @@ Restoring a version is a new change, never a rewind (ADR 0135, #3231). `POST /pa
 
 Public site reads (`/pages?url=`, `/categories…`, `/catalog`, `/search/documents`, `/collections/:key/records`) send `public, max-age=60, stale-while-revalidate=300, stale-if-error=86400`; unknown public URLs send `public, max-age=10`. `/site-version` sends `public, max-age=5`: landing checks it at most every 5 s and expires its cached pages when it moves, so a publish shows within seconds rather than after the pages' max-age. ETags and 304s remain available for public reads. These routes do not look up or refresh employee sessions.
 
-The editor loads record detail through authenticated `GET /collections/:key/records/:recordKey`, which returns `{ collection, record }` from one database snapshot, with the record's version. It never derives a write baseline from the public record list. PUT sends `{ data, expected_version }` and returns the same envelope, including for a no-op. POST sends `{ data }` and returns the created versioned record. DELETE needs the record's `expected_version` query parameter. Collection definitions have no edit version: editors can't change them, so a record write is validated against the current definition.
+The editor loads record detail through authenticated `GET /collections/:key/records/:recordKey`, which returns `{ collection, record }` from one database snapshot, with the record's version. It never derives a write baseline from the public record list. PUT sends `{ data, expected_version }` and returns the same envelope, including for a no-op. POST sends `{ data }` and returns the created versioned record. DELETE needs the record's `expected_version` query parameter. Collection definitions have no edit version: nobody can change one once it is created, so a record write is validated against the current definition.
+
+`POST /collections` creates a collection from `{ key, title, record_key, schema: { fields } }` (#3681). It needs `admin` or `approver`. The key follows `CollectionKey`; there must be at least one field, each with a key no other field has, a label and a type from `FIELD_TYPES`; and `record_key` must name one of its `slug` fields, since a record's key is a slug in its url. A refusal is a 422 `validation_failed` whose `errors` name each field by path (`key`, `title`, `schema.fields`, `schema.fields.1.type`, `record_key`), and a taken key is a 409 `collection_exists` naming `key`; neither writes anything. The `record_change` trigger records the create in `change_events` against the employee.
 
 Preview: the site's server sends its `PREVIEW_SECRET` as `x-preview-token`, and the same reads then include `preview` content. Those responses are `no-store` with no ETag, so preview content never enters a shared cache. A wrong token, or any token when `PREVIEW_SECRET` is unset here, is a 401 rather than a quiet fall-back to the public view. `draft` content is only ever served to the editor.
 
 The hierarchy is `parent_id`, not the url. A page is served only when it and every page above it are visible; its breadcrumbs are its category (and parent category, for a subcategory), then the pages above it; a category lists only the pages at its root (`parent_id` null), so `start` steps and sub-pages never appear in a listing. A sub-page must share its parent's category (moving the parent moves its sub-pages), a page cannot sit beneath itself, and a page with sub-pages cannot be deleted: each is a field-specific 422.
 
-`GET /pages?url=` returns `{url, frontmatter, body_markdown, form_id, hide_start_links, breadcrumbs, category, subcategory}`. `category` and `subcategory` are slugs, null when the page has none. `hide_start_links` is true when the page's `start` sub-page is hidden from the viewer. `visibility` is `preview` when the page or any page above it is preview; the site shows its review banner and `noindex` from it (#3246). Whether a form is open is the forms API's to say: `form_id` is a name, and the site asks the forms API for the form's status. The API serves markdown as written; the site owns sanitization and rendering. Editor writes return field-specific 422s for invalid references or duplicates, 409 for a stale supplied version, and stamp `published_at` only on first publication. `content_updated_at`, the site's "Last updated" line, is moved by a trigger only when the title, description, body, frontmatter or form changes, so a visibility change or a move keeps it (migration `016_content_updated_at`, #3105). A save replaces the page, so it sends every field; only `parent_id` may be left out, which keeps the page's parent. Changing `url` moves that page alone; its sub-pages keep theirs. Public moves create redirects at publication (see below). Each write still records an append-only audit snapshot (see above); `GET /pages/:id/history` lists them read-only, newest first, with who made each change and which fields it changed (#3423); a restore adds an entry and removes none (see above). A request its route's schema refuses (a missing field, an id that is not a UUID, an explicitly malformed version, a url over 512 characters, a title over 300) is a 400; Fastify's own refusals keep their status (a body that is not JSON is a 415), and an unknown route is a JSON 404.
+`GET /pages?url=` returns `{url, frontmatter, body_markdown, form_id, hide_start_links, breadcrumbs, category, subcategory}`. `category` and `subcategory` are slugs, null when the page has none. `hide_start_links` is true when the page has `start` sub-pages and the viewer can see none of them. `visibility` is `preview` when the page or any page above it is preview; the site shows its review banner and `noindex` from it (#3246). Whether a form is open is the forms API's to say: `form_id` is a name, and the site asks the forms API for the form's status. The API serves markdown as written; the site owns sanitization and rendering. Editor writes return field-specific 422s for invalid references or duplicates, 409 for a stale supplied version, and stamp `published_at` only on first publication. `content_updated_at`, the site's "Last updated" line, is moved by a trigger only when the title, description, body, frontmatter or form changes, so a visibility change or a move keeps it (migration `016_content_updated_at`, #3105). A save replaces the page, so it sends every field; only `parent_id` may be left out, which keeps the page's parent. Changing `url` moves that page alone; its sub-pages keep theirs. Public moves create redirects at publication (see below). Each write still records an append-only audit snapshot (see above); `GET /pages/:id/history` lists them read-only, newest first, with who made each change and which fields it changed (#3423); a restore adds an entry and removes none (see above). A request its route's schema refuses (a missing field, an id that is not a UUID, an explicitly malformed version, a url over 512 characters, a title over 300) is a 400; Fastify's own refusals keep their status (a body that is not JSON is a 415), and an unknown route is a JSON 404.
 
 ### Page paths
 
@@ -449,16 +452,17 @@ rules.
 
 #### Redirect rollout and rollback
 
-Merging API changes into `v2-rewrite` triggers
-[Deploy api_v2 to Sandbox](../../.github/workflows/deploy-api-v2-sandbox.yml).
+Merging API changes into `main` runs
+[Deploy api_v2 to Sandbox](../../.github/workflows/deploy-api-v2-sandbox.yml)
+from Deploy Sandbox.
 Agree the cutover window before merging; a rolling deployment alone does not
 stop an old instance from accepting edits.
 
 1. Pause editor writes and imports, and let in-flight writes finish.
 2. Deploy the API. `main.ts` runs migrations before opening its HTTP listener.
-   Confirm `025_page_redirects` and `026_change_event_order` are recorded in
-   `schema_migrations`, the expected image is serving, and all old writer
-   instances have drained. Do not backfill `event_order` or reimport content.
+   Confirm the `page_redirects` table and the `change_events.event_order`
+   column exist, the expected image is serving, and all old writer instances
+   have drained. Do not backfill `event_order` or reimport content.
 3. Deploy landing's `no-store` redirect change. With an approver and agreed
    test paths, publish A, then move it to B and C. Check that A and B both
    return 301 directly to C, with matching `Location` and `{ redirect }`, and
@@ -568,6 +572,8 @@ The snapshot's visibility is the markdown frontmatter's. Each environment's admi
 
 A page's key is its `form_id`, or its `content_slug` (landing's registry slug) when it has no form. A `/start` page that carries its parent's `form_id` shares its parent's row; one without a form (e.g. `calculate-severance-pay/start`) keys on its own slug, keeps its own level and is not listed in `visibility_changes`, but is still hidden whenever its parent is, because a page is served at the most restrictive level of itself and its ancestors. A row that matches no page is ignored. `published_at` stays the frontmatter `publish_date` whatever the level; an undated page is dated now only if it imports `public`.
 
+The two pages landing nests under `find-an-open-pharmacy` without nesting their url (`free-or-subsidised-medication` and `prescription-colours`, `NESTED_WITHOUT_URL` in `scripts/build-seed-data.ts`) work the same way: if a `disabled` row for `health-and-emergency-services/find-an-open-pharmacy` lowers it to `preview`, both are hidden from the public too, though `visibility_changes` does not list them unless their own rows change them. Landing kept them public in that case; api_v2 hiding them is deliberate (#3525).
+
 `--forms-api` is required. A missing flag, a network error, a non-2xx answer or a body that is not the `{"status":"success","data":[{slug,status}]}` envelope exits 1 before the database is opened, so nothing is written.
 
 Before every run, confirm in the Amplify Console that the environment's feature_flagging branch has no `EDITOR_V2_URL` set. If it is set, stop: that environment is past cutover, where a `disabled` row hides only the form (ADR 0110, "After cutover"), and the overlay would wrongly lower the page. The importer cannot detect this.
@@ -651,7 +657,7 @@ If any holds, stop, record it on the import issue, and fix forward.
 
 `apps/landing/src/content` freezes at the prod import. Until then it stays editable, and CI keeps `estate.json` current on every PR. `apps/landing` reads api_v2 when `VITE_API_V2_URL` is set and falls back to the markdown otherwise; deleting the directory is part of retiring the v1 content path (#3165).
 
-There is one switch: the GitHub repository variable `CONTENT_FREEZE=true`. #3236 adds the check that, while it is set, fails any PR into `main` that edits `apps/landing/src/content/**/*.md` or either `categories.ts`, including the PRs the v1 form builder opens. Turn it on as step 0 of the prod import, **before** the prod deploy whose snapshot is imported; a content PR merged in between is otherwise lost. A repository admin runs:
+There is one switch: the GitHub repository variable `CONTENT_FREEZE=true`. #3236 adds the check that, while it is set, fails any PR into `main` that edits `apps/landing/src/content/**/*.md` or either `categories.ts`, including the PRs the v1 form builder opens. Turn it on as step 0 of the prod import, **before** the prod deploy whose snapshot is imported; a content PR merged in between is otherwise lost. Turn it on only **after** `v2-rewrite` has merged into `main` (#3131): that merge PR edits landing markdown, so the check fails it while the freeze is on. A repository admin runs:
 
 ```sh
 gh variable set CONTENT_FREEZE --body true   # on
@@ -747,11 +753,19 @@ too. Another approver who did not contribute must publish the page.
 
 SIGINT/SIGTERM drain HTTP requests before closing the shared pool; startup failures also release acquired resources. JSON logs omit cookies, OAuth callback query parameters, provider tokens and raw driver error objects. The exact warning `idle database connection dropped` remains the operational alarm marker; its safe `code` identifies the failure. Public content failures continue to use the existing 500 response, while authentication outages fail closed with 503.
 
-The server's pool gives a request's query 5 s, a boot migration 10 min, and a new connection 2 s, and keeps its sockets alive with TCP keepalive. Postgres enforces the same query limits (`statement_timeout`), so a query that times out also stops on the server instead of keeping a connection open after the pool has replaced it. A database that goes quiet without hanging up (a failover or partition) therefore answers 500 `internal_error` from the driver's "Query read timeout" instead of hanging. A query waiting on a lock counts too, so editor writes fail after 5 s while `reindex-search` holds the content lock for longer than that. The jobs (`import-estate`, `reindex-search`, `redact-change-events`) have no query limit.
+The server's pool gives a request's query 5 s and a new connection 2 s, and keeps its sockets alive with TCP keepalive. Boot migrations run on a pool of their own, with 10 min a statement. Postgres enforces the same query limits (`statement_timeout`), so a query that times out also stops on the server instead of keeping a connection open after the pool has replaced it. A database that goes quiet without hanging up (a failover or partition) therefore answers 500 `internal_error` from the driver's "Query read timeout" instead of hanging. A query waiting on a lock counts too, so editor writes fail after 5 s while `reindex-search` holds the content lock for longer than that. The jobs (`import-estate`, `reindex-search`, `redact-change-events`) have no query limit.
 
 The site routes (`/pages`, `/categories…`, `/collections/:key/records`, `/site-version`, `/catalog`, `/search/documents`) are limited to 1,000 requests a minute per client, answering 429 beyond it; editor, auth and `/docs` routes are not limited. `trustProxy` trusts only private-address peers (the ALB), so the client is the address the ALB forwards and a client's own `X-Forwarded-For` entries are ignored. Buckets are in memory, per task. Landing is exempt: its server sends `LANDING_SECRET` as `x-landing-token`, and such requests skip the limit and carry no `x-ratelimit-*` headers. It has to be, because landing reads `/pages` on every uncached page view (and a category listing on every category page view, and `/site-version` on its poll) from a few shared egress addresses, so its rate follows citizen and bot traffic and no limit can be sized above it (#3129). With `LANDING_SECRET` unset, nobody is exempt.
 
-Migrations run at boot. Each script checks `schema_migrations` after acquiring the PostgreSQL advisory lock, then conditionally executes and records completion in the same transaction on the same connection. Each migration commits separately so later scripts can use newly added enum values. A runner with an outdated ledger read skips scripts another runner completed; scripts must still tolerate replay after lost bookkeeping.
+[ADR 0139](../../docs/decisions/0139-api-v2-generates-migrations-from-schema.md) records the change from hand-written DDL to schema-generated migrations. To change the schema, edit `src/schema.ts`, run `pnpm db:generate --name=<what-changed>` from this directory, and commit the SQL, snapshot and journal changes in `migrations/`. `src/migrate.test.ts` checks for schema changes without migrations. For triggers, functions and data fixes, use `pnpm db:generate --custom --name=<what>` and separate SQL statements with `--> statement-breakpoint`.
+
+Drizzle applies all pending migrations in one transaction before the HTTP listener opens. A PostgreSQL advisory lock serializes concurrent boots. Applied migrations are recorded in `drizzle.__drizzle_migrations`. The database role needs `CREATE` on the database on every boot: Drizzle executes `CREATE SCHEMA IF NOT EXISTS "drizzle"` even when the schema already exists. Pre-creating it does not remove that privilege requirement.
+
+- Never edit or delete a merged migration. Undo it with a new one. If a code revert removed a migration, restore its original journal entry rather than generating it again under a new timestamp, which would replay it on databases that already applied it.
+- Keep journal timestamps strictly increasing. The date test checks only journal order; it cannot detect an older entry inserted before one a database already ran. At boot, the runner checks the ledger too and refuses any journal entry at or before the latest applied timestamp that has no ledger row, logging `MIGRATION_JOURNAL_GAP`. Regenerate unmerged branch migrations against current trunk before merging. If the guard fires on a merged release, stop deployment and reconcile its migration history; do not mark skipped SQL as applied.
+- Adding an enum value and using it in SQL needs a commit between the two statements. Separate releases are not enough if a database skips the first release: both migrations would still run in one transaction. This runner does not provide that commit boundary. Defining a function that references the value is safe; executing it in the same batch is not.
+
+`0000_baseline` and `0001_triggers` replace the 26 hand-written scripts (`001_init` through `026_change_event_order`, available in git history). On an existing database, the runner records these two as applied and keeps `schema_migrations` for rollbacks. It refuses databases missing `026_change_event_order`; run the last release with hand-written migrations first. `0002_legacy_rollback` records the old migration names on fresh databases too: without them, rolling back to an older API would replay `002_markdown_pages` and drop collection records. Keep this ledger until deployments can no longer roll back to the hand-written runner. Older migration names elsewhere in this README refer to that history.
 
 Migration `024` gives pages, categories and collection records numeric edit versions from one noncycling sequence, capped at JavaScript's maximum safe integer. These identities are separate from timestamps and audit event numbers. Editor snapshots include them; public projections and audit snapshots do not.
 
@@ -759,7 +773,7 @@ A trigger on `page_revisions` bumps the page's version on every insert, update o
 
 ```sh
 pnpm exec nx run api_v2:build
-pnpm exec nx run api_v2:typecheck
+pnpm exec nx run api_v2:test:types
 pnpm exec nx run api_v2:test
 DB_HOST=localhost pnpm exec nx run api_v2:e2e
 ```

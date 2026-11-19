@@ -26,7 +26,7 @@ Landing integration is tracked in #3179, category change events in #3169, privat
 
 ## Collections
 
-Collections hold facts many pages repeat, such as a department's contact details, as records in api_v2. Developers set each collection's fields; every value is text. Collections lists each one with its record count, and a collection's screen shows its records in a table, a column per field. A record is added, changed or deleted in a dialog, one field per entry in the field list under its label. Saving is explicit and replaces the whole record; a blank field is left out. A record keeps the key it was added with. `/collections/<key>?record=<record key>` opens that record's dialog, so a page's block can link to the record it shows.
+Collections hold facts many pages repeat, such as a department's contact details, as records in api_v2. An admin or an approver adds a collection from Collections with Add collection: its title, its key, its fields (each a key, a label and a type from api_v2's list) and the slug field whose value names each record. Its fields can't be changed once it's added. Anyone else sees Add collection turned off, with the reason. The new collection opens, with the focus on Add record. Every value is text. Collections lists each one with its record count, and a collection's screen shows its records in a table, a column per field. A record is added, changed or deleted in a dialog, one field per entry in the field list under its label. Saving is explicit and replaces the whole record; a blank field is left out. A record keeps the key it was added with. `/collections/<key>?record=<record key>` opens that record's dialog, so a page's block can link to the record it shows.
 
 A field api_v2 refuses shows its reason under the field, and the dialog keeps what was typed. A save over a version someone else replaced offers the same choice as a page: keep this version, load the saved one or download this one. A deletion is asked first and refused if the record has changed since it was read.
 
@@ -68,7 +68,9 @@ Forms support text, numbers, email, phone, dates, times, choices, boolean answer
 
 Pages use Markdown with YAML frontmatter. Forms use native v2 JSON for exchange and versioned form Markdown for editable drafts. Installed modules own their fields, controls and conversion behavior.
 
-Each open page has an in-memory working copy and undo history. Leaving unsaved work asks first; Cancel preserves it, while confirmed departure removes that copy and its undo session. Internal navigation and sign-out wait for pending saves. Unload warnings reduce accidental loss but cannot recover unsaved work after a crash or reload. Old browser drafts are abandoned without being read, updated or deleted.
+Each open page has an in-memory working copy and undo history. Leaving unsaved work asks first. Cancel keeps it; confirmed departure removes it and its undo session. Internal navigation and sign-out wait for pending saves.
+
+When browser storage is available, the editor keeps a recovery copy of unsaved page changes. After a reload or crash, the page opens from the API and lets the author restore that copy or confirm its discard. Restore is one undo step, including the version the recovered changes were based on. Older-version recovery cannot overwrite a newer server version. Undo returns to the version held before recovery, not one fetched in the background. Recovery stays in this browser without undo history until saved or discarded. Old browser draft keys remain untouched.
 
 Reusable JSON import validates and checks preservation before Apply. Failed imports retain the input in memory; stale asynchronous reads cannot replace newer edits. Invalid/unapplied source or read-only state blocks import/export. Replacement failure retains the prior and candidate inputs for in-session download, not durable recovery.
 

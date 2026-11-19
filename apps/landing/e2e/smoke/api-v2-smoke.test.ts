@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   PINNED_PAGES,
   contentSourceProblem,
+  featureRouteUrls,
   gatedForms,
   gatedPages,
   pagesToCheck,
@@ -44,18 +45,18 @@ function fakeApi(
 }
 
 describe('readSmokeEnv', () => {
-  it('requires every origin, with no default', () => {
+  it('requires every origin, with no default, keeping the api_v2 base path (#3745)', () => {
     expect(() => readSmokeEnv({})).toThrow('SMOKE_LANDING_URL is required')
     expect(
       readSmokeEnv({
         SMOKE_LANDING_URL: 'https://landing.test/',
-        SMOKE_API_V2_URL: 'https://api.test/x',
+        SMOKE_API_V2_URL: 'https://api.test/v2/',
         SMOKE_FORMS_URL: 'https://forms.test',
         SMOKE_FORMS_API_URL: 'https://forms-api.test/',
       }),
     ).toEqual({
       landing: 'https://landing.test',
-      apiV2: 'https://api.test',
+      apiV2: 'https://api.test/v2',
       forms: 'https://forms.test',
       formsApi: 'https://forms-api.test',
     })
@@ -86,12 +87,36 @@ describe('contentSourceProblem', () => {
   })
 })
 
+describe('featureRouteUrls', () => {
+  it('is the URL of each -meta.ts and ignores other route files', () => {
+    expect(
+      featureRouteUrls([
+        'bank-holiday-calendar/-meta.ts',
+        'bank-holiday-calendar/index.tsx',
+        'health-and-emergency-services/water-outages/-meta.ts',
+        'health-and-emergency-services\\find-an-emergency-shelter\\-meta.ts',
+        'health-and-emergency-services/water-outages/-ui/meta.ts',
+      ]),
+    ).toEqual([
+      '/bank-holiday-calendar',
+      '/health-and-emergency-services/water-outages',
+      '/health-and-emergency-services/find-an-emergency-shelter',
+    ])
+  })
+})
+
 describe('pagesToCheck', () => {
   it('is the pinned pages plus the catalog, once each', async () => {
     const urls = await pagesToCheck(API, fakeApi())
     expect(urls.slice(0, PINNED_PAGES.length)).toEqual(PINNED_PAGES)
     expect(new Set(urls).size).toBe(urls.length)
     expect(urls).toContain(SUMMER)
+  })
+
+  it('leaves out the URLs to skip', async () => {
+    const urls = await pagesToCheck(API, fakeApi(), [SUMMER])
+    expect(urls).not.toContain(SUMMER)
+    expect(urls.slice(0, PINNED_PAGES.length)).toEqual(PINNED_PAGES)
   })
 
   it('fails on an empty api_v2', async () => {

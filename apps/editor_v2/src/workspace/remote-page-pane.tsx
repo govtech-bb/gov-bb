@@ -51,10 +51,17 @@ import { preparePageSave } from "./page-sync";
 import { useWrite } from "./use-write";
 import type { DraftSnapshot } from "../persistence/types";
 import { ContentDiff } from "./review-screens";
+import {
+  forgetUnsavedWork,
+  keepUnsavedWork,
+  recoveredPageBaseline,
+  useUnsavedWork,
+} from "./unsaved-work";
+import { UnsavedWorkOffer } from "./unsaved-work-offer";
 
 type SessionListener = (id: string, session: PageSession | undefined) => void;
 
-/** An API page opens directly into an in-memory editor, never through browser storage. */
+/** Opens API content first; browser recovery requires an explicit restore. */
 export function RemotePagePane({
   api,
   id,
@@ -163,13 +170,13 @@ function RemotePageEditor({
   resetEditor: () => void;
   focusOnOpen: boolean;
 }) {
-  const [base, setBase] = useState<ServerPageBaseline>(() => ({
+  const [savedBase, setBase] = useState<ServerPageBaseline>(() => ({
     page: server,
     markdown: pageToMarkdown(server, categories),
   }));
 
-  const [store] = useState(() => new DraftStore(base.markdown, govbbPageCodec));
-  const baseline = useRef(base);
+  const [store] = useState(() => new DraftStore(savedBase.markdown, govbbPageCodec));
+  const baseline = useRef(savedBase);
   const saving = useRef(false);
 
   const rebase = (next: ServerPageBaseline) => {
@@ -181,6 +188,14 @@ function RemotePageEditor({
   const navigate = useNavigate();
   const href = useRouterState({ select: (state) => state.location.href });
   const draft = useSyncExternalStore(store.subscribe, store.getSnapshot);
+
+  const base = useMemo(
+    () => recoveredPageBaseline(savedBase, draft.state),
+    [savedBase, draft.state],
+  );
+
+  const [keptWork, answerKeptWork] = useUnsavedWork(server.id, draft.committed, base);
+  const [discardingKeptWork, setDiscardingKeptWork] = useState(false);
   // Links find the site's services by name; the content API lists their entry pages
   const services = useQuery(servicesQuery(api)).data;
   const rolesRead = useQuery(rolesQuery(api));
@@ -344,7 +359,7 @@ function RemotePageEditor({
   const submitPage = () => {
     if (saving.current || save.state === "unsettled") return;
     saving.current = true;
-    void submit.press(() => ({ base: baseline.current, categories }));
+    void submit.press(() => ({ base: session.getBaseline(), categories }));
   };
 
   const submitAction = (label: string) =>
@@ -364,7 +379,7 @@ function RemotePageEditor({
   const session = useMemo<PageSession>(
     () => ({
       store,
-      getBaseline: () => baseline.current,
+      getBaseline: () => recoveredPageBaseline(baseline.current, store.getSnapshot().state),
       isSaving: () => saving.current,
     }),
     [store, base, savePending, submitPending, checking],
@@ -401,8 +416,9 @@ function RemotePageEditor({
       !submitPending &&
       !unsettled &&
       server.version > base.page.version &&
-      server.version !== savedVersion &&
-      server.version !== submittedVersion) ||
+      // A recovered older version is never this editor's own write
+      (base !== savedBase ||
+        (server.version !== savedVersion && server.version !== submittedVersion))) ||
     outcome?.kind === "conflict" ||
     submit.outcome?.kind === "conflict";
 
@@ -422,7 +438,8 @@ function RemotePageEditor({
       snapshot.status === "error"
     )
       return;
-    const prepared = preparePageSave(baseline.current, snapshot.committed, categories);
+
+    const prepared = preparePageSave(session.getBaseline(), snapshot.committed, categories);
 
     if (!prepared.ok) return setLocalOutcome(prepared.outcome);
     setLocalOutcome(undefined);
@@ -534,6 +551,10 @@ function RemotePageEditor({
       client.setQueryData(pageQuery(api, server.id).queryKey, latest);
       save.forget();
       submit.forget();
+
+      // Edits typed over an unanswered recovery offer replaced it in storage; put it back to be offered again.
+      if (keptWork) keepUnsavedWork(server.id, keptWork);
+      else forgetUnsavedWork(server.id);
       resetEditor();
       restorePageFocus();
     } catch (error) {
@@ -546,6 +567,57 @@ function RemotePageEditor({
       setReloading(false);
     }
   };
+
+  const restoreBlocked =
+    savePending || submitPending || checking || reloading
+      ? "Wait for the current request to finish before restoring."
+      : unsettled
+        ? "Retry the last request before restoring these changes."
+        : undefined;
+
+  const restoreKeptWork = () => {
+    if (!keptWork || saving.current || restoreBlocked) return;
+    const prepared = govbbPageCodec.prepare(keptWork.markdown);
+
+    // Root NodeState travels with undo/redo but is not written to the page's Markdown.
+    if (
+      prepared.state &&
+      prepared.source !== store.getSnapshot().committed &&
+      keptWork.version !== baseline.current.page.version
+    )
+      prepared.state.root.$ = { ...prepared.state.root.$, recoveredPageVersion: keptWork.version };
+
+    const restored = store.replacePrepared(prepared, store.captureReplacementToken());
+
+    if (restored.status === "rejected") {
+      toast("Your changes couldn’t be restored", {
+        tone: "error",
+        description: `The page is unchanged. ${restored.message}`,
+      });
+
+      return;
+    }
+
+    // Unsupported pages have no visual editor or undo history.
+    if (!prepared.state)
+      rebase({
+        ...baseline.current,
+        page: { ...baseline.current.page, version: keptWork.version },
+      });
+    answerKeptWork();
+    restorePageFocus();
+  };
+
+  const keptNotice = keptWork && (
+    <UnsavedWorkOffer
+      kept={keptWork}
+      restoreBlocked={restoreBlocked}
+      // Discard-and-reload puts the offer back when it finishes, so an answer given meanwhile would be undone
+      discardBlocked={reloading}
+      onRestore={restoreKeptWork}
+      onDiscard={() => !reloading && setDiscardingKeptWork(true)}
+    />
+  );
 
   const newerVersion = "A newer version of this page has been saved since you opened it.";
   const downloadMine = () => download(store.getSnapshot().source, "page.md");
@@ -804,7 +876,12 @@ function RemotePageEditor({
               {publishes ? "Publish changes" : "Save"}
             </Button>
           }
-          notice={notice}
+          notice={
+            <>
+              {keptNotice}
+              {notice}
+            </>
+          }
           alert={
             readNotice
               ? {
@@ -847,6 +924,23 @@ function RemotePageEditor({
           }}
         />
       </CatchBoundary>
+      <ConfirmDialog
+        open={discardingKeptWork}
+        onOpenChange={setDiscardingKeptWork}
+        title="Discard recovered changes?"
+        description="The changes kept in this browser will be deleted. Your open page will stay as it is."
+        confirmLabel="Discard changes"
+        finalFocus={() => {
+          if (keptWork) return true;
+          restorePageFocus();
+
+          return false;
+        }}
+        onConfirm={() => {
+          setDiscardingKeptWork(false);
+          answerKeptWork();
+        }}
+      />
       <ConfirmDialog
         open={!!confirming}
         onOpenChange={(next) => {

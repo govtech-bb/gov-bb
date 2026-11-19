@@ -33,7 +33,7 @@ Apply by the deadline announced by the Ministry — usually within 4 weeks of CS
 
 It takes about 15 minutes to apply online.
 
-<a data-start-link href="/education/apply-for-a-sixth-form-placement/start">Start now</a>
+<a data-start-link>Start now</a>
 
 ## What the form asks for
 

@@ -2,7 +2,9 @@ import { isDeepStrictEqual } from "node:util";
 import type { Employee, UserId } from "../modules/auth";
 import type { EditVersion } from "../modules/edit-concurrency";
 import {
+  CollectionExists,
   CollectionNotFound,
+  parseNewCollection,
   parseRecord,
   RecordConflict,
   RecordExists,
@@ -12,6 +14,9 @@ import {
   type RecordEnvelope,
   type CollectionSummary,
   type CollectionView,
+  type CollectionDefinition,
+  type CollectionRejected,
+  type NewCollection,
   type RecordData,
   type RecordRejected,
 } from "../modules/collection";
@@ -65,6 +70,10 @@ export interface CollectionStore {
     key: string,
     recordKey: string,
   ): Promise<Result<void, ContentStoreUnavailable>>;
+  /** Insert a collection; null when there is already one by that key. */
+  insertCollection(
+    definition: CollectionDefinition,
+  ): Promise<Result<CollectionView | null, ContentStoreUnavailable>>;
 }
 
 /** Why a record write was refused. */
@@ -74,6 +83,12 @@ export type RecordWriteFailure =
   | RecordExists
   | RecordConflict
   | RecordRejected
+  | ContentStoreUnavailable;
+
+/** Why creating a collection was refused. */
+export type CollectionCreateFailure =
+  | CollectionRejected
+  | CollectionExists
   | ContentStoreUnavailable;
 
 /**
@@ -177,6 +192,25 @@ export class CollectionEditing {
       const current = await unchanged(store, key, recordKey, expectedVersion);
       if (!current.ok) return current;
       return store.deleteRecord(key, recordKey);
+    });
+  }
+
+  /**
+   * Add a collection (#3681): its definition is checked against the rules,
+   * and nothing is written when it breaks one or its key is taken.
+   */
+  async createCollection(
+    input: NewCollection,
+    actor: Employee,
+  ): Promise<Result<CollectionView, CollectionCreateFailure>> {
+    const parsed = parseNewCollection(input);
+    if (!parsed.ok) return parsed;
+    return this.store.atomically(actor.id, async (store) => {
+      const inserted = await store.insertCollection(parsed.value);
+      if (!inserted.ok) return inserted;
+      return inserted.value === null
+        ? err(new CollectionExists(parsed.value.key))
+        : ok(inserted.value);
     });
   }
 }

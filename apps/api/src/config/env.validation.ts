@@ -112,6 +112,18 @@ const baseSchema = z
     // unset ⇒ the notifier no-ops (dev/sandbox/unconfigured envs).
     SLACK_ALERTS_WEBHOOK_URL: urlOrEmpty().optional(),
 
+    // Slack /stats slash command (#3491). The signing secret verifies requests
+    // come from Slack; unset ⇒ every request is refused. The Umami settings
+    // are the same values the analytics app uses; unset ⇒ the command replies
+    // that stats aren't set up.
+    SLACK_SIGNING_SECRET: z.string().default(""),
+    UMAMI_API_KEY: z.string().default(""),
+    UMAMI_LANDING_WEBSITE_ID: z.string().default(""),
+    UMAMI_FORMS_WEBSITE_ID: z.string().default(""),
+    // Incoming webhook for the channel that gets last week's stats every
+    // Monday at 8am Barbados time; unset ⇒ no weekly digest.
+    SLACK_STATS_WEBHOOK_URL: urlOrEmpty().optional(),
+
     // SES delivery-events queue (optional). When set, the SesEventConsumer
     // polls it to reconcile notification_log.delivery_status; empty = disabled.
     SES_EVENTS_QUEUE_URL: urlOrEmpty().optional(),
@@ -132,6 +144,13 @@ const baseSchema = z
     // (https://alpha.gov.bb) in form-conditions, which is a real page — never
     // a root-relative link, which would be dead in the applicant's email.
     LANDING_BASE_URL: urlOrEmpty().default(""),
+
+    // The application tracker's lookup API (alpha-infra
+    // `lookup_api_endpoint`), read for CaMS statuses by the chat's status
+    // lookup (#3419). AWS_IAM-authorised, so requests are SigV4-signed, except
+    // to a local address (the tracker's `pnpm local:api`). Empty = CaMS
+    // lookups answer 503.
+    TRACKER_LOOKUP_API_URL: urlOrEmpty().default(""),
 
     // EzPay (EZPAY_WEBHOOK_SECRET required only when verify-signature is on)
     EZPAY_BASE_URL: z.url(),
@@ -174,6 +193,13 @@ const baseSchema = z
 
     // Smoke submission (empty disables the processor-drop escape hatch, #1252)
     SMOKE_SUBMISSION_TOKEN: z.string().default(""),
+
+    // The chat's caller token (#3623). A status lookup carrying it in
+    // X-Chat-Caller-Token is counted against the chat's own limit, not the
+    // per-IP one: every chat user reaches the API from the chat's server. The
+    // same value as the chat's `chat-caller-token` secret. Empty means no
+    // request gets the chat limit.
+    CHAT_CALLER_TOKEN: z.string().default(""),
 
     // Bearer token the AdminTokenGuard validates on the /admin/* endpoints
     // (kill switch + draft archive). OPTIONAL on purpose: the guard reads it

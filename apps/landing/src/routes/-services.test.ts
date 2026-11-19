@@ -105,7 +105,8 @@ describe('/services page (#3244)', () => {
         digital: true,
       },
     ])
-    expect(html).toContain('data-umami-event="service-x-new-digital"')
+    expect(html).toContain('data-umami-event="service-click"')
+    expect(html).toContain('data-umami-event-slug="x/new-digital"')
     expect(html).toContain('Digital service')
     expect(html.match(/<li/g)).toHaveLength(1)
   })

@@ -77,4 +77,4 @@ A built-in field is installed through `formFields`; a field from outside the app
 
 Test an actual inserted answer, authored invalid settings, Markdown encode/load/encode, native import/export semantic equality and edit-before-export, one-step undo and two copied instances with independent references. Remove the module and verify raw JSON and source reject its saved subtype before hydration while retaining recovery bytes; reinstalling it must load the valid saved document again. Test live read-only controls and renderer behavior in a browser when the field has UI.
 
-From `apps/editor_v2`, run `pnpm exec vitest run tests/extensions docs/examples` and `pnpm typecheck` for the reference fixtures and documented composition. Before integration, also run `pnpm test` and `pnpm check:boundaries`.
+From `apps/editor_v2`, run `pnpm exec vitest run tests/extensions docs/examples` and `pnpm test:types` for the reference fixtures and documented composition. Before integration, also run `pnpm test` and `pnpm check:boundaries`.

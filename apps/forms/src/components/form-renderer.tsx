@@ -1,4 +1,4 @@
-import {
+import type {
   ClientFormStep,
   ClientPrimitive,
   FieldValidationErrors,
@@ -6,7 +6,8 @@ import {
   FormRendererProps,
   FormValues,
 } from "@forms/types";
-import FieldRenderer, { InsetFieldEntry } from "./field-renderer";
+import type { InsetFieldEntry } from "./field-renderer";
+import FieldRenderer from "./field-renderer";
 import React from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -14,7 +15,7 @@ import ErrorSummary from "./error-summary";
 import { useStore } from "@tanstack/react-form";
 import { shallow } from "@tanstack/react-store";
 import { isDateValidationError } from "@govtech-bb/form-validation";
-import { Behaviour } from "@govtech-bb/form-types";
+import type { Behaviour } from "@govtech-bb/form-types";
 import { useStepGuard } from "../hooks/use-step-guard";
 import { unmarkStepsCompleted } from "../lib/session-storage";
 import Review from "./review";
@@ -50,6 +51,7 @@ import {
 } from "@govtech-bb/react";
 import {
   resolveConditionalMarkdown,
+  resolveFieldHint,
   resolveFieldLabel,
   resolveStepTitle,
 } from "@govtech-bb/form-conditions";
@@ -65,6 +67,8 @@ const EXIT_SURVEY_FIRST_STEP = "difficulty-rating";
 /** Stable empty map for steps with no `conditionalLabel` fields (#2521), so
  * the label selector returns an unchanging reference for them. */
 const EMPTY_LABELS: Record<string, string> = {};
+/** Stable empty map for steps with no `conditionalHint` fields (#3637). */
+const EMPTY_HINTS: Record<string, string | undefined> = {};
 
 // ---------------------------------------------------------------------------
 // Field grouping (show-hide + radio/select conditional reveal)
@@ -444,14 +448,41 @@ function ActiveStep({
     },
     shallow,
   );
+  // `conditionalHint` (#3637) is the hint counterpart, resolved the same way.
+  // A resolved hint may be `undefined` (no static hint and no match), so the
+  // field's own key — not a truthy value — marks it as resolved.
+  const hasConditionalHints = React.useMemo(
+    () => currentStep.fields.some((field) => field.conditionalHint?.length),
+    [currentStep],
+  );
+  const resolvedHints = useStore(
+    form.store,
+    (state) => {
+      if (!hasConditionalHints) return EMPTY_HINTS;
+      const values = buildStepScopedValues(
+        state.values as Record<string, unknown>,
+      );
+      const hints: Record<string, string | undefined> = {};
+      for (const field of currentStep.fields) {
+        if (field.conditionalHint?.length) {
+          hints[field.id] = resolveFieldHint(field, values);
+        }
+      }
+      return hints;
+    },
+    shallow,
+  );
   const currentFields = React.useMemo(
     () =>
-      currentStep.fields.map((field) =>
-        resolvedLabels[field.id]
-          ? { ...field, label: resolvedLabels[field.id] }
-          : field,
-      ),
-    [currentStep, resolvedLabels],
+      currentStep.fields.map((field) => {
+        let resolved = field;
+        if (resolvedLabels[field.id])
+          resolved = { ...resolved, label: resolvedLabels[field.id] };
+        if (field.id in resolvedHints)
+          resolved = { ...resolved, hint: resolvedHints[field.id] };
+        return resolved;
+      }),
+    [currentStep, resolvedLabels, resolvedHints],
   );
 
   // #801: distinguish repeat instances beyond the first. undefined for base
@@ -722,6 +753,12 @@ function ActiveStep({
               form: formMeta.formId,
               category: formCategory(formMeta.formId),
               amount: submissionState?.amount ?? "",
+            })
+          }
+          onPrint={() =>
+            trackEvent("form-print", {
+              form: formMeta.formId,
+              category: formCategory(formMeta.formId),
             })
           }
           submissionState={submissionState}

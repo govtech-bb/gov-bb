@@ -1,7 +1,7 @@
-import { JSX } from "react";
+import type { JSX } from "react";
 import { FormGroup, Hint, Label, Select } from "@govtech-bb/react";
 import ErrorMessage from "../error-message";
-import { FieldRenderContext } from "./render-context";
+import type { FieldRenderContext } from "./render-context";
 import FieldRenderer from "./index";
 
 export function renderSelectField(ctx: FieldRenderContext): JSX.Element {

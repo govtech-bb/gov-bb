@@ -1,7 +1,7 @@
 import { PencilSimple, Trash } from "@phosphor-icons/react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { Collection, CollectionRecord, EditorApi } from "../../api/client";
 import { collectionQuery } from "../../api/queries";
 import { Banner } from "../../ui/banner";
@@ -147,6 +147,15 @@ export function CollectionScreen({
     setAdditions((count) => count + 1);
     setAdding(true);
   };
+
+  // Arriving at a collection with no records, and with the focus nowhere, as just after adding it or following a link
+  // to it, its first record is what comes next
+  const empty = !readOnly && detail.data?.records.length === 0;
+
+  useEffect(() => {
+    if (empty && (!document.activeElement || document.activeElement === document.body))
+      add.current?.focus();
+  }, [empty]);
 
   const startDeleting = (record: CollectionRecord) => {
     setDeleting(record);

@@ -21,6 +21,7 @@ import {
   telHref,
   whatsappHref,
 } from '../-lib/routes'
+import { trackPharmacyAction } from '../-lib/tool-events'
 import { Caveat } from './caveat'
 import { ClockIcon, MapPinIcon } from './icons'
 import { CostChip, StatusLine, StatusSkeleton } from './status-pill'
@@ -56,7 +57,12 @@ export function PharmacyCard({
       </div>
 
       <Heading as="h3" size="h4">
-        <Link href={pharmacyDetailHref(pharmacy)}>{pharmacy.name}</Link>
+        <Link
+          href={pharmacyDetailHref(pharmacy)}
+          onClick={() => trackPharmacyAction('view-detail', pharmacy)}
+        >
+          {pharmacy.name}
+        </Link>
       </Heading>
 
       <CostChip pharmacy={pharmacy} />
@@ -113,16 +119,28 @@ export function PharmacyCard({
       <div className="flex flex-col gap-xs">
         <div className="flex flex-wrap items-center gap-2 print:hidden">
           {pharmacy.phone && (
-            <LinkButton href={telHref(pharmacy.phone)}>
+            <LinkButton
+              href={telHref(pharmacy.phone)}
+              onClick={() => trackPharmacyAction('call', pharmacy)}
+            >
               Call {pharmacy.phone}
             </LinkButton>
           )}
           {hasPlace && (
-            <LinkButton external href={mapsUrl(pharmacy)} variant="secondary">
+            <LinkButton
+              external
+              href={mapsUrl(pharmacy)}
+              onClick={() => trackPharmacyAction('directions', pharmacy)}
+              variant="secondary"
+            >
               Directions
             </LinkButton>
           )}
-          <LinkButton href={pharmacyDetailHref(pharmacy)} variant="tertiary">
+          <LinkButton
+            href={pharmacyDetailHref(pharmacy)}
+            onClick={() => trackPharmacyAction('view-detail', pharmacy)}
+            variant="tertiary"
+          >
             Full details
           </LinkButton>
         </div>
@@ -133,7 +151,12 @@ export function PharmacyCard({
         ) : (
           <Text as="p" className="text-grey-70" size="body-sm">
             No number listed. Call the Drug Service on{' '}
-            <Link href={telHref(DRUG_SERVICE_PHONE)}>{DRUG_SERVICE_PHONE}</Link>
+            <Link
+              href={telHref(DRUG_SERVICE_PHONE)}
+              onClick={() => trackPharmacyAction('call-drug-service', pharmacy)}
+            >
+              {DRUG_SERVICE_PHONE}
+            </Link>
             .
           </Text>
         )}

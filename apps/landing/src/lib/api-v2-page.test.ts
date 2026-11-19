@@ -115,6 +115,17 @@ describe('fetchApiV2Page', () => {
     expect(init.signal).toBeInstanceOf(AbortSignal)
   })
 
+  it("rejects a url it can't encode without asking api_v2", async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const fetchImpl = stubFetch(jsonResponse(200, pageBody()))
+    expect(await fetchApiV2Page(BASE, '/\uD800a', fetchImpl)).toEqual({
+      kind: 'miss',
+      reason: 'rejected',
+      cacheControl: null,
+    })
+    expect(fetchImpl).not.toHaveBeenCalled()
+  })
+
   it("sends landing's token only when one is configured", async () => {
     const without = stubFetch(jsonResponse(200, pageBody()))
     await fetchApiV2Page(BASE, '/x', without)

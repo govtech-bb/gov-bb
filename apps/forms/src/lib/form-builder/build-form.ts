@@ -1,6 +1,6 @@
 // Responsible for turning a ClientServiceContract into a FormMeta for consumption.
 
-import {
+import type {
   ClientServiceContract,
   FormMeta,
   RepeatableStepSettings,

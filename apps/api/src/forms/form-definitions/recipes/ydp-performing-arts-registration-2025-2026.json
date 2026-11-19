@@ -254,7 +254,12 @@
                 "label": "Dance",
                 "value": "dance"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -267,7 +272,12 @@
                 "label": "Voice Training",
                 "value": "voice-training"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -280,7 +290,12 @@
                 "label": "Drama",
                 "value": "drama"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -409,7 +424,12 @@
                 "label": "Asthma",
                 "value": "asthma"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -422,7 +442,12 @@
                 "label": "Diabetes",
                 "value": "diabetes"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -435,7 +460,12 @@
                 "label": "Hypertension",
                 "value": "hypertension"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -448,7 +478,12 @@
                 "label": "Epilepsy",
                 "value": "epilepsy"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -461,14 +496,24 @@
                 "label": "Allergies",
                 "value": "allergies"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
           "ref": "components/name",
           "overrides": {
             "label": "Other medical condition (please specify)",
-            "fieldId": "medical-condition-other"
+            "fieldId": "medical-condition-other",
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -658,7 +703,7 @@
   "title": "Youth Development Programme – Performing Arts Registration 2025–2026",
   "formId": "ydp-performing-arts-registration-2025-2026",
   "createdAt": "2025-01-01T00:00:00Z",
-  "updatedAt": "2026-10-21T16:52:59.000Z",
+  "updatedAt": "2026-11-16T10:49:46.798Z",
   "processors": [
     {
       "type": "email",

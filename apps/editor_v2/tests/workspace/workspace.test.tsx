@@ -88,6 +88,7 @@ const clients: QueryClient[] = [];
 
 afterEach(() => {
   clients.splice(0).forEach((client) => client.clear());
+  localStorage.clear();
 });
 
 async function mountWorkspace(
@@ -413,7 +414,12 @@ test("malformed old workspaces and drafts cannot shadow API pages or create brow
   expect(document.body.textContent).not.toMatch(
     /Old local|Drafts in this browser|Create browser draft|Application form/,
   );
-  expect(read.mock.calls.every(([key]) => key === "govbb-editor:sidebar-collapsed")).toBe(true);
+  // Only the sidebar's preference and the open page's own unsaved work are asked for
+  expect(
+    read.mock.calls.every(([key]) =>
+      ["govbb-editor:sidebar-collapsed", "govbb-editor:unsaved-work:fees"].includes(key),
+    ),
+  ).toBe(true);
   expect(write).not.toHaveBeenCalled();
 });
 
@@ -479,6 +485,7 @@ test("Cancel preserves route, edited title and focus; confirmed Leave cannot res
     void h.router.navigate({ to: "/services" });
   });
   await until(() => expect(question()).not.toBeNull());
+  expect(localStorage.getItem("govbb-editor:unsaved-work:fees")).toContain("Unsaved title");
   await click("Leave without saving", question());
   await until(() => expect(h.router.state.location.pathname).toBe("/services"));
   await act(async () =>
@@ -489,6 +496,9 @@ test("Cancel preserves route, edited title and focus; confirmed Leave cannot res
   );
   await until(() => expect(activeTitle()?.value).toBe("fees"));
   expect(control("Undo").disabled).toBe(true);
+  // Given up, the edits aren't kept in this browser to be offered back either
+  expect(localStorage.getItem("govbb-editor:unsaved-work:fees")).toBeNull();
+  expect(document.body.textContent).not.toContain("This browser kept your unsaved changes");
 });
 
 test("sign-out asks before revoking auth and does not show a second route prompt", async () => {

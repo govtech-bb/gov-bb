@@ -50,7 +50,7 @@ After writing or editing any recipe:
 pnpm validate-recipes
 ```
 
-This schema-validates every recipe file and checks the invariants above. It is the fastest gate and the one to reach for first — nothing else in the repo catches invalid recipe JSON, since Prettier, lint, build and type check all pass on a malformed recipe.
+This schema-validates every recipe file and checks the invariants above. It is the fastest gate and the one to reach for first — nothing else in the repo catches invalid recipe JSON, since the format check (which skips recipes), lint, build and type check all pass on a malformed recipe.
 
 For the full spec suite behind it:
 

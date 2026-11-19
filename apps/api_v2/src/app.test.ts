@@ -125,6 +125,41 @@ describe("GET /health", () => {
   });
 });
 
+describe("under a base path (#3745)", () => {
+  it("answers every route under it and nothing at the root", async () => {
+    const requests: string[] = [];
+    const prefixed = await createTestApp(db, {
+      config: { ...TEST_HTTP_CONFIG, basePath: "/v2" },
+      auth: {
+        handle: async (request) => {
+          requests.push(request.url);
+          return Response.json({ ok: true });
+        },
+      },
+    });
+    try {
+      for (const url of ["/v2/health", "/v2/health/db", "/v2/docs"])
+        expect((await prefixed.inject({ url })).statusCode, url).toBe(200);
+      for (const url of ["/health", "/docs", "/api/auth/get-session"])
+        expect((await prefixed.inject({ url })).statusCode, url).toBe(404);
+      const docs = await prefixed.inject({ url: "/v2/docs" });
+      expect(docs.body).toContain('data-url="/v2/docs/openapi.json"');
+      const spec = await prefixed.inject({ url: "/v2/docs/openapi.json" });
+      expect(Object.keys(spec.json().paths)).toContain("/v2/pages");
+      const auth = await prefixed.inject({
+        url: "/v2/api/auth/get-session",
+        headers: TEST_HEADERS,
+      });
+      expect(auth.statusCode).toBe(200);
+      expect(requests).toEqual([
+        "http://localhost:3020/v2/api/auth/get-session",
+      ]);
+    } finally {
+      await prefixed.close();
+    }
+  });
+});
+
 describe("GET /pages?url=", () => {
   it("400s when url is missing", async () => {
     const response = await inject({ url: "/pages" });
@@ -136,6 +171,15 @@ describe("GET /pages?url=", () => {
     const response = await inject({ url: "/pages?url=" });
     expect(response.statusCode).toBe(400);
   });
+
+  it.each(["%00", "%2F%00a", "%2Fa%0Ab", "%2Fa%20b", "%2F%2Fx", "x"])(
+    "400s when url %s is not a site path",
+    async (url) => {
+      const response = await inject({ url: `/pages?url=${url}` });
+      expect(response.statusCode).toBe(400);
+      expect(response.json()).toMatchObject({ error: "bad_request" });
+    },
+  );
 
   it("serves the page as url, frontmatter, markdown and breadcrumbs", async () => {
     const category = await seedCategory();
@@ -302,6 +346,65 @@ describe("GET /pages?url=", () => {
     await seedPage({ visibility: "preview" });
     expect((await read("/calculate-severance-pay")).statusCode).toBe(404);
   });
+
+  it("301s a reviewer's bare slug to the preview page past a draft that shares it", async () => {
+    await seedPage({ visibility: "preview" });
+    await seedPage({
+      url: "/zz-unpublished/calculate-severance-pay",
+      visibility: "draft",
+    });
+
+    const reviewer = await readPreview("/calculate-severance-pay");
+
+    expect(reviewer.statusCode).toBe(301);
+    expect(reviewer.headers.location).toBe(ENTRY);
+    expect((await read("/calculate-severance-pay")).statusCode).toBe(404);
+  });
+
+  it("301s a bare slug past a hidden page that shares it, rather than revealing it", async () => {
+    await seedPage();
+    await seedPage({
+      url: "/zz-unpublished/calculate-severance-pay",
+      visibility: "draft",
+    });
+
+    const response = await read("/calculate-severance-pay");
+
+    expect(response.statusCode).toBe(301);
+    expect(response.headers.location).toBe(ENTRY);
+  });
+
+  it("301s a bare slug past a page hidden beneath one that isn't public", async () => {
+    await seedPage();
+    const hidden = await seedPage({ url: "/zz-hidden", visibility: "draft" });
+    await seedPage({
+      url: "/zz-hidden/calculate-severance-pay",
+      parent_id: hidden.id,
+    });
+
+    expect((await read("/calculate-severance-pay")).headers.location).toBe(
+      ENTRY,
+    );
+  });
+
+  // Both orders, so a check of only the first or last sub-page can't pass.
+  it.each([
+    ["draft", "public"],
+    ["public", "draft"],
+  ])(
+    "keeps the Start link when any start sub-page is public (%s, then %s)",
+    async (...visibilities) => {
+      const parent = await seedPage({ body_markdown: ENTRY_MARKDOWN });
+      for (const [i, visibility] of visibilities.entries())
+        await seedPage({
+          url: i === 0 ? START : "/elsewhere/start",
+          parent_id: parent.id,
+          visibility,
+        });
+
+      expect((await read(ENTRY)).json().hide_start_links).toBe(false);
+    },
+  );
 
   it("404s a bare slug more than one page shares", async () => {
     await seedPage({ url: "/a/start" });

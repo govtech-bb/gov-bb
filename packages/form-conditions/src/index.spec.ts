@@ -1,6 +1,7 @@
 import { DEFAULT_ZONE } from "@govtech-bb/expressions";
 import {
   evaluateFormConditions,
+  resolveFieldHint,
   resolveFieldLabel,
   resolveStepTitle,
 } from "./index";
@@ -1540,5 +1541,77 @@ describe("resolveFieldLabel", () => {
     };
     expect(resolveFieldLabel(multi, { s: { kind: "b" } })).toBe("Label B");
     expect(resolveFieldLabel(multi, { s: { kind: "a" } })).toBe("Label A");
+  });
+});
+
+// ─── resolveFieldHint ────────────────────────────────────────────────────────
+
+describe("resolveFieldHint", () => {
+  // The NHC rental application's case: the hint only joint applicants need.
+  const conditionalHint = [
+    {
+      targetStepId: "applying-with",
+      targetFieldId: "applying-with",
+      operator: "equal" as const,
+      value: "with-another-person",
+      hint: "Include land or property you own on your own or with someone else.",
+    },
+  ];
+  const JOINT = { "applying-with": { "applying-with": "with-another-person" } };
+  const ALONE = { "applying-with": { "applying-with": "on-my-own" } };
+
+  it("returns the static hint when there is no conditionalHint", () => {
+    expect(resolveFieldHint({ hint: "Static hint" }, JOINT)).toBe(
+      "Static hint",
+    );
+  });
+
+  it("returns undefined when there is no hint and no conditionalHint", () => {
+    expect(resolveFieldHint({}, JOINT)).toBeUndefined();
+  });
+
+  it("returns the static hint when the conditionalHint array is empty", () => {
+    expect(
+      resolveFieldHint({ hint: "Static hint", conditionalHint: [] }, JOINT),
+    ).toBe("Static hint");
+  });
+
+  it("returns the conditional hint when its condition matches", () => {
+    expect(resolveFieldHint({ conditionalHint }, JOINT)).toBe(
+      "Include land or property you own on your own or with someone else.",
+    );
+  });
+
+  it("falls back to the static hint when no condition matches", () => {
+    expect(
+      resolveFieldHint({ hint: "Static hint", conditionalHint }, ALONE),
+    ).toBe("Static hint");
+  });
+
+  it("returns undefined when no condition matches and there is no static hint", () => {
+    expect(resolveFieldHint({ conditionalHint }, ALONE)).toBeUndefined();
+    expect(resolveFieldHint({ conditionalHint }, EMPTY_VALUES)).toBeUndefined();
+  });
+
+  it("returns the first matching entry's hint (first match wins)", () => {
+    const multi = {
+      hint: "Default",
+      conditionalHint: [
+        {
+          targetFieldId: "kind",
+          operator: "equal" as const,
+          value: "a",
+          hint: "Hint A",
+        },
+        {
+          targetFieldId: "kind",
+          operator: "equal" as const,
+          value: "b",
+          hint: "Hint B",
+        },
+      ],
+    };
+    expect(resolveFieldHint(multi, { s: { kind: "b" } })).toBe("Hint B");
+    expect(resolveFieldHint(multi, { s: { kind: "a" } })).toBe("Hint A");
   });
 });

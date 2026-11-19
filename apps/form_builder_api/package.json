@@ -6,7 +6,10 @@
     "dev": "TSX_TSCONFIG_PATH=tsconfig.dev.json tsx watch src/main.ts",
     "build": "tsc",
     "start": "node dist/main.js",
-    "test": "vitest run"
+    "test": "vitest run",
+    "lint:fix": "oxlint --fix",
+    "test:oxlint": "oxlint",
+    "test:types": "tsc --noEmit"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1136.0",

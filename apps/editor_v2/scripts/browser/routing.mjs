@@ -20,7 +20,7 @@ const service = { ...servicesFixture[0], title: "Routing service" };
 
 const ids = [service.id, "fees", "contact", "fourth"];
 
-await installPageApi(
+const { pages, writes } = await installPageApi(
   context,
   service,
   ids.map((id, index) =>
@@ -143,6 +143,19 @@ try {
   await close.dismiss();
   assert.equal(page.isClosed(), false);
 
+  // A reload that goes ahead opens the page as the API has it, and offers back the changes this browser kept
+  const kept = page.getByText("This browser kept your unsaved changes");
+  const reloading = page.waitForEvent("dialog");
+  await page.evaluate(() => {
+    setTimeout(() => location.reload(), 0);
+  });
+  await (await reloading).accept();
+  await kept.waitFor();
+  assert.equal(await title.inputValue(), "Fees");
+  await button("Restore changes").click();
+  await kept.waitFor({ state: "detached" });
+  assert.equal(await title.inputValue(), "Unsaved fees");
+
   await navigation.getByRole("link", { name: /Contact/ }).click();
   await question.getByRole("button", { name: "Leave without saving", exact: true }).click();
   await page.waitForURL(url("contact"));
@@ -150,6 +163,8 @@ try {
   await page.waitForURL(url("fees"));
   assert.equal(await title.inputValue(), "Fees");
   assert.equal(await button("Undo").isDisabled(), true);
+  // Given up on leaving, the changes aren't offered back
+  assert.equal(await kept.count(), 0);
 
   for (const [id, label] of [
     ["fourth", "Fourth"],
@@ -166,9 +181,60 @@ try {
   await page.reload();
   await title.waitFor();
   assert.equal(await title.inputValue(), "Contact");
+  const savedContact = pages.get("contact");
+  pages.set("contact", { ...savedContact, version: savedContact.version + 1 });
+  await title.fill("Recovered contact");
+
+  const reloadWithRecovery = async () => {
+    const reloading = page.waitForEvent("dialog");
+    await page.evaluate(() => setTimeout(() => location.reload(), 0));
+    await (await reloading).accept();
+    await kept.waitFor();
+  };
+
+  await reloadWithRecovery();
+  await button("Restore changes").click();
+  await button("Newer version saved").waitFor();
+  await button("Undo").click();
+  assert.equal(await title.inputValue(), "Contact");
+  assert.equal(await button("Newer version saved").count(), 0);
+  await button("Redo").click();
+  assert.equal(await title.inputValue(), "Recovered contact");
+  await button("Newer version saved").waitFor();
+  assert.equal(await button("Save").getAttribute("aria-disabled"), "true");
+  await button("Undo").click();
+  await title.fill("Fresh contact");
+  await button("Save").click();
+  await page.waitForFunction(() =>
+    [...document.querySelectorAll("[data-document-bar]")].some(
+      (bar) => !bar.hidden && bar.textContent.includes("Saved"),
+    ),
+  );
+  assert.equal(writes.at(-1).expectedVersion, savedContact.version + 1);
+  assert.equal(pages.get("contact").title, "Fresh contact");
+
+  await title.fill("Discardable contact");
+  await reloadWithRecovery();
+  const discard = button("Discard changes…");
+  await discard.focus();
+  await page.keyboard.press("Enter");
+  await question.waitFor();
+  await page.keyboard.press("Escape");
+  await question.waitFor({ state: "hidden" });
+  assert.equal(await discard.evaluate((node) => node === document.activeElement), true);
+  assert.equal(await kept.isVisible(), true);
+  await discard.click();
+  await question.getByRole("button", { name: "Discard changes", exact: true }).click();
+  await question.waitFor({ state: "hidden" });
+  await kept.waitFor({ state: "detached" });
+  assert.equal(await title.inputValue(), "Fresh contact");
+  assert.equal(await page.evaluate(() => document.activeElement?.tagName), "H1");
+  await page.reload();
+  await title.waitFor();
+  assert.equal(await kept.count(), 0);
   assert.deepEqual(errors, []);
   console.log(
-    "PASS API routes, legacy links, not-found handling, services table, cancelled links/Back/Forward, unload/close protection, discard/undo cleanup and clean-view eviction",
+    "PASS API routes, legacy links, not-found handling, services table, cancelled links/Back/Forward, unload/close protection, browser recovery, version-safe undo/redo, confirmed discard and clean-view eviction",
   );
 } finally {
   await browser.close();

@@ -11,7 +11,7 @@
  *  - fetchFormDraft: success path, parse failure
  *  - patchFormDraft: success path, parse failure
  *  - deleteFormDraft: success path returns status code
- *  - postFormSubmission: success path, response parse failure
+ *  - postFormSubmission: success path, response parse failure, X-Journey-Id
  *  - formatDataForSubmission: hidden fields, empty values, non-repeatable grouping,
  *    repeatable collapsing, addAnother stripping, stepData fallback
  */
@@ -34,6 +34,10 @@ import type {
   ClientPrimitive,
   FormMeta,
 } from "@forms/types";
+import { getJourneyId } from "../analytics";
+
+// No journey ID unless a test sets one.
+vi.mock("../analytics", () => ({ getJourneyId: vi.fn() }));
 
 // ---------------------------------------------------------------------------
 // Global fetch mock
@@ -586,6 +590,31 @@ describe("postFormSubmission", () => {
     expect(
       (fetchArgs.headers as Record<string, string>)["X-Recipe-Preview"],
     ).toBeUndefined();
+  });
+
+  // #3507: the API logs it on submission_accepted, so the journey's form-submit
+  // event can be joined to the submission. A header, so the payload is unchanged.
+  it("sends this tab's journey ID as X-Journey-Id, with the body unchanged", async () => {
+    const journeyId = "3f2b8c1e-4d5a-4b6c-8d7e-9f0a1b2c3d4e";
+    vi.mocked(getJourneyId).mockReturnValueOnce(journeyId);
+    mockFetch.mockResolvedValue(makeOkResponse(minimalSubmissionBody));
+    await postFormSubmission(minimalFormMeta as FormMeta, {});
+    const fetchArgs = mockFetch.mock.calls[0][1] as RequestInit;
+    expect((fetchArgs.headers as Record<string, string>)["X-Journey-Id"]).toBe(
+      journeyId,
+    );
+    expect(JSON.parse(fetchArgs.body as string)).toEqual({
+      formId: "test-form",
+      values: {},
+    });
+  });
+
+  it("sends no X-Journey-Id when there is no journey ID (journey events off)", async () => {
+    vi.mocked(getJourneyId).mockReturnValueOnce(undefined);
+    mockFetch.mockResolvedValue(makeOkResponse(minimalSubmissionBody));
+    await postFormSubmission(minimalFormMeta as FormMeta, {});
+    const fetchArgs = mockFetch.mock.calls[0][1] as RequestInit;
+    expect(fetchArgs.headers).not.toHaveProperty("X-Journey-Id");
   });
 
   it("throws FormFetchError with status 400 when submission response schema fails", async () => {

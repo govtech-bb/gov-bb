@@ -81,7 +81,7 @@ describe.each(['', 'landing-secret'])('landing token %j', (token) => {
     })
     const { Route } = await import('../routes/sitemap[.]xml')
     // This route's GET handler does not use a request context.
-    const { GET } = Route.options.server?.handlers as {
+    const { GET } = Route.options.server!.handlers as {
       GET: () => Promise<Response>
     }
 

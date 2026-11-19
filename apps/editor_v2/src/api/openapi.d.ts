@@ -11,7 +11,7 @@ export interface paths {
         };
         /**
          * Get a public page by its url
-         * @description The site's read. A page is served only when it and every page above it (by `parent_id`) are visible: public, or preview too with the preview token. `hide_start_links` is set when the page's `start` sub-page is not. A stored public redirect takes precedence over a page at its source, including Draft/Preview replacements, and returns 301 with its stored Location and redirect body. Rules persist when the destination is hidden or deleted; following one still applies normal page visibility. With neither a rule nor an exact page, a bare `/<slug>` redirects (301) to the one visible page with that slug.
+         * @description The site's read. A page is served only when it and every page above it (by `parent_id`) are visible: public, or preview too with the preview token. `hide_start_links` is set when the page has `start` sub-pages and none of them is. A stored public redirect takes precedence over a page at its source, including Draft/Preview replacements, and returns 301 with its stored Location and redirect body. Rules persist when the destination is hidden or deleted; following one still applies normal page visibility. With neither a rule nor an exact page, a bare `/<slug>` redirects (301) to the one visible page with that slug.
          */
         get: {
             parameters: {
@@ -46,7 +46,7 @@ export interface paths {
                             body_markdown: string;
                             /** @description The form a Start link with no href of its own opens, or null. Whether the form is open is the forms API's to say. */
                             form_id: string | null;
-                            /** @description True when the page's `start` sub-page is hidden from this viewer: the site removes the Start link and counts "There are N ways…" down. */
+                            /** @description True when the page has `start` sub-pages and this viewer can see none of them: the site removes the Start link and counts "There are N ways…" down. */
                             hide_start_links: boolean;
                             /** @description The full trail, current page included, Home not: the category (and its parent, for a subcategory), then the pages above this one. */
                             breadcrumbs: {
@@ -3270,7 +3270,7 @@ export interface paths {
         };
         /**
          * Every data collection, with its field list and record count
-         * @description A collection keeps facts many pages repeat, such as a department's phone number, as records. `schema.fields` is what a record may hold. Field lists are set by developers; editors change records.
+         * @description A collection keeps facts many pages repeat, such as a department's phone number, as records. `schema.fields` is what a record may hold. Admins and approvers add collections; editors change records.
          */
         get: {
             parameters: {
@@ -3368,7 +3368,175 @@ export interface paths {
             };
         };
         put?: never;
-        post?: never;
+        /**
+         * Add a data collection
+         * @description Needs the admin or the approver role (403 otherwise). Checked against the collection rules: a key in the wrong format, no title, no fields, a field key in the wrong format, a field without a label, two fields with the same key, an unknown field type, or a `record_key` that isn't one of its `slug` fields is a 422 `validation_failed` naming the field, such as `schema.fields.1.type`. 409 `collection_exists` when the key is taken. A collection's field list can't be changed once it is created.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        /** @description The collection's name in urls: lowercase letters, numbers and hyphens, up to 100 characters. No other collection may have it. */
+                        key: string;
+                        /** @description What editors see it called, up to 200 characters. */
+                        title: string;
+                        /** @description The key of the `slug` field whose value names each record in its url. */
+                        record_key: string;
+                        schema: {
+                            /** @description At least one field. */
+                            fields: {
+                                /** @description Lowercase letters, numbers and hyphens, up to 100 characters; unique among the collection's fields. */
+                                key: string;
+                                label: string;
+                                /** @description One of `text`, `slug`, `email`. */
+                                type: string;
+                            }[];
+                        };
+                    };
+                };
+            };
+            responses: {
+                /** @description Default Response */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            key: string;
+                            title: string;
+                            /** @description The field whose value is each record's `record_key`. */
+                            record_key: string;
+                            schema: {
+                                fields: {
+                                    key: string;
+                                    label: string;
+                                    /** @enum {string} */
+                                    type: "text" | "slug" | "email";
+                                }[];
+                            };
+                            schema_version: number;
+                            /** Format: date-time */
+                            updated_at: string;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @enum {string} */
+                            error: "collection_exists";
+                            message: string;
+                            errors: {
+                                field: string;
+                                message: string;
+                            }[];
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @enum {string} */
+                            error: "validation_failed";
+                            message: string;
+                            errors: {
+                                field: string;
+                                message: string;
+                            }[];
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Default Response */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            error: string;
+                            message?: string;
+                        } & {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+        };
         delete?: never;
         options?: never;
         head?: never;

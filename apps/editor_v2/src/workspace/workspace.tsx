@@ -49,6 +49,7 @@ import type { ServicesSearch } from "./services-search";
 import type { PageDocument, WorkspaceLocation } from "./model";
 import { pageHasUnsavedChanges, type PageSession } from "./page-session";
 import { usePageLeaveGuard } from "./page-leave-guard";
+import { forgetUnsavedWork } from "./unsaved-work";
 
 type Account = {
   email: string;
@@ -136,6 +137,7 @@ export function ServiceWorkspace({
       for (const id of ids) {
         next.delete(id);
         sessions.forget(id);
+        forgetUnsavedWork(id);
       }
 
       pageSessionsRef.current = next;
@@ -222,6 +224,8 @@ export function ServiceWorkspace({
   // Until the roles load, deleting a public page and changing categories wait rather than offering what the API may
   // refuse
   const approver = roles?.includes("approver") ?? false;
+  // Adding a collection sets the fields every record holds, so it's an admin's or an approver's (#3681)
+  const collector = approver || (roles?.includes("admin") ?? false);
   // Without the editor role everything still reads, but nothing can be changed. Until the roles load everyone is
   // offered the changes, since nearly everyone is an editor; the API refuses anyone who isn't
   const readOnly = !!roles && !roles.includes("editor");
@@ -539,7 +543,17 @@ export function ServiceWorkspace({
                   readOnly={readOnly}
                 />
               ) : (
-                <CollectionsScreen api={api} />
+                <CollectionsScreen
+                  api={api}
+                  readOnly={!collector}
+                  why={
+                    unchecked
+                      ? UNCHECKED
+                      : roles && !collector
+                        ? "Only admins and approvers can add collections."
+                        : undefined
+                  }
+                />
               )}
             </section>
           )}

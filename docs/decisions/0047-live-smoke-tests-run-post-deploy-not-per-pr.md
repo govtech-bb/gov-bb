@@ -10,6 +10,26 @@
 > a PR against its own preview (frontend-only scope; real submissions still
 > apply). The post-deploy smoke this ADR describes remains in force.
 
+> **Amended 2026-10-26 ([#3008](https://github.com/govtech-bb/gov-bb/issues/3008)):**
+> the sandbox post-deploy smoke now enters each form the way a citizen does —
+> from its landing start page, through "Start now" (`SMOKE_LANDING_URL`). The
+> link's host and path are checked before the click, so a Start link to the
+> wrong environment fails the run instead of submitting there. Because landing
+> can break that journey too, `smoke-test-forms` now runs when forms **or**
+> landing deployed (`needs: [amplify-forms, amplify-landing]`, neither failed),
+> not only after `amplify-forms` as described below. Two accepted costs: every
+> landing-only merge now files the matrix's smoke submissions on sandbox (a few
+> minutes per run, processors dropped per ADR 0087); and a failed landing
+> deploy skips the forms smoke for that run — the run is already red.
+
+> **Amended 2026-11-03 ([#3008](https://github.com/govtech-bb/gov-bb/issues/3008)):**
+> the same landing-first smoke now also runs after **every staging deploy**
+> (`deploy-staging.yml`, with `SMOKE_SUBMISSION_TOKEN_STAGING`), even when
+> nothing changed, and **Deploy Production refuses a commit** unless a staging
+> run for that exact commit passed every smoke leg. This extends the decision
+> below from sandbox to staging and makes the smoke a release gate.
+> `allow_non_staging` still skips the guard for a deliberate rollback.
+
 ## Context
 
 The forms app has two distinct kinds of end-to-end test:

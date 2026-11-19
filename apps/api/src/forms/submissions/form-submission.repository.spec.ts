@@ -138,4 +138,37 @@ describe("FormSubmissionRepository", () => {
       });
     });
   });
+
+  describe("findByReference (#3419)", () => {
+    it("finds by reference code, reading only the columns a status answer needs", async () => {
+      const dataSource = makeDataSource();
+      const repo = new FormSubmissionRepository(dataSource);
+
+      const row = {
+        formId: "food-handlers-permit",
+        submittedAt: new Date("2026-10-21T18:28:00Z"),
+      };
+      const findOne = vi.fn().mockResolvedValue(row);
+      (repo as unknown as { findOne: Mock }).findOne = findOne;
+
+      await expect(repo.findByReference("MOH-TRL-2610-47E4AD6")).resolves.toBe(
+        row,
+      );
+      // Never `values` or `meta`: they hold the applicant's answers.
+      expect(findOne).toHaveBeenCalledWith({
+        where: { referenceCode: "MOH-TRL-2610-47E4AD6" },
+        select: { formId: true, submittedAt: true },
+      });
+    });
+
+    it("returns null when no submission has that reference", async () => {
+      const dataSource = makeDataSource();
+      const repo = new FormSubmissionRepository(dataSource);
+      (repo as unknown as { findOne: Mock }).findOne = vi
+        .fn()
+        .mockResolvedValue(null);
+
+      await expect(repo.findByReference("NOPE")).resolves.toBeNull();
+    });
+  });
 });

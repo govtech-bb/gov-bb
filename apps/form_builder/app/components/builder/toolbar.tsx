@@ -250,10 +250,7 @@ export function Toolbar(props: ToolbarProps) {
               role="group"
               aria-labelledby="form-status-label"
             >
-              <p
-                id="form-status-label"
-                className="font-medium text-ui-default"
-              >
+              <p id="form-status-label" className="font-medium text-ui-default">
                 Status
               </p>
               <p className="mt-2 text-ui-strong" data-testid="form-status">

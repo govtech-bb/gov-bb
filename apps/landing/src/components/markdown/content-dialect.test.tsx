@@ -86,7 +86,8 @@ describe('GovBB content dialect rendering', () => {
     const source = ':::action{target="form"}\nStart now\n:::'
     const html = await renderContent(source, 'birth', new Set(['birth']))
     expect(html).toContain('/forms/birth')
-    expect(html).toContain('data-umami-event="birth-start"')
+    expect(html).toContain('data-umami-event="start-click"')
+    expect(html).toContain('data-umami-event-form-id="birth"')
     expect(await renderContent(source, 'birth')).not.toContain('Start now')
     const explicit = await renderContent(
       ':::action{form="other"}\nApply\n:::',

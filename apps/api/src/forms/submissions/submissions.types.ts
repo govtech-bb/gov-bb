@@ -162,6 +162,13 @@ export interface SubmitDto {
    * `?preview=` link (#1682). Fail-closed: absent/invalid token → undefined.
    */
   bypassVisibility?: boolean;
+  /**
+   * The browser tab's journey ID, set by the controller only when the
+   * `X-Journey-Id` header holds a UUID (#3507). Logged on the
+   * `submission_accepted` line, so it can be joined to the journey's
+   * `form-submit` event. Never stored.
+   */
+  journeyId?: string;
 }
 
 type SubmitOutcome = "created" | "duplicate" | "in_progress";
@@ -186,6 +193,13 @@ export interface SubmitResult {
    * reads the shared all-clinics fallback.
    */
   resolvedPolyclinicContact?: string;
+  /**
+   * Whether the form sends to CaMS, so the application tracker can find this
+   * reference and the chat's receipt can offer tracking (#3419). Read from the
+   * recipe. Always set on a new submission; absent on a replay whose recipe no
+   * longer resolves (unknown, not false).
+   */
+  trackable?: boolean;
   deferred?: {
     paymentUrl: string;
     paymentId: string;

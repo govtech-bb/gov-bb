@@ -92,12 +92,14 @@ export function buildAlertEmail(
 export function buildConfirmEmail(
   areaLabel: string,
   confirmUrl: string,
+  unsubscribeUrl: string,
 ): EmailContent {
   const html = renderEmail(`
     <h1 class="title">Confirm your water alerts</h1>
     <p class="intro">You asked to get an email when water is affected in <strong>${Handlebars.escapeExpression(areaLabel)}</strong>. Confirm below and we'll let you know whenever there's a notice for your area.</p>
     <p style="margin: 24px 0;"><a class="btn" href="${Handlebars.escapeExpression(confirmUrl)}">Confirm my alerts</a></p>
     <p class="muted">If you didn't ask for this, you can ignore this email — nothing will happen.</p>
+    <p class="muted">You can stop these alerts at any time. <a href="${Handlebars.escapeExpression(unsubscribeUrl)}">Unsubscribe</a>.</p>
   `);
   const text = [
     "Confirm your water alerts",
@@ -107,6 +109,8 @@ export function buildConfirmEmail(
     confirmUrl,
     "",
     "If you didn't ask for this, you can ignore this email.",
+    "",
+    `Unsubscribe: ${unsubscribeUrl}`,
   ].join("\n");
   return { subject: "Confirm your water alerts", html, text };
 }

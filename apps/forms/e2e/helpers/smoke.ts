@@ -23,6 +23,7 @@
 import {
   errors,
   expect,
+  test,
   type Locator,
   type Page,
   type Request,
@@ -40,13 +41,89 @@ const UPLOAD_TIMEOUT = 30_000;
 const primaryButton = (page: Page) =>
   page.getByRole("button", { name: /^(Continue|Submit)$/ });
 
-/** Open a published recipe, including private forms when a preview token is set. */
-export async function openSmokeForm(page: Page, formId: string): Promise<void> {
+/**
+ * Open a published recipe, including private forms when a preview token is set.
+ *
+ * With SMOKE_LANDING_URL set, enter the form the way a citizen does instead:
+ * open its landing start page (`landingStartPath`) and follow "Start now"
+ * (#3008). A spec in a landing run must say where its start page is — falling
+ * back to a direct visit would quietly drop the coverage the run exists for.
+ */
+export async function openSmokeForm(
+  page: Page,
+  formId: string,
+  opts: { landingStartPath?: string } = {},
+): Promise<void> {
+  const landingUrl = process.env.SMOKE_LANDING_URL?.trim();
+  if (landingUrl) {
+    if (!opts.landingStartPath) {
+      throw new Error(
+        `SMOKE_LANDING_URL is set but the "${formId}" spec passes no ` +
+          "landingStartPath — add its landing start page to openSmokeForm.",
+      );
+    }
+    if (process.env.PREVIEW_TOKEN) {
+      // Landing hides Start for a non-public form, so there is no link to follow.
+      throw new Error(
+        "SMOKE_LANDING_URL and PREVIEW_TOKEN can't be combined: landing has " +
+          "no Start link for a private form (#1848).",
+      );
+    }
+    // The forms host under test is the config's baseURL (SMOKE_BASE_URL).
+    await startFromLanding(
+      page,
+      new URL(opts.landingStartPath, landingUrl).href,
+      new URL(test.info().project.use.baseURL!).origin,
+      formId,
+    );
+    return;
+  }
+
   const previewToken = process.env.PREVIEW_TOKEN;
   const search = previewToken
     ? `?preview=${encodeURIComponent(previewToken)}`
     : "";
   await page.goto(`/forms/${formId}${search}`);
+}
+
+/**
+ * Open a landing start page, check its Start link ("Start now", or "Start"
+ * on the certificate pages) targets `formId` on `formsOrigin`, then follow
+ * it. The link is checked BEFORE the click: a landing build pointing at
+ * another environment's forms host would otherwise carry the smoke into that
+ * environment and submit a real application there.
+ */
+export async function startFromLanding(
+  page: Page,
+  startPageUrl: string,
+  formsOrigin: string,
+  formId: string,
+): Promise<void> {
+  // A moved, closed or non-public start page 404s — say so, rather than
+  // reporting a missing button.
+  const response = await page.goto(startPageUrl);
+  expect(
+    response?.ok(),
+    `${startPageUrl} returned HTTP ${response?.status()}`,
+  ).toBe(true);
+  const start = page.getByRole("link", { name: /^Start( now)?$/ });
+  await expect(
+    start,
+    `no Start link on ${startPageUrl} — landing hides it when ` +
+      `"${formId}" is unavailable (not public, closed or disabled)`,
+  ).toBeVisible({ timeout: STEP_TIMEOUT });
+
+  const target = new URL((await start.getAttribute("href")) ?? "", page.url());
+  const expected = `${formsOrigin}/forms/${formId}`;
+  expect(
+    `${target.origin}${target.pathname}`,
+    `the Start link on ${startPageUrl} points at ${target.href}`,
+  ).toBe(expected);
+
+  await start.click();
+  await page.waitForURL((url) => `${url.origin}${url.pathname}` === expected, {
+    timeout: STEP_TIMEOUT,
+  });
 }
 
 /** Read the current `?step=` param. */
@@ -423,8 +500,9 @@ type UploadFile = { name: string; mimeType: string; buffer: Buffer };
 
 /**
  * The upload's three requests, in the order the widget makes them
- * (apps/forms/src/lib/api/files.ts `uploadFile`): presign, the PUT of the file
- * to storage (S3, at a presigned URL), then confirm. `label` names each one in
+ * (apps/forms/src/lib/api/files.ts `sendFile`, then `checkFile`): presign, the
+ * PUT of the file to storage (S3, at a presigned URL), then confirm. Confirm
+ * may repeat while the malware scan is pending; the first one is watched. `label` names each one in
  * a failure message; the storage request is never named by its URL, which
  * carries the presigned signature.
  */
@@ -485,12 +563,15 @@ function watchStage(
   return outcome;
 }
 
-/** Throw a message naming the stage, the file and what went wrong. */
+/**
+ * The stage's response, or throw a message naming the stage, the file and
+ * what went wrong.
+ */
 async function expectStageOk(
   pending: Promise<{ response: Response } | { failure: string }>,
   stage: UploadStage,
   fileName: string,
-): Promise<void> {
+): Promise<Response> {
   let outcome: { response: Response } | { failure: string };
   try {
     outcome = await pending;
@@ -514,7 +595,7 @@ async function expectStageOk(
     );
   }
   const { response } = outcome;
-  if (response.ok()) return;
+  if (response.ok()) return response;
   const body = stage.showBody
     ? (await response.text().catch(() => "")).slice(0, 300)
     : "";
@@ -525,13 +606,32 @@ async function expectStageOk(
 }
 
 /**
+ * Throw if confirm-upload says the malware scan refused the file (#2940), so
+ * the failure names the verdict rather than timing out on a missing row.
+ * `pending` is fine here: the widget asks again until the scan finishes.
+ */
+async function expectNotRefused(confirm: Response, fileName: string) {
+  const body = (await confirm.json().catch(() => ({}))) as {
+    data?: { scanStatus?: string };
+  };
+  const verdict = body.data?.scanStatus;
+  if (verdict === "infected" || verdict === "unscannable") {
+    throw new Error(
+      `POST /files/confirm-upload says ${fileName} is ${verdict} (scanStatus); the widget will not add it`,
+    );
+  }
+}
+
+/**
  * Set one file on an upload input and wait until it is CONFIRMED (#2423).
  * Each of the upload's requests is watched before the file is set, so a
  * throttled, rejected or dropped request fails at once naming the request and
  * its status or network error (a 429 on confirm-upload, a 5xx on presign, a
  * 403 from storage, a refused connection) instead of timing out on a
- * "Remove {name}" button that never appears. That button is still the final
- * check: it only renders once the value has committed (see uploadOne).
+ * "Remove {name}" button that never appears. That button, in an added row, is
+ * still the final check: it only renders there once the value has committed
+ * (see uploadOne). A refused file's row has a Remove button too, so the
+ * locator skips the in-progress/refused rows (`--pending`).
  */
 async function uploadAndConfirm(
   page: Page,
@@ -540,11 +640,17 @@ async function uploadAndConfirm(
 ): Promise<void> {
   const watches = UPLOAD_STAGES.map((stage) => watchStage(page, stage));
   await input.setInputFiles(file);
+  let confirm: Response | undefined;
   for (const [i, stage] of UPLOAD_STAGES.entries()) {
-    await expectStageOk(watches[i], stage, file.name);
+    confirm = await expectStageOk(watches[i], stage, file.name);
   }
+  if (confirm) await expectNotRefused(confirm, file.name);
   await expect(
-    page.getByRole("button", { name: `Remove ${file.name}` }),
+    page
+      .locator(
+        ".govbb-file-upload__item:not(.govbb-file-upload__item--pending)",
+      )
+      .getByRole("button", { name: `Remove ${file.name}` }),
   ).toBeVisible({ timeout: UPLOAD_TIMEOUT });
 }
 
@@ -553,8 +659,8 @@ async function uploadAndConfirm(
  * CONFIRMED, not merely pending. The component renders a file's name for both
  * the "Uploading…" pending row and the confirmed row, so waiting on the name
  * alone can resolve before `confirm-upload` commits the value (and advancing
- * then trips minItems validation). The per-file "Remove {name}" button only
- * renders for a confirmed file, so wait on that instead.
+ * then trips minItems validation). The "Remove {name}" button in an added
+ * (non-pending) row only renders for a confirmed, clean file, so wait on that.
  */
 export async function uploadOne(
   page: Page,

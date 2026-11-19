@@ -136,6 +136,50 @@ Every new issue should carry the labels that describe what it relates to. Run
 
 Pick labels from the issue's actual content, not just its title.
 
+#### Size each issue so one PR closes it
+
+Before you create an issue, ask: can one PR close all of it? If not, split it.
+Don't list "step 1, step 2, step 3" in one issue or in a steps comment. That
+leads to "Part of #N" PRs, and the issue stays open with no clear record of
+what is left (#3256 and #3716).
+
+Issues come in three tiers, and each is a sub-issue of the tier above it. A
+parent is not always an epic: pick the tier from the size and purpose of the
+work, not from whether it has sub-issues.
+
+| Tier    | Label and template                           | Purpose                                                                                                             | Size                                          | Example                                                                            |
+| ------- | -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- | --------------------------------------------- | ---------------------------------------------------------------------------------- |
+| Epic    | `EPIC`, Epic template                        | A large body of work tied to one meaningful outcome                                                                 | Several sprints, often months; may span teams | "Let citizens renew their driving licence online"                                  |
+| Story   | `user-story`, title starts `[STORY]`         | Value for one kind of user: "As a …, I want …, so that …". It says what the user needs and why, not how to build it | One sprint                                    | "As a driver, I want to pay by debit card so that I don't have to visit an office" |
+| Feature | Feature template, then add `feature` by hand | One deliverable change, written for the team: a technical or practical step towards a story                         | Hours to a few days; **one PR**               | "Integrate the payment gateway API"                                                |
+
+A feature here is the unit Agile calls a task. Agile's own "feature" tier,
+between epic and story, is not used in this repo. The Feature
+template applies `enhancement` but not `feature`, so add `feature` yourself.
+
+- Only a feature is closed by a PR. If the work needs more than one PR, it is a
+  story or an epic: give each step, or each area the work touches (for example
+  the api_v2 import, then landing search, then the sitemap), its own feature
+  sub-issue. Use GitHub sub-issues, not a checklist.
+- If the issue you are splitting is already a sub-issue (for example feature
+  #3256 under story #3280), don't nest another level. Open the steps as sibling
+  features under the same parent, and close the original as split.
+- Give each feature one area, its own labels and its own "Acceptance
+  criteria". One PR must be able to complete it with `Closes #N`.
+- An epic is done when all its sub-issues are closed; the sub-issue progress
+  bar shows this, so it needs no acceptance criteria of its own. A story's
+  acceptance criteria describe what the user can do, and it closes when they
+  hold and all its features are closed.
+- Attach a sub-issue with its numeric id, not its number:
+
+  ```bash
+  id=$(gh api repos/govtech-bb/gov-bb/issues/<child> --jq .id)
+  gh api repos/govtech-bb/gov-bb/issues/<parent>/sub_issues -F sub_issue_id="$id"
+  ```
+
+If you have to work on an existing issue that has steps, split it into
+sub-issues first. Don't open a "Part of" PR.
+
 ### Run the build, and the tests for what you touched, before committing or pushing
 
 CI runs the full build and the full test suite. Run the build the same way
@@ -164,6 +208,46 @@ error in one package fails the whole "Build all packages" step.
 a fully offline `build` fails on that package. When verifying locally,
 run `pnpm exec nx run-many -t build --exclude=landing` and let CI build
 everything.
+
+Lint and formatting are oxlint and oxfmt. Every project has a cached
+`test:oxlint` script (and `lint:fix`); CI's "Lint" check runs it over the
+affected projects plus a whole-repo format check, and the pre-commit hook runs
+both on staged files:
+
+```bash
+pnpm test:oxlint     # nx affected -t test:oxlint (.oxlintrc.json, nested in apps/forms + apps/landing)
+pnpm test:format     # oxfmt --check (.oxfmtrc.json); `pnpm format` writes
+pnpm test:types      # nx affected -t test:types: tsc --noEmit in each project that has the script
+pnpm test:pr         # what CI checks, for affected projects: oxlint, types, tests, build + format
+```
+
+### Targets live in package.json scripts
+
+Each project's commands are its package.json scripts. nx infers a target from
+each one and runs it with pnpm. `project.json` only carries nx metadata (a
+build's env `inputs`, a `dependsOn` override) plus the two real executors,
+`@nx/js:tsc` for library and api builds and `@nx/js:node` for api dev/start.
+Shared cache, inputs, outputs and `dependsOn` live in `nx.json`
+`targetDefaults`. Don't wrap a script in an `nx:run-commands` target.
+
+Vite apps bundle workspace packages from source (tsconfig `paths`), so their
+`build` has `dependsOn: []` and never waits on library builds. The api and
+form-builder-api keep `^build`, because their Docker images run the
+libraries' compiled `dist`. A library's `main` (`./src/index.js`) is written
+for that `dist` layout, since `@nx/js:tsc` copies it into `dist/package.json`
+as-is. Don't point it at `.ts`. `pnpm build` is affected-only; `pnpm
+build:all` builds everything.
+
+### One tsconfig base; override only what differs
+
+Every project's tsconfig extends `tsconfig.base.json`. The base holds the
+shared settings: `strict`, `noUnusedLocals` and `noUnusedParameters`,
+`verbatimModuleSyntax`, bundler resolution and the `@govtech-bb/*` paths. A
+project sets only what genuinely differs. CommonJS builds (the api and the
+libraries it runs from `dist`) set `"module": "commonjs"`,
+`"moduleResolution": "node10"` and `"verbatimModuleSyntax": false`. React apps
+add `jsx`, DOM `lib`s and `noEmit`, and database adds the decorator flags.
+Don't restate a base setting in a project.
 
 ### Accessibility target
 

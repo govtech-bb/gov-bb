@@ -38,6 +38,14 @@ confirmed applied in sandbox, staging and prod on #3322). Sandbox has no
   (default off, turned on per environment by infra) makes confirm-upload return
   `scanStatus` and withhold the preview `url` unless the file is clean. Off, it
   reports `clean` as before.
+- **The upload page only adds a clean file, and its gate is UX (#2940).** The
+  forms widget adds a file to the form only when confirm-upload says `clean`. A
+  response with no `scanStatus` (an API from before this ADR) also counts as
+  clean, so rolling the API back doesn't block every upload; submit still fails
+  closed. A `pending` file is asked about again every 3s for up to 20s (matching
+  CaMS), then shown as "took too long" with Retry, which re-checks without
+  uploading again. Continue stays clickable but refuses, through the field's
+  validator, while a file is uploading or a refused file is still showing.
 - **Refused files are not deleted.** Sandbox can't delete, and the submit check
   already stops them. Expiry is an infra lifecycle concern (#3322).
 - **Local development plays GuardDuty.** When `S3_ENDPOINT` is set
@@ -69,11 +77,15 @@ confirmed applied in sandbox, staging and prod on #3322). Sandbox has no
   infra alarm (alpha-infra#698). Tell infra first.
 - Raising `UPLOAD_MAX_SIZE_BYTES` above ~15MB needs the 4s wait revisited, because
   scan time grows with file size.
-- The two refusal messages live in the policy module and must match the upload
-  page (#2940).
-- **Known gap: the check is point-in-time.** The presigned PUT URL stays valid
-  for `UPLOAD_PRESIGN_TTL_SECONDS` (15 min), and the email processor downloads
-  the object's *current* bytes later. So a caller could overwrite a file after
-  submit passes. GuardDuty re-tags the new bytes, but nothing re-reads the tag.
-  Closing this, for example by presigning with `If-None-Match: *` or by pinning
-  the version checked at submit, is tracked in #3332.
+- The two refusal messages live in `@govtech-bb/form-validation`
+  (`file-scan-messages.ts`), so the submit refusal and the upload page show the
+  same text. Content design owns the wording (#2940).
+- **Overwrites are refused, so the point-in-time check holds (#3332).** The
+  presigned PUT URL stays valid for `UPLOAD_PRESIGN_TTL_SECONDS` (15 min), and
+  the email processor downloads the object's *current* bytes later. Without a
+  guard, a caller could overwrite a file after submit passed it. The API signs
+  `If-None-Match: *` into the presigned PUT and the forms client sends it
+  (#3421), so S3 refuses any PUT to a key that already has an object (412). A
+  PUT without the header fails the signature (403). This was chosen over
+  pinning the version checked at submit, which would change the stored file
+  value, the email processor and the signed links.

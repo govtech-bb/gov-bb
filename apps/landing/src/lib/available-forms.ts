@@ -1,5 +1,6 @@
 import { createServerFn } from '@tanstack/react-start'
 import { resolveCachedValue } from './cached-resolver'
+import { fetchJsonWithTimeout } from './fetch-json-with-timeout'
 import { formsApiBase } from './forms-api-url'
 
 /**
@@ -54,6 +55,7 @@ interface FormsCache {
 /** A mutable holder so the cache can be injected into the resolver for tests. */
 export interface CacheRef {
   current: FormsCache | null
+  inFlight?: Promise<string[]>
 }
 
 /**
@@ -111,51 +113,32 @@ export function parseMaintenanceIds(payload: unknown): string[] {
   })
 }
 
-async function fetchWithTimeout(url: string, ms: number): Promise<Response> {
-  const controller = new AbortController()
-  const timer = setTimeout(() => controller.abort(), ms)
-  try {
-    return await fetch(url, { signal: controller.signal })
-  } finally {
-    clearTimeout(timer)
-  }
-}
-
 /** Fetch and validate the canonical list of available form IDs. */
 async function fetchFormIds(): Promise<string[]> {
-  const response = await fetchWithTimeout(
+  const payload = await fetchJsonWithTimeout(
     `${formsApiBase()}/form-definitions`,
     FETCH_TIMEOUT_MS,
   )
-  if (!response.ok) {
-    throw new Error(`HTTP ${response.status} ${response.statusText}`)
-  }
-  return parseFormIds(await response.json())
+  return parseFormIds(payload)
 }
 
 /** Fetch and validate the IDs of forms currently under maintenance (#1694). */
 async function fetchMaintenanceFormIds(): Promise<string[]> {
-  const response = await fetchWithTimeout(
+  const payload = await fetchJsonWithTimeout(
     `${formsApiBase()}/form-definitions/maintenance`,
     FETCH_TIMEOUT_MS,
   )
-  if (!response.ok) {
-    throw new Error(`HTTP ${response.status} ${response.statusText}`)
-  }
-  return parseMaintenanceIds(await response.json())
+  return parseMaintenanceIds(payload)
 }
 
 /** Fetch and validate the IDs of forms whose application window has closed (#1936). */
 async function fetchClosedFormIds(): Promise<string[]> {
-  const response = await fetchWithTimeout(
+  const payload = await fetchJsonWithTimeout(
     `${formsApiBase()}/form-definitions/closed`,
     FETCH_TIMEOUT_MS,
   )
-  if (!response.ok) {
-    throw new Error(`HTTP ${response.status} ${response.statusText}`)
-  }
   // Same bare `{status,data:[ids]}` shape as /maintenance.
-  return parseMaintenanceIds(await response.json())
+  return parseMaintenanceIds(payload)
 }
 
 /**
@@ -188,6 +171,7 @@ export async function resolveAvailableForms({
   sleep?: (ms: number) => Promise<void>
 }): Promise<string[]> {
   return resolveCachedValue<string[]>({
+    cache,
     now,
     ttlMs,
     fetcher,

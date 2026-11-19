@@ -1,8 +1,8 @@
-import { JSX } from "react";
+import type { JSX } from "react";
 import { FormGroup, Hint, Label, TextArea } from "@govtech-bb/react";
 import ErrorMessage from "../error-message";
 import { renderRepeatableOrSingle, rowInputProps } from "./repeatable-field";
-import { FieldRenderContext } from "./render-context";
+import type { FieldRenderContext } from "./render-context";
 
 export function renderTextareaField(ctx: FieldRenderContext): JSX.Element {
   const {

@@ -40,6 +40,7 @@ const suites = requested.length
       "routing.mjs",
       "categories.mjs",
       "collections.mjs",
+      "collection-create.mjs",
       "page-writer.mjs",
       "page-preview.mjs",
       "site-preview-smoke.mjs",

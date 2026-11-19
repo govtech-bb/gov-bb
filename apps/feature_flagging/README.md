@@ -20,9 +20,10 @@ After cutover — once an environment's landing reads its pages from api_v2 —
 page visibility is set in the content editor (editor_v2), not here (ADR 0110,
 "After cutover"). Set **`EDITOR_V2_URL`** (the editor's origin, no trailing
 slash) on that environment's branch and rebuild: rows without a form then show
-no status select, a line above the table links to the editor, and the statuses
-left change forms only. Unset (local dev, and every environment before its
-cutover) keeps today's behaviour. Like `LANDING_URL`, it is baked at build
+no status select (and the server function refuses a status change for them), a
+line above the table links to the editor, and the statuses left change forms
+only. Unset (local dev, and every environment before its cutover) keeps today's
+behaviour. Like `LANDING_URL`, it is baked at build
 time, so setting it is a **rebuild**.
 
 ## Stack

@@ -8,6 +8,7 @@
 
 import type { FastifySchema } from "fastify";
 import { z } from "zod";
+import { isSitePath } from "@govtech-bb/govbbmarkd/content-url";
 import { ServiceDetail, ServiceSummary } from "../modules/estate-services";
 import {
   CatalogEntry,
@@ -40,6 +41,7 @@ import {
   RecordEnvelope,
   CollectionSummary,
   CollectionView,
+  NewCollection,
   RecordBody,
   RecordKey,
 } from "../modules/collection";
@@ -138,8 +140,8 @@ export const SCHEMAS = {
     description:
       "The site's read. A page is served only when it and every page above " +
       "it (by `parent_id`) are visible: public, or preview too with the " +
-      "preview token. `hide_start_links` is set when the page's `start` " +
-      "sub-page is not. A stored public redirect takes precedence over a page " +
+      "preview token. `hide_start_links` is set when the page has `start` " +
+      "sub-pages and none of them is. A stored public redirect takes precedence over a page " +
       "at its source, including Draft/Preview replacements, and returns 301 " +
       "with its stored Location and redirect body. Rules persist when the " +
       "destination is hidden or deleted; following one still applies normal " +
@@ -147,7 +149,18 @@ export const SCHEMAS = {
       "`/<slug>` redirects (301) to the one visible page with that slug.",
     tags: ["pages"],
     ...siteRead,
-    querystring: z.object({ url: z.string().min(1).max(512) }),
+    // A url no page could have is a 400, not a lookup: some (a NUL) would
+    // fail in Postgres and answer 500.
+    querystring: z.object({
+      url: z
+        .string()
+        .min(1)
+        .max(512)
+        .refine(
+          isSitePath,
+          "Use a site path without backslashes, whitespace or control characters.",
+        ),
+    }),
     response: {
       200: PublicPage,
       301: z.object({ redirect: z.string() }),
@@ -654,7 +667,7 @@ export const SCHEMAS = {
     description:
       "A collection keeps facts many pages repeat, such as a department's " +
       "phone number, as records. `schema.fields` is what a record may hold. " +
-      "Field lists are set by developers; editors change records.",
+      "Admins and approvers add collections; editors change records.",
     tags: ["collections"],
     security: editorSecurity,
     response: {
@@ -743,6 +756,33 @@ export const SCHEMAS = {
       204: z.undefined(),
       409: recordConflict,
       ...recordErrors,
+    },
+  },
+
+  createCollection: {
+    summary: "Add a data collection",
+    description:
+      "Needs the admin or the approver role (403 otherwise). Checked " +
+      "against the collection rules: a key in the wrong format, no title, " +
+      "no fields, a field key in the wrong format, a field without a label, " +
+      "two fields with the same " +
+      "key, an unknown field type, or a `record_key` that isn't one of its " +
+      "`slug` fields is a 422 `validation_failed` naming the field, such as " +
+      "`schema.fields.1.type`. 409 `collection_exists` when the key is " +
+      "taken. A collection's field list can't be changed once it is created.",
+    tags: ["collections"],
+    security: editorSecurity,
+    body: NewCollection,
+    response: {
+      201: CollectionView,
+      400: error,
+      409: validationFailed.extend({
+        error: z.literal("collection_exists"),
+        message: z.string(),
+      }),
+      422: validationFailed.extend({ message: z.string() }),
+      500: error,
+      ...authErrors,
     },
   },
 
