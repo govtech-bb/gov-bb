@@ -100,6 +100,7 @@ function useHeightOfChromeAbove(hero: RefObject<HTMLElement | null>) {
 /** Marks the label and each suggestion whose next item wraps onto a new line, so no separator is left hanging at the end of a line and a label alone on its line stays centred. */
 function markLineEnds(row: HTMLElement | null) {
   if (!row || typeof ResizeObserver === 'undefined') return
+  // Read once: each row is keyed on its items, so new items mount a new row.
   const items = [...row.querySelectorAll('.home-hero__suggestions-label, li')]
   const observer = new ResizeObserver(() => {
     items.forEach((item, index) => {
@@ -185,22 +186,19 @@ export function HomeHero({
   const searchInputId = useId()
   const askInputId = useId()
 
-  const [mode, setMode] = useState<Mode>('ask')
   // The search box's text, for its suggestions. Each form submits its own box,
   // which is uncontrolled, so text typed before hydration isn't wiped.
   const [text, setText] = useState('')
-  // Only typed text gets suggestions, not text carried over from Ask.
+  // Only text typed in the search box gets suggestions, not text carried over
+  // from Ask. Whatever the mode: without :has(), both boxes show.
   const [hasTyped, setHasTyped] = useState(false)
   const chatStatus = useChatStatus()
   useHeightOfChromeAbove(heroRef)
 
-  // The radios and inputs are uncontrolled so a choice or text entered before
-  // hydration, or restored by the browser on Back, isn't overwritten; this
-  // picks it up.
+  // Picks up search text entered before hydration, or restored by the
+  // browser on Back.
   useEffect(() => {
-    const searching = searchRadioRef.current?.checked === true
-    if (searching) setMode('search')
-    setText((searching ? searchInputRef : askInputRef).current?.value ?? '')
+    setText(searchInputRef.current?.value ?? '')
   }, [])
 
   const isChatOffline = chatStatus === 'offline'
@@ -210,7 +208,7 @@ export function HomeHero({
     overlay,
     text,
     setText,
-    suggesting: mode === 'search' && hasTyped,
+    suggesting: hasTyped,
     emptyTo: '/services',
     loadDocuments,
   })
@@ -229,7 +227,6 @@ export function HomeHero({
     let value = from?.value ?? ''
     if (next === 'ask') value = value.slice(0, MAX_QUESTION_LENGTH)
     if (to) to.value = value
-    setMode(next)
     setHasTyped(false)
     setText(value)
   }
@@ -342,7 +339,11 @@ export function HomeHero({
                 </div>
               </form>
               {popularSearches.length > 0 ? (
-                <div className="home-hero__suggestions" ref={markLineEnds}>
+                <div
+                  key={popularSearches.map(({ query }) => query).join('\n')}
+                  className="home-hero__suggestions"
+                  ref={markLineEnds}
+                >
                   <p className="home-hero__suggestions-label">
                     Popular searches:
                   </p>
@@ -423,7 +424,11 @@ export function HomeHero({
                   </p>
                 </StatusBanner>
               ) : questions.length > 0 ? (
-                <div className="home-hero__suggestions" ref={markLineEnds}>
+                <div
+                  key={questions.join('\n')}
+                  className="home-hero__suggestions"
+                  ref={markLineEnds}
+                >
                   <p className="home-hero__suggestions-label">Try asking:</p>
                   <ul className="home-hero__suggestions-list" role="list">
                     {questions.map((question) => (

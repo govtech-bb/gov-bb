@@ -347,14 +347,20 @@
     font-size: var(--govbb-font-size-body-sm);
   }
 
+  /* Closer to its first link than the gap that holds a separator. */
   .home-hero__suggestions-label {
+    margin-inline-end: calc(var(--govbb-space-xs) - var(--govbb-space-xm));
     font-weight: 700;
   }
 
-  /* Closer to its first link than the gap that holds a separator, unless the
-     link wraps (HomeHero marks the label data-line-end). */
-  .home-hero__suggestions-label:not([data-line-end]) {
-    margin-inline-end: calc(var(--govbb-space-xs) - var(--govbb-space-xm));
+  /* Alone on its line (HomeHero marks it data-line-end), the label moves back
+     by half that margin to sit centred. It's moved, not given a new margin, so
+     the mark doesn't reflow the row. */
+  .home-hero__suggestions-label[data-line-end] {
+    position: relative;
+    inset-inline-start: calc(
+      (var(--govbb-space-xs) - var(--govbb-space-xm)) / 2
+    );
   }
 
   .home-hero__suggestions-list {

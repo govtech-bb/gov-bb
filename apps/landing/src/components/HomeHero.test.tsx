@@ -247,6 +247,35 @@ describe('HomeHero', () => {
     })
   })
 
+  // Without :has(), both boxes are on screen whichever mode is checked.
+  it('suggests for the search box while Ask is checked', () => {
+    renderHero()
+
+    fireEvent.input(searchInput(), { target: { value: 'birth' } })
+
+    expect(suggestMock).toHaveBeenLastCalledWith(
+      'birth',
+      'public',
+      new Map(),
+      undefined,
+    )
+  })
+
+  it('submits each box with its own text', () => {
+    renderHero()
+    fireEvent.input(searchInput(), { target: { value: 'birth' } })
+    fireEvent.change(askInput(), { target: { value: 'Renew a passport' } })
+
+    fireEvent.submit(searchInput())
+    expect(navigateMock).toHaveBeenCalledWith({
+      to: '/search-results',
+      search: { q: 'birth' },
+    })
+
+    fireEvent.submit(askInput())
+    expect(assignedHref).toBe(`${new URL('/', CHAT_URL)}?q=Renew+a+passport`)
+  })
+
   it('tracks and searches for a picked suggestion', () => {
     renderHero()
     fireEvent.click(screen.getByRole('radio', { name: 'Search' }))
@@ -389,6 +418,86 @@ describe('HomeHero', () => {
     expect(
       screen.getByRole('link', { name: 'Financial assistance' }),
     ).toBeTruthy()
+  })
+})
+
+describe('HomeHero suggestion separators', () => {
+  class ResizeObserverStub {
+    static instances: Array<ResizeObserverStub> = []
+    targets: Array<Element> = []
+    disconnect = vi.fn()
+    constructor(readonly callback: () => void) {
+      ResizeObserverStub.instances.push(this)
+    }
+    observe(target: Element) {
+      this.targets.push(target)
+    }
+  }
+
+  // jsdom does no layout, so each item is put on a line by hand.
+  const placeOnLine = (element: Element, line: number) => {
+    element.getBoundingClientRect = () => new DOMRect(0, line * 24, 100, 24)
+  }
+  const label = () => screen.getByText('Try asking:')
+  const row = () => label().parentElement!
+  const observerOf = (element: Element) =>
+    ResizeObserverStub.instances.find(({ targets }) =>
+      targets.includes(element),
+    )!
+  const lineEnds = () => [...row().querySelectorAll('[data-line-end]')]
+
+  beforeEach(() => {
+    ResizeObserverStub.instances = []
+    vi.stubGlobal('ResizeObserver', ResizeObserverStub)
+  })
+
+  it('marks each item whose next item starts a new line', () => {
+    renderHero(['First question', 'Second question'])
+    const [first, second] = within(row()).getAllByRole('listitem')
+
+    placeOnLine(label(), 0)
+    placeOnLine(first, 0)
+    placeOnLine(second, 1)
+    observerOf(row()).callback()
+    expect(lineEnds()).toEqual([first])
+
+    placeOnLine(second, 0)
+    observerOf(row()).callback()
+    expect(lineEnds()).toEqual([])
+
+    placeOnLine(first, 1)
+    placeOnLine(second, 1)
+    observerOf(row()).callback()
+    expect(lineEnds()).toEqual([label()])
+  })
+
+  it('watches the new questions when they change', () => {
+    const { rerender, unmount } = renderHero([
+      'First question',
+      'Second question',
+    ])
+    const before = observerOf(row())
+
+    rerender(
+      <HomeHero
+        questions={['First question', 'Third question']}
+        viewer="public"
+        overlay={new Map()}
+      />,
+    )
+    expect(before.disconnect).toHaveBeenCalled()
+    const [first, third] = within(row()).getAllByRole('listitem')
+    const after = observerOf(row())
+    expect(observerOf(third)).toBe(after)
+
+    placeOnLine(label(), 0)
+    placeOnLine(first, 0)
+    placeOnLine(third, 1)
+    after.callback()
+    expect(lineEnds()).toEqual([first])
+
+    unmount()
+    expect(after.disconnect).toHaveBeenCalled()
   })
 })
 
