@@ -6,7 +6,9 @@ import {
   type CreatePageInput,
   type ApiPage,
   type ApiRevision,
+  type Collection,
   type EditorApi,
+  type NewCollectionInput,
   type RecordDetail,
   type SavePageInput,
 } from "./client";
@@ -35,6 +37,16 @@ type RecordDeletion = { collection: string; key: string; version: number };
 async function readRecord(api: EditorApi, collection: string, key: string) {
   try {
     return await api.record(collection, key);
+  } catch (error) {
+    if (error instanceof ApiFailure && error.status === 404) return undefined;
+    throw error;
+  }
+}
+
+/** A collection as api_v2 has it, or undefined when it has none by that key. */
+async function readCollection(api: EditorApi, key: string) {
+  try {
+    return (await api.collection(key)).collection;
   } catch (error) {
     if (error instanceof ApiFailure && error.status === 404) return undefined;
     throw error;
@@ -388,6 +400,17 @@ export const writes = {
       !!sent.record &&
       found.record.version !== sent.record.version &&
       !valuesDiffer(sent.collection, sent.data, found.record),
+  }),
+  // A lost answer is settled only by a collection with this key and exactly this definition: someone else's under
+  // the same key isn't this one
+  createCollection: (api: EditorApi): Write<NewCollectionInput, Collection> => ({
+    send: (sent) => api.createCollection(sent),
+    readBack: (sent) => readCollection(api, sent.key),
+    landed: (found, sent) =>
+      !!found &&
+      found.title === sent.title &&
+      found.record_key === sent.record_key &&
+      JSON.stringify(found.schema.fields) === JSON.stringify(sent.schema.fields),
   }),
   deleteRecord: (api: EditorApi): Write<RecordDeletion, RecordDetail | undefined> => ({
     send: async (sent) => {

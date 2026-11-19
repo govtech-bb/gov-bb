@@ -41,6 +41,7 @@ import {
   RecordEnvelope,
   CollectionSummary,
   CollectionView,
+  NewCollection,
   RecordBody,
   RecordKey,
 } from "../modules/collection";
@@ -666,7 +667,7 @@ export const SCHEMAS = {
     description:
       "A collection keeps facts many pages repeat, such as a department's " +
       "phone number, as records. `schema.fields` is what a record may hold. " +
-      "Field lists are set by developers; editors change records.",
+      "Admins and approvers add collections; editors change records.",
     tags: ["collections"],
     security: editorSecurity,
     response: {
@@ -755,6 +756,32 @@ export const SCHEMAS = {
       204: z.undefined(),
       409: recordConflict,
       ...recordErrors,
+    },
+  },
+
+  createCollection: {
+    summary: "Add a data collection",
+    description:
+      "Needs the admin or the approver role (403 otherwise). Checked " +
+      "against the collection rules: a key in the wrong format, no title, " +
+      "no fields, a field without a key or label, two fields with the same " +
+      "key, an unknown field type, or a `record_key` that isn't one of its " +
+      "`slug` fields is a 422 `validation_failed` naming the field, such as " +
+      "`schema.fields.1.type`. 409 `collection_exists` when the key is " +
+      "taken. A collection's field list can't be changed once it is created.",
+    tags: ["collections"],
+    security: editorSecurity,
+    body: NewCollection,
+    response: {
+      201: CollectionView,
+      400: error,
+      409: validationFailed.extend({
+        error: z.literal("collection_exists"),
+        message: z.string(),
+      }),
+      422: validationFailed.extend({ message: z.string() }),
+      500: error,
+      ...authErrors,
     },
   },
 

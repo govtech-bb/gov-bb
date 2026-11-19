@@ -65,6 +65,8 @@ App UI suites supply employee/API responses at the HTTP boundary. `authenticatio
 
 `collections.mjs` answers api_v2's `/collections` routes with a versioned fixture at the HTTP boundary. It reaches Collections from the menu by keyboard, opens a collection's table and a record's dialog from its row, checks `?record=` in the address, a field refused by `validation_failed`, the stale-save choices, keyboard add and delete with focus returned, visible focus at each stop, and the table at 390px. Screenshots go to `/tmp/c3184-collections-*.png`.
 
+`collection-create.mjs` answers `GET` and `POST /collections` and the new collection's record routes with a fixture that checks a create as api_v2 does. An approver adds a collection by keyboard only, with visible focus at each stop: a field the dialog refuses takes the focus, a taken key shows on Key, the new collection opens with the focus on Add record, and its first record is added. An editor without `admin` or `approver` sees Add collection turned off with the reason, and an admin doesn't. It also checks the dialog at 390px. Screenshots go to `/tmp/c3681-collection-create-*.png`.
+
 `categories-live.mjs` is opt-in and never in the default list. It writes to a real api_v2 over a disposable database, with nothing intercepted. Follow the [API local setup](../../api_v2/README.md#run-locally), using that database, `SEED=false`, `AUTH_BYPASS=true`, `PORT=43107`, `BETTER_AUTH_URL=http://127.0.0.1:43107` and `EDITOR_ORIGIN=http://localhost:43108`. Start the editor in a separate terminal, then run the suite from this directory:
 
 ```sh

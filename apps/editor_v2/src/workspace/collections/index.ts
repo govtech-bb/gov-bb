@@ -1,3 +1,5 @@
+export { AddCollectionDialog } from "./collection-dialog";
+
 export { CollectionScreen } from "./collection-screen";
 
 export { parseCollectionSearch, type CollectionSearch } from "./collection-search";
