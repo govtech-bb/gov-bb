@@ -98,11 +98,13 @@ category, keywords and visibility, and an empty body
 (`featureRoutePage` in `apps/api_v2/src/seed-data/feature-route-pages.ts`,
 #3716 for #3256). The record puts the page in category listings, search and the
 sitemap. Landing never renders it: each page's own route takes precedence over
-the `$` catch-all. The body is empty because the public chat assistant ingests
-the body of every `/catalog` page (`apps/chat/src/ingest/api-v2-source.ts`), so
-any text there would become a source that chat cites. Find an open pharmacy,
-the calculators and Crop Over permits already have an `index.md`, so they are
-already in `estate.json`.
+the `$` catch-all. The body is empty because the public chat assistant's api_v2
+ingest reads the body of every `/catalog` page, so any text there would become a source that
+chat cites. That ingest was `apps/chat/src/ingest/api-v2-source.ts` when this
+was decided. The chat app has since moved to the govbb-chatbot repository
+(#3739), and govtech-bb/govbb-chatbot#198 brings the same `/catalog` read
+there. Find an open pharmacy, the calculators and Crop Over permits already
+have an `index.md`, so they are already in `estate.json`.
 
 **Until the cutover, each tool falls back to its data in code.** Until an
 environment's landing cutover (#3164) and its records import, a tool uses the
