@@ -57,7 +57,7 @@ describe.each(ROUTES.map(([key]) => key))('%s/form', (key) => {
     const serviceStatuses: ServiceStatusEntry[] = [[key, 'disabled']]
     expect(() =>
       route.beforeLoad({ context: { level: 'public', serviceStatuses } }),
-    ).toThrow()
+    ).toThrow(expect.objectContaining({ isNotFound: true }))
     expect(headFor(key, 'preview', serviceStatuses).meta).toContainEqual(
       NOINDEX,
     )
