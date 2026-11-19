@@ -27,7 +27,7 @@ No migration — the unique constraint already exists (migration `1778841559000`
 
 - **Mint in the Forms API, at submit, persisted.** The reference exists the moment
   the form is accepted and is the one value shown to the citizen — it does not
-  depend on any downstream system. See ADR 0054.
+  depend on any downstream system. See ADR 0089.
 - **Uniqueness is a DB invariant, not trust in randomness.** The unique constraint
   + retry is the guarantee; the CSPRNG tail only keeps retries vanishingly rare
   (the 50k-code test bears this out).

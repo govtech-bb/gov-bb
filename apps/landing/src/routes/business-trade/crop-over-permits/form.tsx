@@ -6,9 +6,7 @@ import { deriveVisibilityOverlay } from '../../../lib/service-status'
 
 const CONTENT_URL = 'business-trade/crop-over-permits'
 
-export const Route = createFileRoute(
-  '/business-trade/crop-over-permits/form',
-)({
+export const Route = createFileRoute('/business-trade/crop-over-permits/form')({
   // Mirror the service page's rollout gate: hidden unless the viewer's level
   // meets the service's, reachable with the matching token. The runtime
   // service_status overlay can gate it too (a `disabled` service 404s here).

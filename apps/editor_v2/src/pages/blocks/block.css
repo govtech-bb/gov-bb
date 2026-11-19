@@ -1,0 +1,8 @@
+/* A component's label, such as a Details summary, which its block decorates it with (see BlockKind.decorate) */
+.page-body [data-page-component][data-summary]::before {
+  content: attr(data-summary);
+  display: block;
+  font-weight: 700;
+  margin-block-end: 1rem;
+  color: var(--page-blue);
+}

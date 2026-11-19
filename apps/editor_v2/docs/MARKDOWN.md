@@ -1,0 +1,178 @@
+# Page and form Markdown
+
+Service pages and forms have separate Markdown contracts. The selected workspace document determines its codec; a page is not a form with its questions removed.
+
+## Service pages
+
+Page files use GovBB YAML frontmatter followed by freely authored Markdown. `title` supplies the title shown above the body, `description` remains descriptive metadata, `lede` is an optional visible introduction and `form_id` records an explicit form association. Other fields, their YAML values and intentionally absent fields are retained. Metadata remains available in the Markdown source and through the converters. New pages have a title and empty body.
+
+The title is edited directly above the body. `lede` is edited directly beneath the title. The collapsed Page details section below it summarises current values and edits `description`, `category` / `categories`, `subcategory`, `visibility`, `publish_date` and `form_id`. Category options are a host-supplied stub, currently empty, with no taxonomy or backend connection; the row appears only when options or imported categories exist, and imported categories remain visible and preserved. Categories retain their order, with the first primary. Imported category representation is preserved until a category edit; editing stores one selection as `category`, several as ordered `categories`, and removes the alternate key.
+
+Visibility offers Public and Preview link only. For API-backed pages, only approvers can change it; other authors see the current visibility read-only. New API-backed pages start in Preview. An existing `visibility: draft` is shown as a disabled "Draft (hidden)" current value and survives unrelated edits and saves. An API-backed page also receives its accepted saved visibility: while that is `draft`, choosing Public or Preview leaves Draft selectable so the author can return without undoing later edits. A successful Public/Preview save removes that exception. Shared undo can still restore a local Draft, shown disabled when selected. The save converter continues accepting `draft` for legacy preservation; it does not migrate existing data. Public leaves `visibility` absent; an imported `visibility: public` is kept until changed. Publication date uses `YYYY-MM-DD`. Optional fields remain absent until edited; clearing removes their keys. Unfamiliar imported values, comments and unrelated frontmatter survive other field edits. Specialist frontmatter is retained; pages have no Markdown source editing. Metadata changes share body undo and in-memory source state, pause with unapplied/invalid source, and do not publish until an explicit Save/Publish. Editing `form_id` does not rewrite action destinations.
+
+A margin insertion menu and slash commands add content; selection formatting and block menus expose relevant controls. The grip drags a whole body block, including the contents of a list, table or component. The block preview and insertion line show what moves and where it will land. A drop is one undo step; metadata stays fixed. Move up/down remain available in the block menu. The writing controls reuse the form builder's shared styling.
+
+The writing editor supports headings 1–6, paragraphs, bold, italic, strikethrough, inline code, links, hard breaks, blockquotes, separators, nested lists, multiple blocks inside list items and GFM tables. Additional components use these conventions:
+
+```md
+:::notice
+Bring proof of identity.
+:::
+
+:::details[What you need]
+Bring your original documents.
+:::
+
+::::actions
+:::action{href="/next"}
+Continue
+:::
+
+:::action{href="/help" variant="secondary"}
+Get help
+:::
+::::
+
+<a data-start-link>Start now</a>
+
+<highlights>
+<highlight title="Water">Store 3 gallons per person.</highlight>
+</highlights>
+```
+
+The single-line `::action[Label]{href="/next"}` form is also accepted; fenced actions are the canonical form.
+
+A Start marker can have an explicit `href`; without one it retains the page's form association. Import does not invent a destination or change the linked form. Action labels and destinations remain editable. Notice and Details bodies can contain supported Markdown blocks. Highlights keep landing's HTML; see [Legacy highlights and muted text](#legacy-highlights-and-muted-text-3315).
+
+The original file is preserved exactly until a visual edit. Changes to page details preserve the original body Markdown, including whitespace, through Save and Publish. Export after a body edit may normalize Markdown formatting while retaining text, grouping, metadata and URLs. Unsupported raw HTML, comments, specialist components, images, code blocks and other unsupported syntax make the whole page source-only, as does invalid YAML. The CMS opens such a page read-only, saying it can't be edited there, and leaves its saved content unchanged; pages have no Markdown source editing. Source-only pages have no rendered preview.
+
+The checked-in [GovBB page fixtures](../tests/fixtures/pages/README.md) retain 16 frozen regression examples: three visual and 13 source-only pages, with their original hashes. Integration tests also read current GovBB Markdown directly from `apps/landing/src/content`. Visual support remains limited to the syntax described above.
+
+### Contact details and the StormReady import (#3185, #3261)
+
+```md
+### DEM Emergency Line
+
+::contact{collection="contacts" record="dem-emergency-line" fields="phone"}
+```
+
+Contact details is in the insert and slash menus. Its Block options choose a record and fields, and open the record for editing. The page keeps the organisation's heading; the record supplies the details. Missing records show a warning in the editor and nothing on landing. Existing contact references with padded collection or record keys stay read-only rather than disagreeing with landing.
+
+StormReady's four legacy contacts are converted when generating the API estate snapshot. The static Markdown stays unchanged so sites without api_v2 retain their telephone links. The imported page uses four headings and contact-detail blocks instead of the legacy contact grid and its emergency colour. Labels, displayed numbers, order and dialling destinations are retained, including Police's `tel:211`. Ten-digit Barbados numbers link with `+1`; explicit international numbers and short codes are unchanged.
+
+The imported StormReady and NIS pages must open visually, save unchanged byte-for-byte, and retain their content through body edits. The static StormReady source and frozen fixtures still test read-only preservation. Future imports include all four contact records; existing estates need the [targeted update](../../api_v2/README.md#upgrading-stormready-contacts-in-an-existing-estate-3261).
+
+Contact rendering is shared through `@govtech-bb/govbbmarkd/contact-record`, not the retired `block-kit` package. This supersedes #3185's earlier instruction to keep `block-kit`.
+
+### Legacy button conversions (#3314)
+
+The NIS self-employed overview uses a standalone `:::action`; its record-and-benefits page and StormReady use `::::actions` containing fenced `:::action` blocks. These replace `<link-button>` and `<buttons>` without adding HTML support: both syntaxes render through the same `LinkButton` and `ButtonGroup` components.
+
+Labels, order, primary/secondary variants and explicit URLs are retained, including the external registration URL, payment anchor and print query. An explicit URL ending in `/form` stays a URL, not a linked-form reference. Existing `<a data-start-link>` markers are unchanged.
+
+Both NIS pages open visually and retain their content through body edits and reopening. StormReady's action group and converted notice (#3313) round-trip independently. Its imported page also opens visually after the contact conversion above; the static source and frozen HTML fixtures are unchanged. The generated API snapshot updates future imports, not an already-imported database.
+
+### Legacy HTML conversions (#3313)
+
+The current landing content uses existing blocks rather than new HTML support:
+
+| Page | Replacement |
+| --- | --- |
+| Pension guidance (`calculate-your-pension/about-government-pensions.md`) | Raw `<details>` becomes `:::details[Summary]`; inner HTML becomes Markdown headings, paragraphs and lists. |
+| Crop Over permits (`crop-over-permits/index.md`) | The styled `<div>` callout becomes `:::notice`, with Markdown bold. |
+| StormReady (`health-and-emergency-services/stormready/index.md`) | `<notice>` becomes `:::notice`, with Markdown bold. Its other components are unchanged. |
+
+Pension guidance and Crop Over permits must open visually and retain their content through body edits and reopening. StormReady's notice and converted actions (#3314) are editable on their own; the import-time contact conversion above makes the full imported page editable.
+
+Plain `<br>` tags already import as hard breaks and are left unchanged. The frozen HTML fixtures still test source-only preservation; they are not rewritten to match current content. The generated API snapshot carries the conversions for future imports, not updates to an already-imported database.
+
+### Legacy highlights and muted text (#3315)
+
+StormReady uses both. They keep landing's HTML, which has no directive form, so highlights and muted text render as before, open visually and round-trip. Only the static page's legacy contacts keep that source read-only; the imported page uses the contact blocks above.
+
+**Highlights** is a block in the insert and `/` menus. It reads and writes `<highlights>` holding `<highlight title="…">` elements, and looks as landing draws it: teal cards, each a title over its text, two to a row on wider screens. A highlight's title and text are both written in place, and the block menu adds highlights. Enter goes from a title to its text, and from the text to a new highlight; on an empty last highlight it goes on writing below the block. Backspace and Delete stop at the edges of a title and its text rather than joining them, and Backspace in an empty highlight removes it. Titles and text are plain, and text can have line breaks: landing lays a highlight out as a column, which would put formatted words on lines of their own, so the selection toolbar offers no formatting there, and formatting or links typed or pasted in are removed. A line break in a title becomes a space, as landing shows it. Other HTML in a highlight keeps the page source-only.
+
+**Muted text is retained, not supported.** Landing's `<muted>` only turns a paragraph grey, and small with `caption`; it carries no meaning of its own, so new content should use ordinary paragraphs. The editor reads and writes paragraphs wrapped in `<muted>` or `<muted caption>` so that existing pages stay editable, and keeps `caption` without offering it. Muted text isn't a block: nothing inserts it. The selection toolbar's Text colour menu (Default or Muted) turns a page's own paragraphs grey or back. It also takes muted text off where it can't put it on, as in a list item or Notice, so this menu is how existing muted text is taken off anywhere. Enter within muted text keeps both halves muted; at its end, writing goes on in ordinary text. `<muted>` in any other form keeps the page source-only.
+
+## Form Markdown, version 2
+
+### Storage and source editing
+
+Markdown is the editable source, held in memory. The workspace persists API pages only through explicit Save/Publish; reusable form hosts own any separate persistence integration.
+
+Old browser draft records are intentionally ignored and left untouched. Unapplied source pauses the canvas until Apply or Discard and is lost on reload or confirmed departure.
+
+### Frontmatter
+
+The reader accepts a bounded dialect rather than arbitrary Markdown or YAML. The [complete example](examples/demo-form.md) is the current converter output of the [native demo definition](../src/presets/form-registry/demo.ts), checked for exact equality and native round-trip preservation. It includes per-node native bindings as well as authored content; the native definition is the shorter starting point for understanding the form.
+
+Current frontmatter requires `format: govbb-form`, `formatVersion: 2` and a string `title`; maps use two-space indentation and arrays/complex values use JSON. Version 1 documents are accepted and upgraded once. Every save includes `meta.visibility`. Unknown safe frontmatter keys are retained. Duplicate keys, unsupported YAML features, HTML, unknown directives, incompatible versions and malformed JSON prevent Apply while retaining the exact source bytes.
+
+### Pages and questions
+
+Pages start with `# Title`, separated by top-level `---`. `::description[Text]` is page metadata. A blank `#` retains an automatic page title. `::page{type="check-answers"}`, `::page{type="declaration"}`, `::page{type="confirmation"}` and `::page{type="result"}` describe the Check answers, Declaration, Confirmation and calculator Result pages. Confirmation and Result pages have editable headings. Without native bindings, Check answers and Declaration require their fixed headings. Native JSON calls the Check answers role `review`; both formats use `confirmation` and `result` for those roles. Unsupported page types and page settings are rejected, with the original source retained for recovery. Ordinary headings use `##` or `###`; an authored content h1 uses `::heading[Text]{level="1"}`.
+
+Questions use `::text[Label]{#stable-key required}`, substituting the input kind as needed. Source anchors contain letters, numbers, underscores and hyphens and remain stable after label edits. The source anchor, native question ID and submitted answer key are separate identities. In native-bound drafts, `fieldId` carries the submitted answer key (`question.key`); in legacy drafts it pins the SSB field ID. Omitted brackets mean no label; empty brackets mean a blank label. `::hint[Text]` and `::error{rule="required" message="Text"}` follow their question. An error line holds a message the author wrote; without one, native JSON export words the message from the question's label, and a stored “Enter an answer” from older drafts counts as none. Choice questions consume their following list. In version 2, indentation under an option controls layout only; conditional display requires a logic block. Targeted or configured options use `- :option[Yes]{#yes optionValue="approved"}`.
+
+`:::show-hide[Summary]` encloses blocks until its matching `:::`. Callouts use `::warning[Text]` and `::inset[Text]`. Lists elsewhere remain content. Legacy repetition uses `::repeat-page{min="1" max="5" instanceLabel="Item"}` for pages and question attributes `repeat`, `repeatMin` and `repeatMax` for answers. Current native-bound exports retain their `repeat` definitions in per-node native state; a missing `::repeat-page` directive does not mean repetition was lost. Explicit zero, false, blank and incomplete raw settings remain draft values.
+
+### Text and formatting
+
+Ordinary text supports links, italic, bold, strikethrough, inline code, hard breaks and escaped syntax. `::empty` retains an empty paragraph. `::paragraph[Text]` preserves significant leading whitespace, whitespace-only or multiline paragraphs. Mentions use `{{question-key}}` or `{{question-key|URI-encoded-fallback}}`. Unsupported native marks and nondefault text properties use `:span[Text]{data="JSON object encoded as an attribute string"}`; links with extra properties use `:link[Text]{url="..." props="JSON object encoded as an attribute string"}`. These are narrow formatting extensions, not HTML.
+
+### Legacy presets
+
+Historical Markdown presets such as `preset="country"` expand into editable copies. Current Form registry entries are declared in native JSON; this preset syntax remains a compatibility reader.
+
+Both source versions use the immutable `src/forms/formats/markdown/legacy/profiles-v1.json` settings and option lists, with copied field IDs, labels and exceptional option values in `src/forms/formats/markdown/legacy/preset-defaults-v1.json`. The remaining option values use the frozen version 1 spelling algorithm. The installed component registry cannot change those defaults.
+
+The retained `ref` identifies the definition the copy was based on; it does not synchronize the copy. `sourceFieldId`, `sourceLabel` and `sourceOptionValue` retain copied defaults. Edited labels can change automatic field IDs, and explicit `fieldId` or `optionValue` pins override them. Explicit overrides remain explicit, and removed inherited settings are recorded below.
+
+### Logic, calculations and migration
+
+Logic and calculations use `:::logic{#rule}` and `:::calculated-fields{#totals}`, each containing a fenced `json` object. Every raw row is retained, including unfinished conditions, actions and calculations. Saving does not execute a formula or require SSB compatibility. Missing references remain stored for repair; merely opening logic no longer substitutes a different target.
+
+All answer-dependent display and wording live in visible logic blocks. In a current native-bound draft, the JSON fence wraps the native block in a `native` property. For example, the [current demo](examples/demo-form.md) uses this rule inside its `:::logic` fence:
+
+```json
+{
+  "native": {
+    "id": "closure-follow-up",
+    "type": "logic",
+    "rules": [
+      {
+        "id": "show-closure",
+        "when": { "op": "selected", "question": "close-road", "option": "yes" },
+        "actions": [
+          { "type": "setVisible", "targets": ["closure-duration", "closure-warning"], "value": true }
+        ]
+      }
+    ]
+  }
+}
+```
+
+References inside that payload use native IDs, which can differ from Markdown anchors. Structured expressions and node bindings follow [the native converter contract](CONVERTERS.md).
+
+Retained legacy payloads instead use `SHOW_BLOCKS` to name targets in `showBlocks`; `CHANGE_LABEL` uses `changeLabel: { "target": "question-key", "text": "Replacement label" }`; `CHANGE_PAGE_TITLE` uses `changePageTitle` with the same shape and a page key as its target. Legacy choice conditions ordinarily refer to option keys. A migrated legacy condition can carry `valueIsLiteral: true` to retain a submitted value without treating it as an option reference.
+
+Opening version 1 Markdown or legacy editor JSON converts option follow-ups and legacy `conditionalLabel` / `conditionalTitle` settings into explicit logic blocks. Follow-up targets keep their layout and start hidden. The saved version 2 document records that migration has happened: deleting a generated rule does not regenerate it on reload. Legacy conditional settings inside a version 2 document are rejected visibly rather than ignored. Unsupported legacy metadata also prevents migration; the original document remains available for recovery. The internal logic-version marker comes from `formatVersion`, not from authored node settings.
+
+### Retained node state
+
+The optional final `:::source-state` container has one fenced JSON object with these scopes:
+
+- `form`: additional raw form settings.
+- `pages`: maps a page key (or `page-1`, `page-2`, …) to optional `settings`, `start`, `title` and `description` node state.
+- `questions`: maps the stable question key to optional `settings`, `removeSettings` (inherited property names), `explicit` (explicit override names), `identity` (retained internal question key), `label` and `answer` node state.
+- `nodes`: maps a block/option anchor or a semantic path to node state. Paths include `question:hint-1`, `question:option-1`, and `page-1/2` for a page's second semantic block. Follow-up paths continue from their owning option.
+
+Node state contains only optional `settings`, supported element `properties`, additional raw `state`, and retained `identity`. It contains no body text, selection, DOM or second Lexical document. Use `::block{#anchor}` before a targeted content block. Question labels and answers use the implicit targets `question:label` and `question:answer`. Unknown state with opaque identity dependencies conservatively retains original identities; unsupported hydration fails visibly instead of discarding it.
+
+### Apply, explicit save and in-session recovery
+
+Apply first parses and hydrates an isolated document and compares authoring meaning. Migration follows that validation and is idempotent. A failed Apply leaves both canvas and committed source intact.
+
+Canvas serialization validates generated source in memory. **Saved/Published** means the page matches its API baseline; typing and Apply never save to the server. Failed conversion or saving retains work only in the open session.
+
+The source dialog can copy or download invalid input, open `.md` files and restore its applied text. Source Apply is a separate undo step. Stale file reads cannot overwrite newer edits. No browser-tab reconciliation or durable recovery is provided.

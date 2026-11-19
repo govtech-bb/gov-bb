@@ -23,7 +23,7 @@ that doesn't depend on the answers.
   reordered with a "Your address" sub-heading; `person-details` and
   `business-details` steps shown only for their answer; new/renewal and the
   current licence number moved into each vehicle; "Your agreement" with only
-  the confirmation checkbox (ADR 0041: the applicant's name is on "Your
+  the confirmation checkbox (ADR 0070: the applicant's name is on "Your
   details" and the submission is timestamped, so the review's full name and
   date are not asked); the confirmation rewritten and the duplicate `nextSteps`
   removed.

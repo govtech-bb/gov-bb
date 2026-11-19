@@ -3,7 +3,7 @@
 **Date:** 2026-05-21
 **Branch:** feat/forms-links-mapping
 **Plan:** [docs/plans/start-now-form-links.md](../plans/start-now-form-links.md) (revision 2)
-**Decision record:** [docs/decisions/0005-build-time-manifest-for-cross-app-link-availability.md](../decisions/0005-build-time-manifest-for-cross-app-link-availability.md)
+**Decision record:** [docs/decisions/0011-build-time-manifest-for-cross-app-link-availability.md](../decisions/0011-build-time-manifest-for-cross-app-link-availability.md)
 
 ## What was built
 
@@ -98,7 +98,7 @@ nothing left for it to own.
   cross-app destinations (`payment_id`, `status_id`, …) should
   follow the same pattern: a frontmatter field per destination,
   one generated manifest file per destination, the renderer
-  pattern shared. This is named in ADR-0005's _Consequences_ but
+  pattern shared. This is named in ADR-0011's _Consequences_ but
   worth keeping front of mind when the next cross-app target
   arrives.
 - **Build artifact location convention.** Generated TypeScript

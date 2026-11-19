@@ -4,7 +4,7 @@
 
 A builder author set National ID number's field width to **Long** and it
 rendered visibly *narrower* than **Medium**. The session started as a
-"why is that?" investigation and ended as a two-resolver fix plus ADR 0037.
+"why is that?" investigation and ended as a two-resolver fix plus ADR 0064.
 
 ## What we did
 
@@ -14,14 +14,14 @@ rendered visibly *narrower* than **Medium**. The session started as a
 - `83e00370` — the live API resolver
   (`apps/api/src/registry/resolution.ts`) gets the identical `mergeUi`,
   found in review *after* the first commit.
-- ADR `0037-override-sub-objects-merge-per-key-against-registry-defaults.md`;
+- ADR `0064-override-sub-objects-merge-per-key-against-registry-defaults.md`;
   follow-up issues #796 (dedupe the merge helpers) filed, #789 targeted.
 
 ## Why we did it that way
 
 - The symptom only makes sense once you see that "select Long" persisted
   *nothing*: the panel collapsed any value equal to its hard-coded global
-  default (`"long"`) to `undefined` per the ADR 0013/0014 override contract,
+  default (`"long"`) to `undefined` per the ADR 0029/0030 override contract,
   and resolution then fell back to National ID's registry
   `ui: { width: "short" }`. Medium persisted explicitly (38ch); Long fell
   through to short (24ch).

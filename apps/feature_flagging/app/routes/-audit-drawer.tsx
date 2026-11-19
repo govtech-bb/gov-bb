@@ -27,7 +27,10 @@ export function AuditDrawer({
         if (live) setEntries(rows);
       })
       .catch((err: unknown) => {
-        if (live) setError(err instanceof Error ? err.message : "Failed to load history");
+        if (live)
+          setError(
+            err instanceof Error ? err.message : "Failed to load history",
+          );
       });
     return () => {
       live = false;
@@ -89,7 +92,9 @@ export function AuditDrawer({
                   {e.oldState ? STATUS_LABELS[e.oldState] : "—"} →{" "}
                   {STATUS_LABELS[e.newState]}
                 </div>
-                <div className="text-caption text-mid-grey-00">by {e.author}</div>
+                <div className="text-caption text-mid-grey-00">
+                  by {e.author}
+                </div>
               </li>
             ))}
           </ul>

@@ -52,7 +52,7 @@ describe("ConfirmUploadDto", () => {
     ).toEqual([]);
   });
 
-  // #1853: formId is lowercase kebab-case (ADR 0028). An uppercase formId must
+  // #1853: formId is lowercase kebab-case (ADR 0048). An uppercase formId must
   // be rejected here rather than surviving presign and failing KEY_PATTERN at
   // confirm.
   it("rejects an uppercase formId", async () => {

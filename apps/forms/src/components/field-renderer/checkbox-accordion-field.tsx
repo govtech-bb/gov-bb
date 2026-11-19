@@ -1,8 +1,9 @@
-import { JSX, useState } from "react";
+import type { JSX } from "react";
+import { useState } from "react";
 import { Checkbox, Fieldset, FormGroup, Hint } from "@govtech-bb/react";
 import type { OptionGroup } from "@govtech-bb/form-types";
 import ErrorMessage from "../error-message";
-import { FieldRenderContext } from "./render-context";
+import type { FieldRenderContext } from "./render-context";
 
 /**
  * A collapsible multi-select. Each category is a checkbox that expands to

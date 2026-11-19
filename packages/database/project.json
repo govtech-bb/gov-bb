@@ -6,28 +6,11 @@
   "targets": {
     "build": {
       "executor": "@nx/js:tsc",
-      "outputs": [
-        "{options.outputPath}"
-      ],
+      "outputs": ["{options.outputPath}"],
       "options": {
         "outputPath": "packages/database/dist",
         "tsConfig": "packages/database/tsconfig.json",
         "main": "packages/database/src/index.ts"
-      }
-    },
-    "test": {
-      "executor": "nx:run-commands",
-      "options": {
-        "command": "vitest run",
-        "cwd": "packages/database"
-      }
-    },
-    "lint": {
-      "executor": "@nx/eslint:lint",
-      "options": {
-        "lintFilePatterns": [
-          "packages/database/**/*.ts"
-        ]
       }
     }
   },

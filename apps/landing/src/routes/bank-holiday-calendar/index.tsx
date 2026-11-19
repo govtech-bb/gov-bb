@@ -143,9 +143,7 @@ function YearSwitcher({ year }: { year: number }) {
         <span className="block font-medium text-body-sm text-grey-70 uppercase tracking-wider">
           Previous
         </span>
-        <span className="block font-bold text-blue-40 text-sm">
-          {prevYear}
-        </span>
+        <span className="block font-bold text-blue-40 text-sm">{prevYear}</span>
       </span>
     </>
   )
@@ -156,9 +154,7 @@ function YearSwitcher({ year }: { year: number }) {
         <span className="block font-medium text-body-sm text-grey-70 uppercase tracking-wider">
           Next
         </span>
-        <span className="block font-bold text-blue-40 text-sm">
-          {nextYear}
-        </span>
+        <span className="block font-bold text-blue-40 text-sm">{nextYear}</span>
       </span>
       <svg
         aria-hidden="true"
@@ -558,10 +554,7 @@ function AboutSection() {
       aria-labelledby="about-heading"
       className="mt-16 border-grey-20 border-t-2 pt-8"
     >
-      <h2
-        className="mb-3 font-bold text-blue-40 text-body"
-        id="about-heading"
-      >
+      <h2 className="mb-3 font-bold text-blue-40 text-body" id="about-heading">
         About this list
       </h2>
       <p className="mb-3 max-w-[640px] text-[15px] text-grey-70">

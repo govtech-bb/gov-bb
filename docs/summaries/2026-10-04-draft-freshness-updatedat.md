@@ -1,10 +1,10 @@
 # Builder draft freshness: one branch, `updatedAt` first, stamps on every write
 
-2026-10-04 · Form Builder · #2899, #2897, #2878, #2900 item 1 · amends ADR 0075
+2026-10-04 · Form Builder · #2899, #2897, #2878, #2900 item 1 · amends ADR 0125
 
 ## Context
 
-#2489 (ADR 0075) re-syncs a stale builder draft row with the committed recipe
+#2489 (ADR 0125) re-syncs a stale builder draft row with the committed recipe
 when a form is opened, deciding "stale" by the recipe file's git commit date.
 The #2893 review found four follow-ups:
 - `dev` was still the default base branch.

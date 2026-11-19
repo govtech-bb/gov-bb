@@ -14,7 +14,7 @@ newly revealed incomplete step".
 - `getReviewReturnStep` (`lib/session-storage.ts`) picks the target; `useStepGuard`
   follows it; `FormRenderer` supplies `isStepValid`.
 - `unmarkStepsCompleted` clears a removed repeat instance's completion.
-- ADR 0076 records the rules; follow-up #2932 for repeatable visibility.
+- ADR 0130 records the rules; follow-up #2932 for repeatable visibility.
 
 ## Why we did it that way
 

@@ -4,6 +4,11 @@ useDefault = true
 
 [allowlist]
 description = "Test fixtures with dummy values, not real secrets"
-paths = [
-  '''packages/form-validation/src/index\.spec\.ts''',
+paths = ['''packages/form-validation/src/index\.spec\.ts''']
+# Exact dummy values, not whole files, so a real secret added beside them is
+# still caught: api_v2's e2e BetterAuth secret (apps/api_v2/e2e/support.ts) and
+# the password its redaction test asserts never reaches a log (src/db.test.ts).
+regexes = [
+  '''api-v2-test-secret-at-least-thirty-two-characters''',
+  '''do-not-log-me''',
 ]

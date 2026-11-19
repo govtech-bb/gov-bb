@@ -120,3 +120,25 @@ describe('buildBreadcrumbLd', () => {
     ])
   })
 })
+
+describe('buildBreadcrumbLd with an api_v2 trail', () => {
+  it('lists Home then exactly the trail the visible breadcrumbs show', () => {
+    const page = makePage('renamed/sub/register-a-birth', {
+      title: 'Register a birth',
+    })
+
+    const trail = [
+      { name: 'Family (renamed)', url: '/renamed' },
+      { name: 'Sub', url: '/renamed/sub' },
+      { name: 'Register a birth', url: '/renamed/sub/register-a-birth' },
+    ]
+
+    const items = buildBreadcrumbLd(page, trail).itemListElement
+    expect(items.map((item) => [item.position, item.name, item.item])).toEqual([
+      [1, 'Home', SITE_URL],
+      [2, 'Family (renamed)', `${SITE_URL}/renamed`],
+      [3, 'Sub', `${SITE_URL}/renamed/sub`],
+      [4, 'Register a birth', `${SITE_URL}/renamed/sub/register-a-birth`],
+    ])
+  })
+})

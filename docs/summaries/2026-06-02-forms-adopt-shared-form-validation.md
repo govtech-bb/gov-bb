@@ -26,7 +26,7 @@ was the app-local one: `buildFieldValidationProperties` attaching
   `types/index.ts`.
 - Added `@govtech-bb/form-validation` as a declared `workspace:*` dependency.
 - Recorded the single-source-of-truth principle in
-  [ADR 0029](../decisions/0029-field-validation-rules-live-only-in-form-validation-package.md).
+  [ADR 0051](../decisions/0051-field-validation-rules-live-only-in-form-validation-package.md).
 - An audit of the shared runners vs the old client logic found bugs; fixed three
   in the shared package and filed #633 for the residual divergences.
 
@@ -46,7 +46,7 @@ was the app-local one: `buildFieldValidationProperties` attaching
 - **Preserve local emptiness semantics at the boundary, decided with the user.**
   The user asked to preserve existing wording/behaviour. The shared validator's
   required/empty-skip uses `EMPTY_BY_TYPE`; the app's `valueIsEmpty` treats more
-  things as empty (boolean-`false` checkbox per ADR 0006, incomplete date, blank
+  things as empty (boolean-`false` checkbox per ADR 0016, incomplete date, blank
   number). `adaptCurrentValue` collapses those to the shared empty shape so
   required fires on exactly the same values as before. An unrecognised value
   shape still short-circuits to "no error" (the old `unknownState`). A
@@ -63,7 +63,7 @@ was the app-local one: `buildFieldValidationProperties` attaching
   real tests; functions adjusted to actuals, consistent with ADR 0001. Chosen
   with the user over padding the PR with unrelated API tests.
 
-## Bugs found by the audit (fixed in the shared package, per ADR 0029)
+## Bugs found by the audit (fixed in the shared package, per ADR 0051)
 
 - **Array values were comma-joined before string rules** — `["ab","cd"]` against
   `maxLength: 3` became `"ab,cd"` (len 5) and failed. Fixed `string.ts` to

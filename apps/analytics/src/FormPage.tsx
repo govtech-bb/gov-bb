@@ -75,7 +75,6 @@ export default function FormPage({ detail }: { detail: FormDetailData }) {
         }
       />
       <div className="container py-8">
-       
         <header className="mt-s mb-l">
           <Heading as="h1" size="h1">
             {detail.title}
@@ -106,13 +105,7 @@ function withSub(value: ReactNode, sub: string): ReactNode {
 }
 
 // A tooltip body: a bold title, an explanation, and optional extra nodes.
-function Hint({
-  title,
-  children,
-}: {
-  title: string
-  children: ReactNode
-}) {
+function Hint({ title, children }: { title: string; children: ReactNode }) {
   return (
     <>
       <span className="block font-bold">{title}</span>
@@ -338,9 +331,9 @@ function FieldFailures({ detail }: { detail: FormDetailData }) {
             </table>
           </div>
           <Text as="p" size="small-caption" className="mt-xs text-mid-grey-00">
-            Each row is a field that failed client-side validation when a visitor
-            tried to advance a step (event counts). Hover a reason to see the full
-            message shown to the user.
+            Each row is a field that failed client-side validation when a
+            visitor tried to advance a step (event counts). Hover a reason to
+            see the full message shown to the user.
           </Text>
         </>
       )}

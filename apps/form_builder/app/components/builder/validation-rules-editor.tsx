@@ -123,7 +123,7 @@ export function ValidationRulesEditor({
   );
 
   // Write only genuine deltas: an empty override set collapses to `undefined`
-  // so the recipe never carries a non-delta `{}` (ADR 0013/0014/0024).
+  // so the recipe never carries a non-delta `{}` (ADR 0029/0030/0044).
   function commit(next: ValidationRule) {
     onChange(Object.keys(next).length > 0 ? next : undefined);
   }
@@ -159,7 +159,7 @@ export function ValidationRulesEditor({
     const merged = { ...existing, ...patch } as Record<string, unknown>;
     // A patched key set to `undefined` is a genuine deletion, not a stored
     // `undefined`: strip it so the committed config never owns the key (e.g.
-    // clearing the Reference Step removes targetStepId entirely). ADR 0013/0014.
+    // clearing the Reference Step removes targetStepId entirely). ADR 0029/0030.
     for (const key of Object.keys(patch)) {
       if ((patch as Record<string, unknown>)[key] === undefined) {
         delete merged[key];

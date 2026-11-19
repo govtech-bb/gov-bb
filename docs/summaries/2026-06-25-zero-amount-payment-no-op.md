@@ -10,7 +10,7 @@ proceeds as a normal `SUBMITTED` submission — no `Payment` row, no EzPay sessi
 no `payment.required` ("$0.00 — Pay now") email. Previously a `0` fee flowed
 through the entire gating path because the guard only rejected negative amounts.
 The behaviour decision is recorded in
-[ADR 0060](../decisions/0060-zero-fee-payment-is-a-no-op-not-a-zero-payment.md).
+[ADR 0102](../decisions/0102-zero-fee-payment-is-a-no-op-not-a-zero-payment.md).
 
 ## Why it looks the way it does
 

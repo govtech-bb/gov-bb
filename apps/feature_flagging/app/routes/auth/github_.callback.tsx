@@ -107,14 +107,20 @@ export const Route = createFileRoute("/auth/github_/callback")({
         login,
       });
       if (!isTeamMember) {
-        hasRepoWrite = await userHasRepoWriteAccess({ accessToken, org, login });
+        hasRepoWrite = await userHasRepoWriteAccess({
+          accessToken,
+          org,
+          login,
+        });
       }
     }
     const allowed = isAuthorized({ isDev, isTeamMember, hasRepoWrite });
 
     if (!allowed) {
       // Clear the CSRF state cookie even on denial, so a retry starts clean.
-      setResponseCookies(serializeOAuthStateCookie("", { secure, clear: true }));
+      setResponseCookies(
+        serializeOAuthStateCookie("", { secure, clear: true }),
+      );
       throw redirect({ to: "/login", search: { error: "denied" } });
     }
 

@@ -2,14 +2,10 @@
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "types": ["vite/client", "vitest/globals", "node"],
-    "target": "ES2022",
-    "module": "ESNext",
-    "moduleResolution": "Bundler",
     "jsx": "react-jsx",
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "composite": false,
     "noEmit": true,
-    "declaration": false,
     "allowImportingTsExtensions": true
   },
   "include": ["app/**/*", "vitest.setup.ts"]

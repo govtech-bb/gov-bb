@@ -15,13 +15,25 @@ import { CreatePageDialog } from "../../components/services/create-page-dialog";
 import { useConfirmation } from "../../components/ui/dialog/confirmation";
 import { Button } from "../../components/ui/button";
 import type { AssistantRequest } from "../../components/ui/ai/prompt-bar";
-import { createFileRoute, useBlocker, useNavigate } from "@tanstack/react-router";
+import {
+  createFileRoute,
+  useBlocker,
+  useNavigate,
+} from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { ArrowUpRight01Icon, Delete02Icon, ViewIcon, ViewOffIcon } from "hugeicons-react";
+import {
+  ArrowUpRight01Icon,
+  Delete02Icon,
+  ViewIcon,
+  ViewOffIcon,
+} from "hugeicons-react";
 import { listForms } from "../../server/forms";
 import { getPublishBaseBranch } from "../../server/publish";
 import { publishStartPage, deleteContentPage } from "../../server/content";
-import { HeaderMenu, type HeaderMenuItem } from "../../components/content/header-menu";
+import {
+  HeaderMenu,
+  type HeaderMenuItem,
+} from "../../components/content/header-menu";
 import { linkableForms, buildDeployPayload } from "../../lib/content";
 import {
   StartPagePreviewFrame,
@@ -52,9 +64,13 @@ export const Route = createFileRoute("/content/edit")({
   validateSearch: (search): EditSearch => ({
     service: typeof search.service === "string" ? search.service : undefined,
     path: typeof search.path === "string" ? search.path : undefined,
-    createPath: typeof search.createPath === "string" ? search.createPath : undefined,
+    createPath:
+      typeof search.createPath === "string" ? search.createPath : undefined,
     formId: typeof search.formId === "string" ? search.formId : undefined,
-    kind: search.kind === "entry" || search.kind === "start" ? search.kind : undefined,
+    kind:
+      search.kind === "entry" || search.kind === "start"
+        ? search.kind
+        : undefined,
   }),
   loader: async () => {
     const [forms, baseBranch] = await Promise.all([
@@ -109,7 +125,11 @@ function buildHeaderMenuItems(deps: {
       ? [
           {
             label: showPreview ? "Hide preview" : "Show preview",
-            icon: showPreview ? <ViewOffIcon size={15} /> : <ViewIcon size={15} />,
+            icon: showPreview ? (
+              <ViewOffIcon size={15} />
+            ) : (
+              <ViewIcon size={15} />
+            ),
             onSelect: onTogglePreview,
           },
         ]
@@ -120,7 +140,11 @@ function buildHeaderMenuItems(deps: {
             label: "View live",
             icon: <ArrowUpRight01Icon size={15} />,
             onSelect: () =>
-              window.open(`${LANDING_ORIGIN}${url}`, "_blank", "noopener,noreferrer"),
+              window.open(
+                `${LANDING_ORIGIN}${url}`,
+                "_blank",
+                "noopener,noreferrer",
+              ),
           },
         ]
       : []),
@@ -169,7 +193,8 @@ function EditorPreviewPane({
   ed: EditorState;
 }) {
   const { state } = ed;
-  const frameWidth = BREAKPOINTS.find((b) => b.key === breakpoint)?.width ?? "100%";
+  const frameWidth =
+    BREAKPOINTS.find((b) => b.key === breakpoint)?.width ?? "100%";
   return (
     <>
       <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-ui-recessed">
@@ -217,7 +242,9 @@ function ContentEditorRoute() {
   const search = Route.useSearch();
   return (
     <StartPagesEditor
-      key={search.path ?? search.createPath ?? `${search.formId}:${search.kind}`}
+      key={
+        search.path ?? search.createPath ?? `${search.formId}:${search.kind}`
+      }
     />
   );
 }
@@ -265,7 +292,9 @@ function StartPagesEditor() {
     service?.formId,
   );
   const { state } = ed;
-  const [servicePreview, setServicePreview] = useState<ServiceSnapshot | null>(null);
+  const [servicePreview, setServicePreview] = useState<ServiceSnapshot | null>(
+    null,
+  );
   useBlocker({
     enableBeforeUnload: false,
     shouldBlockFn: async ({ current, next }) =>
@@ -274,7 +303,9 @@ function StartPagesEditor() {
       !ed.success &&
       !(await ed.confirmDiscard()),
   });
-  const editClaims = ed.editPath ? (contentList.openPRs.get(ed.editPath) ?? []) : [];
+  const editClaims = ed.editPath
+    ? (contentList.openPRs.get(ed.editPath) ?? [])
+    : [];
   const editRevision = ed.editRevision;
   const activeReview =
     editRevision?.source === "pr" && editClaims.length === 1
@@ -309,9 +340,9 @@ function StartPagesEditor() {
     "content-cms:breakpoint",
     "desktop",
   );
-  const [editorView, setEditorView] = useState<"content" | "settings" | "preview">(
-    "content",
-  );
+  const [editorView, setEditorView] = useState<
+    "content" | "settings" | "preview"
+  >("content");
   const showPreview = editorView === "preview";
   const [createOpen, setCreateOpen] = useState(false);
 
@@ -390,7 +421,9 @@ function StartPagesEditor() {
 
   const success = ed.success;
   const visibleError =
-    ed.deployConflict?.kind === "review-unavailable" || ed.staleDraft ? null : ed.error;
+    ed.deployConflict?.kind === "review-unavailable" || ed.staleDraft
+      ? null
+      : ed.error;
 
   return (
     <AppShell
@@ -505,7 +538,10 @@ function StartPagesEditor() {
                   <Button
                     variant="primary"
                     disabled={
-                      !ed.dirty || ed.staleDraft || ed.savingShared || ed.loadingPage
+                      !ed.dirty ||
+                      ed.staleDraft ||
+                      ed.savingShared ||
+                      ed.loadingPage
                     }
                     onClick={() => void ed.saveShared()}
                   >
@@ -567,7 +603,9 @@ function StartPagesEditor() {
                 aria-label="Page editor"
                 variant="underline"
                 value={editorView}
-                onValueChange={(value) => setEditorView(value as typeof editorView)}
+                onValueChange={(value) =>
+                  setEditorView(value as typeof editorView)
+                }
                 tabs={[
                   { value: "content", label: "Write" },
                   { value: "settings", label: "Settings" },
@@ -586,7 +624,9 @@ function StartPagesEditor() {
                       label: servicePageLabel(page),
                     }))}
                     onValueChange={(path) => {
-                      const page = service.pages.find((item) => item.path === path);
+                      const page = service.pages.find(
+                        (item) => item.path === path,
+                      );
                       if (page)
                         void navigate({
                           to: "/content/edit",
@@ -640,7 +680,10 @@ function StartPagesEditor() {
               <div className="mx-auto min-w-0 max-w-5xl px-4 py-6 @min-[48rem]:px-8 @min-[48rem]:py-8">
                 {ed.loadingPage && (
                   <p className="py-2 text-[13px] text-ui-subtle [&_a]:text-ui-link">
-                    <span role="status" className="inline-flex items-center gap-2">
+                    <span
+                      role="status"
+                      className="inline-flex items-center gap-2"
+                    >
                       <Loader size={16} aria-hidden />
                       Loading page…
                     </span>
@@ -656,7 +699,9 @@ function StartPagesEditor() {
                     >
                       #{activeReview.prNumber}
                     </a>
-                    {", not the live page. Updating adds one commit to that PR."}
+                    {
+                      ", not the live page. Updating adds one commit to that PR."
+                    }
                   </p>
                 )}
                 {ed.reviewBlock && (
@@ -719,8 +764,9 @@ function StartPagesEditor() {
                         {ed.deployConflict
                           ? `${ed.deployConflict.message} `
                           : "This draft is based on an older page revision. "}
-                        Your changes are still saved in this browser. Copy anything you
-                        need, then load the latest version before deploying.
+                        Your changes are still saved in this browser. Copy
+                        anything you need, then load the latest version before
+                        deploying.
                       </span>
                       <Button
                         type="button"
@@ -738,7 +784,10 @@ function StartPagesEditor() {
                             if (ed.editPath) {
                               // Let React remove the beforeunload guard after the
                               // draft is discarded, then request a clean revision.
-                              window.setTimeout(() => window.location.reload(), 0);
+                              window.setTimeout(
+                                () => window.location.reload(),
+                                0,
+                              );
                             }
                           }
                         }}
@@ -756,7 +805,10 @@ function StartPagesEditor() {
                   </Banner>
                 )}
 
-                <div inert={ed.loadingPage || !ed.sourceReady} aria-busy={ed.loadingPage}>
+                <div
+                  inert={ed.loadingPage || !ed.sourceReady}
+                  aria-busy={ed.loadingPage}
+                >
                   <PageFields
                     ed={ed}
                     serviceFormId={service?.formId ?? state.formId}

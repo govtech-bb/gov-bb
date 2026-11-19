@@ -1,0 +1,122 @@
+[
+  {
+    "path": "/business-trade",
+    "reason": "Lists the 13 Environmental Health licence pages that sandbox service_status publishes and staging does not (see the /business-trade/apply-for-* entries).",
+    "diffs": [
+      "main text 54.7% similar",
+      "link not in static: \"/business-trade/apply-for-food-business-licence\"",
+      "link not in static: \"/business-trade/apply-for-funeral-director-licence\"",
+      "link not in static: \"/business-trade/apply-for-funeral-establishment-licence\"",
+      "link not in static: \"/business-trade/apply-for-hairdresser-licence\"",
+      "link not in static: \"/business-trade/apply-for-hair-salon-licence\"",
+      "link not in static: \"/business-trade/apply-for-restaurant-licence\"",
+      "link not in static: \"/business-trade/apply-for-temporary-restaurant-permit\"",
+      "link not in static: \"/business-trade/apply-for-funeral-embalmer-licence\"",
+      "link not in static: \"/business-trade/apply-for-hotel-licence\"",
+      "link not in static: \"/business-trade/apply-for-swimming-pool-licence\"",
+      "link not in static: \"/business-trade/apply-for-offensive-matter-licence\"",
+      "link not in static: \"/business-trade/apply-for-offensive-waste-licence\"",
+      "link not in static: \"/business-trade/apply-for-lodging-barracks-licence\""
+    ]
+  },
+  {
+    "path": "/business-trade/apply-for-food-business-licence",
+    "reason": "Environment data, not content: the markdown says visibility: preview, and sandbox service_status publishes it while staging does not (404 there). The preview serves it from static markdown.",
+    "diffs": ["status: 200 ≠ static 404"]
+  },
+  {
+    "path": "/business-trade/apply-for-funeral-director-licence",
+    "reason": "Environment data, not content: the markdown says visibility: preview, and sandbox service_status publishes it while staging does not (404 there). The preview serves it from static markdown.",
+    "diffs": ["status: 200 ≠ static 404"]
+  },
+  {
+    "path": "/business-trade/apply-for-funeral-embalmer-licence",
+    "reason": "Environment data, not content: the markdown says visibility: preview, and sandbox service_status publishes it while staging does not (404 there). The preview serves it from static markdown.",
+    "diffs": ["status: 200 ≠ static 404"]
+  },
+  {
+    "path": "/business-trade/apply-for-funeral-establishment-licence",
+    "reason": "Environment data, not content: the markdown says visibility: preview, and sandbox service_status publishes it while staging does not (404 there). The preview serves it from static markdown.",
+    "diffs": ["status: 200 ≠ static 404"]
+  },
+  {
+    "path": "/business-trade/apply-for-hair-salon-licence",
+    "reason": "Environment data, not content: the markdown says visibility: preview, and sandbox service_status publishes it while staging does not (404 there). The preview serves it from static markdown.",
+    "diffs": ["status: 200 ≠ static 404"]
+  },
+  {
+    "path": "/business-trade/apply-for-hairdresser-licence",
+    "reason": "Environment data, not content: the markdown says visibility: preview, and sandbox service_status publishes it while staging does not (404 there). The preview serves it from static markdown.",
+    "diffs": ["status: 200 ≠ static 404"]
+  },
+  {
+    "path": "/business-trade/apply-for-hotel-licence",
+    "reason": "Environment data, not content: the markdown says visibility: preview, and sandbox service_status publishes it while staging does not (404 there). The preview serves it from static markdown.",
+    "diffs": ["status: 200 ≠ static 404"]
+  },
+  {
+    "path": "/business-trade/apply-for-lodging-barracks-licence",
+    "reason": "Environment data, not content: the markdown says visibility: preview, and sandbox service_status publishes it while staging does not (404 there). The preview serves it from static markdown.",
+    "diffs": ["status: 200 ≠ static 404"]
+  },
+  {
+    "path": "/business-trade/apply-for-offensive-matter-licence",
+    "reason": "Environment data, not content: the markdown says visibility: preview, and sandbox service_status publishes it while staging does not (404 there). The preview serves it from static markdown.",
+    "diffs": ["status: 200 ≠ static 404"]
+  },
+  {
+    "path": "/business-trade/apply-for-offensive-waste-licence",
+    "reason": "Environment data, not content: the markdown says visibility: preview, and sandbox service_status publishes it while staging does not (404 there). The preview serves it from static markdown.",
+    "diffs": ["status: 200 ≠ static 404"]
+  },
+  {
+    "path": "/business-trade/apply-for-restaurant-licence",
+    "reason": "Environment data, not content: the markdown says visibility: preview, and sandbox service_status publishes it while staging does not (404 there). The preview serves it from static markdown.",
+    "diffs": ["status: 200 ≠ static 404"]
+  },
+  {
+    "path": "/business-trade/apply-for-swimming-pool-licence",
+    "reason": "Environment data, not content: the markdown says visibility: preview, and sandbox service_status publishes it while staging does not (404 there). The preview serves it from static markdown.",
+    "diffs": ["status: 200 ≠ static 404"]
+  },
+  {
+    "path": "/business-trade/apply-for-temporary-restaurant-permit",
+    "reason": "Environment data, not content: the markdown says visibility: preview, and sandbox service_status publishes it while staging does not (404 there). The preview serves it from static markdown.",
+    "diffs": ["status: 200 ≠ static 404"]
+  },
+  {
+    "path": "/health-and-emergency-services/stormready",
+    "reason": "The import-time contact conversion (#3261, #3405) replaces the legacy grid and Emergency badge with four headings, their anchor links and Telephone field labels. Contact names, displayed numbers and telephone destinations are unchanged; static Markdown keeps the legacy grid.",
+    "diffs": [
+      "main text 95.8% similar",
+      "heading not in static: \"DEM Emergency Line\"",
+      "heading not in static: \"Barbados Met Office\"",
+      "heading not in static: \"Police\"",
+      "heading not in static: \"BWA (water outages)\"",
+      "link not in static: \"/health-and-emergency-services/stormready#dem-emergency-line\"",
+      "link not in static: \"/health-and-emergency-services/stormready#barbados-met-office\"",
+      "link not in static: \"/health-and-emergency-services/stormready#police\"",
+      "link not in static: \"/health-and-emergency-services/stormready#bwa-water-outages\""
+    ]
+  },
+  {
+    "path": "/services",
+    "reason": "Lists the 13 Environmental Health licence pages that sandbox service_status publishes and staging does not (see the /business-trade/apply-for-* entries).",
+    "diffs": [
+      "main text 80.9% similar",
+      "link not in static: \"/business-trade/apply-for-food-business-licence\"",
+      "link not in static: \"/business-trade/apply-for-funeral-director-licence\"",
+      "link not in static: \"/business-trade/apply-for-funeral-establishment-licence\"",
+      "link not in static: \"/business-trade/apply-for-hairdresser-licence\"",
+      "link not in static: \"/business-trade/apply-for-hair-salon-licence\"",
+      "link not in static: \"/business-trade/apply-for-restaurant-licence\"",
+      "link not in static: \"/business-trade/apply-for-temporary-restaurant-permit\"",
+      "link not in static: \"/business-trade/apply-for-funeral-embalmer-licence\"",
+      "link not in static: \"/business-trade/apply-for-hotel-licence\"",
+      "link not in static: \"/business-trade/apply-for-swimming-pool-licence\"",
+      "link not in static: \"/business-trade/apply-for-offensive-matter-licence\"",
+      "link not in static: \"/business-trade/apply-for-offensive-waste-licence\"",
+      "link not in static: \"/business-trade/apply-for-lodging-barracks-licence\""
+    ]
+  }
+]

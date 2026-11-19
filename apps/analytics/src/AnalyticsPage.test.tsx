@@ -62,15 +62,15 @@ describe('AnalyticsPage', () => {
     expect(screen.getByText('Avg steps / visit')).toBeTruthy()
     // period sentence
     expect(
-      screen.getByText(/Showing aggregate visitor data from 2026-06-14 to 2026-07-13/),
+      screen.getByText(
+        /Showing aggregate visitor data from 2026-06-14 to 2026-07-13/,
+      ),
     ).toBeTruthy()
   })
 
   it('shows per-form starts and completion', () => {
     render(<AnalyticsPage overview={overview} />)
-    expect(
-      screen.getByRole('columnheader', { name: 'Starts' }),
-    ).toBeTruthy()
+    expect(screen.getByRole('columnheader', { name: 'Starts' })).toBeTruthy()
     expect(
       screen.getByRole('columnheader', { name: 'Completion' }),
     ).toBeTruthy()

@@ -123,6 +123,39 @@ describe('HomeHero', () => {
     expect(suggestMock).not.toHaveBeenCalled()
   })
 
+  it("suggests from api_v2's search documents once they load", async () => {
+    const documents = [
+      {
+        url: '/travel/zebra-crossing-permit',
+        title: 'Zebra crossing permit',
+        description: null,
+        digital: false,
+        keywords: [],
+        chunks: [],
+      },
+    ]
+    render(
+      <HomeHero
+        questions={[QUESTION]}
+        viewer="public"
+        overlay={new Map()}
+        loadDocuments={async () => documents}
+      />,
+    )
+    fireEvent.click(screen.getByRole('radio', { name: 'Search' }))
+
+    fireEvent.input(searchInput(), { target: { value: 'zebra' } })
+
+    await waitFor(() =>
+      expect(suggestMock).toHaveBeenLastCalledWith(
+        'zebra',
+        'public',
+        expect.any(Map),
+        documents,
+      ),
+    )
+  })
+
   it('cuts carried-over text to the question limit when switching to Ask', () => {
     renderHero()
     fireEvent.click(screen.getByRole('radio', { name: 'Search' }))
@@ -200,7 +233,12 @@ describe('HomeHero', () => {
     fireEvent.click(screen.getByRole('radio', { name: 'Search' }))
 
     fireEvent.input(searchInput(), { target: { value: 'birth' } })
-    expect(suggestMock).toHaveBeenLastCalledWith('birth', 'public', new Map())
+    expect(suggestMock).toHaveBeenLastCalledWith(
+      'birth',
+      'public',
+      new Map(),
+      undefined,
+    )
 
     fireEvent.submit(searchInput())
     expect(navigateMock).toHaveBeenCalledWith({
@@ -327,6 +365,27 @@ describe('HomeHero', () => {
       screen.queryByRole('link', { name: 'Birth certificates' }),
     ).toBeNull()
     expect(screen.getByRole('link', { name: 'Redirect my mail' })).toBeTruthy()
+    expect(
+      screen.getByRole('link', { name: 'Financial assistance' }),
+    ).toBeTruthy()
+  })
+
+  it('shows only the popular searches api_v2 serves, when it says', () => {
+    // Public in the static registry, so this tests api_v2's answer wins.
+    render(
+      <HomeHero
+        questions={[QUESTION]}
+        viewer="public"
+        overlay={new Map()}
+        servedServices={['apply-financial-assistance']}
+      />,
+    )
+    fireEvent.click(screen.getByRole('radio', { name: 'Search' }))
+
+    expect(
+      screen.queryByRole('link', { name: 'Birth certificates' }),
+    ).toBeNull()
+    expect(screen.queryByRole('link', { name: 'Redirect my mail' })).toBeNull()
     expect(
       screen.getByRole('link', { name: 'Financial assistance' }),
     ).toBeTruthy()

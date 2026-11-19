@@ -2,7 +2,7 @@
  * Builds "Preview form" links that point at the live forms app (apps/forms).
  *
  * The origin comes from VITE_FORMS_URL — the same browser-exposed var the
- * landing app uses for forms links (ADR 0004). Per ADR 0005, browser-readable
+ * landing app uses for forms links (ADR 0008). Per ADR 0013, browser-readable
  * config is read via import.meta.env, never process.env / a vite `define`.
  * The unified builder (/builder) renders this link. See
  * apps/form_builder/.env.example.

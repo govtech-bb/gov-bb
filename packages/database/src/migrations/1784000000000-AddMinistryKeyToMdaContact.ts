@@ -8,7 +8,7 @@ import { MigrationInterface, QueryRunner } from "typeorm";
  * walks `form_config → mda_contact.ministry_key → MDA_WEBHOOK_DESTINATIONS[key]`.
  *
  * Values are seeded per environment out of band (engineers/ops), alongside the
- * matching JSON secret entry — see docs/decisions/0064-per-mda-webhook-destinations.md.
+ * matching JSON secret entry — see docs/decisions/0112-per-mda-webhook-destinations.md.
  */
 export class AddMinistryKeyToMdaContact1784000000000 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {

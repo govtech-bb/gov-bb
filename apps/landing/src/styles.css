@@ -5,6 +5,7 @@
 /* Keep design-system components below application utilities in the cascade. */
 @import '@govtech-bb/frontend/css' layer(components);
 @plugin "@tailwindcss/typography";
+@source "../../../packages/govbbmarkd/src";
 
 /* The design system spaces header nav items 64px apart, which wraps the nav
    onto extra rows at common laptop widths. Remove once

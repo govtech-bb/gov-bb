@@ -12,6 +12,7 @@ import { isVisible, PAGES } from '../content/registry'
 import type { ViewLevel } from '../lib/frontmatter'
 import { trackEvent } from '../lib/analytics'
 import { CHAT_URL } from '../lib/chat-url'
+import type { ApiV2SearchDocument } from '../lib/api-v2-site'
 import { useServiceSearch } from './useServiceSearch'
 import './HomeHero.css'
 
@@ -20,7 +21,7 @@ const SOURCE = 'home'
 const OFFLINE_MESSAGE = 'The assistant is not available right now.'
 
 // Each search leads to one service, so it's hidden while that service is.
-const POPULAR_SEARCHES = [
+export const POPULAR_SEARCHES = [
   { query: 'Birth certificates', serviceId: 'get-birth-certificate' },
   {
     query: 'Redirect my mail',
@@ -141,9 +142,20 @@ interface HomeHeroProps {
   questions: Array<string>
   viewer: ViewLevel
   overlay: ReadonlyMap<string, ViewLevel>
+  /** Reads api_v2's search documents. */
+  loadDocuments?: () => Promise<readonly ApiV2SearchDocument[]>
+  /** The popular searches' services api_v2 serves, when it is configured.
+   *  Unset, the static registry decides. */
+  servedServices?: readonly string[]
 }
 
-export function HomeHero({ questions, viewer, overlay }: HomeHeroProps) {
+export function HomeHero({
+  questions,
+  viewer,
+  overlay,
+  loadDocuments,
+  servedServices,
+}: HomeHeroProps) {
   const heroRef = useRef<HTMLElement>(null)
   const searchRadioRef = useRef<HTMLInputElement>(null)
   const searchInputRef = useRef<HTMLInputElement>(null)
@@ -179,8 +191,10 @@ export function HomeHero({ questions, viewer, overlay }: HomeHeroProps) {
     setText,
     suggesting: mode === 'search' && hasTyped,
     emptyTo: '/services',
+    loadDocuments,
   })
   const popularSearches = POPULAR_SEARCHES.filter(({ serviceId }) => {
+    if (servedServices) return servedServices.includes(serviceId)
     const page = PAGES.find(({ slug }) => slug === serviceId)
     return page ? isVisible(page, 'public', overlay) : false
   })
@@ -297,6 +311,7 @@ export function HomeHero({ questions, viewer, overlay }: HomeHeroProps) {
                     onChange={(event) => {
                       setHasTyped(true)
                       setText(event.currentTarget.value)
+                      search.refreshDocuments()
                     }}
                     onSuggestionSelect={search.onSuggestionSelect}
                   />

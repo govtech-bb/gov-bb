@@ -1,0 +1,142 @@
+{
+  "schemaVersion": 2,
+  "id": "household-repeat-example",
+  "title": "Household details example",
+  "mode": "application",
+  "locale": "en-BB",
+  "timeZone": "America/Barbados",
+  "settings": {
+    "visibility": "preview",
+    "hiddenAnswers": "retain"
+  },
+  "blocks": [
+    {
+      "id": "requester-page",
+      "type": "page",
+      "role": "questions",
+      "title": "Your details"
+    },
+    {
+      "id": "requester-name",
+      "type": "question",
+      "kind": "text",
+      "key": "requesterName",
+      "label": "Your full name",
+      "required": { "value": true, "message": "Enter your full name" }
+    },
+    {
+      "id": "include-phone-numbers",
+      "type": "question",
+      "kind": "boolean",
+      "key": "includePhoneNumbers",
+      "label": "Include phone numbers for each household member",
+      "default": false,
+      "submit": false,
+      "review": false
+    },
+    {
+      "id": "household-members-page",
+      "type": "page",
+      "role": "questions",
+      "title": "Household member",
+      "repeat": {
+        "key": "members",
+        "min": 1,
+        "max": 5,
+        "addLabel": "Add another household member",
+        "itemLabel": "Household member"
+      }
+    },
+    {
+      "id": "member-context",
+      "type": "content",
+      "kind": "paragraph",
+      "content": [
+        "Household information supplied by ",
+        { "answer": "requester-name", "scope": "form" },
+        "."
+      ]
+    },
+    {
+      "id": "member-name",
+      "type": "question",
+      "kind": "text",
+      "key": "name",
+      "label": "Full name",
+      "required": { "value": true, "message": "Enter this household member’s full name" }
+    },
+    {
+      "id": "member-no-national-id",
+      "type": "question",
+      "kind": "boolean",
+      "key": "noNationalId",
+      "label": "This household member does not have a national ID number",
+      "default": false,
+      "submit": false,
+      "review": false
+    },
+    {
+      "id": "member-national-id",
+      "type": "question",
+      "kind": "text",
+      "key": "nationalId",
+      "label": "National ID number",
+      "required": { "value": true, "message": "Enter this household member’s national ID number" }
+    },
+    {
+      "id": "member-phones",
+      "type": "question",
+      "kind": "text",
+      "key": "phones",
+      "label": [
+        "Phone number for ",
+        { "answer": "member-name", "scope": "current", "fallback": "this household member" }
+      ],
+      "visible": false,
+      "required": { "value": true, "message": "Enter a phone number" },
+      "repeat": { "min": 1, "max": 4, "addLabel": "Add another phone number" }
+    },
+    {
+      "id": "member-logic",
+      "type": "logic",
+      "rules": [
+        {
+          "id": "member-without-national-id",
+          "when": {
+            "op": "eq",
+            "left": { "answer": "member-no-national-id", "scope": "current" },
+            "right": true
+          },
+          "actions": [
+            { "type": "setVisible", "targets": ["member-national-id"], "value": false },
+            { "type": "setRequired", "target": "member-national-id", "value": false }
+          ]
+        },
+        {
+          "id": "member-contact-numbers",
+          "when": {
+            "op": "eq",
+            "left": { "answer": "include-phone-numbers", "scope": "form" },
+            "right": true
+          },
+          "actions": [
+            { "type": "setVisible", "targets": ["member-phones"], "value": true }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "review-page",
+      "type": "page",
+      "role": "review",
+      "title": "Check your answers",
+      "review": { "questions": "preceding", "emptyAnswers": "omit", "changeLinks": true }
+    },
+    {
+      "id": "confirmation-page",
+      "type": "page",
+      "role": "confirmation",
+      "title": "Household details received"
+    }
+  ]
+}

@@ -1,8 +1,10 @@
 name: CI
 
 on:
+  # v2-rewrite is a long-lived integration branch; its PRs and merges run the
+  # same checks as main's until it merges in.
   pull_request:
-    branches: [main]
+    branches: [main, v2-rewrite]
   # Re-validate the trunk after every merge. CI otherwise runs only on
   # pull_request, so a break that emerges from the COMBINATION of two
   # independently-green PRs (e.g. #1875's recipes + #1970's new lint, incident
@@ -10,7 +12,7 @@ on:
   # `main` flags a red trunk immediately. `validate-recipes` matters most here:
   # it validates ALL recipes, not just nx-affected ones.
   push:
-    branches: [main]
+    branches: [main, v2-rewrite]
   workflow_dispatch:
 
 permissions:
@@ -38,32 +40,36 @@ jobs:
         with:
           node-version-file: ".nvmrc"
           cache: "pnpm"
-      - run: pnpm install --frozen-lockfile
+      - id: install
+        run: pnpm install --frozen-lockfile
 
       # Fails on dependency-version drift across workspace packages.
-      # Deliberate splits (express 4/5, forms' eslint 9, react-markdown 9/10)
+      # Deliberate splits (express 4/5, react-markdown 9/10)
       # are ignored via flags in the script — see root package.json.
       # @govtech-bb/react is split while apps move to the new design system one
       # at a time: landing is on alpha.25, analytics still on alpha.17. Drop the
       # flag once every app has migrated.
       - name: Dependency consistency (sherif)
-        run: pnpm lint:deps
+        run: pnpm test:sherif
 
       - name: Run type check (tsc --build)
         id: typecheck
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: |
           pnpm exec tsc -b 2>&1 | tee typecheck-output.txt
           exit ${PIPESTATUS[0]}
         continue-on-error: true
 
-      - name: Type check landing
-        run: pnpm exec nx run landing:typecheck
-
-      - name: Type check form builder
-        run: pnpm exec nx run form-builder-app:typecheck
+      # Every project with a `test:types` script (`tsc --noEmit`) type-checks
+      # itself, including the apps outside the `tsc -b` reference graph.
+      # run-many runs every project even when one fails, so a single run
+      # reports all their errors.
+      - name: Type check each project (test:types)
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: pnpm exec nx run-many -t test:types
 
       - name: Report type check results
-        if: steps.typecheck.outcome == 'failure'
+        if: ${{ !cancelled() && steps.typecheck.outcome == 'failure' }}
         run: |
           ERROR_COUNT=$(grep -c "error TS" typecheck-output.txt 2>/dev/null || echo "?")
 
@@ -474,6 +480,20 @@ jobs:
     name: Test
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    # api_v2's tests run against a real Postgres: one migrated template per
+    # run, cloned per test (apps/api_v2/src/test-db.ts).
+    services:
+      postgres:
+        image: postgres:17.9@sha256:2a0d0fe14825b0939f78a8cad5cd4e6aa68bf94d0e5dd96e24b6d23af4315545 # 17.9
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 2s
+          --health-timeout 5s
+          --health-retries 15
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
         with:
@@ -560,6 +580,99 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
           exit 1
 
+      # api_v2's e2e specs boot the built server against the Postgres service
+      # above. Run by name rather than `nx affected -t e2e`, which would also
+      # run forms' Playwright suite. Without DB_HOST every database spec skips
+      # itself and the run is green, so the report below fails on any skip.
+      - name: Run api_v2 e2e specs
+        id: e2e
+        # Skip only when the unit tests never started (install or set-shas
+        # failed); a failed unit run still gets its e2e results.
+        if: ${{ !cancelled() && steps.test.outcome != 'skipped' }}
+        env:
+          DB_HOST: localhost
+        run: |
+          # Captured first so an nx failure fails the step (bash -e) rather
+          # than reading as "not affected" and passing with nothing run.
+          affected=$(pnpm exec nx show projects --affected --withTarget e2e --json)
+          # jq -e exits 1 only for "false"; any other non-zero (5 = not JSON)
+          # is an error, not "not affected".
+          found=0
+          jq -e 'index("api_v2") != null' <<<"$affected" > /dev/null || found=$?
+          if [ "$found" -eq 1 ]; then
+            echo "api_v2 is not affected; skipping its e2e specs."
+            exit 0
+          fi
+          [ "$found" -eq 0 ] || exit "$found"
+          echo "ran=true" >> "$GITHUB_OUTPUT"
+          pnpm exec nx run api_v2:e2e -- --reporter=default --reporter=json \
+            --outputFile.json="$PWD/api-v2-e2e.json" 2>&1 | tee e2e-output.txt
+          exit ${PIPESTATUS[0]}
+
+      - name: Report api_v2 e2e results
+        if: ${{ !cancelled() && steps.e2e.outputs.ran == 'true' }}
+        env:
+          E2E_OUTCOME: ${{ steps.e2e.outcome }}
+        run: |
+          report=api-v2-e2e.json
+          if [ ! -s "$report" ]; then
+            {
+              echo "## ❌ api_v2 e2e specs did not report"
+              echo ""
+              echo '```'
+              sed 's/\x1b\[[0-9;]*m//g' e2e-output.txt | tail -100
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+
+          total=$(jq '.numTotalTests' "$report")
+          failed=$(jq '.numFailedTests' "$report")
+          skipped=$(jq '.numPendingTests + .numTodoTests' "$report")
+          if [ "$E2E_OUTCOME" = "success" ] && [ "$failed" -eq 0 ] && [ "$skipped" -eq 0 ] && [ "$total" -gt 0 ]; then
+            heading="## ✅ api_v2 e2e specs passed"
+            ok=true
+          else
+            heading="## ❌ api_v2 e2e specs failed"
+            ok=false
+          fi
+
+          {
+            echo "$heading"
+            echo ""
+            echo "| Spec | File | Passed | Failed | Skipped |"
+            echo "| --- | --- | ---: | ---: | ---: |"
+            jq -r '.testResults[] | [
+                (.name | sub(".*/apps/api_v2/"; "")),
+                .status,
+                ([.assertionResults[] | select(.status == "passed")] | length),
+                ([.assertionResults[] | select(.status == "failed")] | length),
+                ([.assertionResults[] | select(.status != "passed" and .status != "failed")] | length)
+              ] | "| `\(.[0])` | \(.[1]) | \(.[2]) | \(.[3]) | \(.[4]) |"' "$report"
+            echo ""
+            if [ "$skipped" -gt 0 ]; then
+              echo "**$skipped test(s) skipped.** CI must run them all. Check the File"
+              echo "column first: a failed file (a throwing beforeAll) skips its tests."
+              echo "Otherwise the database was not reached (\`DB_HOST\` unset) or a"
+              echo "test is marked skip/todo."
+              echo ""
+            fi
+            if [ "$ok" = false ]; then
+              echo "<details><summary>Output (last 200 lines)</summary>"
+              echo ""
+              echo '```'
+              sed 's/\x1b\[[0-9;]*m//g' e2e-output.txt | tail -200
+              echo '```'
+              echo "</details>"
+              echo ""
+              echo "**Fix it locally** (needs a Postgres on localhost):"
+              echo '```bash'
+              echo "DB_HOST=localhost pnpm exec nx run api_v2:e2e"
+              echo '```'
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+          [ "$ok" = true ]
+
   build:
     name: Build
     runs-on: ubuntu-latest
@@ -587,6 +700,10 @@ jobs:
 
       - name: Build affected packages
         id: build
+        env:
+          # editor_v2 refuses a production build without an HTTPS API origin;
+          # Amplify supplies the real one, CI only needs the shell to prerender.
+          VITE_API_ORIGIN: https://api.example.invalid
         run: |
           pnpm exec nx affected -t build --nxBail=false 2>&1 | tee build-output.txt
           exit ${PIPESTATUS[0]}
@@ -610,6 +727,11 @@ jobs:
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
           exit 1
 
+      # Client bundle budgets (apps/landing/.size-limit.js, #3139). Runs only
+      # when landing is affected, and reuses the build above from the nx cache.
+      - name: Check bundle size budgets
+        run: pnpm exec nx affected -t size
+
   validate-recipes:
     name: Validate Recipes
     runs-on: ubuntu-latest
@@ -632,7 +754,7 @@ jobs:
         run: pnpm validate-recipes
 
       # A recipe whose content changed must move its `updatedAt` (#2878): the
-      # builder decides a draft row's staleness from that stamp (ADR 0075).
+      # builder decides a draft row's staleness from that stamp (ADR 0125).
       # An always-run step, not an nx target — nx inputs skip content-only
       # changes, so a cached target would replay a stale green. Diffs the PR
       # against its merge base with the target branch; on a push to `main`
@@ -671,12 +793,14 @@ jobs:
 
   generated-drift:
     name: Generated Files Up To Date
-    # Two artifacts are pre-baked from landing content so their consumers carry
-    # no runtime dependency on @govtech-bb/content:
+    # Two artifacts are pre-baked from landing content so their consumers
+    # carry no runtime dependency on @govtech-bb/content:
     #   - apps/api/src/content/services-index.generated.ts  (`GET /services`)
-    #   - packages/content/src/form-categories.generated.ts  (form -> category)
+    #   - apps/api_v2/src/seed-data/estate.json  (api_v2 seed; its pages take
+    #     priority over landing's static markdown, so a stale one rolls
+    #     content back — #3136)
     # Nothing in the build forces a regen, so a content PR that skips it leaves
-    # them stale (#2070). Regenerate both here; if they drifted, commit the
+    # them stale (#2070). Regenerate them here; if they drifted, commit the
     # regen back onto the PR branch rather than only failing (#2303) — the
     # form_builder Content flow writes pages through the GitHub contents API
     # with no checkout and no pnpm, so it can never run the generators itself
@@ -706,12 +830,12 @@ jobs:
       - name: Regenerate generated files
         run: |
           pnpm generate:services-index
-          pnpm generate:form-categories
+          pnpm generate:seed-data
 
       - name: Detect drift
         id: drift
         env:
-          FILES: apps/api/src/content/services-index.generated.ts packages/content/src/form-categories.generated.ts
+          FILES: apps/api/src/content/services-index.generated.ts apps/api_v2/src/seed-data/estate.json
         run: |
           echo "files=$FILES" >> "$GITHUB_OUTPUT"
           if git diff --quiet -- $FILES; then
@@ -753,7 +877,7 @@ jobs:
           git -c user.name="github-actions[bot]" \
               -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
               commit -m "chore: regenerate content-derived generated files" \
-                     -m "Automated by the Generated Files Up To Date job. Regenerate locally with \`pnpm generate:services-index && pnpm generate:form-categories\`."
+                     -m "Automated by the Generated Files Up To Date job. Regenerate locally with \`pnpm generate:services-index && pnpm generate:seed-data\`."
           git push "https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}" \
             "HEAD:refs/heads/${BRANCH}"
 
@@ -778,14 +902,14 @@ jobs:
           {
             echo "## ❌ Generated files are out of date"
             echo ""
-            echo "Landing content changed but the content-derived generated files were not regenerated, so \`GET /services\` and the form→category map would serve stale data."
+            echo "Landing content changed but the content-derived generated files were not regenerated, so \`GET /services\` and the api_v2 seed snapshot would serve stale data."
             echo ""
             echo "The automatic write-back did not run or could not push (fork PR, missing App credentials, or the App lacks \`contents: write\` on this repo — see #2303)."
             echo ""
             echo "**Fix locally:**"
             echo '```bash'
             echo "pnpm generate:services-index"
-            echo "pnpm generate:form-categories"
+            echo "pnpm generate:seed-data"
             echo '```'
             echo "then commit the updated files."
           } >> "$GITHUB_STEP_SUMMARY"
@@ -814,34 +938,13 @@ jobs:
           # base_ref is empty, so fall back to ref_name (= main).
           main-branch-name: ${{ github.base_ref || github.ref_name }}
 
-      - name: Lint affected projects
-        id: lint
-        run: |
-          # The trunk lint gate now runs over every affected app — no exclusions.
-          # The ratchet introduced during the prod→main resync (#1884) is fully
-          # burned down: analytics-app, landing, forms, api, form-builder-app
-          # all cleaned and enforced (#1885, PRs #1891/#1892/#1893/#1919/#1912).
-          pnpm exec nx affected -t lint --nxBail=false 2>&1 | tee lint-output.txt
-          exit ${PIPESTATUS[0]}
-        continue-on-error: true
+      # Each project's own `test:oxlint` script, over the affected projects.
+      - name: Lint affected projects (oxlint)
+        run: pnpm test:oxlint
 
-      - name: Report lint results
-        if: steps.lint.outcome == 'failure'
-        run: |
-          echo "## ❌ Lint Failed" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "<details><summary>View lint errors</summary>" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-          tail -100 lint-output.txt >> $GITHUB_STEP_SUMMARY
-          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-          echo "</details>" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Fix it locally:**" >> $GITHUB_STEP_SUMMARY
-          echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
-          echo "pnpm exec nx affected -t lint" >> $GITHUB_STEP_SUMMARY
-          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-          exit 1
+      - name: Check formatting (oxfmt)
+        if: ${{ !cancelled() }}
+        run: pnpm test:format
 
   affected-apps:
     # Which deployable apps this change touches, so the Docker jobs below only

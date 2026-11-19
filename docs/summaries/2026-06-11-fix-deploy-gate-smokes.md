@@ -12,7 +12,7 @@ were red and gating the deploy:
 - `get-a-primary-school-textbook-grant.smoke.spec.ts`
 - `project-protege-mentor.smoke.spec.ts`
 
-Both are post-deploy gates (ADR 0027) — they drive the real deployed form and
+Both are post-deploy gates (ADR 0047) — they drive the real deployed form and
 submit for real, so a published form that drifts from its smoke breaks the gate
 with no repo change to point at.
 

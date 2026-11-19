@@ -31,7 +31,7 @@ The workspace is declared in `pnpm-workspace.yaml` with the globs `apps/*` and `
 ## 2. Languages & Runtime
 
 - **Primary language:** TypeScript (v5.7.x) across every app and package.
-- **Runtime:** Node.js **>= 20** (CI pins to Node 20).
+- **Runtime:** Node.js **24** (`engines` `24.x`, `.nvmrc`; CI and the Docker images use Node 24).
 - **Module style:** Strict TypeScript with ES2022 target and TypeScript project references.
 - **Path aliases** (`tsconfig.base.json`): `@govtech-bb/form-builder`, `@govtech-bb/form-types`, `@govtech-bb/form-conditions`, `@govtech-bb/form-validation`, `@govtech-bb/registry`, `@govtech-bb/database`, plus app-local aliases like `@forms/*`.
 
@@ -46,24 +46,26 @@ The workspace is declared in `pnpm-workspace.yaml` with the globs `apps/*` and `
 | Task orchestration & caching | **Nx v22.6.5** |
 | Type checking | TypeScript project references (`tsc -b`) |
 | Testing | **Vitest 4** is the standard runner across the monorepo (Jest has been removed) |
-| Linting | **ESLint** (flat config, `eslint.config.mts`) with `typescript-eslint`, `@eslint/json`, `@eslint/css` |
-| Formatting | **Prettier** — double quotes, trailing commas, semicolons, 80-column width, 2-space tabs |
+| Linting | **oxlint** (`.oxlintrc.json`, nested configs in `apps/forms` and `apps/landing`) |
+| Formatting | **oxfmt** (`.oxfmtrc.json`) — double quotes, trailing commas, semicolons, 80-column width, 2-space tabs; landing and analytics drop semicolons and use single quotes |
 | Secret scanning | **gitleaks** (optional pre-commit) |
 | Git hooks | **Husky** + **lint-staged** |
 
 ### Nx configuration
 
 - `nx.json` sets the default base branch to `main`.
-- Build targets depend on `^build` (upstream-first) and are cached.
-- `lint` and `test` targets are also cached.
-- Each app/package contains a `project.json` describing its Nx targets.
+- Targets are inferred from each project's package.json scripts; `nx.json` `targetDefaults` set caching, inputs, outputs and `dependsOn` for `build`, `test`, `test:types` and `test:oxlint`.
+- Builds depend on `^build` (upstream-first), except the Vite apps, which bundle workspace packages from source (`dependsOn: []`).
+- Each app/package's `project.json` holds only Nx metadata (env inputs, overrides) and the `@nx/js:tsc` / `@nx/js:node` executors.
 
 ### Key root scripts (from `package.json`)
 
-- `pnpm build` → `nx run-many -t build`
-- `pnpm lint` → `nx run-many -t lint`
+- `pnpm build` → `nx affected -t build`; `pnpm build:all` → `nx run-many -t build`
+- `pnpm test:oxlint` → `nx affected -t test:oxlint` (each project's `oxlint` script)
 - `pnpm test:all` → `nx run-many -t test`
-- `pnpm format` / `pnpm format:check`
+- `pnpm test:types` → `nx affected -t test:types`
+- `pnpm test:pr` / `pnpm test:ci` → oxlint, types, tests and build (affected / all) plus the format check
+- `pnpm format` / `pnpm test:format`
 - `pnpm dev:<app>` → `nx dev <app>` (e.g. `dev:forms`, `dev:api`, `dev:landing`)
 - TypeORM migration commands (`migration:create`, `migration:generate`, `migration:run`, `migration:revert`, `migration:show`) driven from `apps/api/typeorm.config.ts`.
 

@@ -1,5 +1,6 @@
 import { createServerFn } from '@tanstack/react-start'
 import { resolveCachedValue } from './cached-resolver'
+import { fetchJsonWithTimeout } from './fetch-json-with-timeout'
 import { formsApiBase } from './forms-api-url'
 import type { ViewLevel } from './frontmatter'
 
@@ -65,6 +66,7 @@ interface StatusCache {
 /** A mutable holder so the cache can be injected into the resolver for tests. */
 export interface CacheRef {
   current: StatusCache | null
+  inFlight?: Promise<ServiceStatusEntry[]>
 }
 
 /**
@@ -144,26 +146,13 @@ export function deriveFormDisabledSlugs(
   )
 }
 
-async function fetchWithTimeout(url: string, ms: number): Promise<Response> {
-  const controller = new AbortController()
-  const timer = setTimeout(() => controller.abort(), ms)
-  try {
-    return await fetch(url, { signal: controller.signal })
-  } finally {
-    clearTimeout(timer)
-  }
-}
-
 /** Fetch and validate the current service statuses. */
 async function fetchServiceStatuses(): Promise<ServiceStatusEntry[]> {
-  const response = await fetchWithTimeout(
+  const payload = await fetchJsonWithTimeout(
     `${formsApiBase()}/service_status`,
     FETCH_TIMEOUT_MS,
   )
-  if (!response.ok) {
-    throw new Error(`HTTP ${response.status} ${response.statusText}`)
-  }
-  return parseServiceStatuses(await response.json())
+  return parseServiceStatuses(payload)
 }
 
 /**
@@ -193,6 +182,7 @@ export async function resolveServiceStatuses({
   sleep?: (ms: number) => Promise<void>
 }): Promise<ServiceStatusEntry[]> {
   return resolveCachedValue<ServiceStatusEntry[]>({
+    cache,
     now,
     ttlMs,
     fetcher,

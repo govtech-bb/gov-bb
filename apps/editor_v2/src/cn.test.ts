@@ -1,0 +1,26 @@
+import { expect, test } from "vitest";
+import { cn } from "./cn";
+
+test("numeric font sizes survive colors and line-heights", () => {
+  expect(cn("leading-none text-14 text-muted")).toBe("leading-none text-14 text-muted");
+  expect(cn("text-13", "text-15")).toBe("text-15");
+});
+
+test("theme shadows and overrides merge", () => {
+  expect(cn("shadow-input", "hover:shadow-input-hover", "shadow-press")).toBe(
+    "hover:shadow-input-hover shadow-press",
+  );
+  expect(cn("h-7 rounded-md px-[0.7em]", "w-7 rounded-full px-0")).toBe(
+    "h-7 w-7 rounded-full px-0",
+  );
+});
+
+test("named layers are z-indexes, so a later one replaces an earlier", () => {
+  expect(cn("fixed z-popup", "z-toast")).toBe("fixed z-toast");
+  expect(cn("z-10", "z-bar")).toBe("z-bar");
+});
+
+test("the theme's easing is an easing, so a later one replaces it", () => {
+  expect(cn("ease-out-quint", "ease-out")).toBe("ease-out");
+  expect(cn("ease-linear", "ease-out-quint")).toBe("ease-out-quint");
+});

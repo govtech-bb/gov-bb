@@ -16,7 +16,7 @@ import { DraftArchiveService } from "./draft-archive.service";
  *
  * SECURITY: Authenticated by `AdminTokenGuard` — the archive-merged-drafts.yml
  * workflow already sends `Authorization: Bearer <ARCHIVE_DRAFTS_TOKEN>`, which
- * this guard now validates (dev-bypass policy per ADR 0061). The network ACL
+ * this guard now validates (dev-bypass policy per ADR 0106). The network ACL
  * remains as defence in depth.
  */
 @ApiTags("Admin — Drafts")

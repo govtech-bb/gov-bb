@@ -1,0 +1,42 @@
+/*
+ * Loader: a wave of bright dots rising through a dim trident. Each band of the wave is its own layer
+ * and only its opacity animates, which the browser runs on the GPU without the main thread.
+ */
+.trident-loader {
+  --trident-cycle: 1.5s;
+}
+
+.trident-loader-band {
+  opacity: 0;
+  animation: trident-wave var(--trident-cycle) ease-in-out infinite;
+}
+
+@keyframes trident-wave {
+  0%,
+  50%,
+  100% {
+    opacity: 0;
+  }
+
+  12% {
+    opacity: 1;
+  }
+}
+
+/* No dot moves with reduced motion: the whole trident shows and gently fades instead. */
+@media (prefers-reduced-motion: reduce) {
+  .trident-loader {
+    animation: trident-breathe 1.4s ease-in-out infinite;
+  }
+
+  .trident-loader-band {
+    animation: none;
+    opacity: 1;
+  }
+}
+
+@keyframes trident-breathe {
+  50% {
+    opacity: 0.4;
+  }
+}

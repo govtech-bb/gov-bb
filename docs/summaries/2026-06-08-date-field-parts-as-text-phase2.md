@@ -3,7 +3,7 @@
 ## Context
 
 [#815](https://github.com/govtech-bb/gov-bb/issues/815) is being migrated
-expand-contract (ADR 0043) because the date value crosses the forms-frontend ↔
+expand-contract (ADR 0076) because the date value crosses the forms-frontend ↔
 API deploy boundary. **Phase 1** (PR #945, merged + deployed to sandbox) made
 the `@govtech-bb/form-validation` boundary tolerate both numeric and string
 date parts. **This is phase 2 (migrate):** the frontend flips to emitting
@@ -32,7 +32,7 @@ after phase 1 was live on sandbox.
 - **Types stay union (`string | number`), not narrowed to string.** The API must
   keep accepting numeric parts from old/cached frontends during and after this
   deploy — narrowing the validation boundary back to string-only is a separate,
-  later "contract" step (ADR 0043), not safe yet. Phase 2 only changes what the
+  later "contract" step (ADR 0076), not safe yet. Phase 2 only changes what the
   frontend *produces*; the producer emits a string, which is a subset of the
   tolerated union.
 - **Safe in any deploy order.** New frontend (strings) → tolerant API ✓; old

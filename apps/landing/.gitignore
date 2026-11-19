@@ -2,6 +2,7 @@ node_modules
 .DS_Store
 dist
 dist-ssr
+/public/cms-preview/
 *.local
 .env
 .nitro
@@ -11,3 +12,4 @@ dist-ssr
 .vinxi
 __unconfig*
 todos.json
+/test-results/

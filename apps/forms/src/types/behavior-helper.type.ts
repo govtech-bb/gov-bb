@@ -1,10 +1,10 @@
-import {
+import type {
   RepeatableBehaviour,
   SharedFieldsBehaviour,
 } from "@govtech-bb/form-types";
-import { ClientFormStep } from "./field-mapper.type";
-import { FormMeta } from "./renderer.type";
-import { RepeatableStepSettings } from "./repeatable.type";
+import type { ClientFormStep } from "./field-mapper.type";
+import type { FormMeta } from "./renderer.type";
+import type { RepeatableStepSettings } from "./repeatable.type";
 
 export interface AddRepeatableStepParams {
   currentStep: ClientFormStep;

@@ -13,7 +13,7 @@ but short-circuited on empty input, and **Title had no validation**. Plan:
 
 - **One shared pattern.** New `packages/form-types/src/id-pattern.ts` exports
   `KEBAB_ID_PATTERN` + `KEBAB_ID_ERROR`, exported from the package barrel. See
-  [ADR 0028](../decisions/0028-form-id-is-canonical-kebab-case.md).
+  [ADR 0048](../decisions/0048-form-id-is-canonical-kebab-case.md).
 - **Schema (root cause).** `formId` is now `.min(1)` + `.regex(KEBAB_ID_PATTERN)`
   and `title` is `.min(1)`, in **both** `serviceContractRecipeSchema` and
   `serviceContractSchema`.

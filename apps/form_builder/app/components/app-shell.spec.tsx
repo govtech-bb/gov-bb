@@ -169,9 +169,10 @@ it("opens a service form directly and distinguishes its public pages", async () 
       .getAllByRole("link")
       .flatMap((link) => named.get(link) ?? []),
   ).toEqual(serviceLinks);
-  expect(
-    within(nav).getByRole("link", { name: "Entry page" }),
-  ).toHaveAttribute("href", expect.stringContaining("index.md"));
+  expect(within(nav).getByRole("link", { name: "Entry page" })).toHaveAttribute(
+    "href",
+    expect.stringContaining("index.md"),
+  );
   expect(within(nav).getByRole("link", { name: "Start page" })).toHaveAttribute(
     "href",
     expect.stringContaining("start.md"),

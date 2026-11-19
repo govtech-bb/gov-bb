@@ -12,7 +12,7 @@ The `service_status` API (#1886) is live on `apps/api`:
 - `GET /service_status` — unauthenticated; returns `{ slug, status }` for every
   **row that exists** (services with no row default to `enabled`).
 - `PUT /service_status` — `AdminTokenGuard` (`Authorization: Bearer
-  <SERVICE_STATUS_ADMIN_TOKEN>`, ADR-0061 dev-bypass); body `{ slug, status,
+  <SERVICE_STATUS_ADMIN_TOKEN>`, ADR-0106 dev-bypass); body `{ slug, status,
   author }`.
 - Tables `service_status` (one row per `slug`) and `service_status_audit_log`
   (append-only: `old_state`, `new_state`, `author`, `changed_at`).

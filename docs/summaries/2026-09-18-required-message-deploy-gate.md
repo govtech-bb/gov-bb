@@ -7,7 +7,7 @@ field is required" — the Required checkbox clobbering the registry's message,
 the message box that didn't follow the Label, and the AI prompt teaching the
 defect by example (see
 [2026-09-17-required-message-names-the-field](2026-09-17-required-message-names-the-field.md)
-and [0073](../decisions/0073-a-derived-authoring-default-tracks-its-source-until-overwritten.md)).
+and [0121](../decisions/0121-a-derived-authoring-default-tracks-its-source-until-overwritten.md)).
 Those stop a new recipe arriving with it. None of them stops an author hand-typing
 a generic string.
 
@@ -47,7 +47,7 @@ authored. Change the default there and a duplicated literal silently stops
 matching, so the gates would pass a recipe that still ships the defect. Putting
 `requiredMessageDefect` next to `defaultValidationMessage` and calling it from
 both gates makes that drift impossible. This is
-[0029](../decisions/0029-field-validation-rules-live-only-in-form-validation-package.md)
+[0051](../decisions/0051-field-validation-rules-live-only-in-form-validation-package.md)
 applied rather than a new principle, which is why this session wrote no
 decision record.
 
@@ -65,7 +65,7 @@ copy.** The new layer needs exactly the component/block expansion the serving
 path already does. Duplicating it would have put a third implementation of ref
 resolution in the tree, free to drift from the one that actually serves forms —
 the failure mode
-[0054](../decisions/0054-recipe-override-merge-has-one-implementation.md) exists
+[0090](../decisions/0090-recipe-override-merge-has-one-implementation.md) exists
 to prevent. The refactor is the riskier half of this change (it is the live
 serving path); it is covered by the expanded `resolution.spec.ts`, and a review
 pass additionally proved it behaviour-preserving by running both implementations

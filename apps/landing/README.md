@@ -44,12 +44,12 @@ If you prefer not to use Tailwind CSS:
 
 ## Linting & Formatting
 
-This project uses [eslint](https://eslint.org/) and [prettier](https://prettier.io/) for linting and formatting. Eslint is configured using [tanstack/eslint-config](https://tanstack.com/config/latest/docs/eslint). The following scripts are available:
+Linting uses [oxlint](https://oxc.rs/docs/guide/usage/linter) and formatting [oxfmt](https://oxc.rs/docs/guide/usage/formatter). This app's lint rules live in `.oxlintrc.json` here (the `@tanstack/eslint-config` rule set); its formatting (no semicolons, single quotes) is an override in the root `.oxfmtrc.json`.
 
 ```bash
-pnpm lint
-pnpm format
-pnpm check
+pnpm test:oxlint   # this app
+pnpm lint:fix
+pnpm -w format
 ```
 
 ## Routing
@@ -194,6 +194,10 @@ function PeopleComponent() {
 
 Loaders simplify your data fetching logic dramatically. Check out more information in the [Loader documentation](https://tanstack.com/router/latest/docs/framework/react/guide/data-loading#loader-parameters).
 
+## CMS page preview
+
+Editor v2 builds its own prose-page template with `@govtech-bb/react`, `@govtech-bb/frontend` and `govbbmarkd`. Landing serves no renderer bundle to the editor. Both applications use the shared Markdown renderer, including retained legacy blocks and form-link transformations. The older builder preview transport is unchanged. See [the editor preview guide](../editor_v2/docs/SITE-PREVIEW.md).
+
 ## Analytics (Umami and journey events)
 
 The landing app sends pageview and click events to two places, each only when configured:
@@ -237,7 +241,7 @@ Service pages that have a corresponding form in the forms API can render a
 is no hand-maintained mapping file in this repo.
 
 The full architectural rationale is in
-[ADR-0005](../../docs/decisions/0005-build-time-manifest-for-cross-app-link-availability.md).
+[ADR-0011](../../docs/decisions/0011-build-time-manifest-for-cross-app-link-availability.md).
 
 ### Authoring
 
@@ -317,27 +321,23 @@ dev warning).
 ## Feature flagging: the content rollout gate (`visibility`)
 
 Pages can be hidden from the public while still being reviewable. The
-`visibility` frontmatter field has **three hierarchical levels** (the default is
-`public`):
+`visibility` frontmatter field has **two viewer levels** plus `draft` (the
+default is `public`):
 
-| Level     | Seen by the public? | Seen by a `preview` token? | Seen by a `draft` token? |
-| --------- | ------------------- | -------------------------- | ------------------------ |
-| `public`  | ✅                  | ✅                         | ✅                       |
-| `preview` | ❌                  | ✅                         | ✅                       |
-| `draft`   | ❌                  | ❌                         | ✅                       |
+| Level     | Seen by the public? | Seen by a `preview` token? |
+| --------- | ------------------- | -------------------------- |
+| `public`  | ✅                  | ✅                         |
+| `preview` | ❌                  | ✅                         |
+| `draft`   | ❌                  | ❌                         |
 
-The levels are ordered `public < preview < draft`: a viewer sees everything at
-**or below** the level their token grants. So a `draft` reviewer also sees
-`preview` and `public` content, and a `preview` reviewer also sees `public`
-content — but **`draft` content is hidden even from `preview` reviewers**. Use
-`draft` for content that isn't ready for the wider review audience yet; use
-`preview` for content that's ready to review but not to publish.
+`public < preview`: a `preview` reviewer also sees `public`. A `draft` page is
+visible to no site viewer; it is editor-only once content lives in api_v2.
 
 ```yaml
 ---
 title: 'Register as a private CSEC candidate'
 category: education
-visibility: draft # or: preview
+visibility: preview # or: draft (hidden from everyone)
 ---
 ```
 
@@ -354,20 +354,17 @@ sub-pages too.
 > Like `preview`, `draft` is a **rollout gate, not a confidentiality
 > boundary** — the content still ships in the client bundle and is downloadable
 > by anyone who inspects it (see
-> `docs/decisions/0013-content-preview-is-a-rollout-gate-not-a-confidentiality-boundary.md`).
-> `draft` only sits one rung above `preview`; it is **not** for embargoed or
-> sensitive material.
+> `docs/decisions/0028-content-preview-is-a-rollout-gate-not-a-confidentiality-boundary.md`).
 
 ### Viewing a gated page
 
-Each level is unlocked by its own token, matching a server-only env var (never
-`VITE_`-prefixed, so neither is shipped to the browser):
+The `preview` level is unlocked by a token matching a server-only env var
+(never `VITE_`-prefixed, so it is not shipped to the browser):
 
-- `?preview=<PREVIEW_SECRET>` grants the `preview` level,
-- `?draft=<DRAFT_SECRET>` grants the `draft` level.
+- `?preview=<PREVIEW_SECRET>` grants the `preview` level.
 
 1. Visit **any** URL with the token appended, e.g.
-   `https://sandbox.alpha.gov.bb/education?draft=THE_DRAFT_SECRET`.
+   `https://sandbox.alpha.gov.bb/education?preview=THE_PREVIEW_SECRET`.
 2. On a match the server sets an httpOnly `preview` cookie holding only the
    granted **level** (never the secret) and redirects to the same path with the
    token stripped (so the secret never lingers in the URL or browser history).
@@ -377,33 +374,25 @@ Each level is unlocked by its own token, matching a server-only env var (never
 A wrong token is simply stripped from the URL, leaving any existing grant
 intact.
 
-> [!IMPORTANT]
-> `PREVIEW_SECRET` and `DRAFT_SECRET` **must be different values**. The whole
-> point of `draft` is that it's hidden from `preview` reviewers — and those
-> reviewers know the preview secret. If the two secrets matched, a preview
-> reviewer could reach draft content just by swapping `?preview=` for `?draft=`.
-
 ### Exiting
 
-Visit `?preview=exit` (or `?draft=exit`) on any URL. This clears the cookie and
+Visit `?preview=exit` on any URL. This clears the cookie and
 redirects **home** — not back to the current page, which may be gated and would
 otherwise 404 once the grant is gone.
 
 ### Environment variables
 
-| Variable         | When used | Purpose                                                                                                                                                     |
-| ---------------- | --------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `PREVIEW_SECRET` | run time  | The token reviewers append as `?preview=<value>` to unlock `preview`. Server-only. When unset, no preview token works.                                      |
-| `DRAFT_SECRET`   | run time  | The token reviewers append as `?draft=<value>` to unlock `draft`. Server-only, and **must differ** from `PREVIEW_SECRET`. When unset, no draft token works. |
+| Variable         | When used | Purpose                                                                                                                |
+| ---------------- | --------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `PREVIEW_SECRET` | run time  | The token reviewers append as `?preview=<value>` to unlock `preview`. Server-only. When unset, no preview token works. |
 
-Set them per environment in the deploy console (Amplify) — or, locally, in
+Set it per environment in the deploy console (Amplify) — or, locally, in
 `apps/landing/.env`:
 
 ```bash
 PREVIEW_SECRET=some-local-preview-secret
-DRAFT_SECRET=some-other-local-draft-secret
 pnpm dev
-# then visit http://localhost:3000/...?draft=some-other-local-draft-secret
+# then visit http://localhost:3000/...?preview=some-local-preview-secret
 ```
 
 The implementation lives in `src/lib/preview.ts` (token check, cookie, redirect)

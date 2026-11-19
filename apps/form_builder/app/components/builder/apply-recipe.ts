@@ -43,7 +43,7 @@ export function draftsEqual(
   };
   if (normalize(a) !== normalize(b)) return false;
   // `serializeRecipeDraft` strips payment processors — they persist to a
-  // per-environment DB sibling, never the recipe (#716, ADR 0033) — so the
+  // per-environment DB sibling, never the recipe (#716, ADR 0057) — so the
   // serialize-only compare above can't see edits to a payment processor.
   //
   // `comparePayments` is opt-in because the two callers want opposite things:
@@ -53,7 +53,7 @@ export function draftsEqual(
   //     recipe*, which never carries payment processors — folding payments in
   //     there would make an unchanged payment form always read as "changed".
   // So payments are only compared when the caller asks. Drop the editor-only
-  // `id` (never persisted, ADR 0009) so re-adding an identical processor isn't
+  // `id` (never persisted, ADR 0019) so re-adding an identical processor isn't
   // "a change".
   if (!opts.comparePayments) return true;
   const payments = (d: RecipeDraft): string =>
