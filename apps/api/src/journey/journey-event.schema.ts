@@ -13,6 +13,9 @@ const EVENT_NAME = /^[a-z0-9][a-z0-9:~_-]{0,99}$/;
 const PROP_KEY = /^[a-zA-Z][a-zA-Z0-9_]{0,39}$/;
 // A pathname only: no query string or fragment, which can carry tokens.
 const PATHNAME = /^\/[^?#\s]{0,299}$/;
+// The referring site's host name only (`google.com`), never a full URL: a
+// referring address can carry tokens, tracking ids or search terms.
+const HOSTNAME = /^(?=.{1,253}$)[a-z0-9-]+(\.[a-z0-9-]+)+$/;
 
 export const MAX_PROPS = 20;
 export const MAX_EVENTS_PER_REQUEST = 25;
@@ -36,6 +39,12 @@ export const journeyEventSchema = z
       })
       .optional(),
     path: z.string().regex(PATHNAME).optional(),
+    /**
+     * The site a visitor arrived from, as a host name, on the first page view
+     * of a tab's journey. Absent when they came from our own sites or typed
+     * the address.
+     */
+    referrer: z.string().regex(HOSTNAME).optional(),
     /** Random per page load (not stored anywhere), to group one visit's events. */
     page_load_id: z.uuid().optional(),
     /**
