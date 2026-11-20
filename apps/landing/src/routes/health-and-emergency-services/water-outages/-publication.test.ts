@@ -1,5 +1,6 @@
 import { beforeAll, describe, expect, it } from 'vitest'
 import { PAGES } from '../../../content/registry'
+import type { ServiceStatusEntry } from '@/lib/service-status'
 import type { Route as IndexRoute } from './index'
 import type { Route as LayoutRoute } from './route'
 import type { Route as ConfirmRoute } from './confirm'
@@ -69,6 +70,46 @@ describe('water service publication', () => {
     ).toContainEqual({
       name: 'robots',
       content: 'noindex',
+    })
+  })
+
+  // #3793: the page's `noindex` comes from the level its 404 check works out.
+  describe('index noindex follows the 404 check', () => {
+    const NOINDEX = { name: 'robots', content: 'noindex' }
+
+    // A route's `match.context` carries its own `beforeLoad` return value.
+    function gate(level: string, serviceStatuses: ServiceStatusEntry[]) {
+      const context = {
+        level,
+        serviceStatuses,
+        ...call(index.options.beforeLoad, {
+          context: { level, serviceStatuses },
+        }),
+      }
+      return { context, head: call(index.options.head, { match: { context } }) }
+    }
+
+    it('is indexable at the public level', () => {
+      const { context, head } = gate('public', [[META.url, 'enabled']])
+      expect(context.serviceLevel).toBe('public')
+      expect(head.meta).not.toContainEqual(NOINDEX)
+    })
+
+    it('stays indexable for a preview viewer when the service is public', () => {
+      const { head } = gate('preview', [[META.url, 'enabled']])
+      expect(head.meta).not.toContainEqual(NOINDEX)
+    })
+
+    it('404s for the public and is noindexed when service_status puts it in Preview', () => {
+      const serviceStatuses: ServiceStatusEntry[] = [[META.url, 'disabled']]
+      expect(() =>
+        call(index.options.beforeLoad, {
+          context: { level: 'public', serviceStatuses },
+        }),
+      ).toThrow(expect.objectContaining({ isNotFound: true }))
+      const { context, head } = gate('preview', serviceStatuses)
+      expect(context.serviceLevel).toBe('preview')
+      expect(head.meta).toContainEqual(NOINDEX)
     })
   })
 
