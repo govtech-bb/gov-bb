@@ -1,5 +1,6 @@
 import { createServerFn } from '@tanstack/react-start'
 import { fetchCollectionRecords } from './api-v2-collections'
+import type { RecordValue } from './api-v2-collections'
 import { apiV2Base, landingToken } from './api-v2-page'
 import { getBankHolidaysForYear, startOfDay } from './bank-holidays'
 import type { Holiday } from './bank-holidays'
@@ -36,16 +37,22 @@ export function parseIsoDate(value: string): Date | null {
     : null
 }
 
-/** The records that are a holiday: a name and a real date. Any other is left out. */
+/**
+ * The records that are a holiday: a text name, a real date as text and, when
+ * there is one, a text note. Any other is left out.
+ */
 export function oneOffHolidays(
-  records: Array<{ data: Record<string, string>; updated_at?: string }>,
+  records: Array<{ data: Record<string, RecordValue>; updated_at?: string }>,
 ): Array<OneOffHoliday> {
+  const text = (value: RecordValue | undefined) =>
+    typeof value === 'string' ? value.trim() : undefined
   const holidays: Array<OneOffHoliday> = []
   for (const { data, updated_at } of records) {
-    const name = data.name?.trim()
-    const date = data.date?.trim()
+    const name = text(data.name)
+    const date = text(data.date)
     if (!name || !date || !parseIsoDate(date)) continue
-    const note = data.note?.trim()
+    if (data.note !== undefined && typeof data.note !== 'string') continue
+    const note = text(data.note)
     holidays.push({
       date,
       name,

@@ -1,7 +1,7 @@
 import { PencilSimple, Trash } from "@phosphor-icons/react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { Collection, CollectionRecord, EditorApi } from "../../api/client";
 import { collectionQuery } from "../../api/queries";
 import { Banner } from "../../ui/banner";
@@ -12,6 +12,7 @@ import { createAppColumnHelper, useAppTable } from "../../ui/table/table-hooks";
 import { TextLink } from "../../ui/text-link";
 import { listLoadView } from "../list-load-view";
 import { DeleteRecordDialog, RecordDialog } from "./record-dialog";
+import { valueText } from "./records";
 
 const column = createAppColumnHelper<CollectionRecord>();
 
@@ -46,29 +47,50 @@ const recordColumns = (
           }),
         ]),
     ...fields.map((field, index) =>
-      column.accessor((record) => record.data[field.key] ?? "", {
-        id: `field:${field.key}`,
-        header: field.label,
-        sortFn: "text",
-        enableHiding: false,
-        cell: ({ getValue }) => {
-          const value = getValue();
+      field.type === "number"
+        ? // A number column sorts by value, so 9 comes before 10; a record without one sorts first
+          column.accessor(
+            (record) => {
+              const value = record.data[field.key];
 
-          return value ? (
-            <span
-              className={
-                index === 0 && keyListed
-                  ? "font-mono text-12"
-                  : "line-clamp-2 max-w-64 text-14 wrap-break-word"
-              }
-            >
-              {value}
-            </span>
-          ) : (
-            <span className="text-muted">None</span>
-          );
-        },
-      }),
+              return Number.isFinite(value) ? Number(value) : Number.NEGATIVE_INFINITY;
+            },
+            {
+              id: `field:${field.key}`,
+              header: field.label,
+              sortFn: "basic",
+              enableHiding: false,
+              cell: ({ getValue }) =>
+                Number.isFinite(getValue()) ? (
+                  <span className="text-14">{getValue()}</span>
+                ) : (
+                  <span className="text-muted">None</span>
+                ),
+            },
+          )
+        : column.accessor((record) => valueText(record.data[field.key]), {
+            id: `field:${field.key}`,
+            header: field.label,
+            sortFn: "text",
+            enableHiding: false,
+            cell: ({ getValue }) => {
+              const value = getValue();
+
+              return value ? (
+                <span
+                  className={
+                    index === 0 && keyListed
+                      ? "font-mono text-12"
+                      : "line-clamp-2 max-w-64 text-14 wrap-break-word"
+                  }
+                >
+                  {value}
+                </span>
+              ) : (
+                <span className="text-muted">None</span>
+              );
+            },
+          }),
     ),
     column.display({
       id: "actions",
@@ -147,6 +169,15 @@ export function CollectionScreen({
     setAdditions((count) => count + 1);
     setAdding(true);
   };
+
+  // Arriving at a collection with no records, and with the focus nowhere, as just after adding it or following a link
+  // to it, its first record is what comes next
+  const empty = !readOnly && detail.data?.records.length === 0;
+
+  useEffect(() => {
+    if (empty && (!document.activeElement || document.activeElement === document.body))
+      add.current?.focus();
+  }, [empty]);
 
   const startDeleting = (record: CollectionRecord) => {
     setDeleting(record);

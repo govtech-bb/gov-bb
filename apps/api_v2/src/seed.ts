@@ -164,7 +164,9 @@ export async function seed(
         .insert(collectionRecords)
         .values({
           collectionKey: collection.key,
-          recordKey: data[collection.record_key]!,
+          // SAFETY: a collection's record key field is a `slug` field, so its
+          // value is a string.
+          recordKey: data[collection.record_key] as string,
           data,
         })
         .onConflictDoNothing()
