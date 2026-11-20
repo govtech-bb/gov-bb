@@ -28,6 +28,7 @@ import {
 import {
   programmeCodeFromProcessors,
   readPath,
+  smokeAllowedProcessors,
   sendsToCams,
 } from "./processors/webhook-mapping";
 import type {
@@ -138,16 +139,40 @@ export class SubmissionsService {
     const pinnedVersion = draft?.formVersion ?? dto.formVersion ?? null;
 
     // Smoke submissions exercise the full persist/validate/reference-code path
-    // but must fire zero processors (no real emails/webhooks/payment gating, and
-    // no case-management dispatch). Dropping them here, the single choke point
-    // for the `processors[]` array, makes hasGating false (→ SUBMITTED +
+    // but must fire zero real side-effects — dropping the `processors[]` array
+    // here, the single choke point, makes hasGating false (→ SUBMITTED +
     // submittedAt), emits an event carrying no processors, and the
-    // SubmissionProcessorListener dispatch loop iterates nothing. Every
-    // submission side-effect is now `processors[]`-driven, so this one drop
-    // covers them all (#1252).
+    // SubmissionProcessorListener dispatch loop iterates nothing (#1252).
+    //
+    // The one exception (#3533, amends ADR 0087): a mapped (CaMS) webhook whose
+    // effective programme code is a reserved TEST code is kept, so E2E J4 (#3011)
+    // can follow a submission into a CaMS test programme. Everything else —
+    // email, payment, any real-programme webhook — is still dropped, so a smoke
+    // submission can never create a real case or email a citizen.
+    //
+    // Classify the code the webhook actually SENDS: when catchment routing
+    // resolves, that is the catchment-composed override (applied to every mapped
+    // webhook, webhook.processor.ts), not the static mapping code — so resolve
+    // catchment BEFORE the filter and pass the override in.
+    const routing = contract.catchmentRouting;
+    const resolvedCatchment = routing
+      ? (this.catchmentRouting.resolve({
+          formId: dto.formId,
+          // The recipe's own programme code, which the per-catchment code is
+          // composed from. Read from `contract.processors`, not the
+          // smoke-emptied `rawProcessors` — the code is the form's identity,
+          // not a side effect of which processors happen to fire.
+          programmeCode: programmeCodeFromProcessors(contract.processors ?? []),
+          coordinates:
+            readPath(normalizedValues, routing.coordinatesField) ?? undefined,
+          parish: readPath(normalizedValues, routing.parishField) ?? undefined,
+        }) ?? undefined)
+      : undefined;
+
+    const allProcessors = contract.processors ?? [];
     const rawProcessors = dto.isSmokeSubmission
-      ? []
-      : (contract.processors ?? []);
+      ? smokeAllowedProcessors(allProcessors, resolvedCatchment?.programmeCode)
+      : allProcessors;
     const split = this.processorFactory.resolveSplit(rawProcessors);
 
     // A payment whose fee resolves to 0 (a fee-waiver branch / dynamic
@@ -215,25 +240,6 @@ export class SubmissionsService {
       // Undefined, and so left out of the line, when the request had none.
       journey_id: dto.journeyId,
     });
-
-    // Coordinate-based catchment routing: when the recipe declares which fields
-    // hold the event coordinates + parish, resolve the serving polyclinic once
-    // here and attach it to the event so both the webhook (programme_code) and
-    // the MDA email (catchment.mdaEmail recipient) agree. Absent block → undefined.
-    const routing = contract.catchmentRouting;
-    const resolvedCatchment = routing
-      ? (this.catchmentRouting.resolve({
-          formId: dto.formId,
-          // The recipe's own programme code, which the per-catchment code is
-          // composed from. Read from `contract.processors`, not the
-          // smoke-emptied `rawProcessors` — the code is the form's identity,
-          // not a side effect of which processors happen to fire.
-          programmeCode: programmeCodeFromProcessors(contract.processors ?? []),
-          coordinates:
-            readPath(normalizedValues, routing.coordinatesField) ?? undefined,
-          parish: readPath(normalizedValues, routing.parishField) ?? undefined,
-        }) ?? undefined)
-      : undefined;
 
     // Whether the chat's receipt can offer tracking (#3419). From the recipe,
     // like the programme code above, so a smoke submission (processors dropped)
