@@ -44,10 +44,26 @@ export function contactLink(field: string, value: string): string | null {
 }
 
 /**
+ * A record's value as a detail's text (#3782): a number as written, true and
+ * false as Yes and No, and a list's items joined by commas. Null for a value
+ * with nothing to show: none at all, blank text or an empty list.
+ */
+export function detailText(value: unknown): string | null {
+  if (value === undefined || value === null || value === "") return null;
+  if (typeof value === "boolean") return value ? "Yes" : "No";
+  if (Array.isArray(value)) {
+    const items = value.map(String).filter((item) => item !== "");
+    return items.length > 0 ? items.join(", ") : null;
+  }
+  return String(value);
+}
+
+/**
  * The details of `record` a contact block shows: each of the block's `fields`
  * labelled as its collection labels it, in the block's order. A field the
- * collection doesn't have, or the record leaves empty, is left out. A link
- * that fails the content URL check is shown as text.
+ * collection doesn't have, or the record leaves empty, is left out. A value
+ * that isn't text is shown as text (`detailText`), and only text links. A
+ * link that fails the content URL check is shown as text.
  */
 export function contactDetails(
   collection: ContactCollection,
@@ -60,16 +76,10 @@ export function contactDetails(
   return fields.flatMap((field) => {
     const label = labels.get(field);
     const value = record[field];
-    if (
-      label === undefined ||
-      value === undefined ||
-      value === null ||
-      value === ""
-    ) {
-      return [];
-    }
-    const text = String(value);
-    const link = contactLink(field, text);
+    const text = detailText(value);
+    if (label === undefined || text === null) return [];
+    // A list of phone numbers joined by commas is no one number to dial
+    const link = typeof value === "string" ? contactLink(field, text) : null;
     return [
       {
         field,

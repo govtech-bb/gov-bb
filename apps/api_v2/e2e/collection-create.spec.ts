@@ -165,7 +165,7 @@ describe.skipIf(!HAS_DATABASE)(
           schema: {
             fields: [
               { key: "key", label: "Key", type: "slug" },
-              { key: "opened", label: "Opened", type: "date" },
+              { key: "details", label: "Details", type: "json" },
             ],
           },
         },

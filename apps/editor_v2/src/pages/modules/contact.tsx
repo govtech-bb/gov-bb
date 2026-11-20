@@ -1,5 +1,5 @@
 import { AddressBook, ArrowRight, Warning } from "@phosphor-icons/react";
-import { contactDetails } from "@govtech-bb/govbbmarkd/contact-record";
+import { contactDetails, detailText } from "@govtech-bb/govbbmarkd/contact-record";
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
 import { useLexicalEditable } from "@lexical/react/useLexicalEditable";
 import { DecoratorNode, type LexicalNode, type NodeKey, type SerializedLexicalNode } from "lexical";
@@ -35,7 +35,11 @@ export type CollectionRecords = {
     record_key: string;
     schema: { fields: readonly { key: string; label: string }[] };
   };
-  records: readonly { record_key: string; data: Readonly<Record<string, string>> }[];
+  records: readonly {
+    record_key: string;
+    /** Text, a number, true or false, or a list of text, as each field's type keeps (#3782). */
+    data: Readonly<Record<string, string | number | boolean | readonly string[]>>;
+  }[];
 };
 
 /** What the host lets a contact block read and open; without a host, blocks show which record they name. */
@@ -375,9 +379,11 @@ export function ContactBlockSettings({
     recordField.current?.focus();
   }, [record, collection]);
 
-  const choices = [...(collection?.records ?? [])].sort((a, b) =>
-    (a.data.name ?? a.record_key).localeCompare(b.data.name ?? b.record_key),
-  );
+  // A record by its name, as a contact block would show it, or by its key when it has none
+  const named = (row: CollectionRecords["records"][number]) =>
+    detailText(row.data.name) ?? row.record_key;
+
+  const choices = [...(collection?.records ?? [])].sort((a, b) => named(a).localeCompare(named(b)));
 
   const detailFields =
     collection?.collection.schema.fields.filter(
@@ -403,7 +409,7 @@ export function ContactBlockSettings({
           )}
           {choices.map((row) => (
             <option key={row.record_key} value={row.record_key}>
-              {row.data.name ?? row.record_key}
+              {named(row)}
             </option>
           ))}
         </NativeSelect>
