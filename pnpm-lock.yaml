@@ -66,7 +66,7 @@ overrides:
 
 patchedDependencies:
   '@tanstack/ai-bedrock@0.3.7': af7fd937fb12d7650b65a9e7cfce6d81000b4fe92b9399d89b0c973a452656e0
-  gray-matter@4.0.3: 4d3db6bd874f6db0fc4f9cb2b372ae022909b4f438a48cba722896f7bf5d305a
+  gray-matter@4.0.3: 7a5a424a03f8338d1ec9ebde7cd7a2693cbe4fb0e2e06a244dde1d660eace862
 
 importers:
 
@@ -467,7 +467,7 @@ importers:
         version: 0.31.10
       gray-matter:
         specifier: ^4.0.3
-        version: 4.0.3(patch_hash=4d3db6bd874f6db0fc4f9cb2b372ae022909b4f438a48cba722896f7bf5d305a)
+        version: 4.0.3(patch_hash=7a5a424a03f8338d1ec9ebde7cd7a2693cbe4fb0e2e06a244dde1d660eace862)
       tsx:
         specifier: ^4.22.3
         version: 4.22.4
@@ -787,7 +787,7 @@ importers:
         version: 0.0.8
       gray-matter:
         specifier: ^4.0.3
-        version: 4.0.3(patch_hash=4d3db6bd874f6db0fc4f9cb2b372ae022909b4f438a48cba722896f7bf5d305a)
+        version: 4.0.3(patch_hash=7a5a424a03f8338d1ec9ebde7cd7a2693cbe4fb0e2e06a244dde1d660eace862)
       hugeicons-react:
         specifier: ^0.4.0
         version: 0.4.0(react@19.2.7)
@@ -1169,7 +1169,7 @@ importers:
         version: 6.0.2(vite@8.0.16(@types/node@24.13.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))
       gray-matter:
         specifier: ^4.0.3
-        version: 4.0.3(patch_hash=4d3db6bd874f6db0fc4f9cb2b372ae022909b4f438a48cba722896f7bf5d305a)
+        version: 4.0.3(patch_hash=7a5a424a03f8338d1ec9ebde7cd7a2693cbe4fb0e2e06a244dde1d660eace862)
       jsdom:
         specifier: ^28.1.0
         version: 28.1.0(@noble/hashes@2.4.0)(supports-color@7.2.0)
@@ -1238,7 +1238,7 @@ importers:
         version: link:../govbbmarkd
       gray-matter:
         specifier: ^4.0.3
-        version: 4.0.3(patch_hash=4d3db6bd874f6db0fc4f9cb2b372ae022909b4f438a48cba722896f7bf5d305a)
+        version: 4.0.3(patch_hash=7a5a424a03f8338d1ec9ebde7cd7a2693cbe4fb0e2e06a244dde1d660eace862)
       zod:
         specifier: ^4.4.3
         version: 4.4.3
@@ -17465,7 +17465,7 @@ snapshots:
 
   graceful-fs@4.2.11: {}
 
-  gray-matter@4.0.3(patch_hash=4d3db6bd874f6db0fc4f9cb2b372ae022909b4f438a48cba722896f7bf5d305a):
+  gray-matter@4.0.3(patch_hash=7a5a424a03f8338d1ec9ebde7cd7a2693cbe4fb0e2e06a244dde1d660eace862):
     dependencies:
       js-yaml: 4.3.2
       kind-of: 6.0.3

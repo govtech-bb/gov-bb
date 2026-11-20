@@ -26,6 +26,7 @@ function review(
     prUrl: "https://github.com/govtech-bb/gov-bb/pull/2450",
     branch: "start-page-licences-new-123",
     headSha: "head-1",
+    sameRepo: true,
     writable: true,
     summary: {
       path: "apps/landing/src/content/licences/new.md",
@@ -84,7 +85,11 @@ describe("review-aware content inventory", () => {
   });
 
   it("adds a read-only placeholder when a fork's page metadata is unavailable", () => {
-    const fork = review({ summary: undefined, writable: false });
+    const fork = review({
+      summary: undefined,
+      sameRepo: false,
+      writable: false,
+    });
 
     expect(
       mergeReviewedContentPages([], {

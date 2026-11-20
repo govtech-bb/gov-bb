@@ -12,6 +12,8 @@
     "seed-data": "tsx scripts/build-seed-data.ts",
     "import-estate": "tsx --env-file-if-exists=.env src/import-estate.ts",
     "check-import": "tsx scripts/check-import.ts",
+    "import-collections": "tsx --env-file-if-exists=.env src/import-collections.ts",
+    "check-collections": "tsx scripts/check-collections.ts",
     "reindex-search": "tsx --env-file-if-exists=.env src/reindex-search.ts",
     "redact-change-events": "tsx --env-file-if-exists=.env src/redact-change-events.ts",
     "lint:fix": "oxlint --fix",

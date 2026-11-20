@@ -242,6 +242,7 @@ it("retains conflicting review links and prevents creating pages from an incompl
     prUrl: `https://github.com/govtech-bb/gov-bb/pull/${prNumber}`,
     branch: `review-${prNumber}`,
     headSha: "sha",
+    sameRepo: true,
     writable: true,
   }));
   content.openPRs = new Map([[alphaPage.path, claims]]);
