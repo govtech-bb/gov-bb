@@ -1,5 +1,6 @@
 import type { Category, CategoryBlockers, CategoryFields, CategoryOrder } from "./categories";
 import type { paths } from "./openapi";
+import { FIELD_TYPES } from "./field-types";
 
 type Json<Content> = Content extends { content: { "application/json": infer Body } } ? Body : never;
 
@@ -67,7 +68,7 @@ export type CollectionDetail = Json<paths["/collections/{key}/records"]["get"]["
 /** A collection's definition: its key, title, record key field and field list. */
 export type Collection = CollectionDetail["collection"];
 
-/** One record of a collection: a value for some or all of its fields, every one a string. */
+/** One record of a collection: a value for some or all of its fields, of the kind each field's type keeps. */
 export type CollectionRecord = CollectionDetail["records"][number];
 
 /** A private record editing snapshot, including its definition from the same read. */
@@ -398,8 +399,16 @@ const isEditorCollection = (value: unknown): value is RecordDetail["collection"]
       isObject(field) &&
       isText(field.key) &&
       isText(field.label) &&
-      ["text", "slug", "email"].includes(String(field.type)),
+      FIELD_TYPES.some(({ type }) => type === field.type),
   );
+
+// A value api_v2 keeps for a field: text, a finite number, true or false, or a list of text
+const isRecordValue = (value: unknown): value is CollectionRecord["data"][string] =>
+  isText(value) ||
+  Number.isFinite(value) ||
+  value === true ||
+  value === false ||
+  (Array.isArray(value) && value.every(isText));
 
 const isEditorRecord = (value: unknown): value is RecordDetail["record"] =>
   isObject(value) &&
@@ -407,7 +416,7 @@ const isEditorRecord = (value: unknown): value is RecordDetail["record"] =>
   isText(value.record_key) &&
   isStamp(value.updated_at) &&
   isObject(value.data) &&
-  Object.values(value.data).every(isText);
+  Object.values(value.data).every(isRecordValue);
 
 const isRecordDetail = (value: unknown): value is RecordDetail =>
   isObject(value) && isEditorCollection(value.collection) && isEditorRecord(value.record);

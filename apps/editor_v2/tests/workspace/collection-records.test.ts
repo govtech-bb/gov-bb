@@ -6,6 +6,7 @@ import {
   keyProblem,
   recordData,
   recordValues,
+  valueText,
   withRecord,
 } from "../../src/workspace/collections/records";
 
@@ -72,4 +73,94 @@ test("a saved record takes its place in record key order", () => {
 
   expect(withRecord([a, c], b).map((item) => item.record_key)).toEqual(["a", "b", "c"]);
   expect(withRecord([a, b, c], { ...b, updated_at: "later" })[1]?.updated_at).toBe("later");
+});
+
+// A collection with a field of each type #3782 adds
+const shelters: Collection = {
+  ...collection,
+  key: "shelters",
+  schema: {
+    fields: [
+      { key: "key", label: "Key", type: "slug" },
+      { key: "capacity", label: "Capacity", type: "number" },
+      { key: "water", label: "Has water", type: "boolean" },
+      { key: "opened", label: "Opened", type: "date" },
+      { key: "documents", label: "Documents", type: "list" },
+    ],
+  },
+};
+
+const shelter = {
+  record_key: "st-judes",
+  data: {
+    key: "st-judes",
+    capacity: 0.1725,
+    water: true,
+    opened: "2026-08-01",
+    documents: ["ID card", "Proof of address"],
+  },
+  updated_at: "2026-10-26T12:00:00.000Z",
+};
+
+test("a number opens as the text of its box, and every other type as it is", () => {
+  expect(recordValues(shelters, shelter)).toEqual({ ...shelter.data, capacity: "0.1725" });
+});
+
+test("saving sends each type as api_v2 keeps it", () => {
+  expect(
+    recordData(shelters, {
+      key: "st-judes",
+      capacity: " 0.1725 ",
+      water: true,
+      opened: "2026-08-01",
+      documents: [" ID card ", "  ", "Proof of address"],
+    }),
+  ).toEqual(shelter.data);
+  // A negative number and a whole one are numbers too
+  expect(recordData(shelters, { capacity: "-12" }).capacity).toBe(-12);
+  expect(recordData(shelters, { capacity: "120" }).capacity).toBe(120);
+});
+
+test("saving leaves out a blank number, a blank date and an empty list, and sends an unticked box as no", () => {
+  expect(
+    recordData(shelters, { key: "st-judes", capacity: " ", opened: "", documents: [" "] }),
+  ).toEqual({
+    key: "st-judes",
+    water: false,
+  });
+});
+
+test("saving sends a number it can't read as typed, for api_v2 to refuse with its own reason", () => {
+  expect(recordData(shelters, { capacity: "1,000" }).capacity).toBe("1,000");
+  expect(recordData(shelters, { capacity: "12 people" }).capacity).toBe("12 people");
+});
+
+test("a value shows as text: a yes or no as a word, a list's items joined", () => {
+  expect(valueText(true)).toBe("Yes");
+  expect(valueText(false)).toBe("No");
+  expect(valueText(0.1725)).toBe("0.1725");
+  expect(valueText(["ID card", "Proof of address"])).toBe("ID card, Proof of address");
+  expect(valueText(undefined)).toBe("");
+});
+
+test("typed values differ from a record only when a value does", () => {
+  expect(
+    valuesDiffer(shelters, recordData(shelters, recordValues(shelters, shelter)), shelter),
+  ).toBe(false);
+  expect(
+    valuesDiffer(
+      shelters,
+      { ...shelter.data, documents: [" ID card", "Proof of address "] },
+      shelter,
+    ),
+  ).toBe(false);
+  expect(
+    valuesDiffer(
+      shelters,
+      { ...shelter.data, documents: ["Proof of address", "ID card"] },
+      shelter,
+    ),
+  ).toBe(true);
+  expect(valuesDiffer(shelters, { ...shelter.data, water: false }, shelter)).toBe(true);
+  expect(valuesDiffer(shelters, { ...shelter.data, capacity: 0.18 }, shelter)).toBe(true);
 });

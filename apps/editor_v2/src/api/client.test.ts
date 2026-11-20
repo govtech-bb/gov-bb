@@ -214,6 +214,63 @@ describe("editor API client", () => {
     },
   );
 
+  describe("a record's detail (#3782)", () => {
+    // What the API may send in place of a value: a list of anything, or an object
+    type Sent = (string | number)[] | { nested: boolean };
+
+    const detail = (type: string, value: string | number | boolean | string[] | Sent | null) =>
+      JSON.stringify({
+        collection: {
+          key: "shelters",
+          title: "Shelters",
+          record_key: "key",
+          schema: {
+            fields: [
+              { key: "key", label: "Key", type: "slug" },
+              { key: "value", label: "Value", type },
+            ],
+          },
+          schema_version: 1,
+          updated_at: "2026-10-26T12:00:00.000Z",
+        },
+        record: {
+          record_key: "st-judes",
+          data: { key: "st-judes", value },
+          version: 1,
+          updated_at: "2026-10-26T12:00:00.000Z",
+        },
+      });
+
+    it.each([
+      ["number", 0.1725],
+      ["boolean", false],
+      ["date", "2026-08-01"],
+      ["list", ["ID card", "Proof of address"]],
+    ])("reads a %s field's value", async (type, value) => {
+      status = 200;
+      response = detail(type, value);
+
+      expect((await createEditorApi(origin).record("shelters", "st-judes")).record.data).toEqual({
+        key: "st-judes",
+        value,
+      });
+    });
+
+    it.each([
+      ["a field type the editor doesn't know", detail("json", "{}")],
+      ["an object as a value", detail("text", { nested: true })],
+      ["a list holding a number", detail("list", ["ID card", 2])],
+      ["null as a value", detail("number", null)],
+    ])("refuses %s", async (_, body) => {
+      status = 200;
+      response = body;
+
+      await expect(createEditorApi(origin).record("shelters", "st-judes")).rejects.toBeInstanceOf(
+        ApiAnswerMalformed,
+      );
+    });
+  });
+
   it("sends no content type with a request that has no body", async () => {
     status = 204;
     response = "";

@@ -304,7 +304,15 @@ test("offers every field type api_v2 lists, in its order", async () => {
   expect(options("Type").map((option) => option.value)).toEqual(
     FIELD_TYPES.map(({ type }) => type),
   );
-  expect(FIELD_TYPES.map(({ type }) => type)).toEqual(["text", "slug", "email"]);
+  expect(FIELD_TYPES).toEqual([
+    { type: "text", name: "Text" },
+    { type: "slug", name: "Slug" },
+    { type: "email", name: "Email address" },
+    { type: "number", name: "Number" },
+    { type: "boolean", name: "Yes or no" },
+    { type: "date", name: "Date" },
+    { type: "list", name: "List of text" },
+  ]);
 });
 
 test("adds a collection with its fields and record key, then opens it to take its first record", async () => {

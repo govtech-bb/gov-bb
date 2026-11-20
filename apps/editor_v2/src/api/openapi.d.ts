@@ -687,7 +687,7 @@ export interface paths {
                                         key: string;
                                         label: string;
                                         /** @enum {string} */
-                                        type: "text" | "slug" | "email";
+                                        type: "text" | "slug" | "email" | "number" | "boolean" | "date" | "list";
                                     }[];
                                 };
                                 schema_version: number;
@@ -697,7 +697,7 @@ export interface paths {
                             records: {
                                 record_key: string;
                                 data: {
-                                    [key: string]: string;
+                                    [key: string]: string | number | boolean | string[];
                                 };
                                 /**
                                  * Format: date-time
@@ -3298,7 +3298,7 @@ export interface paths {
                                         key: string;
                                         label: string;
                                         /** @enum {string} */
-                                        type: "text" | "slug" | "email";
+                                        type: "text" | "slug" | "email" | "number" | "boolean" | "date" | "list";
                                     }[];
                                 };
                                 schema_version: number;
@@ -3394,7 +3394,7 @@ export interface paths {
                                 /** @description Lowercase letters, numbers and hyphens, up to 100 characters; unique among the collection's fields. */
                                 key: string;
                                 label: string;
-                                /** @description One of `text`, `slug`, `email`. */
+                                /** @description One of `text`, `slug`, `email`, `number`, `boolean`, `date`, `list`. */
                                 type: string;
                             }[];
                         };
@@ -3418,7 +3418,7 @@ export interface paths {
                                     key: string;
                                     label: string;
                                     /** @enum {string} */
-                                    type: "text" | "slug" | "email";
+                                    type: "text" | "slug" | "email" | "number" | "boolean" | "date" | "list";
                                 }[];
                             };
                             schema_version: number;
@@ -3580,7 +3580,7 @@ export interface paths {
                                         key: string;
                                         label: string;
                                         /** @enum {string} */
-                                        type: "text" | "slug" | "email";
+                                        type: "text" | "slug" | "email" | "number" | "boolean" | "date" | "list";
                                     }[];
                                 };
                                 schema_version: number;
@@ -3590,7 +3590,7 @@ export interface paths {
                             record: {
                                 record_key: string;
                                 data: {
-                                    [key: string]: string;
+                                    [key: string]: string | number | boolean | string[];
                                 };
                                 /**
                                  * Format: date-time
@@ -3741,7 +3741,7 @@ export interface paths {
                                         key: string;
                                         label: string;
                                         /** @enum {string} */
-                                        type: "text" | "slug" | "email";
+                                        type: "text" | "slug" | "email" | "number" | "boolean" | "date" | "list";
                                     }[];
                                 };
                                 schema_version: number;
@@ -3751,7 +3751,7 @@ export interface paths {
                             record: {
                                 record_key: string;
                                 data: {
-                                    [key: string]: string;
+                                    [key: string]: string | number | boolean | string[];
                                 };
                                 /**
                                  * Format: date-time
@@ -3906,7 +3906,7 @@ export interface paths {
                         "application/json": {
                             record_key: string;
                             data: {
-                                [key: string]: string;
+                                [key: string]: string | number | boolean | string[];
                             };
                             /**
                              * Format: date-time

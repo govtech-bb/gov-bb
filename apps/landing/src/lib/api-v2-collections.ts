@@ -18,6 +18,23 @@ export interface ContactRef {
   record: string
 }
 
+/**
+ * A value a record holds, as api_v2's `RecordValue` in
+ * apps/api_v2/src/modules/collection.ts (#3782): text (a `text`, `slug`,
+ * `email` or `date` field), a number, true or false, or a list of text. One
+ * value this doesn't accept fails the whole collection's read, and counts
+ * toward the shared api_v2 breaker (ADR 0140), so it keeps step with api_v2.
+ */
+const RecordValue = z.union([
+  z.string(),
+  z.number(),
+  z.boolean(),
+  z.array(z.string()),
+])
+
+/** One field's value in a record. */
+export type RecordValue = z.infer<typeof RecordValue>
+
 /** Copied from apps/api_v2/src/routes/contracts.ts (`getCollectionRecords`). */
 const CollectionRecords = z.object({
   collection: z.object({
@@ -29,7 +46,7 @@ const CollectionRecords = z.object({
   records: z.array(
     z.object({
       record_key: z.string(),
-      data: z.record(z.string(), z.string()),
+      data: z.record(z.string(), RecordValue),
     }),
   ),
 })
@@ -41,7 +58,7 @@ export type ContactRecords = Record<
   string,
   {
     collection: CollectionRecords['collection']
-    records: Record<string, Record<string, string>>
+    records: Record<string, Record<string, RecordValue>>
   }
 >
 
@@ -118,7 +135,7 @@ export async function resolveContactRecords(
     const wanted = new Set(
       refs.filter((ref) => ref.collection === key).map((ref) => ref.record),
     )
-    const records: Record<string, Record<string, string>> = {}
+    const records: Record<string, Record<string, RecordValue>> = {}
     for (const row of body.records)
       if (wanted.has(row.record_key)) records[row.record_key] = row.data
     result[key] = { collection: body.collection, records }

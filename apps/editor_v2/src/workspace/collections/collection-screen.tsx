@@ -12,6 +12,7 @@ import { createAppColumnHelper, useAppTable } from "../../ui/table/table-hooks";
 import { TextLink } from "../../ui/text-link";
 import { listLoadView } from "../list-load-view";
 import { DeleteRecordDialog, RecordDialog } from "./record-dialog";
+import { valueText } from "./records";
 
 const column = createAppColumnHelper<CollectionRecord>();
 
@@ -46,7 +47,7 @@ const recordColumns = (
           }),
         ]),
     ...fields.map((field, index) =>
-      column.accessor((record) => record.data[field.key] ?? "", {
+      column.accessor((record) => valueText(record.data[field.key]), {
         id: `field:${field.key}`,
         header: field.label,
         sortFn: "text",
