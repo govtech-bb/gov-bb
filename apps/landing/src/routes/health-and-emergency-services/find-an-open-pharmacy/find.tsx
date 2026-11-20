@@ -1,8 +1,7 @@
-import { createFileRoute, notFound } from '@tanstack/react-router'
+import { createFileRoute } from '@tanstack/react-router'
 import { PageShell } from '../../../components/PageShell'
-import { isUrlVisible, urlLevel } from '../../../content/registry'
+import { gateOnContentUrl } from '@/lib/content-gate'
 import { pageHead } from '../../../lib/page-head'
-import { deriveVisibilityOverlay } from '../../../lib/service-status'
 import { PHARMACY_FIND_HREF } from './-lib/routes'
 import { DESCRIPTION, FindOpenPharmacyPage, TITLE } from './-ui/find-page'
 
@@ -14,14 +13,10 @@ export const Route = createFileRoute(
   staticData: { breadcrumbMode: 'location' },
   // Mirror the markdown service page's rollout gate: hidden unless the
   // viewer's level meets the service's.
-  beforeLoad: ({ context }) => {
-    const overlay = deriveVisibilityOverlay(context.serviceStatuses)
-    if (!isUrlVisible(CONTENT_URL, context.level, overlay)) throw notFound()
-    return { pharmacyServiceLevel: urlLevel(CONTENT_URL, overlay) }
-  },
+  beforeLoad: ({ context }) => gateOnContentUrl(CONTENT_URL, context),
   head: ({ match }) =>
     pageHead(TITLE, DESCRIPTION, {
-      noindex: match.context.pharmacyServiceLevel !== 'public',
+      noindex: match.context.serviceLevel !== 'public',
       path: PHARMACY_FIND_HREF,
     }),
   component: () => (
