@@ -539,6 +539,26 @@ Keep this paragraph.
     expect(edited.body).toBe(original.body);
   });
 
+  it.each(["js", "javascript"])(
+    "only accepts YAML front matter: rejects `---%s` without running it",
+    (language) => {
+      const probe = vi.fn(() => "ran");
+      (globalThis as { frontMatterProbe?: () => string }).frontMatterProbe =
+        probe;
+      try {
+        expect(() =>
+          parseContentMarkdown(
+            `---${language}\n{ title: globalThis.frontMatterProbe() }\n---\nBody\n`,
+          ),
+        ).toThrow(/not supported/);
+        expect(probe).not.toHaveBeenCalled();
+      } finally {
+        delete (globalThis as { frontMatterProbe?: () => string })
+          .frontMatterProbe;
+      }
+    },
+  );
+
   it("round-trips rendered output back to frontmatter + body", () => {
     const { frontmatter, body } = parseContentMarkdown(
       renderStartPageMarkdown(base),

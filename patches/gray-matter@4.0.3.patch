@@ -1,7 +1,8 @@
 diff --git a/lib/engines.js b/lib/engines.js
+index 38f993db06cf364191ac635a6590c2d29303297d..7c02ad5b1c70c74df8dc61880fc7630afddf601c 100644
 --- a/lib/engines.js
 +++ b/lib/engines.js
-@@ -13,8 +13,8 @@
+@@ -13,8 +13,8 @@ const engines = exports = module.exports;
   */
  
  engines.yaml = {
@@ -12,3 +13,25 @@ diff --git a/lib/engines.js b/lib/engines.js
  };
  
  /**
+@@ -34,19 +34,8 @@ engines.json = {
+  */
+ 
+ engines.javascript = {
+-  parse: function parse(str, options, wrap) {
+-    /* eslint no-eval: 0 */
+-    try {
+-      if (wrap !== false) {
+-        str = '(function() {\nreturn ' + str.trim() + ';\n}());';
+-      }
+-      return eval(str) || {};
+-    } catch (err) {
+-      if (wrap !== false && /(unexpected|identifier)/i.test(err.message)) {
+-        return parse(str, options, false);
+-      }
+-      throw new SyntaxError(err);
+-    }
++  parse: function() {
++    throw new Error('JavaScript front matter is not supported; use YAML');
+   },
+   stringify: function() {
+     throw new Error('stringifying JavaScript is not supported');

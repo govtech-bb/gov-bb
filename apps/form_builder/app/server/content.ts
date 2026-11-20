@@ -72,6 +72,8 @@ export interface ContentReviewClaim {
   prUrl: string;
   branch: string;
   headSha: string;
+  /** The PR head is in this repo. Page content is read only from such heads. */
+  sameRepo: boolean;
   writable: boolean;
   summary?: ContentPageSummary;
 }
@@ -409,6 +411,7 @@ async function fetchOpenContentPRs(
               prUrl: pr.htmlUrl,
               branch: pr.headRef,
               headSha: pr.headSha!,
+              sameRepo,
               writable:
                 sameRepo &&
                 pr.body?.includes(CONTENT_PR_MARKER) === true &&
@@ -520,8 +523,13 @@ export const loadLandingContentPage = createServerFn({
     }
     const claims = claimsForPath(snapshot, data.path);
     const reviewBlock = reviewBlockForClaims(claims);
+    // Only a same-repo PR head is read; a fork's claim stays read-only
+    // review state and the page loads from the base branch.
     const readableClaim = claims.find(
-      (claim) => claim.path === data.path && claim.changeType !== "removed",
+      (claim) =>
+        claim.sameRepo &&
+        claim.path === data.path &&
+        claim.changeType !== "removed",
     );
     let res = readableClaim
       ? await getContents(token, data.path, readableClaim.headSha)
