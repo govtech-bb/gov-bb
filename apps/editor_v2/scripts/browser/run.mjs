@@ -41,6 +41,7 @@ const suites = requested.length
       "categories.mjs",
       "collections.mjs",
       "collection-create.mjs",
+      "collection-field-types.mjs",
       "page-writer.mjs",
       "page-preview.mjs",
       "site-preview-smoke.mjs",

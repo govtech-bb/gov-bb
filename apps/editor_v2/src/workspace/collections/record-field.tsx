@@ -1,5 +1,6 @@
 import { ArrowDown, ArrowUp, Plus, Trash } from "@phosphor-icons/react";
 import { useId, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import { isText, type Collection } from "../../api/client";
 import { Button } from "../../ui/button";
 import { Checkbox } from "../../ui/checkbox";
@@ -139,39 +140,43 @@ function ListField({
   const [said, setSaid] = useState("");
   const noteId = useId();
 
-  const focus = (selector: string) =>
-    requestAnimationFrame(() => root.current?.querySelector<HTMLElement>(selector)?.focus());
+  // The list re-renders at once, so the focus lands before the dialog sees the pressed button go and takes it back
+  const change = (next: string[], focusOn: string, say: string) => {
+    flushSync(() => {
+      onChange(next);
+      setSaid(say);
+    });
+    root.current?.querySelector<HTMLElement>(focusOn)?.focus();
+  };
 
   const move = (index: number, by: -1 | 1) => {
     const next = [...items];
     const to = index + by;
 
     [next[index], next[to]] = [next[to]!, next[index]!];
-    onChange(next);
     // The moved item's same button, unless the item is now at that end, when it is the other one
     const atEnd = by < 0 ? to === 0 : to === next.length - 1;
 
-    focus(`[data-item="${to}"] [data-part="${by < 0 !== atEnd ? "up" : "down"}"]`);
-    setSaid(`Item moved to position ${to + 1} of ${next.length}.`);
+    change(
+      next,
+      `[data-item="${to}"] [data-part="${by < 0 !== atEnd ? "up" : "down"}"]`,
+      `Item moved to position ${to + 1} of ${next.length}.`,
+    );
   };
 
   const remove = (index: number) => {
     const next = items.filter((_, at) => at !== index);
 
-    onChange(next);
-    focus(
+    change(
+      next,
       next.length === 0
         ? '[data-part="add"]'
         : `[data-item="${Math.min(index, next.length - 1)}"] [data-part="input"]`,
+      `Item ${index + 1} removed. ${next.length} left.`,
     );
-    setSaid(`Item ${index + 1} removed. ${next.length} left.`);
   };
 
-  const add = () => {
-    onChange([...items, ""]);
-    focus(`[data-item="${items.length}"] [data-part="input"]`);
-    setSaid("");
-  };
+  const add = () => change([...items, ""], `[data-item="${items.length}"] [data-part="input"]`, "");
 
   const described = error || hint ? noteId : undefined;
 
