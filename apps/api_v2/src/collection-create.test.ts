@@ -162,7 +162,7 @@ describe("the rules a new collection must keep", () => {
         schema: {
           fields: [
             { key: "key", label: "Key", type: "slug" },
-            { key: "count", label: "Count", type: "number" },
+            { key: "details", label: "Details", type: "json" },
           ],
         },
       },

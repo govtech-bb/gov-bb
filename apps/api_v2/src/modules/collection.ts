@@ -27,8 +27,25 @@ export const CollectionKey = key(100);
 /** A record's name within its collection, such as `barbados-drug-service`. */
 export const RecordKey = key(200);
 
-/** The kinds of value a field holds; every one is a string. */
-export const FIELD_TYPES = ["text", "slug", "email"] as const;
+/**
+ * The kinds of value a field holds (#3782). `text`, `slug`, `email` and
+ * `date` hold a string, `number` a number, `boolean` true or false, and
+ * `list` a list of short strings. Nested data is flattened into fields of
+ * these types (ADR 0140); there is no general JSON type.
+ */
+export const FIELD_TYPES = [
+  "text",
+  "slug",
+  "email",
+  "number",
+  "boolean",
+  "date",
+  "list",
+] as const;
+
+/** The most items a `list` field holds, and the longest an item may be. */
+export const LIST_MAX_ITEMS = 50;
+export const LIST_ITEM_MAX = 300;
 
 export const CollectionField = z.object({
   key: z.string().min(1),
@@ -42,8 +59,18 @@ export const CollectionSchema = z.object({ fields: z.array(CollectionField) });
 /** The field list a collection's records are checked against. */
 export type CollectionSchema = z.infer<typeof CollectionSchema>;
 
+/** A value a record holds for one field, of the kind its field's type keeps. */
+export const RecordValue = z.union([
+  z.string(),
+  z.number(),
+  z.boolean(),
+  z.array(z.string()),
+]);
+/** One field's value in a record. */
+export type RecordValue = z.infer<typeof RecordValue>;
+
 /** A record as stored: a value for some or all of its collection's fields. */
-export const RecordData = z.record(z.string(), z.string());
+export const RecordData = z.record(z.string(), RecordValue);
 /** A record's values, by field key. */
 export type RecordData = z.infer<typeof RecordData>;
 
@@ -102,15 +129,28 @@ export const RecordBody = z.strictObject({
     ),
 });
 
-const VALUE: Readonly<Record<CollectionField["type"], z.ZodType<string>>> = {
-  text: z.string().trim().min(1).max(2000),
-  slug: RecordKey,
-  email: z.email(),
-};
+const VALUE: Readonly<Record<CollectionField["type"], z.ZodType<RecordValue>>> =
+  {
+    text: z.string().trim().min(1).max(2000),
+    slug: RecordKey,
+    email: z.email(),
+    // Finite, with decimals: a rate such as 0.1725 is a number
+    number: z.number(),
+    boolean: z.boolean(),
+    // A real calendar date: 2026-02-29 and 2026-13-40 are refused
+    date: z.iso.date(),
+    list: z
+      .array(z.string().trim().min(1).max(LIST_ITEM_MAX))
+      .max(LIST_MAX_ITEMS),
+  };
 const EXPECTED: Readonly<Record<CollectionField["type"], string>> = {
   text: "Enter some text, up to 2000 characters.",
   slug: "Use lowercase letters, numbers and hyphens.",
   email: "Enter an email address.",
+  number: "Enter a number, such as 12 or 0.1725.",
+  boolean: "Enter true or false.",
+  date: "Enter a real date as YYYY-MM-DD, such as 2026-08-01.",
+  list: `Enter a list of up to ${LIST_MAX_ITEMS} items, each with some text, up to ${LIST_ITEM_MAX} characters.`,
 };
 
 /**

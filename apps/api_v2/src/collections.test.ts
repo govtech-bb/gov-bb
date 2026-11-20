@@ -235,6 +235,73 @@ describe("record writes", () => {
   });
 });
 
+describe("number, boolean, date and list fields (#3782)", () => {
+  const SHELTER = {
+    capacity: 120,
+    lat: 13.1,
+    "has-water": true,
+    opened: "2026-08-01",
+    documents: ["ID card", "Proof of address"],
+  };
+  beforeEach(async () => {
+    await test.db.execute(
+      sql`insert into data_collections (key, title, record_key, schema)
+          values ('shelters', 'Shelters', 'key', ${JSON.stringify({
+            fields: [
+              { key: "key", label: "Key", type: "slug" },
+              { key: "capacity", label: "Capacity", type: "number" },
+              { key: "lat", label: "Latitude", type: "number" },
+              { key: "has-water", label: "Has water", type: "boolean" },
+              { key: "opened", label: "Opened", type: "date" },
+              { key: "documents", label: "Documents", type: "list" },
+            ],
+          })}::jsonb)`,
+    );
+  });
+
+  it("stores each value with its type and reads it back so", async () => {
+    const created = await create("st-judes", SHELTER, "shelters");
+    expect(created.statusCode, created.body).toBe(201);
+    expect(created.json().data).toEqual({ ...SHELTER, key: "st-judes" });
+    expect((await read("shelters")).json().records[0].data).toEqual({
+      ...SHELTER,
+      key: "st-judes",
+    });
+    const [row] = (
+      await test.db.execute(
+        sql`select jsonb_typeof(data->'capacity') as capacity,
+                   jsonb_typeof(data->'has-water') as water,
+                   jsonb_typeof(data->'documents') as documents
+              from collection_records where record_key = 'st-judes'`,
+      )
+    ).rows;
+    expect(row).toEqual({
+      capacity: "number",
+      water: "boolean",
+      documents: "array",
+    });
+  });
+
+  it("refuses a wrong value, naming its field, and writes nothing", async () => {
+    const response = await create(
+      "st-judes",
+      {
+        capacity: "120",
+        "has-water": "yes",
+        opened: "2026-13-40",
+        documents: ["x".repeat(301)],
+      },
+      "shelters",
+    );
+    expect(response.statusCode).toBe(400);
+    expect(response.json().error).toBe("validation_failed");
+    expect(
+      response.json().errors.map((error: { field: string }) => error.field),
+    ).toEqual(["capacity", "has-water", "opened", "documents"]);
+    expect((await read("shelters")).json().records).toEqual([]);
+  });
+});
+
 describe("the collection list", () => {
   it("lists each collection with its record count, signed in", async () => {
     await create("drug-service", DRUG_SERVICE);
