@@ -134,11 +134,9 @@ describe.skipIf(!HAS_DATABASE)(
         },
       );
       expect(response.status).toBe(200);
-      expect((await stored())[0]?.data).toMatchObject({
-        capacity: 0.5,
-        "has-water": true,
-        documents: [],
-      });
+      expect(await stored()).toMatchObject([
+        { data: { capacity: 0.5, "has-water": true, documents: [] } },
+      ]);
     });
 
     it.each([
