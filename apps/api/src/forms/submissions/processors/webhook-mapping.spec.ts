@@ -544,6 +544,13 @@ describe("webhook-mapping", () => {
       expect(smokeAllowedProcessors(webhooks, "E2E_X_BRANFORD_TAITT")).toEqual(
         webhooks,
       );
+      // A webhook with no mapping is a generic POST, never kept — even under a test override.
+      expect(
+        smokeAllowedProcessors(
+          [{ type: "webhook", config: { url: "https://hook" } }],
+          "E2E_X_BRANFORD_TAITT",
+        ),
+      ).toEqual([]);
     });
   });
 

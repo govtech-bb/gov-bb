@@ -70,11 +70,13 @@ webhook at all. This amends the rule with **one narrow, safe exception** — it
 does not relax "zero real side-effects".
 
 **Exception.** A smoke submission may dispatch a mapped (CaMS) webhook **if, and
-only if, its recipe `mapping.programmeCode` is a reserved _test_ programme
-code** — one prefixed `E2E_` (`TEST_PROGRAMME_CODE_PREFIX`, see
-`isTestProgrammeCode` / `smokeAllowedProcessors` in `webhook-mapping.ts`). Every
-other side-effect stays suppressed for a smoke submission: email, payment, and
-**any webhook on a real programme code**.
+only if, the programme code it sends is a reserved _test_ programme code** — the
+catchment-resolved code when the form is catchment-routed, else the recipe
+`mapping.programmeCode`. A test code is one prefixed `E2E_`
+(`TEST_PROGRAMME_CODE_PREFIX`, see `isTestProgrammeCode` /
+`smokeAllowedProcessors` in `webhook-mapping.ts`). Every other side-effect stays
+suppressed for a smoke submission: email, payment, and **any webhook on a real
+programme code**.
 
 **Invariant (unchanged in spirit): a smoke submission can never create a real
 case, email a citizen, or open a payment.** It holds because:

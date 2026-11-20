@@ -155,11 +155,13 @@ export interface SubmitDto {
    * exercise the real submit path without firing real side-effects (#1252).
    *
    * One exception (#3533, amends ADR 0087): a mapped (CaMS) webhook whose
-   * `mapping.programmeCode` is a reserved test code is KEPT, so E2E J4 (#3011)
-   * can follow a submission into a CaMS test programme. See
-   * `smokeAllowedProcessors` in `processors/webhook-mapping.ts`. Email, payment,
-   * and any webhook on a real programme code are still dropped, so a smoke
-   * submission never creates a real case, emails a citizen, or opens a payment.
+   * sent programme code (the catchment-resolved code when the form is
+   * catchment-routed, else `mapping.programmeCode`) is a reserved test code is
+   * KEPT, so E2E J4 (#3011) can follow a submission into a CaMS test programme.
+   * See `smokeAllowedProcessors` in `processors/webhook-mapping.ts`. Email,
+   * payment, and any webhook on a real programme code are still dropped, so a
+   * smoke submission never creates a real case, emails a citizen, or opens a
+   * payment.
    */
   isSmokeSubmission?: boolean;
   /**
