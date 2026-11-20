@@ -149,7 +149,11 @@ export interface CollectionImportReport {
   /** Why differing records were replaced, or null when they were skipped. */
   reason: string | null;
   collections_created: number;
+  /** Key of each collection created. */
+  created: string[];
   records_added: number;
+  /** `collection/record` of each record added, including one an editor deleted that is still in the seed. */
+  added: string[];
   records_skipped: number;
   /** `collection/record` of each record kept because it differs from the seed. */
   skipped: string[];
@@ -201,9 +205,11 @@ export async function importCollections(
     await db.transaction(async (tx) => {
       // Collection writes take no content lock (that orders page writes), so
       // hold the editor's record and collection writes off instead until this
-      // commits; reads carry on.
+      // commits; reads carry on. `exclusive`, not `share row exclusive`: it
+      // also waits out an editor's `select … for update`, which could
+      // otherwise deadlock with a `force` replace of the same record.
       await tx.execute(
-        sql`lock table data_collections, collection_records in share row exclusive mode`,
+        sql`lock table data_collections, collection_records in exclusive mode`,
       );
       const store = new PostgresCollections(tx);
       const plans = [];
@@ -224,7 +230,9 @@ export async function importCollections(
       report = {
         reason: force ?? null,
         collections_created: 0,
+        created: [],
         records_added: 0,
+        added: [],
         records_skipped: 0,
         skipped: [],
         records_replaced: 0,
@@ -235,12 +243,14 @@ export async function importCollections(
           if (difference.kind === "missing-collection") {
             if (!must(await store.insertCollection(seed.definition)))
               throw new Error(`collection ${difference.collection} appeared`);
+            report.created.push(difference.collection);
             report.collections_created++;
           } else if (difference.kind === "missing-record") {
             const data = seed.records.get(difference.record)!;
             const key = difference.collection;
             if (!must(await store.insertRecord(key, difference.record, data)))
               throw new Error(`record ${key}/${difference.record} appeared`);
+            report.added.push(`${key}/${difference.record}`);
             report.records_added++;
           } else if (difference.kind === "record-differs") {
             const name = `${difference.collection}/${difference.record}`;

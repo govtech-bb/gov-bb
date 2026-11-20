@@ -197,7 +197,9 @@ describe("import-collections", () => {
     expect(report).toEqual({
       reason: null,
       collections_created: 1,
+      created: ["parishes"],
       records_added: 3,
+      added: ["offices/south", "parishes/st-james", "parishes/st-lucy"],
       records_skipped: 0,
       skipped: [],
       records_replaced: 0,
@@ -288,7 +290,9 @@ describe("import-collections", () => {
     expect(replaced).toEqual({
       reason: "restore the seed's North office",
       collections_created: 0,
+      created: [],
       records_added: 0,
+      added: [],
       records_skipped: 0,
       skipped: [],
       records_replaced: 1,

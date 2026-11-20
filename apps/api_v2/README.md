@@ -685,7 +685,7 @@ What it does, in one transaction:
 - Every write is checked as the editor's would be (`parseNewCollection`, `parseRecord`), and the `record_change` trigger records it in `change_events` by `system`. A second run with no seed change writes nothing.
 - It holds `data_collections` and `collection_records` against writes until it commits, so an editor's collection save waits for it; reads carry on.
 
-It migrates, prints `database: <name> host: <addr>` before writing anything, then one JSON line: `{"mode":"dry-run"|"import"|"replace","reason":"<reason>"|null,"collections_created":N,"records_added":N,"records_skipped":N,"skipped":["<collection>/<record>",…],"records_replaced":N,"replaced":[…]}`. `--dry-run` does the real work and rolls it back, so its counts and refusals are real; `--dry-run --force "<reason>"` shows what a replace would do.
+It migrates, prints `database: <name> host: <addr>` before writing anything, then one JSON line: `{"mode":"dry-run"|"import"|"replace","reason":"<reason>"|null,"collections_created":N,"created":["<collection>",…],"records_added":N,"added":["<collection>/<record>",…],"records_skipped":N,"skipped":["<collection>/<record>",…],"records_replaced":N,"replaced":[…]}`. `--dry-run` does the real work and rolls it back, so its counts and refusals are real; `--dry-run --force "<reason>"` shows what a replace would do.
 
 ### Running it in an environment
 
@@ -700,7 +700,7 @@ Sandbox runs it whenever a deploy adds seed collections or records. Staging and 
    aws ecs execute-command --cluster "$CLUSTER" --task "$TASK" --container api-v2 --interactive --command /bin/sh
    ```
 
-3. Inside that shell, dry run first. Read the `database:` line and the counts; for each record in `skipped`, check its current details in the editor and decide whether the editor's change stays.
+3. Inside that shell, dry run first. Read the `database:` line and the counts. Check `added` for a record an editor deleted on purpose: the run brings it back, so take it out of the seed first. For each record in `skipped`, check its current details in the editor and decide whether the editor's change stays.
 
    ```sh
    node dist/src/import-collections.js --dry-run
@@ -714,7 +714,7 @@ Sandbox runs it whenever a deploy adds seed collections or records. Staging and 
    node dist/src/import-collections.js --force "<env>: <why> (<deployed sha>)"
    ```
 
-4. From your machine, on a checkout of the sha from step 1, compare the environment's collections with the seed through the public `GET /collections/:key/records`. Public reads are cached for up to a minute, so wait one after the import:
+4. From your machine, on a checkout of the sha from step 1, compare the environment's collections with the seed through the public `GET /collections/:key/records`. The API marks those reads cacheable for a minute (`max-age=60`, `stale-while-revalidate=300`), so wait a minute after the import, and if a difference names a record the run just wrote, wait and run the check again:
 
    ```sh
    pnpm --filter @govtech-bb/api-v2 check-collections --base-url https://<api origin>

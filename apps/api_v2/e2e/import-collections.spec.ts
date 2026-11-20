@@ -63,7 +63,7 @@ describe.skipIf(!HAS_DATABASE)(
         new RegExp(`^database: ${database} host: `, "m"),
       );
       expect(dry.output).toContain(
-        '{"mode":"dry-run","reason":null,"collections_created":0,"records_added":0,"records_skipped":0,"skipped":[],"records_replaced":0,"replaced":[]}',
+        '{"mode":"dry-run","reason":null,"collections_created":0,"created":[],"records_added":0,"added":[],"records_skipped":0,"skipped":[],"records_replaced":0,"replaced":[]}',
       );
     });
 
@@ -82,7 +82,7 @@ describe.skipIf(!HAS_DATABASE)(
       const skipped = await run();
       expect(skipped.code, skipped.output).toBe(0);
       expect(skipped.output).toContain(
-        `"mode":"import","reason":null,"collections_created":0,"records_added":0,"records_skipped":1,"skipped":["${name}"]`,
+        `"mode":"import","reason":null,"collections_created":0,"created":[],"records_added":0,"added":[],"records_skipped":1,"skipped":["${name}"]`,
       );
 
       const blank = await run(["--force", " "]);
@@ -98,7 +98,7 @@ describe.skipIf(!HAS_DATABASE)(
       const replaced = await run(["--force", "e2e restore"]);
       expect(replaced.code, replaced.output).toBe(0);
       expect(replaced.output).toContain(
-        `"mode":"replace","reason":"e2e restore","collections_created":0,"records_added":${first!.records.length - 1},"records_skipped":0,"skipped":[],"records_replaced":1,"replaced":["${name}"]`,
+        `"mode":"replace","reason":"e2e restore","collections_created":0,"created":[],"records_added":${first!.records.length - 1},"added":${JSON.stringify(first!.records.slice(1).map((data) => `${first!.key}/${String(data[first!.record_key])}`))},"records_skipped":0,"skipped":[],"records_replaced":1,"replaced":["${name}"]`,
       );
 
       const after = await check();
