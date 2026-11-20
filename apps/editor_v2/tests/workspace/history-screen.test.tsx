@@ -470,6 +470,22 @@ test("a lost restore of a page that isn't public is confirmed from the page's hi
   expect(restores).toHaveLength(1);
 });
 
+test("a restore already at the top of the history on screen doesn't confirm a lost one", async () => {
+  await render([entry({ version_no: 5, action: "reverted", restored_from: 1 }), ...VERSIONS], {
+    roles: ["editor"],
+  });
+  await until(() => expect(buttons("Restore this version")).toHaveLength(3));
+  restored = new Response(null, { status: 503 });
+  await act(async () => buttons("Restore this version")[2]?.click());
+  await act(async () => buttons("Restore version")[0]?.click());
+
+  await until(() =>
+    expect(document.body.textContent).toContain("We couldn’t confirm the restore."),
+  );
+  expect(document.body.textContent).not.toContain("Version restored");
+  expect(restores).toHaveLength(1);
+});
+
 test("restore sends once while pending, blocks dismissal and returns focus after success", async () => {
   await render(VERSIONS, { roles: ["editor"] });
   await until(() => expect(buttons("Restore this version")).toHaveLength(2));

@@ -1494,6 +1494,7 @@ test.each([
   ["a restore already on screen", { historyVersion: 5 }, [restoredEntry, ...shown]],
   // Someone restored version 2, then edited, while the list on screen failed to refresh
   ["a restore changed since", {}, [historyEntry(6, "updated"), restoredEntry, ...shown]],
+  ["a restore since deleted", {}, [historyEntry(6, "deleted"), restoredEntry, ...shown]],
   ["no new version, as after a restore that changed nothing", {}, shown],
 ])("a lost restore is not confirmed by %s", async (_case, request, history) => {
   const api = fakeApi();

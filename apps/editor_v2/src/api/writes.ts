@@ -79,7 +79,7 @@ type PageRestoration = {
   versionNo: number;
   version: number;
   isPublic: boolean;
-  /** The page's newest version in the history on screen when the restore was confirmed. */
+  /** The page's newest version in the history on screen when the restore dialog opened. */
   historyVersion: number;
 };
 
@@ -230,10 +230,13 @@ export const writes = {
     readBack: (sent) => api.history(sent.id),
     // Only a page that isn't public gets a `reverted` entry naming the version: a public page's restore goes into its
     // pending revision. The entry must still be the page's newest version, so a stale list on screen can't let an
-    // older restore that was since changed confirm this one.
+    // older restore that was since changed or deleted confirm this one.
     landed: (found, sent) => {
       if (sent.isPublic || !Array.isArray(found)) return false;
-      const newest = found.find((entry) => PAGE_VERSIONS.has(entry.action));
+
+      const newest = found.find(
+        (entry) => PAGE_VERSIONS.has(entry.action) || entry.action === "deleted",
+      );
 
       return (
         newest?.action === "reverted" &&
