@@ -68,7 +68,9 @@ const BARBADOS_OFFSET_MS = -4 * 60 * 60 * 1000
 
 /**
  * The page's "Last updated" day: `pageDate`, or the Barbados day the newest
- * one-off record changed on when that is later.
+ * one-off record changed on when that is later. A deletion isn't dated:
+ * api_v2 keeps no time for it, so deleting the newest record (or making it
+ * invalid) moves the day back to the next newest.
  */
 export function lastUpdated(
   pageDate: Date,
