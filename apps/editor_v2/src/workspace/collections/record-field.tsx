@@ -1,6 +1,5 @@
 import { ArrowDown, ArrowUp, Plus, Trash } from "@phosphor-icons/react";
-import { useId, useRef, useState } from "react";
-import { flushSync } from "react-dom";
+import { useId, useLayoutEffect, useRef, useState } from "react";
 import { isText, type Collection } from "../../api/client";
 import { Button } from "../../ui/button";
 import { Checkbox } from "../../ui/checkbox";
@@ -146,13 +145,19 @@ function ListField({
   const [said, setSaid] = useState("");
   const noteId = useId();
 
-  // The list re-renders at once, so the focus lands before the dialog sees the pressed button go and takes it back
+  const focusNext = useRef<string>(undefined);
+
+  // Straight after the list re-renders, so the focus lands before the dialog sees the pressed button go and takes it
+  useLayoutEffect(() => {
+    if (!focusNext.current) return;
+    root.current?.querySelector<HTMLElement>(focusNext.current)?.focus();
+    focusNext.current = undefined;
+  });
+
   const change = (next: string[], focusOn: string, say: string) => {
-    flushSync(() => {
-      onChange(next);
-      setSaid(say);
-    });
-    root.current?.querySelector<HTMLElement>(focusOn)?.focus();
+    focusNext.current = focusOn;
+    onChange(next);
+    setSaid(say);
   };
 
   const move = (index: number, by: -1 | 1) => {
