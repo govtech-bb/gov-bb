@@ -13,7 +13,11 @@ import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { createEditorApi, type RecordDetail } from "../../src/api/client";
 import { CollectionScreen } from "../../src/workspace/collections";
 import { RecordField } from "../../src/workspace/collections/record-field";
-import type { RecordValue, RecordValues } from "../../src/workspace/collections/records";
+import {
+  INCOMPLETE_DATE,
+  type RecordValue,
+  type RecordValues,
+} from "../../src/workspace/collections/records";
 import { Toaster } from "../../src/ui/toast";
 
 /**
@@ -55,7 +59,16 @@ type Write = { method: string; path: string; body: { data: RecordValues } };
 
 /** api_v2's record routes over the one collection; `refuse` answers the next write with a 400. */
 function contentApi() {
-  let records = [ST_JUDES];
+  // A second record with a smaller capacity, which a text sort would put after 120
+  let records = [
+    ST_JUDES,
+    {
+      ...ST_JUDES,
+      record_key: "christ-church",
+      data: { key: "christ-church", capacity: 9 },
+    },
+  ];
+
   const writes: Write[] = [];
   let refusal: { field: string; message: string } | undefined;
 
@@ -224,7 +237,7 @@ test("the dialog opens each value in its own control, and saves each as its type
 
   expect(opened.type).toBe("date");
   expect(opened.value).toBe("2026-08-01");
-  // A yes or no needs no "(optional)": an unticked box is a no
+  // A yes or no needs no "(optional)": its box is ticked or not
   expect(checkbox().getAttribute("aria-checked")).toBe("true");
   expect(dialog()?.textContent).toContain("Has water");
   expect(dialog()?.textContent).not.toContain("Has water (optional)");
@@ -261,6 +274,60 @@ test("a value api_v2 refuses shows its reason under its field, and the dialog ke
   );
   expect(byLabel("Capacity (optional)").value).toBe("1,000");
   expect(byLabel("Capacity (optional)").getAttribute("aria-invalid")).toBe("true");
+});
+
+test("a number column sorts by value, not as text", async () => {
+  await mountScreen();
+  await until(() => expect(host.querySelectorAll("tbody tr button").length).toBeGreaterThan(1));
+
+  const header = [...host.querySelectorAll("thead th")].find(
+    (cell) => cell.textContent === "Capacity",
+  )!;
+
+  const keys = () =>
+    [...host.querySelectorAll("tbody tr")].map((row) => row.querySelector("td")?.textContent);
+
+  // As text, 9 would sort above 120 going down and below it going up
+  await press(header.querySelector("button")!);
+  expect(header.getAttribute("aria-sort")).toBe("descending");
+  expect(keys()).toEqual(["st-judes", "christ-church"]);
+  await press(header.querySelector("button")!);
+  expect(header.getAttribute("aria-sort")).toBe("ascending");
+  expect(keys()).toEqual(["christ-church", "st-judes"]);
+});
+
+test("a new record leaves out a box nobody ticked or unticked", async () => {
+  await mountScreen();
+  await until(() => expect(host.querySelector("tbody tr button")).not.toBeNull());
+  await press(
+    [...host.querySelectorAll("button")].find((item) => item.textContent === "Add record")!,
+  );
+  await until(() => expect(dialog()?.querySelector('[role="checkbox"]')).toBeTruthy());
+  await type(byLabel("Key"), "oistins");
+  await submit();
+  await until(() => expect(dialog()).toBeNull());
+
+  expect(server.writes.at(-1)?.body.data).toEqual({ key: "oistins" });
+});
+
+test("an incomplete date is refused on its field, never saved as no date", async () => {
+  await mountScreen("st-judes");
+  await until(() => expect(dialog()?.querySelector('[role="checkbox"]')).toBeTruthy());
+
+  // A date box with part of a date reports a blank value, and says its input is bad
+  const opened = byLabel("Opened (optional)");
+
+  Object.defineProperty(opened, "validity", { value: { badInput: true }, configurable: true });
+  await type(opened, "");
+  server.refuse("opened", "Enter a real date as YYYY-MM-DD, such as 2026-08-01.");
+  await submit();
+
+  expect(server.writes.at(-1)?.body.data.opened).toBe(INCOMPLETE_DATE);
+  await until(() =>
+    expect(dialog()?.textContent).toContain("Enter a real date as YYYY-MM-DD, such as 2026-08-01."),
+  );
+  // The box still shows what the browser holds, rather than the marker
+  expect(opened.value).toBe("");
 });
 
 /** The list editor on its own, keeping its items as the dialog would. */
@@ -305,39 +372,39 @@ test("the list editor adds an item and puts the focus in it", async () => {
 test("the list editor moves an item, the focus going with it, and says where it went", async () => {
   await mountList(["A", "B", "C"]).ready;
 
-  expect(byLabel<HTMLButtonElement>("Move item 1 up").disabled).toBe(true);
-  expect(byLabel<HTMLButtonElement>("Move item 3 down").disabled).toBe(true);
+  expect(byLabel<HTMLButtonElement>("Move Documents item 1 up").disabled).toBe(true);
+  expect(byLabel<HTMLButtonElement>("Move Documents item 3 down").disabled).toBe(true);
 
-  await press(byLabel<HTMLButtonElement>("Move item 1 down"));
+  await press(byLabel<HTMLButtonElement>("Move Documents item 1 down"));
   expect(items()).toEqual(["B", "A", "C"]);
-  expect(document.activeElement).toBe(byLabel("Move item 2 down"));
+  expect(document.activeElement).toBe(byLabel("Move Documents item 2 down"));
   expect(host.querySelector('[aria-live="polite"]')?.textContent).toBe(
     "Item moved to position 2 of 3.",
   );
 
   // At the end, its own button is turned off, so the focus takes the other
-  await press(byLabel<HTMLButtonElement>("Move item 2 down"));
+  await press(byLabel<HTMLButtonElement>("Move Documents item 2 down"));
   expect(items()).toEqual(["B", "C", "A"]);
-  expect(document.activeElement).toBe(byLabel("Move item 3 up"));
+  expect(document.activeElement).toBe(byLabel("Move Documents item 3 up"));
 
-  await press(byLabel<HTMLButtonElement>("Move item 3 up"));
+  await press(byLabel<HTMLButtonElement>("Move Documents item 3 up"));
   expect(items()).toEqual(["B", "A", "C"]);
-  expect(document.activeElement).toBe(byLabel("Move item 2 up"));
+  expect(document.activeElement).toBe(byLabel("Move Documents item 2 up"));
 });
 
 test("the list editor removes an item, the focus going to the one in its place, else the one before, then to Add item", async () => {
   await mountList(["A", "B", "C"]).ready;
-  await press(byLabel<HTMLButtonElement>("Remove item 1"));
+  await press(byLabel<HTMLButtonElement>("Remove Documents item 1"));
 
   expect(items()).toEqual(["B", "C"]);
   expect(document.activeElement).toBe(byLabel("Documents, item 1 of 2"));
   expect(host.querySelector('[aria-live="polite"]')?.textContent).toBe("Item 1 removed. 2 left.");
 
-  await press(byLabel<HTMLButtonElement>("Remove item 2"));
+  await press(byLabel<HTMLButtonElement>("Remove Documents item 2"));
   expect(items()).toEqual(["B"]);
   expect(document.activeElement).toBe(byLabel("Documents, item 1 of 1"));
 
-  await press(byLabel<HTMLButtonElement>("Remove item 1"));
+  await press(byLabel<HTMLButtonElement>("Remove Documents item 1"));
   expect(items()).toEqual([]);
   expect(document.activeElement).toBe(byLabel("Add item to Documents"));
   expect(host.textContent).toContain("No items.");

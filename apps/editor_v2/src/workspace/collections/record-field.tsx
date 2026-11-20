@@ -6,7 +6,7 @@ import { Button } from "../../ui/button";
 import { Checkbox } from "../../ui/checkbox";
 import { Field, FieldGroup } from "../../ui/field";
 import { Input } from "../../ui/input";
-import type { RecordValue } from "./records";
+import { INCOMPLETE_DATE, type RecordValue } from "./records";
 
 type FieldType = Collection["schema"]["fields"][number]["type"];
 
@@ -63,9 +63,16 @@ export function RecordField({
     );
 
   return (
-    <Field label={label} hint={hint} error={error}>
+    <Field
+      label={label}
+      hint={
+        hint ?? (type === "number" ? "A number, such as 12 or 0.1725, without commas." : undefined)
+      }
+      error={error}
+    >
       <Input
-        value={isText(value) ? value : ""}
+        // An incomplete date shows as the browser holds it: the box's own value is then blank
+        value={isText(value) && value !== INCOMPLETE_DATE ? value : ""}
         readOnly={readOnly}
         // A date box takes the date as YYYY-MM-DD, as api_v2 keeps it. A number is a text box with a number keypad,
         // so a value it can't read, such as 1,000, stays for api_v2's refusal to explain rather than vanishing
@@ -73,7 +80,15 @@ export function RecordField({
         inputMode={type === "email" ? "email" : type === "number" ? "decimal" : undefined}
         spellCheck={type === "text" ? undefined : false}
         autoCapitalize={type === "text" ? undefined : "off"}
-        onChange={(event) => onChange(event.target.value)}
+        onChange={(event) =>
+          // A date box with part of a date, or an impossible one, reports a blank value: kept as incomplete, so
+          // saving is refused on the field instead of deleting the stored date
+          onChange(
+            type === "date" && event.target.validity.badInput
+              ? INCOMPLETE_DATE
+              : event.target.value,
+          )
+        }
       />
     </Field>
   );
@@ -216,22 +231,25 @@ function ListField({
                   <>
                     <Button
                       data-part="up"
+                      size="md"
                       icon={<ArrowUp />}
-                      aria-label={`Move item ${index + 1} up`}
+                      aria-label={`Move ${name} item ${index + 1} up`}
                       disabled={index === 0}
                       onClick={() => move(index, -1)}
                     />
                     <Button
                       data-part="down"
+                      size="md"
                       icon={<ArrowDown />}
-                      aria-label={`Move item ${index + 1} down`}
+                      aria-label={`Move ${name} item ${index + 1} down`}
                       disabled={index === items.length - 1}
                       onClick={() => move(index, 1)}
                     />
                     <Button
                       data-part="remove"
+                      size="md"
                       icon={<Trash />}
-                      aria-label={`Remove item ${index + 1}`}
+                      aria-label={`Remove ${name} item ${index + 1}`}
                       onClick={() => remove(index)}
                     />
                   </>

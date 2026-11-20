@@ -8,9 +8,16 @@ export type RecordValue = RecordValues[string];
 
 type FieldType = Collection["schema"]["fields"][number]["type"];
 
-// A number as an editor types one: digits, with an optional sign and decimal point. Anything else, such as 1,000, is
-// sent as typed for api_v2 to refuse with its own message
-const NUMBER = /^-?(?:\d+\.?\d*|\.\d+)$/;
+// A number as an editor types one, or as a stored one opens: digits, with an optional sign, decimal point and exponent
+// (a very small rate opens as 1e-7). Anything else, such as 1,000, is sent as typed for api_v2 to refuse with its own
+// message
+const NUMBER = /^-?(?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?$/i;
+
+/**
+ * What a date box holds while its date is incomplete or impossible, such as 31/02, where the browser reports no value.
+ * It is sent as typed, so api_v2 refuses it on the field rather than saving the record without its date.
+ */
+export const INCOMPLETE_DATE = "incomplete date";
 
 /** A value as text, for a table cell or a text box: a list's items joined, true and false as Yes and No. */
 export function valueText(value: RecordValue | undefined): string {
@@ -57,8 +64,8 @@ export function keyProblem(key: string) {
 
 /** A field's value as saving sends it, or undefined when it is blank and left out. */
 function savedValue(type: FieldType, value: RecordValue | undefined): RecordValue | undefined {
-  // A box that isn't ticked is a no
-  if (type === "boolean") return value === true;
+  // A box nobody ticked or unticked is left out, so a record never says no on nobody's word
+  if (type === "boolean") return value === undefined ? undefined : value === true;
 
   if (Array.isArray(value)) {
     const items = value.map((item) => item.trim()).filter(Boolean);
@@ -76,7 +83,8 @@ function savedValue(type: FieldType, value: RecordValue | undefined): RecordValu
 
 /**
  * What saving sends: the whole record, which replaces the stored one. A blank field, or a list with no items, is left
- * out, so clearing it removes its value; a yes-or-no field is always sent. A number is sent as a number. A value for a
+ * out, so clearing it removes its value; a yes-or-no field is sent once it holds a value or its box has been ticked or
+ * unticked. A number is sent as a number. A value for a
  * field the collection no longer lists is left out too, since api_v2 refuses it: the dialog says so before saving
  * (`droppedFields`).
  */

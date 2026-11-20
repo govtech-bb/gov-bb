@@ -221,13 +221,16 @@ try {
   assert.equal(await focused(first), true, "Tab reaches the list's first item");
   assert.equal(await focusShown(), true, "the list's first item shows its focus");
   assert.equal(await first.inputValue(), "ID card");
-  await tab(dialog.getByRole("button", { name: "Move item 1 down" }), "Move item 1 down");
+  await tab(
+    dialog.getByRole("button", { name: "Move Documents item 1 down" }),
+    "Move Documents item 1 down",
+  );
   await page.keyboard.press("Enter");
   // The moved item is now last, so the focus goes to its Move up, and a screen reader hears where it went
-  const movedUp = dialog.getByRole("button", { name: "Move item 2 up" });
+  const movedUp = dialog.getByRole("button", { name: "Move Documents item 2 up" });
 
   await page.waitForFunction(
-    () => document.activeElement?.getAttribute("aria-label") === "Move item 2 up",
+    () => document.activeElement?.getAttribute("aria-label") === "Move Documents item 2 up",
   );
   assert.equal(await focused(movedUp), true, "the focus follows the moved item");
   assert.equal(await focusShown(), true, "Move up shows its focus");
@@ -235,7 +238,10 @@ try {
   await dialog.getByText("Item moved to position 2 of 2.").waitFor();
 
   // Add item: the new item's box takes the focus
-  await tab(dialog.getByRole("button", { name: "Remove item 2" }), "Remove item 2");
+  await tab(
+    dialog.getByRole("button", { name: "Remove Documents item 2" }),
+    "Remove Documents item 2",
+  );
   await tab(dialog.getByRole("button", { name: "Add item to Documents" }), "Add item");
   await page.keyboard.press("Enter");
   const added = dialog.getByLabel("Documents, item 3 of 3");
@@ -248,8 +254,14 @@ try {
   await page.screenshot({ path: "/tmp/c3782-field-types-dialog.png", fullPage: true });
 
   // Remove item: the focus goes to the item now in its place
-  await tab(dialog.getByRole("button", { name: "Move item 3 up" }), "Move item 3 up");
-  await tab(dialog.getByRole("button", { name: "Remove item 3" }), "Remove item 3");
+  await tab(
+    dialog.getByRole("button", { name: "Move Documents item 3 up" }),
+    "Move Documents item 3 up",
+  );
+  await tab(
+    dialog.getByRole("button", { name: "Remove Documents item 3" }),
+    "Remove Documents item 3",
+  );
   await page.keyboard.press("Enter");
   await page.waitForFunction(
     () => document.activeElement?.getAttribute("aria-label") === "Documents, item 2 of 2",

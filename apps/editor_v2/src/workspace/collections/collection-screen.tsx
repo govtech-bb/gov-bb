@@ -47,29 +47,50 @@ const recordColumns = (
           }),
         ]),
     ...fields.map((field, index) =>
-      column.accessor((record) => valueText(record.data[field.key]), {
-        id: `field:${field.key}`,
-        header: field.label,
-        sortFn: "text",
-        enableHiding: false,
-        cell: ({ getValue }) => {
-          const value = getValue();
+      field.type === "number"
+        ? // A number column sorts by value, so 9 comes before 10; a record without one sorts first
+          column.accessor(
+            (record) => {
+              const value = record.data[field.key];
 
-          return value ? (
-            <span
-              className={
-                index === 0 && keyListed
-                  ? "font-mono text-12"
-                  : "line-clamp-2 max-w-64 text-14 wrap-break-word"
-              }
-            >
-              {value}
-            </span>
-          ) : (
-            <span className="text-muted">None</span>
-          );
-        },
-      }),
+              return Number.isFinite(value) ? Number(value) : Number.NEGATIVE_INFINITY;
+            },
+            {
+              id: `field:${field.key}`,
+              header: field.label,
+              sortFn: "basic",
+              enableHiding: false,
+              cell: ({ getValue }) =>
+                Number.isFinite(getValue()) ? (
+                  <span className="text-14">{getValue()}</span>
+                ) : (
+                  <span className="text-muted">None</span>
+                ),
+            },
+          )
+        : column.accessor((record) => valueText(record.data[field.key]), {
+            id: `field:${field.key}`,
+            header: field.label,
+            sortFn: "text",
+            enableHiding: false,
+            cell: ({ getValue }) => {
+              const value = getValue();
+
+              return value ? (
+                <span
+                  className={
+                    index === 0 && keyListed
+                      ? "font-mono text-12"
+                      : "line-clamp-2 max-w-64 text-14 wrap-break-word"
+                  }
+                >
+                  {value}
+                </span>
+              ) : (
+                <span className="text-muted">None</span>
+              );
+            },
+          }),
     ),
     column.display({
       id: "actions",

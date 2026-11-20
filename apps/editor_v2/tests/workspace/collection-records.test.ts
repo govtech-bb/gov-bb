@@ -121,13 +121,22 @@ test("saving sends each type as api_v2 keeps it", () => {
   expect(recordData(shelters, { capacity: "120" }).capacity).toBe(120);
 });
 
-test("saving leaves out a blank number, a blank date and an empty list, and sends an unticked box as no", () => {
+test("saving leaves out a blank number, a blank date, an empty list and a box nobody ticked or unticked", () => {
   expect(
     recordData(shelters, { key: "st-judes", capacity: " ", opened: "", documents: [" "] }),
   ).toEqual({
     key: "st-judes",
-    water: false,
   });
+  // Unticked by the editor, or held by the record, a no is sent
+  expect(recordData(shelters, { water: false })).toEqual({ water: false });
+});
+
+test("a stored number in exponent form opens and saves as the same number", () => {
+  const tiny = { ...shelter, data: { ...shelter.data, capacity: 1e-7 } };
+  const huge = { ...shelter, data: { ...shelter.data, capacity: 1e21 } };
+
+  expect(recordData(shelters, recordValues(shelters, tiny)).capacity).toBe(1e-7);
+  expect(recordData(shelters, recordValues(shelters, huge)).capacity).toBe(1e21);
 });
 
 test("saving sends a number it can't read as typed, for api_v2 to refuse with its own reason", () => {
