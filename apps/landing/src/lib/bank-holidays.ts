@@ -4,6 +4,8 @@ export interface Holiday {
   note?: string
   /** True when this row is a "Monday/Tuesday in lieu" substitution. */
   substitute?: boolean
+  /** True for a declared one-off holiday, which never has a substitution day. */
+  oneOff?: boolean
 }
 
 export const MIN_YEAR = 2020
@@ -98,6 +100,8 @@ export const fmtDayNum = (d: Date) => d.getUTCDate()
 export const fmtDayOfWeek = (d: Date) => DAYS_LONG[d.getUTCDay()]
 export const fmtFullDate = (d: Date) =>
   `${DAYS_LONG[d.getUTCDay()]}, ${d.getUTCDate()} ${MONTHS_LONG[d.getUTCMonth()]} ${d.getUTCFullYear()}`
+export const fmtLongDate = (d: Date) =>
+  `${d.getUTCDate()} ${MONTHS_LONG[d.getUTCMonth()]} ${d.getUTCFullYear()}`
 export const fmtSubstituteDate = (d: Date) =>
   `${DAYS_LONG[d.getUTCDay()]} ${d.getUTCDate()} ${MONTHS_SHORT[d.getUTCMonth()]}`
 
