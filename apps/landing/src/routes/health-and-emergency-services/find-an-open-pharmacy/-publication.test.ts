@@ -111,7 +111,7 @@ describe('pharmacy publication', () => {
 
       // A route's `match.context` carries its own `beforeLoad` return value.
       function gate(level: string, serviceStatuses: ServiceStatusEntry[]) {
-        const context = {
+        const context: Record<string, unknown> = {
           level,
           serviceStatuses,
           ...call(route().options.beforeLoad, {
@@ -132,6 +132,13 @@ describe('pharmacy publication', () => {
         const { context, head } = gate('public', enabled)
         expect(context.serviceLevel).toBe('public')
         expect(head.meta).not.toContainEqual(NOINDEX)
+        const path = name === 'find' ? 'find' : params.slug
+        expect(head.links).toEqual([
+          {
+            rel: 'canonical',
+            href: expect.stringMatching(new RegExp(`/${service}/${path}$`)),
+          },
+        ])
         if (name === '$slug')
           expect(head.scripts).toEqual([
             expect.objectContaining({ type: 'application/ld+json' }),

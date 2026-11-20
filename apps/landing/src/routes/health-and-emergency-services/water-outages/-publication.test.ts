@@ -79,7 +79,7 @@ describe('water service publication', () => {
 
     // A route's `match.context` carries its own `beforeLoad` return value.
     function gate(level: string, serviceStatuses: ServiceStatusEntry[]) {
-      const context = {
+      const context: Record<string, unknown> = {
         level,
         serviceStatuses,
         ...call(index.options.beforeLoad, {
@@ -93,6 +93,12 @@ describe('water service publication', () => {
       const { context, head } = gate('public', [[META.url, 'enabled']])
       expect(context.serviceLevel).toBe('public')
       expect(head.meta).not.toContainEqual(NOINDEX)
+      expect(head.links).toEqual([
+        {
+          rel: 'canonical',
+          href: expect.stringMatching(new RegExp(`/${META.url}$`)),
+        },
+      ])
     })
 
     it('stays indexable for a preview viewer when the service is public', () => {
