@@ -364,6 +364,68 @@ describe("import-collections", () => {
     });
   });
 
+  it("refuses a seed record key that differs from the stored one, with the same fields, and writes nothing", async () => {
+    const fields: SeedCollection["schema"] = {
+      fields: [
+        { key: "key", label: "Key", type: "slug" },
+        { key: "code", label: "Code", type: "slug" },
+        { key: "name", label: "Name", type: "text" },
+      ],
+    };
+    await db.execute(
+      sql`insert into data_collections (key, title, record_key, schema)
+          values ('depots', 'Depots', 'key', ${JSON.stringify(fields)}::jsonb)`,
+    );
+    const before = await written();
+
+    const refusal = importCollections(db, {
+      dryRun: false,
+      collections: [
+        PARISHES,
+        {
+          key: "depots",
+          title: "Depots",
+          record_key: "code",
+          schema: fields,
+          records: [{ key: "a", code: "a", name: "A" }],
+        },
+      ],
+    });
+
+    await expect(refusal).rejects.toBeInstanceOf(FieldListRefused);
+    await expect(refusal).rejects.toThrow(
+      /depots: field list differs\. stored: record_key key;.*seed: record_key code;/,
+    );
+    expect(await written()).toEqual(before);
+  });
+
+  it("waits out an editor holding a record, rather than deadlocking with a --force replace of it", async () => {
+    await importCollections(db, { dryRun: false, collections: FIXTURE });
+    const editor = await test.pool.connect();
+    try {
+      // An editor's save: lock the record, then (after the import has
+      // started) write it.
+      await editor.query("begin");
+      await editor.query(
+        "select 1 from collection_records where collection_key = 'offices' and record_key = 'north' for update",
+      );
+      const replace = importCollections(db, {
+        dryRun: false,
+        force: "test",
+        collections: FIXTURE,
+      });
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      await editor.query(
+        `update collection_records set data = data || '{"name": "Moved"}' where collection_key = 'offices' and record_key = 'north'`,
+      );
+      await editor.query("commit");
+
+      expect(await replace).toMatchObject({ replaced: ["offices/north"] });
+    } finally {
+      editor.release();
+    }
+  });
+
   it("refuses a seed record its field list rejects, before writing", async () => {
     const before = await written();
     const refusal = importCollections(db, {

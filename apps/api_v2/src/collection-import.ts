@@ -207,9 +207,11 @@ export async function importCollections(
       // hold the editor's record and collection writes off instead until this
       // commits; reads carry on. `exclusive`, not `share row exclusive`: it
       // also waits out an editor's `select … for update`, which could
-      // otherwise deadlock with a `force` replace of the same record.
+      // otherwise deadlock with a `force` replace of the same record. Records
+      // first, in the order an editor's insert locks them (its foreign-key
+      // check reaches `data_collections` second), so the two can't deadlock.
       await tx.execute(
-        sql`lock table data_collections, collection_records in exclusive mode`,
+        sql`lock table collection_records, data_collections in exclusive mode`,
       );
       const store = new PostgresCollections(tx);
       const plans = [];
