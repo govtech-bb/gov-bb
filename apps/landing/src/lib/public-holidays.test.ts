@@ -32,7 +32,7 @@ const records = (...data: Array<Record<string, string>>) => ({
       fields: [
         { key: 'key', label: 'Key', type: 'slug' },
         { key: 'name', label: 'Name', type: 'text' },
-        { key: 'date', label: 'Date (YYYY-MM-DD)', type: 'text' },
+        { key: 'date', label: 'Date', type: 'date' },
         { key: 'note', label: 'Note', type: 'text' },
       ],
     },
@@ -109,6 +109,17 @@ describe('oneOffHolidays', () => {
     ).toEqual([
       expect.objectContaining({ updated_at: '2027-01-02T00:00:00.000Z' }),
     ])
+  })
+
+  it('ignores a record whose name, date or note isn’t text', () => {
+    expect(
+      oneOffHolidays([
+        { data: { ...FINAL, name: 42 } },
+        { data: { ...FINAL, date: ['2027-03-15'] } },
+        { data: { ...FINAL, date: 20270315 } },
+        { data: { ...FINAL, note: true } },
+      ]),
+    ).toEqual([])
   })
 
   it('leaves out an empty note', () => {
