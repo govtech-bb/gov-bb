@@ -192,10 +192,12 @@ const type = (field: HTMLInputElement, value: string) =>
     field.dispatchEvent(new Event("input", { bubbles: true }));
   });
 
-const press = (element: HTMLElement) => act(async () => element.click());
-
-// The focus moves on the next frame, after the list re-renders
-const frame = () => act(() => new Promise((done) => requestAnimationFrame(() => done(undefined))));
+// As a keyboard user presses it: focused first, so where the focus goes next is the control's doing
+const press = (element: HTMLElement) =>
+  act(async () => {
+    element.focus();
+    element.click();
+  });
 
 const submit = () => press(dialog()!.querySelector<HTMLButtonElement>('button[type="submit"]')!);
 
@@ -293,7 +295,6 @@ const items = () =>
 test("the list editor adds an item and puts the focus in it", async () => {
   await mountList(["ID card"]).ready;
   await press(byLabel<HTMLButtonElement>("Add item to Documents"));
-  await frame();
 
   expect(items()).toEqual(["ID card", ""]);
   expect(document.activeElement).toBe(byLabel("Documents, item 2 of 2"));
@@ -308,7 +309,6 @@ test("the list editor moves an item, the focus going with it, and says where it 
   expect(byLabel<HTMLButtonElement>("Move item 3 down").disabled).toBe(true);
 
   await press(byLabel<HTMLButtonElement>("Move item 1 down"));
-  await frame();
   expect(items()).toEqual(["B", "A", "C"]);
   expect(document.activeElement).toBe(byLabel("Move item 2 down"));
   expect(host.querySelector('[aria-live="polite"]')?.textContent).toBe(
@@ -317,27 +317,27 @@ test("the list editor moves an item, the focus going with it, and says where it 
 
   // At the end, its own button is turned off, so the focus takes the other
   await press(byLabel<HTMLButtonElement>("Move item 2 down"));
-  await frame();
   expect(items()).toEqual(["B", "C", "A"]);
   expect(document.activeElement).toBe(byLabel("Move item 3 up"));
 
   await press(byLabel<HTMLButtonElement>("Move item 3 up"));
-  await frame();
   expect(items()).toEqual(["B", "A", "C"]);
   expect(document.activeElement).toBe(byLabel("Move item 2 up"));
 });
 
-test("the list editor removes an item, the focus going to the next, then to Add item", async () => {
-  await mountList(["A", "B"]).ready;
+test("the list editor removes an item, the focus going to the one in its place, else the one before, then to Add item", async () => {
+  await mountList(["A", "B", "C"]).ready;
   await press(byLabel<HTMLButtonElement>("Remove item 1"));
-  await frame();
 
+  expect(items()).toEqual(["B", "C"]);
+  expect(document.activeElement).toBe(byLabel("Documents, item 1 of 2"));
+  expect(host.querySelector('[aria-live="polite"]')?.textContent).toBe("Item 1 removed. 2 left.");
+
+  await press(byLabel<HTMLButtonElement>("Remove item 2"));
   expect(items()).toEqual(["B"]);
   expect(document.activeElement).toBe(byLabel("Documents, item 1 of 1"));
-  expect(host.querySelector('[aria-live="polite"]')?.textContent).toBe("Item 1 removed. 1 left.");
 
   await press(byLabel<HTMLButtonElement>("Remove item 1"));
-  await frame();
   expect(items()).toEqual([]);
   expect(document.activeElement).toBe(byLabel("Add item to Documents"));
   expect(host.textContent).toContain("No items.");
