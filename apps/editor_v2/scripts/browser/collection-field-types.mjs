@@ -290,6 +290,27 @@ try {
   });
   await page.getByText("Proof of address, ID card").waitFor();
 
+  // A date box left with part of a date stops the save: the browser's own check takes the focus back to it, says
+  // what is wrong, and nothing is sent, so the stored date is never lost
+  await page.goto(url("/collections/shelters?record=st-judes"));
+  const dateBox = dialog.getByLabel("Inspected (optional)");
+  const sent = writes.length;
+
+  await dateBox.waitFor();
+  await page.waitForFunction(() => document.activeElement?.tagName === "INPUT");
+  await dateBox.focus();
+  await page.keyboard.press("Backspace");
+  assert.equal(await dateBox.evaluate((node) => node.validity.badInput), true);
+  await dialog.getByRole("button", { name: "Save changes" }).press("Enter");
+  await page.waitForFunction(() => document.activeElement?.getAttribute("type") === "date");
+  assert.equal(writes.length, sent, "nothing is sent");
+  assert.equal(
+    records.find((record) => record.record_key === "st-judes").data.inspected,
+    "2026-12-25",
+  );
+  await page.keyboard.press("Escape");
+  await dialog.waitFor({ state: "detached" });
+
   // At phone width the list editor fits, and the page doesn't scroll sideways
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(url("/collections/shelters?record=st-judes"));

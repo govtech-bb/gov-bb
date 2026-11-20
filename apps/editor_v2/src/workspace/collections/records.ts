@@ -13,12 +13,6 @@ type FieldType = Collection["schema"]["fields"][number]["type"];
 // message
 const NUMBER = /^-?(?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?$/i;
 
-/**
- * What a date box holds while its date is incomplete or impossible, such as 31/02, where the browser reports no value.
- * It is sent as typed, so api_v2 refuses it on the field rather than saving the record without its date.
- */
-export const INCOMPLETE_DATE = "incomplete date";
-
 /** A value as text, for a table cell or a text box: a list's items joined, true and false as Yes and No. */
 export function valueText(value: RecordValue | undefined): string {
   if (value === undefined) return "";

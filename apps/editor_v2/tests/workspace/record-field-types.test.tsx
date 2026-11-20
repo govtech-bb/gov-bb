@@ -13,11 +13,7 @@ import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { createEditorApi, type RecordDetail } from "../../src/api/client";
 import { CollectionScreen } from "../../src/workspace/collections";
 import { RecordField } from "../../src/workspace/collections/record-field";
-import {
-  INCOMPLETE_DATE,
-  type RecordValue,
-  type RecordValues,
-} from "../../src/workspace/collections/records";
+import type { RecordValue, RecordValues } from "../../src/workspace/collections/records";
 import { Toaster } from "../../src/ui/toast";
 
 /**
@@ -308,26 +304,6 @@ test("a new record leaves out a box nobody ticked or unticked", async () => {
   await until(() => expect(dialog()).toBeNull());
 
   expect(server.writes.at(-1)?.body.data).toEqual({ key: "oistins" });
-});
-
-test("an incomplete date is refused on its field, never saved as no date", async () => {
-  await mountScreen("st-judes");
-  await until(() => expect(dialog()?.querySelector('[role="checkbox"]')).toBeTruthy());
-
-  // A date box with part of a date reports a blank value, and says its input is bad
-  const opened = byLabel("Opened (optional)");
-
-  Object.defineProperty(opened, "validity", { value: { badInput: true }, configurable: true });
-  await type(opened, "");
-  server.refuse("opened", "Enter a real date as YYYY-MM-DD, such as 2026-08-01.");
-  await submit();
-
-  expect(server.writes.at(-1)?.body.data.opened).toBe(INCOMPLETE_DATE);
-  await until(() =>
-    expect(dialog()?.textContent).toContain("Enter a real date as YYYY-MM-DD, such as 2026-08-01."),
-  );
-  // The box still shows what the browser holds, rather than the marker
-  expect(opened.value).toBe("");
 });
 
 /** The list editor on its own, keeping its items as the dialog would. */
