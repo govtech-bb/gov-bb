@@ -1,3 +1,30 @@
+diff --git a/index.js b/index.js
+index 7d4933198abcd2811d1d44a300831d1ee352afc1..8db44db60f5575bcba3ead216291a6f6f3267f86 100644
+--- a/index.js
++++ b/index.js
+@@ -40,14 +40,16 @@ function matter(input, options) {
+       file.orig = cached.orig;
+       return file;
+     }
+-
+-    // only cache if there are no options passed. if we cache when options
+-    // are passed, we would need to also cache options values, which would
+-    // negate any performance benefits of caching
+-    matter.cache[file.content] = file;
+   }
+ 
+-  return parseMatter(file, options);
++  // only cache if there are no options passed, and only after a successful
++  // parse, so input that fails to parse fails every time
++  const key = file.content;
++  const parsed = parseMatter(file, options);
++  if (!options) {
++    matter.cache[key] = parsed;
++  }
++  return parsed;
+ }
+ 
+ /**
 diff --git a/lib/engines.js b/lib/engines.js
 index 38f993db06cf364191ac635a6590c2d29303297d..7c02ad5b1c70c74df8dc61880fc7630afddf601c 100644
 --- a/lib/engines.js

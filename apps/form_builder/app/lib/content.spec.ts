@@ -546,11 +546,10 @@ Keep this paragraph.
       (globalThis as { frontMatterProbe?: () => string }).frontMatterProbe =
         probe;
       try {
-        expect(() =>
-          parseContentMarkdown(
-            `---${language}\n{ title: globalThis.frontMatterProbe() }\n---\nBody\n`,
-          ),
-        ).toThrow(/not supported/);
+        const raw = `---${language}\n{ title: globalThis.frontMatterProbe() }\n---\nBody\n`;
+        // Twice: a failed parse must not be served from gray-matter's cache.
+        expect(() => parseContentMarkdown(raw)).toThrow(/not supported/);
+        expect(() => parseContentMarkdown(raw)).toThrow(/not supported/);
         expect(probe).not.toHaveBeenCalled();
       } finally {
         delete (globalThis as { frontMatterProbe?: () => string })

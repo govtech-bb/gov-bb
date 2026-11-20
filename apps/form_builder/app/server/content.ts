@@ -476,6 +476,13 @@ function reviewBlockForClaims(
       claims,
     };
   }
+  if (!claim.sameRepo) {
+    return {
+      kind: "external",
+      message: `PR #${claim.prNumber} comes from a fork, so its changes are not shown here. Review it in GitHub.`,
+      claims,
+    };
+  }
   if (!claim.writable) {
     return {
       kind: "external",
@@ -547,6 +554,8 @@ export const loadLandingContentPage = createServerFn({
       res = await getContents(token, data.path, baseBranch);
       revision = { source: "base", sha: "" };
     }
+    // A page that exists only on a PR the builder doesn't read: explain why.
+    if (res.status === 404 && reviewBlock) throw new Error(reviewBlock.message);
     if (!res.ok) throw await ghError("Failed to load page", res);
     const json = (await res.json()) as { content: string; sha: string };
     const raw = Buffer.from(json.content, "base64").toString("utf8");

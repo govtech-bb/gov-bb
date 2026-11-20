@@ -77,4 +77,5 @@ allowUnusedPatches: true
 
 patchedDependencies:
   "@tanstack/ai-bedrock@0.3.7": patches/@tanstack__ai-bedrock@0.3.7.patch
+  # Also turns off JavaScript front matter (only YAML is supported); keep that on any gray-matter upgrade.
   "gray-matter@4.0.3": patches/gray-matter@4.0.3.patch
