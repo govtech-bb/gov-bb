@@ -62,17 +62,19 @@ const serveCollections = async (route) => {
         409,
       );
 
-    const unknown = body.schema.fields.findIndex(
-      (field) => !["text", "slug", "email"].includes(field.type),
-    );
+    const types = ["text", "slug", "email", "number", "boolean", "date", "list"];
+    const unknown = body.schema.fields.findIndex((field) => !types.includes(field.type));
 
     if (unknown >= 0)
       return reply(
         {
           error: "validation_failed",
-          message: "Choose one of text, slug, email.",
+          message: `Choose one of ${types.join(", ")}.`,
           errors: [
-            { field: `schema.fields.${unknown}.type`, message: "Choose one of text, slug, email." },
+            {
+              field: `schema.fields.${unknown}.type`,
+              message: `Choose one of ${types.join(", ")}.`,
+            },
           ],
         },
         422,
@@ -236,6 +238,10 @@ try {
     "Text",
     "Slug",
     "Email address",
+    "Number",
+    "Yes or no",
+    "Date",
+    "List of text",
   ]);
   const recordKey = dialog.getByLabel("Record key");
 

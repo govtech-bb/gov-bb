@@ -87,6 +87,45 @@ describe('fetchCollectionRecords', () => {
     expect(init.headers).toBeUndefined()
   })
 
+  it('parses a collection holding a number, a yes or no, a date and a list, without a fallback (#3782)', async () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const shelters = {
+      collection: {
+        ...CONTACTS.collection,
+        key: 'shelters',
+        schema: {
+          fields: [
+            { key: 'key', label: 'Key', type: 'slug' },
+            { key: 'capacity', label: 'Capacity', type: 'number' },
+            { key: 'has-water', label: 'Has water', type: 'boolean' },
+            { key: 'inspected', label: 'Inspected', type: 'date' },
+            { key: 'documents', label: 'Documents', type: 'list' },
+          ],
+        },
+      },
+      records: [
+        {
+          record_key: 'st-judes',
+          data: {
+            key: 'st-judes',
+            capacity: 0.1725,
+            'has-water': false,
+            inspected: '2026-08-01',
+            documents: ['ID card', 'Proof of address'],
+          },
+          updated_at: '2026-10-01T00:00:00.000Z',
+        },
+      ],
+    }
+    const read = await fetchCollectionRecords(
+      BASE,
+      'shelters',
+      stubFetch(json(200, shelters)),
+    )
+    expect(read?.records[0].data).toEqual(shelters.records[0].data)
+    expect(error).not.toHaveBeenCalled()
+  })
+
   it('is a silent miss on a 404', async () => {
     const error = vi.spyOn(console, 'error').mockImplementation(() => {})
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})

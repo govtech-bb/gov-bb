@@ -9,6 +9,10 @@ const NAMES = {
   text: "Text",
   slug: "Slug",
   email: "Email address",
+  number: "Number",
+  boolean: "Yes or no",
+  date: "Date",
+  list: "List of text",
 } satisfies Record<FieldType, string>;
 
 /** Every field type a new collection's field can have, with its name, in api_v2's order. */

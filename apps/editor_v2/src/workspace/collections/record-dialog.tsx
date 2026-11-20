@@ -15,17 +15,17 @@ import { download } from "../../host/download";
 import { Banner } from "../../ui/banner";
 import { Button } from "../../ui/button";
 import { ConfirmDialog } from "../../ui/confirm-dialog";
-import { Field } from "../../ui/field";
 import { FormDialog } from "../../ui/form-dialog";
-import { Input } from "../../ui/input";
 import { toast } from "../../ui/toast";
 import { pressedByTouch } from "../../ui/focus";
 import { ApiProblems, ApiProblemText } from "../api-problems";
 import { ContentDiff } from "../review-screens";
 import { useWrite } from "../use-write";
+import { RecordField } from "./record-field";
 import {
   droppedFields,
   keyProblem,
+  keyText,
   recordData,
   recordValues,
   withRecord,
@@ -101,7 +101,10 @@ export function RecordDialog({
   const [filled, setFilled] = useState(0);
   const body = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    if (filled && !pressedByTouch()) body.current?.querySelector("input")?.focus();
+    if (filled && !pressedByTouch())
+      body.current
+        ?.querySelector<HTMLElement>("input:not([aria-hidden='true']), [role='checkbox']")
+        ?.focus();
   }, [filled]);
   const shown = base ? base.record : record;
   const title = shown ? `Edit ${shown.record_key}` : "Add a record";
@@ -169,7 +172,7 @@ export function RecordDialog({
 
   const definition = base.collection;
   const fields = definition.schema.fields;
-  const recordKey = base.record?.record_key ?? (values[definition.record_key] ?? "").trim();
+  const recordKey = base.record?.record_key ?? keyText(values[definition.record_key]).trim();
   const outcome = save.outcome;
   const conflict = outcome?.kind === "conflict";
 
@@ -213,7 +216,7 @@ export function RecordDialog({
 
     try {
       const key =
-        unknown && !base.record ? (checked?.[definition.record_key] ?? "").trim() : recordKey;
+        unknown && !base.record ? keyText(checked?.[definition.record_key]).trim() : recordKey;
 
       const latest = await api.record(definition.key, key);
 
@@ -261,31 +264,25 @@ export function RecordDialog({
 
   const input = (
     key: string,
+    name: string,
     label: string,
     kind: Collection["schema"]["fields"][number]["type"],
     hint?: string,
     error?: string,
   ) => (
-    <Field
+    <RecordField
       key={key}
+      type={kind}
+      name={name}
       label={label}
       hint={hint}
       error={values[key] === checked?.[key] ? error : undefined}
-    >
-      <Input
-        value={values[key] ?? ""}
-        readOnly={
-          readOnly || (key === definition.record_key && (!!base.record || pending || unknown))
-        }
-        inputMode={kind === "email" ? "email" : undefined}
-        spellCheck={kind === "text" ? undefined : false}
-        autoCapitalize={kind === "text" ? undefined : "off"}
-        onChange={(event) => {
-          const value = event.target.value;
-          setValues((old) => ({ ...old, [key]: value }));
-        }}
-      />
-    </Field>
+      value={values[key]}
+      readOnly={
+        readOnly || (key === definition.record_key && (!!base.record || pending || unknown))
+      }
+      onChange={(value) => setValues((old) => ({ ...old, [key]: value }))}
+    />
   );
 
   const keyHint = base.record
@@ -390,12 +387,14 @@ export function RecordDialog({
             Saving removes values for fields this collection no longer has: {dropped.join(", ")}.
           </Banner>
         )}
-        {!keyListed && input(definition.record_key, "Key", "slug", keyHint, keyError ?? taken)}
+        {!keyListed &&
+          input(definition.record_key, "Key", "Key", "slug", keyHint, keyError ?? taken)}
         {fields.map((field) => {
           const isKey = field.key === definition.record_key;
 
           return input(
             field.key,
+            field.label,
             isKey ? field.label : `${field.label} (optional)`,
             field.type,
             isKey ? keyHint : undefined,

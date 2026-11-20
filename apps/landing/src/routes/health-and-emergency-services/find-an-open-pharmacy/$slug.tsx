@@ -1,8 +1,7 @@
 import { createFileRoute, notFound } from '@tanstack/react-router'
 import { PageShell } from '../../../components/PageShell'
-import { isUrlVisible, urlLevel } from '../../../content/registry'
+import { gateOnContentUrl } from '@/lib/content-gate'
 import { pageHead } from '../../../lib/page-head'
-import { deriveVisibilityOverlay } from '../../../lib/service-status'
 import { SITE_URL } from '../../../lib/site-url'
 import { pharmacyJsonLd } from './-lib/json-ld'
 import { findPharmacyBySlug } from './-lib/pharmacy-slug'
@@ -16,18 +15,14 @@ export const Route = createFileRoute(
   staticData: { breadcrumbMode: 'location' },
   // Mirror the markdown service page's rollout gate, then resolve the
   // pharmacy - unknown slugs 404.
-  beforeLoad: ({ context }) => {
-    const overlay = deriveVisibilityOverlay(context.serviceStatuses)
-    if (!isUrlVisible(CONTENT_URL, context.level, overlay)) throw notFound()
-    return { pharmacyServiceLevel: urlLevel(CONTENT_URL, overlay) }
-  },
+  beforeLoad: ({ context }) => gateOnContentUrl(CONTENT_URL, context),
   loader: ({ params }) => {
     const pharmacy = findPharmacyBySlug(params.slug)
     if (!pharmacy) throw notFound()
     return pharmacy
   },
   head: ({ params, loaderData: pharmacy, match }) => {
-    const isPublic = match.context.pharmacyServiceLevel === 'public'
+    const isPublic = match.context.serviceLevel === 'public'
     const path = `/${CONTENT_URL}/${params.slug}`
     const head = pageHead(
       pharmacy?.name ?? 'Pharmacy',

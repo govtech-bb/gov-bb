@@ -374,6 +374,8 @@ The editor loads record detail through authenticated `GET /collections/:key/reco
 
 `POST /collections` creates a collection from `{ key, title, record_key, schema: { fields } }` (#3681). It needs `admin` or `approver`. The key follows `CollectionKey`; there must be at least one field, each with a key no other field has, a label and a type from `FIELD_TYPES`; and `record_key` must name one of its `slug` fields, since a record's key is a slug in its url. A refusal is a 422 `validation_failed` whose `errors` name each field by path (`key`, `title`, `schema.fields`, `schema.fields.1.type`, `record_key`), and a taken key is a 409 `collection_exists` naming `key`; neither writes anything. The `record_change` trigger records the create in `change_events` against the employee.
 
+A field's type sets the kind of value a record holds for it (#3782, ADR 0140): `text`, `slug` and `email` hold a string; `number` a finite JSON number, decimals allowed (a rate such as `0.1725`); `boolean` `true` or `false`; `date` a string holding a real calendar date as `YYYY-MM-DD`; and `list` an array of up to `LIST_MAX_ITEMS` (50) strings, each trimmed, not blank and up to `LIST_ITEM_MAX` (300) characters. Nested data is flattened into fields of these types; there is no JSON type, and a field's type can't change once the collection exists. A value of the wrong kind, such as `"12"` in a number field or `2026-13-40` in a date field, is a 400 `validation_failed` naming the field, and nothing is written. Records are stored in `collection_records.data` as `jsonb`, so each value keeps its JSON type and no migration was needed.
+
 Preview: the site's server sends its `PREVIEW_SECRET` as `x-preview-token`, and the same reads then include `preview` content. Those responses are `no-store` with no ETag, so preview content never enters a shared cache. A wrong token, or any token when `PREVIEW_SECRET` is unset here, is a 401 rather than a quiet fall-back to the public view. `draft` content is only ever served to the editor.
 
 The hierarchy is `parent_id`, not the url. A page is served only when it and every page above it are visible; its breadcrumbs are its category (and parent category, for a subcategory), then the pages above it; a category lists only the pages at its root (`parent_id` null), so `start` steps and sub-pages never appear in a listing. A sub-page must share its parent's category (moving the parent moves its sub-pages), a page cannot sit beneath itself, and a page with sub-pages cannot be deleted: each is a field-specific 422.
@@ -532,9 +534,9 @@ The seed is a committed snapshot of legacy markdown and the category taxonomy, s
 
 The generated snapshot converts StormReady's legacy contact grid to headings and `::contact` blocks. The static page keeps its old markup so it still works without api_v2. New estates seed the four records from `src/seed-data/stormready-contacts.ts`.
 
-An existing estate needs a targeted update. Neither a normal seed nor `import-estate --force` adds records to an existing collection; a force import also deletes authored pages and pending revisions. Do not use it for this update.
+An existing estate needs a targeted update. Neither a normal seed nor `import-estate --force` adds records to an existing collection; a force import also deletes authored pages and pending revisions. Do not use it for this update. `import-collections` adds them (see "Importing collections into an existing estate" below).
 
-1. Deploy the contact-block code first. In the editor's collections screen, add the missing records below to `contacts`. Keep the key, name and phone; leave other fields empty. If a key already exists, check its current details rather than overwriting them.
+1. Deploy the contact-block code first. Then run `import-collections`, dry run first, to add the missing records below to `contacts`. It adds each key that is missing and skips, by name, a key whose current details differ from these; check those details rather than overwriting them with `--force`.
 
    | Key | Name | Phone |
    | --- | --- | --- |
@@ -666,6 +668,64 @@ gh variable delete CONTENT_FREEZE            # off
 
 The "Generated Files Up To Date" job (#3136) stays on: it also regenerates a v1 file (`services-index.generated.ts`) and writes only generated files, so the freeze check never trips on it, and with the markdown frozen its `estate.json` regen is a no-op. From then on `estate.json` no longer tracks the prod database; it is read only by local `SEED` and fresh imports. After the prod import, content changes go through the editor only.
 
+## Importing collections into an existing estate (#3783)
+
+`import-estate` creates the seed's data collections (`src/seed-data/collections.ts`) only in a database it loads for the first time. `import-collections` brings a database that already has its estate up to the same seed, so a collection or record added to the seed later reaches every environment. It is compiled into the image beside `import-estate.js` and runs the same way:
+
+```sh
+node dist/src/import-collections.js [--dry-run] [--force "<reason>"]
+```
+
+Locally, from this directory, run `pnpm import-collections --dry-run` (or without `--dry-run`); it reads `.env` like `pnpm dev`. No `--` separator.
+
+What it does, in one transaction:
+
+- It creates each seed collection the database does not have, with its records, and adds each seed record an existing collection does not have. A record an editor deleted comes back while it is still in the seed, so take it out of the seed too.
+- It skips each stored record whose data differs from the seed, which is an editor's change, and names it. `--force "<reason>"` replaces those records with the seed's.
+- It refuses, with exit code 1, when a stored collection's field list or record key differs from the seed's, names each one with both field lists, and writes nothing. It never changes a field list: change the seed to match the stored one.
+- It never deletes, and never touches pages, categories, redirects or revisions.
+- Every write is checked as the editor's would be (`parseNewCollection`, `parseRecord`), and the `record_change` trigger records it in `change_events` by `system`. A second run with no seed change writes nothing.
+- It holds `data_collections` and `collection_records` against writes until it commits, so an editor's collection save waits for it; reads carry on.
+
+It migrates, prints `database: <name> host: <addr>` before writing anything, then one JSON line: `{"mode":"dry-run"|"import"|"replace","reason":"<reason>"|null,"collections_created":N,"created":["<collection>",…],"records_added":N,"added":["<collection>/<record>",…],"records_skipped":N,"skipped":["<collection>/<record>",…],"records_replaced":N,"replaced":[…]}`. `--dry-run` does the real work and rolls it back, so its counts and refusals are real; `--dry-run --force "<reason>"` shows what a replace would do.
+
+### Running it in an environment
+
+Sandbox runs it whenever a deploy adds seed collections or records. Staging and prod get every seed collection at their cutover import (#3229, #3230); after that, they run it the same way. Every run imports the seed on the deployed commit.
+
+1. Note the commit sha of the deploy that carries the seed change, and wait for that api_v2 deploy to finish.
+2. Set up the shell as in "Importing the estate", step 2 (`AWS_PROFILE`, `AWS_REGION`, `ENV`, `CLUSTER`, `SERVICE`), then find the running task, confirm its image is tagged with the sha from step 1, and open a shell in it:
+
+   ```sh
+   TASK=$(aws ecs list-tasks --cluster "$CLUSTER" --service-name "$SERVICE" --query 'taskArns[0]' --output text)
+   aws ecs describe-tasks --cluster "$CLUSTER" --tasks "$TASK" --query 'tasks[0].containers[?name==`api-v2`].image' --output text
+   aws ecs execute-command --cluster "$CLUSTER" --task "$TASK" --container api-v2 --interactive --command /bin/sh
+   ```
+
+3. Inside that shell, dry run first. Read the `database:` line and the counts. Check `added` for a record an editor deleted on purpose: the run brings it back, so take it out of the seed first. For each record in `skipped`, check its current details in the editor and decide whether the editor's change stays.
+
+   ```sh
+   node dist/src/import-collections.js --dry-run
+   node dist/src/import-collections.js
+   ```
+
+   Only to replace the skipped records, after deciding the editor's changes must go:
+
+   ```sh
+   node dist/src/import-collections.js --dry-run --force "<env>: <why> (<deployed sha>)"
+   node dist/src/import-collections.js --force "<env>: <why> (<deployed sha>)"
+   ```
+
+4. From your machine, on a checkout of the sha from step 1, compare the environment's collections with the seed through the public `GET /collections/:key/records`. The API marks those reads cacheable for a minute (`max-age=60`, `stale-while-revalidate=300`), so wait a minute after the import, and if a difference names a record the run just wrote, wait and run the check again:
+
+   ```sh
+   pnpm --filter @govtech-bb/api-v2 check-collections --base-url https://<api origin>
+   ```
+
+   It prints one line per difference (`<collection>: collection missing`, `<collection>: field list differs. …`, `<collection>/<record>: record missing` or `record differs from the seed`), then `N differences in M seed collections`, and exits 1 on any. After a run it reports 0, except for the records the run skipped. Records the seed does not have are editors' and are not differences.
+
+5. Paste the dry run's and the real run's JSON lines and the check's output on the issue that added the seed change.
+
 ## History protection
 
 `change_events_no_mutate` rejects ordinary updates and all deletes. The
@@ -753,7 +813,7 @@ too. Another approver who did not contribute must publish the page.
 
 SIGINT/SIGTERM drain HTTP requests before closing the shared pool; startup failures also release acquired resources. JSON logs omit cookies, OAuth callback query parameters, provider tokens and raw driver error objects. The exact warning `idle database connection dropped` remains the operational alarm marker; its safe `code` identifies the failure. Public content failures continue to use the existing 500 response, while authentication outages fail closed with 503.
 
-The server's pool gives a request's query 5 s and a new connection 2 s, and keeps its sockets alive with TCP keepalive. Boot migrations run on a pool of their own, with 10 min a statement. Postgres enforces the same query limits (`statement_timeout`), so a query that times out also stops on the server instead of keeping a connection open after the pool has replaced it. A database that goes quiet without hanging up (a failover or partition) therefore answers 500 `internal_error` from the driver's "Query read timeout" instead of hanging. A query waiting on a lock counts too, so editor writes fail after 5 s while `reindex-search` holds the content lock for longer than that. The jobs (`import-estate`, `reindex-search`, `redact-change-events`) have no query limit.
+The server's pool gives a request's query 5 s and a new connection 2 s, and keeps its sockets alive with TCP keepalive. Boot migrations run on a pool of their own, with 10 min a statement. Postgres enforces the same query limits (`statement_timeout`), so a query that times out also stops on the server instead of keeping a connection open after the pool has replaced it. A database that goes quiet without hanging up (a failover or partition) therefore answers 500 `internal_error` from the driver's "Query read timeout" instead of hanging. A query waiting on a lock counts too, so editor writes fail after 5 s while `reindex-search` holds the content lock for longer than that. The jobs (`import-estate`, `import-collections`, `reindex-search`, `redact-change-events`) have no query limit.
 
 The site routes (`/pages`, `/categories…`, `/collections/:key/records`, `/site-version`, `/catalog`, `/search/documents`) are limited to 1,000 requests a minute per client, answering 429 beyond it; editor, auth and `/docs` routes are not limited. `trustProxy` trusts only private-address peers (the ALB), so the client is the address the ALB forwards and a client's own `X-Forwarded-For` entries are ignored. Buckets are in memory, per task. Landing is exempt: its server sends `LANDING_SECRET` as `x-landing-token`, and such requests skip the limit and carry no `x-ratelimit-*` headers. It has to be, because landing reads `/pages` on every uncached page view (and a category listing on every category page view, and `/site-version` on its poll) from a few shared egress addresses, so its rate follows citizen and bot traffic and no limit can be sized above it (#3129). With `LANDING_SECRET` unset, nobody is exempt.
 

@@ -1372,7 +1372,11 @@
                                     "enum": [
                                       "text",
                                       "slug",
-                                      "email"
+                                      "email",
+                                      "number",
+                                      "boolean",
+                                      "date",
+                                      "list"
                                     ]
                                   }
                                 },
@@ -1425,7 +1429,23 @@
                           "data": {
                             "type": "object",
                             "additionalProperties": {
-                              "type": "string"
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "number"
+                                },
+                                {
+                                  "type": "boolean"
+                                },
+                                {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string"
+                                  }
+                                }
+                              ]
                             }
                           },
                           "updated_at": {
@@ -6172,7 +6192,11 @@
                                       "enum": [
                                         "text",
                                         "slug",
-                                        "email"
+                                        "email",
+                                        "number",
+                                        "boolean",
+                                        "date",
+                                        "list"
                                       ]
                                     }
                                   },
@@ -6360,7 +6384,7 @@
                             },
                             "type": {
                               "type": "string",
-                              "description": "One of `text`, `slug`, `email`."
+                              "description": "One of `text`, `slug`, `email`, `number`, `boolean`, `date`, `list`."
                             }
                           },
                           "required": [
@@ -6436,7 +6460,11 @@
                                 "enum": [
                                   "text",
                                   "slug",
-                                  "email"
+                                  "email",
+                                  "number",
+                                  "boolean",
+                                  "date",
+                                  "list"
                                 ]
                               }
                             },
@@ -6761,7 +6789,11 @@
                                     "enum": [
                                       "text",
                                       "slug",
-                                      "email"
+                                      "email",
+                                      "number",
+                                      "boolean",
+                                      "date",
+                                      "list"
                                     ]
                                   }
                                 },
@@ -6812,7 +6844,23 @@
                         "data": {
                           "type": "object",
                           "additionalProperties": {
-                            "type": "string"
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "number"
+                              },
+                              {
+                                "type": "boolean"
+                              },
+                              {
+                                "type": "array",
+                                "items": {
+                                  "type": "string"
+                                }
+                              }
+                            ]
                           }
                         },
                         "updated_at": {
@@ -7093,7 +7141,23 @@
                     "data": {
                       "type": "object",
                       "additionalProperties": {
-                        "type": "string"
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "number"
+                          },
+                          {
+                            "type": "boolean"
+                          },
+                          {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          }
+                        ]
                       }
                     },
                     "updated_at": {
@@ -7429,7 +7493,11 @@
                                     "enum": [
                                       "text",
                                       "slug",
-                                      "email"
+                                      "email",
+                                      "number",
+                                      "boolean",
+                                      "date",
+                                      "list"
                                     ]
                                   }
                                 },
@@ -7480,7 +7548,23 @@
                         "data": {
                           "type": "object",
                           "additionalProperties": {
-                            "type": "string"
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "number"
+                              },
+                              {
+                                "type": "boolean"
+                              },
+                              {
+                                "type": "array",
+                                "items": {
+                                  "type": "string"
+                                }
+                              }
+                            ]
                           }
                         },
                         "updated_at": {

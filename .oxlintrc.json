@@ -283,6 +283,7 @@
       "files": [
         "apps/api_v2/src/main.ts",
         "apps/api_v2/src/import-estate.ts",
+        "apps/api_v2/src/import-collections.ts",
         "apps/api_v2/src/reindex-search.ts",
         "apps/api_v2/src/redact-change-events.ts",
         "apps/api_v2/src/test-db.ts",
