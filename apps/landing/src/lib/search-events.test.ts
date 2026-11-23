@@ -1,7 +1,7 @@
 /**
  * @vitest-environment jsdom
  */
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type * as Analytics from './analytics'
 import { trackEvent } from './analytics'
 import { trackSearchOnce } from './search-events'
@@ -13,7 +13,12 @@ vi.mock('./analytics', async (orig) => ({
 
 const sentEvents = () => vi.mocked(trackEvent).mock.calls
 
+beforeEach(() => {
+  window.umami = { track: vi.fn() }
+})
+
 afterEach(() => {
+  delete window.umami
   vi.unstubAllGlobals()
   vi.mocked(trackEvent).mockReset()
   sessionStorage.clear()
@@ -64,6 +69,23 @@ describe('trackSearchOnce', () => {
       ['search', { query: 'passport', results: 1 }],
     ])
     expect(sessionStorage.getItem('search-events-sent')).not.toContain('123456')
+  })
+
+  it('starts afresh when the stored list is not a list', () => {
+    sessionStorage.setItem('search-events-sent', '{"passport":1}')
+    trackSearchOnce('passport', 3)
+    trackSearchOnce('passport', 3)
+
+    expect(sentEvents()).toEqual([
+      ['search', { query: 'passport', results: 3 }],
+    ])
+  })
+
+  it('stores nothing when analytics is off', () => {
+    delete window.umami
+    trackSearchOnce('my name', 0)
+
+    expect(sessionStorage.getItem('search-events-sent')).toBeNull()
   })
 
   it('sends on each mount, without a crash, when storage throws', () => {

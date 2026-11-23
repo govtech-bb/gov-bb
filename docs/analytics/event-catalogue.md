@@ -92,8 +92,9 @@ Where a citizen was stopped before reaching a service.
 ## Search
 
 On landing. Every `query` is masked (see above). `search` and
-`search-no-results` are sent once per query per browser session, so Back or a
-reload does not count the same search again.
+`search-no-results` are sent once per query per tab session (`sessionStorage`),
+so Back or a reload does not count the same search again. A new tab starts a
+new session.
 
 | Event                      | Data                                           | Fires when                                                                                                                          |
 | -------------------------- | ---------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
