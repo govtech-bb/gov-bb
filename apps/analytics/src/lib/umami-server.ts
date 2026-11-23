@@ -8,6 +8,7 @@
 import { defaultValidationMessage } from '@govtech-bb/form-validation'
 import {
   ALL_EVENT_NAMES,
+  ALL_PAGE_URLS,
   FUNNEL_WINDOW_MIN,
   UmamiClient,
   aggregateFormEvents,
@@ -896,7 +897,8 @@ export async function fetchToolsData(
     const r = rangeForKey(range)
     const tools = liveTools()
     const [urlRows, eventRows] = await Promise.all([
-      client.metricsUrls(cfg.landingWebsiteId, r),
+      // ALL_PAGE_URLS, so a tool's quiet sub-pages count towards its visitors.
+      client.metricsUrls(cfg.landingWebsiteId, r, ALL_PAGE_URLS),
       fetchToolEventRows(client, cfg.landingWebsiteId, tools, r),
     ])
     // One referrers call per tool entry path (throttled by the client), like

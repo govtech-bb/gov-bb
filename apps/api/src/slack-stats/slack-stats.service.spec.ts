@@ -39,6 +39,19 @@ const formDefinitions = {
 const funnel = (...visitors: number[]) =>
   visitors.map((v) => ({ type: "event", value: "", visitors: v }));
 
+/** Landing URL rows like Umami's: busiest first, cut at the limit (the
+ *  client's default 500). `quiet` sits below 600 busier pages (#3823). */
+const urlsBelow600Busier = (quiet: { x: string; visitors: number }) => {
+  const busier = Array.from({ length: 600 }, (_, i) => ({
+    x: `/page-${i}`,
+    visitors: 1000 - i,
+  }));
+  umami.metricsUrls.mockImplementation(
+    async (_site: string, _range: unknown, limit = 500) =>
+      [...busier, quiet].slice(0, limit),
+  );
+};
+
 /** buildReply's output as one searchable string. */
 async function reply(...args: Parameters<SlackStatsService["buildReply"]>) {
   const message = await service().buildReply(...args);
@@ -247,6 +260,18 @@ describe("SlackStatsService.buildReply — one tool", () => {
     expect(umami.reportFunnel).not.toHaveBeenCalled();
   });
 
+  it("counts a tool page that sits below more than 500 busier URLs (#3823)", async () => {
+    urlsBelow600Busier({
+      x: "/business-trade/crop-over-permits/result",
+      visitors: 7,
+    });
+
+    const text = await reply("/stats", "week", "crop-over-permits", NOW);
+
+    expect(text).toContain("*👥 Visitors to the tool*\\n*7*");
+    expect(umami.metricsUrls).toHaveBeenCalledTimes(2);
+  });
+
   it("shows the empty state for a tool with no events, with no breakdown reads", async () => {
     const text = await reply("/stats", "week", "pharmacy-finder", NOW);
 
@@ -410,6 +435,18 @@ describe("SlackStatsService.buildReply — all tools", () => {
     expect(reads()).toEqual([...period, ...period]);
     expect(umami.metricsUrls).toHaveBeenCalledTimes(2);
     expect(formDefinitions.findAll).not.toHaveBeenCalled();
+  });
+
+  it("counts a tool page that sits below more than 500 busier URLs (#3823)", async () => {
+    urlsBelow600Busier({
+      x: "/business-trade/crop-over-permits/result",
+      visitors: 7,
+    });
+
+    const text = await reply("/stats", "week", "tools", NOW);
+
+    expect(text).toContain("(`crop-over-permits`): 👥 *7* visitors");
+    expect(umami.metricsUrls).toHaveBeenCalledTimes(2);
   });
 
   it("apologises rather than show no events when Umami fails", async () => {

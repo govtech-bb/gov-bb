@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   buildFunnelSteps,
   buildStepFunnel,
@@ -20,6 +20,7 @@ import {
   type UmamiConfig,
 } from './umami-server'
 import type { ServiceIndexEntry } from '@govtech-bb/content'
+import { __clearCache } from './cache'
 
 describe('configured gates', () => {
   const full = {
@@ -417,6 +418,46 @@ describe('fetchToolsData (tool events read from Umami)', () => {
       confirmed: 0,
       unsubscribed: 0,
     })
+  })
+})
+
+describe('Tools tab reads every landing URL (#3823)', () => {
+  beforeEach(() => {
+    __clearCache()
+  })
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('counts a tool page that sits below more than 500 busier URLs', async () => {
+    // URL rows like Umami's: busiest first, cut at the requested limit.
+    const busier = Array.from({ length: 600 }, (_, i) => ({
+      x: `/page-${i}`,
+      visitors: 1000 - i,
+    }))
+    const quiet = { x: '/business-trade/crop-over-permits/result', visitors: 7 }
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: URL) => {
+        const body = input.pathname.endsWith('/metrics/expanded')
+          ? [...busier, quiet].slice(0, Number(input.searchParams.get('limit')))
+          : []
+        return { ok: true, status: 200, json: async () => body } as Response
+      }),
+    )
+
+    const data = await fetchToolsData(
+      {
+        apiKey: 'k',
+        landingWebsiteId: 'l',
+        formsWebsiteId: 'f',
+        formsApiUrl: 'http://forms.test',
+      },
+      'past-30-days',
+    )
+
+    const crop = data.tools.find((t) => t.path.includes('/crop-over-permits'))
+    expect(crop?.visitors).toBe(7)
   })
 })
 
