@@ -1,5 +1,6 @@
 import type {
   ComparisonPeriods,
+  EventDataValue,
   SearchStats,
   StatsPeriod,
 } from "@govtech-bb/umami-analytics";
@@ -522,6 +523,8 @@ export function formatChatStats(
 export interface SearchReport {
   current: SearchStats;
   previous: SearchStats;
+  /** this period's `search-no-results` rows: query, and searches that found nothing. */
+  noResults: EventDataValue[];
 }
 
 const QUERIES_SHOWN = 5;
@@ -536,17 +539,25 @@ export const slackQuery = (query: string) =>
 
 export function formatSearchStats(
   heading: PeriodHeading,
-  { current: c, previous: p }: SearchReport,
+  { current: c, previous: p, noResults }: SearchReport,
 ): SlackMessage {
-  const noResults = [c, p].map((s) => (s.searches ? s.zeroResultRate : null));
+  const noResultRate = [c, p].map((s) =>
+    s.searches ? s.zeroResultRate : null,
+  );
   // shapeSearch keeps an empty query as a row; it says nothing here.
-  const queries = c.queries.filter((q) => slackQuery(q.query));
+  const queries = c.queries
+    .map((q) => ({ label: slackQuery(q.query), count: q.searches }))
+    .filter((q) => q.label);
+  const nothing = noResults
+    .map((r) => ({ label: slackQuery(String(r.value)), count: r.total }))
+    .filter((q) => q.label)
+    .sort((a, b) => b.count - a.count);
   const list = (title: string, rows: typeof queries) =>
     section(
       `*${title}*\n` +
         rows
           .slice(0, QUERIES_SHOWN)
-          .map((q) => `• ${slackQuery(q.query)}: *${num(q.searches)}*`)
+          .map((q) => `• ${q.label}: *${num(q.count)}*`)
           .join("\n"),
       true,
     );
@@ -557,13 +568,12 @@ export function formatSearchStats(
       ["🔎 Searches", num(c.searches), countChange(c.searches, p.searches)],
       [
         "🚫 No results",
-        pct(noResults[0]),
-        rateChange(noResults[0], noResults[1], "down"),
+        pct(noResultRate[0]),
+        rateChange(noResultRate[0], noResultRate[1], "down"),
       ],
       ["👆 Result clicks", num(c.clicks), countChange(c.clicks, p.clicks)],
     ]),
   ];
-  const nothing = queries.filter((q) => q.zeroResult);
   if (queries.length) {
     blocks.push(divider, list("🔝 Top searches", queries));
     if (nothing.length) {

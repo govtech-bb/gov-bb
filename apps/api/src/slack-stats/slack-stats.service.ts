@@ -395,9 +395,10 @@ export class SlackStatsService {
   }
 
   /**
-   * Landing search (#3809): the four calls the dashboard's Search tab makes,
-   * shaped by the same shapeSearch, for each period. Like chatReply, an Umami
-   * error is not read as "no searches": it reaches reply(), which apologises.
+   * Landing search (#3809): the calls the dashboard's Search tab makes, shaped
+   * by the same shapeSearch, for each period; 7 requests, one at a time. Like
+   * chatReply, an Umami error is not read as "no searches": it reaches
+   * reply(), which apologises.
    */
   private async searchReply(
     period: StatsPeriod,
@@ -408,19 +409,24 @@ export class SlackStatsService {
     const client = new UmamiClient({ apiKey });
     const values = (event: string, propertyName: string, range: Range) =>
       client.eventDataValues(landingWebsiteId, event, propertyName, range);
-    // Every query, not the dashboard's top 20, so a rare query that found
-    // nothing still makes the "found nothing" list. One call at a time.
-    const searchPeriod = async (range: Range) =>
+    const searchPeriod = async (range: Range, noResults: EventDataValue[]) =>
       shapeSearch(
         await values("search", "query", range),
         await values("search", "results", range),
         await values("search-result-click", "query", range),
-        await values("search-no-results", "query", range),
-        Infinity,
+        noResults,
       );
+    const noResults = await values(
+      "search-no-results",
+      "query",
+      periods.current,
+    );
     return formatSearchStats(periodHeading(period, periods), {
-      current: await searchPeriod(periods.current),
-      previous: await searchPeriod(periods.previous),
+      current: await searchPeriod(periods.current, noResults),
+      // The no-result rows only flag queries; no count for the previous
+      // period depends on them, so that call is skipped.
+      previous: await searchPeriod(periods.previous, []),
+      noResults,
     });
   }
 

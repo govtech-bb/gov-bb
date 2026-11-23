@@ -232,10 +232,14 @@ describe("SlackStatsService.buildReply — search", () => {
     const text = await reply("/stats", "week", "search", NOW);
 
     expect(formDefinitions.findAll).not.toHaveBeenCalled();
-    expect(umami.eventDataValues).toHaveBeenCalledTimes(8);
-    for (const [site] of umami.eventDataValues.mock.calls) {
-      expect(site).toBe("landing");
-    }
+    const calls = umami.eventDataValues.mock.calls;
+    expect(calls).toHaveLength(7);
+    for (const [site] of calls) expect(site).toBe("landing");
+    // The first four calls read last week, the last three the week before.
+    const ranges = calls.map((c) => JSON.stringify(c[3]));
+    expect(new Set(ranges.slice(0, 4)).size).toBe(1);
+    expect(new Set(ranges.slice(4)).size).toBe(1);
+    expect(ranges[4]).not.toBe(ranges[0]);
     expect(text).toContain("*40*   ⚪ no change");
     expect(text).toContain("*25%*   ⚪ no change");
     expect(text).toContain("*25*   ⚪ no change");

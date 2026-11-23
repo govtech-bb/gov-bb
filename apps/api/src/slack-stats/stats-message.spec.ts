@@ -496,6 +496,11 @@ describe("formatSearchStats", () => {
         ],
       }),
       previous: stats({ searches: 1000, clicks: 800, zeroResultRate: 0.15 }),
+      noResults: [
+        { value: "1****6", total: 10 },
+        { value: "", total: 50 },
+        { value: "tamis", total: 25 },
+      ],
     });
     expect(message.text).toBe(
       "🔎 Last week: 1,200 searches, 780 result clicks",
@@ -517,7 +522,7 @@ describe("formatSearchStats", () => {
       • tamis: *40*
       • driver licence: *30*
       *🤷 Top searches that found nothing*
-      • tamis: *40*
+      • tamis: *25*
       • 1∗∗∗∗6: *10*
       Numbers are searches for each query."
     `);
@@ -527,6 +532,7 @@ describe("formatSearchStats", () => {
     const message = formatSearchStats(LAST_WEEK, {
       current: stats({}),
       previous: stats({ searches: 40, clicks: 10, zeroResultRate: 0.1 }),
+      noResults: [],
     });
     expect(render(message)).toMatchInlineSnapshot(`
       "🔎 Search · Last week
@@ -547,6 +553,7 @@ describe("formatSearchStats", () => {
     const message = formatSearchStats(LAST_WEEK, {
       current: stats({ searches: 5, queries: [query(hostile, 5, true)] }),
       previous: stats({}),
+      noResults: [{ value: hostile, total: 5 }],
     });
     const lists = message.blocks.filter(
       (b) => (b as { text?: { verbatim?: boolean } }).text?.verbatim,
