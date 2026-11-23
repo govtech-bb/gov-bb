@@ -10,6 +10,7 @@ import {
   eventName,
   funnelHeadline,
   liveTools,
+  shapeSearch,
   shapeTools,
   shapeWaterAlerts,
   shapeJourneyList,
@@ -31,6 +32,7 @@ import {
   formatChatStats,
   formatFormStats,
   formatJourneyStats,
+  formatSearchStats,
   formatSiteStats,
   formatToolStats,
   formatToolsSummary,
@@ -193,6 +195,7 @@ export class SlackStatsService {
     if (formId === "chat") return this.chatReply(period, now);
     if (formId === "tools") return this.toolsReply(period, now);
     if (formId === "journeys") return this.journeysReply(period, now);
+    if (formId === "search") return this.searchReply(period, now);
     const tool = TOOLS.find((t) => t.id === formId);
     if (tool) return this.toolReply(period, tool, now);
 
@@ -452,6 +455,42 @@ export class SlackStatsService {
       paths: shapeJourneyList(journeys),
       current: await handOffs(periods.current),
       previous: await handOffs(periods.previous),
+    });
+  }
+
+  /**
+   * Landing search (#3809): the calls the dashboard's Search tab makes, shaped
+   * by the same shapeSearch, for each period; 7 requests, one at a time. Like
+   * chatReply, an Umami error is not read as "no searches": it reaches
+   * reply(), which apologises.
+   */
+  private async searchReply(
+    period: StatsPeriod,
+    now: Date,
+  ): Promise<SlackMessage> {
+    const periods = comparisonPeriods(period, TZ, now);
+    const { apiKey, landingWebsiteId } = this.umamiConfig();
+    const client = new UmamiClient({ apiKey });
+    const values = (event: string, propertyName: string, range: Range) =>
+      client.eventDataValues(landingWebsiteId, event, propertyName, range);
+    const searchPeriod = async (range: Range, noResults: EventDataValue[]) =>
+      shapeSearch(
+        await values("search", "query", range),
+        await values("search", "results", range),
+        await values("search-result-click", "query", range),
+        noResults,
+      );
+    const noResults = await values(
+      "search-no-results",
+      "query",
+      periods.current,
+    );
+    return formatSearchStats(periodHeading(period, periods), {
+      current: await searchPeriod(periods.current, noResults),
+      // The no-result rows only flag queries; no count for the previous
+      // period depends on them, so that call is skipped.
+      previous: await searchPeriod(periods.previous, []),
+      noResults,
     });
   }
 
