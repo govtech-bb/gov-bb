@@ -267,6 +267,7 @@ export class SlackStatsService {
     }
     // Every field in the form, by its label (or its ID when it has none).
     const labelByField = new Map<string, string>();
+    const addAnotherLabels = new Set<string>();
     for (const step of contract.steps) {
       for (const el of (step.elements ?? []) as {
         fieldId?: string;
@@ -274,13 +275,20 @@ export class SlackStatsService {
       }[]) {
         if (el.fieldId) labelByField.set(el.fieldId, el.label || el.fieldId);
       }
-      // apps/forms adds an "Add another?" radio to a repeatable step. Every
-      // step's radio has the same ID, so they share one row and one label.
       for (const b of step.behaviours ?? []) {
-        if (b.type === "repeatable" && !labelByField.has("addAnother")) {
-          labelByField.set("addAnother", b.addAnotherLabel ?? "Add another?");
+        if (b.type === "repeatable") {
+          addAnotherLabels.add(b.addAnotherLabel ?? "Add another?");
         }
       }
+    }
+    // apps/forms adds an "Add another?" radio to a repeatable step. Every
+    // step's radio has the same ID, so they share one row: it keeps the
+    // step's question only when every repeatable step asks the same one.
+    if (addAnotherLabels.size && !labelByField.has("addAnother")) {
+      labelByField.set(
+        "addAnother",
+        addAnotherLabels.size === 1 ? [...addAnotherLabels][0] : "Add another?",
+      );
     }
     const topErrors = tallyTopErrors(
       tallyFieldErrors(fieldErrors),

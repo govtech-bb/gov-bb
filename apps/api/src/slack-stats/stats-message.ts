@@ -330,20 +330,29 @@ function metrics(rows: [string, string, string][]) {
 const BAR_WIDTH = 12;
 const STEP_TITLE_MAX = 34;
 
-/** Step views as a monospace bar chart, scaled to the busiest step. */
+/** Slack's control characters as entities, so the text can't mention or link. */
+const escapeSlack = (text: string) =>
+  text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+/**
+ * Step views as a monospace bar chart, scaled to the busiest step. A code
+ * block shows `*`, `_` and `~` as typed, so titles only lose backticks (which
+ * could end the block) and are escaped after padding, so the bars line up.
+ */
 export function stepBars(steps: { title: string; count: number }[]): string {
   const max = Math.max(1, ...steps.map((s) => s.count));
-  const titles = steps.map((s) =>
-    s.title.length > STEP_TITLE_MAX
-      ? s.title.slice(0, STEP_TITLE_MAX - 1) + "…"
-      : s.title,
-  );
+  const titles = steps.map((s) => {
+    const title = s.title.replace(/`/g, "");
+    return title.length > STEP_TITLE_MAX
+      ? title.slice(0, STEP_TITLE_MAX - 1) + "…"
+      : title;
+  });
   const width = Math.max(...titles.map((t) => t.length));
   const countWidth = num(max).length;
   const lines = steps.map((s, i) => {
     const filled = Math.round((s.count / max) * BAR_WIDTH);
     const bar = "█".repeat(filled) + "░".repeat(BAR_WIDTH - filled);
-    return `${titles[i].padEnd(width)}  ${bar}  ${num(s.count).padStart(countWidth)}`;
+    return `${escapeSlack(titles[i].padEnd(width))}  ${bar}  ${num(s.count).padStart(countWidth)}`;
   });
   return "```\n" + lines.join("\n") + "\n```";
 }
@@ -502,13 +511,15 @@ export function formatFormStats(
       divider,
       section(
         "*🚨 Top errors*\n" +
-          topErrors.map((e) => `• ${e.label}: *${num(e.count)}*`).join("\n"),
+          topErrors
+            .map((e) => `• ${plainSlackText(e.label)}: *${num(e.count)}*`)
+            .join("\n"),
         true,
       ),
     );
   }
   return {
-    text: `📝 ${title} · ${heading.title}: ${num(c.starts)} started, ${num(c.completed)} finished`,
+    text: `📝 ${escapeSlack(title)} · ${heading.title}: ${num(c.starts)} started, ${num(c.completed)} finished`,
     blocks,
   };
 }
