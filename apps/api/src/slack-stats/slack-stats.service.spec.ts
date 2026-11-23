@@ -52,8 +52,10 @@ const urlsBelow600Busier = (quiet: { x: string; visitors: number }) => {
   );
 };
 
-/** buildReply's output as one searchable string. */
-/** The isolates around a label (U+2068, U+2069) show nothing, so they show as ⁅ and ⁆. */
+/**
+ * buildReply's output as one searchable string. The isolates around a label
+ * (U+2068, U+2069) show nothing, so they show here as ⁅ and ⁆.
+ */
 async function reply(...args: Parameters<SlackStatsService["buildReply"]>) {
   const message = await service().buildReply(...args);
   return (

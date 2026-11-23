@@ -276,11 +276,14 @@ describe("tallyTopErrors", () => {
   });
 });
 
-/** The visible text of a message, block by block, for assertions. */
-/** The isolates around a label (FSI, PDI) show nothing, so render shows them as ⁅ and ⁆. */
+/** The isolates showLabel puts around a label. */
 const FSI = "\u2068";
 const PDI = "\u2069";
 
+/**
+ * The visible text of a message, block by block, for assertions. The isolates
+ * show nothing, so they show here as ⁅ and ⁆.
+ */
 function render({ blocks }: SlackMessage): string {
   return (blocks as Record<string, any>[])
     .map(
@@ -720,7 +723,7 @@ describe("formatChatStats", () => {
       formatChatStats(LAST_WEEK, {
         current: {
           bySource: counts({ [ZWSP]: 3, "*_*": 2, "(blank)": 1 }),
-          suggestions: counts({ [`${ZWSP}${ZWSP}`]: 4, __: 1 }),
+          suggestions: counts({ [`${ZWSP}${ZWSP}`]: 4, __: 1, "(blank)": 1 }),
         },
         previous: { bySource: [], suggestions: [] },
       }),
@@ -729,7 +732,9 @@ describe("formatChatStats", () => {
     expect(text).toContain(
       "• _(blank)_: *5*   🆕 new\n• `⁅(blank)⁆`: *1*   🆕 new",
     );
-    expect(text).toContain("picked*\n• _(blank)_: *5*   🆕 new\n");
+    expect(text).toContain(
+      "picked*\n• _(blank)_: *5*   🆕 new\n• ⁅(blank)⁆: *1*   🆕 new\n",
+    );
   });
 
   it("leaves out the sources when only suggestions were picked", () => {
@@ -776,11 +781,18 @@ describe("plainSlackText", () => {
       "x".repeat(79) + "…",
     );
   });
+
+  it("turns control characters into spaces, so none can end a label's isolate", () => {
+    // U+001C-U+001F and U+0085 are bidi separators that end an isolate.
+    for (const c of ["\u001C", "\u001D", "\u001E", "\u001F", "\u0085", "\0"]) {
+      expect(plainSlackText(`x${c}בית`)).toBe("x בית");
+    }
+  });
 });
 
 describe("hidden characters", () => {
   it("shows no reversing or zero-width character in any reply", () => {
-    const hostile = `pass${RLO}port${ZWSP}`;
+    const hostile = `pass${RLO}${FSI}port${PDI}${ZWSP}`;
     const row = { value: hostile, total: 5 };
     const replies = [
       formatSearchStats(LAST_WEEK, {

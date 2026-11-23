@@ -557,6 +557,9 @@ export function plainSlackText(value: string): string {
   const chars = Array.from(
     value
       .replace(HIDDEN_CHARS, "")
+      // Control characters such as U+001C and U+0085 are bidi separators that
+      // would end showLabel's isolate, and \s doesn't match all of them.
+      .replace(/\p{Cc}/gu, " ")
       .replace(/[*_~`]/g, "")
       .replace(/\s+/g, " ")
       .trim(),
