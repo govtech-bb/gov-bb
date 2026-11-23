@@ -4,7 +4,7 @@ import { AnalyticsChrome } from './components/AnalyticsChrome'
 import { StatCards } from './components/StatCards'
 import { ToolsTable } from './components/ToolsTable'
 import type { ToolsPayload } from './lib/report'
-import type { WaterAlertFunnel } from './lib/umami-server'
+import type { WaterAlertFunnel } from '@govtech-bb/umami-analytics'
 
 export default function ToolsPage({ data }: { data: ToolsPayload }) {
   const navigate = useNavigate()

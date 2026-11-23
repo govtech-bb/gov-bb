@@ -4,6 +4,9 @@ export * from "./metrics";
 export * from "./funnels";
 export * from "./periods";
 export * from "./umami";
+export * from "./tools";
+export * from "./journeys";
+export * from "./search";
 // Re-export the shared event-name helpers (#2682) so the dashboard can build
 // query names and classify stored names identically to how the forms app emits
 // them.

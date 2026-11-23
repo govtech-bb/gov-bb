@@ -1,4 +1,4 @@
-import type { ToolRow } from '../lib/umami-server'
+import type { ToolRow } from '@govtech-bb/umami-analytics'
 import { SortHeader, useTableSort } from './SortableTable'
 
 const fmtInt = (n: number) => n.toLocaleString()
