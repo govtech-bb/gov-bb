@@ -823,7 +823,12 @@ export function formatToolsSummary(
     ];
     const e = c.events;
     if (!e) {
-      figures.push("💤 no tool events yet");
+      // A tool that stopped sending events must not read as not set up yet.
+      figures.push(
+        p.events
+          ? `💤 no tool events this period (${num(p.events.results)} results the period before)`
+          : "💤 no tool events yet",
+      );
     } else {
       figures.push(
         `✅ *${num(e.results)}* results ${countChange(e.results, p.events?.results ?? 0)}`,

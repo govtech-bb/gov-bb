@@ -318,7 +318,8 @@ describe("SlackStatsService.buildReply — all tools", () => {
     );
 
   it("lists every tool from one read per event, with the dashboard's numbers", async () => {
-    umami.metricsUrls.mockResolvedValue([
+    // This period, then the period before.
+    umami.metricsUrls.mockResolvedValueOnce([
       {
         x: "/health-and-emergency-services/find-an-open-pharmacy",
         visitors: 300,
@@ -328,6 +329,12 @@ describe("SlackStatsService.buildReply — all tools", () => {
         visitors: 120,
       },
       { x: "/business-trade/crop-over-permits", visitors: 60 },
+    ]);
+    umami.metricsUrls.mockResolvedValueOnce([
+      {
+        x: "/health-and-emergency-services/find-an-open-pharmacy",
+        visitors: 400,
+      },
     ]);
     // Event values keyed `event.property`, plus `@tool` for a filtered read.
     const data: Record<string, { value: string; total: number }[]> = {
@@ -341,7 +348,6 @@ describe("SlackStatsService.buildReply — all tools", () => {
         { value: "found", total: 225 },
         { value: "no-results", total: 25 },
       ],
-      "tool-action.action@pharmacy-finder": [{ value: "call", total: 9 }],
     };
     umami.eventDataValues.mockImplementation(
       async (
@@ -357,21 +363,20 @@ describe("SlackStatsService.buildReply — all tools", () => {
 
     for (const { id } of TOOLS) expect(text).toContain(`(\`${id}\`)`);
     expect(text).toContain(
-      "👥 *420* visitors ⚪ no change · ✅ *250* results ⚪ no change · 🚫 *10%* no results ⚪ no change · ⚠️ *10* errors (3.8%) ⚪ no change",
+      "👥 *420* visitors 🟢 ▲ 5% · ✅ *250* results ⚪ no change · 🚫 *10%* no results ⚪ no change · ⚠️ *10* errors (3.8%) ⚪ no change",
     );
     expect(text).toContain(
-      "(`crop-over-permits`): 👥 *60* visitors ⚪ no change · ✅ *40* results",
+      "(`crop-over-permits`): 👥 *60* visitors 🆕 new · ✅ *40* results",
     );
     expect(text).toContain(
       "(`bank-holidays`): 👥 *0* visitors ⚪ no change · 💤 no tool events yet",
     );
-    // Breakdowns only for a tool with a no-result rate that sent events.
+    // Outcomes only for a tool with a no-result rate that sent results.
     const period = [
       "landing tool-result.tool",
       "landing tool-action.tool",
       "landing tool-error.tool",
       "landing tool-result.outcome@pharmacy-finder",
-      "landing tool-action.action@pharmacy-finder",
     ];
     expect(reads()).toEqual([...period, ...period]);
     expect(umami.metricsUrls).toHaveBeenCalledTimes(2);

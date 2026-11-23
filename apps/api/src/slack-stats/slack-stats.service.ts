@@ -438,9 +438,9 @@ export class SlackStatsService {
   /**
    * Every live tool on one line (#3807), shaped by the dashboard's code so the
    * numbers match its Tools tab. Per period, one at a time: the landing URLs,
-   * each event's `tool` values for every tool, and the filtered outcome and
-   * action reads of only the tools with a no-result rate that sent events: at
-   * most 10 requests, 20 per reply. An Umami error on a count reaches reply(),
+   * each event's `tool` values for every tool, and the filtered outcome reads
+   * of only the tools with a no-result rate that sent results: at most 7
+   * requests, 14 per reply. An Umami error on a count reaches reply(),
    * which apologises, so an outage never reads as "no tool events".
    */
   private async toolsReply(
@@ -454,11 +454,12 @@ export class SlackStatsService {
     const toolsPeriod = async (range: Range) => {
       const urlRows = await client.metricsUrls(landingWebsiteId, range);
       // Only the no-result rate needs a tool's own breakdown here, so the
-      // tools without one skip those reads.
+      // tools without one skip those reads, and no tool's actions are read.
       const rows = await this.toolEventRows(
         client,
         tools.filter((t) => t.noResultOutcome),
         range,
+        false,
       );
       return shapeTools(tools, urlRows, new Map(), rows);
     };
@@ -523,12 +524,14 @@ export class SlackStatsService {
    * The tool-event rows the shared shapers take, read as the dashboard's
    * Tools tab reads them: each event's `tool` values give every tool's count,
    * and a tool's outcome and action values come through Umami's property
-   * filter. One request at a time, for one tool or for all of them.
+   * filter. One request at a time, for one tool or for all of them. With
+   * `withActions` false, the action values are not read.
    */
   private async toolEventRows(
     client: UmamiClient,
     tools: Tool[],
     range: Range,
+    withActions = true,
   ): Promise<ToolEventRows> {
     const { landingWebsiteId } = this.umamiConfig();
     const byTool = (event: string) =>
@@ -549,6 +552,7 @@ export class SlackStatsService {
         range,
       );
       if (o) outcomes.set(tool.id, o);
+      if (!withActions) continue;
       const a = await this.toolBreakdown(
         client,
         tool,
