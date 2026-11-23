@@ -500,7 +500,10 @@ export function formatFormStats(
       section(
         "*🚨 Top errors*\n" +
           topErrors
-            .map((e) => `• ${plainSlackText(e.label)}: *${num(e.count)}*`)
+            .map(
+              (e) =>
+                `• ${showLabel(plainSlackText(e.label))}: *${num(e.count)}*`,
+            )
             .join("\n"),
         true,
       ),
@@ -554,6 +557,9 @@ export function plainSlackText(value: string): string {
   const chars = Array.from(
     value
       .replace(HIDDEN_CHARS, "")
+      // Control characters such as U+001C and U+0085 are bidi separators that
+      // would end showLabel's isolate, and \s doesn't match all of them.
+      .replace(/\p{Cc}/gu, " ")
       .replace(/[*_~`]/g, "")
       .replace(/\s+/g, " ")
       .trim(),
@@ -568,11 +574,29 @@ export function plainSlackText(value: string): string {
     .replace(/>/g, "&gt;");
 }
 
+/** Shown in place of a label with nothing left after plainSlackText. */
+const BLANK_LABEL = "_(blank)_";
+
+/**
+ * A plainSlackText label to print next to a count. FSI … PDI isolate it, so a
+ * right-to-left label can't move the count after it to the other side (#3836).
+ * plainSlackText removed the sender's own isolates, so they can't end it early.
+ * A label with nothing left shows BLANK_LABEL, in italics, which no label can
+ * be, as plainSlackText removes `_`. In a code span (`code`), the isolates go
+ * inside the backticks, so Slack still sees the span.
+ */
+function showLabel(label: string, code = false): string {
+  if (!label) return BLANK_LABEL;
+  const isolated = `\u2068${label}\u2069`;
+  return code ? `\`${isolated}\`` : isolated;
+}
+
 const total = (rows: ChatCount[]) => rows.reduce((s, r) => s + r.count, 0);
 
 /**
  * Every label in either period, as plainSlackText, busiest now first, with
- * both counts. Grouping on the cleaned label merges look-alikes ("home ").
+ * both counts. Grouping on the cleaned label merges look-alikes ("home "),
+ * and all labels with nothing left into one blank row.
  */
 function compareCounts(current: ChatCount[], previous: ChatCount[]) {
   const counts = new Map<string, { now: number; before: number }>();
@@ -631,7 +655,7 @@ export function formatChatStats(
         .reduce((n, s) => n + s.now, 0);
       const lines = shown.map(
         (s) =>
-          `• \`${s.label}\`: *${num(s.now)}*   ${countChange(s.now, s.before)}`,
+          `• ${showLabel(s.label, true)}: *${num(s.now)}*   ${countChange(s.now, s.before)}`,
       );
       if (others) lines.push(`• other places: *${num(others)}*`);
       blocks.push(
@@ -651,7 +675,7 @@ export function formatChatStats(
             top
               .map(
                 (s) =>
-                  `• ${s.label}: *${num(s.now)}*   ${countChange(s.now, s.before)}`,
+                  `• ${showLabel(s.label)}: *${num(s.now)}*   ${countChange(s.now, s.before)}`,
               )
               .join("\n"),
           true,
@@ -723,7 +747,9 @@ export function formatSearchStats(
   const list = (title: string, rows: typeof queries) =>
     section(
       `*${title}*\n` +
-        rows.map((q) => `• ${q.label}: *${num(q.count)}*`).join("\n"),
+        rows
+          .map((q) => `• ${showLabel(q.label)}: *${num(q.count)}*`)
+          .join("\n"),
       true,
     );
   const blocks: unknown[] = [
@@ -794,6 +820,7 @@ const TOP_SHOWN = 3;
 /**
  * Each code's count in both periods, busiest now first. Codes come from Umami
  * event data, which anyone can send, so each goes through plainSlackText.
+ * Codes with nothing left merge into one blank row.
  */
 function compareCodes(
   current: EventDataValue[],
@@ -802,7 +829,7 @@ function compareCodes(
   const counts = new Map<string, { now: number; before: number }>();
   const add = (rows: EventDataValue[], key: "now" | "before") => {
     for (const r of rows) {
-      const label = `\`${plainSlackText(String(r.value))}\``;
+      const label = plainSlackText(String(r.value));
       const c = counts.get(label) ?? { now: 0, before: 0 };
       c[key] += r.total;
       counts.set(label, c);
@@ -832,7 +859,7 @@ function codeList(
         .slice(0, shown)
         .map((r) =>
           // No change shown against a period whose breakdown couldn't be read.
-          `• ${r.label}: *${num(r.now)}*   ${previous ? countChange(r.now, r.before, better) : ""}`.trimEnd(),
+          `• ${showLabel(r.label, true)}: *${num(r.now)}*   ${previous ? countChange(r.now, r.before, better) : ""}`.trimEnd(),
         )
     : ["Couldn't read the breakdown from Umami."];
   return section(`*${title}*\n` + lines.join("\n"), true);
@@ -1079,7 +1106,7 @@ export function formatJourneyStats(
               .slice(0, JOURNEYS_SHOWN)
               .map(
                 (j) =>
-                  `• ${j.items.map(journeyStep).join(" → ")}: *${share(j.share)}* (${num(j.sessions)})`,
+                  `• ${j.items.map((i) => showLabel(journeyStep(i))).join(" → ")}: *${share(j.share)}* (${num(j.sessions)})`,
               )
               .join("\n")
         : "💤 No journeys of two or more pages on landing in this period.",
