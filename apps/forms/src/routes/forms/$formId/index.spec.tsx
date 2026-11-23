@@ -106,7 +106,7 @@ import {
   getVisibleFields,
   restoreRepeatableStepsFromStorage,
 } from "@forms/lib";
-import { FormValidationError } from "@forms/form-api";
+import { FormFetchError, FormValidationError } from "@forms/form-api";
 import {
   getFormData,
   getSubmissionState,
@@ -988,10 +988,11 @@ describe("RouteComponent onSubmit handler", () => {
     await expect(onSubmit({ value: {} })).resolves.not.toThrow();
   });
 
-  it("tracks form-submit-error with reason 'network' when postFormSubmission rejects", async () => {
+  // makeFetch turns a fetch that never got a response into status 0 (#3835).
+  it("tracks form-submit-error with reason 'network' when the request gets no response", async () => {
     const onSubmit = renderAndExtractOnSubmit();
     (postFormSubmission as Mock).mockRejectedValue(
-      new Error("network failure"),
+      new FormFetchError("Unable to reach the server.", 0),
     );
     await act(async () => {
       await onSubmit({ value: {} });
@@ -1010,6 +1011,42 @@ describe("RouteComponent onSubmit handler", () => {
     expect(mockFormRendererProps.current.submissionState).toEqual(
       expect.objectContaining({ submissionSuccess: false }),
     );
+  });
+
+  // The API answered, so the citizen's connection is not the problem: an
+  // outage or the throttle must not read as "network" on /stats (#3835).
+  it.each([500, 503, 429])(
+    "tracks form-submit-error with reason 'server' when the API answers %i",
+    async (status) => {
+      const onSubmit = renderAndExtractOnSubmit();
+      (postFormSubmission as Mock).mockRejectedValue(
+        new FormFetchError(`HTTP ${status}`, status),
+      );
+      await act(async () => {
+        await onSubmit({ value: {} });
+      });
+      expect(mockTrackEvent).toHaveBeenCalledWith("form-submit-error", {
+        form: "test-form",
+        category: "test-category",
+        errors: "server",
+      });
+      expect(mockFormRendererProps.current.submissionState).toEqual(
+        expect.objectContaining({ submissionSuccess: false }),
+      );
+    },
+  );
+
+  it("tracks form-submit-error with reason 'server' for any other thrown error", async () => {
+    const onSubmit = renderAndExtractOnSubmit();
+    (postFormSubmission as Mock).mockRejectedValue(new Error("unexpected"));
+    await act(async () => {
+      await onSubmit({ value: {} });
+    });
+    expect(mockTrackEvent).toHaveBeenCalledWith("form-submit-error", {
+      form: "test-form",
+      category: "test-category",
+      errors: "server",
+    });
   });
 
   // A 422 naming the exact field the server rejected used to be flattened into
@@ -1113,6 +1150,22 @@ describe("RouteComponent onSubmit handler", () => {
       expect(mockFormRendererProps.current.submissionState).toEqual(
         expect.objectContaining({ submissionSuccess: false }),
       );
+    });
+
+    it("tracks 'server' when no error maps to a visible step (#3835)", async () => {
+      mockGetVisibleSteps.mockReturnValue([stepWithParish]);
+      const onSubmit = renderAndExtractOnSubmit();
+      rejectWithFieldErrors({ "step-that-moved": { parish: ["stale"] } });
+
+      await act(async () => {
+        await onSubmit({ value: {} });
+      });
+
+      expect(mockTrackEvent).toHaveBeenCalledWith("form-submit-error", {
+        form: "test-form",
+        category: "test-category",
+        errors: "server",
+      });
     });
   });
 
