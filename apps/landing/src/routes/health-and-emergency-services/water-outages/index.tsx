@@ -1,12 +1,10 @@
 import {
   createFileRoute,
-  notFound,
   useRouter,
   useRouterState,
 } from '@tanstack/react-router'
-import { isUrlVisible, urlLevel } from '../../../content/registry'
+import { gateOnContentUrl } from '@/lib/content-gate'
 import { pageHead } from '../../../lib/page-head'
-import { deriveVisibilityOverlay } from '../../../lib/service-status'
 import { META } from './-meta'
 import { findParish } from './-lib/parishes'
 import { getWaterOutages } from './-lib/water-alerts'
@@ -21,15 +19,11 @@ export const Route = createFileRoute(
         ? search.parish
         : undefined,
   }),
-  beforeLoad: ({ context }) => {
-    const overlay = deriveVisibilityOverlay(context.serviceStatuses)
-    if (!isUrlVisible(META.url, context.level, overlay)) throw notFound()
-    return { waterServiceLevel: urlLevel(META.url, overlay) }
-  },
+  beforeLoad: ({ context }) => gateOnContentUrl(META.url, context),
   loader: () => getWaterOutages(),
   head: ({ match }) =>
     pageHead(META.title, META.description, {
-      noindex: match.context.waterServiceLevel !== 'public',
+      noindex: match.context.serviceLevel !== 'public',
       path: `/${META.url}`,
     }),
   component: WaterOutagesRoute,

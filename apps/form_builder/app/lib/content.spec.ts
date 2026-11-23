@@ -539,6 +539,25 @@ Keep this paragraph.
     expect(edited.body).toBe(original.body);
   });
 
+  it.each(["js", "javascript"])(
+    "only accepts YAML front matter: rejects `---%s` without running it",
+    (language) => {
+      const probe = vi.fn(() => "ran");
+      (globalThis as { frontMatterProbe?: () => string }).frontMatterProbe =
+        probe;
+      try {
+        const raw = `---${language}\n{ title: globalThis.frontMatterProbe() }\n---\nBody\n`;
+        // Twice: a failed parse must not be served from gray-matter's cache.
+        expect(() => parseContentMarkdown(raw)).toThrow(/not supported/);
+        expect(() => parseContentMarkdown(raw)).toThrow(/not supported/);
+        expect(probe).not.toHaveBeenCalled();
+      } finally {
+        delete (globalThis as { frontMatterProbe?: () => string })
+          .frontMatterProbe;
+      }
+    },
+  );
+
   it("round-trips rendered output back to frontmatter + body", () => {
     const { frontmatter, body } = parseContentMarkdown(
       renderStartPageMarkdown(base),

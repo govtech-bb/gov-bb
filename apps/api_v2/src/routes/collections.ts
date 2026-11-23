@@ -4,6 +4,7 @@ import type { Employee } from "../modules/auth";
 import { CollectionNotFound, RecordNotFound } from "../modules/collection";
 import type { Viewer } from "../modules/page-visibility";
 import type {
+  CollectionCreateFailure,
   CollectionEditing,
   RecordWriteFailure,
 } from "../services/collection-editing";
@@ -36,6 +37,34 @@ function recordRefused(
       return reply
         .status(409)
         .send({ error: "record_exists", message: error.message });
+    case "ContentStoreUnavailable":
+      return reply.status(500).send(storageFailed(request.log, error));
+    default: {
+      const unexpected: never = error;
+      throw unexpected;
+    }
+  }
+}
+
+/** Why creating a collection was refused, as its response. */
+function collectionRefused(
+  error: CollectionCreateFailure,
+  request: FastifyRequest,
+  reply: FastifyReply,
+): FastifyReply {
+  switch (error._tag) {
+    case "CollectionRejected":
+      return reply.status(422).send({
+        error: "validation_failed",
+        message: error.message,
+        errors: [...error.errors],
+      });
+    case "CollectionExists":
+      return reply.status(409).send({
+        error: "collection_exists",
+        message: error.message,
+        errors: [{ field: "key", message: error.message }],
+      });
     case "ContentStoreUnavailable":
       return reply.status(500).send(storageFailed(request.log, error));
     default: {
@@ -131,6 +160,22 @@ export const editorCollectionRoutes: FastifyPluginAsyncZod<{
       return deleted.ok
         ? reply.status(204).send()
         : recordRefused(deleted.error, request, reply);
+    },
+  });
+  editor.route({
+    method: "POST",
+    url: "/collections",
+    schema: SCHEMAS.createCollection,
+    // A field list decides what every record holds, so not every editor sets one (#3681)
+    config: { role: ["admin", "approver"] },
+    handler: async (request, reply) => {
+      const created = await collections.createCollection(
+        request.body,
+        actor(request),
+      );
+      return created.ok
+        ? reply.status(201).send(created.value)
+        : collectionRefused(created.error, request, reply);
     },
   });
 };

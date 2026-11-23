@@ -72,6 +72,8 @@ export interface ContentReviewClaim {
   prUrl: string;
   branch: string;
   headSha: string;
+  /** The PR head is in this repo. Page content is read only from such heads. */
+  sameRepo: boolean;
   writable: boolean;
   summary?: ContentPageSummary;
 }
@@ -409,6 +411,7 @@ async function fetchOpenContentPRs(
               prUrl: pr.htmlUrl,
               branch: pr.headRef,
               headSha: pr.headSha!,
+              sameRepo,
               writable:
                 sameRepo &&
                 pr.body?.includes(CONTENT_PR_MARKER) === true &&
@@ -473,6 +476,13 @@ function reviewBlockForClaims(
       claims,
     };
   }
+  if (!claim.sameRepo) {
+    return {
+      kind: "external",
+      message: `PR #${claim.prNumber} comes from a fork, so its changes are not shown here. Review it in GitHub.`,
+      claims,
+    };
+  }
   if (!claim.writable) {
     return {
       kind: "external",
@@ -520,8 +530,13 @@ export const loadLandingContentPage = createServerFn({
     }
     const claims = claimsForPath(snapshot, data.path);
     const reviewBlock = reviewBlockForClaims(claims);
+    // Only a same-repo PR head is read; a fork's claim stays read-only
+    // review state and the page loads from the base branch.
     const readableClaim = claims.find(
-      (claim) => claim.path === data.path && claim.changeType !== "removed",
+      (claim) =>
+        claim.sameRepo &&
+        claim.path === data.path &&
+        claim.changeType !== "removed",
     );
     let res = readableClaim
       ? await getContents(token, data.path, readableClaim.headSha)
@@ -539,6 +554,8 @@ export const loadLandingContentPage = createServerFn({
       res = await getContents(token, data.path, baseBranch);
       revision = { source: "base", sha: "" };
     }
+    // A page that exists only on a PR the builder doesn't read: explain why.
+    if (res.status === 404 && reviewBlock) throw new Error(reviewBlock.message);
     if (!res.ok) throw await ghError("Failed to load page", res);
     const json = (await res.json()) as { content: string; sha: string };
     const raw = Buffer.from(json.content, "base64").toString("utf8");

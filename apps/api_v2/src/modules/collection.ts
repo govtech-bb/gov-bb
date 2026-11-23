@@ -27,8 +27,25 @@ export const CollectionKey = key(100);
 /** A record's name within its collection, such as `barbados-drug-service`. */
 export const RecordKey = key(200);
 
-/** The kinds of value a field holds; every one is a string. */
-export const FIELD_TYPES = ["text", "slug", "email"] as const;
+/**
+ * The kinds of value a field holds (#3782). `text`, `slug`, `email` and
+ * `date` hold a string, `number` a number, `boolean` true or false, and
+ * `list` a list of short strings. Nested data is flattened into fields of
+ * these types (ADR 0140); there is no general JSON type.
+ */
+export const FIELD_TYPES = [
+  "text",
+  "slug",
+  "email",
+  "number",
+  "boolean",
+  "date",
+  "list",
+] as const;
+
+/** The most items a `list` field holds, and the longest an item may be. */
+export const LIST_MAX_ITEMS = 50;
+export const LIST_ITEM_MAX = 300;
 
 export const CollectionField = z.object({
   key: z.string().min(1),
@@ -42,8 +59,18 @@ export const CollectionSchema = z.object({ fields: z.array(CollectionField) });
 /** The field list a collection's records are checked against. */
 export type CollectionSchema = z.infer<typeof CollectionSchema>;
 
+/** A value a record holds for one field, of the kind its field's type keeps. */
+export const RecordValue = z.union([
+  z.string(),
+  z.number(),
+  z.boolean(),
+  z.array(z.string()),
+]);
+/** One field's value in a record. */
+export type RecordValue = z.infer<typeof RecordValue>;
+
 /** A record as stored: a value for some or all of its collection's fields. */
-export const RecordData = z.record(z.string(), z.string());
+export const RecordData = z.record(z.string(), RecordValue);
 /** A record's values, by field key. */
 export type RecordData = z.infer<typeof RecordData>;
 
@@ -102,15 +129,28 @@ export const RecordBody = z.strictObject({
     ),
 });
 
-const VALUE: Readonly<Record<CollectionField["type"], z.ZodType<string>>> = {
-  text: z.string().trim().min(1).max(2000),
-  slug: RecordKey,
-  email: z.email(),
-};
+const VALUE: Readonly<Record<CollectionField["type"], z.ZodType<RecordValue>>> =
+  {
+    text: z.string().trim().min(1).max(2000),
+    slug: RecordKey,
+    email: z.email(),
+    // Finite, with decimals: a rate such as 0.1725 is a number
+    number: z.number(),
+    boolean: z.boolean(),
+    // A real calendar date: 2026-02-29 and 2026-13-40 are refused
+    date: z.iso.date(),
+    list: z
+      .array(z.string().trim().min(1).max(LIST_ITEM_MAX))
+      .max(LIST_MAX_ITEMS),
+  };
 const EXPECTED: Readonly<Record<CollectionField["type"], string>> = {
   text: "Enter some text, up to 2000 characters.",
   slug: "Use lowercase letters, numbers and hyphens.",
   email: "Enter an email address.",
+  number: "Enter a number, such as 12 or 0.1725.",
+  boolean: "Enter true or false.",
+  date: "Enter a real date as YYYY-MM-DD, such as 2026-08-01.",
+  list: `Enter a list of up to ${LIST_MAX_ITEMS} items, each with some text, up to ${LIST_ITEM_MAX} characters.`,
 };
 
 /**
@@ -202,5 +242,161 @@ export class RecordRejected extends Error {
   readonly _tag = "RecordRejected" as const;
   constructor(readonly errors: readonly FieldError[]) {
     super(errors.map((error) => error.message).join(" "));
+  }
+}
+
+/**
+ * What creating a collection sends (#3681). Only its shape is checked on the
+ * way in; `parseNewCollection` checks the rules, so each refusal names the
+ * field it is about.
+ */
+export const NewCollection = z.strictObject({
+  key: z
+    .string()
+    .describe(
+      "The collection's name in urls: lowercase letters, numbers and " +
+        "hyphens, up to 100 characters. No other collection may have it.",
+    ),
+  title: z
+    .string()
+    .describe("What editors see it called, up to 200 characters."),
+  record_key: z
+    .string()
+    .describe(
+      "The key of the `slug` field whose value names each record in its url.",
+    ),
+  schema: z.strictObject({
+    fields: z
+      .array(
+        z.strictObject({
+          key: z
+            .string()
+            .describe(
+              "Lowercase letters, numbers and hyphens, up to 100 " +
+                "characters; unique among the collection's fields.",
+            ),
+          label: z.string(),
+          type: z
+            .string()
+            .describe(
+              `One of ${FIELD_TYPES.map((type) => `\`${type}\``).join(", ")}.`,
+            ),
+        }),
+      )
+      .describe("At least one field."),
+  }),
+});
+/** What creating a collection sends, before its rules are checked. */
+export type NewCollection = z.infer<typeof NewCollection>;
+
+/** A collection's definition as it is written: one that passed every rule. */
+export type CollectionDefinition = Pick<
+  CollectionView,
+  "key" | "title" | "record_key" | "schema"
+>;
+
+/** The longest field key: the record key field's key is stored in `data_collections.record_key`. */
+const FIELD_KEY_MAX = 100;
+const TITLE_MAX = 200;
+/** Characters PostgreSQL refuses in text (NUL) or that have no place in a name. */
+// oxlint-disable-next-line no-control-regex -- matching control characters is the point
+const CONTROL = /[\u0000-\u001f\u007f]/;
+
+/**
+ * Check a new collection against the rules: a key in the `CollectionKey`
+ * format, a title, at least one field, each with a key no other field has, a
+ * label and one of `FIELD_TYPES`, and a record key that names one of its
+ * `slug` fields, since a record's key is a slug in its url.
+ */
+export function parseNewCollection(
+  input: NewCollection,
+): Result<CollectionDefinition, CollectionRejected> {
+  const errors: FieldError[] = [];
+  if (!CollectionKey.safeParse(input.key).success)
+    errors.push({
+      field: "key",
+      message:
+        "Use lowercase letters, numbers and hyphens, up to 100 characters.",
+    });
+  const title = input.title.trim();
+  if (!title || title.length > TITLE_MAX || CONTROL.test(title))
+    errors.push({
+      field: "title",
+      message: `Enter a title, up to ${TITLE_MAX} characters, without control characters.`,
+    });
+  const fields: CollectionField[] = [];
+  const seen = new Set<string>();
+  input.schema.fields.forEach((field, index) => {
+    const at = `schema.fields.${index}`;
+    const key = field.key;
+    // The slug rule a collection key keeps, so a field key is never `__proto__`
+    // in a record's data, nor has spaces or punctuation a reference trips on
+    if (!CollectionKey.safeParse(key).success)
+      errors.push({
+        field: `${at}.key`,
+        message: `Use lowercase letters, numbers and hyphens, up to ${FIELD_KEY_MAX} characters.`,
+      });
+    else if (seen.has(key))
+      errors.push({
+        field: `${at}.key`,
+        message: `Another field already has the key ${key}.`,
+      });
+    seen.add(key);
+    const label = field.label.trim();
+    if (!label || CONTROL.test(label))
+      errors.push({
+        field: `${at}.label`,
+        message: "Enter a label, without control characters.",
+      });
+    const type = CollectionField.shape.type.safeParse(field.type);
+    if (!type.success)
+      errors.push({
+        field: `${at}.type`,
+        message: `Choose one of ${FIELD_TYPES.join(", ")}.`,
+      });
+    else fields.push({ key, label, type: type.data });
+  });
+  if (input.schema.fields.length === 0)
+    errors.push({ field: "schema.fields", message: "Add at least one field." });
+  const named = input.schema.fields.find(
+    (field) => field.key === input.record_key,
+  );
+  // With no fields at all, the field list's own refusal says what to do
+  if (!named) {
+    if (input.schema.fields.length > 0)
+      errors.push({
+        field: "record_key",
+        message: "Choose one of the collection's fields as the record key.",
+      });
+  } else if (named.type !== "slug")
+    errors.push({
+      field: "record_key",
+      message:
+        "The record key must be a slug field: its value names each record in its url.",
+    });
+  if (errors.length > 0) return err(new CollectionRejected(errors));
+  return ok({
+    key: input.key,
+    title,
+    record_key: input.record_key,
+    schema: { fields },
+  });
+}
+
+/** A new collection's definition breaks a rule. */
+export class CollectionRejected extends Error {
+  /** Stable protocol-projection discriminator. */
+  readonly _tag = "CollectionRejected" as const;
+  constructor(readonly errors: readonly FieldError[]) {
+    super(errors.map((error) => error.message).join(" "));
+  }
+}
+
+/** A create named a collection that is already there. */
+export class CollectionExists extends Error {
+  /** Stable protocol-projection discriminator. */
+  readonly _tag = "CollectionExists" as const;
+  constructor(readonly key: string) {
+    super(`There is already a collection ${key}.`);
   }
 }

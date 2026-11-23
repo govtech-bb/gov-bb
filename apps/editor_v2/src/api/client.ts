@@ -1,5 +1,6 @@
 import type { Category, CategoryBlockers, CategoryFields, CategoryOrder } from "./categories";
 import type { paths } from "./openapi";
+import { FIELD_TYPES } from "./field-types";
 
 type Json<Content> = Content extends { content: { "application/json": infer Body } } ? Body : never;
 
@@ -67,7 +68,7 @@ export type CollectionDetail = Json<paths["/collections/{key}/records"]["get"]["
 /** A collection's definition: its key, title, record key field and field list. */
 export type Collection = CollectionDetail["collection"];
 
-/** One record of a collection: a value for some or all of its fields, every one a string. */
+/** One record of a collection: a value for some or all of its fields, of the kind each field's type keeps. */
 export type CollectionRecord = CollectionDetail["records"][number];
 
 /** A private record editing snapshot, including its definition from the same read. */
@@ -84,6 +85,9 @@ export type RecordInput = Json<
 type CreateRecordInput = Json<
   paths["/collections/{key}/records/{recordKey}"]["post"]["requestBody"]
 >;
+
+/** What creating a collection sends: its key, title, field list and the field that names each record. */
+export type NewCollectionInput = Json<paths["/collections"]["post"]["requestBody"]>;
 
 /** The estate's change token. */
 export type EstateVersion = Json<paths["/version"]["get"]["responses"][200]>;
@@ -395,8 +399,16 @@ const isEditorCollection = (value: unknown): value is RecordDetail["collection"]
       isObject(field) &&
       isText(field.key) &&
       isText(field.label) &&
-      ["text", "slug", "email"].includes(String(field.type)),
+      FIELD_TYPES.some(({ type }) => type === field.type),
   );
+
+// A value api_v2 keeps for a field: text, a finite number, true or false, or a list of text
+const isRecordValue = (value: unknown): value is CollectionRecord["data"][string] =>
+  isText(value) ||
+  Number.isFinite(value) ||
+  value === true ||
+  value === false ||
+  (Array.isArray(value) && value.every(isText));
 
 const isEditorRecord = (value: unknown): value is RecordDetail["record"] =>
   isObject(value) &&
@@ -404,7 +416,7 @@ const isEditorRecord = (value: unknown): value is RecordDetail["record"] =>
   isText(value.record_key) &&
   isStamp(value.updated_at) &&
   isObject(value.data) &&
-  Object.values(value.data).every(isText);
+  Object.values(value.data).every(isRecordValue);
 
 const isRecordDetail = (value: unknown): value is RecordDetail =>
   isObject(value) && isEditorCollection(value.collection) && isEditorRecord(value.record);
@@ -450,6 +462,7 @@ export function createEditorApi(apiOrigin: string, landingOrigin?: string) {
       | CategoryOrder
       | RecordInput
       | CreateRecordInput
+      | NewCollectionInput
       | { expected_version: number; comment?: string },
   ) {
     const headers = new Headers();
@@ -670,6 +683,9 @@ export function createEditorApi(apiOrigin: string, landingOrigin?: string) {
     deleteRecord: async (key: string, recordKey: string, expectedVersion: number) => {
       await send("DELETE", `${recordPath(key, recordKey)}?expected_version=${expectedVersion}`);
     },
+    /** Adds a collection; only an admin or an approver may. */
+    createCollection: async (input: NewCollectionInput) =>
+      checkedReply(await send("POST", "/collections", input), isEditorCollection),
     version: () => read<EstateVersion>("/version"),
     me: () => read<Me>("/editor/me"),
     page: async (id: string) => checkedReply(await send("GET", `/pages/${id}`), isPage),

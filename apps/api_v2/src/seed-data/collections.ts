@@ -7,6 +7,9 @@
  *
  * The field names are conventional (`phone`, `email`, `website`) so a
  * renderer can link them by name.
+ *
+ * `public-holidays` (#3205) holds the one-off public holidays landing adds to
+ * its bank holiday calendar.
  */
 
 import type { CollectionSchema, RecordData } from "../modules/collection";
@@ -56,4 +59,31 @@ export const CONTACTS: SeedCollection = {
   ],
 };
 
-export const COLLECTIONS: readonly SeedCollection[] = [CONTACTS];
+/**
+ * Public holidays the Government declares on top of the statutory ones
+ * (#3205). Landing calculates the statutory holidays and their substitution
+ * days itself and adds these to the calendar for their year. `date` is a
+ * `date` field (#3782), so api_v2 refuses one that isn't a real YYYY-MM-DD
+ * date; landing checks it again and ignores a record without one. No
+ * records. The seed runs only locally: deployed environments get the
+ * collection through #3681 (created in the editor) or #3783 (imported).
+ */
+export const PUBLIC_HOLIDAYS: SeedCollection = {
+  key: "public-holidays",
+  title: "Public holidays",
+  record_key: "key",
+  schema: {
+    fields: [
+      { key: "key", label: "Key", type: "slug" },
+      { key: "name", label: "Name", type: "text" },
+      { key: "date", label: "Date", type: "date" },
+      { key: "note", label: "Note", type: "text" },
+    ],
+  },
+  records: [],
+};
+
+export const COLLECTIONS: readonly SeedCollection[] = [
+  CONTACTS,
+  PUBLIC_HOLIDAYS,
+];

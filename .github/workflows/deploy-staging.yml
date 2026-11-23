@@ -20,6 +20,8 @@ name: Deploy Staging
 #     role ARN (output by alpha-infra's staging stack — see PR #240).
 #   - The 4 staging Amplify apps connected to govtech-bb/gov-bb branch
 #     `staging` in the Amplify console with auto-build set per app IaC.
+#   - api_v2 and editor_v2 (#3130): alpha-infra's staging stack (#821) and
+#     gov-bb-editor-v2-staging connected to `staging`, root apps/editor_v2.
 
 on:
   # TRUNK: staging is NOT pushed to directly. deploy-sandbox's
@@ -60,6 +62,9 @@ env:
   AMPLIFY_FORMS_URL: https://forms.staging.alpha.gov.bb
   AMPLIFY_LANDING_URL: https://staging.alpha.gov.bb
   AMPLIFY_FEATURE_FLAGGING_URL: https://feature-flagging.staging.alpha.gov.bb
+  # api_v2's base URL (#3745): the smoke paths are appended to it.
+  API_V2_URL: https://api.staging.alpha.gov.bb/v2
+  AMPLIFY_EDITOR_V2_URL: https://editor.staging.alpha.gov.bb
 
 jobs:
   # Move the `staging` deploy pointer to the commit being deployed BEFORE any
@@ -109,6 +114,8 @@ jobs:
       forms: ${{ steps.affected.outputs.forms }}
       landing: ${{ steps.affected.outputs.landing }}
       ff-app: ${{ steps.affected.outputs.ff-app }}
+      api-v2: ${{ steps.affected.outputs.api-v2 }}
+      editor-v2: ${{ steps.affected.outputs.editor-v2 }}
       migrations: ${{ steps.affected.outputs.migrations }}
       amplify-config: ${{ steps.affected.outputs.amplify-config }}
     steps:
@@ -178,6 +185,18 @@ jobs:
           echo "forms=$(has forms)" >> "$GITHUB_OUTPUT"
           echo "landing=$(has landing)" >> "$GITHUB_OUTPUT"
           echo "ff-app=$(has feature-flagging-app)" >> "$GITHUB_OUTPUT"
+          echo "editor-v2=$(has editor_v2)" >> "$GITHUB_OUTPUT"
+
+          # api_v2 also deploys when this workflow changes, as the Amplify
+          # apps do through amplify-config below. That is how its first staging
+          # deploy happens: until then the ECR repo is empty and the service
+          # sits at desired_count 0.
+          if [ "$(has api_v2)" = true ] || git diff --name-only "$NX_BASE" "$NX_HEAD" \
+              | grep -qx '.github/workflows/deploy-staging.yml'; then
+            echo "api-v2=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "api-v2=false" >> "$GITHUB_OUTPUT"
+          fi
 
           # TypeORM migrations live in packages/database/src/migrations/; the old
           # pattern matched only apps/api/src/database/migrations/, which holds
@@ -536,6 +555,170 @@ jobs:
           EXPECT_CODES: "200,302,307"
         run: bash .github/scripts/smoke-test-url.sh
 
+  # ---------------------------------------------------------------------------
+  # api_v2 and editor_v2 (#3130). Infrastructure: alpha-infra
+  # environments/staging/simple-service-builder-staging/api-v2.tf and
+  # amplify-editor-v2.tf (#821). Same steps as deploy-api-v2-sandbox.yml and
+  # deploy-editor-v2-sandbox.yml, with this workflow's staging role, which
+  # covers the gov-bb-api-v2 ECR repo and passes the gov-bb-api-v2-* roles.
+  #
+  # api_v2 applies its own drizzle migrations at boot, before it listens, so
+  # there is no migration task. Its first boot on staging's empty database runs
+  # the full baseline; the content then needs loading once (import-estate),
+  # which is not part of this workflow.
+  # ---------------------------------------------------------------------------
+
+  deploy-api-v2:
+    name: Build, Push & Deploy api_v2
+    needs: setup
+    if: needs.setup.outputs.api-v2 == 'true'
+    runs-on: ubuntu-latest
+    env:
+      ECR_REPOSITORY: gov-bb-api-v2
+      ECS_SERVICE: api-v2-staging
+      TASK_FAMILY: api-v2-staging
+    steps:
+      - name: Checkout
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          persist-credentials: false
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@254c19bd240aabef8777f48595e9d2d7b972184b # v6.2.1
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN_STAGING }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to ECR
+        id: ecr-login
+        uses: aws-actions/amazon-ecr-login@d539f0932e70871a027e9d5a9d8fc38589180a64 # v2.1.6
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
+
+      # :latest as well as the SHA: tofu's task definition revision 1 points
+      # at :latest. Reads sandbox's layer cache; no cache-to.
+      - name: Build and push api_v2 image
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
+        with:
+          context: .
+          file: apps/api_v2/Dockerfile
+          platforms: linux/amd64
+          push: true
+          provenance: false
+          tags: |
+            ${{ steps.ecr-login.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}
+            ${{ steps.ecr-login.outputs.registry }}/${{ env.ECR_REPOSITORY }}:latest
+          cache-from: type=gha,scope=deploy-api-v2-sandbox
+
+      # Copy the live task definition (env, secrets and roles are tofu's) and
+      # change only the image. Nothing from it is printed: the secret ARNs are
+      # in there. The service starts at desired_count 0 in tofu (which ignores
+      # later changes to it), so this sets it to 1.
+      - name: Register task definition and roll the service
+        id: deploy
+        env:
+          NEW_IMAGE: ${{ steps.ecr-login.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}
+        run: |
+          set -euo pipefail
+          aws ecs describe-task-definition \
+            --task-definition "$TASK_FAMILY" \
+            --query taskDefinition \
+            --output json > task-def.json
+
+          jq --arg img "$NEW_IMAGE" \
+            '.containerDefinitions[0].image = $img | del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities, .registeredAt, .registeredBy)' \
+            task-def.json > task-def-new.json
+
+          TASK_DEF_ARN=$(aws ecs register-task-definition \
+            --cli-input-json file://task-def-new.json \
+            --query taskDefinition.taskDefinitionArn \
+            --output text)
+          echo "Registered $TASK_DEF_ARN"
+          echo "task-definition-arn=$TASK_DEF_ARN" >> "$GITHUB_OUTPUT"
+
+          aws ecs update-service \
+            --cluster "$ECS_CLUSTER" \
+            --service "$ECS_SERVICE" \
+            --task-definition "$TASK_DEF_ARN" \
+            --desired-count 1 \
+            --query "service.deployments[0].rolloutState" \
+            --output text
+
+          aws ecs wait services-stable --cluster "$ECS_CLUSTER" --services "$ECS_SERVICE"
+
+      - name: Verify ECS deployment landed (catches silent rollback)
+        env:
+          CLUSTER: ${{ env.ECS_CLUSTER }}
+          SERVICE: ${{ env.ECS_SERVICE }}
+          EXPECTED_TASK_DEF: ${{ steps.deploy.outputs.task-definition-arn }}
+        run: bash .github/scripts/verify-ecs-deployment.sh
+
+      # /health/db proves the database answers; /categories proves a database
+      # read through the public routes. The sandbox job also checks a seeded
+      # page, which waits here until staging's content is imported.
+      - name: Smoke test api_v2
+        run: |
+          set -euo pipefail
+          for path in /health/db /docs/openapi.json /categories; do
+            URL="$API_V2_URL$path" LABEL="api_v2 $path" bash .github/scripts/smoke-test-url.sh
+          done
+
+  amplify-editor-v2:
+    name: Amplify build (editor_v2)
+    needs: setup
+    if: needs.setup.outputs.editor-v2 == 'true' || needs.setup.outputs.amplify-config == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          persist-credentials: false
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@254c19bd240aabef8777f48595e9d2d7b972184b # v6.2.1
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN_STAGING }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      # The build bakes in VITE_API_ORIGIN, an app variable tofu sets, and the
+      # apps/editor_v2 entry in amplify.yml fails it when that is unset.
+      - name: Trigger and monitor Amplify build
+        env:
+          # gov-bb-editor-v2-staging, created by alpha-infra#821.
+          AMPLIFY_APP_ID: dj9csf225uuh2
+          AMPLIFY_BRANCH: staging
+          APP_LABEL: editor_v2
+        run: |
+          set -euo pipefail
+          JOB_ID=$(aws amplify start-job \
+            --app-id "$AMPLIFY_APP_ID" --branch-name "$AMPLIFY_BRANCH" \
+            --job-type RELEASE --region "$AWS_REGION" \
+            --query jobSummary.jobId --output text)
+          echo "Amplify $APP_LABEL job: $JOB_ID"
+
+          for i in $(seq 1 30); do
+            STATUS=$(aws amplify get-job \
+              --app-id "$AMPLIFY_APP_ID" --branch-name "$AMPLIFY_BRANCH" \
+              --job-id "$JOB_ID" --region "$AWS_REGION" \
+              --query job.summary.status --output text)
+            echo "[$i/30] $APP_LABEL: $STATUS"
+            case "$STATUS" in
+              SUCCEED) echo "✅ Amplify $APP_LABEL build succeeded"; exit 0 ;;
+              FAILED|CANCELLED) echo "❌ Amplify $APP_LABEL build $STATUS"; exit 1 ;;
+            esac
+            sleep 30
+          done
+          echo "❌ Amplify $APP_LABEL build did not finish in 15 min"
+          exit 1
+
+      - name: Smoke test editor_v2 URL
+        env:
+          URL: ${{ env.AMPLIFY_EDITOR_V2_URL }}
+          LABEL: editor_v2
+          # The CDN can serve nothing for a few seconds after SUCCEED.
+          SLEEP_SECONDS: "10"
+        run: bash .github/scripts/smoke-test-url.sh
+
   # Journey 1 on staging (#3008): each spec opens its landing start page, follows
   # Start to the form, submits it and checks the reference. A Start link to the
   # wrong host or form fails the run. Runs on every staging deploy, even when
@@ -693,6 +876,8 @@ jobs:
         amplify-forms,
         amplify-landing,
         amplify-feature-flagging,
+        deploy-api-v2,
+        amplify-editor-v2,
         smoke-test-forms,
         journey-5-payments,
       ]
@@ -727,6 +912,8 @@ jobs:
             row "Amplify forms"        "${{ needs.amplify-forms.result }}"
             row "Amplify landing"      "${{ needs.amplify-landing.result }}"
             row "Amplify feature-flagging" "${{ needs.amplify-feature-flagging.result }}"
+            row "api_v2"               "${{ needs.deploy-api-v2.result }}"
+            row "Amplify editor_v2"    "${{ needs.amplify-editor-v2.result }}"
             row "Forms smoke (J1)"     "$SMOKE_RESULT"
             row "Journey 5 (EZ Pay)"   "${{ needs.journey-5-payments.result }}"
             echo ""
@@ -735,4 +922,6 @@ jobs:
             echo "- forms: ${{ env.AMPLIFY_FORMS_URL }}"
             echo "- landing: ${{ env.AMPLIFY_LANDING_URL }}"
             echo "- feature-flagging: ${{ env.AMPLIFY_FEATURE_FLAGGING_URL }}"
+            echo "- api_v2: ${{ env.API_V2_URL }}"
+            echo "- editor_v2: ${{ env.AMPLIFY_EDITOR_V2_URL }}"
           } >> "$GITHUB_STEP_SUMMARY"

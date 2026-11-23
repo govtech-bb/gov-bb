@@ -100,4 +100,45 @@ describe("a contact block's details, read from a record", () => {
       })[0],
     ).toMatchObject({ text: " java\tscript:alert(1)", href: null });
   });
+
+  it("shows a number, a yes or no and a list as text, and leaves out an empty list (#3782)", () => {
+    const shelters = {
+      schema: {
+        fields: [
+          { key: "capacity", label: "Capacity" },
+          { key: "water", label: "Has water" },
+          { key: "access", label: "Wheelchair access" },
+          { key: "opened", label: "Opened" },
+          { key: "phones", label: "Telephone numbers" },
+          { key: "documents", label: "Documents" },
+        ],
+      },
+    };
+    expect(
+      contactDetails(
+        shelters,
+        ["capacity", "water", "access", "opened", "phones", "documents"],
+        {
+          capacity: 0.1725,
+          water: true,
+          access: false,
+          opened: "2026-08-01",
+          phones: ["(246) 535-0021", "211"],
+          documents: [],
+        },
+      ),
+    ).toEqual([
+      { field: "capacity", label: "Capacity", text: "0.1725", href: null },
+      { field: "water", label: "Has water", text: "Yes", href: null },
+      { field: "access", label: "Wheelchair access", text: "No", href: null },
+      { field: "opened", label: "Opened", text: "2026-08-01", href: null },
+      // A list of numbers is no one number to dial
+      {
+        field: "phones",
+        label: "Telephone numbers",
+        text: "(246) 535-0021, 211",
+        href: null,
+      },
+    ]);
+  });
 });

@@ -5,6 +5,9 @@ import { DESCRIPTION, FindEmergencyShelterPage, TITLE } from './-ui/find-page'
 export const Route = createFileRoute(
   '/health-and-emergency-services/find-an-emergency-shelter/find',
 )({
-  head: () => pageHead(TITLE, DESCRIPTION),
+  head: ({ match }) =>
+    pageHead(TITLE, DESCRIPTION, {
+      noindex: match.context.serviceLevel !== 'public',
+    }),
   component: FindEmergencyShelterPage,
 })
