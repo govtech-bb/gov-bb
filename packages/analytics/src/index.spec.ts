@@ -6,9 +6,11 @@ import {
   eventName,
   flushJourney,
   installClickListener,
+  isSubmitErrorCode,
   journeyEvent,
   stepFromEvent,
   stepNumberToWord,
+  SUBMIT_ERROR_CODES,
   trackEvent,
   trackPageview,
   UMAMI_SCRIPT_ATTRIBUTES,
@@ -690,4 +692,36 @@ describe("dead-end form events fit the 50-char name (#3513)", () => {
       }
     },
   );
+});
+
+describe("SUBMIT_ERROR_CODES (#3826)", () => {
+  it("lists the errors values apps/forms sends with form-submit-error", () => {
+    expect(SUBMIT_ERROR_CODES).toEqual([
+      "validation",
+      "network",
+      "server",
+      "payment-init",
+    ]);
+  });
+
+  it("isSubmitErrorCode accepts only a listed code", () => {
+    for (const code of SUBMIT_ERROR_CODES) {
+      expect(isSubmitErrorCode(code)).toBe(true);
+    }
+    expect(isSubmitErrorCode("Enter your name")).toBe(false);
+    expect(isSubmitErrorCode("")).toBe(false);
+  });
+
+  it("refuses an unlisted errors value at type-check", () => {
+    // Never called: type-check fails if this stops being an error.
+    const typeChecks = () => {
+      // @ts-expect-error -- not a submit error code
+      trackEvent("form-submit-error", {
+        form: "f",
+        category: "c",
+        errors: "timeout",
+      });
+    };
+    expect(typeChecks).toBeTypeOf("function");
+  });
 });

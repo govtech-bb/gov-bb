@@ -19,3 +19,10 @@ export {
 // The tool IDs landing sends in its tool events (ADR 0138), so the dashboard's
 // tool list is checked against them.
 export type { ToolId } from "@govtech-bb/analytics";
+// The form-submit-error `errors` codes the forms app sends (#3826), so /stats
+// and the dashboard name the same codes and count the rest as "other".
+export {
+  SUBMIT_ERROR_CODES,
+  isSubmitErrorCode,
+  type SubmitErrorCode,
+} from "@govtech-bb/analytics";

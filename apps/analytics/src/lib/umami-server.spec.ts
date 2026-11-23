@@ -297,6 +297,11 @@ describe('shapeSubmitError (#1916)', () => {
   it('returns a null rate when there were no attempts', () => {
     expect(shapeSubmitError(0, 0, []).rate).toBeNull()
   })
+
+  it('names validation, the code /stats names, instead of "other" (#3826)', () => {
+    const se = shapeSubmitError(0, 6, [{ value: 'validation', total: 6 }])
+    expect(se.byReason).toEqual([{ reason: 'validation', count: 6 }])
+  })
 })
 
 // A hung forms API must not stall the dashboard: each fetch is capped with

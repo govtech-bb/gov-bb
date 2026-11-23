@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs'
+import { SUBMIT_ERROR_CODES } from '@govtech-bb/analytics'
 import { describe, expect, it } from 'vitest'
 
 // docs/analytics/event-catalogue.md lists every event for whoever builds the
@@ -29,13 +30,11 @@ const keys = [
   ...interfaceKeys(read(`${ANALYTICS}tool-events.ts`), 'ToolTrackingData'),
 ]
 
+const catalogue = read('../../../../docs/analytics/event-catalogue.md')
+
 // A row starts with the event name in code: | `form-start` | …
 const catalogued = new Set(
-  [
-    ...read('../../../../docs/analytics/event-catalogue.md').matchAll(
-      /^\|\s*`([^`]+)`\s*\|/gm,
-    ),
-  ].map((m) => m[1]),
+  [...catalogue.matchAll(/^\|\s*`([^`]+)`\s*\|/gm)].map((m) => m[1]),
 )
 
 describe('event catalogue', () => {
@@ -55,5 +54,11 @@ describe('event catalogue', () => {
       catalogued.has(key),
       `add a row for ${key} to docs/analytics/event-catalogue.md`,
     ).toBe(true)
+  })
+
+  // /stats and the dashboard name these codes (#3826), so the row must too.
+  it.each(SUBMIT_ERROR_CODES)('form-submit-error lists the %s code', (code) => {
+    const row = /^\|\s*`form-submit-error`.*$/m.exec(catalogue)?.[0]
+    expect(row).toContain(`\`${code}\``)
   })
 })

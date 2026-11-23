@@ -174,10 +174,10 @@ function Stats({ detail }: { detail: FormDetailData }) {
             value: fmtInt(se.total),
             hint: (
               <Hint title="Form failures">
-                Submissions that failed at the API (network, payment or server)
-                — <code>form-submit-error</code> events. These are attempts, not
-                completions; a visitor who fails can retry, so a failure isn’t
-                counted as abandonment.
+                Submissions that failed at the API (validation, network, payment
+                or server) — <code>form-submit-error</code> events. These are
+                attempts, not completions; a visitor who fails can retry, so a
+                failure isn’t counted as abandonment.
                 {se.attempts > 0 && se.rate != null ? (
                   <span className="mt-xs block">
                     {fmtPct(se.rate * 100)} of {fmtInt(se.attempts)} submit

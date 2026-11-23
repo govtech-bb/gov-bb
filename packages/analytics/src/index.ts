@@ -44,6 +44,27 @@ export const UMAMI_SCRIPT_ATTRIBUTES = {
   "data-exclude-search": "true",
 } as const;
 
+/**
+ * The `errors` values apps/forms sends with `form-submit-error` (#3826): the
+ * API rejected an answer (`validation`), the API could not be reached or
+ * answered with an HTTP error, 5xx included (`network`), the API answered but
+ * reported the submission failed (`server`), or the payment could not start
+ * (`payment-init`). The /stats Slack report and the analytics dashboard name
+ * these and count any other value as "other". `TrackingData` types `errors`
+ * from this list, so a new value fails type-check until it is added here.
+ */
+export const SUBMIT_ERROR_CODES = [
+  "validation",
+  "network",
+  "server",
+  "payment-init",
+] as const;
+export type SubmitErrorCode = (typeof SUBMIT_ERROR_CODES)[number];
+
+export function isSubmitErrorCode(value: string): value is SubmitErrorCode {
+  return (SUBMIT_ERROR_CODES as readonly string[]).includes(value);
+}
+
 // Landing tool events (tool-step-view, tool-result, tool-action, tool-error)
 // are in tool-events.ts (ADR 0138).
 export interface TrackingData extends ToolTrackingData {
@@ -60,7 +81,11 @@ export interface TrackingData extends ToolTrackingData {
     size_kb: number;
   };
   "form-submit": { form: string; category: string; duration_seconds: number };
-  "form-submit-error": { form: string; category: string; errors: string };
+  "form-submit-error": {
+    form: string;
+    category: string;
+    errors: SubmitErrorCode;
+  };
   "form-review": { form: string; category: string; duration_seconds: number };
   "form-validation-error": {
     form: string;
@@ -163,10 +188,11 @@ export function trackEvent<E extends TrackingEventName>(
   event: E,
   data: TrackingData[E],
 ): void;
-// Any other name. A tool event name is refused here, so wrong tool data fails
-// type-check instead of falling through to this overload (ADR 0138).
+// Any other name. A tool event name (ADR 0138) or `form-submit-error` (#3826)
+// is refused here, so wrong data for it fails type-check instead of falling
+// through to this overload.
 export function trackEvent<N extends string>(
-  event: N extends keyof ToolTrackingData ? never : N,
+  event: N extends keyof ToolTrackingData | "form-submit-error" ? never : N,
   data?: Record<string, unknown>,
 ): void;
 export function trackEvent(

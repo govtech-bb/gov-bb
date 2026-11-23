@@ -122,8 +122,12 @@ Surfaced as a first-class block on each form page:
   errors.
 - **Submit-error rate** = errors ÷ attempts.
 - **By reason** = `eventDataValues(..., event: "<formId>:form-submit-error",
-  propertyName: "errors")` — `network` (client/network failure), `payment-init`
-  (payment could not start), `server` (5xx / server failure).
+  propertyName: "errors")` — `validation` (the API rejected an answer),
+  `network` (no answer, or an HTTP error — a 5xx counts here too),
+  `payment-init` (payment could not start), `server` (the API answered but
+  reported the submission failed). Any other value counts as `other`. The list
+  is `SUBMIT_ERROR_CODES` in `@govtech-bb/analytics`, shared with `/stats`
+  (#3826).
 
 A failed submission is counted here, **distinct from abandonment** in the funnel:
 someone whose submit 500s reached Submit but isn't a "completed", and shows up as
@@ -140,4 +144,4 @@ Umami event name as `<formId>:<event>`:
 | `form-step-view` | a step is rendered (**reached**) | `step` (stepId) |
 | `form-review` | leaving the check-your-answers step | — |
 | `form-submit` | submission succeeded | `duration_seconds` |
-| `form-submit-error` | submission failed | `errors` (network/payment-init/server) |
+| `form-submit-error` | submission failed | `errors` (validation/network/payment-init/server) |

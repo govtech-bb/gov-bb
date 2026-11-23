@@ -20,6 +20,7 @@ import {
   eventFormKey,
   eventName,
   humanizeStep,
+  isSubmitErrorCode,
   liveTools,
   MIN_QUERY_COUNT,
   shapeJourneyList,
@@ -324,15 +325,10 @@ export function buildStepFunnel(
   return stages
 }
 
-// The current app emits `errors: network | payment-init | server`; older data
-// put other strings (e.g. field validation messages) here, so anything off this
-// list is bucketed as "other" (#1916 asks for network/payment/server/other).
-const KNOWN_SUBMIT_ERROR_REASONS = new Set([
-  'network',
-  'payment-init',
-  'server',
-])
-
+// The forms app sends one of SUBMIT_ERROR_CODES as `errors` (validation,
+// network, server, payment-init — the same list /stats uses, #3826). Older data
+// put other strings (e.g. field validation messages) here, and anyone can send
+// Umami events, so anything off the list is bucketed as "other" (#1916).
 export function shapeSubmitError(
   submitTotal: number,
   errorTotal: number,
@@ -342,7 +338,7 @@ export function shapeSubmitError(
   const tally = new Map<string, number>()
   for (const r of reasonRows) {
     const raw = String(r.value)
-    const reason = KNOWN_SUBMIT_ERROR_REASONS.has(raw) ? raw : 'other'
+    const reason = isSubmitErrorCode(raw) ? raw : 'other'
     tally.set(reason, (tally.get(reason) ?? 0) + r.total)
   }
   const byReason = [...tally.entries()]
