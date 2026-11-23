@@ -1,4 +1,5 @@
 import { Heading, Text } from '@govtech-bb/react'
+import { MIN_QUERY_COUNT } from '@govtech-bb/umami-analytics'
 import { useNavigate } from '@tanstack/react-router'
 import { AnalyticsChrome } from './components/AnalyticsChrome'
 import { SortHeader, useTableSort } from './components/SortableTable'
@@ -61,7 +62,9 @@ function QueriesTable({ data }: { data: SearchPayload }) {
           {sort.sorted.length === 0 ? (
             <tr>
               <td className={`${TD} text-mid-grey-00`} colSpan={4}>
-                No searches in this period.
+                {data.searches
+                  ? `No query was searched ${MIN_QUERY_COUNT} or more times in this period.`
+                  : 'No searches in this period.'}
               </td>
             </tr>
           ) : (
@@ -133,8 +136,9 @@ export default function SearchPage({ data }: { data: SearchPayload }) {
               Top queries
             </Heading>
             <Text as="p" size="caption" className="mb-s text-mid-grey-00">
-              Most-searched terms, with per-query click-through. Click any
-              column to sort.
+              Most-searched terms, with per-query click-through. Queries
+              searched fewer than {MIN_QUERY_COUNT} times are not shown. Click
+              any column to sort.
             </Text>
             <QueriesTable data={data} />
           </>
