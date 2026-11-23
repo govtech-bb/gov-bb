@@ -1,6 +1,7 @@
 import type { ConfigService } from "@nestjs/config";
 import type { FormDefinitionsService } from "@/forms/form-definitions/form-definitions.service";
 import { Logger } from "@nestjs/common";
+import { TOOLS } from "@govtech-bb/umami-analytics";
 import { SlackStatsService, slackResponseUrl } from "./slack-stats.service";
 
 // A fake Umami client: funnel rows and event values keyed by event name, the
@@ -305,6 +306,82 @@ describe("SlackStatsService.buildReply — one tool", () => {
     // A topic with no reply yet doesn't suggest itself.
     expect(await reply("/stats", "week", "journeys", NOW)).not.toContain(
       "Did you mean",
+    );
+  });
+});
+
+describe("SlackStatsService.buildReply — all tools", () => {
+  const reads = () =>
+    umami.eventDataValues.mock.calls.map(
+      ([site, event, property, , where]) =>
+        `${site} ${event}.${property}${where ? `@${where.equals}` : ""}`,
+    );
+
+  it("lists every tool from one read per event, with the dashboard's numbers", async () => {
+    umami.metricsUrls.mockResolvedValue([
+      {
+        x: "/health-and-emergency-services/find-an-open-pharmacy",
+        visitors: 300,
+      },
+      {
+        x: "/health-and-emergency-services/find-an-open-pharmacy/find",
+        visitors: 120,
+      },
+      { x: "/business-trade/crop-over-permits", visitors: 60 },
+    ]);
+    // Event values keyed `event.property`, plus `@tool` for a filtered read.
+    const data: Record<string, { value: string; total: number }[]> = {
+      "tool-result.tool": [
+        { value: "pharmacy-finder", total: 250 },
+        { value: "crop-over-permits", total: 40 },
+      ],
+      "tool-action.tool": [{ value: "pharmacy-finder", total: 9 }],
+      "tool-error.tool": [{ value: "pharmacy-finder", total: 10 }],
+      "tool-result.outcome@pharmacy-finder": [
+        { value: "found", total: 225 },
+        { value: "no-results", total: 25 },
+      ],
+      "tool-action.action@pharmacy-finder": [{ value: "call", total: 9 }],
+    };
+    umami.eventDataValues.mockImplementation(
+      async (
+        _site: string,
+        event: string,
+        property: string,
+        _range: unknown,
+        where?: { equals: string },
+      ) => data[`${event}.${property}${where ? `@${where.equals}` : ""}`] ?? [],
+    );
+
+    const text = await reply("/stats", "week", "tools", NOW);
+
+    for (const { id } of TOOLS) expect(text).toContain(`(\`${id}\`)`);
+    expect(text).toContain(
+      "👥 *420* visitors ⚪ no change · ✅ *250* results ⚪ no change · 🚫 *10%* no results ⚪ no change · ⚠️ *10* errors (3.8%) ⚪ no change",
+    );
+    expect(text).toContain(
+      "(`crop-over-permits`): 👥 *60* visitors ⚪ no change · ✅ *40* results",
+    );
+    expect(text).toContain(
+      "(`bank-holidays`): 👥 *0* visitors ⚪ no change · 💤 no tool events yet",
+    );
+    // Breakdowns only for a tool with a no-result rate that sent events.
+    const period = [
+      "landing tool-result.tool",
+      "landing tool-action.tool",
+      "landing tool-error.tool",
+      "landing tool-result.outcome@pharmacy-finder",
+      "landing tool-action.action@pharmacy-finder",
+    ];
+    expect(reads()).toEqual([...period, ...period]);
+    expect(umami.metricsUrls).toHaveBeenCalledTimes(2);
+    expect(formDefinitions.findAll).not.toHaveBeenCalled();
+  });
+
+  it("apologises rather than show no events when Umami fails", async () => {
+    umami.eventDataValues.mockRejectedValue(new Error("Umami 401"));
+    await expect(reply("/stats", "week", "tools", NOW)).rejects.toThrow(
+      "Umami 401",
     );
   });
 });

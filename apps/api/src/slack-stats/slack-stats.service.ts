@@ -9,6 +9,7 @@ import {
   comparisonPeriods,
   eventName,
   funnelHeadline,
+  liveTools,
   shapeTools,
   shapeWaterAlerts,
   tallyFieldErrors,
@@ -29,6 +30,7 @@ import {
   formatFormStats,
   formatSiteStats,
   formatToolStats,
+  formatToolsSummary,
   periodHeading,
   tallyDeadEnds,
   type ChatPeriod,
@@ -183,6 +185,7 @@ export class SlackStatsService {
     now: Date,
   ): Promise<SlackMessage | string> {
     if (formId === "chat") return this.chatReply(period, now);
+    if (formId === "tools") return this.toolsReply(period, now);
     const tool = TOOLS.find((t) => t.id === formId);
     if (tool) return this.toolReply(period, tool, now);
 
@@ -429,6 +432,44 @@ export class SlackStatsService {
       tool,
       current: await this.toolPeriod(client, tool, periods.current),
       previous: await this.toolPeriod(client, tool, periods.previous),
+    });
+  }
+
+  /**
+   * Every live tool on one line (#3807), shaped by the dashboard's code so the
+   * numbers match its Tools tab. Per period, one at a time: the landing URLs,
+   * each event's `tool` values for every tool, and the filtered outcome and
+   * action reads of only the tools with a no-result rate that sent events: at
+   * most 10 requests, 20 per reply. An Umami error on a count reaches reply(),
+   * which apologises, so an outage never reads as "no tool events".
+   */
+  private async toolsReply(
+    period: StatsPeriod,
+    now: Date,
+  ): Promise<SlackMessage> {
+    const periods = comparisonPeriods(period, TZ, now);
+    const { apiKey, landingWebsiteId } = this.umamiConfig();
+    const client = new UmamiClient({ apiKey });
+    const tools = liveTools();
+    const toolsPeriod = async (range: Range) => {
+      const urlRows = await client.metricsUrls(landingWebsiteId, range);
+      // Only the no-result rate needs a tool's own breakdown here, so the
+      // tools without one skip those reads.
+      const rows = await this.toolEventRows(
+        client,
+        tools.filter((t) => t.noResultOutcome),
+        range,
+      );
+      return shapeTools(tools, urlRows, new Map(), rows);
+    };
+    const current = await toolsPeriod(periods.current);
+    const previous = await toolsPeriod(periods.previous);
+    return formatToolsSummary(periodHeading(period, periods), {
+      tools: tools.map((tool, i) => ({
+        tool,
+        current: current[i],
+        previous: previous[i],
+      })),
     });
   }
 

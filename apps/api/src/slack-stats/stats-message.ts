@@ -8,6 +8,7 @@ import {
   type StatsPeriod,
   type Tool,
   type ToolEventStats,
+  type ToolRow,
   type WaterAlertFunnel,
 } from "@govtech-bb/umami-analytics";
 
@@ -794,5 +795,66 @@ export function formatToolStats(
   return {
     text: `🧰 ${tool.name} · ${heading.title}: ${num(c.visitors)} visitors, ${num(results)} results`,
     blocks,
+  };
+}
+
+/** One tool's numbers for one period in the all-tools reply, from shapeTools. */
+export type ToolTotals = Pick<ToolRow, "visitors" | "events">;
+
+export interface ToolsSummary {
+  tools: { tool: Tool; current: ToolTotals; previous: ToolTotals }[];
+}
+
+/** A 0–1 rate to one decimal place, as the dashboard's Tools tab shows it. */
+const toolRate = (r: number | null) =>
+  r === null ? "–" : `${(r * 100).toFixed(1).replace(/\.0$/, "")}%`;
+
+/**
+ * Every tool on one line (#3807): the dashboard Tools tab's visitors, results,
+ * no-result rate and errors, each with the change from the period before.
+ */
+export function formatToolsSummary(
+  heading: PeriodHeading,
+  { tools }: ToolsSummary,
+): SlackMessage {
+  const lines = tools.map(({ tool, current: c, previous: p }) => {
+    const figures = [
+      `👥 *${num(c.visitors)}* visitors ${countChange(c.visitors, p.visitors)}`,
+    ];
+    const e = c.events;
+    if (!e) {
+      figures.push("💤 no tool events yet");
+    } else {
+      figures.push(
+        `✅ *${num(e.results)}* results ${countChange(e.results, p.events?.results ?? 0)}`,
+      );
+      if (tool.noResultOutcome) {
+        figures.push(
+          `🚫 *${toolRate(e.noResultRate)}* ${outcomeLabel(tool.noResultOutcome).toLowerCase()} ${rateChange(e.noResultRate, p.events?.noResultRate ?? null, "down")}`.trimEnd(),
+        );
+      }
+      const errorRate =
+        e.errorRate === null ? "" : ` (${toolRate(e.errorRate)})`;
+      figures.push(
+        `⚠️ *${num(e.errors)}* errors${errorRate} ${countChange(e.errors, p.events?.errors ?? 0, "down")}`,
+      );
+    }
+    return section(`*${tool.name}* (\`${tool.id}\`): ${figures.join(" · ")}`);
+  });
+  const visitors = tools.reduce((n, t) => n + t.current.visitors, 0);
+  const results = tools.reduce(
+    (n, t) => n + (t.current.events?.results ?? 0),
+    0,
+  );
+  return {
+    text: `🧰 Tools · ${heading.title}: ${num(visitors)} visitors, ${num(results)} results`,
+    blocks: [
+      header(`🧰 Tools · ${heading.title}`),
+      context(heading.detail),
+      ...lines,
+      context(
+        "Visitors are summed across each tool's pages, so someone who views more than one page may be counted more than once. The no-result rate is the share of results where the visitor found nothing or was not eligible; tools without such a result have no rate. The error rate in brackets is errors ÷ (results + errors).",
+      ),
+    ],
   };
 }

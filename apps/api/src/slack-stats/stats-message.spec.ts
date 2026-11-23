@@ -12,6 +12,7 @@ import {
   formatFormStats,
   formatSiteStats,
   formatToolStats,
+  formatToolsSummary,
   periodHeading,
   plainSlackText,
   rateChange,
@@ -19,6 +20,7 @@ import {
   tallyDeadEnds,
   type SlackMessage,
   type ToolPeriod,
+  type ToolTotals,
 } from "./stats-message";
 
 const NOW = new Date("2026-11-04T18:30:00Z");
@@ -751,5 +753,68 @@ describe("formatToolStats", () => {
     expect(steps.text.text).toContain(
       "• `x&lt;!channel&gt; &lt;https://evil.example|click&gt; bold`: *3*",
     );
+  });
+});
+
+describe("formatToolsSummary", () => {
+  const tool = (id: string) => TOOLS.find((t) => t.id === id)!;
+  const events = (
+    results: number,
+    errors: number,
+    noResultRate: number | null = null,
+  ): ToolTotals["events"] => ({
+    results,
+    noResultRate,
+    topAction: null,
+    errors,
+    errorRate: results + errors ? errors / (results + errors) : null,
+  });
+
+  it("puts each tool on one line, with or without events", () => {
+    const message = formatToolsSummary(LAST_WEEK, {
+      tools: [
+        {
+          tool: tool("pharmacy-finder"),
+          current: { visitors: 420, events: events(300, 12, 0.104) },
+          previous: { visitors: 400, events: events(250, 6, 0.2) },
+        },
+        {
+          // Its first events this period.
+          tool: tool("severance-calculator"),
+          current: { visitors: 90, events: events(40, 0, 0.25) },
+          previous: { visitors: 90, events: null },
+        },
+        {
+          // Its outcomes couldn't be read or trusted: a dash, as on the dashboard.
+          tool: tool("shelter-finder"),
+          current: { visitors: 30, events: events(10, 0) },
+          previous: { visitors: 20, events: events(5, 1, 0.4) },
+        },
+        {
+          // Actions only: no results or errors, so no error rate.
+          tool: tool("crop-over-permits"),
+          current: { visitors: 60, events: events(0, 0) },
+          previous: { visitors: 0, events: null },
+        },
+        {
+          tool: tool("bank-holidays"),
+          current: { visitors: 75, events: null },
+          previous: { visitors: 60, events: events(3, 0) },
+        },
+      ],
+    });
+    expect(message.text).toBe(
+      "🧰 Tools · Last week: 675 visitors, 350 results",
+    );
+    expect(render(message)).toMatchInlineSnapshot(`
+      "🧰 Tools · Last week
+      26 Oct – 1 Nov, compared with 19 Oct – 25 Oct
+      *Find an open pharmacy* (\`pharmacy-finder\`): 👥 *420* visitors 🟢 ▲ 5% · ✅ *300* results 🟢 ▲ 20% · 🚫 *10.4%* no results 🟢 ▼ 10 pts · ⚠️ *12* errors (3.8%) 🔴 ▲ 100%
+      *Find out how much severance you are owed* (\`severance-calculator\`): 👥 *90* visitors ⚪ no change · ✅ *40* results 🆕 new · 🚫 *25%* not eligible · ⚠️ *0* errors (0%) ⚪ no change
+      *Find an emergency shelter* (\`shelter-finder\`): 👥 *30* visitors 🟢 ▲ 50% · ✅ *10* results 🟢 ▲ 100% · 🚫 *–* no results · ⚠️ *0* errors (0%) 🟢 ▼ 100%
+      *Find the permits you need for a Crop Over event* (\`crop-over-permits\`): 👥 *60* visitors 🆕 new · ✅ *0* results ⚪ no change · ⚠️ *0* errors ⚪ no change
+      *Check bank holiday dates* (\`bank-holidays\`): 👥 *75* visitors 🟢 ▲ 25% · 💤 no tool events yet
+      Visitors are summed across each tool's pages, so someone who views more than one page may be counted more than once. The no-result rate is the share of results where the visitor found nothing or was not eligible; tools without such a result have no rate. The error rate in brackets is errors ÷ (results + errors)."
+    `);
   });
 });
