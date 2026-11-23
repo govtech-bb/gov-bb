@@ -1,10 +1,15 @@
 import {
   canonicalEvent,
+  eventFormKey,
   parseEventName,
   type ComparisonPeriods,
-  type JourneyRow,
+  type EventDataValue,
   type MetricRow,
+  type JourneyRow,
   type StatsPeriod,
+  type Tool,
+  type ToolEventStats,
+  type WaterAlertFunnel,
 } from "@govtech-bb/umami-analytics";
 
 const TZ = "America/Barbados";
@@ -15,6 +20,17 @@ export interface SitePeriod {
   starts: number;
   completed: number;
   avgDurationSeconds: number | null;
+  deadEnds: DeadEnds;
+  /** The known form with the most closed views and load errors. */
+  topDeadEndForm: { formId: string; count: number } | null;
+}
+
+/** Times a citizen was stopped before reaching a service, in one period. */
+export interface DeadEnds {
+  formClosed: number;
+  formLoadError: number;
+  serviceUnavailable: number;
+  pageNotFound: number;
 }
 
 export interface FormFinishChange {
@@ -86,6 +102,53 @@ export function biggestFinishDrops(
     .slice(0, 3);
 }
 
+const FORM_DEAD_ENDS = new Map<string, keyof DeadEnds>([
+  ["form-closed-view", "formClosed"],
+  ["form-load-error", "formLoadError"],
+]);
+
+/**
+ * Dead-end counts for one period from the `metricsEvents` rows of both
+ * websites, and the form with the most. With a `form`, the forms site stores
+ * `<form>:<event>`, maybe with a short event code or a hashed form key, so
+ * names go through canonicalEvent, and a key maps back to its form ID through
+ * `formIds`. A key that matches no known form counts in the totals but is
+ * never named: anyone can send Umami an event name, and a form ID typed into
+ * the forms address reaches it too, so it must not reach Slack.
+ */
+export function tallyDeadEnds(
+  landing: MetricRow[],
+  forms: MetricRow[],
+  formIds: string[],
+): { deadEnds: DeadEnds; topForm: { formId: string; count: number } | null } {
+  const deadEnds: DeadEnds = {
+    formClosed: 0,
+    formLoadError: 0,
+    serviceUnavailable: 0,
+    pageNotFound: 0,
+  };
+  for (const { x, y } of landing) {
+    if (x === "service-unavailable-view") deadEnds.serviceUnavailable += y;
+    if (x === "page-not-found") deadEnds.pageNotFound += y;
+  }
+  const idByKey = new Map(formIds.map((id) => [eventFormKey(id), id]));
+  const byForm = new Map<string, number>();
+  for (const { x, y } of forms) {
+    // A form-load-error with no form (not found) is stored unpacked.
+    const packed = parseEventName(x);
+    const key = FORM_DEAD_ENDS.get(canonicalEvent(packed ? packed.event : x));
+    if (!key) continue;
+    deadEnds[key] += y;
+    const formId = packed && idByKey.get(packed.formId);
+    if (formId) byForm.set(formId, (byForm.get(formId) ?? 0) + y);
+  }
+  let topForm: { formId: string; count: number } | null = null;
+  for (const [formId, count] of byForm) {
+    if (!topForm || count > topForm.count) topForm = { formId, count };
+  }
+  return { deadEnds, topForm };
+}
+
 // --- formatting ------------------------------------------------------------
 
 /** A Slack message: `text` is the notification fallback, `blocks` the layout. */
@@ -117,17 +180,25 @@ function trend(delta: number, better: Better, label: string): string {
   return `${good ? "🟢" : "🔴"} ${delta > 0 ? "▲" : "▼"} ${label}`;
 }
 
-export function countChange(current: number, previous: number): string {
+export function countChange(
+  current: number,
+  previous: number,
+  better: Better = "up",
+): string {
   if (current === previous) return "⚪ no change";
-  if (!previous) return "🆕 new";
+  if (!previous) return better === "up" ? "🆕 new" : "🔴 new";
   const change = Math.round((Math.abs(current - previous) / previous) * 100);
-  return trend(current - previous, "up", `${change}%`);
+  return trend(current - previous, better, `${change}%`);
 }
 
-export function rateChange(current: number | null, previous: number | null) {
+export function rateChange(
+  current: number | null,
+  previous: number | null,
+  better: Better = "up",
+) {
   if (current === null || previous === null) return "";
   const pts = Math.round((current - previous) * 100);
-  return pts ? trend(pts, "up", `${Math.abs(pts)} pts`) : "⚪ no change";
+  return pts ? trend(pts, better, `${Math.abs(pts)} pts`) : "⚪ no change";
 }
 
 /** Shorter is better, so a longer time is 🔴. */
@@ -277,8 +348,36 @@ export function formatSiteStats(
         durationChange(c.avgDurationSeconds, p.avgDurationSeconds),
       ],
     ]),
-    divider,
   ];
+  const deadEnds = (
+    [
+      ["closed form", "formClosed"],
+      ["form didn't load", "formLoadError"],
+      ["service unavailable", "serviceUnavailable"],
+      ["page not found", "pageNotFound"],
+    ] as const
+  ).map(([label, key]) => ({
+    label,
+    now: c.deadEnds[key],
+    before: p.deadEnds[key],
+  }));
+  if (deadEnds.some((d) => d.now || d.before)) {
+    blocks.push(
+      section(
+        "*🚧 Dead ends:* " +
+          deadEnds
+            .map(
+              (d) =>
+                `${d.label} *${num(d.now)}* ${countChange(d.now, d.before, "down")}`,
+            )
+            .join(" · ") +
+          (c.topDeadEndForm
+            ? ` · most on \`${c.topDeadEndForm.formId}\` (${num(c.topDeadEndForm.count)})`
+            : ""),
+      ),
+    );
+  }
+  blocks.push(divider);
   if (biggestDrops.length) {
     blocks.push(
       section(
@@ -517,6 +616,188 @@ export function formatChatStats(
   };
 }
 
+/** One tool's numbers for one period, from its landing pages and `tool-*` events. */
+export interface ToolPeriod {
+  /** Summed across the tool's pages, as on the dashboard's Tools tab. */
+  visitors: number;
+  /** From `tool-result`, `tool-action` and `tool-error`; null when it sent none. */
+  events: ToolEventStats | null;
+  /** `tool-step-view` events. */
+  stepViews: number;
+  /**
+   * Counts by step, action and error code: empty when there were none,
+   * undefined when Umami's breakdown could not be read or trusted.
+   */
+  steps: EventDataValue[] | undefined;
+  actions: EventDataValue[] | undefined;
+  errors: EventDataValue[] | undefined;
+  /** Water outages only: the alert sign-ups, null when they could not be read. */
+  waterAlerts?: WaterAlertFunnel | null;
+}
+
+export interface ToolStats {
+  tool: Tool;
+  current: ToolPeriod;
+  previous: ToolPeriod;
+}
+
+const STEPS_SHOWN = 10;
+const TOP_SHOWN = 3;
+
+/**
+ * Each code's count in both periods, busiest now first. Codes come from Umami
+ * event data, which anyone can send, so each goes through plainSlackText.
+ */
+function compareCodes(
+  current: EventDataValue[],
+  previous: EventDataValue[] = [],
+) {
+  const counts = new Map<string, { now: number; before: number }>();
+  const add = (rows: EventDataValue[], key: "now" | "before") => {
+    for (const r of rows) {
+      const label = `\`${plainSlackText(String(r.value))}\``;
+      const c = counts.get(label) ?? { now: 0, before: 0 };
+      c[key] += r.total;
+      counts.set(label, c);
+    }
+  };
+  add(current, "now");
+  add(previous, "before");
+  return [...counts]
+    .map(([label, c]) => ({ label, ...c }))
+    .sort((a, b) => b.now - a.now || b.before - a.before);
+}
+
+/** One period's codes as a list with their change, or a note when Umami's breakdown is missing. */
+function codeList(
+  title: string,
+  current: EventDataValue[] | undefined,
+  previous: EventDataValue[] | undefined,
+  {
+    shown,
+    better = "up",
+    keepGone = false,
+  }: { shown: number; better?: Better; keepGone?: boolean },
+) {
+  const lines = current
+    ? compareCodes(current, previous)
+        .filter((r) => r.now > 0 || keepGone)
+        .slice(0, shown)
+        .map((r) =>
+          // No change shown against a period whose breakdown couldn't be read.
+          `• ${r.label}: *${num(r.now)}*   ${previous ? countChange(r.now, r.before, better) : ""}`.trimEnd(),
+        )
+    : ["Couldn't read the breakdown from Umami."];
+  return section(`*${title}*\n` + lines.join("\n"), true);
+}
+
+/** "not-eligible" → "Not eligible". */
+const outcomeLabel = (outcome: string) =>
+  outcome.charAt(0).toUpperCase() + outcome.slice(1).replace(/-/g, " ");
+
+export function formatToolStats(
+  heading: PeriodHeading,
+  { tool, current: c, previous: p }: ToolStats,
+): SlackMessage {
+  const blocks: unknown[] = [
+    header(`🧰 ${tool.name}`),
+    context(`\`${tool.id}\` · *${heading.title}* · ${heading.detail}`),
+  ];
+  const visitors: [string, string, string] = [
+    "👥 Visitors to the tool",
+    num(c.visitors),
+    countChange(c.visitors, p.visitors),
+  ];
+  const caveat = context(
+    "Visitors are summed across the tool's pages, so someone who views more than one page may be counted more than once.",
+  );
+  if (!c.events && !c.stepViews) {
+    blocks.push(
+      metrics([visitors]),
+      section(
+        `💤 No tool events yet in this period. The period before: ${num(p.events?.results ?? 0)} results, ${num(p.stepViews)} step views.`,
+      ),
+      caveat,
+    );
+    return {
+      text: `🧰 ${tool.name} · ${heading.title}: ${num(c.visitors)} visitors, no tool events yet`,
+      blocks,
+    };
+  }
+
+  const results = c.events?.results ?? 0;
+  const errors = c.events?.errors ?? 0;
+  const rows: [string, string, string][] = [
+    visitors,
+    ["👣 Step views", num(c.stepViews), countChange(c.stepViews, p.stepViews)],
+    ["✅ Results", num(results), countChange(results, p.events?.results ?? 0)],
+  ];
+  if (tool.noResultOutcome) {
+    const now = c.events?.noResultRate ?? null;
+    rows.push([
+      `🚫 ${outcomeLabel(tool.noResultOutcome)}`,
+      pct(now),
+      rateChange(now, p.events?.noResultRate ?? null, "down"),
+    ]);
+  }
+  rows.push([
+    "⚠️ Errors",
+    num(errors),
+    countChange(errors, p.events?.errors ?? 0, "down"),
+  ]);
+  blocks.push(metrics(rows), divider);
+
+  if (c.stepViews) {
+    blocks.push(
+      codeList("👣 Views of each step", c.steps, p.steps, {
+        shown: STEPS_SHOWN,
+        keepGone: true,
+      }),
+    );
+  }
+  if (c.actions?.length !== 0) {
+    blocks.push(
+      codeList("👆 Top actions", c.actions, p.actions, { shown: TOP_SHOWN }),
+    );
+  }
+  if (errors) {
+    blocks.push(
+      codeList("🚨 Top errors", c.errors, p.errors, {
+        shown: TOP_SHOWN,
+        better: "down",
+      }),
+    );
+  }
+  if (c.waterAlerts !== undefined) {
+    const w = c.waterAlerts;
+    const before = p.waterAlerts;
+    // No change shown against a period whose sign-ups couldn't be read.
+    const change = (key: keyof WaterAlertFunnel, better?: Better) =>
+      w && before ? countChange(w[key], before[key], better) : "";
+    blocks.push(
+      divider,
+      section("*🔔 Outage alert sign-ups*"),
+      w
+        ? metrics([
+            ["✍️ Submitted", num(w.submitted), change("submitted")],
+            ["📧 Emails sent", num(w.sent), change("sent")],
+            ["✅ Confirmed", num(w.confirmed), change("confirmed")],
+            [
+              "👋 Unsubscribed",
+              num(w.unsubscribed),
+              change("unsubscribed", "down"),
+            ],
+          ])
+        : context("Couldn't read the sign-ups from Umami."),
+    );
+  }
+  blocks.push(caveat);
+  return {
+    text: `🧰 ${tool.name} · ${heading.title}: ${num(c.visitors)} visitors, ${num(results)} results`,
+    blocks,
+  };
+}
+
 /** Counts of the landing → forms hand-off events for one period (#3808). */
 export type HandOffCounts = Record<
   "page-service-view" | "page-start-view" | "start-click" | "form-start",
@@ -550,7 +831,7 @@ export function countHandOffs(
 }
 
 export interface JourneyStats {
-  /** The top paths, from shapeJourneyList (the dashboard's journey table). */
+  /** The paths from shapeJourneyList (the dashboard's journey table), busiest first. */
   paths: Pick<JourneyRow, "items" | "sessions" | "share">[];
   current: HandOffCounts;
   previous: HandOffCounts;
@@ -564,6 +845,9 @@ export interface JourneyStats {
  */
 const journeyStep = (label: string) =>
   plainSlackText(label.replace(/[&<>]/g, ""));
+
+/** Five journeys of up to 4 steps of 80 characters stay under Slack's limit. */
+const JOURNEYS_SHOWN = 5;
 
 /** A share as the dashboard shows it: one decimal, no trailing ".0". */
 const share = (r: number) => `${(r * 100).toFixed(1).replace(/\.0$/, "")}%`;
@@ -579,6 +863,7 @@ export function formatJourneyStats(
       paths.length
         ? "*🛤️ Most common journeys on landing*\n" +
             paths
+              .slice(0, JOURNEYS_SHOWN)
               .map(
                 (j) =>
                   `• ${j.items.map(journeyStep).join(" → ")}: *${share(j.share)}* (${num(j.sessions)})`,

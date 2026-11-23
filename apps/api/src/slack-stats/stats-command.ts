@@ -1,4 +1,11 @@
-import { STATS_PERIODS, type StatsPeriod } from "@govtech-bb/umami-analytics";
+import {
+  STATS_PERIODS,
+  TOOLS,
+  type StatsPeriod,
+} from "@govtech-bb/umami-analytics";
+
+/** The words that go in place of a form ID for a topic reply (#3804). */
+export const STATS_TOPICS = ["tools", "journeys", "search", "chat"];
 
 export type StatsCommand =
   | { kind: "stats"; period: StatsPeriod; formId?: string }
@@ -22,20 +29,23 @@ export function usageText(command: string): string {
     "• `week`: last Monday to Sunday, compared with the week before",
     "• `month`: last calendar month, compared with the month before",
     `Add a form ID for one form, for example \`${command} week passport-renewal\`.`,
+    `Add a tool ID for one tool, for example \`${command} week crop-over-permits\`. Tool IDs: ${TOOLS.map((t) => `\`${t.id}\``).join(", ")}.`,
     `Add \`chat\` for the chat questions asked on landing, for example \`${command} week chat\`.`,
     `Add \`journeys\` for the most common journeys on landing and the hand-offs to forms, for example \`${command} week journeys\`.`,
   ].join("\n");
 }
 
-/** Up to 5 known form IDs that look like `term`, for a "did you mean" reply. */
-export function suggestFormIds(term: string, formIds: string[]): string[] {
+/** Up to 5 known IDs (forms, tools, topics) that look like `term`, for a "did you mean" reply. */
+export function suggestFormIds(term: string, ids: string[]): string[] {
   const words = term.split("-").filter((w) => w.length > 2);
-  return formIds
+  return ids
     .filter(
       (id) =>
-        id.includes(term) ||
-        term.includes(id) ||
-        words.some((w) => id.includes(w)),
+        // A topic not handled yet must not suggest itself.
+        id !== term &&
+        (id.includes(term) ||
+          term.includes(id) ||
+          words.some((w) => id.includes(w))),
     )
     .slice(0, 5);
 }

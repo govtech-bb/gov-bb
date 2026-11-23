@@ -2,18 +2,25 @@ import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import {
   FUNNEL_WINDOW_MIN,
+  TOOLS,
   UmamiClient,
   buildFunnelSteps,
   buildVisitFunnelSteps,
   comparisonPeriods,
   eventName,
   funnelHeadline,
+  shapeTools,
+  shapeWaterAlerts,
   shapeJourneyList,
   tallyFieldErrors,
+  totalFor,
   weightedAverage,
   type EventDataValue,
   type Range,
   type StatsPeriod,
+  type Tool,
+  type ToolEventRows,
+  type ToolId,
 } from "@govtech-bb/umami-analytics";
 import { sanitizeForLog } from "@/common/log-sanitize";
 import { FormDefinitionsService } from "@/forms/form-definitions/form-definitions.service";
@@ -24,14 +31,17 @@ import {
   formatFormStats,
   formatJourneyStats,
   formatSiteStats,
+  formatToolStats,
   periodHeading,
+  tallyDeadEnds,
   type ChatPeriod,
   type FormPeriod,
   type HandOffCounts,
   type SitePeriod,
   type SlackMessage,
+  type ToolPeriod,
 } from "./stats-message";
-import { suggestFormIds } from "./stats-command";
+import { STATS_TOPICS, suggestFormIds } from "./stats-command";
 
 const TZ = "America/Barbados";
 const SLACK_POST_TIMEOUT_MS = 10_000;
@@ -180,6 +190,8 @@ export class SlackStatsService {
   ): Promise<SlackMessage | string> {
     if (formId === "chat") return this.chatReply(period, now);
     if (formId === "journeys") return this.journeysReply(period, now);
+    const tool = TOOLS.find((t) => t.id === formId);
+    if (tool) return this.toolReply(period, tool, now);
 
     const forms = await this.formDefinitions.findAll();
     const periods = comparisonPeriods(period, TZ, now);
@@ -204,15 +216,16 @@ export class SlackStatsService {
     }
 
     if (!forms.some((f) => f.formId === formId)) {
-      const suggestions = suggestFormIds(
-        formId,
-        forms.map((f) => f.formId),
-      );
+      const suggestions = suggestFormIds(formId, [
+        ...forms.map((f) => f.formId),
+        ...TOOLS.map((t) => t.id),
+        ...STATS_TOPICS,
+      ]);
       return suggestions.length
-        ? `🤔 No form with the ID \`${formId}\`. Did you mean ${suggestions
+        ? `🤔 No form or tool with the ID \`${formId}\`. Did you mean ${suggestions
             .map((s) => `\`${s}\``)
             .join(", ")}?`
-        : `🤔 No form with the ID \`${formId}\`. Form IDs are the part of the form's address after /forms/.`;
+        : `🤔 No form or tool with the ID \`${formId}\`. Form IDs are the part of the form's address after /forms/.`;
     }
 
     const websiteId = this.umamiConfig().formsWebsiteId;
@@ -293,6 +306,12 @@ export class SlackStatsService {
     const stats = (await client.stats(landingWebsiteId, range)) as {
       visitors?: number;
     };
+    // One event-count request per site, so the reply stays inside the rate limit.
+    const { deadEnds, topForm } = tallyDeadEnds(
+      await client.metricsEvents(landingWebsiteId, range),
+      await client.metricsEvents(formsWebsiteId, range),
+      formIds,
+    );
     const byForm = new Map<string, { starts: number; completed: number }>();
     const durations: EventDataValue[] = [];
     for (const formId of formIds) {
@@ -330,6 +349,8 @@ export class SlackStatsService {
         starts,
         completed,
         avgDurationSeconds: weightedAverage(durations),
+        deadEnds,
+        topDeadEndForm: topForm,
       },
       byForm,
     };
@@ -425,10 +446,149 @@ export class SlackStatsService {
       range: periods.current,
     });
     return formatJourneyStats(periodHeading(period, periods), {
-      paths: shapeJourneyList(journeys).slice(0, 5),
+      paths: shapeJourneyList(journeys),
       current: await handOffs(periods.current),
       previous: await handOffs(periods.previous),
     });
+  }
+
+  /**
+   * One tool's stats (#3806), compared with the period before. Tool events
+   * fire on landing. At most nine requests per period, one at a time. An
+   * Umami error on a count reaches reply(), which apologises, so an outage
+   * never reads as "no tool events".
+   */
+  private async toolReply(
+    period: StatsPeriod,
+    tool: Tool,
+    now: Date,
+  ): Promise<SlackMessage> {
+    const periods = comparisonPeriods(period, TZ, now);
+    const client = new UmamiClient({ apiKey: this.umamiConfig().apiKey });
+    return formatToolStats(periodHeading(period, periods), {
+      tool,
+      current: await this.toolPeriod(client, tool, periods.current),
+      previous: await this.toolPeriod(client, tool, periods.previous),
+    });
+  }
+
+  /** One tool's period, shaped by the dashboard's code so the numbers match its Tools tab. */
+  private async toolPeriod(
+    client: UmamiClient,
+    tool: Tool,
+    range: Range,
+  ): Promise<ToolPeriod> {
+    const { landingWebsiteId } = this.umamiConfig();
+    const urlRows = await client.metricsUrls(landingWebsiteId, range);
+    const rows = await this.toolEventRows(client, [tool], range);
+    const [row] = shapeTools([tool], urlRows, new Map(), rows);
+    const stepViews = totalFor(
+      await client.eventDataValues(
+        landingWebsiteId,
+        "tool-step-view",
+        "tool",
+        range,
+      ),
+      tool.id,
+    );
+    return {
+      visitors: row.visitors,
+      events: row.events,
+      stepViews,
+      steps: await this.toolBreakdown(
+        client,
+        tool,
+        "tool-step-view",
+        "step",
+        stepViews,
+        range,
+      ),
+      actions: rows.actions.get(tool.id),
+      errors: await this.toolBreakdown(
+        client,
+        tool,
+        "tool-error",
+        "error",
+        row.events?.errors ?? 0,
+        range,
+      ),
+      ...(tool.id === "water-outages" && {
+        waterAlerts: shapeWaterAlerts(rows),
+      }),
+    };
+  }
+
+  /**
+   * The tool-event rows the shared shapers take, read as the dashboard's
+   * Tools tab reads them: each event's `tool` values give every tool's count,
+   * and a tool's outcome and action values come through Umami's property
+   * filter. One request at a time, for one tool or for all of them.
+   */
+  private async toolEventRows(
+    client: UmamiClient,
+    tools: Tool[],
+    range: Range,
+  ): Promise<ToolEventRows> {
+    const { landingWebsiteId } = this.umamiConfig();
+    const byTool = (event: string) =>
+      client.eventDataValues(landingWebsiteId, event, "tool", range);
+    const resultsByTool = await byTool("tool-result");
+    const actionsByTool = await byTool("tool-action");
+    const errorsByTool = await byTool("tool-error");
+    // A breakdown that can't be read is left out, so the shapers show a dash.
+    const outcomes = new Map<ToolId, EventDataValue[]>();
+    const actions = new Map<ToolId, EventDataValue[]>();
+    for (const tool of tools) {
+      const o = await this.toolBreakdown(
+        client,
+        tool,
+        "tool-result",
+        "outcome",
+        totalFor(resultsByTool, tool.id),
+        range,
+      );
+      if (o) outcomes.set(tool.id, o);
+      const a = await this.toolBreakdown(
+        client,
+        tool,
+        "tool-action",
+        "action",
+        totalFor(actionsByTool, tool.id),
+        range,
+      );
+      if (a) actions.set(tool.id, a);
+    }
+    return { resultsByTool, actionsByTool, errorsByTool, outcomes, actions };
+  }
+
+  /**
+   * One tool's values of an event property, through Umami's property filter:
+   * [] with no request when the tool sent `count` = 0 of the event. Undefined
+   * when the request fails, or when the values add up to more than the tool's
+   * own count, as they would if Umami ignored the filter (as the dashboard
+   * checks).
+   */
+  private async toolBreakdown(
+    client: UmamiClient,
+    tool: Tool,
+    event: string,
+    propertyName: string,
+    count: number,
+    range: Range,
+  ): Promise<EventDataValue[] | undefined> {
+    if (!count) return [];
+    try {
+      const rows = await client.eventDataValues(
+        this.umamiConfig().landingWebsiteId,
+        event,
+        propertyName,
+        range,
+        { property: "tool", equals: tool.id },
+      );
+      return rows.reduce((s, r) => s + r.total, 0) <= count ? rows : undefined;
+    } catch {
+      return undefined;
+    }
   }
 
   /** eventDataValues that degrades to [] when the event has no data. */

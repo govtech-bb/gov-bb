@@ -10,6 +10,7 @@ const umami = vi.hoisted(() => ({
   stats: vi.fn(),
   reportFunnel: vi.fn(),
   eventDataValues: vi.fn(),
+  metricsUrls: vi.fn(),
   metricsEvents: vi.fn(),
   reportJourney: vi.fn(),
 }));
@@ -58,6 +59,8 @@ beforeEach(() => {
   ]);
   umami.stats.mockResolvedValue({ visitors: 1000 });
   umami.eventDataValues.mockResolvedValue([]);
+  umami.metricsUrls.mockResolvedValue([]);
+  umami.metricsEvents.mockResolvedValue([]);
 });
 
 describe("SlackStatsService.isConfigured", () => {
@@ -89,6 +92,222 @@ describe("SlackStatsService.buildReply — site-wide", () => {
     expect(text).toContain("passport-renewal");
     // Durations are only fetched for forms someone finished (3 of 4 funnels).
     expect(umami.eventDataValues).toHaveBeenCalledTimes(3);
+    expect(text).not.toContain("Dead ends");
+  });
+
+  it("counts dead ends with one event request per site per period", async () => {
+    umami.reportFunnel.mockResolvedValue(funnel(0, 0, 0));
+    umami.metricsEvents.mockImplementation(async (site: string) =>
+      site === "landing"
+        ? [{ x: "page-not-found", y: 6 }]
+        : [
+            { x: "passport-renewal:form-closed-view", y: 2 },
+            { x: "birth-certificate:form-load-error", y: 5 },
+          ],
+    );
+
+    const text = await reply("/stats", "week", undefined, NOW);
+
+    expect(umami.metricsEvents.mock.calls.map(([site]) => site)).toEqual([
+      "landing",
+      "forms",
+      "landing",
+      "forms",
+    ]);
+    expect(text).toContain(
+      "*🚧 Dead ends:* closed form *2* ⚪ no change · form didn't load *5* ⚪ no change · service unavailable *0* ⚪ no change · page not found *6* ⚪ no change · most on `birth-certificate` (5)",
+    );
+  });
+
+  it("never puts an event name sent by a stranger into the reply", async () => {
+    umami.reportFunnel.mockResolvedValue(funnel(0, 0, 0));
+    umami.metricsEvents.mockImplementation(async (site: string) =>
+      site === "landing"
+        ? []
+        : [
+            {
+              x: "x`<!channel> <evil.example|click> &amp;:fclsd",
+              y: 9,
+            },
+          ],
+    );
+
+    const message = await service().buildReply(
+      "/stats",
+      "week",
+      undefined,
+      NOW,
+    );
+    const text = JSON.stringify(message);
+
+    expect(text).toContain("closed form *9*");
+    expect(text).not.toContain("most on");
+    for (const hostile of ["<!channel>", "evil.example", "&amp;", "x`"]) {
+      expect(text).not.toContain(hostile);
+    }
+  });
+});
+
+describe("SlackStatsService.buildReply — one tool", () => {
+  /** Event values keyed `event.property`, plus `@tool` for a filtered read. */
+  const events = (data: Record<string, { value: string; total: number }[]>) =>
+    umami.eventDataValues.mockImplementation(
+      async (
+        _site: string,
+        event: string,
+        property: string,
+        _range: unknown,
+        where?: { property: string; equals: string },
+      ) => data[`${event}.${property}${where ? `@${where.equals}` : ""}`] ?? [],
+    );
+  const reads = () =>
+    umami.eventDataValues.mock.calls.map(
+      ([site, event, property, , where]) =>
+        `${site} ${event}.${property}${where ? `@${where.equals}` : ""}`,
+    );
+
+  it("reports a tool's events from landing, compared with the week before", async () => {
+    umami.metricsUrls.mockResolvedValue([
+      { x: "/business-trade/crop-over-permits", pageviews: 90, visitors: 60 },
+      { x: "/business-trade/crop-over-permits/result", visitors: 25 },
+      { x: "/business-trade/other", visitors: 999 },
+    ]);
+    events({
+      "tool-result.tool": [
+        { value: "crop-over-permits", total: 40 },
+        { value: "pharmacy-finder", total: 500 },
+      ],
+      "tool-action.tool": [{ value: "crop-over-permits", total: 6 }],
+      "tool-error.tool": [{ value: "crop-over-permits", total: 3 }],
+      "tool-step-view.tool": [{ value: "crop-over-permits", total: 120 }],
+      "tool-result.outcome@crop-over-permits": [
+        { value: "checklist", total: 40 },
+      ],
+      "tool-action.action@crop-over-permits": [
+        { value: "apply-online", total: 6 },
+      ],
+      "tool-step-view.step@crop-over-permits": [
+        { value: "q-event", total: 70 },
+        { value: "q-venue", total: 50 },
+      ],
+      "tool-error.error@crop-over-permits": [{ value: "required", total: 3 }],
+    });
+
+    const text = await reply("/stats", "week", "crop-over-permits", NOW);
+
+    expect(text).toContain(
+      "🧰 Find the permits you need for a Crop Over event",
+    );
+    expect(text).toContain("*👥 Visitors to the tool*\\n*85*   ⚪ no change");
+    expect(text).toContain("*✅ Results*\\n*40*   ⚪ no change");
+    expect(text).toContain("• `q-event`: *70*");
+    expect(text).toContain("• `apply-online`: *6*");
+    expect(text).toContain("• `required`: *3*");
+    expect(text).not.toContain("No results");
+    expect(text).not.toContain("sign-ups");
+    // The same reads for each period, one at a time, and no form lookups.
+    const week = [
+      "landing tool-result.tool",
+      "landing tool-action.tool",
+      "landing tool-error.tool",
+      "landing tool-result.outcome@crop-over-permits",
+      "landing tool-action.action@crop-over-permits",
+      "landing tool-step-view.tool",
+      "landing tool-step-view.step@crop-over-permits",
+      "landing tool-error.error@crop-over-permits",
+    ];
+    expect(reads()).toEqual([...week, ...week]);
+    expect(umami.metricsUrls).toHaveBeenCalledTimes(2);
+    expect(formDefinitions.findAll).not.toHaveBeenCalled();
+    expect(umami.reportFunnel).not.toHaveBeenCalled();
+  });
+
+  it("shows the empty state for a tool with no events, with no breakdown reads", async () => {
+    const text = await reply("/stats", "week", "pharmacy-finder", NOW);
+
+    expect(text).toContain("💤 No tool events yet in this period.");
+    expect(umami.eventDataValues).toHaveBeenCalledTimes(8);
+    expect(reads().some((r) => r.includes("@"))).toBe(false);
+  });
+
+  it("adds the alert sign-up funnel for water outages", async () => {
+    events({
+      "tool-result.tool": [{ value: "water-outages", total: 20 }],
+      "tool-action.tool": [{ value: "water-outages", total: 9 }],
+      "tool-result.outcome@water-outages": [
+        { value: "parish-chosen", total: 10 },
+        { value: "subscribe-sent", total: 6 },
+        { value: "confirmed", total: 3 },
+        { value: "unsubscribed", total: 1 },
+      ],
+      "tool-action.action@water-outages": [
+        { value: "subscribe-submit", total: 7 },
+        { value: "open-notice", total: 2 },
+      ],
+    });
+
+    const text = await reply("/stats", "month", "water-outages", NOW);
+
+    expect(text).toContain("*🔔 Outage alert sign-ups*");
+    expect(text).toContain("*✍️ Submitted*\\n*7*   ⚪ no change");
+    expect(text).toContain("*📧 Emails sent*\\n*6*");
+    expect(text).toContain("*✅ Confirmed*\\n*3*");
+    expect(text).toContain("*👋 Unsubscribed*\\n*1*");
+  });
+
+  it("shows a dash, not a wrong number, when Umami ignores the tool filter", async () => {
+    events({
+      "tool-result.tool": [{ value: "shelter-finder", total: 10 }],
+      // Every tool's outcomes: more than the shelter finder's own 10.
+      "tool-result.outcome@shelter-finder": [
+        { value: "no-results", total: 400 },
+      ],
+    });
+
+    const text = await reply("/stats", "week", "shelter-finder", NOW);
+
+    expect(text).toContain("*🚫 No results*\\n*–*");
+  });
+
+  it("says a breakdown couldn't be read when a filtered read fails", async () => {
+    events({
+      "tool-step-view.tool": [{ value: "crop-over-permits", total: 5 }],
+      "tool-error.tool": [{ value: "crop-over-permits", total: 2 }],
+    });
+    const counts = umami.eventDataValues.getMockImplementation()!;
+    umami.eventDataValues.mockImplementation(async (...args: unknown[]) => {
+      if (args[4]) throw new Error("Umami 500");
+      return counts(...(args as Parameters<typeof counts>));
+    });
+
+    const text = await reply("/stats", "week", "crop-over-permits", NOW);
+
+    expect(text).toContain(
+      "*👣 Views of each step*\\nCouldn't read the breakdown from Umami.",
+    );
+    expect(text).toContain(
+      "*🚨 Top errors*\\nCouldn't read the breakdown from Umami.",
+    );
+  });
+
+  it("apologises rather than show no events when Umami fails", async () => {
+    umami.eventDataValues.mockRejectedValue(new Error("Umami 401"));
+    await expect(
+      reply("/stats", "week", "shelter-finder", NOW),
+    ).rejects.toThrow("Umami 401");
+  });
+
+  it("suggests tool IDs and topics for an unknown word", async () => {
+    expect(await reply("/stats", "week", "pharmacy", NOW)).toBe(
+      "🤔 No form or tool with the ID `pharmacy`. Did you mean `pharmacy-finder`?",
+    );
+    expect(await reply("/stats", "week", "journey", NOW)).toContain(
+      "`journeys`",
+    );
+    // A topic with no reply yet doesn't suggest itself.
+    expect(await reply("/stats", "week", "search", NOW)).not.toContain(
+      "Did you mean",
+    );
   });
 });
 
@@ -189,7 +408,7 @@ describe("SlackStatsService.buildReply — one form", () => {
   it("suggests similar ids for an unknown form", async () => {
     const text = await reply("/stats", "week", "passport", NOW);
     expect(text).toBe(
-      "🤔 No form with the ID `passport`. Did you mean `passport-renewal`?",
+      "🤔 No form or tool with the ID `passport`. Did you mean `passport-renewal`?",
     );
   });
 
@@ -306,7 +525,7 @@ describe("SlackStatsService.respond", () => {
     );
     expect(fetchMock.mock.calls[0][0]).toBe(SLACK_URL);
     expect(posted()).toMatchObject({ response_type: "ephemeral" });
-    expect(posted().text).toContain("No form with the ID `zzz`");
+    expect(posted().text).toContain("No form or tool with the ID `zzz`");
   });
 
   it("runs one reply at a time, so two commands can't share the rate limit", async () => {

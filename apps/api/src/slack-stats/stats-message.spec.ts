@@ -1,6 +1,8 @@
 import {
+  TOOLS,
   comparisonPeriods,
   shapeJourneyList,
+  eventName,
 } from "@govtech-bb/umami-analytics";
 import {
   biggestFinishDrops,
@@ -12,11 +14,14 @@ import {
   formatFormStats,
   formatJourneyStats,
   formatSiteStats,
+  formatToolStats,
   periodHeading,
   plainSlackText,
   rateChange,
   stepBars,
+  tallyDeadEnds,
   type SlackMessage,
+  type ToolPeriod,
 } from "./stats-message";
 
 const NOW = new Date("2026-11-04T18:30:00Z");
@@ -27,6 +32,16 @@ describe("change helpers", () => {
     expect(countChange(90, 100)).toBe("🔴 ▼ 10%");
     expect(countChange(5, 5)).toBe("⚪ no change");
     expect(countChange(5, 0)).toBe("🆕 new");
+  });
+
+  it("counts change the other way when fewer is better", () => {
+    expect(countChange(108, 100, "down")).toBe("🔴 ▲ 8%");
+    expect(countChange(90, 100, "down")).toBe("🟢 ▼ 10%");
+    expect(countChange(5, 0, "down")).toBe("🔴 new");
+  });
+
+  it("rates change the other way when lower is better", () => {
+    expect(rateChange(0.31, 0.33, "down")).toBe("🟢 ▼ 2 pts");
   });
 
   it("rates change in percentage points", () => {
@@ -104,6 +119,69 @@ describe("biggestFinishDrops", () => {
   });
 });
 
+describe("tallyDeadEnds", () => {
+  // 56 characters: over 44, so its events use a hashed form key.
+  const LONG = "apply-for-national-summer-camp-programme-tropical-trails";
+  // 37 characters: its events fit only with a short event code.
+  const MEDIUM = "apply-for-a-temporary-teacher-position";
+
+  it("adds up packed names, short codes and hashed form keys", () => {
+    expect(eventName(LONG, "form-closed-view")).toMatch(/~\w{6}:fclsd$/);
+    expect(eventName(MEDIUM, "form-load-error")).toBe(`${MEDIUM}:flerr`);
+
+    const { deadEnds, topForm } = tallyDeadEnds(
+      [
+        { x: "page-not-found", y: 40 },
+        { x: "service-unavailable-view", y: 2 },
+        { x: "search", y: 900 },
+      ],
+      [
+        { x: "passport-renewal:form-closed-view", y: 5 },
+        { x: "passport-renewal:form-start", y: 300 },
+        { x: eventName(LONG, "form-closed-view"), y: 7 },
+        { x: eventName(LONG, "form-load-error"), y: 1 },
+        { x: eventName(MEDIUM, "form-load-error"), y: 3 },
+        // A form that is not found has no form, so the name is not packed.
+        { x: "form-load-error", y: 4 },
+      ],
+      ["passport-renewal", LONG, MEDIUM],
+    );
+
+    expect(deadEnds).toEqual({
+      formClosed: 12,
+      formLoadError: 8,
+      serviceUnavailable: 2,
+      pageNotFound: 40,
+    });
+    expect(topForm).toEqual({ formId: LONG, count: 8 });
+  });
+
+  it("counts a form key it cannot map back, but never names it", () => {
+    const { deadEnds, topForm } = tallyDeadEnds(
+      [],
+      [
+        { x: eventName(LONG, "form-closed-view"), y: 3 },
+        // Anyone can send Umami an event name.
+        { x: "x`<!channel> <evil.example|click> &amp;:fclsd", y: 50 },
+        { x: "passport-renewal:form-load-error", y: 1 },
+      ],
+      ["passport-renewal"],
+    );
+    expect(deadEnds.formClosed).toBe(53);
+    expect(topForm).toEqual({ formId: "passport-renewal", count: 1 });
+  });
+
+  it("has no top form when no form had a dead end", () => {
+    const { deadEnds, topForm } = tallyDeadEnds(
+      [{ x: "page-not-found", y: 1 }],
+      [{ x: "form-load-error", y: 2 }],
+      [],
+    );
+    expect(deadEnds.formLoadError).toBe(2);
+    expect(topForm).toBeNull();
+  });
+});
+
 /** The visible text of a message, block by block, for assertions. */
 function render({ blocks }: SlackMessage): string {
   return (blocks as Record<string, any>[])
@@ -123,18 +201,38 @@ const LAST_WEEK = {
 };
 
 describe("formatSiteStats", () => {
+  const noDeadEnds = {
+    formClosed: 0,
+    formLoadError: 0,
+    serviceUnavailable: 0,
+    pageNotFound: 0,
+  };
   const site = {
     current: {
       visitors: 12480,
       starts: 3869,
       completed: 2476,
       avgDurationSeconds: 400,
+      deadEnds: {
+        formClosed: 12,
+        formLoadError: 3,
+        serviceUnavailable: 0,
+        pageNotFound: 140,
+      },
+      topDeadEndForm: { formId: "summer-camp", count: 9 },
     },
     previous: {
       visitors: 11556,
       starts: 3814,
       completed: 2250,
       avgDurationSeconds: 425,
+      deadEnds: {
+        formClosed: 10,
+        formLoadError: 4,
+        serviceUnavailable: 0,
+        pageNotFound: 140,
+      },
+      topDeadEndForm: null,
     },
   };
 
@@ -166,6 +264,7 @@ describe("formatSiteStats", () => {
       *2,476*   🟢 ▲ 10%
       *⏱️ Avg time to finish*
       *6m 40s*   🟢 ▼ 25s
+      *🚧 Dead ends:* closed form *12* 🔴 ▲ 20% · form didn't load *3* 🟢 ▼ 25% · service unavailable *0* ⚪ no change · page not found *140* ⚪ no change · most on \`summer-camp\` (9)
       ---
       *📉 Biggest drops in finish rate*
       • \`passport-renewal\`: 402 starts, *48%* finish   🔴 ▼ 12 pts
@@ -183,12 +282,14 @@ describe("formatSiteStats", () => {
     );
   });
 
-  it("shows dashes when there is no data", () => {
+  it("shows dashes and no dead ends when there is no data", () => {
     const empty = {
       visitors: 0,
       starts: 0,
       completed: 0,
       avgDurationSeconds: null,
+      deadEnds: noDeadEnds,
+      topDeadEndForm: null,
     };
     const text = render(
       formatSiteStats(LAST_WEEK, "/stats", "today", {
@@ -199,6 +300,24 @@ describe("formatSiteStats", () => {
     );
     expect(text).toContain("*🚪 Visit → start form*\n*–*\n");
     expect(text).toContain("*⏱️ Avg time to finish*\n*–*\n");
+    expect(text).not.toContain("Dead ends");
+  });
+
+  it("shows dead ends that stopped this period, with no top form", () => {
+    const text = render(
+      formatSiteStats(LAST_WEEK, "/stats", "week", {
+        current: {
+          ...site.current,
+          deadEnds: noDeadEnds,
+          topDeadEndForm: null,
+        },
+        previous: site.previous,
+        biggestDrops: [],
+      }),
+    );
+    expect(text).toContain(
+      "*🚧 Dead ends:* closed form *0* 🟢 ▼ 100% · form didn't load *0* 🟢 ▼ 100% · service unavailable *0* ⚪ no change · page not found *0* 🟢 ▼ 100%\n",
+    );
   });
 });
 
@@ -455,6 +574,189 @@ describe("plainSlackText", () => {
   });
 });
 
+describe("formatToolStats", () => {
+  const tool = (id: string) => TOOLS.find((t) => t.id === id)!;
+  const rows = (o: Record<string, number>) =>
+    Object.entries(o).map(([value, total]) => ({ value, total }));
+  const quiet: ToolPeriod = {
+    visitors: 0,
+    events: null,
+    stepViews: 0,
+    steps: [],
+    actions: [],
+    errors: [],
+  };
+
+  it("shows a tool's events, compared with the period before", () => {
+    const message = formatToolStats(LAST_WEEK, {
+      tool: tool("pharmacy-finder"),
+      current: {
+        visitors: 420,
+        events: {
+          results: 300,
+          noResultRate: 0.1,
+          topAction: { action: "call", count: 40 },
+          errors: 12,
+          errorRate: 12 / 312,
+        },
+        stepViews: 500,
+        steps: rows({ find: 380, hero: 120 }),
+        actions: rows({ call: 40, "call-drug-service": 9, about: 2, x: 1 }),
+        errors: rows({ "location-denied": 10, "location-unavailable": 2 }),
+      },
+      previous: {
+        visitors: 400,
+        events: {
+          results: 250,
+          noResultRate: 0.2,
+          topAction: { action: "call", count: 50 },
+          errors: 6,
+          errorRate: 6 / 256,
+        },
+        stepViews: 450,
+        steps: rows({ find: 300, hero: 150 }),
+        actions: rows({ call: 50 }),
+        errors: rows({ "location-denied": 6 }),
+      },
+    });
+    expect(message.text).toBe(
+      "🧰 Find an open pharmacy · Last week: 420 visitors, 300 results",
+    );
+    expect(render(message)).toMatchInlineSnapshot(`
+      "🧰 Find an open pharmacy
+      \`pharmacy-finder\` · *Last week* · 26 Oct – 1 Nov, compared with 19 Oct – 25 Oct
+      *👥 Visitors to the tool*
+      *420*   🟢 ▲ 5%
+      *👣 Step views*
+      *500*   🟢 ▲ 11%
+      *✅ Results*
+      *300*   🟢 ▲ 20%
+      *🚫 No results*
+      *10%*   🟢 ▼ 10 pts
+      *⚠️ Errors*
+      *12*   🔴 ▲ 100%
+      ---
+      *👣 Views of each step*
+      • \`find\`: *380*   🟢 ▲ 27%
+      • \`hero\`: *120*   🔴 ▼ 20%
+      *👆 Top actions*
+      • \`call\`: *40*   🔴 ▼ 20%
+      • \`call-drug-service\`: *9*   🆕 new
+      • \`about\`: *2*   🆕 new
+      *🚨 Top errors*
+      • \`location-denied\`: *10*   🔴 ▲ 67%
+      • \`location-unavailable\`: *2*   🔴 new
+      Visitors are summed across the tool's pages, so someone who views more than one page may be counted more than once."
+    `);
+  });
+
+  it("shows a clear empty state for a tool with no events", () => {
+    const message = formatToolStats(LAST_WEEK, {
+      tool: tool("bank-holidays"),
+      current: { ...quiet, visitors: 75 },
+      previous: { ...quiet, visitors: 60 },
+    });
+    expect(message.text).toBe(
+      "🧰 Check bank holiday dates · Last week: 75 visitors, no tool events yet",
+    );
+    expect(render(message)).toContain(
+      "*75*   🟢 ▲ 25%\n💤 No tool events yet in this period. The period before: 0 results, 0 step views.",
+    );
+    expect(render(message)).not.toContain("Errors");
+  });
+
+  it("adds the water outage alert sign-up funnel", () => {
+    const water: ToolPeriod = {
+      ...quiet,
+      events: {
+        results: 30,
+        noResultRate: null,
+        topAction: { action: "subscribe-submit", count: 8 },
+        errors: 0,
+        errorRate: 0,
+      },
+      actions: rows({ "subscribe-submit": 8 }),
+    };
+    const text = render(
+      formatToolStats(LAST_WEEK, {
+        tool: tool("water-outages"),
+        current: {
+          ...water,
+          waterAlerts: { submitted: 8, sent: 7, confirmed: 5, unsubscribed: 1 },
+        },
+        previous: {
+          ...water,
+          waterAlerts: { submitted: 4, sent: 4, confirmed: 4, unsubscribed: 0 },
+        },
+      }),
+    );
+    expect(text).toContain(
+      [
+        "*🔔 Outage alert sign-ups*",
+        "*✍️ Submitted*\n*8*   🟢 ▲ 100%",
+        "*📧 Emails sent*\n*7*   🟢 ▲ 75%",
+        "*✅ Confirmed*\n*5*   🟢 ▲ 25%",
+        "*👋 Unsubscribed*\n*1*   🔴 new",
+      ].join("\n"),
+    );
+    expect(text).not.toContain("No results");
+    expect(text).not.toContain("Top errors");
+  });
+
+  it("says so when Umami's breakdowns could not be read", () => {
+    const text = render(
+      formatToolStats(LAST_WEEK, {
+        tool: tool("water-outages"),
+        current: {
+          ...quiet,
+          stepViews: 9,
+          steps: undefined,
+          actions: undefined,
+          waterAlerts: null,
+        },
+        previous: { ...quiet, waterAlerts: null },
+      }),
+    );
+    expect(text).toContain(
+      "*👣 Views of each step*\nCouldn't read the breakdown from Umami.",
+    );
+    expect(text).toContain(
+      "*👆 Top actions*\nCouldn't read the breakdown from Umami.",
+    );
+    expect(text).toContain("Couldn't read the sign-ups from Umami.");
+  });
+
+  it("shows no change against a period whose breakdown couldn't be read", () => {
+    const text = render(
+      formatToolStats(LAST_WEEK, {
+        tool: tool("crop-over-permits"),
+        current: { ...quiet, stepViews: 4, steps: rows({ "q-event": 4 }) },
+        previous: { ...quiet, stepViews: 9, steps: undefined },
+      }),
+    );
+    expect(text).toContain("*👣 Views of each step*\n• `q-event`: *4*\n");
+  });
+
+  it("never lets event data sent by a stranger mention, link or format", () => {
+    const message = formatToolStats(LAST_WEEK, {
+      tool: tool("crop-over-permits"),
+      current: {
+        ...quiet,
+        stepViews: 3,
+        steps: rows({ "x`<!channel> <https://evil.example|click> *bold*": 3 }),
+      },
+      previous: quiet,
+    });
+    const steps = (message.blocks as Record<string, any>[]).find((b) =>
+      b.text?.text?.startsWith("*👣 Views"),
+    )!;
+    expect(steps.text.verbatim).toBe(true);
+    expect(steps.text.text).toContain(
+      "• `x&lt;!channel&gt; &lt;https://evil.example|click&gt; bold`: *3*",
+    );
+  });
+});
+
 describe("countHandOffs", () => {
   it("sums packed, short-coded and plain names per website", () => {
     const landing = [
@@ -507,7 +809,8 @@ describe("formatJourneyStats", () => {
       path(10, "/about", "/"),
       path(5, "/", "/contact"),
       path(50, "/"), // a bounce: not a journey
-    ]).slice(0, 5);
+    ]);
+    expect(paths).toHaveLength(6);
 
     const message = formatJourneyStats(LAST_WEEK, {
       paths,
@@ -585,13 +888,16 @@ describe("formatJourneyStats", () => {
   });
 
   it("keeps the journeys under Slack's 3,000-character section limit", () => {
-    const hostile = (n: number) => "/" + "&".repeat(100) + n;
+    // shapeJourneyList gives up to 12 paths; each step is as long as
+    // plainSlackText allows, and the &s would grow fivefold if escaped.
+    const step = (n: number) => "/" + n + "&".repeat(20) + "a".repeat(100);
     const paths = shapeJourneyList(
-      [1, 2, 3, 4, 5].map((n) => ({
-        items: [1, 2, 3, 4].map((k) => hostile(n * 10 + k)),
+      Array.from({ length: 12 }, (_, n) => ({
+        items: [1, 2, 3, 4].map((k) => step(n * 10 + k)),
         count: 10,
       })),
     );
+    expect(paths).toHaveLength(12);
     const message = formatJourneyStats(LAST_WEEK, {
       paths,
       current,
