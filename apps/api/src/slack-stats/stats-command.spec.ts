@@ -27,6 +27,10 @@ describe("usageText", () => {
       "`/govstats <today|week|month> [form-id]`",
     );
   });
+
+  it("mentions the chat report", () => {
+    expect(usageText("/stats")).toContain("`/stats week chat`");
+  });
 });
 
 describe("suggestFormIds", () => {

@@ -22,6 +22,7 @@ export function usageText(command: string): string {
     "• `week`: last Monday to Sunday, compared with the week before",
     "• `month`: last calendar month, compared with the month before",
     `Add a form ID for one form, for example \`${command} week passport-renewal\`.`,
+    `Add \`chat\` for the chat questions asked on landing, for example \`${command} week chat\`.`,
   ].join("\n");
 }
 
