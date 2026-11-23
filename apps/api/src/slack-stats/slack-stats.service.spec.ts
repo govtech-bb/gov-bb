@@ -147,6 +147,30 @@ describe("SlackStatsService.buildReply — site-wide", () => {
       expect(text).not.toContain(hostile);
     }
   });
+
+  it("counts dead ends that sit below more than 500 busier event names (#3819)", async () => {
+    umami.reportFunnel.mockResolvedValue(funnel(0, 0, 0));
+    // Both sites pack names per form or service. Like Umami: busiest first,
+    // cut at the limit (the client's default 500).
+    const busier = Array.from({ length: 600 }, (_, i) => ({
+      x: `form-${i}:form-step-view`,
+      y: 1000 - i,
+    }));
+    umami.metricsEvents.mockImplementation(
+      async (site: string, _range: unknown, limit = 500) =>
+        [
+          ...busier,
+          site === "landing"
+            ? { x: "page-not-found", y: 3 }
+            : { x: "passport-renewal:form-closed-view", y: 1 },
+        ].slice(0, limit),
+    );
+
+    const text = await reply("/stats", "week", undefined, NOW);
+
+    expect(text).toContain("closed form *1*");
+    expect(text).toContain("page not found *3*");
+  });
 });
 
 describe("SlackStatsService.buildReply — one tool", () => {
