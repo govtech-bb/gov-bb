@@ -1,5 +1,5 @@
-// Search tab shaping, shared by the analytics dashboard and the Slack
-// /stats command so both report the same search numbers. Pure: the caller
+// Search tab shaping. Used by the analytics dashboard, and kept here so the
+// Slack /stats command can report the same search numbers. Pure: the caller
 // reads the event values from Umami.
 import type { EventDataValue } from "./types";
 

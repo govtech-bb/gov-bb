@@ -1,6 +1,6 @@
-// The landing journey list, shared by the analytics dashboard and the Slack
-// /stats command so both show the same journeys. Pure: the caller reads the
-// journey report from Umami.
+// The landing journey list. Used by the analytics dashboard, and kept here so
+// the Slack /stats command can show the same journeys. Pure: the caller reads
+// the journey report from Umami.
 import { canonicalEvent } from "@govtech-bb/analytics";
 import type { JourneyPath, SourceRow } from "./types";
 
@@ -49,7 +49,7 @@ export interface JourneyRow {
   share: number;
   /** raw path of the entry step, for the referrer lookup. */
   entryPath: string;
-  /** top referrers to the entry page (filled by fetchOverviewData). */
+  /** top referrers to the entry page (filled by the caller). */
   topSources: SourceRow[];
 }
 

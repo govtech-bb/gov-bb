@@ -1,6 +1,7 @@
-// The interactive tools and the shaping of their traffic and `tool-*` events,
-// shared by the analytics dashboard's Tools tab and the Slack /stats command so
-// both report the same numbers. Pure: the caller reads the rows from Umami.
+// The interactive tools and the shaping of their traffic and `tool-*` events.
+// Used by the analytics dashboard's Tools tab, and kept here so the Slack
+// /stats command can report the same numbers. Pure: the caller reads the rows
+// from Umami.
 import type { ToolId } from "@govtech-bb/analytics";
 import type { EventDataValue, ExpandedRow, SourceRow } from "./types";
 
