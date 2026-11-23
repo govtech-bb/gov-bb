@@ -3,6 +3,13 @@
 // reads the event values from Umami.
 import type { EventDataValue } from "./types";
 
+/**
+ * A query seen fewer times than this could be one person's text, such as a
+ * name, which maskSearchQuery can't mask (ADR 0111), so no list of query text
+ * shows it. Shared by the dashboard's Search tab and `/stats search`.
+ */
+export const MIN_QUERY_COUNT = 3;
+
 /** One row of the top-queries table. */
 export interface SearchQueryStats {
   query: string;

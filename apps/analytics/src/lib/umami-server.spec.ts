@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   buildFunnelSteps,
   buildStepFunnel,
@@ -7,6 +7,7 @@ import {
   fetchFormDetailData,
   fetchFormList,
   fetchOverviewData,
+  fetchSearchData,
   fetchToolsData,
   funnelHeadline,
   isConfigured,
@@ -19,6 +20,7 @@ import {
   type UmamiConfig,
 } from './umami-server'
 import type { ServiceIndexEntry } from '@govtech-bb/content'
+import { __clearCache } from './cache'
 
 describe('configured gates', () => {
   const full = {
@@ -424,6 +426,46 @@ describe('fetchToolsData (tool events read from Umami)', () => {
   })
 })
 
+describe('Tools tab reads every landing URL (#3823)', () => {
+  beforeEach(() => {
+    __clearCache()
+  })
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('counts a tool page that sits below more than 500 busier URLs', async () => {
+    // URL rows like Umami's: busiest first, cut at the requested limit.
+    const busier = Array.from({ length: 600 }, (_, i) => ({
+      x: `/page-${i}`,
+      visitors: 1000 - i,
+    }))
+    const quiet = { x: '/business-trade/crop-over-permits/result', visitors: 7 }
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: URL) => {
+        const body = input.pathname.endsWith('/metrics/expanded')
+          ? [...busier, quiet].slice(0, Number(input.searchParams.get('limit')))
+          : []
+        return { ok: true, status: 200, json: async () => body } as Response
+      }),
+    )
+
+    const data = await fetchToolsData(
+      {
+        apiKey: 'k',
+        landingWebsiteId: 'l',
+        formsWebsiteId: 'f',
+        formsApiUrl: 'http://forms.test',
+      },
+      'past-30-days',
+    )
+
+    const crop = data.tools.find((t) => t.path.includes('/crop-over-permits'))
+    expect(crop?.visitors).toBe(7)
+  })
+})
+
 describe('dashboard event reads ask for every event name (#3819)', () => {
   const cfg: UmamiConfig = {
     apiKey: 'k',
@@ -595,5 +637,54 @@ describe('shapePages (content pages joined to the public registry)', () => {
         new Map(),
       ),
     ).toEqual([])
+  })
+})
+
+describe('fetchSearchData (search queries read from Umami)', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('leaves out a query seen fewer than 3 times but still counts it in the totals', async () => {
+    // One person's name, searched once, found nothing and got no click.
+    const answers: Record<string, unknown> = {
+      'search/query': [
+        { value: 'passport', total: 5 },
+        { value: 'nis', total: 3 },
+        { value: 'jane doe', total: 1 },
+      ],
+      'search/results': [
+        { value: 8, total: 8 },
+        { value: 0, total: 1 },
+      ],
+      'search-result-click/query': [
+        { value: 'passport', total: 2 },
+        { value: 'jane doe', total: 1 },
+      ],
+      'search-no-results/query': [{ value: 'jane doe', total: 1 }],
+    }
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: URL) => {
+        const q = input.searchParams
+        const body = answers[`${q.get('event')}/${q.get('propertyName')}`]
+        return { ok: true, status: 200, json: async () => body } as Response
+      }),
+    )
+
+    const data = await fetchSearchData(
+      {
+        apiKey: 'k',
+        landingWebsiteId: 'l',
+        formsWebsiteId: 'f',
+        formsApiUrl: 'http://forms.test',
+      },
+      'past-90-days',
+    )
+
+    expect(data.queries.map((q) => q.query)).toEqual(['passport', 'nis'])
+    expect(data.searches).toBe(9)
+    expect(data.clicks).toBe(3)
+    expect(data.zeroResultRate).toBeCloseTo(1 / 9)
   })
 })

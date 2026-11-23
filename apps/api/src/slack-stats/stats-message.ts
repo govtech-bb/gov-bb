@@ -2,6 +2,7 @@ import {
   canonicalEvent,
   eventFormKey,
   isSubmitErrorCode,
+  MIN_QUERY_COUNT,
   parseEventName,
   type ComparisonPeriods,
   type EventDataValue,
@@ -14,6 +15,7 @@ import {
   type ToolRow,
   type WaterAlertFunnel,
 } from "@govtech-bb/umami-analytics";
+import { mrkdwnEscape } from "@/notifications/slack-notifier.service";
 
 const TZ = "America/Barbados";
 
@@ -320,20 +322,25 @@ function metrics(rows: [string, string, string][]) {
 const BAR_WIDTH = 12;
 const STEP_TITLE_MAX = 34;
 
-/** Step views as a monospace bar chart, scaled to the busiest step. */
+/**
+ * Step views as a monospace bar chart, scaled to the busiest step. A code
+ * block shows `*`, `_` and `~` as typed, so titles only lose backticks (which
+ * could end the block) and are escaped after padding, so the bars line up.
+ */
 export function stepBars(steps: { title: string; count: number }[]): string {
   const max = Math.max(1, ...steps.map((s) => s.count));
-  const titles = steps.map((s) =>
-    s.title.length > STEP_TITLE_MAX
-      ? s.title.slice(0, STEP_TITLE_MAX - 1) + "…"
-      : s.title,
-  );
+  const titles = steps.map((s) => {
+    const title = s.title.replace(/`/g, "");
+    return title.length > STEP_TITLE_MAX
+      ? title.slice(0, STEP_TITLE_MAX - 1) + "…"
+      : title;
+  });
   const width = Math.max(...titles.map((t) => t.length));
   const countWidth = num(max).length;
   const lines = steps.map((s, i) => {
     const filled = Math.round((s.count / max) * BAR_WIDTH);
     const bar = "█".repeat(filled) + "░".repeat(BAR_WIDTH - filled);
-    return `${titles[i].padEnd(width)}  ${bar}  ${num(s.count).padStart(countWidth)}`;
+    return `${mrkdwnEscape(titles[i].padEnd(width))}  ${bar}  ${num(s.count).padStart(countWidth)}`;
   });
   return "```\n" + lines.join("\n") + "\n```";
 }
@@ -492,13 +499,15 @@ export function formatFormStats(
       divider,
       section(
         "*🚨 Top errors*\n" +
-          topErrors.map((e) => `• ${e.label}: *${num(e.count)}*`).join("\n"),
+          topErrors
+            .map((e) => `• ${plainSlackText(e.label)}: *${num(e.count)}*`)
+            .join("\n"),
         true,
       ),
     );
   }
   return {
-    text: `📝 ${title} · ${heading.title}: ${num(c.starts)} started, ${num(c.completed)} finished`,
+    text: `📝 ${mrkdwnEscape(title)} · ${heading.title}: ${num(c.starts)} started, ${num(c.completed)} finished`,
     blocks,
   };
 }
@@ -527,14 +536,24 @@ const CHAT_SUGGESTIONS_SHOWN = 3;
 const CHAT_LABEL_MAX = 80;
 
 /**
+ * Characters that show nothing: bidi controls (U+061C, U+200E-U+200F,
+ * U+202A-U+202E, U+2066-U+2069), zero-width characters (U+200B-U+200D, U+2060,
+ * U+FEFF), and others such as tag characters and the soft hyphen. They can
+ * reverse or hide part of a line, so it looks like something it isn't.
+ */
+const HIDDEN_CHARS = /\p{Default_Ignorable_Code_Point}/gu;
+
+/**
  * Event data as inert Slack text. Anyone can send events to Umami, so a value
- * must not mention, link or format: Slack's control characters are escaped,
- * formatting marks and line breaks removed, and long text shortened.
+ * must not mention, link, format or hide text: characters that reverse or hide
+ * text are removed, Slack's control characters escaped, formatting marks and
+ * line breaks removed, and long text shortened.
  */
 export function plainSlackText(value: string): string {
   // Array.from splits by code point, so shortening never cuts an emoji.
   const chars = Array.from(
     value
+      .replace(HIDDEN_CHARS, "")
       .replace(/[*_~`]/g, "")
       .replace(/\s+/g, " ")
       .trim(),
@@ -660,11 +679,6 @@ export interface SearchReport {
 }
 
 const QUERIES_SHOWN = 5;
-/**
- * A query seen fewer times than this could be one person's text, such as a
- * name, which maskSearchQuery can't mask (ADR 0111), so it isn't shown.
- */
-export const MIN_QUERY_COUNT = 3;
 
 /**
  * A search query as plainSlackText. maskSearchQuery hides the middle of a long
@@ -675,19 +689,20 @@ export const slackQuery = (query: string) =>
   plainSlackText(query.replace(/\*/g, "∗"));
 
 /**
- * The busiest queries, grouped on the cleaned label so look-alikes
- * (`pass_port`, `passport`) merge, without empty labels or any query seen
- * fewer than MIN_QUERY_COUNT times.
+ * The busiest queries, without empty labels. A query seen fewer than
+ * MIN_QUERY_COUNT times is dropped first, so one-off variants of a name
+ * (`jane_doe`, `janedoe`) can't add up to the minimum. Then the rest are
+ * grouped on the cleaned label so look-alikes (`pass_port`, `passport`) merge.
  */
 function topQueries(rows: { query: string; count: number }[]) {
   const counts = new Map<string, number>();
   for (const r of rows) {
+    if (r.count < MIN_QUERY_COUNT) continue;
     const label = slackQuery(r.query);
     if (label) counts.set(label, (counts.get(label) ?? 0) + r.count);
   }
   return [...counts]
     .map(([label, count]) => ({ label, count }))
-    .filter((q) => q.count >= MIN_QUERY_COUNT)
     .sort((a, b) => b.count - a.count)
     .slice(0, QUERIES_SHOWN);
 }
