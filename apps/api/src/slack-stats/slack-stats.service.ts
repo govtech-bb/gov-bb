@@ -10,7 +10,6 @@ import {
   funnelHeadline,
   tallyFieldErrors,
   weightedAverage,
-  type ComparisonPeriods,
   type EventDataValue,
   type Range,
   type StatsPeriod,
@@ -25,7 +24,6 @@ import {
   periodHeading,
   type ChatPeriod,
   type FormPeriod,
-  type PeriodHeading,
   type SitePeriod,
   type SlackMessage,
 } from "./stats-message";
@@ -174,12 +172,12 @@ export class SlackStatsService {
     formId: string | undefined,
     now: Date,
   ): Promise<SlackMessage | string> {
+    if (formId === "chat") return this.chatReply(period, now);
+
     const forms = await this.formDefinitions.findAll();
     const periods = comparisonPeriods(period, TZ, now);
     const heading = periodHeading(period, periods);
     const client = new UmamiClient({ apiKey: this.umamiConfig().apiKey });
-
-    if (formId === "chat") return this.chatReply(client, heading, periods);
 
     if (!formId) {
       const ids = forms.map((f) => f.formId);
@@ -362,17 +360,21 @@ export class SlackStatsService {
     };
   }
 
-  /** The landing chat events (#3810): two Umami requests per period. */
+  /**
+   * The landing chat events (#3810): two Umami requests per period. Unlike
+   * eventValues, an Umami error is not read as "no events": it reaches
+   * reply(), which apologises, so an outage never looks like zero use.
+   */
   private async chatReply(
-    client: UmamiClient,
-    heading: PeriodHeading,
-    periods: ComparisonPeriods,
+    period: StatsPeriod,
+    now: Date,
   ): Promise<SlackMessage> {
-    const { landingWebsiteId } = this.umamiConfig();
+    const periods = comparisonPeriods(period, TZ, now);
+    const { apiKey, landingWebsiteId } = this.umamiConfig();
+    const client = new UmamiClient({ apiKey });
     const counts = async (event: string, propertyName: string, range: Range) =>
       (
-        await this.eventValues(
-          client,
+        await client.eventDataValues(
           landingWebsiteId,
           event,
           propertyName,
@@ -383,7 +385,7 @@ export class SlackStatsService {
       bySource: await counts("chat-submit", "source", range),
       suggestions: await counts("chat-suggestion", "question", range),
     });
-    return formatChatStats(heading, {
+    return formatChatStats(periodHeading(period, periods), {
       current: await chatPeriod(periods.current),
       previous: await chatPeriod(periods.previous),
     });

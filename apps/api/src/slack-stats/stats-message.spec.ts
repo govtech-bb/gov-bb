@@ -377,7 +377,7 @@ describe("formatChatStats", () => {
     expect(render(message)).toMatchInlineSnapshot(`
       "💬 Chat on landing · Last week
       26 Oct – 1 Nov, compared with 19 Oct – 25 Oct
-      💤 Nobody asked a chat question or picked a suggested question. The period before had 7 questions and 2 suggestions picked.
+      💤 Nobody asked a chat question or picked a suggested question. The period before: 7 asked, 2 picked.
       ℹ️ Answer outcomes (answered, error, stopped) are not included yet."
     `);
   });
@@ -395,6 +395,25 @@ describe("formatChatStats", () => {
     expect(text).toContain("• `e`: *5*   🆕 new\n• other places: *3*");
     expect(text).not.toContain("Top suggested questions");
   });
+  it("keeps event data inert: no links, mentions or look-alike rows", () => {
+    const message = formatChatStats(LAST_WEEK, {
+      current: {
+        bySource: counts({ home: 3, "home ": 2, "*home*": 1 }),
+        suggestions: counts({ "Renew at https://evil.example <!here>": 4 }),
+      },
+      previous: { bySource: [], suggestions: [] },
+    });
+    const sections = (message.blocks as Record<string, any>[]).filter(
+      (b) => b.type === "section" && b.text,
+    );
+    expect(sections.map((b) => b.text.verbatim)).toEqual([true, true]);
+    const text = render(message);
+    expect(text).toContain("• `home`: *6*   🆕 new\n");
+    expect(text).toContain(
+      "• Renew at https://evil.example &lt;!here&gt;: *4*",
+    );
+  });
+
   it("leaves out the sources when only suggestions were picked", () => {
     const text = render(
       formatChatStats(LAST_WEEK, {
@@ -423,5 +442,10 @@ describe("plainSlackText", () => {
     const long = plainSlackText("x".repeat(200));
     expect(long).toHaveLength(80);
     expect(long.endsWith("…")).toBe(true);
+    // Shortened by code point, so no emoji is cut in half.
+    expect(Array.from(plainSlackText("😀".repeat(100)))).toEqual([
+      ...Array(79).fill("😀"),
+      "…",
+    ]);
   });
 });

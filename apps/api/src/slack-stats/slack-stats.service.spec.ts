@@ -111,13 +111,19 @@ describe("SlackStatsService.buildReply — chat", () => {
       ["landing", "chat-suggestion", "question"],
     ]);
     expect(umami.reportFunnel).not.toHaveBeenCalled();
-    expect(formDefinitions.findByFormId).not.toHaveBeenCalled();
+    expect(formDefinitions.findAll).not.toHaveBeenCalled();
   });
 
-  it("shows the empty state when Umami has no chat event data", async () => {
-    umami.eventDataValues.mockRejectedValue(new Error("Umami 404"));
+  it("shows the empty state when Umami has no chat events", async () => {
     const text = await reply("/stats", "today", "chat", NOW);
     expect(text).toContain("💤 Nobody asked a chat question");
+  });
+
+  it("apologises rather than show zero use when Umami fails", async () => {
+    umami.eventDataValues.mockRejectedValue(new Error("Umami 401"));
+    await expect(reply("/stats", "week", "chat", NOW)).rejects.toThrow(
+      "Umami 401",
+    );
   });
 });
 

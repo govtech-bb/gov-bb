@@ -190,9 +190,10 @@ const context = (text: string) => ({
   type: "context",
   elements: [{ type: "mrkdwn", text }],
 });
-const section = (text: string) => ({
+/** `verbatim` stops Slack linking bare URLs and #channels: for event data. */
+const section = (text: string, verbatim = false) => ({
   type: "section",
-  text: { type: "mrkdwn", text },
+  text: { type: "mrkdwn", text, ...(verbatim && { verbatim }) },
 });
 const divider = { type: "divider" };
 
@@ -393,14 +394,17 @@ const CHAT_LABEL_MAX = 80;
  * formatting marks and line breaks removed, and long text shortened.
  */
 export function plainSlackText(value: string): string {
-  const text = value
-    .replace(/[*_~`]/g, "")
-    .replace(/\s+/g, " ")
-    .trim();
+  // Array.from splits by code point, so shortening never cuts an emoji.
+  const chars = Array.from(
+    value
+      .replace(/[*_~`]/g, "")
+      .replace(/\s+/g, " ")
+      .trim(),
+  );
   const short =
-    text.length > CHAT_LABEL_MAX
-      ? text.slice(0, CHAT_LABEL_MAX - 1) + "…"
-      : text;
+    chars.length > CHAT_LABEL_MAX
+      ? chars.slice(0, CHAT_LABEL_MAX - 1).join("") + "…"
+      : chars.join("");
   return short
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
@@ -409,14 +413,18 @@ export function plainSlackText(value: string): string {
 
 const total = (rows: ChatCount[]) => rows.reduce((s, r) => s + r.count, 0);
 
-/** Every label in either period, busiest now first, with both counts. */
+/**
+ * Every label in either period, as plainSlackText, busiest now first, with
+ * both counts. Grouping on the cleaned label merges look-alikes ("home ").
+ */
 function compareCounts(current: ChatCount[], previous: ChatCount[]) {
   const counts = new Map<string, { now: number; before: number }>();
   const add = (rows: ChatCount[], key: "now" | "before") => {
     for (const r of rows) {
-      const c = counts.get(r.label) ?? { now: 0, before: 0 };
+      const label = plainSlackText(r.label);
+      const c = counts.get(label) ?? { now: 0, before: 0 };
       c[key] += r.count;
-      counts.set(r.label, c);
+      counts.set(label, c);
     }
   };
   add(current, "now");
@@ -439,7 +447,7 @@ export function formatChatStats(
   if (!asked && !picked) {
     blocks.push(
       section(
-        `💤 Nobody asked a chat question or picked a suggested question. The period before had ${num(total(p.bySource))} questions and ${num(total(p.suggestions))} suggestions picked.`,
+        `💤 Nobody asked a chat question or picked a suggested question. The period before: ${num(total(p.bySource))} asked, ${num(total(p.suggestions))} picked.`,
       ),
     );
   } else {
@@ -466,12 +474,13 @@ export function formatChatStats(
         .reduce((n, s) => n + s.now, 0);
       const lines = shown.map(
         (s) =>
-          `• \`${plainSlackText(s.label)}\`: *${num(s.now)}*   ${countChange(s.now, s.before)}`,
+          `• \`${s.label}\`: *${num(s.now)}*   ${countChange(s.now, s.before)}`,
       );
       if (others) lines.push(`• other places: *${num(others)}*`);
       blocks.push(
         section(
           "*📍 Questions asked, by where on landing*\n" + lines.join("\n"),
+          true,
         ),
       );
     }
@@ -485,9 +494,10 @@ export function formatChatStats(
             top
               .map(
                 (s) =>
-                  `• ${plainSlackText(s.label)}: *${num(s.now)}*   ${countChange(s.now, s.before)}`,
+                  `• ${s.label}: *${num(s.now)}*   ${countChange(s.now, s.before)}`,
               )
               .join("\n"),
+          true,
         ),
       );
     }
