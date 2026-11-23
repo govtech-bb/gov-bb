@@ -4,9 +4,11 @@ import {
   countChange,
   duration,
   durationChange,
+  formatChatStats,
   formatFormStats,
   formatSiteStats,
   periodHeading,
+  plainSlackText,
   rateChange,
   stepBars,
   type SlackMessage,
@@ -315,5 +317,111 @@ describe("formatFormStats", () => {
       }),
     );
     expect(text).toContain("*🚪 Visit → start*\n*100%*   🟢 ▲ 10 pts");
+  });
+});
+
+describe("formatChatStats", () => {
+  const counts = (o: Record<string, number>) =>
+    Object.entries(o).map(([label, count]) => ({ label, count }));
+
+  it("shows questions by source and the top suggestions for a normal week", () => {
+    const message = formatChatStats(LAST_WEEK, {
+      current: {
+        bySource: counts({ home: 120, services: 30 }),
+        suggestions: counts({
+          "How do I renew my passport?": 12,
+          "When is the next public holiday?": 8,
+          "How do I register a birth?": 4,
+          "Where is my nearest polyclinic?": 1,
+        }),
+      },
+      previous: {
+        bySource: counts({ home: 100, results: 10 }),
+        suggestions: counts({ "How do I renew my passport?": 15 }),
+      },
+    });
+    expect(message.text).toBe(
+      "💬 Chat on landing · Last week: 150 questions asked, 25 suggestions picked",
+    );
+    expect(render(message)).toMatchInlineSnapshot(`
+      "💬 Chat on landing · Last week
+      26 Oct – 1 Nov, compared with 19 Oct – 25 Oct
+      *💬 Questions asked*
+      *150*   🟢 ▲ 36%
+      *👆 Suggestions picked*
+      *25*   🟢 ▲ 67%
+      ---
+      *📍 Questions asked, by where on landing*
+      • \`home\`: *120*   🟢 ▲ 20%
+      • \`services\`: *30*   🆕 new
+      • \`results\`: *0*   🔴 ▼ 100%
+      *⭐ Top suggested questions picked*
+      • How do I renew my passport?: *12*   🔴 ▼ 20%
+      • When is the next public holiday?: *8*   🆕 new
+      • How do I register a birth?: *4*   🆕 new
+      ℹ️ Answer outcomes (answered, error, stopped) are not included yet."
+    `);
+  });
+
+  it("shows a clear empty state when there are no chat events", () => {
+    const message = formatChatStats(LAST_WEEK, {
+      current: { bySource: [], suggestions: [] },
+      previous: {
+        bySource: counts({ home: 7 }),
+        suggestions: counts({ "How do I renew my passport?": 2 }),
+      },
+    });
+    expect(message.text).toBe(
+      "💬 Chat on landing · Last week: 0 questions asked, 0 suggestions picked",
+    );
+    expect(render(message)).toMatchInlineSnapshot(`
+      "💬 Chat on landing · Last week
+      26 Oct – 1 Nov, compared with 19 Oct – 25 Oct
+      💤 Nobody asked a chat question or picked a suggested question. The period before had 7 questions and 2 suggestions picked.
+      ℹ️ Answer outcomes (answered, error, stopped) are not included yet."
+    `);
+  });
+
+  it("folds sources past the top 5 into one line", () => {
+    const text = render(
+      formatChatStats(LAST_WEEK, {
+        current: {
+          bySource: counts({ a: 9, b: 8, c: 7, d: 6, e: 5, f: 2, g: 1 }),
+          suggestions: [],
+        },
+        previous: { bySource: [], suggestions: [] },
+      }),
+    );
+    expect(text).toContain("• `e`: *5*   🆕 new\n• other places: *3*");
+    expect(text).not.toContain("Top suggested questions");
+  });
+  it("leaves out the sources when only suggestions were picked", () => {
+    const text = render(
+      formatChatStats(LAST_WEEK, {
+        current: {
+          bySource: [],
+          suggestions: counts({ "How do I register a birth?": 2 }),
+        },
+        previous: { bySource: [], suggestions: [] },
+      }),
+    );
+    expect(text).toContain("*💬 Questions asked*\n*0*   ⚪ no change");
+    expect(text).not.toContain("by where on landing");
+    expect(text).toContain("• How do I register a birth?: *2*   🆕 new");
+  });
+});
+
+describe("plainSlackText", () => {
+  it("can't mention, link or format", () => {
+    expect(plainSlackText("<!channel> *hi* <https://x.example|me> & `x`")).toBe(
+      "&lt;!channel&gt; hi &lt;https://x.example|me&gt; &amp; x",
+    );
+  });
+
+  it("keeps one line and shortens long text", () => {
+    expect(plainSlackText("a\n• b")).toBe("a • b");
+    const long = plainSlackText("x".repeat(200));
+    expect(long).toHaveLength(80);
+    expect(long.endsWith("…")).toBe(true);
   });
 });

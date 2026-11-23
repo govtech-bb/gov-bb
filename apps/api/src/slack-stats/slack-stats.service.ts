@@ -10,6 +10,7 @@ import {
   funnelHeadline,
   tallyFieldErrors,
   weightedAverage,
+  type ComparisonPeriods,
   type EventDataValue,
   type Range,
   type StatsPeriod,
@@ -18,10 +19,13 @@ import { sanitizeForLog } from "@/common/log-sanitize";
 import { FormDefinitionsService } from "@/forms/form-definitions/form-definitions.service";
 import {
   biggestFinishDrops,
+  formatChatStats,
   formatFormStats,
   formatSiteStats,
   periodHeading,
+  type ChatPeriod,
   type FormPeriod,
+  type PeriodHeading,
   type SitePeriod,
   type SlackMessage,
 } from "./stats-message";
@@ -174,6 +178,8 @@ export class SlackStatsService {
     const periods = comparisonPeriods(period, TZ, now);
     const heading = periodHeading(period, periods);
     const client = new UmamiClient({ apiKey: this.umamiConfig().apiKey });
+
+    if (formId === "chat") return this.chatReply(client, heading, periods);
 
     if (!formId) {
       const ids = forms.map((f) => f.formId);
@@ -354,6 +360,33 @@ export class SlackStatsService {
       completed,
       avgDurationSeconds: weightedAverage(durations),
     };
+  }
+
+  /** The landing chat events (#3810): two Umami requests per period. */
+  private async chatReply(
+    client: UmamiClient,
+    heading: PeriodHeading,
+    periods: ComparisonPeriods,
+  ): Promise<SlackMessage> {
+    const { landingWebsiteId } = this.umamiConfig();
+    const counts = async (event: string, propertyName: string, range: Range) =>
+      (
+        await this.eventValues(
+          client,
+          landingWebsiteId,
+          event,
+          propertyName,
+          range,
+        )
+      ).map((r) => ({ label: String(r.value), count: r.total }));
+    const chatPeriod = async (range: Range): Promise<ChatPeriod> => ({
+      bySource: await counts("chat-submit", "source", range),
+      suggestions: await counts("chat-suggestion", "question", range),
+    });
+    return formatChatStats(heading, {
+      current: await chatPeriod(periods.current),
+      previous: await chatPeriod(periods.previous),
+    });
   }
 
   /** eventDataValues that degrades to [] when the event has no data. */

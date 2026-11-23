@@ -89,6 +89,38 @@ describe("SlackStatsService.buildReply — site-wide", () => {
   });
 });
 
+describe("SlackStatsService.buildReply — chat", () => {
+  it("reads the landing chat events for both periods, and no form", async () => {
+    umami.eventDataValues.mockImplementation(
+      async (_site: string, event: string) =>
+        event === "chat-submit"
+          ? [{ value: "home", total: 12 }]
+          : [{ value: "How do I renew my passport?", total: 3 }],
+    );
+
+    const text = await reply("/stats", "week", "chat", NOW);
+
+    expect(text).toContain("💬 Chat on landing · Last week");
+    expect(text).toContain("• `home`: *12*   ⚪ no change");
+    expect(text).toContain("• How do I renew my passport?: *3*");
+    expect(text).toContain("Answer outcomes");
+    expect(umami.eventDataValues.mock.calls.map((c) => c.slice(0, 3))).toEqual([
+      ["landing", "chat-submit", "source"],
+      ["landing", "chat-suggestion", "question"],
+      ["landing", "chat-submit", "source"],
+      ["landing", "chat-suggestion", "question"],
+    ]);
+    expect(umami.reportFunnel).not.toHaveBeenCalled();
+    expect(formDefinitions.findByFormId).not.toHaveBeenCalled();
+  });
+
+  it("shows the empty state when Umami has no chat event data", async () => {
+    umami.eventDataValues.mockRejectedValue(new Error("Umami 404"));
+    const text = await reply("/stats", "today", "chat", NOW);
+    expect(text).toContain("💤 Nobody asked a chat question");
+  });
+});
+
 describe("SlackStatsService.buildReply — one form", () => {
   it("suggests similar ids for an unknown form", async () => {
     const text = await reply("/stats", "week", "passport", NOW);
