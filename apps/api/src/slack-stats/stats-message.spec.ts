@@ -805,10 +805,10 @@ describe("formatToolsSummary", () => {
           previous: { visitors: 60, events: null },
         },
         {
-          // Stopped sending events: not the same as never set up.
+          // Stopped sending events (only errors before): not the same as never set up.
           tool: tool("water-outages"),
           current: { visitors: 50, events: null },
-          previous: { visitors: 40, events: events(3, 0) },
+          previous: { visitors: 40, events: events(0, 3) },
         },
       ],
     });
@@ -823,7 +823,7 @@ describe("formatToolsSummary", () => {
       *Find an emergency shelter* (\`shelter-finder\`): 👥 *30* visitors 🟢 ▲ 50% · ✅ *10* results 🟢 ▲ 100% · 🚫 *–* no results · ⚠️ *0* errors (0%) 🟢 ▼ 100%
       *Find the permits you need for a Crop Over event* (\`crop-over-permits\`): 👥 *60* visitors 🆕 new · ✅ *0* results ⚪ no change · ⚠️ *0* errors ⚪ no change
       *Check bank holiday dates* (\`bank-holidays\`): 👥 *75* visitors 🟢 ▲ 25% · 💤 no tool events yet
-      *Check for water outages in your area* (\`water-outages\`): 👥 *50* visitors 🟢 ▲ 25% · 💤 no tool events this period (3 results the period before)
+      *Check for water outages in your area* (\`water-outages\`): 👥 *50* visitors 🟢 ▲ 25% · 💤 no tool events this period (it sent some the period before)
       Visitors are summed across each tool's pages, so someone who views more than one page may be counted more than once. The no-result rate is the share of results where the visitor found nothing or was not eligible; tools without such a result have no rate. The error rate in brackets is errors ÷ (results + errors)."
     `);
   });
