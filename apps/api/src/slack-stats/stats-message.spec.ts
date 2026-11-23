@@ -1,4 +1,4 @@
-import { comparisonPeriods } from "@govtech-bb/umami-analytics";
+import { comparisonPeriods, eventName } from "@govtech-bb/umami-analytics";
 import {
   biggestFinishDrops,
   countChange,
@@ -11,6 +11,7 @@ import {
   plainSlackText,
   rateChange,
   stepBars,
+  tallyDeadEnds,
   type SlackMessage,
 } from "./stats-message";
 
@@ -22,6 +23,12 @@ describe("change helpers", () => {
     expect(countChange(90, 100)).toBe("🔴 ▼ 10%");
     expect(countChange(5, 5)).toBe("⚪ no change");
     expect(countChange(5, 0)).toBe("🆕 new");
+  });
+
+  it("counts change the other way when fewer is better", () => {
+    expect(countChange(108, 100, "down")).toBe("🔴 ▲ 8%");
+    expect(countChange(90, 100, "down")).toBe("🟢 ▼ 10%");
+    expect(countChange(5, 0, "down")).toBe("🔴 new");
   });
 
   it("rates change in percentage points", () => {
@@ -99,6 +106,69 @@ describe("biggestFinishDrops", () => {
   });
 });
 
+describe("tallyDeadEnds", () => {
+  // 56 characters: over 44, so its events use a hashed form key.
+  const LONG = "apply-for-national-summer-camp-programme-tropical-trails";
+  // 37 characters: its events fit only with a short event code.
+  const MEDIUM = "apply-for-a-temporary-teacher-position";
+
+  it("adds up packed names, short codes and hashed form keys", () => {
+    expect(eventName(LONG, "form-closed-view")).toMatch(/~\w{6}:fclsd$/);
+    expect(eventName(MEDIUM, "form-load-error")).toBe(`${MEDIUM}:flerr`);
+
+    const { deadEnds, topForm } = tallyDeadEnds(
+      [
+        { x: "page-not-found", y: 40 },
+        { x: "service-unavailable-view", y: 2 },
+        { x: "search", y: 900 },
+      ],
+      [
+        { x: "passport-renewal:form-closed-view", y: 5 },
+        { x: "passport-renewal:form-start", y: 300 },
+        { x: eventName(LONG, "form-closed-view"), y: 7 },
+        { x: eventName(LONG, "form-load-error"), y: 1 },
+        { x: eventName(MEDIUM, "form-load-error"), y: 3 },
+        // A form that is not found has no form, so the name is not packed.
+        { x: "form-load-error", y: 4 },
+      ],
+      ["passport-renewal", LONG, MEDIUM],
+    );
+
+    expect(deadEnds).toEqual({
+      formClosed: 12,
+      formLoadError: 8,
+      serviceUnavailable: 2,
+      pageNotFound: 40,
+    });
+    expect(topForm).toEqual({ formId: LONG, count: 8 });
+  });
+
+  it("counts a form key it cannot map back, but never names it", () => {
+    const { deadEnds, topForm } = tallyDeadEnds(
+      [],
+      [
+        { x: eventName(LONG, "form-closed-view"), y: 3 },
+        // Anyone can send Umami an event name.
+        { x: "x`<!channel> <evil.example|click> &amp;:fclsd", y: 50 },
+        { x: "passport-renewal:form-load-error", y: 1 },
+      ],
+      ["passport-renewal"],
+    );
+    expect(deadEnds.formClosed).toBe(53);
+    expect(topForm).toEqual({ formId: "passport-renewal", count: 1 });
+  });
+
+  it("has no top form when no form had a dead end", () => {
+    const { deadEnds, topForm } = tallyDeadEnds(
+      [{ x: "page-not-found", y: 1 }],
+      [{ x: "form-load-error", y: 2 }],
+      [],
+    );
+    expect(deadEnds.formLoadError).toBe(2);
+    expect(topForm).toBeNull();
+  });
+});
+
 /** The visible text of a message, block by block, for assertions. */
 function render({ blocks }: SlackMessage): string {
   return (blocks as Record<string, any>[])
@@ -118,18 +188,38 @@ const LAST_WEEK = {
 };
 
 describe("formatSiteStats", () => {
+  const noDeadEnds = {
+    formClosed: 0,
+    formLoadError: 0,
+    serviceUnavailable: 0,
+    pageNotFound: 0,
+  };
   const site = {
     current: {
       visitors: 12480,
       starts: 3869,
       completed: 2476,
       avgDurationSeconds: 400,
+      deadEnds: {
+        formClosed: 12,
+        formLoadError: 3,
+        serviceUnavailable: 0,
+        pageNotFound: 140,
+      },
+      topDeadEndForm: { formId: "summer-camp", count: 9 },
     },
     previous: {
       visitors: 11556,
       starts: 3814,
       completed: 2250,
       avgDurationSeconds: 425,
+      deadEnds: {
+        formClosed: 10,
+        formLoadError: 4,
+        serviceUnavailable: 0,
+        pageNotFound: 140,
+      },
+      topDeadEndForm: null,
     },
   };
 
@@ -161,6 +251,7 @@ describe("formatSiteStats", () => {
       *2,476*   🟢 ▲ 10%
       *⏱️ Avg time to finish*
       *6m 40s*   🟢 ▼ 25s
+      *🚧 Dead ends:* closed form *12* 🔴 ▲ 20% · form didn't load *3* 🟢 ▼ 25% · service unavailable *0* ⚪ no change · page not found *140* ⚪ no change · most on \`summer-camp\` (9)
       ---
       *📉 Biggest drops in finish rate*
       • \`passport-renewal\`: 402 starts, *48%* finish   🔴 ▼ 12 pts
@@ -178,12 +269,14 @@ describe("formatSiteStats", () => {
     );
   });
 
-  it("shows dashes when there is no data", () => {
+  it("shows dashes and no dead ends when there is no data", () => {
     const empty = {
       visitors: 0,
       starts: 0,
       completed: 0,
       avgDurationSeconds: null,
+      deadEnds: noDeadEnds,
+      topDeadEndForm: null,
     };
     const text = render(
       formatSiteStats(LAST_WEEK, "/stats", "today", {
@@ -194,6 +287,24 @@ describe("formatSiteStats", () => {
     );
     expect(text).toContain("*🚪 Visit → start form*\n*–*\n");
     expect(text).toContain("*⏱️ Avg time to finish*\n*–*\n");
+    expect(text).not.toContain("Dead ends");
+  });
+
+  it("shows dead ends that stopped this period, with no top form", () => {
+    const text = render(
+      formatSiteStats(LAST_WEEK, "/stats", "week", {
+        current: {
+          ...site.current,
+          deadEnds: noDeadEnds,
+          topDeadEndForm: null,
+        },
+        previous: site.previous,
+        biggestDrops: [],
+      }),
+    );
+    expect(text).toContain(
+      "*🚧 Dead ends:* closed form *0* 🟢 ▼ 100% · form didn't load *0* 🟢 ▼ 100% · service unavailable *0* ⚪ no change · page not found *0* 🟢 ▼ 100%\n",
+    );
   });
 });
 
