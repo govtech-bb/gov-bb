@@ -636,7 +636,7 @@ describe("formatSearchStats", () => {
       *🤷 Top searches that found nothing*
       • tamis: *25*
       • 1∗∗∗∗6: *10*
-      Numbers are searches for each query."
+      Numbers are searches for each query. Queries searched fewer than 3 times are not shown."
     `);
   });
 
@@ -657,6 +657,54 @@ describe("formatSearchStats", () => {
       *0*   🔴 ▼ 100%
       No searches in this period."
     `);
+  });
+
+  it("leaves out queries searched fewer than 3 times, and merges look-alikes", () => {
+    const message = formatSearchStats(LAST_WEEK, {
+      current: stats({
+        searches: 9,
+        queries: [
+          query("passport", 2),
+          query("pass_port", 2),
+          query("jane doe", 1, true),
+          query("nis", 1),
+        ],
+      }),
+      previous: stats({}),
+      noResults: [
+        { value: "jane doe", total: 1 },
+        { value: "tamis", total: 2 },
+        { value: "tam_is", total: 1 },
+      ],
+    });
+    const text = render(message);
+    expect(text).toContain("*🔝 Top searches*\n• passport: *4*");
+    expect(text).toContain("found nothing*\n• tamis: *3*");
+    expect(text).not.toContain("jane doe");
+    expect(text).not.toContain("nis");
+  });
+
+  it("says so when no query was searched 3 or more times", () => {
+    const message = formatSearchStats(LAST_WEEK, {
+      current: stats({ searches: 2, queries: [query("jane doe", 1, true)] }),
+      previous: stats({}),
+      noResults: [{ value: "jane doe", total: 1 }],
+    });
+    const text = render(message);
+    expect(text).toContain("No query was searched 3 or more times.");
+    expect(text).not.toContain("jane doe");
+  });
+
+  it("shows the found-nothing list on its own when it is the only one", () => {
+    const text = render(
+      formatSearchStats(LAST_WEEK, {
+        current: stats({ searches: 3 }),
+        previous: stats({}),
+        noResults: [{ value: "tamis", total: 3 }],
+      }),
+    );
+    expect(text).not.toContain("Top searches*");
+    expect(text).toContain("found nothing*\n• tamis: *3*");
   });
 
   it("can't add formatting, links or mentions through a query", () => {

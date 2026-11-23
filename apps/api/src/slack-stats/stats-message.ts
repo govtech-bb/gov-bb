@@ -622,6 +622,11 @@ export interface SearchReport {
 }
 
 const QUERIES_SHOWN = 5;
+/**
+ * A query seen fewer times than this could be one person's text, such as a
+ * name, which maskSearchQuery can't mask (ADR 0111), so it isn't shown.
+ */
+export const MIN_QUERY_COUNT = 3;
 
 /**
  * A search query as plainSlackText. maskSearchQuery hides the middle of a long
@@ -631,6 +636,24 @@ const QUERIES_SHOWN = 5;
 export const slackQuery = (query: string) =>
   plainSlackText(query.replace(/\*/g, "∗"));
 
+/**
+ * The busiest queries, grouped on the cleaned label so look-alikes
+ * (`pass_port`, `passport`) merge, without empty labels or any query seen
+ * fewer than MIN_QUERY_COUNT times.
+ */
+function topQueries(rows: { query: string; count: number }[]) {
+  const counts = new Map<string, number>();
+  for (const r of rows) {
+    const label = slackQuery(r.query);
+    if (label) counts.set(label, (counts.get(label) ?? 0) + r.count);
+  }
+  return [...counts]
+    .map(([label, count]) => ({ label, count }))
+    .filter((q) => q.count >= MIN_QUERY_COUNT)
+    .sort((a, b) => b.count - a.count)
+    .slice(0, QUERIES_SHOWN);
+}
+
 export function formatSearchStats(
   heading: PeriodHeading,
   { current: c, previous: p, noResults }: SearchReport,
@@ -638,21 +661,16 @@ export function formatSearchStats(
   const noResultRate = [c, p].map((s) =>
     s.searches ? s.zeroResultRate : null,
   );
-  // shapeSearch keeps an empty query as a row; it says nothing here.
-  const queries = c.queries
-    .map((q) => ({ label: slackQuery(q.query), count: q.searches }))
-    .filter((q) => q.label);
-  const nothing = noResults
-    .map((r) => ({ label: slackQuery(String(r.value)), count: r.total }))
-    .filter((q) => q.label)
-    .sort((a, b) => b.count - a.count);
+  const queries = topQueries(
+    c.queries.map((q) => ({ query: q.query, count: q.searches })),
+  );
+  const nothing = topQueries(
+    noResults.map((r) => ({ query: String(r.value), count: r.total })),
+  );
   const list = (title: string, rows: typeof queries) =>
     section(
       `*${title}*\n` +
-        rows
-          .slice(0, QUERIES_SHOWN)
-          .map((q) => `• ${q.label}: *${num(q.count)}*`)
-          .join("\n"),
+        rows.map((q) => `• ${q.label}: *${num(q.count)}*`).join("\n"),
       true,
     );
   const blocks: unknown[] = [
@@ -668,14 +686,23 @@ export function formatSearchStats(
       ["👆 Result clicks", num(c.clicks), countChange(c.clicks, p.clicks)],
     ]),
   ];
-  if (queries.length) {
-    blocks.push(divider, list("🔝 Top searches", queries));
+  if (!c.searches) {
+    blocks.push(context("No searches in this period."));
+  } else if (!queries.length && !nothing.length) {
+    blocks.push(
+      context(`No query was searched ${MIN_QUERY_COUNT} or more times.`),
+    );
+  } else {
+    blocks.push(divider);
+    if (queries.length) blocks.push(list("🔝 Top searches", queries));
     if (nothing.length) {
       blocks.push(list("🤷 Top searches that found nothing", nothing));
     }
-    blocks.push(context("Numbers are searches for each query."));
-  } else {
-    blocks.push(context("No searches in this period."));
+    blocks.push(
+      context(
+        `Numbers are searches for each query. Queries searched fewer than ${MIN_QUERY_COUNT} times are not shown.`,
+      ),
+    );
   }
   return {
     text: `🔎 ${heading.title}: ${num(c.searches)} searches, ${num(c.clicks)} result clicks`,
