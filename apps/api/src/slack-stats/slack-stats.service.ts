@@ -19,10 +19,12 @@ import { sanitizeForLog } from "@/common/log-sanitize";
 import { FormDefinitionsService } from "@/forms/form-definitions/form-definitions.service";
 import {
   biggestFinishDrops,
+  formatChatStats,
   formatFormStats,
   formatSearchStats,
   formatSiteStats,
   periodHeading,
+  type ChatPeriod,
   type FormPeriod,
   type SitePeriod,
   type SlackMessage,
@@ -172,6 +174,7 @@ export class SlackStatsService {
     formId: string | undefined,
     now: Date,
   ): Promise<SlackMessage | string> {
+    if (formId === "chat") return this.chatReply(period, now);
     if (formId === "search") return this.searchReply(period, now);
 
     const forms = await this.formDefinitions.findAll();
@@ -361,10 +364,40 @@ export class SlackStatsService {
   }
 
   /**
+   * The landing chat events (#3810): two Umami requests per period. Unlike
+   * eventValues, an Umami error is not read as "no events": it reaches
+   * reply(), which apologises, so an outage never looks like zero use.
+   */
+  private async chatReply(
+    period: StatsPeriod,
+    now: Date,
+  ): Promise<SlackMessage> {
+    const periods = comparisonPeriods(period, TZ, now);
+    const { apiKey, landingWebsiteId } = this.umamiConfig();
+    const client = new UmamiClient({ apiKey });
+    const counts = async (event: string, propertyName: string, range: Range) =>
+      (
+        await client.eventDataValues(
+          landingWebsiteId,
+          event,
+          propertyName,
+          range,
+        )
+      ).map((r) => ({ label: String(r.value), count: r.total }));
+    const chatPeriod = async (range: Range): Promise<ChatPeriod> => ({
+      bySource: await counts("chat-submit", "source", range),
+      suggestions: await counts("chat-suggestion", "question", range),
+    });
+    return formatChatStats(periodHeading(period, periods), {
+      current: await chatPeriod(periods.current),
+      previous: await chatPeriod(periods.previous),
+    });
+  }
+
+  /**
    * Landing search (#3809): the four calls the dashboard's Search tab makes,
-   * shaped by the same shapeSearch, for each period. Unlike eventValues, an
-   * Umami error is not read as "no searches": it reaches reply(), which
-   * apologises, so an outage never looks like nobody searched.
+   * shaped by the same shapeSearch, for each period. Like chatReply, an Umami
+   * error is not read as "no searches": it reaches reply(), which apologises.
    */
   private async searchReply(
     period: StatsPeriod,

@@ -28,6 +28,10 @@ describe("usageText", () => {
     );
   });
 
+  it("mentions the chat report", () => {
+    expect(usageText("/stats")).toContain("`/stats week chat`");
+  });
+
   it("mentions the search report", () => {
     expect(usageText("/stats")).toContain("`/stats week search`");
   });

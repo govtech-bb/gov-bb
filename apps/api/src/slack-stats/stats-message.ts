@@ -370,6 +370,154 @@ export function formatFormStats(
   };
 }
 
+/** How often one value of a chat event's property was seen. */
+export interface ChatCount {
+  label: string;
+  count: number;
+}
+
+/** One period of the landing chat events (#3810). */
+export interface ChatPeriod {
+  /** `chat-submit` counts by `source` (where on landing it was asked). */
+  bySource: ChatCount[];
+  /** `chat-suggestion` counts by `question` (the suggestion picked). */
+  suggestions: ChatCount[];
+}
+
+export interface ChatStats {
+  current: ChatPeriod;
+  previous: ChatPeriod;
+}
+
+const CHAT_SOURCES_SHOWN = 5;
+const CHAT_SUGGESTIONS_SHOWN = 3;
+const CHAT_LABEL_MAX = 80;
+
+/**
+ * Event data as inert Slack text. Anyone can send events to Umami, so a value
+ * must not mention, link or format: Slack's control characters are escaped,
+ * formatting marks and line breaks removed, and long text shortened.
+ */
+export function plainSlackText(value: string): string {
+  // Array.from splits by code point, so shortening never cuts an emoji.
+  const chars = Array.from(
+    value
+      .replace(/[*_~`]/g, "")
+      .replace(/\s+/g, " ")
+      .trim(),
+  );
+  const short =
+    chars.length > CHAT_LABEL_MAX
+      ? chars.slice(0, CHAT_LABEL_MAX - 1).join("") + "…"
+      : chars.join("");
+  return short
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+const total = (rows: ChatCount[]) => rows.reduce((s, r) => s + r.count, 0);
+
+/**
+ * Every label in either period, as plainSlackText, busiest now first, with
+ * both counts. Grouping on the cleaned label merges look-alikes ("home ").
+ */
+function compareCounts(current: ChatCount[], previous: ChatCount[]) {
+  const counts = new Map<string, { now: number; before: number }>();
+  const add = (rows: ChatCount[], key: "now" | "before") => {
+    for (const r of rows) {
+      const label = plainSlackText(r.label);
+      const c = counts.get(label) ?? { now: 0, before: 0 };
+      c[key] += r.count;
+      counts.set(label, c);
+    }
+  };
+  add(current, "now");
+  add(previous, "before");
+  return [...counts]
+    .map(([label, c]) => ({ label, ...c }))
+    .sort((a, b) => b.now - a.now || b.before - a.before);
+}
+
+export function formatChatStats(
+  heading: PeriodHeading,
+  { current: c, previous: p }: ChatStats,
+): SlackMessage {
+  const asked = total(c.bySource);
+  const picked = total(c.suggestions);
+  const blocks: unknown[] = [
+    header(`💬 Chat on landing · ${heading.title}`),
+    context(heading.detail),
+  ];
+  if (!asked && !picked) {
+    blocks.push(
+      section(
+        `💤 Nobody asked a chat question or picked a suggested question. The period before: ${num(total(p.bySource))} asked, ${num(total(p.suggestions))} picked.`,
+      ),
+    );
+  } else {
+    blocks.push(
+      metrics([
+        [
+          "💬 Questions asked",
+          num(asked),
+          countChange(asked, total(p.bySource)),
+        ],
+        [
+          "👆 Suggestions picked",
+          num(picked),
+          countChange(picked, total(p.suggestions)),
+        ],
+      ]),
+      divider,
+    );
+    const sources = compareCounts(c.bySource, p.bySource);
+    if (asked) {
+      const shown = sources.slice(0, CHAT_SOURCES_SHOWN);
+      const others = sources
+        .slice(CHAT_SOURCES_SHOWN)
+        .reduce((n, s) => n + s.now, 0);
+      const lines = shown.map(
+        (s) =>
+          `• \`${s.label}\`: *${num(s.now)}*   ${countChange(s.now, s.before)}`,
+      );
+      if (others) lines.push(`• other places: *${num(others)}*`);
+      blocks.push(
+        section(
+          "*📍 Questions asked, by where on landing*\n" + lines.join("\n"),
+          true,
+        ),
+      );
+    }
+    const top = compareCounts(c.suggestions, p.suggestions)
+      .filter((s) => s.now > 0)
+      .slice(0, CHAT_SUGGESTIONS_SHOWN);
+    if (top.length) {
+      blocks.push(
+        section(
+          "*⭐ Top suggested questions picked*\n" +
+            top
+              .map(
+                (s) =>
+                  `• ${s.label}: *${num(s.now)}*   ${countChange(s.now, s.before)}`,
+              )
+              .join("\n"),
+          true,
+        ),
+      );
+    }
+  }
+  blocks.push(
+    context(
+      "ℹ️ Answer outcomes (answered, error, stopped) are not included yet.",
+    ),
+  );
+  return {
+    text: `💬 Chat on landing · ${heading.title}: ${num(asked)} questions asked, ${num(picked)} suggestions picked`,
+    blocks,
+  };
+}
+
 /** Landing search for a period and the one before, from shapeSearch (#3809). */
 export interface SearchReport {
   current: SearchStats;
@@ -377,30 +525,14 @@ export interface SearchReport {
 }
 
 const QUERIES_SHOWN = 5;
-const QUERY_MAX = 60;
 
 /**
- * A search query as inert Slack text. Anyone can send events to Umami, so a
- * query must not mention, link or format. It is shown as inline code, so the
- * `*` of a masked number stays as sent; backticks become ' so it can't close
- * the code, line breaks are removed, long text is shortened and Slack's
- * control characters are escaped.
+ * A search query as plainSlackText. maskSearchQuery hides the middle of a long
+ * number with `*`, which plainSlackText would remove (`1****6` would show as
+ * `16`), so each `*` becomes ∗, which looks the same but isn't bold.
  */
-export function slackQuery(query: string): string {
-  // Array.from splits by code point, so shortening never cuts an emoji.
-  const chars = Array.from(
-    query.replace(/`/g, "'").replace(/\s+/g, " ").trim(),
-  );
-  const short =
-    chars.length > QUERY_MAX
-      ? chars.slice(0, QUERY_MAX - 1).join("") + "…"
-      : chars.join("");
-  return (
-    "`" +
-    short.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;") +
-    "`"
-  );
-}
+export const slackQuery = (query: string) =>
+  plainSlackText(query.replace(/\*/g, "∗"));
 
 export function formatSearchStats(
   heading: PeriodHeading,
@@ -408,7 +540,7 @@ export function formatSearchStats(
 ): SlackMessage {
   const noResults = [c, p].map((s) => (s.searches ? s.zeroResultRate : null));
   // shapeSearch keeps an empty query as a row; it says nothing here.
-  const queries = c.queries.filter((q) => q.query.trim());
+  const queries = c.queries.filter((q) => slackQuery(q.query));
   const list = (title: string, rows: typeof queries) =>
     section(
       `*${title}*\n` +

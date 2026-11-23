@@ -89,6 +89,44 @@ describe("SlackStatsService.buildReply — site-wide", () => {
   });
 });
 
+describe("SlackStatsService.buildReply — chat", () => {
+  it("reads the landing chat events for both periods, and no form", async () => {
+    umami.eventDataValues.mockImplementation(
+      async (_site: string, event: string) =>
+        event === "chat-submit"
+          ? [{ value: "home", total: 12 }]
+          : [{ value: "How do I renew my passport?", total: 3 }],
+    );
+
+    const text = await reply("/stats", "week", "chat", NOW);
+
+    expect(text).toContain("💬 Chat on landing · Last week");
+    expect(text).toContain("• `home`: *12*   ⚪ no change");
+    expect(text).toContain("• How do I renew my passport?: *3*");
+    expect(text).toContain("Answer outcomes");
+    expect(umami.eventDataValues.mock.calls.map((c) => c.slice(0, 3))).toEqual([
+      ["landing", "chat-submit", "source"],
+      ["landing", "chat-suggestion", "question"],
+      ["landing", "chat-submit", "source"],
+      ["landing", "chat-suggestion", "question"],
+    ]);
+    expect(umami.reportFunnel).not.toHaveBeenCalled();
+    expect(formDefinitions.findAll).not.toHaveBeenCalled();
+  });
+
+  it("shows the empty state when Umami has no chat events", async () => {
+    const text = await reply("/stats", "today", "chat", NOW);
+    expect(text).toContain("💤 Nobody asked a chat question");
+  });
+
+  it("apologises rather than show zero use when Umami fails", async () => {
+    umami.eventDataValues.mockRejectedValue(new Error("Umami 401"));
+    await expect(reply("/stats", "week", "chat", NOW)).rejects.toThrow(
+      "Umami 401",
+    );
+  });
+});
+
 describe("SlackStatsService.buildReply — one form", () => {
   it("suggests similar ids for an unknown form", async () => {
     const text = await reply("/stats", "week", "passport", NOW);
@@ -201,7 +239,7 @@ describe("SlackStatsService.buildReply — search", () => {
     expect(text).toContain("*40*   ⚪ no change");
     expect(text).toContain("*25%*   ⚪ no change");
     expect(text).toContain("*25*   ⚪ no change");
-    expect(text).toContain("found nothing*\\n• `tamis`: *10*");
+    expect(text).toContain("found nothing*\\n• tamis: *10*");
   });
 
   it("fails rather than report no searches when Umami errors", async () => {
