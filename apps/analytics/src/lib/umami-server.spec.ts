@@ -7,6 +7,7 @@ import {
   fetchFormDetailData,
   fetchFormList,
   fetchOverviewData,
+  fetchSearchData,
   fetchToolsData,
   funnelHeadline,
   isConfigured,
@@ -590,5 +591,54 @@ describe('shapePages (content pages joined to the public registry)', () => {
         new Map(),
       ),
     ).toEqual([])
+  })
+})
+
+describe('fetchSearchData (search queries read from Umami)', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('leaves out a query seen fewer than 3 times but still counts it in the totals', async () => {
+    // One person's name, searched once, found nothing and got no click.
+    const answers: Record<string, unknown> = {
+      'search/query': [
+        { value: 'passport', total: 5 },
+        { value: 'nis', total: 3 },
+        { value: 'jane doe', total: 1 },
+      ],
+      'search/results': [
+        { value: 8, total: 8 },
+        { value: 0, total: 1 },
+      ],
+      'search-result-click/query': [
+        { value: 'passport', total: 2 },
+        { value: 'jane doe', total: 1 },
+      ],
+      'search-no-results/query': [{ value: 'jane doe', total: 1 }],
+    }
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: URL) => {
+        const q = input.searchParams
+        const body = answers[`${q.get('event')}/${q.get('propertyName')}`]
+        return { ok: true, status: 200, json: async () => body } as Response
+      }),
+    )
+
+    const data = await fetchSearchData(
+      {
+        apiKey: 'k',
+        landingWebsiteId: 'l',
+        formsWebsiteId: 'f',
+        formsApiUrl: 'http://forms.test',
+      },
+      'past-90-days',
+    )
+
+    expect(data.queries.map((q) => q.query)).toEqual(['passport', 'nis'])
+    expect(data.searches).toBe(9)
+    expect(data.clicks).toBe(3)
+    expect(data.zeroResultRate).toBeCloseTo(1 / 9)
   })
 })
