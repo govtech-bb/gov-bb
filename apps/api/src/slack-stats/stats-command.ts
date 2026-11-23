@@ -33,6 +33,7 @@ export function usageText(command: string): string {
     `Add \`tools\` for every tool at once, for example \`${command} week tools\`.`,
     `Add \`chat\` for the chat questions asked on landing, for example \`${command} week chat\`.`,
     `Add \`journeys\` for the most common journeys on landing and the hand-offs to forms, for example \`${command} week journeys\`.`,
+    `Add \`search\` for what people search for on landing, for example \`${command} week search\`.`,
   ].join("\n");
 }
 

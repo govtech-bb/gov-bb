@@ -3,6 +3,7 @@ import type { FormDefinitionsService } from "@/forms/form-definitions/form-defin
 import { Logger } from "@nestjs/common";
 import { TOOLS, comparisonPeriods } from "@govtech-bb/umami-analytics";
 import { SlackStatsService, slackResponseUrl } from "./slack-stats.service";
+import { STATS_TOPICS } from "./stats-command";
 
 // A fake Umami client: funnel rows and event values keyed by event name, the
 // same for every period unless a test overrides `funnels` per call.
@@ -304,10 +305,13 @@ describe("SlackStatsService.buildReply — one tool", () => {
     expect(await reply("/stats", "week", "journey", NOW)).toContain(
       "`journeys`",
     );
-    // A topic with no reply yet doesn't suggest itself.
-    expect(await reply("/stats", "week", "search", NOW)).not.toContain(
-      "Did you mean",
-    );
+  });
+
+  // Every topic word has its own reply, which runs before the form lookup,
+  // so none falls through to the unknown-ID message.
+  it.each(STATS_TOPICS)("gives the %s topic its own reply", async (topic) => {
+    await reply("/stats", "week", topic, NOW).catch(() => "");
+    expect(formDefinitions.findAll).not.toHaveBeenCalled();
   });
 });
 
@@ -640,6 +644,53 @@ describe("SlackStatsService.buildReply — one form", () => {
     for (const value of [...hostile, "evil.example", "`bold"]) {
       expect(text).not.toContain(value);
     }
+  });
+});
+
+describe("SlackStatsService.buildReply — search", () => {
+  it("reads the landing search events for both periods", async () => {
+    umami.eventDataValues.mockImplementation(
+      async (_site: string, event: string, property: string) => {
+        if (event === "search" && property === "query")
+          return [
+            { value: "passport", total: 30 },
+            { value: "tamis", total: 10 },
+          ];
+        if (event === "search" && property === "results")
+          return [
+            { value: 0, total: 10 },
+            { value: 5, total: 30 },
+          ];
+        if (event === "search-result-click")
+          return [{ value: "passport", total: 25 }];
+        if (event === "search-no-results")
+          return [{ value: "tamis", total: 10 }];
+        return [];
+      },
+    );
+
+    const text = await reply("/stats", "week", "search", NOW);
+
+    expect(formDefinitions.findAll).not.toHaveBeenCalled();
+    const calls = umami.eventDataValues.mock.calls;
+    expect(calls).toHaveLength(7);
+    for (const [site] of calls) expect(site).toBe("landing");
+    // The first four calls read last week, the last three the week before.
+    const ranges = calls.map((c) => JSON.stringify(c[3]));
+    expect(new Set(ranges.slice(0, 4)).size).toBe(1);
+    expect(new Set(ranges.slice(4)).size).toBe(1);
+    expect(ranges[4]).not.toBe(ranges[0]);
+    expect(text).toContain("*40*   ⚪ no change");
+    expect(text).toContain("*25%*   ⚪ no change");
+    expect(text).toContain("*25*   ⚪ no change");
+    expect(text).toContain("found nothing*\\n• tamis: *10*");
+  });
+
+  it("fails rather than report no searches when Umami errors", async () => {
+    umami.eventDataValues.mockRejectedValue(new Error("Umami 500"));
+    await expect(
+      service().buildReply("/stats", "week", "search", NOW),
+    ).rejects.toThrow("Umami 500");
   });
 });
 
