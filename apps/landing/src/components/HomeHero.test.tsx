@@ -499,6 +499,31 @@ describe('HomeHero suggestion separators', () => {
     unmount()
     expect(after.disconnect).toHaveBeenCalled()
   })
+
+  it('marks the line end when a replacement popular search wraps', () => {
+    const hero = (secondService: string) => (
+      <HomeHero
+        questions={[]}
+        viewer="public"
+        overlay={new Map()}
+        servedServices={['get-birth-certificate', secondService]}
+      />
+    )
+    const { rerender } = render(hero('post-office-redirection-individual'))
+    fireEvent.click(screen.getByRole('radio', { name: 'Search' }))
+    rerender(hero('apply-financial-assistance'))
+
+    const popularLabel = screen.getByText('Popular searches:')
+    const popularRow = popularLabel.parentElement!
+    const [first, added] = within(popularRow).getAllByRole('listitem')
+    expect(added.textContent).toBe('Financial assistance')
+
+    placeOnLine(popularLabel, 0)
+    placeOnLine(first, 0)
+    placeOnLine(added, 1)
+    observerOf(popularRow).callback()
+    expect(first.hasAttribute('data-line-end')).toBe(true)
+  })
 })
 
 describe('HomeHero before hydration', () => {

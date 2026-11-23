@@ -186,20 +186,14 @@ export function HomeHero({
   const searchInputId = useId()
   const askInputId = useId()
 
-  // The search box's text, for its suggestions. Each form submits its own box,
-  // which is uncontrolled, so text typed before hydration isn't wiped.
+  // Text for suggestions only. Each form submits its uncontrolled input,
+  // including text typed before hydration or restored on Back.
   const [text, setText] = useState('')
   // Only text typed in the search box gets suggestions, not text carried over
   // from Ask. Whatever the mode: without :has(), both boxes show.
   const [hasTyped, setHasTyped] = useState(false)
   const chatStatus = useChatStatus()
   useHeightOfChromeAbove(heroRef)
-
-  // Picks up search text entered before hydration, or restored by the
-  // browser on Back.
-  useEffect(() => {
-    setText(searchInputRef.current?.value ?? '')
-  }, [])
 
   const isChatOffline = chatStatus === 'offline'
   const search = useServiceSearch({
@@ -228,7 +222,6 @@ export function HomeHero({
     if (next === 'ask') value = value.slice(0, MAX_QUESTION_LENGTH)
     if (to) to.value = value
     setHasTyped(false)
-    setText(value)
   }
 
   const submitQuestion = () => {
