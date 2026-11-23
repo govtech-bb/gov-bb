@@ -1,6 +1,7 @@
 import {
   canonicalEvent,
   eventFormKey,
+  isSubmitErrorCode,
   parseEventName,
   type ComparisonPeriods,
   type EventDataValue,
@@ -152,17 +153,6 @@ export function tallyDeadEnds(
 }
 
 /**
- * The `errors` values apps/forms sends with `form-submit-error`: a field the
- * API rejected, no response, a failed submission, or a failed payment start.
- */
-const SUBMIT_ERROR_CODES = new Set([
-  "validation",
-  "network",
-  "server",
-  "payment-init",
-]);
-
-/**
  * The (up to) 3 commonest errors on one form. Field IDs and error codes come
  * from Umami event data, which anyone can send, so only a field in
  * `labelByField` (the form's own fields) or a known code is named. Every other
@@ -187,7 +177,7 @@ export function tallyTopErrors(
   }
   for (const r of submitErrors) {
     const code = String(r.value);
-    const label = `submit failed: ${SUBMIT_ERROR_CODES.has(code) ? code : "other"}`;
+    const label = `submit failed: ${isSubmitErrorCode(code) ? code : "other"}`;
     add(label, label, r.total);
   }
   return [...rows.values()].sort((a, b) => b.count - a.count).slice(0, 3);
