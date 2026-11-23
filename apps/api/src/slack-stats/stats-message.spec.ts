@@ -294,6 +294,19 @@ const LAST_WEEK = {
   detail: "26 Oct – 1 Nov, compared with 19 Oct – 25 Oct",
 };
 
+/** Right-to-left override and zero-width space. */
+const RLO = "\u202E";
+const ZWSP = "\u200B";
+/** Every bidi control and invisible character plainSlackText removes. */
+const HIDDEN = [
+  0x061c,
+  ...[0x200b, 0x200c, 0x200d, 0x200e, 0x200f],
+  ...[0x202a, 0x202b, 0x202c, 0x202d, 0x202e],
+  0x2060,
+  ...[0x2066, 0x2067, 0x2068, 0x2069],
+  0xfeff,
+].map((c) => String.fromCodePoint(c));
+
 describe("formatSiteStats", () => {
   const noDeadEnds = {
     formClosed: 0,
@@ -669,6 +682,102 @@ describe("plainSlackText", () => {
       "…",
     ]);
   });
+
+  it("removes characters that reverse or hide text", () => {
+    for (const c of HIDDEN) {
+      expect(plainSlackText(`a${c}b`)).toBe("ab");
+    }
+    // Removed first, so they don't use up the 80 characters.
+    expect(plainSlackText(HIDDEN.join("").repeat(10) + "x".repeat(81))).toBe(
+      "x".repeat(79) + "…",
+    );
+  });
+});
+
+describe("hidden characters", () => {
+  it("shows no reversing or zero-width character in any reply", () => {
+    const hostile = `pass${RLO}port${ZWSP}`;
+    const row = { value: hostile, total: 5 };
+    const replies = [
+      formatSearchStats(LAST_WEEK, {
+        current: {
+          searches: 5,
+          clicks: 0,
+          ctr: 0,
+          zeroResultRate: 1,
+          queries: [
+            {
+              query: hostile,
+              searches: 5,
+              clicks: 0,
+              ctr: 0,
+              zeroResult: true,
+            },
+          ],
+        },
+        previous: {
+          searches: 0,
+          clicks: 0,
+          ctr: 0,
+          zeroResultRate: 0,
+          queries: [],
+        },
+        noResults: [row],
+      }),
+      formatChatStats(LAST_WEEK, {
+        current: {
+          bySource: [{ label: hostile, count: 5 }],
+          suggestions: [{ label: hostile, count: 5 }],
+        },
+        previous: { bySource: [], suggestions: [] },
+      }),
+      formatJourneyStats(LAST_WEEK, {
+        paths: shapeJourneyList([{ items: ["/", `/${hostile}`], count: 5 }]),
+        current: {
+          "page-service-view": 0,
+          "page-start-view": 0,
+          "start-click": 0,
+          "form-start": 0,
+        },
+        previous: {
+          "page-service-view": 0,
+          "page-start-view": 0,
+          "start-click": 0,
+          "form-start": 0,
+        },
+      }),
+      formatToolStats(LAST_WEEK, {
+        tool: TOOLS[0],
+        current: {
+          visitors: 5,
+          events: {
+            results: 5,
+            noResultRate: 0,
+            topAction: { action: hostile, count: 5 },
+            errors: 5,
+            errorRate: 0.5,
+          },
+          stepViews: 5,
+          steps: [row],
+          actions: [row],
+          errors: [row],
+        },
+        previous: {
+          visitors: 0,
+          events: null,
+          stepViews: 0,
+          steps: [],
+          actions: [],
+          errors: [],
+        },
+      }),
+    ];
+    for (const reply of replies) {
+      const json = JSON.stringify(reply);
+      expect(json).toMatch(/passport/i);
+      for (const c of HIDDEN) expect(json).not.toContain(c);
+    }
+  });
 });
 
 describe("formatSearchStats", () => {
@@ -761,29 +870,53 @@ describe("formatSearchStats", () => {
     `);
   });
 
-  it("leaves out queries searched fewer than 3 times, and merges look-alikes", () => {
+  it("leaves out queries searched fewer than 3 times, then merges look-alikes", () => {
     const message = formatSearchStats(LAST_WEEK, {
       current: stats({
-        searches: 9,
+        searches: 12,
         queries: [
-          query("passport", 2),
-          query("pass_port", 2),
+          query("passport", 3),
+          query("pass_port", 4),
+          query("pass~port", 2),
           query("jane doe", 1, true),
-          query("nis", 1),
+          query("nis", 2),
         ],
       }),
       previous: stats({}),
       noResults: [
         { value: "jane doe", total: 1 },
-        { value: "tamis", total: 2 },
-        { value: "tam_is", total: 1 },
+        { value: "tamis", total: 3 },
+        { value: "tam_is", total: 2 },
       ],
     });
     const text = render(message);
-    expect(text).toContain("*🔝 Top searches*\n• passport: *4*");
-    expect(text).toContain("found nothing*\n• tamis: *3*");
+    expect(text).toContain("*🔝 Top searches*\n• passport: *7*\n*");
+    expect(text).toContain("found nothing*\n• tamis: *3*\n");
     expect(text).not.toContain("jane doe");
     expect(text).not.toContain("nis");
+  });
+
+  it("doesn't let look-alikes searched fewer than 3 times each add up to 3", () => {
+    // Three people each typed one name once, a little differently.
+    const message = formatSearchStats(LAST_WEEK, {
+      current: stats({
+        searches: 3,
+        queries: [
+          query("jane doe", 1, true),
+          query("jane  doe", 1, true),
+          query(`jane${ZWSP} doe`, 1, true),
+        ],
+      }),
+      previous: stats({}),
+      noResults: [
+        { value: "jane_doe", total: 1 },
+        { value: "jane~doe", total: 1 },
+        { value: "janedoe", total: 1 },
+      ],
+    });
+    const text = render(message);
+    expect(text).toContain("No query was searched 3 or more times.");
+    expect(text).not.toMatch(/jane/i);
   });
 
   it("says so when no query was searched 3 or more times", () => {
