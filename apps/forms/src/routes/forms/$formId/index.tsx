@@ -377,9 +377,10 @@ function FormView() {
             return;
           }
         }
-        // `network` only when no response came back (makeFetch's status 0).
-        // An HTTP error status (5xx, 429), a 422 that maps to no visible step,
-        // or anything else thrown means the API answered: `server` (#3835).
+        // `network` only when no readable response came back (makeFetch's
+        // status 0: offline, or a gateway error the browser blocked). Anything
+        // else is `server`: an HTTP error status (5xx, 429), a 422 that maps
+        // to no visible step, or any other thrown error (#3835).
         trackEvent("form-submit-error", {
           form: formMeta.formId,
           category: formCategory(formMeta.formId),
