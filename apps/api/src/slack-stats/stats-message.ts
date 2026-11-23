@@ -13,6 +13,7 @@ import {
   type ToolRow,
   type WaterAlertFunnel,
 } from "@govtech-bb/umami-analytics";
+import { mrkdwnEscape } from "@/notifications/slack-notifier.service";
 
 const TZ = "America/Barbados";
 
@@ -330,10 +331,6 @@ function metrics(rows: [string, string, string][]) {
 const BAR_WIDTH = 12;
 const STEP_TITLE_MAX = 34;
 
-/** Slack's control characters as entities, so the text can't mention or link. */
-const escapeSlack = (text: string) =>
-  text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-
 /**
  * Step views as a monospace bar chart, scaled to the busiest step. A code
  * block shows `*`, `_` and `~` as typed, so titles only lose backticks (which
@@ -352,7 +349,7 @@ export function stepBars(steps: { title: string; count: number }[]): string {
   const lines = steps.map((s, i) => {
     const filled = Math.round((s.count / max) * BAR_WIDTH);
     const bar = "█".repeat(filled) + "░".repeat(BAR_WIDTH - filled);
-    return `${escapeSlack(titles[i].padEnd(width))}  ${bar}  ${num(s.count).padStart(countWidth)}`;
+    return `${mrkdwnEscape(titles[i].padEnd(width))}  ${bar}  ${num(s.count).padStart(countWidth)}`;
   });
   return "```\n" + lines.join("\n") + "\n```";
 }
@@ -519,7 +516,7 @@ export function formatFormStats(
     );
   }
   return {
-    text: `📝 ${escapeSlack(title)} · ${heading.title}: ${num(c.starts)} started, ${num(c.completed)} finished`,
+    text: `📝 ${mrkdwnEscape(title)} · ${heading.title}: ${num(c.starts)} started, ${num(c.completed)} finished`,
     blocks,
   };
 }
