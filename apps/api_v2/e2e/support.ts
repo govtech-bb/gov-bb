@@ -17,7 +17,8 @@
 
 import { spawn, type ChildProcess } from "node:child_process";
 import { existsSync } from "node:fs";
-import { connect, createServer, type Socket } from "node:net";
+import { createServer as createHttpServer } from "node:http";
+import { connect, createServer, type AddressInfo, type Socket } from "node:net";
 import { join } from "node:path";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Client, Pool } from "pg";
@@ -310,7 +311,7 @@ export async function runScript(
   script: string,
   args: string[],
   env: Record<string, string>,
-): Promise<{ code: number | null; output: string }> {
+): Promise<{ code: number | null; output: string; stdout: string }> {
   const child = spawn(
     join(root, "node_modules", ".bin", "tsx"),
     [script, ...args],
@@ -326,9 +327,13 @@ export async function runScript(
 async function exitOf(
   child: ChildProcess,
   timeout = 30_000,
-): Promise<{ code: number | null; output: string }> {
+): Promise<{ code: number | null; output: string; stdout: string }> {
   let output = "";
-  child.stdout?.on("data", (chunk) => (output += String(chunk)));
+  let stdout = "";
+  child.stdout?.on("data", (chunk) => {
+    output += String(chunk);
+    stdout += String(chunk);
+  });
   child.stderr?.on("data", (chunk) => (output += String(chunk)));
 
   const code = await new Promise<number | null>((resolve) => {
@@ -342,7 +347,7 @@ async function exitOf(
     });
   });
 
-  return { code, output };
+  return { code, output, stdout };
 }
 
 /** A database-backed BetterAuth session minted solely by this test harness. */
@@ -432,4 +437,47 @@ export async function databaseQuery(
   } finally {
     await client.end();
   }
+}
+
+/**
+ * What `scripts/check-import.ts` needs: a seeded server on a scratch database
+ * and a stub of api v1's `GET /service_status`, whose `rows` a test sets.
+ */
+export async function startCheckImportEnv(secret: string) {
+  const env = {
+    rows: [] as { slug: string; status: string }[],
+    database: await createScratchDatabase(),
+    formsApi: "",
+    server: undefined as unknown as Server,
+    /** Runs check-import against this server; `token` is the PREVIEW_SECRET it sends. */
+    check: (token?: string, extra: string[] = []) =>
+      runScript(
+        "scripts/check-import.ts",
+        ["--base-url", env.server.url, "--forms-api", env.formsApi, ...extra],
+        { PREVIEW_SECRET: token ?? "" },
+      ),
+    async stop() {
+      await env.server?.stop();
+      await dropScratchDatabase(env.database);
+      await new Promise((resolve) => stub.close(resolve));
+    },
+  };
+  const stub = createHttpServer((_request, response) => {
+    response
+      .writeHead(200, { "content-type": "application/json" })
+      .end(JSON.stringify({ status: "success", data: env.rows }));
+  });
+  await new Promise<void>((resolve) => stub.listen(0, "127.0.0.1", resolve));
+  env.formsApi = `http://127.0.0.1:${(stub.address() as AddressInfo).port}`;
+  try {
+    env.server = await startServer({
+      DB_NAME: env.database,
+      SEED: "true",
+      PREVIEW_SECRET: secret,
+    });
+  } catch (error) {
+    await env.stop();
+    throw error;
+  }
+  return env;
 }
