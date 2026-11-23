@@ -1,13 +1,19 @@
-import { comparisonPeriods } from "@govtech-bb/umami-analytics";
+import {
+  comparisonPeriods,
+  type SearchQueryStats,
+  type SearchStats,
+} from "@govtech-bb/umami-analytics";
 import {
   biggestFinishDrops,
   countChange,
   duration,
   durationChange,
   formatFormStats,
+  formatSearchStats,
   formatSiteStats,
   periodHeading,
   rateChange,
+  slackQuery,
   stepBars,
   type SlackMessage,
 } from "./stats-message";
@@ -27,6 +33,7 @@ describe("change helpers", () => {
     expect(rateChange(0.31, 0.33)).toBe("🔴 ▼ 2 pts");
     expect(rateChange(0.5, 0.5)).toBe("⚪ no change");
     expect(rateChange(null, 0.5)).toBe("");
+    expect(rateChange(0.1, 0.2, "down")).toBe("🟢 ▼ 10 pts");
   });
 
   it("formats durations, green when the time gets shorter", () => {
@@ -315,5 +322,124 @@ describe("formatFormStats", () => {
       }),
     );
     expect(text).toContain("*🚪 Visit → start*\n*100%*   🟢 ▲ 10 pts");
+  });
+});
+
+describe("formatSearchStats", () => {
+  const query = (
+    q: string,
+    searches: number,
+    zeroResult = false,
+  ): SearchQueryStats => ({
+    query: q,
+    searches,
+    clicks: 0,
+    ctr: 0,
+    zeroResult,
+  });
+  const stats = (o: Partial<SearchStats>): SearchStats => ({
+    searches: 0,
+    clicks: 0,
+    ctr: 0,
+    zeroResultRate: 0,
+    queries: [],
+    ...o,
+  });
+
+  it("shows the counts and the two query lists for a normal week", () => {
+    const message = formatSearchStats(LAST_WEEK, {
+      current: stats({
+        searches: 1200,
+        clicks: 780,
+        zeroResultRate: 0.12,
+        queries: [
+          query("passport", 300),
+          query("", 120),
+          query("nis", 90),
+          query("birth certificate", 80),
+          query("tamis", 40, true),
+          query("driver licence", 30),
+          query("road tax", 20),
+          query("1****6", 10, true),
+        ],
+      }),
+      previous: stats({ searches: 1000, clicks: 800, zeroResultRate: 0.15 }),
+    });
+    expect(message.text).toBe(
+      "🔎 Last week: 1,200 searches, 780 result clicks",
+    );
+    expect(render(message)).toMatchInlineSnapshot(`
+      "🔎 Search · Last week
+      26 Oct – 1 Nov, compared with 19 Oct – 25 Oct
+      *🔎 Searches*
+      *1,200*   🟢 ▲ 20%
+      *🚫 No results*
+      *12%*   🟢 ▼ 3 pts
+      *👆 Result clicks*
+      *780*   🔴 ▼ 3%
+      ---
+      *🔝 Top searches*
+      • \`passport\`: *300*
+      • \`nis\`: *90*
+      • \`birth certificate\`: *80*
+      • \`tamis\`: *40*
+      • \`driver licence\`: *30*
+      *🤷 Top searches that found nothing*
+      • \`tamis\`: *40*
+      • \`1****6\`: *10*
+      Numbers are searches for each query."
+    `);
+  });
+
+  it("says so when nobody searched", () => {
+    const message = formatSearchStats(LAST_WEEK, {
+      current: stats({}),
+      previous: stats({ searches: 40, clicks: 10, zeroResultRate: 0.1 }),
+    });
+    expect(render(message)).toMatchInlineSnapshot(`
+      "🔎 Search · Last week
+      26 Oct – 1 Nov, compared with 19 Oct – 25 Oct
+      *🔎 Searches*
+      *0*   🔴 ▼ 100%
+      *🚫 No results*
+      *–*
+      *👆 Result clicks*
+      *0*   🔴 ▼ 100%
+      No searches in this period."
+    `);
+  });
+
+  it("can't add formatting, links or mentions through a query", () => {
+    const hostile =
+      "x` *bold* <!channel> <@U123> <https://e.vil|hi> &amp;\n```";
+    const message = formatSearchStats(LAST_WEEK, {
+      current: stats({ searches: 5, queries: [query(hostile, 5, true)] }),
+      previous: stats({}),
+    });
+    const lists = message.blocks.filter(
+      (b) => (b as { text?: { verbatim?: boolean } }).text?.verbatim,
+    ) as { text: { text: string } }[];
+    expect(lists).toHaveLength(2);
+    for (const { text } of lists) {
+      const [, line, ...rest] = text.text.split("\n");
+      expect(rest).toEqual([]);
+      expect(line).toBe(
+        "• `x' *bold* &lt;!channel&gt; &lt;@U123&gt; &lt;https://e.vil|hi&gt; &amp;amp; '''`: *5*",
+      );
+      // One code span: the only backticks are the two around the query.
+      expect(line.match(/`/g)).toHaveLength(2);
+    }
+  });
+});
+
+describe("slackQuery", () => {
+  it("keeps a masked number as sent", () => {
+    expect(slackQuery("nis 1****6")).toBe("`nis 1****6`");
+  });
+
+  it("shortens long text without cutting an emoji", () => {
+    expect(slackQuery("a".repeat(58) + "🙂🙂🙂")).toBe(
+      "`" + "a".repeat(58) + "🙂…`",
+    );
   });
 });

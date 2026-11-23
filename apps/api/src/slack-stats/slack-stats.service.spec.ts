@@ -169,6 +169,49 @@ describe("SlackStatsService.buildReply — one form", () => {
   });
 });
 
+describe("SlackStatsService.buildReply — search", () => {
+  it("reads the landing search events for both periods", async () => {
+    umami.eventDataValues.mockImplementation(
+      async (_site: string, event: string, property: string) => {
+        if (event === "search" && property === "query")
+          return [
+            { value: "passport", total: 30 },
+            { value: "tamis", total: 10 },
+          ];
+        if (event === "search" && property === "results")
+          return [
+            { value: 0, total: 10 },
+            { value: 5, total: 30 },
+          ];
+        if (event === "search-result-click")
+          return [{ value: "passport", total: 25 }];
+        if (event === "search-no-results")
+          return [{ value: "tamis", total: 10 }];
+        return [];
+      },
+    );
+
+    const text = await reply("/stats", "week", "search", NOW);
+
+    expect(formDefinitions.findAll).not.toHaveBeenCalled();
+    expect(umami.eventDataValues).toHaveBeenCalledTimes(8);
+    for (const [site] of umami.eventDataValues.mock.calls) {
+      expect(site).toBe("landing");
+    }
+    expect(text).toContain("*40*   ⚪ no change");
+    expect(text).toContain("*25%*   ⚪ no change");
+    expect(text).toContain("*25*   ⚪ no change");
+    expect(text).toContain("found nothing*\\n• `tamis`: *10*");
+  });
+
+  it("fails rather than report no searches when Umami errors", async () => {
+    umami.eventDataValues.mockRejectedValue(new Error("Umami 500"));
+    await expect(
+      service().buildReply("/stats", "week", "search", NOW),
+    ).rejects.toThrow("Umami 500");
+  });
+});
+
 describe("slackResponseUrl", () => {
   it("keeps a Slack slash command response URL", () => {
     expect(slackResponseUrl(SLACK_URL)).toBe(SLACK_URL);

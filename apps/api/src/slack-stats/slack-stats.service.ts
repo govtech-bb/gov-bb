@@ -8,6 +8,7 @@ import {
   comparisonPeriods,
   eventName,
   funnelHeadline,
+  shapeSearch,
   tallyFieldErrors,
   weightedAverage,
   type EventDataValue,
@@ -19,6 +20,7 @@ import { FormDefinitionsService } from "@/forms/form-definitions/form-definition
 import {
   biggestFinishDrops,
   formatFormStats,
+  formatSearchStats,
   formatSiteStats,
   periodHeading,
   type FormPeriod,
@@ -170,6 +172,8 @@ export class SlackStatsService {
     formId: string | undefined,
     now: Date,
   ): Promise<SlackMessage | string> {
+    if (formId === "search") return this.searchReply(period, now);
+
     const forms = await this.formDefinitions.findAll();
     const periods = comparisonPeriods(period, TZ, now);
     const heading = periodHeading(period, periods);
@@ -354,6 +358,37 @@ export class SlackStatsService {
       completed,
       avgDurationSeconds: weightedAverage(durations),
     };
+  }
+
+  /**
+   * Landing search (#3809): the four calls the dashboard's Search tab makes,
+   * shaped by the same shapeSearch, for each period. Unlike eventValues, an
+   * Umami error is not read as "no searches": it reaches reply(), which
+   * apologises, so an outage never looks like nobody searched.
+   */
+  private async searchReply(
+    period: StatsPeriod,
+    now: Date,
+  ): Promise<SlackMessage> {
+    const periods = comparisonPeriods(period, TZ, now);
+    const { apiKey, landingWebsiteId } = this.umamiConfig();
+    const client = new UmamiClient({ apiKey });
+    const values = (event: string, propertyName: string, range: Range) =>
+      client.eventDataValues(landingWebsiteId, event, propertyName, range);
+    // Every query, not the dashboard's top 20, so a rare query that found
+    // nothing still makes the "found nothing" list. One call at a time.
+    const searchPeriod = async (range: Range) =>
+      shapeSearch(
+        await values("search", "query", range),
+        await values("search", "results", range),
+        await values("search-result-click", "query", range),
+        await values("search-no-results", "query", range),
+        Infinity,
+      );
+    return formatSearchStats(periodHeading(period, periods), {
+      current: await searchPeriod(periods.current),
+      previous: await searchPeriod(periods.previous),
+    });
   }
 
   /** eventDataValues that degrades to [] when the event has no data. */

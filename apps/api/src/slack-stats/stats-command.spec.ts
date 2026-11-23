@@ -27,6 +27,10 @@ describe("usageText", () => {
       "`/govstats <today|week|month> [form-id]`",
     );
   });
+
+  it("mentions the search report", () => {
+    expect(usageText("/stats")).toContain("`/stats week search`");
+  });
 });
 
 describe("suggestFormIds", () => {

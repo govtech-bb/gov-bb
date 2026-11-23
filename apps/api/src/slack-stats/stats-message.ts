@@ -1,5 +1,6 @@
 import type {
   ComparisonPeriods,
+  SearchStats,
   StatsPeriod,
 } from "@govtech-bb/umami-analytics";
 
@@ -120,10 +121,14 @@ export function countChange(current: number, previous: number): string {
   return trend(current - previous, "up", `${change}%`);
 }
 
-export function rateChange(current: number | null, previous: number | null) {
+export function rateChange(
+  current: number | null,
+  previous: number | null,
+  better: Better = "up",
+) {
   if (current === null || previous === null) return "";
   const pts = Math.round((current - previous) * 100);
-  return pts ? trend(pts, "up", `${Math.abs(pts)} pts`) : "⚪ no change";
+  return pts ? trend(pts, better, `${Math.abs(pts)} pts`) : "⚪ no change";
 }
 
 /** Shorter is better, so a longer time is 🔴. */
@@ -190,9 +195,10 @@ const context = (text: string) => ({
   type: "context",
   elements: [{ type: "mrkdwn", text }],
 });
-const section = (text: string) => ({
+/** `verbatim` stops Slack linking bare URLs and #channels: for event data. */
+const section = (text: string, verbatim = false) => ({
   type: "section",
-  text: { type: "mrkdwn", text },
+  text: { type: "mrkdwn", text, ...(verbatim && { verbatim }) },
 });
 const divider = { type: "divider" };
 
@@ -360,6 +366,83 @@ export function formatFormStats(
   }
   return {
     text: `📝 ${title} · ${heading.title}: ${num(c.starts)} started, ${num(c.completed)} finished`,
+    blocks,
+  };
+}
+
+/** Landing search for a period and the one before, from shapeSearch (#3809). */
+export interface SearchReport {
+  current: SearchStats;
+  previous: SearchStats;
+}
+
+const QUERIES_SHOWN = 5;
+const QUERY_MAX = 60;
+
+/**
+ * A search query as inert Slack text. Anyone can send events to Umami, so a
+ * query must not mention, link or format. It is shown as inline code, so the
+ * `*` of a masked number stays as sent; backticks become ' so it can't close
+ * the code, line breaks are removed, long text is shortened and Slack's
+ * control characters are escaped.
+ */
+export function slackQuery(query: string): string {
+  // Array.from splits by code point, so shortening never cuts an emoji.
+  const chars = Array.from(
+    query.replace(/`/g, "'").replace(/\s+/g, " ").trim(),
+  );
+  const short =
+    chars.length > QUERY_MAX
+      ? chars.slice(0, QUERY_MAX - 1).join("") + "…"
+      : chars.join("");
+  return (
+    "`" +
+    short.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;") +
+    "`"
+  );
+}
+
+export function formatSearchStats(
+  heading: PeriodHeading,
+  { current: c, previous: p }: SearchReport,
+): SlackMessage {
+  const noResults = [c, p].map((s) => (s.searches ? s.zeroResultRate : null));
+  // shapeSearch keeps an empty query as a row; it says nothing here.
+  const queries = c.queries.filter((q) => q.query.trim());
+  const list = (title: string, rows: typeof queries) =>
+    section(
+      `*${title}*\n` +
+        rows
+          .slice(0, QUERIES_SHOWN)
+          .map((q) => `• ${slackQuery(q.query)}: *${num(q.searches)}*`)
+          .join("\n"),
+      true,
+    );
+  const blocks: unknown[] = [
+    header(`🔎 Search · ${heading.title}`),
+    context(heading.detail),
+    metrics([
+      ["🔎 Searches", num(c.searches), countChange(c.searches, p.searches)],
+      [
+        "🚫 No results",
+        pct(noResults[0]),
+        rateChange(noResults[0], noResults[1], "down"),
+      ],
+      ["👆 Result clicks", num(c.clicks), countChange(c.clicks, p.clicks)],
+    ]),
+  ];
+  const nothing = queries.filter((q) => q.zeroResult);
+  if (queries.length) {
+    blocks.push(divider, list("🔝 Top searches", queries));
+    if (nothing.length) {
+      blocks.push(list("🤷 Top searches that found nothing", nothing));
+    }
+    blocks.push(context("Numbers are searches for each query."));
+  } else {
+    blocks.push(context("No searches in this period."));
+  }
+  return {
+    text: `🔎 ${heading.title}: ${num(c.searches)} searches, ${num(c.clicks)} result clicks`,
     blocks,
   };
 }
