@@ -8,10 +8,12 @@ import {
   countHandOffs,
   duration,
   durationChange,
+  formatChatStats,
   formatFormStats,
   formatJourneyStats,
   formatSiteStats,
   periodHeading,
+  plainSlackText,
   rateChange,
   stepBars,
   type SlackMessage,
@@ -323,6 +325,136 @@ describe("formatFormStats", () => {
   });
 });
 
+describe("formatChatStats", () => {
+  const counts = (o: Record<string, number>) =>
+    Object.entries(o).map(([label, count]) => ({ label, count }));
+
+  it("shows questions by source and the top suggestions for a normal week", () => {
+    const message = formatChatStats(LAST_WEEK, {
+      current: {
+        bySource: counts({ home: 120, services: 30 }),
+        suggestions: counts({
+          "How do I renew my passport?": 12,
+          "When is the next public holiday?": 8,
+          "How do I register a birth?": 4,
+          "Where is my nearest polyclinic?": 1,
+        }),
+      },
+      previous: {
+        bySource: counts({ home: 100, results: 10 }),
+        suggestions: counts({ "How do I renew my passport?": 15 }),
+      },
+    });
+    expect(message.text).toBe(
+      "💬 Chat on landing · Last week: 150 questions asked, 25 suggestions picked",
+    );
+    expect(render(message)).toMatchInlineSnapshot(`
+      "💬 Chat on landing · Last week
+      26 Oct – 1 Nov, compared with 19 Oct – 25 Oct
+      *💬 Questions asked*
+      *150*   🟢 ▲ 36%
+      *👆 Suggestions picked*
+      *25*   🟢 ▲ 67%
+      ---
+      *📍 Questions asked, by where on landing*
+      • \`home\`: *120*   🟢 ▲ 20%
+      • \`services\`: *30*   🆕 new
+      • \`results\`: *0*   🔴 ▼ 100%
+      *⭐ Top suggested questions picked*
+      • How do I renew my passport?: *12*   🔴 ▼ 20%
+      • When is the next public holiday?: *8*   🆕 new
+      • How do I register a birth?: *4*   🆕 new
+      ℹ️ Answer outcomes (answered, error, stopped) are not included yet."
+    `);
+  });
+
+  it("shows a clear empty state when there are no chat events", () => {
+    const message = formatChatStats(LAST_WEEK, {
+      current: { bySource: [], suggestions: [] },
+      previous: {
+        bySource: counts({ home: 7 }),
+        suggestions: counts({ "How do I renew my passport?": 2 }),
+      },
+    });
+    expect(message.text).toBe(
+      "💬 Chat on landing · Last week: 0 questions asked, 0 suggestions picked",
+    );
+    expect(render(message)).toMatchInlineSnapshot(`
+      "💬 Chat on landing · Last week
+      26 Oct – 1 Nov, compared with 19 Oct – 25 Oct
+      💤 Nobody asked a chat question or picked a suggested question. The period before: 7 asked, 2 picked.
+      ℹ️ Answer outcomes (answered, error, stopped) are not included yet."
+    `);
+  });
+
+  it("folds sources past the top 5 into one line", () => {
+    const text = render(
+      formatChatStats(LAST_WEEK, {
+        current: {
+          bySource: counts({ a: 9, b: 8, c: 7, d: 6, e: 5, f: 2, g: 1 }),
+          suggestions: [],
+        },
+        previous: { bySource: [], suggestions: [] },
+      }),
+    );
+    expect(text).toContain("• `e`: *5*   🆕 new\n• other places: *3*");
+    expect(text).not.toContain("Top suggested questions");
+  });
+  it("keeps event data inert: no links, mentions or look-alike rows", () => {
+    const message = formatChatStats(LAST_WEEK, {
+      current: {
+        bySource: counts({ home: 3, "home ": 2, "*home*": 1 }),
+        suggestions: counts({ "Renew at https://evil.example <!here>": 4 }),
+      },
+      previous: { bySource: [], suggestions: [] },
+    });
+    const sections = (message.blocks as Record<string, any>[]).filter(
+      (b) => b.type === "section" && b.text,
+    );
+    expect(sections.map((b) => b.text.verbatim)).toEqual([true, true]);
+    const text = render(message);
+    expect(text).toContain("• `home`: *6*   🆕 new\n");
+    expect(text).toContain(
+      "• Renew at https://evil.example &lt;!here&gt;: *4*",
+    );
+  });
+
+  it("leaves out the sources when only suggestions were picked", () => {
+    const text = render(
+      formatChatStats(LAST_WEEK, {
+        current: {
+          bySource: [],
+          suggestions: counts({ "How do I register a birth?": 2 }),
+        },
+        previous: { bySource: [], suggestions: [] },
+      }),
+    );
+    expect(text).toContain("*💬 Questions asked*\n*0*   ⚪ no change");
+    expect(text).not.toContain("by where on landing");
+    expect(text).toContain("• How do I register a birth?: *2*   🆕 new");
+  });
+});
+
+describe("plainSlackText", () => {
+  it("can't mention, link or format", () => {
+    expect(plainSlackText("<!channel> *hi* <https://x.example|me> & `x`")).toBe(
+      "&lt;!channel&gt; hi &lt;https://x.example|me&gt; &amp; x",
+    );
+  });
+
+  it("keeps one line and shortens long text", () => {
+    expect(plainSlackText("a\n• b")).toBe("a • b");
+    const long = plainSlackText("x".repeat(200));
+    expect(long).toHaveLength(80);
+    expect(long.endsWith("…")).toBe(true);
+    // Shortened by code point, so no emoji is cut in half.
+    expect(Array.from(plainSlackText("😀".repeat(100)))).toEqual([
+      ...Array(79).fill("😀"),
+      "…",
+    ]);
+  });
+});
+
 describe("countHandOffs", () => {
   it("sums packed, short-coded and plain names per website", () => {
     const landing = [
@@ -405,7 +537,7 @@ describe("formatJourneyStats", () => {
       *450*   🔴 ▼ 10%
       *📝 Forms started*
       *400*   🆕 new
-      ℹ️ Landing and forms are separate Umami websites, so these are four separate counts, not a funnel. The full journey from landing to forms is only in \`/journey\` in Datadog."
+      ℹ️ These are event counts. Landing and forms are separate Umami websites, so they are four separate counts, not a funnel. The full journey from landing to forms is only in \`/journey\` in Datadog."
     `);
   });
 
@@ -446,9 +578,27 @@ describe("formatJourneyStats", () => {
     expect(title).toBe("*🛤️ Most common journeys on landing*");
     expect(rest).toEqual([]);
     expect(line).toBe(
-      "• &lt;!channel&gt; → &lt;mailto:a@evil.example|Click here&gt; → code bold &amp; more → A" +
-        "a".repeat(38) +
+      "• !channel → mailto:a@evil.example|Click here → code bold more → A" +
+        "a".repeat(78) +
         "…: *100%* (3)",
     );
+  });
+
+  it("keeps the journeys under Slack's 3,000-character section limit", () => {
+    const hostile = (n: number) => "/" + "&".repeat(100) + n;
+    const paths = shapeJourneyList(
+      [1, 2, 3, 4, 5].map((n) => ({
+        items: [1, 2, 3, 4].map((k) => hostile(n * 10 + k)),
+        count: 10,
+      })),
+    );
+    const message = formatJourneyStats(LAST_WEEK, {
+      paths,
+      current,
+      previous,
+    });
+    const journeys = (message.blocks as Record<string, any>[])[2];
+    expect(journeys.text.text.split("\n")).toHaveLength(6);
+    expect(journeys.text.text.length).toBeLessThanOrEqual(3000);
   });
 });

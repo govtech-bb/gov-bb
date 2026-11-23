@@ -92,6 +92,44 @@ describe("SlackStatsService.buildReply — site-wide", () => {
   });
 });
 
+describe("SlackStatsService.buildReply — chat", () => {
+  it("reads the landing chat events for both periods, and no form", async () => {
+    umami.eventDataValues.mockImplementation(
+      async (_site: string, event: string) =>
+        event === "chat-submit"
+          ? [{ value: "home", total: 12 }]
+          : [{ value: "How do I renew my passport?", total: 3 }],
+    );
+
+    const text = await reply("/stats", "week", "chat", NOW);
+
+    expect(text).toContain("💬 Chat on landing · Last week");
+    expect(text).toContain("• `home`: *12*   ⚪ no change");
+    expect(text).toContain("• How do I renew my passport?: *3*");
+    expect(text).toContain("Answer outcomes");
+    expect(umami.eventDataValues.mock.calls.map((c) => c.slice(0, 3))).toEqual([
+      ["landing", "chat-submit", "source"],
+      ["landing", "chat-suggestion", "question"],
+      ["landing", "chat-submit", "source"],
+      ["landing", "chat-suggestion", "question"],
+    ]);
+    expect(umami.reportFunnel).not.toHaveBeenCalled();
+    expect(formDefinitions.findAll).not.toHaveBeenCalled();
+  });
+
+  it("shows the empty state when Umami has no chat events", async () => {
+    const text = await reply("/stats", "today", "chat", NOW);
+    expect(text).toContain("💤 Nobody asked a chat question");
+  });
+
+  it("apologises rather than show zero use when Umami fails", async () => {
+    umami.eventDataValues.mockRejectedValue(new Error("Umami 401"));
+    await expect(reply("/stats", "week", "chat", NOW)).rejects.toThrow(
+      "Umami 401",
+    );
+  });
+});
+
 describe("SlackStatsService.buildReply — journeys", () => {
   it("shows the dashboard's top paths and both websites' hand-offs, without the forms", async () => {
     umami.reportJourney.mockResolvedValue([
@@ -123,15 +161,26 @@ describe("SlackStatsService.buildReply — journeys", () => {
       "landing",
       "forms",
     ]);
-    expect(umami.metricsEvents.mock.calls[0][1]).toEqual(lastWeek);
+    expect(umami.metricsEvents.mock.calls[0].slice(1)).toEqual([
+      lastWeek,
+      10_000,
+    ]);
     expect(formDefinitions.findAll).not.toHaveBeenCalled();
     expect(umami.reportFunnel).not.toHaveBeenCalled();
   });
 
-  it("apologises rather than show zero journeys when Umami fails", async () => {
+  it("fails rather than show zero journeys when Umami fails", async () => {
     umami.reportJourney.mockRejectedValue(new Error("Umami 401"));
     await expect(reply("/stats", "week", "journeys", NOW)).rejects.toThrow(
       "Umami 401",
+    );
+  });
+
+  it("fails rather than show zero hand-offs when an event list fails", async () => {
+    umami.reportJourney.mockResolvedValue([]);
+    umami.metricsEvents.mockRejectedValue(new Error("Umami 500"));
+    await expect(reply("/stats", "week", "journeys", NOW)).rejects.toThrow(
+      "Umami 500",
     );
   });
 });

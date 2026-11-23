@@ -20,10 +20,12 @@ import { FormDefinitionsService } from "@/forms/form-definitions/form-definition
 import {
   biggestFinishDrops,
   countHandOffs,
+  formatChatStats,
   formatFormStats,
   formatJourneyStats,
   formatSiteStats,
   periodHeading,
+  type ChatPeriod,
   type FormPeriod,
   type HandOffCounts,
   type SitePeriod,
@@ -33,6 +35,8 @@ import { suggestFormIds } from "./stats-command";
 
 const TZ = "America/Barbados";
 const SLACK_POST_TIMEOUT_MS = 10_000;
+/** More rows than a website has event names, so a metricsEvents list is complete. */
+const ALL_EVENT_NAMES = 10_000;
 /** Slack only ever hands out response URLs on this host. */
 const SLACK_RESPONSE_HOST = "hooks.slack.com";
 /** A slash command's response_url path: /commands/<team>/<id>/<token>. */
@@ -174,6 +178,7 @@ export class SlackStatsService {
     formId: string | undefined,
     now: Date,
   ): Promise<SlackMessage | string> {
+    if (formId === "chat") return this.chatReply(period, now);
     if (formId === "journeys") return this.journeysReply(period, now);
 
     const forms = await this.formDefinitions.findAll();
@@ -363,10 +368,43 @@ export class SlackStatsService {
   }
 
   /**
+   * The landing chat events (#3810): two Umami requests per period. Unlike
+   * eventValues, an Umami error is not read as "no events": it reaches
+   * reply(), which apologises, so an outage never looks like zero use.
+   */
+  private async chatReply(
+    period: StatsPeriod,
+    now: Date,
+  ): Promise<SlackMessage> {
+    const periods = comparisonPeriods(period, TZ, now);
+    const { apiKey, landingWebsiteId } = this.umamiConfig();
+    const client = new UmamiClient({ apiKey });
+    const counts = async (event: string, propertyName: string, range: Range) =>
+      (
+        await client.eventDataValues(
+          landingWebsiteId,
+          event,
+          propertyName,
+          range,
+        )
+      ).map((r) => ({ label: String(r.value), count: r.total }));
+    const chatPeriod = async (range: Range): Promise<ChatPeriod> => ({
+      bySource: await counts("chat-submit", "source", range),
+      suggestions: await counts("chat-suggestion", "question", range),
+    });
+    return formatChatStats(periodHeading(period, periods), {
+      current: await chatPeriod(periods.current),
+      previous: await chatPeriod(periods.previous),
+    });
+  }
+
+  /**
    * Landing journeys (#3808): the dashboard's top journeys for the period, and
    * the landing → forms hand-off counts for both periods. Five Umami requests:
-   * one journey report, then one event list per website per period. An Umami
-   * error reaches reply(), which apologises, so an outage never reads as zero.
+   * one journey report, then one event list per website per period. Each list
+   * asks for every event name: the forms site packs every event per form, so
+   * the default 500 rows would drop quieter forms' starts. An Umami error
+   * reaches reply(), which apologises, so an outage never reads as zero.
    */
   private async journeysReply(
     period: StatsPeriod,
@@ -377,8 +415,8 @@ export class SlackStatsService {
     const client = new UmamiClient({ apiKey });
     const handOffs = async (range: Range): Promise<HandOffCounts> =>
       countHandOffs(
-        await client.metricsEvents(landingWebsiteId, range),
-        await client.metricsEvents(formsWebsiteId, range),
+        await client.metricsEvents(landingWebsiteId, range, ALL_EVENT_NAMES),
+        await client.metricsEvents(formsWebsiteId, range, ALL_EVENT_NAMES),
       );
     // Same report and shaping as the dashboard (fetchOverviewData), so the
     // paths and shares match its "Most common journeys" table.
