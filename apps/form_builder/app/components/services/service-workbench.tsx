@@ -314,7 +314,9 @@ export function ServiceWorkbench({
         issueFor("entry") ??
         `${manifest.title} · ${serviceCategory(manifest.category)}`,
       done: !issueFor("category") && !issueFor("entry"),
-      cta: issueFor("entry") ? "choose where people start" : "choose a category",
+      cta: issueFor("entry")
+        ? "choose where people start"
+        : "choose a category",
       label: "Edit",
       run: () => void go("details"),
     },
@@ -351,7 +353,10 @@ export function ServiceWorkbench({
     ? { label: "Publish", run: () => void go("publish") }
     : next
       ? { label: `Continue: ${next.cta}`, run: next.run }
-      : { label: "Continue: review the details", run: () => void go("details") };
+      : {
+          label: "Continue: review the details",
+          run: () => void go("details"),
+        };
   return (
     <>
       <header className="mb-7 flex flex-wrap items-start justify-between gap-4 border-b border-ui-hairline pb-6">
@@ -437,7 +442,9 @@ export function ServiceWorkbench({
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
                     <h3 className="font-medium">{page.title}</h3>
-                    <Badge variant="secondary">{pageKindLabel(page.kind)}</Badge>
+                    <Badge variant="secondary">
+                      {pageKindLabel(page.kind)}
+                    </Badge>
                   </div>
                   <p className="mt-2 break-all text-sm text-ui-subtle">
                     {page.publicPath}
@@ -561,10 +568,7 @@ function Checklist({
       <LayerCard>
         <ol aria-label={heading} className="divide-y divide-ui-hairline">
           {rows.map((row, index) => (
-            <li
-              key={row.id}
-              className="flex flex-wrap items-start gap-4 p-5"
-            >
+            <li key={row.id} className="flex flex-wrap items-start gap-4 p-5">
               {row.done ? (
                 <CheckCircleIcon
                   size={20}

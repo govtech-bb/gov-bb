@@ -91,7 +91,7 @@ type LoaderData =
       pageRecords: PageRecords
     }
   | {
-      // api_v2 mode (ADR 0078): a category's own pages and its subcategories,
+      // api_v2 mode (ADR 0132): a category's own pages and its subcategories,
       // both shown, as api_v2 lists them.
       kind: 'api-category'
       listing: CategoryListing
@@ -122,7 +122,7 @@ export const Route = createFileRoute('/$')({
 
     // A known category's failed listing is an error. Without a readable tree,
     // the address may instead be a page; preserve page fallback, never a
-    // static category listing (ADR 0078).
+    // static category listing (ADR 0132).
     const tree = context.categoryTree
     const apiMode = tree.kind !== 'disabled'
     let categoryFailure: Error | undefined
@@ -169,8 +169,9 @@ export const Route = createFileRoute('/$')({
       }
     }
 
-    // api_v2 first (#2944): it serves only public pages, so a miss (or no
-    // api_v2 configured) falls back to the static registry page. A known
+    // api_v2 first (#2944): it serves public pages, and preview pages to a
+    // reviewer with the grant (#2961), so a miss (or no api_v2 configured)
+    // falls back to the static registry page. A known
     // subcategory listing is never an api_v2 page, so it skips the round
     // trip (#2950); `findPage` still runs first, keeping today's precedence.
     // Unset VITE_API_V2_URL skips it too (#3127), so client navigations make
@@ -185,7 +186,13 @@ export const Route = createFileRoute('/$')({
       isSubcategory || !import.meta.env.VITE_API_V2_URL
         ? ({ kind: 'miss', reason: 'skipped' } as const)
         : await getApiV2Page({ data: `/${splat}` })
-    if (v2.kind === 'redirect') throw redirect({ href: v2.to, statusCode: 301 })
+    if (v2.kind === 'redirect') {
+      throw redirect({
+        href: v2.to,
+        statusCode: 301,
+        headers: { 'Cache-Control': 'no-store' },
+      })
+    }
     const v2Page = v2.kind === 'page' ? v2.page : undefined
     const page = v2Page ?? findPage(splat)
     if (page) {

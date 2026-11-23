@@ -12,7 +12,7 @@ export interface RecordReference {
 }
 
 /**
- * The records a page's Markdown names, in its facts and contact blocks, once
+ * The records a page's Markdown body names, in its facts and contact blocks, once
  * each and in order: what a record's "used on" list looks for. One still to be
  * chosen, with no record, names none.
  */
@@ -32,6 +32,6 @@ export function recordReferences(source: string): RecordReference[] {
     }
     if ("children" in node) for (const child of node.children) visit(child);
   };
-  visit(parseContentMarkdown(source).root);
+  visit(parseContentMarkdown(source, { frontmatter: false }).root);
   return [...found.values()];
 }

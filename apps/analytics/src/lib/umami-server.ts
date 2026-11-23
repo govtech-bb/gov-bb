@@ -7,36 +7,53 @@
 // stay unit-testable.
 import { defaultValidationMessage } from '@govtech-bb/form-validation'
 import {
+  FUNNEL_WINDOW_MIN,
   UmamiClient,
   aggregateFormEvents,
+  buildFunnelSteps,
+  buildVisitFunnelSteps,
+  funnelHeadline,
   buildSources,
   canonicalEvent,
   eventFormKey,
   eventName,
+  humanizeStep,
+  liveTools,
+  shapeJourneyList,
+  shapeSearch,
+  shapeTools,
+  shapeWaterAlerts,
   startOfDayInTz,
   tallyFieldErrors,
+  totalFor,
   tzOffsetMs,
   weightedAverage,
   weightedSum,
   type EventDataValue,
   type ExpandedRow,
   type FunnelStage,
-  type FunnelStepInput,
   type FunnelStepResult,
   type JourneyPath,
+  type JourneyRow,
   type PageRow,
   type Range,
+  type SearchStats,
   type SourceRow,
+  type Tool,
+  type ToolEventRows,
+  type ToolId,
+  type ToolRow,
+  type WaterAlertFunnel,
 } from '@govtech-bb/umami-analytics'
 import { memoize } from './cache'
-import { liveTools, pathMatchesPrefix, type Tool } from './tools-config'
 import { isExcludedPath } from './page-exclusions'
 import type { ServiceIndexEntry } from '@govtech-bb/content'
 
+// The funnel definitions live in the shared package so the Slack /stats command
+// (#3491) reports the same numbers; re-exported for existing callers.
+export { buildFunnelSteps, buildVisitFunnelSteps, funnelHeadline }
+
 const TTL_MS = 60_000
-// Max minutes Umami allows between funnel steps. A form start→submit can span a
-// long single session, so keep this generous.
-const FUNNEL_WINDOW_MIN = 60 * 24
 // Barbados has no DST (UTC−4), so calendar-day boundaries are stable.
 const TZ = 'America/Barbados'
 
@@ -144,7 +161,7 @@ export interface SiteStats {
   bounceRate: number
   /** pageviews ÷ sessions. */
   avgStepsPerVisit: number
-  /** `search-submit` events (search-box submissions). */
+  /** `search-submit` events (search boxes and homepage Popular searches links). */
   searches: number
 }
 export interface OverviewData {
@@ -220,119 +237,13 @@ export interface FormDetailData {
 
 // --- search analytics ------------------------------------------------------
 
-/** One row of the top-queries table. */
-export interface SearchQueryRow {
-  query: string
-  /** `search` events (results rendered) for this query in the window. */
-  searches: number
-  /** `search-result-click` events for this query. */
-  clicks: number
-  /** clicks ÷ searches, 0–1; 0 when no searches. */
-  ctr: number
-  /** observed to return zero results (`search-no-results` event). */
-  zeroResult: boolean
-}
-
-export interface SearchData {
-  /** total `search` events (results rendered) in the window. */
-  searches: number
-  /** total `search-result-click` events in the window. */
-  clicks: number
-  /** clicks ÷ searches, 0–1; the overall click-through rate. */
-  ctr: number
-  /** share of searches returning zero results, 0–1. */
-  zeroResultRate: number
-  /** top queries by search count. */
-  queries: SearchQueryRow[]
+export interface SearchData extends SearchStats {
   generatedAt: string
   window: string
   range: string
 }
 
-/**
- * Join the four search event-value distributions into the search view. Counts
- * come from summing each distribution's `total` (the `value` is the query text
- * or the result count, not a weight). The overall zero-result rate is taken from
- * the historical `search` `results` distribution (value 0), while the per-query
- * zero-result flag comes from the `search-no-results` event — the only
- * query-keyed signal, since Umami can't cross-tabulate query × results.
- */
-export function shapeSearch(
-  queryRows: EventDataValue[],
-  resultsRows: EventDataValue[],
-  clickRows: EventDataValue[],
-  noResultRows: EventDataValue[],
-  topN = 20,
-): Omit<SearchData, 'generatedAt' | 'window' | 'range'> {
-  const clicksByQuery = new Map<string, number>()
-  for (const r of clickRows) {
-    const q = String(r.value)
-    clicksByQuery.set(q, (clicksByQuery.get(q) ?? 0) + r.total)
-  }
-  const zeroResultQueries = new Set(noResultRows.map((r) => String(r.value)))
-
-  const clicks = clickRows.reduce((s, r) => s + r.total, 0)
-  const resultsEvents = resultsRows.reduce((s, r) => s + r.total, 0)
-  const queryEvents = queryRows.reduce((s, r) => s + r.total, 0)
-  const zeroResults = resultsRows
-    .filter((r) => Number(r.value) === 0)
-    .reduce((s, r) => s + r.total, 0)
-
-  // Total searches from whichever distribution is more complete. The `results`
-  // property has tiny cardinality (a few counts) so it can't be row-capped,
-  // while the high-cardinality `query` distribution can be — taking the max
-  // stops a truncated or failed call from deflating the total and inflating CTR.
-  const searches = Math.max(queryEvents, resultsEvents)
-
-  const queries: SearchQueryRow[] = queryRows
-    .map((r) => {
-      const query = String(r.value)
-      const clicksForQuery = clicksByQuery.get(query) ?? 0
-      return {
-        query,
-        searches: r.total,
-        clicks: clicksForQuery,
-        ctr: r.total ? clicksForQuery / r.total : 0,
-        zeroResult: zeroResultQueries.has(query),
-      }
-    })
-    .sort((a, b) => b.searches - a.searches)
-    .slice(0, topN)
-
-  return {
-    searches,
-    clicks,
-    ctr: searches ? clicks / searches : 0,
-    zeroResultRate: resultsEvents ? zeroResults / resultsEvents : 0,
-    queries,
-  }
-}
-
 // --- pure shapers (unit-tested) --------------------------------------------
-
-export function buildFunnelSteps(formId: string): FunnelStepInput[] {
-  return [
-    { type: 'event', value: eventName(formId, 'form-start') },
-    { type: 'event', value: eventName(formId, 'form-review') },
-    { type: 'event', value: eventName(formId, 'form-submit') },
-  ]
-}
-
-/**
- * Funnel whose first step is the form page, used only for its step-0 visitor
- * count (the "visits" denominator). The trailing `*` captures the page with or
- * without a trailing slash (Umami records both as distinct paths) as one distinct
- * count — it assumes no form id is a prefix of another (true for current slugs).
- * Umami rejects a single-step funnel, so `form-start` is the required second
- * step; its own count isn't read here (starts come from the 3-step funnel that
- * also feeds the summary list, so the two pages stay consistent).
- */
-export function buildVisitFunnelSteps(formId: string): FunnelStepInput[] {
-  return [
-    { type: 'path', value: `/forms/${formId}*` },
-    { type: 'event', value: eventName(formId, 'form-start') },
-  ]
-}
 
 const STAGE_LABELS = ['Start', 'Review', 'Submit']
 
@@ -442,17 +353,6 @@ export function shapeSubmitError(
   }
 }
 
-/** Distinct-visitor starts + completions from a form's funnel report rows. */
-export function funnelHeadline(rows: FunnelStepResult[]): {
-  starts: number
-  completed: number
-} {
-  return {
-    starts: rows[0]?.visitors ?? 0,
-    completed: rows[rows.length - 1]?.visitors ?? 0,
-  }
-}
-
 /**
  * Build the forms-list rows from per-form distinct-visitor funnel headlines
  * (the same start→…→submit funnel the per-form page uses), so the list and the
@@ -501,44 +401,6 @@ export interface FlowData {
 const SEP = '\u241F' // node-id separator
 const LSEP = '\u241E' // link-key separator
 const OTHER = '__other__'
-
-function humanizeSlug(s: string): string {
-  const spaced = s.replace(/[-_]/g, ' ').trim()
-  return spaced ? spaced[0].toUpperCase() + spaced.slice(1) : s
-}
-
-/**
- * Turn a raw journey step (path or `<form>:<event>`) into a short label. The
- * generic "Start" (form-start event or a `/…/start` page) and "Form"
- * (`/…/form` page) steps are qualified with their root service — e.g.
- * "Get birth certificate · Start" — so they're not ambiguous in the flow. Pass
- * `qualifyGoal = false` (used by the journey breadcrumb list, where the
- * preceding step already gives the context) to get the bare "Start"/"Form".
- */
-export function humanizeStep(raw: string, qualifyGoal = true): string {
-  if (!raw) return ''
-  if (!raw.startsWith('/') && raw.includes(':')) {
-    const form = raw.slice(0, raw.indexOf(':'))
-    // Canonicalise so a long-id form's compact code (#2682, e.g. `fstrt`/`sview`)
-    // resolves to its real event rather than rendering as "Fstrt".
-    const event = canonicalEvent(raw.slice(raw.indexOf(':') + 1))
-    if (event === 'form-start')
-      return qualifyGoal ? `${humanizeSlug(form)} · Start` : 'Start'
-    return humanizeSlug(event)
-  }
-  const path = raw.split('?')[0].replace(/\/+$/, '')
-  const segs = path.split('/').filter(Boolean)
-  if (!segs.length) return 'Home'
-  const last = segs[segs.length - 1]
-  // A form's start/form page: qualify with the service segment above it.
-  if ((last === 'start' || last === 'form') && segs.length >= 2) {
-    const step = last === 'start' ? 'Start' : 'Form'
-    return qualifyGoal
-      ? `${humanizeSlug(segs[segs.length - 2])} · ${step}`
-      : step
-  }
-  return humanizeSlug(last)
-}
 
 /**
  * Build a layered flow (Sankey) from journey paths. Column `c` is the c-th step
@@ -665,74 +527,16 @@ export function shapeFlow(
   return { nodes, links, total }
 }
 
-/** One row of the "most common journeys" table: an ordered step breadcrumb. */
-export interface JourneyRow {
-  items: string[]
-  sessions: number
-  share: number
-  /** raw path of the entry step, for the referrer lookup. */
-  entryPath: string
-  /** top referrers to the entry page (filled by fetchOverviewData). */
-  topSources: SourceRow[]
-}
-
-/**
- * The top multi-step journeys as an ordered breadcrumb list (the table view of
- * the flow). Uses **page navigation only** — the `form-start` (and other) events
- * are dropped, so a form visit reads as its pages (service → Start → Form) and
- * the many event-ordering variants merge into one row instead of fragmenting.
- * Single-page visits (bounces) are excluded so the list is actual journeys, and
- * "Start"/"Form" are the `/…/start` and `/…/form` pages. Identical sequences
- * merge; share is of all listed (multi-step) journeys.
- */
-export function shapeJourneyList(
-  journeys: JourneyPath[],
-  depth = 4,
-  topN = 12,
-): JourneyRow[] {
-  const merged = new Map<
-    string,
-    { items: string[]; sessions: number; entryPath: string }
-  >()
-  for (const j of journeys) {
-    const items: string[] = []
-    let entryPath = ''
-    for (const it of j.items) {
-      // page paths only — events (…:form-start, chat-*, search) are excluded.
-      if (!it || !it.startsWith('/')) continue
-      // Qualify only the entry step, so a journey that begins on a `/…/start`
-      // or `/…/form` page shows the service ("Get birth certificate · Start")
-      // rather than a bare "Start"; later steps stay bare (context is implied).
-      const first = items.length === 0
-      const label = humanizeStep(it, first)
-      if (items[items.length - 1] === label) continue
-      if (first) entryPath = it.split('?')[0]
-      items.push(label)
-      if (items.length >= depth) break
-    }
-    // A journey is a path — drop single-page visits (bounces).
-    if (items.length < 2) continue
-    const key = items.join('␟')
-    const existing = merged.get(key)
-    if (existing) existing.sessions += j.count
-    else merged.set(key, { items, sessions: j.count, entryPath })
-  }
-  const all = [...merged.values()].sort((a, b) => b.sessions - a.sessions)
-  const total = all.reduce((s, r) => s + r.sessions, 0)
-  return all.slice(0, topN).map((r) => ({
-    ...r,
-    topSources: [],
-    share: total ? r.sessions / total : 0,
-  }))
-}
-
 /** Drop the null padding the journey report returns and keep form-relevant paths. */
 export function shapeJourneys(
   rows: JourneyPath[],
   formId: string,
 ): JourneyPath[] {
   return rows
-    .map((j) => ({ items: j.items.filter(Boolean), count: j.count }))
+    .map((j) => ({
+      items: j.items.filter((p): p is string => Boolean(p)),
+      count: j.count,
+    }))
     .filter(
       (j) => j.items.length > 0 && j.items.some((p) => p.includes(formId)),
     )
@@ -769,7 +573,9 @@ const isTimeout = (err: unknown): boolean =>
   err instanceof DOMException &&
   (err.name === 'TimeoutError' || err.name === 'AbortError')
 
-export async function fetchFormList(cfg: UmamiConfig): Promise<FormListItem[]> {
+export async function fetchFormList(
+  cfg: UmamiConfig,
+): Promise<{ formId: string; title: string }[]> {
   const base = cfg.formsApiUrl.replace(/\/+$/, '')
   // The timeout must cover the body read too, not just the connection — a
   // server that sends headers then stalls the body would otherwise abort
@@ -1018,57 +824,63 @@ export async function fetchFormsData(
 
 // --- tools (#2119) ---------------------------------------------------------
 
-/** One interactive tool's traffic on the "Tools" tab. */
-export interface ToolRow {
-  name: string
-  /** the tool's canonical entry path (the row links here). */
-  path: string
-  pageviews: number
-  /**
-   * Distinct visitors, SUMMED across the tool's sub-pages. Exact for
-   * single-page tools; may overcount a visitor who hits several sub-pages of a
-   * multi-page tool (only the shelter finder today) — surfaced with a caveat in
-   * the UI. True prefix-distinct isn't available from Umami's per-path metrics.
-   */
-  visitors: number
-  topSources: SourceRow[]
-}
-
 export interface ToolsData {
   tools: ToolRow[]
+  /** Null when its breakdown could not be read from Umami. */
+  waterAlerts: WaterAlertFunnel | null
   range: string
   window: string
 }
 
 /**
- * Roll landing URL rows up into one row per tool: sum pageviews + visitors for
- * every URL under the tool's route prefix, and attach the tool's entry-path
- * referrers as its top source. Pure — the caller supplies the URL rows and a
- * `primaryPath → referrers` map, so it's fully unit-testable. Every tool is
- * returned (zeroes when it has no traffic) so owners always see it listed.
+ * Read the tool events (ADR 0138) from Umami. Each event's `tool` values give
+ * every tool's count in one call. A tool's outcome and action values need
+ * Umami's property filter, one call each, so they are read only for the tools
+ * that sent that event in the window.
  */
-export function shapeTools(
+async function fetchToolEventRows(
+  client: UmamiClient,
+  websiteId: string,
   tools: Tool[],
-  urlRows: ExpandedRow[],
-  sourcesByPath: Map<string, SourceRow[]>,
-): ToolRow[] {
-  return tools.map((tool) => {
-    let pageviews = 0
-    let visitors = 0
-    for (const row of urlRows) {
-      const path = row.x ?? row.name ?? ''
-      if (!pathMatchesPrefix(path, tool.prefix)) continue
-      pageviews += row.pageviews ?? row.y ?? 0
-      visitors += row.visitors ?? 0
-    }
-    return {
-      name: tool.name,
-      path: tool.primaryPath,
-      pageviews,
-      visitors,
-      topSources: sourcesByPath.get(tool.primaryPath) ?? [],
-    }
-  })
+  r: Range,
+): Promise<ToolEventRows> {
+  const [resultsByTool, actionsByTool, errorsByTool] = await Promise.all([
+    eventValues(client, websiteId, 'tool-result', 'tool', r),
+    eventValues(client, websiteId, 'tool-action', 'tool', r),
+    eventValues(client, websiteId, 'tool-error', 'tool', r),
+  ])
+  // A failed query leaves the tool out of the map (not `[]`), so its row shows
+  // a dash instead of a believable 0%.
+  const perTool = async (
+    event: string,
+    propertyName: string,
+    byTool: EventDataValue[],
+  ) => {
+    const rows = new Map<ToolId, EventDataValue[]>()
+    await Promise.all(
+      tools
+        .filter((tool) => totalFor(byTool, tool.id) > 0)
+        .map(async (tool) => {
+          try {
+            rows.set(
+              tool.id,
+              await client.eventDataValues(websiteId, event, propertyName, r, {
+                property: 'tool',
+                equals: tool.id,
+              }),
+            )
+          } catch {
+            // left out: shown as a dash
+          }
+        }),
+    )
+    return rows
+  }
+  const [outcomes, actions] = await Promise.all([
+    perTool('tool-result', 'outcome', resultsByTool),
+    perTool('tool-action', 'action', actionsByTool),
+  ])
+  return { resultsByTool, actionsByTool, errorsByTool, outcomes, actions }
 }
 
 /** Per-tool pageview/visitor rollup + entry-page referrers — the "Tools" tab. */
@@ -1081,7 +893,10 @@ export async function fetchToolsData(
     const client = new UmamiClient({ apiKey: cfg.apiKey })
     const r = rangeForKey(range)
     const tools = liveTools()
-    const urlRows = await client.metricsUrls(cfg.landingWebsiteId, r)
+    const [urlRows, eventRows] = await Promise.all([
+      client.metricsUrls(cfg.landingWebsiteId, r),
+      fetchToolEventRows(client, cfg.landingWebsiteId, tools, r),
+    ])
     // One referrers call per tool entry path (throttled by the client), like
     // the Home tab's per-page "Top source".
     const sourcesByPath = new Map<string, SourceRow[]>()
@@ -1105,7 +920,8 @@ export async function fetchToolsData(
       }),
     )
     return {
-      tools: shapeTools(tools, urlRows, sourcesByPath),
+      tools: shapeTools(tools, urlRows, sourcesByPath, eventRows),
+      waterAlerts: shapeWaterAlerts(eventRows),
       range,
       window: rangeLabel(range),
     }

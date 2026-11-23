@@ -7,7 +7,7 @@ export class AuthFailure extends Error {
   constructor(readonly reason: "configuration" | "unavailable" | "session" | "provider") {
     super(
       reason === "configuration"
-        ? "Set VITE_API_ORIGIN to a valid API origin (HTTPS in production)."
+        ? "Set VITE_API_ORIGIN to a valid API URL (HTTPS in production)."
         : "Authentication could not be completed.",
     );
     this.name = "AuthFailure";
@@ -82,7 +82,12 @@ export function workspaceAdmission(now: () => number) {
   };
 }
 
-/** Parse the public API origin once at browser/router composition. */
+/**
+ * Parse the public API URL once at browser/router composition: an origin, or
+ * an origin and a base path such as `/v2` (#3745), with no trailing slash.
+ * Each path segment is letters, digits, `-` and `_`, so the URL parser has
+ * nothing to rewrite (`..`, `%2F`, `//`).
+ */
 export function parseApiOrigin(value: string | undefined, production: boolean): AuthResult<string> {
   const candidate = value ?? (production ? "" : "http://localhost:3020");
 
@@ -94,13 +99,14 @@ export function parseApiOrigin(value: string | undefined, production: boolean): 
       url.password ||
       url.search ||
       url.hash ||
-      url.pathname !== "/" ||
+      !/^(\/[\w-]+)*\/?$/.test(url.pathname) ||
+      /\/\.\.?(\/|$)/.test(candidate) ||
       (production ? url.protocol !== "https:" : !["http:", "https:"].includes(url.protocol))
     ) {
       return { ok: false, error: new AuthFailure("configuration") };
     }
 
-    return { ok: true, value: url.origin };
+    return { ok: true, value: `${url.origin}${url.pathname.replace(/\/$/, "")}` };
   } catch {
     return { ok: false, error: new AuthFailure("configuration") };
   }
@@ -117,7 +123,7 @@ export function localReturnPath(value: string): string {
     url.origin !== "https://editor.invalid" ||
     !(
       url.pathname === "/" ||
-      /^\/(?:services(?:\/[^/]+){0,2}|categories|reviews(?:\/[^/]+)?|history\/[^/]+|collections(?:\/[^/]+){0,2})\/?$/.test(
+      /^\/(?:services(?:\/[^/]+){0,2}|categories|site-pages(?:\/[^/]+)?|reviews(?:\/[^/]+)?|history\/[^/]+|collections(?:\/[^/]+){0,2})\/?$/.test(
         url.pathname,
       )
     )

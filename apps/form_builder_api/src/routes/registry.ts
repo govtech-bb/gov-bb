@@ -47,7 +47,7 @@ registryRouter.get("/metadata", async (_req, res) => {
 // POST /builder/registry/validate
 export async function validateHandler(req: Request, res: Response) {
   // The full schema + catalog-dependent (collision, unknown-ref) check lives
-  // in the shared helper (ADR 0010). It was shared with POST /builder/publish
+  // in the shared helper (ADR 0020). It was shared with POST /builder/publish
   // until that dormant route was removed; keeping the helper separate still
   // stops this endpoint drifting from any future server-side gate.
   const result = await validateRecipeFully(req.body.recipe);

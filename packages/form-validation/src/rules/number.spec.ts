@@ -334,3 +334,173 @@ describe("minRunner with transform: daysUntil (lead-time gate)", () => {
     ).toBe("e");
   });
 });
+
+// ─── scaleBy: scale the value by a factor another answer picks (#3636) ───
+
+describe("numeric runners with scaleBy", () => {
+  // A monthly income limit, checked against an amount the applicant gets
+  // weekly, twice a month or monthly.
+  const scaleBy = {
+    referenceFieldId: "income-frequency",
+    factors: { weekly: 4, "twice-a-month": 2, monthly: 1 },
+  };
+  const answers = (frequency: unknown) => ({
+    income: { "income-frequency": frequency },
+  });
+
+  it("max fails when the scaled value is over the bound (weekly × 4)", () => {
+    expect(
+      maxRunner(
+        1000,
+        { value: 3000, scaleBy, error: "Over" },
+        answers("weekly"),
+      ),
+    ).toBe("Over");
+  });
+
+  it("max passes when the scaled value is within the bound (weekly × 4)", () => {
+    expect(
+      maxRunner(700, { value: 3000, scaleBy }, answers("weekly")),
+    ).toBeNull();
+  });
+
+  it("max applies the factor for the answer given", () => {
+    expect(
+      maxRunner(2000, { value: 3000, scaleBy }, answers("twice-a-month")),
+    ).toBe("Must be at most 3000");
+    expect(
+      maxRunner(2000, { value: 3000, scaleBy }, answers("monthly")),
+    ).toBeNull();
+  });
+
+  it("min fails when the scaled value is under the bound", () => {
+    expect(
+      minRunner(
+        200,
+        { value: 1000, scaleBy, error: "Under" },
+        answers("weekly"),
+      ),
+    ).toBe("Under");
+  });
+
+  it("min passes when the scaled value reaches the bound", () => {
+    expect(
+      minRunner(250, { value: 1000, scaleBy }, answers("weekly")),
+    ).toBeNull();
+  });
+
+  it("gt compares the scaled value", () => {
+    expect(gtRunner(750, { value: 3000, scaleBy }, answers("weekly"))).toBe(
+      "Must be greater than 3000",
+    );
+    expect(
+      gtRunner(751, { value: 3000, scaleBy }, answers("weekly")),
+    ).toBeNull();
+  });
+
+  it("lt compares the scaled value", () => {
+    expect(ltRunner(750, { value: 3000, scaleBy }, answers("weekly"))).toBe(
+      "Must be less than 3000",
+    );
+    expect(
+      ltRunner(749, { value: 3000, scaleBy }, answers("weekly")),
+    ).toBeNull();
+  });
+
+  // Each bound fails 1,000,000 both unscaled and scaled, so a null result can
+  // only mean the rule was skipped.
+  const failingBounds = [
+    ["min", minRunner, 2_000_000],
+    ["max", maxRunner, -1],
+    ["gt", gtRunner, 2_000_000],
+    ["lt", ltRunner, -1],
+  ] as const;
+
+  it.each(failingBounds)(
+    "%s is skipped when the referenced answer is empty or missing",
+    (_, runner, bound) => {
+      const config = { value: bound, scaleBy };
+      expect(runner(1_000_000, config, answers(""))).toBeNull();
+      expect(runner(1_000_000, config, answers(undefined))).toBeNull();
+      expect(runner(1_000_000, config, answers(null))).toBeNull();
+      expect(runner(1_000_000, config, answers([]))).toBeNull();
+      expect(runner(1_000_000, config, {})).toBeNull();
+    },
+  );
+
+  it.each([
+    ["min", minRunner, 0],
+    ["max", maxRunner, 1_000_000_000],
+    ["gt", gtRunner, 0],
+    ["lt", ltRunner, 1_000_000_000],
+  ] as const)(
+    "%s fails when the referenced answer has no factor",
+    (_, runner, bound) => {
+      // The bound passes unscaled; the rule fails closed all the same.
+      const config = { value: bound, scaleBy, error: "No factor" };
+      expect(runner(1000, config, answers("yearly"))).toBe("No factor");
+    },
+  );
+
+  it.each(["__proto__", "constructor", "toString", "hasOwnProperty"])(
+    "fails on an inherited object key (%s), not a factor",
+    (answer) => {
+      expect(
+        maxRunner(
+          1,
+          { value: 3000, scaleBy, error: "No factor" },
+          answers(answer),
+        ),
+      ).toBe("No factor");
+    },
+  );
+
+  it("fails when the factor is not a finite number", () => {
+    const config = {
+      value: 3000,
+      error: "No factor",
+      scaleBy: { ...scaleBy, factors: { weekly: Number.NaN } },
+    };
+    expect(maxRunner(1, config, answers("weekly"))).toBe("No factor");
+  });
+
+  it("reads the reference from the step named by targetStepId", () => {
+    const config = {
+      value: 3000,
+      scaleBy: { ...scaleBy, targetStepId: "income" },
+    };
+    const allValues = {
+      income: { "income-frequency": "weekly" },
+      other: { "income-frequency": "monthly" },
+    };
+    expect(maxRunner(1000, config, allValues)).toBe("Must be at most 3000");
+  });
+
+  it("reads a same-step reference from the step values", () => {
+    expect(
+      maxRunner(
+        1000,
+        { value: 3000, scaleBy },
+        {},
+        {
+          "income-frequency": "weekly",
+        },
+      ),
+    ).toBe("Must be at most 3000");
+  });
+
+  it("scales the transformed number, not the raw date", () => {
+    // A 10-year-old's age × 2 = 20 clears `min: 16`; unscaled it would not.
+    const scaleByTwo = { referenceFieldId: "count", factors: { two: 2 } };
+    const config = { value: 16, transform: "yearsSince" as const };
+    const allValues = { s: { count: "two" } };
+    expect(minRunner(dobYearsAgo(10), config, allValues)).not.toBeNull();
+    expect(
+      minRunner(dobYearsAgo(10), { ...config, scaleBy: scaleByTwo }, allValues),
+    ).toBeNull();
+  });
+
+  it("leaves a rule with no scaleBy unscaled", () => {
+    expect(maxRunner(1000, { value: 3000 }, answers("weekly"))).toBeNull();
+  });
+});

@@ -54,6 +54,13 @@ describe("Better Auth HTTP client", () => {
     status = 200;
   });
 
+  it("reaches Better Auth under the API's base path (#3745)", async () => {
+    response = "null";
+    const auth = createEditorAuth(`${origin}/v2`, () => Date.parse("2026-10-06T12:00:00Z"));
+    expect(await auth.session()).toEqual({ ok: true, value: null });
+    expect(requests.at(-1)?.url).toBe("/v2/api/auth/get-session?disableCookieCache=true");
+  });
+
   it("initiates Google OAuth with safe explicit success and error callbacks", async () => {
     response = JSON.stringify({
       url: "https://accounts.google.com/o/oauth2/v2/auth?state=test",

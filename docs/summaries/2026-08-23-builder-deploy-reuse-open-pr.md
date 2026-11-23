@@ -3,7 +3,7 @@
 **Date:** 2026-08-23 · **Branch:** `builder-deploy-reuse-open-pr` (off `main` at
 `b689a411`) · Issue [#2390](https://github.com/govtech-bb/gov-bb/issues/2390) ·
 follow-up [#2391](https://github.com/govtech-bb/gov-bb/issues/2391) ·
-[ADR 0070](../decisions/0070-deploy-flows-reuse-the-artifacts-open-pr.md)
+[ADR 0118](../decisions/0118-deploy-flows-reuse-the-artifacts-open-pr.md)
 
 ## Context
 

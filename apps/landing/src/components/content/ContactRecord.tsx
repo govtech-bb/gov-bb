@@ -1,5 +1,5 @@
 import { useContext } from 'react'
-import { recordDetails } from '@govtech-bb/govbbmarkd/record-details'
+import { contactDetails } from '@govtech-bb/govbbmarkd/contact-record'
 import { PageRecordsContext } from './PageRecords'
 
 /** A record's detail: a non-emergency contact tile. */
@@ -28,7 +28,7 @@ export function ContactRecord({
   const data = record ? source?.records[record] : undefined
   if (!source || !record || !data) return null
 
-  const details = recordDetails(
+  const details = contactDetails(
     source.collection,
     (fields ?? '').split(',').map((field) => field.trim()),
     data,

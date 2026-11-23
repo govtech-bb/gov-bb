@@ -1,14 +1,22 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { Element, RootContent } from 'hast'
+import { createApiV2Cache } from './api-v2-cache'
 import {
-  API_V2_TIMEOUT_MS,
+  createVersionWatch,
+  EVERY_MS,
+  fetchSiteVersion,
+} from './api-v2-version'
+import {
   contentSource,
   fetchApiV2Page,
   fromApiV2,
+  loadApiV2Page,
+  previewTokenFor,
   resolveApiV2Base,
   resolveApiV2Page,
 } from './api-v2-page'
-import type { ApiV2MissReason, PageResponse } from './api-v2-page'
+import type { ApiV2MissReason, ApiV2Result, PageResponse } from './api-v2-page'
+import { API_V2_TIMEOUT_MS, createApiV2Breaker } from './api-v2-reader'
 
 const BASE = 'http://api.example'
 
@@ -107,6 +115,17 @@ describe('fetchApiV2Page', () => {
     expect(init.signal).toBeInstanceOf(AbortSignal)
   })
 
+  it("rejects a url it can't encode without asking api_v2", async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const fetchImpl = stubFetch(jsonResponse(200, pageBody()))
+    expect(await fetchApiV2Page(BASE, '/\uD800a', fetchImpl)).toEqual({
+      kind: 'miss',
+      reason: 'rejected',
+      cacheControl: null,
+    })
+    expect(fetchImpl).not.toHaveBeenCalled()
+  })
+
   it("sends landing's token only when one is configured", async () => {
     const without = stubFetch(jsonResponse(200, pageBody()))
     await fetchApiV2Page(BASE, '/x', without)
@@ -118,6 +137,50 @@ describe('fetchApiV2Page', () => {
     expect(
       new Headers(withToken.mock.calls[0][1].headers).get('x-landing-token'),
     ).toBe('secret')
+  })
+
+  it('sends the preview token only for a reviewer read (#2961)', async () => {
+    const without = stubFetch(jsonResponse(200, pageBody()))
+    await fetchApiV2Page(BASE, '/x', without, 'landing')
+    expect(
+      new Headers(without.mock.calls[0][1].headers).has('x-preview-token'),
+    ).toBe(false)
+    const withToken = stubFetch(jsonResponse(200, pageBody()))
+    await fetchApiV2Page(BASE, '/x', withToken, 'landing', 'preview-secret')
+    const headers = new Headers(withToken.mock.calls[0][1].headers)
+    expect(headers.get('x-preview-token')).toBe('preview-secret')
+    expect(headers.get('x-landing-token')).toBe('landing')
+  })
+
+  it('logs a 401 to a reviewer read as a preview_token error', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const result = await fetchApiV2Page(
+      BASE,
+      '/x',
+      stubFetch(jsonResponse(401, { error: 'invalid_preview_token' })),
+      undefined,
+      'wrong-secret',
+    )
+    expect(result).toEqual({ kind: 'miss', reason: 'preview_token' })
+    expect(contentSource(result as ApiV2Result)).toBe('static-fallback')
+    expect(logged(error)).toEqual({
+      event: 'api_v2_fallback',
+      reason: 'preview_token',
+      url: '/x',
+      status: 401,
+    })
+    expect(warn).not.toHaveBeenCalled()
+  })
+
+  it('keeps a 401 to a public read a rejected miss', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const result = await fetchApiV2Page(
+      BASE,
+      '/x',
+      stubFetch(jsonResponse(401, {})),
+    )
+    expect(result).toMatchObject({ kind: 'miss', reason: 'rejected' })
   })
 
   it('passes Cache-Control through on a page', async () => {
@@ -223,6 +286,31 @@ describe('fetchApiV2Page', () => {
     })
     expect(error).not.toHaveBeenCalled()
   })
+
+  it.each([302, 308])(
+    'treats a %i (a redirect it does not follow) as a rejected miss and warns',
+    async (status) => {
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+      const result = await fetchApiV2Page(
+        BASE,
+        '/x',
+        stubFetch(
+          new Response(null, { status, headers: { Location: '/elsewhere' } }),
+        ),
+      )
+      expect(result).toEqual({
+        kind: 'miss',
+        reason: 'rejected',
+        cacheControl: null,
+      })
+      expect(logged(warn)).toEqual({
+        event: 'api_v2_fallback',
+        reason: 'rejected',
+        url: '/x',
+        status,
+      })
+    },
+  )
 
   it('treats a timeout while reading a 301 body as a timeout miss', async () => {
     vi.useFakeTimers()
@@ -548,6 +636,10 @@ describe('fetchApiV2Page', () => {
     'javascript:alert(1)',
     '/\t/evil.example',
     '/ evil',
+    '/a\u0000b',
+    '/a\u001fb',
+    '/a\u007fb',
+    '/new\n',
     '%2F%2Fevil.example',
     'https://www.alpha.gov.bb/x',
   ])(
@@ -612,6 +704,112 @@ describe('fetchApiV2Page', () => {
       stubFetch(jsonResponse(301, { redirect: to })),
     )
     expect(result).toEqual({ kind: 'redirect', to, cacheControl: null })
+  })
+})
+
+describe('previewTokenFor', () => {
+  it('gives a reviewer the secret and the public nothing', () => {
+    expect(previewTokenFor('preview', 'secret')).toBe('secret')
+    expect(previewTokenFor('public', 'secret')).toBeUndefined()
+  })
+
+  it('gives a reviewer nothing when no secret is configured', () => {
+    expect(previewTokenFor('preview', undefined)).toBeUndefined()
+    expect(previewTokenFor('preview', '')).toBeUndefined()
+  })
+})
+
+describe('loadApiV2Page', () => {
+  it('expires cached earlier sources after flattening and serves a reclaimed page after the next site version', async () => {
+    vi.spyOn(Date, 'now').mockReturnValue(0)
+    const cache = createApiV2Cache(createApiV2Breaker())
+    let version = '1'
+    let destination = '/b'
+    let reclaimed = false
+    const fetchImpl = vi.fn<typeof fetch>(async (input) => {
+      const url = new URL(String(input))
+      if (url.pathname === '/site-version')
+        return jsonResponse(200, { version })
+      const source = url.searchParams.get('url')
+      return reclaimed && source === '/a'
+        ? jsonResponse(200, pageBody({ url: '/a' }), {
+            'Cache-Control': 'public, max-age=60',
+          })
+        : jsonResponse(
+            301,
+            { redirect: destination },
+            { 'Cache-Control': 'public, max-age=60' },
+          )
+    })
+    const check = createVersionWatch(
+      () => fetchSiteVersion(BASE, fetchImpl),
+      () => cache.expire(),
+    )
+    const load = (url: string) =>
+      loadApiV2Page(cache, BASE, url, undefined, undefined, fetchImpl)
+    await check(0)
+    for (const source of ['/a', '/earlier'])
+      expect(await load(source)).toMatchObject({ kind: 'redirect', to: '/b' })
+    destination = '/c'
+    version = '2'
+    expect(await load('/a')).toMatchObject({ kind: 'redirect', to: '/b' })
+    await check(EVERY_MS)
+    for (const source of ['/a', '/earlier'])
+      expect(await load(source)).toMatchObject({ kind: 'redirect', to: '/c' })
+    reclaimed = true
+    version = '3'
+    await check(2 * EVERY_MS)
+    expect(await load('/a')).toMatchObject({ kind: 'page', page: { url: 'a' } })
+    expect(await load('/earlier')).toMatchObject({ kind: 'redirect', to: '/c' })
+    expect(
+      fetchImpl.mock.calls.filter(([url]) => String(url).includes('/pages?')),
+    ).toHaveLength(6)
+  })
+
+  /** api_v2 with one preview page: a 404 to the public, the page to a reviewer. */
+  function previewOnlyApi() {
+    return vi.fn<typeof fetch>(async (_url, init) =>
+      new Headers(init?.headers).get('x-preview-token') === 'secret'
+        ? jsonResponse(200, pageBody({ visibility: 'preview' }), {
+            'Cache-Control': 'no-store',
+          })
+        : jsonResponse(
+            404,
+            { error: 'not_found' },
+            { 'Cache-Control': 'max-age=10' },
+          ),
+    )
+  }
+
+  it("serves a reviewer the preview page and keeps it out of the public's cache", async () => {
+    const cache = createApiV2Cache(createApiV2Breaker())
+    const fetchImpl = previewOnlyApi()
+    const load = (token?: string) =>
+      loadApiV2Page(cache, BASE, '/x', undefined, token, fetchImpl)
+
+    expect(await load()).toMatchObject({ kind: 'miss', reason: 'not_found' })
+    const reviewer = await load('secret')
+    expect(reviewer.kind).toBe('page')
+    if (reviewer.kind === 'page')
+      expect(reviewer.page.frontmatter.visibility).toBe('preview')
+    expect(await load()).toMatchObject({ kind: 'miss', reason: 'not_found' })
+    // The reviewer's read went to api_v2; the second public read was cached.
+    expect(fetchImpl).toHaveBeenCalledTimes(2)
+  })
+
+  it("doesn't serve a reviewer the public's cached answer", async () => {
+    const cache = createApiV2Cache(createApiV2Breaker())
+    const fetchImpl = previewOnlyApi()
+    await loadApiV2Page(cache, BASE, '/x', undefined, undefined, fetchImpl)
+    const reviewer = await loadApiV2Page(
+      cache,
+      BASE,
+      '/x',
+      undefined,
+      'secret',
+      fetchImpl,
+    )
+    expect(reviewer.kind).toBe('page')
   })
 })
 

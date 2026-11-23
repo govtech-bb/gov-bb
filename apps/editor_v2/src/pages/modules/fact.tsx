@@ -1,5 +1,5 @@
 import { ArrowRight, Database, Warning } from "@phosphor-icons/react";
-import { recordDetails } from "@govtech-bb/govbbmarkd/record-details";
+import { contactDetails } from "@govtech-bb/govbbmarkd/contact-record";
 import { $isLinkNode } from "@lexical/link";
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
 import { useLexicalEditable } from "@lexical/react/useLexicalEditable";
@@ -28,9 +28,11 @@ import { NativeSelect } from "../../ui/native-select";
 import { Popover } from "../../ui/popover";
 import { referenceChip } from "../../ui/reference-chip";
 import { $parseDirective } from "../blocks/define-block";
+import { $isHighlightPart } from "../blocks/highlights";
 import { $hasTrait } from "../blocks/node";
 import type { PageHandler, PageModule } from "../definition";
-import { findRecord, useCollection, usePageCollections } from "../page-collections";
+import { UnsupportedPageContent } from "../markdown";
+import { findRecord, recordName, useCollection, usePageCollections } from "../page-collections";
 
 /**
  * One fact from a data collection's record (#3590), in a line of text, written
@@ -141,8 +143,8 @@ function useFactShown({ collection: key, record, field, fallback }: FactSettings
       tone: "warning",
     };
 
-  const name = row.data.name ?? record;
-  const [detail] = recordDetails(collection.collection, [field], row.data);
+  const name = recordName(row);
+  const [detail] = contactDetails(collection.collection, [field], row.data);
 
   if (!detail) {
     const label = collection.collection.schema.fields.find((item) => item.key === field)?.label;
@@ -243,7 +245,7 @@ function FactChip({ nodeKey, ...settings }: FactSettings & { nodeKey: NodeKey })
             tabIndex={-1}
             className={look}
             title={shown.label}
-            aria-label={`${shown.label} Change the fact.`}
+            aria-label={`${shown.text}. Change the fact.`}
           />
         }
       >
@@ -296,7 +298,7 @@ function FactPicker({
   }, [host]);
 
   const records = [...(collection?.records ?? [])].sort((a, b) =>
-    (a.data.name ?? a.record_key).localeCompare(b.data.name ?? b.record_key),
+    recordName(a).localeCompare(recordName(b)),
   );
 
   const fields =
@@ -342,7 +344,7 @@ function FactPicker({
           )}
           {records.map((row) => (
             <option key={row.record_key} value={row.record_key}>
-              {row.data.name ?? row.record_key}
+              {recordName(row)}
             </option>
           ))}
         </NativeSelect>
@@ -399,6 +401,13 @@ const fact: PageHandler = {
   $import(node) {
     const { collection, record, field, fallback } = $parseDirective(node, "fact");
 
+    // The dialect trims keys for lookups; a visual save must not silently trim authored attributes.
+    if (
+      node.type === "textDirective" &&
+      Object.values(node.attributes ?? {}).some((value) => value && value !== value.trim())
+    )
+      throw new UnsupportedPageContent(node, "This fact needs Markdown source editing");
+
     return [new PageFactNode({ collection, record, field, fallback })];
   },
   $export(node) {
@@ -416,7 +425,7 @@ const fact: PageHandler = {
   },
 };
 
-/** Whether the caret is in text a fact can go in: not a link's, as the fact may be a link, nor a button's label. */
+/** A fact fits in Markdown text, not a link, button label or plain-text HTML highlight. */
 function $factFits() {
   const selection = $getSelection();
 
@@ -424,7 +433,7 @@ function $factFits() {
   const node = selection.anchor.getNode();
 
   return ![node, ...node.getParents()].some(
-    (parent) => $isLinkNode(parent) || $hasTrait(parent, "button"),
+    (parent) => $isLinkNode(parent) || $hasTrait(parent, "button") || $isHighlightPart(parent),
   );
 }
 

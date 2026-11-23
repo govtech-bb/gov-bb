@@ -9,7 +9,9 @@
     "preview": "nitro preview",
     "start": "node .amplify-hosting/compute/default/server.js",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit -p tsconfig.json"
+    "test:types": "tsc --noEmit -p tsconfig.json",
+    "lint:fix": "oxlint --fix",
+    "test:oxlint": "oxlint"
   },
   "dependencies": {
     "@base-ui/react": "^1.8.0",
@@ -67,6 +69,7 @@
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
     "@vitejs/plugin-react": "^6.0.2",
+    "oxfmt": "0.72.0",
     "typescript": "catalog:",
     "vite": "catalog:"
   }

@@ -36,6 +36,7 @@ test("the Categories screen opens in the workspace, its list already loading", a
                 description: null,
                 position: 0,
                 services: 0,
+                version: 1,
                 reserved_route: false,
                 last_edited_by: null,
                 updated_at: "2026-10-26T12:00:00.000Z",

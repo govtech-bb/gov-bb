@@ -1,12 +1,13 @@
 name: Deploy api_v2 to Sandbox
 
 # Builds apps/api_v2 and rolls the api-v2-sandbox ECS service
-# (https://api-v2.sandbox.alpha.gov.bb). Infrastructure: alpha-infra
+# (https://api.sandbox.alpha.gov.bb/v2, #3745). Infrastructure: alpha-infra
 # environments/sandbox/modular-forms-sandbox/api-v2-ecs.tf (gov-bb#2962).
 #
-# Separate from deploy-sandbox.yml because api_v2 lives on v2-rewrite, and
-# deploy-sandbox.yml only runs on main. The workflow file has to exist on the
-# branch that is pushed, so it lives on v2-rewrite and triggers there.
+# Reusable: deploy-sandbox.yml calls it (job `deploy-api-v2`) on a merge to
+# main when nx marks api_v2 as affected, so it runs after CI like the other
+# sandbox deploys (#3119). Run it by hand from main to redeploy without a
+# change.
 #
 # The deploy role trusts gov-bb v2-rewrite and main only, and can do one job:
 # push to the gov-bb-api-v2 ECR repo and roll the api-v2-sandbox service. Its
@@ -16,14 +17,7 @@ name: Deploy api_v2 to Sandbox
 # changes to desired_count and task_definition), so this job sets it to 1.
 
 on:
-  push:
-    branches: [v2-rewrite]
-    paths:
-      - "apps/api_v2/**"
-      - "pnpm-lock.yaml"
-      - "pnpm-workspace.yaml"
-      - "package.json"
-      - ".github/workflows/deploy-api-v2-sandbox.yml"
+  workflow_call:
   workflow_dispatch:
 
 permissions:
@@ -42,7 +36,8 @@ env:
   ECS_CLUSTER: modular-forms-sandbox
   ECS_SERVICE: api-v2-sandbox
   TASK_FAMILY: api-v2-sandbox
-  API_URL: https://api-v2.sandbox.alpha.gov.bb
+  # api_v2's base URL: the smoke paths below are appended to it.
+  API_URL: https://api.sandbox.alpha.gov.bb/v2
 
 jobs:
   deploy:
@@ -147,9 +142,9 @@ jobs:
             exit 1
           fi
 
-      # /health proves the route the ALB will check is live (#3128). The ALB
-      # target group checks /docs/openapi.json until alpha-infra points it at
-      # /health; /categories proves the database answers and categories read.
+      # /health proves the route the ALB checks is live (#3128): the target
+      # group checks /v2/health (#3745), and API_URL carries the /v2.
+      # /categories proves the database answers and categories read.
       # /pages proves a seeded public page resolves with its content, since
       # landing reads every page from it (#3146). Sandbox content is edited,
       # not reseeded, so that page must stay public there: unpublishing,

@@ -577,7 +577,7 @@ export function parseContentMarkdown(
         if (start !== undefined && end !== undefined) {
           const lines = source.slice(start, end).split(/\r\n|\r|\n/);
           const opening = /^(:{3,})/.exec(lines[0] ?? "")?.[1];
-          const closing = /^(?:[ \t]*>[ \t]?)*[ \t]*(:{3,})[ \t]*$/.exec(
+          const closing = /^(?:[ \t]*>)*[ \t]*(:{3,})[ \t]*$/.exec(
             lines.at(-1) ?? "",
           )?.[1];
           const lastChildLine = node.children.at(-1)?.position?.end.line;

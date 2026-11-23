@@ -20,7 +20,7 @@ export interface StepRef {
   title: string;
 }
 
-// Delegate to resolveFieldIds (the ADR-0010 single source of truth for runtime
+// Delegate to resolveFieldIds (the ADR-0020 single source of truth for runtime
 // ids): it expands blocks into their child fields and applies fieldId
 // overrides, so option values match what conditionals match against at runtime.
 export function getFieldRefs(

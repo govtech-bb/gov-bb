@@ -9,7 +9,8 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { Database } from "./db";
 import { importEstate, seed } from "./seed";
 import { ESTATE, ESTATE_SOURCE } from "./seed-data";
-import { COLLECTIONS } from "./seed-data/collections";
+import { COLLECTIONS, PUBLIC_HOLIDAYS } from "./seed-data/collections";
+import { parseRecord } from "./modules/collection";
 import { Redacted } from "./modules/redacted";
 import { applyServiceStatuses } from "./modules/service-status";
 import { PREVIEW_TOKEN } from "./routes/site";
@@ -33,6 +34,29 @@ const SEEDED_EVENTS =
   SEEDED.records;
 
 describe("seed", () => {
+  it("seeds only records that fit their collection's fields", () => {
+    const refused = COLLECTIONS.flatMap((collection) =>
+      collection.records
+        .map((data) => ({
+          key: data[collection.record_key],
+          parsed: parseRecord(
+            collection,
+            String(data[collection.record_key]),
+            data,
+          ),
+        }))
+        .filter(({ parsed }) => !parsed.ok)
+        .map(({ key }) => `${collection.key}/${String(key)}`),
+    );
+    expect(refused).toEqual([]);
+  });
+
+  it("types public-holidays' date as a date (#3782)", () => {
+    expect(
+      PUBLIC_HOLIDAYS.schema.fields.find((field) => field.key === "date"),
+    ).toMatchObject({ type: "date" });
+  });
+
   it("names the snapshot by a hash of its content", () => {
     expect(ESTATE_SOURCE).toMatch(/^[0-9a-f]{40}$/);
   });
@@ -49,6 +73,30 @@ describe("seed", () => {
         )
         .map((page) => page.url),
     ).toEqual([]);
+  });
+
+  /** Landing renders these from its routes, so their body is empty. */
+  it.each([
+    ["/bank-holiday-calendar", "work-employment"],
+    [
+      "/health-and-emergency-services/find-an-emergency-shelter",
+      "health-and-emergency-services",
+    ],
+    [
+      "/health-and-emergency-services/water-outages",
+      "health-and-emergency-services",
+    ],
+  ])("files the feature route %s under %s", (url, category) => {
+    const page = ESTATE.pages.find((p) => p.url === url);
+    expect(page).toMatchObject({
+      category,
+      parent: null,
+      form_id: null,
+      visibility: "public",
+      content_slug: url.slice(1),
+      body_markdown: "",
+    });
+    expect(page?.frontmatter.keywords?.length).toBeGreaterThan(0);
   });
 
   it("loads every page and category, and a second run adds nothing", async () => {

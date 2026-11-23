@@ -58,6 +58,18 @@ describe('/services loader (#3244)', () => {
     ])
   })
 
+  it.each(['/\\outside.test/page', '/\t/outside.test/page'])(
+    'keeps a catalog link on-site for an unsafe stored URL %j',
+    async (url) => {
+      siteMocks.getApiV2CatalogEntries.mockResolvedValue([
+        entry(url, true, 'alpha'),
+      ])
+      expect(await load({ kind: 'found', categories: [] })).toEqual([
+        expect.objectContaining({ href: '/' }),
+      ])
+    },
+  )
+
   it('leaves the static list in place when api_v2 is off', async () => {
     expect(await load({ kind: 'disabled' })).toBeNull()
     expect(siteMocks.getApiV2CatalogEntries).not.toHaveBeenCalled()
@@ -93,7 +105,8 @@ describe('/services page (#3244)', () => {
         digital: true,
       },
     ])
-    expect(html).toContain('data-umami-event="service-x-new-digital"')
+    expect(html).toContain('data-umami-event="service-click"')
+    expect(html).toContain('data-umami-event-slug="x/new-digital"')
     expect(html).toContain('Digital service')
     expect(html.match(/<li/g)).toHaveLength(1)
   })

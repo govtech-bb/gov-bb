@@ -210,6 +210,27 @@ describe("current GovBB landing content", () => {
   });
 });
 
+test.each([
+  "/health-and-emergency-services/stormready",
+  "/money-financial-support/national-insurance-for-self-employed-workers",
+  "/money-financial-support/national-insurance-for-self-employed-workers/check-your-record",
+])("the imported %s opens visually and saves unchanged", (url) => {
+  const estate: { pages: { url: string; body_markdown: string }[] } = JSON.parse(
+    readFileSync(new URL("../../../api_v2/src/seed-data/estate.json", import.meta.url), "utf8"),
+  );
+
+  const page = estate.pages.find((page) => page.url === url);
+
+  if (!page) throw new Error(`Missing imported page: ${url}`);
+
+  checkPagePreservation(url, page.body_markdown, false);
+
+  if (url === "/health-and-emergency-services/stormready")
+    expect(
+      visual(page.body_markdown).root.children.filter((node) => node.type === "page-contact"),
+    ).toHaveLength(4);
+});
+
 test("muted text keeps whether it's a caption, and highlights their titles and plain text", () => {
   const source =
     '<muted caption>Small print</muted>\n\n<muted>Keep **trying**.</muted>\n\n<highlights>\n<highlight title="Water">Store 3 gallons<br>per person.</highlight>\n<highlight title="Documents">Keep your ID dry.</highlight>\n</highlights>\n';

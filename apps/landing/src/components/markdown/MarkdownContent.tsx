@@ -19,7 +19,7 @@ export function MarkdownBody({
   hast: Root
   availableForms?: ReadonlySet<string>
   hideStartLink?: boolean
-  /** The records the page's contact blocks and facts name; none shows nothing. */
+  /** Missing records hide contact tiles and leave facts with their fallback text. */
   pageRecords?: PageRecords
   formId?: string
 }) {

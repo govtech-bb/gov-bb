@@ -90,7 +90,12 @@ test.beforeAll(async () => {
       body: '<a href="/service/start">Apply online</a>',
     },
   })
-  env = { landing: url(landing), apiV2: 'unused', forms: formsUrl }
+  env = {
+    landing: url(landing),
+    apiV2: 'unused',
+    forms: formsUrl,
+    formsApi: 'unused',
+  }
 })
 
 test.afterAll(() => {

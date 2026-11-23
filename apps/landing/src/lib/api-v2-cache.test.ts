@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { MAX_ENTRIES, createApiV2Cache } from './api-v2-cache'
 import type { ApiV2Page, ApiV2Result } from './api-v2-page'
+import { createApiV2Breaker } from './api-v2-reader'
 
 const PAGE_CC = 'public, max-age=60, stale-while-revalidate=300'
 
@@ -16,7 +17,7 @@ function resolver(...results: Array<ApiV2Result>) {
 
 describe('createApiV2Cache', () => {
   it('serves a second read within max-age from the cache', async () => {
-    const cache = createApiV2Cache()
+    const cache = createApiV2Cache(createApiV2Breaker())
     const resolve = resolver(redirect('/a'))
     const first = await cache.get('/x', resolve, 0)
     const second = await cache.get('/x', resolve, 59_999)
@@ -25,7 +26,7 @@ describe('createApiV2Cache', () => {
   })
 
   it('serves the old result at once past max-age and revalidates in the background', async () => {
-    const cache = createApiV2Cache()
+    const cache = createApiV2Cache(createApiV2Breaker())
     const resolve = resolver(redirect('/old'), redirect('/new'))
     await cache.get('/x', resolve, 0)
     expect(await cache.get('/x', resolve, 60_000)).toMatchObject({
@@ -39,7 +40,7 @@ describe('createApiV2Cache', () => {
   })
 
   it('serves the old result past the SWR window when the refetch fails', async () => {
-    const cache = createApiV2Cache()
+    const cache = createApiV2Cache(createApiV2Breaker())
     const old = redirect('/old')
     const resolve = resolver(old, { kind: 'miss', reason: 'timeout' })
     await cache.get('/x', resolve, 0)
@@ -48,7 +49,7 @@ describe('createApiV2Cache', () => {
   })
 
   it('marks a kept page stale when a refetch fails or the breaker is open', async () => {
-    const cache = createApiV2Cache()
+    const cache = createApiV2Cache(createApiV2Breaker())
     const page = {
       kind: 'page',
       page: {} as ApiV2Page,
@@ -76,7 +77,7 @@ describe('createApiV2Cache', () => {
   })
 
   it('keeps the cached page when a refetch is a status failure (e.g. a 429)', async () => {
-    const cache = createApiV2Cache()
+    const cache = createApiV2Cache(createApiV2Breaker())
     const old = redirect('/old')
     const resolve = resolver(old, { kind: 'miss', reason: 'status' })
     await cache.get('/x', resolve, 0)
@@ -86,7 +87,7 @@ describe('createApiV2Cache', () => {
   })
 
   it('caches a 404 for its own max-age', async () => {
-    const cache = createApiV2Cache()
+    const cache = createApiV2Cache(createApiV2Breaker())
     const resolve = resolver({
       kind: 'miss',
       reason: 'not_found',
@@ -100,7 +101,7 @@ describe('createApiV2Cache', () => {
   })
 
   it('does not cache a 404 with no Cache-Control', async () => {
-    const cache = createApiV2Cache()
+    const cache = createApiV2Cache(createApiV2Breaker())
     const resolve = resolver({
       kind: 'miss',
       reason: 'not_found',
@@ -114,7 +115,7 @@ describe('createApiV2Cache', () => {
   it.each(['timeout', 'network', 'status', 'malformed', 'no_target'] as const)(
     'never caches a %s failure and returns it when nothing is cached',
     async (reason) => {
-      const cache = createApiV2Cache()
+      const cache = createApiV2Cache(createApiV2Breaker())
       const resolve = resolver({ kind: 'miss', reason })
       expect(await cache.get('/x', resolve, 0)).toEqual({
         kind: 'miss',
@@ -126,7 +127,7 @@ describe('createApiV2Cache', () => {
   )
 
   it('opens the breaker for 30 s after three failures in a row', async () => {
-    const cache = createApiV2Cache()
+    const cache = createApiV2Cache(createApiV2Breaker())
     const cached = redirect('/cached')
     await cache.get('/cached', resolver(cached), 0)
     const failing = resolver({ kind: 'miss', reason: 'network' })
@@ -147,7 +148,7 @@ describe('createApiV2Cache', () => {
 
   it('logs one api_v2_circuit_open error when the breaker trips, not per short-circuited read', async () => {
     const error = vi.spyOn(console, 'error').mockImplementation(() => {})
-    const cache = createApiV2Cache()
+    const cache = createApiV2Cache(createApiV2Breaker())
     const failing = resolver({ kind: 'miss', reason: 'network' })
     for (const url of ['/a', '/b', '/c']) await cache.get(url, failing, 0)
     for (const url of ['/d', '/e']) await cache.get(url, failing, 1)
@@ -160,7 +161,7 @@ describe('createApiV2Cache', () => {
   })
 
   it('resets the failure count on a success', async () => {
-    const cache = createApiV2Cache()
+    const cache = createApiV2Cache(createApiV2Breaker())
     const failing = resolver({ kind: 'miss', reason: 'network' })
     await cache.get('/a', failing, 0)
     await cache.get('/b', failing, 0)
@@ -176,7 +177,7 @@ describe('createApiV2Cache', () => {
   ] as const)(
     'caches a $reason miss without tripping the breaker',
     async (miss) => {
-      const cache = createApiV2Cache()
+      const cache = createApiV2Cache(createApiV2Breaker())
       const resolve = resolver(miss)
       for (const url of ['/a', '/b', '/c', '/d'])
         await cache.get(url, resolve, 0)
@@ -186,7 +187,7 @@ describe('createApiV2Cache', () => {
   )
 
   it('does not count a 4xx (api_v2 answering) toward the breaker', async () => {
-    const cache = createApiV2Cache()
+    const cache = createApiV2Cache(createApiV2Breaker())
     const resolve = resolver({
       kind: 'miss',
       reason: 'rejected',
@@ -197,7 +198,7 @@ describe('createApiV2Cache', () => {
   })
 
   it('ignores failures that land after the breaker opened', async () => {
-    const cache = createApiV2Cache()
+    const cache = createApiV2Cache(createApiV2Breaker())
     const failing = resolver({ kind: 'miss', reason: 'timeout' })
     await Promise.all(
       ['/a', '/b', '/c', '/d'].map((url) => cache.get(url, failing, 0)),
@@ -208,7 +209,7 @@ describe('createApiV2Cache', () => {
   })
 
   it('makes one call for concurrent reads of an uncached url', async () => {
-    const cache = createApiV2Cache()
+    const cache = createApiV2Cache(createApiV2Breaker())
     const resolve = resolver(redirect('/a'))
     await Promise.all(
       Array.from({ length: 10 }, () => cache.get('/x', resolve, 0)),
@@ -217,7 +218,7 @@ describe('createApiV2Cache', () => {
   })
 
   it('drops a cached entry when a refetch says no-store', async () => {
-    const cache = createApiV2Cache()
+    const cache = createApiV2Cache(createApiV2Breaker())
     const resolve = resolver(redirect('/a'), redirect('/b', 'no-store'))
     await cache.get('/x', resolve, 0)
     await cache.get('/x', resolve, 360_000)
@@ -226,7 +227,7 @@ describe('createApiV2Cache', () => {
   })
 
   it(`evicts the oldest entry past ${MAX_ENTRIES} urls`, async () => {
-    const cache = createApiV2Cache()
+    const cache = createApiV2Cache(createApiV2Breaker())
     const resolve = resolver(redirect('/a'))
     for (let i = 0; i <= MAX_ENTRIES; i++) await cache.get(`/${i}`, resolve, 0)
     await cache.get(`/${MAX_ENTRIES}`, resolve, 1)
@@ -236,7 +237,7 @@ describe('createApiV2Cache', () => {
   })
 
   it('evicts the oldest non-page before any page', async () => {
-    const cache = createApiV2Cache()
+    const cache = createApiV2Cache(createApiV2Breaker())
     const page = resolver({
       kind: 'page',
       page: {} as ApiV2Page,
@@ -258,7 +259,7 @@ describe('createApiV2Cache', () => {
 
   describe('expire', () => {
     it('makes the next read within max-age wait for a fresh copy', async () => {
-      const cache = createApiV2Cache()
+      const cache = createApiV2Cache(createApiV2Breaker())
       const resolve = resolver(redirect('/old'), redirect('/new'))
       await cache.get('/x', resolve, 0)
       cache.expire()
@@ -268,7 +269,7 @@ describe('createApiV2Cache', () => {
     })
 
     it('still serves the old copy when the fresh read fails', async () => {
-      const cache = createApiV2Cache()
+      const cache = createApiV2Cache(createApiV2Breaker())
       const old = redirect('/old')
       await cache.get('/x', resolver(old), 0)
       cache.expire()
@@ -277,7 +278,7 @@ describe('createApiV2Cache', () => {
     })
 
     it("doesn't keep an answer fetched before it as fresh", async () => {
-      const cache = createApiV2Cache()
+      const cache = createApiV2Cache(createApiV2Breaker())
       let finish!: (r: ApiV2Result) => void
       const slow = vi.fn(() => new Promise<ApiV2Result>((r) => (finish = r)))
       const first = cache.get('/x', slow, 0)

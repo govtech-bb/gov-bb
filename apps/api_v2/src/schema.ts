@@ -1,21 +1,18 @@
 /**
- * The Drizzle schema, matching migrations `001_init` to `018_snapshot_version`
- * applied in order, table for table and column for column. BetterAuth reads
- * and writes its four `auth_*` tables through these definitions; their
- * property keys are BetterAuth's field names.
+ * Run `pnpm db:generate` after schema changes. Triggers and functions need
+ * custom SQL migrations (`pnpm db:generate --custom`).
  *
- * The DDL in `migrations/` stays the source of truth and this file is the
- * typed view of it that queries are written against. `schema.test.ts` asserts
- * the two agree.
+ * Constraint names must match existing databases: adapters use them to
+ * identify violations. The `auth_*` property keys are BetterAuth's field names.
  *
  * `content_pages.body_markdown` is the page body, stored as written; the site
  * sanitises and renders it. The block document of
- * ADR 0074 returns as a later change.
+ * ADR 0123 returns as a later change.
  */
 
 import {
-  type AnyPgColumn,
   boolean,
+  bigint,
   check,
   customType,
   index,
@@ -24,6 +21,7 @@ import {
   foreignKey,
   jsonb,
   pgEnum,
+  pgSequence,
   pgTable,
   primaryKey,
   text,
@@ -58,6 +56,20 @@ export const changeAction = pgEnum("change_action", [
   "discarded",
 ]);
 
+/**
+ * Edit versions for pages, categories and collection records, from one
+ * sequence so no two rows share one. `version` crosses the wire as a number,
+ * hence the cap.
+ */
+export const contentEditVersionSeq = pgSequence("content_edit_version_seq", {
+  maxValue: Number.MAX_SAFE_INTEGER,
+});
+
+/** The order audit events were inserted in, whatever their timestamps say. */
+export const changeEventOrderSeq = pgSequence("change_event_order_seq", {
+  maxValue: Number.MAX_SAFE_INTEGER,
+});
+
 const timestamps = {
   createdAt: timestamp("created_at", { withTimezone: true, precision: 3 })
     .notNull()
@@ -67,21 +79,34 @@ const timestamps = {
     .defaultNow(),
 };
 
-export const categories = pgTable("categories", {
-  id: uuid("id")
-    .primaryKey()
-    .default(sql`gen_random_uuid()`),
-  slug: varchar("slug", { length: 100 }).notNull().unique(),
-  title: varchar("title", { length: 200 }).notNull(),
-  description: text("description"),
-  // A subcategory is a category with a parent.
-  parentId: uuid("parent_id").references((): AnyPgColumn => categories.id, {
-    onDelete: "restrict",
-  }),
-  // The order the site lists categories (and a category's subcategories) in.
-  position: integer("position").notNull().default(0),
-  ...timestamps,
-});
+export const categories = pgTable(
+  "categories",
+  {
+    id: uuid("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    slug: varchar("slug", { length: 100 })
+      .notNull()
+      .unique("categories_slug_key"),
+    title: varchar("title", { length: 200 }).notNull(),
+    description: text("description"),
+    // A subcategory is a category with a parent.
+    parentId: uuid("parent_id"),
+    // The order the site lists categories (and a category's subcategories) in.
+    position: integer("position").notNull().default(0),
+    version: bigint("version", { mode: "number" })
+      .notNull()
+      .default(sql`nextval('content_edit_version_seq')`),
+    ...timestamps,
+  },
+  (table) => [
+    foreignKey({
+      name: "categories_parent_id_fkey",
+      columns: [table.parentId],
+      foreignColumns: [table.id],
+    }).onDelete("restrict"),
+  ],
+);
 
 export const contentPages = pgTable(
   "content_pages",
@@ -90,18 +115,14 @@ export const contentPages = pgTable(
       .primaryKey()
       .default(sql`gen_random_uuid()`)
       .$type<PageId>(),
-    url: varchar("url", { length: 512 }).notNull().unique(),
+    url: varchar("url", { length: 512 })
+      .notNull()
+      .unique("content_pages_url_key"),
     slug: varchar("slug", { length: 200 }).notNull(),
     // Null for an uncategorised page, which lives at the root.
-    categoryId: uuid("category_id").references(() => categories.id, {
-      onDelete: "restrict",
-    }),
+    categoryId: uuid("category_id"),
     // Null for a page at the root of its category: what the category lists.
-    parentId: uuid("parent_id")
-      .references((): AnyPgColumn => contentPages.id, {
-        onDelete: "restrict",
-      })
-      .$type<PageId>(),
+    parentId: uuid("parent_id").$type<PageId>(),
     title: varchar("title", { length: 300 }).notNull(),
     description: text("description"),
     visibility: pageVisibility("visibility").notNull().default("draft"),
@@ -116,16 +137,31 @@ export const contentPages = pgTable(
       withTimezone: true,
       precision: 3,
     }),
-    // When the content last changed; set by a trigger (migration 016).
+    // When the content last changed; set by `touch_content_updated_at()`.
     contentUpdatedAt: timestamp("content_updated_at", {
       withTimezone: true,
       precision: 3,
     })
       .notNull()
       .defaultNow(),
+    version: bigint("version", { mode: "number" })
+      .notNull()
+      .default(sql`nextval('content_edit_version_seq')`),
     ...timestamps,
   },
   (table) => [
+    foreignKey({
+      name: "content_pages_category_id_fkey",
+      columns: [table.categoryId],
+      foreignColumns: [categories.id],
+    }).onDelete("restrict"),
+    // Checks the parent exists for an uncategorised page too, which the
+    // composite key below (MATCH SIMPLE) skips when `category_id` is null.
+    foreignKey({
+      name: "content_pages_parent_id_fkey",
+      columns: [table.parentId],
+      foreignColumns: [table.id],
+    }).onDelete("restrict"),
     unique("content_pages_id_category_id_key").on(table.id, table.categoryId),
     // A sub-page shares its parent's category, and follows it when it moves.
     foreignKey({
@@ -140,23 +176,43 @@ export const contentPages = pgTable(
   ],
 );
 
+/** Page redirect paths survive deletion and recreation of their destination pages. */
+export const pageRedirects = pgTable(
+  "page_redirects",
+  {
+    id: uuid("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    sourceUrl: varchar("source_url", { length: 512 }).notNull(),
+    destinationUrl: varchar("destination_url", { length: 512 }).notNull(),
+  },
+  (table) => [
+    unique("page_redirects_source_url_unique").on(table.sourceUrl),
+    check(
+      "page_redirects_not_self",
+      sql`${table.sourceUrl} <> ${table.destinationUrl}`,
+    ),
+    index("page_redirects_destination_url_idx").on(table.destinationUrl),
+  ],
+);
+
 /**
- * BetterAuth's tables, as `003_auth` creates them: quoted camelCase columns
- * and BetterAuth's own timestamp precision. `system` is the user with no
- * account.
+ * BetterAuth's tables, as BetterAuth 1.7.7 generates them: quoted camelCase
+ * columns, its own timestamp precision and `CURRENT_TIMESTAMP` defaults.
+ * `system` is the user with no account, which `0001_triggers` inserts.
  */
 export const authUser = pgTable("auth_user", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
-  email: text("email").notNull().unique(),
+  email: text("email").notNull().unique("auth_user_email_key"),
   emailVerified: boolean("emailVerified").notNull(),
   image: text("image"),
   createdAt: timestamp("createdAt", { withTimezone: true })
     .notNull()
-    .defaultNow(),
+    .default(sql`CURRENT_TIMESTAMP`),
   updatedAt: timestamp("updatedAt", { withTimezone: true })
     .notNull()
-    .defaultNow(),
+    .default(sql`CURRENT_TIMESTAMP`),
 });
 
 export const authSession = pgTable(
@@ -164,18 +220,23 @@ export const authSession = pgTable(
   {
     id: text("id").primaryKey(),
     expiresAt: timestamp("expiresAt", { withTimezone: true }).notNull(),
-    token: text("token").notNull().unique(),
+    token: text("token").notNull().unique("auth_session_token_key"),
     createdAt: timestamp("createdAt", { withTimezone: true })
       .notNull()
-      .defaultNow(),
+      .default(sql`CURRENT_TIMESTAMP`),
     updatedAt: timestamp("updatedAt", { withTimezone: true }).notNull(),
     ipAddress: text("ipAddress"),
     userAgent: text("userAgent"),
-    userId: text("userId")
-      .notNull()
-      .references(() => authUser.id, { onDelete: "cascade" }),
+    userId: text("userId").notNull(),
   },
-  (table) => [index("auth_session_userId_idx").on(table.userId)],
+  (table) => [
+    foreignKey({
+      name: "auth_session_userId_fkey",
+      columns: [table.userId],
+      foreignColumns: [authUser.id],
+    }).onDelete("cascade"),
+    index("auth_session_userId_idx").on(table.userId),
+  ],
 );
 
 export const authAccount = pgTable(
@@ -184,9 +245,7 @@ export const authAccount = pgTable(
     id: text("id").primaryKey(),
     accountId: text("accountId").notNull(),
     providerId: text("providerId").notNull(),
-    userId: text("userId")
-      .notNull()
-      .references(() => authUser.id, { onDelete: "cascade" }),
+    userId: text("userId").notNull(),
     accessToken: text("accessToken"),
     refreshToken: text("refreshToken"),
     idToken: text("idToken"),
@@ -200,10 +259,17 @@ export const authAccount = pgTable(
     password: text("password"),
     createdAt: timestamp("createdAt", { withTimezone: true })
       .notNull()
-      .defaultNow(),
+      .default(sql`CURRENT_TIMESTAMP`),
     updatedAt: timestamp("updatedAt", { withTimezone: true }).notNull(),
   },
-  (table) => [index("auth_account_userId_idx").on(table.userId)],
+  (table) => [
+    foreignKey({
+      name: "auth_account_userId_fkey",
+      columns: [table.userId],
+      foreignColumns: [authUser.id],
+    }).onDelete("cascade"),
+    index("auth_account_userId_idx").on(table.userId),
+  ],
 );
 
 export const authVerification = pgTable(
@@ -215,10 +281,10 @@ export const authVerification = pgTable(
     expiresAt: timestamp("expiresAt", { withTimezone: true }).notNull(),
     createdAt: timestamp("createdAt", { withTimezone: true })
       .notNull()
-      .defaultNow(),
+      .default(sql`CURRENT_TIMESTAMP`),
     updatedAt: timestamp("updatedAt", { withTimezone: true })
       .notNull()
-      .defaultNow(),
+      .default(sql`CURRENT_TIMESTAMP`),
   },
   (table) => [index("auth_verification_identifier_idx").on(table.identifier)],
 );
@@ -237,9 +303,7 @@ export const searchChunks = pgTable(
     id: uuid("id")
       .primaryKey()
       .default(sql`gen_random_uuid()`),
-    pageId: uuid("page_id")
-      .notNull()
-      .references(() => contentPages.id, { onDelete: "cascade" }),
+    pageId: uuid("page_id").notNull(),
     ordinal: integer("ordinal").notNull(),
     heading: text("heading"),
     body: text("body").notNull(),
@@ -248,6 +312,11 @@ export const searchChunks = pgTable(
     ),
   },
   (table) => [
+    foreignKey({
+      name: "search_chunks_page_id_fkey",
+      columns: [table.pageId],
+      foreignColumns: [contentPages.id],
+    }).onDelete("cascade"),
     unique("search_chunks_page_id_ordinal_key").on(table.pageId, table.ordinal),
     index("search_chunks_tsv_idx").using("gin", table.tsv),
   ],
@@ -255,10 +324,10 @@ export const searchChunks = pgTable(
 
 /**
  * Append-only, enforced by a trigger rather than by convention. The database
- * writes a row on every change to a content table (`record_change`, see
- * `007_change_history_trigger`), and on each review step of a page's revision
- * (`record_review`, see `013_review_history_trigger`), which is what a
- * live-update feed would read from. `actor` is the user whose transaction
+ * writes a row on every change to a content table (`record_change`) and on
+ * each review step of a page's revision (`record_review`), both in
+ * `migrations/0001_triggers.sql`, which is what a live-update feed would read
+ * from. `actor` is the user whose transaction
  * made the change, or `system`.
  *
  * The snapshot is the row that changed, so its shape follows the action, not
@@ -276,19 +345,29 @@ export const changeEvents = pgTable(
     entityKind: varchar("entity_kind", { length: 40 }).notNull(),
     entityId: text("entity_id").notNull(),
     versionNo: integer("version_no").notNull(),
+    // Ordered inserts under the content lock; null on events older than the column.
+    eventOrder: bigint("event_order", { mode: "number" }).default(
+      sql`nextval('change_event_order_seq')`,
+    ),
     action: changeAction("action").notNull(),
     snapshot: jsonb("snapshot").notNull(),
     // Null for history written before format labels were introduced.
     snapshotVersion: integer("snapshot_version").default(1),
-    actor: text("actor")
-      .notNull()
-      .default("system")
-      .references(() => authUser.id, { onDelete: "restrict" }),
+    actor: text("actor").notNull().default("system"),
     occurredAt: timestamp("occurred_at", { withTimezone: true, precision: 3 })
       .notNull()
       .defaultNow(),
+    // The version a restore brought back (ADR 0135); null on every other event.
+    restoredFrom: integer("restored_from"),
   },
   (table) => [
+    // A user with history cannot be deleted, so an event never loses its author.
+    foreignKey({
+      name: "change_events_actor_fkey",
+      columns: [table.actor],
+      foreignColumns: [authUser.id],
+    }).onDelete("restrict"),
+    uniqueIndex("change_events_event_order_unique").on(table.eventOrder),
     unique("change_events_entity_kind_entity_id_version_no_key").on(
       table.entityKind,
       table.entityId,
@@ -297,10 +376,23 @@ export const changeEvents = pgTable(
   ],
 );
 
-/**
- * An employee's roles, a row each. `user_id` references `auth_user`, which
- * BetterAuth owns, so the key is in the migration only.
- */
+/** Persistent audit counters survive deletion and recreation of their content entity. */
+export const changeEventCounters = pgTable(
+  "change_event_counters",
+  {
+    entityKind: varchar("entity_kind", { length: 40 }).notNull(),
+    entityId: text("entity_id").notNull(),
+    lastVersion: integer("last_version").notNull(),
+  },
+  (table) => [
+    primaryKey({
+      name: "change_event_counters_pkey",
+      columns: [table.entityKind, table.entityId],
+    }),
+  ],
+);
+
+/** An employee's roles, a row each; they go with their user. */
 export const userRoles = pgTable(
   "user_roles",
   {
@@ -315,7 +407,15 @@ export const userRoles = pgTable(
       .defaultNow(),
   },
   (table) => [
-    primaryKey({ columns: [table.userId, table.role] }),
+    primaryKey({
+      name: "user_roles_pkey",
+      columns: [table.userId, table.role],
+    }),
+    foreignKey({
+      name: "user_roles_user_id_fkey",
+      columns: [table.userId],
+      foreignColumns: [authUser.id],
+    }).onDelete("cascade"),
     check(
       "user_roles_role_check",
       sql`${table.role} in ('editor', 'approver', 'admin')`,
@@ -334,10 +434,7 @@ export const pageRevisions = pgTable(
     id: uuid("id")
       .primaryKey()
       .default(sql`gen_random_uuid()`),
-    pageId: uuid("page_id")
-      .notNull()
-      .references(() => contentPages.id, { onDelete: "cascade" })
-      .$type<PageId>(),
+    pageId: uuid("page_id").notNull().$type<PageId>(),
     status: text("status", { enum: REVISION_STATUSES })
       .notNull()
       .default("draft"),
@@ -348,7 +445,7 @@ export const pageRevisions = pgTable(
       precision: 3,
     }).notNull(),
     createdBy: text("created_by").notNull(),
-    // Everyone who saved to it; none of them may approve it (ADR 0079).
+    // Everyone who saved to it; none of them may approve it (ADR 0134).
     contributors: text("contributors").array().notNull(),
     submittedBy: text("submitted_by"),
     submittedAt: timestamp("submitted_at", {
@@ -363,6 +460,11 @@ export const pageRevisions = pgTable(
     ...timestamps,
   },
   (table) => [
+    foreignKey({
+      name: "page_revisions_page_id_fkey",
+      columns: [table.pageId],
+      foreignColumns: [contentPages.id],
+    }).onDelete("cascade"),
     check(
       "page_revisions_status_check",
       sql`${table.status} in ('draft', 'submitted', 'rejected', 'published', 'discarded')`,
@@ -381,7 +483,9 @@ export const dataCollections = pgTable("data_collections", {
   id: uuid("id")
     .primaryKey()
     .default(sql`gen_random_uuid()`),
-  key: varchar("key", { length: 100 }).notNull().unique(),
+  key: varchar("key", { length: 100 })
+    .notNull()
+    .unique("data_collections_key_key"),
   title: varchar("title", { length: 200 }).notNull(),
   // The field whose value names a record, as `collection_records.record_key`.
   recordKey: varchar("record_key", { length: 100 }).notNull(),
@@ -397,14 +501,20 @@ export const collectionRecords = pgTable(
     id: uuid("id")
       .primaryKey()
       .default(sql`gen_random_uuid()`),
-    collectionKey: varchar("collection_key", { length: 100 })
-      .notNull()
-      .references(() => dataCollections.key, { onDelete: "restrict" }),
+    collectionKey: varchar("collection_key", { length: 100 }).notNull(),
     recordKey: varchar("record_key", { length: 200 }).notNull(),
     data: jsonb("data").$type<RecordData>().notNull(),
+    version: bigint("version", { mode: "number" })
+      .notNull()
+      .default(sql`nextval('content_edit_version_seq')`),
     ...timestamps,
   },
   (table) => [
+    foreignKey({
+      name: "collection_records_collection_key_fkey",
+      columns: [table.collectionKey],
+      foreignColumns: [dataCollections.key],
+    }).onDelete("restrict"),
     unique("collection_records_collection_key_record_key_key").on(
       table.collectionKey,
       table.recordKey,

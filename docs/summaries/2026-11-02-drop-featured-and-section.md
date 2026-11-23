@@ -14,7 +14,7 @@ The estate has two frontmatter keys that nothing renders. `featured` is on 33 pa
 
 ## Why we did it that way
 
-- **Drop rather than keep them inert or render them.** Once the database is the source of truth (ADR 0077), a dead key imported into prod stays there for good, because there is no later clean-up import. Keeping them would also leave `featured: false` showing in the editor's YAML on 29 pages: a setting that does nothing. And `section` would drift the first time someone renames the category (#3107).
+- **Drop rather than keep them inert or render them.** Once the database is the source of truth (ADR 0129), a dead key imported into prod stays there for good, because there is no later clean-up import. Keeping them would also leave `featured: false` showing in the editor's YAML on 29 pages: a setting that does nothing. And `section` would drift the first time someone renames the category (#3107).
 - **Refuse, don't strip, in the editor.** An author who pastes old markdown that still has `featured:` is told to remove it. The editor doesn't quietly drop it, which keeps the editor's rule that unknown keys are refused.
 - **Static-schema lines included even though they are #3519's.** The plan left `frontmatter.ts` and `registry.ts` to the `main` PR. On `v2-rewrite` that would leave a schema for keys its own markdown no longer has, and the plan's grep check would fail. The deletion is identical to #3519's, so merging `main` into `v2-rewrite` later is clean.
 - **No migration.** The keys live in untyped `frontmatter` jsonb. `z.object` strips unknown keys on every write, and #3234's forced re-import replaces sandbox's 39 rows that still carry them.

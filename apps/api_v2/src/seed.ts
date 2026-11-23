@@ -12,7 +12,7 @@
  */
 
 import { count, eq, sql, TransactionRollbackError } from "drizzle-orm";
-import { writeSearchChunks } from "./adapters/postgres-pages";
+import { PostgresPages, writeSearchChunks } from "./adapters/postgres-pages";
 import type { Database } from "./db";
 import { chunkMarkdown } from "./modules/search-text";
 import {
@@ -93,6 +93,9 @@ export async function seed(
           ? new Date()
           : null;
       const inserted = await db.transaction(async (tx) => {
+        await tx.execute(
+          sql`select pg_advisory_xact_lock(hashtext('content_pages.parent_id'))`,
+        );
         const [row] = await tx
           .insert(contentPages)
           .values({
@@ -111,6 +114,13 @@ export async function seed(
           .onConflictDoNothing()
           .returning();
         if (row) {
+          const records = new PostgresPages(tx);
+          const reachable = await records.publicPagesInSubtree(row.id);
+          if (!reachable.ok) throw reachable.error;
+          for (const page of reachable.value) {
+            const cleared = await records.removePageRedirectAt(page.url);
+            if (!cleared.ok) throw cleared.error;
+          }
           await writeSearchChunks(
             tx,
             row.id,
@@ -154,7 +164,9 @@ export async function seed(
         .insert(collectionRecords)
         .values({
           collectionKey: collection.key,
-          recordKey: data[collection.record_key]!,
+          // SAFETY: a collection's record key field is a `slug` field, so its
+          // value is a string.
+          recordKey: data[collection.record_key] as string,
           data,
         })
         .onConflictDoNothing()
@@ -209,6 +221,9 @@ export async function importEstate(
   let report!: ImportReport;
   try {
     await db.transaction(async (tx) => {
+      await tx.execute(
+        sql`select pg_advisory_xact_lock(hashtext('content_pages.parent_id'))`,
+      );
       await tx.execute(
         sql`lock table content_pages in share row exclusive mode`,
       );

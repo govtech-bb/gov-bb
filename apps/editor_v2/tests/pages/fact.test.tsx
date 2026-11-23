@@ -2,12 +2,21 @@
 import { describe, expect, test } from "vitest";
 import { act } from "react";
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
-import { $getRoot, $isElementNode, $isParagraphNode, type LexicalEditor } from "lexical";
+import {
+  $createNodeSelection,
+  $getRoot,
+  $isElementNode,
+  $isParagraphNode,
+  $nodesOfType,
+  $setSelection,
+  KEY_ENTER_COMMAND,
+  type LexicalEditor,
+} from "lexical";
 import { createHeadlessEditor } from "../../src/editor/core/create-editor";
 import { $availableActions, executeAction } from "../../src/editor/core/actions";
 import { EditorComposer } from "../../src/editor/react/composer";
 import { PageEditor } from "../../src/pages/editor";
-import { $isPageFactNode } from "../../src/pages/modules/fact";
+import { $isPageFactNode, PageFactNode } from "../../src/pages/modules/fact";
 import {
   PageCollectionsProvider,
   type CollectionRecords,
@@ -107,6 +116,32 @@ describe("a fact's Markdown", () => {
     );
   });
 
+  test("saves and reopens an edited fallback as literal text", () => {
+    const editor = createHeadlessEditor(govbbPageEditor, visual(page(`Call ${FACT}.`)));
+    editor.update(() => $nodesOfType(PageFactNode)[0]!.setSettings({ fallback: "a]b *x*" }), {
+      discrete: true,
+    });
+    const saved = govbbPageCodec.encode(editor.getEditorState().toJSON());
+    const reopened = createHeadlessEditor(govbbPageEditor, visual(saved));
+
+    expect(
+      reopened.getEditorState().read(() => $nodesOfType(PageFactNode)[0]?.getSettings()),
+    ).toEqual({
+      collection: "contacts",
+      record: "barbados-drug-service",
+      field: "phone",
+      fallback: "a]b *x*",
+    });
+  });
+
+  test.each([
+    'collection=" contacts " record="x" field="phone"',
+    'collection="contacts" record=" x " field="phone"',
+    'collection="contacts" record="x" field=" phone "',
+  ])("keeps spaced fact attributes in Markdown source: %s", (attributes) => {
+    expect(govbbPageCodec.prepare(page(`Call :fact{${attributes}}.`)).mode).toBe("source");
+  });
+
   test("writes a fact still to be chosen with its record and field bare", () => {
     const editor = createHeadlessEditor(govbbPageEditor, visual(page("Call us.")));
     const targetKey = editor.getEditorState().read(() => $getRoot().getLastChild()!.getKey());
@@ -128,10 +163,14 @@ describe("a fact's Markdown", () => {
 });
 
 describe("inserting a fact", () => {
-  test("is offered from / at a caret in text, but not from the insert menu or in a link's text", () => {
+  test("is offered from / in Markdown text, but not beside a block, in a link or in plain-text highlights", () => {
     const editor = createHeadlessEditor(
       govbbPageEditor,
-      visual(page("Call us. See [the office](/office).")),
+      visual(
+        page(
+          'Call us. See [the office](/office).\n\n<highlights>\n<highlight title="Water">Store water.</highlight>\n</highlights>',
+        ),
+      ),
     );
 
     const offered = (text: string, mode?: string) => {
@@ -159,6 +198,7 @@ describe("inserting a fact", () => {
     expect(offered("Call us. See ")).toBe(true);
     expect(offered("Call us. See ", "below")).toBe(false);
     expect(offered("the office")).toBe(false);
+    expect(offered("Store water.")).toBe(false);
   });
 });
 
@@ -192,9 +232,8 @@ describe("a fact in the editor", () => {
     await mount(page(`Call ${FACT} today.`), { read: async () => CONTACTS });
 
     expect(chip().textContent).toBe("(246) 535-0021");
-    expect(chip().getAttribute("aria-label")).toBe(
-      "Telephone of Barbados Drug Service, from Contacts Change the fact.",
-    );
+    expect(chip().getAttribute("aria-label")).toBe("(246) 535-0021. Change the fact.");
+    expect(chip().title).toBe("Telephone of Barbados Drug Service, from Contacts");
   });
 
   test("warns, and shows its fallback, when the record has gone", async () => {
@@ -204,9 +243,26 @@ describe("a fact in the editor", () => {
 
     expect(chip().textContent).toBe("the Drug Service");
     expect(chip().className).toContain("bg-red-10");
-    expect(chip().getAttribute("aria-label")).toContain(
+    expect(chip().title).toContain(
       "There's no record “closed-office” in Contacts. The page shows “the Drug Service” instead.",
     );
+  });
+
+  test("Enter on the selected fact opens its picker", async () => {
+    await mount(page(`Call ${FACT}.`), { read: async () => CONTACTS });
+    await act(async () => {
+      editor.update(
+        () => {
+          const selection = $createNodeSelection();
+          selection.add($nodesOfType(PageFactNode)[0]!.getKey());
+          $setSelection(selection);
+          editor.dispatchCommand(KEY_ENTER_COMMAND, new KeyboardEvent("keydown", { key: "Enter" }));
+        },
+        { discrete: true },
+      );
+    });
+
+    expect(picker()).not.toBeNull();
   });
 
   test("opens its picker once inserted, to choose the record and detail", async () => {

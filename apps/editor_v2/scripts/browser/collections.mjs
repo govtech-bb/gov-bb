@@ -37,6 +37,7 @@ let records = [
       address: "6th Floor, Warrens Tower II, Warrens, St. Michael, and a long line to wrap",
     },
     updated_at: tick(),
+    version: clock,
   },
   {
     record_key: "nis-severance-payment-department",
@@ -46,6 +47,7 @@ let records = [
       phone: "+1 246-431-7400",
     },
     updated_at: tick(),
+    version: clock,
   },
 ];
 
@@ -64,7 +66,7 @@ const serveCollections = async (route) => {
     "access-control-allow-origin": request.headers().origin ?? "*",
     "access-control-allow-credentials": "true",
     "access-control-allow-methods": "GET, POST, PUT, DELETE, OPTIONS",
-    "access-control-allow-headers": "content-type, if-updated-at",
+    "access-control-allow-headers": "content-type",
     "cache-control": "no-store",
   };
 
@@ -75,22 +77,33 @@ const serveCollections = async (route) => {
   if (path === "/collections")
     return reply({ collections: [{ ...collection, record_count: records.length }] });
 
-  if (path === "/collections/contacts/records") return reply({ collection, records: sorted() });
+  if (path === "/collections/contacts/records")
+    return reply({
+      collection,
+      records: sorted().map(({ version: _version, ...record }) => record),
+    });
 
   const recordKey = path.replace("/collections/contacts/records/", "");
   const body = request.postData() ? request.postDataJSON() : undefined;
-  const ifUpdatedAt = request.headers()["if-updated-at"];
+
+  const expectedVersion =
+    request.method() === "DELETE"
+      ? Number(new URL(request.url()).searchParams.get("expected_version"))
+      : body?.expected_version;
+
   const target = records.find((record) => record.record_key === recordKey);
 
-  writes.push({ method: request.method(), recordKey, body, ifUpdatedAt });
+  if (request.method() === "GET")
+    return target ? reply({ collection, record: target }) : reply({ error: "not_found" }, 404);
+  writes.push({ method: request.method(), recordKey, body, expectedVersion });
 
   if (request.method() === "POST" && target)
     return reply({ error: "record_exists", message: "Taken." }, 409);
 
   if (request.method() !== "POST" && !target) return reply({ error: "not_found" }, 404);
 
-  if (target && ifUpdatedAt && ifUpdatedAt !== target.updated_at)
-    return reply({ error: "conflict", message: "Changed." }, 409);
+  if (request.method() !== "POST" && expectedVersion !== target?.version)
+    return reply({ error: "version_conflict", message: "Changed." }, 409);
 
   if (request.method() === "DELETE") {
     records = records.filter((record) => record !== target);
@@ -114,11 +127,15 @@ const serveCollections = async (route) => {
     record_key: recordKey,
     data: { ...body.data, key: recordKey },
     updated_at: tick(),
+    version: clock,
   };
 
   records = [...records.filter((record) => record !== target), saved];
 
-  return reply(saved, request.method() === "POST" ? 201 : 200);
+  return reply(
+    request.method() === "POST" ? saved : { collection, record: saved },
+    request.method() === "POST" ? 201 : 200,
+  );
 };
 
 const browser = await chromium.launch();
@@ -236,22 +253,25 @@ try {
   await dialog.getByLabel("Name (optional)").fill("Drug Service (mine)");
   records = records.map((record) =>
     record.record_key === "barbados-drug-service"
-      ? { ...record, data: { ...record.data, name: "Drug Service (theirs)" }, updated_at: tick() }
+      ? {
+          ...record,
+          data: { ...record.data, name: "Drug Service (theirs)" },
+          updated_at: tick(),
+          version: clock,
+        }
       : record,
   );
   await dialog.getByRole("button", { name: "Save changes" }).click();
-  await dialog
-    .getByText("A newer version of this record has been saved since you opened it.")
-    .waitFor();
+  await dialog.getByText("The record changed since you opened it.").waitFor();
 
-  for (const name of ["Keep my version", "Load saved version", "Download my version"])
+  for (const name of ["Copy my version", "Discard my changes and reload", "Download my version"])
     await dialog.getByRole("button", { name }).waitFor();
   await page.screenshot({ path: "/tmp/c3184-collections-stale.png" });
 
-  const keep = dialog.getByRole("button", { name: "Keep my version" });
+  const keep = dialog.getByRole("button", { name: "Discard my changes and reload" });
 
   await tabTo(keep);
-  assert.equal(await focusShown(), true, "Keep my version shows its focus");
+  assert.equal(await focusShown(), true, "Discard and reload shows its focus");
   await page.keyboard.press("Enter");
   // Its notice goes, and the focus moves into the form rather than to the page behind
   await page.waitForFunction(() =>
@@ -262,7 +282,7 @@ try {
   await dialog.waitFor({ state: "detached" });
   assert.equal(
     records.find((r) => r.record_key === "barbados-drug-service").data.name,
-    "Drug Service (mine)",
+    "Drug Service (theirs)",
   );
 
   // Add record, from the keyboard

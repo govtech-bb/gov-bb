@@ -2,12 +2,12 @@
 
 ## Context
 
-`apps/api_v2/README.md` "Importing the estate" and ADR 0077 still described a one-off sandbox import. They told the operator to merge `main` into `v2-rewrite`, named a `landing_v2` app that's gone, and cited an `import:<source>` history actor that migration `007` replaced. The sandbox re-import (#3234) was about to follow that stale text.
+`apps/api_v2/README.md` "Importing the estate" and ADR 0129 still described a one-off sandbox import. They told the operator to merge `main` into `v2-rewrite`, named a `landing_v2` app that's gone, and cited an `import:<source>` history actor that migration `007` replaced. The sandbox re-import (#3234) was about to follow that stale text.
 
 ## What we did
 
 - Rewrote the README section as the runbook for sandbox (#3234), staging (#3229) and prod (#3230).
-- Amended ADR 0077 in place: status line, two Consequences bullets, and a new Amendment section.
+- Amended ADR 0129 in place: status line, two Consequences bullets, and a new Amendment section.
 - Brought #3234's body in line with the new runbook and commented on #3235 that its `--` invocation won't run.
 
 ## Why we did it that way

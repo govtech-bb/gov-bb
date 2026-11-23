@@ -1,6 +1,14 @@
 import { expect, it } from "vitest";
 import { recordReferences } from "@govtech-bb/govbbmarkd";
 
+it("finds a contact-only record between horizontal rules in a page body", () => {
+  expect(
+    recordReferences(
+      '---\n\n::contact{collection="contacts" record="police-emergency" fields="phone"}\n\n---',
+    ),
+  ).toEqual([{ collection: "contacts", record: "police-emergency" }]);
+});
+
 it("lists the records a page's facts and contact blocks name, once each, leaving out one still to be chosen", () => {
   expect(
     recordReferences(

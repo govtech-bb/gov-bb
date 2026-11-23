@@ -5,6 +5,7 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { processMarkdown } from '../../utils/markdown/processor'
 import { bakeStartLinkFormId } from '../../utils/markdown/plugins'
 import { MarkdownBody } from './MarkdownContent'
+import { resolvePageRecords } from '../../lib/api-v2-collections'
 import type { PageRecords } from '../../lib/api-v2-collections'
 
 // StartLink reads useLocation for analytics; stub it so form CTAs render
@@ -142,6 +143,19 @@ describe('MarkdownBody', () => {
     expect(html).toContain('/forms/birth')
   })
 
+  // #3502: Umami cuts event names off at 50 characters, and `<formId>-start`
+  // ran to 52 for some live forms. The form id travels as event data instead.
+  it('tags the Start button with one event name and the form id as data', async () => {
+    const formId = 'request-a-presidential-visit-for-a-centenarian'
+    const html = await renderBody('<a data-start-link>Start now</a>', {
+      formId,
+      forms: new Set([formId]),
+    })
+    expect(html).toContain('data-umami-event="start-click"')
+    expect(html).toContain(`data-umami-event-form-id="${formId}"`)
+    expect(html).toContain('data-umami-event-from="/test"')
+  })
+
   it('suppresses the Start button when the form is not available', async () => {
     const html = await renderBody('<a data-start-link>Start now</a>', {
       formId: 'birth',
@@ -203,7 +217,7 @@ describe('::contact (a record’s contact details, #3185)', () => {
     // The contact grid and its teal tile
     expect(html).toContain('class="grid grid-cols-1 gap-s md:grid-cols-3"')
     expect(html).toContain(
-      '<a href="tel:2465350021" class="flex flex-col gap-xxs border-teal-80 border-l-4 bg-teal-10 p-s text-current no-underline',
+      '<a href="tel:+12465350021" class="flex flex-col gap-xxs border-teal-80 border-l-4 bg-teal-10 p-s text-current no-underline',
     )
     expect(html).toContain('<span class="font-bold">Telephone</span>')
     expect(html).toContain('href="mailto:drugservice@health.gov.bb"')
@@ -221,6 +235,56 @@ describe('::contact (a record’s contact details, #3185)', () => {
     expect(await render({ contacts: { ...contacts, records: {} } })).toBe(
       '<div class="govbb-prose"></div>',
     )
+  })
+
+  it('still renders when its collection holds a number, a yes or no, a date and a list (#3782)', async () => {
+    // Read the way the page's loader reads it, so a value the reader refused would leave the block empty
+    const body = {
+      collection: {
+        key: 'contacts',
+        title: 'Contacts',
+        record_key: 'key',
+        schema: {
+          fields: [
+            { key: 'key', label: 'Key', type: 'slug' },
+            { key: 'phone', label: 'Telephone', type: 'text' },
+            { key: 'hours', label: 'Opening hours', type: 'list' },
+            { key: 'email', label: 'Walk-ins', type: 'boolean' },
+            { key: 'website', label: 'Since', type: 'date' },
+            { key: 'capacity', label: 'Capacity', type: 'number' },
+          ],
+        },
+        schema_version: 1,
+        updated_at: '2026-10-01T00:00:00.000Z',
+      },
+      records: [
+        {
+          record_key: 'barbados-drug-service',
+          data: {
+            key: 'barbados-drug-service',
+            phone: '(246) 535-0021',
+            hours: ['Mon to Fri 8:30am to 4:30pm', 'Sat 9am to 12pm'],
+            email: false,
+            website: '2026-08-01',
+            capacity: 0.1725,
+          },
+          updated_at: '2026-10-01T00:00:00.000Z',
+        },
+      ],
+    }
+    const records = await resolvePageRecords(
+      'http://api.example',
+      [{ collection: 'contacts', record: 'barbados-drug-service' }],
+      async () => Response.json(body),
+    )
+    const html = await render(records)
+    expect(html).toContain('href="tel:+12465350021"')
+    expect(html).toContain('Mon to Fri 8:30am to 4:30pm, Sat 9am to 12pm')
+    // A yes or no shows as a word, never as a link, whatever its field is called
+    expect(html).toContain('<span class="font-bold">Walk-ins</span>')
+    expect(html).toContain('>No</span>')
+    expect(html).not.toContain('mailto:')
+    expect(html).toContain('2026-08-01')
   })
 
   it('refuses an attribute it doesn’t know', async () => {
@@ -262,7 +326,7 @@ describe(':fact (one value from a record, #3590)', () => {
     const html = await render(
       'Call :fact{collection="contacts" record="barbados-drug-service" field="phone"} today. Open :fact{collection="contacts" record="barbados-drug-service" field="hours"}.',
     )
-    expect(html).toContain('href="tel:2465350021"')
+    expect(html).toContain('href="tel:+12465350021"')
     expect(html).toContain('>(246) 535-0021</a> today.')
     expect(html).not.toContain('target="_blank"')
     expect(html).toContain('Open 8:30am to 4:30pm.')

@@ -68,7 +68,7 @@ const serveCategories = async (route) => {
     "access-control-allow-origin": request.headers().origin ?? "*",
     "access-control-allow-credentials": "true",
     "access-control-allow-methods": "GET, POST, PUT, DELETE, OPTIONS",
-    "access-control-allow-headers": "content-type, if-updated-at",
+    "access-control-allow-headers": "content-type",
     "cache-control": "no-store",
   };
 
@@ -125,11 +125,11 @@ const serveCategories = async (route) => {
     const current =
       siblings.length === body.expected.length &&
       body.expected.every(
-        (expected) =>
-          siblings.find((row) => row.id === expected.id)?.updated_at === expected.updated_at,
+        (expected) => siblings.find((row) => row.id === expected.id)?.version === expected.version,
       );
 
-    if (!current) return reply({ error: "conflict", message: "These categories changed." }, 409);
+    if (!current)
+      return reply({ error: "version_conflict", message: "These categories changed." }, 409);
     const stamp = tick();
 
     stored = stored.map((row) => {
@@ -137,7 +137,7 @@ const serveCategories = async (route) => {
 
       return position === -1 || position === row.position
         ? row
-        : { ...row, position, updated_at: stamp };
+        : { ...row, position, version: clock, updated_at: stamp };
     });
 
     return reply({ categories: ordered().filter((row) => row.parent_id === body.parent_id) });
@@ -147,8 +147,12 @@ const serveCategories = async (route) => {
 
   if (!target) return reply({ error: "not_found", message: "No category." }, 404);
 
-  if (request.headers()["if-updated-at"] !== target.updated_at)
-    return reply({ error: "conflict", message: "These categories changed." }, 409);
+  if (
+    (request.method() === "DELETE"
+      ? Number(new URL(request.url()).searchParams.get("expected_version"))
+      : body.expected_version) !== target.version
+  )
+    return reply({ error: "version_conflict", message: "These categories changed." }, 409);
 
   if (request.method() === "DELETE") {
     stored = stored.filter((row) => row !== target);
@@ -156,7 +160,13 @@ const serveCategories = async (route) => {
     return route.fulfill({ status: 204, headers });
   }
 
-  const saved = { ...target, ...body, title: body.title.trim(), updated_at: tick() };
+  const saved = {
+    ...target,
+    ...body,
+    title: body.title.trim(),
+    updated_at: tick(),
+    version: clock,
+  };
 
   stored = stored.map((row) => (row === target ? saved : row));
 

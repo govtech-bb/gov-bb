@@ -1,14 +1,16 @@
-import { AnyFieldApi } from "@tanstack/react-form";
+import type { AnyFieldApi } from "@tanstack/react-form";
 import type { ReactNode } from "react";
-import {
+import type {
   ClientPrimitive,
   FieldValidationProperties,
   UploadedFile,
 } from "@forms/types";
-import { RequiredState, checkConditionalOn } from "@forms/lib";
-import { FieldArrayBehaviour } from "@govtech-bb/form-types";
+import type { RequiredState } from "@forms/lib";
+import { checkConditionalOn } from "@forms/lib";
+import type { FieldArrayBehaviour } from "@govtech-bb/form-types";
 import FileUpload from "../file-upload";
-import { buildFieldRenderContext, InsetFieldEntry } from "./render-context";
+import type { InsetFieldEntry } from "./render-context";
+import { buildFieldRenderContext } from "./render-context";
 import { renderDateField } from "./date-field";
 import { renderTextField } from "./text-field";
 import { renderTextareaField } from "./textarea-field";
@@ -148,6 +150,10 @@ export default function FieldRenderer({
                   sharedProps={ctx.sharedProps}
                   value={f.state.value as UploadedFile[] | null | undefined}
                   onFileChange={(files) => ctx.commitChange(files)}
+                  // Same re-judge as commitChange: only once an error shows.
+                  onUploadsChange={() => {
+                    if (!f.state.meta.isValid) void f.validate("submit");
+                  }}
                   errorMessage={ctx.errorMessage}
                   errorId={ctx.errorId}
                   formId={formId}

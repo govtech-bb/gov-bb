@@ -10,7 +10,7 @@ Editors could create indistinguishable forms: `formId` had only client-side
 ## What we did
 
 - Added app-level uniqueness checks to the builder API create/rename paths and
-  a UI mirror for fast feedback. See [ADR 0025](../decisions/0025-form-uniqueness-is-enforced-app-level-not-via-db-constraint.md).
+  a UI mirror for fast feedback. See [ADR 0045](../decisions/0045-form-uniqueness-is-enforced-app-level-not-via-db-constraint.md).
 - API (`apps/form_builder_api/src/routes/`): new `form-uniqueness.ts`
   (`latestVersionPerFormSql`, `normalizeTitle`, pure `findTitleCollision`);
   extracted `createFormHandler`/`updateFormHandler` from inline router callbacks
@@ -24,7 +24,7 @@ Editors could create indistinguishable forms: `formId` had only client-side
 
 - **App-level, not a DB constraint** — versions share a title/formId, so a
   `UNIQUE(title)` constraint would break versioning. This is the load-bearing
-  decision; recorded in ADR 0025 so it isn't "fixed" with a migration later.
+  decision; recorded in ADR 0045 so it isn't "fixed" with a migration later.
 - **`isNew` flag, decided with the user.** The plan assumed the API could tell a
   create from a new version, but it can't: both `POST` with the same payload
   shape, and a version *bump* on a loaded form already goes through `POST` (only

@@ -1,32 +1,16 @@
 {
   "name": "@govtech-bb/editor-v2",
-  "type": "module",
+  "version": "0.0.0",
   "private": true,
-  "devDependencies": {
-    "@oxlint/plugins": "1.87.0",
-    "@phosphor-icons/core": "2.1.1",
-    "@types/react": "^19.3.0",
-    "@types/react-dom": "^19.3.0",
-    "openapi-typescript": "7.13.0",
-    "oxfmt": "0.72.0",
-    "oxlint": "1.87.0",
-    "tailwindcss": "^4.3.3",
-    "typescript": "catalog:",
-    "@types/mdast": "4.0.4",
-    "@types/node": "^24.0.0",
-    "@vitejs/plugin-react": "^6.0.2",
-    "@tailwindcss/vite": "4.3.3",
-    "vite": "catalog:",
-    "vitest": "^4.1.11"
-  },
+  "type": "module",
   "scripts": {
     "dev": "vite dev",
     "test": "vitest run",
-    "lint": "oxlint vite.config.ts vitest.config.ts src tests scripts docs/examples",
+    "test:oxlint": "oxlint vite.config.ts vitest.config.ts src tests scripts docs/examples",
     "lint:fix": "oxlint --fix vite.config.ts vitest.config.ts src tests scripts docs/examples",
     "format": "oxfmt --write vite.config.ts vitest.config.ts \"src/**/*.{ts,tsx}\" \"tests/**/*.{ts,tsx}\" \"scripts/**/*.{ts,mjs}\" \"docs/examples/**/*.{ts,tsx}\"",
     "format:check": "oxfmt --check vite.config.ts vitest.config.ts \"src/**/*.{ts,tsx}\" \"tests/**/*.{ts,tsx}\" \"scripts/**/*.{ts,mjs}\" \"docs/examples/**/*.{ts,tsx}\"",
-    "typecheck": "tsc --noEmit",
+    "test:types": "tsc --noEmit",
     "build": "vite build",
     "check:boundaries": "node scripts/check-boundaries.ts",
     "check:coverage": "vitest run scripts/check-native-form-coverage.test.ts tests/forms/native-capability-fixtures.test.ts",
@@ -34,8 +18,8 @@
   },
   "dependencies": {
     "@base-ui/react": "^1.8.0",
-    "@govtech-bb/govbbmarkd": "workspace:*",
     "@govtech-bb/frontend": "1.0.0-alpha.29",
+    "@govtech-bb/govbbmarkd": "workspace:*",
     "@govtech-bb/react": "1.0.0-alpha.29",
     "@lexical/clipboard": "0.51.0",
     "@lexical/extension": "0.51.0",
@@ -45,6 +29,10 @@
     "@lexical/rich-text": "^0.51.0",
     "@lexical/table": "0.51.0",
     "@phosphor-icons/react": "2.1.10",
+    "@tanstack/react-query": "catalog:",
+    "@tanstack/react-router": "1.170.41",
+    "@tanstack/react-start": "1.168.60",
+    "@tanstack/react-table": "9.2.4",
     "better-auth": "1.7.7",
     "cn": "^0.4.0",
     "date-fns": "^4",
@@ -53,13 +41,27 @@
     "react-day-picker": "^9.14.0",
     "react-dom": "^19.3.0",
     "selecto": "^1.26.3",
-    "yaml": "^2.9.1",
-    "@tanstack/react-start": "1.168.60",
-    "@tanstack/react-router": "1.170.41",
-    "@tanstack/react-query": "catalog:",
-    "@tanstack/react-table": "9.2.4"
+    "yaml": "^2.9.1"
   },
-  "version": "0.0.0",
+  "devDependencies": {
+    "@oxlint/plugins": "1.87.0",
+    "@phosphor-icons/core": "2.1.1",
+    "@tailwindcss/vite": "4.3.3",
+    "@testing-library/dom": "^10.4.1",
+    "@testing-library/react": "^16.3.2",
+    "@types/mdast": "4.0.4",
+    "@types/node": "^24.0.0",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.0.2",
+    "openapi-typescript": "7.13.0",
+    "oxfmt": "0.72.0",
+    "oxlint": "1.87.0",
+    "tailwindcss": "^4.3.3",
+    "typescript": "catalog:",
+    "vite": "catalog:",
+    "vitest": "^4.1.11"
+  },
   "nx": {
     "name": "editor_v2",
     "projectType": "application",
@@ -78,7 +80,9 @@
         "inputs": [
           "production",
           "^production",
-          { "env": "VITE_API_ORIGIN" }
+          {
+            "env": "VITE_API_ORIGIN"
+          }
         ],
         "outputs": [
           "{projectRoot}/dist"
@@ -93,7 +97,7 @@
           "{workspaceRoot}/apps/api_v2/src/seed-data/estate.json"
         ]
       },
-      "typecheck": {
+      "test:types": {
         "cache": true
       },
       "format:check": {

@@ -20,7 +20,7 @@ import type { Mock } from "vitest";
  */
 
 import type { ReactNode } from "react";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useStore } from "@tanstack/react-form";
 import { useStepGuard } from "../hooks/use-step-guard";
@@ -56,7 +56,7 @@ function serializeInsetEntry(entry: MockInsetEntry) {
 vi.mock("./field-renderer", () => ({
   __esModule: true,
   default: (props: {
-    field: { id: string };
+    field: { id: string; label?: string; hint?: string };
     children?: ReactNode;
     formVersion?: string;
     insetFieldsByOption?: Map<string, MockInsetEntry[]>;
@@ -64,6 +64,8 @@ vi.mock("./field-renderer", () => ({
     <div
       data-testid="field-renderer"
       data-field-id={props.field.id}
+      data-label={props.field.label}
+      data-hint={props.field.hint}
       data-form-version={props.formVersion}
       data-inset-options={
         props.insetFieldsByOption
@@ -98,9 +100,10 @@ vi.mock("./review", () => ({
 
 vi.mock("./submission-confirmation", () => ({
   __esModule: true,
-  default: (props: { markdownContent?: string }) => (
+  default: (props: { markdownContent?: string; onPrint?: () => void }) => (
     <div data-testid="submission-confirmation">
       <span data-testid="confirmation-markdown">{props.markdownContent}</span>
+      <button onClick={props.onPrint}>Print</button>
     </div>
   ),
 }));
@@ -523,6 +526,28 @@ describe("FormRenderer", () => {
     ).toBe(false);
   });
 
+  it("emits form-print when the confirmation is printed (#3514)", () => {
+    const step = makeStep("submission-confirmation");
+    render(
+      <FormRenderer
+        form={mockForm}
+        formMeta={makeMeta() as any}
+        stepId="submission-confirmation"
+        visibleSteps={[step]}
+        repeatableStepSettingsRef={mockRepeatableStepSettingsRef as any}
+        submissionState={mockSubmissionState as any}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Print" }));
+
+    expect(
+      mockTrackEvent.mock.calls.filter((c) => c[0] === "form-print"),
+    ).toEqual([
+      ["form-print", { form: "test-form", category: expect.any(String) }],
+    ]);
+  });
+
   it("also emits payment-returned when returning from EzPay (#1955)", () => {
     const step = makeStep("submission-confirmation");
     render(
@@ -645,6 +670,111 @@ describe("FormRenderer", () => {
       />,
     );
     expect(mockNavigateToStep).not.toHaveBeenCalledWith("check-your-answers");
+  });
+
+  describe("conditionalHint (#3637)", () => {
+    const JOINT_HINT =
+      "Include land or property you own on your own or with someone else.";
+    const conditionalHint = [
+      {
+        targetStepId: "applying-with",
+        targetFieldId: "applying-with",
+        operator: "equal" as const,
+        value: "with-another-person",
+        hint: JOINT_HINT,
+      },
+    ];
+    // The watched answer lives under its composite `stepId_fieldId` key.
+    let values: Record<string, unknown> = {};
+    beforeEach(() => {
+      values = {};
+      mockUseStore.mockImplementation(
+        (_store: unknown, selector: (state: any) => any) =>
+          selector({ values, fieldMeta: {} }),
+      );
+    });
+
+    function renderHintStep(field: Record<string, unknown>) {
+      const step = makeStep("property", [
+        { ...makePlainField("property_land", "land", "property"), ...field },
+      ]);
+      const props = {
+        form: mockForm,
+        formMeta: makeMeta() as any,
+        stepId: "property",
+        visibleSteps: [step],
+        repeatableStepSettingsRef: mockRepeatableStepSettingsRef as any,
+        submissionState: mockSubmissionState as any,
+      };
+      const view = render(<FormRenderer {...props} />);
+      return {
+        renderer: () => screen.getByTestId("field-renderer"),
+        rerender: () => view.rerender(<FormRenderer {...props} />),
+      };
+    }
+
+    it("renders the conditional hint when its condition matches", () => {
+      values = { "applying-with_applying-with": "with-another-person" };
+      const { renderer } = renderHintStep({ conditionalHint });
+      expect(renderer()).toHaveAttribute("data-hint", JOINT_HINT);
+    });
+
+    it("changes the hint when the watched answer changes", () => {
+      values = { "applying-with_applying-with": "on-my-own" };
+      const { renderer, rerender } = renderHintStep({
+        hint: "Static hint",
+        conditionalHint,
+      });
+      expect(renderer()).toHaveAttribute("data-hint", "Static hint");
+
+      values = { "applying-with_applying-with": "with-another-person" };
+      rerender();
+      expect(renderer()).toHaveAttribute("data-hint", JOINT_HINT);
+    });
+
+    it("falls back to the static hint when no conditionalHint matches", () => {
+      values = { "applying-with_applying-with": "on-my-own" };
+      const { renderer } = renderHintStep({
+        hint: "Static hint",
+        conditionalHint,
+      });
+      expect(renderer()).toHaveAttribute("data-hint", "Static hint");
+    });
+
+    it("removes the hint when the watched answer stops matching and there is no static hint", () => {
+      values = { "applying-with_applying-with": "with-another-person" };
+      const { renderer, rerender } = renderHintStep({ conditionalHint });
+      expect(renderer()).toHaveAttribute("data-hint", JOINT_HINT);
+
+      values = { "applying-with_applying-with": "on-my-own" };
+      rerender();
+      expect(renderer()).not.toHaveAttribute("data-hint");
+    });
+
+    it("resolves a field's conditionalLabel and conditionalHint together", () => {
+      values = { "applying-with_applying-with": "with-another-person" };
+      const { renderer } = renderHintStep({
+        label: "Land you own",
+        conditionalLabel: [
+          {
+            targetStepId: "applying-with",
+            targetFieldId: "applying-with",
+            operator: "equal" as const,
+            value: "with-another-person",
+            label: "Land you own jointly",
+          },
+        ],
+        conditionalHint,
+      });
+      expect(renderer()).toHaveAttribute("data-label", "Land you own jointly");
+      expect(renderer()).toHaveAttribute("data-hint", JOINT_HINT);
+    });
+
+    it("renders no hint when there is no static hint and no match", () => {
+      values = { "applying-with_applying-with": "on-my-own" };
+      const { renderer } = renderHintStep({ conditionalHint });
+      expect(renderer()).not.toHaveAttribute("data-hint");
+    });
   });
 
   it("renders a FieldRenderer for each plain field in the step", () => {

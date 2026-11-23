@@ -2,7 +2,7 @@
 
 How to provision, rotate, and diagnose the per-MDA case-management (CMS) webhook
 destinations (#1920/#2020). For **why** it works this way, see the decision
-record: [`docs/decisions/0064-per-mda-webhook-destinations.md`](decisions/0064-per-mda-webhook-destinations.md).
+record: [`docs/decisions/0112-per-mda-webhook-destinations.md`](decisions/0112-per-mda-webhook-destinations.md).
 
 ## Model in one paragraph
 
@@ -112,8 +112,8 @@ overrides the resolved catchment inbox with `SES_DEFAULT_RECIPIENT`
   the test inbox. Check this before loading the real addresses, not after.
 
 **The form is `visibility: "draft"`.** Staging therefore needs
-`ALLOW_PREVIEW_SUBMISSIONS` to accept a submission (ADR 0065); without it a
-submission 404s, then hits the ADR 0043 "unpublished preview cannot be submitted"
+`ALLOW_PREVIEW_SUBMISSIONS` to accept a submission (ADR 0113); without it a
+submission 404s, then hits the ADR 0075 "unpublished preview cannot be submitted"
 400. Do **not** flip the recipe to `public` as a workaround — the post-deploy
 smoke matrix only lists `visibility: public` forms, and a non-public form in that
 matrix 404s and breaks the deploy gate (#1842).
@@ -176,7 +176,7 @@ secret values.)
 
 ## Related
 
-- Decision record: `docs/decisions/0064-per-mda-webhook-destinations.md`
+- Decision record: `docs/decisions/0112-per-mda-webhook-destinations.md`
 - Processor: `apps/api/src/forms/submissions/processors/webhook.processor.ts`
 - Resolver: `apps/api/src/forms/webhook-destinations/`
 - Recipe lint (CI gate): `scripts/webhook-recipe-guards.ts` (via `pnpm validate-recipes`)

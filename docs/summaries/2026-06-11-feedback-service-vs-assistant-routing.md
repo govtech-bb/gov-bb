@@ -25,7 +25,7 @@ payment/upload service uses.
 
 ## What we did
 
-Extended the ADR 0048 deterministic funnel with a feedback disambiguation:
+Extended the ADR 0083 deterministic funnel with a feedback disambiguation:
 
 - **Detection** — `guards.looksLikeFeedbackIntent` recognises an offer to *give*
   feedback. It is deliberately conservative and distinguishes giving from
@@ -67,7 +67,7 @@ Extended the ADR 0048 deterministic funnel with a feedback disambiguation:
 - **A prose handoff, not a `FormResolution`.** The general feedback form lives in
   the landing app, not as a forms-API recipe, so it can't ride the recipe-backed
   handoff path; it's a prompt-level link disclosure instead.
-- **Summary, not an ADR.** This extends ADR 0048's funnel rather than setting a
+- **Summary, not an ADR.** This extends ADR 0083's funnel rather than setting a
   new principle, matching how the sibling feedback decisions (banner-pin,
   topic-switch, post-application) were recorded.
 

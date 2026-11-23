@@ -1,9 +1,9 @@
-import { ContactDetails } from "@govtech-bb/form-types";
+import type { ContactDetails } from "@govtech-bb/form-types";
 import type { SummarySection } from "@govtech-bb/submission-summary";
-import { AnyFormApi } from "@tanstack/react-form";
-import { ClientFormStep, ClientPrimitive } from "./field-mapper.type";
-import { FormMeta } from "./renderer.type";
-import { RepeatableStepSettings } from "./repeatable.type";
+import type { AnyFormApi } from "@tanstack/react-form";
+import type { ClientFormStep, ClientPrimitive } from "./field-mapper.type";
+import type { FormMeta } from "./renderer.type";
+import type { RepeatableStepSettings } from "./repeatable.type";
 
 export interface FormRendererProps {
   form: AnyFormApi;
@@ -74,12 +74,23 @@ export interface UploadedFile {
   size: number;
   type: string;
   url?: string;
+  /**
+   * The GuardDuty verdict from confirm-upload (#2938). Only for the upload
+   * widget's own use: it is never stored in form values. Absent from an API
+   * older than #3333, which the widget treats as clean.
+   */
+  scanStatus?: "clean" | "infected" | "unscannable" | "pending";
 }
 
 export type FileUploadProps = {
   field: ClientPrimitive;
   sharedProps: React.InputHTMLAttributes<HTMLInputElement>;
   onFileChange: (files: UploadedFile[] | null) => void;
+  /**
+   * Called when whether this field blocks Continue changes (a file starts or
+   * stops uploading, or a refused file is removed), so a shown error is re-judged.
+   */
+  onUploadsChange?: () => void;
   value?: UploadedFile[] | null;
   errorMessage?: string;
   /** id for the error element, so the input's aria-describedby resolves. */
@@ -185,6 +196,8 @@ export interface SubmissionConfirmationProps {
   onTryAgain?: () => void;
   /** Fired when the citizen clicks "Continue to payment" (#1955 analytics). */
   onPaymentInitiated?: () => void;
+  /** Fired when the citizen clicks "Print" (#3514 analytics). */
+  onPrint?: () => void;
   submissionState?: SubmissionState;
   /**
    * Target for the "Give feedback on this service" link. When set, the feedback

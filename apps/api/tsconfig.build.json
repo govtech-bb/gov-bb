@@ -21,6 +21,12 @@
     },
     {
       "path": "../../packages/submission-summary"
+    },
+    {
+      "path": "../../packages/umami-analytics"
+    },
+    {
+      "path": "../../packages/analytics"
     }
   ],
   "include": ["src/**/*.ts"],

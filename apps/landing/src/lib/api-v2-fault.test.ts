@@ -13,6 +13,7 @@ import {
 } from 'vitest'
 import { createApiV2Cache } from './api-v2-cache'
 import { resolveApiV2Page } from './api-v2-page'
+import { createApiV2Breaker } from './api-v2-reader'
 
 /**
  * Fault injection for landing's api_v2 page fetch (#3148, guarding #3127).
@@ -55,7 +56,7 @@ function p95(samples: Array<number>) {
 
 /** SAMPLES concurrent first-time page loads on a fresh cache. */
 async function loadConcurrently(base: string) {
-  const cache = createApiV2Cache()
+  const cache = createApiV2Cache(createApiV2Breaker())
   return Promise.all(
     Array.from({ length: SAMPLES }, (_, i) =>
       pageTime(cache, base, `/page-${i}`),
@@ -136,7 +137,7 @@ describe('landing with a slow or unavailable api_v2', () => {
   it(
     'stops calling api_v2 for 30 s after 3 failures, at the speed of no api_v2',
     async () => {
-      const cache = createApiV2Cache()
+      const cache = createApiV2Cache(createApiV2Breaker())
       const trippedAt = Date.now()
       await Promise.all(
         Array.from({ length: FAILURES_TO_OPEN }, (_, i) =>

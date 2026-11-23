@@ -173,6 +173,10 @@ export class FilesService {
       Key: key,
       ContentType: dto.contentType,
       ContentLength: dto.size,
+      // Write only if nothing is at the key yet, so the URL can't replace a
+      // file after the submit-time scan passed it (#3332). The forms client
+      // has sent this header since #3421; signing it makes S3 enforce it.
+      IfNoneMatch: "*",
     });
     const uploadUrl = await getSignedUrl(this.s3, command, {
       expiresIn: this.presignTtl,

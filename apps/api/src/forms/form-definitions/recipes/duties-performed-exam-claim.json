@@ -776,7 +776,7 @@
             "fieldId": "supervisor-date",
             "validations": {
               "required": {
-                "error": "Date is required",
+                "error": "Date of supervisor's signature is required",
                 "value": true
               }
             }
@@ -802,7 +802,7 @@
             "fieldId": "exam-verifier-date",
             "validations": {
               "required": {
-                "error": "Date is required",
+                "error": "Date of examination verifier's signature is required",
                 "value": true
               }
             }
@@ -828,7 +828,7 @@
             "fieldId": "accounting-officer-date",
             "validations": {
               "required": {
-                "error": "Date is required",
+                "error": "Date of accounting officer's signature is required",
                 "value": true
               }
             }
@@ -873,5 +873,5 @@
     }
   ],
   "createdAt": "2026-05-27T20:25:58.965Z",
-  "updatedAt": "2026-10-22T15:32:24.000Z"
+  "updatedAt": "2026-11-16T10:40:13.993Z"
 }

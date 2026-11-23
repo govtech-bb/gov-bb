@@ -5,21 +5,17 @@ import {
   buildVisitFunnelSteps,
   fetchFormDefinition,
   fetchFormList,
+  fetchToolsData,
   funnelHeadline,
-  humanizeStep,
   isConfigured,
   isLandingConfigured,
   shapeFlow,
   shapeFormList,
   shapeFunnel,
-  shapeJourneyList,
   shapePages,
-  shapeSearch,
   shapeSubmitError,
-  shapeTools,
   type UmamiConfig,
 } from './umami-server'
-import type { Tool } from './tools-config'
 import type { ServiceIndexEntry } from '@govtech-bb/content'
 
 describe('configured gates', () => {
@@ -222,38 +218,6 @@ describe('shapeFormList (per-form starts + completion)', () => {
   })
 })
 
-describe('humanizeStep', () => {
-  it('labels service pages, the home path, and qualifies Start/Form with the root', () => {
-    expect(
-      humanizeStep('/family-birth-relationships/get-birth-certificate'),
-    ).toBe('Get birth certificate')
-    expect(humanizeStep('/')).toBe('Home')
-    // form-start event → "<root> · Start"
-    expect(humanizeStep('get-birth-certificate:form-start')).toBe(
-      'Get birth certificate · Start',
-    )
-    // /start and /form pages are qualified with the service segment above them
-    expect(
-      humanizeStep('/money-financial-support/get-a-textbook-grant/start'),
-    ).toBe('Get a textbook grant · Start')
-    expect(
-      humanizeStep('/money-financial-support/get-a-textbook-grant/form'),
-    ).toBe('Get a textbook grant · Form')
-  })
-
-  it("recognises a long-id form's compact start code (#2682)", () => {
-    // A 40–44 char id emits `:fstrt` instead of `:form-start`; it must still
-    // resolve to the Start goal, not render as "Fstrt".
-    expect(humanizeStep('some-long-licence-form:fstrt')).toBe(
-      'Some long licence form · Start',
-    )
-    // a compact per-event code resolves to its canonical label, not "Sview"
-    expect(humanizeStep('some-long-licence-form:fverr')).toBe(
-      'Form validation error',
-    )
-  })
-})
-
 describe('shapeFlow (Sankey)', () => {
   it('merges by label per column, computes entry total and node share', () => {
     const flow = shapeFlow(
@@ -298,52 +262,6 @@ describe('shapeFlow (Sankey)', () => {
   })
 })
 
-describe('shapeJourneyList', () => {
-  it('uses pages only, drops form-start-event variants so journeys merge', () => {
-    const rows = shapeJourneyList([
-      // these three are the same page journey with different event noise — they
-      // must all collapse to Home › Passport › Start
-      {
-        items: ['/', '/passport', '/passport/start', 'passport:form-start'],
-        count: 40,
-      },
-      {
-        items: ['/', '/passport', 'passport:form-start', '/passport/start'],
-        count: 30,
-      },
-      { items: ['/', '/passport', '/passport/start'], count: 9 },
-      { items: ['/', '/births'], count: 20 },
-      // single-page visit (bounce) — excluded
-      { items: ['/', null, null], count: 500 },
-    ])
-    expect(rows[0].items).toEqual(['Home', 'Passport', 'Start'])
-    expect(rows[0].sessions).toBe(79) // 40 + 30 + 9 merged
-    expect(rows[1].items).toEqual(['Home', 'Births'])
-    expect(rows[1].sessions).toBe(20)
-    // bounce excluded → total is 79 + 20 = 99, not 599
-    expect(rows[0].share).toBeCloseTo(79 / 99)
-    expect(rows.some((r) => r.items.length < 2)).toBe(false)
-    expect(rows[0].entryPath).toBe('/') // entry step is Home
-  })
-
-  it('qualifies the entry step with its service when it is a start/form page', () => {
-    const rows = shapeJourneyList([
-      {
-        items: [
-          '/money-financial-support/get-a-textbook-grant/start',
-          '/money-financial-support/get-a-textbook-grant/form',
-        ],
-        count: 12,
-      },
-    ])
-    // entry is a /start page → qualified; later steps stay bare
-    expect(rows[0].items).toEqual(['Get a textbook grant · Start', 'Form'])
-    expect(rows[0].entryPath).toBe(
-      '/money-financial-support/get-a-textbook-grant/start',
-    )
-  })
-})
-
 describe('shapeSubmitError (#1916)', () => {
   it('computes rate over attempts and sorts reasons descending', () => {
     const se = shapeSubmitError(85, 15, [
@@ -374,88 +292,6 @@ describe('shapeSubmitError (#1916)', () => {
 
   it('returns a null rate when there were no attempts', () => {
     expect(shapeSubmitError(0, 0, []).rate).toBeNull()
-  })
-})
-
-describe('shapeSearch', () => {
-  it('joins query counts, per-query clicks and zero-result flags into a ranked table', () => {
-    const out = shapeSearch(
-      [
-        { value: 'passport', total: 100 },
-        { value: 'birth certificate', total: 40 },
-        { value: 'xyzzy', total: 10 },
-      ],
-      [
-        { value: 0, total: 15 },
-        { value: 3, total: 135 },
-      ],
-      [
-        { value: 'passport', total: 60 },
-        { value: 'birth certificate', total: 10 },
-      ],
-      [{ value: 'xyzzy', total: 10 }],
-    )
-
-    // overall: searches = 150, clicks = 70, ctr = 70/150 (stored 0–1).
-    expect(out.searches).toBe(150)
-    expect(out.clicks).toBe(70)
-    expect(out.ctr).toBeCloseTo(70 / 150)
-    // zero-result rate from the results distribution: 15 / 150.
-    expect(out.zeroResultRate).toBeCloseTo(0.1)
-
-    // ranked by searches, each with its own CTR (0–1) and zero-result flag.
-    expect(out.queries.map((q) => q.query)).toEqual([
-      'passport',
-      'birth certificate',
-      'xyzzy',
-    ])
-    expect(out.queries[0]).toEqual({
-      query: 'passport',
-      searches: 100,
-      clicks: 60,
-      ctr: 0.6,
-      zeroResult: false,
-    })
-    expect(out.queries[2]).toMatchObject({
-      query: 'xyzzy',
-      clicks: 0,
-      ctr: 0,
-      zeroResult: true,
-    })
-  })
-
-  it('takes total searches from the results distribution when the query distribution is row-capped', () => {
-    // The query rows are truncated (only the top term survived a row cap), but
-    // the low-cardinality results distribution carries the true total of 100.
-    const out = shapeSearch(
-      [{ value: 'passport', total: 20 }],
-      [
-        { value: 0, total: 10 },
-        { value: 4, total: 90 },
-      ],
-      [{ value: 'passport', total: 25 }],
-      [],
-    )
-    expect(out.searches).toBe(100) // max(20, 100), not the truncated 20
-    expect(out.ctr).toBeCloseTo(25 / 100) // CTR is not inflated by truncation
-    expect(out.zeroResultRate).toBeCloseTo(0.1)
-  })
-
-  it('caps the table at topN and degrades to zeros on empty input', () => {
-    const many = Array.from({ length: 25 }, (_, i) => ({
-      value: `q${i}`,
-      total: 25 - i,
-    }))
-    expect(shapeSearch(many, [], [], [], 20).queries).toHaveLength(20)
-
-    const empty = shapeSearch([], [], [], [])
-    expect(empty).toMatchObject({
-      searches: 0,
-      clicks: 0,
-      ctr: 0,
-      zeroResultRate: 0,
-      queries: [],
-    })
   })
 })
 
@@ -518,72 +354,66 @@ describe('forms-API fetch timeouts (#2080)', () => {
   })
 })
 
-describe('shapeTools (per-tool rollup)', () => {
-  const shelter: Tool = {
-    name: 'Find an emergency shelter',
-    prefix: '/health-and-emergency-services/find-an-emergency-shelter',
-    primaryPath: '/health-and-emergency-services/find-an-emergency-shelter',
-    live: true,
-  }
-  const bankHoliday: Tool = {
-    name: 'Check bank holiday dates',
-    prefix: '/bank-holiday-calendar',
-    primaryPath: '/bank-holiday-calendar',
-    live: true,
-  }
+describe('fetchToolsData (tool events read from Umami)', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
 
-  it('rolls up all URL rows under a tool prefix (pageviews + visitors summed)', () => {
-    const rows = [
-      { x: shelter.prefix, pageviews: 100, visitors: 80 },
-      { x: `${shelter.prefix}/find`, pageviews: 40, visitors: 30 },
-      { x: `${shelter.prefix}/guidance`, pageviews: 10, visitors: 8 },
-    ]
-    const sources = new Map([
-      [shelter.primaryPath, [{ referrer: 'google', count: 12 }]],
+  it('asks for a breakdown only for tools with events, filtered by tool', async () => {
+    // Only the water tool has sent events. Answer each Umami GET by its query.
+    const answers: Record<string, unknown> = {
+      'tool-result/tool/': [{ value: 'water-outages', total: 5 }],
+      'tool-action/tool/': [{ value: 'water-outages', total: 3 }],
+      'tool-error/tool/': [],
+      'tool-result/outcome/1.eq.tool.water-outages': [
+        { value: 'parish-chosen', total: 3 },
+        { value: 'subscribe-sent', total: 2 },
+      ],
+      'tool-action/action/1.eq.tool.water-outages': [
+        { value: 'subscribe-submit', total: 3 },
+      ],
+    }
+    const filtered: string[] = []
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: URL) => {
+        const q = input.searchParams
+        if (q.has('epf1')) filtered.push(String(q.get('epf1')))
+        const key = `${q.get('event')}/${q.get('propertyName')}/${q.get('epf1') ?? ''}`
+        const body = input.pathname.endsWith('/event-data/values')
+          ? answers[key]
+          : [] // URL and referrer metrics
+        return { ok: true, status: 200, json: async () => body } as Response
+      }),
+    )
+
+    const data = await fetchToolsData(
+      {
+        apiKey: 'k',
+        landingWebsiteId: 'l',
+        formsWebsiteId: 'f',
+        formsApiUrl: 'http://forms.test',
+      },
+      'past-7-days',
+    )
+
+    expect(filtered.sort()).toEqual([
+      '1.eq.tool.water-outages',
+      '1.eq.tool.water-outages',
     ])
-    const [row] = shapeTools([shelter], rows, sources)
-    expect(row).toEqual({
-      name: shelter.name,
-      path: shelter.primaryPath,
-      pageviews: 150,
-      visitors: 118,
-      topSources: [{ referrer: 'google', count: 12 }],
+    const water = data.tools.find((t) => t.path.endsWith('/water-outages'))
+    expect(water?.events).toMatchObject({
+      results: 5,
+      topAction: { action: 'subscribe-submit', count: 3 },
+      errors: 0,
     })
-  })
-
-  it('does not swallow a same-stemmed sibling path (prefix boundary)', () => {
-    const rows = [
-      { x: bankHoliday.prefix, pageviews: 50, visitors: 40 },
-      { x: '/bank-holiday-calendar-archive', pageviews: 999, visitors: 999 },
-    ]
-    const [row] = shapeTools([bankHoliday], rows, new Map())
-    expect(row.pageviews).toBe(50)
-    expect(row.visitors).toBe(40)
-  })
-
-  it('lists a tool with no traffic at zero, with no sources', () => {
-    const [row] = shapeTools([bankHoliday], [], new Map())
-    expect(row).toEqual({
-      name: bankHoliday.name,
-      path: bankHoliday.primaryPath,
-      pageviews: 0,
-      visitors: 0,
-      topSources: [],
+    expect(data.tools.filter((t) => t.events !== null)).toHaveLength(1)
+    expect(data.waterAlerts).toEqual({
+      submitted: 3,
+      sent: 2,
+      confirmed: 0,
+      unsubscribed: 0,
     })
-  })
-
-  it('reads path from x or name and pageviews from pageviews or y', () => {
-    const rows = [
-      { name: bankHoliday.prefix, y: 7 }, // name + y fallbacks, no visitors
-    ]
-    const [row] = shapeTools([bankHoliday], rows, new Map())
-    expect(row.pageviews).toBe(7)
-    expect(row.visitors).toBe(0)
-  })
-
-  it('returns one row per tool, in the given order', () => {
-    const rows = shapeTools([shelter, bankHoliday], [], new Map())
-    expect(rows.map((r) => r.name)).toEqual([shelter.name, bankHoliday.name])
   })
 })
 

@@ -11,6 +11,9 @@ import type { Database } from "../db";
 import type { UserId } from "../modules/auth";
 import {
   CollectionSchema,
+  type CollectionDefinition,
+  type EditorCollectionRecord,
+  type RecordEnvelope,
   type CollectionRecord,
   type CollectionSummary,
   type CollectionView,
@@ -116,7 +119,7 @@ export class PostgresCollections implements CollectionStore {
 
   /**
    * Pages whose live body or open revision mentions `text`, each with the
-   * root page above it, as the editor opens pages under their service.
+   * service entry above it. An uncategorised root is not a service.
    */
   async pagesMentioning(
     text: string,
@@ -131,10 +134,10 @@ export class PostgresCollections implements CollectionStore {
         visibility: Visibility;
         live: string;
         open: string | null;
-        service_id: PageId;
+        service_id: PageId | null;
       }>(sql`
         with recursive mentioning as (
-          select p.id, p.title, p.url, p.visibility, p.body_markdown as live,
+          select p.id, p.parent_id, p.category_id, p.title, p.url, p.visibility, p.body_markdown as live,
                  r.fields->>'body_markdown' as open
             from content_pages p
             left join page_revisions r
@@ -142,21 +145,16 @@ export class PostgresCollections implements CollectionStore {
            where p.body_markdown like ${pattern}
               or r.fields->>'body_markdown' like ${pattern}
         ), chain as (
-          select mentioning.id as page_id, p.id, p.parent_id
-            from mentioning join content_pages p on p.id = mentioning.id
+          select id as page_id, id, parent_id, category_id from mentioning
           union all
-          select chain.page_id, p.id, p.parent_id
+          select chain.page_id, p.id, p.parent_id, p.category_id
             from content_pages p join chain on p.id = chain.parent_id
         ) cycle id set is_cycle using path
         select mentioning.id, mentioning.title, mentioning.url,
-               mentioning.visibility, mentioning.live, mentioning.open,
-               coalesce(
-                 (select chain.id from chain
-                   where chain.page_id = mentioning.id
-                     and chain.parent_id is null and not chain.is_cycle
-                   limit 1),
-                 mentioning.id) as service_id
-          from mentioning`),
+               mentioning.visibility, mentioning.live, mentioning.open, root.id as service_id
+          from mentioning
+          left join chain root on root.page_id = mentioning.id
+            and root.parent_id is null and root.category_id is not null and not root.is_cycle`),
     );
     return rows.ok
       ? ok(
@@ -180,6 +178,34 @@ export class PostgresCollections implements CollectionStore {
     });
   }
 
+  /** Definition and record share one statement snapshot. */
+  recordEnvelope(
+    key: string,
+    recordKey: string,
+  ): Promise<Result<RecordEnvelope | null, ContentStoreUnavailable>> {
+    return attempt("recordEnvelope", async () => {
+      const [row] = await this.db
+        .select({ collection: dataCollections, record: collectionRecords })
+        .from(dataCollections)
+        .innerJoin(
+          collectionRecords,
+          eq(collectionRecords.collectionKey, dataCollections.key),
+        )
+        .where(
+          and(
+            eq(dataCollections.key, key),
+            eq(collectionRecords.recordKey, recordKey),
+          ),
+        );
+      return row
+        ? {
+            collection: toView(row.collection),
+            record: { ...toRecord(row.record), version: row.record.version },
+          }
+        : null;
+    });
+  }
+
   async records(
     key: string,
   ): Promise<Result<CollectionRecord[], ContentStoreUnavailable>> {
@@ -196,7 +222,7 @@ export class PostgresCollections implements CollectionStore {
   async lockRecord(
     key: string,
     recordKey: string,
-  ): Promise<Result<CollectionRecord | null, ContentStoreUnavailable>> {
+  ): Promise<Result<EditorCollectionRecord | null, ContentStoreUnavailable>> {
     const rows = await attempt("lockRecord", () =>
       this.db
         .select()
@@ -206,14 +232,14 @@ export class PostgresCollections implements CollectionStore {
     );
     if (!rows.ok) return rows;
     const [row] = rows.value;
-    return ok(row ? toRecord(row) : null);
+    return ok(row ? { ...toRecord(row), version: row.version } : null);
   }
 
   async insertRecord(
     key: string,
     recordKey: string,
     data: RecordData,
-  ): Promise<Result<CollectionRecord | null, ContentStoreUnavailable>> {
+  ): Promise<Result<EditorCollectionRecord | null, ContentStoreUnavailable>> {
     const rows = await attempt("insertRecord", () =>
       this.db
         .insert(collectionRecords)
@@ -223,14 +249,14 @@ export class PostgresCollections implements CollectionStore {
     );
     if (!rows.ok) return rows;
     const [row] = rows.value;
-    return ok(row ? toRecord(row) : null);
+    return ok(row ? { ...toRecord(row), version: row.version } : null);
   }
 
   async updateRecord(
     key: string,
     recordKey: string,
     data: RecordData,
-  ): Promise<Result<CollectionRecord, ContentStoreUnavailable>> {
+  ): Promise<Result<EditorCollectionRecord, ContentStoreUnavailable>> {
     // `touch_updated_at` moves `updated_at` when the data changes, and keeps
     // it when nothing did, as for a page.
     const rows = await attempt("updateRecord", () =>
@@ -243,7 +269,7 @@ export class PostgresCollections implements CollectionStore {
     if (!rows.ok) return rows;
     const [row] = rows.value;
     if (!row) throw new Error("A locked record was not there to update");
-    return ok(toRecord(row));
+    return ok({ ...toRecord(row), version: row.version });
   }
 
   async deleteRecord(
@@ -254,5 +280,25 @@ export class PostgresCollections implements CollectionStore {
       this.db.delete(collectionRecords).where(recordIs(key, recordKey)),
     );
     return rows.ok ? ok(undefined) : rows;
+  }
+
+  async insertCollection(
+    definition: CollectionDefinition,
+  ): Promise<Result<CollectionView | null, ContentStoreUnavailable>> {
+    const rows = await attempt("insertCollection", () =>
+      this.db
+        .insert(dataCollections)
+        .values({
+          key: definition.key,
+          title: definition.title,
+          recordKey: definition.record_key,
+          schema: definition.schema,
+        })
+        .onConflictDoNothing({ target: dataCollections.key })
+        .returning(),
+    );
+    if (!rows.ok) return rows;
+    const [row] = rows.value;
+    return ok(row ? toView(row) : null);
   }
 }

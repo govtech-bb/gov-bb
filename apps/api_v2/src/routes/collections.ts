@@ -1,13 +1,14 @@
 import type { FastifyReply, FastifyRequest } from "fastify";
 import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
 import type { Employee } from "../modules/auth";
-import { CollectionNotFound } from "../modules/collection";
+import { CollectionNotFound, RecordNotFound } from "../modules/collection";
 import type { Viewer } from "../modules/page-visibility";
 import type {
+  CollectionCreateFailure,
   CollectionEditing,
   RecordWriteFailure,
 } from "../services/collection-editing";
-import { IF_UPDATED_AT, SCHEMAS } from "./contracts";
+import { SCHEMAS } from "./contracts";
 import { siteNotFoundCache, siteReadCache, storageFailed } from "./responses";
 
 /** Why a record write was refused, as its response. */
@@ -31,11 +32,39 @@ function recordRefused(
     case "RecordConflict":
       return reply
         .status(409)
-        .send({ error: "conflict", message: error.message });
+        .send({ error: "version_conflict", message: error.message });
     case "RecordExists":
       return reply
         .status(409)
         .send({ error: "record_exists", message: error.message });
+    case "ContentStoreUnavailable":
+      return reply.status(500).send(storageFailed(request.log, error));
+    default: {
+      const unexpected: never = error;
+      throw unexpected;
+    }
+  }
+}
+
+/** Why creating a collection was refused, as its response. */
+function collectionRefused(
+  error: CollectionCreateFailure,
+  request: FastifyRequest,
+  reply: FastifyReply,
+): FastifyReply {
+  switch (error._tag) {
+    case "CollectionRejected":
+      return reply.status(422).send({
+        error: "validation_failed",
+        message: error.message,
+        errors: [...error.errors],
+      });
+    case "CollectionExists":
+      return reply.status(409).send({
+        error: "collection_exists",
+        message: error.message,
+        errors: [{ field: "key", message: error.message }],
+      });
     case "ContentStoreUnavailable":
       return reply.status(500).send(storageFailed(request.log, error));
     default: {
@@ -59,6 +88,21 @@ export const editorCollectionRoutes: FastifyPluginAsyncZod<{
       return listed.ok
         ? { collections: listed.value }
         : reply.status(500).send(storageFailed(request.log, listed.error));
+    },
+  });
+  editor.route({
+    method: "GET",
+    url: "/collections/:key/records/:recordKey",
+    schema: SCHEMAS.getRecord,
+    handler: async (request, reply) => {
+      const { key, recordKey } = request.params;
+      const detail = await collections.detail(key, recordKey);
+      if (!detail.ok)
+        return reply.status(500).send(storageFailed(request.log, detail.error));
+      return (
+        detail.value ??
+        recordRefused(new RecordNotFound(key, recordKey), request, reply)
+      );
     },
   });
   editor.route({
@@ -98,11 +142,12 @@ export const editorCollectionRoutes: FastifyPluginAsyncZod<{
     config: { role: "editor" },
     handler: async (request, reply) => {
       const { key, recordKey } = request.params;
+      const expected = request.body.expected_version;
       const saved = await collections.save(
         key,
         recordKey,
         request.body.data,
-        request.headers[IF_UPDATED_AT] ?? null,
+        expected,
         actor(request),
       );
       return saved.ok
@@ -117,15 +162,32 @@ export const editorCollectionRoutes: FastifyPluginAsyncZod<{
     config: { role: "editor" },
     handler: async (request, reply) => {
       const { key, recordKey } = request.params;
+      const expected = request.query.expected_version;
       const deleted = await collections.delete(
         key,
         recordKey,
-        request.headers[IF_UPDATED_AT] ?? null,
+        expected,
         actor(request),
       );
       return deleted.ok
         ? reply.status(204).send()
         : recordRefused(deleted.error, request, reply);
+    },
+  });
+  editor.route({
+    method: "POST",
+    url: "/collections",
+    schema: SCHEMAS.createCollection,
+    // A field list decides what every record holds, so not every editor sets one (#3681)
+    config: { role: ["admin", "approver"] },
+    handler: async (request, reply) => {
+      const created = await collections.createCollection(
+        request.body,
+        actor(request),
+      );
+      return created.ok
+        ? reply.status(201).send(created.value)
+        : collectionRefused(created.error, request, reply);
     },
   });
 };

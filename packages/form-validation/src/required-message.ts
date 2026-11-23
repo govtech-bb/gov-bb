@@ -24,7 +24,7 @@ export type RequiredMessageDefect = "missing" | "blank" | "generic";
  * `!`, which CodeQL flags as js/polynomial-redos. The message reaching here is
  * recipe-authored, so it is not ours to trust with that.
  */
-function wording(message: string): string {
+export function requiredMessageWording(message: string): string {
   const normalised = message.trim().toLowerCase();
   let end = normalised.length;
   while (
@@ -50,7 +50,7 @@ const FIELDLESS_WORDINGS = new Set(
     "Select an answer",
     "Select yes or no",
     "Select at least one option",
-  ].map(wording),
+  ].map(requiredMessageWording),
 );
 
 /**
@@ -90,7 +90,9 @@ export function requiredMessageDefect(
   // `missing` keeps the gate from throwing on malformed input.
   if (typeof error !== "string") return "missing";
   if (error.trim() === "") return "blank";
-  return FIELDLESS_WORDINGS.has(wording(error)) ? "generic" : null;
+  return FIELDLESS_WORDINGS.has(requiredMessageWording(error))
+    ? "generic"
+    : null;
 }
 
 /**
@@ -100,5 +102,5 @@ export function requiredMessageDefect(
  * cannot disagree about what counts as generic (#2715).
  */
 export function isFieldlessRequiredWording(message: string): boolean {
-  return FIELDLESS_WORDINGS.has(wording(message));
+  return FIELDLESS_WORDINGS.has(requiredMessageWording(message));
 }

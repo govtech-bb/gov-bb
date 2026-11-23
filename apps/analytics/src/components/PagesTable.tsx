@@ -35,7 +35,12 @@ export function PagesTable({
       <table className="min-w-full">
         <thead>
           <tr>
-            <SortHeader label="Page" colKey="title" sort={sort} className={TH} />
+            <SortHeader
+              label="Page"
+              colKey="title"
+              sort={sort}
+              className={TH}
+            />
             <SortHeader label="Path" colKey="path" sort={sort} className={TH} />
             <SortHeader
               label="Pageviews"

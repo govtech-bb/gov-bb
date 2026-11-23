@@ -44,19 +44,32 @@ describe.skipIf(!HAS_DATABASE)("category management over HTTP", () => {
     method: string,
     path: string,
     body?: object,
-    stamp?: string,
+    version?: number,
     as = cookie,
   ) =>
-    fetch(server.url + path, {
-      method,
-      headers: {
-        cookie: as,
-        origin: AUTH_ENV.EDITOR_ORIGIN,
-        ...(body ? { "content-type": "application/json" } : {}),
-        ...(stamp ? { "if-updated-at": stamp } : {}),
+    fetch(
+      server.url +
+        path +
+        (method === "DELETE" && version !== undefined
+          ? `?expected_version=${version}`
+          : ""),
+      {
+        method,
+        headers: {
+          cookie: as,
+          origin: AUTH_ENV.EDITOR_ORIGIN,
+          ...(body ? { "content-type": "application/json" } : {}),
+        },
+        ...(body
+          ? {
+              body: JSON.stringify({
+                ...body,
+                ...(version === undefined ? {} : { expected_version: version }),
+              }),
+            }
+          : {}),
       },
-      ...(body ? { body: JSON.stringify(body) } : {}),
-    });
+    );
   const fields = (slug: string, parent_id: string | null = null) => ({
     title: slug,
     slug,
@@ -86,7 +99,7 @@ describe.skipIf(!HAS_DATABASE)("category management over HTTP", () => {
         title: "Changed",
         description: "  Saved  ",
       },
-      child.updated_at,
+      child.version,
     );
     expect(moved.status).toBe(200);
     const saved = EditorCategory.parse(await moved.json());
@@ -97,7 +110,7 @@ describe.skipIf(!HAS_DATABASE)("category management over HTTP", () => {
     });
     const order = await send("PUT", "/editor/categories/order", {
       parent_id: null,
-      expected: [a, b].map(({ id, updated_at }) => ({ id, updated_at })),
+      expected: [a, b].map(({ id, version }) => ({ id, version })),
       ordered_ids: [b.id, a.id],
     });
     expect(order.status).toBe(200);
@@ -122,7 +135,7 @@ describe.skipIf(!HAS_DATABASE)("category management over HTTP", () => {
           "DELETE",
           `/editor/categories/${saved.id}`,
           undefined,
-          saved.updated_at,
+          saved.version,
         )
       ).status,
     ).toBe(204);
@@ -132,7 +145,7 @@ describe.skipIf(!HAS_DATABASE)("category management over HTTP", () => {
           "DELETE",
           `/editor/categories/${saved.id}`,
           undefined,
-          saved.updated_at,
+          saved.version,
         )
       ).status,
     ).toBe(404);
@@ -152,7 +165,7 @@ describe.skipIf(!HAS_DATABASE)("category management over HTTP", () => {
       "PUT",
       `/editor/categories/${category.id}`,
       { ...fields(category.slug), title: "Renamed" },
-      category.updated_at,
+      category.version,
     );
     const current = EditorCategory.parse(await edited.json());
     for (const method of ["PUT", "DELETE"]) {
@@ -160,11 +173,11 @@ describe.skipIf(!HAS_DATABASE)("category management over HTTP", () => {
         method,
         `/editor/categories/${category.id}`,
         method === "PUT" ? fields(category.slug) : undefined,
-        category.updated_at,
+        category.version,
       );
       expect(response.status).toBe(409);
       expect(await response.json()).toEqual({
-        error: "conflict",
+        error: "version_conflict",
         message: expect.any(String),
       });
     }
@@ -185,19 +198,19 @@ describe.skipIf(!HAS_DATABASE)("category management over HTTP", () => {
         visibility: "preview",
       });
       expect(created.status).toBe(201);
-      const { id, updated_at } = (await created.json()) as {
+      const { id, version } = (await created.json()) as {
         id: string;
-        updated_at: string;
+        version: number;
       };
       expect(
-        (await send("PUT", `/pages/${id}`, page, updated_at, reviewer)).status,
+        (await send("PUT", `/pages/${id}`, page, version, reviewer)).status,
       ).toBe(200);
     }
     const blocked = await send(
       "DELETE",
       `/editor/categories/${current.id}`,
       undefined,
-      current.updated_at,
+      current.version,
     );
     expect(blocked.status).toBe(409);
     expect(await blocked.json()).toEqual({
@@ -283,7 +296,7 @@ describe.skipIf(!HAS_DATABASE)("category management over HTTP", () => {
       "DELETE",
       `/editor/categories/${anchor.id}`,
       undefined,
-      anchor.updated_at,
+      anchor.version,
     );
     expect(blocked.status).toBe(409);
     expect(await blocked.json()).toMatchObject({
@@ -296,7 +309,7 @@ describe.skipIf(!HAS_DATABASE)("category management over HTTP", () => {
           "PUT",
           `/editor/categories/${anchor.id}`,
           { ...fields(anchor.slug), slug: "moved" },
-          anchor.updated_at,
+          anchor.version,
         )
       ).status,
     ).toBe(422);

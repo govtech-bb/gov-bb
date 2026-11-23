@@ -1,9 +1,8 @@
 import { Menu as BaseMenu } from "@base-ui/react/menu";
 import { CaretDown, X } from "@phosphor-icons/react";
 import { useState } from "react";
-import { addToRange } from "react-day-picker";
 import { cn } from "../../cn";
-import { Calendar, type DateRange } from "../../ui/calendar";
+import { Calendar, type DateRange } from "../../ui/calendar-lazy";
 import { Input, input } from "../../ui/input";
 import { formatDay, parseDay, shortDate } from "../model/dates";
 import { Menu } from "../../ui/menu";
@@ -91,7 +90,9 @@ function DateLimits() {
         label="Date range"
         dates={[range.from, range.to]}
         selected={{ from, to }}
-        onDay={(day) => {
+        onDay={async (day) => {
+          // A day press means the calendar has loaded, so this import is already in memory
+          const { addToRange } = await import("../../ui/calendar");
           const next = from ? addToRange(parseDay(day)!, { from, to }) : { from: parseDay(day) };
           set({
             ...noDateLimits,

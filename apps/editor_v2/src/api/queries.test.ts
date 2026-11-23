@@ -28,18 +28,22 @@ test("refreshes content reads only when the estate's version moves", async () =>
   const client = new QueryClient();
   let version: EstateVersion = { count: 1, latest: "2026-10-07T12:00:00.000Z" };
   const query = estateVersionQuery({ version: async () => version }, client);
-  const services = ["content", "services"];
 
-  const invalidated = () => client.getQueryState(services)?.isInvalidated;
+  const lists = [
+    ["content", "services"],
+    ["content", "site-pages"],
+  ];
 
-  client.setQueryData(services, []);
+  const invalidated = () => lists.map((key) => client.getQueryState(key)?.isInvalidated);
+
+  for (const key of lists) client.setQueryData(key, []);
   await client.fetchQuery(query);
   await client.fetchQuery(query);
-  expect(invalidated()).toBe(false);
+  expect(invalidated()).toEqual([false, false]);
 
   version = { count: 2, latest: "2026-10-07T12:01:00.000Z" };
   await client.fetchQuery(query);
-  expect(invalidated()).toBe(true);
+  expect(invalidated()).toEqual([true, true]);
 });
 
 test("reads a missing collection as none, and passes any other failure on", async () => {

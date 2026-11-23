@@ -13,7 +13,7 @@ import {
 import { useCallback, useEffect, useRef } from "react";
 
 // Allow punctuation used in block names and shortcuts, which Lexical otherwise treats as a query boundary
-const punctuation = PUNCTUATION.replace("#", "").replace("\\-", "").replace("'", "");
+const punctuation = PUNCTUATION.replaceAll("#", "").replaceAll("\\-", "").replaceAll("'", "");
 
 /**
  * When "/" opens an insert menu. At the start of a line the query can run on, until a space follows one

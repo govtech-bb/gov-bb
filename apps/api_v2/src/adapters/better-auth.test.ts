@@ -161,6 +161,13 @@ describe("Google provider boundary", () => {
     ]);
   });
 
+  it("serves under the API's base path, so Google returns to /v2/api/auth (#3745)", async () => {
+    const at = async (apiBasePath: string) =>
+      (await authWith({ ...authConfig, apiBasePath }).$context).baseURL;
+    expect(await at("")).toBe("http://localhost:3020/api/auth");
+    expect(await at("/v2")).toBe("http://localhost:3020/v2/api/auth");
+  });
+
   it("hints any Workspace domain when more than one is allowed", async () => {
     const context = await authWith({
       ...authConfig,
@@ -180,7 +187,7 @@ describe("Google provider boundary", () => {
 });
 
 describe("a new user", () => {
-  it("gets no role at first sign-in; an admin grants one (ADR 0079)", async () => {
+  it("gets no role at first sign-in; an admin grants one (ADR 0134)", async () => {
     const { db, close } = await createTestDb();
     try {
       const context = await authWith(authConfig, db).$context;

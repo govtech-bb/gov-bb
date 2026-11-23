@@ -2,7 +2,7 @@
 
 ## Context
 
-`estate.json` takes each page's visibility from its markdown frontmatter. On live landing, though, an admin's `service_status` row in feature flagging overrides that level (ADR 0063). After cutover, landing ignores the overlay for api_v2 pages (#3125), so whatever the import stores is final. A service hidden in prod would have imported as public. This work stacks on #3523 (#3238's runbook rewrite), which left the overlay and the revision count for #3188 to document.
+`estate.json` takes each page's visibility from its markdown frontmatter. On live landing, though, an admin's `service_status` row in feature flagging overrides that level (ADR 0110). After cutover, landing ignores the overlay for api_v2 pages (#3125), so whatever the import stores is final. A service hidden in prod would have imported as public. This work stacks on #3523 (#3238's runbook rewrite), which left the overlay and the revision count for #3188 to document.
 
 ## What we did
 
@@ -10,7 +10,7 @@
 - `src/modules/service-status.ts`: the `GET /service_status` envelope schema and `applyServiceStatuses`, landing's mapping keyed `form_id ?? content_slug`.
 - `seed()` and `importEstate()` take the estate as a parameter, and `ImportReport` gains `revisions`.
 - `import-estate.ts` now requires `--forms-api <origin>`. It fetches before opening the database, prints `visibility_changes` and fails closed.
-- README: an "Each environment's service_status" subsection, the flag on every command, and editor-write check (b) now reads `revisions`. ADR 0077's amendment no longer waits on #3188.
+- README: an "Each environment's service_status" subsection, the flag on every command, and editor-write check (b) now reads `revisions`. ADR 0129's amendment no longer waits on #3188.
 
 ## Why we did it that way
 

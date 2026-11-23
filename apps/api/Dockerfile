@@ -29,8 +29,10 @@ COPY --chown=app:app packages/form-types/package.json packages/form-types/
 COPY --chown=app:app packages/form-validation/package.json packages/form-validation/
 COPY --chown=app:app packages/registry/package.json packages/registry/
 COPY --chown=app:app packages/submission-summary/package.json packages/submission-summary/
-# content is never imported by the api, but the ROOT package.json pins it
-# (workspace:*), and the root project is part of the prod-deps install below.
+COPY --chown=app:app packages/umami-analytics/package.json packages/umami-analytics/
+COPY --chown=app:app packages/analytics/package.json packages/analytics/
+# content is never imported by the api, but the root package.json's
+# devDependencies pin it (workspace:*), and the builder installs the root project.
 COPY --chown=app:app packages/content/package.json packages/content/
 COPY --chown=app:app packages/govbbmarkd/package.json packages/govbbmarkd/
 
@@ -75,23 +77,23 @@ EXPOSE 3001
 CMD ["pnpm", "exec", "nx", "dev", "api"]
 
 # ---- prod-deps ----------------------------------------------------------
-# node_modules for the runner: only what @govtech-bb/api needs at runtime
-# (plus the root project, whose runtime deps it shares) — no devDependencies,
-# nothing from the other apps or from packages the api never imports. The
-# builder's full install is ~900MB of nx/vitest/vite/react/playwright that
-# AWS Inspector scans and every task start pulls. Linked from the cache-mount
+# node_modules for the runner: only what @govtech-bb/api needs at runtime —
+# no devDependencies, nothing from the other apps or from packages the api
+# never imports. The builder's full install is ~900MB of
+# nx/vitest/vite/react/playwright that AWS Inspector scans and every task
+# start pulls. Linked from the cache-mount
 # store where possible and fetched otherwise: when the install layer above is
 # CACHED it never ran in this build, so the mount is empty.
 #
 # node-linker=hoisted here only: the workspace installs with pnpm's default
-# isolated layout (ADR 0004), but the runner resolves everything from a single
+# isolated layout (ADR 0122), but the runner resolves everything from a single
 # /app/node_modules, so this stage lays the prod deps out flat, npm-style.
 FROM builder AS prod-deps
 RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store,uid=1001,gid=1001 \
     rm -rf node_modules apps/api/node_modules packages/*/node_modules && \
     pnpm install --store-dir=/pnpm/store --frozen-lockfile --ignore-scripts --prefer-offline --prod \
       --config.node-linker=hoisted \
-      --filter @govtech-bb/api... --filter @govtech-bb/modular-forms-monorepo
+      --filter @govtech-bb/api...
 
 # ---- runner -------------------------------------------------------------
 # Slim runtime image: plain `node`, no package manager. The ECS migrate task
@@ -103,7 +105,13 @@ FROM node:24.22-alpine3.23@sha256:9b69af715c7f9d038150b54ccccbaeffa9064bbc93e290
 # Pick up Alpine security patches ahead of the base image's rebuild cadence
 # (e.g. openssl 3.5.8-r0 fixing CVE-2026-75803/CVE-2026-63073 while the base
 # still ships 3.5.7).
-RUN apk upgrade --no-cache
+#
+# BuildKit caches this layer by its text and the base digest, so with the
+# digest pinned it never re-ran: builds kept reusing an old cached result and
+# shipped zlib 1.3.2 after Alpine had released 1.4-r0 (CVE-2026-4738,
+# gov-bb-security#725). Changing the date below forces a fresh upgrade; bump
+# it whenever a Critical/High Alpine fix lands and the base has not caught up.
+RUN apk upgrade --no-cache # refreshed 2026-11-09
 
 # npm and corepack are dead weight AWS Inspector still scans (npm's vendored
 # tar/pacote/undici/ip-address/brace-expansion copies were all flagged);

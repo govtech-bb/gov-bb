@@ -57,6 +57,7 @@ let current = {
   body_markdown: bodyMarkdown,
   frontmatter,
   published_at: "2026-01-13T12:00:00.000Z",
+  version: 1,
   created_at: "2026-01-13T12:00:00.000Z",
   updated_at: "2026-10-07T12:00:00.000Z",
   pending_revision: null,
@@ -105,7 +106,7 @@ await context.route("**/*", async (route) => {
     "access-control-allow-origin": request.headers().origin ?? "*",
     "access-control-allow-credentials": "true",
     "access-control-allow-methods": "GET, POST, PUT, OPTIONS",
-    "access-control-allow-headers": "content-type, if-updated-at",
+    "access-control-allow-headers": "content-type",
   };
 
   if (request.method() === "OPTIONS") return route.fulfill({ status: 204, headers });
@@ -121,8 +122,8 @@ await context.route("**/*", async (route) => {
     const fields = request.postDataJSON();
     writes.push(fields);
 
-    if (request.headers()["if-updated-at"] !== current.updated_at)
-      return route.fulfill({ status: 409, json: { error: "conflict" }, headers });
+    if (fields.expected_version !== current.version)
+      return route.fulfill({ status: 409, json: { error: "version_conflict" }, headers });
 
     if (holdSave)
       await new Promise((resolve) => {
@@ -133,6 +134,7 @@ await context.route("**/*", async (route) => {
     current = {
       ...current,
       ...fields,
+      version: current.version + 1,
       updated_at: new Date(Date.parse(current.updated_at) + 1000).toISOString(),
       pending_revision: reviewed ? { status: "draft", comment: null } : null,
     };
@@ -521,6 +523,7 @@ try {
   current = {
     ...current,
     title: "Another employee's version",
+    version: current.version + 1,
     updated_at: new Date(Date.parse(current.updated_at) + 1000).toISOString(),
   };
   await button("Save").click();
@@ -529,8 +532,9 @@ try {
     .first()
     .waitFor();
   assert.equal(await title.inputValue(), "Typed during publication");
-  await button("Keep my version").click();
-  assert.equal(writes.length, 3, "keeping my version does not publish");
+  await button("Discard my changes and reload").click();
+  assert.equal(writes.length, 3, "explicit reload does not publish");
+  await button("Preview page").click();
 
   // Mobile and zoom-equivalent narrow reflow, including a reduced-height phone keyboard viewport.
   for (const width of [720, 390, 320]) {
@@ -562,6 +566,7 @@ try {
     ...current,
     visibility: "preview",
     pending_revision: null,
+    version: current.version + 1,
     updated_at: new Date(Date.parse(current.updated_at) + 1000).toISOString(),
   };
   await page.goto(url.href);

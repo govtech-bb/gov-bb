@@ -1,4 +1,4 @@
-import { TOOLS, pathMatchesPrefix } from './tools-config'
+import { TOOLS, pathMatchesPrefix } from '@govtech-bb/umami-analytics'
 
 /**
  * Landing URL paths that are not content pages and must never appear on the

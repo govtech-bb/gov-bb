@@ -34,7 +34,7 @@ export function BreadcrumbRegion({ children }: { children: ReactNode }) {
     },
   })
 
-  // The root's category tree (ADR 0078), read once per QueryClient; absent
+  // The root's category tree (ADR 0132), read once per QueryClient; absent
   // only outside the app's root route, where the static taxonomy applies.
   const categoryTree = useMatches({
     select: (matches) => matches[0]?.context.categoryTree,

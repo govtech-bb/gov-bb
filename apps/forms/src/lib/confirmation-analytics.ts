@@ -1,4 +1,4 @@
-import { SubmissionState } from "@forms/types";
+import type { SubmissionState } from "@forms/types";
 
 /**
  * Pure derivation of the confirmation-page analytics fields from the committed

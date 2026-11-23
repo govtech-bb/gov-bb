@@ -1,6 +1,6 @@
 import { useContext } from 'react'
 import type { ReactNode } from 'react'
-import { recordDetails } from '@govtech-bb/govbbmarkd/record-details'
+import { contactDetails } from '@govtech-bb/govbbmarkd/contact-record'
 import { MarkdownLink } from '../markdown/MarkdownLink'
 import { PageRecordsContext } from './PageRecords'
 
@@ -27,7 +27,7 @@ export function CollectionFact({
   const data = record ? source?.records[record] : undefined
   const [detail] =
     source && data && field
-      ? recordDetails(source.collection, [field], data)
+      ? contactDetails(source.collection, [field], data)
       : []
 
   if (!detail) return <>{children}</>

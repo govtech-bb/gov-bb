@@ -9,6 +9,7 @@ import { FormDisabledOverridesModule } from "../form-disabled-overrides/form-dis
 import { FormConfigModule } from "../form-config/form-config.module";
 import { RegistryModule } from "@/registry/registry.module";
 import { ServiceStatusModule } from "@/services/service-status.module";
+import { ContentModule } from "@/content/content.module";
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { ServiceStatusModule } from "@/services/service-status.module";
     FormDisabledOverridesModule,
     FormConfigModule,
     ServiceStatusModule,
+    ContentModule,
   ],
   controllers: [FormDefinitionsController, DraftArchiveController],
   providers: [

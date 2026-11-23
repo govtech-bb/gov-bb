@@ -48,7 +48,7 @@ export default defineConfig(({ mode, command }) => {
       "process.env.LANDING_URL": JSON.stringify(pick("LANDING_URL")),
       "process.env.FORMS_URL": JSON.stringify(pick("FORMS_URL")),
       // Content editor origin. Unset → page toggles offered; set → pages are
-      // managed in editor_v2 and the table links there (ADR 0063).
+      // managed in editor_v2 and the table links there (ADR 0110).
       "process.env.EDITOR_V2_URL": JSON.stringify(pick("EDITOR_V2_URL")),
       // OAuth callback base (not a secret).
       "process.env.OAUTH_REDIRECT_BASE": JSON.stringify(

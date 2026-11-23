@@ -5,6 +5,7 @@ import type { EmailTemplateService } from "./email-template.service";
 import type { FormDefinitionsService } from "../forms/form-definitions/form-definitions.service";
 import type { ServiceContract } from "@govtech-bb/form-types";
 import type { PaymentRequiredEvent } from "../forms/submissions/submissions.types";
+import type { NotificationLogRepository } from "../forms/submissions/notification-log.repository";
 
 function makeEvent(
   overrides: Partial<PaymentRequiredEvent> = {},
@@ -45,8 +46,14 @@ function makeMailer(
 ): Mocked<SesMailer> {
   return {
     coatOfArmsUrl,
-    sendSimple: vi.fn().mockResolvedValue(undefined),
+    sendSimple: vi.fn().mockResolvedValue("ses-pay-001"),
   } as unknown as Mocked<SesMailer>;
+}
+
+function makeNotificationLog(): Mocked<NotificationLogRepository> {
+  return {
+    record: vi.fn().mockResolvedValue(undefined),
+  } as unknown as Mocked<NotificationLogRepository>;
 }
 
 describe("PaymentRequiredListener", () => {
@@ -54,7 +61,12 @@ describe("PaymentRequiredListener", () => {
     const templateSvc = makeTemplateService();
     const mailer = makeMailer("https://forms.gov.bb/images/coat-of-arms.png");
     const formDefs = makeFormDefs("Birth Certificate");
-    const listener = new PaymentRequiredListener(formDefs, templateSvc, mailer);
+    const listener = new PaymentRequiredListener(
+      formDefs,
+      templateSvc,
+      mailer,
+      makeNotificationLog(),
+    );
 
     await listener.handlePaymentRequired(makeEvent());
 
@@ -78,6 +90,8 @@ describe("PaymentRequiredListener", () => {
         to: "citizen@example.com",
         subject: expect.stringContaining("Birth Certificate"),
         html: "<h1>Payment required</h1>",
+        // Marks the send as tracked for the SES events consumer.
+        tags: [{ Name: "submissionId", Value: "sub-1" }],
       }),
     );
   });
@@ -89,6 +103,7 @@ describe("PaymentRequiredListener", () => {
       makeFormDefs(),
       makeTemplateService(),
       mailer,
+      makeNotificationLog(),
     );
 
     await expect(
@@ -98,15 +113,69 @@ describe("PaymentRequiredListener", () => {
 
   it("skips the send and does not throw when the template fails to render", async () => {
     const mailer = makeMailer();
+    const notificationLog = makeNotificationLog();
     const listener = new PaymentRequiredListener(
       makeFormDefs(),
       makeTemplateService(null),
       mailer,
+      notificationLog,
     );
 
     await expect(
       listener.handlePaymentRequired(makeEvent()),
     ).resolves.toBeUndefined();
     expect(mailer.sendSimple).not.toHaveBeenCalled();
+    expect(notificationLog.record).not.toHaveBeenCalled();
+  });
+
+  describe("notification_log recording", () => {
+    it("records a sent row with the SES MessageId, so SES events can match it", async () => {
+      const notificationLog = makeNotificationLog();
+      const listener = new PaymentRequiredListener(
+        makeFormDefs(),
+        makeTemplateService(),
+        makeMailer(),
+        notificationLog,
+      );
+
+      await listener.handlePaymentRequired(makeEvent());
+
+      expect(notificationLog.record).toHaveBeenCalledTimes(1);
+      expect(notificationLog.record).toHaveBeenCalledWith({
+        submissionId: "sub-1",
+        formId: "birth-certificate",
+        referenceCode: "BC-20260617-000001",
+        recipientKind: "payment",
+        recipient: "citizen@example.com",
+        outcome: "sent",
+        error: null,
+        providerMessageId: "ses-pay-001",
+      });
+    });
+
+    it("records a failed row with the error when the send throws, and still does not throw", async () => {
+      const mailer = makeMailer();
+      mailer.sendSimple.mockRejectedValueOnce(new Error("SES throttled"));
+      const notificationLog = makeNotificationLog();
+      const listener = new PaymentRequiredListener(
+        makeFormDefs(),
+        makeTemplateService(),
+        mailer,
+        notificationLog,
+      );
+
+      await expect(
+        listener.handlePaymentRequired(makeEvent()),
+      ).resolves.toBeUndefined();
+      expect(notificationLog.record).toHaveBeenCalledTimes(1);
+      expect(notificationLog.record).toHaveBeenCalledWith(
+        expect.objectContaining({
+          recipientKind: "payment",
+          outcome: "failed",
+          error: "SES throttled",
+          providerMessageId: null,
+        }),
+      );
+    });
   });
 });

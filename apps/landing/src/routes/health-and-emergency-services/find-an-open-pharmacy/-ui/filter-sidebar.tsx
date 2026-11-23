@@ -18,6 +18,7 @@ import type { ReactNode } from 'react'
 import { PARISHES } from '../-data/pharmacies'
 import type { FilterAction, FilterState } from '../-lib/finder-filters'
 import { SLIP_COLOURS_HREF } from '../-lib/routes'
+import { trackPharmacyAction } from '../-lib/tool-events'
 import { SLIP_COLOURS, SLIP_LABELS } from '../-lib/slips'
 import { Chevron, CloseIcon } from './icons'
 
@@ -212,7 +213,10 @@ export function FilterSidebar({
                   </option>
                 ))}
               </Select>
-              <Link href={SLIP_COLOURS_HREF}>
+              <Link
+                href={SLIP_COLOURS_HREF}
+                onClick={() => trackPharmacyAction('slip-colours')}
+              >
                 What prescription colours mean
               </Link>
             </FilterGroup>

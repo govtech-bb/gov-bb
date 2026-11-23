@@ -16,6 +16,8 @@ export const REASONS: Record<
   rejected: { failure: false, source: 'static', level: 'warn' },
   bad_redirect: { failure: false, source: 'static-fallback', level: 'warn' },
   compile: { failure: false, source: 'static-fallback', level: 'warn' },
+  // A 401 to a reviewer's read: landing's and api_v2's PREVIEW_SECRET differ.
+  preview_token: { failure: false, source: 'static-fallback', level: 'error' },
   no_target: { failure: true, source: 'static-fallback', level: 'error' },
   status: { failure: true, source: 'static-fallback', level: 'error' },
   malformed: { failure: true, source: 'static-fallback', level: 'error' },

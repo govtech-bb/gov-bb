@@ -77,7 +77,7 @@ export class EditorAccess implements EmployeeGate {
       return err(
         new AuthUnavailable({ lookup: "roles", operation: "rolesOf" }),
       );
-    // A listed admin can also write: a new user has no role (ADR 0079).
+    // A listed admin can also write: a new user has no role (ADR 0134).
     if (this.adminEmails.includes(identity.email))
       for (const role of ["admin", "editor"] as const) {
         if (roles.value.includes(role)) continue;

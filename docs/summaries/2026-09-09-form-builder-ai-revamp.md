@@ -9,7 +9,7 @@ clarification questions, reviewed changes, and contextual selection actions.
 Proposals apply only to the current local draft after review and validation.
 Revision and editing-claim checks prevent stale application; restored history
 cannot execute tools. Existing protected configuration and explicit Save/Deploy
-flows are preserved. ADR 0072 records the transport and review decisions.
+flows are preserved. ADR 0120 records the transport and review decisions.
 
 The Bedrock 0.3.7 patch forwards cancellation to the AWS SDK. Docker contexts
 include the patch, and the dependency consistency check permits the form

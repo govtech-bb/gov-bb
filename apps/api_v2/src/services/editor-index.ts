@@ -10,6 +10,7 @@ import type {
   ContentStoreUnavailable,
   PageId,
   ReviewQueueEntry,
+  SitePageSummary,
 } from "../modules/page";
 import {
   historyOf,
@@ -56,6 +57,25 @@ export class EditorIndex {
   > {
     const pages = await this.reads.indexedPages();
     return pages.ok ? ok(groupServices(pages.value)) : pages;
+  }
+
+  /** Uncategorised root pages, in every visibility, ordered by title. */
+  async listSitePages(): Promise<
+    Result<SitePageSummary[], ContentStoreUnavailable>
+  > {
+    const pages = await this.reads.indexedPages();
+    if (!pages.ok) return pages;
+    return ok(
+      pages.value
+        .filter((page) => page.parentId === null && page.category === null)
+        .map(({ id, title, url, visibility }) => ({
+          id,
+          title,
+          url,
+          visibility,
+        }))
+        .sort((a, b) => a.title.localeCompare(b.title)),
+    );
   }
 
   /** All stored page paths and unambiguous bare-slug redirects, regardless of visibility or category. */

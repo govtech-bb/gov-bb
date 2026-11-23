@@ -1,11 +1,11 @@
 import { AddressBook, ArrowRight, Warning } from "@phosphor-icons/react";
-import { recordDetails } from "@govtech-bb/govbbmarkd/record-details";
+import { contactDetails } from "@govtech-bb/govbbmarkd/contact-record";
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
 import { useLexicalEditable } from "@lexical/react/useLexicalEditable";
 import { DecoratorNode, type LexicalNode, type NodeKey, type SerializedLexicalNode } from "lexical";
 import { useEffect, useRef, type ReactNode } from "react";
 import { OPEN_BLOCK_OPTIONS_COMMAND } from "../block-options";
-import { findRecord, useCollection, usePageCollections } from "../page-collections";
+import { findRecord, recordName, useCollection, usePageCollections } from "../page-collections";
 import type { PageHandler, PageModule } from "../definition";
 import { UnsupportedPageContent } from "../markdown";
 import { pageInsertAction } from "../insertion";
@@ -76,7 +76,7 @@ export function ContactPreview({
       true,
     );
 
-  const details = recordDetails(value.collection, fields, found.data);
+  const details = contactDetails(value.collection, fields, found.data);
 
   if (!details.length) return status("This record has none of the chosen details.", true);
 
@@ -214,6 +214,8 @@ function contactSettings(node: Parameters<PageHandler["$import"]>[0]): ContactSe
     node.children.length ||
     Object.keys(data).join() !== ATTRIBUTES.join() ||
     !data.collection ||
+    data.collection !== data.collection.trim() ||
+    (data.record ?? "") !== (data.record ?? "").trim() ||
     fields.join(",") !== data.fields
   )
     throw new UnsupportedPageContent(node, "This contact block needs Markdown source editing");
@@ -268,7 +270,7 @@ export function ContactBlockSettings({
   }, [record, collection]);
 
   const choices = [...(collection?.records ?? [])].sort((a, b) =>
-    (a.data.name ?? a.record_key).localeCompare(b.data.name ?? b.record_key),
+    recordName(a).localeCompare(recordName(b)),
   );
 
   const detailFields =
@@ -295,7 +297,7 @@ export function ContactBlockSettings({
           )}
           {choices.map((row) => (
             <option key={row.record_key} value={row.record_key}>
-              {row.data.name ?? row.record_key}
+              {recordName(row)}
             </option>
           ))}
         </NativeSelect>

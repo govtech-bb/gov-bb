@@ -10,12 +10,65 @@
  * empty arrays is indistinguishable, from the outside, from an estate that
  * genuinely has no content — and a health check would call it healthy.
  *
- * This one needs no Postgres. It needs there NOT to be one at the address it
- * tries, which port 1 reliably provides.
+ * The unreachable-database cases need no Postgres at the address they try,
+ * which port 1 reliably provides.
  */
 
-import { describe, expect, it } from "vitest";
-import { runToExit } from "./support";
+import { Client } from "pg";
+import { describe, expect, it, vi } from "vitest";
+import {
+  createScratchDatabase,
+  DB,
+  dropScratchDatabase,
+  HAS_DATABASE,
+  runToExit,
+  startServer,
+  type Server,
+} from "./support";
+
+describe.skipIf(!HAS_DATABASE)("boot migrations", () => {
+  it("waits on the migration lock beyond the request pool's five-second limit", async () => {
+    const database = await createScratchDatabase();
+    const locker = new Client({ ...DB, database });
+    let server: Server | undefined;
+    await locker.connect();
+    try {
+      await locker.query(
+        "select pg_advisory_lock(hashtext('api_v2 migrations'))",
+      );
+      server = await startServer(
+        { DB_NAME: database },
+        { waitForReady: false },
+      );
+      const url = server.url;
+      await vi.waitFor(
+        async () => {
+          const { rows } =
+            await locker.query(`select count(*)::int as waiting from pg_stat_activity
+          where datname = current_database() and wait_event = 'advisory'`);
+          expect(rows).toEqual([{ waiting: 1 }]);
+        },
+        { timeout: 5_000 },
+      );
+
+      await locker.query("select pg_sleep(5.5)");
+      expect(server.stderr).not.toContain("api_v2 failed to start or serve");
+      await locker.query(
+        "select pg_advisory_unlock(hashtext('api_v2 migrations'))",
+      );
+      await vi.waitFor(
+        async () => {
+          expect((await fetch(`${url}/health/db`)).status).toBe(200);
+        },
+        { timeout: 5_000 },
+      );
+    } finally {
+      await locker.end();
+      await server?.stop();
+      await dropScratchDatabase(database);
+    }
+  });
+});
 
 describe("booting without a database", () => {
   it("refuses missing auth configuration before attempting a database connection", async () => {
@@ -37,7 +90,7 @@ describe("booting without a database", () => {
     });
     expect(code).toBe(1);
     expect(output).toContain("API_V2_ADMIN_EMAILS");
-    expect(output).toContain("ADR 0079");
+    expect(output).toContain("ADR 0134");
     expect(output).not.toContain("Cannot reach Postgres");
   });
 

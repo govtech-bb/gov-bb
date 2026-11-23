@@ -1,3 +1,4 @@
+import { detailText } from "@govtech-bb/govbbmarkd/contact-record";
 import {
   createContext,
   useContext,
@@ -18,7 +19,11 @@ export type CollectionRecords = {
     record_key: string;
     schema: { fields: readonly { key: string; label: string }[] };
   };
-  records: readonly { record_key: string; data: Readonly<Record<string, string>> }[];
+  records: readonly {
+    record_key: string;
+    /** Text, a number, true or false, or a list of text, as each field's type keeps (#3782). */
+    data: Readonly<Record<string, string | number | boolean | readonly string[]>>;
+  }[];
 };
 
 /** What the host lets a page's contact blocks and facts read and open; without a host, they show which record they name. */
@@ -106,6 +111,10 @@ export function useCollection(key: string): CollectionState {
 
   return state ?? { status: "loading" };
 }
+
+/** The name shown in record pickers and fact labels, or the key for an unnamed record. */
+export const recordName = (row: CollectionRecords["records"][number]) =>
+  detailText(row.data.name) ?? row.record_key;
 
 /** The record a block or fact names, from a read collection; undefined when it has gone. */
 export const findRecord = (collection: CollectionRecords, record: string) =>

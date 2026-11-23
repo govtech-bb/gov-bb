@@ -11,6 +11,7 @@ These records explain the choices that shape editor modules, document formats an
 | [0005](0005-insert-registry-entries-as-independent-copies.md) | Insert registry entries as independent copies |
 | [0006](0006-keep-draft-persistence-in-the-host.md) | Keep draft persistence in the host |
 | [0007](0007-service-workspaces-and-markdown-pages.md) | Separate service pages from form documents |
+| [0008](0008-one-lost-answer-policy-for-every-editor-write.md) | One lost-answer policy for every editor write |
 
 **Accepted** decisions are in use by this editor. **Recorded** is the date the record was written. When a decision changes, link its replacement and mark the earlier record superseded.
 

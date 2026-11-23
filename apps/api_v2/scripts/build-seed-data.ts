@@ -12,9 +12,12 @@
  *   page is filed under its subcategory when it names one. A sub-page such
  *   as `<service>/start` hangs off its parent's url, takes its parent's
  *   category and records the parent; so do the pages landing nests without
- *   nesting their url (`NESTED_WITHOUT_URL`). A second category is dropped:
- *   a page has one `category_id`. `content_slug` is the markdown path
- *   landing's registry keys the page by, `index.md`/`.md` stripped.
+ *   nesting their url (`NESTED_WITHOUT_URL`). A page that names a second
+ *   category fails the build: a page has one `category_id`. `content_slug`
+ *   is the markdown path landing's registry keys the page by,
+ *   `index.md`/`.md` stripped.
+ * - feature-route pages: every `-meta.ts` under `apps/landing/src/routes`,
+ *   from its `META`, with an empty body.
  * - categories: `CATEGORY_TAXONOMY` in its order, each subcategory a
  *   category with a parent.
  *
@@ -24,15 +27,22 @@
  */
 
 import { readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
-import { join, relative } from "node:path";
+import { basename, join, relative } from "node:path";
 import { execFileSync } from "node:child_process";
 import matter from "gray-matter";
 import { CATEGORY_TAXONOMY } from "@govtech-bb/content/categories";
 import type { Frontmatter } from "../src/modules/page";
 import type { SeedEstate, SeedPage } from "../src/seed-data";
+import { convertStormReadyContacts } from "../src/seed-data/stormready-contacts";
+import {
+  type FeatureMeta,
+  featureRoutePage,
+} from "../src/seed-data/feature-route-pages";
+import { pageCategory } from "../src/seed-data/page-category";
 
 const root = join(__dirname, "..", "..", "..");
 const contentDir = join(root, "apps", "landing", "src", "content");
+const routesDir = join(root, "apps", "landing", "src", "routes");
 const target = join(__dirname, "..", "src", "seed-data", "estate.json");
 
 const FRONTMATTER_KEYS = [
@@ -77,13 +87,7 @@ const parsed: Parsed[] = markdownFiles(contentDir).map((path) => {
     .replace(/\/index\.md$/, "")
     .replace(/\.md$/, "");
   const { data, content } = matter(readFileSync(path, "utf8"));
-  const categories = [
-    ...new Set<string>([
-      ...(data.category ? [data.category] : []),
-      ...(data.categories ?? []),
-    ]),
-  ];
-  const primary = categories[0];
+  const primary = pageCategory(slug, data);
   const subcategory: string | undefined = data.subcategory;
 
   // landing's `leafFromSlug`: nesting on disk under the category (and
@@ -114,7 +118,10 @@ const parsed: Parsed[] = markdownFiles(contentDir).map((path) => {
       form_id: data.form_id || null,
       content_slug: slug,
       published_at: asDate(data.publish_date),
-      body_markdown: content.trim(),
+      body_markdown:
+        slug === "health-and-emergency-services/stormready"
+          ? convertStormReadyContacts(content.trim())
+          : content.trim(),
       frontmatter,
     },
   };
@@ -152,6 +159,18 @@ const parentUrlOf = (page: Parsed): string | null => {
   return parent ? urlOf(parent) : (nestedUrls.get(urlOf(page)) ?? null);
 };
 
+const featurePages: SeedPage[] = readdirSync(routesDir, {
+  recursive: true,
+  encoding: "utf8",
+})
+  .filter((file) => basename(file) === "-meta.ts")
+  .sort()
+  .map((file) => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports -- tsx runs this as CommonJS, so no top-level await import()
+    const { META }: { META: FeatureMeta } = require(join(routesDir, file));
+    return featureRoutePage(META);
+  });
+
 const pages: SeedPage[] = parsed
   .map((entry) => ({
     url: urlOf(entry),
@@ -159,6 +178,7 @@ const pages: SeedPage[] = parsed
     category: categoryOf(entry),
     parent: parentUrlOf(entry),
   }))
+  .concat(featurePages)
   .sort((a, b) => a.url.localeCompare(b.url));
 
 // A sub-page takes its parent's category: the database requires it.
@@ -191,7 +211,7 @@ const estate: SeedEstate = {
 
 writeFileSync(target, `${JSON.stringify(estate, null, 2)}\n`);
 // Formatted as lint-staged would, so committing it changes nothing.
-execFileSync("pnpm", ["exec", "prettier", "--write", target], { cwd: root });
+execFileSync("pnpm", ["exec", "oxfmt", target], { cwd: root });
 console.log(
   `Wrote ${pages.length} pages and ${estate.categories.length} categories ` +
     `to ${target}`,

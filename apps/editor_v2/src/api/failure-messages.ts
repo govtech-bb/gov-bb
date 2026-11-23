@@ -21,6 +21,12 @@ export function apiFailureMessages(
   // A refusal such as "Only approvers can…" says what the author can't do; trying again won't help
   if (error.status === 403 && error.errors.length === 0) return [apiMessage(error) ?? otherwise];
 
+  if (error.status === 409)
+    return [
+      apiMessage(error) ??
+        "This item changed. Cancel and review the latest version before trying again.",
+    ];
+
   if (error.errors.length === 0) return [otherwise];
 
   return error.errors.map((item) => `${label(item.field)}: ${item.message}`);

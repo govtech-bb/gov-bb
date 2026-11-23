@@ -12,6 +12,17 @@ window is **last 30 days**. Data is fetched per request and deduped by a ~60s
 in-memory TTL, so `queried` is when the underlying data was actually pulled (at
 most ~60s before the page render).
 
+## Page URLs before the #3586 fix
+
+Until #3586 was deployed, Umami filed every landing page view and event in a
+visit under the page the visit started on, with the external referrer. With
+auto-track off, its tracker never updated the URL it read at load. So for any
+window that includes earlier days, entry pages are over-counted, inner pages
+under-counted, the journeys report is mostly single-page visits, and per-page
+referrers repeat the entry source. Stored data can't be corrected. Forms is
+unaffected: it has one route. From the fix on, an inner page's referrer is the
+page before it, so its top sources are mostly internal paths.
+
 ## Overview summary cards
 
 The homepage leads with six cards from the landing `/stats` (+ events): **Sessions**

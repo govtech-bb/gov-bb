@@ -16,7 +16,8 @@ export type Category = {
   services: number;
   /** An app-owned route depends on this category's address. */
   reserved_route: boolean;
-  /** Last-read version, sent when saving, deleting or reordering. */
+  /** Last-read content version, sent when saving, deleting or reordering. */
+  version: number;
   updated_at: string;
   /** Latest recorded change; null without history, a null name when the actor's name is unavailable. */
   last_edited_by: { id: string; name: string | null } | null;
@@ -28,7 +29,7 @@ export type CategoryFields = Pick<Category, "title" | "slug" | "parent_id" | "de
 /** A complete sibling snapshot and its requested order; the whole group saves or none does. */
 export type CategoryOrder = {
   parent_id: string | null;
-  expected: Pick<Category, "id" | "updated_at">[];
+  expected: Pick<Category, "id" | "version">[];
   ordered_ids: string[];
 };
 
@@ -203,7 +204,7 @@ export function moveOrder(
 
   return {
     parent_id: moving.parent_id,
-    expected: siblings.map((sibling) => ({ id: sibling.id, updated_at: sibling.updated_at })),
+    expected: siblings.map((sibling) => ({ id: sibling.id, version: sibling.version })),
     ordered_ids: orderedIds,
   };
 }

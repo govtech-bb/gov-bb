@@ -1,4 +1,4 @@
-npx lint-staged --concurrent false
+pnpm exec lint-staged --concurrent false
 
 # Block commits that include secrets. Install gitleaks locally:
 #   macOS:  brew install gitleaks

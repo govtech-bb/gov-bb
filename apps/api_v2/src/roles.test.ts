@@ -1,5 +1,5 @@
 /**
- * Roles (#3187, #3197, ADR 0079): only an editor writes, only an approver
+ * Roles (#3187, #3197, ADR 0134): only an editor writes, only an approver
  * changes what citizens see, only an admin changes who holds which role,
  * and roles are read from the database on every request.
  */
@@ -71,10 +71,12 @@ const as = (employee: Employee, options: InjectOptions) =>
     },
   });
 
-const seedPage = async (overrides: Record<string, unknown> = {}) =>
-  PageDocument.parse(
-    expectOk(await services.editing.create(aPage(overrides), TEST_EMPLOYEE)),
+const seedPage = async (overrides: Record<string, unknown> = {}) => {
+  const page = expectOk(
+    await services.editing.create(aPage(overrides), TEST_EMPLOYEE),
   );
+  return { ...PageDocument.parse(page), version: page.version };
+};
 
 const stored = async (id: PageId) =>
   expectOk(await new PostgresPages(db).find(id));
@@ -84,6 +86,13 @@ const FORBIDDEN = {
   message: "Only approvers can change who can see a page.",
 };
 
+const START_LINK_FORBIDDEN = {
+  error: "forbidden",
+  message:
+    "A start page under a public page decides whether citizens see its Start " +
+    "link, so only an approver can add, move, rename or delete it.",
+};
+
 describe("a page's visibility", () => {
   it("is not changed by a non-approver's save, which leaves the page as it was", async () => {
     const page = await seedPage({ visibility: "preview" });
@@ -91,12 +100,15 @@ describe("a page's visibility", () => {
     const response = await as(TEST_EDITOR, {
       method: "PUT",
       url: `/pages/${page.id}`,
-      payload: withDefaults(aPage({ visibility: "public", title: "Changed" })),
+      payload: {
+        ...withDefaults(aPage({ visibility: "public", title: "Changed" })),
+        expected_version: page.version,
+      },
     });
 
     expect(response.statusCode).toBe(403);
     expect(response.json()).toEqual(FORBIDDEN);
-    expect(await stored(page.id)).toEqual(page);
+    expect(await stored(page.id)).toEqual(PageDocument.parse(page));
   });
 
   it("still lets a non-approver edit a page's content", async () => {
@@ -105,7 +117,10 @@ describe("a page's visibility", () => {
     const response = await as(TEST_EDITOR, {
       method: "PUT",
       url: `/pages/${page.id}`,
-      payload: withDefaults(aPage({ title: "Changed" })),
+      payload: {
+        ...withDefaults(aPage({ title: "Changed" })),
+        expected_version: page.version,
+      },
     });
 
     expect(response.statusCode).toBe(200);
@@ -127,7 +142,10 @@ describe("a page's visibility", () => {
     const response = await as(TEST_EMPLOYEE, {
       method: "PUT",
       url: `/pages/${page.id}`,
-      payload: withDefaults(aPage({ visibility: "public" })),
+      payload: {
+        ...withDefaults(aPage({ visibility: "public" })),
+        expected_version: page.version,
+      },
     });
 
     expect(response.statusCode).toBe(200);
@@ -176,12 +194,12 @@ describe("deleting a page", () => {
 
     const response = await as(TEST_EDITOR, {
       method: "DELETE",
-      url: `/pages/${page.id}`,
+      url: `/pages/${page.id}?expected_version=${page.version}`,
     });
 
     expect(response.statusCode).toBe(403);
     expect(response.json()).toEqual(FORBIDDEN);
-    expect(await stored(page.id)).toEqual(page);
+    expect(await stored(page.id)).toEqual(PageDocument.parse(page));
     expect(expectOk(await services.index.version()).count).toBe(1);
   });
 
@@ -192,13 +210,170 @@ describe("deleting a page", () => {
 
       const response = await as(TEST_EDITOR, {
         method: "DELETE",
-        url: `/pages/${page.id}`,
+        url: `/pages/${page.id}?expected_version=${page.version}`,
       });
 
       expect(response.statusCode).toBe(204);
       expect(await stored(page.id)).toBeNull();
     },
   );
+});
+
+describe("a public page's Start link", () => {
+  const ENTRY = aPage().url;
+  const START = `${ENTRY}/start`;
+
+  /** Whether the anonymous read of the entry page hides its Start link. */
+  const hidden = async () =>
+    (await app.inject({ method: "GET", url: `/pages?url=${ENTRY}` })).json()
+      .hide_start_links;
+
+  it("is not hidden by a non-approver's new start sub-page", async () => {
+    const parent = await seedPage();
+
+    const response = await as(TEST_EDITOR, {
+      method: "POST",
+      url: "/pages",
+      payload: aPage({ url: START, parent_id: parent.id, visibility: "draft" }),
+    });
+
+    expect(response.statusCode).toBe(403);
+    expect(response.json()).toEqual(START_LINK_FORBIDDEN);
+    expect(await hidden()).toBe(false);
+  });
+
+  it("is not shown by a non-approver deleting the start sub-page that hides it", async () => {
+    const parent = await seedPage();
+    const start = await seedPage({
+      url: START,
+      parent_id: parent.id,
+      visibility: "draft",
+    });
+
+    const response = await as(TEST_EDITOR, {
+      method: "DELETE",
+      url: `/pages/${start.id}?expected_version=${start.version}`,
+    });
+
+    expect(response.statusCode).toBe(403);
+    expect(response.json()).toEqual(START_LINK_FORBIDDEN);
+    expect(await stored(start.id)).not.toBeNull();
+    expect(await hidden()).toBe(true);
+  });
+
+  it.each([
+    ["moving a hidden page beneath it as its start", "/elsewhere/start", null],
+    ["renaming a hidden sub-page of it to start", `${ENTRY}/notes`, "parent"],
+  ])("is not hidden by a non-approver %s", async (_, url, parentOf) => {
+    const parent = await seedPage();
+    const page = await seedPage({
+      url,
+      parent_id: parentOf === "parent" ? parent.id : null,
+      visibility: "draft",
+    });
+
+    const response = await as(TEST_EDITOR, {
+      method: "PUT",
+      url: `/pages/${page.id}`,
+      payload: {
+        ...withDefaults(
+          aPage({ url: START, parent_id: parent.id, visibility: "draft" }),
+        ),
+        expected_version: page.version,
+      },
+    });
+
+    expect(response.statusCode).toBe(403);
+    expect(response.json()).toEqual(START_LINK_FORBIDDEN);
+    expect(await hidden()).toBe(false);
+  });
+
+  it("is not moved by a non-approver between two public pages", async () => {
+    const OTHER = "/money-financial-support/claim-unemployment-benefit";
+    const a = await seedPage();
+    const b = await seedPage({ url: OTHER, title: "Other" });
+    const start = await seedPage({
+      url: START,
+      parent_id: a.id,
+      visibility: "draft",
+    });
+    const hiddenAt = async (url: string) =>
+      (await app.inject({ method: "GET", url: `/pages?url=${url}` })).json()
+        .hide_start_links;
+
+    const response = await as(TEST_EDITOR, {
+      method: "PUT",
+      url: `/pages/${start.id}`,
+      payload: {
+        ...withDefaults(
+          aPage({
+            url: `${OTHER}/start`,
+            parent_id: b.id,
+            visibility: "draft",
+          }),
+        ),
+        expected_version: start.version,
+      },
+    });
+
+    expect(response.statusCode).toBe(403);
+    expect(response.json()).toEqual(START_LINK_FORBIDDEN);
+    expect(await hiddenAt(ENTRY)).toBe(true);
+    expect(await hiddenAt(OTHER)).toBe(false);
+  });
+
+  it("still lets a non-approver edit the start sub-page that hides it", async () => {
+    const parent = await seedPage();
+    const start = await seedPage({
+      url: START,
+      parent_id: parent.id,
+      visibility: "draft",
+    });
+
+    const response = await as(TEST_EDITOR, {
+      method: "PUT",
+      url: `/pages/${start.id}`,
+      payload: {
+        ...withDefaults(
+          aPage({
+            url: START,
+            parent_id: parent.id,
+            visibility: "draft",
+            title: "Changed",
+          }),
+        ),
+        expected_version: start.version,
+      },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(await hidden()).toBe(true);
+  });
+
+  it("still lets a non-approver add a start sub-page beneath a page that isn't public", async () => {
+    const parent = await seedPage({ visibility: "draft" });
+
+    const response = await as(TEST_EDITOR, {
+      method: "POST",
+      url: "/pages",
+      payload: aPage({ url: START, parent_id: parent.id, visibility: "draft" }),
+    });
+
+    expect(response.statusCode).toBe(201);
+  });
+
+  it("is hidden by an approver's new start sub-page", async () => {
+    const parent = await seedPage();
+
+    const response = await as(TEST_EMPLOYEE, {
+      method: "POST",
+      url: "/pages",
+      payload: aPage({ url: START, parent_id: parent.id, visibility: "draft" }),
+    });
+
+    expect(response.statusCode).toBe(201);
+    expect(await hidden()).toBe(true);
+  });
 });
 
 describe("an employee whose editor role is revoked", () => {
@@ -214,7 +389,10 @@ describe("an employee whose editor role is revoked", () => {
     const response = await as(TEST_EDITOR, {
       method: "PUT",
       url: `/pages/${page.id}`,
-      payload: withDefaults(aPage({ visibility: "draft", title: "Changed" })),
+      payload: {
+        ...withDefaults(aPage({ visibility: "draft", title: "Changed" })),
+        expected_version: page.version,
+      },
     });
     expect(response.statusCode).toBe(403);
     expect(response.json()).toEqual({
@@ -297,7 +475,10 @@ describe("role management", () => {
     const response = await as(TEST_EDITOR, {
       method: "PUT",
       url: `/pages/${page.id}`,
-      payload: withDefaults(aPage({ visibility: "public" })),
+      payload: {
+        ...withDefaults(aPage({ visibility: "public" })),
+        expected_version: page.version,
+      },
     });
     expect(response.statusCode).toBe(403);
   });

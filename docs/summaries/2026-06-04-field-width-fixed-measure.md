@@ -15,7 +15,7 @@ against every wrapper: `.form-width` 2/3 column × show-hide inset padding ×
 - Replaced the ≥768px percentage rules in `apps/forms/src/styles/govtech.css`
   with fixed caps: `short` → `max-width: 24ch`, `medium` → `max-width: 38ch`.
   Mobile (<768px) stays full width; `long`/no hint stays unstyled.
-- Wrote [ADR 0034](../decisions/0034-field-width-hints-are-fixed-measure.md)
+- Wrote [ADR 0061](../decisions/0061-field-width-hints-are-fixed-measure.md)
   establishing the convention: width hints are fixed-measure, never
   container-relative.
 - Verified end-to-end with Playwright against the worktree's dev server and

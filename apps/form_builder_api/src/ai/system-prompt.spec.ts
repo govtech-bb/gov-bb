@@ -175,7 +175,7 @@ describe("AI system prompt", () => {
     expect(missing).toEqual([]);
   });
 
-  it("steers the declaration step away from blocks/applicant-declaration (ADR 0077)", () => {
+  it("steers the declaration step away from blocks/applicant-declaration (ADR 0131)", () => {
     expect(prompt).not.toContain("Form has a declaration/agreement checkbox");
     expect(prompt).toContain(
       "blocks/applicant-declaration` | confirmation | Never for the declaration step",
@@ -324,6 +324,13 @@ describe("AI system prompt", () => {
     expect(prompt).toContain("There is NO gte/lte");
     // The worked start-year/end-year range example.
     expect(prompt).toContain('"fieldId": "end-year"');
+  });
+
+  it("documents scaleBy on the numeric bound validations (#3636)", () => {
+    expect(prompt).toContain("#### Scaling the value by another answer");
+    expect(prompt).toContain(
+      '"scaleBy": {"referenceFieldId": "income-frequency", "factors": {"weekly": 4',
+    );
   });
 
   it("pins the declaration step to the declaration-confirmed checkbox", () => {

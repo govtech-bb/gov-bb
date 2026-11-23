@@ -2,9 +2,7 @@ import {
   catalogOf,
   categoryAt,
   categoryTree,
-  inCatalog,
   listed,
-  searchDocumentsOf,
   type CatalogEntry,
   type CategoryListing,
   type CategoryNode,
@@ -16,7 +14,6 @@ import { createHash } from "node:crypto";
 import type { ContentStoreUnavailable, Visibility } from "../modules/page";
 import { visibleTo, type Viewer } from "../modules/page-visibility";
 import { ok, type Result } from "../modules/result";
-import type { SearchChunk } from "../modules/search-text";
 import type { EstateVersion } from "./editor-index";
 
 /** The reads site navigation needs from content storage. */
@@ -36,10 +33,10 @@ export interface NavigationReads {
   visiblePages(
     visibilities: readonly Visibility[],
   ): Promise<Result<ListablePage[], ContentStoreUnavailable>>;
-  /** These pages' search chunks, in order. */
-  searchChunksOf(
-    pageIds: readonly string[],
-  ): Promise<Result<Map<string, SearchChunk[]>, ContentStoreUnavailable>>;
+  /** Visible catalog pages and their search text from one committed snapshot. */
+  searchDocuments(
+    visibilities: readonly Visibility[],
+  ): Promise<Result<SearchDocument[], ContentStoreUnavailable>>;
   /** The change log's size and newest timestamp. */
   changeLogVersion(): Promise<Result<EstateVersion, ContentStoreUnavailable>>;
 }
@@ -88,24 +85,20 @@ export class SiteNavigation {
   async catalog(
     viewer: Viewer,
   ): Promise<Result<CatalogEntry[], ContentStoreUnavailable>> {
-    const pages = await this.reads.visiblePages(visibleTo(viewer));
+    const [pages, categories] = await Promise.all([
+      this.reads.visiblePages(visibleTo(viewer)),
+      this.reads.categories(),
+    ]);
     if (!pages.ok) return pages;
-    return ok(catalogOf(inCatalog(pages.value)));
+    if (!categories.ok) return categories;
+    return ok(catalogOf(pages.value, categories.value));
   }
 
   /** What search indexes: every catalog page, with its text. */
-  async searchDocuments(
+  searchDocuments(
     viewer: Viewer,
   ): Promise<Result<SearchDocument[], ContentStoreUnavailable>> {
-    const visible = await this.reads.visiblePages(visibleTo(viewer));
-    if (!visible.ok) return visible;
-    const pages = inCatalog(visible.value);
-    const chunks =
-      pages.length === 0
-        ? ok(new Map<string, SearchChunk[]>())
-        : await this.reads.searchChunksOf(pages.map((page) => page.id));
-    if (!chunks.ok) return chunks;
-    return ok(searchDocumentsOf(pages, chunks.value));
+    return this.reads.searchDocuments(visibleTo(viewer));
   }
 
   /**

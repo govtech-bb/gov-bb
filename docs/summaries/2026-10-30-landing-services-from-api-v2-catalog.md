@@ -29,7 +29,7 @@ urls only. This branch is stacked on that PR.
   fails whole if any entry breaks the copied contract, where before only
   `url` was checked. Accepted: api_v2 serialises `/catalog` through the same
   zod schema, so only the two copies drifting could cause it.
-- **Replace, never merge** (ADR 0078, as category listings and the home page
+- **Replace, never merge** (ADR 0132, as category listings and the home page
   do). An empty api_v2 list shows "No alpha services yet." rather than
   falling back to the markdown, so a page an editor unpublished can't come
   back. A render test pins this.

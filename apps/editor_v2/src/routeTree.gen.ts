@@ -16,10 +16,12 @@ import { Route as WorkspaceCategoriesRouteImport } from './routes/_workspace.cat
 import { Route as WorkspaceCollectionsRouteImport } from './routes/_workspace.collections'
 import { Route as WorkspaceReviewsRouteImport } from './routes/_workspace.reviews'
 import { Route as WorkspaceServicesRouteImport } from './routes/_workspace.services'
+import { Route as WorkspaceSitePagesRouteImport } from './routes/_workspace.site-pages'
 import { Route as WorkspaceCollectionsKeyRouteImport } from './routes/_workspace.collections.$key'
 import { Route as WorkspaceHistoryPageIdRouteImport } from './routes/_workspace.history.$pageId'
 import { Route as WorkspaceReviewsPageIdRouteImport } from './routes/_workspace.reviews.$pageId'
 import { Route as WorkspaceServicesServiceIdRouteImport } from './routes/_workspace.services.$serviceId'
+import { Route as WorkspaceSitePagesPageIdRouteImport } from './routes/_workspace.site-pages.$pageId'
 import { Route as WorkspaceCollectionsKeyRecordKeyRouteImport } from './routes/_workspace.collections.$key.$recordKey'
 import { Route as WorkspaceServicesServiceIdDocumentIdRouteImport } from './routes/_workspace.services.$serviceId.$documentId'
 
@@ -57,6 +59,11 @@ const WorkspaceServicesRoute = WorkspaceServicesRouteImport.update({
   path: '/services',
   getParentRoute: () => WorkspaceRoute,
 } as any)
+const WorkspaceSitePagesRoute = WorkspaceSitePagesRouteImport.update({
+  id: '/site-pages',
+  path: '/site-pages',
+  getParentRoute: () => WorkspaceRoute,
+} as any)
 const WorkspaceCollectionsKeyRoute = WorkspaceCollectionsKeyRouteImport.update({
   id: '/$key',
   path: '/$key',
@@ -78,6 +85,12 @@ const WorkspaceServicesServiceIdRoute =
     path: '/$serviceId',
     getParentRoute: () => WorkspaceServicesRoute,
   } as any)
+const WorkspaceSitePagesPageIdRoute =
+  WorkspaceSitePagesPageIdRouteImport.update({
+    id: '/$pageId',
+    path: '/$pageId',
+    getParentRoute: () => WorkspaceSitePagesRoute,
+  } as any)
 const WorkspaceCollectionsKeyRecordKeyRoute =
   WorkspaceCollectionsKeyRecordKeyRouteImport.update({
     id: '/$recordKey',
@@ -98,10 +111,12 @@ export interface FileRoutesByFullPath {
   '/collections': typeof WorkspaceCollectionsRouteWithChildren
   '/reviews': typeof WorkspaceReviewsRouteWithChildren
   '/services': typeof WorkspaceServicesRouteWithChildren
+  '/site-pages': typeof WorkspaceSitePagesRouteWithChildren
   '/collections/$key': typeof WorkspaceCollectionsKeyRouteWithChildren
   '/history/$pageId': typeof WorkspaceHistoryPageIdRoute
   '/reviews/$pageId': typeof WorkspaceReviewsPageIdRoute
   '/services/$serviceId': typeof WorkspaceServicesServiceIdRouteWithChildren
+  '/site-pages/$pageId': typeof WorkspaceSitePagesPageIdRoute
   '/collections/$key/$recordKey': typeof WorkspaceCollectionsKeyRecordKeyRoute
   '/services/$serviceId/$documentId': typeof WorkspaceServicesServiceIdDocumentIdRoute
 }
@@ -111,11 +126,13 @@ export interface FileRoutesByTo {
   '/collections': typeof WorkspaceCollectionsRouteWithChildren
   '/reviews': typeof WorkspaceReviewsRouteWithChildren
   '/services': typeof WorkspaceServicesRouteWithChildren
+  '/site-pages': typeof WorkspaceSitePagesRouteWithChildren
   '/': typeof WorkspaceIndexRoute
   '/collections/$key': typeof WorkspaceCollectionsKeyRouteWithChildren
   '/history/$pageId': typeof WorkspaceHistoryPageIdRoute
   '/reviews/$pageId': typeof WorkspaceReviewsPageIdRoute
   '/services/$serviceId': typeof WorkspaceServicesServiceIdRouteWithChildren
+  '/site-pages/$pageId': typeof WorkspaceSitePagesPageIdRoute
   '/collections/$key/$recordKey': typeof WorkspaceCollectionsKeyRecordKeyRoute
   '/services/$serviceId/$documentId': typeof WorkspaceServicesServiceIdDocumentIdRoute
 }
@@ -127,11 +144,13 @@ export interface FileRoutesById {
   '/_workspace/collections': typeof WorkspaceCollectionsRouteWithChildren
   '/_workspace/reviews': typeof WorkspaceReviewsRouteWithChildren
   '/_workspace/services': typeof WorkspaceServicesRouteWithChildren
+  '/_workspace/site-pages': typeof WorkspaceSitePagesRouteWithChildren
   '/_workspace/': typeof WorkspaceIndexRoute
   '/_workspace/collections/$key': typeof WorkspaceCollectionsKeyRouteWithChildren
   '/_workspace/history/$pageId': typeof WorkspaceHistoryPageIdRoute
   '/_workspace/reviews/$pageId': typeof WorkspaceReviewsPageIdRoute
   '/_workspace/services/$serviceId': typeof WorkspaceServicesServiceIdRouteWithChildren
+  '/_workspace/site-pages/$pageId': typeof WorkspaceSitePagesPageIdRoute
   '/_workspace/collections/$key/$recordKey': typeof WorkspaceCollectionsKeyRecordKeyRoute
   '/_workspace/services/$serviceId/$documentId': typeof WorkspaceServicesServiceIdDocumentIdRoute
 }
@@ -144,10 +163,12 @@ export interface FileRouteTypes {
     | '/collections'
     | '/reviews'
     | '/services'
+    | '/site-pages'
     | '/collections/$key'
     | '/history/$pageId'
     | '/reviews/$pageId'
     | '/services/$serviceId'
+    | '/site-pages/$pageId'
     | '/collections/$key/$recordKey'
     | '/services/$serviceId/$documentId'
   fileRoutesByTo: FileRoutesByTo
@@ -157,11 +178,13 @@ export interface FileRouteTypes {
     | '/collections'
     | '/reviews'
     | '/services'
+    | '/site-pages'
     | '/'
     | '/collections/$key'
     | '/history/$pageId'
     | '/reviews/$pageId'
     | '/services/$serviceId'
+    | '/site-pages/$pageId'
     | '/collections/$key/$recordKey'
     | '/services/$serviceId/$documentId'
   id:
@@ -172,11 +195,13 @@ export interface FileRouteTypes {
     | '/_workspace/collections'
     | '/_workspace/reviews'
     | '/_workspace/services'
+    | '/_workspace/site-pages'
     | '/_workspace/'
     | '/_workspace/collections/$key'
     | '/_workspace/history/$pageId'
     | '/_workspace/reviews/$pageId'
     | '/_workspace/services/$serviceId'
+    | '/_workspace/site-pages/$pageId'
     | '/_workspace/collections/$key/$recordKey'
     | '/_workspace/services/$serviceId/$documentId'
   fileRoutesById: FileRoutesById
@@ -237,6 +262,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WorkspaceServicesRouteImport
       parentRoute: typeof WorkspaceRoute
     }
+    '/_workspace/site-pages': {
+      id: '/_workspace/site-pages'
+      path: '/site-pages'
+      fullPath: '/site-pages'
+      preLoaderRoute: typeof WorkspaceSitePagesRouteImport
+      parentRoute: typeof WorkspaceRoute
+    }
     '/_workspace/collections/$key': {
       id: '/_workspace/collections/$key'
       path: '/$key'
@@ -264,6 +296,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/services/$serviceId'
       preLoaderRoute: typeof WorkspaceServicesServiceIdRouteImport
       parentRoute: typeof WorkspaceServicesRoute
+    }
+    '/_workspace/site-pages/$pageId': {
+      id: '/_workspace/site-pages/$pageId'
+      path: '/$pageId'
+      fullPath: '/site-pages/$pageId'
+      preLoaderRoute: typeof WorkspaceSitePagesPageIdRouteImport
+      parentRoute: typeof WorkspaceSitePagesRoute
     }
     '/_workspace/collections/$key/$recordKey': {
       id: '/_workspace/collections/$key/$recordKey'
@@ -345,11 +384,23 @@ const WorkspaceServicesRouteChildren: WorkspaceServicesRouteChildren = {
 const WorkspaceServicesRouteWithChildren =
   WorkspaceServicesRoute._addFileChildren(WorkspaceServicesRouteChildren)
 
+interface WorkspaceSitePagesRouteChildren {
+  WorkspaceSitePagesPageIdRoute: typeof WorkspaceSitePagesPageIdRoute
+}
+
+const WorkspaceSitePagesRouteChildren: WorkspaceSitePagesRouteChildren = {
+  WorkspaceSitePagesPageIdRoute: WorkspaceSitePagesPageIdRoute,
+}
+
+const WorkspaceSitePagesRouteWithChildren =
+  WorkspaceSitePagesRoute._addFileChildren(WorkspaceSitePagesRouteChildren)
+
 interface WorkspaceRouteChildren {
   WorkspaceCategoriesRoute: typeof WorkspaceCategoriesRoute
   WorkspaceCollectionsRoute: typeof WorkspaceCollectionsRouteWithChildren
   WorkspaceReviewsRoute: typeof WorkspaceReviewsRouteWithChildren
   WorkspaceServicesRoute: typeof WorkspaceServicesRouteWithChildren
+  WorkspaceSitePagesRoute: typeof WorkspaceSitePagesRouteWithChildren
   WorkspaceIndexRoute: typeof WorkspaceIndexRoute
   WorkspaceHistoryPageIdRoute: typeof WorkspaceHistoryPageIdRoute
 }
@@ -359,6 +410,7 @@ const WorkspaceRouteChildren: WorkspaceRouteChildren = {
   WorkspaceCollectionsRoute: WorkspaceCollectionsRouteWithChildren,
   WorkspaceReviewsRoute: WorkspaceReviewsRouteWithChildren,
   WorkspaceServicesRoute: WorkspaceServicesRouteWithChildren,
+  WorkspaceSitePagesRoute: WorkspaceSitePagesRouteWithChildren,
   WorkspaceIndexRoute: WorkspaceIndexRoute,
   WorkspaceHistoryPageIdRoute: WorkspaceHistoryPageIdRoute,
 }

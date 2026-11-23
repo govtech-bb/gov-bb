@@ -44,13 +44,13 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       # Fails on dependency-version drift across workspace packages.
-      # Deliberate splits (express 4/5, forms' eslint 9, react-markdown 9/10)
+      # Deliberate splits (express 4/5, react-markdown 9/10)
       # are ignored via flags in the script — see root package.json.
       # @govtech-bb/react is split while apps move to the new design system one
       # at a time: landing is on alpha.25, analytics still on alpha.17. Drop the
       # flag once every app has migrated.
       - name: Dependency consistency (sherif)
-        run: pnpm lint:deps
+        run: pnpm test:sherif
 
       - name: Run type check (tsc --build)
         id: typecheck
@@ -60,11 +60,13 @@ jobs:
           exit ${PIPESTATUS[0]}
         continue-on-error: true
 
-      # One step so the install guard lives in one place. run-many runs every
-      # project even when one fails, so a single run reports all their errors.
-      - name: Type check apps
+      # Every project with a `test:types` script (`tsc --noEmit`) type-checks
+      # itself, including the apps outside the `tsc -b` reference graph.
+      # run-many runs every project even when one fails, so a single run
+      # reports all their errors.
+      - name: Type check each project (test:types)
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
-        run: pnpm exec nx run-many -t typecheck --projects=landing,form-builder-app,editor_v2
+        run: pnpm exec nx run-many -t test:types
 
       - name: Report type check results
         if: ${{ !cancelled() && steps.typecheck.outcome == 'failure' }}
@@ -752,7 +754,7 @@ jobs:
         run: pnpm validate-recipes
 
       # A recipe whose content changed must move its `updatedAt` (#2878): the
-      # builder decides a draft row's staleness from that stamp (ADR 0075).
+      # builder decides a draft row's staleness from that stamp (ADR 0125).
       # An always-run step, not an nx target — nx inputs skip content-only
       # changes, so a cached target would replay a stale green. Diffs the PR
       # against its merge base with the target branch; on a push to `main`
@@ -791,10 +793,9 @@ jobs:
 
   generated-drift:
     name: Generated Files Up To Date
-    # Three artifacts are pre-baked from landing content so their consumers
+    # Two artifacts are pre-baked from landing content so their consumers
     # carry no runtime dependency on @govtech-bb/content:
     #   - apps/api/src/content/services-index.generated.ts  (`GET /services`)
-    #   - packages/content/src/form-categories.generated.ts  (form -> category)
     #   - apps/api_v2/src/seed-data/estate.json  (api_v2 seed; its pages take
     #     priority over landing's static markdown, so a stale one rolls
     #     content back — #3136)
@@ -829,13 +830,12 @@ jobs:
       - name: Regenerate generated files
         run: |
           pnpm generate:services-index
-          pnpm generate:form-categories
           pnpm generate:seed-data
 
       - name: Detect drift
         id: drift
         env:
-          FILES: apps/api/src/content/services-index.generated.ts packages/content/src/form-categories.generated.ts apps/api_v2/src/seed-data/estate.json
+          FILES: apps/api/src/content/services-index.generated.ts apps/api_v2/src/seed-data/estate.json
         run: |
           echo "files=$FILES" >> "$GITHUB_OUTPUT"
           if git diff --quiet -- $FILES; then
@@ -877,7 +877,7 @@ jobs:
           git -c user.name="github-actions[bot]" \
               -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
               commit -m "chore: regenerate content-derived generated files" \
-                     -m "Automated by the Generated Files Up To Date job. Regenerate locally with \`pnpm generate:services-index && pnpm generate:form-categories && pnpm generate:seed-data\`."
+                     -m "Automated by the Generated Files Up To Date job. Regenerate locally with \`pnpm generate:services-index && pnpm generate:seed-data\`."
           git push "https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}" \
             "HEAD:refs/heads/${BRANCH}"
 
@@ -902,14 +902,13 @@ jobs:
           {
             echo "## ❌ Generated files are out of date"
             echo ""
-            echo "Landing content changed but the content-derived generated files were not regenerated, so \`GET /services\`, the form→category map and the api_v2 seed snapshot would serve stale data."
+            echo "Landing content changed but the content-derived generated files were not regenerated, so \`GET /services\` and the api_v2 seed snapshot would serve stale data."
             echo ""
             echo "The automatic write-back did not run or could not push (fork PR, missing App credentials, or the App lacks \`contents: write\` on this repo — see #2303)."
             echo ""
             echo "**Fix locally:**"
             echo '```bash'
             echo "pnpm generate:services-index"
-            echo "pnpm generate:form-categories"
             echo "pnpm generate:seed-data"
             echo '```'
             echo "then commit the updated files."
@@ -939,47 +938,25 @@ jobs:
           # base_ref is empty, so fall back to ref_name (= main).
           main-branch-name: ${{ github.base_ref || github.ref_name }}
 
-      - name: Lint affected projects
-        id: lint
-        run: |
-          # The trunk lint gate now runs over every affected app — no exclusions.
-          # The ratchet introduced during the prod→main resync (#1884) is fully
-          # burned down: analytics-app, landing, forms, api, form-builder-app
-          # all cleaned and enforced (#1885, PRs #1891/#1892/#1893/#1919/#1912).
-          pnpm exec nx affected -t lint --nxBail=false 2>&1 | tee lint-output.txt
-          exit ${PIPESTATUS[0]}
-        continue-on-error: true
+      # Each project's own `test:oxlint` script, over the affected projects.
+      - name: Lint affected projects (oxlint)
+        run: pnpm test:oxlint
 
-      - name: Report lint results
-        if: steps.lint.outcome == 'failure'
-        run: |
-          echo "## ❌ Lint Failed" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "<details><summary>View lint errors</summary>" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-          tail -100 lint-output.txt >> $GITHUB_STEP_SUMMARY
-          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-          echo "</details>" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Fix it locally:**" >> $GITHUB_STEP_SUMMARY
-          echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
-          echo "pnpm exec nx affected -t lint" >> $GITHUB_STEP_SUMMARY
-          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-          exit 1
+      - name: Check formatting (oxfmt)
+        if: ${{ !cancelled() }}
+        run: pnpm test:format
 
   affected-apps:
     # Which deployable apps this change touches, so the Docker jobs below only
     # build an image whose inputs changed. Workspace-level Docker inputs that Nx
     # cannot attribute to a project (.dockerignore, pnpm-workspace.yaml,
-    # patches/, this workflow) force all three.
+    # patches/, this workflow) force both.
     name: Detect affected apps
     runs-on: ubuntu-latest
     timeout-minutes: 30
     outputs:
       api: ${{ steps.affected.outputs.api }}
       fbapi: ${{ steps.affected.outputs.fbapi }}
-      chat: ${{ steps.affected.outputs.chat }}
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
         with:
@@ -1004,11 +981,10 @@ jobs:
           if git diff --name-only "$NX_BASE" "$NX_HEAD" \
               | grep -qE '^(\.dockerignore|pnpm-workspace\.yaml|patches/.*|\.github/workflows/ci\.yml)$'; then
             echo "Workspace-level Docker input changed: building all images"
-            printf 'api=true\nfbapi=true\nchat=true\n' >> "$GITHUB_OUTPUT"
+            printf 'api=true\nfbapi=true\n' >> "$GITHUB_OUTPUT"
           else
             echo "api=$(has api)" >> "$GITHUB_OUTPUT"
             echo "fbapi=$(has form-builder-api)" >> "$GITHUB_OUTPUT"
-            echo "chat=$(has chat)" >> "$GITHUB_OUTPUT"
           fi
 
   docker-build:
@@ -1047,12 +1023,6 @@ jobs:
             affected_key: fbapi
             smoke_args: -e NODE_ENV=development
             smoke: require('reflect-metadata'); require('/app/dist/app.js')
-          # Build only, no smoke: a one-shot tsx job, not a server. Nothing in
-          # this repo deploys it (the chatbot repo builds its own since #2163),
-          # but the Main CI Required ruleset still lists this check — #2670.
-          - label: chat-ingest
-            dockerfile: apps/chat/Dockerfile.ingest
-            affected_key: chat
     steps:
       # Step-level gating (not job-level) so a skipped image still reports the
       # required check as success instead of leaving it pending.

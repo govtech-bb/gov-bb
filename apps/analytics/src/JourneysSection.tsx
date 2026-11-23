@@ -1,8 +1,8 @@
 import { Heading, Text } from '@govtech-bb/react'
 import * as React from 'react'
-import type { SourceRow } from '@govtech-bb/umami-analytics'
+import type { JourneyRow, SourceRow } from '@govtech-bb/umami-analytics'
 import { FlowDiagram } from './FlowDiagram'
-import type { FlowData, JourneyRow } from './lib/umami-server'
+import type { FlowData } from './lib/umami-server'
 
 const fmtInt = (n: number) => n.toLocaleString()
 const fmtPct = (frac: number) =>
@@ -71,15 +71,16 @@ export function JourneysSection({
         <Text as="p" size="caption" className="mt-xs">
           The paths visitors take through the first few steps of a visit, from
           Umami's journey report (page navigation). The <b>Flowchart</b> is a
-          Sankey that aggregates step-to-step <em>transitions</em> (ribbon width =
-          visits), so a common step shows even if the full paths differ. The{' '}
-          <b>Table</b> lists the top <em>complete</em> multi-step journeys (exact
-          sequences), with session counts and share; single-page visits (bounces)
-          are excluded. Because one aggregates transitions and the other exact
-          sequences, their ordering differs. <code>Start</code>/<code>Form</code>{' '}
-          are the service's start and form pages. <b>Entry source</b> is the top
-          referrer to the journey's first page; <b>% of journeys</b> is the row's
-          share of all listed journey sessions.
+          Sankey that aggregates step-to-step <em>transitions</em> (ribbon width
+          = visits), so a common step shows even if the full paths differ. The{' '}
+          <b>Table</b> lists the top <em>complete</em> multi-step journeys
+          (exact sequences), with session counts and share; single-page visits
+          (bounces) are excluded. Because one aggregates transitions and the
+          other exact sequences, their ordering differs. <code>Start</code>/
+          <code>Form</code> are the service's start and form pages.{' '}
+          <b>Entry source</b> is the top referrer to the journey's first page;{' '}
+          <b>% of journeys</b> is the row's share of all listed journey
+          sessions.
         </Text>
       </div>
     </section>
@@ -146,9 +147,12 @@ function SourceCell({ sources }: { sources: SourceRow[] }) {
   return (
     <td
       className={TD}
-      title={sources.map((s) => `${s.referrer} (${fmtInt(s.count)})`).join(', ')}
+      title={sources
+        .map((s) => `${s.referrer} (${fmtInt(s.count)})`)
+        .join(', ')}
     >
-      {top.referrer} <span className="text-mid-grey-00">({fmtInt(top.count)})</span>
+      {top.referrer}{' '}
+      <span className="text-mid-grey-00">({fmtInt(top.count)})</span>
       {more > 0 ? <span className="text-mid-grey-00"> +{more}</span> : null}
     </td>
   )

@@ -140,7 +140,7 @@ validation accordingly.
 and submit your application". It contains one `components/confirmation` with
 `fieldId` `declaration-confirmed` and the standard text. Do not change the text.
 A service-specific point goes in a separate required `components/confirmation`
-on the same step (ADR 0077).
+on the same step (ADR 0131).
 
 ```json
 {
@@ -180,7 +180,7 @@ on the same step (ADR 0077).
 A **Change** link on check-your-answers brings the applicant back to the review
 after Continue. It stops first at any step the change revealed or left invalid
 (including through cross-step conditions). There is nothing to author for this;
-see [ADR 0076](docs/decisions/0076-change-returns-to-the-first-step-needing-the-applicant.md).
+see [ADR 0130](docs/decisions/0130-change-returns-to-the-first-step-needing-the-applicant.md).
 
 Drop paper-form artifacts that don't belong online: handwritten
 **"Signature of …"** text fields, **"Date of declaration"** inputs the citizen
@@ -206,7 +206,7 @@ a broken stub; it must hold the confirmation checkbox.
 ## Override hygiene (these cause broken or 500-ing forms)
 
 - **Every element needs a unique `fieldId`** within the form (IDs are
-  recipe-wide unique — see [decision 0010](docs/decisions/0010-form-data-fieldids-are-recipe-wide-unique.md)).
+  recipe-wide unique — see [decision 0020](docs/decisions/0020-form-data-fieldids-are-recipe-wide-unique.md)).
 - **Use the real override keys.** Seen in bad recipes and all **wrong**:
   - `"disabled": true` → use `"isDisabled": true`
   - `"conditional": "resit"` → use a `behaviours` entry of type
@@ -248,7 +248,7 @@ which already follows every rule above.
 - [ ] All labels are sentence case, descriptive, citizen-facing.
 - [ ] `address` is followed by `parish`; phone/email/ID/date use named components.
 - [ ] Named selects/radios reference the component without re-declaring options.
-- [ ] The `declaration` step holds the standard `declaration-confirmed` checkbox (ADR 0077), plus any service-specific acknowledgements as separate `components/confirmation` elements; no empty declaration step, no handwritten signature/date.
+- [ ] The `declaration` step holds the standard `declaration-confirmed` checkbox (ADR 0131), plus any service-specific acknowledgements as separate `components/confirmation` elements; no empty declaration step, no handwritten signature/date.
 - [ ] Every element has a unique `fieldId`; no `disabled`/`conditional`/`type` hacks; no hidden+required.
 - [ ] Build still compiles: `pnpm exec nx run-many -t build --exclude=landing`.
 - [ ] If the form has a live smoke spec under `apps/forms/e2e/smoke/`, run it

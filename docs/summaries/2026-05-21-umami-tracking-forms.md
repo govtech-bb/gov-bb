@@ -14,7 +14,7 @@
 
 **Worked off `apps/forms`, not `apps/web`.** The dev branch had a `refactor: rename apps/web to apps/forms` commit but the local working tree still had a stale `apps/web` directory with a single orphaned `submit-form.ts` file. Initial code reads landed in the stale directory before the rename was caught. The orphan is flagged in the plan; cleanup is left for a separate PR.
 
-**Event names are a small fixed set; cardinality goes in data.** `apps/landing` uses per-item names like `service-renew-passport` because its directory is small and bounded. `apps/forms` is the opposite — form × step × field × reason would explode Umami's metric list every time a form is added or a step splits. Decision recorded in `docs/decisions/0004-analytics-events-use-fixed-names-and-structured-data.md` because the same question will come up for any future app adding analytics.
+**Event names are a small fixed set; cardinality goes in data.** `apps/landing` uses per-item names like `service-renew-passport` because its directory is small and bounded. `apps/forms` is the opposite — form × step × field × reason would explode Umami's metric list every time a form is added or a step splits. Decision recorded in `docs/decisions/0010-analytics-events-use-fixed-names-and-structured-data.md` because the same question will come up for any future app adding analytics.
 
 **Three deviations from the original spec, surfaced during code reading.**
 
@@ -34,7 +34,7 @@
 
 ## Decisions worth flagging
 
-- **Analytics taxonomy and privacy** are now codified at `docs/decisions/0004-analytics-events-use-fixed-names-and-structured-data.md`. `apps/landing` is explicitly exempt (its directory surfaces are bounded); any *new* app adding analytics must follow the fixed-names + structured-data pattern unless that decision is re-opened.
+- **Analytics taxonomy and privacy** are now codified at `docs/decisions/0010-analytics-events-use-fixed-names-and-structured-data.md`. `apps/landing` is explicitly exempt (its directory surfaces are bounded); any *new* app adding analytics must follow the fixed-names + structured-data pattern unless that decision is re-opened.
 - **Repeatable-step events are out of v1.** Reopening this is fine when the shape of repeatable analytics is clearer (likely after a real form ships with repeatable use); the wiring point is `handleContinue` in `form-renderer.tsx`.
 - **Granular client-side validation reasons are deferred.** Will be re-opened when `validation-methods.ts` is restructured to return reason codes alongside formatted messages.
 
@@ -49,7 +49,7 @@
 | File | Change |
 |---|---|
 | `docs/plans/umami-tracking-forms.md` | New — plan with deviations recorded |
-| `docs/decisions/0004-analytics-events-use-fixed-names-and-structured-data.md` | New — codifies naming + privacy conventions |
+| `docs/decisions/0010-analytics-events-use-fixed-names-and-structured-data.md` | New — codifies naming + privacy conventions |
 | `apps/forms/src/lib/analytics.ts` | New — typed `trackEvent`, `trackPageview`; no-ops without `window.umami` |
 | `apps/forms/src/lib/analytics.spec.ts` | New — Jest tests, TDD'd before the helper |
 | `apps/forms/src/main.tsx` | Env-gated script injection + `router.subscribe('onResolved', trackPageview)` |

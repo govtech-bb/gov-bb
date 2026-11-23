@@ -124,7 +124,7 @@ export const loadServiceSource = createServerFn({
     // reports the missing form and the next load retries. Read through the
     // same resolver as getRecipe so a stale draft row is re-synced with the
     // committed recipe on first adoption too, not only on the next
-    // getServiceDraft refresh (#2897, ADR 0075).
+    // getServiceDraft refresh (#2897, ADR 0125).
     const recipe = formId
       ? await resolveCurrentRecipe(formId, token).catch(() => null)
       : null;
@@ -149,9 +149,9 @@ export const loadServiceSource = createServerFn({
     );
     const pendingConfig: ServiceSnapshot["pendingConfig"] = formId
       ? await api
-          .get<
-            ServiceSnapshot["pendingConfig"]
-          >(`/builder/forms/${formId}/config`)
+          .get<ServiceSnapshot["pendingConfig"]>(
+            `/builder/forms/${formId}/config`,
+          )
           .catch(() => ({ mdaContactId: null, processors: null }))
       : { mdaContactId: null, processors: null };
     // A published manifest is authored fact; a new one is seeded with what the

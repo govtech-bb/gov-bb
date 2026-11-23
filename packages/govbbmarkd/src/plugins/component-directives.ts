@@ -92,7 +92,10 @@ const componentDirectives: Plugin<[handlers?: Handlers | undefined], Root> =
       }
       if ("children" in node)
         for (const child of node.children)
-          visit(child, inLink || node.type === "link");
+          visit(
+            child,
+            inLink || node.type === "link" || node.type === "linkReference",
+          );
     }
     visit(tree);
   };

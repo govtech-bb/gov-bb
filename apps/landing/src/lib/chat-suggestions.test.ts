@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import {
   publicChatSuggestions,
   readServedChatSuggestions,
+  readServedServices,
   servedChatSuggestions,
 } from './chat-suggestions'
 
@@ -20,11 +21,10 @@ const MAIL = '/travel-id-citizenship/post-office-redirection-individual'
 const NOTARISED = '/travel-id-citizenship/get-a-document-notarised'
 
 describe('publicChatSuggestions', () => {
-  it('returns the first four public curated questions', () => {
+  it('returns the first three public curated questions', () => {
     expect(publicChatSuggestions(new Map())).toEqual([
       'How do I get a birth certificate?',
       'What financial assistance is available?',
-      'How do I get a primary school textbook grant?',
       'How do I redirect my personal mail?',
     ])
   })
@@ -34,9 +34,8 @@ describe('publicChatSuggestions', () => {
       publicChatSuggestions(new Map([['get-birth-certificate', 'preview']])),
     ).toEqual([
       'What financial assistance is available?',
-      'How do I get a primary school textbook grant?',
       'How do I redirect my personal mail?',
-      'How do I get a document notarised?',
+      'How do I get a primary school textbook grant?',
     ])
   })
 })
@@ -47,13 +46,12 @@ describe('servedChatSuggestions', () => {
       servedChatSuggestions(new Set([FINANCIAL, TEXTBOOK, MAIL, NOTARISED])),
     ).toEqual([
       'What financial assistance is available?',
-      'How do I get a primary school textbook grant?',
       'How do I redirect my personal mail?',
-      'How do I get a document notarised?',
+      'How do I get a primary school textbook grant?',
     ])
   })
 
-  it('returns the first four when api_v2 serves every target', () => {
+  it('returns the first three when api_v2 serves every target', () => {
     expect(
       servedChatSuggestions(
         new Set([BIRTH, FINANCIAL, TEXTBOOK, MAIL, NOTARISED]),
@@ -61,7 +59,6 @@ describe('servedChatSuggestions', () => {
     ).toEqual([
       'How do I get a birth certificate?',
       'What financial assistance is available?',
-      'How do I get a primary school textbook grant?',
       'How do I redirect my personal mail?',
     ])
   })
@@ -93,5 +90,30 @@ describe('readServedChatSuggestions', () => {
     for (const url of Object.keys(results)) {
       expect(v2Mocks.getApiV2Page).toHaveBeenCalledWith({ data: url })
     }
+  })
+})
+
+describe('readServedServices', () => {
+  it('keeps the services api_v2 serves, in the order asked, by the same rule', async () => {
+    const results: Record<string, unknown> = {
+      [BIRTH]: { kind: 'miss', reason: 'not_found', cacheControl: null },
+      [FINANCIAL]: { kind: 'miss', reason: 'compile', cacheControl: null },
+      [MAIL]: { kind: 'page', page: {}, cacheControl: null },
+    }
+    v2Mocks.getApiV2Page.mockImplementation(
+      async ({ data }: { data: string }) => results[data],
+    )
+
+    expect(
+      await readServedServices([
+        'post-office-redirection-individual',
+        'get-birth-certificate',
+        'apply-financial-assistance',
+        'no-such-service',
+      ]),
+    ).toEqual([
+      'post-office-redirection-individual',
+      'apply-financial-assistance',
+    ])
   })
 })

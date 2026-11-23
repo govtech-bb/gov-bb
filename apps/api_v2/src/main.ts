@@ -11,7 +11,13 @@ import { PostgresReviewRecipients } from "./adapters/postgres-review-recipients"
 import { moveEmails } from "./adapters/postgres-email-moves";
 import { PostgresRoles } from "./adapters/postgres-roles";
 import { parseConfig } from "./config";
-import { connect, createPool, ping, type DatabaseFailure } from "./db";
+import {
+  connect,
+  createPool,
+  createMigrationPool,
+  ping,
+  type DatabaseFailure,
+} from "./db";
 import { migrate } from "./migrate";
 import { authBypass, registerBypassEmployee } from "./adapters/auth-bypass";
 import type { AuthHandler } from "./routes/auth";
@@ -27,6 +33,9 @@ import {
 } from "./services/review-notifications";
 import { SiteNavigation } from "./services/site-navigation";
 import { seed } from "./seed";
+
+/** A request's query fails after this long, so a quiet database answers 500 rather than hanging (#2845). */
+const QUERY_TIMEOUT_MS = 5_000;
 
 const logger = pino({
   redact: [
@@ -72,7 +81,9 @@ async function main(): Promise<void> {
     return;
   }
   const config = parsed.value;
-  const created = createPool(config.database, logger);
+  const created = createPool(config.database, logger, {
+    queryTimeoutMs: QUERY_TIMEOUT_MS,
+  });
   if (!created.ok) return refuseToStart(created.error);
 
   const pool = created.value;
@@ -89,7 +100,14 @@ async function main(): Promise<void> {
     if (!connected.ok) return refuseToStart(connected.error);
     const db = connected.value;
     operation = "migrate";
-    const ran = await migrate(db, (script) => pool.query(script));
+    const migrating = createMigrationPool(config.database, logger);
+    if (!migrating.ok) return refuseToStart(migrating.error);
+    let ran: string[];
+    try {
+      ran = await migrate(migrating.value);
+    } finally {
+      await migrating.value.end();
+    }
     if (ran.length > 0) logger.info({ migrations: ran }, "applied migrations");
     if (config.seed) {
       operation = "seed";
@@ -142,7 +160,7 @@ async function main(): Promise<void> {
     app = await buildApp({
       resolution: new PageResolution(pages),
       navigation: new SiteNavigation(pages),
-      // One local developer runs the whole review flow (ADR 0079).
+      // One local developer runs the whole review flow (ADR 0134).
       editing: new PageEditing(
         pages,
         () => new Date(),
@@ -150,7 +168,7 @@ async function main(): Promise<void> {
         notifier,
       ),
       index: new EditorIndex(pages),
-      categories: new CategoryEditing(pages, () => new Date()),
+      categories: new CategoryEditing(pages),
       collections: new CollectionEditing(new PostgresCollections(db)),
       access,
       roles,
@@ -158,6 +176,7 @@ async function main(): Promise<void> {
       config: {
         apiOrigin: config.auth.apiOrigin,
         editorOrigin: config.auth.editorOrigin,
+        basePath: config.auth.apiBasePath,
       },
       ...(config.previewSecret ? { previewSecret: config.previewSecret } : {}),
       ...(config.landingSecret ? { landingSecret: config.landingSecret } : {}),

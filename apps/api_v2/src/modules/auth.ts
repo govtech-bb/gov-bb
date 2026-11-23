@@ -67,15 +67,15 @@ export class Forbidden extends Error {
 export class NotApprover extends Error {
   /** Stable protocol-projection discriminator. */
   readonly _tag = "NotApprover";
-  /** Say who can make the change. */
-  constructor() {
-    super("Only approvers can change who can see a page.");
+  /** Say who can make the change, and why when it isn't a visibility change. */
+  constructor(message = "Only approvers can change who can see a page.") {
+    super(message);
   }
 }
 
 /**
  * An approver deciding on a revision they changed or submitted, or making
- * public content they changed since the page was last public (ADR 0079).
+ * public content they changed since the page was last public (ADR 0134).
  */
 export class SelfApproval extends Error {
   /** Stable protocol-projection discriminator. */

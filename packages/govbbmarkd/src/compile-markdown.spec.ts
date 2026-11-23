@@ -84,6 +84,30 @@ describe("compileContentMarkdown", () => {
       ],
     });
   });
+  it.each([
+    ["full", "[c]", "c"],
+    ["collapsed", "[]", ""],
+    ["shortcut", "", ""],
+  ])("keeps a fact plain in a %s reference link", (_, suffix, id) => {
+    const label =
+      'Ring :fact{collection="offices" record="bridgetown" field="phone"}';
+    const result = compileContentMarkdown(
+      `[${label}]${suffix}\n\n[${id || label}]: /contact`,
+    );
+    if (!result.ok) throw result.errors[0];
+    expect(result.value.hast.children[0]).toMatchObject({
+      children: [
+        {
+          tagName: "a",
+          properties: { href: "/contact" },
+          children: [
+            { value: "Ring " },
+            { tagName: "collection-fact", properties: { plain: "true" } },
+          ],
+        },
+      ],
+    });
+  });
   it("escapes raw HTML by default and requires an explicit legacy opt-in", () => {
     const source = "<script>alert(1)</script>\n\n<notice>Keep this</notice>";
     const escaped = compileContentMarkdown(source);

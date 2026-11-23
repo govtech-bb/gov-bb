@@ -24,8 +24,12 @@ export type StepScopedValues = Record<
   Record<string, unknown> | Array<Record<string, unknown>>
 >;
 
+// `stepValues` is the current step (or repeatable instance), which a reference
+// on the same step resolves from first. Only the numeric runners read it, for
+// `scaleBy` (#3636); `runRule` pre-resolves the other cross-field references.
 export type RuleRunner = (
   value: unknown,
   config: ValidationConfig,
   allValues: StepScopedValues,
+  stepValues?: Record<string, unknown>,
 ) => string | null;

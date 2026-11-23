@@ -8,16 +8,22 @@ import {
   fmtDayNum,
   fmtDayOfWeek,
   fmtFullDate,
+  fmtLongDate,
   fmtMonthShort,
   fmtSubstituteDate,
-  getBankHolidaysForYear,
   MAX_YEAR,
   MIN_YEAR,
   startOfDay,
 } from '../../lib/bank-holidays'
 import type { Holiday } from '../../lib/bank-holidays'
+import {
+  getPublicHolidays,
+  holidaysForYear,
+  lastUpdated,
+} from '../../lib/public-holidays'
 
-const LAST_UPDATED = '5 May 2026'
+/** When the page last changed; a later one-off record moves it on. */
+const LAST_UPDATED = new Date(Date.UTC(2026, 4, 5))
 
 const SearchParams = z.object({
   year: z.coerce.number().int().min(MIN_YEAR).max(MAX_YEAR).optional(),
@@ -26,6 +32,9 @@ const SearchParams = z.object({
 export const Route = createFileRoute('/bank-holiday-calendar/')({
   staticData: { breadcrumbMode: 'location' },
   validateSearch: SearchParams,
+  // The one-off holidays (#3205). The server fn never throws, but a client
+  // navigation's call to it can: the calendar then shows the calculated ones.
+  loader: () => getPublicHolidays().catch(() => []),
   head: () => ({
     meta: [
       { title: 'Bank holidays | Government of Barbados' },
@@ -41,14 +50,15 @@ export const Route = createFileRoute('/bank-holiday-calendar/')({
 
 function BankHolidaysPage() {
   const { year: yearParam } = Route.useSearch()
+  const oneOffs = Route.useLoaderData()
 
   const today = useMemo(() => startOfDay(new Date()), [])
   const currentRealYear = today.getUTCFullYear()
   const selectedYear = yearParam ?? currentRealYear
 
   const holidays = useMemo(
-    () => getBankHolidaysForYear(selectedYear),
-    [selectedYear],
+    () => holidaysForYear(selectedYear, oneOffs),
+    [selectedYear, oneOffs],
   )
 
   const substituteMap = useMemo(() => {
@@ -86,7 +96,7 @@ function BankHolidaysPage() {
               Bank holidays
             </Heading>
             <Text as="p" className="text-grey-70">
-              Last updated on {LAST_UPDATED}
+              Last updated on {fmtLongDate(lastUpdated(LAST_UPDATED, oneOffs))}
             </Text>
           </div>
           <div className="mt-6 flex w-full justify-end lg:w-auto">
@@ -143,9 +153,7 @@ function YearSwitcher({ year }: { year: number }) {
         <span className="block font-medium text-body-sm text-grey-70 uppercase tracking-wider">
           Previous
         </span>
-        <span className="block font-bold text-blue-40 text-sm">
-          {prevYear}
-        </span>
+        <span className="block font-bold text-blue-40 text-sm">{prevYear}</span>
       </span>
     </>
   )
@@ -156,9 +164,7 @@ function YearSwitcher({ year }: { year: number }) {
         <span className="block font-medium text-body-sm text-grey-70 uppercase tracking-wider">
           Next
         </span>
-        <span className="block font-bold text-blue-40 text-sm">
-          {nextYear}
-        </span>
+        <span className="block font-bold text-blue-40 text-sm">{nextYear}</span>
       </span>
       <svg
         aria-hidden="true"
@@ -437,7 +443,8 @@ function HolidaySection({
               isNext={Boolean(highlightFirst && i === 0)}
               key={`${h.date.toISOString()}-${h.name}`}
               muted={muted}
-              substitute={substituteMap.get(h.name)}
+              // Substitutions are matched by name, which a one-off may share.
+              substitute={h.oneOff ? undefined : substituteMap.get(h.name)}
             />
           ))}
         </ul>
@@ -558,10 +565,7 @@ function AboutSection() {
       aria-labelledby="about-heading"
       className="mt-16 border-grey-20 border-t-2 pt-8"
     >
-      <h2
-        className="mb-3 font-bold text-blue-40 text-body"
-        id="about-heading"
-      >
+      <h2 className="mb-3 font-bold text-blue-40 text-body" id="about-heading">
         About this list
       </h2>
       <p className="mb-3 max-w-[640px] text-[15px] text-grey-70">

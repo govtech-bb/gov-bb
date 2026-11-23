@@ -3,15 +3,22 @@
   "compilerOptions": {
     "composite": true,
     "outDir": "./dist",
-    "declaration": true,
     "module": "commonjs",
+    "moduleResolution": "node10",
+    "verbatimModuleSyntax": false,
     "types": ["vitest/globals"]
   },
   "include": ["src/**/*.ts"],
   "exclude": ["node_modules", "dist"],
   "references": [
-    { "path": "../form-types" },
-    { "path": "../form-conditions" },
-    { "path": "../form-validation" }
+    {
+      "path": "../form-types"
+    },
+    {
+      "path": "../form-conditions"
+    },
+    {
+      "path": "../form-validation"
+    }
   ]
 }

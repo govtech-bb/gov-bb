@@ -36,7 +36,7 @@ branch `claudesiah/recipe-loader-error-debuggability` (merges into
   asserting `meta.error.name` + `meta.error.message`, and a prod test
   asserting `meta` is undefined and the generic message is unchanged.
   `NODE_ENV` is saved in `beforeEach` and restored in `afterEach`.
-- **ADR-0015** records the env-gating principle for future error classes
+- **ADR-0033** records the env-gating principle for future error classes
   / filter branches.
 
 ## Why we did it that way
@@ -50,7 +50,7 @@ branch `claudesiah/recipe-loader-error-debuggability` (merges into
   chokepoint. The call site never knows about `NODE_ENV`. A future filter
   branch that wants to add a different exception class just populates (or
   doesn't populate) `errorInfo` and the env gate stays load-bearing in
-  one place — see ADR-0015.
+  one place — see ADR-0033.
 - **`meta.error` as a sibling of `meta.errors`, not an overload.**
   `meta.errors` is authored field-level validation errors and is
   surfaced in prod; `meta.error` is rogue-throw detail and is non-prod
@@ -62,7 +62,7 @@ branch `claudesiah/recipe-loader-error-debuggability` (merges into
   filter surfaces those bodies unconditionally — including in prod. We
   would have had to env-gate inside `AppError` or grow a second filter
   branch. The chosen `meta.error` path keeps the env gate as the single
-  chokepoint. ADR-0015 makes that constraint explicit so future
+  chokepoint. ADR-0033 makes that constraint explicit so future
   `AppError.internal`-shaped proposals get pushed back on.
 - **Log level: `error`.** Plan's stated default; matches the severity
   in the issue. Open to dropping to `warn` if it causes alert-fatigue

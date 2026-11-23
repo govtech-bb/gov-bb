@@ -1,14 +1,15 @@
 import { createServerFn } from '@tanstack/react-start'
 import type { Root, RootContent } from 'hast'
 import { z } from 'zod'
-import { API_V2_TIMEOUT_MS, apiV2Base } from './api-v2-page'
+import { apiV2Base, landingToken } from './api-v2-page'
+import { readPublic } from './api-v2-reader'
 
 /**
  * Records read from api_v2's data collections: those a page's contact blocks
  * (`::contact`, #3185) and facts (`:fact`, #3590) name. They're read at
  * request time, the way api_v2 pages are, so a changed phone number shows on
  * every page with no page edit and no deploy. A missing record, or a failed
- * read, shows nothing rather than an error.
+ * read, leaves out the contact tiles and shows the fact's fallback, if any.
  */
 
 /** A record a page's contact block or fact names. */
@@ -16,6 +17,23 @@ export interface RecordRef {
   collection: string
   record: string
 }
+
+/**
+ * A value a record holds, as api_v2's `RecordValue` in
+ * apps/api_v2/src/modules/collection.ts (#3782): text (a `text`, `slug`,
+ * `email` or `date` field), a number, true or false, or a list of text. One
+ * value this doesn't accept fails the whole collection's read, and counts
+ * toward the shared api_v2 breaker (ADR 0140), so it keeps step with api_v2.
+ */
+const RecordValue = z.union([
+  z.string(),
+  z.number(),
+  z.boolean(),
+  z.array(z.string()),
+])
+
+/** One field's value in a record. */
+export type RecordValue = z.infer<typeof RecordValue>
 
 /** Copied from apps/api_v2/src/routes/contracts.ts (`getCollectionRecords`). */
 const CollectionRecords = z.object({
@@ -28,7 +46,9 @@ const CollectionRecords = z.object({
   records: z.array(
     z.object({
       record_key: z.string(),
-      data: z.record(z.string(), z.string()),
+      data: z.record(z.string(), RecordValue),
+      // Optional, so a contact block's read doesn't depend on it.
+      updated_at: z.string().optional(),
     }),
   ),
 })
@@ -40,7 +60,7 @@ export type PageRecords = Record<
   string,
   {
     collection: CollectionRecords['collection']
-    records: Record<string, Record<string, string>>
+    records: Record<string, Record<string, RecordValue>>
   }
 >
 
@@ -67,53 +87,51 @@ export function recordRefs(tree: Root): RecordRef[] {
 }
 
 /**
- * `GET /collections/:key/records`. A 404 is a silent miss; anything else
- * unexpected (status, network, timeout, bad body) is a logged miss.
+ * `GET /collections/:key/records`, through the reader: a 404 is a silent miss,
+ * a failure a logged one, and while the breaker is open no request is made.
  */
 export async function fetchCollectionRecords(
   base: string,
   key: string,
   fetchImpl: typeof fetch = fetch,
+  landingToken?: string,
 ): Promise<CollectionRecords | null> {
-  const controller = new AbortController()
-  const timer = setTimeout(() => controller.abort(), API_V2_TIMEOUT_MS)
-  try {
-    const response = await fetchImpl(
-      `${base}/collections/${encodeURIComponent(key)}/records`,
-      { signal: controller.signal },
-    )
-    if (response.status !== 200) {
-      if (response.status !== 404)
-        console.warn(`[api-v2] ${response.status} for collection ${key}`)
-      // Release the socket: an unread body pins a keep-alive connection.
-      await response.body?.cancel()
-      return null
-    }
-    const body = CollectionRecords.safeParse(await response.json())
-    if (body.success) return body.data
-    console.warn(`[api-v2] malformed collection ${key}`)
-    return null
-  } catch (error) {
-    console.warn(`[api-v2] request for collection ${key} failed:`, error)
-    return null
-  } finally {
-    clearTimeout(timer)
-  }
+  const result = await readPublic(
+    base,
+    `/collections/${encodeURIComponent(key)}/records`,
+    CollectionRecords,
+    fetchImpl,
+    landingToken,
+  )
+  return result.kind === 'ok' ? result.value : null
 }
 
 /**
+ * Collections one call reads. The server fn is public and its reads carry
+ * landing's rate-limit exemption, so a caller must not fan them out.
+ */
+const MAX_COLLECTIONS = 5
+
+/**
  * The named records, trimmed to just those: the client only needs what the
- * page shows. A record or collection that can't be read is left out.
+ * page shows. A record or collection that can't be read, or one past the
+ * first MAX_COLLECTIONS, is left out.
  */
 export async function resolvePageRecords(
   base: string | null,
   refs: RecordRef[],
   fetchImpl: typeof fetch = fetch,
+  landingToken?: string,
 ): Promise<PageRecords> {
   if (!base || refs.length === 0) return {}
-  const keys = [...new Set(refs.map((ref) => ref.collection))]
+  const keys = [...new Set(refs.map((ref) => ref.collection))].slice(
+    0,
+    MAX_COLLECTIONS,
+  )
   const read = await Promise.all(
-    keys.map((key) => fetchCollectionRecords(base, key, fetchImpl)),
+    keys.map((key) =>
+      fetchCollectionRecords(base, key, fetchImpl, landingToken),
+    ),
   )
   const result: PageRecords = {}
   keys.forEach((key, index) => {
@@ -122,7 +140,7 @@ export async function resolvePageRecords(
     const wanted = new Set(
       refs.filter((ref) => ref.collection === key).map((ref) => ref.record),
     )
-    const records: Record<string, Record<string, string>> = {}
+    const records: Record<string, Record<string, RecordValue>> = {}
     for (const row of body.records)
       if (wanted.has(row.record_key)) records[row.record_key] = row.data
     result[key] = { collection: body.collection, records }
@@ -137,4 +155,6 @@ const RecordRefs = z
 /** Server function: `resolvePageRecords` against the configured api_v2. */
 export const getPageRecords = createServerFn()
   .validator((refs: RecordRef[]) => RecordRefs.parse(refs))
-  .handler(({ data: refs }) => resolvePageRecords(apiV2Base(), refs))
+  .handler(({ data: refs }) =>
+    resolvePageRecords(apiV2Base(), refs, fetch, landingToken()),
+  )

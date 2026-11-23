@@ -25,3 +25,11 @@ export function requireEnv(
       `and redeploy.`,
   )
 }
+
+/** The forms app's origin: Start now buttons link here, and links to it are
+ *  not counted as leaving the service. */
+export const FORMS_BASE_URL = requireEnv(
+  import.meta.env.VITE_FORMS_URL,
+  'VITE_FORMS_URL',
+  'https://forms.sandbox.alpha.gov.bb',
+)

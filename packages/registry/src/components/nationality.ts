@@ -1,4 +1,4 @@
-import { SelectPrimitive } from "@govtech-bb/form-types";
+import type { SelectPrimitive } from "@govtech-bb/form-types";
 
 // Centrally-managed nationality list: Barbadian first, then Caribbean
 // neighbours, then the rest of the world alphabetically, with "Other" last.

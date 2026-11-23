@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "api_v2",
-    "description": "Requests for apps/api_v2. Full reference: {{baseUrl}}/docs (spec at {{baseUrl}}/docs/openapi.json).\n\nPublic and Navigation requests work with no setup. Preview requests send the `previewToken` variable as `x-preview-token`; it must equal the API's PREVIEW_SECRET (`local-preview-secret` in the README's local run). Editor requests need an employee session. Locally, run the API with `AUTH_BYPASS=true` and they work with no sign-in. Otherwise sign in to the editor with a Google Workspace account on an allowed domain, then copy the `better-auth.session_token` cookie value into the `sessionToken` collection variable. Writes also send `Origin: {{editorOrigin}}`, which must match the API's EDITOR_ORIGIN.\n\nRun the Editor folder top to bottom: Create stores `pageId`, `pageUrl` and `updatedAt`; Create a sub-page stores `subPageId`; the deletes clean both up.",
+    "description": "Requests for apps/api_v2. Full reference: {{baseUrl}}/docs (spec at {{baseUrl}}/docs/openapi.json).\n\nPublic and Navigation requests work with no setup. Preview requests send the `previewToken` variable as `x-preview-token`; it must equal the API's PREVIEW_SECRET (`local-preview-secret` in the README's local run). Editor requests need an employee session. Locally, run the API with `AUTH_BYPASS=true` and they work with no sign-in. Otherwise sign in to the editor with a Google Workspace account on an allowed domain, then copy the `better-auth.session_token` cookie value into the `sessionToken` collection variable. Writes also send `Origin: {{editorOrigin}}`, which must match the API's EDITOR_ORIGIN.\n\nRun the Editor folder top to bottom: Create stores `pageId`, `pageUrl` and `pageVersion`; Create a sub-page stores `subPageId` and `subPageVersion`; the deletes clean both up.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -30,7 +30,7 @@
       "value": ""
     },
     {
-      "key": "updatedAt",
+      "key": "pageVersion",
       "value": ""
     },
     {
@@ -587,7 +587,7 @@
                   "const page = pm.response.json();",
                   "pm.collectionVariables.set('pageId', page.id);",
                   "pm.collectionVariables.set('pageUrl', page.url);",
-                  "pm.collectionVariables.set('updatedAt', page.updated_at);"
+                  "pm.collectionVariables.set('pageVersion', page.version);"
                 ]
               }
             }
@@ -626,7 +626,8 @@
                   "  pm.response.to.have.status(201);",
                   "  pm.expect(pm.response.json().parent_id).to.eql(pm.collectionVariables.get('pageId'));",
                   "});",
-                  "pm.collectionVariables.set('subPageId', pm.response.json().id);"
+                  "pm.collectionVariables.set('subPageId', pm.response.json().id);",
+                  "pm.collectionVariables.set('subPageVersion', pm.response.json().version);"
                 ]
               }
             }
@@ -650,7 +651,7 @@
               "script": {
                 "exec": [
                   "pm.test('200', () => pm.response.to.have.status(200));",
-                  "pm.collectionVariables.set('updatedAt', pm.response.json().updated_at);"
+                  "pm.collectionVariables.set('pageVersion', pm.response.json().version);"
                 ]
               }
             }
@@ -672,16 +673,12 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
-              },
-              {
-                "key": "if-updated-at",
-                "value": "{{updatedAt}}"
               }
             ],
             "url": "{{baseUrl}}/pages/{{pageId}}",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"url\": \"{{pageUrl}}\",\n  \"category_id\": null,\n  \"title\": \"Postman test page (edited)\",\n  \"description\": null,\n  \"visibility\": \"draft\",\n  \"form_id\": null,\n  \"body_markdown\": \"Edited from Postman.\",\n  \"frontmatter\": {}\n}"
+              "raw": "{\n  \"expected_version\": {{pageVersion}},\n  \"url\": \"{{pageUrl}}\",\n  \"category_id\": null,\n  \"title\": \"Postman test page (edited)\",\n  \"description\": null,\n  \"visibility\": \"draft\",\n  \"form_id\": null,\n  \"body_markdown\": \"Edited from Postman.\",\n  \"frontmatter\": {}\n}"
             }
           },
           "event": [
@@ -689,15 +686,16 @@
               "listen": "test",
               "script": {
                 "exec": [
+                  "pm.collectionVariables.set('stalePageVersion', pm.collectionVariables.get('pageVersion'));",
                   "pm.test('200 saved', () => pm.response.to.have.status(200));",
-                  "pm.collectionVariables.set('updatedAt', pm.response.json().updated_at);"
+                  "pm.collectionVariables.set('pageVersion', pm.response.json().version);"
                 ]
               }
             }
           ]
         },
         {
-          "name": "Save with a stale if-updated-at (409)",
+          "name": "Save with a stale expected_version (409)",
           "request": {
             "method": "PUT",
             "header": [
@@ -712,16 +710,12 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
-              },
-              {
-                "key": "if-updated-at",
-                "value": "2000-01-01T00:00:00.000Z"
               }
             ],
             "url": "{{baseUrl}}/pages/{{pageId}}",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"url\": \"{{pageUrl}}\",\n  \"category_id\": null,\n  \"title\": \"Stale write\",\n  \"description\": null,\n  \"visibility\": \"draft\",\n  \"form_id\": null,\n  \"body_markdown\": \"Should be refused.\",\n  \"frontmatter\": {}\n}"
+              "raw": "{\n  \"expected_version\": {{stalePageVersion}},\n  \"url\": \"{{pageUrl}}\",\n  \"category_id\": null,\n  \"title\": \"Stale write\",\n  \"description\": null,\n  \"visibility\": \"draft\",\n  \"form_id\": null,\n  \"body_markdown\": \"Should be refused.\",\n  \"frontmatter\": {}\n}"
             }
           },
           "event": [
@@ -729,9 +723,9 @@
               "listen": "test",
               "script": {
                 "exec": [
-                  "pm.test('409 conflict', () => {",
+                  "pm.test('409 version_conflict', () => {",
                   "  pm.response.to.have.status(409);",
-                  "  pm.expect(pm.response.json().error).to.eql('conflict');",
+                  "  pm.expect(pm.response.json().error).to.eql('version_conflict');",
                   "});"
                 ]
               }
@@ -783,7 +777,7 @@
                 "value": "{{editorOrigin}}"
               }
             ],
-            "url": "{{baseUrl}}/pages/{{pageId}}"
+            "url": "{{baseUrl}}/pages/{{pageId}}?expected_version={{pageVersion}}"
           },
           "event": [
             {
@@ -813,7 +807,7 @@
                 "value": "{{editorOrigin}}"
               }
             ],
-            "url": "{{baseUrl}}/pages/{{subPageId}}"
+            "url": "{{baseUrl}}/pages/{{subPageId}}?expected_version={{subPageVersion}}"
           },
           "event": [
             {
@@ -840,7 +834,7 @@
                 "value": "{{editorOrigin}}"
               }
             ],
-            "url": "{{baseUrl}}/pages/{{pageId}}"
+            "url": "{{baseUrl}}/pages/{{pageId}}?expected_version={{pageVersion}}"
           },
           "event": [
             {

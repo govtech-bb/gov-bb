@@ -20,7 +20,7 @@ A new migration (`1778500000000-AddFormDefinitionUniqueConstraint`) was added du
 
 A utility package providing everything the builder UI needs but the DB doesn't own: built-in component and block definitions, `BEHAVIOUR_TYPE_DESCRIPTORS`, `VALIDATION_RULE_DESCRIPTORS` keyed by `HtmlTypes`, `hydrateForm`, `serializeRecipeDraft`/`deserializeRecipe`, and `validateFormContract` (re-exported from `form-types`).
 
-The `RecipeDraft` family of types lives here by design — they are UI-layer types, not canonical schema (see decision record 0001). The `getCatalog()` function returns builtins only; the server layer merges in DB custom components before passing the catalog to `hydrateForm`.
+The `RecipeDraft` family of types lives here by design — they are UI-layer types, not canonical schema (see decision record 0003). The `getCatalog()` function returns builtins only; the server layer merges in DB custom components before passing the catalog to `hydrateForm`.
 
 A circular import between `catalog.ts` and `builtins/index.ts` was broken cleanly by extracting `ComponentDefinition` / `BlockDefinition` into `definition-types.ts`.
 
