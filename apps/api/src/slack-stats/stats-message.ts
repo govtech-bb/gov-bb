@@ -1,8 +1,12 @@
-import type {
-  ComparisonPeriods,
-  EventDataValue,
-  SearchStats,
-  StatsPeriod,
+import {
+  canonicalEvent,
+  eventFormKey,
+  parseEventName,
+  type ComparisonPeriods,
+  type EventDataValue,
+  type MetricRow,
+  type SearchStats,
+  type StatsPeriod,
 } from "@govtech-bb/umami-analytics";
 
 const TZ = "America/Barbados";
@@ -13,6 +17,17 @@ export interface SitePeriod {
   starts: number;
   completed: number;
   avgDurationSeconds: number | null;
+  deadEnds: DeadEnds;
+  /** The known form with the most closed views and load errors. */
+  topDeadEndForm: { formId: string; count: number } | null;
+}
+
+/** Times a citizen was stopped before reaching a service, in one period. */
+export interface DeadEnds {
+  formClosed: number;
+  formLoadError: number;
+  serviceUnavailable: number;
+  pageNotFound: number;
 }
 
 export interface FormFinishChange {
@@ -84,6 +99,53 @@ export function biggestFinishDrops(
     .slice(0, 3);
 }
 
+const FORM_DEAD_ENDS = new Map<string, keyof DeadEnds>([
+  ["form-closed-view", "formClosed"],
+  ["form-load-error", "formLoadError"],
+]);
+
+/**
+ * Dead-end counts for one period from the `metricsEvents` rows of both
+ * websites, and the form with the most. With a `form`, the forms site stores
+ * `<form>:<event>`, maybe with a short event code or a hashed form key, so
+ * names go through canonicalEvent, and a key maps back to its form ID through
+ * `formIds`. A key that matches no known form counts in the totals but is
+ * never named: anyone can send Umami an event name, and a form ID typed into
+ * the forms address reaches it too, so it must not reach Slack.
+ */
+export function tallyDeadEnds(
+  landing: MetricRow[],
+  forms: MetricRow[],
+  formIds: string[],
+): { deadEnds: DeadEnds; topForm: { formId: string; count: number } | null } {
+  const deadEnds: DeadEnds = {
+    formClosed: 0,
+    formLoadError: 0,
+    serviceUnavailable: 0,
+    pageNotFound: 0,
+  };
+  for (const { x, y } of landing) {
+    if (x === "service-unavailable-view") deadEnds.serviceUnavailable += y;
+    if (x === "page-not-found") deadEnds.pageNotFound += y;
+  }
+  const idByKey = new Map(formIds.map((id) => [eventFormKey(id), id]));
+  const byForm = new Map<string, number>();
+  for (const { x, y } of forms) {
+    // A form-load-error with no form (not found) is stored unpacked.
+    const packed = parseEventName(x);
+    const key = FORM_DEAD_ENDS.get(canonicalEvent(packed ? packed.event : x));
+    if (!key) continue;
+    deadEnds[key] += y;
+    const formId = packed && idByKey.get(packed.formId);
+    if (formId) byForm.set(formId, (byForm.get(formId) ?? 0) + y);
+  }
+  let topForm: { formId: string; count: number } | null = null;
+  for (const [formId, count] of byForm) {
+    if (!topForm || count > topForm.count) topForm = { formId, count };
+  }
+  return { deadEnds, topForm };
+}
+
 // --- formatting ------------------------------------------------------------
 
 /** A Slack message: `text` is the notification fallback, `blocks` the layout. */
@@ -115,11 +177,15 @@ function trend(delta: number, better: Better, label: string): string {
   return `${good ? "🟢" : "🔴"} ${delta > 0 ? "▲" : "▼"} ${label}`;
 }
 
-export function countChange(current: number, previous: number): string {
+export function countChange(
+  current: number,
+  previous: number,
+  better: Better = "up",
+): string {
   if (current === previous) return "⚪ no change";
-  if (!previous) return "🆕 new";
+  if (!previous) return better === "up" ? "🆕 new" : "🔴 new";
   const change = Math.round((Math.abs(current - previous) / previous) * 100);
-  return trend(current - previous, "up", `${change}%`);
+  return trend(current - previous, better, `${change}%`);
 }
 
 export function rateChange(
@@ -279,8 +345,36 @@ export function formatSiteStats(
         durationChange(c.avgDurationSeconds, p.avgDurationSeconds),
       ],
     ]),
-    divider,
   ];
+  const deadEnds = (
+    [
+      ["closed form", "formClosed"],
+      ["form didn't load", "formLoadError"],
+      ["service unavailable", "serviceUnavailable"],
+      ["page not found", "pageNotFound"],
+    ] as const
+  ).map(([label, key]) => ({
+    label,
+    now: c.deadEnds[key],
+    before: p.deadEnds[key],
+  }));
+  if (deadEnds.some((d) => d.now || d.before)) {
+    blocks.push(
+      section(
+        "*🚧 Dead ends:* " +
+          deadEnds
+            .map(
+              (d) =>
+                `${d.label} *${num(d.now)}* ${countChange(d.now, d.before, "down")}`,
+            )
+            .join(" · ") +
+          (c.topDeadEndForm
+            ? ` · most on \`${c.topDeadEndForm.formId}\` (${num(c.topDeadEndForm.count)})`
+            : ""),
+      ),
+    );
+  }
+  blocks.push(divider);
   if (biggestDrops.length) {
     blocks.push(
       section(
