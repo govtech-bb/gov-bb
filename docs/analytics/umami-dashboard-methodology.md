@@ -122,10 +122,12 @@ Surfaced as a first-class block on each form page:
   errors.
 - **Submit-error rate** = errors ÷ attempts.
 - **By reason** = `eventDataValues(..., event: "<formId>:form-submit-error",
-  propertyName: "errors")` — `validation` (the API rejected an answer),
-  `network` (no answer, or an HTTP error — a 5xx counts here too),
-  `payment-init` (payment could not start), `server` (the API answered but
-  reported the submission failed). Any other value counts as `other`. The list
+  propertyName: "errors")` — `validation` (the API rejected an answer, shown
+  on its step), `network` (no readable response: offline, or a gateway error
+  the browser blocked), `payment-init` (payment could not start), `server`
+  (any other failure: an HTTP error status, 5xx and 429 too, a rejected answer
+  that matches no step, or the API said the submission failed). Before #3835,
+  HTTP errors counted as `network`. Any other value counts as `other`. The list
   is `SUBMIT_ERROR_CODES` in `@govtech-bb/analytics`, shared with `/stats`
   (#3826).
 

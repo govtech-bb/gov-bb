@@ -39,6 +39,7 @@ import { buildPrintedAnswers } from "../../../lib/printed-answers";
 import {
   formatDataForSubmission,
   postFormSubmission,
+  FormFetchError,
   FormValidationError,
 } from "@forms/form-api";
 import { trackEvent } from "../../../lib/analytics";
@@ -376,10 +377,17 @@ function FormView() {
             return;
           }
         }
+        // `network` only when no readable response came back (makeFetch's
+        // status 0: offline, or a gateway error the browser blocked). Anything
+        // else is `server`: an HTTP error status (5xx, 429), a 422 that maps
+        // to no visible step, or any other thrown error (#3835).
         trackEvent("form-submit-error", {
           form: formMeta.formId,
           category: formCategory(formMeta.formId),
-          errors: "network",
+          errors:
+            error instanceof FormFetchError && error.status === 0
+              ? "network"
+              : "server",
         });
         // Commit a failed state so the confirmation step shows the
         // "Something went wrong" panel with a retry, instead of leaving the

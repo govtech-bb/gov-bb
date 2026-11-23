@@ -709,7 +709,7 @@ export async function fetchOverviewData(
     const [statsRaw, urls, forms, landingEvents, journeyRows] =
       await Promise.all([
         client.stats(cfg.landingWebsiteId, r) as Promise<UmamiStats>,
-        client.metricsUrls(cfg.landingWebsiteId, r),
+        client.metricsUrls(cfg.landingWebsiteId, r, ALL_PAGE_URLS),
         fetchFormList(cfg),
         client.metricsEvents(cfg.landingWebsiteId, r, ALL_EVENT_NAMES),
         client.reportJourney(cfg.landingWebsiteId, { steps: 4, range: r }),
@@ -1025,7 +1025,7 @@ export async function fetchPagesData(
     const client = new UmamiClient({ apiKey: cfg.apiKey })
     const r = rangeForKey(range)
     const [urlRows, registry] = await Promise.all([
-      client.metricsUrls(cfg.landingWebsiteId, r),
+      client.metricsUrls(cfg.landingWebsiteId, r, ALL_PAGE_URLS),
       fetchServicesIndex(cfg),
     ])
     // First pass yields the kept content-page paths; fetch each page's
