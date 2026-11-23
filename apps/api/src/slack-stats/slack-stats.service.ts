@@ -21,6 +21,7 @@ import {
   formatFormStats,
   formatSiteStats,
   periodHeading,
+  tallyDeadEnds,
   type FormPeriod,
   type SitePeriod,
   type SlackMessage,
@@ -189,6 +190,7 @@ export class SlackStatsService {
             previous: previous.byForm.get(id) ?? { starts: 0, completed: 0 },
           })),
         ),
+        topDeadEndForm: current.topDeadEndForm,
       });
     }
 
@@ -277,11 +279,18 @@ export class SlackStatsService {
   ): Promise<{
     totals: SitePeriod;
     byForm: Map<string, { starts: number; completed: number }>;
+    topDeadEndForm: { formId: string; count: number } | null;
   }> {
     const { landingWebsiteId, formsWebsiteId } = this.umamiConfig();
     const stats = (await client.stats(landingWebsiteId, range)) as {
       visitors?: number;
     };
+    // One event-count request per site, so the reply stays inside the rate limit.
+    const { deadEnds, topForm } = tallyDeadEnds(
+      await client.metricsEvents(landingWebsiteId, range),
+      await client.metricsEvents(formsWebsiteId, range),
+      formIds,
+    );
     const byForm = new Map<string, { starts: number; completed: number }>();
     const durations: EventDataValue[] = [];
     for (const formId of formIds) {
@@ -319,8 +328,10 @@ export class SlackStatsService {
         starts,
         completed,
         avgDurationSeconds: weightedAverage(durations),
+        deadEnds,
       },
       byForm,
+      topDeadEndForm: topForm,
     };
   }
 

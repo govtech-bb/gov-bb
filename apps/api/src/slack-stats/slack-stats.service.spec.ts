@@ -9,6 +9,7 @@ const umami = vi.hoisted(() => ({
   stats: vi.fn(),
   reportFunnel: vi.fn(),
   eventDataValues: vi.fn(),
+  metricsEvents: vi.fn(),
 }));
 vi.mock("@govtech-bb/umami-analytics", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@govtech-bb/umami-analytics")>()),
@@ -55,6 +56,7 @@ beforeEach(() => {
   ]);
   umami.stats.mockResolvedValue({ visitors: 1000 });
   umami.eventDataValues.mockResolvedValue([]);
+  umami.metricsEvents.mockResolvedValue([]);
 });
 
 describe("SlackStatsService.isConfigured", () => {
@@ -86,6 +88,31 @@ describe("SlackStatsService.buildReply — site-wide", () => {
     expect(text).toContain("passport-renewal");
     // Durations are only fetched for forms someone finished (3 of 4 funnels).
     expect(umami.eventDataValues).toHaveBeenCalledTimes(3);
+    expect(text).not.toContain("Dead ends");
+  });
+
+  it("counts dead ends with one event request per site per period", async () => {
+    umami.reportFunnel.mockResolvedValue(funnel(0, 0, 0));
+    umami.metricsEvents.mockImplementation(async (site: string) =>
+      site === "landing"
+        ? [{ x: "page-not-found", y: 6 }]
+        : [
+            { x: "passport-renewal:form-closed-view", y: 2 },
+            { x: "birth-certificate:form-load-error", y: 5 },
+          ],
+    );
+
+    const text = await reply("/stats", "week", undefined, NOW);
+
+    expect(umami.metricsEvents.mock.calls.map(([site]) => site)).toEqual([
+      "landing",
+      "forms",
+      "landing",
+      "forms",
+    ]);
+    expect(text).toContain(
+      "*🚧 Dead ends:* closed form *2* ⚪ no change · form didn't load *5* ⚪ no change · service unavailable *0* ⚪ no change · page not found *6* ⚪ no change · most on `birth-certificate` (5)",
+    );
   });
 });
 
