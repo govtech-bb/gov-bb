@@ -110,17 +110,17 @@ describe('HomeHero', () => {
   })
 
   it('offers no suggestions for search text after a trip through Ask', () => {
+    const options = () => screen.queryAllByRole('option', { hidden: true })
     renderHero()
     fireEvent.click(screen.getByRole('radio', { name: 'Search' }))
     fireEvent.input(searchInput(), { target: { value: 'birth' } })
-    expect(suggestMock).toHaveBeenCalled()
+    expect(options()).not.toHaveLength(0)
 
-    suggestMock.mockClear()
     fireEvent.click(screen.getByRole('radio', { name: 'Ask Assistant' }))
     fireEvent.click(screen.getByRole('radio', { name: 'Search' }))
 
     expect(searchInput()).toHaveProperty('value', 'birth')
-    expect(suggestMock).not.toHaveBeenCalled()
+    expect(options()).toHaveLength(0)
   })
 
   it("suggests from api_v2's search documents once they load", async () => {
@@ -362,14 +362,20 @@ describe('HomeHero', () => {
     expect(chatStatus().textContent).toBe('')
   })
 
-  it('checks the chat again when the tab comes back', async () => {
+  it.each([
+    ['the window regains focus', () => fireEvent(window, new Event('focus'))],
+    [
+      'the tab becomes visible',
+      () => fireEvent(document, new Event('visibilitychange')),
+    ],
+  ])('checks the chat again when %s', async (_, comeBack) => {
     stubChatHealth(false)
     renderHero()
     const send = screen.getByRole<HTMLButtonElement>('button', { name: 'Send' })
     await waitFor(() => expect(send.disabled).toBe(true))
 
     stubChatHealth(true)
-    fireEvent(window, new Event('focus'))
+    comeBack()
 
     await waitFor(() => expect(send.disabled).toBe(false))
     expect(screen.getByRole('link', { name: QUESTION })).toBeTruthy()

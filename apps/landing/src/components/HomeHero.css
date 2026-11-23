@@ -353,9 +353,9 @@
     font-weight: 700;
   }
 
-  /* Alone on its line (HomeHero marks it data-line-end), the label moves back
-     by half that margin to sit centred. It's moved, not given a new margin, so
-     the mark doesn't reflow the row. */
+  /* Alone on its line (HomeHeroSuggestions marks it data-line-end), the label
+     moves back by half that margin to sit centred. It's moved, not given a new
+     margin, so the mark doesn't reflow the row. */
   .home-hero__suggestions-label[data-line-end] {
     position: relative;
     inset-inline-start: calc(
@@ -373,8 +373,8 @@
   }
 
   /* The separator fills the gap after its link, out of the flow, so hiding
-     the one at the end of a line (HomeHero marks it data-line-end) doesn't
-     reflow the row. */
+     the one at the end of a line (HomeHeroSuggestions marks it data-line-end)
+     doesn't reflow the row. */
   .home-hero__suggestions-list li:not(:last-child, [data-line-end])::after {
     content: '|' / '';
     position: absolute;
