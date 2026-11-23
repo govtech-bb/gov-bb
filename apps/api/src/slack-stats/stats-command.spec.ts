@@ -37,6 +37,10 @@ describe("usageText", () => {
   it("mentions the all-tools report", () => {
     expect(usageText("/stats")).toContain("`/stats week tools`");
   });
+
+  it("mentions the journeys report", () => {
+    expect(usageText("/stats")).toContain("`/stats week journeys`");
+  });
 });
 
 describe("usageText — tools", () => {

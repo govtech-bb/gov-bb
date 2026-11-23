@@ -1,15 +1,18 @@
 import {
   TOOLS,
   comparisonPeriods,
+  shapeJourneyList,
   eventName,
 } from "@govtech-bb/umami-analytics";
 import {
   biggestFinishDrops,
   countChange,
+  countHandOffs,
   duration,
   durationChange,
   formatChatStats,
   formatFormStats,
+  formatJourneyStats,
   formatSiteStats,
   formatToolStats,
   formatToolsSummary,
@@ -823,5 +826,157 @@ describe("formatToolsSummary", () => {
       *Check for water outages in your area* (\`water-outages\`): 👥 *50* visitors 🟢 ▲ 25% · 💤 no tool events this period (3 results the period before)
       Visitors are summed across each tool's pages, so someone who views more than one page may be counted more than once. The no-result rate is the share of results where the visitor found nothing or was not eligible; tools without such a result have no rate. The error rate in brackets is errors ÷ (results + errors)."
     `);
+  });
+});
+
+describe("countHandOffs", () => {
+  it("sums packed, short-coded and plain names per website", () => {
+    const landing = [
+      { x: "passport-renewal:page-service-view", y: 40 },
+      // A long form ID's hashed key and short code (#2682).
+      { x: "abc123:psvw", y: 5 },
+      { x: "passport-renewal:page-start-view", y: 30 },
+      { x: "abc123:pstvw", y: 2 },
+      { x: "start-click", y: 25 },
+      { x: "search-submit", y: 99 },
+      // form-start only counts on the forms website.
+      { x: "passport-renewal:form-start", y: 1000 },
+    ];
+    const forms = [
+      { x: "passport-renewal:form-start", y: 20 },
+      { x: "abc123:fstrt", y: 3 },
+      { x: "passport-renewal:form-submit", y: 15 },
+      { x: "start-click", y: 1000 },
+    ];
+    expect(countHandOffs(landing, forms)).toEqual({
+      "page-service-view": 45,
+      "page-start-view": 32,
+      "start-click": 25,
+      "form-start": 23,
+    });
+  });
+});
+
+describe("formatJourneyStats", () => {
+  const current = {
+    "page-service-view": 1200,
+    "page-start-view": 600,
+    "start-click": 450,
+    "form-start": 400,
+  };
+  const previous = {
+    "page-service-view": 1000,
+    "page-start-view": 600,
+    "start-click": 500,
+    "form-start": 0,
+  };
+
+  it("shows the top five paths with their share, and the hand-off counts, for a normal week", () => {
+    const path = (count: number, ...items: string[]) => ({ items, count });
+    const paths = shapeJourneyList([
+      path(30, "/", "/travel/renew-passport", "/travel/renew-passport/start"),
+      path(20, "/", "/search", "/health/find-a-pharmacy"),
+      path(15, "/travel/renew-passport", "/travel/renew-passport/start"),
+      path(10, "/", "/family/get-birth-certificate"),
+      path(10, "/about", "/"),
+      path(5, "/", "/contact"),
+      path(50, "/"), // a bounce: not a journey
+    ]);
+    expect(paths).toHaveLength(6);
+
+    const message = formatJourneyStats(LAST_WEEK, {
+      paths,
+      current,
+      previous,
+    });
+
+    expect(message.text).toBe(
+      "🧭 Landing journeys · Last week: 1,200 service page views, 400 forms started",
+    );
+    expect(render(message)).toMatchInlineSnapshot(`
+      "🧭 Landing journeys · Last week
+      26 Oct – 1 Nov, compared with 19 Oct – 25 Oct
+      *🛤️ Most common journeys on landing*
+      • Home → Renew passport → Start: *33.3%* (30)
+      • Home → Search → Find a pharmacy: *22.2%* (20)
+      • Renew passport → Start: *16.7%* (15)
+      • Home → Get birth certificate: *11.1%* (10)
+      • About → Home: *11.1%* (10)
+      ---
+      *🔀 From landing to forms*
+      *📄 Service page views*
+      *1,200*   🟢 ▲ 20%
+      *🚪 Start page views*
+      *600*   ⚪ no change
+      *👆 Start now clicks*
+      *450*   🔴 ▼ 10%
+      *📝 Forms started*
+      *400*   🆕 new
+      ℹ️ These are event counts. Landing and forms are separate Umami websites, so they are four separate counts, not a funnel. The full journey from landing to forms is only in \`/journey\` in Datadog."
+    `);
+  });
+
+  it("says so when there are no journeys", () => {
+    const message = formatJourneyStats(LAST_WEEK, {
+      paths: [],
+      current,
+      previous,
+    });
+    const text = render(message);
+    expect(text).toContain(
+      "💤 No journeys of two or more pages on landing in this period.",
+    );
+    expect(text).toContain("*📝 Forms started*\n*400*   🆕 new");
+    expect(text).toContain("not a funnel");
+  });
+
+  it("keeps hostile page paths inert: no mentions, links or formatting", () => {
+    const paths = shapeJourneyList([
+      {
+        items: [
+          "/<!channel>",
+          "/x/<mailto:a@evil.example|Click here>",
+          "/`code` *bold* & more",
+          "/" + "a".repeat(200),
+        ],
+        count: 3,
+      },
+    ]);
+    const message = formatJourneyStats(LAST_WEEK, {
+      paths,
+      current,
+      previous,
+    });
+    const journeys = (message.blocks as Record<string, any>[])[2];
+    expect(journeys.text.verbatim).toBe(true);
+    const [title, line, ...rest] = journeys.text.text.split("\n");
+    expect(title).toBe("*🛤️ Most common journeys on landing*");
+    expect(rest).toEqual([]);
+    expect(line).toBe(
+      "• !channel → mailto:a@evil.example|Click here → code bold more → A" +
+        "a".repeat(78) +
+        "…: *100%* (3)",
+    );
+  });
+
+  it("keeps the journeys under Slack's 3,000-character section limit", () => {
+    // shapeJourneyList gives up to 12 paths; each step is as long as
+    // plainSlackText allows, and the &s would grow fivefold if escaped.
+    const step = (n: number) => "/" + n + "&".repeat(20) + "a".repeat(100);
+    const paths = shapeJourneyList(
+      Array.from({ length: 12 }, (_, n) => ({
+        items: [1, 2, 3, 4].map((k) => step(n * 10 + k)),
+        count: 10,
+      })),
+    );
+    expect(paths).toHaveLength(12);
+    const message = formatJourneyStats(LAST_WEEK, {
+      paths,
+      current,
+      previous,
+    });
+    const journeys = (message.blocks as Record<string, any>[])[2];
+    expect(journeys.text.text.split("\n")).toHaveLength(6);
+    expect(journeys.text.text.length).toBeLessThanOrEqual(3000);
   });
 });

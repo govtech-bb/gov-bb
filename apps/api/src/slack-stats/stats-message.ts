@@ -5,6 +5,7 @@ import {
   type ComparisonPeriods,
   type EventDataValue,
   type MetricRow,
+  type JourneyRow,
   type StatsPeriod,
   type Tool,
   type ToolEventStats,
@@ -861,5 +862,105 @@ export function formatToolsSummary(
         "Visitors are summed across each tool's pages, so someone who views more than one page may be counted more than once. The no-result rate is the share of results where the visitor found nothing or was not eligible; tools without such a result have no rate. The error rate in brackets is errors ÷ (results + errors).",
       ),
     ],
+  };
+}
+
+/** Counts of the landing → forms hand-off events for one period (#3808). */
+export type HandOffCounts = Record<
+  "page-service-view" | "page-start-view" | "start-click" | "form-start",
+  number
+>;
+
+/**
+ * Sum the hand-off events from each website's event list. Events sent with a
+ * `form` are stored packed as `<form>:<event>`, sometimes with a short code
+ * (`psvw`, `fstrt`), so each name is unpacked and canonicalised before it is
+ * matched. `form-start` is a forms event; the rest are landing events.
+ */
+export function countHandOffs(
+  landing: MetricRow[],
+  forms: MetricRow[],
+): HandOffCounts {
+  const total = (rows: MetricRow[], event: string) =>
+    rows.reduce(
+      (n, r) =>
+        canonicalEvent(parseEventName(r.x)?.event ?? r.x) === event
+          ? n + r.y
+          : n,
+      0,
+    );
+  return {
+    "page-service-view": total(landing, "page-service-view"),
+    "page-start-view": total(landing, "page-start-view"),
+    "start-click": total(landing, "start-click"),
+    "form-start": total(forms, "form-start"),
+  };
+}
+
+export interface JourneyStats {
+  /** The paths from shapeJourneyList (the dashboard's journey table), busiest first. */
+  paths: Pick<JourneyRow, "items" | "sessions" | "share">[];
+  current: HandOffCounts;
+  previous: HandOffCounts;
+}
+
+/**
+ * A journey step as inert Slack text. Steps come from page paths anyone can
+ * send to Umami. Page slugs never hold &, < or >, so they are dropped rather
+ * than escaped: escaping can make a step five times longer, and a section
+ * over Slack's 3,000-character limit makes Slack refuse the whole reply.
+ */
+const journeyStep = (label: string) =>
+  plainSlackText(label.replace(/[&<>]/g, ""));
+
+/** Five journeys of up to 4 steps of 80 characters stay under Slack's limit. */
+const JOURNEYS_SHOWN = 5;
+
+/** A share as the dashboard shows it: one decimal, no trailing ".0". */
+const share = (r: number) => `${(r * 100).toFixed(1).replace(/\.0$/, "")}%`;
+
+export function formatJourneyStats(
+  heading: PeriodHeading,
+  { paths, current: c, previous: p }: JourneyStats,
+): SlackMessage {
+  const blocks: unknown[] = [
+    header(`🧭 Landing journeys · ${heading.title}`),
+    context(heading.detail),
+    section(
+      paths.length
+        ? "*🛤️ Most common journeys on landing*\n" +
+            paths
+              .slice(0, JOURNEYS_SHOWN)
+              .map(
+                (j) =>
+                  `• ${j.items.map(journeyStep).join(" → ")}: *${share(j.share)}* (${num(j.sessions)})`,
+              )
+              .join("\n")
+        : "💤 No journeys of two or more pages on landing in this period.",
+      true,
+    ),
+    divider,
+    section("*🔀 From landing to forms*"),
+    metrics(
+      (
+        [
+          ["📄 Service page views", "page-service-view"],
+          ["🚪 Start page views", "page-start-view"],
+          ["👆 Start now clicks", "start-click"],
+          ["📝 Forms started", "form-start"],
+        ] as const
+      ).map(([label, key]): [string, string, string] => [
+        label,
+        num(c[key]),
+        countChange(c[key], p[key]),
+      ]),
+    ),
+    context(
+      "ℹ️ These are event counts. Landing and forms are separate Umami websites, so they are four separate counts, not a funnel. The full journey from landing to forms is only in `/journey` in Datadog.",
+    ),
+  ];
+  return {
+    text: `🧭 Landing journeys · ${heading.title}: ${num(c["page-service-view"])} service page views, ${num(c["form-start"])} forms started`,
+    blocks,
   };
 }
