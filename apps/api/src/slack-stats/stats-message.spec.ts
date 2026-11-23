@@ -23,6 +23,12 @@ describe("change helpers", () => {
     expect(countChange(5, 0)).toBe("🆕 new");
   });
 
+  it("counts change the other way when fewer is better", () => {
+    expect(countChange(108, 100, "down")).toBe("🔴 ▲ 8%");
+    expect(countChange(90, 100, "down")).toBe("🟢 ▼ 10%");
+    expect(countChange(5, 0, "down")).toBe("🔴 new");
+  });
+
   it("rates change in percentage points", () => {
     expect(rateChange(0.64, 0.59)).toBe("🟢 ▲ 5 pts");
     expect(rateChange(0.31, 0.33)).toBe("🔴 ▼ 2 pts");
@@ -135,10 +141,19 @@ describe("tallyDeadEnds", () => {
     expect(topForm).toEqual({ formId: LONG, count: 8 });
   });
 
-  it("names a form key it cannot map back as stored", () => {
-    const stored = eventName(LONG, "form-closed-view");
-    const { topForm } = tallyDeadEnds([], [{ x: stored, y: 3 }], []);
-    expect(topForm).toEqual({ formId: stored.split(":")[0], count: 3 });
+  it("counts a form key it cannot map back, but never names it", () => {
+    const { deadEnds, topForm } = tallyDeadEnds(
+      [],
+      [
+        { x: eventName(LONG, "form-closed-view"), y: 3 },
+        // Anyone can send Umami an event name.
+        { x: "x`<!channel> <evil.example|click> &amp;:fclsd", y: 50 },
+        { x: "passport-renewal:form-load-error", y: 1 },
+      ],
+      ["passport-renewal"],
+    );
+    expect(deadEnds.formClosed).toBe(53);
+    expect(topForm).toEqual({ formId: "passport-renewal", count: 1 });
   });
 
   it("has no top form when no form had a dead end", () => {
@@ -189,6 +204,7 @@ describe("formatSiteStats", () => {
         serviceUnavailable: 0,
         pageNotFound: 140,
       },
+      topDeadEndForm: { formId: "summer-camp", count: 9 },
     },
     previous: {
       visitors: 11556,
@@ -201,8 +217,8 @@ describe("formatSiteStats", () => {
         serviceUnavailable: 0,
         pageNotFound: 140,
       },
+      topDeadEndForm: null,
     },
-    topDeadEndForm: { formId: "summer-camp", count: 9 },
   };
 
   it("shows the headline numbers and the biggest drops", () => {
@@ -258,13 +274,13 @@ describe("formatSiteStats", () => {
       completed: 0,
       avgDurationSeconds: null,
       deadEnds: noDeadEnds,
+      topDeadEndForm: null,
     };
     const text = render(
       formatSiteStats(LAST_WEEK, "/stats", "today", {
         current: empty,
         previous: empty,
         biggestDrops: [],
-        topDeadEndForm: null,
       }),
     );
     expect(text).toContain("*🚪 Visit → start form*\n*–*\n");
@@ -275,10 +291,13 @@ describe("formatSiteStats", () => {
   it("shows dead ends that stopped this period, with no top form", () => {
     const text = render(
       formatSiteStats(LAST_WEEK, "/stats", "week", {
-        current: { ...site.current, deadEnds: noDeadEnds },
+        current: {
+          ...site.current,
+          deadEnds: noDeadEnds,
+          topDeadEndForm: null,
+        },
         previous: site.previous,
         biggestDrops: [],
-        topDeadEndForm: null,
       }),
     );
     expect(text).toContain(

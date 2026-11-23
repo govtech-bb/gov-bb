@@ -190,7 +190,6 @@ export class SlackStatsService {
             previous: previous.byForm.get(id) ?? { starts: 0, completed: 0 },
           })),
         ),
-        topDeadEndForm: current.topDeadEndForm,
       });
     }
 
@@ -279,7 +278,6 @@ export class SlackStatsService {
   ): Promise<{
     totals: SitePeriod;
     byForm: Map<string, { starts: number; completed: number }>;
-    topDeadEndForm: { formId: string; count: number } | null;
   }> {
     const { landingWebsiteId, formsWebsiteId } = this.umamiConfig();
     const stats = (await client.stats(landingWebsiteId, range)) as {
@@ -329,9 +327,9 @@ export class SlackStatsService {
         completed,
         avgDurationSeconds: weightedAverage(durations),
         deadEnds,
+        topDeadEndForm: topForm,
       },
       byForm,
-      topDeadEndForm: topForm,
     };
   }
 

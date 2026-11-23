@@ -16,6 +16,8 @@ export interface SitePeriod {
   completed: number;
   avgDurationSeconds: number | null;
   deadEnds: DeadEnds;
+  /** The known form with the most closed views and load errors. */
+  topDeadEndForm: { formId: string; count: number } | null;
 }
 
 /** Times a citizen was stopped before reaching a service, in one period. */
@@ -39,8 +41,6 @@ export interface SiteStats {
   current: SitePeriod;
   previous: SitePeriod;
   biggestDrops: FormFinishChange[];
-  /** The form with the most closed views and load errors this period. */
-  topDeadEndForm: { formId: string; count: number } | null;
 }
 
 /** One form's headline numbers for one period. */
@@ -107,7 +107,9 @@ const FORM_DEAD_ENDS = new Map<string, keyof DeadEnds>([
  * websites, and the form with the most. With a `form`, the forms site stores
  * `<form>:<event>`, maybe with a short event code or a hashed form key, so
  * names go through canonicalEvent, and a key maps back to its form ID through
- * `formIds`. A key that matches no known form is shown as stored.
+ * `formIds`. A key that matches no known form counts in the totals but is
+ * never named: anyone can send Umami an event name, and a form ID typed into
+ * the forms address reaches it too, so it must not reach Slack.
  */
 export function tallyDeadEnds(
   landing: MetricRow[],
@@ -132,10 +134,8 @@ export function tallyDeadEnds(
     const key = FORM_DEAD_ENDS.get(canonicalEvent(packed ? packed.event : x));
     if (!key) continue;
     deadEnds[key] += y;
-    if (packed) {
-      const formId = idByKey.get(packed.formId) ?? packed.formId;
-      byForm.set(formId, (byForm.get(formId) ?? 0) + y);
-    }
+    const formId = packed && idByKey.get(packed.formId);
+    if (formId) byForm.set(formId, (byForm.get(formId) ?? 0) + y);
   }
   let topForm: { formId: string; count: number } | null = null;
   for (const [formId, count] of byForm) {
@@ -181,7 +181,7 @@ export function countChange(
   better: Better = "up",
 ): string {
   if (current === previous) return "⚪ no change";
-  if (!previous) return "🆕 new";
+  if (!previous) return better === "up" ? "🆕 new" : "🔴 new";
   const change = Math.round((Math.abs(current - previous) / previous) * 100);
   return trend(current - previous, better, `${change}%`);
 }
@@ -298,7 +298,7 @@ export function formatSiteStats(
   heading: PeriodHeading,
   command: string,
   period: StatsPeriod,
-  { current: c, previous: p, biggestDrops, topDeadEndForm }: SiteStats,
+  { current: c, previous: p, biggestDrops }: SiteStats,
 ): SlackMessage {
   const visitToStart = [
     ratio(c.starts, c.visitors),
@@ -361,8 +361,8 @@ export function formatSiteStats(
                 `${d.label} *${num(d.now)}* ${countChange(d.now, d.before, "down")}`,
             )
             .join(" · ") +
-          (topDeadEndForm
-            ? ` · most on \`${topDeadEndForm.formId}\` (${num(topDeadEndForm.count)})`
+          (c.topDeadEndForm
+            ? ` · most on \`${c.topDeadEndForm.formId}\` (${num(c.topDeadEndForm.count)})`
             : ""),
       ),
     );

@@ -114,6 +114,34 @@ describe("SlackStatsService.buildReply — site-wide", () => {
       "*🚧 Dead ends:* closed form *2* ⚪ no change · form didn't load *5* ⚪ no change · service unavailable *0* ⚪ no change · page not found *6* ⚪ no change · most on `birth-certificate` (5)",
     );
   });
+
+  it("never puts an event name sent by a stranger into the reply", async () => {
+    umami.reportFunnel.mockResolvedValue(funnel(0, 0, 0));
+    umami.metricsEvents.mockImplementation(async (site: string) =>
+      site === "landing"
+        ? []
+        : [
+            {
+              x: "x`<!channel> <evil.example|click> &amp;:fclsd",
+              y: 9,
+            },
+          ],
+    );
+
+    const message = await service().buildReply(
+      "/stats",
+      "week",
+      undefined,
+      NOW,
+    );
+    const text = JSON.stringify(message);
+
+    expect(text).toContain("closed form *9*");
+    expect(text).not.toContain("most on");
+    for (const hostile of ["<!channel>", "evil.example", "&amp;", "x`"]) {
+      expect(text).not.toContain(hostile);
+    }
+  });
 });
 
 describe("SlackStatsService.buildReply — one form", () => {
