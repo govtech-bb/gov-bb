@@ -109,12 +109,17 @@ export class UmamiClient {
     });
   }
 
-  /** Event-name counts (forms site). Aligned events are `<form_id>:<event>`. */
-  metricsEvents(websiteId: string, range: Range): Promise<MetricRow[]> {
+  /** Event-name counts (forms site). Aligned events are `<form_id>:<event>`.
+   *  Rows come busiest first, so a `limit` too low drops the quietest names. */
+  metricsEvents(
+    websiteId: string,
+    range: Range,
+    limit = 500,
+  ): Promise<MetricRow[]> {
     return this.get<MetricRow[]>(`/websites/${websiteId}/metrics`, {
       type: "event",
       ...range,
-      limit: 500,
+      limit,
     });
   }
 

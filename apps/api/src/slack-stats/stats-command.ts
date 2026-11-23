@@ -31,6 +31,7 @@ export function usageText(command: string): string {
     `Add a form ID for one form, for example \`${command} week passport-renewal\`.`,
     `Add a tool ID for one tool, for example \`${command} week crop-over-permits\`. Tool IDs: ${TOOLS.map((t) => `\`${t.id}\``).join(", ")}.`,
     `Add \`chat\` for the chat questions asked on landing, for example \`${command} week chat\`.`,
+    `Add \`journeys\` for the most common journeys on landing and the hand-offs to forms, for example \`${command} week journeys\`.`,
     `Add \`search\` for what people search for on landing, for example \`${command} week search\`.`,
   ].join("\n");
 }
