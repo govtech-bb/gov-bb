@@ -297,7 +297,10 @@ const LAST_WEEK = {
 /** Right-to-left override and zero-width space. */
 const RLO = "\u202E";
 const ZWSP = "\u200B";
-/** Every bidi control and invisible character plainSlackText removes. */
+/**
+ * Bidi controls and invisible characters plainSlackText removes: those named
+ * in #3825, then a soft hyphen and tag characters, which can hide a string.
+ */
 const HIDDEN = [
   0x061c,
   ...[0x200b, 0x200c, 0x200d, 0x200e, 0x200f],
@@ -305,6 +308,8 @@ const HIDDEN = [
   0x2060,
   ...[0x2066, 0x2067, 0x2068, 0x2069],
   0xfeff,
+  0x00ad,
+  ...[0xe0001, 0xe0049, 0xe007f],
 ].map((c) => String.fromCodePoint(c));
 
 describe("formatSiteStats", () => {

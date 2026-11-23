@@ -537,12 +537,12 @@ const CHAT_SUGGESTIONS_SHOWN = 3;
 const CHAT_LABEL_MAX = 80;
 
 /**
- * Bidi controls (Arabic letter mark, embeddings and overrides, isolates) and
- * zero-width characters. They can reverse or hide part of a line, so it looks
- * like something it isn't.
+ * Characters that show nothing: bidi controls (U+061C, U+200E-U+200F,
+ * U+202A-U+202E, U+2066-U+2069), zero-width characters (U+200B-U+200D, U+2060,
+ * U+FEFF), and others such as tag characters and the soft hyphen. They can
+ * reverse or hide part of a line, so it looks like something it isn't.
  */
-const HIDDEN_CHARS =
-  /[\u061C\u200B-\u200F\u202A-\u202E\u2060\u2066-\u2069\uFEFF]/g;
+const HIDDEN_CHARS = /\p{Default_Ignorable_Code_Point}/gu;
 
 /**
  * Event data as inert Slack text. Anyone can send events to Umami, so a value
