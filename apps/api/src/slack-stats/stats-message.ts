@@ -202,9 +202,10 @@ const context = (text: string) => ({
   type: "context",
   elements: [{ type: "mrkdwn", text }],
 });
-const section = (text: string) => ({
+/** `verbatim` stops Slack linking bare URLs and #channels: for event data. */
+const section = (text: string, verbatim = false) => ({
   type: "section",
-  text: { type: "mrkdwn", text },
+  text: { type: "mrkdwn", text, ...(verbatim && { verbatim }) },
 });
 const divider = { type: "divider" };
 
@@ -376,6 +377,154 @@ export function formatFormStats(
   };
 }
 
+/** How often one value of a chat event's property was seen. */
+export interface ChatCount {
+  label: string;
+  count: number;
+}
+
+/** One period of the landing chat events (#3810). */
+export interface ChatPeriod {
+  /** `chat-submit` counts by `source` (where on landing it was asked). */
+  bySource: ChatCount[];
+  /** `chat-suggestion` counts by `question` (the suggestion picked). */
+  suggestions: ChatCount[];
+}
+
+export interface ChatStats {
+  current: ChatPeriod;
+  previous: ChatPeriod;
+}
+
+const CHAT_SOURCES_SHOWN = 5;
+const CHAT_SUGGESTIONS_SHOWN = 3;
+const CHAT_LABEL_MAX = 80;
+
+/**
+ * Event data as inert Slack text. Anyone can send events to Umami, so a value
+ * must not mention, link or format: Slack's control characters are escaped,
+ * formatting marks and line breaks removed, and long text shortened.
+ */
+export function plainSlackText(value: string): string {
+  // Array.from splits by code point, so shortening never cuts an emoji.
+  const chars = Array.from(
+    value
+      .replace(/[*_~`]/g, "")
+      .replace(/\s+/g, " ")
+      .trim(),
+  );
+  const short =
+    chars.length > CHAT_LABEL_MAX
+      ? chars.slice(0, CHAT_LABEL_MAX - 1).join("") + "…"
+      : chars.join("");
+  return short
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+const total = (rows: ChatCount[]) => rows.reduce((s, r) => s + r.count, 0);
+
+/**
+ * Every label in either period, as plainSlackText, busiest now first, with
+ * both counts. Grouping on the cleaned label merges look-alikes ("home ").
+ */
+function compareCounts(current: ChatCount[], previous: ChatCount[]) {
+  const counts = new Map<string, { now: number; before: number }>();
+  const add = (rows: ChatCount[], key: "now" | "before") => {
+    for (const r of rows) {
+      const label = plainSlackText(r.label);
+      const c = counts.get(label) ?? { now: 0, before: 0 };
+      c[key] += r.count;
+      counts.set(label, c);
+    }
+  };
+  add(current, "now");
+  add(previous, "before");
+  return [...counts]
+    .map(([label, c]) => ({ label, ...c }))
+    .sort((a, b) => b.now - a.now || b.before - a.before);
+}
+
+export function formatChatStats(
+  heading: PeriodHeading,
+  { current: c, previous: p }: ChatStats,
+): SlackMessage {
+  const asked = total(c.bySource);
+  const picked = total(c.suggestions);
+  const blocks: unknown[] = [
+    header(`💬 Chat on landing · ${heading.title}`),
+    context(heading.detail),
+  ];
+  if (!asked && !picked) {
+    blocks.push(
+      section(
+        `💤 Nobody asked a chat question or picked a suggested question. The period before: ${num(total(p.bySource))} asked, ${num(total(p.suggestions))} picked.`,
+      ),
+    );
+  } else {
+    blocks.push(
+      metrics([
+        [
+          "💬 Questions asked",
+          num(asked),
+          countChange(asked, total(p.bySource)),
+        ],
+        [
+          "👆 Suggestions picked",
+          num(picked),
+          countChange(picked, total(p.suggestions)),
+        ],
+      ]),
+      divider,
+    );
+    const sources = compareCounts(c.bySource, p.bySource);
+    if (asked) {
+      const shown = sources.slice(0, CHAT_SOURCES_SHOWN);
+      const others = sources
+        .slice(CHAT_SOURCES_SHOWN)
+        .reduce((n, s) => n + s.now, 0);
+      const lines = shown.map(
+        (s) =>
+          `• \`${s.label}\`: *${num(s.now)}*   ${countChange(s.now, s.before)}`,
+      );
+      if (others) lines.push(`• other places: *${num(others)}*`);
+      blocks.push(
+        section(
+          "*📍 Questions asked, by where on landing*\n" + lines.join("\n"),
+          true,
+        ),
+      );
+    }
+    const top = compareCounts(c.suggestions, p.suggestions)
+      .filter((s) => s.now > 0)
+      .slice(0, CHAT_SUGGESTIONS_SHOWN);
+    if (top.length) {
+      blocks.push(
+        section(
+          "*⭐ Top suggested questions picked*\n" +
+            top
+              .map(
+                (s) =>
+                  `• ${s.label}: *${num(s.now)}*   ${countChange(s.now, s.before)}`,
+              )
+              .join("\n"),
+          true,
+        ),
+      );
+    }
+  }
+  blocks.push(
+    context(
+      "ℹ️ Answer outcomes (answered, error, stopped) are not included yet.",
+    ),
+  );
+  return {
+    text: `💬 Chat on landing · ${heading.title}: ${num(asked)} questions asked, ${num(picked)} suggestions picked`,
+    blocks,
+  };
+}
+
 /** One tool's numbers for one period, from its landing pages and `tool-*` events. */
 export interface ToolPeriod {
   /** Summed across the tool's pages, as on the dashboard's Tools tab. */
@@ -401,16 +550,13 @@ export interface ToolStats {
   previous: ToolPeriod;
 }
 
-/**
- * A step, action or error code as the tools send them (ADR 0138). Anyone can
- * send Umami an event, so a value of another shape is counted but never put
- * into the message, where it could mention, link or format.
- */
-const TOOL_CODE = /^[a-z0-9][a-z0-9_-]{0,39}$/i;
 const STEPS_SHOWN = 10;
 const TOP_SHOWN = 3;
 
-/** Each code's count in both periods, busiest now first; odd values merge into "other". */
+/**
+ * Each code's count in both periods, busiest now first. Codes come from Umami
+ * event data, which anyone can send, so each goes through plainSlackText.
+ */
 function compareCodes(
   current: EventDataValue[],
   previous: EventDataValue[] = [],
@@ -418,8 +564,7 @@ function compareCodes(
   const counts = new Map<string, { now: number; before: number }>();
   const add = (rows: EventDataValue[], key: "now" | "before") => {
     for (const r of rows) {
-      const value = String(r.value);
-      const label = TOOL_CODE.test(value) ? `\`${value}\`` : "other";
+      const label = `\`${plainSlackText(String(r.value))}\``;
       const c = counts.get(label) ?? { now: 0, before: 0 };
       c[key] += r.total;
       counts.set(label, c);
@@ -448,7 +593,7 @@ function codeList(
             `• ${r.label}: *${num(r.now)}*   ${countChange(r.now, r.before, better)}`,
         )
     : ["Couldn't read the breakdown from Umami."];
-  return section(`*${title}*\n` + lines.join("\n"));
+  return section(`*${title}*\n` + lines.join("\n"), true);
 }
 
 /** "not-eligible" → "Not eligible". */

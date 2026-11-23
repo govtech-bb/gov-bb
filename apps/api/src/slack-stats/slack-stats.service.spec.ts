@@ -9,6 +9,7 @@ const umami = vi.hoisted(() => ({
   stats: vi.fn(),
   reportFunnel: vi.fn(),
   eventDataValues: vi.fn(),
+  metricsUrls: vi.fn(),
 }));
 vi.mock("@govtech-bb/umami-analytics", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@govtech-bb/umami-analytics")>()),
@@ -55,6 +56,7 @@ beforeEach(() => {
   ]);
   umami.stats.mockResolvedValue({ visitors: 1000 });
   umami.eventDataValues.mockResolvedValue([]);
+  umami.metricsUrls.mockResolvedValue([]);
 });
 
 describe("SlackStatsService.isConfigured", () => {
@@ -89,11 +91,187 @@ describe("SlackStatsService.buildReply — site-wide", () => {
   });
 });
 
+describe("SlackStatsService.buildReply — one tool", () => {
+  /** Event values keyed `event.property`, plus `@tool` for a filtered read. */
+  const events = (data: Record<string, { value: string; total: number }[]>) =>
+    umami.eventDataValues.mockImplementation(
+      async (
+        _site: string,
+        event: string,
+        property: string,
+        _range: unknown,
+        where?: { property: string; equals: string },
+      ) => data[`${event}.${property}${where ? `@${where.equals}` : ""}`] ?? [],
+    );
+  const reads = () =>
+    umami.eventDataValues.mock.calls.map(
+      ([site, event, property, , where]) =>
+        `${site} ${event}.${property}${where ? `@${where.equals}` : ""}`,
+    );
+
+  it("reports a tool's events from landing, compared with the week before", async () => {
+    umami.metricsUrls.mockResolvedValue([
+      { x: "/business-trade/crop-over-permits", pageviews: 90, visitors: 60 },
+      { x: "/business-trade/crop-over-permits/result", visitors: 25 },
+      { x: "/business-trade/other", visitors: 999 },
+    ]);
+    events({
+      "tool-result.tool": [
+        { value: "crop-over-permits", total: 40 },
+        { value: "pharmacy-finder", total: 500 },
+      ],
+      "tool-action.tool": [{ value: "crop-over-permits", total: 6 }],
+      "tool-error.tool": [{ value: "crop-over-permits", total: 3 }],
+      "tool-step-view.tool": [{ value: "crop-over-permits", total: 120 }],
+      "tool-result.outcome@crop-over-permits": [
+        { value: "checklist", total: 40 },
+      ],
+      "tool-action.action@crop-over-permits": [
+        { value: "apply-online", total: 6 },
+      ],
+      "tool-step-view.step@crop-over-permits": [
+        { value: "q-event", total: 70 },
+        { value: "q-venue", total: 50 },
+      ],
+      "tool-error.error@crop-over-permits": [{ value: "required", total: 3 }],
+    });
+
+    const text = await reply("/stats", "week", "crop-over-permits", NOW);
+
+    expect(text).toContain(
+      "🧰 Find the permits you need for a Crop Over event",
+    );
+    expect(text).toContain("*👥 Visitors to the tool*\\n*85*   ⚪ no change");
+    expect(text).toContain("*✅ Results*\\n*40*   ⚪ no change");
+    expect(text).toContain("• `q-event`: *70*");
+    expect(text).toContain("• `apply-online`: *6*");
+    expect(text).toContain("• `required`: *3*");
+    expect(text).not.toContain("No results");
+    expect(text).not.toContain("sign-ups");
+    // The same reads for each period, one at a time, and no form lookups.
+    const week = [
+      "landing tool-result.tool",
+      "landing tool-action.tool",
+      "landing tool-error.tool",
+      "landing tool-result.outcome@crop-over-permits",
+      "landing tool-action.action@crop-over-permits",
+      "landing tool-step-view.tool",
+      "landing tool-step-view.step@crop-over-permits",
+      "landing tool-error.error@crop-over-permits",
+    ];
+    expect(reads()).toEqual([...week, ...week]);
+    expect(umami.metricsUrls).toHaveBeenCalledTimes(2);
+    expect(formDefinitions.findAll).not.toHaveBeenCalled();
+    expect(umami.reportFunnel).not.toHaveBeenCalled();
+  });
+
+  it("shows the empty state for a tool with no events, with no breakdown reads", async () => {
+    const text = await reply("/stats", "week", "pharmacy-finder", NOW);
+
+    expect(text).toContain("💤 No tool events yet in this period.");
+    expect(umami.eventDataValues).toHaveBeenCalledTimes(8);
+    expect(reads().some((r) => r.includes("@"))).toBe(false);
+  });
+
+  it("adds the alert sign-up funnel for water outages", async () => {
+    events({
+      "tool-result.tool": [{ value: "water-outages", total: 20 }],
+      "tool-action.tool": [{ value: "water-outages", total: 9 }],
+      "tool-result.outcome@water-outages": [
+        { value: "parish-chosen", total: 10 },
+        { value: "subscribe-sent", total: 6 },
+        { value: "confirmed", total: 3 },
+        { value: "unsubscribed", total: 1 },
+      ],
+      "tool-action.action@water-outages": [
+        { value: "subscribe-submit", total: 7 },
+        { value: "open-notice", total: 2 },
+      ],
+    });
+
+    const text = await reply("/stats", "month", "water-outages", NOW);
+
+    expect(text).toContain("*🔔 Outage alert sign-ups*");
+    expect(text).toContain("*✍️ Submitted*\\n*7*   ⚪ no change");
+    expect(text).toContain("*📧 Emails sent*\\n*6*");
+    expect(text).toContain("*✅ Confirmed*\\n*3*");
+    expect(text).toContain("*👋 Unsubscribed*\\n*1*");
+  });
+
+  it("shows a dash, not a wrong number, when Umami ignores the tool filter", async () => {
+    events({
+      "tool-result.tool": [{ value: "shelter-finder", total: 10 }],
+      // Every tool's outcomes: more than the shelter finder's own 10.
+      "tool-result.outcome@shelter-finder": [
+        { value: "no-results", total: 400 },
+      ],
+    });
+
+    const text = await reply("/stats", "week", "shelter-finder", NOW);
+
+    expect(text).toContain("*🚫 No results*\\n*–*");
+  });
+
+  it("apologises rather than show no events when Umami fails", async () => {
+    umami.eventDataValues.mockRejectedValue(new Error("Umami 401"));
+    await expect(
+      reply("/stats", "week", "shelter-finder", NOW),
+    ).rejects.toThrow("Umami 401");
+  });
+
+  it("suggests tool IDs and topics for an unknown word", async () => {
+    expect(await reply("/stats", "week", "pharmacy", NOW)).toBe(
+      "🤔 No form or tool with the ID `pharmacy`. Did you mean `pharmacy-finder`?",
+    );
+    expect(await reply("/stats", "week", "journey", NOW)).toContain(
+      "`journeys`",
+    );
+  });
+});
+
+describe("SlackStatsService.buildReply — chat", () => {
+  it("reads the landing chat events for both periods, and no form", async () => {
+    umami.eventDataValues.mockImplementation(
+      async (_site: string, event: string) =>
+        event === "chat-submit"
+          ? [{ value: "home", total: 12 }]
+          : [{ value: "How do I renew my passport?", total: 3 }],
+    );
+
+    const text = await reply("/stats", "week", "chat", NOW);
+
+    expect(text).toContain("💬 Chat on landing · Last week");
+    expect(text).toContain("• `home`: *12*   ⚪ no change");
+    expect(text).toContain("• How do I renew my passport?: *3*");
+    expect(text).toContain("Answer outcomes");
+    expect(umami.eventDataValues.mock.calls.map((c) => c.slice(0, 3))).toEqual([
+      ["landing", "chat-submit", "source"],
+      ["landing", "chat-suggestion", "question"],
+      ["landing", "chat-submit", "source"],
+      ["landing", "chat-suggestion", "question"],
+    ]);
+    expect(umami.reportFunnel).not.toHaveBeenCalled();
+    expect(formDefinitions.findAll).not.toHaveBeenCalled();
+  });
+
+  it("shows the empty state when Umami has no chat events", async () => {
+    const text = await reply("/stats", "today", "chat", NOW);
+    expect(text).toContain("💤 Nobody asked a chat question");
+  });
+
+  it("apologises rather than show zero use when Umami fails", async () => {
+    umami.eventDataValues.mockRejectedValue(new Error("Umami 401"));
+    await expect(reply("/stats", "week", "chat", NOW)).rejects.toThrow(
+      "Umami 401",
+    );
+  });
+});
+
 describe("SlackStatsService.buildReply — one form", () => {
   it("suggests similar ids for an unknown form", async () => {
     const text = await reply("/stats", "week", "passport", NOW);
     expect(text).toBe(
-      "🤔 No form with the ID `passport`. Did you mean `passport-renewal`?",
+      "🤔 No form or tool with the ID `passport`. Did you mean `passport-renewal`?",
     );
   });
 
@@ -210,7 +388,7 @@ describe("SlackStatsService.respond", () => {
     );
     expect(fetchMock.mock.calls[0][0]).toBe(SLACK_URL);
     expect(posted()).toMatchObject({ response_type: "ephemeral" });
-    expect(posted().text).toContain("No form with the ID `zzz`");
+    expect(posted().text).toContain("No form or tool with the ID `zzz`");
   });
 
   it("runs one reply at a time, so two commands can't share the rate limit", async () => {
