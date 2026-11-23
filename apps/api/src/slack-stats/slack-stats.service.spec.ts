@@ -563,6 +563,52 @@ describe("SlackStatsService.buildReply — one form", () => {
     expect(text).toContain("• dob: *2*");
     expect(text).toContain("Your details  ░░░░░░░░░░░░  0");
   });
+
+  it("never puts a field ID or error code sent by a stranger into the reply", async () => {
+    formDefinitions.findByFormId.mockResolvedValue({
+      title: "Renew a passport",
+      steps: [
+        {
+          stepId: "details",
+          title: "Your details",
+          elements: [{ fieldId: "name", label: "Full name" }],
+        },
+      ],
+    });
+    umami.reportFunnel.mockResolvedValue([]);
+    // Anyone can send Umami event data, so these come back as values.
+    const hostile = [
+      "<!channel>",
+      "<https://evil.example|x>",
+      "&amp;",
+      "x`bold`",
+    ];
+    umami.eventDataValues.mockImplementation(
+      async (_site: string, _event: string, property: string) => {
+        if (property === "fieldErrors")
+          return [
+            { value: "name:required", total: 1 },
+            ...hostile.map((v) => ({ value: `${v}:required`, total: 3 })),
+          ];
+        if (property === "errors")
+          return [
+            { value: "network", total: 2 },
+            ...hostile.map((value) => ({ value, total: 1 })),
+          ];
+        return [];
+      },
+    );
+
+    const text = await reply("/stats", "week", "passport-renewal", NOW);
+
+    // "&amp;:required" splits at its ";" into nothing tallyFieldErrors reads.
+    expect(text).toContain(
+      "• other fields: *9*\\n• submit failed: other: *4*\\n• submit failed: network: *2*",
+    );
+    for (const value of [...hostile, "evil.example", "`bold"]) {
+      expect(text).not.toContain(value);
+    }
+  });
 });
 
 describe("slackResponseUrl", () => {

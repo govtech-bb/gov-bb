@@ -150,6 +150,47 @@ export function tallyDeadEnds(
   return { deadEnds, topForm };
 }
 
+/**
+ * The `errors` values apps/forms sends with `form-submit-error`: a field the
+ * API rejected, no response, a failed submission, or a failed payment start.
+ */
+const SUBMIT_ERROR_CODES = new Set([
+  "validation",
+  "network",
+  "server",
+  "payment-init",
+]);
+
+/**
+ * The (up to) 3 commonest errors on one form. Field IDs and error codes come
+ * from Umami event data, which anyone can send, so only a field in
+ * `labelByField` (the form's own fields) or a known code is named. Every other
+ * value counts in an "other fields" or "submit failed: other" row.
+ */
+export function tallyTopErrors(
+  fieldErrors: { field: string; count: number }[],
+  submitErrors: EventDataValue[],
+  labelByField: Map<string, string>,
+): { label: string; count: number }[] {
+  const counts = new Map<string, number>();
+  const add = (label: string, count: number) =>
+    counts.set(label, (counts.get(label) ?? 0) + count);
+  for (const f of fieldErrors) {
+    add(labelByField.get(f.field) ?? "other fields", f.count);
+  }
+  for (const r of submitErrors) {
+    const code = String(r.value);
+    add(
+      `submit failed: ${SUBMIT_ERROR_CODES.has(code) ? code : "other"}`,
+      r.total,
+    );
+  }
+  return [...counts]
+    .map(([label, count]) => ({ label, count }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 3);
+}
+
 // --- formatting ------------------------------------------------------------
 
 /** A Slack message: `text` is the notification fallback, `blocks` the layout. */
@@ -460,6 +501,7 @@ export function formatFormStats(
       section(
         "*🚨 Top errors*\n" +
           topErrors.map((e) => `• ${e.label}: *${num(e.count)}*`).join("\n"),
+        true,
       ),
     );
   }
