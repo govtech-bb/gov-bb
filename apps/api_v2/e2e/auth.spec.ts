@@ -70,65 +70,55 @@ describe.skipIf(!HAS_DATABASE)("employee authentication over HTTP", () => {
     expect(expected.schemaProblems).toEqual([]);
   });
 
-  it("applies the configured GitHub admission hook on provisioning and returning sign-in", () => {
+  it("applies the configured Workspace admission hook on provisioning and returning sign-in", () => {
     const check = auth.options.user.validateUserInfo;
     for (const action of ["create-user", "sign-in", "link-account"] as const) {
       const claims = {
-        email: "employee@example.com",
-        organizationMembership: {
-          state: "active",
-          organization: { login: "govtech-bb" },
-        },
+        email: "employee@govtech.bb",
+        email_verified: true,
+        hd: "govtech.bb",
       };
       const source = {
         action,
         method: "oauth",
-        oauth: { providerId: "github", profile: claims },
+        oauth: { providerId: "google", profile: claims },
       };
       expect(
         check({ user: { email: claims.email, emailVerified: true }, source }),
       ).toBeUndefined();
       for (const profile of [
-        { ...claims, organizationMembership: undefined },
+        { email: "employee@gmail.com", email_verified: true },
         {
-          ...claims,
-          organizationMembership: {
-            state: "pending",
-            organization: { login: "govtech-bb" },
-          },
+          email: "employee@example.com",
+          email_verified: true,
+          hd: "example.com",
         },
-        {
-          ...claims,
-          organizationMembership: {
-            state: "active",
-            organization: { login: "another-org" },
-          },
-        },
+        { ...claims, email_verified: false },
       ]) {
         expect(
           check({
             user: { email: profile.email, emailVerified: true },
-            source: { ...source, oauth: { providerId: "github", profile } },
+            source: { ...source, oauth: { providerId: "google", profile } },
           }),
         ).toMatchObject({ error: "organization_access_denied" });
       }
     }
   });
 
-  it("discards GitHub tokens before creating and updating account rows", async () => {
+  it("discards Google tokens before creating and updating account rows", async () => {
     const context = await auth.$context;
     const tokens = {
-      accessToken: "unused-github-access-token",
-      refreshToken: "unused-github-refresh-token",
-      idToken: "unused-github-id-token",
+      accessToken: "unused-google-access-token",
+      refreshToken: "unused-google-refresh-token",
+      idToken: "unused-google-id-token",
       accessTokenExpiresAt: new Date(Date.now() + 60_000),
       refreshTokenExpiresAt: new Date(Date.now() + 120_000),
     };
     const account = await context.internalAdapter.createAccount({
       userId: employee.userId,
-      providerId: "github",
-      accountId: "github-test-employee",
-      scope: "read:user user:email read:org",
+      providerId: "google",
+      accountId: "google-test-employee",
+      scope: "openid email profile",
       ...tokens,
     });
     const storedAccount = () =>
@@ -140,9 +130,9 @@ describe.skipIf(!HAS_DATABASE)("employee authentication over HTTP", () => {
     const expected = [
       {
         userId: employee.userId,
-        providerId: "github",
-        accountId: "github-test-employee",
-        scope: "read:user user:email read:org",
+        providerId: "google",
+        accountId: "google-test-employee",
+        scope: "openid email profile",
         accessToken: null,
         refreshToken: null,
         idToken: null,
@@ -361,9 +351,9 @@ describe.skipIf(!HAS_DATABASE)("employee authentication over HTTP", () => {
     ).toEqual([]);
   });
 
-  it("starts GitHub OAuth with a PKCE challenge and rejects external callback URLs", async () => {
+  it("starts Google OAuth with a PKCE challenge and rejects external callback URLs", async () => {
     const body = {
-      provider: "github",
+      provider: "google",
       disableRedirect: true,
       callbackURL: `${AUTH_ENV.EDITOR_ORIGIN}/auth?state=complete`,
       errorCallbackURL: `${AUTH_ENV.EDITOR_ORIGIN}/auth?state=error`,
@@ -379,13 +369,16 @@ describe.skipIf(!HAS_DATABASE)("employee authentication over HTTP", () => {
     expect(response.status).toBe(200);
     const data = z.object({ url: z.string() }).parse(await response.json());
     const url = new URL(data.url);
-    expect(url.hostname).toBe("github.com");
-    expect(url.pathname).toBe("/login/oauth/authorize");
-    expect(url.searchParams.get("scope")?.split(" ")).toEqual(
-      expect.arrayContaining(["read:user", "user:email", "read:org"]),
-    );
+    expect(url.hostname).toBe("accounts.google.com");
+    expect(url.pathname).toBe("/o/oauth2/v2/auth");
+    expect(url.searchParams.get("scope")?.split(" ").sort()).toEqual([
+      "email",
+      "openid",
+      "profile",
+    ]);
+    expect(url.searchParams.get("hd")).toBe("govtech.bb");
     expect(url.searchParams.get("redirect_uri")).toBe(
-      `${server.url}/api/auth/callback/github`,
+      `${server.url}/api/auth/callback/google`,
     );
     expect(url.searchParams.get("code_challenge")).toBeTruthy();
     expect(url.searchParams.get("code_challenge_method")).toBe("S256");
@@ -439,7 +432,7 @@ describe.skipIf(!HAS_DATABASE)("employee authentication over HTTP", () => {
 
   it("does not log callback credentials or session cookies", async () => {
     await fetch(
-      `${server.url}/api/auth/callback/github?code=never-log-this-code&state=never-log-this-state`,
+      `${server.url}/api/auth/callback/google?code=never-log-this-code&state=never-log-this-state`,
       { redirect: "manual" },
     );
     expect(server.stderr).not.toContain("never-log-this-code");

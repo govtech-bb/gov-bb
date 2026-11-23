@@ -1,9 +1,9 @@
 import { expect, test } from "vitest";
 import { $createTextNode, $getRoot } from "lexical";
-import { $registryBlocks as $govbbField } from "../../src/forms/editor/registry-module";
-import { $isInput, $isQuestionNode, $updateSettings } from "../../src/forms/editor/nodes";
+import { $registryBlocks as $govbbField } from "../../src/forms/canvas/form-registry-module";
+import { $isInput, $isQuestionNode, $updateSettings } from "../../src/forms/canvas/form-nodes";
 import { COMPONENTS } from "../../src/presets/form-registry/components";
-import { FORMATS } from "../../src/forms/core/formats";
+import { FORMATS } from "../../src/forms/model/formats";
 import {
   nativeQuestions,
   nativeRegistryEditor,

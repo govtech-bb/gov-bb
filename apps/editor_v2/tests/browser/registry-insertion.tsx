@@ -12,14 +12,17 @@ import {
 import { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { Editor } from "../../src/editor/react/editor";
-import { InsertModal } from "../../src/editor/react/insert-modal";
+import { InsertDialog } from "../../src/editor/react/action-pickers/insert-dialog";
 import { executeAction, type ActionRequest } from "../../src/editor/core/actions";
 import { defineFormEditor } from "../../src/forms/definition";
 import { govbbFormModules } from "../../src/presets/govbb-form";
-import { defineFormRegistryEntry } from "../../src/forms/registry/definition";
-import { question, content } from "../../src/forms/registry/builders";
-import { prepareRegistryEntry, $instantiateRegistryEntry } from "../../src/forms/editor/registry";
-import { $insertBlocks } from "../../src/forms/editor/insertion";
+import { defineFormRegistryEntry } from "../../src/forms/form-registry/definition";
+import { question, content } from "../../src/forms/form-registry/builders";
+import {
+  prepareRegistryEntry,
+  $instantiateRegistryEntry,
+} from "../../src/forms/canvas/form-registry-insertion";
+import { $insertBlocks } from "../../src/forms/canvas/form-insertion";
 
 import { lexicalToFormSchema } from "../../src/converters/lexical-to-form-schema";
 import { formSchemaToLexical } from "../../src/converters/form-schema-to-lexical";
@@ -140,7 +143,7 @@ function Controls() {
         <button onClick={() => insert("test-rejection")}>Reject external reference</button>
         <output aria-label="Insertion error">{error}</output>
       </nav>
-      <InsertModal request={request} onClose={() => setRequest(null)} />
+      <InsertDialog request={request} onClose={() => setRequest(null)} />
     </>
   );
 }

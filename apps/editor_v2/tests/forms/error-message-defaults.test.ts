@@ -3,15 +3,15 @@ import { $createTextNode, $getRoot, type LexicalEditor } from "lexical";
 import { createHeadlessEditor } from "../../src/editor/core/create-editor";
 import { executeAction } from "../../src/editor/core/actions";
 import { formSchemaToLexical } from "../../src/converters/form-schema-to-lexical";
-import { isAuthoredMessage } from "../../src/forms/core/validation-messages";
+import { isAuthoredMessage } from "../../src/forms/model/validation-messages";
 import {
   $setNativeErrorMessage,
   nativeErrorMessages,
-} from "../../src/forms/editor/native-field-controls";
-import { applyNativeQuestionSettings } from "../../src/forms/editor/native-settings";
-import { $native, $setNative } from "../../src/forms/editor/native-state";
-import { $isQuestionNode } from "../../src/forms/editor/nodes";
-import type { AnyFormDefinition, QuestionBase } from "../../src/forms/schema/types";
+} from "../../src/forms/formats/native/native-field-controls";
+import { applyNativeQuestionSettings } from "../../src/forms/formats/native/native-settings";
+import { $native, $setNative } from "../../src/forms/formats/native/native-state";
+import { $isQuestionNode } from "../../src/forms/canvas/form-nodes";
+import type { AnyFormDefinition, QuestionBase } from "../../src/forms/formats/native/schema/types";
 import { govbbFormCodec, govbbFormEditor } from "../../src/presets/govbb-form";
 import { emptyNativeForm, nativeHost, nativeOutput } from "../helpers/native-form";
 
@@ -70,14 +70,27 @@ test("a new question stores no error message, and export words one from the labe
 });
 
 test("turning on a limit or a date rule stores no message for it either", () => {
+  const limit = { required: true, hasMinCharacters: true, minCharacters: 3 };
+
   const question = applyNativeQuestionSettings(
     { id: "name", type: "question", kind: "text", key: "name" },
-    { required: true, hasMinCharacters: true, minCharacters: 3, beforeDate: "2030-01-01" },
-    { required: true, hasMinCharacters: true, minCharacters: 3, beforeDate: "2030-01-01" },
+    limit,
+    limit,
+    govbbFormEditor,
+  );
+
+  // A date rule is the date field's own setting, so it goes on a date question
+  const date = applyNativeQuestionSettings(
+    { id: "start", type: "question", kind: "date", key: "start" },
+    { beforeDate: "2030-01-01" },
+    { beforeDate: "2030-01-01" },
+    govbbFormEditor,
   );
 
   expect(question.required?.message).toBe("");
-  expect(question.validation?.map((rule) => rule.message)).toEqual(["", ""]);
+  expect(
+    [...(question.validation ?? []), ...(date.validation ?? [])].map((rule) => rule.message),
+  ).toEqual(["", ""]);
 });
 
 const form = (questions: QuestionBase[]): AnyFormDefinition => ({

@@ -1,32 +1,32 @@
-import { $createQuestionNode } from "../../src/forms/editor/nodes";
+import { $createQuestionNode } from "../../src/forms/canvas/form-nodes";
 import { createEditor, fieldArrayKinds } from "../helpers/default-form";
 import { expect, test } from "vitest";
 import { HeadingNode } from "@lexical/rich-text";
 import { $createTextNode, $getRoot } from "lexical";
-import { $duplicateQuestion } from "../../src/forms/editor/structure/blocks";
-import { $registryBlocks as $govbbField } from "../../src/forms/editor/registry-module";
-import { addressLookupEntry } from "../../src/forms/features/address-lookup/insertion";
-import { openingHoursEntry } from "../../src/forms/features/opening-hours/insertion";
-import { checkboxAccordionEntry } from "../../src/forms/features/checkbox-accordion/insertion";
+import { $duplicateQuestion } from "../../src/forms/canvas/structure/structure-blocks";
+import { $registryBlocks as $govbbField } from "../../src/forms/canvas/form-registry-module";
+import { addressLookupEntry } from "../../src/forms/fields/address-lookup";
+import { openingHoursEntry } from "../../src/forms/fields/opening-hours";
+import { groupedCheckboxesEntry } from "../../src/forms/fields/grouped-checkboxes";
 import { compileForm, preflight, type FormQuestion } from "../helpers/default-form";
-import { newGroup } from "../../src/forms/features/checkbox-accordion/groups";
-import { $fields } from "../../src/forms/features/logic/queries";
-import { comparisons } from "../../src/forms/features/logic/comparisons";
+import { newGroup } from "../../src/forms/fields/grouped-checkboxes-groups";
+import { $fields } from "../../src/forms/conditional-logic/logic-queries";
+import { comparisons } from "../../src/forms/conditional-logic/logic-comparisons";
 import {
   $createFormTitleNode,
   $ensureBlockIds,
   $ensureQuestionFields,
   $isInput,
   $shareQuestionSettings,
-} from "../../src/forms/editor/nodes";
-import { $createShowHideNode } from "../../src/editor/modules/disclosure/nodes";
-import { $createWidgetNode } from "../../src/forms/editor/answer-nodes";
-import { $setDepth, $setSettings } from "../../src/editor/core/document-state";
+} from "../../src/forms/canvas/form-nodes";
+import { $createShowHideNode } from "../../src/forms/content/details-node";
+import { $createWidgetNode } from "../../src/forms/canvas/answer-nodes";
+import { $setDepth, $setSettings } from "../../src/forms/canvas/block-state";
 import { formNodes } from "../helpers/default-form";
 import {
   OPENING_HOURS_ERROR,
   OPENING_HOURS_PATTERN,
-} from "../../src/forms/features/opening-hours/defaults";
+} from "../../src/forms/fields/opening-hours-defaults";
 
 const makeEditor = () =>
   createEditor({
@@ -53,7 +53,7 @@ const questions = (editor: ReturnType<typeof makeEditor>) =>
   );
 
 const entry = (kind: string) => {
-  const descriptor = [addressLookupEntry, openingHoursEntry, checkboxAccordionEntry].find(
+  const descriptor = [addressLookupEntry, openingHoursEntry, groupedCheckboxesEntry].find(
     (entry) => entry.kind === kind,
   )!;
 

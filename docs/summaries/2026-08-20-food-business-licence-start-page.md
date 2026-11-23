@@ -60,7 +60,7 @@ stays pending MDA, still uncollected.
 justified in its own note as setting restroom facilities. Reg. 10(1) requires
 only facilities "adequate ... in the opinion of the Medical Officer of Health" —
 no ratio, no counts — and adequacy is judged on site, which is exactly what
-ADR 0068 says to keep off the form. If a separate instrument does prescribe
+ADR 0116 says to keep off the form. If a separate instrument does prescribe
 provision by sex, this should be revisited; nothing in the 1969 regulations
 does.
 

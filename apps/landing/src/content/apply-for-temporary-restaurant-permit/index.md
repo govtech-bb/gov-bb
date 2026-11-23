@@ -6,7 +6,6 @@ description: >-
   the Environmental Health Department.
 stage: alpha
 visibility: preview
-featured: false
 publish_date: '2026-08-31'
 category: business-trade
 form_id: apply-for-temporary-restaurant-permit
@@ -75,7 +74,7 @@ Submitting an application does not mean that a temporary restaurant permit has b
 
 If you need help, contact the Environmental Health Service office for your area.
 
--   Branford Taitt Polyclinic - [(246) 536-3700](tel:+12465363700), [EHD.BTPC@health.gov.bb](mailto:EHD.BTPC@health.gov.bb)
+-   Branford Taitt Polyclinic - [(246) 536-3720](tel:+12465363720), [EHD.BTPC@health.gov.bb](mailto:EHD.BTPC@health.gov.bb)
 -   David Thompson Health & Social Services Complex - [(246) 536-4453](tel:+12465364453), [DTHSSC.EHD@health.gov.bb](mailto:DTHSSC.EHD@health.gov.bb)
 -   Eunice Gibson Polyclinic - [(246) 536-4033](tel:+12465364033), [EuniceGibsonEHD@health.gov.bb](mailto:EuniceGibsonEHD@health.gov.bb)
 -   Maurice Byer Polyclinic - [(246) 536-3214](tel:+12465363214), [MBPC.apps@health.gov.bb](mailto:MBPC.apps@health.gov.bb)

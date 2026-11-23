@@ -1,52 +1,30 @@
 /** Supported built-in form contributions for application-owned presets. */
-export { FormStructureModule, FormIdentityModule } from "./editor/structure/module";
+export { FormStructureModule, FormIdentityModule } from "./canvas/structure/structure-module";
 
-export { PagesModule } from "./features/pages/module";
+export { PagesModule } from "./form-pages/form-pages-module";
 
-export { RepetitionModule } from "./features/repetition/module";
+export { RepetitionModule } from "./repetition/repetition-module";
 
-export { ConditionalLogicModule } from "./features/logic/module";
+export { ConditionalLogicModule } from "./conditional-logic/conditional-logic-module";
 
-export { CalculationsModule } from "./features/calculations/module";
+export { CalculationsModule } from "./calculated-fields/calculated-fields-module";
 
-export { MentionsModule } from "./features/mentions/module";
+export { MentionsModule } from "./mentions/mentions-module";
 
-export { OpeningHoursModule } from "./features/opening-hours/module";
+export { $isPlainText } from "./canvas/form-nodes";
 
-export { CheckboxAccordionModule } from "./features/checkbox-accordion/module";
+// The form's content blocks: their editor modules, insert entries and formats
+export { textEntries, paragraphContent } from "./content/paragraphs";
 
-export { AddressLookupModule } from "./features/address-lookup/module";
+export { HeadingsModule, headingEntries, headingContents } from "./content/headings";
 
-export { MultipleChoiceModule } from "./features/multiple-choice/module";
+export { ListsModule, listEntries, listContents } from "./content/lists";
 
-export { CheckboxesModule } from "./features/checkboxes/module";
+export { CalloutsModule, calloutEntries, calloutContents } from "./content/callouts";
 
-export { DropdownModule } from "./features/dropdown/module";
+export { DisclosureModule, disclosureEntries, disclosureContent } from "./content/details";
 
-export { NumberModule } from "./features/number/module";
+export { $isShowHideNode } from "./content/details-node";
 
-export { DateModule } from "./features/date/module";
-
-export { TimeModule } from "./features/time/module";
-
-export { $isPlainText } from "./editor/nodes";
-
-export {
-  paragraphContent,
-  headingContents,
-  listContents,
-  calloutContents,
-  disclosureContent,
-} from "./editor/content-adapters";
-
-export { PhoneModule } from "./features/phone/module";
-
-export { EmailModule } from "./features/email/module";
-
-export { LongAnswerModule } from "./features/long-answer/module";
-
-export { ShortAnswerModule } from "./features/short-answer/module";
-
-export { FileUploadModule } from "./features/file-upload/module";
-
-export { BooleanModule } from "./features/boolean/module";
+/** The form's answer types, in the order they install (see fields/index.ts). */
+export { formFields } from "./fields";

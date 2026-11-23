@@ -298,7 +298,12 @@
                 "label": "Arts & Culture (includes visual & performing arts)",
                 "value": "arts-culture"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -311,7 +316,12 @@
                 "label": "Innovation (includes digital media, science & technology)",
                 "value": "innovation"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -324,7 +334,12 @@
                 "label": "Youth Empowerment (includes entrepreneurship, career development, leadership training, public speaking)",
                 "value": "youth-empowerment"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -337,7 +352,12 @@
                 "label": "Health & Fitness",
                 "value": "health-fitness"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -350,7 +370,12 @@
                 "label": "Self-Management Tools (includes health & wellness, self-care practices, religious knowledge, ethics, etiquette)",
                 "value": "self-management"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -363,7 +388,12 @@
                 "label": "Financial Literacy",
                 "value": "financial-literacy"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -376,7 +406,12 @@
                 "label": "Agriculture",
                 "value": "agriculture"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         }
       ]
@@ -748,7 +783,7 @@
             ],
             "validations": {
               "required": {
-                "error": "You must agree to this conduct rule to continue",
+                "error": "You must agree to the Respect for Others rule to continue",
                 "value": true
               }
             }
@@ -767,7 +802,7 @@
             ],
             "validations": {
               "required": {
-                "error": "You must agree to this conduct rule to continue",
+                "error": "You must agree to the No Harassment or Discrimination rule to continue",
                 "value": true
               }
             }
@@ -786,7 +821,7 @@
             ],
             "validations": {
               "required": {
-                "error": "You must agree to this conduct rule to continue",
+                "error": "You must agree to the Respect for Facilities rule to continue",
                 "value": true
               }
             }
@@ -805,7 +840,7 @@
             ],
             "validations": {
               "required": {
-                "error": "You must agree to this conduct rule to continue",
+                "error": "You must agree to the Appropriate Language rule to continue",
                 "value": true
               }
             }
@@ -824,7 +859,7 @@
             ],
             "validations": {
               "required": {
-                "error": "You must agree to this conduct rule to continue",
+                "error": "You must agree to the Safe Behaviour rule to continue",
                 "value": true
               }
             }
@@ -843,7 +878,7 @@
             ],
             "validations": {
               "required": {
-                "error": "You must agree to this conduct rule to continue",
+                "error": "You must agree to abide by the camp rules to continue",
                 "value": true
               }
             }
@@ -908,7 +943,7 @@
   "title": "National Summer Camp Programme 2025: Camper Registration Form",
   "formId": "national-summer-camp-2025-registration",
   "createdAt": "2026-01-01T00:00:00Z",
-  "updatedAt": "2026-10-21T16:52:59.000Z",
+  "updatedAt": "2026-11-16T10:40:13.993Z",
   "processors": [
     {
       "type": "email",

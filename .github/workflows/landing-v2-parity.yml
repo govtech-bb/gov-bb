@@ -1,0 +1,132 @@
+name: Landing v2 Parity
+
+# Proves landing pages served from api_v2 render like the static markdown
+# (#3304): after each Amplify build of v2-rewrite on the sandbox landing app,
+#  - crawl: every sitemap URL is compared with staging.alpha.gov.bb, which
+#    still serves static markdown (#3141; allowlist in
+#    apps/landing/e2e/parity/allowlist.json);
+#  - visual: one page per template is screenshotted on both at 390px and
+#    1280px and compared (#3142); diffs are uploaded on failure.
+# Both are gates: a red run on v2-rewrite's head blocks the merge to main
+# (#3131). After that merge, #3311 retargets them to landing.sandbox: that
+# means V2_BASE_URL below and the wait step's app-id/branch, plus the
+# defaults in crawl.ts and templates.visual.ts.
+#
+# The role trusts gov-bb v2-rewrite and main only. Its ARN is not a secret.
+# No `environment:` on any job: it would change the OIDC subject.
+
+on:
+  push:
+    branches: [v2-rewrite]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: landing-v2-parity-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  AWS_REGION: ca-central-1
+  AWS_ROLE_ARN: arn:aws:iam::672203047922:role/api-v2-github-actions-sandbox
+  V2_BASE_URL: https://v2-rewrite.d3kbl8o0ovutw4.amplifyapp.com
+  STATIC_BASE_URL: https://staging.alpha.gov.bb
+
+jobs:
+  wait:
+    name: Wait for Amplify build
+    # Only v2-rewrite: from another ref, the shared action would start a
+    # v2-rewrite build of that ref's commit and test the wrong build.
+    if: github.ref == 'refs/heads/v2-rewrite'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      id-token: write # assume the role via OIDC to read Amplify jobs
+      contents: read
+    outputs:
+      superseded: ${{ steps.build.outputs.superseded }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          persist-credentials: false
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@254c19bd240aabef8777f48595e9d2d7b972184b # v6.2.1
+        with:
+          role-to-assume: ${{ env.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+      - name: Wait for the v2-rewrite build
+        id: build
+        uses: ./.github/actions/wait-for-amplify-build
+        with:
+          app-id: d3kbl8o0ovutw4
+          branch: v2-rewrite
+          sha: ${{ github.sha }}
+          url: ${{ env.V2_BASE_URL }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+  crawl:
+    name: Crawl and compare with static
+    needs: wait
+    if: needs.wait.outputs.superseded != 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version-file: ".nvmrc"
+          cache: "pnpm"
+      - run: pnpm install --frozen-lockfile
+      - name: Crawl
+        run: pnpm --filter @govtech-bb/landing parity:crawl
+
+  visual:
+    name: Visual regression per template
+    needs: wait
+    if: needs.wait.outputs.superseded != 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version-file: ".nvmrc"
+          cache: "pnpm"
+      - run: pnpm install --frozen-lockfile
+      - name: Resolve Playwright version
+        id: playwright-version
+        run: |
+          version="$(pnpm --filter @govtech-bb/landing exec playwright --version | awk '{print $2}')"
+          test -n "$version" || { echo "could not resolve playwright version"; exit 1; }
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+      - name: Cache Playwright browsers
+        id: playwright-cache
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-chromium-${{ runner.os }}-${{ steps.playwright-version.outputs.version }}
+      - name: Install Playwright chromium
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        # No --with-deps (see forms-a11y.yml, #2291): ubuntu-latest already
+        # ships chromium's shared libraries.
+        timeout-minutes: 10
+        run: pnpm --filter @govtech-bb/landing exec playwright install chromium
+      - name: Compare screenshots
+        run: pnpm --filter @govtech-bb/landing parity:visual
+      - name: Upload diffs on failure
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: landing-v2-visual-diffs
+          path: apps/landing/test-results/
+          retention-days: 14

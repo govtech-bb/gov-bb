@@ -2,7 +2,6 @@
 title: "Find the permits you need for a Crop Over event"
 description: "Find out which permits you need to run a Crop Over event, which agencies to contact, and in what order."
 stage: "alpha"
-featured: false
 service_type: digital
 publish_date: 2026-05-13
 category: business-trade
@@ -21,8 +20,8 @@ About 5 minutes. Your checklist is based on the type of event you are organising
 - How many people you expect.
 - Whether you plan to serve alcohol, play music, use a stage, or bring overseas performers.
 
-<div class="border-blue-40 border-l-4 bg-blue-10 p-s">
-  <p><strong>Indicative guidance only.</strong> Always confirm requirements directly with each agency before applying.</p>
-</div>
+:::notice
+**Indicative guidance only.** Always confirm requirements directly with each agency before applying.
+:::
 
 <a data-start-link href="/business-trade/crop-over-permits/form">Start now</a>

@@ -16,36 +16,33 @@ import {
 import { createHeadlessEditor } from "../../src/editor/core/create-editor";
 import { defineEditor } from "../../src/editor/core/definition";
 import { executeAction } from "../../src/editor/core/actions";
-import { $depth, $setDepth, $settings, $setSettings } from "../../src/editor/core/document-state";
+import { $depth, $setDepth, $settings, $setSettings } from "../../src/forms/canvas/block-state";
 import { TextModule } from "../../src/editor/modules/text/module";
 import { HistoryModule } from "../../src/editor/modules/history/module";
-import { HeadingsModule } from "../../src/editor/modules/headings/module";
+import { HeadingsModule, $enterHeading } from "../../src/forms/content/headings";
 import { LinksModule } from "../../src/editor/modules/links/module";
-import { ListsModule } from "../../src/editor/modules/lists/module";
-import { CalloutsModule } from "../../src/editor/modules/callouts/module";
-import { DisclosureModule } from "../../src/editor/modules/disclosure/module";
+import { ListsModule, $enterList, $exitList } from "../../src/forms/content/lists";
+import { CalloutsModule, $enterCallout, $exitCallout } from "../../src/forms/content/callouts";
+import {
+  DisclosureModule,
+  $enterDisclosure,
+  $exitDisclosureBody,
+  $pasteDisclosure,
+} from "../../src/forms/content/details";
 import { FormattingModule } from "../../src/editor/modules/formatting/module";
 import {
   $createBulletNode,
   $createNumberNode,
   $listRun,
   listIndexState,
-} from "../../src/editor/modules/lists/nodes";
-import { $createInsetNode, $createWarningNode } from "../../src/editor/modules/callouts/nodes";
+} from "../../src/forms/content/list-nodes";
+import { $createInsetNode, $createWarningNode } from "../../src/forms/content/callout-nodes";
 import {
   $createShowHideNode,
   $disclosureChildren,
   $isShowHideNode,
   $toggleShowHide,
-} from "../../src/editor/modules/disclosure/nodes";
-import { $enterHeading } from "../../src/editor/modules/headings/editing";
-import { $enterList, $exitList } from "../../src/editor/modules/lists/editing";
-import { $enterCallout, $exitCallout } from "../../src/editor/modules/callouts/editing";
-import {
-  $enterDisclosure,
-  $exitDisclosureBody,
-  $pasteDisclosure,
-} from "../../src/editor/modules/disclosure/editing";
+} from "../../src/forms/content/details-node";
 import { $textSelection } from "../../src/editor/modules/formatting/toolbar";
 
 const definition = defineEditor(

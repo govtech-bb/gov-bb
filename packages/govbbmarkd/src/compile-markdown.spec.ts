@@ -30,6 +30,22 @@ describe("compileContentMarkdown", () => {
     expect(result).not.toHaveProperty("value");
   });
 
+  it("compiles a contact block to the record reference its host reads", () => {
+    const result = compileContentMarkdown(
+      '::contact{collection="offices" record="bridgetown" fields="phone, email"}',
+    );
+    if (!result.ok) throw new Error("Expected valid Markdown");
+    expect(result.value.hast.children[0]).toMatchObject({
+      type: "element",
+      tagName: "contact-record",
+      properties: {
+        collection: "offices",
+        record: "bridgetown",
+        fields: "phone,email",
+      },
+      children: [],
+    });
+  });
   it("escapes raw HTML by default and requires an explicit legacy opt-in", () => {
     const source = "<script>alert(1)</script>\n\n<notice>Keep this</notice>";
     const escaped = compileContentMarkdown(source);

@@ -4,7 +4,7 @@ import {
   formulaText,
   parseFormula,
   tokenizeFormula,
-} from "../../src/forms/core/formula";
+} from "../../src/forms/model/formula";
 
 test("formulas report parse errors at the token the editor underlines", () => {
   // Precedence, unary minus, groups, strings with escapes, field keys

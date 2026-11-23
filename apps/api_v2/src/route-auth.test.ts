@@ -13,7 +13,8 @@
  * what citizens see declares the approver role, unless it is one of the page
  * writes whose approver check is in PageEditing (#3199). Every category write
  * declares the approver role, so landing shows only what an approver changed
- * (#3201).
+ * (#3201). A route may name several roles, any one of which will do (#3681),
+ * but never none.
  */
 
 import { randomUUID } from "node:crypto";
@@ -42,7 +43,7 @@ const registered: {
   method: string;
   url: string;
   tags: string[];
-  role?: string;
+  role?: string | readonly string[];
 }[] = [];
 
 // Fastify announces each instance on this channel as it is created, before
@@ -52,7 +53,9 @@ const recordRoutes = (message: unknown) =>
     "onRoute",
     (route) => {
       const tags = (route.schema as { tags?: string[] } | undefined)?.tags;
-      const role = (route.config as { role?: string } | undefined)?.role;
+      const role = (
+        route.config as { role?: string | readonly string[] } | undefined
+      )?.role;
       for (const method of [route.method].flat())
         registered.push({ method, url: route.url, tags: tags ?? [], role });
     },
@@ -115,6 +118,7 @@ it("finds the editor's writes, so an empty route list cannot pass", () => {
       "POST /pages/:id/revision/submit",
       "POST /pages/:id/revision/reject",
       "POST /pages/:id/revision/publish",
+      "POST /pages/:id/history/:version/restore",
       "POST /editor/categories",
       "PUT /editor/categories/:id",
       "PUT /editor/categories/order",
@@ -122,6 +126,7 @@ it("finds the editor's writes, so an empty route list cannot pass", () => {
       "POST /collections/:key/records/:recordKey",
       "PUT /collections/:key/records/:recordKey",
       "DELETE /collections/:key/records/:recordKey",
+      "POST /collections",
     ]),
   );
 });
@@ -131,7 +136,7 @@ it("refuses every write without a session and leaves the database unchanged", as
     const response = await app.inject({
       // Fastify registered it, so inject can send it.
       method: method as InjectOptions["method"],
-      url: url.replace(/:\w+/g, randomUUID()).replace("*", "x"),
+      url: url.replace(/:\w+/g, randomUUID()).replaceAll("*", "x"),
       payload: aPage(),
       headers: { origin: TEST_HTTP_CONFIG.editorOrigin },
     });
@@ -148,7 +153,7 @@ it("refuses every write without a session and leaves the database unchanged", as
 
 it("declares the role every write route needs, so none is open to any employee", () => {
   const undeclared = writes()
-    .filter(({ role }) => role === undefined)
+    .filter(({ role }) => [role ?? []].flat().length === 0)
     .map(({ method, url }) => `${method} ${url}`);
   expect(undeclared).toEqual([]);
 });
@@ -171,6 +176,7 @@ it("refuses every write to an employee with no role and leaves the database unch
         select (select json_agg(p order by p.id) from content_pages p) as pages,
                (select json_agg(c order by c.id) from categories c) as categories,
                (select json_agg(r order by r.id) from page_revisions r) as revisions,
+               (select json_agg(c order by c.id) from data_collections c) as collections,
                (select json_agg(r order by r.id) from collection_records r) as records,
                (select count(*)::int from change_events) as events,
                (select json_agg(r order by r.user_id, r.role) from user_roles r) as roles`)
@@ -185,7 +191,7 @@ it("refuses every write to an employee with no role and leaves the database unch
       url: url
         .replace(":id", page.id)
         .replace(":role", "editor")
-        .replace("*", "x"),
+        .replaceAll("*", "x"),
       payload: withDefaults(aPage({ url: "/written", visibility: "draft" })),
       headers: TEST_HEADERS,
     });
@@ -212,26 +218,44 @@ async function pageWrite(
         values (${id}, ${`/existing-${n}`}, 'existing', 'Existing', '')`,
   );
   // Publishing needs a submitted revision, by someone else, and the version reviewed.
-  const reviewed = url.endsWith("/revision/publish")
-    ? (
-        await db.execute<{ version: string }>(
-          sql`insert into page_revisions
+  if (url.endsWith("/revision/publish"))
+    await db.execute(
+      sql`insert into page_revisions
                 (page_id, status, fields, live_updated_at, created_by, contributors, submitted_by)
               select id, 'submitted', ${JSON.stringify(fields)}::jsonb, updated_at,
                      'other-author', '{other-author}', 'other-author'
               from content_pages where id = ${id}
-              returning to_json(updated_at)#>>'{}' as version`,
-        )
-      ).rows[0]?.version
-    : undefined;
+              `,
+    );
+  // A restore needs a version of the page to go back to.
+  if (url.endsWith("/restore")) await restorable(id);
+  const version = (
+    await app.inject({ url: `/pages/${id}`, headers: TEST_HEADERS })
+  ).json().version;
   return {
     method: method as InjectOptions["method"],
-    url: url.replace(/:\w+/g, id),
-    payload: fields,
-    headers: reviewed
-      ? { ...TEST_HEADERS, "if-updated-at": reviewed }
-      : TEST_HEADERS,
+    url:
+      url.replace(":version", "1").replace(/:\w+/g, id) +
+      (method === "DELETE" ? `?expected_version=${version}` : ""),
+    payload:
+      url.includes("/revision/") || url.endsWith("/restore")
+        ? { expected_version: version }
+        : {
+            ...fields,
+            ...(method === "PUT" ? { expected_version: version } : {}),
+          },
+    headers: TEST_HEADERS,
   };
+}
+
+/**
+ * Change a page after its first version, as `system`, so restoring version
+ * 1 changes it back.
+ */
+async function restorable(id: string) {
+  await db.execute(
+    sql`update content_pages set title = 'Existing, edited' where id = ${id}`,
+  );
 }
 
 /** A signed-in request to a category route, about categories of the database's own. */
@@ -253,7 +277,7 @@ async function categoryWrite(
         id: string;
         slug: string;
         parent_id: string | null;
-        updated_at: string;
+        version: number;
       }[];
     }>()
     .categories.filter((row) => row.parent_id === null);
@@ -261,19 +285,21 @@ async function categoryWrite(
   const fields = { slug: target.slug, parent_id: null, description: null };
   return {
     method: method as InjectOptions["method"],
-    url: url.replace(/:\w+/g, target.id),
-    headers: { ...TEST_HEADERS, "if-updated-at": target.updated_at },
+    url:
+      url.replace(/:\w+/g, target.id) +
+      (method === "DELETE" ? `?expected_version=${target.version}` : ""),
+    headers: TEST_HEADERS,
     payload:
       url === "/editor/categories/order"
         ? {
             parent_id: null,
-            expected: roots.map(({ id, updated_at }) => ({ id, updated_at })),
+            expected: roots.map(({ id, version }) => ({ id, version })),
             ordered_ids: roots.map((row) => row.id).reverse(),
           }
         : method === "POST"
           ? { ...fields, slug: `written-${n}`, title: "Written" }
           : method === "PUT"
-            ? { ...fields, title: "Renamed" }
+            ? { ...fields, title: "Renamed", expected_version: target.version }
             : undefined,
   };
 }
@@ -294,16 +320,49 @@ async function recordWrite(
     sql`insert into collection_records (collection_key, record_key, data)
         values ('contacts', ${`existing-${n}`}, '{"name":"Existing"}')`,
   );
+  const baseline = (
+    await app.inject({
+      url: `/collections/contacts/records/existing-${n}`,
+      headers: TEST_HEADERS,
+    })
+  ).json();
   return {
     method: method as InjectOptions["method"],
-    url: url
-      .replace(":key", "contacts")
-      .replace(
-        ":recordKey",
-        method === "POST" ? `written-${n}` : `existing-${n}`,
-      ),
+    url:
+      url
+        .replace(":key", "contacts")
+        .replace(
+          ":recordKey",
+          method === "POST" ? `written-${n}` : `existing-${n}`,
+        ) +
+      (method === "DELETE"
+        ? `?expected_version=${baseline.record.version}`
+        : ""),
     headers: TEST_HEADERS,
-    payload: method === "DELETE" ? undefined : { data: { name: "Written" } },
+    payload:
+      method === "DELETE"
+        ? undefined
+        : {
+            data: { name: "Written" },
+            ...(method === "PUT"
+              ? { expected_version: baseline.record.version }
+              : {}),
+          },
+  };
+}
+
+/** A signed-in request to create a collection the database doesn't have yet. */
+function collectionCreate(n: number): InjectOptions {
+  return {
+    method: "POST",
+    url: "/collections",
+    headers: TEST_HEADERS,
+    payload: {
+      key: `written-${n}`,
+      title: "Written",
+      record_key: "key",
+      schema: { fields: [{ key: "key", label: "Key", type: "slug" }] },
+    },
   };
 }
 
@@ -327,9 +386,11 @@ it("records every signed-in write against the employee", async () => {
     // route's change can carry the employee's id.
     const request = url.startsWith("/editor/categories")
       ? await categoryWrite(method, url, n)
-      : url.startsWith("/collections")
-        ? await recordWrite(method, url, n)
-        : await pageWrite(method, url, n);
+      : url === "/collections"
+        ? collectionCreate(n)
+        : url.startsWith("/collections")
+          ? await recordWrite(method, url, n)
+          : await pageWrite(method, url, n);
     const before = new Set((await eventsSoFar()).map((event) => event.id));
     const response = await app.inject(request);
     expect(response.statusCode, `${method} ${url}`).toBeLessThan(300);
@@ -363,6 +424,7 @@ const NOT_PAGE_VISIBILITY: Readonly<Record<string, string>> = {
     "changes a collection record; pages are untouched",
   "DELETE /collections/:key/records/:recordKey":
     "deletes a collection record; pages are untouched",
+  "POST /collections": "creates a data collection; pages are untouched",
   "PUT /editor/employees/:id/roles/:role": "grants a role, in user_roles",
   "DELETE /editor/employees/:id/roles/:role": "revokes a role, in user_roles",
 };
@@ -379,12 +441,12 @@ const GATED_IN_PAGE_EDITING = new Set([
   "DELETE /pages/:id",
 ]);
 
-/** What citizens see of each page by id: a public page's whole row, otherwise only its visibility. */
+/** Public rows exclude the private edit identity; non-public rows expose only visibility here. */
 const citizenView = async () =>
   new Map(
     (
       await db.execute<{ id: string; seen: string }>(
-        sql`select id, case when visibility = 'public' then row_to_json(p)::text
+        sql`select id, case when visibility = 'public' then (to_jsonb(p) - 'version')::text
                             else visibility::text end as seen
             from content_pages p`,
       )
@@ -428,28 +490,45 @@ async function routesChangingWhatCitizensSee(employee: Employee) {
           sql`insert into content_pages (id, url, slug, title, visibility, body_markdown)
               values (${target}, ${`/existing-${n}`}, 'existing', 'Existing', ${from}, '')`,
         );
-        // A decision names the version reviewed, so the probe sends the revision's.
-        const reviewed = url.includes("/revision/")
-          ? (
-              await db.execute<{ version: string }>(
-                sql`insert into page_revisions
+        // Read the page root after setting up its revision.
+        if (url.includes("/revision/"))
+          await db.execute(
+            sql`insert into page_revisions
                       (page_id, status, fields, live_updated_at, created_by, contributors, submitted_by)
                     select id, ${url.endsWith("/submit") ? "draft" : "submitted"},
                            ${JSON.stringify(fields)}::jsonb, updated_at,
                            'probe-author', '{probe-author}', 'probe-author'
                     from content_pages where id = ${target}
-                    returning to_json(updated_at)#>>'{}' as version`,
-              )
-            ).rows[0]?.version
-          : undefined;
+                    `,
+          );
+        // A restore needs a version of the page to go back to.
+        if (url.endsWith("/restore")) await restorable(target);
+        const version = (
+          await signedIn.inject({
+            url: `/pages/${target}`,
+            headers: TEST_HEADERS,
+          })
+        ).json().version;
         const before = await citizenView();
         const response = await signedIn.inject({
           method: method as InjectOptions["method"],
-          url: url.replace(/:\w+/g, target).replace("*", "x"),
-          payload: { ...fields, comment: "Probed" },
-          headers: reviewed
-            ? { ...TEST_HEADERS, "if-updated-at": reviewed }
-            : TEST_HEADERS,
+          url:
+            url
+              .replace(":version", "1")
+              .replace(/:\w+/g, target)
+              .replaceAll("*", "x") +
+            (method === "DELETE" ? `?expected_version=${version}` : ""),
+          payload:
+            url.includes("/revision/") || url.endsWith("/restore")
+              ? {
+                  expected_version: version,
+                  ...(url.endsWith("/reject") ? { comment: "Probed" } : {}),
+                }
+              : {
+                  ...fields,
+                  ...(method === "PUT" ? { expected_version: version } : {}),
+                },
+          headers: TEST_HEADERS,
         });
         const route = `${method} ${url}`;
         if (response.statusCode >= 300 && !(route in NOT_PAGE_VISIBILITY))
@@ -550,6 +629,30 @@ it("needs the approver role for every category write, so landing shows only an a
     expect(await snapshot(), `${method} ${url}`).toEqual(before);
   }
   await signedIn.close();
+});
+
+it("needs the admin or the approver role to create a collection (#3681)", async () => {
+  const declared = writes().find(
+    ({ method, url }) => method === "POST" && url === "/collections",
+  )?.role;
+  expect(declared).toEqual(["admin", "approver"]);
+
+  const signedIn = await createTestApp(db, {
+    sessions: { findSession: async () => ok(TEST_EDITOR) },
+  });
+  const response = await signedIn.inject({
+    ...collectionCreate(0),
+    headers: { ...TEST_HEADERS, cookie: "test-session=editor" },
+  });
+  await signedIn.close();
+  expect(response.statusCode).toBe(403);
+  expect(response.json()).toEqual({
+    error: "forbidden",
+    message: "You need the admin or approver role to do this.",
+  });
+  expect(
+    (await db.execute(sql`select key from data_collections`)).rows,
+  ).toEqual([]);
 });
 
 it("refuses every admin route to a non-admin", async () => {

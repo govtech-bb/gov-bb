@@ -71,8 +71,10 @@ function layout(flow: FlowData) {
   const yOf = (id: string) => pos.get(id)?.y ?? 0
   const outByNode = groupBy(flow.links, (l) => l.source)
   const inByNode = groupBy(flow.links, (l) => l.target)
-  for (const [, ls] of outByNode) ls.sort((a, b) => yOf(a.target) - yOf(b.target))
-  for (const [, ls] of inByNode) ls.sort((a, b) => yOf(a.source) - yOf(b.source))
+  for (const [, ls] of outByNode)
+    ls.sort((a, b) => yOf(a.target) - yOf(b.target))
+  for (const [, ls] of inByNode)
+    ls.sort((a, b) => yOf(a.source) - yOf(b.source))
 
   const linkSy = new Map<FlowLink, number>()
   const linkTy = new Map<FlowLink, number>()
@@ -177,10 +179,10 @@ export function FlowDiagram({ flow }: { flow: FlowData }) {
         </div>
       )}
       <Text as="p" size="small-caption" className="mt-xs text-mid-grey-00">
-        Column 1 is the entry page; each column is the next step. Percentages are
-        each node’s share of all entry visits; ribbon width = number of visits
-        (hover for the share of the previous step). Low-traffic steps in a column
-        are grouped as “Other (N)”.
+        Column 1 is the entry page; each column is the next step. Percentages
+        are each node’s share of all entry visits; ribbon width = number of
+        visits (hover for the share of the previous step). Low-traffic steps in
+        a column are grouped as “Other (N)”.
       </Text>
     </>
   )

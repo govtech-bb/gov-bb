@@ -1,10 +1,10 @@
 import { isMap, isScalar, isSeq, parseDocument, stringify } from "yaml";
-import { parsePageMarkdown } from "../pages/markdown";
+import { splitPageMarkdown } from "../pages/markdown";
 import { categoryLabel, type Category } from "./categories";
 import type { ApiPage, FieldError, SavePageInput } from "./client";
 import { urlProblem } from "./page-fields";
 
-const TEXT_FRONTMATTER = ["stage", "section", "service_type", "source_url"] as const;
+const TEXT_FRONTMATTER = ["stage", "service_type", "source_url"] as const;
 
 const KNOWN_KEYS = new Set([
   "title",
@@ -16,7 +16,6 @@ const KNOWN_KEYS = new Set([
   "subcategory",
   "visibility",
   "form_id",
-  "featured",
   "keywords",
   "publish_date",
   ...TEXT_FRONTMATTER,
@@ -54,8 +53,6 @@ export function pageToMarkdown(page: ApiPage, categories: readonly Category[]) {
     if (value !== undefined) values.set(key, value);
   }
 
-  if (page.frontmatter.featured !== undefined) values.set("featured", page.frontmatter.featured);
-
   if (page.frontmatter.keywords !== undefined) values.set("keywords", page.frontmatter.keywords);
 
   return `---\n${stringify(Object.fromEntries(values)).trimEnd()}\n---\n\n${page.body_markdown}`;
@@ -75,8 +72,7 @@ export function markdownToPageSaveInput(
   base: ApiPage,
   categories: readonly Category[],
 ): PageSaveInputResult {
-  const first = parsePageMarkdown(markdown).children[0];
-  const yaml = first?.type === "yaml" ? first : undefined;
+  const { yaml, body } = splitPageMarkdown(markdown);
   const document = parseDocument(yaml?.value ?? "");
   const errors: FieldError[] = [];
 
@@ -103,7 +99,7 @@ export function markdownToPageSaveInput(
   if (document.has("publish_date"))
     errors.push({
       field: "publish_date",
-      message: "Remove this field; a page is dated when it first goes public",
+      message: "Remove this field; a page's date is set by the server",
     });
 
   const title = text("title") ?? "";
@@ -140,12 +136,6 @@ export function markdownToPageSaveInput(
     if (value !== undefined) frontmatter[key] = value;
   }
 
-  const featured = document.get("featured");
-
-  if (typeof featured === "boolean") frontmatter.featured = featured;
-  else if (featured !== undefined && featured !== null)
-    errors.push({ field: "featured", message: "Enter true or false" });
-
   const keywords = document.get("keywords");
 
   if (isSeq(keywords)) {
@@ -169,7 +159,7 @@ export function markdownToPageSaveInput(
       description: text("description") ?? null,
       visibility,
       form_id: formId,
-      body_markdown: markdown.slice(yaml?.position?.end.offset ?? 0).trim(),
+      body_markdown: body === base.body_markdown ? body : body.trim(),
       frontmatter,
     },
   };
@@ -201,6 +191,16 @@ function categoryOf(
       errors.push({
         field: "category",
         message: "Remove the category; a sub-page is filed with the page above it",
+      });
+
+    return null;
+  }
+
+  if (base.category_id === null) {
+    if (named != null || listed != null || subcategory != null)
+      errors.push({
+        field: "category",
+        message: "Remove the category; this is a site page",
       });
 
     return null;

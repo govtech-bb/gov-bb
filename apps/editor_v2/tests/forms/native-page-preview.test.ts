@@ -3,9 +3,9 @@ import { $getRoot } from "lexical";
 import { createHeadlessEditor } from "../../src/editor/core/create-editor";
 import { formSchemaToLexical } from "../../src/converters/form-schema-to-lexical";
 import { govbbFormEditor } from "../../src/presets/govbb-form";
-import { $pageButtons } from "../../src/forms/features/pages/buttons";
-import { $pagePreview } from "../../src/forms/features/pages/queries";
-import { $native } from "../../src/forms/editor/native-state";
+import { $pageButtons } from "../../src/forms/form-pages/form-page-buttons";
+import { $pagePreview } from "../../src/forms/form-pages/form-page-queries";
+import { $native } from "../../src/forms/formats/native/native-state";
 
 test("calculator result previews retain their purpose and native navigation labels", () => {
   const imported = formSchemaToLexical(

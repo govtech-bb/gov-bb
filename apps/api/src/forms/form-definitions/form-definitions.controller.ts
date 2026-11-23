@@ -14,6 +14,7 @@ import type { Response } from "express";
 import { FormDefinitionsService } from "./form-definitions.service";
 import { FormDisabledOverridesService } from "../form-disabled-overrides/form-disabled-overrides.service";
 import { GetFormDefinitionDocs } from "./form-definitions.docs";
+import { ContentService } from "@/content/content.service";
 import { ApiResponse as AppApiResponse } from "@/common/response";
 import { isValidSecretToken } from "@/common/secret-token";
 import { includeNonPublicFromAuth } from "@/common/include-non-public";
@@ -33,7 +34,7 @@ import type {
  * `@/common/preview-cookie` (#2116) so the file-upload path shares one copy.
  * It is byte-identical to the one apps/landing mints (name/path/4h TTL) so the
  * browser stores a single grant visible to landing, forms and the API across
- * the parent domain (#1646 Phase 3, ADR 0058).
+ * the parent domain (#1646 Phase 3, ADR 0099).
  */
 /** 4 hours, in MILLISECONDS — express `res.cookie` maxAge unit. Matches landing's 4h. */
 const PREVIEW_COOKIE_MAX_AGE_MS = 4 * 60 * 60 * 1000;
@@ -50,6 +51,7 @@ export class FormDefinitionsController {
     private readonly formDefinitionsService: FormDefinitionsService,
     private readonly disabledOverridesService: FormDisabledOverridesService,
     private readonly configService: ConfigService,
+    private readonly contentService: ContentService,
   ) {}
 
   @Get()
@@ -156,9 +158,9 @@ export class FormDefinitionsController {
 
     // A shared `preview` cookie grants the visibility bypass by its PRESENCE
     // alone — the value is only the level, never a secret (#1646 Phase 3, a
-    // forgeable rollout gate per ADR 0013/0058). It NEVER triggers DB sourcing;
+    // forgeable rollout gate per ADR 0028/0099). It NEVER triggers DB sourcing;
     // a `draft`-level cookie bypasses visibility but the in-progress DB scratch
-    // still requires the per-request X-Recipe-Draft secret header (ADR 0011).
+    // still requires the per-request X-Recipe-Draft secret header (ADR 0026).
     const cookieValue = readPreviewCookie(cookieHeader);
     const hasPreviewCookie =
       cookieValue !== undefined &&
@@ -195,8 +197,16 @@ export class FormDefinitionsController {
       bypassVisibility,
       draft,
     });
-    return AppApiResponse.success(data, {
-      message: "Form definition retrieved",
-    });
+    // The forms app tags its analytics events with this category (#3250). It
+    // comes from the services index, so the form needs no copy of it. Always
+    // set, so a `category` written into a recipe can't override it; undefined
+    // (no page links the form) is dropped from the JSON.
+    const category = await this.contentService.categoryForForm(formId);
+    return AppApiResponse.success(
+      { ...data, category },
+      {
+        message: "Form definition retrieved",
+      },
+    );
   }
 }

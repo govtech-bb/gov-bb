@@ -38,7 +38,9 @@ function TabLink({ tab, active }: { tab: Tab; active: boolean }) {
       to={tab.to}
       aria-current={active ? 'page' : undefined}
       className={`relative inline-flex items-center transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-100 ${
-        active ? 'text-blue-00 font-bold' : 'text-mid-grey-00 hover:text-blue-00'
+        active
+          ? 'text-blue-00 font-bold'
+          : 'text-mid-grey-00 hover:text-blue-00'
       }`}
     >
       {tab.label}

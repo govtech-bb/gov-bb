@@ -1,15 +1,15 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { Heading, Text } from '@govtech-bb/react'
-import { ChatAssistant } from '../components/ChatAssistant'
 import { Featured } from '../components/Featured'
 import { HelpfulBox } from '../components/HelpfulBox'
-import { ServiceSearch } from '../components/ServiceSearch'
+import { HomeHero, POPULAR_SEARCHES } from '../components/HomeHero'
 import { CATEGORIES } from '../content/categories'
 import { isCategoryVisible } from '../content/registry'
 import type { CategoryTreeResult } from '../lib/api-v2-categories'
 import type { ViewLevel } from '../lib/frontmatter'
 import {
   getServedChatSuggestions,
+  getServedServices,
   publicChatSuggestions,
 } from '../lib/chat-suggestions'
 import { pageHead } from '../lib/page-head'
@@ -22,12 +22,22 @@ export const Route = createFileRoute('/')({
       "Access official Barbados government services online — apply for passports, birth certificates, driver's licences, and more at alpha.gov.bb.",
       { path: '/' },
     ),
-  // api_v2 decides which chips show when it is configured (#3245). A failed
-  // call in the browser shows no chips rather than an error page.
-  loader: ({ context }) =>
-    context.categoryTree.kind !== 'disabled'
-      ? getServedChatSuggestions().catch(() => [])
-      : publicChatSuggestions(deriveVisibilityOverlay(context.serviceStatuses)),
+  // api_v2 decides which chips and popular searches show when it is
+  // configured (#3245). A failed call in the browser shows none rather than
+  // an error page.
+  loader: async ({ context }) => {
+    if (context.categoryTree.kind === 'disabled') {
+      const overlay = deriveVisibilityOverlay(context.serviceStatuses)
+      return { questions: publicChatSuggestions(overlay) }
+    }
+    const [questions, servedServices] = await Promise.all([
+      getServedChatSuggestions().catch(() => []),
+      getServedServices({
+        data: POPULAR_SEARCHES.map(({ serviceId }) => serviceId),
+      }).catch(() => []),
+    ])
+    return { questions, servedServices }
+  },
   component: Home,
 })
 
@@ -70,43 +80,17 @@ function homeCategories(
 function Home() {
   const { level, serviceStatuses, categoryTree } = Route.useRouteContext()
   const overlay = deriveVisibilityOverlay(serviceStatuses)
-  const questions = Route.useLoaderData()
+  const { questions, servedServices } = Route.useLoaderData()
   const categories = homeCategories(categoryTree, level, overlay)
 
   return (
     <>
-      <section className="border-b-4 border-yellow-40 bg-blue-80 text-white-00">
-        <div className="govbb-width-container">
-          <div className="space-y-m py-[clamp(var(--spacing-m),5vw,var(--spacing-l))]">
-            <div className="max-w-210 space-y-s">
-              <Heading as="h1">
-                Find and use Barbados government services
-              </Heading>
-              <Text as="p" size="body-lg">
-                Ask anything — applications, certificates, licences, benefits,
-                and more. Get instant guidance.
-              </Text>
-            </div>
-            <ChatAssistant questions={questions} />
-          </div>
-        </div>
-      </section>
-
-      <section className="border-b-4 border-teal-40 bg-green-10">
-        <div className="govbb-width-container">
-          <div className="space-y-m py-m">
-            <Heading as="h4">
-              Or search all government services directly
-            </Heading>
-            <ServiceSearch
-              source="home"
-              viewer={level}
-              overlay={overlay}
-              emptyHref="/services"
-            />
-          </div>
-        </div>
-      </section>
+      <HomeHero
+        questions={questions}
+        viewer={level}
+        overlay={overlay}
+        servedServices={servedServices}
+      />
 
       <section>
         <div className="govbb-width-container">

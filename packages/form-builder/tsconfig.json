@@ -6,13 +6,20 @@
     "rootDir": "src",
     "strictPropertyInitialization": false,
     "module": "commonjs",
-    "lib": ["ES2022"],
+    "moduleResolution": "node10",
+    "verbatimModuleSyntax": false,
     "types": ["vitest/globals", "node"]
   },
   "include": ["src/**/*"],
   "references": [
-    { "path": "../form-types" },
-    { "path": "../form-validation" },
-    { "path": "../registry" }
+    {
+      "path": "../form-types"
+    },
+    {
+      "path": "../form-validation"
+    },
+    {
+      "path": "../registry"
+    }
   ]
 }

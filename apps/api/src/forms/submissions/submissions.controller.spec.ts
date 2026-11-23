@@ -161,6 +161,44 @@ describe("SubmissionsController", () => {
       expect("meta" in result).toBe(false);
     });
 
+    it("includes meta.trackable when the service says the form is trackable (#3419)", async () => {
+      (service.submit as Mock).mockResolvedValue({
+        data: makeEntity(),
+        message: "Submission created",
+        statusCode: HttpStatus.CREATED,
+        trackable: true,
+      });
+
+      const result = await controller.create(
+        "key-abc",
+        undefined,
+        undefined,
+        baseDto,
+      );
+
+      expect(result.meta).toEqual({ trackable: true });
+    });
+
+    // false is an answer ("this form isn't tracked"), so it is sent, unlike an
+    // absent value, which means the service could not tell.
+    it("includes meta.trackable when it is false", async () => {
+      (service.submit as Mock).mockResolvedValue({
+        data: makeEntity(),
+        message: "Submission created",
+        statusCode: HttpStatus.CREATED,
+        trackable: false,
+      });
+
+      const result = await controller.create(
+        "key-abc",
+        undefined,
+        undefined,
+        baseDto,
+      );
+
+      expect(result.meta).toEqual({ trackable: false });
+    });
+
     it("does NOT include meta when deferred is undefined/falsy", async () => {
       const entity = makeEntity();
       (service.submit as Mock).mockResolvedValue({
@@ -394,6 +432,51 @@ describe("SubmissionsController", () => {
 
       const arg = (service.submit as Mock).mock.calls[0][0];
       expect(arg.bypassVisibility).toBeFalsy();
+    });
+  });
+
+  describe("journey ID header (X-Journey-Id, #3507)", () => {
+    const JOURNEY_ID = "3f2b8c1e-4d5a-4b6c-8d7e-9f0a1b2c3d4e";
+
+    beforeEach(() => {
+      (service.submit as Mock).mockResolvedValue({
+        data: makeEntity(),
+        message: "Submission created",
+        statusCode: HttpStatus.CREATED,
+      });
+    });
+
+    it("threads a UUID through to the service as journeyId", async () => {
+      await controller.create(
+        "key-abc",
+        undefined,
+        undefined,
+        baseDto,
+        JOURNEY_ID,
+      );
+
+      expect(service.submit).toHaveBeenCalledWith(
+        expect.objectContaining({ journeyId: JOURNEY_ID }),
+      );
+    });
+
+    it.each([
+      ["not a UUID", "not-a-uuid"],
+      ["a UUID with text after it", `${JOURNEY_ID} drop table`],
+      ["an email address", "someone@example.com"],
+      ["an empty value", ""],
+    ])("ignores %s", async (_label, header) => {
+      await controller.create("key-abc", undefined, undefined, baseDto, header);
+
+      const arg = (service.submit as Mock).mock.calls[0][0];
+      expect(arg).not.toHaveProperty("journeyId");
+    });
+
+    it("sends no journeyId when the header is absent", async () => {
+      await controller.create("key-abc", undefined, undefined, baseDto);
+
+      const arg = (service.submit as Mock).mock.calls[0][0];
+      expect(arg).not.toHaveProperty("journeyId");
     });
   });
 

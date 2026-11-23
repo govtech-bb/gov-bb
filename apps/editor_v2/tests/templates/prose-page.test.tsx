@@ -10,11 +10,17 @@ const document: ProsePageDocument = {
   breadcrumbs: [{ label: "Home", href: "/" }],
 };
 
-const render = (input = document) =>
-  renderToStaticMarkup(<ProsePage page={prepareProsePage(input)} />).replace(
-    /<style[^>]*>[\s\S]*?<\/style>/g,
-    "",
-  );
+const render = (input = document) => {
+  let html = renderToStaticMarkup(<ProsePage page={prepareProsePage(input)} />);
+
+  // Strip until stable, so no style block is left in the markup
+  for (let previous = ""; previous !== html;) {
+    previous = html;
+    html = html.replace(/<style[^>]*>[\s\S]*?<\/style>/g, "");
+  }
+
+  return html;
+};
 
 describe("design-system prose page template", () => {
   it("renders the public page chrome and GovBB Markdown without a landing renderer", () => {

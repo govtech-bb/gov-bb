@@ -18,7 +18,7 @@ import {
 import { govbbPageCodec, govbbPageEditor } from "../../src/presets/govbb-page";
 import { createEmptyPage } from "../../src/pages/converters";
 import { $pageInsertionTarget } from "../../src/pages/insertion";
-import { PageComponentNode } from "../../src/pages/nodes";
+import { PageComponentNode } from "../../src/pages/blocks/node";
 
 function page(source: string) {
   const prepared = govbbPageCodec.prepare(source);

@@ -123,8 +123,6 @@ function buildBasePage(
     source_url: raw.source_url,
     stage: raw.stage,
     visibility: raw.visibility,
-    featured: raw.featured,
-    section: raw.section,
     service_type: raw.service_type,
     form_id: raw.form_id,
     keywords: raw.keywords,

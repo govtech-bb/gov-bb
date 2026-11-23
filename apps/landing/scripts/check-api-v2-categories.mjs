@@ -1,4 +1,4 @@
-// Checks the built landing's Request/Response handler (ADR 0078): listings,
+// Checks the built landing's Request/Response handler (ADR 0132): listings,
 // page fallback, category failures, public caching and server-function parsing.
 // The API stand-in uses real HTTP; landing runs through its built SSR entry
 // without binding the Amplify preset's port or interrupting an existing preview.
@@ -234,6 +234,16 @@ const get = async (path) => {
   return { status: response.status, html: await response.text() }
 }
 
+/** A fragment's text for comparison, its tags stripped until none is left. */
+function textOf(fragment) {
+  let text = fragment
+  for (let previous = ''; previous !== text;) {
+    previous = text
+    text = text.replace(/<[^>]+>/g, '')
+  }
+  return text.trim()
+}
+
 /**
  * Whether the rendered `<main>` has a link to `href` reading `name`. Serialized
  * loader data sits in a script outside `<main>`, so this can't be fooled by a
@@ -243,7 +253,7 @@ function mainLinks(html, href, name) {
   const main = html.match(/<main[^>]*>([\s\S]*?)<\/main>/)?.[1] ?? ''
 
   return [...main.matchAll(/<a[^>]*href="([^"]*)"[^>]*>([\s\S]*?)<\/a>/g)].some(
-    (m) => m[1] === href && m[2].replace(/<[^>]+>/g, '').trim() === name,
+    (m) => m[1] === href && textOf(m[2]) === name,
   )
 }
 
@@ -268,9 +278,7 @@ function trailOf(html) {
   const nav =
     html.match(/<nav[^>]*aria-label="Breadcrumb"[\s\S]*?<\/nav>/)?.[0] ?? ''
 
-  return [...nav.matchAll(/<a[^>]*>([\s\S]*?)<\/a>/g)].map((m) =>
-    m[1].replace(/<[^>]+>/g, '').trim(),
-  )
+  return [...nav.matchAll(/<a[^>]*>([\s\S]*?)<\/a>/g)].map((m) => textOf(m[1]))
 }
 
 await new Promise((resolve) => api.listen(0, '127.0.0.1', resolve))

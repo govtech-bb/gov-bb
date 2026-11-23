@@ -63,6 +63,10 @@ export function registerEditorEditability(editor: LexicalEditor) {
   return acquire(editor).release;
 }
 
+/**
+ * Sets the host's read-only policy, leaving temporary pauses in place. Throws unless registerEditorEditability owns
+ * the editor.
+ */
 export function setEditorReadOnly(editor: LexicalEditor, readOnly: boolean) {
   const state = states.get(editor);
 

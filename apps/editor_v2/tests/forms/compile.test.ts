@@ -3,8 +3,8 @@ import { LinkNode } from "@lexical/link";
 import { HeadingNode } from "@lexical/rich-text";
 import { expect, test } from "vitest";
 import { $createTextNode, $getRoot } from "lexical";
-import { $duplicateQuestion } from "../../src/forms/editor/structure/blocks";
-import { fileUploadEntry } from "../../src/forms/features/file-upload/insertion";
+import { $duplicateQuestion } from "../../src/forms/canvas/structure/structure-blocks";
+import { fileUploadEntry } from "../../src/forms/fields/file-upload";
 import {
   compileForm,
   preflight,
@@ -12,7 +12,7 @@ import {
   type FormSchema,
 } from "../helpers/default-form";
 import { $legacyDemo as $demo } from "../helpers/legacy-demo";
-import { MentionNode } from "../../src/forms/features/mentions/node";
+import { MentionNode } from "../../src/forms/mentions/mention-node";
 import {
   $createFormTitleNode,
   $createQuestionNode,
@@ -21,17 +21,17 @@ import {
   $ensureQuestionFields,
   $questionKey,
   $shareQuestionSettings,
-} from "../../src/forms/editor/nodes";
+} from "../../src/forms/canvas/form-nodes";
 import {
   $createInputNode,
   $createOptionNode,
   $createWidgetNode,
-} from "../../src/forms/editor/answer-nodes";
-import { $setSettings, $settings } from "../../src/editor/core/document-state";
+} from "../../src/forms/canvas/answer-nodes";
+import { $setSettings, $settings } from "../../src/forms/canvas/block-state";
 import { formNodes } from "../helpers/default-form";
-import { $ssbIds } from "../../src/forms/editor/ssb";
-import { DEFAULT_FILE_TYPES } from "../../src/forms/features/file-upload/files";
-import { acceptedFiles } from "../../src/forms/features/file-upload/presentation";
+import { $ssbIds } from "../../src/forms/formats/legacy-ssb/legacy-ssb-rules";
+import { DEFAULT_FILE_TYPES } from "../../src/forms/fields/file-upload-file-types";
+import { acceptedFiles } from "../../src/forms/fields/file-upload-presentation";
 
 const newEditor = () =>
   createEditor({

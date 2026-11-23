@@ -6,20 +6,20 @@ import { formSchemaToLexical } from "../../src/converters/form-schema-to-lexical
 import { lexicalToFormSchema } from "../../src/converters/lexical-to-form-schema";
 import { lexicalToFormMarkdown } from "../../src/converters/lexical-to-form-markdown";
 import { formMarkdownToLexical } from "../../src/converters/form-markdown-to-lexical";
-import { $native } from "../../src/forms/editor/native-state";
+import { $native } from "../../src/forms/formats/native/native-state";
 import {
   $createQuestionNode,
   $createPageTitleNode,
   $isQuestionNode,
   $setSettings,
   $turnInto,
-} from "../../src/forms/editor/nodes";
-import { $createOptionNode, $createWidgetNode } from "../../src/forms/editor/answer-nodes";
-import { checkboxAccordionInsertion } from "../../src/forms/features/checkbox-accordion/insertion";
-import { openingHoursEntry } from "../../src/forms/features/opening-hours/insertion";
-import { $settings } from "../../src/editor/core/document-state";
-import { $createDrawnInput } from "../../src/forms/editor/field-nodes";
-import type { AnyFormDefinition, QuestionBase } from "../../src/forms/schema";
+} from "../../src/forms/canvas/form-nodes";
+import { $createOptionNode, $createWidgetNode } from "../../src/forms/canvas/answer-nodes";
+import { groupedCheckboxesInsertion } from "../../src/forms/fields/grouped-checkboxes";
+import { openingHoursEntry } from "../../src/forms/fields/opening-hours";
+import { $settings } from "../../src/forms/canvas/block-state";
+import { $createDrawnInput } from "../../src/forms/canvas/field-nodes";
+import type { AnyFormDefinition, QuestionBase } from "../../src/forms/formats/native/schema";
 
 const form: AnyFormDefinition = {
   schemaVersion: 2,
@@ -228,7 +228,7 @@ test("new decorator questions project stable keys and accordion defaults before 
         );
         $getRoot().append(
           $createQuestionNode().append($createTextNode("Services offered")),
-          ...checkboxAccordionInsertion.create(),
+          ...groupedCheckboxesInsertion.create(),
         );
       },
       { discrete: true },

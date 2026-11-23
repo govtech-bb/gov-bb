@@ -17,6 +17,8 @@
 
 import { spawn, type ChildProcess } from "node:child_process";
 import { existsSync } from "node:fs";
+import { createServer as createHttpServer } from "node:http";
+import { connect, createServer, type AddressInfo, type Socket } from "node:net";
 import { join } from "node:path";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Client, Pool } from "pg";
@@ -88,6 +90,77 @@ export async function allowConnections(
   await client.end();
 }
 
+/** A TCP proxy in front of Postgres that can go quiet. */
+export interface QuietProxy {
+  port: number;
+  /** Hold every connection, current and new, open but pass nothing either way. */
+  freeze: () => void;
+  /** Freeze once the server sends a message containing `marker`, after passing that message on. */
+  freezeOn: (marker: string) => void;
+  /** Pass on what was held and everything after it. */
+  thaw: () => void;
+  close: () => Promise<void>;
+}
+
+/**
+ * A failover or a partition leaves the server's sockets open while nothing
+ * comes back on them: no error, no close, only silence. Terminating backends
+ * cannot show that, because Postgres hangs up. This proxy can: frozen, it
+ * stops reading both sides of every connection, so nothing is lost and the
+ * bytes flow on when it thaws. A connection made while frozen is held the
+ * same way, so a new pool client waits for a greeting that never comes.
+ */
+export async function startQuietProxy(): Promise<QuietProxy> {
+  const sockets = new Set<Socket>();
+  let frozen = false;
+  let marker: string | undefined;
+  const freeze = () => {
+    frozen = true;
+    for (const socket of sockets) socket.pause();
+  };
+  // Data handlers rather than pipe(): a piped source may resume itself when
+  // its destination drains, which would leak bytes through a freeze.
+  const server = createServer((client) => {
+    const upstream = connect(DB.port, DB.host);
+    for (const [from, to] of [
+      [client, upstream],
+      [upstream, client],
+    ] as const) {
+      from.on("data", (chunk: Buffer) => {
+        if (from === client && marker && chunk.includes(marker)) {
+          marker = undefined;
+          freeze();
+        }
+        to.write(chunk);
+      });
+      from.on("close", () => to.destroy());
+      from.on("error", () => to.destroy());
+      sockets.add(from);
+      from.once("close", () => sockets.delete(from));
+      if (frozen) from.pause();
+    }
+  });
+  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+  const address = server.address();
+  if (!address || typeof address === "string")
+    throw new Error("The proxy is not listening on a port");
+  return {
+    port: address.port,
+    freeze,
+    freezeOn: (text) => {
+      marker = text;
+    },
+    thaw: () => {
+      frozen = false;
+      for (const socket of sockets) socket.resume();
+    },
+    close: async () => {
+      for (const socket of sockets) socket.destroy();
+      await new Promise((resolve) => server.close(resolve));
+    },
+  };
+}
+
 export async function dropScratchDatabase(name: string): Promise<void> {
   // Terminate anything still holding it, or the drop blocks on the pool the
   // server left behind and the suite hangs on teardown rather than failing.
@@ -111,8 +184,9 @@ export const AUTH_ENV = {
   BETTER_AUTH_URL: "http://127.0.0.1:3020",
   EDITOR_ORIGIN: "http://localhost:3000",
   BETTER_AUTH_SECRET: "api-v2-test-secret-at-least-thirty-two-characters",
-  GITHUB_CLIENT_ID: "api-v2-test-client",
-  GITHUB_CLIENT_SECRET: "api-v2-test-client-secret",
+  GOOGLE_CLIENT_ID: "api-v2-test-client",
+  GOOGLE_CLIENT_SECRET: "api-v2-test-client-secret",
+  GOOGLE_ALLOWED_DOMAINS: "govtech.bb",
   API_V2_ADMIN_EMAILS: "admin@govtech.bb",
 };
 
@@ -226,22 +300,54 @@ export async function runToExit(
     },
   );
 
+  return exitOf(child);
+}
+
+/**
+ * Runs a `scripts/` file from source with tsx (they are not compiled into
+ * `dist`) to completion and hands back what it said and how it left.
+ */
+export async function runScript(
+  script: string,
+  args: string[],
+  env: Record<string, string>,
+): Promise<{ code: number | null; output: string; stdout: string }> {
+  const child = spawn(
+    join(root, "node_modules", ".bin", "tsx"),
+    [script, ...args],
+    {
+      cwd: root,
+      env: { ...process.env, ...env },
+      stdio: ["ignore", "pipe", "pipe"],
+    },
+  );
+  return exitOf(child, 50_000);
+}
+
+async function exitOf(
+  child: ChildProcess,
+  timeout = 30_000,
+): Promise<{ code: number | null; output: string; stdout: string }> {
   let output = "";
-  child.stdout?.on("data", (chunk) => (output += String(chunk)));
+  let stdout = "";
+  child.stdout?.on("data", (chunk) => {
+    output += String(chunk);
+    stdout += String(chunk);
+  });
   child.stderr?.on("data", (chunk) => (output += String(chunk)));
 
   const code = await new Promise<number | null>((resolve) => {
     const timer = setTimeout(() => {
       child.kill("SIGKILL");
       resolve(null);
-    }, 30_000);
+    }, timeout);
     child.once("exit", (exitCode) => {
       clearTimeout(timer);
       resolve(exitCode);
     });
   });
 
-  return { code, output };
+  return { code, output, stdout };
 }
 
 /** A database-backed BetterAuth session minted solely by this test harness. */
@@ -276,7 +382,7 @@ export async function createEmployeeSession(
       ),
     ).$context;
     const userId = randomUUID();
-    // The GitHub identity check is tested separately. Here the fixture inserts
+    // The Google Workspace check is tested separately. Here the fixture inserts
     // a verified employee and asks BetterAuth itself to mint and store a session.
     await pool.query(
       'insert into auth_user (id, name, email, "emailVerified") values ($1, $2, $3, $4)',
@@ -287,7 +393,8 @@ export async function createEmployeeSession(
         options.emailVerified ?? true,
       ],
     );
-    // Every employee is an editor unless a test says otherwise, as at a real first sign-in.
+    // Tests run as an editor unless they say otherwise. A real first sign-in
+    // grants no role; an admin grants one (ADR 0134).
     for (const role of options.roles ?? ["editor"])
       await pool.query(
         "insert into user_roles (user_id, role) values ($1, $2)",
@@ -330,4 +437,47 @@ export async function databaseQuery(
   } finally {
     await client.end();
   }
+}
+
+/**
+ * What `scripts/check-import.ts` needs: a seeded server on a scratch database
+ * and a stub of api v1's `GET /service_status`, whose `rows` a test sets.
+ */
+export async function startCheckImportEnv(secret: string) {
+  const env = {
+    rows: [] as { slug: string; status: string }[],
+    database: await createScratchDatabase(),
+    formsApi: "",
+    server: undefined as unknown as Server,
+    /** Runs check-import against this server; `token` is the PREVIEW_SECRET it sends. */
+    check: (token?: string, extra: string[] = []) =>
+      runScript(
+        "scripts/check-import.ts",
+        ["--base-url", env.server.url, "--forms-api", env.formsApi, ...extra],
+        { PREVIEW_SECRET: token ?? "" },
+      ),
+    async stop() {
+      await env.server?.stop();
+      await dropScratchDatabase(env.database);
+      await new Promise((resolve) => stub.close(resolve));
+    },
+  };
+  const stub = createHttpServer((_request, response) => {
+    response
+      .writeHead(200, { "content-type": "application/json" })
+      .end(JSON.stringify({ status: "success", data: env.rows }));
+  });
+  await new Promise<void>((resolve) => stub.listen(0, "127.0.0.1", resolve));
+  env.formsApi = `http://127.0.0.1:${(stub.address() as AddressInfo).port}`;
+  try {
+    env.server = await startServer({
+      DB_NAME: env.database,
+      SEED: "true",
+      PREVIEW_SECRET: secret,
+    });
+  } catch (error) {
+    await env.stop();
+    throw error;
+  }
+  return env;
 }

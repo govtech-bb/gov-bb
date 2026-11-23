@@ -9,7 +9,8 @@
  */
 
 import { z } from "zod";
-import type { Frontmatter, PageId } from "./page";
+import { isStartOf } from "./estate-services";
+import { Visibility, type Frontmatter, type PageId } from "./page";
 import type { Breadcrumb } from "./page-visibility";
 import type { SearchChunk } from "./search-text";
 
@@ -32,6 +33,8 @@ export interface ListablePage {
   readonly description: string | null;
   readonly formId: string | null;
   readonly frontmatter: Frontmatter;
+  readonly categoryId: string | null;
+  readonly visibility: Visibility;
 }
 
 /** A category as the site links to it. */
@@ -86,6 +89,22 @@ export type CategoryListing = z.infer<typeof CategoryListing>;
 /** A page as the catalog lists it. */
 export const CatalogEntry = PageSummary.extend({
   stage: z.string().nullable(),
+  slug: z.string().describe("The last segment of `url`."),
+  category: z
+    .string()
+    .nullable()
+    .describe("The top-level category's slug, or null when uncategorised."),
+  subcategory: z
+    .string()
+    .nullable()
+    .describe("The subcategory's slug, or null when the page has none."),
+  form_id: z
+    .string()
+    .nullable()
+    .describe(
+      "The page's form, else its `start` step's when the viewer can see it.",
+    ),
+  visibility: Visibility,
 });
 
 /** A page as the catalog lists it. */
@@ -251,13 +270,38 @@ export function inCatalog(pages: readonly ListablePage[]): ListablePage[] {
   );
 }
 
-/** Catalog pages as the catalog lists them, A to Z. */
-export function catalogOf(pages: readonly ListablePage[]): CatalogEntry[] {
-  return pages
-    .map((page) => ({
-      ...summaryOf(page),
-      stage: page.frontmatter.stage ?? null,
-    }))
+/**
+ * The catalog of these visible pages, A to Z: every one but `start` steps,
+ * each with its category and its form, else its `start` step's.
+ */
+export function catalogOf(
+  pages: readonly ListablePage[],
+  categories: readonly CategoryRecord[],
+): CatalogEntry[] {
+  // One pass, so the public route stays linear in the estate's size.
+  const startFormOf = new Map(
+    pages.flatMap((page) =>
+      page.parentId !== null && isStartOf(page, { id: page.parentId })
+        ? [[page.parentId, page.formId] as const]
+        : [],
+    ),
+  );
+  return inCatalog(pages)
+    .map((page) => {
+      const { category, subcategory } = pageCategory(
+        page.categoryId,
+        categories,
+      );
+      return {
+        ...summaryOf(page),
+        stage: page.frontmatter.stage ?? null,
+        slug: page.slug,
+        category,
+        subcategory,
+        form_id: page.formId ?? startFormOf.get(page.id) ?? null,
+        visibility: page.visibility,
+      };
+    })
     .sort(byTitle);
 }
 

@@ -97,24 +97,6 @@
 .page-table-cell-selected {
   background: color-mix(in srgb, var(--page-blue) 15%, white);
 }
-.page-body [data-page-component="notice"] {
-  border-inline-start: 0.35rem solid var(--page-blue);
-  padding: 1rem;
-  margin-block: 1rem;
-  background: color-mix(in srgb, var(--page-blue) 5%, white);
-}
-.page-body [data-page-component="details"] {
-  border: 1px solid var(--page-line);
-  padding: 1rem;
-  margin-block: 1rem;
-}
-.page-body :is([data-page-component="details"], [data-page-component="table"], [data-page-component="summary-item"])::before {
-  content: attr(data-summary);
-  display: block;
-  font-weight: 700;
-  margin-block-end: 1rem;
-  color: var(--page-blue);
-}
 /* Float with zero height keeps the caret at the start of the empty heading. */
 .page-editable
   :is(.page-h1, .page-h2, .page-h3, .page-h4, .page-h5, .page-h6):has(> br:only-child)::before {
@@ -141,20 +123,6 @@
 .page-editable .page-h6:has(> br:only-child)::before {
   content: "Heading 6" / "";
 }
-.page-body [data-page-component="actions"] {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: start;
-  gap: 0.75rem;
-  margin-block: 1rem;
-}
-/* GovBB's buttons, drawn as the form draws its Back and Continue (index.css) */
-.page-body :is([data-page-component="start"], [data-page-component="action"]) {
-  @apply govbb-button;
-}
-.page-body .page-action-secondary {
-  @apply govbb-button-secondary;
-}
 .page-body .page-details {
   margin-block: 1rem;
 }
@@ -174,4 +142,58 @@
   .page-body {
     font-size: 1rem;
   }
+}
+
+/* Contact details (#3185): the record's details as landing's teal contact tiles */
+.page-body .page-contact {
+  margin-block: 1rem;
+}
+.page-body .page-contacts {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
+  gap: 1rem;
+}
+.page-body .page-contact-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 1rem;
+  border-inline-start: 0.25rem solid var(--color-teal-80);
+  background: var(--color-teal-10);
+}
+.page-body .page-contact-tile span {
+  font-weight: 700;
+}
+.page-body .page-contact-tile strong {
+  color: var(--color-teal-80);
+}
+.page-body .page-contact:not(.page-contacts) {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+  padding: 0.75rem 1rem;
+  border: 1px dashed var(--page-line);
+  color: var(--color-muted);
+}
+.page-body .page-contact > p {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+}
+/* Icons take their size from CSS in the editor, so the warning's is set here or it fills the block */
+.page-body .page-contact > svg {
+  flex-shrink: 0;
+  width: 1.25rem;
+  height: 1.25rem;
+  margin-block-start: 0.2rem;
+}
+.page-body .page-contact-empty {
+  flex-wrap: wrap;
+  align-items: center;
+}
+.page-body .page-contact-warning {
+  border-style: solid;
+  border-color: var(--color-yellow-80);
+  background: var(--color-yellow-20);
+  color: var(--color-ink);
 }

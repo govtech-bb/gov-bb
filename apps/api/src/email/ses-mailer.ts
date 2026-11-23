@@ -61,9 +61,11 @@ export class SesMailer {
     });
   }
 
-  /** Sends an attachment-free HTML email via SES `Content.Simple`. */
-  async sendSimple(args: SendSimpleArgs): Promise<void> {
-    await this.client.send(
+  /** Sends an attachment-free HTML email via SES `Content.Simple`. Returns the
+   *  SES MessageId (the key SES delivery events carry), or undefined if SES
+   *  didn't return one. */
+  async sendSimple(args: SendSimpleArgs): Promise<string | undefined> {
+    const result = await this.client.send(
       new SendEmailCommand({
         FromEmailAddress: this.from,
         Destination: { ToAddresses: [args.to] },
@@ -84,5 +86,6 @@ export class SesMailer {
         }),
       }),
     );
+    return result?.MessageId;
   }
 }

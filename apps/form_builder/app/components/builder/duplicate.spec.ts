@@ -71,6 +71,15 @@ it("duplicates a page with independent IDs and rules, preserving external refere
               label: "quantity",
             },
           ],
+          conditionalHint: [
+            {
+              targetFieldId: "quantity",
+              targetStepId: "details",
+              operator: "equal",
+              value: "quantity",
+              hint: "quantity",
+            },
+          ],
         },
       },
     ],
@@ -224,6 +233,13 @@ it("duplicates a page with independent IDs and rules, preserving external refere
     operator: "equal",
     value: "quantity",
     label: "quantity",
+  });
+  expect(served[1].conditionalHint?.[0]).toEqual({
+    targetFieldId: "quantity-copy",
+    targetStepId: "details-copy",
+    operator: "equal",
+    value: "quantity",
+    hint: "quantity",
   });
   expect(served[2].geocodeTargets).toEqual({ parishFieldId: "parish-copy" });
   expect(served[3].behaviours?.[0]).toMatchObject({

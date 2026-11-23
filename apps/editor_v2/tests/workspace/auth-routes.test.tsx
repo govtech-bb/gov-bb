@@ -74,14 +74,14 @@ const until = (assertion: () => void) =>
 const button = (label: string) =>
   [...document.querySelectorAll("button")].find((item) => shownText(item) === label)!;
 
-test("direct auth is a sign-in screen and never starts GitHub on mount or preload", async () => {
+test("direct auth is a sign-in screen and never starts Google on mount or preload", async () => {
   const { auth, router } = await mountAuth("/auth");
   await until(() =>
     expect(document.querySelector("h1")?.textContent).toBe("Sign in to GovBB editor"),
   );
   // On a phone it wraps into even lines, rather than leaving “editor” alone on the last
   expect(document.querySelector("h1")?.className).toContain("text-balance");
-  expect(button("Continue with GitHub")).toBeDefined();
+  expect(button("Continue with Google")).toBeDefined();
   await act(async () => {
     await router.preloadRoute({
       to: "/auth",
@@ -103,30 +103,40 @@ test("a held admission names the session check, then waits for an explicit sign-
   expect(document.querySelector("header")).toBeNull();
   expect(auth.signIn).not.toHaveBeenCalled();
   await act(async () => held.resolve({ ok: true, value: null }));
-  await until(() => expect(button("Continue with GitHub")).toBeDefined());
+  await until(() => expect(button("Continue with Google")).toBeDefined());
   expect(router.state.location.search).toMatchObject({
     returnTo: "/services/team/page?view=source#content",
   });
   expect(auth.signIn).not.toHaveBeenCalled();
 });
 
-test("a GitHub action stays local, rejects duplicate activation, and recovers from failure", async () => {
+test("a Google action stays local, rejects duplicate activation, and recovers from failure", async () => {
   const { auth } = await mountAuth("/auth?state=sign-in&returnTo=%2Fcategories");
-  await until(() => expect(button("Continue with GitHub")).toBeDefined());
+  await until(() => expect(button("Continue with Google")).toBeDefined());
   const held = Promise.withResolvers<Awaited<ReturnType<EditorAuth["signIn"]>>>();
   vi.mocked(auth.signIn).mockReturnValueOnce(held.promise);
   await act(async () => {
-    button("Continue with GitHub").click();
+    button("Continue with Google").click();
   });
-  expect(button("Opening GitHub…")?.getAttribute("aria-disabled")).toBe("true");
+  expect(button("Opening Google…")?.getAttribute("aria-disabled")).toBe("true");
   await act(async () => {
-    button("Opening GitHub…").click();
+    button("Opening Google…").click();
   });
   expect(auth.signIn).toHaveBeenCalledOnce();
   expect(auth.signIn).toHaveBeenCalledWith(window.location.origin, "/categories");
   await act(async () => held.resolve({ ok: false, error: new AuthFailure("unavailable") }));
   expect(document.body.textContent).toContain("We could not reach the sign-in service");
-  expect(button("Continue with GitHub")).toBeDefined();
+  expect(button("Continue with Google")).toBeDefined();
+});
+
+test("a refused or cancelled sign-in names the account that can sign in", async () => {
+  await mountAuth("/auth?state=error&returnTo=%2Fservices&error=organization_access_denied");
+  await until(() => expect(document.querySelector("h1")?.textContent).toBe("Unable to sign in"));
+  expect(document.body.textContent).toContain(
+    "Sign-in was not completed. Continue with your GovTech Google Workspace account to try again.",
+  );
+  expect(document.body.textContent).not.toContain("GitHub");
+  expect(button("Continue with Google")).toBeDefined();
 });
 
 test("retrying an unavailable admission checks the session instead of starting OAuth", async () => {
@@ -153,7 +163,7 @@ test("a callback names its work and a missing cookie stops without restarting OA
   await until(() =>
     expect(document.body.textContent).toContain("Your sign-in could not be confirmed"),
   );
-  expect(button("Continue with GitHub")).toBeDefined();
+  expect(button("Continue with Google")).toBeDefined();
   expect(auth.signIn).not.toHaveBeenCalled();
 });
 
@@ -180,6 +190,6 @@ test("an unexpected route failure has app-owned recovery without exposing its de
 test("a valid session opens the workspace without rendering sign-in", async () => {
   const { auth } = await mountAuth("/services", async () => ({ ok: true, value: employee }));
   await until(() => expect(document.querySelector("header")?.textContent).toContain("Sign out"));
-  expect(button("Continue with GitHub")).toBeUndefined();
+  expect(button("Continue with Google")).toBeUndefined();
   expect(auth.signIn).not.toHaveBeenCalled();
 });

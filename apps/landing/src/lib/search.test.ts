@@ -189,6 +189,22 @@ describe('api_v2 search documents', () => {
     chunks: [{ heading: 'Who can apply', body: 'Anyone patient.' }],
   }
 
+  it.each(['/\\outside.test/page', '/\t/outside.test/page'])(
+    'keeps search and suggestions on-site for an unsafe stored URL %j',
+    (url) => {
+      const extra = [{ ...onlyInApiV2, url }]
+      for (const hits of [
+        search('zebra crossing guard', 'public', undefined, extra),
+        suggest('zebra', 'public', undefined, extra),
+      ]) {
+        expect(hits[0]?.href).toBe('/')
+        expect(new URL(hits[0].href, 'https://site.test').origin).toBe(
+          'https://site.test',
+        )
+      }
+    },
+  )
+
   it('finds a page only api_v2 serves', () => {
     const extra = [onlyInApiV2]
     expect(

@@ -6,9 +6,9 @@ import { afterEach, expect, test } from "vitest";
 import { createHeadlessEditor } from "../../src/editor/core/create-editor";
 import { container } from "../../src/editor/react/block-dom";
 import { formSchemaToLexical } from "../../src/converters/form-schema-to-lexical";
-import { $isOptionNode } from "../../src/forms/editor/nodes";
-import { markBlocks } from "../../src/forms/editor/structure/projection";
-import type { QuestionBase } from "../../src/forms/schema/types";
+import { $isOptionNode } from "../../src/forms/canvas/form-nodes";
+import { markBlocks } from "../../src/forms/canvas/structure/structure-projection";
+import type { QuestionBase } from "../../src/forms/formats/native/schema/types";
 import { govbbFormEditor } from "../../src/presets/govbb-form";
 import { emptyNativeForm } from "../helpers/native-form";
 

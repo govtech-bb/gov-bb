@@ -6,9 +6,6 @@
     "allowJs": true,
     "noEmit": true,
     "incremental": true,
-    "module": "ESNext",
-    "moduleResolution": "bundler",
-    "resolveJsonModule": true,
     "isolatedModules": true,
     "types": ["react", "react-dom", "node", "vite/client"],
     "lib": ["ES2022", "DOM", "DOM.Iterable"]
@@ -16,9 +13,6 @@
   "references": [
     {
       "path": "../../packages/analytics"
-    },
-    {
-      "path": "../../packages/content"
     },
     {
       "path": "../../packages/form-types"

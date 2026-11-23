@@ -5,7 +5,7 @@ import { createHeadlessEditor } from "../../src/editor/core/create-editor";
 import { registerEditorHistory } from "../../src/editor/core/history";
 import { govbbFormCodec, govbbFormEditor } from "../../src/presets/govbb-form";
 import { formSchemaToLexical } from "../../src/converters/form-schema-to-lexical";
-import { nativeSemanticEqual } from "../../src/forms/schema";
+import { nativeSemanticEqual } from "../../src/forms/formats/native/schema";
 import { DraftStore } from "../../src/persistence/draft-store";
 import { draftEditorConnection } from "../../src/host/draft-editor";
 import {

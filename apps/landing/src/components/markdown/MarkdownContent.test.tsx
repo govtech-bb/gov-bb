@@ -1,9 +1,12 @@
+import { readFileSync } from 'node:fs'
 import { describe, expect, it, vi } from 'vitest'
 import type * as ReactRouter from '@tanstack/react-router'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { processMarkdown } from '../../utils/markdown/processor'
 import { bakeStartLinkFormId } from '../../utils/markdown/plugins'
 import { MarkdownBody } from './MarkdownContent'
+import { resolveContactRecords } from '../../lib/api-v2-collections'
+import type { ContactRecords } from '../../lib/api-v2-collections'
 
 // StartLink reads useLocation for analytics; stub it so form CTAs render
 // without a router context.
@@ -80,6 +83,44 @@ describe('MarkdownBody', () => {
     expect(html).toContain('What you need')
   })
 
+  it.each([
+    [
+      'national-insurance-for-self-employed-workers/index.md',
+      '<link-button href="https://www.nis.gov.bb/self-employment-registration/" variant="secondary">Register as self-employed</link-button>',
+    ],
+    [
+      'national-insurance-for-self-employed-workers/check-your-record.md',
+      '<buttons>\n<link-button href="/money-financial-support/national-insurance-for-self-employed-workers/form">Estimate how much to pay</link-button>\n<link-button href="/money-financial-support/national-insurance-for-self-employed-workers#make-a-payment" variant="secondary">See how to make a payment</link-button>\n</buttons>',
+    ],
+    [
+      'health-and-emergency-services/stormready/index.md',
+      '<buttons>\n<link-button href="/health-and-emergency-services/stormready/checklist">Open household checklist</link-button>\n<link-button href="/health-and-emergency-services/stormready/checklist?print=1" variant="secondary">Save checklist as PDF</link-button>\n</buttons>',
+    ],
+  ])(
+    'preserves legacy button links, styles and grouping for %s',
+    async (path, legacy) => {
+      const source = readFileSync(
+        new URL(`../../content/${path}`, import.meta.url),
+        'utf8',
+      )
+      const actions =
+        source.match(/^::::actions\n[\s\S]*?\n::::/m)?.[0] ??
+        source.match(/^:::action\{[^\n]+\}\n[\s\S]*?\n:::/m)?.[0]
+
+      if (!actions) throw new Error(`Missing action directive in ${path}`)
+
+      const before = await renderBody(legacy)
+      const after = await renderBody(actions)
+      const anchors = /<a\b[^>]*>[\s\S]*?<\/a>/g
+
+      expect(after).toContain('class="govbb-button')
+      expect(after.match(anchors)).toEqual(before.match(anchors))
+      expect(after.match(/class="govbb-button-group"/g)).toEqual(
+        before.match(/class="govbb-button-group"/g),
+      )
+    },
+  )
+
   it('leaves prose tags bare for govbb-prose to style', async () => {
     const html = await renderBody('## Heading\n\ntext\n\n- one\n- two')
 
@@ -100,6 +141,19 @@ describe('MarkdownBody', () => {
     })
     expect(html).toContain('Start now')
     expect(html).toContain('/forms/birth')
+  })
+
+  // #3502: Umami cuts event names off at 50 characters, and `<formId>-start`
+  // ran to 52 for some live forms. The form id travels as event data instead.
+  it('tags the Start button with one event name and the form id as data', async () => {
+    const formId = 'request-a-presidential-visit-for-a-centenarian'
+    const html = await renderBody('<a data-start-link>Start now</a>', {
+      formId,
+      forms: new Set([formId]),
+    })
+    expect(html).toContain('data-umami-event="start-click"')
+    expect(html).toContain(`data-umami-event-form-id="${formId}"`)
+    expect(html).toContain('data-umami-event-from="/test"')
   })
 
   it('suppresses the Start button when the form is not available', async () => {
@@ -123,5 +177,121 @@ describe('MarkdownBody', () => {
     const html = await renderBody(md, { hideStartLink: true })
     expect(html).toContain('is 1 way')
     expect(html).not.toContain('online form')
+  })
+})
+
+describe('::contact (a record’s contact details, #3185)', () => {
+  const md =
+    '::contact{collection="contacts" record="barbados-drug-service" fields="phone,email,website,hours"}'
+  const contacts = {
+    collection: {
+      key: 'contacts',
+      schema: {
+        fields: [
+          { key: 'phone', label: 'Telephone' },
+          { key: 'email', label: 'Email' },
+          { key: 'website', label: 'Website' },
+          { key: 'hours', label: 'Opening hours' },
+        ],
+      },
+    },
+    records: {
+      'barbados-drug-service': {
+        phone: '(246) 535-0021',
+        email: 'drugservice@health.gov.bb',
+        website: 'javascript:alert(1)',
+        hours: '8:30am to 4:30pm',
+      },
+    },
+  }
+
+  async function render(records: ContactRecords = {}) {
+    const { hast } = await processMarkdown(md)
+    return renderToStaticMarkup(
+      <MarkdownBody hast={hast} contactRecords={records} />,
+    )
+  }
+
+  it('shows the chosen details as contact tiles, labelled by the collection', async () => {
+    const html = await render({ contacts })
+    // The contact grid and its teal tile
+    expect(html).toContain('class="grid grid-cols-1 gap-s md:grid-cols-3"')
+    expect(html).toContain(
+      '<a href="tel:+12465350021" class="flex flex-col gap-xxs border-teal-80 border-l-4 bg-teal-10 p-s text-current no-underline',
+    )
+    expect(html).toContain('<span class="font-bold">Telephone</span>')
+    expect(html).toContain('href="mailto:drugservice@health.gov.bb"')
+    expect(html).toContain('Opening hours')
+  })
+
+  it('links only an address that passes the safe-address check', async () => {
+    const html = await render({ contacts })
+    expect(html).toContain('javascript:alert(1)')
+    expect(html).not.toContain('href="javascript:')
+  })
+
+  it('shows nothing when the record is missing or couldn’t be read', async () => {
+    expect(await render({})).toBe('<div class="govbb-prose"></div>')
+    expect(await render({ contacts: { ...contacts, records: {} } })).toBe(
+      '<div class="govbb-prose"></div>',
+    )
+  })
+
+  it('still renders when its collection holds a number, a yes or no, a date and a list (#3782)', async () => {
+    // Read the way the page's loader reads it, so a value the reader refused would leave the block empty
+    const body = {
+      collection: {
+        key: 'contacts',
+        title: 'Contacts',
+        record_key: 'key',
+        schema: {
+          fields: [
+            { key: 'key', label: 'Key', type: 'slug' },
+            { key: 'phone', label: 'Telephone', type: 'text' },
+            { key: 'hours', label: 'Opening hours', type: 'list' },
+            { key: 'email', label: 'Walk-ins', type: 'boolean' },
+            { key: 'website', label: 'Since', type: 'date' },
+            { key: 'capacity', label: 'Capacity', type: 'number' },
+          ],
+        },
+        schema_version: 1,
+        updated_at: '2026-10-01T00:00:00.000Z',
+      },
+      records: [
+        {
+          record_key: 'barbados-drug-service',
+          data: {
+            key: 'barbados-drug-service',
+            phone: '(246) 535-0021',
+            hours: ['Mon to Fri 8:30am to 4:30pm', 'Sat 9am to 12pm'],
+            email: false,
+            website: '2026-08-01',
+            capacity: 0.1725,
+          },
+          updated_at: '2026-10-01T00:00:00.000Z',
+        },
+      ],
+    }
+    const records = await resolveContactRecords(
+      'http://api.example',
+      [{ collection: 'contacts', record: 'barbados-drug-service' }],
+      async () => Response.json(body),
+    )
+    const html = await render(records)
+    expect(html).toContain('href="tel:+12465350021"')
+    expect(html).toContain('Mon to Fri 8:30am to 4:30pm, Sat 9am to 12pm')
+    // A yes or no shows as a word, never as a link, whatever its field is called
+    expect(html).toContain('<span class="font-bold">Walk-ins</span>')
+    expect(html).toContain('>No</span>')
+    expect(html).not.toContain('mailto:')
+    expect(html).toContain('2026-08-01')
+  })
+
+  it('refuses an attribute it doesn’t know', async () => {
+    await expect(
+      processMarkdown(
+        '::contact{collection="contacts" record="x" onclick="y"}',
+      ),
+    ).rejects.toThrow('The contact component does not support these attributes')
   })
 })

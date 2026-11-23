@@ -110,10 +110,10 @@ describe("checkPolyclinicContactBlock", () => {
   });
 
   it("flags a phone number missing its (246) prefix", () => {
-    const block = mutate("[(246) 536-3700]", "[536-3700]");
+    const block = mutate("[(246) 536-3720]", "[536-3720]");
     const errors = checkPolyclinicContactBlock(page(block), "p.md");
     expect(errors).toHaveLength(1);
-    expect(errors[0]).toContain("[536-3700](tel:+12465363700)");
+    expect(errors[0]).toContain("[536-3720](tel:+12465363720)");
   });
 
   // A mis-dialled href anchors nothing, so before the span was closed this

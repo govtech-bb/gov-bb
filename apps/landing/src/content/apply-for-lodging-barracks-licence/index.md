@@ -72,7 +72,7 @@ Contact the Environmental Health Service office for your area.
 
 | Office                                          | Phone          | Email                                                                 |
 | ----------------------------------------------- | -------------- | --------------------------------------------------------------------- |
-| Branford Taitt Polyclinic                       | (246) 536-3700 | [EHD.BTPC@health.gov.bb](mailto:EHD.BTPC@health.gov.bb)               |
+| Branford Taitt Polyclinic                       | (246) 536-3720 | [EHD.BTPC@health.gov.bb](mailto:EHD.BTPC@health.gov.bb)               |
 | David Thompson Health & Social Services Complex | (246) 536-4453 | [DTHSSC.EHD@health.gov.bb](mailto:DTHSSC.EHD@health.gov.bb)           |
 | Eunice Gibson Polyclinic                        | (246) 536-4033 | [EuniceGibsonEHD@health.gov.bb](mailto:EuniceGibsonEHD@health.gov.bb) |
 | Maurice Byer Polyclinic                         | (246) 536-3214 | [MBPC.apps@health.gov.bb](mailto:MBPC.apps@health.gov.bb)             |

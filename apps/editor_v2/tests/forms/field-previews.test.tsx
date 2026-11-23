@@ -6,9 +6,9 @@ import { afterEach, expect, test, vi } from "vitest";
 import { createHeadlessEditor } from "../../src/editor/core/create-editor";
 import { EditorComposer } from "../../src/editor/react/composer";
 import { RendererHost } from "../../src/editor/react/contributions";
-import type { FieldPreviewProps } from "../../src/forms/editor/field-module";
-import { $blockKind } from "../../src/forms/editor/nodes";
-import { markBlocks } from "../../src/forms/editor/structure/projection";
+import type { FieldPreviewProps } from "../../src/forms/canvas/field-module";
+import { $blockKind } from "../../src/forms/canvas/form-nodes";
+import { markBlocks } from "../../src/forms/canvas/structure/structure-projection";
 import { govbbFormEditor } from "../../src/presets/govbb-form";
 import { prepareSource } from "../helpers/default-form";
 

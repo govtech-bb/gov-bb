@@ -5,7 +5,6 @@ description: >-
   can affect which pharmacy can fill your prescription.
 stage: alpha
 visibility: public
-featured: false
 publish_date: '2026-05-15'
 category: health-and-emergency-services
 service_type: information

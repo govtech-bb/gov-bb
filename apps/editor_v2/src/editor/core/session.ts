@@ -32,6 +32,7 @@ export type EditorSession = {
   selection?: SelectionPlace;
 };
 
+/** A new session, with no undo history or saved selection. */
 export const createEditorSession = (): EditorSession => ({ history: { steps: [], index: 0 } });
 
 const sessions = new WeakMap<LexicalEditor, EditorSession>();

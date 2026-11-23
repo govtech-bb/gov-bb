@@ -42,8 +42,9 @@ import { Tip } from "../../../ui/tooltip";
 import { TurnIntoMenu } from "../../../ui/turn-into";
 import { useLatched } from "../../../ui/use-latched";
 import { useEditorDefinition, useLinkPages } from "../../react/composer";
+import { EditorSlot } from "../../react/contributions";
 import { turnIntoOptions } from "../../react/turn-into";
-import { composing } from "./editing";
+import { composing } from "../../react/shortcut";
 import { isSafeLinkUrl, linkAddress } from "../links/url";
 
 /** The caret or selection, when all of it is in rich-text blocks, where text can be formatted. */
@@ -87,10 +88,16 @@ const $link = (selection: RangeSelection) =>
     .find($isLinkNode);
 
 /**
- * Opens beneath a rich-text selection after mouseup or keyup, or as it's made by touch. Supports bold, italic
- * and links; the Markdown representation does not support underline or colour.
+ * Opens beneath a rich-text selection after mouseup or keyup, or as it's made by touch. Supports bold, italic and
+ * links, and the controls modules add to it (SELECTION_TOOLBAR); the Markdown representation does not support underline.
  */
 const richText = () => false;
+
+/**
+ * The slot where a module adds its own controls to the selection toolbar, after its formatting, such as a colour menu
+ * (see TextColourMenu). A control reads the selection itself, and keeps it with keepSelection.
+ */
+export const SELECTION_TOOLBAR = "editor.selection-toolbar";
 
 export type ToolbarPolicy = {
   isPlainText?: (node: LexicalNode) => boolean;
@@ -339,6 +346,7 @@ export function Toolbar({
             onClick={format("italic")}
           />
           <Action tip="Clear formatting" icon={<TextTSlash />} onClick={clear} />
+          <EditorSlot name={SELECTION_TOOLBAR} props={{}} />
           {linksEnabled && (
             <>
               <Controls.Separator />
@@ -386,8 +394,8 @@ export function Toolbar({
   );
 }
 
-// Buttons keep the editor's focus, and with it the selection
-const keepSelection = (e: MouseEvent) => e.preventDefault();
+/** Buttons keep the editor's focus, and with it the selection, as a control added to the toolbar should too. */
+export const keepSelection = (e: MouseEvent) => e.preventDefault();
 
 function Action({
   tip,

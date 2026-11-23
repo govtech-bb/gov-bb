@@ -115,7 +115,7 @@ export async function createEmptyDb(): Promise<TestDb> {
 /**
  * Content services that let an approver make public what they wrote, as
  * AUTH_BYPASS does: for setting up fixtures, and for tests about something
- * other than review (ADR 0079).
+ * other than review (ADR 0134).
  */
 export const SELF_APPROVAL = { allowSelfApproval: true } as const;
 
@@ -133,7 +133,7 @@ export function createTestServices(
     navigation: new SiteNavigation(pages),
     editing: new PageEditing(pages, () => new Date(), review, notifier),
     index: new EditorIndex(pages),
-    categories: new CategoryEditing(pages, () => new Date()),
+    categories: new CategoryEditing(pages),
     collections: new CollectionEditing(new PostgresCollections(db)),
   };
 }

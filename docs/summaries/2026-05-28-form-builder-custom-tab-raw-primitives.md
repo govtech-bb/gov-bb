@@ -3,11 +3,11 @@
 **Date:** 2026-05-28
 **Branch:** form-builder/custom-tab-raw-primitives → sandbox
 **Plan:** [docs/plans/form-builder-custom-tab-raw-primitives.md](../plans/form-builder-custom-tab-raw-primitives.md)
-**Related ADR:** ADR 0015 (raw primitive components)
+**Related ADR:** ADR 0032 (raw primitive components)
 
 ## Context
 
-After raw primitives landed (`raw-text`, `raw-textarea`, `raw-number`, `raw-date`, `raw-tel`, `raw-email`, `raw-checkbox`, `raw-radio`, `raw-file`, `raw-select` — see ADR 0015), they were leaking into the form builder's **Components** tab because `REGISTRY_COMPONENTS` is the merged full set. The picker showed them alongside the standardised MDA components (Address, Name, Telephone, …), which muddied that tab. They needed a home that signalled "low-level, drop-in primitive" without inventing a new tab the user would have to learn.
+After raw primitives landed (`raw-text`, `raw-textarea`, `raw-number`, `raw-date`, `raw-tel`, `raw-email`, `raw-checkbox`, `raw-radio`, `raw-file`, `raw-select` — see ADR 0032), they were leaking into the form builder's **Components** tab because `REGISTRY_COMPONENTS` is the merged full set. The picker showed them alongside the standardised MDA components (Address, Name, Telephone, …), which muddied that tab. They needed a home that signalled "low-level, drop-in primitive" without inventing a new tab the user would have to learn.
 
 ## What we did
 
@@ -19,11 +19,11 @@ Single-file change to `apps/form_builder/app/routes/builder/ui/-field-picker.tsx
 - Click handler: primitive rows emit `{ kind: "component", ref: "components/<fieldId>", overrides: {} }`; DB custom rows emit `{ kind: "custom", ref, overrides: {} }`.
 - Empty-state copy: dropped "No custom components registered." (no longer accurate now that primitives always populate); added a generic "No matches." when the merged + query-filtered list is empty.
 
-No registry, contract, or backend changes — raw primitives were already wired through `REGISTRY_COMPONENTS` for recipe resolution; the picker contract for them stays `kind: "component"` per ADR 0015.
+No registry, contract, or backend changes — raw primitives were already wired through `REGISTRY_COMPONENTS` for recipe resolution; the picker contract for them stays `kind: "component"` per ADR 0032.
 
 ## Why we did it that way
 
-**No new "Primitives" tab.** ADR 0015 anticipated one, but the label isn't obvious to a non-technical builder, and a fourth tab makes the picker bigger to scan. Co-locating primitives with DB customs under "Custom" keeps the picker at three tabs and the cognitive load of "what's in here?" easy: standardised fields ↔ Components, layout ↔ Blocks, everything else (raw + DB) ↔ Custom.
+**No new "Primitives" tab.** ADR 0032 anticipated one, but the label isn't obvious to a non-technical builder, and a fourth tab makes the picker bigger to scan. Co-locating primitives with DB customs under "Custom" keeps the picker at three tabs and the cognitive load of "what's in here?" easy: standardised fields ↔ Components, layout ↔ Blocks, everything else (raw + DB) ↔ Custom.
 
 **Flat list inside Custom, no subheadings.** Considered grouping ("Primitives" / "Custom components") but rejected — flat list keeps search uniform (one query, one result set) and the UI simple. Source matters to the click handler, not to the user reading the list.
 

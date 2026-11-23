@@ -1,10 +1,20 @@
-import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
+import { assert, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
+import {
+  createRootRoute,
+  createRoute,
+  createRouter,
+  isRedirect,
+} from '@tanstack/react-router'
+import {
+  createRequestHandler,
+  defaultStreamHandler,
+} from '@tanstack/react-router/ssr/server'
 import type { ContentPage } from '../content/registry'
+import type { ViewLevel } from '../lib/frontmatter'
 import type * as CategoryApiModule from '../lib/api-v2-categories'
 // Type-only, so it erases at runtime and the route still loads lazily, after
 // the mocks below are in place.
 import type * as ContentRouteModule from './$'
-import type { ViewLevel } from '../lib/frontmatter'
 import { processMarkdown } from '../utils/markdown/processor'
 
 // Mock the registry to drive the gate's throw paths deterministically. Only the
@@ -14,7 +24,7 @@ const mocks = vi.hoisted(() => ({
   isVisible: vi.fn(),
   isCategoryVisible: vi.fn(() => true),
   categoryServices: vi.fn(() => [] as ContentPage[]),
-  pageLevel: vi.fn(() => 'public' as const),
+  pageLevel: vi.fn((): ViewLevel => 'public'),
   isSubPage: vi.fn(() => false),
   isStartSubPageVisible: vi.fn(() => true),
   isUrlVisible: vi.fn(() => true),
@@ -49,13 +59,22 @@ vi.mock('../lib/preview-form-access', () => accessMocks)
 // api_v2 is asked first (#2944); a miss falls back to the registry, so the
 // static-page tests above keep their behaviour.
 const v2Mocks = vi.hoisted(() => ({
-  getApiV2Page: vi.fn(
-    async (): Promise<unknown> => ({ kind: 'miss', reason: 'not_found' }),
-  ),
+  getApiV2Page: vi.fn(async (): Promise<unknown> => ({
+    kind: 'miss',
+    reason: 'not_found',
+  })),
 }))
 vi.mock('../lib/api-v2-page', async (importOriginal) => ({
   ...(await importOriginal<object>()),
   ...v2Mocks,
+}))
+
+const contactMocks = vi.hoisted(() => ({
+  getContactRecords: vi.fn(),
+}))
+vi.mock('../lib/api-v2-collections', async (importOriginal) => ({
+  ...(await importOriginal<object>()),
+  ...contactMocks,
 }))
 
 const categoryMocks = vi.hoisted(() => ({
@@ -318,10 +337,46 @@ describe('$ route loader gating', () => {
       applicationClosed: false,
       level: 'public',
       startSubPageVisible: true,
+      contactRecords: {},
       source: 'static',
     })
     expect((data as { page?: unknown }).page).toBeUndefined()
     expect(mocks.isVisible).toHaveBeenCalledWith(fakePage, 'draft', new Map())
+    // No `::contact` block, so no collection is read
+    expect(contactMocks.getContactRecords).not.toHaveBeenCalled()
+  })
+
+  it('reads the records its contact blocks name at request time (#3185)', async () => {
+    const records = { contacts: { collection: {}, records: {} } }
+    contactMocks.getContactRecords.mockResolvedValue(records)
+    mocks.findPage.mockReturnValue({
+      ...fakePage,
+      hast: {
+        type: 'root',
+        children: [
+          {
+            type: 'element',
+            tagName: 'contact-record',
+            properties: {
+              collection: 'contacts',
+              record: 'barbados-drug-service',
+            },
+            children: [],
+          },
+        ],
+      },
+    })
+    mocks.isVisible.mockReturnValue(true)
+
+    const loader = Route.options.loader as (a: unknown) => Promise<unknown>
+    const data = await loader({
+      params: { _splat: 'secret-service' },
+      context: { level: 'public', serviceStatuses: [], categoryTree: STATIC },
+    })
+    expect(contactMocks.getContactRecords).toHaveBeenCalledWith({
+      data: [{ collection: 'contacts', record: 'barbados-drug-service' }],
+    })
+    expect(data).toMatchObject({ kind: 'page', contactRecords: records })
   })
 
   it('flags a page whose form is under maintenance', async () => {
@@ -441,6 +496,27 @@ describe('$ route loader gating', () => {
     expect(data.availableForms).toEqual([])
     expect(data.underMaintenance).toBe(true)
   })
+
+  it('gates a static page through the overlay a disabled service_status derives (#3125)', async () => {
+    mocks.findPage.mockReturnValue(fakePage)
+    mocks.isVisible.mockReturnValue(false)
+
+    const loader = Route.options.loader as (a: unknown) => Promise<unknown>
+    const err = await loader({
+      params: { _splat: 'secret-service' },
+      context: {
+        level: 'public',
+        serviceStatuses: [['secret-service', 'disabled']],
+        categoryTree: STATIC,
+      },
+    }).catch((e: unknown) => e)
+    expect((err as { isNotFound?: boolean }).isNotFound).toBe(true)
+    expect(mocks.isVisible).toHaveBeenCalledWith(
+      fakePage,
+      'public',
+      new Map([['secret-service', 'preview']]),
+    )
+  })
 })
 
 describe('$ route api_v2 pages (#2944)', () => {
@@ -455,12 +531,16 @@ describe('$ route api_v2 pages (#2944)', () => {
     },
     hideStartLinks: false,
   }
-  const load = (page: typeof v2Page, level = 'public') => {
+  const load = (
+    page: typeof v2Page,
+    level = 'public',
+    serviceStatuses: [string, string][] = [],
+  ) => {
     v2Mocks.getApiV2Page.mockResolvedValue({ kind: 'page', page })
     const loader = Route.options.loader as (a: unknown) => Promise<unknown>
     return loader({
       params: { _splat: page.url },
-      context: { level, serviceStatuses: [], categoryTree: STATIC },
+      context: { level, serviceStatuses, categoryTree: STATIC },
     }).catch((e: unknown) => e) as Promise<Record<string, unknown>>
   }
 
@@ -593,11 +673,47 @@ describe('$ route api_v2 pages (#2944)', () => {
       params: { _splat: 'work-employment/old-service' },
       context: { level: 'public', serviceStatuses: [], categoryTree: STATIC },
     }).catch((e: unknown) => e)
-    const opts = (err as { options?: { href?: string; statusCode?: number } })
-      .options
-    expect(opts?.href).toBe('/work-employment/new-service')
-    expect(opts?.statusCode).toBe(301)
+    assert(isRedirect(err))
+    expect(err.headers.get('Location')).toBe('/work-employment/new-service')
+    expect(err.status).toBe(301)
+    expect(err.headers.get('Cache-Control')).toBe('no-store')
   })
+
+  it.each(['public', 'preview'] as const)(
+    'keeps no-store on the final %s SSR redirect response',
+    async (level) => {
+      v2Mocks.getApiV2Page.mockResolvedValue({
+        kind: 'redirect',
+        to: '/new-service',
+        cacheControl: 'public, max-age=60',
+      })
+      const loader = Route.options.loader as (a: unknown) => Promise<unknown>
+      const root = createRootRoute({
+        headers: () => ({ 'Cache-Control': 'public, max-age=3600' }),
+      })
+      const content = createRoute({
+        getParentRoute: () => root,
+        path: '$',
+        loader: ({ params }) =>
+          loader({
+            params,
+            context: { level, serviceStatuses: [], categoryTree: STATIC },
+          }),
+      })
+      const response = await createRequestHandler({
+        request: new Request('http://localhost/old-service'),
+        createRouter: () =>
+          createRouter({ routeTree: root.addChildren([content]) }),
+      })(defaultStreamHandler)
+      try {
+        expect(response.status).toBe(301)
+        expect(response.headers.get('Location')).toBe('/new-service')
+        expect(response.headers.get('Cache-Control')).toBe('no-store')
+      } finally {
+        await response.body?.cancel()
+      }
+    },
+  )
 
   it('hides the /start step when api_v2 says so', async () => {
     const data = await load({ ...v2Page, hideStartLinks: true })
@@ -623,6 +739,39 @@ describe('$ route api_v2 pages (#2944)', () => {
     ])
     const data = await load(v2Page)
     expect(data.underMaintenance).toBe(true)
+  })
+
+  // content_pages.visibility is the only page-level switch in v2 (#3125).
+  it.each(['disabled', 'enabled'])(
+    'ignores a service_status %s row for an api_v2 page (#3125)',
+    async (status) => {
+      // Would hide/demote a static page; must not touch an api_v2 one.
+      mocks.isVisible.mockReturnValue(false)
+      mocks.pageLevel.mockReturnValue('preview')
+      const data = await load(v2Page, 'public', [
+        ['get-birth-certificate', status],
+        ['v2-service', status],
+      ])
+      expect(data).toMatchObject({ kind: 'page', level: 'public' })
+      expect(mocks.isVisible).not.toHaveBeenCalled()
+    },
+  )
+
+  it('applies a form_disabled service_status to an api_v2 page (#3125)', async () => {
+    formMocks.getAvailableForms.mockResolvedValueOnce(['get-birth-certificate'])
+    const data = await load(v2Page, 'public', [
+      ['get-birth-certificate', 'form_disabled'],
+    ])
+    expect(data.availableForms).toEqual([])
+    expect(data.underMaintenance).toBe(true)
+  })
+
+  it('throws notFound for an api_v2 /start step whose form is status-disabled (#3125)', async () => {
+    formMocks.getAvailableForms.mockResolvedValueOnce(['get-birth-certificate'])
+    const err = await load({ ...v2Page, slug: 'v2-service/start' }, 'public', [
+      ['get-birth-certificate', 'form_disabled'],
+    ])
+    expect((err as { isNotFound?: boolean }).isNotFound).toBe(true)
   })
 })
 
@@ -757,7 +906,7 @@ describe('form route beforeLoad gating', () => {
 
 // The real loader and category resolver run against a stubbed listing response.
 // scripts/check-api-v2-categories.mjs covers the built RPC wiring.
-describe('$ route loader in api_v2 category mode (ADR 0078)', () => {
+describe('$ route loader in api_v2 category mode (ADR 0132)', () => {
   const ref = (url: string, title: string) => ({
     slug: url.split('/').at(-1) ?? '',
     url,

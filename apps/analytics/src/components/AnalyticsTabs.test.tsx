@@ -38,9 +38,7 @@ describe('AnalyticsTabs', () => {
         .map((a) => a.textContent),
     ).toEqual(['Home', 'Forms', 'Pages', 'Tools'])
     // Search is not wedged among the content sections…
-    expect(
-      within(primary).queryByRole('link', { name: 'Search' }),
-    ).toBeNull()
+    expect(within(primary).queryByRole('link', { name: 'Search' })).toBeNull()
 
     // …it lives in its own (right-aligned) nav group.
     const searchNav = screen.getByRole('navigation', { name: 'Search' })

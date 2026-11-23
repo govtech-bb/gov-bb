@@ -33,8 +33,8 @@ import {
   $dropCheck,
   $duplicateQuestion,
   $removeBlocks,
-} from "../../src/forms/editor/structure/blocks";
-import { $enter } from "../../src/forms/editor/structure/editing";
+} from "../../src/forms/canvas/structure/structure-blocks";
+import { $enter } from "../../src/forms/canvas/structure/structure-editing";
 import {
   HISTORY_START_TAG,
   pushStep,
@@ -42,15 +42,15 @@ import {
   type Step,
 } from "../../src/editor/core/history";
 import { registerLinkHistory } from "../../src/editor/modules/links/module";
-import { touchFirst } from "../../src/forms/editor/structure/rubber-band";
+import { touchFirst } from "../../src/forms/canvas/structure/structure-rubber-band";
 import { $toMarkdown } from "../helpers/default-form";
-import { $createMentionNode, MentionNode } from "../../src/forms/features/mentions/node";
+import { $createMentionNode, MentionNode } from "../../src/forms/mentions/mention-node";
 import {
   $mentionTargets,
   $remapCopies,
   $updateMentions,
-} from "../../src/forms/features/mentions/editor";
-import { $blockId, $setSettings, $settings } from "../../src/editor/core/document-state";
+} from "../../src/forms/mentions/mention-editor";
+import { $blockId, $setSettings, $settings } from "../../src/forms/canvas/block-state";
 import {
   $createFormTitleNode,
   $createQuestionNode,
@@ -58,12 +58,12 @@ import {
   $ensureBlockIds,
   $ensureQuestionFields,
   $questionKey,
-} from "../../src/forms/editor/nodes";
+} from "../../src/forms/canvas/form-nodes";
 import {
   $createInputNode,
   $createOptionNode,
   $createWidgetNode,
-} from "../../src/forms/editor/answer-nodes";
+} from "../../src/forms/canvas/answer-nodes";
 import { formNodes } from "../helpers/default-form";
 
 const newEditor = () =>

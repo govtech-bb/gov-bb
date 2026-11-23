@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import {
   HeadContent,
   Outlet,
@@ -11,7 +12,7 @@ import { BreadcrumbRegion } from '../components/BreadcrumbRegion'
 import Header from '../components/Header'
 import { CATEGORY_BY_SLUG, isCategoryVisible } from '../content/registry'
 import { ErrorPage } from '../components/ErrorPage'
-import { trackEvent } from '../lib/analytics'
+import { trackEvent, UMAMI_SCRIPT_ATTRIBUTES } from '../lib/analytics'
 import { categoryTreeQuery } from '../lib/api-v2-categories'
 import { COOKIE_MAX_AGE_SECONDS, resolveViewLevel } from '../lib/preview'
 import {
@@ -181,7 +182,7 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
               src: UMAMI_SRC,
               defer: true,
               'data-website-id': UMAMI_WEBSITE_ID,
-              'data-auto-track': 'false',
+              ...UMAMI_SCRIPT_ATTRIBUTES,
             },
           ]
         : []),
@@ -208,6 +209,16 @@ function RootDocument({ children }: { children: React.ReactNode }) {
 }
 
 function NotFoundPage() {
+  // Once per view: the ref survives StrictMode's second effect run. The event
+  // data holds the app only, never the path: it can hold text the visitor
+  // typed (#3513).
+  const tracked = useRef(false)
+  useEffect(() => {
+    if (tracked.current) return
+    tracked.current = true
+    trackEvent('page-not-found', { app: 'landing' })
+  }, [])
+
   return (
     <ErrorPage
       title="We couldn't find that page"
@@ -247,7 +258,7 @@ function ServerErrorPage() {
 
 function RootLayout() {
   const { level, serviceStatuses, categoryTree } = Route.useRouteContext()
-  // api_v2 mode (ADR 0078): listed only when the public tree lists it. An
+  // api_v2 mode (ADR 0132): listed only when the public tree lists it. An
   // unreadable tree hides it too, never falling back to the static category.
   const showAboutBarbados =
     categoryTree.kind === 'disabled'

@@ -87,6 +87,16 @@ describe('sitePath', () => {
     ['/a/b', '/a/b'],
     ['a/b', '/a/b'],
     ['//a', '/a'],
+    ['/', '/'],
+    ['/a?b=1#c', '/a?b=1#c'],
+    ['/%2F%2Fexample.test', '/%2F%2Fexample.test'],
+    ['/\\outside.test/page', '/'],
+    ['\\outside.test/page', '/'],
+    ['/\t/outside.test/page', '/'],
+    ['/a b', '/'],
+    ['/a\u0000b', '/'],
+    ['/a\u001fb', '/'],
+    ['/a\u007fb', '/'],
   ])('%s → %s', (url, path) => {
     expect(sitePath(url)).toBe(path)
   })

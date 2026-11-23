@@ -3,7 +3,7 @@ import { createHeadlessEditor } from "../../src/editor/core/create-editor";
 import { govbbFormEditor } from "../../src/presets/govbb-form";
 import { formSchemaToLexical } from "../../src/converters/form-schema-to-lexical";
 import { lexicalToFormSchema } from "../../src/converters/lexical-to-form-schema";
-import type { NativeRawNode } from "../../src/forms/editor/native-state";
+import type { NativeRawNode } from "../../src/forms/formats/native/native-state";
 
 const form = {
   schemaVersion: 2,

@@ -10,6 +10,7 @@ import {
   revisionQuery,
   serviceQuery,
   servicesQuery,
+  sitePagesQuery,
 } from "../api/queries";
 
 // Ahead of a screen, a service is only fetched from the content API when the services list or an earlier visit
@@ -45,6 +46,18 @@ export function primePage(client: QueryClient, api: EditorApi, serviceId: string
     : pageId === serviceId && inApi(client, api, serviceId);
 
   if (!page) return;
+  void client.prefetchQuery({ ...pageQuery(api, pageId), staleTime: PRELOAD_FRESH });
+  void client.prefetchQuery({ ...categoriesQuery(api), staleTime: PRELOAD_FRESH });
+}
+
+/** Starts loading the site pages before their list opens. */
+export function primeSitePages(client: QueryClient, api: EditorApi) {
+  void client.prefetchQuery({ ...sitePagesQuery(api), staleTime: PRELOAD_FRESH });
+}
+
+/** Opens a site page by its own id, without requiring a service or a cached list. */
+export function primeSitePage(client: QueryClient, api: EditorApi, pageId: string) {
+  void loadPageEditor();
   void client.prefetchQuery({ ...pageQuery(api, pageId), staleTime: PRELOAD_FRESH });
   void client.prefetchQuery({ ...categoriesQuery(api), staleTime: PRELOAD_FRESH });
 }

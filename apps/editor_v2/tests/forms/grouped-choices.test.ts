@@ -6,7 +6,7 @@ import {
   groupedChoices,
   moveItem,
   newGroup,
-} from "../../src/forms/features/checkbox-accordion/groups";
+} from "../../src/forms/fields/grouped-checkboxes-groups";
 
 test("option values allocate across categories and explicit collisions remain reviewable", () => {
   const groups = [newGroup(), newGroup()];

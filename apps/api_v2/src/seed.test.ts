@@ -9,8 +9,10 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { Database } from "./db";
 import { importEstate, seed } from "./seed";
 import { ESTATE, ESTATE_SOURCE } from "./seed-data";
-import { COLLECTIONS } from "./seed-data/collections";
+import { COLLECTIONS, PUBLIC_HOLIDAYS } from "./seed-data/collections";
+import { parseRecord } from "./modules/collection";
 import { Redacted } from "./modules/redacted";
+import { applyServiceStatuses } from "./modules/service-status";
 import { PREVIEW_TOKEN } from "./routes/site";
 import {
   createTestApp,
@@ -32,6 +34,29 @@ const SEEDED_EVENTS =
   SEEDED.records;
 
 describe("seed", () => {
+  it("seeds only records that fit their collection's fields", () => {
+    const refused = COLLECTIONS.flatMap((collection) =>
+      collection.records
+        .map((data) => ({
+          key: data[collection.record_key],
+          parsed: parseRecord(
+            collection,
+            String(data[collection.record_key]),
+            data,
+          ),
+        }))
+        .filter(({ parsed }) => !parsed.ok)
+        .map(({ key }) => `${collection.key}/${String(key)}`),
+    );
+    expect(refused).toEqual([]);
+  });
+
+  it("types public-holidays' date as a date (#3782)", () => {
+    expect(
+      PUBLIC_HOLIDAYS.schema.fields.find((field) => field.key === "date"),
+    ).toMatchObject({ type: "date" });
+  });
+
   it("names the snapshot by a hash of its content", () => {
     expect(ESTATE_SOURCE).toMatch(/^[0-9a-f]{40}$/);
   });
@@ -48,6 +73,30 @@ describe("seed", () => {
         )
         .map((page) => page.url),
     ).toEqual([]);
+  });
+
+  /** Landing renders these from its routes, so their body is empty. */
+  it.each([
+    ["/bank-holiday-calendar", "work-employment"],
+    [
+      "/health-and-emergency-services/find-an-emergency-shelter",
+      "health-and-emergency-services",
+    ],
+    [
+      "/health-and-emergency-services/water-outages",
+      "health-and-emergency-services",
+    ],
+  ])("files the feature route %s under %s", (url, category) => {
+    const page = ESTATE.pages.find((p) => p.url === url);
+    expect(page).toMatchObject({
+      category,
+      parent: null,
+      form_id: null,
+      visibility: "public",
+      content_slug: url.slice(1),
+      body_markdown: "",
+    });
+    expect(page?.frontmatter.keywords?.length).toBeGreaterThan(0);
   });
 
   it("loads every page and category, and a second run adds nothing", async () => {
@@ -137,7 +186,7 @@ describe("seed", () => {
     await close();
   }, 60_000);
 
-  it("serves a seeded subcategory page only in preview with its taxonomy", async ({
+  it("serves a seeded subcategory page only in preview with its taxonomy and publish date", async ({
     onTestFinished,
   }) => {
     const { db, close } = await createTestDb();
@@ -161,6 +210,27 @@ describe("seed", () => {
       category: "youth-and-community",
       subcategory: "arts-culture",
     });
+
+    // A preview page keeps its frontmatter date, so it shows the static
+    // page's "Last updated" and keeps that date when it goes public.
+    const preview = ESTATE.pages.filter(
+      (page) => page.visibility === "preview",
+    );
+    const dated = preview.find((page) => page.published_at)!;
+    const undated = preview.find((page) => !page.published_at)!;
+    const served = async (pageUrl: string) =>
+      (
+        await app.inject({
+          url: `/pages?url=${encodeURIComponent(pageUrl)}`,
+          headers: { [PREVIEW_TOKEN]: "preview" },
+        })
+      ).json();
+
+    expect(await served(dated.url)).toMatchObject({
+      published_at: dated.published_at,
+      content_updated_at: dated.published_at,
+    });
+    expect(await served(undated.url)).toMatchObject({ published_at: null });
   }, 60_000);
 
   it("files subcategories, sub-pages and the pages landing nests by hand", async () => {
@@ -271,6 +341,7 @@ describe("seed", () => {
       reason: null,
       existing: 0,
       actors: {},
+      revisions: 0,
       categories: ESTATE.categories.length,
       documents: ESTATE.pages.length,
       ...SEEDED,
@@ -305,6 +376,7 @@ describe("seed", () => {
       reason: null,
       existing: 0,
       actors: {},
+      revisions: 0,
       categories: ESTATE.categories.length,
       documents: ESTATE.pages.length,
       ...SEEDED,
@@ -347,6 +419,7 @@ describe("seed", () => {
       reason: "test replace",
       existing: ESTATE.pages.length,
       actors: { system: SEEDED_EVENTS },
+      revisions: 0,
       categories: ESTATE.categories.length,
       documents: ESTATE.pages.length,
       // Collections are not content an import replaces: editors' records stay.
@@ -401,6 +474,98 @@ describe("seed", () => {
     expect(report.categories).toBe(ESTATE.categories.length);
     expect(report.documents).toBe(ESTATE.pages.length);
     expect(await countOf(db, "categories")).toBe(ESTATE.categories.length);
+
+    await close();
+  }, 60_000);
+
+  it("import applies the environment's service_status", async () => {
+    const { db, close } = await createTestDb();
+    const keyOf = (page: (typeof ESTATE.pages)[number]) =>
+      page.form_id ?? page.content_slug;
+    // One page per key, so each status moves exactly one page.
+    const sole = (page: (typeof ESTATE.pages)[number]) =>
+      ESTATE.pages.filter((other) => keyOf(other) === keyOf(page)).length === 1;
+    const P = ESTATE.pages.find(
+      (page) =>
+        page.visibility === "public" &&
+        page.form_id &&
+        page.published_at &&
+        sole(page),
+    )!;
+    const Q = ESTATE.pages.find(
+      (page) =>
+        page.visibility === "preview" && !page.published_at && sole(page),
+    )!;
+    const R = ESTATE.pages.find(
+      (page) => page.visibility === "public" && page.form_id && page !== P,
+    )!;
+    const D = ESTATE.pages.find(
+      (page) => page.visibility === "draft" && sole(page),
+    )!;
+    const statuses = new Map([
+      [P.form_id!, "disabled"],
+      [keyOf(Q), "enabled"],
+      [R.form_id!, "form_disabled"],
+      [keyOf(D), "disabled"],
+      ["no-such-service", "disabled"],
+    ] as const);
+
+    const { pages, changes } = applyServiceStatuses(ESTATE.pages, statuses);
+    expect(changes).toEqual(
+      [
+        { url: P.url, from: "public", to: "preview" },
+        { url: Q.url, from: "preview", to: "public" },
+        { url: D.url, from: "draft", to: "preview" },
+      ].sort(
+        (a, b) =>
+          ESTATE.pages.findIndex((page) => page.url === a.url) -
+          ESTATE.pages.findIndex((page) => page.url === b.url),
+      ),
+    );
+
+    const report = await importEstate(db, {
+      dryRun: false,
+      estate: { ...ESTATE, pages },
+    });
+    expect(report.documents).toBe(ESTATE.pages.length);
+    const { rows } = await db.execute<{
+      url: string;
+      visibility: string;
+      published_at: string | null;
+    }>(
+      sql`select url, visibility, published_at from content_pages
+          where url in (${P.url}, ${Q.url}, ${R.url}, ${D.url})`,
+    );
+    const stored = new Map(rows.map((row) => [row.url, row]));
+    expect(stored.get(P.url)).toMatchObject({ visibility: "preview" });
+    // The frontmatter date stays (#3331).
+    expect(new Date(stored.get(P.url)!.published_at!).toISOString()).toBe(
+      P.published_at,
+    );
+    expect(stored.get(Q.url)!.visibility).toBe("public");
+    expect(stored.get(Q.url)!.published_at).not.toBeNull();
+    expect(stored.get(D.url)!.visibility).toBe("preview");
+    expect(stored.get(R.url)!.visibility).toBe(R.visibility);
+
+    await close();
+  }, 60_000);
+
+  it("reports pending revisions before a replace", async () => {
+    const { db, close } = await createTestDb();
+    expect((await importEstate(db, { dryRun: false })).revisions).toBe(0);
+    await db.execute(
+      sql`insert into page_revisions (page_id, fields, live_updated_at, created_by, contributors)
+          select id, '{}', now(), 'system', '{system}' from content_pages limit 1`,
+    );
+
+    await expect(importEstate(db, { dryRun: false })).rejects.toThrow(
+      "revisions: 1",
+    );
+    const report = await importEstate(db, {
+      dryRun: true,
+      force: "rehearsal",
+    });
+    expect(report.revisions).toBe(1);
 
     await close();
   }, 60_000);

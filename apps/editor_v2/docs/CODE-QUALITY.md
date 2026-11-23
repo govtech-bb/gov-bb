@@ -3,8 +3,8 @@
 Install dependencies with `pnpm install` from the monorepo root. Run the editor's checks from `apps/editor_v2`:
 
 ```sh
-pnpm lint
-pnpm typecheck
+pnpm test:oxlint
+pnpm test:types
 pnpm format:check
 pnpm test
 pnpm check:boundaries

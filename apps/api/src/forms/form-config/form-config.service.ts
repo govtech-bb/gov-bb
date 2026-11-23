@@ -133,7 +133,7 @@ export class FormConfigService {
    * A `config` blob that *fails* validation is misconfiguration, not a miss, so
    * `parseFormConfigBlob` is allowed to throw: silently dropping a payment
    * processor would turn a paid form free. Mirroring `resolveMdaEmail`, there is
-   * no try/catch, so a DB error propagates as an infra failure (ADR 0032).
+   * no try/catch, so a DB error propagates as an infra failure (ADR 0056).
    */
   async resolveProcessors(formId: string): Promise<Processor[]> {
     const config = await this.formConfigRepo.findOne({ where: { formId } });

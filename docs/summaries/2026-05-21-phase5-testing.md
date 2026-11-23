@@ -13,7 +13,7 @@ Work ran on the `test/increase-coverage` branch (created during the session by m
 - **`file-upload.spec.tsx`** — improved existing spec: scoped file-input lookup to `result.container.querySelector` (was `document.querySelector`, which would return wrong element in multi-render scenarios); tightened the max-size display regex from `/--/` to `/Max Size:.*--/i`.
 - **`review.spec.tsx`** — added display-value formatting tests (select/date/file/radio/checkbox/default) to existing spec; added file-with-names test; made date assertion locale-independent by deriving the expected string the same way the component does; added Change-link click test verifying `mockNavigate` is called.
 - **Threshold ratchets** — `apps/forms` (13/14/23/24), `apps/api` (62/72/80/81), `packages/form-types` statements 63, lines 65. `packages/form-conditions` had no room to ratchet (calculated actual−2 was below current thresholds).
-- **ADR 0003 updated** — Exemption 2 ("apps/forms functions deferred") closed out as a permanent exemption; see `docs/decisions/0003-90pct-coverage-target-and-exemptions.md`.
+- **ADR 0004 updated** — Exemption 2 ("apps/forms functions deferred") closed out as a permanent exemption; see `docs/decisions/0004-90pct-coverage-target-and-exemptions.md`.
 
 ## Why we did it that way
 
@@ -23,11 +23,11 @@ Work ran on the `test/increase-coverage` branch (created during the session by m
 
 **Locale-independent date assertion.** The `review.spec.tsx` date test originally hardcoded `"Jan 01 2026"`. `Date.toDateString()` is system-locale-dependent and produces different strings on non-English CI runners. Computing the expected string with the same chain the component uses (`toDateString().trim().replace(/^\w+\s/, "")`) makes the test environment-agnostic, at the cost of not catching bugs in the formatting logic itself — an acceptable trade-off given the switch branch is still exercised and a formatting change in the component would require updating both the component and the derivation.
 
-**forms functions threshold at structural floor.** Phase 3 measurements produced 16.72% functions for `apps/forms`. The gap is entirely `form-renderer.tsx` and `routes/forms/$formId/index.tsx`. Both require mocking TanStack Form, TanStack Router, and draft state simultaneously; the result would test mocks rather than components. The Playwright suite covers these paths with real user journeys. Adding unit tests here was rejected in favour of accepting the permanent exemption. See ADR 0003.
+**forms functions threshold at structural floor.** Phase 3 measurements produced 16.72% functions for `apps/forms`. The gap is entirely `form-renderer.tsx` and `routes/forms/$formId/index.tsx`. Both require mocking TanStack Form, TanStack Router, and draft state simultaneously; the result would test mocks rather than components. The Playwright suite covers these paths with real user journeys. Adding unit tests here was rejected in favour of accepting the permanent exemption. See ADR 0004.
 
 **api branches still at 64.89%.** The API branches threshold was ratcheted to 62 (actual−2), not raised to the plan's target of 88. The Phase 2 spec additions (metrics service, repository specs) didn't move the needle significantly on branches. Reaching 88% branches in `apps/api` would require inspecting the HTML coverage report and targeting the specific uncovered conditionals in `SubmissionsService`, `SpreadsheetProcessor`, and `RegistryService.hydrateForm` — deferred to a future session.
 
 ## Open questions
 
 - `apps/api` branches at 64.89% (target: 88%). Phase 2 specs exist but didn't close the gap. Next step: open the HTML coverage report, identify the top uncovered branch lines, write targeted tests.
-- `apps/forms` statements/lines/branches coverage is low overall (26.9%/15.4%/25.03%). This is structural: the forms app denominator includes many untested files (form-renderer, routes, stores). The numbers will improve if more leaf components get unit specs; improving the big components requires the E2E-or-unit scope decision already resolved in ADR 0003.
+- `apps/forms` statements/lines/branches coverage is low overall (26.9%/15.4%/25.03%). This is structural: the forms app denominator includes many untested files (form-renderer, routes, stores). The numbers will improve if more leaf components get unit specs; improving the big components requires the E2E-or-unit scope decision already resolved in ADR 0004.

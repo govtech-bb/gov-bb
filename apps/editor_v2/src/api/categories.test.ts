@@ -33,6 +33,7 @@ const category = (
     url: parent ? `${parent.url}/${slug}` : `/${slug}`,
     position,
     services,
+    version: 1,
     reserved_route: false,
     last_edited_by: null,
     updated_at: "2026-10-26T12:00:00.000Z",
@@ -118,7 +119,7 @@ describe("category rules", () => {
       parent_id: null,
       expected: ["education", "health", "youth"].map((sibling) => ({
         id: sibling,
-        updated_at: "2026-10-26T12:00:00.000Z",
+        version: 1,
       })),
       ordered_ids: ["health", "education", "youth"],
     });

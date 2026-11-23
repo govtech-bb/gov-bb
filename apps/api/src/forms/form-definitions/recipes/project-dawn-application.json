@@ -153,28 +153,6 @@
     },
     {
       "title": "Employment & Education",
-      "stepId": "employment-education",
-      "elements": [
-        {
-          "ref": "components/name",
-          "overrides": {
-            "hint": "Select your current employment status",
-            "label": "Employment Status",
-            "fieldId": "employment-status"
-          }
-        },
-        {
-          "ref": "components/name",
-          "overrides": {
-            "hint": "Select your current employment status",
-            "label": "Employment Status",
-            "fieldId": "employment-status-select"
-          }
-        }
-      ]
-    },
-    {
-      "title": "Employment & Education",
       "stepId": "employment-status",
       "elements": [
         {
@@ -247,7 +225,12 @@
                 "label": "Massage Therapy",
                 "value": "massage-therapy"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -260,7 +243,12 @@
                 "label": "Masonry",
                 "value": "masonry"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -273,7 +261,12 @@
                 "label": "Electrical Vehicles Maintenance Fundamentals",
                 "value": "electrical-vehicles-maintenance-fundamentals"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -286,7 +279,12 @@
                 "label": "Autobody Repairs 1",
                 "value": "autobody-repairs-1"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -299,7 +297,12 @@
                 "label": "Carpentry/Joinery",
                 "value": "carpentry-joinery"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -312,7 +315,12 @@
                 "label": "Motor Vehicle Engineering/Auto-mechanics",
                 "value": "motor-vehicle-engineering"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -325,7 +333,12 @@
                 "label": "Beauty Therapy",
                 "value": "beauty-therapy"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -338,7 +351,12 @@
                 "label": "Plumbing",
                 "value": "plumbing"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -351,7 +369,12 @@
                 "label": "Refrigeration & Air Conditioning",
                 "value": "refrigeration-ac"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -364,7 +387,12 @@
                 "label": "Facials & Makeup",
                 "value": "facials-makeup"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         }
       ]
@@ -383,7 +411,12 @@
                 "label": "Electrical Installation",
                 "value": "electrical-installation"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -396,7 +429,12 @@
                 "label": "Air Conditioning for Automotive Technicians",
                 "value": "ac-automotive"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -409,7 +447,12 @@
                 "label": "Nail Care Design 1",
                 "value": "nail-care-design-1"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -422,7 +465,12 @@
                 "label": "Small Business Training",
                 "value": "small-business-training"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -435,7 +483,12 @@
                 "label": "Photovoltaic Installation Level 1",
                 "value": "photovoltaic-installation-level-1"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -448,7 +501,12 @@
                 "label": "Landscaping & Gardening",
                 "value": "landscaping-gardening"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -461,7 +519,12 @@
                 "label": "Auxiliary Nursing",
                 "value": "auxiliary-nursing"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -474,7 +537,12 @@
                 "label": "Child Care & Nursery Management",
                 "value": "child-care-nursery-management"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -487,7 +555,12 @@
                 "label": "Customer Service",
                 "value": "customer-service"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -500,7 +573,12 @@
                 "label": "Cake & Pastry Making",
                 "value": "cake-pastry-making"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -513,7 +591,12 @@
                 "label": "Sound Technology for Events",
                 "value": "sound-technology-events"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -526,7 +609,12 @@
                 "label": "Computer Repairs & Servicing Technology 1",
                 "value": "computer-repairs-servicing-tech-1"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         }
       ]
@@ -545,7 +633,12 @@
                 "label": "Hair Braiding & Weaving",
                 "value": "hair-braiding-weaving"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -558,7 +651,12 @@
                 "label": "Welding",
                 "value": "welding"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -571,7 +669,12 @@
                 "label": "Bobcat Operation",
                 "value": "bobcat-operation"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -584,7 +687,12 @@
                 "label": "Nail Technology",
                 "value": "nail-technology"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -629,7 +737,12 @@
                 "label": "Tiling and Decorative Finishes",
                 "value": "tiling-decorative-finishes"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -642,7 +755,12 @@
                 "label": "Heavy Duty Truck Driving (Licence Required)",
                 "value": "heavy-duty-truck-driving"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -655,7 +773,12 @@
                 "label": "Barbering",
                 "value": "barbering"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -668,7 +791,12 @@
                 "label": "Excavator Operations (Licence Required)",
                 "value": "excavator-operations"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -681,7 +809,12 @@
                 "label": "Backhoe Operations (Licence Required)",
                 "value": "backhoe-operations"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         }
       ]
@@ -700,7 +833,12 @@
                 "label": "Professional Housekeeping",
                 "value": "professional-housekeeping"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -713,7 +851,12 @@
                 "label": "Basic Trade Cookery",
                 "value": "basic-trade-cookery"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -726,7 +869,12 @@
                 "label": "Hotel Reception & Sales Procedures",
                 "value": "hotel-reception-sales"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -739,7 +887,12 @@
                 "label": "Food & Beverage Services",
                 "value": "food-beverage-services"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -752,7 +905,12 @@
                 "label": "Bar Operations (age 18+)",
                 "value": "bar-operations"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -765,7 +923,12 @@
                 "label": "Baking Technology",
                 "value": "baking-technology"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -778,7 +941,12 @@
                 "label": "International Cuisine",
                 "value": "international-cuisine"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -791,7 +959,12 @@
                 "label": "Homemakers",
                 "value": "homemakers"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         }
       ]
@@ -811,7 +984,12 @@
                 "label": "Asthma",
                 "value": "asthma"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -824,7 +1002,12 @@
                 "label": "Epilepsy",
                 "value": "epilepsy"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -837,7 +1020,12 @@
                 "label": "Diabetes",
                 "value": "diabetes"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -850,7 +1038,12 @@
                 "label": "Allergies",
                 "value": "allergies"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -863,7 +1056,12 @@
                 "label": "Hypertension",
                 "value": "hypertension"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -876,7 +1074,12 @@
                 "label": "Physical Disability",
                 "value": "physical-disability"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -889,7 +1092,12 @@
                 "label": "Learning Disability",
                 "value": "learning-disability"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -902,7 +1110,12 @@
                 "label": "Behavioural Challenge",
                 "value": "behavioural-challenge"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -915,7 +1128,12 @@
                 "label": "Mental Health Challenge",
                 "value": "mental-health-challenge"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -928,7 +1146,12 @@
                 "label": "None",
                 "value": "none"
               }
-            ]
+            ],
+            "validations": {
+              "required": {
+                "value": false
+              }
+            }
           }
         },
         {
@@ -1075,7 +1298,7 @@
   "title": "Project Dawn – Block Transformation Unit Application",
   "formId": "project-dawn-application",
   "createdAt": "2026-01-01T00:00:00Z",
-  "updatedAt": "2026-10-21T16:52:59.000Z",
+  "updatedAt": "2026-11-16T10:40:13.993Z",
   "processors": [
     {
       "type": "email",

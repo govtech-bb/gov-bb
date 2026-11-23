@@ -1,5 +1,5 @@
 # Local-dev stack for the gov-bb monorepo. One command brings up postgres,
-# api, landing, forms, and chat; the api waits for postgres to be healthy
+# api, landing, forms, and form_builder; the api waits for postgres to be healthy
 # before starting, runs migrations on boot, and optionally seeds an example
 # FormDefinition (controlled by SEED_ON_BOOT in .env).
 #
@@ -14,7 +14,7 @@
 # ./packages tree from the host, so a host edit triggers a rebuild inside
 # the container. The api uses the `dev` target in apps/api/Dockerfile
 # (nx dev api → tsc --watch + node restart, the same watcher `pnpm dev:api`
-# runs on the host); landing/forms/chat/form_builder run vite dev directly.
+# runs on the host); landing/forms/form_builder run vite dev directly.
 # Each service uses an anonymous volume at its node_modules path so the
 # host's (possibly absent or mismatched-arch) node_modules can't shadow
 # the image's. Those volumes are snapshots of the image at container
@@ -26,12 +26,6 @@
 # credentials and dev auth bypasses, so it must not be reachable from the
 # LAN. Need a phone on the same network to reach it? Override the port in a
 # docker-compose.override.yml rather than here.
-#
-# Postgres uses the pgvector/pgvector:pg16 image (a drop-in superset of
-# postgres:16) so the `vector` extension is available for the chat app's
-# RAG pipeline. scripts/postgres-init.sql creates the `chat` database and
-# enables the extension; the api's `modular_forms` database is created by
-# POSTGRES_DB and uses no extensions.
 
 name: gov-bb
 
@@ -56,7 +50,6 @@ services:
       - "127.0.0.1:${DB_PORT:-5432}:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
-      - ./scripts/postgres-init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     healthcheck:
       test:
         [
@@ -178,48 +171,6 @@ services:
       - ./packages:/app/packages
       - /app/apps/forms/node_modules
 
-  chat:
-    build:
-      context: .
-      dockerfile: apps/chat/Dockerfile
-    restart: unless-stopped
-    depends_on:
-      postgres:
-        condition: service_healthy
-    environment:
-      # Postgres `chat` database is created by scripts/postgres-init.sql with
-      # the pgvector extension already enabled.
-      DATABASE_URL: postgres://${DB_USERNAME:-postgres}:${DB_PASSWORD:-postgres}@postgres:5432/chat
-      # The chat server calls its own /api/retrieve over HTTP — keep that loop
-      # inside the container.
-      RAG_URL: http://localhost:3000/api
-      # Anthropic (required for the LLM turn).
-      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
-      LLM_MODEL: ${LLM_MODEL:-claude-haiku-4-5}
-      # AWS Bedrock (required for Titan embeddings, used by retrieve + ingest).
-      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
-      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
-      AWS_SESSION_TOKEN: ${AWS_SESSION_TOKEN:-}
-      AWS_REGION: ${AWS_REGION:-ca-central-1}
-      BEDROCK_REGION: ${BEDROCK_REGION:-}
-      BEDROCK_EMBED_MODEL: ${BEDROCK_EMBED_MODEL:-amazon.titan-embed-text-v2:0}
-    ports:
-      - "127.0.0.1:${CHAT_PORT:-3002}:3000"
-    volumes:
-      - ./apps/chat/src:/app/apps/chat/src
-      - ./apps/chat/public:/app/apps/chat/public
-      - ./packages:/app/packages
-      - /app/apps/chat/node_modules
-    healthcheck:
-      # 127.0.0.1, not localhost: busybox wget tries ::1 first and vite binds
-      # IPv4 only, so a localhost probe is refused forever.
-      test:
-        ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:3000/api/health"]
-      interval: 10s
-      timeout: 5s
-      retries: 6
-      start_period: 40s
-
   form_builder:
     build:
       context: .
@@ -245,7 +196,7 @@ services:
       # Leaving it empty is the supported path, not a broken one. Unset,
       # getSessionSecret() throws, and require-session.ts catches that to
       # synthesise a {login: "dev"} session — the sanctioned dev bypass from
-      # ADR 0061 ("no secret + non-prod → passthrough"). So `docker compose up`
+      # ADR 0106 ("no secret + non-prod → passthrough"). So `docker compose up`
       # with no .env still boots and /builder still works.
       #
       # Set it in .env (`openssl rand -base64 32`) to exercise the real
@@ -264,8 +215,7 @@ services:
       # default lets the app boot; the login round-trip throws until it's set.
       GITHUB_ORG: ${GITHUB_ORG:-govtech-bb}
       GITHUB_TEAM_SLUG: ${GITHUB_TEAM_SLUG:-}
-      # AI-assisted authoring (form_builder uses AI_PROVIDER/AI_MODEL, not the
-      # chat app's LLM_MODEL).
+      # AI-assisted authoring.
       AI_PROVIDER: ${AI_PROVIDER:-anthropic}
       AI_MODEL: ${AI_MODEL:-claude-sonnet-4-20250514}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}

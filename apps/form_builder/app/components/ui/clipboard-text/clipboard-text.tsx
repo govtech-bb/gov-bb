@@ -269,7 +269,7 @@ export const ClipboardText = forwardRef<HTMLDivElement, ClipboardTextProps>(
               side={tooltipSide}
               render={copyButton}
               disabled={copied}
-              onOpenChange={(open, eventDetails) => {
+              onOpenChange={(_open, eventDetails) => {
                 // Prevent tooltip from closing when button is clicked
                 if (eventDetails.reason === "trigger-press") {
                   eventDetails.cancel();

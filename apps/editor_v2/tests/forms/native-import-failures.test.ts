@@ -7,7 +7,7 @@ import { formSchemaToLexical } from "../../src/converters/form-schema-to-lexical
 import { lexicalToFormSchema } from "../../src/converters/lexical-to-form-schema";
 import { defineFormEditor } from "../../src/forms/definition";
 import type { FormModule } from "../../src/forms/field";
-import type { AnyFormDefinition } from "../../src/forms/schema";
+import type { AnyFormDefinition } from "../../src/forms/formats/native/schema";
 import type { NativeFieldExportContext } from "../../src/forms/native";
 import { govbbFormEditor, govbbFormModules } from "../../src/presets/govbb-form";
 

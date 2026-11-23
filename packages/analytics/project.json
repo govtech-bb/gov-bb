@@ -6,28 +6,11 @@
   "targets": {
     "build": {
       "executor": "@nx/js:tsc",
-      "outputs": [
-        "{options.outputPath}"
-      ],
+      "outputs": ["{options.outputPath}"],
       "options": {
         "outputPath": "packages/analytics/dist",
         "tsConfig": "packages/analytics/tsconfig.json",
         "main": "packages/analytics/src/index.ts"
-      }
-    },
-    "test": {
-      "executor": "nx:run-commands",
-      "options": {
-        "command": "vitest run",
-        "cwd": "packages/analytics"
-      }
-    },
-    "lint": {
-      "executor": "@nx/eslint:lint",
-      "options": {
-        "lintFilePatterns": [
-          "packages/analytics/**/*.ts"
-        ]
       }
     }
   },

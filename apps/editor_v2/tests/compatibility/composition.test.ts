@@ -1,4 +1,4 @@
-import { paragraphContent } from "../../src/forms/editor/content-adapters";
+import { paragraphContent } from "../../src/forms/content/paragraphs";
 import { expect, test } from "vitest";
 import {
   $createParagraphNode,
@@ -18,7 +18,7 @@ import type { EditorModule } from "../../src/editor/core/module";
 import { TextModule } from "../../src/editor/modules/text/module";
 import { HistoryModule } from "../../src/editor/modules/history/module";
 import { govbbFormEditor as legacyFormDefinition } from "../../src/presets/govbb-form";
-import { createFormRuntime } from "../../src/forms/editor/runtime";
+import { createFormRuntime } from "../../src/forms/canvas/form-runtime";
 import { defineFormEditor } from "../../src/forms/definition";
 import { createFormDraftCodec, initialDraft, SourceError } from "../helpers/default-form";
 

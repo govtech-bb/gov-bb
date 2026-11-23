@@ -1,5 +1,48 @@
 import { expect, it } from "vitest";
-import { isSafeContentUrl } from "@govtech-bb/govbbmarkd/content-url";
+import {
+  isSafeContentUrl,
+  isSitePath,
+} from "@govtech-bb/govbbmarkd/content-url";
+
+it.each([
+  "/",
+  "/services/apply",
+  "/a?b=1#c",
+  "/%2F%2Foutside.test",
+  "/a%20b",
+  "/café",
+])("accepts a same-site navigation path %j", (path) => {
+  expect(isSitePath(path)).toBe(true);
+  expect(new URL(path, "https://site.test").origin).toBe("https://site.test");
+});
+
+it.each([
+  "",
+  "services/apply",
+  "#apply",
+  "https://site.test/page",
+  "https://outside.test/page",
+  "//outside.test/page",
+  "/\\outside.test/page",
+  "\\outside.test/page",
+  "/a\\b",
+  " /page",
+  "/page ",
+  "/a b",
+  "/a\u00a0b",
+])("rejects an unsafe site path %j", (path) => {
+  expect(isSitePath(path)).toBe(false);
+});
+
+it.each([...Array.from({ length: 32 }, (_, code) => code), 127])(
+  "rejects control character %i at every position",
+  (code) => {
+    const control = String.fromCharCode(code);
+    expect(isSitePath(`${control}/page`)).toBe(false);
+    expect(isSitePath(`/a${control}b`)).toBe(false);
+    expect(isSitePath(`/page${control}`)).toBe(false);
+  },
+);
 
 it.each([
   "/services/start",

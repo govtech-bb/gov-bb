@@ -4,7 +4,7 @@ import {
   validateFormDefinition,
   type AnyFormDefinition,
   type NativeSchemaCapabilities,
-} from "../../src/forms/schema";
+} from "../../src/forms/formats/native/schema";
 
 const form: AnyFormDefinition = {
   schemaVersion: 2,

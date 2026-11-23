@@ -3,6 +3,7 @@ import type { EditorDefinition } from "./definition";
 
 const definitions = new WeakMap<LexicalEditor, EditorDefinition>();
 
+/** The definition installed in an editor, or undefined if there is none; editorDefinition throws instead. */
 export const installedEditorDefinition = (editor: LexicalEditor) => definitions.get(editor);
 
 /** Imperative node/command callbacks resolve the same configuration as React. */

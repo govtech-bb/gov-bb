@@ -5,7 +5,7 @@ import { formSchemaToLexical } from "../../src/converters/form-schema-to-lexical
 import { lexicalToFormSchema } from "../../src/converters/lexical-to-form-schema";
 import { lexicalToFormMarkdown } from "../../src/converters/lexical-to-form-markdown";
 import { formMarkdownToLexical } from "../../src/converters/form-markdown-to-lexical";
-import type { AnyFormDefinition, QuestionBase } from "../../src/forms/schema";
+import type { AnyFormDefinition, QuestionBase } from "../../src/forms/formats/native/schema";
 
 export function nativeRegistryEditor() {
   const imported = formSchemaToLexical(

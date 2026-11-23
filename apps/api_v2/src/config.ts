@@ -2,6 +2,12 @@ import { z } from "zod";
 import { Redacted } from "./modules/redacted";
 import { err, ok, type Result } from "./modules/result";
 
+/** A user's old email and the Workspace address they sign in with now. */
+export interface EmailMove {
+  readonly from: string;
+  readonly to: string;
+}
+
 /** Explicit database settings, unwrapped only by the Postgres adapter. */
 export interface DatabaseConfig {
   readonly host: string;
@@ -16,10 +22,17 @@ export interface DatabaseConfig {
 /** Auth configuration shared only with the auth adapter and HTTP root. */
 export interface AuthConfig {
   readonly apiOrigin: string;
+  /**
+   * Where the API is mounted on its origin: "" at the root, or a path such as
+   * "/v2" when it shares a host with another API (#3745). No trailing slash.
+   */
+  readonly apiBasePath: string;
   readonly editorOrigin: string;
   readonly secret: Redacted<string>;
-  readonly githubClientId: string;
-  readonly githubClientSecret: Redacted<string>;
+  readonly googleClientId: string;
+  readonly googleClientSecret: Redacted<string>;
+  /** Workspace domains, lowercased, whose verified accounts may sign in. */
+  readonly allowedDomains: readonly string[];
 }
 
 /**
@@ -46,6 +59,8 @@ export interface AppConfig {
   readonly auth: AuthConfig;
   /** Emails, lowercased, granted the admin role whenever they sign in. */
   readonly adminEmails: readonly string[];
+  /** GitHub-era users to move to their Workspace address on boot (#3418). */
+  readonly emailMoves: readonly EmailMove[];
   /**
    * Local development only: skip sign-in and run every editor request as a
    * fixed developer. Refused in production and unless the editor is local.
@@ -86,6 +101,29 @@ const origin = z
     );
   })
   .transform((value) => new URL(value).origin);
+/**
+ * An origin that may carry a base path (#3745): letters, digits, `-` and `_`
+ * in each segment, so nothing a URL parser would rewrite (`..`, `%2F`, `//`).
+ */
+const baseUrl = z
+  .url()
+  .refine((value) => {
+    if (!URL.canParse(value)) return false;
+    const url = new URL(value);
+    return (
+      ["http:", "https:"].includes(url.protocol) &&
+      /^(\/[\w-]+)*\/?$/.test(url.pathname) &&
+      !/\/\.\.?(\/|$)/.test(value) &&
+      !url.username &&
+      !url.password &&
+      !url.search &&
+      !url.hash
+    );
+  })
+  .transform((value) => {
+    const url = new URL(value);
+    return { origin: url.origin, basePath: url.pathname.replace(/\/$/, "") };
+  });
 const environment = z
   .object({
     NODE_ENV: z.string().optional(),
@@ -98,15 +136,35 @@ const environment = z
     DB_PASSWORD: z.string().default("postgres"),
     DB_NAME: z.string().default("gov_bb_v2"),
     DB_SSL_CA: z.string().optional(),
-    BETTER_AUTH_URL: origin,
+    BETTER_AUTH_URL: baseUrl,
     EDITOR_ORIGIN: origin,
     BETTER_AUTH_SECRET: z.string().min(32),
-    GITHUB_CLIENT_ID: z.string().min(1),
-    GITHUB_CLIENT_SECRET: z.string().min(1),
+    GOOGLE_CLIENT_ID: z.string().min(1),
+    GOOGLE_CLIENT_SECRET: z.string().min(1),
+    // Comma-separated Workspace domains whose accounts may sign in.
+    GOOGLE_ALLOWED_DOMAINS: z
+      .string()
+      .transform((value) =>
+        value
+          .split(",")
+          .map((domain) => domain.trim().toLowerCase())
+          .filter(Boolean),
+      )
+      .pipe(
+        z
+          .array(
+            z
+              .string()
+              .regex(
+                /^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/,
+              ),
+          )
+          .min(1),
+      ),
     AUTH_BYPASS: z.enum(["true", "false"]).optional(),
     PREVIEW_SECRET: z.string().min(1).optional(),
     LANDING_SECRET: z.string().min(1).optional(),
-    // Comma-separated; how an environment always has an admin (ADR 0079).
+    // Comma-separated; how an environment always has an admin (ADR 0134).
     API_V2_ADMIN_EMAILS: z
       .string()
       .default("")
@@ -117,6 +175,24 @@ const environment = z
           .filter(Boolean),
       )
       .pipe(z.array(z.email())),
+    // Comma-separated old=new pairs: a GitHub-era user's email and their
+    // Workspace address. Applied on every boot; remove once everyone has moved.
+    API_V2_EMAIL_MOVES: z
+      .string()
+      .default("")
+      .transform((value) =>
+        value
+          .split(",")
+          .map((pair) => pair.trim().toLowerCase())
+          .filter(Boolean)
+          .map((pair) => pair.split("=").map((email) => email.trim())),
+      )
+      // Exactly one "=" per pair, so a pasted typo is refused, not trimmed.
+      .pipe(
+        z
+          .array(z.tuple([z.email(), z.email()]))
+          .transform((pairs) => pairs.map(([from, to]) => ({ from, to }))),
+      ),
     // Off by default: an environment turns review emails on (#3267).
     REVIEW_NOTIFICATIONS: z.enum(["off", "log", "ses"]).default("off"),
     // The same sender settings as apps/api's SES mailer.
@@ -131,7 +207,7 @@ const environment = z
         code: "custom",
         path: ["API_V2_ADMIN_EMAILS"],
         message:
-          "Set API_V2_ADMIN_EMAILS to at least one admin's email: without an admin nobody can grant the approver role (ADR 0079)",
+          "Set API_V2_ADMIN_EMAILS to at least one admin's email: without an admin nobody can grant the approver role (ADR 0134)",
       });
     // A bypassed API admits any caller, so it is only for an editor on this machine.
     if (
@@ -170,15 +246,44 @@ const environment = z
         message:
           "Production sends review emails with SES or not at all: set REVIEW_NOTIFICATIONS to ses or off",
       });
-    for (const field of ["BETTER_AUTH_URL", "EDITOR_ORIGIN"] as const) {
-      if (!value[field].startsWith("https://"))
+    for (const [field, url] of [
+      ["BETTER_AUTH_URL", value.BETTER_AUTH_URL.origin],
+      ["EDITOR_ORIGIN", value.EDITOR_ORIGIN],
+    ] as const) {
+      if (!url.startsWith("https://"))
         context.addIssue({
           code: "custom",
           path: [field],
           message: "Production origins require HTTPS",
         });
     }
-  });
+  })
+  .superRefine(
+    (value, context) => {
+      // The messages name no address: they reach the boot log.
+      for (const { from, to } of value.API_V2_EMAIL_MOVES) {
+        // Both sides would find the same user, and the move would delete it.
+        if (from === to)
+          context.addIssue({
+            code: "custom",
+            path: ["API_V2_EMAIL_MOVES"],
+            message:
+              "Each API_V2_EMAIL_MOVES pair needs two different addresses",
+          });
+        // A move to an address Google won't admit would strand the user.
+        if (
+          !value.GOOGLE_ALLOWED_DOMAINS.includes(to.slice(to.indexOf("@") + 1))
+        )
+          context.addIssue({
+            code: "custom",
+            path: ["API_V2_EMAIL_MOVES"],
+            message: "Move users only to an address on GOOGLE_ALLOWED_DOMAINS",
+          });
+      }
+    },
+    // Only once every pair parsed: a malformed one has no addresses to check.
+    { when: (payload) => payload.issues.length === 0 },
+  );
 
 /** Parse the root's environment once and retain only typed, redacted settings. */
 export function parseConfig(
@@ -215,13 +320,16 @@ export function parseConfig(
       ...(env.DB_SSL_CA ? { ca: env.DB_SSL_CA } : {}),
     },
     auth: {
-      apiOrigin: env.BETTER_AUTH_URL,
+      apiOrigin: env.BETTER_AUTH_URL.origin,
+      apiBasePath: env.BETTER_AUTH_URL.basePath,
       editorOrigin: env.EDITOR_ORIGIN,
       secret: new Redacted(env.BETTER_AUTH_SECRET),
-      githubClientId: env.GITHUB_CLIENT_ID,
-      githubClientSecret: new Redacted(env.GITHUB_CLIENT_SECRET),
+      googleClientId: env.GOOGLE_CLIENT_ID,
+      googleClientSecret: new Redacted(env.GOOGLE_CLIENT_SECRET),
+      allowedDomains: env.GOOGLE_ALLOWED_DOMAINS,
     },
     adminEmails: env.API_V2_ADMIN_EMAILS,
+    emailMoves: env.API_V2_EMAIL_MOVES,
     authBypass: env.AUTH_BYPASS === "true",
     // The refinement above refuses ses without a sender.
     notifications:

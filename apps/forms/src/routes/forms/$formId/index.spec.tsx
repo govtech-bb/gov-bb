@@ -84,6 +84,7 @@ vi.mock("../../../lib/submit-duration", () => ({
 
 vi.mock("../../../lib/form-category", () => ({
   formCategory: vi.fn(() => "test-category"),
+  rememberFormCategory: vi.fn(),
 }));
 
 // Keep the real module's error classes: RouteComponent branches on
@@ -113,6 +114,7 @@ import {
   storeSubmissionState,
 } from "../../../lib/session-storage";
 import { trackEvent } from "../../../lib/analytics";
+import { rememberFormCategory } from "../../../lib/form-category";
 import { LANDING_URL } from "../../../config/landing";
 
 const mockUseForm = useForm as Mock;
@@ -524,6 +526,22 @@ describe("Route.loader", () => {
     } as any);
     expect(mockQueryClient.ensureQueryData).toHaveBeenCalledTimes(2);
     expect(result).toBe(mockFormMeta);
+  });
+
+  it("remembers the category the contract carries, for analytics events (#3250)", async () => {
+    const contract = { formId: "test-form", category: "education" };
+    const mockQueryClient = {
+      ensureQueryData: vi
+        .fn()
+        .mockResolvedValueOnce(contract)
+        .mockResolvedValueOnce(mockFormMeta),
+    };
+    await Route.loader({
+      params: { formId: "test-form" },
+      context: { queryClient: mockQueryClient },
+      deps: { preview: undefined, draft: undefined },
+    } as any);
+    expect(rememberFormCategory).toHaveBeenCalledWith("test-form", "education");
   });
 
   it("passes formId and undefined preview/draft to contractQueryOptions on first call", async () => {

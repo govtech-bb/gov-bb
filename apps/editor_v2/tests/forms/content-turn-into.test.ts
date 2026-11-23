@@ -1,9 +1,9 @@
 import { expect, test } from "vitest";
 import { $createParagraphNode, $createTextNode, $getRoot } from "lexical";
-import { createHeadlessEditor } from "../../src/editor";
+import { createHeadlessEditor } from "@/editor";
 import { defineFormEditor } from "../../src/forms";
 import { govbbFormModules } from "../../src/presets/govbb-form";
-import { $turnInto, $turnIntoGroups } from "../../src/forms/editor/nodes";
+import { $turnInto, $turnIntoGroups } from "../../src/forms/canvas/form-nodes";
 
 test("Turn into preserves content order and cannot construct removed content modules", () => {
   const full = createHeadlessEditor(defineFormEditor({ modules: govbbFormModules }));

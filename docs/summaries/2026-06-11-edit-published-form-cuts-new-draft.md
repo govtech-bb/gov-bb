@@ -5,7 +5,7 @@
 A user reported that updating the published **project-protégé-mentor** form in
 the builder failed with "Cannot update a published recipe", wouldn't let them
 change the version, and left the stored version at `1.0.0` even though the editor
-showed `1.0.1`. Diagnosed as a consequence of ADR 0046 (#329): Save Changes now
+showed `1.0.1`. Diagnosed as a consequence of ADR 0081 (#329): Save Changes now
 *overwrites in place at the loaded version* (version field read-only), which is
 correct for drafts but impossible for a published version — the API forbids
 mutating a published row. So a published form had no working Save-draft path at
@@ -31,7 +31,7 @@ all. Resolved on `worktree-form-builder-published-edit-autobump` (targets
 - Tests: published-version edit → POST at bumped version; draft-over-published →
   still in-place PUT; `listForms` `publishedVersion` projection; Deploy-path
   upsert preserves `publishedVersion`; both SubmitModal hint branches.
-- Amended ADR 0046 with the published-version exception.
+- Amended ADR 0081 with the published-version exception.
 
 ## Why we did it that way
 

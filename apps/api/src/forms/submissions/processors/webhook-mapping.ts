@@ -169,6 +169,70 @@ export function programmeCodeFromProcessors(
   return undefined;
 }
 
+/**
+ * Programme codes reserved for end-to-end test services (#3533). A code with
+ * this prefix must be registered on the CaMS side as an `isTest` programme, so a
+ * submission mapped to it creates a REMOVABLE test case, never a real one. No
+ * real MDA programme code uses the prefix (the convention already exists —
+ * `E2E_PUBLISH_CHECK`), so the classifier cannot match a live programme.
+ *
+ * This is the single source of truth for "is this a test programme code",
+ * consumed by the smoke-submission webhook exception (see
+ * `smokeAllowedProcessors`).
+ */
+export const TEST_PROGRAMME_CODE_PREFIX = "E2E_";
+
+/** Whether `code` is a reserved test programme code (#3533). */
+export function isTestProgrammeCode(code: string | undefined): boolean {
+  return (
+    typeof code === "string" && code.startsWith(TEST_PROGRAMME_CODE_PREFIX)
+  );
+}
+
+/**
+ * The processors a SMOKE submission is allowed to run (#3533, amends ADR 0087).
+ * A smoke submission still produces zero real side-effects — EXCEPT a mapped
+ * (CaMS) webhook whose effective programme code is a reserved test code
+ * ({@link isTestProgrammeCode}), so E2E J4 (#3011) can follow a submission into
+ * a CaMS test programme. Everything else — email, payment, and any webhook on a
+ * real programme — is still dropped. A smoke submission can therefore never
+ * create a real case, email a citizen, or open a payment.
+ *
+ * Classify the code the webhook actually SENDS, not just the static mapping:
+ * when catchment routing resolves, `WebhookProcessor` sends
+ * `programmeCodeOverride` (the catchment-composed code) for every mapped webhook
+ * (see webhook.processor.ts), so pass it here. A real base code composes to a
+ * real code → not test → dropped. A webhook with no `mapping` is a generic POST,
+ * not CaMS, and is always dropped.
+ */
+export function smokeAllowedProcessors<
+  T extends { type: string; config?: unknown },
+>(processors: readonly T[], programmeCodeOverride?: string): T[] {
+  return processors.filter((processor) => {
+    if (processor.type !== "webhook") return false;
+    const mapping = (processor.config as { mapping?: unknown } | undefined)
+      ?.mapping as { programmeCode?: string } | undefined;
+    if (!mapping) return false;
+    return isTestProgrammeCode(programmeCodeOverride ?? mapping.programmeCode);
+  });
+}
+
+/**
+ * Whether a form's submissions go to CaMS, so the application tracker can find
+ * their reference: the recipe has a webhook processor with a `mapping` (a
+ * mapped case payload), not a generic POST (#3046). The confirmation email's
+ * tracker link and the chat's status lookup (#3419) both key off this.
+ */
+export function sendsToCams(
+  processors: readonly { type: string; config?: unknown }[],
+): boolean {
+  return processors.some(
+    (p) =>
+      p.type === "webhook" &&
+      Boolean((p.config as { mapping?: unknown } | undefined)?.mapping),
+  );
+}
+
 export interface MappedCasePayload {
   code: string;
   programme_code: string;
@@ -185,7 +249,7 @@ export interface MappedCasePayload {
   /** The form whose contract produced `sections` — the payload never named the
    * form before (#2587).
    *
-   * No `form_version` companion: recipe versioning was retired by ADR 0057
+   * No `form_version` companion: recipe versioning was retired by ADR 0097
    * (#1196), so the served contract carries no version at all and the field
    * would be permanently absent. */
   form_id?: string;

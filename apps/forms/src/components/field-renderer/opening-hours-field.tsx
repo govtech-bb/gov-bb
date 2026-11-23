@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import { Button, Checkbox, Fieldset, Hint, Input } from "@govtech-bb/react";
 import ErrorMessage from "../error-message";
-import { FieldRenderContext } from "./render-context";
+import type { FieldRenderContext } from "./render-context";
 
 /** Week rows, Monday first — matching how opening hours are usually read. */
 export const OPENING_HOURS_DAYS = [

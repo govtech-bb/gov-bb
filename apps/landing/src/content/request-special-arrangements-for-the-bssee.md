@@ -25,7 +25,7 @@ The decision is at the Ministry’s discretion.
 
 You can complete the online form. It takes about 10 minutes.
 
-<a data-start-link href="/education/request-special-arrangements-for-the-bssee/start">Start now</a>
+<a data-start-link>Start now</a>
 
 ## What the form asks for
 

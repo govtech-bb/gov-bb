@@ -1,15 +1,3 @@
-/**
- * "When migrations are pushed, then the resulting tables match the schema
- * column for column" — #2700.
- *
- * The DDL and the Drizzle definition are two spellings of one schema, and
- * nothing in TypeScript connects them: add a column to `schema.ts` and forget
- * the migration and every query still compiles, then fails at runtime with a
- * 42703 that names a column the code is certain exists. So the migration runs
- * against a real Postgres and the result is compared to the Drizzle tables by
- * reading `information_schema`, rather than by reading both files carefully.
- */
-
 import { getTableColumns } from "drizzle-orm";
 import { sql } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
@@ -20,9 +8,11 @@ import {
   authVerification,
   categories,
   changeEvents,
+  changeEventCounters,
   collectionRecords,
   contentPages,
   dataCollections,
+  pageRedirects,
   pageRevisions,
   searchChunks,
   userRoles,
@@ -56,8 +46,10 @@ const TABLES = {
   categories,
   content_pages: contentPages,
   change_events: changeEvents,
+  change_event_counters: changeEventCounters,
   search_chunks: searchChunks,
   user_roles: userRoles,
+  page_redirects: pageRedirects,
   page_revisions: pageRevisions,
   data_collections: dataCollections,
   collection_records: collectionRecords,
@@ -95,9 +87,8 @@ describe("the Drizzle schema and the migration", () => {
     const timestamps = (await rowsOf(db)).filter(
       (row) =>
         row.data_type === "timestamp with time zone" &&
-        // `schema_migrations` is the runner's own bookkeeping, and
-        // BetterAuth's tables are BetterAuth's; neither crosses the wire in
-        // a concurrency check, so their precision does not matter.
+        // BetterAuth's tables are BetterAuth's; they never cross the wire
+        // in a concurrency check, so their precision does not matter.
         row.table_name in TABLES &&
         !row.table_name.startsWith("auth_"),
     );
@@ -253,6 +244,75 @@ describe("the page hierarchy", () => {
 
     expect(refused).toMatch(/foreign key/);
     await close();
+  });
+});
+
+describe("page redirects", () => {
+  it("enforces unique sources and no self-redirects, with no page foreign key", async () => {
+    const { db, pool, close } = await createTestDb();
+    try {
+      const { rows: columns } = await pool.query(`select column_name, data_type,
+          character_maximum_length, is_nullable
+        from information_schema.columns
+        where table_name = 'page_redirects' order by column_name`);
+      expect(columns).toEqual([
+        {
+          column_name: "destination_url",
+          data_type: "character varying",
+          character_maximum_length: 512,
+          is_nullable: "NO",
+        },
+        {
+          column_name: "id",
+          data_type: "uuid",
+          character_maximum_length: null,
+          is_nullable: "NO",
+        },
+        {
+          column_name: "source_url",
+          data_type: "character varying",
+          character_maximum_length: 512,
+          is_nullable: "NO",
+        },
+      ]);
+
+      await db.insert(pageRedirects).values({
+        sourceUrl: "/old",
+        destinationUrl: "/missing",
+      });
+      await expect(
+        pool.query(`insert into page_redirects (source_url, destination_url)
+          values ('/old', '/other')`),
+      ).rejects.toMatchObject({
+        code: "23505",
+        constraint: "page_redirects_source_url_unique",
+      });
+      await expect(
+        pool.query(`insert into page_redirects (source_url, destination_url)
+          values ('/self', '/self')`),
+      ).rejects.toMatchObject({
+        code: "23514",
+        constraint: "page_redirects_not_self",
+      });
+      expect(
+        (
+          await pool.query(`select conname from pg_constraint
+          where conrelid = 'page_redirects'::regclass and contype = 'f'`)
+        ).rows,
+      ).toEqual([]);
+      const { rows: indexes } = await pool.query(`select indexname, indexdef
+        from pg_indexes where tablename = 'page_redirects'`);
+      expect(indexes).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            indexname: "page_redirects_destination_url_idx",
+            indexdef: expect.stringContaining("btree (destination_url)"),
+          }),
+        ]),
+      );
+    } finally {
+      await close();
+    }
   });
 });
 

@@ -25,12 +25,12 @@ import { createHeadlessEditor } from "../../src/editor/core/create-editor";
 import { govbbPageCodec, govbbPageEditor } from "../../src/presets/govbb-page";
 import { $pageMetadata, $setPageMetadata } from "../../src/pages/metadata";
 import { PagePreview } from "../../src/pages/preview";
-import { PageComponentNode } from "../../src/pages/nodes";
+import { PageComponentNode } from "../../src/pages/blocks/node";
 import { createEmptyPage } from "../../src/pages/converters";
 import { parsePageMarkdown } from "../../src/pages/markdown";
 import manifest from "../fixtures/pages/manifest.json";
 
-const sourceOnly = new Set([
+const frozenSourceOnly = new Set([
   "apply-to-use-state-land.md",
   "apply-for-an-nhc-rental-unit-or-lot.md",
   "tenant-notice-to-buy-freehold.md",
@@ -44,15 +44,21 @@ const sourceOnly = new Set([
   "post-office-redirection-business/index.md",
   "post-office-redirection-business/start.md",
   "get-death-certificate/start.md",
-  // About Barbados pages open with an image, which needs Markdown source editing
-  "archaeological-history/index.md",
+]);
+
+const currentSourceOnly = new Set([
+  "health-and-emergency-services/stormready/index.md",
   "coat-of-arms/index.md",
-  "flag-etiquette/index.md",
   "national-anthem/index.md",
   "national-flag/index.md",
   "national-flower/index.md",
   "national-pledge/index.md",
 ]);
+
+const convertedHtmlPages = [
+  "calculate-your-pension/about-government-pensions.md",
+  "crop-over-permits/index.md",
+];
 
 function fixture(path: string) {
   return readFileSync(new URL(`../fixtures/pages/corpus/${path}`, import.meta.url), "utf8");
@@ -66,11 +72,11 @@ function visual(source: string) {
   return prepared.state;
 }
 
-function checkPagePreservation(path: string, source: string) {
+function checkPagePreservation(path: string, source: string, expectsSourceOnly: boolean) {
   const prepared = govbbPageCodec.prepare(source);
   expect(prepared.source).toBe(source);
 
-  if (sourceOnly.has(path)) {
+  if (expectsSourceOnly) {
     expect(prepared.mode).toBe("source");
     expect(prepared.state).toBeUndefined();
     expect(prepared.diagnostics[0]?.severity).toBe("warning");
@@ -87,6 +93,15 @@ function checkPagePreservation(path: string, source: string) {
     const encoded = govbbPageCodec.encode(editor.getEditorState().toJSON());
     const reopened = visual(encoded);
     expect(reopened.root.children.slice(1)).toEqual(prepared.state.root.children.slice(1));
+
+    editor.update(
+      () =>
+        $getRoot().append($createParagraphNode().append($createTextNode("An edited paragraph."))),
+      { discrete: true },
+    );
+    const edited = editor.getEditorState().toJSON();
+    const saved = visual(govbbPageCodec.encode(edited));
+    expect(saved.root.children.slice(1)).toEqual(edited.root.children.slice(1));
   } finally {
     editor.dispose();
   }
@@ -95,14 +110,14 @@ function checkPagePreservation(path: string, source: string) {
 describe("frozen GovBB Markdown regressions", () => {
   test("contains three visual regression pages and all 13 source-only pages", () => {
     expect(manifest).toHaveLength(16);
-    expect(manifest.filter((item) => sourceOnly.has(item.path))).toHaveLength(13);
+    expect(manifest.filter((item) => frozenSourceOnly.has(item.path))).toHaveLength(13);
   });
 
   for (const item of manifest)
     test(item.path, () => {
       const source = fixture(item.path);
       expect(createHash("sha256").update(source).digest("hex")).toBe(item.sha256);
-      checkPagePreservation(item.path, source);
+      checkPagePreservation(item.path, source, frozenSourceOnly.has(item.path));
     });
 });
 
@@ -119,8 +134,233 @@ describe("current GovBB landing content", () => {
 
   for (const path of paths)
     test(path, () => {
-      checkPagePreservation(path, readFileSync(new URL(path, directory), "utf8"));
+      checkPagePreservation(
+        path,
+        readFileSync(new URL(path, directory), "utf8"),
+        currentSourceOnly.has(path),
+      );
     });
+
+  test.each(convertedHtmlPages)(
+    "%s retains its content through a body edit and reopening",
+    (path) => {
+      const source = readFileSync(new URL(path, directory), "utf8");
+      const original = visual(source);
+      const editor = createHeadlessEditor(govbbPageEditor, original);
+
+      try {
+        editor.update(
+          () =>
+            $getRoot().append($createParagraphNode().append($createTextNode("Further guidance."))),
+          { discrete: true },
+        );
+        const reopened = visual(govbbPageCodec.encode(editor.getEditorState().toJSON()));
+        expect(reopened.root.children.slice(1, -1)).toEqual(original.root.children.slice(1));
+        expect(reopened.root.children.at(-1)).toMatchObject({
+          type: "paragraph",
+          children: [{ type: "text", text: "Further guidance." }],
+        });
+      } finally {
+        editor.dispose();
+      }
+    },
+  );
+
+  test("StormReady notice is editable independently of its remaining legacy components", () => {
+    const source = readFileSync(
+      new URL("health-and-emergency-services/stormready/index.md", directory),
+      "utf8",
+    );
+
+    const notice = source.match(/^:::notice\n[\s\S]*?\n:::/m)?.[0];
+
+    if (!notice) throw new Error("StormReady must use a notice directive");
+
+    checkPagePreservation("StormReady notice", notice, false);
+    expect(govbbPageCodec.prepare(source).mode).toBe("source");
+  });
+
+  test("StormReady actions round-trip independently of its remaining legacy components", () => {
+    const source = readFileSync(
+      new URL("health-and-emergency-services/stormready/index.md", directory),
+      "utf8",
+    );
+
+    const actions = source.match(/^::::actions\n[\s\S]*?\n::::/m)?.[0];
+
+    if (!actions) throw new Error("StormReady must use an actions directive");
+
+    checkPagePreservation("StormReady actions", actions, false);
+  });
+
+  test("StormReady's highlights and muted text round-trip, leaving only its contacts source-only", () => {
+    const source = readFileSync(
+      new URL("health-and-emergency-services/stormready/index.md", directory),
+      "utf8",
+    );
+
+    const contacts = source.match(/^<contacts>\n[\s\S]*?\n<\/contacts>\n/m)?.[0];
+
+    if (!contacts) throw new Error("StormReady's contacts are #3185's to convert");
+
+    expect(govbbPageCodec.prepare(source).diagnostics[0]?.line).toBe(
+      source.slice(0, source.indexOf(contacts)).split("\n").length,
+    );
+    checkPagePreservation("StormReady without its contacts", source.replace(contacts, ""), false);
+  });
+});
+
+test.each([
+  "/health-and-emergency-services/stormready",
+  "/money-financial-support/national-insurance-for-self-employed-workers",
+  "/money-financial-support/national-insurance-for-self-employed-workers/check-your-record",
+])("the imported %s opens visually and saves unchanged", (url) => {
+  const estate: { pages: { url: string; body_markdown: string }[] } = JSON.parse(
+    readFileSync(new URL("../../../api_v2/src/seed-data/estate.json", import.meta.url), "utf8"),
+  );
+
+  const page = estate.pages.find((page) => page.url === url);
+
+  if (!page) throw new Error(`Missing imported page: ${url}`);
+
+  checkPagePreservation(url, page.body_markdown, false);
+
+  if (url === "/health-and-emergency-services/stormready")
+    expect(
+      visual(page.body_markdown).root.children.filter((node) => node.type === "page-contact"),
+    ).toHaveLength(4);
+});
+
+test("muted text keeps whether it's a caption, and highlights their titles and plain text", () => {
+  const source =
+    '<muted caption>Small print</muted>\n\n<muted>Keep **trying**.</muted>\n\n<highlights>\n<highlight title="Water">Store 3 gallons<br>per person.</highlight>\n<highlight title="Documents">Keep your ID dry.</highlight>\n</highlights>\n';
+
+  expect(visual(source).root.children.slice(1)).toMatchObject([
+    { type: "page-muted", caption: true, children: [{ text: "Small print" }] },
+    {
+      type: "page-muted",
+      caption: false,
+      children: [{ text: "Keep " }, { text: "trying", format: 1 }, { text: "." }],
+    },
+    {
+      type: "page-component",
+      kind: "highlights",
+      children: [
+        {
+          kind: "highlight",
+          children: [
+            { kind: "highlight-title", children: [{ text: "Water" }] },
+            {
+              kind: "highlight-text",
+              children: [
+                { text: "Store 3 gallons" },
+                { type: "linebreak" },
+                { text: "per person." },
+              ],
+            },
+          ],
+        },
+        {
+          kind: "highlight",
+          children: [
+            { kind: "highlight-title", children: [{ text: "Documents" }] },
+            { kind: "highlight-text", children: [{ text: "Keep your ID dry." }] },
+          ],
+        },
+      ],
+    },
+  ]);
+  checkPagePreservation("muted text and highlights", source, false);
+});
+
+test.each([
+  "- <muted>Small print</muted>\n- Plain\n",
+  '1. Prepare\n\n   <highlights>\n   <highlight title="Water">Store 3 gallons.</highlight>\n   </highlights>\n',
+  ':::notice\n<muted>Small print</muted>\n\n<highlights>\n<highlight title="Water">Store 3 gallons.</highlight>\n</highlights>\n:::\n',
+])(
+  "muted text and highlights inside another block keep their HTML through an edit: %j",
+  (source) => {
+    const editor = createHeadlessEditor(govbbPageEditor, visual(source));
+
+    try {
+      editor.update(
+        () => $getRoot().append($createParagraphNode().append($createTextNode("Added."))),
+        { discrete: true },
+      );
+      expect(govbbPageCodec.encode(editor.getEditorState().toJSON())).toBe(`${source}\nAdded.\n`);
+    } finally {
+      editor.dispose();
+    }
+  },
+);
+
+test("highlights added after a list item's text are a block of the item, as “/” adds them", () => {
+  const editor = createHeadlessEditor(govbbPageEditor, visual("- Prepare\n"));
+
+  try {
+    editor.update(
+      () => {
+        const list = $getRoot().getChildAtIndex(1);
+        const item = $isListNode(list) ? list.getFirstChild() : null;
+
+        if (!$isListItemNode(item)) throw new Error("Expected the list item");
+        item.append(
+          new PageComponentNode("highlights").append(
+            new PageComponentNode("highlight").append(
+              new PageComponentNode("highlight-title").append($createTextNode("Water")),
+              new PageComponentNode("highlight-text").append($createTextNode("Store 3 gallons.")),
+            ),
+          ),
+        );
+      },
+      { discrete: true },
+    );
+    const saved = govbbPageCodec.encode(editor.getEditorState().toJSON());
+    expect(saved).toBe(
+      '- Prepare\n\n  <highlights>\n  <highlight title="Water">Store 3 gallons.</highlight>\n  </highlights>\n',
+    );
+    expect(visual(saved).root.children[1]).toMatchObject({
+      type: "list",
+      children: [{ children: [{ type: "paragraph" }, { kind: "highlights" }] }],
+    });
+  } finally {
+    editor.dispose();
+  }
+});
+
+test("edited muted text and highlights are written back as the HTML landing renders", () => {
+  const editor = createHeadlessEditor(
+    govbbPageEditor,
+    visual(
+      '<muted caption>Small print</muted>\n\n<highlights>\n<highlight title="Water">Store 3 gallons.</highlight>\n</highlights>\n',
+    ),
+  );
+
+  try {
+    editor.update(
+      () => {
+        const [, muted, highlights] = $getRoot().getChildren();
+        const highlight = $isElementNode(highlights) ? highlights.getFirstChild() : null;
+        const [title, text] = $isElementNode(highlight) ? highlight.getChildren() : [];
+
+        if (!$isElementNode(muted) || !$isElementNode(title) || !$isElementNode(text))
+          throw new Error("Expected muted text and a highlight");
+        muted.append($createTextNode(" & more"));
+        title.getFirstChild()?.replace($createTextNode('Food & "water"'));
+        text.getFirstChild()?.replace($createTextNode("Store <3> gallons."));
+      },
+      { discrete: true },
+    );
+    const saved = govbbPageCodec.encode(editor.getEditorState().toJSON());
+    expect(saved).toBe(
+      '<muted caption>Small print & more</muted>\n\n<highlights>\n<highlight title="Food &amp; &quot;water&quot;">Store &lt;3&gt; gallons.</highlight>\n</highlights>\n',
+    );
+    expect(visual(saved).root.children.slice(1)).toEqual(
+      editor.getEditorState().toJSON().root.children.slice(1),
+    );
+  } finally {
+    editor.dispose();
+  }
 });
 
 test("birth instructions keep headings, paragraphs and Start actions inside their numbered items", () => {
@@ -355,6 +595,23 @@ test("page details preserve unknown YAML, comments and absent fields through edi
     editor.dispose();
   }
 });
+
+test.each(["", "---\ntitle: Original\n---\n\n", "---\r\ntitle: Original\r\n---\r\n\r\n"])(
+  "a title edit preserves body syntax and whitespace after %j",
+  (frontmatter) => {
+    const body = "\n_Original_  \nNext line\n\n";
+    const editor = createHeadlessEditor(govbbPageEditor, visual(frontmatter + body));
+
+    try {
+      editor.update(() => $setPageMetadata({ title: "Renamed" }), { discrete: true });
+      expect(govbbPageCodec.encode(editor.getEditorState().toJSON())).toBe(
+        `---\ntitle: Renamed\n---\n\n${body}`,
+      );
+    } finally {
+      editor.dispose();
+    }
+  },
+);
 
 test("unfamiliar page detail values survive unrelated edits without coercion", () => {
   const source =

@@ -4,7 +4,7 @@ import type { EditorAuth } from "./session";
 export const authBypassed = import.meta.env.DEV && import.meta.env.VITE_AUTH_BYPASS === "true";
 
 /**
- * Local development only (`VITE_AUTH_BYPASS=true` under `vite dev`): always signed in, no GitHub.
+ * Local development only (`VITE_AUTH_BYPASS=true` under `vite dev`): always signed in, no Google.
  * Pair it with api_v2's `AUTH_BYPASS`, or API reads are refused.
  */
 export const bypassAuth: EditorAuth = {

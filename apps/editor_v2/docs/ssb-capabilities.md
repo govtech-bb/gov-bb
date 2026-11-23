@@ -14,7 +14,7 @@ Builder paths below are relative to `src/`. SSB paths refer to the external sche
 
 SSB primitive properties and registry references; compile retains applicable settings.
 
-Evidence: Builder `forms/editor/ssb.ts`, `forms/editor/compile.ts`; SSB `packages/form-types/src/primitive.type.ts`.
+Evidence: Builder `forms/formats/legacy-ssb/legacy-ssb-rules.ts`, `forms/canvas/form-compile.ts`; SSB `packages/form-types/src/primitive.type.ts`.
 
 ### Show blocks, including option follow-ups
 
@@ -26,25 +26,25 @@ A Show rule maps to `shownWhen` / SSB `fieldConditionalOn` only when:
 
 All-match groups may contain several comparisons. SSB supplies the hidden-until-matched baseline. Competing visibility rules, any-match groups, date transforms, individual question fragments and cross-page targets are retained with a warning.
 
-Evidence: Builder `forms/adapters/ssb/logic-rules.ts`; SSB `behavior.type.ts`, field renderer reveal paths.
+Evidence: Builder `forms/formats/legacy-ssb/projection/logic-rules.ts`; SSB `behavior.type.ts`, field renderer reveal paths.
 
 ### Form registry copies
 
 Insert editable copies of named fields or curated groups, including ordinary Show rules. Supplied IDs and option values are snapshots; component refs remain provenance. A future recipe adapter must honor authored overrides and removed defaults instead of re-inheriting validation from the ref.
 
-Evidence: Builder `forms/editor/registry.ts`, `forms/source/dialect.ts`; frozen Markdown profile/default snapshots.
+Evidence: Builder `forms/canvas/form-registry-insertion.ts`, `forms/formats/markdown/dialect.ts`; frozen Markdown profile/default snapshots.
 
 ### Reader-operated show/hide sections
 
 These remain disclosure containers. Content-only sections use content/details; sections containing fields emit the disclosure's own open-state condition. Answer-dependent visibility of the entire section belongs to a logic block.
 
-Evidence: Builder `forms/adapters/ssb/nesting.ts`; SSB `behavior.type.ts`.
+Evidence: Builder `forms/formats/legacy-ssb/projection/nesting.ts`; SSB `behavior.type.ts`.
 
 ### Repeating pages and answers
 
 SSB `repeatable` and `fieldArray` behaviours.
 
-Evidence: Builder `forms/adapters/ssb/repetition.ts`; SSB `behavior.type.ts`.
+Evidence: Builder `forms/formats/legacy-ssb/projection/repetition.ts`; SSB `behavior.type.ts`.
 
 ### Change question label / Change page title actions
 
@@ -52,7 +52,7 @@ Logic blocks produce ordered SSB `conditionalLabel` / `conditionalTitle` entries
 
 If any wording rule for a target cannot map, the adapter withholds that target's entire wording list and warns. This preserves first-match semantics. Imported transforms and literal values are retained. These are legacy SSB semantics; see [ADR 0004](decisions/0004-own-conditional-behavior-in-logic-blocks.md) for native rule semantics.
 
-Evidence: Builder `forms/adapters/ssb/logic-rules.ts`, `forms/core/dynamic-text.ts`; SSB `behavior.type.ts`.
+Evidence: Builder `forms/formats/legacy-ssb/projection/logic-rules.ts`, `forms/model/dynamic-text.ts`; SSB `behavior.type.ts`.
 
 ### Address lookup, opening hours, grouped checkboxes
 
@@ -64,19 +64,19 @@ Evidence: SSB `primitive.type.ts`; `apps/forms/src/components/field-renderer/`.
 
 The compiler preserves their action payload but has no SSB mapping. Each action gets a specific warning. Jump blocks belong on the triggering page in the authoring model.
 
-Evidence: Builder `forms/editor/compile.ts`, `forms/adapters/ssb/capabilities.ts`; SSB's finite behaviour union in `behavior.type.ts`.
+Evidence: Builder `forms/canvas/form-compile.ts`, `forms/formats/legacy-ssb/projection/capabilities.ts`; SSB's finite behaviour union in `behavior.type.ts`.
 
 ### Arbitrary action conditions (OR, string matching, field-to-field comparisons, execution ordering)
 
 Preserve their condition tree and actions. Only the explicitly supported subsets above are projected; the others have no runtime/export implementation. Warn at the action rather than pretending the rule can execute.
 
-Evidence: Builder `forms/editor/compile.ts`, `forms/adapters/ssb/capabilities.ts`; SSB `behavior.type.ts`. Processor JSON Logic is not a form evaluator.
+Evidence: Builder `forms/canvas/form-compile.ts`, `forms/formats/legacy-ssb/projection/capabilities.ts`; SSB `behavior.type.ts`. Processor JSON Logic is not a form evaluator.
 
 ### Calculated rows and arithmetic formula actions
 
 Saved and editable; no SSB form evaluator. Warn on the calculated row or action. Missing references and malformed formulas are validity errors using the existing formula parser.
 
-Evidence: Builder `forms/core/formula.ts`, `forms/adapters/ssb/capabilities.ts`; SSB `behavior.type.ts`.
+Evidence: Builder `forms/model/formula.ts`, `forms/formats/legacy-ssb/projection/capabilities.ts`; SSB `behavior.type.ts`.
 
 ### Answer mentions in body content
 
@@ -94,7 +94,7 @@ Evidence: SSB `primitive.type.ts`; `apps/forms/src/components/field-renderer/{ra
 
 No faithful current SSB mapping. Source survives; warn at the source option/block.
 
-Evidence: Builder `forms/editor/compile.ts` filtering and SSB primitive shapes.
+Evidence: Builder `forms/canvas/form-compile.ts` filtering and SSB primitive shapes.
 
 ### Unmapped widgets
 

@@ -1,8 +1,7 @@
 import type { LexicalNode } from "lexical";
 import type { RootContent, PhrasingContent } from "mdast";
 import type { ReactNode } from "react";
-import { defineEditor } from "../editor/core/definition";
-import type { EditorModule } from "../editor/core/module";
+import { defineEditor, type EditorModule } from "@/editor";
 
 export type MarkdownNode = RootContent | PhrasingContent;
 

@@ -12,15 +12,14 @@ import {
   useState,
 } from "react";
 import { categoryLabel } from "../api/categories";
-import { ApiFailure, type EditorApi, type ServiceSummary } from "../api/client";
-import { categoriesQuery, servicesQuery } from "../api/queries";
+import type { EditorApi, ServiceSummary } from "../api/client";
+import { categoriesQuery, pageQuery, servicesQuery } from "../api/queries";
 import { visibilityLabels, visibilityTones } from "../pages/visibility";
 import { Button } from "../ui/button";
 import { formatDay } from "../ui/dates";
 import { pressedByTouch } from "../ui/focus";
 import { ListScreen } from "../ui/list-screen";
 import { Menu } from "../ui/menu";
-import { RefreshFailure } from "../ui/refresh-failure";
 import { Select, type SelectItem } from "../ui/select";
 import { StatusDot } from "../ui/status-dot";
 import { NameCell, rowTitle } from "../ui/table/cell-components";
@@ -31,7 +30,8 @@ import {
   useTableFilters,
   useTableContext,
 } from "../ui/table/table-hooks";
-import { LoadFailure } from "./load-failure";
+import { listLoadView } from "./list-load-view";
+import type { PageDeleteSnapshot } from "./model";
 import {
   filteredBy,
   pagedTo,
@@ -67,18 +67,59 @@ function VisibilityLabel({ visibility }: { visibility: ServiceSummary["visibilit
 
 /** What a row's menu can do to its service, and why it can't delete it yet, from the workspace. */
 const RowActions = createContext<{
-  onDelete?: (service: ServiceSummary) => void;
+  onDelete?: (entry: PageDeleteSnapshot) => void;
   deleteBlocked?: (service: ServiceSummary) => string | undefined;
 }>({});
 
-/**
- * A row's actions, at its end: open the service, its entry page's history, and deleting it, which a service with
- * other pages can't do yet. A blocked Delete says why under it rather than failing once confirmed.
- */
-function ServiceActions({ service }: { service: ServiceSummary }) {
+/** Only an open menu needs an entry page read: the list has no version to confirm a delete against. */
+function ServiceDeleteItem({ api, service }: { api: EditorApi; service: ServiceSummary }) {
   const { onDelete, deleteBlocked } = useContext(RowActions);
   const reason = useId();
   const blocked = deleteBlocked?.(service);
+  const entry = useQuery({ ...pageQuery(api, service.id), enabled: !!onDelete && !blocked });
+  const page = entry.data;
+
+  if (!onDelete) return null;
+
+  const why =
+    blocked ??
+    (entry.isError
+      ? "We couldn’t load the entry page. Reopen the menu to try again."
+      : !page
+        ? "Loading the entry page…"
+        : page.parent_id !== null ||
+            page.category_id === null ||
+            page.visibility !== service.visibility
+          ? "The service has changed. Refresh the list before deleting it."
+          : undefined);
+
+  return (
+    <>
+      <Menu.Separator />
+      <Menu.Item
+        icon={<Trash />}
+        variant="danger"
+        disabled={!!why}
+        aria-describedby={why ? reason : undefined}
+        onClick={() => {
+          if (page && !why)
+            onDelete({
+              kind: "page",
+              role: "entry",
+              id: page.id,
+              title: page.title,
+              version: page.version,
+            });
+        }}
+      >
+        Delete service…
+      </Menu.Item>
+      {why && <Menu.Note id={reason}>{why}</Menu.Note>}
+    </>
+  );
+}
+
+function ServiceActions({ api, service }: { api: EditorApi; service: ServiceSummary }) {
   const label = `Actions for ${service.title}`;
 
   return (
@@ -108,21 +149,7 @@ function ServiceActions({ service }: { service: ServiceSummary }) {
         >
           Entry page history
         </Menu.Item>
-        {onDelete && (
-          <>
-            <Menu.Separator />
-            <Menu.Item
-              icon={<Trash />}
-              variant="danger"
-              disabled={!!blocked}
-              aria-describedby={blocked ? reason : undefined}
-              onClick={() => onDelete(service)}
-            >
-              Delete service…
-            </Menu.Item>
-            {blocked && <Menu.Note id={reason}>{blocked}</Menu.Note>}
-          </>
-        )}
+        <ServiceDeleteItem api={api} service={service} />
       </Menu.Content>
     </Menu.Root>
   );
@@ -210,7 +237,7 @@ const serviceColumns = (api: EditorApi) =>
       id: "actions",
       header: () => <span className="sr-only">Actions</span>,
       meta: { width: "w-16", align: "end" },
-      cell: ({ row }) => <ServiceActions service={row.original} />,
+      cell: ({ row }) => <ServiceActions api={api} service={row.original} />,
     }),
   ]);
 
@@ -313,8 +340,8 @@ export function ServicesList({
   search: ServicesSearch;
   onSearch: (search: ServicesSearch) => void;
   onCreate: () => void;
-  /** Deletes a service, its entry page, from its row's menu, once the workspace has asked. */
-  onDelete?: (service: ServiceSummary) => void;
+  /** Ask the workspace to confirm deletion of this entry page and version. */
+  onDelete?: (entry: PageDeleteSnapshot) => void;
   /** Why a service can't be deleted yet, such as the other pages it still has. */
   deleteBlocked?: (service: ServiceSummary) => string | undefined;
   /** Services can't be created, for someone who can't make changes; the workspace says why. */
@@ -322,14 +349,8 @@ export function ServicesList({
 }) {
   const services = useQuery(servicesQuery(api));
   const categoryList = useQuery(categoriesQuery(api));
-  const status = services.error instanceof ApiFailure ? services.error.status : undefined;
+  const load = listLoadView(services, "services");
 
-  const refreshFailed =
-    services.isError &&
-    !!services.data &&
-    (status === 0 || (status !== undefined && status >= 500));
-
-  const blocked = services.isError && !refreshFailed;
   const columns = useMemo(() => serviceColumns(api), [api]);
 
   // The list answers each change at once, and the address follows
@@ -425,29 +446,9 @@ export function ServicesList({
             </Button>
           }
           filters={<ServiceFilters categories={categories} />}
-          status={services.isPending ? "Loading services…" : null}
-          notices={
-            refreshFailed && (
-              <RefreshFailure
-                inset="card"
-                pending={services.isFetching}
-                pendingLabel="Refreshing services…"
-                onRetry={() => void services.refetch()}
-              >
-                We could not refresh services. Showing the last loaded list.
-              </RefreshFailure>
-            )
-          }
-          failure={
-            blocked && (
-              <LoadFailure
-                noun="services"
-                error={services.error}
-                retrying={services.isFetching}
-                retry={() => void services.refetch()}
-              />
-            )
-          }
+          status={load.status}
+          notices={load.notices}
+          failure={load.failure}
         >
           <table.DataTable
             caption="Services"

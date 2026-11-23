@@ -3,8 +3,8 @@ import {
   nativeRegistryEditor,
   nativeRegistryForm,
 } from "../helpers/native-registry-editor";
-import { $native } from "../../src/forms/editor/native-state";
-import { validateRegistryEntry } from "../../src/forms/registry/validation";
+import { $native } from "../../src/forms/formats/native/native-state";
+import { validateRegistryEntry } from "../../src/forms/form-registry/validation";
 import { govbbFormEditor } from "../../src/presets/govbb-form";
 import { fieldWidthOf } from "../helpers/default-form";
 import { createEditor, defaultMessage, rulesFor } from "../helpers/default-form";
@@ -12,10 +12,10 @@ import { LinkNode } from "@lexical/link";
 import { HeadingNode } from "@lexical/rich-text";
 import { expect, test } from "vitest";
 import { $createTextNode, $getNodeByKey, $getRoot } from "lexical";
-import { $duplicateQuestion } from "../../src/forms/editor/structure/blocks";
-import { $registryBlocks as $govbbField } from "../../src/forms/editor/registry-module";
+import { $duplicateQuestion } from "../../src/forms/canvas/structure/structure-blocks";
+import { $registryBlocks as $govbbField } from "../../src/forms/canvas/form-registry-module";
 import { $insertionGroups } from "../helpers/insertion";
-import { pageEntries } from "../../src/forms/features/pages/insertion";
+import { pageEntries } from "../../src/forms/form-pages/form-page-insertion";
 import {
   compileForm,
   preflight,
@@ -23,7 +23,7 @@ import {
   type FormSchema,
 } from "../helpers/default-form";
 import { $legacyDemo as $demo } from "../helpers/legacy-demo";
-import { MentionNode } from "../../src/forms/features/mentions/node";
+import { MentionNode } from "../../src/forms/mentions/mention-node";
 import {
   $blockGroup,
   $createFormTitleNode,
@@ -34,26 +34,26 @@ import {
   $isQuestionNode,
   $shareQuestionSettings,
   $turnInto,
-} from "../../src/forms/editor/nodes";
+} from "../../src/forms/canvas/form-nodes";
 import {
   $createInputNode,
   $isOptionNode,
   type InputNode,
-} from "../../src/forms/editor/answer-nodes";
-import { $setSettings, $settings } from "../../src/editor/core/document-state";
+} from "../../src/forms/canvas/answer-nodes";
+import { $setSettings, $settings } from "../../src/forms/canvas/block-state";
 import { formNodes } from "../helpers/default-form";
 import { COMPONENTS } from "../../src/presets/form-registry/components";
-import { FORMATS } from "../../src/forms/core/formats";
+import { FORMATS } from "../../src/forms/model/formats";
 import { govbbFormRegistryEntries } from "../../src/presets/form-registry/entries";
 import { registryPreviewQuestions } from "../../src/presets/form-registry/preview";
 
 const fieldQuestions = (key: string) =>
   registryPreviewQuestions(govbbFormRegistryEntries.find((entry) => entry.key === key)!);
 
-import { maskHelp, patternWorks, relativeDateOf } from "../../src/forms/core/field-settings";
+import { maskHelp, patternWorks, relativeDateOf } from "../../src/forms/model/field-settings";
 
-import { type RuleName } from "../../src/forms/adapters/ssb/rules";
-import { $pagePreview } from "../../src/forms/features/pages/queries";
+import { type RuleName } from "../../src/forms/formats/legacy-ssb/projection/rules";
+import { $pagePreview } from "../../src/forms/form-pages/form-page-queries";
 
 const newEditor = () =>
   createEditor({

@@ -42,7 +42,9 @@ export class JourneyService {
         event: e.event,
         event_id: e.id,
         page_load_id: e.page_load_id,
+        journey_id: e.journey_id,
         path: e.path,
+        referrer: e.referrer,
         props: e.props && sanitizeProps(e.props),
         client_ts: e.client_ts,
       });

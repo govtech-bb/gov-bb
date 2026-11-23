@@ -60,6 +60,7 @@ describe("record writes", () => {
     expect(created.json()).toEqual({
       record_key: "drug-service",
       data: { ...DRUG_SERVICE, key: "drug-service" },
+      version: expect.any(Number),
       updated_at: expect.any(String),
     });
 
@@ -74,26 +75,33 @@ describe("record writes", () => {
         schema_version: 1,
         updated_at: expect.any(String),
       },
-      records: [created.json()],
+      records: [
+        {
+          record_key: created.json().record_key,
+          data: created.json().data,
+          updated_at: created.json().updated_at,
+        },
+      ],
     });
 
     const saved = await editor({
       method: "PUT",
       url: recordUrl("drug-service"),
-      headers: { "if-updated-at": created.json().updated_at },
-      payload: { data: { name: "Drug Service" } },
+      payload: {
+        data: { name: "Drug Service" },
+        expected_version: created.json().version,
+      },
     });
     expect(saved.statusCode, saved.body).toBe(200);
-    expect(saved.json().data).toEqual({
+    expect(saved.json().record.data).toEqual({
       name: "Drug Service",
       key: "drug-service",
     });
-    expect(saved.json().updated_at).not.toBe(created.json().updated_at);
+    expect(saved.json().record.updated_at).not.toBe(created.json().updated_at);
 
     const deleted = await editor({
       method: "DELETE",
-      url: recordUrl("drug-service"),
-      headers: { "if-updated-at": saved.json().updated_at },
+      url: `${recordUrl("drug-service")}?expected_version=${saved.json().record.version}`,
     });
     expect(deleted.statusCode).toBe(204);
     expect((await read()).json().records).toEqual([]);
@@ -152,11 +160,14 @@ describe("record writes", () => {
     const saved = await editor({
       method: "PUT",
       url: recordUrl("missing"),
-      payload: { data: {} },
+      payload: {
+        data: {},
+        expected_version: 1,
+      },
     });
     const deleted = await editor({
       method: "DELETE",
-      url: recordUrl("missing"),
+      url: `${recordUrl("missing")}?expected_version=1`,
     });
     expect([saved.statusCode, deleted.statusCode]).toEqual([404, 404]);
   });
@@ -166,37 +177,44 @@ describe("record writes", () => {
     const first = await editor({
       method: "PUT",
       url: recordUrl("drug-service"),
-      headers: { "if-updated-at": created.updated_at },
-      payload: { data: { name: "First" } },
+      payload: {
+        data: { name: "First" },
+        expected_version: created.version,
+      },
     });
     expect(first.statusCode).toBe(200);
 
-    const stale = { "if-updated-at": created.updated_at };
     const second = await editor({
       method: "PUT",
       url: recordUrl("drug-service"),
-      headers: stale,
-      payload: { data: { name: "Second" } },
+      payload: {
+        data: { name: "Second" },
+        expected_version: created.version,
+      },
     });
     const deleted = await editor({
       method: "DELETE",
-      url: recordUrl("drug-service"),
-      headers: stale,
+      url: `${recordUrl("drug-service")}?expected_version=${created.version}`,
     });
     expect([second.statusCode, deleted.statusCode]).toEqual([409, 409]);
-    expect(second.json().error).toBe("conflict");
+    expect(second.json().error).toBe("version_conflict");
     expect((await read()).json().records[0].data.name).toBe("First");
   });
 
   it("records each write in the history against the employee", async () => {
     const created = (await create("drug-service", DRUG_SERVICE)).json();
-    await editor({
+    const saved = await editor({
       method: "PUT",
       url: recordUrl("drug-service"),
-      headers: { "if-updated-at": created.updated_at },
-      payload: { data: { name: "Drug Service" } },
+      payload: {
+        data: { name: "Drug Service" },
+        expected_version: created.version,
+      },
     });
-    await editor({ method: "DELETE", url: recordUrl("drug-service") });
+    await editor({
+      method: "DELETE",
+      url: `${recordUrl("drug-service")}?expected_version=${saved.json().record.version}`,
+    });
 
     const { rows } = await test.db.execute<{
       action: string;
@@ -214,6 +232,73 @@ describe("record writes", () => {
         record_key: "drug-service",
       })),
     );
+  });
+});
+
+describe("number, boolean, date and list fields (#3782)", () => {
+  const SHELTER = {
+    capacity: 120,
+    lat: 13.1,
+    "has-water": true,
+    opened: "2026-08-01",
+    documents: ["ID card", "Proof of address"],
+  };
+  beforeEach(async () => {
+    await test.db.execute(
+      sql`insert into data_collections (key, title, record_key, schema)
+          values ('shelters', 'Shelters', 'key', ${JSON.stringify({
+            fields: [
+              { key: "key", label: "Key", type: "slug" },
+              { key: "capacity", label: "Capacity", type: "number" },
+              { key: "lat", label: "Latitude", type: "number" },
+              { key: "has-water", label: "Has water", type: "boolean" },
+              { key: "opened", label: "Opened", type: "date" },
+              { key: "documents", label: "Documents", type: "list" },
+            ],
+          })}::jsonb)`,
+    );
+  });
+
+  it("stores each value with its type and reads it back so", async () => {
+    const created = await create("st-judes", SHELTER, "shelters");
+    expect(created.statusCode, created.body).toBe(201);
+    expect(created.json().data).toEqual({ ...SHELTER, key: "st-judes" });
+    expect((await read("shelters")).json().records[0].data).toEqual({
+      ...SHELTER,
+      key: "st-judes",
+    });
+    const [row] = (
+      await test.db.execute(
+        sql`select jsonb_typeof(data->'capacity') as capacity,
+                   jsonb_typeof(data->'has-water') as water,
+                   jsonb_typeof(data->'documents') as documents
+              from collection_records where record_key = 'st-judes'`,
+      )
+    ).rows;
+    expect(row).toEqual({
+      capacity: "number",
+      water: "boolean",
+      documents: "array",
+    });
+  });
+
+  it("refuses a wrong value, naming its field, and writes nothing", async () => {
+    const response = await create(
+      "st-judes",
+      {
+        capacity: "120",
+        "has-water": "yes",
+        opened: "2026-13-40",
+        documents: ["x".repeat(301)],
+      },
+      "shelters",
+    );
+    expect(response.statusCode).toBe(400);
+    expect(response.json().error).toBe("validation_failed");
+    expect(
+      response.json().errors.map((error: { field: string }) => error.field),
+    ).toEqual(["capacity", "has-water", "opened", "documents"]);
+    expect((await read("shelters")).json().records).toEqual([]);
   });
 });
 
@@ -285,10 +370,16 @@ describe("the seeded contacts", () => {
       schema: CONTACTS.schema,
     });
     for (const record of response.json().records) {
+      const detail = (
+        await editor({ url: recordUrl(record.record_key) })
+      ).json();
       const saved = await editor({
         method: "PUT",
         url: recordUrl(record.record_key),
-        payload: { data: record.data },
+        payload: {
+          data: record.data,
+          expected_version: detail.record.version,
+        },
       });
       expect(saved.statusCode, saved.body).toBe(200);
     }
@@ -296,6 +387,13 @@ describe("the seeded contacts", () => {
       response
         .json()
         .records.map((record: { record_key: string }) => record.record_key),
-    ).toEqual(["barbados-drug-service", "nis-severance-payment-department"]);
+    ).toEqual([
+      "barbados-drug-service",
+      "barbados-met-office",
+      "bwa-water-outages",
+      "dem-emergency-line",
+      "nis-severance-payment-department",
+      "police-emergency",
+    ]);
   }, 60_000);
 });

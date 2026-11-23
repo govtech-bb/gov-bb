@@ -2,7 +2,6 @@
 title: "Apply to be a Project Protégé mentor"
 description: "Apply to become a volunteer mentor for a young person aged 13 to 17 in the Government of Barbados Project Protégé programme."
 stage: "alpha"
-featured: false
 publish_date: 2026-01-13
 category: work-employment
 form_id: project-protege-mentor

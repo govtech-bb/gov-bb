@@ -5,14 +5,14 @@ import {
   nativeSemanticEqual,
   validateFormDefinition,
   type AnyFormDefinition,
-} from "../src/forms/schema";
-import { registryDocument } from "../src/forms/registry/validation";
+} from "../src/forms/formats/native/schema";
+import { registryDocument } from "../src/forms/form-registry/validation";
 import { formSchemaToLexical } from "../src/converters/form-schema-to-lexical";
 import { lexicalToFormSchema } from "../src/converters/lexical-to-form-schema";
 import { lexicalToFormMarkdown } from "../src/converters/lexical-to-form-markdown";
 import { formMarkdownToLexical } from "../src/converters/form-markdown-to-lexical";
 import { createHeadlessEditor } from "../src/editor/core/create-editor";
-import { $withDefaultFormMessages } from "../src/forms/editor/native-bindings";
+import { $withDefaultFormMessages } from "../src/forms/formats/native/native-bindings";
 
 export type CapabilityRow = {
   category: "field" | "content" | "page" | "action" | "operator" | "format" | "registry";

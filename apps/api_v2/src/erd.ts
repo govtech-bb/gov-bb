@@ -1,9 +1,8 @@
 /**
  * The README's entity-relationship diagram, read from a migrated database.
  *
- * It reads the catalog rather than `schema.ts` because the SQL migrations are
- * the source of truth: they carry triggers and data steps Drizzle cannot
- * express, so the migrated database is what is actually deployed. Tables are
+ * It reads the catalog to show what generated and custom migrations actually
+ * deploy, rather than only what `schema.ts` declares. Tables are
  * in name order and columns in the order the migrations created them, so the
  * same migrations always render the same text.
  */

@@ -2,7 +2,6 @@
 title: "Redirect my personal mail"
 description: ""
 publish_date: 2026-01-29
-section: "Travel, ID and citizenship"
 form_id: post-office-redirection-individual
 ---
 

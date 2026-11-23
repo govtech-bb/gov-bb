@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { PageId, revisionOf, type PageDocument } from "./page";
+import { PageId, PageUrl, revisionOf, type PageDocument } from "./page";
 
 const saved: PageDocument = {
   id: PageId.parse("11111111-1111-4111-8111-111111111111"),
@@ -17,6 +17,46 @@ const saved: PageDocument = {
   created_at: "2026-10-07T12:00:00.000Z",
   updated_at: "2026-10-07T12:00:00.000Z",
 };
+
+describe("PageUrl", () => {
+  it.each([
+    "/x",
+    "/services/apply",
+    "/a.b_c~d-e",
+    "/café",
+    "/%2F%2Fexample.test",
+    `/${"a".repeat(200)}`,
+    `/${"a".repeat(200)}/${"b".repeat(200)}/${"c".repeat(109)}`,
+  ])("accepts the page path %j without rewriting it", (url) => {
+    expect(PageUrl.parse(url)).toBe(url);
+  });
+
+  it.each([
+    "",
+    "/",
+    "services/apply",
+    "//outside.test/page",
+    "/\\outside.test/page",
+    "\\outside.test/page",
+    "/a\\b",
+    "/\t/outside.test/page",
+    "/a b",
+    "/a\u00a0b",
+    "/a\u0000b",
+    "/a\u001fb",
+    "/a\u007fb",
+    "/page\n",
+    "/services//apply",
+    "/services/apply/",
+    "/services/apply?draft=1",
+    "/services/apply#fees",
+    "https://outside.test/page",
+    `/${"a".repeat(201)}`,
+    `/${"a".repeat(200)}/${"b".repeat(200)}/${"c".repeat(110)}`,
+  ])("rejects the invalid page path %j", (url) => {
+    expect(PageUrl.safeParse(url).success).toBe(false);
+  });
+});
 
 describe("revisionOf", () => {
   it.each([

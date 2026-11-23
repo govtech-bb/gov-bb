@@ -8,7 +8,7 @@ import {
   resolveNativeField,
   type NativeContentBlock,
 } from "../../src/forms/native";
-import type { NativeQuestion, QuestionBase } from "../../src/forms/schema";
+import type { NativeQuestion, QuestionBase } from "../../src/forms/formats/native/schema";
 import { govbbFormEditor, govbbFormModules } from "../../src/presets/govbb-form";
 
 const choice = (

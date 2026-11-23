@@ -1,15 +1,8 @@
 import { jsonSettings } from "../helpers/serialized-test-data";
 import { $create, $createTextNode, ElementNode, type RangeSelection } from "lexical";
-import {
-  $depth,
-  $paragraphAfter,
-  $setDepth,
-  $settings,
-  $setSettings,
-  contentActions,
-  type ContentEntry,
-  type EditorModule,
-} from "../../src/editor";
+import { $paragraphAfter, type EditorModule } from "@/editor";
+import { $depth, $setDepth, $settings, $setSettings } from "../../src/forms/canvas/block-state";
+import { contentActions, type ContentEntry } from "../../src/forms/content/content-insertion";
 
 export class NoticeNode extends ElementNode {
   override $config() {

@@ -6,7 +6,6 @@ description: >-
   Service, and check who qualifies.
 stage: alpha
 visibility: public
-featured: false
 publish_date: '2026-08-21'
 category: health-and-emergency-services
 service_type: digital

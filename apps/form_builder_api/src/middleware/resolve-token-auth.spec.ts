@@ -1,7 +1,7 @@
 import { resolveTokenAuth } from "./resolve-token-auth";
 
 // Mirrors apps/api/src/common/resolve-token-auth.spec.ts — the two copies of
-// the dev-bypass policy must behave identically (ADR 0061).
+// the dev-bypass policy must behave identically (ADR 0106).
 describe("resolveTokenAuth", () => {
   describe("no secret configured", () => {
     it("fails closed in production (misconfigured)", () => {

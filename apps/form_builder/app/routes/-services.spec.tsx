@@ -14,11 +14,19 @@ import type { ContentListState } from "../components/content/use-content-list";
 import type { ContentPageSummary } from "../server/content";
 import type { BuilderFormSummary } from "../types";
 import { Route } from "./services";
-import { draftKeyFor, readDraft, writeDraft } from "../components/content/draft-store";
+import {
+  draftKeyFor,
+  readDraft,
+  writeDraft,
+} from "../components/content/draft-store";
 import type { ServiceSnapshot } from "@govtech-bb/form-types";
 import { emptyService } from "../components/services/service-state";
 import { loadServiceSource } from "../server/services";
-import { EMPTY_PAGE, appendServicePage, startPageContentPath } from "../lib/content";
+import {
+  EMPTY_PAGE,
+  appendServicePage,
+  startPageContentPath,
+} from "../lib/content";
 
 let forms: FormsListState;
 let content: ContentListState;
@@ -29,7 +37,9 @@ vi.mock("../server/services", async (importOriginal) => ({
     throw new Error("Legacy service fixture");
   }),
 }));
-vi.mock("../server/mda-contacts", () => ({ listMdaContacts: vi.fn(async () => []) }));
+vi.mock("../server/mda-contacts", () => ({
+  listMdaContacts: vi.fn(async () => []),
+}));
 vi.mock("../server/auth", () => ({ checkSession: vi.fn() }));
 vi.mock("../components/builder/use-forms-list", () => ({
   useFormsList: () => forms,
@@ -136,7 +146,10 @@ it("searches services, changes view, and opens a workspace without losing the li
   expect(
     within(screen.getByRole("list", { name: "Services" })).getAllByRole("link"),
   ).toHaveLength(2);
-  await user.type(screen.getByRole("searchbox", { name: "Search services" }), "ALPHA");
+  await user.type(
+    screen.getByRole("searchbox", { name: "Search services" }),
+    "ALPHA",
+  );
   expect(screen.getByRole("status")).toHaveTextContent("1 service found");
   await user.click(screen.getByRole("button", { name: "List view" }));
   expect(screen.getByRole("button", { name: "List view" })).toHaveAttribute(
@@ -149,15 +162,21 @@ it("searches services, changes view, and opens a workspace without losing the li
   const breadcrumb = screen.getByRole("navigation", { name: "breadcrumb" });
   expect(breadcrumb).toHaveTextContent("Alpha service");
   expect(linkUrl("Edit form").searchParams.get("formId")).toBe("alpha");
-  expect(linkUrl("Edit Alpha page").searchParams.get("path")).toBe(alphaPage.path);
-  expect(linkUrl("Edit Alpha page").searchParams.get("service")).toBe("form:alpha");
+  expect(linkUrl("Edit Alpha page").searchParams.get("path")).toBe(
+    alphaPage.path,
+  );
+  expect(linkUrl("Edit Alpha page").searchParams.get("service")).toBe(
+    "form:alpha",
+  );
   expect(
     screen.queryByRole("link", { name: "Create start page" }),
   ).not.toBeInTheDocument();
-  await user.click(within(breadcrumb).getAllByRole("link", { name: "Services" })[0]);
-  expect(await screen.findByRole("searchbox", { name: "Search services" })).toHaveValue(
-    "ALPHA",
+  await user.click(
+    within(breadcrumb).getAllByRole("link", { name: "Services" })[0],
   );
+  expect(
+    await screen.findByRole("searchbox", { name: "Search services" }),
+  ).toHaveValue("ALPHA");
   expect(screen.getByRole("button", { name: "List view" })).toHaveAttribute(
     "aria-pressed",
     "true",
@@ -180,7 +199,9 @@ it("creates guidance separately, preserves the existing main draft, and offers o
   writeDraft(draftKeyFor(alphaPage.path), original);
   renderServices("/services?service=form%3Aalpha");
   await screen.findByRole("heading", { name: "Alpha service", level: 1 });
-  expect(screen.queryByRole("link", { name: "Create form" })).not.toBeInTheDocument();
+  expect(
+    screen.queryByRole("link", { name: "Create form" }),
+  ).not.toBeInTheDocument();
   expect(linkUrl("Edit form").searchParams.get("service")).toBe("form:alpha");
   await user.click(screen.getByRole("button", { name: "Add content page" }));
   await user.type(screen.getByRole("textbox", { name: "Page title" }), "Help");
@@ -200,11 +221,17 @@ it("creates the first page without requiring a separate start page", async () =>
   renderServices("/services?service=form%3Abeta");
   await screen.findByRole("heading", { name: "Beta service", level: 1 });
   await user.click(screen.getByRole("button", { name: "Add content page" }));
-  expect(screen.getByRole("textbox", { name: "Page title" })).toHaveValue("Beta service");
+  expect(screen.getByRole("textbox", { name: "Page title" })).toHaveValue(
+    "Beta service",
+  );
   await user.click(screen.getByRole("button", { name: "Create page" }));
   await screen.findByRole("heading", { name: "Content editor" });
-  expect(readDraft(draftKeyFor("apps/landing/src/content/beta/index.md"))).not.toBeNull();
-  expect(readDraft(draftKeyFor("apps/landing/src/content/beta/start.md"))).toBeNull();
+  expect(
+    readDraft(draftKeyFor("apps/landing/src/content/beta/index.md")),
+  ).not.toBeNull();
+  expect(
+    readDraft(draftKeyFor("apps/landing/src/content/beta/start.md")),
+  ).toBeNull();
 });
 
 it("retains conflicting review links and prevents creating pages from an incomplete inventory", async () => {
@@ -215,6 +242,7 @@ it("retains conflicting review links and prevents creating pages from an incompl
     prUrl: `https://github.com/govtech-bb/gov-bb/pull/${prNumber}`,
     branch: `review-${prNumber}`,
     headSha: "sha",
+    sameRepo: true,
     writable: true,
   }));
   content.openPRs = new Map([[alphaPage.path, claims]]);
@@ -222,8 +250,12 @@ it("retains conflicting review links and prevents creating pages from an incompl
   content.pages = [{ ...alphaPage, hasFormButton: false }];
   renderServices("/services?service=form%3Aalpha");
   await screen.findByRole("heading", { name: "Alpha service", level: 1 });
-  expect(screen.queryByRole("link", { name: "Edit Alpha page" })).not.toBeInTheDocument();
-  expect(screen.getByRole("button", { name: "Add content page" })).toBeDisabled();
+  expect(
+    screen.queryByRole("link", { name: "Edit Alpha page" }),
+  ).not.toBeInTheDocument();
+  expect(
+    screen.getByRole("button", { name: "Add content page" }),
+  ).toBeDisabled();
   expect(
     screen.getAllByRole("link", {
       name: /Review Alpha page in pull request/,

@@ -5,7 +5,7 @@ import { parseAuthSearch, type AuthFailure } from "../auth/session";
 import { Button } from "../ui/button";
 import { ScreenTitle } from "../workspace/screen-title";
 
-/** Public sign-in and OAuth completion; only an explicit button press starts GitHub. */
+/** Public sign-in and OAuth completion; only an explicit button press starts Google. */
 export const Route = createFileRoute("/auth")({
   ssr: false,
   validateSearch: parseAuthSearch,
@@ -60,14 +60,14 @@ function AuthPage() {
       : "Sign in to GovBB editor";
 
   // Reserve the pending label's width before the request starts.
-  const progress = retrySession ? "Checking your session…" : "Opening GitHub…";
+  const progress = retrySession ? "Checking your session…" : "Opening Google…";
 
   const message =
     failure === "session"
       ? "Your sign-in could not be confirmed. Allow cookies for the editor and API, then try again."
       : failure === "unavailable"
         ? "We could not reach the sign-in service. Check your connection and try again."
-        : "Sign-in was not completed. Continue with GitHub to try again.";
+        : "Sign-in was not completed. Continue with your GovTech Google Workspace account to try again.";
 
   const continueSignIn = async () => {
     if (busy.current) return;
@@ -90,7 +90,7 @@ function AuthPage() {
       if (result.ok) {
         window.location.replace(result.value);
 
-        // Keep the action locked until the browser actually leaves for GitHub.
+        // Keep the action locked until the browser actually leaves for Google.
         return;
       }
 
@@ -110,7 +110,7 @@ function AuthPage() {
       <p className="mt-3 text-16 text-muted">
         {signedOut
           ? "Your saved pages remain on the server."
-          : "Use your GitHub account with a verified email and active govtech-bb membership."}
+          : "Use your GovTech Google Workspace account."}
       </p>
       <p role="alert" className="mt-4 text-14 text-error empty:hidden">
         {failure ? message : null}
@@ -126,7 +126,7 @@ function AuthPage() {
         pendingLabel={progress}
         onClick={() => void continueSignIn()}
       >
-        {retrySession ? "Try again" : "Continue with GitHub"}
+        {retrySession ? "Try again" : "Continue with Google"}
       </Button>
     </AuthScreen>
   );

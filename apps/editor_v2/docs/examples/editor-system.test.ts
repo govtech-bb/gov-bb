@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
 import { readFileSync, writeFileSync } from "node:fs";
-import { createHeadlessEditor } from "../../src/editor";
+import { createHeadlessEditor } from "@/editor";
 import { lexicalToFormSchema, nativeSemanticEqual } from "../../src/forms";
 import { draftEditorConnection } from "../../src/host";
 import { $setPageMetadata, readPageMetadata } from "../../src/pages";

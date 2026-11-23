@@ -5,7 +5,9 @@
 
 import { isDeepStrictEqual } from "node:util";
 import { z } from "zod";
+import { isSitePath } from "@govtech-bb/govbbmarkd/content-url";
 import { LastEditedBy } from "./content-attribution";
+import { EditVersion } from "./edit-concurrency";
 
 /** Who may see a page, in the database enum's order. */
 export const VISIBILITIES = ["public", "preview", "draft"] as const;
@@ -24,8 +26,6 @@ export type Visibility = z.infer<typeof Visibility>;
 export const Frontmatter = z.object({
   lede: z.string().optional(),
   stage: z.string().optional(),
-  featured: z.boolean().optional(),
-  section: z.string().optional(),
   service_type: z.string().optional(),
   keywords: z.array(z.string()).optional(),
   source_url: z.string().optional(),
@@ -44,7 +44,14 @@ export type PageId = z.infer<typeof PageId>;
 export const PageUrl = z
   .string()
   .max(512)
-  .regex(/^\/[^?#]*[^/?#]$/)
+  .regex(
+    /^(?:\/[^/?#]+)+$/,
+    "Use / followed by non-empty path segments, without a trailing slash, query or fragment.",
+  )
+  .refine(
+    isSitePath,
+    "Use a site path without backslashes, whitespace or control characters.",
+  )
   .refine(
     (url) => (segmentsOf(url).at(-1) ?? "").length <= 200,
     "The url's last segment, its slug, can be at most 200 characters.",
@@ -90,18 +97,31 @@ export const PageDocument = PageFields.extend({
   published_at: z.iso
     .datetime()
     .nullable()
-    .describe("When the page first went public; null until it has."),
+    .describe(
+      "Landing's `publish_date` for an imported page, else when the page " +
+        "first went public; null until it has one.",
+    ),
   created_at: z.iso.datetime(),
   updated_at: z.iso
     .datetime()
     .describe(
-      "Millisecond precision, and exactly the value to send back in " +
-        "`if-updated-at` on the next save.",
+      "Content timestamp at millisecond precision; use version for write preconditions.",
     ),
 });
 
 /** A page as the editor reads it. */
 export type PageDocument = z.infer<typeof PageDocument>;
+
+/** An uncategorised root page as the editor's site pages list shows it. */
+export const SitePageSummary = PageDocument.pick({
+  id: true,
+  title: true,
+  url: true,
+  visibility: true,
+});
+
+/** An uncategorised root page in the editor's site pages list. */
+export type SitePageSummary = z.infer<typeof SitePageSummary>;
 
 /**
  * Where a pending revision stands: an editor submits a `draft`, and an
@@ -158,8 +178,7 @@ export const PendingRevision = z.object({
   updated_at: z.iso
     .datetime()
     .describe(
-      "Moves when its content is saved, not when it is submitted or " +
-        "rejected. Send it in `if-updated-at` to act on this version.",
+      "Revision content timestamp; use the enclosing page version for write preconditions.",
     ),
 });
 
@@ -181,6 +200,7 @@ export type FieldChange = z.infer<typeof FieldChange>;
 
 /** A pending revision, with what it changes against the live page. */
 export const RevisionView = PendingRevision.extend({
+  version: EditVersion,
   changes: z
     .array(FieldChange)
     .describe(
@@ -214,6 +234,7 @@ export type ReviewQueueEntry = z.infer<typeof ReviewQueueEntry>;
 
 /** A page as the editor opens and saves it: the live page with its pending revision, if any, laid over it. */
 export const EditorPage = PageDocument.extend({
+  version: EditVersion,
   last_edited_by: LastEditedBy,
   pending_revision: z
     .object({
@@ -369,7 +390,7 @@ export function revisionOf(
 export function workingCopy(
   live: PageDocument,
   revision: PendingRevision | null,
-): Omit<EditorPage, "last_edited_by"> {
+): Omit<EditorPage, "last_edited_by" | "version"> {
   if (
     revision === null ||
     revision.status === "published" ||
@@ -447,7 +468,7 @@ export function pendingRevisionOf(
 /**
  * Who a revision started from a rejected one counts as having changed it:
  * the rejected one's contributors and its submitter. None of them may
- * approve the new round (ADR 0079), so resubmitting it under someone else's
+ * approve the new round (ADR 0134), so resubmitting it under someone else's
  * name can't let its earlier submitter approve it.
  */
 export function inheritedFrom(rejected: PendingRevision): string[] {
@@ -491,17 +512,6 @@ export class PageConflict extends Error {
   constructor(readonly documentId: PageId) {
     super(
       "This page was changed somewhere else since you opened it. Reload to see the current version.",
-    );
-  }
-}
-
-/** A save to a revision waiting for review named no version, so it could overwrite another editor's change unseen. */
-export class PageVersionRequired extends Error {
-  /** Stable protocol-projection discriminator. */
-  readonly _tag = "PageVersionRequired" as const;
-  constructor() {
-    super(
-      "This change is waiting for review. Send the updated_at you last read in the if-updated-at header.",
     );
   }
 }

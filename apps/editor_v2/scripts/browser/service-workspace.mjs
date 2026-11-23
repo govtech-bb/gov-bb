@@ -148,7 +148,11 @@ try {
   assert.equal(new URL(page.url()).pathname, `/services/${created.id}/${created.id}`);
   assert.equal(await page.getByRole("link", { name: "Application form", exact: true }).count(), 0);
 
-  await button("Add page").click();
+  const addPage = page
+    .getByRole("navigation", { name: "Service pages", exact: true })
+    .getByRole("button", { name: "Add page", exact: true });
+
+  await addPage.click();
   const add = page.getByRole("dialog", { name: "Add a page", exact: true });
   await add
     .getByText("The page starts in Preview beneath this service’s entry page.", { exact: true })
@@ -170,7 +174,7 @@ try {
   assert.equal(start.fields.visibility, "preview");
   assert.equal(start.fields.body_markdown, "");
 
-  await button("Add page").click();
+  await addPage.click();
   await add.getByLabel("Page type").selectOption("supporting");
   await add.getByLabel("Page title", { exact: true }).fill("Fees");
   await add.getByRole("button", { name: "Add page", exact: true }).click();

@@ -12,7 +12,7 @@
  */
 
 import { count, eq, sql, TransactionRollbackError } from "drizzle-orm";
-import { writeSearchChunks } from "./adapters/postgres-pages";
+import { PostgresPages, writeSearchChunks } from "./adapters/postgres-pages";
 import type { Database } from "./db";
 import { chunkMarkdown } from "./modules/search-text";
 import {
@@ -21,11 +21,15 @@ import {
   collectionRecords,
   contentPages,
   dataCollections,
+  pageRevisions,
 } from "./schema";
-import { ESTATE, ESTATE_SOURCE } from "./seed-data";
+import { ESTATE, ESTATE_SOURCE, type SeedEstate } from "./seed-data";
 import { COLLECTIONS } from "./seed-data/collections";
 
-export async function seed(db: Database): Promise<{
+export async function seed(
+  db: Database,
+  estate: SeedEstate = ESTATE,
+): Promise<{
   categories: number;
   documents: number;
   collections: number;
@@ -45,7 +49,7 @@ export async function seed(db: Database): Promise<{
     }
     return categoryIds.get(slug) ?? null;
   };
-  for (const category of ESTATE.categories) {
+  for (const category of estate.categories) {
     const result = await db
       .insert(categories)
       .values({
@@ -69,7 +73,7 @@ export async function seed(db: Database): Promise<{
         .from(contentPages)
     ).map((row) => [row.url, row.id]),
   );
-  let pending = ESTATE.pages.filter((page) => !pageIds.has(page.url));
+  let pending = estate.pages.filter((page) => !pageIds.has(page.url));
   while (pending.length > 0) {
     const ready = pending.filter(
       (page) => page.parent === null || pageIds.has(page.parent),
@@ -80,11 +84,18 @@ export async function seed(db: Database): Promise<{
       );
     }
     for (const page of ready) {
-      const published =
-        page.visibility === "public"
-          ? new Date(page.published_at ?? Date.now())
+      // Landing's frontmatter `publish_date` travels with every page, public
+      // or not, so going public later keeps it. An undated public page is
+      // dated now; an undated non-public page stays undated.
+      const published = page.published_at
+        ? new Date(page.published_at)
+        : page.visibility === "public"
+          ? new Date()
           : null;
       const inserted = await db.transaction(async (tx) => {
+        await tx.execute(
+          sql`select pg_advisory_xact_lock(hashtext('content_pages.parent_id'))`,
+        );
         const [row] = await tx
           .insert(contentPages)
           .values({
@@ -103,6 +114,13 @@ export async function seed(db: Database): Promise<{
           .onConflictDoNothing()
           .returning();
         if (row) {
+          const records = new PostgresPages(tx);
+          const reachable = await records.publicPagesInSubtree(row.id);
+          if (!reachable.ok) throw reachable.error;
+          for (const page of reachable.value) {
+            const cleared = await records.removePageRedirectAt(page.url);
+            if (!cleared.ok) throw cleared.error;
+          }
           await writeSearchChunks(
             tx,
             row.id,
@@ -146,7 +164,9 @@ export async function seed(db: Database): Promise<{
         .insert(collectionRecords)
         .values({
           collectionKey: collection.key,
-          recordKey: data[collection.record_key]!,
+          // SAFETY: a collection's record key field is a `slug` field, so its
+          // value is a string.
+          recordKey: data[collection.record_key] as string,
           data,
         })
         .onConflictDoNothing()
@@ -168,6 +188,11 @@ export type ImportReport = {
   existing: number;
   /** `change_events` actors and their row counts before the import. */
   actors: Record<string, number>;
+  /**
+   * Rows `page_revisions` held before the import; pending saves write no
+   * history event.
+   */
+  revisions: number;
   categories: number;
   documents: number;
   collections: number;
@@ -187,16 +212,25 @@ export type ImportReport = {
  */
 export async function importEstate(
   db: Database,
-  options: { dryRun: boolean; force?: string },
+  {
+    dryRun,
+    force,
+    estate = ESTATE,
+  }: { dryRun: boolean; force?: string; estate?: SeedEstate },
 ): Promise<ImportReport> {
   let report!: ImportReport;
   try {
     await db.transaction(async (tx) => {
       await tx.execute(
+        sql`select pg_advisory_xact_lock(hashtext('content_pages.parent_id'))`,
+      );
+      await tx.execute(
         sql`lock table content_pages in share row exclusive mode`,
       );
       const [total] = await tx.select({ n: count() }).from(contentPages);
       const existing = total!.n;
+      const [revs] = await tx.select({ n: count() }).from(pageRevisions);
+      const revisions = revs!.n;
       const actors: Record<string, number> = {};
       for (const row of await tx
         .select({ actor: changeEvents.actor, n: count() })
@@ -204,17 +238,17 @@ export async function importEstate(
         .groupBy(changeEvents.actor)) {
         actors[row.actor] = row.n;
       }
-      if (existing > 0 && !options.force) {
+      if (existing > 0 && !force) {
         const histogram =
           Object.entries(actors)
             .sort(([a], [b]) => a.localeCompare(b))
             .map(([actor, n]) => `${actor}=${n}`)
             .join(", ") || "none";
         throw new Error(
-          `content_pages has ${existing} rows (history actors: ${histogram}); refusing. Pass --force "<reason>" to replace them.`,
+          `content_pages has ${existing} rows (history actors: ${histogram}; revisions: ${revisions}); refusing. Pass --force "<reason>" to replace them.`,
         );
       }
-      if (options.force) {
+      if (force) {
         // `delete`, not `truncate`: truncate fires no row triggers, so the
         // replaced pages and categories would vanish from the history.
         await tx.execute(sql`delete from search_chunks`);
@@ -222,15 +256,16 @@ export async function importEstate(
         await tx.execute(sql`delete from content_pages`);
         await tx.execute(sql`delete from categories`);
       }
-      const counts = await seed(tx);
+      const counts = await seed(tx, estate);
       report = {
         source: ESTATE_SOURCE,
-        reason: options.force ?? null,
+        reason: force ?? null,
         existing,
         actors,
+        revisions,
         ...counts,
       };
-      if (options.dryRun) tx.rollback();
+      if (dryRun) tx.rollback();
     });
   } catch (error) {
     if (!(error instanceof TransactionRollbackError)) throw error;

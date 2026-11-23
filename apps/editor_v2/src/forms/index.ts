@@ -2,22 +2,26 @@ export { defineFormEditor, formDefinition, type FormEditorDefinition } from "./d
 
 export { defineField, type FieldDefinition, type ResolvedField, type FormModule } from "./field";
 
-export { defineContent, type ContentDefinition } from "./content";
+export { defineSetting, ruleLimit, type QuestionSetting } from "./settings/define-setting";
 
-export type { Settings, Setting } from "./core/settings";
+export { configSetting } from "./settings/shared-settings";
+
+export { defineContent, type ContentDefinition } from "./content/define-content";
+
+export type { Settings, Setting } from "./model/settings";
 
 export type {
   FieldIssue,
   FieldCapabilities,
   FieldReference,
   ReferenceVisitor,
-} from "./core/fields";
+} from "./model/fields";
 
 export type {
   Condition as LegacyCondition,
   Action as LegacyAction,
   LogicalOperator as LegacyLogicalOperator,
-} from "./core/logic";
+} from "./model/logic";
 
 export type {
   FormDefinitionV2,
@@ -39,9 +43,13 @@ export type {
   NativeQuestion,
   NativeContent,
   NativeDiagnostic,
-} from "./schema";
+} from "./formats/native/schema";
 
-export { validateFormDefinition, nativeSemanticEqual, nativeDiagnosticPath } from "./schema";
+export {
+  validateFormDefinition,
+  nativeSemanticEqual,
+  nativeDiagnosticPath,
+} from "./formats/native/schema";
 
 export type {
   SourceBlock,
@@ -51,15 +59,15 @@ export type {
   NodeState,
   FormDocument,
   Diagnostic,
-} from "./source/model";
+} from "./formats/markdown/model";
 
-export type { FieldSourceHandler, RawFieldNode } from "./source/field";
+export type { FieldSourceHandler, RawFieldNode } from "./formats/markdown/field";
 
-export type { ContentSourceHandler } from "./source/content";
+export type { ContentSourceHandler } from "./formats/markdown/content";
 
-export { fieldModule, type FieldInsertion, type FieldPreviewProps } from "./editor/field-module";
+export { fieldModule, type FieldInsertion, type FieldPreviewProps } from "./canvas/field-module";
 
-export { formContentModule } from "./editor/content-module";
+export { formContentModule } from "./content/form-content-module";
 
 export {
   $createDrawnInput,
@@ -67,19 +75,19 @@ export {
   $createFieldLabel,
   $createLongAnswerInput,
   $createChoiceInput,
-} from "./editor/field-nodes";
+} from "./canvas/field-nodes";
 
-export { InputNode, OptionNode, WidgetNode, LongAnswerNode } from "./editor/answer-nodes";
+export { InputNode, OptionNode, WidgetNode, LongAnswerNode } from "./canvas/answer-nodes";
 
-export { $createFormTitleNode, $createPageTitleNode } from "./editor/nodes";
+export { $createFormTitleNode, $createPageTitleNode } from "./canvas/form-nodes";
 
-export { FormEditor, FormName } from "./react/form-editor";
+export { FormEditor, FormName } from "./canvas/form-editor";
 
-export type { BlockMenuModel, BlockMenuActions } from "./react/block-settings";
+export type { BlockMenuModel, BlockMenuActions } from "./canvas/block-settings";
 
-export { useSetSettings, type WidgetProps } from "./react/widget-settings";
+export { useSetSettings, type WidgetProps } from "./canvas/widget-settings";
 
-export { useStore, Field, Label, Value, Toggle, Switch } from "./react/settings-controls";
+export { useStore, Field, Label, Value, Toggle, Switch } from "./canvas/settings-controls";
 
 export {
   defineFormRegistry,
@@ -88,22 +96,22 @@ export {
   type FormRegistryEntry,
   type FormRegistryFragment,
   type FormRegistryForm,
-} from "./registry/definition";
+} from "./form-registry/definition";
 
-export { question, option, content, group, rule } from "./registry/builders";
+export { question, option, content, group, rule } from "./form-registry/builders";
 
-export { FormRegistryModule, $registryBlocks } from "./editor/registry-module";
+export { FormRegistryModule, $registryBlocks } from "./canvas/form-registry-module";
 
 export {
   prepareRegistryEntry,
   $instantiateRegistryEntry,
   createRegistryForm,
   type PreparedRegistryFragment,
-} from "./editor/registry";
+} from "./canvas/form-registry-insertion";
 
-export { createFormRuntime, type FormRuntime } from "./editor/runtime";
+export { createFormRuntime, type FormRuntime } from "./canvas/form-runtime";
 
-export { createFormDraftCodec } from "./editor/codec";
+export { createFormDraftCodec } from "./canvas/form-codec";
 
 export { lexicalToFormMarkdown } from "../converters/lexical-to-form-markdown";
 
@@ -111,7 +119,7 @@ export { formMarkdownToLexical } from "../converters/form-markdown-to-lexical";
 
 export { lexicalToLegacySsb } from "../converters/lexical-to-legacy-ssb";
 
-export type { LegacySsbFormSchema } from "./adapters/ssb/schema";
+export type { LegacySsbFormSchema } from "./formats/legacy-ssb/projection/schema";
 
 export { lexicalToFormSchema } from "../converters/lexical-to-form-schema";
 

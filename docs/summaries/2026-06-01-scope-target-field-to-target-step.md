@@ -42,7 +42,7 @@ ref couldn't map to a single target field at all.
   have ignored. An author who sets a Field ID Override would otherwise get an
   option value that still didn't match the overridden runtime id, reintroducing
   the silent-never-fires bug for that field. Delegating keeps a single source of
-  truth (ADR 0010) and gets override-correctness for free. Cost: a reader has to
+  truth (ADR 0020) and gets override-correctness for free. Cost: a reader has to
   follow one more hop to `duplicate-ids.ts` to see the resolution rules.
 
 - **Two plan-listed files left untouched.** The plan's Files section listed

@@ -27,7 +27,7 @@ import {
 import type { TableRow, TableCell, AlignType } from "mdast";
 import type { PageModule, PageHandler } from "../definition";
 import { pageInsertAction } from "../insertion";
-import { PageComponentNode } from "../nodes";
+import { PageComponentNode } from "../blocks/node";
 import { phrasing, UnsupportedPageContent } from "../markdown";
 
 const tables: PageHandler = {

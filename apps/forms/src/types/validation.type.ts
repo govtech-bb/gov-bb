@@ -1,6 +1,6 @@
-import { FieldValue } from "@govtech-bb/form-types";
+import type { FieldValue } from "@govtech-bb/form-types";
 import type { DateValidationError } from "@govtech-bb/form-validation";
-import { AnyFieldApi } from "@tanstack/react-form";
+import type { AnyFieldApi } from "@tanstack/react-form";
 
 /**
  * One entry in a field's TanStack error array: plain message strings for most

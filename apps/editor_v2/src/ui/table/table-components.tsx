@@ -97,7 +97,10 @@ export function DataTable({
 
   // A plain click, not one that ends a selection of the row's words
   const open = (event: MouseEvent<HTMLTableRowElement>) => {
-    if (!(event.target instanceof Element) || event.target.closest(controls)) return;
+    // A portaled menu bubbles through its React row but isn't part of the clickable row.
+    if (!(event.target instanceof Element) || !event.currentTarget.contains(event.target)) return;
+
+    if (event.target.closest(controls)) return;
 
     if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
 

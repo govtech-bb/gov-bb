@@ -5,7 +5,7 @@ import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { EditorComposer } from "../../src/editor/react/composer";
-import { FormEditor } from "../../src/forms/react/form-editor";
+import { FormEditor } from "../../src/forms/canvas/form-editor";
 import { govbbFormCodec, govbbFormEditor } from "../../src/presets/govbb-form";
 
 const rect = new DOMRect(0, 0, 600, 40);

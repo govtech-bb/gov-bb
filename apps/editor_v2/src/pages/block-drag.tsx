@@ -7,7 +7,7 @@ import {
   type LexicalEditor,
   type LexicalNode,
 } from "lexical";
-import type { Line } from "../editor/react/block-rail";
+import type { Line } from "@/editor/react";
 import { PageMetadataNode } from "./metadata";
 
 // Where a page's dragged block may land. The rail's drag (useBlockDrag) does the rest.

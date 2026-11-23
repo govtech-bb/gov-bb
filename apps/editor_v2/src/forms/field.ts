@@ -1,15 +1,15 @@
-import type { ResolvedContent } from "./content";
+import type { ResolvedContent } from "./content/define-content";
 import type { ElementNode, LexicalEditor } from "lexical";
 import type { ReactNode } from "react";
-import type { EditorModule } from "../editor/core/module";
-import type { Settings, Setting } from "./core/settings";
-import type { ActionType } from "./core/logic";
-import type { FieldStorage, FieldCapabilities, FieldIssue, ReferenceVisitor } from "./core/fields";
-import type { FieldSourceHandler } from "./source/field";
-import type { FormRegistryEntry } from "./registry/definition";
+import { type EditorModule, immutableData } from "@/editor";
+import type { Settings, Setting } from "./model/settings";
+import type { ActionType } from "./model/logic";
+import type { FieldStorage, FieldCapabilities, FieldIssue, ReferenceVisitor } from "./model/fields";
+import type { FieldSourceHandler } from "./formats/markdown/field";
+import type { FormRegistryEntry } from "./form-registry/definition";
 import type { FormEditorDefinition } from "./definition";
-import { immutableData } from "../editor/core/immutable";
 import type { NativeFeatureContributions, NativeFieldHandler } from "./native";
+import type { QuestionSetting } from "./settings/define-setting";
 
 export type ChoicePresentation = {
   readonly multiple: boolean;
@@ -22,7 +22,12 @@ export type FieldMessageContext = { label: string; optionCount: number; value?: 
 export type FieldDefinition<S extends object> = {
   readonly kind: string;
   readonly source: Omit<FieldSourceHandler, "kind" | "mapReferences">;
-  readonly settings: { readonly read: (raw: Settings) => S; readonly defaults: Settings };
+  readonly settings: {
+    readonly read: (raw: Settings) => S;
+    readonly defaults: Settings;
+    /** The settings only this field has, each declared once with its native JSON (see defineSetting). */
+    readonly own?: readonly QuestionSetting[];
+  };
   readonly label: string;
   readonly untitled: string;
   readonly icon?: ReactNode;
@@ -53,6 +58,8 @@ export type ResolvedField = {
   readonly icon?: ReactNode;
   readonly gutterOffset: number;
   readonly defaults: Settings;
+  /** The settings only this field has; native-settings.ts reads and writes them through these. */
+  readonly ownSettings: readonly QuestionSetting[];
   readonly capabilities: FieldCapabilities;
   readonly native?: NativeFieldHandler;
   readonly turnInto?: FieldDefinition<object>["turnInto"];
@@ -136,6 +143,7 @@ export function defineField<S extends { [K in keyof S]: Setting | undefined }>(
     choice: definition.choice && Object.freeze({ ...definition.choice }),
     turnInto: definition.turnInto && Object.freeze({ ...definition.turnInto }),
     defaults: immutableData(definition.settings.defaults),
+    ownSettings: Object.freeze([...(definition.settings.own ?? [])]),
     capabilities: Object.freeze({
       ...definition.capabilities,
       comparisons: Object.freeze([...definition.capabilities.comparisons]),

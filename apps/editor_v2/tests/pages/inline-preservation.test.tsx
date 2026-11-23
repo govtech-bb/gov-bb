@@ -1,6 +1,13 @@
 import { expect, test } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
-import { $getRoot, HISTORY_PUSH_TAG, REDO_COMMAND, UNDO_COMMAND } from "lexical";
+import {
+  $createParagraphNode,
+  $createTextNode,
+  $getRoot,
+  HISTORY_PUSH_TAG,
+  REDO_COMMAND,
+  UNDO_COMMAND,
+} from "lexical";
 import { createHeadlessEditor } from "../../src/editor/core/create-editor";
 import { govbbPageCodec, govbbPageEditor } from "../../src/presets/govbb-page";
 import { $setPageMetadata } from "../../src/pages/metadata";
@@ -102,7 +109,7 @@ test.each([
   "<a data-start-link><strong>Start <em>now</em></strong><br><del>old</del> <code>&lt;x&gt; &#42;literal&#42;</code></a>\n",
   "<a data-start-link>\n<strong>Start <em>now</em></strong><br><del>old</del> <code>&lt;x&gt; &#42;literal&#42;</code>\n</a>\n",
   "<a data-start-link>**Start** _now_ ~~old~~ `code`</a>\n",
-])("supported inline Start labels survive unrelated edits: %s", (source) => {
+])("supported inline Start labels survive detail and body edits: %s", (source) => {
   const initial = visual(source);
   expect(govbbPageCodec.encode(initial)).toBe(source);
   const editor = createHeadlessEditor(govbbPageEditor, initial);
@@ -110,11 +117,21 @@ test.each([
   try {
     editor.update(() => $setPageMetadata({ title: "Edited" }), { discrete: true });
     const saved = govbbPageCodec.encode(editor.getEditorState().toJSON());
+    expect(saved).toBe(`---\ntitle: Edited\n---\n\n${source}`);
     expect(visual(saved).root.children.slice(1)).toEqual(initial.root.children.slice(1));
-    expect(saved).toContain("<strong>");
-    expect(saved).toContain("<em>");
-    expect(saved).toContain("<del>");
-    expect(saved).toContain("<code>");
+    editor.update(
+      () => $getRoot().append($createParagraphNode().append($createTextNode("New instructions"))),
+      { discrete: true },
+    );
+    const edited = govbbPageCodec.encode(editor.getEditorState().toJSON());
+    expect(edited).toContain("New instructions");
+    expect(edited).toContain("<strong>");
+    expect(edited).toContain("<em>");
+    expect(edited).toContain("<del>");
+    expect(edited).toContain("<code>");
+    expect(visual(edited).root.children.slice(1)).toEqual(
+      editor.getEditorState().toJSON().root.children.slice(1),
+    );
   } finally {
     editor.dispose();
   }

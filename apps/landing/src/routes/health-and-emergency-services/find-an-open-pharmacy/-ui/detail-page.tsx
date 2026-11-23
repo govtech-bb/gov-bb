@@ -20,6 +20,7 @@ import {
   telHref,
   whatsappHref,
 } from '../-lib/routes'
+import { trackPharmacyAction } from '../-lib/tool-events'
 import { Caveat } from './caveat'
 import { MapPinIcon } from './icons'
 import { SlipsAccepted } from './slips-accepted'
@@ -78,12 +79,20 @@ export function PharmacyDetailPage({ pharmacy }: { pharmacy: Pharmacy }) {
 
       <div className="flex flex-wrap items-center gap-s">
         {hasPlace && (
-          <LinkButton external href={mapsUrl(pharmacy)}>
+          <LinkButton
+            external
+            href={mapsUrl(pharmacy)}
+            onClick={() => trackPharmacyAction('directions', pharmacy)}
+          >
             Get directions
           </LinkButton>
         )}
         {pharmacy.phone && (
-          <LinkButton href={telHref(pharmacy.phone)} variant="secondary">
+          <LinkButton
+            href={telHref(pharmacy.phone)}
+            onClick={() => trackPharmacyAction('call', pharmacy)}
+            variant="secondary"
+          >
             Call {pharmacy.phone}
           </LinkButton>
         )}
@@ -91,7 +100,13 @@ export function PharmacyDetailPage({ pharmacy }: { pharmacy: Pharmacy }) {
       {!pharmacy.phone && (
         <Text as="p">
           No number listed. Call the Drug Service on{' '}
-          <Link href={telHref(DRUG_SERVICE_PHONE)}>{DRUG_SERVICE_PHONE}</Link>.
+          <Link
+            href={telHref(DRUG_SERVICE_PHONE)}
+            onClick={() => trackPharmacyAction('call-drug-service', pharmacy)}
+          >
+            {DRUG_SERVICE_PHONE}
+          </Link>
+          .
         </Text>
       )}
 
@@ -125,7 +140,13 @@ export function PharmacyDetailPage({ pharmacy }: { pharmacy: Pharmacy }) {
       <Caveat>
         <strong>If your prescription is refused:</strong> contact the Drug
         Service if you need help checking your entitlement. Call{' '}
-        <Link href={telHref(DRUG_SERVICE_PHONE)}>{DRUG_SERVICE_PHONE}</Link>.
+        <Link
+          href={telHref(DRUG_SERVICE_PHONE)}
+          onClick={() => trackPharmacyAction('call-drug-service', pharmacy)}
+        >
+          {DRUG_SERVICE_PHONE}
+        </Link>
+        .
       </Caveat>
 
       <section
@@ -138,7 +159,12 @@ export function PharmacyDetailPage({ pharmacy }: { pharmacy: Pharmacy }) {
         {pharmacy.phone && (
           <Text as="p">
             Telephone:{' '}
-            <Link href={telHref(pharmacy.phone)}>{pharmacy.phone}</Link>
+            <Link
+              href={telHref(pharmacy.phone)}
+              onClick={() => trackPharmacyAction('call', pharmacy)}
+            >
+              {pharmacy.phone}
+            </Link>
           </Text>
         )}
         {pharmacy.phoneExtension && (
@@ -148,7 +174,13 @@ export function PharmacyDetailPage({ pharmacy }: { pharmacy: Pharmacy }) {
         )}
         {pharmacy.additionalPhones?.map((phone) => (
           <Text as="p" key={phone}>
-            Alternative telephone: <Link href={telHref(phone)}>{phone}</Link>
+            Alternative telephone:{' '}
+            <Link
+              href={telHref(phone)}
+              onClick={() => trackPharmacyAction('call', pharmacy)}
+            >
+              {phone}
+            </Link>
           </Text>
         ))}
         {whatsapp && (

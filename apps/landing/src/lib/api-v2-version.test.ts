@@ -1,9 +1,17 @@
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { z } from 'zod'
+import { apiV2Breaker, readPublic } from './api-v2-reader'
 import {
   EVERY_MS,
   createVersionWatch,
   fetchSiteVersion,
 } from './api-v2-version'
+
+afterEach(() => {
+  apiV2Breaker.reset()
+  vi.restoreAllMocks()
+  vi.useRealTimers()
+})
 
 /** A fake `read` returning each queued version in turn, then the last. */
 function versions(...values: Array<string | null>) {
@@ -85,5 +93,47 @@ describe('fetchSiteVersion', () => {
 
   it('is null with no api_v2 configured', async () => {
     expect(await fetchSiteVersion(null)).toBeNull()
+  })
+
+  it('is null without a request while the breaker is open', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    const failing = respond(503, {})
+    for (let i = 0; i < 3; i++)
+      await readPublic('http://api', '/x', z.object({}), failing)
+    const fetchImpl = respond(200, { version: 'v1' })
+    expect(await fetchSiteVersion('http://api', fetchImpl)).toBeNull()
+    expect(fetchImpl).not.toHaveBeenCalled()
+  })
+
+  it('neither opens the breaker nor logs when it fails', async () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const failing = respond(500, { error: 'internal_error' })
+    for (let i = 0; i < 4; i++)
+      expect(await fetchSiteVersion('http://api', failing)).toBeNull()
+    expect(failing).toHaveBeenCalledTimes(4)
+    expect(apiV2Breaker.isOpen(Date.now())).toBe(false)
+    expect(error).not.toHaveBeenCalled()
+    expect(warn).not.toHaveBeenCalled()
+  })
+
+  it('gives up after 300 ms, sooner than a page read', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    const hanging = vi.fn<typeof fetch>(
+      (_url, init) =>
+        new Promise((_resolve, reject) =>
+          init?.signal?.addEventListener('abort', () =>
+            reject(init.signal?.reason),
+          ),
+        ),
+    )
+    let settled = false
+    const version = fetchSiteVersion('http://api', hanging).finally(() => {
+      settled = true
+    })
+    await vi.advanceTimersByTimeAsync(299)
+    expect(settled).toBe(false)
+    await vi.advanceTimersByTimeAsync(1)
+    expect(await version).toBeNull()
   })
 })

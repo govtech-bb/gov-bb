@@ -3,7 +3,7 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { Menu } from "../../src/ui/menu";
-import { SsbField } from "../../src/forms/react/settings-controls";
+import { SsbField } from "../../src/forms/canvas/settings-controls";
 
 let host: HTMLDivElement;
 

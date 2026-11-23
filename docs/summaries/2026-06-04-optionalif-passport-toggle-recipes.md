@@ -14,7 +14,7 @@ invariant.
 ## What we did
 
 - `optionalIf` (targeting the toggle, `equal`/`true`) on 16 required National
-  ID fields across 11 recipes, edited in place — see ADR 0035 for the
+  ID fields across 11 recipes, edited in place — see ADR 0062 for the
   no-version-bump policy.
 - Renamed `post-office-redirection-individual`'s toggle
   `passport-number` → `passport-toggle` (every other recipe's name; also
@@ -30,7 +30,7 @@ invariant.
 ## Why we did it that way
 
 - **In-place edits over version bumps** — the central call; recorded as ADR
-  0035 rather than restated here.
+  0062 rather than restated here.
 - **The invariant is wording-scoped on purpose.** It keys passport toggles off
   "passport" in label/hint, step-scoped. Reviewer suggested also matching
   steps containing a `components/passport-number` input (robust to rewording);

@@ -8,7 +8,7 @@ import type {
   ICategoryEditing,
 } from "../services/category-editing";
 import type { SiteNavigation } from "../services/site-navigation";
-import { IF_UPDATED_AT, SCHEMAS } from "./contracts";
+import { SCHEMAS } from "./contracts";
 import { siteNotFoundCache, siteReadCache, storageFailed } from "./responses";
 
 function categoryFailed(
@@ -30,7 +30,7 @@ function categoryFailed(
     case "CategoryConflict":
       return reply
         .status(409)
-        .send({ error: "conflict", message: error.message });
+        .send({ error: "version_conflict", message: error.message });
     case "CategoryInUse":
       return reply.status(409).send({
         error: "category_in_use",
@@ -80,10 +80,11 @@ export const editorCategoryRoutes: FastifyPluginAsyncZod<{
     schema: SCHEMAS.updateCategory,
     config: { role: "approver" },
     handler: async (request, reply) => {
+      const { expected_version: expected, ...fields } = request.body;
       const result = await categories.update(
         request.params.id,
-        request.body,
-        request.headers[IF_UPDATED_AT],
+        fields,
+        expected,
         actor(request),
       );
       return result.ok
@@ -109,9 +110,10 @@ export const editorCategoryRoutes: FastifyPluginAsyncZod<{
     schema: SCHEMAS.deleteCategory,
     config: { role: "approver" },
     handler: async (request, reply) => {
+      const expected = request.query.expected_version;
       const result = await categories.delete(
         request.params.id,
-        request.headers[IF_UPDATED_AT],
+        expected,
         actor(request),
       );
       return result.ok

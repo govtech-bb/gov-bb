@@ -5,7 +5,6 @@ lede: 'Working for yourself? You can be covered. Find out how much to pay, how t
 stage: 'alpha'
 visibility: preview
 service_type: digital
-featured: false
 publish_date: 2026-07-22
 categories:
   - money-financial-support
@@ -43,7 +42,9 @@ The estimator uses your earnings to suggest contribution amounts. Your benefit e
 
 Having a National Insurance number does not mean you are registered as self-employed. You need both: a number, and to be registered with NIS as self-employed. If you've worked in Barbados before, NIS can check whether you already have a number.
 
-<link-button href="https://www.nis.gov.bb/self-employment-registration/" variant="secondary">Register as self-employed</link-button>
+:::action{href="https://www.nis.gov.bb/self-employment-registration/" variant="secondary"}
+Register as self-employed
+:::
 
 NIS does not share your information with external agencies such as the Barbados Revenue Authority, unless the law requires it.
 

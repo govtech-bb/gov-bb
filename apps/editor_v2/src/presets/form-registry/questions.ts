@@ -1,4 +1,4 @@
-import type { QuestionBase, Layout } from "../../forms/schema";
+import type { QuestionBase, Layout } from "../../forms/formats/native/schema";
 import { COMPONENTS } from "./components";
 
 /** Each named factory returns detached native data with an explicit authored identity and key. */

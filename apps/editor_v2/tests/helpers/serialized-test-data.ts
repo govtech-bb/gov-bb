@@ -1,5 +1,5 @@
 import type { SerializedEditorState, SerializedLexicalNode } from "lexical";
-import type { Setting, Settings } from "../../src/editor/core/settings";
+import type { Setting, Settings } from "../../src/forms/model/settings";
 
 /** Serialized fixture projections retain the optional fields installed by the test editor. */
 export type TestSerializedNode = SerializedLexicalNode & {

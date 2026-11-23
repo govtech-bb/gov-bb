@@ -1,3 +1,4 @@
+import { isSitePath } from '@govtech-bb/govbbmarkd/content-url'
 import {
   getCategoryTitle,
   getPageTitle,
@@ -89,7 +90,8 @@ export function ancestorTrail(
   return crumbs
 }
 
-/** A path as the trail links to it: one leading slash, whatever api_v2 sent. */
+/** A site link with one leading slash; unsafe stored values fall back to Home. */
 export function sitePath(url: string): string {
-  return `/${url.replace(/^\/+/, '')}`
+  const path = `/${url.replace(/^\/+/, '')}`
+  return isSitePath(path) ? path : '/'
 }

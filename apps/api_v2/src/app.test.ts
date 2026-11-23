@@ -9,16 +9,17 @@
  * the real handlers and the real error handler, against a real database.
  */
 
-import { sql } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { FastifyInstance, InjectOptions } from "fastify";
 import pino from "pino";
-import { IF_UPDATED_AT } from "./routes/contracts";
-import { PUBLIC_READ } from "./routes/responses";
+
+import { EDITOR_READ, NOT_FOUND_READ, PUBLIC_READ } from "./routes/responses";
 import type { Database } from "./db";
 import { PostgresPages } from "./adapters/postgres-pages";
 import { withDefaults, type PageId, type Visibility } from "./modules/page";
-import { categories, changeEvents, searchChunks } from "./schema";
+import { categories, changeEvents, contentPages, searchChunks } from "./schema";
+import { seed } from "./seed";
 import {
   aPage,
   createTestApp,
@@ -124,6 +125,41 @@ describe("GET /health", () => {
   });
 });
 
+describe("under a base path (#3745)", () => {
+  it("answers every route under it and nothing at the root", async () => {
+    const requests: string[] = [];
+    const prefixed = await createTestApp(db, {
+      config: { ...TEST_HTTP_CONFIG, basePath: "/v2" },
+      auth: {
+        handle: async (request) => {
+          requests.push(request.url);
+          return Response.json({ ok: true });
+        },
+      },
+    });
+    try {
+      for (const url of ["/v2/health", "/v2/health/db", "/v2/docs"])
+        expect((await prefixed.inject({ url })).statusCode, url).toBe(200);
+      for (const url of ["/health", "/docs", "/api/auth/get-session"])
+        expect((await prefixed.inject({ url })).statusCode, url).toBe(404);
+      const docs = await prefixed.inject({ url: "/v2/docs" });
+      expect(docs.body).toContain('data-url="/v2/docs/openapi.json"');
+      const spec = await prefixed.inject({ url: "/v2/docs/openapi.json" });
+      expect(Object.keys(spec.json().paths)).toContain("/v2/pages");
+      const auth = await prefixed.inject({
+        url: "/v2/api/auth/get-session",
+        headers: TEST_HEADERS,
+      });
+      expect(auth.statusCode).toBe(200);
+      expect(requests).toEqual([
+        "http://localhost:3020/v2/api/auth/get-session",
+      ]);
+    } finally {
+      await prefixed.close();
+    }
+  });
+});
+
 describe("GET /pages?url=", () => {
   it("400s when url is missing", async () => {
     const response = await inject({ url: "/pages" });
@@ -135,6 +171,15 @@ describe("GET /pages?url=", () => {
     const response = await inject({ url: "/pages?url=" });
     expect(response.statusCode).toBe(400);
   });
+
+  it.each(["%00", "%2F%00a", "%2Fa%0Ab", "%2Fa%20b", "%2F%2Fx", "x"])(
+    "400s when url %s is not a site path",
+    async (url) => {
+      const response = await inject({ url: `/pages?url=${url}` });
+      expect(response.statusCode).toBe(400);
+      expect(response.json()).toMatchObject({ error: "bad_request" });
+    },
+  );
 
   it("serves the page as url, frontmatter, markdown and breadcrumbs", async () => {
     const category = await seedCategory();
@@ -250,6 +295,43 @@ describe("GET /pages?url=", () => {
     });
   });
 
+  it.each([
+    "//outside.test/legacy",
+    "/\\outside.test/legacy",
+    "/\t/outside.test/legacy",
+    "/old\u001f/legacy",
+  ])("never redirects to an unsafe stored URL %j", async (url) => {
+    const [page] = await db
+      .insert(contentPages)
+      .values({
+        url,
+        slug: "legacy",
+        title: "Legacy page",
+        visibility: "public",
+        bodyMarkdown: "Legacy content",
+      })
+      .returning();
+    if (!page) throw new Error("Expected the legacy page");
+
+    for (const visibility of ["public", "preview"] as const) {
+      await db
+        .update(contentPages)
+        .set({ visibility })
+        .where(eq(contentPages.id, page.id));
+      const response = await read("/legacy");
+      expect(response.statusCode).toBe(404);
+      expect(response.headers.location).toBeUndefined();
+      expect(response.json()).not.toHaveProperty("redirect");
+      expect(response.headers["cache-control"]).toBe(NOT_FOUND_READ);
+
+      const preview = await readPreview("/legacy");
+      expect(preview.statusCode).toBe(404);
+      expect(preview.headers.location).toBeUndefined();
+      expect(preview.json()).not.toHaveProperty("redirect");
+      expect(preview.headers["cache-control"]).toBe(EDITOR_READ);
+    }
+  });
+
   it("301s a bare slug to the one public page it names", async () => {
     await seedPage();
 
@@ -264,6 +346,65 @@ describe("GET /pages?url=", () => {
     await seedPage({ visibility: "preview" });
     expect((await read("/calculate-severance-pay")).statusCode).toBe(404);
   });
+
+  it("301s a reviewer's bare slug to the preview page past a draft that shares it", async () => {
+    await seedPage({ visibility: "preview" });
+    await seedPage({
+      url: "/zz-unpublished/calculate-severance-pay",
+      visibility: "draft",
+    });
+
+    const reviewer = await readPreview("/calculate-severance-pay");
+
+    expect(reviewer.statusCode).toBe(301);
+    expect(reviewer.headers.location).toBe(ENTRY);
+    expect((await read("/calculate-severance-pay")).statusCode).toBe(404);
+  });
+
+  it("301s a bare slug past a hidden page that shares it, rather than revealing it", async () => {
+    await seedPage();
+    await seedPage({
+      url: "/zz-unpublished/calculate-severance-pay",
+      visibility: "draft",
+    });
+
+    const response = await read("/calculate-severance-pay");
+
+    expect(response.statusCode).toBe(301);
+    expect(response.headers.location).toBe(ENTRY);
+  });
+
+  it("301s a bare slug past a page hidden beneath one that isn't public", async () => {
+    await seedPage();
+    const hidden = await seedPage({ url: "/zz-hidden", visibility: "draft" });
+    await seedPage({
+      url: "/zz-hidden/calculate-severance-pay",
+      parent_id: hidden.id,
+    });
+
+    expect((await read("/calculate-severance-pay")).headers.location).toBe(
+      ENTRY,
+    );
+  });
+
+  // Both orders, so a check of only the first or last sub-page can't pass.
+  it.each([
+    ["draft", "public"],
+    ["public", "draft"],
+  ])(
+    "keeps the Start link when any start sub-page is public (%s, then %s)",
+    async (...visibilities) => {
+      const parent = await seedPage({ body_markdown: ENTRY_MARKDOWN });
+      for (const [i, visibility] of visibilities.entries())
+        await seedPage({
+          url: i === 0 ? START : "/elsewhere/start",
+          parent_id: parent.id,
+          visibility,
+        });
+
+      expect((await read(ENTRY)).json().hide_start_links).toBe(false);
+    },
+  );
 
   it("404s a bare slug more than one page shares", async () => {
     await seedPage({ url: "/a/start" });
@@ -431,6 +572,96 @@ describe("GET /editor/page-paths", () => {
       );
       const response = await brokenApp.inject({
         url: "/editor/page-paths",
+        headers: TEST_HEADERS,
+      });
+
+      expect(response.statusCode).toBe(500);
+      expect(response.json()).toMatchObject({ error: "internal_error" });
+    } finally {
+      await brokenApp.close();
+      await broken.close();
+    }
+  });
+});
+
+describe("GET /editor/site-pages", () => {
+  it("lists the seeded site pages by title, and Services lists none of them", async () => {
+    await seed(db);
+    const indexed = expectOk(await new PostgresPages(db).indexedPages());
+    const sitePages = [
+      "/terms-conditions",
+      "/what-we-mean-by-alpha",
+      "/whats-changing",
+    ].map(
+      (url) =>
+        indexed.find((page) => page.url === url) ?? expect.unreachable(url),
+    );
+
+    const response = await inject({ url: "/editor/site-pages" });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.headers["cache-control"]).toBe("no-store");
+    expect(response.json()).toEqual({
+      pages: sitePages.map(({ id, title, url }) => ({
+        id,
+        title,
+        url,
+        visibility: "public",
+      })),
+    });
+    const listed = await inject({ url: "/services" });
+    expect(listed.statusCode).toBe(200);
+    for (const { id, url } of sitePages) {
+      expect(listed.json()).not.toContainEqual(
+        expect.objectContaining({ url }),
+      );
+      expect((await inject({ url: `/services/${id}` })).statusCode).toBe(404);
+    }
+  });
+
+  it("lists uncategorised root pages in every visibility, without services or sub-pages", async () => {
+    const draft = await seedPage({
+      url: "/zulu",
+      title: "Zulu draft",
+      visibility: "draft",
+    });
+    const publicPage = await seedPage({ url: "/middle", title: "Middle" });
+    const preview = await seedPage({
+      url: "/alpha",
+      title: "Alpha preview",
+      visibility: "preview",
+    });
+    const category = await seedCategory();
+    const service = await seedPage({ category_id: category.id });
+    await seedPage({ url: START, parent_id: service.id });
+    await seedPage({ url: "/middle/child", parent_id: publicPage.id });
+
+    const response = await inject({ url: "/editor/site-pages" });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({
+      pages: [preview, publicPage, draft].map(
+        ({ id, title, url, visibility }) => ({ id, title, url, visibility }),
+      ),
+    });
+  });
+
+  it("returns an empty list when there are no site pages", async () => {
+    const response = await inject({ url: "/editor/site-pages" });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({ pages: [] });
+  });
+
+  it("does not mistake a failed lookup for an empty list", async () => {
+    const broken = await createTestDb();
+    const brokenApp = await createTestApp(broken.db);
+    try {
+      await broken.db.execute(
+        sql`alter table content_pages rename to unavailable_pages`,
+      );
+      const response = await brokenApp.inject({
+        url: "/editor/site-pages",
         headers: TEST_HEADERS,
       });
 
@@ -618,6 +849,26 @@ describe("GET /editor/categories", () => {
 });
 
 describe("POST /pages", () => {
+  it.each([
+    "//outside.test/page",
+    "/\\outside.test/page",
+    "/a//b",
+    "/a\u001fb",
+  ])(
+    "rejects an unsafe authored URL %j before inserting a page",
+    async (url) => {
+      const response = await inject({
+        method: "POST",
+        url: "/pages",
+        payload: aPage({ url, visibility: "preview" }),
+      });
+      expect(response.statusCode).toBe(400);
+      expect(await db.select().from(contentPages)).toEqual([]);
+      expect(await db.select().from(searchChunks)).toEqual([]);
+      expect(await db.select().from(changeEvents)).toEqual([]);
+    },
+  );
+
   it("creates the page", async () => {
     const response = await inject({
       method: "POST",
@@ -719,13 +970,44 @@ describe("POST /pages", () => {
 // A save to a public page goes into its pending revision (revisions.test.ts),
 // so the tests of what a save writes use a page that is not public.
 describe("PUT /pages/:id", () => {
+  it.each([
+    "//outside.test/page",
+    "/\\outside.test/page",
+    "/a//b",
+    "/a\u001fb",
+  ])(
+    "rejects an unsafe authored URL %j without changing the page",
+    async (url) => {
+      const page = await seedPage({ visibility: "preview" });
+      const before = {
+        pages: await db.select().from(contentPages),
+        search: await db.select().from(searchChunks),
+        history: await db.select().from(changeEvents),
+      };
+      const response = await inject({
+        method: "PUT",
+        url: `/pages/${page.id}`,
+        payload: { ...page, url, expected_version: page.version },
+      });
+      expect(response.statusCode).toBe(400);
+      expect({
+        pages: await db.select().from(contentPages),
+        search: await db.select().from(searchChunks),
+        history: await db.select().from(changeEvents),
+      }).toEqual(before);
+    },
+  );
+
   it("saves and returns the new updated_at", async () => {
     const created = await seedPage();
     const response = await inject({
       method: "PUT",
       url: `/pages/${created.id}`,
-      headers: { [IF_UPDATED_AT]: created.updated_at },
-      payload: { ...created, title: "Severance pay" },
+      payload: {
+        ...created,
+        expected_version: created.version,
+        title: "Severance pay",
+      },
     });
 
     expect(response.statusCode).toBe(200);
@@ -733,20 +1015,26 @@ describe("PUT /pages/:id", () => {
     expect(response.json().updated_at).not.toBe(created.updated_at);
   });
 
-  it("409s on a stale if-updated-at and leaves the row untouched", async () => {
+  it("409s on a stale expected_version and leaves the row untouched", async () => {
     const created = await seedPage({ visibility: "preview" });
     await inject({
       method: "PUT",
       url: `/pages/${created.id}`,
-      headers: { [IF_UPDATED_AT]: created.updated_at },
-      payload: { ...created, title: "First writer wins" },
+      payload: {
+        ...created,
+        expected_version: created.version,
+        title: "First writer wins",
+      },
     });
 
     const response = await inject({
       method: "PUT",
       url: `/pages/${created.id}`,
-      headers: { [IF_UPDATED_AT]: created.updated_at },
-      payload: { ...created, title: "Second writer clobbers" },
+      payload: {
+        ...created,
+        expected_version: created.version,
+        title: "Second writer clobbers",
+      },
     });
 
     expect(response.statusCode).toBe(409);
@@ -769,13 +1057,16 @@ describe("PUT /pages/:id", () => {
     );
   });
 
-  it("400s an if-updated-at that is not a timestamp, rather than saving unconditionally", async () => {
+  it("400s an expected_version that is not a number, rather than saving unconditionally", async () => {
     const created = await seedPage();
     const response = await inject({
       method: "PUT",
       url: `/pages/${created.id}`,
-      headers: { [IF_UPDATED_AT]: "yesterday" },
-      payload: { ...created, title: "Saved by accident" },
+      payload: {
+        ...created,
+        expected_version: "yesterday",
+        title: "Saved by accident",
+      },
     });
 
     expect(response.statusCode).toBe(400);
@@ -786,7 +1077,7 @@ describe("PUT /pages/:id", () => {
     const response = await inject({
       method: "PUT",
       url: "/pages/22222222-2222-4222-8222-222222222222",
-      payload: withDefaults(aPage()),
+      payload: { ...withDefaults(aPage()), expected_version: 1 },
     });
     expect(response.statusCode).toBe(404);
   });
@@ -798,7 +1089,11 @@ describe("PUT /pages/:id", () => {
         await inject({
           method: "PUT",
           url: `/pages/${draft.id}`,
-          payload: { ...current, visibility },
+          payload: {
+            ...current,
+            expected_version: current.version,
+            visibility,
+          },
         })
       ).json();
 
@@ -832,7 +1127,11 @@ describe("PUT /pages/:id", () => {
         await inject({
           method: "PUT",
           url: `/pages/${draft.id}`,
-          payload: { ...current, ...changes },
+          payload: {
+            ...current,
+            expected_version: current.version,
+            ...changes,
+          },
         })
       ).json();
     await put(await put(draft, { title: "Renamed" }), { visibility: "public" });
@@ -878,6 +1177,36 @@ describe("PUT /pages/:id", () => {
     ]);
   });
 
+  it("keeps redacted history metadata without comparing across the missing snapshot", async () => {
+    const page = await seedPage({ visibility: "draft" });
+    for (const title of ["Private fixture", "Clean title"])
+      await db.execute(
+        sql`update content_pages set title = ${title} where id = ${page.id}`,
+      );
+    await db.execute(
+      sql`update content_pages set description = 'Details' where id = ${page.id}`,
+    );
+    const before = (await inject({ url: `/pages/${page.id}/history` })).json();
+
+    await db.transaction(async (tx) => {
+      await tx.execute(sql`select set_config('app.redacting', 'on', true)`);
+      await tx.execute(sql`update change_events
+        set snapshot = '{"redacted":true,"reason":"incident-42","by":"operator-test"}'
+        where entity_id = ${page.id} and version_no = 2`);
+    });
+
+    const response = await inject({ url: `/pages/${page.id}/history` });
+    expect(response.statusCode).toBe(200);
+    expect(response.json().entries).toEqual(
+      before.entries.map(
+        (entry: { version_no: number; changed: string[] }) => ({
+          ...entry,
+          changed: entry.version_no === 4 ? ["description"] : [],
+        }),
+      ),
+    );
+  });
+
   it("404s the history of a page that has none", async () => {
     const response = await inject({
       url: "/pages/22222222-2222-4222-8222-222222222222/history",
@@ -895,7 +1224,11 @@ describe("PUT /pages/:id", () => {
         await inject({
           method: "PUT",
           url: `/pages/${draft.id}`,
-          payload: { ...current, ...changes },
+          payload: {
+            ...current,
+            expected_version: current.version,
+            ...changes,
+          },
         })
       ).json();
     const servedDate = async () =>
@@ -929,7 +1262,11 @@ describe("PUT /pages/:id", () => {
     const response = await inject({
       method: "PUT",
       url: `/pages/${parent.id}`,
-      payload: { ...parent, parent_id: child.id },
+      payload: {
+        ...parent,
+        expected_version: parent.version,
+        parent_id: child.id,
+      },
     });
 
     expect(response.statusCode).toBe(422);
@@ -948,7 +1285,11 @@ describe("PUT /pages/:id", () => {
     const response = await inject({
       method: "PUT",
       url: `/pages/${child.id}`,
-      payload: { ...unplaced, title: "Renamed" },
+      payload: {
+        ...unplaced,
+        expected_version: child.version,
+        title: "Renamed",
+      },
     });
 
     expect(response.statusCode).toBe(200);
@@ -968,7 +1309,7 @@ describe("PUT /pages/:id", () => {
     const response = await inject({
       method: "PUT",
       url: `/pages/${parent.id}`,
-      payload: { ...parent, url: moved },
+      payload: { ...parent, expected_version: parent.version, url: moved },
     });
 
     expect(response.statusCode).toBe(200);
@@ -1024,7 +1365,11 @@ describe("PUT /pages/:id", () => {
     const response = await inject({
       method: "PUT",
       url: `/pages/${parent.id}`,
-      payload: { ...parent, category_id: to.id },
+      payload: {
+        ...parent,
+        expected_version: parent.version,
+        category_id: to.id,
+      },
     });
 
     expect(response.statusCode).toBe(200);
@@ -1043,7 +1388,11 @@ describe("PUT /pages/:id", () => {
     await inject({
       method: "PUT",
       url: `/pages/${parent.id}`,
-      payload: { ...parent, category_id: category.id },
+      payload: {
+        ...parent,
+        expected_version: parent.version,
+        category_id: category.id,
+      },
     });
 
     expect(expectOk(await live(start.id))?.category_id).toBe(category.id);
@@ -1062,7 +1411,11 @@ describe("PUT /pages/:id", () => {
     await inject({
       method: "PUT",
       url: `/pages/${created.id}`,
-      payload: { ...created, body_markdown: "Intro\n\n## Fees\n\nTen dollars" },
+      payload: {
+        ...created,
+        expected_version: created.version,
+        body_markdown: "Intro\n\n## Fees\n\nTen dollars",
+      },
     });
 
     const rows = await db
@@ -1095,7 +1448,7 @@ describe("DELETE /pages/:id", () => {
     const created = await seedPage();
     const response = await inject({
       method: "DELETE",
-      url: `/pages/${created.id}`,
+      url: `/pages/${created.id}?expected_version=${created.version}`,
     });
 
     expect(response.statusCode).toBe(204);
@@ -1104,7 +1457,10 @@ describe("DELETE /pages/:id", () => {
 
   it("records who deleted the page, which moves the version", async () => {
     const created = await seedPage();
-    await inject({ method: "DELETE", url: `/pages/${created.id}` });
+    await inject({
+      method: "DELETE",
+      url: `/pages/${created.id}?expected_version=${created.version}`,
+    });
 
     const events = await db
       .select({ action: changeEvents.action, actor: changeEvents.actor })
@@ -1123,7 +1479,7 @@ describe("DELETE /pages/:id", () => {
 
     const response = await inject({
       method: "DELETE",
-      url: `/pages/${parent.id}`,
+      url: `/pages/${parent.id}?expected_version=${parent.version}`,
     });
 
     expect(response.statusCode).toBe(422);
@@ -1281,7 +1637,7 @@ describe("timestamp precision", () => {
     expect(fetched.updated_at).toMatch(/\.\d{3}Z$/);
   });
 
-  it("accepts the updated_at it just handed out, twice in a row", async () => {
+  it("accepts the version it just handed out, twice in a row", async () => {
     const created = await seedPage();
 
     let current = created;
@@ -1289,8 +1645,7 @@ describe("timestamp precision", () => {
       const response = await inject({
         method: "PUT",
         url: `/pages/${current.id}`,
-        headers: { [IF_UPDATED_AT]: current.updated_at },
-        payload: { ...current, title },
+        payload: { ...current, expected_version: current.version, title },
       });
       expect(response.statusCode).toBe(200);
       current = response.json();
@@ -1361,6 +1716,8 @@ describe("employee access", () => {
     ["HEAD", "/pages/not-a-uuid"],
     ["GET", "/services"],
     ["GET", "/editor/page-paths"],
+    ["GET", "/editor/site-pages"],
+    ["HEAD", "/editor/site-pages"],
     ["GET", "/services/not-a-uuid"],
     ["GET", "/editor/categories"],
     ["HEAD", "/editor/categories"],
@@ -1449,7 +1806,10 @@ describe("employee access", () => {
     const saved = await inject({
       method: "PUT",
       url: `/pages/${created.json().id}`,
-      payload: withDefaults(aPage({ title: "Updated", visibility: "preview" })),
+      payload: {
+        ...withDefaults(aPage({ title: "Updated", visibility: "preview" })),
+        expected_version: created.json().version,
+      },
     });
     expect(saved.statusCode).toBe(200);
     const events = await db
@@ -1463,7 +1823,7 @@ describe("employee access", () => {
 
   it("never gives editor reads an ETag or a conditional 304", async () => {
     const page = await seedPage();
-    for (const url of [`/pages/${page.id}`, "/version"]) {
+    for (const url of [`/pages/${page.id}`, "/version", "/editor/site-pages"]) {
       const response = await inject({ url, headers: { "if-none-match": "*" } });
       expect(response.statusCode).toBe(200);
       expect(response.headers["cache-control"]).toBe("no-store");
@@ -1496,7 +1856,7 @@ describe("authentication HTTP bridge", () => {
     });
     try {
       const response = await authApp.inject({
-        url: "/api/auth/callback/github?code=sensitive-code&state=sensitive-state",
+        url: "/api/auth/callback/google?code=sensitive-code&state=sensitive-state",
         headers: { cookie: "session=sensitive-cookie" },
       });
       expect(response.statusCode).toBe(500);
@@ -1516,7 +1876,7 @@ describe("authentication HTTP bridge", () => {
         handle: async (request) => {
           received.push(request);
           const headers = new Headers({
-            location: "https://github.com/example",
+            location: "https://accounts.google.com/example",
             "cache-control": "public, max-age=60",
           });
           headers.append("set-cookie", "state=one; Path=/; HttpOnly");
@@ -1529,7 +1889,7 @@ describe("authentication HTTP bridge", () => {
       const response = await authApp.inject({
         method: "POST",
         url: "/api/auth/sign-in/social",
-        payload: { provider: "github" },
+        payload: { provider: "google" },
         headers: { ...TEST_HEADERS, host: "untrusted.example" },
       });
       expect(received).toHaveLength(1);
@@ -1540,9 +1900,11 @@ describe("authentication HTTP bridge", () => {
         `${TEST_HTTP_CONFIG.apiOrigin}/api/auth/sign-in/social`,
       );
       expect(request.headers.get("cookie")).toBe(TEST_HEADERS.cookie);
-      expect(await request.json()).toEqual({ provider: "github" });
+      expect(await request.json()).toEqual({ provider: "google" });
       expect(response.statusCode).toBe(302);
-      expect(response.headers.location).toBe("https://github.com/example");
+      expect(response.headers.location).toBe(
+        "https://accounts.google.com/example",
+      );
       expect(response.headers["set-cookie"]).toEqual([
         "state=one; Path=/; HttpOnly",
         "session=two; Path=/; HttpOnly",

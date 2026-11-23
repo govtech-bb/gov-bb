@@ -1,0 +1,6 @@
+.page-body [data-page-component="notice"] {
+  border-inline-start: 0.35rem solid var(--page-blue);
+  padding: 1rem;
+  margin-block: 1rem;
+  background: color-mix(in srgb, var(--page-blue) 5%, white);
+}

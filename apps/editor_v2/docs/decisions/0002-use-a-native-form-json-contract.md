@@ -32,7 +32,7 @@ A successful conversion establishes supported form semantics, not a deployed res
 
 ## Evidence
 
-- [Native types](../../src/forms/schema/types.ts) and [declared reference traversal](../../src/forms/schema/references.ts).
+- [Native types](../../src/forms/formats/native/schema/types.ts) and [declared reference traversal](../../src/forms/formats/native/schema/references.ts).
 - [Native import and preservation check](../../src/converters/form-schema-to-lexical.ts).
 - [Native export](../../src/converters/lexical-to-form-schema.ts).
 - [Editable conversion and identity preservation tests](../../tests/forms/native-form-converters.test.ts).

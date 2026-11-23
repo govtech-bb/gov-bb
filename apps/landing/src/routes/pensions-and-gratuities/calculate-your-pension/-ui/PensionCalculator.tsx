@@ -11,6 +11,7 @@ import {
 } from '@govtech-bb/react'
 import { useNavigate } from '@tanstack/react-router'
 import { useEffect, useRef, useState } from 'react'
+import { trackEvent } from '@/lib/analytics'
 import { money } from '@/lib/money'
 import { calculatePension } from '../-lib/compute'
 import type { PensionEstimate } from '../-lib/compute'
@@ -86,6 +87,21 @@ export function PensionCalculator() {
   useEffect(() => {
     if (estimate) resultsRef.current?.focus()
   }, [estimate])
+
+  // One step view each time the form is shown: the ref survives StrictMode's
+  // second effect run. The results send tool-result instead.
+  const view = estimate ? 'result' : 'form'
+  const viewed = useRef<typeof view | null>(null)
+  useEffect(() => {
+    if (viewed.current === view) return
+    viewed.current = view
+    if (view === 'form') {
+      trackEvent('tool-step-view', { tool: 'pension-calculator', step: 'form' })
+    }
+  }, [view])
+
+  const trackAbout = () =>
+    trackEvent('tool-action', { tool: 'pension-calculator', action: 'about' })
 
   function validate(): FieldErrors {
     const startYearVal = startYear.trim()
@@ -166,6 +182,24 @@ export function PensionCalculator() {
     setErrors(found)
 
     if (Object.keys(found).length > 0) {
+      // "required" when a field with an error was left empty, else "format".
+      // Never the dates or salary themselves.
+      const values = {
+        startMonth,
+        startYear,
+        endMonth,
+        endYear,
+        nopayMonths,
+        salary,
+      }
+      const missing = (Object.keys(found) as Array<keyof FieldErrors>).some(
+        (field) => !values[field].trim(),
+      )
+      trackEvent('tool-error', {
+        tool: 'pension-calculator',
+        step: 'form',
+        error: missing ? 'required' : 'format',
+      })
       setEstimate(null)
       if (typeof window !== 'undefined') {
         window.requestAnimationFrame(() => {
@@ -179,6 +213,11 @@ export function PensionCalculator() {
       return
     }
 
+    // The outcome only, never the estimate.
+    trackEvent('tool-result', {
+      tool: 'pension-calculator',
+      outcome: 'estimated',
+    })
     const nopayVal = nopayMonths.trim()
     setEstimate(
       calculatePension({
@@ -333,7 +372,10 @@ export function PensionCalculator() {
               {money(estimate.fullAnnual)}
             </p>
             <Text as="p" size="body" className="mt-2">
-              <Link href={`${ABOUT_URL}#how-your-pension-is-calculated`}>
+              <Link
+                href={`${ABOUT_URL}#how-your-pension-is-calculated`}
+                onClick={trackAbout}
+              >
                 See how the reduced pension and gratuity are calculated
               </Link>
             </Text>
@@ -387,8 +429,19 @@ export function PensionCalculator() {
               </Text>
               <ul className="mt-2 list-disc space-y-2 pl-7">
                 <li>
-                  Phone: <a href="tel:+12464317400">431-7400</a> — Ext. 1802,
-                  1803, 1808 or 1824
+                  Phone:{' '}
+                  <a
+                    href="tel:+12464317400"
+                    onClick={() =>
+                      trackEvent('tool-action', {
+                        tool: 'pension-calculator',
+                        action: 'call',
+                      })
+                    }
+                  >
+                    431-7400
+                  </a>{' '}
+                  — Ext. 1802, 1803, 1808 or 1824
                 </li>
               </ul>
             </div>
@@ -538,7 +591,9 @@ export function PensionCalculator() {
 
         <div className="mt-4 border-grey-20 border-t-2 pt-6">
           <Text as="p" size="body">
-            <Link href={ABOUT_URL}>Learn how your pension is calculated</Link>
+            <Link href={ABOUT_URL} onClick={trackAbout}>
+              Learn how your pension is calculated
+            </Link>
           </Text>
         </div>
       </div>

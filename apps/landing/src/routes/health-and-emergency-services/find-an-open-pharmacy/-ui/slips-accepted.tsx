@@ -9,6 +9,7 @@ import type { Pharmacy } from '../-data/pharmacies'
 import { PHARMACIES } from '../-data/pharmacies'
 import { formatDistanceKm } from '../-lib/pharmacy-distance'
 import { SLIP_COLOURS_HREF } from '../-lib/routes'
+import { trackPharmacyAction } from '../-lib/tool-events'
 import type { SlipColour } from '../-lib/slips'
 import {
   acceptsSlip,
@@ -90,7 +91,12 @@ export function SlipsAccepted({ pharmacy }: { pharmacy: Pharmacy }) {
       <Text as="p" className="text-grey-70">
         Check the colour of the prescription your doctor gave you before you
         travel.{' '}
-        <Link href={SLIP_COLOURS_HREF}>What prescription colours mean</Link>
+        <Link
+          href={SLIP_COLOURS_HREF}
+          onClick={() => trackPharmacyAction('slip-colours', pharmacy)}
+        >
+          What prescription colours mean
+        </Link>
       </Text>
       <ul className="flex list-none flex-col gap-xs p-0">
         {SLIP_COLOURS.map((slip) => (

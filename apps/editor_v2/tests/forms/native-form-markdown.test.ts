@@ -6,7 +6,7 @@ import { formSchemaToLexical } from "../../src/converters/form-schema-to-lexical
 import { lexicalToFormSchema } from "../../src/converters/lexical-to-form-schema";
 import { lexicalToFormMarkdown } from "../../src/converters/lexical-to-form-markdown";
 import { formMarkdownToLexical } from "../../src/converters/form-markdown-to-lexical";
-import { nativeSemanticEqual } from "../../src/forms/schema/semantics";
+import { nativeSemanticEqual } from "../../src/forms/formats/native/schema/semantics";
 import pension from "../fixtures/forms/v2/pension.json";
 import identity from "../fixtures/forms/v2/examples/passport-example.json";
 

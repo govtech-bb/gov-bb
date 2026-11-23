@@ -8,9 +8,16 @@ import { PostgresCollections } from "./adapters/postgres-collections";
 import { mailerFor } from "./adapters/mail";
 import { PostgresPages } from "./adapters/postgres-pages";
 import { PostgresReviewRecipients } from "./adapters/postgres-review-recipients";
+import { moveEmails } from "./adapters/postgres-email-moves";
 import { PostgresRoles } from "./adapters/postgres-roles";
 import { parseConfig } from "./config";
-import { connect, createPool, ping, type DatabaseFailure } from "./db";
+import {
+  connect,
+  createPool,
+  createMigrationPool,
+  ping,
+  type DatabaseFailure,
+} from "./db";
 import { migrate } from "./migrate";
 import { authBypass, registerBypassEmployee } from "./adapters/auth-bypass";
 import type { AuthHandler } from "./routes/auth";
@@ -26,6 +33,9 @@ import {
 } from "./services/review-notifications";
 import { SiteNavigation } from "./services/site-navigation";
 import { seed } from "./seed";
+
+/** A request's query fails after this long, so a quiet database answers 500 rather than hanging (#2845). */
+const QUERY_TIMEOUT_MS = 5_000;
 
 const logger = pino({
   redact: [
@@ -71,7 +81,9 @@ async function main(): Promise<void> {
     return;
   }
   const config = parsed.value;
-  const created = createPool(config.database, logger);
+  const created = createPool(config.database, logger, {
+    queryTimeoutMs: QUERY_TIMEOUT_MS,
+  });
   if (!created.ok) return refuseToStart(created.error);
 
   const pool = created.value;
@@ -88,13 +100,27 @@ async function main(): Promise<void> {
     if (!connected.ok) return refuseToStart(connected.error);
     const db = connected.value;
     operation = "migrate";
-    const ran = await migrate(db, (script) => pool.query(script));
+    const migrating = createMigrationPool(config.database, logger);
+    if (!migrating.ok) return refuseToStart(migrating.error);
+    let ran: string[];
+    try {
+      ran = await migrate(migrating.value);
+    } finally {
+      await migrating.value.end();
+    }
     if (ran.length > 0) logger.info({ migrations: ran }, "applied migrations");
     if (config.seed) {
       operation = "seed";
       const counts = await seed(db);
       if (Object.values(counts).some((n) => n > 0))
         logger.info(counts, "seeded the estate");
+    }
+    if (config.emailMoves.length > 0) {
+      operation = "email moves";
+      // In API_V2_EMAIL_MOVES order; no emails in the log.
+      const outcomes = await moveEmails(db, config.emailMoves);
+      const level = outcomes.includes("conflict") ? "error" : "info";
+      logger[level]({ outcomes }, "applied API_V2_EMAIL_MOVES");
     }
     if (shutdown.signal.aborted) return;
     operation = "auth";
@@ -116,9 +142,9 @@ async function main(): Promise<void> {
       }
       ({ access, auth } = authBypass);
     } else {
-      const github = await createBetterAuth(db, config.auth, logger);
-      access = new EditorAccess(github, roles, config.adminEmails);
-      auth = github;
+      const betterAuth = await createBetterAuth(db, config.auth, logger);
+      access = new EditorAccess(betterAuth, roles, config.adminEmails);
+      auth = betterAuth;
     }
     operation = "http";
     const pages = new PostgresPages(db);
@@ -134,7 +160,7 @@ async function main(): Promise<void> {
     app = await buildApp({
       resolution: new PageResolution(pages),
       navigation: new SiteNavigation(pages),
-      // One local developer runs the whole review flow (ADR 0079).
+      // One local developer runs the whole review flow (ADR 0134).
       editing: new PageEditing(
         pages,
         () => new Date(),
@@ -142,7 +168,7 @@ async function main(): Promise<void> {
         notifier,
       ),
       index: new EditorIndex(pages),
-      categories: new CategoryEditing(pages, () => new Date()),
+      categories: new CategoryEditing(pages),
       collections: new CollectionEditing(new PostgresCollections(db)),
       access,
       roles,
@@ -150,6 +176,7 @@ async function main(): Promise<void> {
       config: {
         apiOrigin: config.auth.apiOrigin,
         editorOrigin: config.auth.editorOrigin,
+        basePath: config.auth.apiBasePath,
       },
       ...(config.previewSecret ? { previewSecret: config.previewSecret } : {}),
       ...(config.landingSecret ? { landingSecret: config.landingSecret } : {}),

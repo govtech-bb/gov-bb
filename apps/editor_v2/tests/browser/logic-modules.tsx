@@ -4,8 +4,8 @@ import { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { Editor } from "../../src/editor/react/editor";
 import { govbbFormEditor } from "../../src/presets/govbb-form";
-import { createFormRuntime } from "../../src/forms/editor/runtime";
-import { createFormDraftCodec } from "../../src/forms/editor/codec";
+import { createFormRuntime } from "../../src/forms/canvas/form-runtime";
+import { createFormDraftCodec } from "../../src/forms/canvas/form-codec";
 import {
   $blockId,
   $createFormTitleNode,
@@ -17,8 +17,8 @@ import {
   $ensureQuestionFields,
   $questionKey,
   $setSettings,
-} from "../../src/forms/editor/nodes";
-import { $createMentionNode } from "../../src/forms/features/mentions/node";
+} from "../../src/forms/canvas/form-nodes";
+import { $createMentionNode } from "../../src/forms/mentions/mention-node";
 
 const editors = new Map<string, LexicalEditor>();
 

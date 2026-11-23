@@ -1,11 +1,10 @@
-import type { FormRegistryEntry } from "../../forms/registry/definition";
+import type { FormRegistryEntry } from "../../forms/form-registry/definition";
 import type { FormEditorDefinition } from "../../forms/definition";
 import { formDefinition } from "../../forms/definition";
 import { resolveNativeField } from "../../forms/native";
-import type { RichText, QuestionBase } from "../../forms/schema";
-import { useEditorDefinition } from "../../editor/react/composer";
+import type { RichText, QuestionBase } from "../../forms/formats/native/schema";
+import { useEditorDefinition, RendererHost } from "@/editor/react";
 import { cn } from "../../cn";
-import { RendererHost } from "../../editor/react/contributions";
 import { PreviewQuestion } from "../../ui/preview-sheet";
 
 const text = (rich: RichText): string =>

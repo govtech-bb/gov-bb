@@ -5,6 +5,8 @@ import { SubmissionsController } from "./forms/submissions/submissions.controlle
 import { PaymentWebhookController } from "./payments/payment-webhook.controller";
 import { FilesController } from "./files/files.controller";
 import { JourneyController } from "./journey/journey.controller";
+import { SubmissionStatusController } from "./forms/submissions/status/submission-status.controller";
+import { THROTTLERS } from "./common/throttlers";
 
 // Pins the per-route throttler policy in place. If someone removes a
 // decorator, this catches it before the change ships.
@@ -44,8 +46,8 @@ const throttleLimitFor = (
   return typeof value === "number" ? value : undefined;
 };
 
-/** The registered global `short` bucket — see ThrottlerModule.forRoot in app.module.ts. */
-const GLOBAL_SHORT_LIMIT = 5;
+/** The registered global `short` bucket — see common/throttlers.ts. */
+const GLOBAL_SHORT_LIMIT = THROTTLERS.find((t) => t.name === "short")!.limit;
 
 describe("throttler configuration", () => {
   it("AppController (/health) skips throttling", () => {
@@ -71,6 +73,24 @@ describe("throttler configuration", () => {
         ),
       ).toBe(true);
       expect(hasThrottleMetadata(JourneyController.prototype.record)).toBe(
+        false,
+      );
+    },
+  );
+
+  // #3623: the chat's limit is decided per request (a valid caller token or
+  // not), so each registered bucket carries a resolver, never "default".
+  it.each(THROTTLERS.map((t) => t.name))(
+    "SubmissionStatusController.lookup resolves the '%s' bucket per request",
+    (bucket) => {
+      const handler = SubmissionStatusController.prototype.lookup;
+      expect(
+        typeof Reflect.getMetadata(`THROTTLER:LIMIT${bucket}`, handler),
+      ).toBe("function");
+      expect(
+        typeof Reflect.getMetadata(`THROTTLER:TRACKER${bucket}`, handler),
+      ).toBe("function");
+      expect(hasMetadataWithPrefix(handler, "THROTTLER:LIMITdefault")).toBe(
         false,
       );
     },

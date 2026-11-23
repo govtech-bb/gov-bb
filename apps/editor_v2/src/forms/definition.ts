@@ -1,10 +1,9 @@
-import { validateContentSyntax } from "./source/content";
-import { defineFormRegistry } from "./registry/definition";
-import { defineEditor, type EditorDefinition } from "../editor/core/definition";
+import { validateContentSyntax } from "./formats/markdown/content";
+import { defineFormRegistry } from "./form-registry/definition";
+import { defineEditor, type EditorDefinition, type DocumentNodeDefinition } from "@/editor";
 import type { FormModule } from "./field";
-import type { DocumentNodeDefinition } from "../editor/core/module";
-import { validateNativeCapabilities } from "./schema";
-import type { NativeSchemaCapabilities } from "./schema";
+import { validateNativeCapabilities } from "./formats/native/schema";
+import type { NativeSchemaCapabilities } from "./formats/native/schema";
 
 export type { FormModule } from "./field";
 

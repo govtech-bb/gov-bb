@@ -6,10 +6,13 @@ import { defineFormEditor } from "../../src/forms/definition";
 import {
   defineFormRegistryEntry,
   type FormRegistryFragment,
-} from "../../src/forms/registry/definition";
-import { question, content, rule } from "../../src/forms/registry/builders";
-import { prepareRegistryEntry, $instantiateRegistryEntry } from "../../src/forms/editor/registry";
-import { $insertBlocks } from "../../src/forms/editor/insertion";
+} from "../../src/forms/form-registry/definition";
+import { question, content, rule } from "../../src/forms/form-registry/builders";
+import {
+  prepareRegistryEntry,
+  $instantiateRegistryEntry,
+} from "../../src/forms/canvas/form-registry-insertion";
+import { $insertBlocks } from "../../src/forms/canvas/form-insertion";
 import { govbbFormEditor, govbbFormModules } from "../../src/presets/govbb-form";
 import {
   addressCountryEntry,

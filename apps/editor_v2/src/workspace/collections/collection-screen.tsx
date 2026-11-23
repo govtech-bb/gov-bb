@@ -1,23 +1,18 @@
 import { PencilSimple, Trash } from "@phosphor-icons/react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { useMemo, useRef, useState } from "react";
-import {
-  ApiFailure,
-  type Collection,
-  type CollectionRecord,
-  type EditorApi,
-} from "../../api/client";
+import { useEffect, useMemo, useRef, useState } from "react";
+import type { Collection, CollectionRecord, EditorApi } from "../../api/client";
 import { collectionQuery } from "../../api/queries";
 import { Banner } from "../../ui/banner";
 import { Button } from "../../ui/button";
 import { EmptyState } from "../../ui/empty-state";
 import { ListScreen } from "../../ui/list-screen";
-import { RefreshFailure } from "../../ui/refresh-failure";
 import { createAppColumnHelper, useAppTable } from "../../ui/table/table-hooks";
 import { TextLink } from "../../ui/text-link";
-import { LoadFailure } from "../load-failure";
+import { listLoadView } from "../list-load-view";
 import { DeleteRecordDialog, RecordDialog } from "./record-dialog";
+import { valueText } from "./records";
 
 const column = createAppColumnHelper<CollectionRecord>();
 
@@ -52,29 +47,50 @@ const recordColumns = (
           }),
         ]),
     ...fields.map((field, index) =>
-      column.accessor((record) => record.data[field.key] ?? "", {
-        id: `field:${field.key}`,
-        header: field.label,
-        sortFn: "text",
-        enableHiding: false,
-        cell: ({ getValue }) => {
-          const value = getValue();
+      field.type === "number"
+        ? // A number column sorts by value, so 9 comes before 10; a record without one sorts first
+          column.accessor(
+            (record) => {
+              const value = record.data[field.key];
 
-          return value ? (
-            <span
-              className={
-                index === 0 && keyListed
-                  ? "font-mono text-12"
-                  : "line-clamp-2 max-w-64 text-14 wrap-break-word"
-              }
-            >
-              {value}
-            </span>
-          ) : (
-            <span className="text-muted">None</span>
-          );
-        },
-      }),
+              return Number.isFinite(value) ? Number(value) : Number.NEGATIVE_INFINITY;
+            },
+            {
+              id: `field:${field.key}`,
+              header: field.label,
+              sortFn: "basic",
+              enableHiding: false,
+              cell: ({ getValue }) =>
+                Number.isFinite(getValue()) ? (
+                  <span className="text-14">{getValue()}</span>
+                ) : (
+                  <span className="text-muted">None</span>
+                ),
+            },
+          )
+        : column.accessor((record) => valueText(record.data[field.key]), {
+            id: `field:${field.key}`,
+            header: field.label,
+            sortFn: "text",
+            enableHiding: false,
+            cell: ({ getValue }) => {
+              const value = getValue();
+
+              return value ? (
+                <span
+                  className={
+                    index === 0 && keyListed
+                      ? "font-mono text-12"
+                      : "line-clamp-2 max-w-64 text-14 wrap-break-word"
+                  }
+                >
+                  {value}
+                </span>
+              ) : (
+                <span className="text-muted">None</span>
+              );
+            },
+          }),
     ),
     column.display({
       id: "actions",
@@ -133,12 +149,7 @@ export function CollectionScreen({
   const add = useRef<HTMLButtonElement>(null);
   const card = useRef<HTMLDivElement>(null);
   const collection = detail.data?.collection;
-  const status = detail.error instanceof ApiFailure ? detail.error.status : undefined;
-
-  const refreshFailed =
-    detail.isError && !!detail.data && (status === 0 || (status !== undefined && status >= 500));
-
-  const blocked = detail.isError && !refreshFailed;
+  const load = listLoadView(detail, "records", "these records");
 
   const found = wanted
     ? detail.data?.records.find((item) => item.record_key === wanted)
@@ -158,6 +169,15 @@ export function CollectionScreen({
     setAdditions((count) => count + 1);
     setAdding(true);
   };
+
+  // Arriving at a collection with no records, and with the focus nowhere, as just after adding it or following a link
+  // to it, its first record is what comes next
+  const empty = !readOnly && detail.data?.records.length === 0;
+
+  useEffect(() => {
+    if (empty && (!document.activeElement || document.activeElement === document.body))
+      add.current?.focus();
+  }, [empty]);
 
   const startDeleting = (record: CollectionRecord) => {
     setDeleting(record);
@@ -184,7 +204,7 @@ export function CollectionScreen({
     getRowId: (record) => record.record_key,
   });
 
-  if (blocked && status === 404)
+  if (load.state.kind === "blocked" && load.state.reason === "gone")
     return (
       <EmptyState
         kind="not-found"
@@ -212,7 +232,7 @@ export function CollectionScreen({
             Add record
           </Button>
         }
-        status={detail.isPending ? "Loading records…" : null}
+        status={load.status}
         notices={
           <>
             {wanted && detail.data && !found && !opened && (
@@ -220,28 +240,10 @@ export function CollectionScreen({
                 There is no record “{wanted}” in this collection. It may have been deleted.
               </Banner>
             )}
-            {refreshFailed && (
-              <RefreshFailure
-                inset="card"
-                pending={detail.isFetching}
-                pendingLabel="Refreshing records…"
-                onRetry={() => void detail.refetch()}
-              >
-                We could not refresh these records. Showing the last loaded list.
-              </RefreshFailure>
-            )}
+            {load.notices}
           </>
         }
-        failure={
-          blocked && (
-            <LoadFailure
-              noun="records"
-              error={detail.error}
-              retrying={detail.isFetching}
-              retry={() => void detail.refetch()}
-            />
-          )
-        }
+        failure={load.failure}
       >
         <table.DataTable
           caption={collection ? `${collection.title} records` : "Records"}

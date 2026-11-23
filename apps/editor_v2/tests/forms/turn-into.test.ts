@@ -1,8 +1,8 @@
 import { expect, test } from "vitest";
 import { $createParagraphNode, $createTextNode, $getRoot, type LexicalEditor } from "lexical";
 import { $turnLineInto } from "../../src/editor/core/turn-into";
-import { $createDrawnInput } from "../../src/forms/editor/field-nodes";
-import { $createQuestionNode } from "../../src/forms/editor/nodes";
+import { $createDrawnInput } from "../../src/forms/canvas/field-nodes";
+import { $createQuestionNode } from "../../src/forms/canvas/form-nodes";
 import { govbbFormEditor } from "../../src/presets/govbb-form";
 import { createFormEditor } from "../helpers/form-editor";
 

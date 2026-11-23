@@ -1,13 +1,13 @@
 import { jsonSettings, serializedNodes, settingsObject } from "../helpers/serialized-test-data";
 import { defineLegacyField, type LegacyFieldDefinition } from "../../src/forms/legacy";
 import { expect, test } from "vitest";
-import { InputNode } from "../../src/forms/editor/answer-nodes";
+import { InputNode } from "../../src/forms/canvas/answer-nodes";
 import { defineField } from "../../src/forms/field";
 import { defineFormEditor } from "../../src/forms/definition";
-import type { FieldStorage } from "../../src/forms/core/fields";
-import type { Settings } from "../../src/forms/core/settings";
-import type { SourceQuestion } from "../../src/forms/source/model";
-import { createFormSourceDialect } from "../../src/forms/source/dialect";
+import type { FieldStorage } from "../../src/forms/model/fields";
+import type { Settings } from "../../src/forms/model/settings";
+import type { SourceQuestion } from "../../src/forms/formats/markdown/model";
+import { createFormSourceDialect } from "../../src/forms/formats/markdown/dialect";
 
 type CodeSettings = { code: string; destination?: string };
 
@@ -434,11 +434,11 @@ test("owned raw node properties survive source hooks while unclaimed properties 
 });
 
 test("field readiness diagnostics retain invalid raw widths without making the draft unloadable", async () => {
-  const { shortAnswerField } = await import("../../src/forms/features/short-answer/definition");
+  const { textInputField } = await import("../../src/forms/fields/text-input");
 
   for (const width of [42, null, ["short"], { draft: "unfinished" }, "wide"]) {
     const raw = { width };
-    expect(shortAnswerField.validate(raw, "question")).toContainEqual({
+    expect(textInputField.validate(raw, "question")).toContainEqual({
       code: "field-width",
       message: "Field width must be short, medium or long",
       where: "question",

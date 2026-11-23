@@ -4,6 +4,9 @@ export const isMac = /Mac|iPhone|iPad/.test(globalThis.navigator?.userAgent ?? "
 /** The Alt key's name, for "Option-click" and the like. */
 export const altKey = isMac ? "Option" : "Alt";
 
+/** Whether a key press is part of composing text with an input method, which shortcuts must leave alone. */
+export const composing = (event: KeyboardEvent) => event.isComposing || event.keyCode === 229;
+
 const mac = new Map([
   ["mod", "⌘"],
   ["shift", "⇧"],

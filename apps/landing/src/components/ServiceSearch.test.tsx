@@ -54,7 +54,7 @@ function renderSearch(
 ) {
   return render(
     <ServiceSearch
-      source="home"
+      source="services"
       viewer="public"
       loadDocuments={loadDocumentsMock}
       {...props}
@@ -226,13 +226,7 @@ describe('ServiceSearch', () => {
     })
   })
 
-  it('preserves both empty-query destinations', () => {
-    const first = renderSearch({ emptyHref: '/services' })
-    fireEvent.submit(screen.getByRole('search'))
-    expect(navigateMock).toHaveBeenLastCalledWith({ to: '/services' })
-
-    first.unmount()
-    navigateMock.mockClear()
+  it('sends an empty search to the results page', () => {
     renderSearch({ source: 'services' })
     fireEvent.submit(screen.getByRole('search'))
     expect(navigateMock).toHaveBeenLastCalledWith({

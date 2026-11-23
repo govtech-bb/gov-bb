@@ -30,8 +30,8 @@ Authors have one place to inspect conditional actions, and copying or removing a
 
 ## Evidence
 
-- [Native condition and action contracts](../../src/forms/schema/types.ts)
-- [Follow-up and logic authoring transactions](../../src/forms/features/logic/authoring.ts)
+- [Native condition and action contracts](../../src/forms/formats/native/schema/types.ts)
+- [Follow-up and logic authoring transactions](../../src/forms/conditional-logic/logic-authoring.ts)
 - [Nesting, disclosure and migration regressions](../../tests/forms/logic-rules.test.ts)
 - [Native follow-up consolidation and undo tests](../../tests/forms/logic-authoring.test.ts)
 - [Fixture interpreter for native rule semantics](../../tests/helpers/native-fixture-interpreter.ts)

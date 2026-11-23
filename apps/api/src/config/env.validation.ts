@@ -112,6 +112,18 @@ const baseSchema = z
     // unset ⇒ the notifier no-ops (dev/sandbox/unconfigured envs).
     SLACK_ALERTS_WEBHOOK_URL: urlOrEmpty().optional(),
 
+    // Slack /stats slash command (#3491). The signing secret verifies requests
+    // come from Slack; unset ⇒ every request is refused. The Umami settings
+    // are the same values the analytics app uses; unset ⇒ the command replies
+    // that stats aren't set up.
+    SLACK_SIGNING_SECRET: z.string().default(""),
+    UMAMI_API_KEY: z.string().default(""),
+    UMAMI_LANDING_WEBSITE_ID: z.string().default(""),
+    UMAMI_FORMS_WEBSITE_ID: z.string().default(""),
+    // Incoming webhook for the channel that gets last week's stats every
+    // Monday at 8am Barbados time; unset ⇒ no weekly digest.
+    SLACK_STATS_WEBHOOK_URL: urlOrEmpty().optional(),
+
     // SES delivery-events queue (optional). When set, the SesEventConsumer
     // polls it to reconcile notification_log.delivery_status; empty = disabled.
     SES_EVENTS_QUEUE_URL: urlOrEmpty().optional(),
@@ -121,12 +133,24 @@ const baseSchema = z
     // to the first CORS_ORIGIN entry in the consuming code.
     FORMS_BASE_URL: urlOrEmpty().default(""),
 
+    // api_v2 origin (#3249). When set, GET /services reads api_v2's /catalog
+    // (with RECIPE_PREVIEW_TOKEN as x-preview-token) instead of the static
+    // snapshot + service_status. Empty = the static path.
+    API_V2_URL: urlOrEmpty().default(""),
+
     // Public landing site origin, substituted into a recipe's `{landingUrl}`
     // confirmation token so authored links to a service page point at this
     // environment's landing site. Empty = fall back to prod
     // (https://alpha.gov.bb) in form-conditions, which is a real page — never
     // a root-relative link, which would be dead in the applicant's email.
     LANDING_BASE_URL: urlOrEmpty().default(""),
+
+    // The application tracker's lookup API (alpha-infra
+    // `lookup_api_endpoint`), read for CaMS statuses by the chat's status
+    // lookup (#3419). AWS_IAM-authorised, so requests are SigV4-signed, except
+    // to a local address (the tracker's `pnpm local:api`). Empty = CaMS
+    // lookups answer 503.
+    TRACKER_LOOKUP_API_URL: urlOrEmpty().default(""),
 
     // EzPay (EZPAY_WEBHOOK_SECRET required only when verify-signature is on)
     EZPAY_BASE_URL: z.url(),
@@ -156,8 +180,8 @@ const baseSchema = z
     // (the default) disables the bypass entirely — leave unset in production.
     // A free string, not an enum: valid form IDs aren't known at boot (recipes
     // resolve from files at runtime) and an unknown ID simply never matches.
-    // DB-only builder drafts stay unsubmittable regardless (ADR 0043 / #145).
-    // Replaces the blanket ALLOW_PREVIEW_SUBMISSIONS boolean — see ADR 0066.
+    // DB-only builder drafts stay unsubmittable regardless (ADR 0075 / #145).
+    // Replaces the blanket ALLOW_PREVIEW_SUBMISSIONS boolean — see ADR 0114.
     PREVIEW_SUBMISSION_FORM_IDS: z.string().default(""),
 
     // Parent domain for the cross-app shared `preview` cookie (#1646 Phase 3),
@@ -170,17 +194,24 @@ const baseSchema = z
     // Smoke submission (empty disables the processor-drop escape hatch, #1252)
     SMOKE_SUBMISSION_TOKEN: z.string().default(""),
 
+    // The chat's caller token (#3623). A status lookup carrying it in
+    // X-Chat-Caller-Token is counted against the chat's own limit, not the
+    // per-IP one: every chat user reaches the API from the chat's server. The
+    // same value as the chat's `chat-caller-token` secret. Empty means no
+    // request gets the chat limit.
+    CHAT_CALLER_TOKEN: z.string().default(""),
+
     // Bearer token the AdminTokenGuard validates on the /admin/* endpoints
     // (kill switch + draft archive). OPTIONAL on purpose: the guard reads it
     // per-request, so an unset value only disables auth outside production (it
     // fails closed in prod). Never make this `.required()` — a boot-time
-    // required var would crash-loop ECS on a missing value (ADR 0061).
+    // required var would crash-loop ECS on a missing value (ADR 0106).
     ARCHIVE_DRAFTS_TOKEN: z.string().optional(),
 
     // Dedicated token for the kill-switch admin surface (per-form disable).
     // When unset, the guard falls back to ARCHIVE_DRAFTS_TOKEN (same value
     // today) — set this var only to rotate the two credentials independently.
-    // Never make this `.required()` either, for the same reason (ADR 0061).
+    // Never make this `.required()` either, for the same reason (ADR 0106).
     ADMIN_KILL_SWITCH_TOKEN: z.string().optional(),
 
     // Shared secret the observability console presents (Authorization: Bearer)
@@ -188,7 +219,7 @@ const baseSchema = z
     // per-request by AdminTokenGuard, so it fails closed in prod (unset → 500,
     // never serves PII un-gated) and stays open in local dev. OPTIONAL on
     // purpose — never `.required()`, same ECS crash-loop reason as above
-    // (ADR 0061).
+    // (ADR 0106).
     MONITORING_API_TOKEN: z.string().optional(),
 
     // S3 file uploads (optional — required only when a form uses file fields)

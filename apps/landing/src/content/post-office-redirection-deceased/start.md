@@ -2,7 +2,6 @@
 title: "Tell the Post Office someone has died"
 description: ""
 publish_date: 2026-01-30
-section: "Travel, ID and citizenship"
 form_id: post-office-redirection-deceased
 ---
 

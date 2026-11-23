@@ -22,7 +22,7 @@ from the env-driven ones. Tracked as
 - `form_builder_api/src/routes/publish.ts` → consumes the package; deleted the
   inline helpers and the hardcoded constants. Owner now from `GITHUB_ORG`
   (throws if unset), base from `PUBLISH_BASE_BRANCH ?? "dev"`.
-- See [ADR 0054](../decisions/0054-recipe-publish-github-flow-is-shared-and-env-identified.md)
+- See [ADR 0091](../decisions/0091-recipe-publish-github-flow-is-shared-and-env-identified.md)
   for the standing principle.
 
 ## Why we did it that way

@@ -8,7 +8,7 @@ import type {
   FormDefinitionV2 as FormDefinition,
   QuestionBlock as Question,
   RichText,
-} from "../../src/forms/schema/types";
+} from "../../src/forms/formats/native/schema/types";
 
 export const Missing = Symbol("Missing");
 

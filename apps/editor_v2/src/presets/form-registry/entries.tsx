@@ -20,8 +20,8 @@ import {
   Users,
   UserSquare,
 } from "@phosphor-icons/react";
-import { defineFormRegistry, defineFormRegistryEntry } from "../../forms/registry/definition";
-import { group, rule } from "../../forms/registry/builders";
+import { defineFormRegistry, defineFormRegistryEntry } from "../../forms/form-registry/definition";
+import { group, rule } from "../../forms/form-registry/builders";
 import { componentQuestion } from "./questions";
 import { demoFormEntry } from "./demo";
 

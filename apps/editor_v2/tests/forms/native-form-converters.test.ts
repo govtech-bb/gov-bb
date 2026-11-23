@@ -4,10 +4,14 @@ import { createHeadlessEditor } from "../../src/editor/core/create-editor";
 import { govbbFormEditor } from "../../src/presets/govbb-form";
 import { formSchemaToLexical } from "../../src/converters/form-schema-to-lexical";
 import { lexicalToFormSchema } from "../../src/converters/lexical-to-form-schema";
-import { nativeSemanticEqual } from "../../src/forms/schema/semantics";
-import { $native } from "../../src/forms/editor/native-state";
-import { $updateSettings, $isQuestionNode, $isPageTitleNode } from "../../src/forms/editor/nodes";
-import type { AnyFormDefinition } from "../../src/forms/schema/types";
+import { nativeSemanticEqual } from "../../src/forms/formats/native/schema/semantics";
+import { $native } from "../../src/forms/formats/native/native-state";
+import {
+  $updateSettings,
+  $isQuestionNode,
+  $isPageTitleNode,
+} from "../../src/forms/canvas/form-nodes";
+import type { AnyFormDefinition } from "../../src/forms/formats/native/schema/types";
 import pension from "../fixtures/forms/v2/pension.json";
 import severance from "../fixtures/forms/v2/severance.json";
 import nis from "../fixtures/forms/v2/nis.json";

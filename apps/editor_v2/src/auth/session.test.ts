@@ -22,11 +22,33 @@ describe("authentication boundaries", () => {
       "",
       "http://api.govtech.bb",
       "https://user:secret@api.govtech.bb",
-      "https://api.govtech.bb/path",
       "https://api.govtech.bb?key=x",
       "https://api.govtech.bb#x",
     ]) {
       expect(parseApiOrigin(value, true).ok).toBe(false);
+    }
+  });
+
+  it("takes a base path on the API URL, such as /v2 (#3745)", () => {
+    for (const value of [
+      "https://api.staging.alpha.gov.bb/v2",
+      "https://api.staging.alpha.gov.bb/v2/",
+    ])
+      expect(parseApiOrigin(value, true)).toEqual({
+        ok: true,
+        value: "https://api.staging.alpha.gov.bb/v2",
+      });
+
+    for (const value of [
+      "http://api.govtech.bb/v2",
+      "https://user:secret@api.govtech.bb/v2",
+      "https://api.govtech.bb/v2?key=x",
+      "https://api.govtech.bb/v2#x",
+      "https://api.govtech.bb//v2",
+      "https://api.govtech.bb/v2/../admin",
+      "https://api.govtech.bb/v%32",
+    ]) {
+      expect(parseApiOrigin(value, true).ok, value).toBe(false);
     }
   });
 
@@ -41,6 +63,8 @@ describe("authentication boundaries", () => {
 
   it.each([
     "/categories?sort=title#list",
+    "/site-pages",
+    "/site-pages/44444444-4444-4444-8444-444444444444",
     "/reviews",
     "/reviews/44444444-4444-4444-8444-444444444444",
     "/history/44444444-4444-4444-8444-444444444444?service=11111111-1111-4111-8111-111111111111",
@@ -60,6 +84,8 @@ describe("authentication boundaries", () => {
 
   it.each([
     "/categories/other",
+    "/site-pages/a/b",
+    "/site-pages/../auth",
     "/content-types",
     "/content-types-extra",
     "/reviews/a/b",

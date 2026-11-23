@@ -6,6 +6,10 @@ export function isSafeLinkUrl(value: string) {
   );
 }
 
+/**
+ * Whether an address can be a link: relative, or http(s), mailto, tel, irc(s) or xmpp, with no spaces, control
+ * characters or leading //.
+ */
 export function isSupportedLinkUrl(value: string) {
   return (
     ![...value].some(

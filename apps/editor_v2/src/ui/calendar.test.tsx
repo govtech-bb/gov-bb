@@ -3,7 +3,7 @@ import { act, type ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { addToRange, Calendar } from "./calendar";
-import { formatDay, parseDay, shortDate, showDate, typedDate } from "../forms/core/dates";
+import { formatDay, parseDay, shortDate, showDate, typedDate } from "../forms/model/dates";
 
 let host: HTMLDivElement;
 

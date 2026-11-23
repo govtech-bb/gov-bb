@@ -3,21 +3,21 @@ import { expect, test } from "vitest";
 import { HeadingNode } from "@lexical/rich-text";
 import { $getRoot } from "lexical";
 import { compileForm, preflight, type FormQuestion } from "../helpers/default-form";
-import { pageEntries } from "../../src/forms/features/pages/insertion";
+import { pageEntries } from "../../src/forms/form-pages/form-page-insertion";
 import {
   DEFAULT_TIME_INCREMENT,
   positiveIncrementError,
   timeIncrementError,
-} from "../../src/forms/features/shared/increments";
-import { shortAnswerField } from "../../src/forms/features/short-answer/definition";
+} from "../../src/forms/fields/field-increments";
+import { textInputField } from "../../src/forms/fields/text-input";
 import {
   $createFormTitleNode,
   $ensureBlockIds,
   $ensureQuestionFields,
   $turnInto,
-} from "../../src/forms/editor/nodes";
-import { $createInputNode } from "../../src/forms/editor/answer-nodes";
-import { $setSettings, $settings } from "../../src/editor/core/document-state";
+} from "../../src/forms/canvas/form-nodes";
+import { $createInputNode } from "../../src/forms/canvas/answer-nodes";
+import { $setSettings, $settings } from "../../src/forms/canvas/block-state";
 import { formNodes } from "../helpers/default-form";
 
 const editorFor = () =>
@@ -52,7 +52,7 @@ test("native increments accept positive decimals for numbers and whole seconds f
 
   expect(timeIncrementError(0.5)).toBe("Enter a whole number of seconds");
   expect(timeIncrementError(undefined)).toBeNull();
-  expect(shortAnswerField.validate({ step: "legacy" }, "text")).toEqual([]);
+  expect(textInputField.validate({ step: "legacy" }, "text")).toEqual([]);
 });
 
 test("disabled preserves validation and increments survive JSON without writing inherited defaults", () => {

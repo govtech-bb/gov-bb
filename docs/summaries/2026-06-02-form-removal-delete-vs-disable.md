@@ -14,7 +14,7 @@ tombstone, so deleting a draft poisoned future reuse of its `formId`.
 
 Split the all-in-one delete into three intent-matched operations and made the
 picker surface disabled state instead of hiding it. See
-[ADR 0028](../decisions/0028-form-removal-semantics-split-by-publish-state.md)
+[ADR 0049](../decisions/0049-form-removal-semantics-split-by-publish-state.md)
 for the principle.
 
 - **Backend** (`apps/form_builder_api/src/routes/forms.ts`): `DELETE /:formId`
@@ -36,7 +36,7 @@ for the principle.
   but matches the two real intents — and the tombstone becomes a *reversible*
   override (Disable/Enable), not a one-way delete.
 - **Draft delete writes no tombstone.** This is the crux that fixes the
-  `formId`-reuse poisoning. It deliberately supersedes the 0011 corollary that
+  `formId`-reuse poisoning. It deliberately supersedes the 0021 corollary that
   "every retire path writes the tombstone" — drafts aren't retired, they're
   discarded.
 - **Modal split (open-Q3).** Kept two small files (`-delete-modal` light confirm,

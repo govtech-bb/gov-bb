@@ -31,6 +31,7 @@
     "build": {
       "dependsOn": ["^build"],
       "inputs": ["production", "^production"],
+      "outputs": ["{projectRoot}/dist", "{projectRoot}/.amplify-hosting"],
       "cache": true
     },
     "test": {
@@ -38,8 +39,16 @@
       "outputs": ["{projectRoot}/coverage"],
       "cache": true
     },
-    "lint": {
-      "inputs": ["default", "{workspaceRoot}/eslint.config.mts"],
+    "test:types": {
+      "inputs": ["default", "^production"],
+      "cache": true
+    },
+    "test:oxlint": {
+      "inputs": [
+        "default",
+        "{workspaceRoot}/.oxlintrc.json",
+        "{workspaceRoot}/scripts/oxlint/**/*"
+      ],
       "cache": true
     }
   },

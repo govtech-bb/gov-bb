@@ -1,5 +1,18 @@
 import { z } from "zod";
 import { durationTransformSchema } from "./behavior.type";
+import { kebabIdSchema } from "./id-pattern";
+
+// Optional scaling for the numeric bound rules (`min`/`max`/`gt`/`lt`, #3636).
+// The field's number is multiplied by `factors[<referenced answer>]` before the
+// bound is checked — e.g. an amount paid weekly × 4 against a monthly limit.
+// The reference resolves like a rule's own `referenceFieldId`/`targetStepId`,
+// but separately from them: those set the bound, this scales the value. An
+// empty answer skips the rule; an answer with no factor fails it.
+export const scaleBySchema = z.object({
+  referenceFieldId: kebabIdSchema,
+  targetStepId: kebabIdSchema.optional(),
+  factors: z.record(z.string(), z.number().positive()),
+});
 
 export const validationConfigSchema = z.object({
   error: z.string().optional(),
@@ -13,6 +26,7 @@ export const validationConfigSchema = z.object({
   // `transform: "yearsSince"` on a date-of-birth field enforces a minimum age.
   // Invalid/empty date → NaN → the bound fails (validation-fail).
   transform: durationTransformSchema.optional(),
+  scaleBy: scaleBySchema.optional(),
   // When true on a `minYear`/`maxYear` rule, the bound resolves to the current
   // year at validation time instead of a literal `value` — e.g. a "Year" field
   // that must not be in the future. Resolved fresh on every run, so it never
@@ -176,7 +190,7 @@ export function ruleValueIssues(validations: ValidationRule): string[] {
 // Because the forms frontend and the API deploy separately, the shape is
 // tolerated as EITHER during the migration window: the validation boundary in
 // `@govtech-bb/form-validation` coerces both to a number where arithmetic is
-// needed (ADR 0040 / 0043). The frontend flips to emitting strings in a later
+// needed (ADR 0068 / 0076). The frontend flips to emitting strings in a later
 // deploy. See issue #815.
 export const dateValueInputSchema = z.object({
   day: z.union([z.number(), z.string()]).optional(),

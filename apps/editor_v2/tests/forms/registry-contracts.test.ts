@@ -7,13 +7,13 @@ import {
   defineFormRegistry,
   defineFormRegistryEntry,
   type FormRegistryFragment,
-} from "../../src/forms/registry/definition";
-import { content, question, rule } from "../../src/forms/registry/builders";
-import { FormRegistryModule } from "../../src/forms/editor/registry-module";
+} from "../../src/forms/form-registry/definition";
+import { content, question, rule } from "../../src/forms/form-registry/builders";
+import { FormRegistryModule } from "../../src/forms/canvas/form-registry-module";
 import { govbbFormModules } from "../../src/presets/govbb-form";
 import { lexicalToFormMarkdown } from "../../src/converters/lexical-to-form-markdown";
 import { formMarkdownToLexical } from "../../src/converters/form-markdown-to-lexical";
-import { createFormSourceDialect } from "../../src/forms/source/dialect";
+import { createFormSourceDialect } from "../../src/forms/formats/markdown/dialect";
 import { nativeHost, nativeOutput } from "../helpers/native-form";
 
 const base = govbbFormModules.filter((module) => !module.registry);

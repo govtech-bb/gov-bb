@@ -3,7 +3,7 @@ import { Copy, Trash } from "@phosphor-icons/react";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, expect, test, vi } from "vitest";
-import { Action } from "../../src/forms/react/settings-controls";
+import { Action } from "../../src/forms/canvas/settings-controls";
 import { Menu } from "../../src/ui/menu";
 
 afterEach(() => {

@@ -5,76 +5,19 @@
   "projectType": "application",
   "targets": {
     "build": {
-      "executor": "nx:run-commands",
-      "outputs": ["{projectRoot}/dist"],
-      "options": {
-        "command": "npm run build",
-        "cwd": "apps/forms"
-      },
-      "dependsOn": ["^build"],
+      "dependsOn": [],
       "inputs": [
         "production",
         "^production",
-        {
-          "env": "VITE_API_URL"
-        },
-        {
-          "env": "VITE_LANDING_URL"
-        },
-        {
-          "env": "VITE_PAYMENT_ALLOWED_ORIGINS"
-        },
-        {
-          "env": "VITE_UMAMI_SRC"
-        },
-        {
-          "env": "VITE_UMAMI_WEBSITE_ID"
-        }
+        { "env": "VITE_API_URL" },
+        { "env": "VITE_LANDING_URL" },
+        { "env": "VITE_PAYMENT_ALLOWED_ORIGINS" },
+        { "env": "VITE_UMAMI_SRC" },
+        { "env": "VITE_UMAMI_WEBSITE_ID" }
       ]
     },
-    "dev": {
-      "executor": "nx:run-commands",
-      "options": {
-        "command": "npm run dev",
-        "cwd": "apps/forms"
-      }
-    },
     "start": {
-      "executor": "nx:run-commands",
-      "options": {
-        "command": "npm run preview",
-        "cwd": "apps/forms"
-      },
       "dependsOn": ["build"]
-    },
-    "lint": {
-      "executor": "@nx/eslint:lint",
-      "options": {
-        "lintFilePatterns": ["apps/forms/**/*.{ts,tsx}"]
-      }
-    },
-    "test": {
-      "executor": "nx:run-commands",
-      "options": {
-        "command": "npm test",
-        "cwd": "apps/forms"
-      }
-    },
-    "e2e": {
-      "executor": "nx:run-commands",
-      "options": {
-        "command": "npm run test:e2e",
-        "cwd": "apps/forms"
-      },
-      "dependsOn": []
-    },
-    "smoke": {
-      "executor": "nx:run-commands",
-      "options": {
-        "command": "npm run test:smoke",
-        "cwd": "apps/forms"
-      },
-      "dependsOn": []
     }
   },
   "tags": []

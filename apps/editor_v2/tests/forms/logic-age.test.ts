@@ -1,21 +1,21 @@
 import { jsonSettings } from "../helpers/serialized-test-data";
-import { dateField } from "../../src/forms/features/date/definition";
+import { dateInputField } from "../../src/forms/fields/date-input";
 import { expect, test } from "vitest";
-import { ageConditionError, conditionMode } from "../../src/forms/core/logic-age";
-import { logicAgeIssues } from "../../src/forms/adapters/ssb/logic-age";
-import { comparisons } from "../../src/forms/features/logic/comparisons";
-import { conditionalLogic } from "../../src/forms/core/logic";
-import { type Field } from "../../src/forms/features/logic/queries";
+import { ageConditionError, conditionMode } from "../../src/forms/model/logic-age";
+import { logicAgeIssues } from "../../src/forms/formats/legacy-ssb/projection/logic-age";
+import { comparisons } from "../../src/forms/conditional-logic/logic-comparisons";
+import { conditionalLogic } from "../../src/forms/model/logic";
+import { type Field } from "../../src/forms/conditional-logic/logic-queries";
 import type { Condition, FormSchema } from "../helpers/default-form";
 
-import { logicIssues } from "../../src/forms/editor/capabilities";
+import { logicIssues } from "../../src/forms/formats/legacy-ssb/legacy-ssb-capabilities";
 
 const birth: Field = {
   key: "dob",
   type: "INPUT_FIELD",
   kind: "date",
   title: "Date of birth",
-  capabilities: dateField.capabilities,
+  capabilities: dateInputField.capabilities,
 };
 
 const adult: Extract<Condition, { type: "SINGLE" }> = {

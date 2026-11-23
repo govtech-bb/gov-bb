@@ -86,6 +86,10 @@ export function registerEditorScope(editor: LexicalEditor, scope: HTMLElement) {
   };
 }
 
+/**
+ * Handles keys pressed while focus is on this editor's controls or the page body, outside any text field. It replaces
+ * the editor's earlier handler, and the cleanup removes only this one.
+ */
 export function registerOutsideKeys(
   editor: LexicalEditor,
   handler: (event: KeyboardEvent) => void,

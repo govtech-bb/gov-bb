@@ -3,6 +3,7 @@ import type { ApiPage, ServiceDetail, ServicePage } from "../../src/api/client";
 import { listedServiceRows, remoteServiceRows } from "../../src/workspace/service-pages";
 
 const page: ApiPage = {
+  version: 1,
   id: "page-1",
   url: "/money-financial-support/severance/how-it-is-worked-out",
   slug: "how-it-is-worked-out",

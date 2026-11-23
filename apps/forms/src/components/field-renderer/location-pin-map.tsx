@@ -5,7 +5,8 @@ import {
   type LeafletEvent,
   type Marker as LeafletMarker,
 } from "leaflet";
-import { JSX, useEffect, useRef } from "react";
+import type { JSX } from "react";
+import { useEffect, useRef } from "react";
 import { MapContainer, Marker, TileLayer, useMapEvents } from "react-leaflet";
 
 /** Barbados, with a small margin round the coast — the pin cannot leave it. */

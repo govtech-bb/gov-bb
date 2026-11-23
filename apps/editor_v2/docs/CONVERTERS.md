@@ -16,7 +16,7 @@ Form converters and `createFormDraftCodec(runtime)` are exported from `src/forms
 
 Form Markdown import returns diagnostics and no state when preparation fails. Page import throws `SourceError` for invalid metadata; unsupported body syntax instead returns a valid source-only document. Callers must handle these outcomes separately.
 
-Every operation receives the installed form or page definition. The kernel does not import domains or converters. `src/forms/schema` owns pure form types, validation, structural references and semantic comparison.
+Every operation receives the installed form or page definition. The kernel does not import domains or converters. `src/forms/formats/native/schema` owns pure form types, validation, structural references and semantic comparison.
 
 ## Page contract
 
@@ -66,4 +66,4 @@ Generic editing state receives explicit source and codec/prepared-state contract
 
 ## Checks
 
-From `apps/editor_v2`, run `pnpm test`, `pnpm typecheck`, `pnpm check:boundaries` and `pnpm check:coverage`. The coverage matrix checks installed capabilities and their tests. Use `native-form-schema.mjs` with the [browser runner](DEVELOPMENT.md#browser-checks) to check JSON import and export in the UI. Keep legacy fixture expectations fixed unless the format changes intentionally.
+From `apps/editor_v2`, run `pnpm test`, `pnpm test:types`, `pnpm check:boundaries` and `pnpm check:coverage`. The coverage matrix checks installed capabilities and their tests. Use `native-form-schema.mjs` with the [browser runner](DEVELOPMENT.md#browser-checks) to check JSON import and export in the UI. Keep legacy fixture expectations fixed unless the format changes intentionally.

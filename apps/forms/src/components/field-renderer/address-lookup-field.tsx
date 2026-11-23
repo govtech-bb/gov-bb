@@ -1,6 +1,6 @@
+import type { JSX } from "react";
 import {
   Component,
-  JSX,
   lazy,
   type ReactNode,
   Suspense,
@@ -11,8 +11,8 @@ import {
 import { FormGroup, Hint, Label } from "@govtech-bb/react";
 import { v4 as uuidv4 } from "uuid";
 import ErrorMessage from "../error-message";
+import type { GeocodeResult } from "../../lib/api/geocode";
 import {
-  GeocodeResult,
   locatingPlace,
   lookupPolyclinic,
   MIN_QUERY_LENGTH,
@@ -22,7 +22,7 @@ import {
   searchAddresses,
 } from "../../lib/api/geocode";
 import { AddressCombobox } from "./address-combobox";
-import { FieldRenderContext } from "./render-context";
+import type { FieldRenderContext } from "./render-context";
 
 // Leaflet is only needed when address suggestions are down or find nothing, so
 // it stays out of the main bundle.

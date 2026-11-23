@@ -1,6 +1,7 @@
 import { decodeHTMLAttribute, decodeHTMLStrict, encodeXML } from "entities";
 import type { PhrasingContent, RootContent } from "mdast";
 import { isSafeContentUrl } from "#govbbmarkd/content-url";
+import { isHtmlBreak } from "#govbbmarkd/html-break";
 
 function startLabel(
   nodes: readonly RootContent[],
@@ -26,7 +27,7 @@ function startLabel(
       if (!children) return;
       parent.children.push({ ...node, children });
     } else if (node.type === "html") {
-      if (/^<br\s*\/?\s*>$/i.test(node.value)) {
+      if (isHtmlBreak(node)) {
         parent.children.push({ type: "break" });
 
         continue;
@@ -83,11 +84,7 @@ function startLabelHtml(node: RootContent): string {
   if (node.type === "inlineCode")
     return `<code>${startText(node.value)}</code>`;
 
-  if (
-    node.type === "break" ||
-    (node.type === "html" && /^<br\s*\/?\s*>$/i.test(node.value))
-  )
-    return "<br>";
+  if (node.type === "break" || isHtmlBreak(node)) return "<br>";
 
   if (
     node.type === "strong" ||

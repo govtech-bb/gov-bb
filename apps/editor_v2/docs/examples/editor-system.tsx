@@ -1,7 +1,8 @@
 import { Tooltip } from "@base-ui/react/tooltip";
 import { useState } from "react";
 
-import { createHeadlessEditor, EditorComposer } from "../../src/editor";
+import { createHeadlessEditor } from "@/editor";
+import { EditorComposer } from "@/editor/react";
 import { FormEditor, formSchemaToLexical, lexicalToFormSchema } from "../../src/forms";
 import { DraftCanvas, FormComposer, SourceEditor } from "../../src/host";
 import { PageEditor, PageTitleField } from "../../src/pages";

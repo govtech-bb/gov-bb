@@ -2,6 +2,11 @@
   "name": "@govtech-bb/database",
   "version": "0.0.0",
   "private": true,
+  "scripts": {
+    "lint:fix": "oxlint --fix",
+    "test:oxlint": "oxlint",
+    "test": "vitest run"
+  },
   "main": "./src/index.js",
   "types": "./src/index.d.ts",
   "dependencies": {
@@ -12,8 +17,5 @@
     "@types/pg": "^8.20.0",
     "pg": "^8.21.0",
     "tsx": "^4.22.3"
-  },
-  "lint-staged": {
-    "*.ts": "npx prettier --write"
   }
 }

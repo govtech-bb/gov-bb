@@ -1,4 +1,4 @@
-import type { EditorSession } from "../editor/core/session";
+import type { EditorSession } from "@/editor";
 
 // The document on screen and the two most recently before it keep their views; a fixed bound, not a setting
 const MOUNTED_VIEWS = 3;
@@ -21,7 +21,7 @@ export const keptViews = (
  * selection. A page whose server version changed since its view closed opens with a fresh session.
  */
 export class DocumentSessions {
-  private kept = new Map<string, { session: EditorSession; closedOn?: string | null }>();
+  private kept = new Map<string, { session: EditorSession; closedOn?: number | null }>();
 
   /**
    * The document's session, begun by `begin` the first time its view opens. The view passes `begin` because it loads
@@ -35,14 +35,14 @@ export class DocumentSessions {
   }
 
   /** Its clean view closes on this API version. */
-  close(id: string, version: string | null) {
+  close(id: string, version: number | null) {
     const entry = this.kept.get(id);
 
     if (entry) entry.closedOn = version;
   }
 
   /** Reopening against a different API version drops the old undo/selection session. */
-  open(id: string, version: string | null) {
+  open(id: string, version: number | null) {
     const entry = this.kept.get(id);
 
     if (entry?.closedOn === undefined) return;

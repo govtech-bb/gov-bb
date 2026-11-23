@@ -3,8 +3,8 @@ import { createHeadlessEditor } from "../../src/editor/core/create-editor";
 import { formSchemaToLexical } from "../../src/converters/form-schema-to-lexical";
 import { lexicalToFormSchema } from "../../src/converters/lexical-to-form-schema";
 import type { FormEditorDefinition } from "../../src/forms/definition";
-import type { AnyFormDefinition } from "../../src/forms/schema";
-import { $withDefaultFormMessages } from "../../src/forms/editor/native-bindings";
+import type { AnyFormDefinition } from "../../src/forms/formats/native/schema";
+import { $withDefaultFormMessages } from "../../src/forms/formats/native/native-bindings";
 import { govbbFormEditor } from "../../src/presets/govbb-form";
 
 export const emptyNativeForm: AnyFormDefinition = {
