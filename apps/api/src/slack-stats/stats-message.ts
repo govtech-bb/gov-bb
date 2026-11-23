@@ -165,30 +165,31 @@ const SUBMIT_ERROR_CODES = new Set([
  * The (up to) 3 commonest errors on one form. Field IDs and error codes come
  * from Umami event data, which anyone can send, so only a field in
  * `labelByField` (the form's own fields) or a known code is named. Every other
- * value counts in an "other fields" or "submit failed: other" row.
+ * value counts in an "other fields" or "submit failed: other" row. Rows are
+ * kept apart by field ID, so two fields with the same label stay two rows.
  */
 export function tallyTopErrors(
   fieldErrors: { field: string; count: number }[],
   submitErrors: EventDataValue[],
   labelByField: Map<string, string>,
 ): { label: string; count: number }[] {
-  const counts = new Map<string, number>();
-  const add = (label: string, count: number) =>
-    counts.set(label, (counts.get(label) ?? 0) + count);
+  const rows = new Map<string, { label: string; count: number }>();
+  const add = (key: string, label: string, count: number) => {
+    const row = rows.get(key) ?? { label, count: 0 };
+    row.count += count;
+    rows.set(key, row);
+  };
   for (const f of fieldErrors) {
-    add(labelByField.get(f.field) ?? "other fields", f.count);
+    const label = labelByField.get(f.field);
+    if (label) add(`field:${f.field}`, label, f.count);
+    else add("other fields", "other fields", f.count);
   }
   for (const r of submitErrors) {
     const code = String(r.value);
-    add(
-      `submit failed: ${SUBMIT_ERROR_CODES.has(code) ? code : "other"}`,
-      r.total,
-    );
+    const label = `submit failed: ${SUBMIT_ERROR_CODES.has(code) ? code : "other"}`;
+    add(label, label, r.total);
   }
-  return [...counts]
-    .map(([label, count]) => ({ label, count }))
-    .sort((a, b) => b.count - a.count)
-    .slice(0, 3);
+  return [...rows.values()].sort((a, b) => b.count - a.count).slice(0, 3);
 }
 
 // --- formatting ------------------------------------------------------------

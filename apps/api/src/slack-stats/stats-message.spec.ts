@@ -218,6 +218,25 @@ describe("tallyTopErrors", () => {
     ]);
   });
 
+  it("keeps two fields with the same label in two rows", () => {
+    expect(
+      tallyTopErrors(
+        [
+          { field: "home-address-line-1", count: 5 },
+          { field: "work-address-line-1", count: 4 },
+        ],
+        [],
+        new Map([
+          ["home-address-line-1", "Address line 1"],
+          ["work-address-line-1", "Address line 1"],
+        ]),
+      ),
+    ).toEqual([
+      { label: "Address line 1", count: 5 },
+      { label: "Address line 1", count: 4 },
+    ]);
+  });
+
   it("knows every code apps/forms sends", () => {
     const codes = ["validation", "network", "server", "payment-init"];
     expect(

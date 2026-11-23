@@ -272,6 +272,13 @@ export class SlackStatsService {
       }[]) {
         if (el.fieldId) labelByField.set(el.fieldId, el.label || el.fieldId);
       }
+      // apps/forms adds an "Add another?" radio to a repeatable step. Every
+      // step's radio has the same ID, so they share one row and one label.
+      for (const b of step.behaviours ?? []) {
+        if (b.type === "repeatable" && !labelByField.has("addAnother")) {
+          labelByField.set("addAnother", b.addAnotherLabel ?? "Add another?");
+        }
+      }
     }
     const topErrors = tallyTopErrors(
       tallyFieldErrors(fieldErrors),

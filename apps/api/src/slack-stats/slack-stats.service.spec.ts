@@ -564,6 +564,38 @@ describe("SlackStatsService.buildReply — one form", () => {
     expect(text).toContain("Your details  ░░░░░░░░░░░░  0");
   });
 
+  it("names the Add another? radio of a repeatable step", async () => {
+    formDefinitions.findByFormId.mockResolvedValue({
+      title: "Renew a passport",
+      steps: [
+        {
+          stepId: "children",
+          title: "Your children",
+          elements: [{ fieldId: "child-name", label: "Child's name" }],
+          behaviours: [
+            {
+              type: "repeatable",
+              min: 1,
+              max: 5,
+              addAnotherLabel: "Do you have another child?",
+            },
+          ],
+        },
+      ],
+    });
+    umami.reportFunnel.mockResolvedValue([]);
+    umami.eventDataValues.mockImplementation(
+      async (_site: string, _event: string, property: string) =>
+        property === "fieldErrors"
+          ? [{ value: "addAnother:required", total: 3 }]
+          : [],
+    );
+
+    const text = await reply("/stats", "week", "passport-renewal", NOW);
+
+    expect(text).toContain("• Do you have another child?: *3*");
+  });
+
   it("never puts a field ID or error code sent by a stranger into the reply", async () => {
     formDefinitions.findByFormId.mockResolvedValue({
       title: "Renew a passport",
