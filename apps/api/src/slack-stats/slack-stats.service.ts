@@ -8,6 +8,7 @@ import {
   comparisonPeriods,
   eventName,
   funnelHeadline,
+  shapeJourneyList,
   tallyFieldErrors,
   weightedAverage,
   type EventDataValue,
@@ -18,10 +19,13 @@ import { sanitizeForLog } from "@/common/log-sanitize";
 import { FormDefinitionsService } from "@/forms/form-definitions/form-definitions.service";
 import {
   biggestFinishDrops,
+  countHandOffs,
   formatFormStats,
+  formatJourneyStats,
   formatSiteStats,
   periodHeading,
   type FormPeriod,
+  type HandOffCounts,
   type SitePeriod,
   type SlackMessage,
 } from "./stats-message";
@@ -170,6 +174,8 @@ export class SlackStatsService {
     formId: string | undefined,
     now: Date,
   ): Promise<SlackMessage | string> {
+    if (formId === "journeys") return this.journeysReply(period, now);
+
     const forms = await this.formDefinitions.findAll();
     const periods = comparisonPeriods(period, TZ, now);
     const heading = periodHeading(period, periods);
@@ -354,6 +360,37 @@ export class SlackStatsService {
       completed,
       avgDurationSeconds: weightedAverage(durations),
     };
+  }
+
+  /**
+   * Landing journeys (#3808): the dashboard's top journeys for the period, and
+   * the landing → forms hand-off counts for both periods. Five Umami requests:
+   * one journey report, then one event list per website per period. An Umami
+   * error reaches reply(), which apologises, so an outage never reads as zero.
+   */
+  private async journeysReply(
+    period: StatsPeriod,
+    now: Date,
+  ): Promise<SlackMessage> {
+    const periods = comparisonPeriods(period, TZ, now);
+    const { apiKey, landingWebsiteId, formsWebsiteId } = this.umamiConfig();
+    const client = new UmamiClient({ apiKey });
+    const handOffs = async (range: Range): Promise<HandOffCounts> =>
+      countHandOffs(
+        await client.metricsEvents(landingWebsiteId, range),
+        await client.metricsEvents(formsWebsiteId, range),
+      );
+    // Same report and shaping as the dashboard (fetchOverviewData), so the
+    // paths and shares match its "Most common journeys" table.
+    const journeys = await client.reportJourney(landingWebsiteId, {
+      steps: 4,
+      range: periods.current,
+    });
+    return formatJourneyStats(periodHeading(period, periods), {
+      paths: shapeJourneyList(journeys).slice(0, 5),
+      current: await handOffs(periods.current),
+      previous: await handOffs(periods.previous),
+    });
   }
 
   /** eventDataValues that degrades to [] when the event has no data. */

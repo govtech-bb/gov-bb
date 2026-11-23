@@ -1,6 +1,10 @@
-import type {
-  ComparisonPeriods,
-  StatsPeriod,
+import {
+  canonicalEvent,
+  parseEventName,
+  type ComparisonPeriods,
+  type JourneyRow,
+  type MetricRow,
+  type StatsPeriod,
 } from "@govtech-bb/umami-analytics";
 
 const TZ = "America/Barbados";
@@ -360,6 +364,122 @@ export function formatFormStats(
   }
   return {
     text: `📝 ${title} · ${heading.title}: ${num(c.starts)} started, ${num(c.completed)} finished`,
+    blocks,
+  };
+}
+
+/** Counts of the landing → forms hand-off events for one period (#3808). */
+export type HandOffCounts = Record<
+  "page-service-view" | "page-start-view" | "start-click" | "form-start",
+  number
+>;
+
+/**
+ * Sum the hand-off events from each website's event list. Events sent with a
+ * `form` are stored packed as `<form>:<event>`, sometimes with a short code
+ * (`psvw`, `fstrt`), so each name is unpacked and canonicalised before it is
+ * matched. `form-start` is a forms event; the rest are landing events.
+ */
+export function countHandOffs(
+  landing: MetricRow[],
+  forms: MetricRow[],
+): HandOffCounts {
+  const total = (rows: MetricRow[], event: string) =>
+    rows.reduce(
+      (n, r) =>
+        canonicalEvent(parseEventName(r.x)?.event ?? r.x) === event
+          ? n + r.y
+          : n,
+      0,
+    );
+  return {
+    "page-service-view": total(landing, "page-service-view"),
+    "page-start-view": total(landing, "page-start-view"),
+    "start-click": total(landing, "start-click"),
+    "form-start": total(forms, "form-start"),
+  };
+}
+
+export interface JourneyStats {
+  /** The top paths, from shapeJourneyList (the dashboard's journey table). */
+  paths: Pick<JourneyRow, "items" | "sessions" | "share">[];
+  current: HandOffCounts;
+  previous: HandOffCounts;
+}
+
+const JOURNEY_STEP_MAX = 40;
+
+/**
+ * A journey step as inert Slack text. Steps come from page paths anyone can
+ * send to Umami, so formatting marks and line breaks are removed, Slack's
+ * control characters escaped and long steps shortened.
+ */
+function journeyStep(label: string): string {
+  const chars = Array.from(
+    label
+      .replace(/[*_~`]/g, "")
+      .replace(/\s+/g, " ")
+      .trim(),
+  );
+  const short =
+    chars.length > JOURNEY_STEP_MAX
+      ? chars.slice(0, JOURNEY_STEP_MAX - 1).join("") + "…"
+      : chars.join("");
+  return short
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+/** A share as the dashboard shows it: one decimal, no trailing ".0". */
+const share = (r: number) => `${(r * 100).toFixed(1).replace(/\.0$/, "")}%`;
+
+export function formatJourneyStats(
+  heading: PeriodHeading,
+  { paths, current: c, previous: p }: JourneyStats,
+): SlackMessage {
+  const blocks: unknown[] = [
+    header(`🧭 Landing journeys · ${heading.title}`),
+    context(heading.detail),
+    {
+      type: "section",
+      text: {
+        type: "mrkdwn",
+        // verbatim: Slack must not turn a step into a link or #channel.
+        verbatim: true,
+        text: paths.length
+          ? "*🛤️ Most common journeys on landing*\n" +
+            paths
+              .map(
+                (j) =>
+                  `• ${j.items.map(journeyStep).join(" → ")}: *${share(j.share)}* (${num(j.sessions)})`,
+              )
+              .join("\n")
+          : "💤 No journeys of two or more pages on landing in this period.",
+      },
+    },
+    divider,
+    section("*🔀 From landing to forms*"),
+    metrics(
+      (
+        [
+          ["📄 Service page views", "page-service-view"],
+          ["🚪 Start page views", "page-start-view"],
+          ["👆 Start now clicks", "start-click"],
+          ["📝 Forms started", "form-start"],
+        ] as const
+      ).map(([label, key]): [string, string, string] => [
+        label,
+        num(c[key]),
+        countChange(c[key], p[key]),
+      ]),
+    ),
+    context(
+      "ℹ️ Landing and forms are separate Umami websites, so these are four separate counts, not a funnel. The full journey from landing to forms is only in `/journey` in Datadog.",
+    ),
+  ];
+  return {
+    text: `🧭 Landing journeys · ${heading.title}: ${num(c["page-service-view"])} service page views, ${num(c["form-start"])} forms started`,
     blocks,
   };
 }

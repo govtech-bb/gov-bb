@@ -27,6 +27,10 @@ describe("usageText", () => {
       "`/govstats <today|week|month> [form-id]`",
     );
   });
+
+  it("mentions the journeys report", () => {
+    expect(usageText("/stats")).toContain("`/stats week journeys`");
+  });
 });
 
 describe("suggestFormIds", () => {
