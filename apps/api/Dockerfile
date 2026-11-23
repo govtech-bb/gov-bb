@@ -2,7 +2,7 @@
 # ---- builder ------------------------------------------------------------
 # Compiles the NestJS app + the workspace packages it depends on into
 # /app/dist, using the full monorepo as context.
-FROM node:24.22-alpine3.23@sha256:9b69af715c7f9d038150b54ccccbaeffa9064bbc93e2904c29591ca097316af1 AS builder
+FROM node:24.22-alpine3.23@sha256:3946fb783fdce8a2812136ea694bc95c698c4f4096f3fd18568dc27a8ac389dc AS builder
 
 # Corepack must run as root — it writes to /usr/local/bin.
 RUN corepack enable && corepack prepare pnpm@11.6.0 --activate
@@ -100,7 +100,7 @@ RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store,uid=1001,gid=1001 \
 # (deploy-*.yml) runs the compiled data source directly —
 #   node node_modules/typeorm/cli.js migration:run -d dist/src/database/data-source.js
 # — so nothing here needs pnpm, corepack or ts-node.
-FROM node:24.22-alpine3.23@sha256:9b69af715c7f9d038150b54ccccbaeffa9064bbc93e2904c29591ca097316af1 AS runner
+FROM node:24.22-alpine3.23@sha256:3946fb783fdce8a2812136ea694bc95c698c4f4096f3fd18568dc27a8ac389dc AS runner
 
 # Pick up Alpine security patches ahead of the base image's rebuild cadence
 # (e.g. openssl 3.5.8-r0 fixing CVE-2026-75803/CVE-2026-63073 while the base
