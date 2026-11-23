@@ -309,7 +309,7 @@ export class SlackStatsService {
       visitors?: number;
     };
     // One event-count request per site, so the reply stays inside the rate
-    // limit. Every name, so a rare dead end is never cut from the list.
+    // limit. ALL_EVENT_NAMES, so a rare dead end isn't cut from the list.
     const { deadEnds, topForm } = tallyDeadEnds(
       await client.metricsEvents(landingWebsiteId, range, ALL_EVENT_NAMES),
       await client.metricsEvents(formsWebsiteId, range, ALL_EVENT_NAMES),

@@ -25,8 +25,8 @@ const DEFAULT_BASE_URL = "https://api.umami.is/v1";
 // comfortably under it without a sliding-window accountant.
 const MIN_REQUEST_SPACING_MS = 330;
 /** More rows than a website has event names, so a metricsEvents list is
- *  complete. The forms site packs every event per form as `<form>:<event>`,
- *  so the default 500 rows can cut a quiet form's events. */
+ *  complete. Both sites pack events per form or service (`<form>:<event>`),
+ *  so the default 500 rows can cut the quietest names. */
 export const ALL_EVENT_NAMES = 10_000;
 
 export class UmamiClient {
