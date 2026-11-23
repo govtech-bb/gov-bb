@@ -538,14 +538,24 @@ const CHAT_SUGGESTIONS_SHOWN = 3;
 const CHAT_LABEL_MAX = 80;
 
 /**
+ * Characters that show nothing: bidi controls (U+061C, U+200E-U+200F,
+ * U+202A-U+202E, U+2066-U+2069), zero-width characters (U+200B-U+200D, U+2060,
+ * U+FEFF), and others such as tag characters and the soft hyphen. They can
+ * reverse or hide part of a line, so it looks like something it isn't.
+ */
+const HIDDEN_CHARS = /\p{Default_Ignorable_Code_Point}/gu;
+
+/**
  * Event data as inert Slack text. Anyone can send events to Umami, so a value
- * must not mention, link or format: Slack's control characters are escaped,
- * formatting marks and line breaks removed, and long text shortened.
+ * must not mention, link, format or hide text: characters that reverse or hide
+ * text are removed, Slack's control characters escaped, formatting marks and
+ * line breaks removed, and long text shortened.
  */
 export function plainSlackText(value: string): string {
   // Array.from splits by code point, so shortening never cuts an emoji.
   const chars = Array.from(
     value
+      .replace(HIDDEN_CHARS, "")
       .replace(/[*_~`]/g, "")
       .replace(/\s+/g, " ")
       .trim(),
@@ -681,19 +691,20 @@ export const slackQuery = (query: string) =>
   plainSlackText(query.replace(/\*/g, "∗"));
 
 /**
- * The busiest queries, grouped on the cleaned label so look-alikes
- * (`pass_port`, `passport`) merge, without empty labels or any query seen
- * fewer than MIN_QUERY_COUNT times.
+ * The busiest queries, without empty labels. A query seen fewer than
+ * MIN_QUERY_COUNT times is dropped first, so one-off variants of a name
+ * (`jane_doe`, `janedoe`) can't add up to the minimum. Then the rest are
+ * grouped on the cleaned label so look-alikes (`pass_port`, `passport`) merge.
  */
 function topQueries(rows: { query: string; count: number }[]) {
   const counts = new Map<string, number>();
   for (const r of rows) {
+    if (r.count < MIN_QUERY_COUNT) continue;
     const label = slackQuery(r.query);
     if (label) counts.set(label, (counts.get(label) ?? 0) + r.count);
   }
   return [...counts]
     .map(([label, count]) => ({ label, count }))
-    .filter((q) => q.count >= MIN_QUERY_COUNT)
     .sort((a, b) => b.count - a.count)
     .slice(0, QUERIES_SHOWN);
 }
