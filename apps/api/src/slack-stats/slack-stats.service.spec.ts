@@ -1,6 +1,7 @@
 import type { ConfigService } from "@nestjs/config";
 import type { FormDefinitionsService } from "@/forms/form-definitions/form-definitions.service";
 import { Logger } from "@nestjs/common";
+import { comparisonPeriods } from "@govtech-bb/umami-analytics";
 import { SlackStatsService, slackResponseUrl } from "./slack-stats.service";
 
 // A fake Umami client: funnel rows and event values keyed by event name, the
@@ -11,6 +12,7 @@ const umami = vi.hoisted(() => ({
   eventDataValues: vi.fn(),
   metricsUrls: vi.fn(),
   metricsEvents: vi.fn(),
+  reportJourney: vi.fn(),
 }));
 vi.mock("@govtech-bb/umami-analytics", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@govtech-bb/umami-analytics")>()),
@@ -303,7 +305,7 @@ describe("SlackStatsService.buildReply — one tool", () => {
       "`journeys`",
     );
     // A topic with no reply yet doesn't suggest itself.
-    expect(await reply("/stats", "week", "journeys", NOW)).not.toContain(
+    expect(await reply("/stats", "week", "search", NOW)).not.toContain(
       "Did you mean",
     );
   });
@@ -343,6 +345,61 @@ describe("SlackStatsService.buildReply — chat", () => {
     umami.eventDataValues.mockRejectedValue(new Error("Umami 401"));
     await expect(reply("/stats", "week", "chat", NOW)).rejects.toThrow(
       "Umami 401",
+    );
+  });
+});
+
+describe("SlackStatsService.buildReply — journeys", () => {
+  it("shows the dashboard's top paths and both websites' hand-offs, without the forms", async () => {
+    umami.reportJourney.mockResolvedValue([
+      { items: ["/", "/travel/renew-passport", null, null], count: 30 },
+      { items: ["/", null, null, null], count: 99 },
+    ]);
+    umami.metricsEvents.mockImplementation(async (site: string) =>
+      site === "landing"
+        ? [
+            { x: "passport-renewal:page-service-view", y: 12 },
+            { x: "start-click", y: 4 },
+          ]
+        : [{ x: "passport-renewal:form-start", y: 3 }],
+    );
+
+    const text = await reply("/stats", "week", "journeys", NOW);
+
+    expect(text).toContain("🧭 Landing journeys · Last week");
+    expect(text).toContain("• Home → Renew passport: *100%* (30)");
+    expect(text).toContain("*📝 Forms started*\\n*3*   ⚪ no change");
+    expect(text).toContain("not a funnel");
+    const lastWeek = comparisonPeriods("week", "America/Barbados", NOW).current;
+    expect(umami.reportJourney.mock.calls).toEqual([
+      ["landing", { steps: 4, range: lastWeek }],
+    ]);
+    expect(umami.metricsEvents.mock.calls.map((c) => c[0])).toEqual([
+      "landing",
+      "forms",
+      "landing",
+      "forms",
+    ]);
+    expect(umami.metricsEvents.mock.calls[0].slice(1)).toEqual([
+      lastWeek,
+      10_000,
+    ]);
+    expect(formDefinitions.findAll).not.toHaveBeenCalled();
+    expect(umami.reportFunnel).not.toHaveBeenCalled();
+  });
+
+  it("fails rather than show zero journeys when Umami fails", async () => {
+    umami.reportJourney.mockRejectedValue(new Error("Umami 401"));
+    await expect(reply("/stats", "week", "journeys", NOW)).rejects.toThrow(
+      "Umami 401",
+    );
+  });
+
+  it("fails rather than show zero hand-offs when an event list fails", async () => {
+    umami.reportJourney.mockResolvedValue([]);
+    umami.metricsEvents.mockRejectedValue(new Error("Umami 500"));
+    await expect(reply("/stats", "week", "journeys", NOW)).rejects.toThrow(
+      "Umami 500",
     );
   });
 });

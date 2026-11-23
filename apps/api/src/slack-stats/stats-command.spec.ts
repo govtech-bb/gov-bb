@@ -33,6 +33,10 @@ describe("usageText", () => {
   it("mentions the chat report", () => {
     expect(usageText("/stats")).toContain("`/stats week chat`");
   });
+
+  it("mentions the journeys report", () => {
+    expect(usageText("/stats")).toContain("`/stats week journeys`");
+  });
 });
 
 describe("usageText — tools", () => {

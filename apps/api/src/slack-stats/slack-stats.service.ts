@@ -11,6 +11,7 @@ import {
   funnelHeadline,
   shapeTools,
   shapeWaterAlerts,
+  shapeJourneyList,
   tallyFieldErrors,
   totalFor,
   weightedAverage,
@@ -25,14 +26,17 @@ import { sanitizeForLog } from "@/common/log-sanitize";
 import { FormDefinitionsService } from "@/forms/form-definitions/form-definitions.service";
 import {
   biggestFinishDrops,
+  countHandOffs,
   formatChatStats,
   formatFormStats,
+  formatJourneyStats,
   formatSiteStats,
   formatToolStats,
   periodHeading,
   tallyDeadEnds,
   type ChatPeriod,
   type FormPeriod,
+  type HandOffCounts,
   type SitePeriod,
   type SlackMessage,
   type ToolPeriod,
@@ -41,6 +45,8 @@ import { STATS_TOPICS, suggestFormIds } from "./stats-command";
 
 const TZ = "America/Barbados";
 const SLACK_POST_TIMEOUT_MS = 10_000;
+/** More rows than a website has event names, so a metricsEvents list is complete. */
+const ALL_EVENT_NAMES = 10_000;
 /** Slack only ever hands out response URLs on this host. */
 const SLACK_RESPONSE_HOST = "hooks.slack.com";
 /** A slash command's response_url path: /commands/<team>/<id>/<token>. */
@@ -183,6 +189,7 @@ export class SlackStatsService {
     now: Date,
   ): Promise<SlackMessage | string> {
     if (formId === "chat") return this.chatReply(period, now);
+    if (formId === "journeys") return this.journeysReply(period, now);
     const tool = TOOLS.find((t) => t.id === formId);
     if (tool) return this.toolReply(period, tool, now);
 
@@ -409,6 +416,39 @@ export class SlackStatsService {
     return formatChatStats(periodHeading(period, periods), {
       current: await chatPeriod(periods.current),
       previous: await chatPeriod(periods.previous),
+    });
+  }
+
+  /**
+   * Landing journeys (#3808): the dashboard's top journeys for the period, and
+   * the landing → forms hand-off counts for both periods. Five Umami requests:
+   * one journey report, then one event list per website per period. Each list
+   * asks for every event name: the forms site packs every event per form, so
+   * the default 500 rows would drop quieter forms' starts. An Umami error
+   * reaches reply(), which apologises, so an outage never reads as zero.
+   */
+  private async journeysReply(
+    period: StatsPeriod,
+    now: Date,
+  ): Promise<SlackMessage> {
+    const periods = comparisonPeriods(period, TZ, now);
+    const { apiKey, landingWebsiteId, formsWebsiteId } = this.umamiConfig();
+    const client = new UmamiClient({ apiKey });
+    const handOffs = async (range: Range): Promise<HandOffCounts> =>
+      countHandOffs(
+        await client.metricsEvents(landingWebsiteId, range, ALL_EVENT_NAMES),
+        await client.metricsEvents(formsWebsiteId, range, ALL_EVENT_NAMES),
+      );
+    // Same report and shaping as the dashboard (fetchOverviewData), so the
+    // paths and shares match its "Most common journeys" table.
+    const journeys = await client.reportJourney(landingWebsiteId, {
+      steps: 4,
+      range: periods.current,
+    });
+    return formatJourneyStats(periodHeading(period, periods), {
+      paths: shapeJourneyList(journeys),
+      current: await handOffs(periods.current),
+      previous: await handOffs(periods.previous),
     });
   }
 
