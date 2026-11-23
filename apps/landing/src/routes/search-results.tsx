@@ -6,6 +6,7 @@ import { ServiceSearch } from '../components/ServiceSearch'
 import { search } from '../lib/search'
 import { loadApiV2SearchDocuments } from '../lib/api-v2-site'
 import { trackEvent } from '../lib/analytics'
+import { trackSearchOnce } from '../lib/search-events'
 import { deriveVisibilityOverlay } from '../lib/service-status'
 
 const SearchParams = z.object({
@@ -37,9 +38,7 @@ function SearchResultsPage() {
   const hits = query ? search(query, level, overlay, apiV2Documents) : []
 
   useEffect(() => {
-    if (!query) return
-    trackEvent('search', { query, results: hits.length })
-    if (hits.length === 0) trackEvent('search-no-results', { query })
+    if (query) trackSearchOnce(query, hits.length)
   }, [query, hits.length])
 
   const hasResults = query && hits.length > 0
