@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   buildFunnelSteps,
   buildStepFunnel,
@@ -19,6 +19,7 @@ import {
   type UmamiConfig,
 } from './umami-server'
 import type { ServiceIndexEntry } from '@govtech-bb/content'
+import { __clearCache } from './cache'
 
 describe('configured gates', () => {
   const full = {
@@ -420,6 +421,9 @@ describe('fetchToolsData (tool events read from Umami)', () => {
 })
 
 describe('Tools tab reads every landing URL (#3823)', () => {
+  beforeEach(() => {
+    __clearCache()
+  })
   afterEach(() => {
     vi.unstubAllGlobals()
   })
@@ -441,7 +445,6 @@ describe('Tools tab reads every landing URL (#3823)', () => {
       }),
     )
 
-    // Not past-7-days: the test above has that range memoised.
     const data = await fetchToolsData(
       {
         apiKey: 'k',
