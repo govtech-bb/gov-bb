@@ -151,6 +151,48 @@ export function tallyDeadEnds(
   return { deadEnds, topForm };
 }
 
+/**
+ * The `errors` values apps/forms sends with `form-submit-error`: a field the
+ * API rejected, no response, a failed submission, or a failed payment start.
+ */
+const SUBMIT_ERROR_CODES = new Set([
+  "validation",
+  "network",
+  "server",
+  "payment-init",
+]);
+
+/**
+ * The (up to) 3 commonest errors on one form. Field IDs and error codes come
+ * from Umami event data, which anyone can send, so only a field in
+ * `labelByField` (the form's own fields) or a known code is named. Every other
+ * value counts in an "other fields" or "submit failed: other" row. Rows are
+ * kept apart by field ID, so two fields with the same label stay two rows.
+ */
+export function tallyTopErrors(
+  fieldErrors: { field: string; count: number }[],
+  submitErrors: EventDataValue[],
+  labelByField: Map<string, string>,
+): { label: string; count: number }[] {
+  const rows = new Map<string, { label: string; count: number }>();
+  const add = (key: string, label: string, count: number) => {
+    const row = rows.get(key) ?? { label, count: 0 };
+    row.count += count;
+    rows.set(key, row);
+  };
+  for (const f of fieldErrors) {
+    const label = labelByField.get(f.field);
+    if (label) add(`field:${f.field}`, label, f.count);
+    else add("other fields", "other fields", f.count);
+  }
+  for (const r of submitErrors) {
+    const code = String(r.value);
+    const label = `submit failed: ${SUBMIT_ERROR_CODES.has(code) ? code : "other"}`;
+    add(label, label, r.total);
+  }
+  return [...rows.values()].sort((a, b) => b.count - a.count).slice(0, 3);
+}
+
 // --- formatting ------------------------------------------------------------
 
 /** A Slack message: `text` is the notification fallback, `blocks` the layout. */
@@ -461,6 +503,7 @@ export function formatFormStats(
       section(
         "*🚨 Top errors*\n" +
           topErrors.map((e) => `• ${e.label}: *${num(e.count)}*`).join("\n"),
+        true,
       ),
     );
   }

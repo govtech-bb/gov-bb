@@ -39,6 +39,7 @@ import {
   formatToolsSummary,
   periodHeading,
   tallyDeadEnds,
+  tallyTopErrors,
   type ChatPeriod,
   type FormPeriod,
   type HandOffCounts,
@@ -264,27 +265,28 @@ export class SlackStatsService {
       const id = String(v.value);
       viewsByStep.set(id, (viewsByStep.get(id) ?? 0) + v.total);
     }
+    // Every field in the form, by its label (or its ID when it has none).
     const labelByField = new Map<string, string>();
     for (const step of contract.steps) {
       for (const el of (step.elements ?? []) as {
         fieldId?: string;
         label?: string;
       }[]) {
-        if (el.fieldId && el.label) labelByField.set(el.fieldId, el.label);
+        if (el.fieldId) labelByField.set(el.fieldId, el.label || el.fieldId);
+      }
+      // apps/forms adds an "Add another?" radio to a repeatable step. Every
+      // step's radio has the same ID, so they share one row and one label.
+      for (const b of step.behaviours ?? []) {
+        if (b.type === "repeatable" && !labelByField.has("addAnother")) {
+          labelByField.set("addAnother", b.addAnotherLabel ?? "Add another?");
+        }
       }
     }
-    const topErrors = [
-      ...tallyFieldErrors(fieldErrors).map((f) => ({
-        label: labelByField.get(f.field) ?? f.field,
-        count: f.count,
-      })),
-      ...submitErrors.map((r) => ({
-        label: `submit failed: ${String(r.value)}`,
-        count: r.total,
-      })),
-    ]
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 3);
+    const topErrors = tallyTopErrors(
+      tallyFieldErrors(fieldErrors),
+      submitErrors,
+      labelByField,
+    );
 
     return formatFormStats(heading, {
       formId,

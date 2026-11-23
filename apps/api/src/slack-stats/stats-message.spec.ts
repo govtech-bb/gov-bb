@@ -25,6 +25,7 @@ import {
   slackQuery,
   stepBars,
   tallyDeadEnds,
+  tallyTopErrors,
   type SlackMessage,
   type ToolPeriod,
   type ToolTotals,
@@ -186,6 +187,92 @@ describe("tallyDeadEnds", () => {
     );
     expect(deadEnds.formLoadError).toBe(2);
     expect(topForm).toBeNull();
+  });
+});
+
+describe("tallyTopErrors", () => {
+  const labels = new Map([
+    ["name", "Full name"],
+    ["photo", "Photo"],
+  ]);
+  // Anyone can send Umami event data.
+  const HOSTILE = [
+    "<!channel>",
+    "<https://evil.example|x>",
+    "&amp;",
+    "x`bold`",
+  ];
+
+  it("names the form's own fields and the known submit codes", () => {
+    expect(
+      tallyTopErrors(
+        [
+          { field: "name", count: 9 },
+          { field: "photo", count: 2 },
+        ],
+        [
+          { value: "network", total: 4 },
+          { value: "validation", total: 1 },
+        ],
+        labels,
+      ),
+    ).toEqual([
+      { label: "Full name", count: 9 },
+      { label: "submit failed: network", count: 4 },
+      { label: "Photo", count: 2 },
+    ]);
+  });
+
+  it("keeps two fields with the same label in two rows", () => {
+    expect(
+      tallyTopErrors(
+        [
+          { field: "home-address-line-1", count: 5 },
+          { field: "work-address-line-1", count: 4 },
+        ],
+        [],
+        new Map([
+          ["home-address-line-1", "Address line 1"],
+          ["work-address-line-1", "Address line 1"],
+        ]),
+      ),
+    ).toEqual([
+      { label: "Address line 1", count: 5 },
+      { label: "Address line 1", count: 4 },
+    ]);
+  });
+
+  it("knows every code apps/forms sends", () => {
+    const codes = ["validation", "network", "server", "payment-init"];
+    expect(
+      tallyTopErrors(
+        [],
+        codes.map((value) => ({ value, total: 1 })),
+        labels,
+      ).map((e) => e.label),
+    ).toEqual(codes.slice(0, 3).map((c) => `submit failed: ${c}`));
+    expect(
+      tallyTopErrors([], [{ value: "payment-init", total: 1 }], labels),
+    ).toEqual([{ label: "submit failed: payment-init", count: 1 }]);
+  });
+
+  it("counts unknown fields and codes in one row each, but never names them", () => {
+    const top = tallyTopErrors(
+      [
+        { field: "name", count: 3 },
+        ...HOSTILE.map((field) => ({ field, count: 5 })),
+      ],
+      [
+        { value: "network", total: 1 },
+        ...HOSTILE.map((value) => ({ value, total: 2 })),
+      ],
+      labels,
+    );
+    expect(top).toEqual([
+      { label: "other fields", count: 20 },
+      { label: "submit failed: other", count: 8 },
+      { label: "Full name", count: 3 },
+    ]);
   });
 });
 
@@ -403,6 +490,9 @@ describe("formatFormStats", () => {
       • Photo: *88*
       • submit failed: network: *14*"
     `);
+    const errors = (message.blocks as Record<string, any>[]).at(-1)!;
+    // Stops Slack linking a bare URL or #channel in a label.
+    expect(errors.text.verbatim).toBe(true);
   });
 
   it("leaves out empty sections", () => {
