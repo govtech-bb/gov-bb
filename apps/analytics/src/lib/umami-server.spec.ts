@@ -7,6 +7,7 @@ import {
   fetchFormDetailData,
   fetchFormList,
   fetchOverviewData,
+  fetchPagesData,
   fetchSearchData,
   fetchToolsData,
   funnelHeadline,
@@ -20,6 +21,7 @@ import {
   type UmamiConfig,
 } from './umami-server'
 import type { ServiceIndexEntry } from '@govtech-bb/content'
+import { ALL_PAGE_URLS } from '@govtech-bb/umami-analytics'
 import { __clearCache } from './cache'
 
 describe('configured gates', () => {
@@ -508,6 +510,52 @@ describe('dashboard event reads ask for every event name (#3819)', () => {
     stubEvents({ x: 'search-submit', y: 4 })
     const data = await fetchOverviewData(cfg, 'past-7-days')
     expect(data.stats.searches).toBe(4)
+  })
+})
+
+describe('Pages and Overview tabs ask for every landing URL (#3837)', () => {
+  const cfg: UmamiConfig = {
+    apiKey: 'k',
+    landingWebsiteId: 'l',
+    formsWebsiteId: 'f',
+    formsApiUrl: 'http://forms.test',
+  }
+  /** Stub every read as empty, and record the `limit` of each URL read. */
+  const stubUrlLimits = () => {
+    const limits: (string | null)[] = []
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: URL | string) => {
+        const u = new URL(String(input))
+        if (
+          u.pathname.endsWith('/metrics/expanded') &&
+          u.searchParams.get('type') === 'url'
+        ) {
+          limits.push(u.searchParams.get('limit'))
+        }
+        return { ok: true, status: 200, json: async () => [] } as Response
+      }),
+    )
+    return limits
+  }
+
+  beforeEach(() => {
+    __clearCache()
+  })
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('fetchPagesData requests ALL_PAGE_URLS rows', async () => {
+    const limits = stubUrlLimits()
+    await fetchPagesData(cfg, 'past-30-days')
+    expect(limits).toEqual([String(ALL_PAGE_URLS)])
+  })
+
+  it('fetchOverviewData requests ALL_PAGE_URLS rows', async () => {
+    const limits = stubUrlLimits()
+    await fetchOverviewData(cfg, 'past-30-days')
+    expect(limits).toEqual([String(ALL_PAGE_URLS)])
   })
 })
 
