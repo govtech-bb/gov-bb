@@ -1,4 +1,5 @@
 import {
+  TOOLS,
   comparisonPeriods,
   eventName,
   type SearchQueryStats,
@@ -13,6 +14,7 @@ import {
   formatFormStats,
   formatSearchStats,
   formatSiteStats,
+  formatToolStats,
   periodHeading,
   plainSlackText,
   rateChange,
@@ -20,6 +22,7 @@ import {
   stepBars,
   tallyDeadEnds,
   type SlackMessage,
+  type ToolPeriod,
 } from "./stats-message";
 
 const NOW = new Date("2026-11-04T18:30:00Z");
@@ -36,6 +39,10 @@ describe("change helpers", () => {
     expect(countChange(108, 100, "down")).toBe("🔴 ▲ 8%");
     expect(countChange(90, 100, "down")).toBe("🟢 ▼ 10%");
     expect(countChange(5, 0, "down")).toBe("🔴 new");
+  });
+
+  it("rates change the other way when lower is better", () => {
+    expect(rateChange(0.31, 0.33, "down")).toBe("🟢 ▼ 2 pts");
   });
 
   it("rates change in percentage points", () => {
@@ -736,5 +743,188 @@ describe("slackQuery", () => {
 
   it("is empty for a blank query", () => {
     expect(slackQuery("  ")).toBe("");
+  });
+});
+
+describe("formatToolStats", () => {
+  const tool = (id: string) => TOOLS.find((t) => t.id === id)!;
+  const rows = (o: Record<string, number>) =>
+    Object.entries(o).map(([value, total]) => ({ value, total }));
+  const quiet: ToolPeriod = {
+    visitors: 0,
+    events: null,
+    stepViews: 0,
+    steps: [],
+    actions: [],
+    errors: [],
+  };
+
+  it("shows a tool's events, compared with the period before", () => {
+    const message = formatToolStats(LAST_WEEK, {
+      tool: tool("pharmacy-finder"),
+      current: {
+        visitors: 420,
+        events: {
+          results: 300,
+          noResultRate: 0.1,
+          topAction: { action: "call", count: 40 },
+          errors: 12,
+          errorRate: 12 / 312,
+        },
+        stepViews: 500,
+        steps: rows({ find: 380, hero: 120 }),
+        actions: rows({ call: 40, "call-drug-service": 9, about: 2, x: 1 }),
+        errors: rows({ "location-denied": 10, "location-unavailable": 2 }),
+      },
+      previous: {
+        visitors: 400,
+        events: {
+          results: 250,
+          noResultRate: 0.2,
+          topAction: { action: "call", count: 50 },
+          errors: 6,
+          errorRate: 6 / 256,
+        },
+        stepViews: 450,
+        steps: rows({ find: 300, hero: 150 }),
+        actions: rows({ call: 50 }),
+        errors: rows({ "location-denied": 6 }),
+      },
+    });
+    expect(message.text).toBe(
+      "🧰 Find an open pharmacy · Last week: 420 visitors, 300 results",
+    );
+    expect(render(message)).toMatchInlineSnapshot(`
+      "🧰 Find an open pharmacy
+      \`pharmacy-finder\` · *Last week* · 26 Oct – 1 Nov, compared with 19 Oct – 25 Oct
+      *👥 Visitors to the tool*
+      *420*   🟢 ▲ 5%
+      *👣 Step views*
+      *500*   🟢 ▲ 11%
+      *✅ Results*
+      *300*   🟢 ▲ 20%
+      *🚫 No results*
+      *10%*   🟢 ▼ 10 pts
+      *⚠️ Errors*
+      *12*   🔴 ▲ 100%
+      ---
+      *👣 Views of each step*
+      • \`find\`: *380*   🟢 ▲ 27%
+      • \`hero\`: *120*   🔴 ▼ 20%
+      *👆 Top actions*
+      • \`call\`: *40*   🔴 ▼ 20%
+      • \`call-drug-service\`: *9*   🆕 new
+      • \`about\`: *2*   🆕 new
+      *🚨 Top errors*
+      • \`location-denied\`: *10*   🔴 ▲ 67%
+      • \`location-unavailable\`: *2*   🔴 new
+      Visitors are summed across the tool's pages, so someone who views more than one page may be counted more than once."
+    `);
+  });
+
+  it("shows a clear empty state for a tool with no events", () => {
+    const message = formatToolStats(LAST_WEEK, {
+      tool: tool("bank-holidays"),
+      current: { ...quiet, visitors: 75 },
+      previous: { ...quiet, visitors: 60 },
+    });
+    expect(message.text).toBe(
+      "🧰 Check bank holiday dates · Last week: 75 visitors, no tool events yet",
+    );
+    expect(render(message)).toContain(
+      "*75*   🟢 ▲ 25%\n💤 No tool events yet in this period. The period before: 0 results, 0 step views.",
+    );
+    expect(render(message)).not.toContain("Errors");
+  });
+
+  it("adds the water outage alert sign-up funnel", () => {
+    const water: ToolPeriod = {
+      ...quiet,
+      events: {
+        results: 30,
+        noResultRate: null,
+        topAction: { action: "subscribe-submit", count: 8 },
+        errors: 0,
+        errorRate: 0,
+      },
+      actions: rows({ "subscribe-submit": 8 }),
+    };
+    const text = render(
+      formatToolStats(LAST_WEEK, {
+        tool: tool("water-outages"),
+        current: {
+          ...water,
+          waterAlerts: { submitted: 8, sent: 7, confirmed: 5, unsubscribed: 1 },
+        },
+        previous: {
+          ...water,
+          waterAlerts: { submitted: 4, sent: 4, confirmed: 4, unsubscribed: 0 },
+        },
+      }),
+    );
+    expect(text).toContain(
+      [
+        "*🔔 Outage alert sign-ups*",
+        "*✍️ Submitted*\n*8*   🟢 ▲ 100%",
+        "*📧 Emails sent*\n*7*   🟢 ▲ 75%",
+        "*✅ Confirmed*\n*5*   🟢 ▲ 25%",
+        "*👋 Unsubscribed*\n*1*   🔴 new",
+      ].join("\n"),
+    );
+    expect(text).not.toContain("No results");
+    expect(text).not.toContain("Top errors");
+  });
+
+  it("says so when Umami's breakdowns could not be read", () => {
+    const text = render(
+      formatToolStats(LAST_WEEK, {
+        tool: tool("water-outages"),
+        current: {
+          ...quiet,
+          stepViews: 9,
+          steps: undefined,
+          actions: undefined,
+          waterAlerts: null,
+        },
+        previous: { ...quiet, waterAlerts: null },
+      }),
+    );
+    expect(text).toContain(
+      "*👣 Views of each step*\nCouldn't read the breakdown from Umami.",
+    );
+    expect(text).toContain(
+      "*👆 Top actions*\nCouldn't read the breakdown from Umami.",
+    );
+    expect(text).toContain("Couldn't read the sign-ups from Umami.");
+  });
+
+  it("shows no change against a period whose breakdown couldn't be read", () => {
+    const text = render(
+      formatToolStats(LAST_WEEK, {
+        tool: tool("crop-over-permits"),
+        current: { ...quiet, stepViews: 4, steps: rows({ "q-event": 4 }) },
+        previous: { ...quiet, stepViews: 9, steps: undefined },
+      }),
+    );
+    expect(text).toContain("*👣 Views of each step*\n• `q-event`: *4*\n");
+  });
+
+  it("never lets event data sent by a stranger mention, link or format", () => {
+    const message = formatToolStats(LAST_WEEK, {
+      tool: tool("crop-over-permits"),
+      current: {
+        ...quiet,
+        stepViews: 3,
+        steps: rows({ "x`<!channel> <https://evil.example|click> *bold*": 3 }),
+      },
+      previous: quiet,
+    });
+    const steps = (message.blocks as Record<string, any>[]).find((b) =>
+      b.text?.text?.startsWith("*👣 Views"),
+    )!;
+    expect(steps.text.verbatim).toBe(true);
+    expect(steps.text.text).toContain(
+      "• `x&lt;!channel&gt; &lt;https://evil.example|click&gt; bold`: *3*",
+    );
   });
 });
