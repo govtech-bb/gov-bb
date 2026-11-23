@@ -1,8 +1,8 @@
 import { Heading, Text } from '@govtech-bb/react'
 import * as React from 'react'
-import type { SourceRow } from '@govtech-bb/umami-analytics'
+import type { JourneyRow, SourceRow } from '@govtech-bb/umami-analytics'
 import { FlowDiagram } from './FlowDiagram'
-import type { FlowData, JourneyRow } from './lib/umami-server'
+import type { FlowData } from './lib/umami-server'
 
 const fmtInt = (n: number) => n.toLocaleString()
 const fmtPct = (frac: number) =>
