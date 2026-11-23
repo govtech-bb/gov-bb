@@ -661,6 +661,45 @@ describe("SlackStatsService.buildReply — one form", () => {
     expect(text).toContain("• Do you have another child?: *3*");
   });
 
+  it("names the Add another? radio neutrally when repeatable steps ask different questions", async () => {
+    const repeatable = (stepId: string, addAnotherLabel?: string) => ({
+      stepId,
+      title: stepId,
+      elements: [],
+      behaviours: [{ type: "repeatable", min: 1, max: 5, addAnotherLabel }],
+    });
+    umami.reportFunnel.mockResolvedValue([]);
+    umami.eventDataValues.mockImplementation(
+      async (_site: string, _event: string, property: string) =>
+        property === "fieldErrors"
+          ? [{ value: "addAnother:required", total: 3 }]
+          : [],
+    );
+
+    formDefinitions.findByFormId.mockResolvedValue({
+      title: "Renew a passport",
+      steps: [
+        repeatable("children", "Do you have another child?"),
+        repeatable("jobs", "Do you have another job?"),
+      ],
+    });
+    expect(await reply("/stats", "week", "passport-renewal", NOW)).toContain(
+      "• Add another?: *3*",
+    );
+
+    // The same question on both steps still names it.
+    formDefinitions.findByFormId.mockResolvedValue({
+      title: "Renew a passport",
+      steps: [
+        repeatable("children", "Do you have another child?"),
+        repeatable("more-children", "Do you have another child?"),
+      ],
+    });
+    expect(await reply("/stats", "week", "passport-renewal", NOW)).toContain(
+      "• Do you have another child?: *3*",
+    );
+  });
+
   it("never puts a field ID or error code sent by a stranger into the reply", async () => {
     formDefinitions.findByFormId.mockResolvedValue({
       title: "Renew a passport",

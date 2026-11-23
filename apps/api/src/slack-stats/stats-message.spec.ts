@@ -513,6 +513,42 @@ describe("formatFormStats", () => {
     expect(errors.text.verbatim).toBe(true);
   });
 
+  it("shows form text with Slack's control and formatting characters as plain text", () => {
+    const period = {
+      visits: 0,
+      starts: 0,
+      completed: 0,
+      avgDurationSeconds: null,
+    };
+    const message = formatFormStats(LAST_WEEK, {
+      formId: "x",
+      title: "Fees & <charges>",
+      current: period,
+      previous: period,
+      steps: [
+        { title: "Fees & <charges> *now* _x_ ~y~", count: 4 },
+        { title: "Your ```details```", count: 2 },
+      ],
+      topErrors: [{ label: "Name & <title> *required* _x_ ~y~ `z`", count: 1 }],
+    });
+    expect(message.text).toBe(
+      "📝 Fees &amp; &lt;charges&gt; · Last week: 0 started, 0 finished",
+    );
+    // A code block shows * _ ~ as typed. Titles are padded before escaping,
+    // so the bars still line up.
+    expect(render(message)).toContain(
+      [
+        "```",
+        "Fees &amp; &lt;charges&gt; *now* _x_ ~y~  ████████████  4",
+        "Your details                    ██████░░░░░░  2",
+        "```",
+      ].join("\n"),
+    );
+    expect(render(message)).toContain(
+      "• Name &amp; &lt;title&gt; required x y z: *1*",
+    );
+  });
+
   it("leaves out empty sections", () => {
     const period = {
       visits: 0,
