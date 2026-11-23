@@ -1,6 +1,7 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import {
+  ALL_EVENT_NAMES,
   FUNNEL_WINDOW_MIN,
   TOOLS,
   UmamiClient,
@@ -49,8 +50,6 @@ import { STATS_TOPICS, suggestFormIds } from "./stats-command";
 
 const TZ = "America/Barbados";
 const SLACK_POST_TIMEOUT_MS = 10_000;
-/** More rows than a website has event names, so a metricsEvents list is complete. */
-const ALL_EVENT_NAMES = 10_000;
 /** Slack only ever hands out response URLs on this host. */
 const SLACK_RESPONSE_HOST = "hooks.slack.com";
 /** A slash command's response_url path: /commands/<team>/<id>/<token>. */
@@ -312,10 +311,11 @@ export class SlackStatsService {
     const stats = (await client.stats(landingWebsiteId, range)) as {
       visitors?: number;
     };
-    // One event-count request per site, so the reply stays inside the rate limit.
+    // One event-count request per site, so the reply stays inside the rate
+    // limit. ALL_EVENT_NAMES, so a rare dead end isn't cut from the list.
     const { deadEnds, topForm } = tallyDeadEnds(
-      await client.metricsEvents(landingWebsiteId, range),
-      await client.metricsEvents(formsWebsiteId, range),
+      await client.metricsEvents(landingWebsiteId, range, ALL_EVENT_NAMES),
+      await client.metricsEvents(formsWebsiteId, range, ALL_EVENT_NAMES),
       formIds,
     );
     const byForm = new Map<string, { starts: number; completed: number }>();
