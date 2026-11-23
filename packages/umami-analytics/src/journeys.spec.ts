@@ -20,6 +20,14 @@ describe("humanizeStep", () => {
     ).toBe("Get a textbook grant · Form");
   });
 
+  it("ignores trailing slashes and a query string", () => {
+    expect(humanizeStep("/")).toBe("Home");
+    expect(humanizeStep("///")).toBe("Home");
+    expect(
+      humanizeStep("/money-financial-support/get-a-textbook-grant/start//?x=1"),
+    ).toBe("Get a textbook grant · Start");
+  });
+
   it("recognises a long-id form's compact start code (#2682)", () => {
     // A 40–44 char id emits `:fstrt` instead of `:form-start`; it must still
     // resolve to the Start goal, not render as "Fstrt".

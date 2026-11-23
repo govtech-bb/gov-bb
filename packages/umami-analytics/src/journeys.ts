@@ -28,8 +28,9 @@ export function humanizeStep(raw: string, qualifyGoal = true): string {
       return qualifyGoal ? `${humanizeSlug(form)} · Start` : "Start";
     return humanizeSlug(event);
   }
-  const path = raw.split("?")[0].replace(/\/+$/, "");
-  const segs = path.split("/").filter(Boolean);
+  // Empty segments are dropped, so trailing slashes need no separate trim (a
+  // trailing-slash regex here is slow on long runs of "/").
+  const segs = raw.split("?")[0].split("/").filter(Boolean);
   if (!segs.length) return "Home";
   const last = segs[segs.length - 1];
   // A form's start/form page: qualify with the service segment above it.
