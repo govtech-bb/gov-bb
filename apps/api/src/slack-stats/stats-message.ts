@@ -1,6 +1,10 @@
 import type {
   ComparisonPeriods,
+  EventDataValue,
   StatsPeriod,
+  Tool,
+  ToolEventStats,
+  WaterAlertFunnel,
 } from "@govtech-bb/umami-analytics";
 
 const TZ = "America/Barbados";
@@ -113,17 +117,25 @@ function trend(delta: number, better: Better, label: string): string {
   return `${good ? "🟢" : "🔴"} ${delta > 0 ? "▲" : "▼"} ${label}`;
 }
 
-export function countChange(current: number, previous: number): string {
+export function countChange(
+  current: number,
+  previous: number,
+  better: Better = "up",
+): string {
   if (current === previous) return "⚪ no change";
-  if (!previous) return "🆕 new";
+  if (!previous) return better === "up" ? "🆕 new" : "🔴 new";
   const change = Math.round((Math.abs(current - previous) / previous) * 100);
-  return trend(current - previous, "up", `${change}%`);
+  return trend(current - previous, better, `${change}%`);
 }
 
-export function rateChange(current: number | null, previous: number | null) {
+export function rateChange(
+  current: number | null,
+  previous: number | null,
+  better: Better = "up",
+) {
   if (current === null || previous === null) return "";
   const pts = Math.round((current - previous) * 100);
-  return pts ? trend(pts, "up", `${Math.abs(pts)} pts`) : "⚪ no change";
+  return pts ? trend(pts, better, `${Math.abs(pts)} pts`) : "⚪ no change";
 }
 
 /** Shorter is better, so a longer time is 🔴. */
@@ -360,6 +372,185 @@ export function formatFormStats(
   }
   return {
     text: `📝 ${title} · ${heading.title}: ${num(c.starts)} started, ${num(c.completed)} finished`,
+    blocks,
+  };
+}
+
+/** One tool's numbers for one period, from its landing pages and `tool-*` events. */
+export interface ToolPeriod {
+  /** Summed across the tool's pages, as on the dashboard's Tools tab. */
+  visitors: number;
+  /** From `tool-result`, `tool-action` and `tool-error`; null when it sent none. */
+  events: ToolEventStats | null;
+  /** `tool-step-view` events. */
+  stepViews: number;
+  /**
+   * Counts by step, action and error code: empty when there were none,
+   * undefined when Umami's breakdown could not be read or trusted.
+   */
+  steps: EventDataValue[] | undefined;
+  actions: EventDataValue[] | undefined;
+  errors: EventDataValue[] | undefined;
+  /** Water outages only: the alert sign-ups, null when they could not be read. */
+  waterAlerts?: WaterAlertFunnel | null;
+}
+
+export interface ToolStats {
+  tool: Tool;
+  current: ToolPeriod;
+  previous: ToolPeriod;
+}
+
+/**
+ * A step, action or error code as the tools send them (ADR 0138). Anyone can
+ * send Umami an event, so a value of another shape is counted but never put
+ * into the message, where it could mention, link or format.
+ */
+const TOOL_CODE = /^[a-z0-9][a-z0-9_-]{0,39}$/i;
+const STEPS_SHOWN = 10;
+const TOP_SHOWN = 3;
+
+/** Each code's count in both periods, busiest now first; odd values merge into "other". */
+function compareCodes(
+  current: EventDataValue[],
+  previous: EventDataValue[] = [],
+) {
+  const counts = new Map<string, { now: number; before: number }>();
+  const add = (rows: EventDataValue[], key: "now" | "before") => {
+    for (const r of rows) {
+      const value = String(r.value);
+      const label = TOOL_CODE.test(value) ? `\`${value}\`` : "other";
+      const c = counts.get(label) ?? { now: 0, before: 0 };
+      c[key] += r.total;
+      counts.set(label, c);
+    }
+  };
+  add(current, "now");
+  add(previous, "before");
+  return [...counts]
+    .map(([label, c]) => ({ label, ...c }))
+    .sort((a, b) => b.now - a.now || b.before - a.before);
+}
+
+/** One period's codes as a list with their change, or a note when Umami's breakdown is missing. */
+function codeList(
+  title: string,
+  current: EventDataValue[] | undefined,
+  previous: EventDataValue[] | undefined,
+  { shown, better = "up" }: { shown: number; better?: Better },
+) {
+  const lines = current
+    ? compareCodes(current, previous)
+        .filter((r) => r.now > 0 || shown === STEPS_SHOWN)
+        .slice(0, shown)
+        .map(
+          (r) =>
+            `• ${r.label}: *${num(r.now)}*   ${countChange(r.now, r.before, better)}`,
+        )
+    : ["Couldn't read the breakdown from Umami."];
+  return section(`*${title}*\n` + lines.join("\n"));
+}
+
+/** "not-eligible" → "Not eligible". */
+const outcomeLabel = (outcome: string) =>
+  outcome.charAt(0).toUpperCase() + outcome.slice(1).replace(/-/g, " ");
+
+export function formatToolStats(
+  heading: PeriodHeading,
+  { tool, current: c, previous: p }: ToolStats,
+): SlackMessage {
+  const blocks: unknown[] = [
+    header(`🧰 ${tool.name}`),
+    context(`\`${tool.id}\` · *${heading.title}* · ${heading.detail}`),
+  ];
+  const visitors: [string, string, string] = [
+    "👥 Visitors to the tool",
+    num(c.visitors),
+    countChange(c.visitors, p.visitors),
+  ];
+  const caveat = context(
+    "Visitors are summed across the tool's pages, so someone who views more than one page may be counted more than once.",
+  );
+  if (!c.events && !c.stepViews) {
+    blocks.push(
+      metrics([visitors]),
+      section("💤 No tool events yet in this period."),
+      caveat,
+    );
+    return {
+      text: `🧰 ${tool.name} · ${heading.title}: ${num(c.visitors)} visitors, no tool events yet`,
+      blocks,
+    };
+  }
+
+  const results = c.events?.results ?? 0;
+  const errors = c.events?.errors ?? 0;
+  const rows: [string, string, string][] = [
+    visitors,
+    ["👣 Step views", num(c.stepViews), countChange(c.stepViews, p.stepViews)],
+    ["✅ Results", num(results), countChange(results, p.events?.results ?? 0)],
+  ];
+  if (tool.noResultOutcome) {
+    const now = c.events?.noResultRate ?? null;
+    rows.push([
+      `🚫 ${outcomeLabel(tool.noResultOutcome)}`,
+      pct(now),
+      rateChange(now, p.events?.noResultRate ?? null, "down"),
+    ]);
+  }
+  rows.push([
+    "⚠️ Errors",
+    num(errors),
+    countChange(errors, p.events?.errors ?? 0, "down"),
+  ]);
+  blocks.push(metrics(rows), divider);
+
+  if (c.stepViews) {
+    blocks.push(
+      codeList("👣 Views of each step", c.steps, p.steps, {
+        shown: STEPS_SHOWN,
+      }),
+    );
+  }
+  if (c.actions?.length !== 0) {
+    blocks.push(
+      codeList("👆 Top actions", c.actions, p.actions, { shown: TOP_SHOWN }),
+    );
+  }
+  if (errors) {
+    blocks.push(
+      codeList("🚨 Top errors", c.errors, p.errors, {
+        shown: TOP_SHOWN,
+        better: "down",
+      }),
+    );
+  }
+  if (c.waterAlerts !== undefined) {
+    const w = c.waterAlerts;
+    const before = p.waterAlerts;
+    // No change shown against a period whose sign-ups couldn't be read.
+    const change = (key: keyof WaterAlertFunnel, better?: Better) =>
+      w && before ? countChange(w[key], before[key], better) : "";
+    blocks.push(
+      divider,
+      section("*🔔 Outage alert sign-ups*"),
+      w
+        ? metrics([
+            ["✍️ Submitted", num(w.submitted), change("submitted")],
+            ["📧 Emails sent", num(w.sent), change("sent")],
+            ["✅ Confirmed", num(w.confirmed), change("confirmed")],
+            [
+              "👋 Unsubscribed",
+              num(w.unsubscribed),
+              change("unsubscribed", "down"),
+            ],
+          ])
+        : context("Couldn't read the sign-ups from Umami."),
+    );
+  }
+  blocks.push(caveat);
+  return {
+    text: `🧰 ${tool.name} · ${heading.title}: ${num(c.visitors)} visitors, ${num(results)} results`,
     blocks,
   };
 }
