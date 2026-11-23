@@ -9,6 +9,7 @@ import {
   comparisonPeriods,
   eventName,
   funnelHeadline,
+  liveTools,
   shapeSearch,
   shapeTools,
   shapeWaterAlerts,
@@ -34,6 +35,7 @@ import {
   formatSearchStats,
   formatSiteStats,
   formatToolStats,
+  formatToolsSummary,
   periodHeading,
   tallyDeadEnds,
   type ChatPeriod,
@@ -191,6 +193,7 @@ export class SlackStatsService {
     now: Date,
   ): Promise<SlackMessage | string> {
     if (formId === "chat") return this.chatReply(period, now);
+    if (formId === "tools") return this.toolsReply(period, now);
     if (formId === "journeys") return this.journeysReply(period, now);
     if (formId === "search") return this.searchReply(period, now);
     const tool = TOOLS.find((t) => t.id === formId);
@@ -511,6 +514,45 @@ export class SlackStatsService {
     });
   }
 
+  /**
+   * Every live tool on one line (#3807), shaped by the dashboard's code so the
+   * numbers match its Tools tab. Per period, one at a time: the landing URLs,
+   * each event's `tool` values for every tool, and the filtered outcome reads
+   * of only the tools with a no-result rate that sent results: at most 7
+   * requests, 14 per reply. An Umami error on a count reaches reply(),
+   * which apologises, so an outage never reads as "no tool events".
+   */
+  private async toolsReply(
+    period: StatsPeriod,
+    now: Date,
+  ): Promise<SlackMessage> {
+    const periods = comparisonPeriods(period, TZ, now);
+    const { apiKey, landingWebsiteId } = this.umamiConfig();
+    const client = new UmamiClient({ apiKey });
+    const tools = liveTools();
+    const toolsPeriod = async (range: Range) => {
+      const urlRows = await client.metricsUrls(landingWebsiteId, range);
+      // Only the no-result rate needs a tool's own breakdown here, so the
+      // tools without one skip those reads, and no tool's actions are read.
+      const rows = await this.toolEventRows(
+        client,
+        tools.filter((t) => t.noResultOutcome),
+        range,
+        false,
+      );
+      return shapeTools(tools, urlRows, new Map(), rows);
+    };
+    const current = await toolsPeriod(periods.current);
+    const previous = await toolsPeriod(periods.previous);
+    return formatToolsSummary(periodHeading(period, periods), {
+      tools: tools.map((tool, i) => ({
+        tool,
+        current: current[i],
+        previous: previous[i],
+      })),
+    });
+  }
+
   /** One tool's period, shaped by the dashboard's code so the numbers match its Tools tab. */
   private async toolPeriod(
     client: UmamiClient,
@@ -561,12 +603,14 @@ export class SlackStatsService {
    * The tool-event rows the shared shapers take, read as the dashboard's
    * Tools tab reads them: each event's `tool` values give every tool's count,
    * and a tool's outcome and action values come through Umami's property
-   * filter. One request at a time, for one tool or for all of them.
+   * filter. One request at a time, for one tool or for all of them. With
+   * `withActions` false, the action values are not read.
    */
   private async toolEventRows(
     client: UmamiClient,
     tools: Tool[],
     range: Range,
+    withActions = true,
   ): Promise<ToolEventRows> {
     const { landingWebsiteId } = this.umamiConfig();
     const byTool = (event: string) =>
@@ -587,6 +631,7 @@ export class SlackStatsService {
         range,
       );
       if (o) outcomes.set(tool.id, o);
+      if (!withActions) continue;
       const a = await this.toolBreakdown(
         client,
         tool,
