@@ -46,8 +46,9 @@ export const UMAMI_SCRIPT_ATTRIBUTES = {
 
 /**
  * The `errors` values apps/forms sends with `form-submit-error` (#3826): the
- * API rejected an answer (`validation`), no response came back (`network`), the
- * submission failed (`server`), or the payment could not start
+ * API rejected an answer (`validation`), the API could not be reached or
+ * answered with an HTTP error, 5xx included (`network`), the API answered but
+ * reported the submission failed (`server`), or the payment could not start
  * (`payment-init`). The /stats Slack report and the analytics dashboard name
  * these and count any other value as "other". `TrackingData` types `errors`
  * from this list, so a new value fails type-check until it is added here.
