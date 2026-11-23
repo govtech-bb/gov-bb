@@ -548,7 +548,7 @@ describe("formatToolStats", () => {
       "🧰 Check bank holiday dates · Last week: 75 visitors, no tool events yet",
     );
     expect(render(message)).toContain(
-      "*75*   🟢 ▲ 25%\n💤 No tool events yet in this period.",
+      "*75*   🟢 ▲ 25%\n💤 No tool events yet in this period. The period before: 0 results, 0 step views.",
     );
     expect(render(message)).not.toContain("Errors");
   });
@@ -612,6 +612,17 @@ describe("formatToolStats", () => {
       "*👆 Top actions*\nCouldn't read the breakdown from Umami.",
     );
     expect(text).toContain("Couldn't read the sign-ups from Umami.");
+  });
+
+  it("shows no change against a period whose breakdown couldn't be read", () => {
+    const text = render(
+      formatToolStats(LAST_WEEK, {
+        tool: tool("crop-over-permits"),
+        current: { ...quiet, stepViews: 4, steps: rows({ "q-event": 4 }) },
+        previous: { ...quiet, stepViews: 9, steps: undefined },
+      }),
+    );
+    expect(text).toContain("*👣 Views of each step*\n• `q-event`: *4*\n");
   });
 
   it("never lets event data sent by a stranger mention, link or format", () => {

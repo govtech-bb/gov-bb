@@ -212,6 +212,27 @@ describe("SlackStatsService.buildReply — one tool", () => {
     expect(text).toContain("*🚫 No results*\\n*–*");
   });
 
+  it("says a breakdown couldn't be read when a filtered read fails", async () => {
+    events({
+      "tool-step-view.tool": [{ value: "crop-over-permits", total: 5 }],
+      "tool-error.tool": [{ value: "crop-over-permits", total: 2 }],
+    });
+    const counts = umami.eventDataValues.getMockImplementation()!;
+    umami.eventDataValues.mockImplementation(async (...args: unknown[]) => {
+      if (args[4]) throw new Error("Umami 500");
+      return counts(...(args as Parameters<typeof counts>));
+    });
+
+    const text = await reply("/stats", "week", "crop-over-permits", NOW);
+
+    expect(text).toContain(
+      "*👣 Views of each step*\\nCouldn't read the breakdown from Umami.",
+    );
+    expect(text).toContain(
+      "*🚨 Top errors*\\nCouldn't read the breakdown from Umami.",
+    );
+  });
+
   it("apologises rather than show no events when Umami fails", async () => {
     umami.eventDataValues.mockRejectedValue(new Error("Umami 401"));
     await expect(
@@ -225,6 +246,10 @@ describe("SlackStatsService.buildReply — one tool", () => {
     );
     expect(await reply("/stats", "week", "journey", NOW)).toContain(
       "`journeys`",
+    );
+    // A topic with no reply yet doesn't suggest itself.
+    expect(await reply("/stats", "week", "journeys", NOW)).not.toContain(
+      "Did you mean",
     );
   });
 });

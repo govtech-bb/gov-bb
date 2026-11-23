@@ -582,15 +582,19 @@ function codeList(
   title: string,
   current: EventDataValue[] | undefined,
   previous: EventDataValue[] | undefined,
-  { shown, better = "up" }: { shown: number; better?: Better },
+  {
+    shown,
+    better = "up",
+    keepGone = false,
+  }: { shown: number; better?: Better; keepGone?: boolean },
 ) {
   const lines = current
     ? compareCodes(current, previous)
-        .filter((r) => r.now > 0 || shown === STEPS_SHOWN)
+        .filter((r) => r.now > 0 || keepGone)
         .slice(0, shown)
-        .map(
-          (r) =>
-            `• ${r.label}: *${num(r.now)}*   ${countChange(r.now, r.before, better)}`,
+        .map((r) =>
+          // No change shown against a period whose breakdown couldn't be read.
+          `• ${r.label}: *${num(r.now)}*   ${previous ? countChange(r.now, r.before, better) : ""}`.trimEnd(),
         )
     : ["Couldn't read the breakdown from Umami."];
   return section(`*${title}*\n` + lines.join("\n"), true);
@@ -619,7 +623,9 @@ export function formatToolStats(
   if (!c.events && !c.stepViews) {
     blocks.push(
       metrics([visitors]),
-      section("💤 No tool events yet in this period."),
+      section(
+        `💤 No tool events yet in this period. The period before: ${num(p.events?.results ?? 0)} results, ${num(p.stepViews)} step views.`,
+      ),
       caveat,
     );
     return {
@@ -654,6 +660,7 @@ export function formatToolStats(
     blocks.push(
       codeList("👣 Views of each step", c.steps, p.steps, {
         shown: STEPS_SHOWN,
+        keepGone: true,
       }),
     );
   }

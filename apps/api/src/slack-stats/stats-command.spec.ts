@@ -79,6 +79,12 @@ describe("suggestFormIds", () => {
     expect(suggestFormIds("passport", ids)).toEqual(["passport-renewal"]);
   });
 
+  it("never suggests the word itself", () => {
+    expect(suggestFormIds("search", ["search", "research-grant"])).toEqual([
+      "research-grant",
+    ]);
+  });
+
   it("returns nothing for an unrelated term", () => {
     expect(suggestFormIds("zzz", ids)).toEqual([]);
   });

@@ -40,9 +40,11 @@ export function suggestFormIds(term: string, ids: string[]): string[] {
   return ids
     .filter(
       (id) =>
-        id.includes(term) ||
-        term.includes(id) ||
-        words.some((w) => id.includes(w)),
+        // A topic not handled yet must not suggest itself.
+        id !== term &&
+        (id.includes(term) ||
+          term.includes(id) ||
+          words.some((w) => id.includes(w))),
     )
     .slice(0, 5);
 }
