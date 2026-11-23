@@ -4,7 +4,9 @@ import {
   buildStepFunnel,
   buildVisitFunnelSteps,
   fetchFormDefinition,
+  fetchFormDetailData,
   fetchFormList,
+  fetchOverviewData,
   fetchToolsData,
   funnelHeadline,
   isConfigured,
@@ -414,6 +416,51 @@ describe('fetchToolsData (tool events read from Umami)', () => {
       confirmed: 0,
       unsubscribed: 0,
     })
+  })
+})
+
+describe('dashboard event reads ask for every event name (#3819)', () => {
+  const cfg: UmamiConfig = {
+    apiKey: 'k',
+    landingWebsiteId: 'l',
+    formsWebsiteId: 'f',
+    formsApiUrl: 'http://forms.test',
+  }
+  /** Event rows like Umami's: busiest first, cut at the requested limit. The
+   *  `quiet` row sits below 600 busier names. Every other read is empty. */
+  const stubEvents = (quiet: { x: string; y: number }) => {
+    const busier = Array.from({ length: 600 }, (_, i) => ({
+      x: `form-${i}:form-step-view`,
+      y: 1000 - i,
+    }))
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: URL | string) => {
+        const u = new URL(String(input))
+        const body =
+          u.pathname.endsWith('/metrics') &&
+          u.searchParams.get('type') === 'event'
+            ? [...busier, quiet].slice(0, Number(u.searchParams.get('limit')))
+            : []
+        return { ok: true, status: 200, json: async () => body } as Response
+      }),
+    )
+  }
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('counts a quiet form on its detail page', async () => {
+    stubEvents({ x: 'quiet-form:form-start', y: 2 })
+    const data = await fetchFormDetailData(cfg, 'quiet-form', 'past-7-days')
+    expect(data.funnel[0]).toMatchObject({ label: 'Start', count: 2 })
+  })
+
+  it('counts searches on the overview', async () => {
+    stubEvents({ x: 'search-submit', y: 4 })
+    const data = await fetchOverviewData(cfg, 'past-7-days')
+    expect(data.stats.searches).toBe(4)
   })
 })
 
