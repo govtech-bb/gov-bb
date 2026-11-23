@@ -7,6 +7,7 @@
 // stay unit-testable.
 import { defaultValidationMessage } from '@govtech-bb/form-validation'
 import {
+  ALL_EVENT_NAMES,
   FUNNEL_WINDOW_MIN,
   UmamiClient,
   aggregateFormEvents,
@@ -712,7 +713,7 @@ export async function fetchOverviewData(
         client.stats(cfg.landingWebsiteId, r) as Promise<UmamiStats>,
         client.metricsUrls(cfg.landingWebsiteId, r),
         fetchFormList(cfg),
-        client.metricsEvents(cfg.landingWebsiteId, r),
+        client.metricsEvents(cfg.landingWebsiteId, r, ALL_EVENT_NAMES),
         client.reportJourney(cfg.landingWebsiteId, { steps: 4, range: r }),
       ])
     // Distinct-visitor starts/completions per form (funnel report per form),
@@ -1115,7 +1116,7 @@ export async function fetchFormDetailData(
         window: FUNNEL_WINDOW_MIN,
         range: r,
       }),
-      client.metricsEvents(cfg.formsWebsiteId, r),
+      client.metricsEvents(cfg.formsWebsiteId, r, ALL_EVENT_NAMES),
       eventValues(
         client,
         cfg.formsWebsiteId,
