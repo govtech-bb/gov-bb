@@ -28,6 +28,10 @@ const MIN_REQUEST_SPACING_MS = 330;
  *  complete. Both sites pack events per form or service (`<form>:<event>`),
  *  so the default 500 rows can cut the quietest names. */
 export const ALL_EVENT_NAMES = 10_000;
+/** More rows than landing has page URLs, so a metricsUrls list is complete.
+ *  A tool's visitor count adds up every URL under its prefix, and its quiet
+ *  sub-pages are the first the default 500 rows cut. */
+export const ALL_PAGE_URLS = 10_000;
 
 export class UmamiClient {
   private readonly apiKey: string;
@@ -90,12 +94,17 @@ export class UmamiClient {
     return (await res.json()) as T;
   }
 
-  /** Top URLs with pageviews + visitors (landing site). */
-  metricsUrls(websiteId: string, range: Range): Promise<ExpandedRow[]> {
+  /** Top URLs with pageviews + visitors (landing site).
+   *  Rows come busiest first, so a `limit` too low drops the quietest pages. */
+  metricsUrls(
+    websiteId: string,
+    range: Range,
+    limit = 500,
+  ): Promise<ExpandedRow[]> {
     return this.get<ExpandedRow[]>(`/websites/${websiteId}/metrics/expanded`, {
       type: "url",
       ...range,
-      limit: 500,
+      limit,
     });
   }
 

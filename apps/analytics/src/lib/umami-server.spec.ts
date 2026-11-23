@@ -419,6 +419,44 @@ describe('fetchToolsData (tool events read from Umami)', () => {
   })
 })
 
+describe('Tools tab reads every landing URL (#3823)', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('counts a tool page that sits below more than 500 busier URLs', async () => {
+    // URL rows like Umami's: busiest first, cut at the requested limit.
+    const busier = Array.from({ length: 600 }, (_, i) => ({
+      x: `/page-${i}`,
+      visitors: 1000 - i,
+    }))
+    const quiet = { x: '/business-trade/crop-over-permits/result', visitors: 7 }
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: URL) => {
+        const body = input.pathname.endsWith('/metrics/expanded')
+          ? [...busier, quiet].slice(0, Number(input.searchParams.get('limit')))
+          : []
+        return { ok: true, status: 200, json: async () => body } as Response
+      }),
+    )
+
+    // Not past-7-days: the test above has that range memoised.
+    const data = await fetchToolsData(
+      {
+        apiKey: 'k',
+        landingWebsiteId: 'l',
+        formsWebsiteId: 'f',
+        formsApiUrl: 'http://forms.test',
+      },
+      'past-30-days',
+    )
+
+    const crop = data.tools.find((t) => t.path.includes('/crop-over-permits'))
+    expect(crop?.visitors).toBe(7)
+  })
+})
+
 describe('dashboard event reads ask for every event name (#3819)', () => {
   const cfg: UmamiConfig = {
     apiKey: 'k',

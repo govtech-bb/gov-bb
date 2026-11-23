@@ -2,6 +2,7 @@ import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import {
   ALL_EVENT_NAMES,
+  ALL_PAGE_URLS,
   FUNNEL_WINDOW_MIN,
   TOOLS,
   UmamiClient,
@@ -533,7 +534,12 @@ export class SlackStatsService {
     const client = new UmamiClient({ apiKey });
     const tools = liveTools();
     const toolsPeriod = async (range: Range) => {
-      const urlRows = await client.metricsUrls(landingWebsiteId, range);
+      // ALL_PAGE_URLS, so a tool's quiet sub-pages count towards its visitors.
+      const urlRows = await client.metricsUrls(
+        landingWebsiteId,
+        range,
+        ALL_PAGE_URLS,
+      );
       // Only the no-result rate needs a tool's own breakdown here, so the
       // tools without one skip those reads, and no tool's actions are read.
       const rows = await this.toolEventRows(
@@ -562,7 +568,12 @@ export class SlackStatsService {
     range: Range,
   ): Promise<ToolPeriod> {
     const { landingWebsiteId } = this.umamiConfig();
-    const urlRows = await client.metricsUrls(landingWebsiteId, range);
+    // ALL_PAGE_URLS, so the tool's quiet sub-pages count towards its visitors.
+    const urlRows = await client.metricsUrls(
+      landingWebsiteId,
+      range,
+      ALL_PAGE_URLS,
+    );
     const rows = await this.toolEventRows(client, [tool], range);
     const [row] = shapeTools([tool], urlRows, new Map(), rows);
     const stepViews = totalFor(
