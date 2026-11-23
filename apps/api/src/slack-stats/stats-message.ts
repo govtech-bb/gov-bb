@@ -1,6 +1,7 @@
 import {
   canonicalEvent,
   eventFormKey,
+  MIN_QUERY_COUNT,
   parseEventName,
   type ComparisonPeriods,
   type EventDataValue,
@@ -680,11 +681,6 @@ export interface SearchReport {
 }
 
 const QUERIES_SHOWN = 5;
-/**
- * A query seen fewer times than this could be one person's text, such as a
- * name, which maskSearchQuery can't mask (ADR 0111), so it isn't shown.
- */
-export const MIN_QUERY_COUNT = 3;
 
 /**
  * A search query as plainSlackText. maskSearchQuery hides the middle of a long

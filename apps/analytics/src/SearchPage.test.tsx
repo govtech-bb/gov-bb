@@ -53,6 +53,26 @@ describe('SearchPage', () => {
     expect(screen.getByText('—')).toBeTruthy()
   })
 
+  it('says no query reached the minimum when searches were made', () => {
+    render(<SearchPage data={{ ...data, queries: [] }} />)
+    expect(
+      screen.getByText('No query was searched 3 or more times in this period.'),
+    ).toBeTruthy()
+    expect(screen.queryByText('No searches in this period.')).toBeNull()
+  })
+
+  it('says there were no searches when there were none', () => {
+    render(<SearchPage data={{ ...data, searches: 0, queries: [] }} />)
+    expect(screen.getByText('No searches in this period.')).toBeTruthy()
+  })
+
+  it('says queries searched fewer than 3 times are not shown', () => {
+    render(<SearchPage data={data} />)
+    expect(
+      screen.getByText(/Queries searched fewer than 3 times are not shown/),
+    ).toBeTruthy()
+  })
+
   it('shows the not-configured message when analytics is off', () => {
     render(
       <SearchPage

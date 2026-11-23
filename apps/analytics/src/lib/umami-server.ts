@@ -20,6 +20,7 @@ import {
   eventName,
   humanizeStep,
   liveTools,
+  MIN_QUERY_COUNT,
   shapeJourneyList,
   shapeSearch,
   shapeTools,
@@ -1076,8 +1077,12 @@ export async function fetchSearchData(
         eventValues(client, wid, 'search-no-results', 'query', r),
       ],
     )
+    const stats = shapeSearch(queryRows, resultsRows, clickRows, noResultRows)
     return {
-      ...shapeSearch(queryRows, resultsRows, clickRows, noResultRows),
+      ...stats,
+      // Totals count every search; the list leaves out any query seen fewer
+      // than MIN_QUERY_COUNT times, which could be one person's name (ADR 0111).
+      queries: stats.queries.filter((q) => q.searches >= MIN_QUERY_COUNT),
       generatedAt: new Date().toISOString(),
       window: rangeLabel(range),
       range,
