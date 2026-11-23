@@ -53,9 +53,14 @@ const urlsBelow600Busier = (quiet: { x: string; visitors: number }) => {
 };
 
 /** buildReply's output as one searchable string. */
+/** The isolates around a label (U+2068, U+2069) show nothing, so they show as ⁅ and ⁆. */
 async function reply(...args: Parameters<SlackStatsService["buildReply"]>) {
   const message = await service().buildReply(...args);
-  return typeof message === "string" ? message : JSON.stringify(message.blocks);
+  return (
+    typeof message === "string" ? message : JSON.stringify(message.blocks)
+  )
+    .replaceAll("\u2068", "⁅")
+    .replaceAll("\u2069", "⁆");
 }
 
 function service() {
@@ -238,9 +243,9 @@ describe("SlackStatsService.buildReply — one tool", () => {
     );
     expect(text).toContain("*👥 Visitors to the tool*\\n*85*   ⚪ no change");
     expect(text).toContain("*✅ Results*\\n*40*   ⚪ no change");
-    expect(text).toContain("• `q-event`: *70*");
-    expect(text).toContain("• `apply-online`: *6*");
-    expect(text).toContain("• `required`: *3*");
+    expect(text).toContain("• `⁅q-event⁆`: *70*");
+    expect(text).toContain("• `⁅apply-online⁆`: *6*");
+    expect(text).toContain("• `⁅required⁆`: *3*");
     expect(text).not.toContain("No results");
     expect(text).not.toContain("sign-ups");
     // The same reads for each period, one at a time, and no form lookups.
@@ -469,8 +474,8 @@ describe("SlackStatsService.buildReply — chat", () => {
     const text = await reply("/stats", "week", "chat", NOW);
 
     expect(text).toContain("💬 Chat on landing · Last week");
-    expect(text).toContain("• `home`: *12*   ⚪ no change");
-    expect(text).toContain("• How do I renew my passport?: *3*");
+    expect(text).toContain("• `⁅home⁆`: *12*   ⚪ no change");
+    expect(text).toContain("• ⁅How do I renew my passport?⁆: *3*");
     expect(text).toContain("Answer outcomes");
     expect(umami.eventDataValues.mock.calls.map((c) => c.slice(0, 3))).toEqual([
       ["landing", "chat-submit", "source"],
@@ -513,7 +518,7 @@ describe("SlackStatsService.buildReply — journeys", () => {
     const text = await reply("/stats", "week", "journeys", NOW);
 
     expect(text).toContain("🧭 Landing journeys · Last week");
-    expect(text).toContain("• Home → Renew passport: *100%* (30)");
+    expect(text).toContain("• ⁅Home⁆ → ⁅Renew passport⁆: *100%* (30)");
     expect(text).toContain("*📝 Forms started*\\n*3*   ⚪ no change");
     expect(text).toContain("not a funnel");
     const lastWeek = comparisonPeriods("week", "America/Barbados", NOW).current;
@@ -600,7 +605,9 @@ describe("SlackStatsService.buildReply — one form", () => {
     expect(text).toContain("`passport-renewal` · *Today so far*");
     expect(text).toContain("*20%*   ⚪ no change");
     expect(text).toContain("Upload photo  ███████░░░░░   60");
-    expect(text).toContain("• Full name: *9*\\n• submit failed: network: *4*");
+    expect(text).toContain(
+      "• ⁅Full name⁆: *9*\\n• ⁅submit failed: network⁆: *4*",
+    );
   });
 
   it("falls back to the field id and survives missing event data", async () => {
@@ -625,7 +632,7 @@ describe("SlackStatsService.buildReply — one form", () => {
 
     const text = await reply("/stats", "month", "passport-renewal", NOW);
 
-    expect(text).toContain("• dob: *2*");
+    expect(text).toContain("• ⁅dob⁆: *2*");
     expect(text).toContain("Your details  ░░░░░░░░░░░░  0");
   });
 
@@ -658,7 +665,7 @@ describe("SlackStatsService.buildReply — one form", () => {
 
     const text = await reply("/stats", "week", "passport-renewal", NOW);
 
-    expect(text).toContain("• Do you have another child?: *3*");
+    expect(text).toContain("• ⁅Do you have another child?⁆: *3*");
   });
 
   it("names the Add another? radio neutrally when repeatable steps ask different questions", async () => {
@@ -684,7 +691,7 @@ describe("SlackStatsService.buildReply — one form", () => {
       ],
     });
     expect(await reply("/stats", "week", "passport-renewal", NOW)).toContain(
-      "• Add another?: *3*",
+      "• ⁅Add another?⁆: *3*",
     );
 
     // The same question on both steps still names it.
@@ -696,7 +703,7 @@ describe("SlackStatsService.buildReply — one form", () => {
       ],
     });
     expect(await reply("/stats", "week", "passport-renewal", NOW)).toContain(
-      "• Do you have another child?: *3*",
+      "• ⁅Do you have another child?⁆: *3*",
     );
   });
 
@@ -739,7 +746,7 @@ describe("SlackStatsService.buildReply — one form", () => {
 
     // "&amp;:required" splits at its ";" into nothing tallyFieldErrors reads.
     expect(text).toContain(
-      "• other fields: *9*\\n• submit failed: other: *4*\\n• submit failed: network: *2*",
+      "• ⁅other fields⁆: *9*\\n• ⁅submit failed: other⁆: *4*\\n• ⁅submit failed: network⁆: *2*",
     );
     for (const value of [...hostile, "evil.example", "`bold"]) {
       expect(text).not.toContain(value);
@@ -783,7 +790,7 @@ describe("SlackStatsService.buildReply — search", () => {
     expect(text).toContain("*40*   ⚪ no change");
     expect(text).toContain("*25%*   ⚪ no change");
     expect(text).toContain("*25*   ⚪ no change");
-    expect(text).toContain("found nothing*\\n• tamis: *10*");
+    expect(text).toContain("found nothing*\\n• ⁅tamis⁆: *10*");
   });
 
   it("fails rather than report no searches when Umami errors", async () => {

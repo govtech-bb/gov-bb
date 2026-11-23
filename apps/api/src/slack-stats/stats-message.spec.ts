@@ -277,6 +277,10 @@ describe("tallyTopErrors", () => {
 });
 
 /** The visible text of a message, block by block, for assertions. */
+/** The isolates around a label (FSI, PDI) show nothing, so render shows them as ⁅ and ⁆. */
+const FSI = "\u2068";
+const PDI = "\u2069";
+
 function render({ blocks }: SlackMessage): string {
   return (blocks as Record<string, any>[])
     .map(
@@ -286,7 +290,9 @@ function render({ blocks }: SlackMessage): string {
         b.elements?.map((e: { text: string }) => e.text).join(" ") ??
         "---",
     )
-    .join("\n");
+    .join("\n")
+    .replaceAll(FSI, "⁅")
+    .replaceAll(PDI, "⁆");
 }
 
 const LAST_WEEK = {
@@ -505,8 +511,8 @@ describe("formatFormStats", () => {
       Views of each step. Steps that only some people see have fewer views.
       ---
       *🚨 Top errors*
-      • Photo: *88*
-      • submit failed: network: *14*"
+      • ⁅Photo⁆: *88*
+      • ⁅submit failed: network⁆: *14*"
     `);
     const errors = (message.blocks as Record<string, any>[]).at(-1)!;
     // Stops Slack linking a bare URL or #channel in a label.
@@ -545,7 +551,7 @@ describe("formatFormStats", () => {
       ].join("\n"),
     );
     expect(render(message)).toContain(
-      "• Name &amp; &lt;title&gt; required x y z: *1*",
+      "• ⁅Name &amp; &lt;title&gt; required x y z⁆: *1*",
     );
   });
 
@@ -627,13 +633,13 @@ describe("formatChatStats", () => {
       *25*   🟢 ▲ 67%
       ---
       *📍 Questions asked, by where on landing*
-      • \`home\`: *120*   🟢 ▲ 20%
-      • \`services\`: *30*   🆕 new
-      • \`results\`: *0*   🔴 ▼ 100%
+      • \`⁅home⁆\`: *120*   🟢 ▲ 20%
+      • \`⁅services⁆\`: *30*   🆕 new
+      • \`⁅results⁆\`: *0*   🔴 ▼ 100%
       *⭐ Top suggested questions picked*
-      • How do I renew my passport?: *12*   🔴 ▼ 20%
-      • When is the next public holiday?: *8*   🆕 new
-      • How do I register a birth?: *4*   🆕 new
+      • ⁅How do I renew my passport?⁆: *12*   🔴 ▼ 20%
+      • ⁅When is the next public holiday?⁆: *8*   🆕 new
+      • ⁅How do I register a birth?⁆: *4*   🆕 new
       ℹ️ Answer outcomes (answered, error, stopped) are not included yet."
     `);
   });
@@ -667,7 +673,7 @@ describe("formatChatStats", () => {
         previous: { bySource: [], suggestions: [] },
       }),
     );
-    expect(text).toContain("• `e`: *5*   🆕 new\n• other places: *3*");
+    expect(text).toContain("• `⁅e⁆`: *5*   🆕 new\n• other places: *3*");
     expect(text).not.toContain("Top suggested questions");
   });
   it("keeps event data inert: no links, mentions or look-alike rows", () => {
@@ -683,10 +689,47 @@ describe("formatChatStats", () => {
     );
     expect(sections.map((b) => b.text.verbatim)).toEqual([true, true]);
     const text = render(message);
-    expect(text).toContain("• `home`: *6*   🆕 new\n");
+    expect(text).toContain("• `⁅home⁆`: *6*   🆕 new\n");
     expect(text).toContain(
-      "• Renew at https://evil.example &lt;!here&gt;: *4*",
+      "• ⁅Renew at https://evil.example &lt;!here&gt;⁆: *4*",
     );
+  });
+
+  it("isolates right-to-left labels, so the count and change stay after them", () => {
+    const hebrew = "בית";
+    const arabic = "كيف أجدد جواز سفري؟";
+    const message = formatChatStats(LAST_WEEK, {
+      current: {
+        // A sender's own PDI is removed, so it can't end the isolate early.
+        bySource: counts({ [`${PDI}${hebrew}`]: 5 }),
+        suggestions: counts({ [arabic]: 4 }),
+      },
+      previous: { bySource: [], suggestions: counts({ [arabic]: 2 }) },
+    });
+    const lines = (message.blocks as Record<string, any>[])
+      .filter((b) => b.type === "section" && b.text)
+      .map((b) => b.text.text.split("\n")[1]);
+    expect(lines).toEqual([
+      `• \`${FSI}${hebrew}${PDI}\`: *5*   🆕 new`,
+      `• ${FSI}${arabic}${PDI}: *4*   🟢 ▲ 100%`,
+    ]);
+  });
+
+  it("shows one placeholder row for labels with nothing left to show", () => {
+    const text = render(
+      formatChatStats(LAST_WEEK, {
+        current: {
+          bySource: counts({ [ZWSP]: 3, "*_*": 2, "(blank)": 1 }),
+          suggestions: counts({ [`${ZWSP}${ZWSP}`]: 4, __: 1 }),
+        },
+        previous: { bySource: [], suggestions: [] },
+      }),
+    );
+    // In italics, which no label can be: plainSlackText removes `_`.
+    expect(text).toContain(
+      "• _(blank)_: *5*   🆕 new\n• `⁅(blank)⁆`: *1*   🆕 new",
+    );
+    expect(text).toContain("picked*\n• _(blank)_: *5*   🆕 new\n");
   });
 
   it("leaves out the sources when only suggestions were picked", () => {
@@ -701,7 +744,7 @@ describe("formatChatStats", () => {
     );
     expect(text).toContain("*💬 Questions asked*\n*0*   ⚪ no change");
     expect(text).not.toContain("by where on landing");
-    expect(text).toContain("• How do I register a birth?: *2*   🆕 new");
+    expect(text).toContain("• ⁅How do I register a birth?⁆: *2*   🆕 new");
   });
 });
 
@@ -816,7 +859,12 @@ describe("hidden characters", () => {
     for (const reply of replies) {
       const json = JSON.stringify(reply);
       expect(json).toMatch(/passport/i);
-      for (const c of HIDDEN) expect(json).not.toContain(c);
+      // The only hidden characters left are the isolates around each label.
+      const unwrapped = json.replace(
+        new RegExp(`${FSI}([^${FSI}${PDI}]*)${PDI}`, "g"),
+        "$1",
+      );
+      for (const c of HIDDEN) expect(unwrapped).not.toContain(c);
     }
   });
 });
@@ -880,14 +928,14 @@ describe("formatSearchStats", () => {
       *780*   🔴 ▼ 3%
       ---
       *🔝 Top searches*
-      • passport: *300*
-      • nis: *90*
-      • birth certificate: *80*
-      • tamis: *40*
-      • driver licence: *30*
+      • ⁅passport⁆: *300*
+      • ⁅nis⁆: *90*
+      • ⁅birth certificate⁆: *80*
+      • ⁅tamis⁆: *40*
+      • ⁅driver licence⁆: *30*
       *🤷 Top searches that found nothing*
-      • tamis: *25*
-      • 1∗∗∗∗6: *10*
+      • ⁅tamis⁆: *25*
+      • ⁅1∗∗∗∗6⁆: *10*
       Numbers are searches for each query. Queries searched fewer than 3 times are not shown."
     `);
   });
@@ -931,8 +979,8 @@ describe("formatSearchStats", () => {
       ],
     });
     const text = render(message);
-    expect(text).toContain("*🔝 Top searches*\n• passport: *7*\n*");
-    expect(text).toContain("found nothing*\n• tamis: *3*\n");
+    expect(text).toContain("*🔝 Top searches*\n• ⁅passport⁆: *7*\n*");
+    expect(text).toContain("found nothing*\n• ⁅tamis⁆: *3*\n");
     expect(text).not.toContain("jane doe");
     expect(text).not.toContain("nis");
   });
@@ -980,7 +1028,7 @@ describe("formatSearchStats", () => {
       }),
     );
     expect(text).not.toContain("Top searches*");
-    expect(text).toContain("found nothing*\n• tamis: *3*");
+    expect(text).toContain("found nothing*\n• ⁅tamis⁆: *3*");
   });
 
   it("can't add formatting, links or mentions through a query", () => {
@@ -999,7 +1047,7 @@ describe("formatSearchStats", () => {
       const [, line, ...rest] = text.text.split("\n");
       expect(rest).toEqual([]);
       expect(line).toBe(
-        "• x ∗bold∗ &lt;!channel&gt; &lt;@U123&gt; &lt;https://e.vil|hi&gt; &amp;amp;: *5*",
+        `• ${FSI}x ∗bold∗ &lt;!channel&gt; &lt;@U123&gt; &lt;https://e.vil|hi&gt; &amp;amp;${PDI}: *5*`,
       );
     }
   });
@@ -1078,15 +1126,15 @@ describe("formatToolStats", () => {
       *12*   🔴 ▲ 100%
       ---
       *👣 Views of each step*
-      • \`find\`: *380*   🟢 ▲ 27%
-      • \`hero\`: *120*   🔴 ▼ 20%
+      • \`⁅find⁆\`: *380*   🟢 ▲ 27%
+      • \`⁅hero⁆\`: *120*   🔴 ▼ 20%
       *👆 Top actions*
-      • \`call\`: *40*   🔴 ▼ 20%
-      • \`call-drug-service\`: *9*   🆕 new
-      • \`about\`: *2*   🆕 new
+      • \`⁅call⁆\`: *40*   🔴 ▼ 20%
+      • \`⁅call-drug-service⁆\`: *9*   🆕 new
+      • \`⁅about⁆\`: *2*   🆕 new
       *🚨 Top errors*
-      • \`location-denied\`: *10*   🔴 ▲ 67%
-      • \`location-unavailable\`: *2*   🔴 new
+      • \`⁅location-denied⁆\`: *10*   🔴 ▲ 67%
+      • \`⁅location-unavailable⁆\`: *2*   🔴 new
       Visitors are summed across the tool's pages, so someone who views more than one page may be counted more than once."
     `);
   });
@@ -1175,7 +1223,7 @@ describe("formatToolStats", () => {
         previous: { ...quiet, stepViews: 9, steps: undefined },
       }),
     );
-    expect(text).toContain("*👣 Views of each step*\n• `q-event`: *4*\n");
+    expect(text).toContain("*👣 Views of each step*\n• `⁅q-event⁆`: *4*\n");
   });
 
   it("never lets event data sent by a stranger mention, link or format", () => {
@@ -1193,7 +1241,39 @@ describe("formatToolStats", () => {
     )!;
     expect(steps.text.verbatim).toBe(true);
     expect(steps.text.text).toContain(
-      "• `x&lt;!channel&gt; &lt;https://evil.example|click&gt; bold`: *3*",
+      `• \`${FSI}x&lt;!channel&gt; &lt;https://evil.example|click&gt; bold${PDI}\`: *3*`,
+    );
+  });
+
+  it("isolates right-to-left codes, so the count and change stay after them", () => {
+    const arabic = "ابحث";
+    const message = formatToolStats(LAST_WEEK, {
+      tool: tool("crop-over-permits"),
+      current: { ...quiet, stepViews: 6, steps: rows({ [arabic]: 6 }) },
+      previous: { ...quiet, stepViews: 4, steps: rows({ [arabic]: 4 }) },
+    });
+    const steps = (message.blocks as Record<string, any>[]).find((b) =>
+      b.text?.text?.startsWith("*👣 Views"),
+    )!;
+    expect(steps.text.text.split("\n")[1]).toBe(
+      `• \`${FSI}${arabic}${PDI}\`: *6*   🟢 ▲ 50%`,
+    );
+  });
+
+  it("shows one placeholder row for codes with nothing left to show", () => {
+    const text = render(
+      formatToolStats(LAST_WEEK, {
+        tool: tool("crop-over-permits"),
+        current: {
+          ...quiet,
+          stepViews: 6,
+          steps: rows({ [ZWSP]: 3, "**__": 2, "(blank)": 1 }),
+        },
+        previous: quiet,
+      }),
+    );
+    expect(text).toContain(
+      "*👣 Views of each step*\n• _(blank)_: *5*   🆕 new\n• `⁅(blank)⁆`: *1*   🆕 new\n",
     );
   });
 });
@@ -1336,11 +1416,11 @@ describe("formatJourneyStats", () => {
       "🧭 Landing journeys · Last week
       26 Oct – 1 Nov, compared with 19 Oct – 25 Oct
       *🛤️ Most common journeys on landing*
-      • Home → Renew passport → Start: *33.3%* (30)
-      • Home → Search → Find a pharmacy: *22.2%* (20)
-      • Renew passport → Start: *16.7%* (15)
-      • Home → Get birth certificate: *11.1%* (10)
-      • About → Home: *11.1%* (10)
+      • ⁅Home⁆ → ⁅Renew passport⁆ → ⁅Start⁆: *33.3%* (30)
+      • ⁅Home⁆ → ⁅Search⁆ → ⁅Find a pharmacy⁆: *22.2%* (20)
+      • ⁅Renew passport⁆ → ⁅Start⁆: *16.7%* (15)
+      • ⁅Home⁆ → ⁅Get birth certificate⁆: *11.1%* (10)
+      • ⁅About⁆ → ⁅Home⁆: *11.1%* (10)
       ---
       *🔀 From landing to forms*
       *📄 Service page views*
@@ -1392,9 +1472,9 @@ describe("formatJourneyStats", () => {
     expect(title).toBe("*🛤️ Most common journeys on landing*");
     expect(rest).toEqual([]);
     expect(line).toBe(
-      "• !channel → mailto:a@evil.example|Click here → code bold more → A" +
+      `• ${FSI}!channel${PDI} → ${FSI}mailto:a@evil.example|Click here${PDI} → ${FSI}code bold more${PDI} → ${FSI}A` +
         "a".repeat(78) +
-        "…: *100%* (3)",
+        `…${PDI}: *100%* (3)`,
     );
   });
 
