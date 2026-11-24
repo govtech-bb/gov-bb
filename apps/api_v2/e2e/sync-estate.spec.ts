@@ -2,7 +2,7 @@ import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { ESTATE } from "../src/seed-data";
+import { ESTATE, ESTATE_SOURCE } from "../src/seed-data";
 import {
   AUTH_ENV,
   HAS_DATABASE,
@@ -15,9 +15,9 @@ import {
 
 const SECRET = "e2e-preview-secret";
 
-/** Childless root pages of one visibility, so changing one moves nothing else. */
-const leaves = (visibility: "public" | "preview") =>
-  ESTATE.pages
+/** Three childless root pages of one visibility, so changing one moves nothing else. */
+const leaves = (visibility: "public" | "preview") => {
+  const urls = ESTATE.pages
     .filter(
       (page) =>
         page.visibility === visibility &&
@@ -25,6 +25,10 @@ const leaves = (visibility: "public" | "preview") =>
         !ESTATE.pages.some((child) => child.parent === page.url),
     )
     .map((page) => page.url);
+  if (urls.length < 3)
+    throw new Error(`The snapshot has fewer than 3 such ${visibility} pages`);
+  return urls as [string, string, string];
+};
 
 // Its own file, so its server has its own 1,000-reads-a-minute budget for
 // the two check-import runs (~257 reads each).
@@ -39,7 +43,11 @@ describe.skipIf(!HAS_DATABASE)("sync-estate", () => {
   const [previewUpdate, editedByEditor, newPreview] = leaves("preview");
   const extra = "/sync-estate-extra";
 
-  const sync = (file: string, extra: string[] = []) =>
+  const sync = (
+    file: string,
+    extra: string[] = [],
+    session: string = operator.cookie,
+  ) =>
     runScript(
       "scripts/sync-estate.ts",
       [
@@ -53,8 +61,18 @@ describe.skipIf(!HAS_DATABASE)("sync-estate", () => {
         file,
         ...extra,
       ],
-      { EDITOR_SESSION: operator.cookie },
+      { EDITOR_SESSION: session },
     );
+
+  /** A differences file of this snapshot's, as check-import --json writes it. */
+  const file = (rows: unknown[]) => {
+    const path = join(mkdtempSync(join(tmpdir(), "sync-estate-")), "d.json");
+    writeFileSync(
+      path,
+      JSON.stringify({ source: ESTATE_SOURCE, differences: rows }),
+    );
+    return path;
+  };
 
   /** One editor API call as `who`, with the editor's Origin. */
   const call = async (
@@ -138,7 +156,7 @@ describe.skipIf(!HAS_DATABASE)("sync-estate", () => {
       createEmployeeSession(env.database, env.server.url, { roles });
     operator = await session(["editor"]);
     editor = await session(["editor"]);
-    approver = await session(["approver"]);
+    approver = await session(["editor", "approver"]);
 
     // The database as an older snapshot left it: changes by `system`.
     await databaseQuery(
@@ -183,6 +201,28 @@ describe.skipIf(!HAS_DATABASE)("sync-estate", () => {
     expect(code, output).toBe(1);
     expect(output).toContain("--differences is from snapshot abc");
     expect(output).not.toContain(operator.token);
+  }, 60_000);
+
+  it("stops on a refused session without printing it", async () => {
+    const bogus = "better-auth.session_token=not-a-real-session-value";
+    const { code, output } = await sync(file([]), [], bogus);
+    expect(code, output).toBe(1);
+    expect(output).toContain("refused EDITOR_SESSION");
+    expect(output).not.toContain("not-a-real-session-value");
+  }, 60_000);
+
+  it("reports a page api_v2 has but doesn't serve as a conflict", async () => {
+    const draft = ESTATE.pages.find((page) => page.visibility === "draft")!;
+    const { code, output } = await sync(
+      file([{ kind: "missing", url: draft.url }]),
+    );
+    expect(code, output).toBe(0);
+    expect(output).toMatch(
+      new RegExp(
+        `^conflict ${draft.url}: api_v2 has it but doesn't serve it`,
+        "m",
+      ),
+    );
   }, 60_000);
 
   it("dry run: reports each page and writes nothing", async () => {
