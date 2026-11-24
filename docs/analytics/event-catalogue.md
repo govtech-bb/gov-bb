@@ -100,6 +100,7 @@ new session.
 | -------------------------- | ---------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
 | `search-submit`            | `query`, `source`                              | A search is submitted, from a search box or a homepage "Popular searches" link. `source` is where: `home`, `services` or `results`. |
 | `search-suggestion-select` | `query`, `title`, `href`, `position`, `source` | The citizen picks a suggestion under the search box. `query` is what they had typed.                                                |
+| `search-popular-select`    | `query`, `position`, `source`                  | The citizen picks a homepage "Popular searches" link, which also sends `search-submit`. `position` counts the links shown from 1.   |
 | `search`                   | `query`, `results`                             | The search results page loads. `results` is the number of results.                                                                  |
 | `search-no-results`        | `query`                                        | The search results page has no results.                                                                                             |
 | `search-result-click`      | `query`, `position`, `href`                    | The citizen selects a search result. `position` starts at 1.                                                                        |
