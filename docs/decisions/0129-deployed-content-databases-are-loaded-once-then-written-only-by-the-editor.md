@@ -1,7 +1,7 @@
 # 0129 — Deployed content databases are loaded once, then written only by the editor
 
 **Date:** 2026-10-13
-**Status:** Accepted (amended 2026-11-02 — once per environment, #3238)
+**Status:** Accepted (amended 2026-11-02 — once per environment, #3238; amended 2026-11-24 — `sync-estate` before cutover, #3711)
 
 ## Context
 
@@ -95,3 +95,31 @@ Visibility at import is the frontmatter plus that environment's
 environment-neutral. The freeze in point 4 is switched on with the repository
 variable `CONTENT_FREEZE=true` (#3236), before the prod deploy whose snapshot
 is imported.
+
+## Amendment (2026-11-24) — `sync-estate` before cutover (#3711)
+
+Point 4 says there is no sync from markdown into a database. That stays true
+after an environment's cutover. Before it, the snapshot keeps changing while
+the database, once imported, does not, and the forced replace of point 2
+deletes editors' work. So one scripted sync is allowed, with these limits:
+
+- **Before cutover only.** `pnpm --filter @govtech-bb/api-v2 sync-estate`
+  runs from an operator's machine, before the environment's landing switch
+  (#3311 for sandbox, #3227 for staging). After cutover, the database is the
+  source of truth and a difference from the snapshot is editors' work.
+- **Through the editor API, as a person.** It writes only with
+  `PUT /pages/:id`, `POST /pages/:id/revision/submit` and `POST /pages`,
+  signed in with the operator's editor
+  session, so every change is recorded against the operator. A change to a
+  public page is a pending revision that an approver other than the
+  operator publishes (ADR 0134). It never deletes a page.
+- **Never over an editor's work.** It changes only a page whose history
+  has no actor but `system` and that has no pending revision. Any other page
+  is reported as a conflict and left as it is. A url with no page has no
+  history to read, so it can't tell a new snapshot page from one an editor
+  deleted or moved; the operator checks each page it would create with the
+  editors before applying.
+- **From the check.** Its input is `check-import --json` (#3710), from the
+  same `estate.json`. A dry run is the default.
+
+The runbook is "Drift before cutover" in `apps/api_v2/README.md`.
