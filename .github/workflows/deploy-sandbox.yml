@@ -812,6 +812,40 @@ jobs:
           path: apps/forms/test-results/
           retention-days: 7
 
+  # Preview token (#3781): api v1's RECIPE_PREVIEW_TOKEN, api_v2's
+  # PREVIEW_SECRET and landing's PREVIEW_SECRET must be equal. A mismatch fails
+  # no deploy on its own; previews just 404. This checks all three accept the
+  # RECIPE_PREVIEW_TOKEN secret, and names the one that refuses it. Landing is
+  # checked only once it reads api_v2 (#3311); until then it is skipped with a
+  # note. Runs on every deploy, since a secret can change with no code change.
+  # Steps and checks: scripts/check-preview-token.ts.
+  preview-token:
+    name: Preview token matches (api v1, api_v2, landing)
+    needs: [deploy-api, amplify-landing, deploy-api-v2]
+    if: ${{ always() && !failure() && !cancelled() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version-file: ".nvmrc"
+          cache: "pnpm"
+      - run: pnpm install --frozen-lockfile
+      - name: Check the preview token
+        env:
+          PREVIEW_TOKEN: ${{ secrets.RECIPE_PREVIEW_TOKEN }}
+          API_V1_URL: https://forms.api.sandbox.alpha.gov.bb
+          API_V2_URL: https://api.sandbox.alpha.gov.bb/v2
+          LANDING_URL: https://sandbox.alpha.gov.bb
+        run: |
+          echo "::add-mask::$PREVIEW_TOKEN"
+          pnpm tsx scripts/check-preview-token.ts
+
   amplify-analytics:
     name: Amplify build (analytics)
     needs: setup
@@ -1078,6 +1112,7 @@ jobs:
         amplify-analytics,
         smoke-test-forms,
         journey-feature-flag,
+        preview-token,
         deploy-api-v2,
         deploy-editor-v2,
       ]
@@ -1094,6 +1129,7 @@ jobs:
           FF_APP_RESULT: ${{ needs.amplify-feature-flagging.result }}
           ANALYTICS_RESULT: ${{ needs.amplify-analytics.result }}
           SMOKE_RESULT: ${{ needs.smoke-test-forms.result }}
+          PREVIEW_TOKEN_RESULT: ${{ needs.preview-token.result }}
           API_V2_RESULT: ${{ needs.deploy-api-v2.result }}
           EDITOR_V2_RESULT: ${{ needs.deploy-editor-v2.result }}
           MIGRATIONS_GATE: ${{ needs.setup.outputs.migrations }}
@@ -1138,6 +1174,7 @@ jobs:
             echo "| Amplify feature-flagging | $(outcome "$FF_APP_RESULT") |"
             echo "| Amplify analytics | $(outcome "$ANALYTICS_RESULT") |"
             echo "| Forms live smoke | $(outcome "$SMOKE_RESULT" | sed 's/deployed/passed/') |"
+            echo "| Preview token check | $(outcome "$PREVIEW_TOKEN_RESULT" | sed 's/deployed/passed/') |"
             echo "| api_v2 | $(outcome "$API_V2_RESULT") |"
             echo "| Amplify editor_v2 | $(outcome "$EDITOR_V2_RESULT") |"
             echo ""
@@ -1164,6 +1201,7 @@ jobs:
         smoke-test-forms,
         promote-to-staging,
         journey-feature-flag,
+        preview-token,
         deploy-api-v2,
         deploy-editor-v2,
       ]
@@ -1185,7 +1223,8 @@ jobs:
   # every affected target deployed cleanly — a skipped/unaffected job is fine,
   # but any failure or cancellation stops the chain, so staging never receives
   # code sandbox couldn't ship. That includes the live forms smoke and the
-  # analytics build (#2756), and api_v2 and editor_v2 (#3130).
+  # analytics build (#2756), api_v2 and editor_v2 (#3130), and the preview
+  # token check (#3781).
   #
   # Staging deploys the exact commit sandbox proved: this job fast-forwards the
   # `staging` branch to it and dispatches deploy-staging ON `staging`, so every
@@ -1210,6 +1249,7 @@ jobs:
         deploy-editor-v2,
         smoke-test-forms,
         journey-feature-flag,
+        preview-token,
       ]
     if: ${{ github.event_name == 'push' && !failure() && !cancelled() }}
     runs-on: ubuntu-latest
