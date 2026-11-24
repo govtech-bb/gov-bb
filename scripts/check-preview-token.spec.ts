@@ -14,6 +14,8 @@ interface Env {
   landing: string;
   /** What landing's public pages send as x-content-source; none when unset. */
   landingSource?: "api_v2" | "static" | "static-fallback";
+  /** x-content-source of the second public page; landingSource when unset. */
+  secondSource?: "api_v2" | "static";
   /** Overrides the x-content-source of landing's reviewer read. */
   reviewerSource?: string;
   /** A system that serves its preview item to everyone. */
@@ -38,7 +40,10 @@ function handle(url: URL, headers: Record<string, string | undefined>) {
       return { status: 401, body: { error: "invalid_preview_token" } };
     const reviewer = sentV2 !== undefined;
     if (url.pathname === "/v2/catalog") {
-      const pages = [{ url: "/a", visibility: "public" }];
+      const pages = [
+        { url: "/a", visibility: "public" },
+        { url: "/b", visibility: "public" },
+      ];
       if (reviewer) pages.push({ url: "/p", visibility: "preview" });
       return { status: 200, body: { pages } };
     }
@@ -85,6 +90,8 @@ function handle(url: URL, headers: Record<string, string | undefined>) {
   }
   if (url.pathname === "/site/a")
     return { status: 200, source: env.landingSource };
+  if (url.pathname === "/site/b")
+    return { status: 200, source: env.secondSource ?? env.landingSource };
   if (url.pathname === "/site/p") {
     // A reviewer's read goes to api_v2 with landing's own value.
     const reviewer =
@@ -197,6 +204,16 @@ describe("checkPreviewToken", () => {
 
   it("checks landing when a public page is a static fallback", async () => {
     env.landingSource = "static-fallback";
+    env.landing = OTHER;
+    const report = await run();
+    expect(report.failures).toEqual([
+      expect.stringMatching(/^landing refused the preview token/),
+    ]);
+  });
+
+  it("checks landing when only some public pages are static", async () => {
+    env.landingSource = "static";
+    env.secondSource = "api_v2";
     env.landing = OTHER;
     const report = await run();
     expect(report.failures).toEqual([
