@@ -482,7 +482,7 @@ describe("referrer on journey events", () => {
     expect(JSON.stringify(beacon.mock.calls)).not.toContain("passport");
   });
 
-  it("is left out when the tab's journey started earlier (forms after landing, the EzPay return)", () => {
+  it("is left out when the tab's journey started earlier (a reload, the EzPay return)", () => {
     sessionStorage.setItem(
       "govbb_journey_id",
       "6f1c2a4e-8b3d-4c5e-9f60-1a2b3c4d5e6f",
@@ -491,6 +491,20 @@ describe("referrer on journey events", () => {
     configureJourney({ url: URL_, app: "forms" });
     sendJourney("pageview");
     expect(sent()[0]).not.toHaveProperty("referrer");
+  });
+
+  it("is left out on forms after landing's Start link, whatever the hosts", () => {
+    window.history.replaceState(
+      null,
+      "",
+      "/forms/x?jid=6f1c2a4e-8b3d-4c5e-9f60-1a2b3c4d5e6f",
+    );
+    setReferrer("https://my-branch.d3kbl8o0ovutw4.amplifyapp.com/services/x");
+    configureJourney({ url: URL_, app: "forms" });
+    adoptJourneyId();
+    sendJourney("pageview");
+    expect(sent()[0]).not.toHaveProperty("referrer");
+    window.history.replaceState(null, "", "/");
   });
 
   it("is still sent when storage is blocked", () => {

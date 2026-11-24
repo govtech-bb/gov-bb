@@ -74,8 +74,9 @@ export function configureJourney(options: {
     url,
     app: options.app,
     pageLoadId: crypto.randomUUID(),
-    // Only where this tab's journey starts: later page loads in the tab (the
-    // forms app, the EzPay return) would report our own sites or EzPay.
+    // Only where this tab's journey starts: later page loads in the tab (forms
+    // after landing's Start link, the EzPay return, a reload) would report our
+    // own sites or EzPay.
     referrer: startsJourney()
       ? referrerHost(document.referrer, window.location.hostname)
       : undefined,
@@ -144,6 +145,11 @@ function tabJourneyId(pageLoadId: string): string {
 // True when this tab has no journey ID yet, so this page load starts the
 // journey. With storage blocked there is no way to tell, so assume it does.
 function startsJourney(): boolean {
+  // Forms is configured before adoptJourneyId() reads landing's ?jid=, on an
+  // origin whose sessionStorage is still empty: a valid jid says the journey
+  // began on landing.
+  const jid = new URLSearchParams(window.location.search).get(JOURNEY_ID_PARAM);
+  if (jid && UUID.test(jid)) return false;
   try {
     const stored = sessionStorage.getItem(JOURNEY_ID_KEY);
     return !(stored && UUID.test(stored));
@@ -167,7 +173,7 @@ export function referrerHost(
   try {
     const url = new URL(referrer);
     if (url.protocol !== "https:" && url.protocol !== "http:") return undefined;
-    host = url.hostname.toLowerCase().replace(/^www\./, "");
+    host = url.hostname.replace(/^www\./, "");
   } catch {
     return undefined;
   }
