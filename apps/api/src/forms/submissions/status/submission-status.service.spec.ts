@@ -162,17 +162,18 @@ describe("SubmissionStatusService (#3419)", () => {
       });
     });
 
-    // Before its first status event, or while status publishing is off for
-    // that CaMS deployment. It really was received (Tarika, 3 Nov).
-    it("answers found + received, as of when it was submitted, when the tracker has no record yet", async () => {
+    // CaMS writes its first status with the case itself, so no record means
+    // the department doesn't have it yet: still being handed off, or the
+    // hand-off failed. Never "received", which it may never be (#3714).
+    // Exact equality, as for untracked.
+    it("answers sending, with when it was received and the form, when the tracker has no record yet", async () => {
       const { service } = makeService(SUBMITTED, camsRecipe, async () => ({
         found: false,
       }));
       await expect(service.lookup("NRA-2609-7QK2M4D")).resolves.toEqual({
-        kind: "found",
+        kind: "sending",
         reference: "NRA-2609-7QK2M4D",
-        status: "received",
-        updatedAt: "2026-09-12T14:04:00.000Z",
+        receivedAt: "2026-09-12T14:04:00.000Z",
         formId: "apply-for-a-thing",
       });
     });

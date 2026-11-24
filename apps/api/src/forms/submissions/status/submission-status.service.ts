@@ -36,6 +36,14 @@ export type SubmissionStatusAnswer =
       /** So the chat can name the service and link its page (#3434). */
       formId: string;
     }
+  | {
+      /** A CaMS application the department doesn't have yet (#3714). The
+       * fields mean what they do on untracked. */
+      kind: "sending";
+      reference: string;
+      receivedAt: string;
+      formId: string;
+    }
   | { kind: "not_found"; reference: string };
 
 /**
@@ -95,16 +103,18 @@ export class SubmissionStatusService {
 
     if (!recipeSendsToCams) return untracked;
 
-    // No record yet (before its first status event, or while that CaMS
-    // deployment isn't publishing statuses): it really was received.
+    // CaMS creates the case and its first status event together, so no record
+    // means the department doesn't have the application yet: gov-bb is still
+    // handing it off, or the hand-off failed and waits on an operator. Never
+    // "received", which it may never be (#3714). Once a retry or a redrive
+    // gets through, the record exists and the answer is found.
     const tracked = await this.askTracker(reference);
     return tracked.found
       ? found(reference, submission.formId, tracked)
       : {
-          kind: "found",
+          kind: "sending",
           reference,
-          status: "received",
-          updatedAt: submittedAt,
+          receivedAt: submittedAt,
           formId: submission.formId,
         };
   }
