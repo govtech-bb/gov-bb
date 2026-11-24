@@ -7,14 +7,19 @@ import { checkPreviewToken, type Targets } from "./check-preview-token";
 const TOKEN = "ci-token-0123456789abcdef";
 const OTHER = "other-token-fedcba9876543210";
 
-/** What each stub system holds and how it behaves. */
+/** The value each stub system holds, and how it misbehaves. */
 interface Env {
-  apiV1Secret: string;
-  apiV2Secret: string;
-  landingSecret: string;
-  landingSource: "api_v2" | "static";
-  /** api_v2 serves the preview page to everyone. */
-  apiV2PageLeaks?: boolean;
+  apiV1: string;
+  apiV2: string;
+  landing: string;
+  /** What landing's public pages send as x-content-source; none when unset. */
+  landingSource?: "api_v2" | "static" | "static-fallback";
+  /** Overrides the x-content-source of landing's reviewer read. */
+  reviewerSource?: string;
+  /** A system that serves its preview item to everyone. */
+  leaks?: "api_v2" | "api v1" | "landing";
+  /** Landing drops the connection on `?preview=`. */
+  dropsGrant?: boolean;
 }
 
 let env: Env;
@@ -27,57 +32,65 @@ let targets: Targets;
  * and headers the real one uses for previews.
  */
 function handle(url: URL, headers: Record<string, string | undefined>) {
-  const v2Token = headers["x-preview-token"];
+  const sentV2 = headers["x-preview-token"];
   if (url.pathname.startsWith("/v2/")) {
-    if (v2Token !== undefined && v2Token !== env.apiV2Secret)
+    if (sentV2 !== undefined && sentV2 !== env.apiV2)
       return { status: 401, body: { error: "invalid_preview_token" } };
-    const reviewer = v2Token !== undefined;
+    const reviewer = sentV2 !== undefined;
     if (url.pathname === "/v2/catalog") {
       const pages = [{ url: "/a", visibility: "public" }];
       if (reviewer) pages.push({ url: "/p", visibility: "preview" });
       return { status: 200, body: { pages } };
     }
     const page = url.searchParams.get("url");
-    if (page === "/a" || (page === "/p" && (reviewer || env.apiV2PageLeaks)))
+    if (
+      page === "/a" ||
+      (page === "/p" && (reviewer || env.leaks === "api_v2"))
+    )
       return { status: 200, body: { url: page } };
     return { status: 404, body: { error: "not_found" } };
   }
   if (url.pathname.startsWith("/v1/")) {
-    const reviewer = headers["x-recipe-preview"] === env.apiV1Secret;
+    const reviewer = headers["x-recipe-preview"] === env.apiV1;
     if (url.pathname === "/v1/form-definitions") {
       const data = reviewer
         ? [
             { formId: "open-form", visibility: "public" },
+            // Skipped: Journey 3 flips it to public mid-run.
+            { formId: "e2e-maintenance-check", visibility: "preview" },
             { formId: "hidden-form", visibility: "preview" },
           ]
         : [{ formId: "open-form" }];
       return { status: 200, body: { status: "success", data } };
     }
-    if (url.pathname === "/v1/form-definitions/hidden-form" && reviewer)
+    if (
+      url.pathname === "/v1/form-definitions/hidden-form" &&
+      (reviewer || env.leaks === "api v1")
+    )
       return { status: 200, body: { status: "success" } };
     return { status: 404, body: { message: "Not found" } };
   }
   // Landing.
+  const preview = url.searchParams.get("preview");
+  if (preview !== null) {
+    if (env.dropsGrant) return { status: 0 };
+    return {
+      status: 307,
+      location: url.pathname,
+      cookie:
+        preview === env.landing
+          ? "preview=preview; Path=/; HttpOnly; Secure; SameSite=Lax"
+          : undefined,
+    };
+  }
   if (url.pathname === "/site/a")
     return { status: 200, source: env.landingSource };
   if (url.pathname === "/site/p") {
-    const preview = url.searchParams.get("preview");
-    if (preview !== null)
-      return {
-        status: 307,
-        location: "/site/p",
-        cookie:
-          preview === env.landingSecret
-            ? "preview=preview; Path=/; HttpOnly; Secure; SameSite=Lax"
-            : undefined,
-      };
-    // A reviewer's read goes to api_v2 with landing's own secret.
-    if (
-      env.landingSource === "api_v2" &&
-      headers.cookie === "preview=preview" &&
-      env.landingSecret === env.apiV2Secret
-    )
-      return { status: 200, source: "api_v2" };
+    // A reviewer's read goes to api_v2 with landing's own value.
+    const reviewer =
+      headers.cookie === "preview=preview" && env.landing === env.apiV2;
+    if (reviewer || env.leaks === "landing")
+      return { status: 200, source: env.reviewerSource ?? "api_v2" };
   }
   return { status: 404 };
 }
@@ -93,6 +106,7 @@ beforeAll(async () => {
       location?: string;
       cookie?: string;
     };
+    if (out.status === 0) return void req.socket.destroy();
     if (out.source) res.setHeader("x-content-source", out.source);
     if (out.location) res.setHeader("location", out.location);
     if (out.cookie) res.setHeader("set-cookie", out.cookie);
@@ -111,16 +125,11 @@ beforeAll(async () => {
 afterAll(() => new Promise<void>((resolve) => server.close(() => resolve())));
 
 beforeEach(() => {
-  env = {
-    apiV1Secret: TOKEN,
-    apiV2Secret: TOKEN,
-    landingSecret: TOKEN,
-    landingSource: "api_v2",
-  };
+  env = { apiV1: TOKEN, apiV2: TOKEN, landing: TOKEN, landingSource: "api_v2" };
 });
 
 async function run() {
-  const report = await checkPreviewToken(targets, TOKEN);
+  const report = await checkPreviewToken(targets, TOKEN, fetch, 0);
   expect(JSON.stringify(report)).not.toContain(TOKEN);
   return report;
 }
@@ -137,8 +146,8 @@ describe("checkPreviewToken", () => {
   });
 
   it("names api_v2 when it refuses the token", async () => {
-    env.apiV2Secret = OTHER;
-    env.landingSecret = OTHER;
+    env.apiV2 = OTHER;
+    env.landing = OTHER;
     const report = await run();
     expect(report.failures).toEqual([
       expect.stringMatching(/^api_v2 refused the preview token \(401/),
@@ -149,7 +158,7 @@ describe("checkPreviewToken", () => {
   });
 
   it("names api v1 when it refuses the token", async () => {
-    env.apiV1Secret = OTHER;
+    env.apiV1 = OTHER;
     const report = await run();
     expect(report.failures).toEqual([
       expect.stringMatching(
@@ -159,16 +168,26 @@ describe("checkPreviewToken", () => {
   });
 
   it("names landing when it refuses the token", async () => {
-    env.landingSecret = OTHER;
+    env.landing = OTHER;
     const report = await run();
     expect(report.failures).toEqual([
       expect.stringMatching(/^landing refused the preview token/),
     ]);
   });
 
+  it("fails when landing's reviewer read does not come from api_v2", async () => {
+    env.reviewerSource = "static-fallback";
+    const report = await run();
+    expect(report.failures).toEqual([
+      expect.stringMatching(
+        /^landing accepted the preview token but did not serve \/p from api_v2 \(HTTP 200, x-content-source: static-fallback\)/,
+      ),
+    ]);
+  });
+
   it("skips landing while it serves static content", async () => {
     env.landingSource = "static";
-    env.landingSecret = OTHER;
+    env.landing = OTHER;
     const report = await run();
     expect(report.failures).toEqual([]);
     expect(report.notes).toContain(
@@ -176,12 +195,42 @@ describe("checkPreviewToken", () => {
     );
   });
 
-  it("fails a preview page served without the token", async () => {
-    env.apiV2PageLeaks = true;
+  it("checks landing when a public page is a static fallback", async () => {
+    env.landingSource = "static-fallback";
+    env.landing = OTHER;
     const report = await run();
-    expect(report.failures).toContain(
-      "api_v2 serves preview page /p without the token (HTTP 200, not 404)",
-    );
+    expect(report.failures).toEqual([
+      expect.stringMatching(/^landing refused the preview token/),
+    ]);
+  });
+
+  it("fails when no public page tells landing's content source", async () => {
+    env.landingSource = undefined;
+    const report = await run();
+    expect(report.failures).toEqual([
+      expect.stringMatching(/^landing: none of 5 public pages sent/),
+    ]);
+  });
+
+  it.each([
+    ["api_v2", "api_v2 serves preview page /p without the token"],
+    ["api v1", "api v1 serves non-public form hidden-form without the token"],
+    ["landing", "landing serves preview page /p without the token"],
+  ] as const)(
+    "fails when %s serves its preview item without the token",
+    async (system, message) => {
+      env.leaks = system;
+      const report = await run();
+      expect(report.failures).toEqual([`${message} (HTTP 200, not 404)`]);
+    },
+  );
+
+  it("reports a failed request with the token in its URL without the token", async () => {
+    env.dropsGrant = true;
+    const report = await run();
+    expect(report.failures).toEqual([
+      expect.stringMatching(/^landing: request failed \(/),
+    ]);
   });
 });
 
@@ -211,7 +260,7 @@ describe("the script", () => {
   }
 
   it("exits 1 naming the system, and never prints the token", async () => {
-    env.landingSecret = OTHER;
+    env.landing = OTHER;
     const { code, output } = await script({ PREVIEW_TOKEN: TOKEN });
     expect(code).toBe(1);
     expect(output).toContain(

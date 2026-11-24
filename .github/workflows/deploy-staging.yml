@@ -772,10 +772,12 @@ jobs:
   # preview-token job, against staging. RECIPE_PREVIEW_TOKEN_STAGING must equal
   # staging's api v1 RECIPE_PREVIEW_TOKEN, api_v2 PREVIEW_SECRET and landing
   # PREVIEW_SECRET. Unset, the check fails closed. Landing is checked only once
-  # it reads api_v2 (#3227). Steps and checks: scripts/check-preview-token.ts.
+  # it reads api_v2 (#3227). ssr-smoke is listed for the same reason as in
+  # smoke-test-forms: when it fails, amplify-landing is skipped, not failed.
+  # Steps and checks: scripts/check-preview-token.ts.
   preview-token:
     name: Preview token matches (api v1, api_v2, landing)
-    needs: [setup, deploy-api, amplify-landing, deploy-api-v2]
+    needs: [setup, deploy-api, ssr-smoke, amplify-landing, deploy-api-v2]
     if: |
       always() &&
       needs.setup.result == 'success' &&
