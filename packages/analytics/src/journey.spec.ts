@@ -468,6 +468,7 @@ describe("referrer on journey events", () => {
     vi.unstubAllGlobals();
     sessionStorage.clear();
     setReferrer("");
+    window.history.replaceState(null, "", "/");
   });
 
   it("goes on the first page view only, as a host name", () => {
@@ -504,7 +505,15 @@ describe("referrer on journey events", () => {
     adoptJourneyId();
     sendJourney("pageview");
     expect(sent()[0]).not.toHaveProperty("referrer");
-    window.history.replaceState(null, "", "/");
+  });
+
+  it("is still sent when the address carries a jid that isn't a journey ID", () => {
+    window.history.replaceState(null, "", "/forms/x?jid=nope");
+    setReferrer("https://www.google.com/search?q=passport");
+    configureJourney({ url: URL_, app: "forms" });
+    adoptJourneyId();
+    sendJourney("pageview");
+    expect(sent()[0]).toMatchObject({ referrer: "google.com" });
   });
 
   it("is still sent when storage is blocked", () => {
